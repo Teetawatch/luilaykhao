@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html class="light" lang="th"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ชำระเงิน - Andaman Luxe</title>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@100..700&amp;family=Be+Vietnam+Pro:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-bright": "#f9f9f9",
+                        "background": "#f9f9f9",
+                        "on-error": "#ffffff",
+                        "surface-variant": "#e2e2e2",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#174e4e",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#76d6d5",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#9bd0cf",
+                        "primary-container": "#008080",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#380c00",
+                        "surface-container-high": "#e8e8e8",
+                        "on-tertiary-container": "#fff8f6",
+                        "primary-fixed": "#93f2f2",
+                        "on-secondary-container": "#376b6a",
+                        "on-background": "#1a1c1c",
+                        "outline": "#6e7979",
+                        "surface-tint": "#006a6a",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#9e380d",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "on-primary-fixed": "#002020",
+                        "tertiary-fixed-dim": "#ffb59c",
+                        "secondary-fixed": "#b7eceb",
+                        "on-tertiary-fixed-variant": "#822800",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "on-primary-container": "#e3fffe",
+                        "surface-dim": "#dadada",
+                        "surface": "#f9f9f9",
+                        "primary": "#006565",
+                        "surface-container": "#eeeeee",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#3e4949",
+                        "inverse-primary": "#76d6d5",
+                        "outline-variant": "#bdc9c8",
+                        "on-secondary-fixed": "#002020",
+                        "inverse-on-surface": "#f1f1f1",
+                        "secondary": "#336666",
+                        "secondary-container": "#b4eae9",
+                        "inverse-surface": "#2f3131",
+                        "tertiary-container": "#bf5025",
+                        "surface-container-low": "#f3f3f3",
+                        "tertiary-fixed": "#ffdbcf"
+                    },
+                    fontFamily: {
+                        "headline": ["Anuphan", "Be Vietnam Pro"],
+                        "body": ["Anuphan", "Be Vietnam Pro"],
+                        "label": ["Anuphan", "Be Vietnam Pro"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Anuphan', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-fixed-dim">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full flex justify-between items-center px-8 py-4 max-w-[1440px] mx-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl z-50 shadow-[0px_20px_40px_rgba(0,64,64,0.06)]">
+<div class="text-2xl font-bold tracking-tight text-[#006565] dark:text-[#008080]">Andaman Luxe</div>
+<div class="hidden md:flex items-center gap-8 font-['Anuphan'] leading-[1.6] text-lg font-medium">
+<a class="text-slate-600 dark:text-slate-400 hover:text-[#006565] transition-colors" href="#">ค้นหาที่พัก</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-[#006565] transition-colors" href="#">แพ็กเกจทัวร์</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-[#006565] transition-colors" href="#">ประสบการณ์พิเศษ</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-[#006565] transition-colors" href="#">บล็อกท่องเที่ยว</a>
+</div>
+<button class="bg-primary text-on-primary px-8 py-2.5 rounded-full font-medium hover:opacity-90 transition-all scale-100 active:scale-95 duration-400 ease-out-expo">จองเลย</button>
+</nav>
+<main class="pt-32 pb-24 px-6 md:px-12 max-w-7xl mx-auto">
+<!-- Progress Stepper -->
+<div class="flex items-center justify-center mb-16">
+<div class="flex items-center w-full max-w-3xl">
+<!-- Step 1 -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mb-2 font-bold">1</div>
+<span class="text-sm font-medium text-on-surface-variant">เลือกทริป</span>
+</div>
+<div class="h-[2px] w-24 bg-secondary-container"></div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mb-2 font-bold">2</div>
+<span class="text-sm font-medium text-on-surface-variant">รายละเอียด</span>
+</div>
+<div class="h-[2px] w-24 bg-primary"></div>
+<!-- Step 3 (Active) -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center mb-2 font-bold ring-4 ring-primary-fixed">3</div>
+<span class="text-sm font-bold text-primary">ชำระเงิน</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Left: Payment Form -->
+<div class="lg:col-span-8 space-y-8">
+<section class="bg-surface-container-lowest p-8 rounded-lg">
+<h1 class="text-3xl font-bold mb-8 text-on-surface">วิธีการชำระเงิน</h1>
+<!-- Payment Options -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+<button class="flex flex-col items-center gap-3 p-6 border-2 border-primary bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-primary text-3xl">credit_card</span>
+<span class="font-medium">บัตรเครดิต/เดบิต</span>
+</button>
+<button class="flex flex-col items-center gap-3 p-6 border-2 border-transparent bg-surface-container-low hover:bg-surface-container-high rounded-lg transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-3xl">qr_code_2</span>
+<span class="font-medium">พร้อมเพย์ (PromptPay)</span>
+</button>
+<button class="flex flex-col items-center gap-3 p-6 border-2 border-transparent bg-surface-container-low hover:bg-surface-container-high rounded-lg transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-3xl">account_balance</span>
+<span class="font-medium">โมบายแบงก์กิ้ง</span>
+</button>
+</div>
+<!-- Card Form -->
+<div class="space-y-6">
+<div class="space-y-2">
+<label class="block text-sm font-medium text-on-surface-variant ml-1">หมายเลขบัตร</label>
+<div class="relative">
+<input class="w-full p-4 bg-surface-container-low border-none rounded-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-lg" placeholder="0000 0000 0000 0000" type="text"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
+<span class="material-symbols-outlined text-on-surface-variant/40">credit_card</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-medium text-on-surface-variant ml-1">ชื่อผู้ถือบัตร</label>
+<input class="w-full p-4 bg-surface-container-low border-none rounded-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-lg" placeholder="ชื่อภาษาอังกฤษตามหน้าบัตร" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="block text-sm font-medium text-on-surface-variant ml-1">วันหมดอายุ</label>
+<input class="w-full p-4 bg-surface-container-low border-none rounded-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-lg" placeholder="ดด/ปป" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block text-sm font-medium text-on-surface-variant ml-1">CVV</label>
+<input class="w-full p-4 bg-surface-container-low border-none rounded-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none text-lg" placeholder="123" type="password"/>
+</div>
+</div>
+<div class="flex items-center gap-3 py-4">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" id="save-card" type="checkbox"/>
+<label class="text-on-surface-variant" for="save-card">บันทึกข้อมูลบัตรไว้สำหรับการจองครั้งถัดไป</label>
+</div>
+</div>
+</section>
+<div class="flex items-center gap-4 p-6 bg-primary-fixed/30 rounded-lg">
+<span class="material-symbols-outlined text-primary text-2xl" data-weight="fill">verified_user</span>
+<p class="text-sm text-on-primary-fixed-variant leading-relaxed">ข้อมูลการชำระเงินของคุณได้รับการคุ้มครองด้วยเทคโนโลยีการเข้ารหัสความปลอดภัยระดับสากลสูงสุด (SSL Encryption)</p>
+</div>
+</div>
+<!-- Right: Booking Summary -->
+<aside class="lg:col-span-4 sticky top-32">
+<div class="bg-glass border border-white/50 rounded-lg overflow-hidden shadow-[0px_20px_40px_rgba(0,64,64,0.06)]">
+<div class="h-48 relative overflow-hidden">
+<img alt="Luxury Van service" class="w-full h-full object-cover" data-alt="Premium Toyota Alphard luxury van parked in front of a tropical resort entrance with professional chauffeur waiting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEeKpX8nCjPjDT6-u_fKd05u1NOdck7Z3sYadkKvjeR8Mmv2Ck9SWR7mYMiiw6R9XfV_kvhCryUaMefg_8i-2DgL7YqWBD6kEuWcjguWXdAveY3kpsuITnpY1S9Pm62RsLYxdridDz98QKermcTUZodCfamLEtgX7gvKVZIn0yQ8r4w04X1ZHJpgimvwY4LmEb6Gv0ddb1EThu9pQbQwNE3GmjGh6Dw1O9KgQ1laLisAQcEWLRltlPFsCH4jszT7RrGIkjRvlItRxK"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+<span class="bg-primary-fixed text-on-primary-fixed text-xs font-bold px-3 py-1 rounded-full">CONFIRMED</span>
+</div>
+</div>
+<div class="p-8">
+<h2 class="text-xl font-bold mb-4">สรุปการจอง</h2>
+<div class="space-y-4 mb-8">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">airport_shuttle</span>
+<div>
+<p class="font-bold">เช่ารถตู้พรีเมียม Alphard</p>
+<p class="text-sm text-on-surface-variant">พร้อมคนขับมืออาชีพและพนักงานต้อนรับ</p>
+</div>
+</div>
+<div class="flex gap-4 text-sm">
+<span class="material-symbols-outlined text-on-surface-variant">calendar_today</span>
+<p>15 กรกฎาคม 2024 (1 วัน)</p>
+</div>
+<div class="flex gap-4 text-sm">
+<span class="material-symbols-outlined text-on-surface-variant">schedule</span>
+<p>09:00 น. - 18:00 น.</p>
+</div>
+</div>
+<div class="space-y-3 py-6 border-y border-outline-variant/30 mb-6">
+<div class="flex justify-between text-on-surface-variant">
+<span>ค่าเช่ารถตู้ (พื้นฐาน)</span>
+<span>฿5,500.00</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>ค่าบริการ VIP Service</span>
+<span>฿800.00</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>ภาษีมูลค่าเพิ่ม 7%</span>
+<span>฿441.00</span>
+</div>
+</div>
+<div class="flex justify-between items-end mb-8">
+<span class="text-lg font-bold">ยอดชำระสุทธิ</span>
+<span class="text-3xl font-extrabold text-tertiary">฿6,741.00</span>
+</div>
+<button class="w-full bg-primary text-on-primary py-5 rounded-full font-bold text-lg flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined">lock</span>
+                            ชำระเงินตอนนี้
+                        </button>
+</div>
+</div>
+<p class="text-center mt-6 text-sm text-on-surface-variant px-4">
+                    โดยการคลิกชำระเงิน แสดงว่าคุณยอมรับ 
+                    <a class="text-primary underline decoration-primary/30" href="#">ข้อกำหนดและเงื่อนไข</a> 
+                    ของ Andaman Luxe
+                </p>
+</aside>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-16 px-12 grid grid-cols-1 md:grid-cols-4 gap-8 bg-[#f3f3f3] dark:bg-slate-950 rounded-t-[2rem] font-['Anuphan'] leading-[1.8] text-sm">
+<div class="space-y-4">
+<div class="text-xl font-bold text-[#006565]">Andaman Luxe</div>
+<p class="text-slate-500">ยกระดับทุกการเดินทางในอันดามันด้วยบริการระดับพรีเมียมและความใส่ใจที่เหนือกว่า</p>
+</div>
+<div class="flex flex-col gap-3">
+<span class="font-bold text-[#006565] mb-2">เมนูหลัก</span>
+<a class="text-slate-500 hover:text-[#9e380d] transition-colors duration-300" href="#">ค้นหาที่พัก</a>
+<a class="text-slate-500 hover:text-[#9e380d] transition-colors duration-300" href="#">แพ็กเกจทัวร์</a>
+<a class="text-slate-500 hover:text-[#9e380d] transition-colors duration-300" href="#">บริการรถรับส่ง</a>
+</div>
+<div class="flex flex-col gap-3">
+<span class="font-bold text-[#006565] mb-2">ข้อมูลเพิ่มเติม</span>
+<a class="text-slate-500 hover:text-[#9e380d] transition-colors duration-300" href="#">เกี่ยวกับเรา</a>
+<a class="text-slate-500 hover:text-[#9e380d] transition-colors duration-300" href="#">ข้อกำหนดและเงื่อนไข</a>
+<a class="text-slate-500 hover:text-[#9e380d] transition-colors duration-300" href="#">นโยบายความเป็นส่วนตัว</a>
+</div>
+<div class="flex flex-col gap-3">
+<span class="font-bold text-[#006565] mb-2">ช่วยเหลือ</span>
+<a class="text-slate-500 hover:text-[#9e380d] transition-colors duration-300" href="#">ติดต่อเรา</a>
+<div class="mt-4 pt-4 border-t border-slate-200">
+<p class="text-xs text-slate-400">© 2024 Andaman Luxe. สัมผัสความเลอค่าแห่งอันดามัน</p>
+</div>
+</div>
+</footer>
+</body></html>

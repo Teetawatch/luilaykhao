@@ -1,0 +1,709 @@
+<template>
+  <div class="homepage bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
+
+    <!-- ══════════════════════════════════════════
+         HERO SECTION
+    ══════════════════════════════════════════ -->
+    <section class="relative h-[90vh] min-h-[700px] w-full flex items-center justify-center overflow-hidden -mt-16">
+      <!-- Background with Parallax effect -->
+      <div class="absolute inset-0 transform scale-105 transition-transform duration-[20s] ease-out hover:scale-110">
+        <img
+          src="/images/khaochangphueak.png"
+          alt="ลุยเลเขา"
+          class="w-full h-full object-cover"
+        />
+        <!-- Gradient Overlay for better text readability -->
+        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-[var(--color-sand)]/90"></div>
+      </div>
+
+      <!-- Atmospheric orbs -->
+      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-[var(--color-accent-light)]/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
+      <div class="absolute bottom-1/3 right-1/4 w-[30rem] h-[30rem] bg-[var(--color-gold)]/15 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
+
+      <!-- Content -->
+      <div class="hero-content relative z-10 text-center px-4 max-w-5xl w-full pt-16">
+        
+        <h1 class="font-anuphan text-white text-4xl md:text-5xl lg:text-7xl font-extrabold mb-6 leading-[1.15] tracking-tight drop-shadow-2xl">
+          การเที่ยวที่ดี เริ่มจาก<br class="hidden md:block" />
+          <span class="text-[var(--color-accent-light)]">ความรู้สึกที่ดี</span>
+          ตั้งแต่ตอนจอง
+        </h1>
+        
+        <p class="text-white/90 text-base md:text-xl mb-12 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+          จองทริปดำน้ำ เดินป่า และรถตู้พรีเมียม ครบจบในที่เดียว<br class="hidden md:block" /> รวดเร็ว ปลอดภัย ประทับใจ ไม่ต้องรอ
+        </p>
+
+        <!-- Glassmorphism Search Bar -->
+        <div class="search-bar bg-white/95 backdrop-blur-2xl rounded-[2rem] shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex flex-col md:flex-row items-stretch md:items-center p-3 gap-3 max-w-4xl mx-auto border border-white/50 transform transition-all duration-300 hover:shadow-[0_25px_50px_rgba(0,0,0,0.2)]">
+          <!-- Destination -->
+          <div class="flex items-center flex-1 w-full px-5 py-3 md:py-2 md:border-r border-gray-200 group">
+            <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/10 transition-colors">
+              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px]">location_on</span>
+            </div>
+            <div class="flex flex-col items-start min-w-0 flex-1">
+              <label class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold mb-0.5">จุดหมายปลายทาง</label>
+              <input
+                v-model="searchDestination"
+                type="text"
+                placeholder="คุณต้องการไปที่ไหน?"
+                class="bg-transparent border-none focus:ring-0 p-0 text-[var(--color-text-dark)] font-bold placeholder:text-gray-400 w-full text-base outline-none"
+              />
+            </div>
+          </div>
+          <!-- Date -->
+          <div class="flex items-center flex-1 w-full px-5 py-3 md:py-2 md:border-r border-gray-200 group">
+            <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/10 transition-colors">
+              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px]">calendar_today</span>
+            </div>
+            <div class="flex flex-col items-start min-w-0 flex-1">
+              <label class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold mb-0.5">วันที่เดินทาง</label>
+              <input
+                v-model="searchDate"
+                type="date"
+                class="bg-transparent border-none focus:ring-0 p-0 text-[var(--color-text-dark)] font-bold placeholder:text-gray-400 w-full text-base outline-none"
+              />
+            </div>
+          </div>
+          <!-- Travelers -->
+          <div class="flex items-center flex-1 w-full px-5 py-3 md:py-2 group">
+            <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/10 transition-colors">
+              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px]">group</span>
+            </div>
+            <div class="flex flex-col items-start min-w-0 flex-1">
+              <label class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold mb-0.5">ผู้เดินทาง</label>
+              <select
+                v-model="searchTravelers"
+                class="bg-transparent border-none focus:ring-0 p-0 text-[var(--color-text-dark)] font-bold w-full text-base outline-none appearance-none cursor-pointer"
+              >
+                <option value="1">1 ท่าน</option>
+                <option value="2">2 ท่าน</option>
+                <option value="3">3 ท่าน+</option>
+              </select>
+            </div>
+          </div>
+          <!-- Search Button -->
+          <router-link
+            to="/trips"
+            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-4 rounded-[1.5rem] font-bold transition-all duration-300 shadow-[0_8px_20px_rgba(45,122,79,0.3)] hover:shadow-[0_12px_25px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <span class="material-symbols-rounded text-[22px]">search</span>
+            <span>ค้นหาทริป</span>
+          </router-link>
+        </div>
+      </div>
+
+      <!-- Scroll indicator -->
+      <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+        <div class="w-7 h-12 border-2 border-white/40 rounded-full flex justify-center pt-2 backdrop-blur-sm">
+          <div class="w-1.5 h-3 bg-white rounded-full scroll-dot"></div>
+        </div>
+      </div>
+      
+      <!-- Bottom fade -->
+      <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[var(--color-sand)] to-transparent z-0"></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         SOCIAL PROOF BAR
+    ══════════════════════════════════════════ -->
+    <section class="bg-[var(--color-sand)] relative z-10 pb-16 pt-8">
+      <div class="max-w-7xl mx-auto px-6 md:px-8">
+        <div class="bg-white rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-gray-100 p-8 md:p-10 -mt-16 relative z-20">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4 divide-x-0 md:divide-x divide-gray-100">
+            <div v-for="(stat, index) in statItems" :key="stat.label" class="flex flex-col items-center justify-center text-center px-4 group">
+              <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] mb-4 group-hover:scale-110 group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300">
+                <span class="material-symbols-rounded text-[28px]">{{ stat.icon }}</span>
+              </div>
+              <div class="text-3xl font-extrabold text-[var(--color-text-dark)] mb-1">{{ stat.value }}</div>
+              <div class="text-sm font-medium text-[var(--color-text-muted)]">{{ stat.label }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         CATEGORIES SECTION
+    ══════════════════════════════════════════ -->
+    <section class="py-20 bg-[var(--color-sand)] relative overflow-hidden">
+      <!-- Decorative background text -->
+      <div class="absolute top-10 left-0 text-[12rem] font-black text-gray-200/40 select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter">
+        EXPLORE
+      </div>
+      
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+          <div class="max-w-2xl">
+            <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">หมวดหมู่การเดินทาง</span>
+            <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">เลือกประสบการณ์<br />ในแบบของคุณ</h2>
+          </div>
+          <p class="text-[var(--color-text-muted)] text-base max-w-sm md:text-right font-medium">
+            ค้นพบการเดินทางที่ออกแบบมาเพื่อคุณ ไม่ว่าจะเป็นการผจญภัยหรือการพักผ่อน
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <router-link
+            v-for="cat in categories"
+            :key="cat.type"
+            :to="`/trips?type=${cat.type}`"
+            class="group relative bg-white rounded-[2rem] overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 border border-gray-100 block isolate"
+          >
+            <!-- Background Blob -->
+            <div class="absolute -right-16 -top-16 w-48 h-48 rounded-full opacity-10 transition-transform duration-500 group-hover:scale-150 -z-10" :style="`background: ${cat.color}`"></div>
+            
+            <div class="p-8 md:p-10 flex flex-col h-full">
+              <div class="w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-all duration-300 shadow-sm group-hover:shadow-md mb-8" :style="`background: ${cat.bgColor}; color: ${cat.color}`">
+                <span class="material-symbols-rounded text-[32px]">{{ cat.icon }}</span>
+              </div>
+              
+              <div class="mt-auto">
+                <h3 class="text-2xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2 group-hover:text-[var(--color-accent)] transition-colors">{{ cat.label }}</h3>
+                <p class="text-[var(--color-text-muted)] text-base font-medium mb-6">{{ cat.desc }}</p>
+                
+                <div class="flex items-center text-sm font-bold" :style="`color: ${cat.color}`">
+                  <span class="mr-2">ดูทริปทั้งหมด</span>
+                  <span class="material-symbols-rounded text-[20px] transform group-hover:translate-x-2 transition-transform duration-300">arrow_forward</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Bottom progress line -->
+            <div class="absolute bottom-0 left-0 h-1.5 w-0 group-hover:w-full transition-all duration-500 ease-out" :style="`background: ${cat.color}`"></div>
+          </router-link>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         POPULAR EXPERIENCES SECTION
+    ══════════════════════════════════════════ -->
+    <section class="py-24 bg-white relative">
+      <div class="max-w-7xl mx-auto px-6 md:px-8">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+          <div>
+            <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">ทริปยอดฮิต</span>
+            <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">ประสบการณ์ยอดนิยม</h2>
+          </div>
+          <router-link
+            to="/trips"
+            class="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border-2 border-gray-100 hover:border-[var(--color-accent)] text-[var(--color-text-dark)] hover:text-[var(--color-accent)] font-bold transition-all duration-300"
+          >
+            ดูทั้งหมด
+            <span class="material-symbols-rounded text-[20px] group-hover:translate-x-1 transition-transform duration-300">arrow_right_alt</span>
+          </router-link>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="loading" class="flex justify-center py-20">
+          <div class="flex flex-col items-center gap-5">
+            <div class="w-12 h-12 border-4 border-[var(--color-sand)] border-t-[var(--color-accent)] rounded-full animate-spin"></div>
+            <span class="text-[var(--color-text-muted)] font-bold tracking-wide">กำลังโหลดทริป...</span>
+          </div>
+        </div>
+
+        <!-- Cards Grid -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <router-link
+            v-for="trip in trips"
+            :key="trip.id"
+            :to="`/trips/${trip.slug}`"
+            class="group flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100 hover:border-transparent hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-300 transform hover:-translate-y-2"
+          >
+            <!-- Image Container -->
+            <div class="relative overflow-hidden aspect-[4/5] m-2 rounded-[1.5rem]">
+              <img
+                v-if="trip.cover_image"
+                :src="trip.cover_image"
+                :alt="trip.title"
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                @error="(e) => e.target.style.display='none'"
+              />
+              <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center">
+                <span class="material-symbols-rounded text-gray-300 text-5xl">image</span>
+              </div>
+              
+              <!-- Gradient Overlay -->
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
+              
+              <!-- Badges -->
+              <div class="absolute top-4 left-4 flex flex-col gap-2">
+                <span
+                  class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide shadow-lg backdrop-blur-md"
+                  :class="typeBadgeClass(trip.type)"
+                >
+                  {{ typeLabel(trip.type) }}
+                </span>
+              </div>
+              
+              <!-- Wishlist -->
+              <button class="absolute top-4 right-4 text-white hover:text-red-400 transition-colors duration-300 bg-white/20 hover:bg-white/30 rounded-full p-2 backdrop-blur-md cursor-pointer" @click.prevent aria-label="บันทึกรายการโปรด">
+                <span class="material-symbols-rounded text-[20px] shadow-sm">favorite</span>
+              </button>
+              
+              <!-- Location / Duration indicator -->
+              <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center text-white">
+                <div class="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full">
+                  <span class="material-symbols-rounded text-[14px]">schedule</span>
+                  <span class="text-xs font-bold">{{ trip.duration_days || 1 }} วัน</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Info -->
+            <div class="p-5 flex-1 flex flex-col">
+              <div class="flex items-center gap-1.5 mb-2">
+                <div class="flex text-[#FFB020] gap-0.5">
+                  <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">star</span>
+                </div>
+                <span class="text-[var(--color-text-dark)] font-bold text-sm">4.{{ Math.floor(Math.random() * 5 + 5) }}</span>
+                <span class="text-gray-400 text-xs font-medium">({{ Math.floor(Math.random() * 900 + 100) }} รีวิว)</span>
+              </div>
+              
+              <h4 class="text-[1.1rem] font-extrabold text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">
+                {{ trip.title }}
+              </h4>
+              
+              <div class="mt-auto pt-4 flex justify-between items-end border-t border-gray-100">
+                <div class="flex flex-col">
+                  <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">เริ่มต้น</span>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.price_per_person).toLocaleString() }}</span>
+                  </div>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-colors duration-300">
+                  <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+                </div>
+              </div>
+            </div>
+          </router-link>
+        </div>
+
+        <!-- View all CTA -->
+        <div class="text-center mt-16">
+          <router-link
+            to="/trips"
+            class="inline-flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-10 py-4 rounded-full font-bold text-lg transition-all duration-300 shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_15px_30px_rgba(45,122,79,0.3)] hover:-translate-y-1 cursor-pointer"
+          >
+            ค้นหากิจกรรมทั้งหมด
+            <span class="material-symbols-rounded text-[24px]">explore</span>
+          </router-link>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         FEATURED / ASYMMETRIC SECTION
+    ══════════════════════════════════════════ -->
+    <section class="py-24 bg-[var(--color-primary)] relative overflow-hidden" v-if="featuredTrips.length > 0">
+      <!-- Background pattern -->
+      <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 32px 32px;"></div>
+      
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+        <div class="mb-14 flex flex-col md:flex-row justify-between items-end gap-6">
+          <div>
+            <span class="text-[var(--color-accent-light)] font-bold tracking-wider uppercase text-sm mb-2 block">คัดสรรพิเศษ</span>
+            <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-white tracking-tight">แนะนำสำหรับคุณ</h2>
+          </div>
+          <p class="text-white/70 max-w-sm md:text-right font-medium">
+            ประสบการณ์สุดพิเศษที่เราอยากให้คุณได้ลองสัมผัสด้วยตัวเอง
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <!-- Large Featured Card (first trip) -->
+          <router-link
+            :to="`/trips/${featuredTrips[0].slug}`"
+            class="lg:col-span-8 group relative overflow-hidden rounded-[2rem] shadow-2xl h-[500px] lg:h-[600px] cursor-pointer block isolate"
+          >
+            <img
+              :src="featuredTrips[0].cover_image || '/images/placeholder.jpg'"
+              :alt="featuredTrips[0].title"
+              class="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-[var(--color-primary)] via-[var(--color-primary)]/40 to-transparent opacity-90"></div>
+            
+            <div class="absolute inset-0 p-8 md:p-12 flex flex-col justify-end">
+              <div class="flex flex-wrap items-center gap-3 mb-6">
+                <span class="bg-[var(--color-accent-light)] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">{{ typeLabel(featuredTrips[0].type) }}</span>
+                <span class="bg-white/20 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                  <span class="material-symbols-rounded text-[14px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
+                  4.9
+                </span>
+              </div>
+              
+              <h3 class="font-anuphan text-white text-3xl md:text-5xl font-extrabold mb-4 leading-tight group-hover:text-[var(--color-accent-light)] transition-colors">{{ featuredTrips[0].title }}</h3>
+              <p class="text-white/80 max-w-xl mb-8 leading-relaxed text-base md:text-lg font-medium line-clamp-2">{{ featuredTrips[0].description || featuredTrips[0].location }}</p>
+              
+              <div class="flex items-center justify-between flex-wrap gap-4 mt-auto">
+                <div class="flex flex-col">
+                  <span class="text-white/60 text-sm font-bold uppercase tracking-wider mb-1">ราคาเริ่มต้น</span>
+                  <span class="text-white text-3xl font-black">฿{{ Number(featuredTrips[0].price_per_person).toLocaleString('th-TH') }}</span>
+                </div>
+                <div class="bg-white text-[var(--color-text-dark)] group-hover:bg-[var(--color-accent-light)] group-hover:text-white px-8 py-4 rounded-full font-extrabold shadow-xl transition-all duration-300 flex items-center gap-2">
+                  ดูรายละเอียด
+                  <span class="material-symbols-rounded text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </div>
+              </div>
+            </div>
+          </router-link>
+
+          <!-- Side Cards (trip 2 & 3) -->
+          <div class="lg:col-span-4 flex flex-col gap-6">
+            <router-link
+              v-for="(trip, idx) in featuredTrips.slice(1, 3)"
+              :key="trip.id"
+              :to="`/trips/${trip.slug}`"
+              class="flex-1 group relative overflow-hidden rounded-[2rem] bg-white cursor-pointer block p-6 md:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+            >
+              <div class="absolute -right-10 -top-10 w-32 h-32 bg-gray-50 rounded-full transition-transform duration-500 group-hover:scale-150 -z-10"></div>
+              
+              <div class="relative z-10">
+                <div class="flex justify-between items-start mb-6">
+                  <span
+                    class="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider"
+                    :class="idx === 0 ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]' : 'bg-[var(--color-gold)]/10 text-[var(--color-gold-dark)]'"
+                  >{{ typeLabel(trip.type) }}</span>
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center" :class="idx === 0 ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]' : 'bg-[var(--color-gold)]/10 text-[var(--color-gold-dark)]'">
+                    <span class="material-symbols-rounded text-[20px]">{{ typeFeaturedIcon(trip.type) }}</span>
+                  </div>
+                </div>
+                <h4 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-3 group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ trip.title }}</h4>
+                <p class="text-[var(--color-text-muted)] text-sm font-medium line-clamp-2 leading-relaxed">{{ trip.description || trip.location }}</p>
+              </div>
+              
+              <div class="relative z-10 pt-6 mt-6 border-t border-gray-100 flex justify-between items-end">
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">เริ่มต้น</span>
+                  <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.price_per_person).toLocaleString('th-TH') }}</span>
+                </div>
+                <div class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:border-transparent group-hover:text-white transition-all duration-300">
+                  <span class="material-symbols-rounded text-[20px]">arrow_outward</span>
+                </div>
+              </div>
+            </router-link>
+
+            <!-- Placeholder card when only 1 featured trip exists -->
+            <router-link
+              v-if="featuredTrips.length === 1"
+              to="/trips"
+              class="flex-1 group cursor-pointer bg-white/5 backdrop-blur-sm rounded-[2rem] p-6 flex flex-col items-center justify-center hover:bg-white/10 transition-all duration-300 border-2 border-dashed border-white/20 text-center gap-4"
+            >
+              <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                <span class="material-symbols-rounded text-[32px]">explore</span>
+              </div>
+              <p class="text-white font-bold tracking-wide">ดูทริปแนะนำทั้งหมด</p>
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         TESTIMONIALS SECTION
+    ══════════════════════════════════════════ -->
+    <section class="py-24 bg-[var(--color-sand)] relative">
+      <div class="max-w-7xl mx-auto px-6 md:px-8">
+        <div class="text-center mb-16">
+          <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">รีวิวจากลูกค้า</span>
+          <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">นักเดินทางพูดถึงเรา</h2>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div
+            v-for="review in reviews"
+            :key="review.name"
+            class="bg-white rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-shadow duration-300 relative border border-gray-100"
+          >
+            <!-- Quote Icon -->
+            <div class="absolute top-8 right-8 text-gray-100">
+              <span class="material-symbols-rounded text-[64px]" style="font-variation-settings:'FILL' 1">format_quote</span>
+            </div>
+            
+            <div class="relative z-10">
+              <div class="flex text-[#FFB020] gap-1 mb-6">
+                <span v-for="n in 5" :key="n" class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">star</span>
+              </div>
+              
+              <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mb-8 italic">"{{ review.text }}"</p>
+              
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md" :style="`background: ${review.color}`">
+                  {{ review.name.charAt(0) }}
+                </div>
+                <div>
+                  <div class="font-extrabold text-[var(--color-text-dark)] text-base">{{ review.name }}</div>
+                  <div class="text-[var(--color-text-muted)] text-sm font-medium">{{ review.trip }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         WHY ANDAMAN LUXE SECTION
+    ══════════════════════════════════════════ -->
+    <section class="py-24 bg-white border-t border-gray-100">
+      <div class="max-w-7xl mx-auto px-6 md:px-8">
+        <div class="text-center mb-16">
+          <h2 class="font-anuphan text-4xl font-extrabold text-[var(--color-text-dark)] tracking-tight">ทำไมต้องเลือก ลุยเลเขา?</h2>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+          <div
+            v-for="trust in trustItems"
+            :key="trust.icon"
+            class="flex flex-col items-center text-center group"
+          >
+            <div class="w-20 h-20 rounded-[1.5rem] bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] mb-6 group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-xl group-hover:-translate-y-2">
+              <span class="material-symbols-rounded text-[36px]">{{ trust.icon }}</span>
+            </div>
+            <h5 class="font-extrabold text-xl text-[var(--color-text-dark)] mb-3">{{ trust.title }}</h5>
+            <p class="text-[var(--color-text-muted)] text-base font-medium leading-relaxed max-w-[250px]">{{ trust.desc }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         NEWSLETTER CTA SECTION
+    ══════════════════════════════════════════ -->
+    <section class="py-24 px-6 md:px-8 bg-[var(--color-sand)]">
+      <div class="max-w-6xl mx-auto rounded-[3rem] overflow-hidden relative shadow-2xl bg-[var(--color-primary)]">
+        <!-- Decorative Elements -->
+        <div class="absolute top-0 right-0 w-[40rem] h-[40rem] bg-[var(--color-accent-light)]/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3 pointer-events-none mix-blend-screen"></div>
+        <div class="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-[var(--color-gold)]/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/4 pointer-events-none mix-blend-screen"></div>
+        
+        <!-- Pattern Overlay -->
+        <div class="absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
+
+        <div class="relative z-10 p-12 md:p-20 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+          <div class="flex-1 text-center lg:text-left">
+            <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-5 py-2 mb-6">
+              <span class="material-symbols-rounded text-[#FFB020] text-[18px]" style="font-variation-settings:'FILL' 1">local_fire_department</span>
+              <span class="text-white text-xs font-black tracking-widest uppercase">Special Offer</span>
+            </div>
+            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight">รับส่วนลด 10%<br />สำหรับทริปแรก</h2>
+            <p class="text-white/80 text-lg md:text-xl font-medium max-w-xl mx-auto lg:mx-0">
+              สมัครสมาชิกเพื่อรับดีลสุดพิเศษก่อนใคร และข่าวสารการเดินทางที่คัดสรรมาเพื่อคุณ
+            </p>
+          </div>
+
+          <div class="flex-1 w-full max-w-lg">
+            <div class="bg-white/10 backdrop-blur-xl p-8 rounded-[2rem] border border-white/20 shadow-2xl">
+              <form @submit.prevent class="flex flex-col gap-4">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <span class="material-symbols-rounded text-white/50">mail</span>
+                  </div>
+                  <input
+                    type="email"
+                    placeholder="กรอกอีเมลของคุณ"
+                    aria-label="อีเมล"
+                    class="w-full bg-white/10 border border-white/20 rounded-full py-4 pl-14 pr-6 text-white placeholder:text-white/50 focus:ring-2 focus:ring-[var(--color-accent-light)] focus:border-transparent outline-none text-base font-medium transition-all"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  class="w-full bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white py-4 rounded-full font-extrabold text-lg transition-all duration-300 shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  สมัครรับข่าวสาร
+                  <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+                </button>
+              </form>
+              <p class="text-white/40 text-xs font-medium mt-6 text-center">ไม่มีสแปม ยกเลิกได้ตลอดเวลา 100% ฟรี</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import api from '../lib/axios';
+
+const trips = ref([]);
+const featuredTrips = ref([]);
+const loading = ref(true);
+const searchDestination = ref('');
+const searchDate = ref('');
+const searchTravelers = ref('1');
+
+const statItems = [
+  { icon: 'groups', value: '12K+', label: 'นักเดินทางที่ไว้ใจเรา' },
+  { icon: 'star', value: '4.9', label: 'คะแนนความพึงพอใจ' },
+  { icon: 'map', value: '50+', label: 'เส้นทางท่องเที่ยว' },
+  { icon: 'verified_user', value: '100%', label: 'รับประกันความปลอดภัย' },
+];
+
+const categories = [
+  {
+    type: 'snorkeling',
+    label: 'ดำน้ำตื้น',
+    desc: 'สัมผัสความงามของโลกใต้ทะเลอันดามัน พร้อมทีมงานมืออาชีพ',
+    icon: 'scuba_diving',
+    color: '#3B9DD4',
+    bgColor: '#E8F4FA',
+  },
+  {
+    type: 'trekking',
+    label: 'เดินป่า',
+    desc: 'ผจญภัยในเส้นทางธรรมชาติที่ท้าทาย สูดอากาศบริสุทธิ์ให้เต็มปอด',
+    icon: 'hiking',
+    color: '#2D7A4F',
+    bgColor: '#E8F5EC',
+  },
+  {
+    type: 'climbing',
+    label: 'รถตู้พรีเมียม',
+    desc: 'เดินทางอย่างสะดวกสบายและปลอดภัย ด้วยบริการรถตู้ระดับพรีเมียม',
+    icon: 'airport_shuttle',
+    color: '#C8963E',
+    bgColor: '#FFF8EE',
+  },
+];
+
+const reviews = [
+  {
+    name: 'ณัฐพงษ์ ส.',
+    trip: 'ทริปดำน้ำตื้น เกาะพีพี',
+    text: 'บริการเยี่ยมมาก ไกด์ดูแลดีมาก น้ำทะเลใสมาก ประทับใจมากครับ จะกลับมาจองซ้ำแน่นอน เป็นประสบการณ์ที่ยอดเยี่ยมที่สุด',
+    color: '#3B9DD4',
+  },
+  {
+    name: 'พิมพ์ใจ ร.',
+    trip: 'Luxury Sunset Cruise',
+    text: 'ประสบการณ์ที่ไม่มีวันลืม วิวพระอาทิตย์ตกสวยงามมาก อาหารอร่อย สตาฟฟ์ใจดีทุกคน แนะนำสำหรับคู่รักเลยค่ะ',
+    color: '#C8963E',
+  },
+  {
+    name: 'ธีรชัย ม.',
+    trip: 'เดินป่าเขาหลวง',
+    text: 'ไกด์มีความรู้มาก เส้นทางท้าทายดี ได้เห็นธรรมชาติในมุมที่ไม่เคยเห็นมาก่อน คุ้มค่าเหนื่อยจริงๆ ครับ',
+    color: '#2D7A4F',
+  },
+];
+
+const trustItems = [
+  {
+    icon: 'verified_user',
+    title: 'ความปลอดภัยสูงสุด',
+    desc: 'อุปกรณ์ผ่านการตรวจสอบมาตรฐานสากลทุกครั้งก่อนใช้งาน',
+  },
+  {
+    icon: 'support_agent',
+    title: 'บริการ 24 ชั่วโมง',
+    desc: 'ทีมงานพร้อมดูแลและให้ความช่วยเหลือคุณตลอดการเดินทาง',
+  },
+  {
+    icon: 'eco',
+    title: 'ท่องเที่ยวอย่างยั่งยืน',
+    desc: 'ใส่ใจสิ่งแวดล้อมและสนับสนุนรายได้สู่ชุมชนท้องถิ่น',
+  },
+  {
+    icon: 'payments',
+    title: 'ราคายุติธรรม',
+    desc: 'ไม่มีค่าใช้จ่ายแอบแฝง คุ้มค่ากับบริการระดับพรีเมียมที่คุณได้รับ',
+  },
+];
+
+/* Category color mapping */
+const typeMap = {
+  trekking:   { label: 'เดินป่า',    class: 'bg-[#2D7A4F] text-white' },
+  diving:     { label: 'ดำน้ำ',      class: 'bg-[#1A5F8A] text-white' },
+  snorkeling: { label: 'ดำน้ำตื้น', class: 'bg-[#3B9DD4] text-white' },
+  climbing:   { label: 'รถตู้',      class: 'bg-[#C8963E] text-white' },
+};
+
+function typeLabel(type) {
+  return typeMap[type]?.label || type;
+}
+function typeBadgeClass(type) {
+  return typeMap[type]?.class || 'bg-[#6B8F7A] text-white';
+}
+
+const typeFeaturedIcon = (type) => {
+  const icons = { trekking: 'hiking', diving: 'scuba_diving', snorkeling: 'pool', climbing: 'airport_shuttle' };
+  return icons[type] || 'explore';
+};
+
+onMounted(async () => {
+  try {
+    const [tripsRes, featuredRes] = await Promise.all([
+      api.get('/trips', { params: { per_page: 8 } }),
+      api.get('/trips/featured'),
+    ]);
+    trips.value = tripsRes.data.data;
+    featuredTrips.value = featuredRes.data.data || [];
+  } catch (e) {
+    console.error('Failed to load trips', e);
+  } finally {
+    loading.value = false;
+  }
+});
+</script>
+
+<style scoped>
+/* Hero animations */
+.hero-content {
+  animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.search-bar {
+  opacity: 0;
+  animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Scroll indicator dot */
+.scroll-dot {
+  animation: scrollBounce 2s ease-in-out infinite;
+}
+
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50%      { transform: translateY(12px); opacity: 0.3; }
+}
+
+/* Line clamp */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Date picker customization */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+input[type="date"] {
+  position: relative;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .hero-content,
+  .search-bar,
+  .scroll-dot,
+  .animate-ping,
+  .animate-spin {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+</style>

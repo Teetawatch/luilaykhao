@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html lang="th"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Andaman Luxe - การจองของฉัน</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&amp;family=Be+Vietnam+Pro:wght@300;400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary": "#336666",
+                        "tertiary": "#9e380d",
+                        "surface-dim": "#dadada",
+                        "on-primary-container": "#e3fffe",
+                        "background": "#f9f9f9",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "inverse-primary": "#76d6d5",
+                        "surface-container": "#eeeeee",
+                        "surface-tint": "#006a6a",
+                        "surface": "#f9f9f9",
+                        "on-tertiary-fixed": "#380c00",
+                        "on-background": "#1a1c1c",
+                        "tertiary-container": "#bf5025",
+                        "on-secondary-container": "#376b6a",
+                        "surface-container-highest": "#e2e2e2",
+                        "inverse-on-surface": "#f1f1f1",
+                        "tertiary-fixed-dim": "#ffb59c",
+                        "surface-bright": "#f9f9f9",
+                        "on-primary-fixed": "#002020",
+                        "surface-variant": "#e2e2e2",
+                        "surface-container-low": "#f3f3f3",
+                        "inverse-surface": "#2f3131",
+                        "outline": "#6e7979",
+                        "on-surface-variant": "#3e4949",
+                        "primary-fixed": "#93f2f2",
+                        "on-secondary-fixed-variant": "#174e4e",
+                        "secondary-fixed-dim": "#9bd0cf",
+                        "primary-container": "#008080",
+                        "secondary-container": "#b4eae9",
+                        "tertiary-fixed": "#ffdbcf",
+                        "primary-fixed-dim": "#76d6d5",
+                        "surface-container-high": "#e8e8e8",
+                        "on-tertiary-container": "#fff8f6",
+                        "primary": "#006565",
+                        "outline-variant": "#bdc9c8",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#b7eceb",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#822800",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#002020",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Anuphan", "sans-serif"],
+                        "body": ["Anuphan", "sans-serif"],
+                        "label": ["Anuphan", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Anuphan', sans-serif; line-height: 1.6; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .ease-out-expo { transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1); }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopAppBar -->
+<header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl fixed top-0 w-full z-50 shadow-sm dark:shadow-none">
+<div class="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
+<div class="text-2xl font-bold tracking-tighter text-teal-800 dark:text-teal-400 font-['Anuphan']">Andaman Luxe</div>
+<div class="hidden md:flex space-x-8 items-center">
+<a class="text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-200 transition-colors" href="#">Explore</a>
+<a class="text-teal-700 dark:text-teal-300 font-semibold transition-colors" href="#">Bookings</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-200 transition-colors" href="#">Wishlist</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-200 transition-colors" href="#">Profile</a>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-teal-800 dark:text-teal-400 cursor-pointer ease-out-expo duration-400 hover:opacity-80">notifications</span>
+<span class="material-symbols-outlined text-teal-800 dark:text-teal-400 cursor-pointer ease-out-expo duration-400 hover:opacity-80">account_circle</span>
+</div>
+</div>
+<div class="bg-slate-100 dark:bg-slate-800 h-[1px] opacity-20"></div>
+</header>
+<main class="pt-24 pb-32 px-4 max-w-4xl mx-auto">
+<!-- Page Title & Header -->
+<section class="mb-8">
+<h1 class="text-3xl font-bold text-on-surface tracking-tight mb-2">การจองของฉัน</h1>
+<p class="text-on-surface-variant font-medium">จัดการแผนการเดินทางที่แสนพิเศษของคุณได้ที่นี่</p>
+</section>
+<!-- Tabs -->
+<div class="flex gap-4 mb-8 bg-surface-container-low p-1.5 rounded-xl w-fit">
+<button class="px-6 py-2.5 bg-surface-container-lowest text-primary font-semibold rounded-lg shadow-sm">ที่กำลังจะมาถึง</button>
+<button class="px-6 py-2.5 text-on-surface-variant font-medium hover:text-primary transition-colors">ที่ผ่านมาแล้ว</button>
+</div>
+<!-- Booking Cards List -->
+<div class="space-y-6">
+<!-- Van Booking Card (Pending) -->
+<article class="bg-surface-container-lowest rounded-lg overflow-hidden flex flex-col md:flex-row shadow-[0px_20px_40px_rgba(0,64,64,0.04)] group">
+<div class="md:w-1/3 h-48 md:h-auto relative overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="luxury white Toyota Alphard van parked in a scenic mountain backdrop with soft morning sunlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrNztbH78N6Bpt0vFFRQ4CAcOGQclTj3WVlQIM4lplYmtAfouKVjTK_XjZP-YF0Ug5UmlGKDdsk6MkZZaMtIUL10v-3gvqPOX-THeJq6b9Gd7Z2pl6VdooBAcLKgS-P9uBuuxhCcH3U9BIaLZWGwcaHBKSZOp-cqAHvQ3d_EUzdFasWFFCpPUqUS63PNfVk4SLoqXQNsjPJiycYlCnhVtXa2_-6z8EA8CH125-V0tevazQzF1tY4RDn11yUXq5wtCJAA5-Qj9QmvDP"/>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-2">
+<h2 class="text-xl font-bold text-on-surface">เช่ารถตู้พรีเมียม Alphard</h2>
+<span class="px-3 py-1 bg-tertiary/10 text-tertiary text-xs font-bold rounded-full backdrop-blur-sm">รอยืนยัน</span>
+</div>
+<div class="space-y-2 mb-6 text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span class="text-sm">15 กรกฎาคม 2024</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">fingerprint</span>
+<span class="text-sm">Ref: ALX-882910</span>
+</div>
+<div class="text-xl font-bold text-primary-container mt-2">฿4,500 <span class="text-xs font-normal text-on-surface-variant">/ วัน</span></div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">ดูรายละเอียด</button>
+</div>
+</div>
+</article>
+<!-- Snorkeling Card (Confirmed) -->
+<article class="bg-surface-container-lowest rounded-lg overflow-hidden flex flex-col md:flex-row shadow-[0px_20px_40px_rgba(0,64,64,0.04)] group">
+<div class="md:w-1/3 h-48 md:h-auto relative overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="crystal clear turquoise water at Surin Islands with colorful coral reefs and tropical fish underwater" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVoqw-wdHNXOOy8kNDt13qqAJXscDj4pl_OX-BJMxQydGrOuyGRviX7JpWnmd7SuUBbK4X5MdG1R8FSJVJkh_tUAF3k453MXkJ9ZpxFYzYhcJleKqV2dH2Z-53JL0G30qWkFkq0FevnQ_yvvC-q7VC0dTZVtdhUEcEbrBHuH2R9ULo8ZFe8b0peY2HjUxQ17rnlhQTimNdEG6qWrJE-ECZNBmAafY05U4zECScGlietpUGoGeuKOPfdAt5TVbt6G2B1qA3k8e7sTEr"/>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-2">
+<h2 class="text-xl font-bold text-on-surface">ทริปดำน้ำหมู่เกาะสุรินทร์</h2>
+<span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full backdrop-blur-sm">ยืนยันแล้ว</span>
+</div>
+<div class="space-y-2 mb-6 text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span class="text-sm">20 กรกฎาคม 2024</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">fingerprint</span>
+<span class="text-sm">Ref: ALX-990234</span>
+</div>
+<div class="text-xl font-bold text-primary-container mt-2">฿3,200 <span class="text-xs font-normal text-on-surface-variant">/ ท่าน</span></div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">ดาวน์โหลดตั๋ว</button>
+<button class="flex-1 bg-surface-container-high text-on-surface py-3 rounded-xl font-semibold text-sm hover:bg-surface-container-highest transition-colors">รายละเอียด</button>
+</div>
+</div>
+</article>
+<!-- Trekking Card (Completed - Hidden in upcoming but rendered for demo) -->
+<article class="bg-surface-container-lowest rounded-lg overflow-hidden flex flex-col md:flex-row shadow-[0px_20px_40px_rgba(0,64,64,0.04)] opacity-80 group">
+<div class="md:w-1/3 h-48 md:h-auto relative overflow-hidden grayscale-[40%] group-hover:grayscale-0 transition-all">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="lush misty jungle landscape in Doi Inthanon national park with tall trees and golden sun rays" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJV2HC3oHBXF9PGzW9C_UbB1rlKcdXAL1YywQwVOV9GhJbvLQdr2x8sk7_VFcekcWY1Dq2uNlwtKP4PpgZSnTiHVK0W1cH4Tw_hbLnX6WXT8mO_kJ6q9TXR4Kul16hgLgU5rVRSMrWe7dg99P-5CbP36kfPy4QIukFvvzkSUTx9Assw0uIK2RBT8JJolgOYoKHiIPHTRKzHSNCpayIJZUwKTifZcKwWHFFrG3aToOFmedB5PhiQnYsKSWoGB7QLyEoPP716qd0e-67"/>
+</div>
+<div class="p-6 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-2">
+<h2 class="text-xl font-bold text-on-surface">ทริปเดินป่าดอยอินทนนท์</h2>
+<span class="px-3 py-1 bg-outline-variant/30 text-on-surface-variant text-xs font-bold rounded-full backdrop-blur-sm">เสร็จสิ้นแล้ว</span>
+</div>
+<div class="space-y-2 mb-6 text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span class="text-sm">5 มิถุนายน 2024</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">fingerprint</span>
+<span class="text-sm">Ref: ALX-776212</span>
+</div>
+<div class="text-xl font-bold text-on-surface-variant mt-2">฿1,800</div>
+</div>
+<div class="mt-auto flex gap-3">
+<button class="flex-1 bg-secondary text-white py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity">รีวิว</button>
+<button class="flex-1 border border-outline-variant text-on-surface-variant py-3 rounded-xl font-semibold text-sm">รายละเอียด</button>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 dark:bg-slate-950/90 backdrop-blur-2xl z-50 rounded-t-[2rem] shadow-[0px_-10px_40px_rgba(0,64,64,0.06)]">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all px-4 py-2 rounded-full" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-['Anuphan'] text-xs font-medium">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-200 rounded-full px-5 py-2 scale-95 active:scale-90 transition-transform ease-out-expo" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">confirmation_number</span>
+<span class="font-['Anuphan'] text-xs font-medium">Bookings</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all px-4 py-2 rounded-full" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-['Anuphan'] text-xs font-medium">Wishlist</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all px-4 py-2 rounded-full" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-['Anuphan'] text-xs font-medium">Profile</span>
+</a>
+</nav>
+</body></html>

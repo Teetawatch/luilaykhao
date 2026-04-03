@@ -1,0 +1,130 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.vue';
+
+@theme {
+    --font-anuphan:  'Anuphan', sans-serif;
+    --font-playfair: 'Playfair Display', serif;
+
+    /* ── Primary Forest Colors ─────────────────────────────── */
+    --color-primary:       #0D2B1E;   /* Deep Forest  — Navbar, footer bg   */
+    --color-primary-mid:   #1A3A2E;   /* Dark Pine    — Hero, dark cards     */
+    --color-primary-light: #2D5A3D;   /* Forest Mid   — Section backgrounds  */
+
+    /* ── Accent / CTA Colors ───────────────────────────────── */
+    --color-accent:        #2D7A4F;   /* Canopy       — Primary buttons      */
+    --color-accent-mid:    #1A5732;   /* Dark Canopy  — Button hover         */
+    --color-accent-light:  #4CAF7D;   /* Leaf Bright  — CTA accent, badges   */
+
+    /* ── Category: Ocean / Snorkeling ──────────────────────── */
+    --color-ocean:         #1A5F8A;   /* Deep Ocean   — Snorkeling category  */
+    --color-ocean-mid:     #3B9DD4;   /* Sea Blue     — Water UI elements    */
+    --color-ocean-light:   #87CEEB;   /* Sky Light    — Light highlights     */
+
+    /* ── Category: Trail / Hiking + Car Rental ─────────────── */
+    --color-gold:          #C8963E;   /* Trail Sand   — Hiking / car rental  */
+    --color-gold-dark:     #A87830;   /* Deep Trail   — Gold hover           */
+
+    /* ── Neutral / Surface ─────────────────────────────────── */
+    --color-sand:          #F5F5F5;   /* Light Grey   — Page bg, light text  */
+    --color-sand-dark:     #EEEEEE;   /* Mid Grey     — Borders, dividers    */
+    --color-white:         #FAFAFA;   /* Off white    — Card surfaces        */
+
+    /* ── Typography ────────────────────────────────────────── */
+    --color-text-dark:     #0D2B1E;   /* Deep Forest  — Headings             */
+    --color-text-mid:      #2C4A3A;   /* Forest body  — Body text            */
+    --color-text-muted:    #6B8F7A;   /* Caption      — Muted / captions     */
+
+    /* ── Dark mode surfaces ─────────────────────────────────── */
+    --color-dm-bg:      #0D2B1E;
+    --color-dm-surface: #1A3A2E;
+    --color-dm-text:    #F0F7F4;
+
+    /* ── Legacy aliases kept for compatibility ──────────────── */
+    --color-forest:       #0D2B1E;
+    --color-forest-mid:   #2D5A3D;
+    --color-forest-light: #4CAF7D;
+
+    --color-lime:         #4CAF7D;
+    --color-lime-dark:    #2D7A4F;
+}
+
+body {
+    font-family: var(--font-anuphan);
+    font-weight: 400;
+    background-color: var(--color-sand);
+    color: var(--color-text-mid);
+}
+
+/* ── Font Utility Classes ─────────────────────────────── */
+.font-anuphan {
+    font-family: 'Anuphan', sans-serif;
+}
+
+.font-playfair {
+    font-family: 'Playfair Display', serif;
+}
+
+/* ── SweetAlert2 Custom Theme ───────────────────────────── */
+.swal-popup {
+    border-radius: 1.25rem !important;
+    padding: 2rem !important;
+    font-family: var(--font-anuphan), sans-serif !important;
+    box-shadow: 0 25px 60px rgba(0, 101, 101, 0.15) !important;
+}
+.swal-title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-dark) !important;
+}
+.swal-html {
+    color: var(--color-text-mid) !important;
+    font-size: 0.9rem !important;
+}
+.swal-btn-confirm {
+    background-color: var(--color-accent) !important;
+    color: #fff !important;
+    border-radius: 9999px !important;
+    padding: 0.625rem 1.75rem !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem !important;
+    transition: background-color 0.2s, transform 0.15s !important;
+}
+.swal-btn-confirm:hover {
+    background-color: var(--color-accent-mid) !important;
+    transform: translateY(-1px) !important;
+}
+.swal-btn-cancel {
+    background-color: var(--color-sand-dark) !important;
+    color: var(--color-text-dark) !important;
+    border-radius: 9999px !important;
+    padding: 0.625rem 1.75rem !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem !important;
+    transition: background-color 0.2s !important;
+}
+.swal-btn-cancel:hover {
+    background-color: #b0cac0 !important;
+}
+.swal2-icon {
+    border-width: 2px !important;
+}
+
+.material-symbols-rounded {
+    font-family: 'Material Symbols Rounded';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+}
