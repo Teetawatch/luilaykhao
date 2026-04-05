@@ -13,74 +13,129 @@
 
         <!-- Desktop Menu -->
         <div class="hidden md:flex items-center gap-2">
-          <div class="flex items-center gap-1 mr-4">
-            <router-link
-              v-for="link in navLinks"
-              :key="link.to"
-              :to="link.to"
-              class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200"
-            >
-              <span class="material-symbols-rounded text-[18px]">{{ link.icon }}</span>
-              {{ link.label }}
-            </router-link>
+          <div class="flex items-center gap-1 mr-4 h-full">
+            <template v-for="link in navLinks" :key="link.label">
+              <!-- Dropdown Menu -->
+              <div v-if="link.children" class="relative group h-full flex items-center">
+                <div 
+                  class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 cursor-pointer"
+                  :class="{ 'text-primary bg-sand': isAboutActive }"
+                >
+                  <span class="material-symbols-rounded text-[18px] font-variation-settings-'FILL'-0">{{ link.icon }}</span>
+                  {{ link.label }}
+                  <span class="material-symbols-rounded text-[16px] transition-transform duration-300 group-hover:rotate-180">expand_more</span>
+                </div>
+                
+                <!-- Dropdown Overlay to Bridge Gap -->
+                <div class="absolute top-full left-0 w-full h-2 hidden group-hover:block"></div>
+
+                <!-- Dropdown List -->
+                <div class="absolute top-[calc(100%-8px)] left-0 w-64 pt-2 hidden group-hover:block transition-all duration-300 transform origin-top-left z-[60] animation-scale-in">
+                  <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden py-2.5">
+                    <router-link 
+                      v-for="child in link.children" 
+                      :key="child.to" 
+                      :to="child.to"
+                      class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 border-l-4 border-transparent hover:border-primary"
+                      :class="{ 'text-primary bg-sand border-primary': router.currentRoute.value.path === child.to }"
+                    >
+                      <span class="material-symbols-rounded text-[18px]">{{ child.icon }}</span>
+                      {{ child.label }}
+                    </router-link>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Simple Link -->
+              <router-link
+                v-else
+                :to="link.to"
+                class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200"
+              >
+                <span class="material-symbols-rounded text-[18px]">{{ link.icon }}</span>
+                {{ link.label }}
+              </router-link>
+            </template>
           </div>
 
           <template v-if="auth.isLoggedIn">
-            <router-link
-              to="/my-bookings"
-              class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200"
-            >
-              <span class="material-symbols-rounded text-[18px]">confirmation_number</span>
-              การจองของฉัน
-            </router-link>
-            <router-link
-              to="/loyalty"
-              class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200"
-            >
-              <span class="material-symbols-rounded text-[18px]">stars</span>
-              แต้มสะสม
-            </router-link>
-            <router-link
-              v-if="isAdmin"
-              to="/admin"
-              class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200"
-            >
-              <span class="material-symbols-rounded text-[18px]">admin_panel_settings</span>
-              Admin
-            </router-link>
-
-            <!-- Divider -->
-            <div class="w-px h-6 bg-sand-dark mx-2"></div>
-
-            <!-- Notification Bell -->
-            <router-link
-              to="/notifications"
-              class="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors"
-              title="การแจ้งเตือน"
-            >
-              <span class="material-symbols-rounded text-[22px] text-text-mid">notifications</span>
-              <span
-                v-if="unreadNotifications > 0"
-                class="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none border-2 border-white box-content">
-                {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
-              </span>
-            </router-link>
-
-            <!-- User Menu -->
-            <div class="flex items-center gap-3 ml-2">
-              <div class="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-sand/60 border border-sand-dark/60 hover:bg-sand transition-colors">
-                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm">
-                  <span class="text-white text-xs font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+            <!-- User Menu Dropdown -->
+            <div class="relative group h-full flex items-center ml-2">
+              <div class="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-sand/60 border border-sand-dark/60 hover:bg-sand transition-colors cursor-pointer">
+                <div class="relative">
+                  <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm">
+                    <span class="text-white text-xs font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                  </div>
+                  <span v-if="unreadNotifications > 0" class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full"></span>
                 </div>
-                <span class="text-sm font-bold text-text-dark max-w-[120px] truncate">{{ auth.userName }}</span>
+                <div class="flex flex-col">
+                  <span class="text-[13px] font-bold text-text-dark leading-tight">{{ auth.userName }}</span>
+                  <span class="text-[10px] font-bold text-primary uppercase tracking-tighter">{{ isAdmin ? 'ทีมงาน / แอดมิน' : 'สมาชิกลุยเลเขา' }}</span>
+                </div>
+                <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300 group-hover:rotate-180">expand_more</span>
               </div>
-              <button
-                @click="handleLogout"
-                class="flex items-center justify-center w-10 h-10 rounded-full text-text-muted hover:text-red-600 hover:bg-red-50 transition-all duration-200 cursor-pointer"
-                title="ออกจากระบบ"
-              >
-                <span class="material-symbols-rounded text-[20px]">logout</span>
-              </button>
+
+              <!-- Bridge Gap -->
+              <div class="absolute top-full right-0 w-full h-2 hidden group-hover:block"></div>
+
+              <!-- Dropdown List -->
+              <div class="absolute top-[calc(100%-8px)] right-0 w-72 pt-2 hidden group-hover:block transition-all duration-300 transform origin-top-right z-[60] animation-scale-in">
+                <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
+                  
+                  <!-- Profile Header (Mobile style but subtle for desktop) -->
+                  <div class="px-5 py-4 bg-sand/30 border-b border-sand-dark/40 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                      <span class="text-white text-lg font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                    </div>
+                    <div>
+                      <div class="text-[15px] font-bold text-text-dark">{{ auth.userName }}</div>
+                      <div class="text-xs text-text-muted font-medium">สมาชิกตั้งแต่ปี 2024</div>
+                    </div>
+                  </div>
+
+                  <!-- Menu Items -->
+                  <div class="py-2">
+                    <router-link v-if="isAdmin" to="/admin" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                      <span class="material-symbols-rounded text-[20px] text-amber-600">admin_panel_settings</span>
+                      Admin Dashboard
+                    </router-link>
+
+                    <router-link to="/notifications" class="flex items-center justify-between px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                      <div class="flex items-center gap-3.5">
+                        <span class="material-symbols-rounded text-[20px] text-teal-600">notifications</span>
+                        การแจ้งเตือน
+                      </div>
+                      <span v-if="unreadNotifications > 0" class="bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                        {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
+                      </span>
+                    </router-link>
+
+                    <div class="h-px bg-sand-dark/40 mx-4 my-1"></div>
+
+                    <router-link to="/my-bookings" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                      <span class="material-symbols-rounded text-[20px] text-blue-600">confirmation_number</span>
+                      การจองของฉัน
+                    </router-link>
+
+                    <router-link to="/my-reviews" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                      <span class="material-symbols-rounded text-[20px] text-purple-600">reviews</span>
+                      รีวิวของฉัน
+                    </router-link>
+
+                    <router-link to="/loyalty" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                      <span class="material-symbols-rounded text-[20px] text-amber-500">stars</span>
+                      แต้มสะสมลุยเลเขา
+                    </router-link>
+
+                    <div class="h-px bg-sand-dark/40 mx-4 my-1"></div>
+
+                    <button @click="handleLogout" class="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-red-600 hover:bg-red-50 transition-all border-l-4 border-transparent hover:border-red-600">
+                      <span class="material-symbols-rounded text-[20px]">logout</span>
+                      ออกจากระบบ
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </template>
 
@@ -115,16 +170,34 @@
       <div v-if="mobileOpen" class="md:hidden bg-white/95 backdrop-blur-xl border-t border-sand-dark/40 absolute w-full shadow-lg">
         <div class="max-w-7xl mx-auto px-4 py-6 space-y-2 max-h-[calc(100vh-5rem)] overflow-y-auto">
 
-          <router-link
-            v-for="link in navLinks"
-            :key="link.to"
-            :to="link.to"
-            @click="mobileOpen = false"
-            class="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
-            {{ link.label }}
-          </router-link>
+          <template v-for="link in navLinks" :key="link.label">
+            <div v-if="link.children" class="flex flex-col gap-1">
+              <div class="px-5 py-2 text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                <span class="material-symbols-rounded text-[16px]">{{ link.icon }}</span>
+                {{ link.label }}
+              </div>
+              <router-link
+                v-for="child in link.children"
+                :key="child.to"
+                :to="child.to"
+                @click="mobileOpen = false"
+                class="flex items-center gap-3.5 px-8 py-3 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+              >
+                <span class="material-symbols-rounded text-[20px]">{{ child.icon }}</span>
+                {{ child.label }}
+              </router-link>
+            </div>
+            
+            <router-link
+              v-else
+              :to="link.to"
+              @click="mobileOpen = false"
+              class="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+            >
+              <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
+              {{ link.label }}
+            </router-link>
+          </template>
 
           <template v-if="auth.isLoggedIn">
             <div class="w-full h-px bg-sand-dark/60 my-3"></div>
@@ -254,10 +327,27 @@ onMounted(() => {
 onUnmounted(() => clearInterval(pollInterval));
 
 const navLinks = [
-  { to: '/trips', icon: 'explore', label: 'กิจกรรมทั้งหมด' },
-  { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา' },
-  { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย' },
+  { to: '/', icon: 'home', label: 'หน้าแรก' },
+  { 
+    label: 'เกี่ยวกับเรา', 
+    icon: 'info',
+    to: '/about',
+    children: [
+      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา' },
+      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย' },
+      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ' },
+      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว' },
+    ]
+  },
+    { to: '/trips', icon: 'explore', label: 'กิจกรรมทั้งหมด' },
+    { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
 ];
+
+const isAboutActive = computed(() => {
+  const aboutLink = navLinks.find(l => l.label === 'เกี่ยวกับเรา');
+  if (!aboutLink || !aboutLink.children) return false;
+  return aboutLink.children.some(child => router.currentRoute.value.path === child.to);
+});
 
 const isAdmin = computed(() => {
   const roles = auth.user?.roles?.map(r => typeof r === 'string' ? r : r.name) || [];
@@ -295,6 +385,22 @@ async function handleLogout() {
 .nav-link.router-link-active {
   color: var(--color-primary);
   background-color: var(--color-sand);
+}
+
+/* Dropdown animation */
+.animation-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Respect reduced motion */

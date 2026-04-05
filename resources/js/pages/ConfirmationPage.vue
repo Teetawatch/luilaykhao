@@ -14,17 +14,23 @@
       <div class="max-w-4xl w-full">
 
         <!-- Hero Header -->
-        <div class="text-center mb-12">
-          <div class="mb-6"
-            :class="{
-              'text-teal-500': booking.status === 'confirmed',
-              'text-amber-500': booking.status === 'pending',
-              'text-red-500': booking.status === 'cancelled',
-              'text-blue-500': booking.status === 'refunded',
-            }">
-            <span class="material-symbols-rounded text-[120px]" style="font-variation-settings:'FILL' 1,'wght' 400">
-              {{ { confirmed: 'check_circle', pending: 'schedule', cancelled: 'cancel', refunded: 'currency_exchange' }[booking.status] ?? 'info' }}
-            </span>
+        <div class="text-center mb-12 flex flex-col items-center">
+          <div class="mb-6">
+            <template v-if="booking.status === 'confirmed'">
+              <img src="/images/suscess_show.png" alt="Success" class="w-52 h-auto mx-auto object-contain drop-shadow-2xl animate-in zoom-in fade-in duration-700" />
+            </template>
+            <template v-else-if="booking.status === 'cancelled'">
+              <img src="/images/cancel_booking.png" alt="Cancelled" class="w-52 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
+            </template>
+            <div v-else
+              :class="{
+                'text-amber-500': booking.status === 'pending',
+                'text-blue-500': booking.status === 'refunded',
+              }">
+              <span class="material-symbols-rounded text-[120px]" style="font-variation-settings:'FILL' 1,'wght' 400">
+                {{ { pending: 'schedule', refunded: 'currency_exchange' }[booking.status] ?? 'info' }}
+              </span>
+            </div>
           </div>
           <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-4 font-anuphan"
             :class="{
@@ -153,16 +159,16 @@
         </div>
 
         <!-- QR Code Ticket -->
-        <div v-if="booking.qr_code && booking.status === 'confirmed'" class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8 text-center relative overflow-hidden font-anuphan">
+        <div v-if="booking.qr_code && booking.status === 'confirmed'" class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mb-8 flex flex-col items-center text-center relative overflow-hidden font-anuphan">
           
-          <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center justify-center gap-2 relative z-10">
+          <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center justify-center gap-2 relative z-10 w-full">
             <span class="material-symbols-rounded text-teal-600 text-[24px]" style="font-variation-settings:'FILL' 0,'wght' 400">qr_code_2</span>
             ตั๋ว QR Code สำหรับเช็คอิน
           </h3>
           <div class="inline-block p-5 bg-white border-2 border-dashed border-teal-200 rounded-3xl mb-5 shadow-sm relative z-10 group transition-all hover:border-teal-400">
-            <canvas ref="qrCanvas" class="mx-auto" style="image-rendering:pixelated"></canvas>
+            <canvas ref="qrCanvas" class="mx-auto block" style="image-rendering:pixelated"></canvas>
           </div>
-          <p class="text-base font-mono font-bold text-teal-700 mb-2 relative z-10 bg-teal-50 inline-block px-4 py-1.5 rounded-lg border border-teal-100">{{ booking.qr_code }}</p>
+          <p class="text-base font-mono font-bold text-teal-700 mb-2 relative z-10 bg-teal-50 px-4 py-1.5 rounded-lg border border-teal-100">{{ booking.qr_code }}</p>
           <p class="text-sm font-medium text-gray-500 mb-6 relative z-10">แสดง QR Code นี้เมื่อเช็คอินที่จุดนัดพบ</p>
           
           <div v-if="booking.checked_in" class="inline-flex items-center gap-2 px-5 py-3 bg-green-50 border border-green-200 rounded-2xl text-green-700 text-sm font-bold relative z-10 shadow-sm">

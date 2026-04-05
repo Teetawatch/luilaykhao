@@ -24,6 +24,8 @@ class StoreVehicleRequest extends FormRequest
             'driver_phone' => ['nullable', 'string', 'max:20'],
             'images' => ['nullable', 'array'],
             'images.*' => ['string'],
+            'driver_photo' => ['nullable', 'string'],
+            'interior_video' => ['nullable', 'string'],
         ];
     }
 }

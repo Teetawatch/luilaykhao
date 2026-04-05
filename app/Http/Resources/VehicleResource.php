@@ -19,6 +19,8 @@ class VehicleResource extends JsonResource
             'color' => $this->color,
             'driver_name' => $this->driver_name,
             'driver_phone' => $this->driver_phone,
+            'driver_photo' => $this->driver_photo,
+            'interior_video' => $this->interior_video,
             'images' => $this->images ?? [],
             'pickup_points' => $this->whenLoaded('pickupPoints', fn() =>
                 $this->pickupPoints->map(fn($p) => [

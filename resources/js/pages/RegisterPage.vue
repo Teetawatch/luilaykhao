@@ -125,7 +125,7 @@
                 class="w-4 h-4 text-accent border-sand-dark rounded focus:ring-accent focus:ring-2" />
             </div>
             <label for="terms" class="text-sm text-text-muted leading-relaxed">
-              ฉันยอมรับ <a href="#" class="text-accent hover:underline font-medium">ข้อกำหนดการใช้งาน</a> และ <a href="#" class="text-accent hover:underline font-medium">นโยบายความเป็นส่วนตัว</a> ของ ลุยเลเขา
+              ฉันยอมรับ <router-link to="/terms" class="text-accent hover:underline font-medium">ข้อกำหนดการใช้งาน</router-link> และ <router-link to="/privacy" class="text-accent hover:underline font-medium">นโยบายความเป็นส่วนตัว</router-link> ของ ลุยเลเขา
             </label>
           </div>
 

@@ -41,9 +41,11 @@ class ScheduleController extends Controller
         $statuses = $this->seatLockService->getSeatStatus($id, $allSeatIds);
 
         $seats = collect($layout['seats'] ?? [])->map(function ($seat) use ($statuses) {
+            $seatStatus = $statuses[$seat['id']] ?? ['status' => 'available', 'passenger_name' => null];
             return [
                 ...$seat,
-                'status' => $statuses[$seat['id']] ?? 'available',
+                'status' => $seatStatus['status'],
+                'passenger_name' => $seatStatus['passenger_name'],
             ];
         });
 

@@ -128,7 +128,7 @@
     <section class="py-20 bg-[var(--color-sand)] relative overflow-hidden">
       <!-- Decorative background text -->
       <div class="absolute top-10 left-0 text-[12rem] font-black text-gray-200/40 select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter">
-        EXPLORE
+        ลุยเลเขา
       </div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
@@ -147,29 +147,48 @@
             v-for="cat in categories"
             :key="cat.type"
             :to="`/trips?type=${cat.type}`"
-            class="group relative bg-white rounded-[2rem] overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 border border-gray-100 block isolate"
+            class="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_40px_60px_rgba(0,0,0,0.12)] transition-all duration-700 hover:-translate-y-3 border border-gray-100 block isolate h-[450px]"
           >
-            <!-- Background Blob -->
-            <div class="absolute -right-16 -top-16 w-48 h-48 rounded-full opacity-10 transition-transform duration-500 group-hover:scale-150 -z-10" :style="`background: ${cat.color}`"></div>
+            <!-- Background Image with Zoom Effect -->
+            <div class="absolute inset-0 z-[-1] overflow-hidden">
+              <img 
+                :src="cat.image" 
+                :alt="cat.label"
+                class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+              />
+              <!-- Premium Overlays -->
+              <div 
+                class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 transition-opacity duration-500 opacity-80 group-hover:opacity-90"
+              ></div>
+              <div 
+                class="absolute inset-0 mix-blend-overlay opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+                :style="`background: ${cat.color}`"
+              ></div>
+            </div>
             
-            <div class="p-8 md:p-10 flex flex-col h-full">
-              <div class="w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-all duration-300 shadow-sm group-hover:shadow-md mb-8" :style="`background: ${cat.bgColor}; color: ${cat.color}`">
-                <span class="material-symbols-rounded text-[32px]">{{ cat.icon }}</span>
+            <div class="p-8 md:p-10 flex flex-col h-full relative z-10">
+              <!-- Animated Badge -->
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-xl group-hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] mb-auto backdrop-blur-md border border-white/20" :style="`background: ${cat.bgColor}; color: ${cat.color}`">
+                <span class="material-symbols-rounded text-[28px] transform group-hover:rotate-[360deg] transition-transform duration-1000">{{ cat.icon }}</span>
               </div>
               
-              <div class="mt-auto">
-                <h3 class="text-2xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2 group-hover:text-[var(--color-accent)] transition-colors">{{ cat.label }}</h3>
-                <p class="text-[var(--color-text-muted)] text-base font-medium mb-6">{{ cat.desc }}</p>
+              <div class="mt-auto transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                <h3 class="text-3xl font-black text-white tracking-tight mb-3 transition-colors drop-shadow-md">
+                  {{ cat.label }}
+                </h3>
+                <p class="text-white/80 text-base font-medium mb-8 leading-relaxed opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100">
+                  {{ cat.desc }}
+                </p>
                 
-                <div class="flex items-center text-sm font-bold" :style="`color: ${cat.color}`">
-                  <span class="mr-2">ดูทริปทั้งหมด</span>
-                  <span class="material-symbols-rounded text-[20px] transform group-hover:translate-x-2 transition-transform duration-300">arrow_forward</span>
+                <div class="flex items-center text-sm font-black text-white uppercase tracking-widest bg-white/10 backdrop-blur-md w-fit px-6 py-3 rounded-full border border-white/20 shadow-lg hover:bg-white hover:text-[var(--color-text-dark)] transition-all duration-300">
+                  <span class="mr-3">ดูทริปทั้งหมด</span>
+                  <span class="material-symbols-rounded text-[20px] transform group-hover:translate-x-2 transition-transform duration-300">arrow_right_alt</span>
                 </div>
               </div>
             </div>
             
-            <!-- Bottom progress line -->
-            <div class="absolute bottom-0 left-0 h-1.5 w-0 group-hover:w-full transition-all duration-500 ease-out" :style="`background: ${cat.color}`"></div>
+            <!-- Side subtle border -->
+            <div class="absolute inset-y-0 left-0 w-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" :style="`background: ${cat.color}`"></div>
           </router-link>
         </div>
       </div>
@@ -546,6 +565,7 @@ const categories = [
     type: 'snorkeling',
     label: 'ดำน้ำตื้น',
     desc: 'สัมผัสความงามของโลกใต้ทะเลอันดามัน พร้อมทีมงานมืออาชีพ',
+    image: '/images/diving_show.png',
     icon: 'scuba_diving',
     color: '#3B9DD4',
     bgColor: '#E8F4FA',
@@ -554,6 +574,7 @@ const categories = [
     type: 'trekking',
     label: 'เดินป่า',
     desc: 'ผจญภัยในเส้นทางธรรมชาติที่ท้าทาย สูดอากาศบริสุทธิ์ให้เต็มปอด',
+    image: '/images/hiking_show.png',
     icon: 'hiking',
     color: '#2D7A4F',
     bgColor: '#E8F5EC',
@@ -562,6 +583,7 @@ const categories = [
     type: 'climbing',
     label: 'รถตู้พรีเมียม',
     desc: 'เดินทางอย่างสะดวกสบายและปลอดภัย ด้วยบริการรถตู้ระดับพรีเมียม',
+    image: '/images/van_show.png',
     icon: 'airport_shuttle',
     color: '#C8963E',
     bgColor: '#FFF8EE',

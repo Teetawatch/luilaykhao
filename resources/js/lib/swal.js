@@ -13,14 +13,15 @@ const base = Swal.mixin({
 });
 
 export function useSwal() {
-  function confirm({ title = 'ยืนยันการดำเนินการ?', text = '', icon = 'question', confirmText = 'ยืนยัน', cancelText = 'ยกเลิก' } = {}) {
+  function confirm({ title = 'ยืนยันการดำเนินการ?', text = '', icon = 'question', confirmText = 'ยืนยัน', cancelText = 'ยกเลิก', ...options } = {}) {
     return base.fire({
       title,
       text,
-      icon,
+      icon: options.imageUrl ? null : icon,
       showCancelButton: true,
       confirmButtonText: confirmText,
       cancelButtonText: cancelText,
+      ...options,
     });
   }
 

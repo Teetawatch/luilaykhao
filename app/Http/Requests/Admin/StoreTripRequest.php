@@ -28,6 +28,16 @@ class StoreTripRequest extends FormRequest
             'status' => ['nullable', 'in:active,inactive,full'],
             'cover_image' => ['nullable', 'string'],
             'is_featured' => ['nullable', 'boolean'],
+            'gallery' => ['nullable', 'array'],
+            'gallery.*' => ['string'],
+            'inclusions' => ['nullable', 'array'],
+            'inclusions.*' => ['string'],
+            'exclusions' => ['nullable', 'array'],
+            'exclusions.*' => ['string'],
+            'highlights' => ['nullable', 'array'],
+            'highlights.*.title' => ['required_with:highlights', 'string', 'max:255'],
+            'highlights.*.desc' => ['required_with:highlights', 'string', 'max:500'],
+            'highlights.*.icon' => ['required_with:highlights', 'string', 'max:100'],
         ];
     }
 }

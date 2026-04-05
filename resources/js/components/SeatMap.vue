@@ -42,6 +42,7 @@
             @click="handleSeatClick(frontPassengerSeat)"
             class="group flex flex-col items-center transition-all duration-200 shrink-0"
             :class="frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
+            :title="frontPassengerSeat.status === 'booked' ? 'จองโดย ' + (frontPassengerSeat.passenger_name || 'ไ่ม่ระบุชื่อ') : ''"
           >
             <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
               :class="seatBgClass(frontPassengerSeat)">
@@ -51,6 +52,9 @@
             </div>
             <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(frontPassengerSeat)">
               {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
+            </span>
+            <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
+              {{ frontPassengerSeat.passenger_name || '...' }}
             </span>
           </button>
           <div v-else class="w-12 md:w-14 shrink-0"></div>
@@ -74,7 +78,7 @@
           <div
             v-for="(rowDef, rowIdx) in vanBodyRows"
             :key="rowIdx"
-            class="flex items-center gap-1"
+            class="flex items-center justify-center gap-1"
           >
             <!-- Left group -->
             <div class="flex gap-2">
@@ -84,6 +88,7 @@
                   @click="handleSeatClick(getSeat(seatId))"
                   class="group flex flex-col items-center transition-all duration-200"
                   :class="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
+                  :title="getSeat(seatId)?.status === 'booked' ? 'จองโดย ' + (getSeat(seatId).passenger_name || 'ไม่ระบุชื่อ') : ''"
                 >
                   <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
                     :class="seatBgClass(getSeat(seatId))">
@@ -93,19 +98,23 @@
                   </div>
                   <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(getSeat(seatId))">
                     {{ getSeat(seatId)?.label ?? seatId }}
+                  </span>
+                  <span v-if="getSeat(seatId)?.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
+                    {{ getSeat(seatId).passenger_name || '...' }}
                   </span>
                 </button>
               </template>
             </div>
 
             <!-- Center group (for A4, B4, C4) -->
-            <div v-if="rowDef.center && rowDef.center.length > 0" class="flex gap-2">
+            <div v-if="rowDef.center && rowDef.center.length > 0" class="flex gap-3 ml-2">
               <template v-for="seatId in rowDef.center" :key="seatId">
                 <button
                   :disabled="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked'"
                   @click="handleSeatClick(getSeat(seatId))"
                   class="group flex flex-col items-center transition-all duration-200"
                   :class="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
+                  :title="getSeat(seatId)?.status === 'booked' ? 'จองโดย ' + (getSeat(seatId).passenger_name || 'ไม่ระบุชื่อ') : ''"
                 >
                   <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
                     :class="seatBgClass(getSeat(seatId))">
@@ -116,15 +125,18 @@
                   <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(getSeat(seatId))">
                     {{ getSeat(seatId)?.label ?? seatId }}
                   </span>
+                  <span v-if="getSeat(seatId)?.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
+                    {{ getSeat(seatId).passenger_name || '...' }}
+                  </span>
                 </button>
               </template>
             </div>
 
             <!-- Aisle -->
-            <div v-if="rowDef.hasAisle" class="flex-1 flex items-center justify-center px-1">
+            <div v-if="rowDef.hasAisle" class="w-12 flex items-center justify-center px-1">
               <div class="w-0.5 h-12 bg-[#bdc9c8]/30 rounded-full mx-auto"></div>
             </div>
-            <div v-else class="flex-1"></div>
+            <div v-else class="w-12"></div>
 
             <!-- Right group -->
             <div class="flex gap-2">
@@ -134,6 +146,7 @@
                   @click="handleSeatClick(getSeat(seatId))"
                   class="group flex flex-col items-center transition-all duration-200"
                   :class="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
+                  :title="getSeat(seatId)?.status === 'booked' ? 'จองโดย ' + (getSeat(seatId).passenger_name || 'ไม่ระบุชื่อ') : ''"
                 >
                   <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
                     :class="seatBgClass(getSeat(seatId))">
@@ -143,6 +156,9 @@
                   </div>
                   <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(getSeat(seatId))">
                     {{ getSeat(seatId)?.label ?? seatId }}
+                  </span>
+                  <span v-if="getSeat(seatId)?.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
+                    {{ getSeat(seatId).passenger_name || '...' }}
                   </span>
                 </button>
               </template>

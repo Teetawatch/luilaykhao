@@ -107,7 +107,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div v-for="(hi, idx) in highlights" :key="idx" class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:-translate-y-1 transition-transform duration-300 group flex gap-5 items-start">
                   <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] group-hover:bg-[var(--color-accent)] transition-colors duration-300 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-rounded text-[28px] text-[var(--color-accent)] group-hover:text-white transition-colors duration-300">{{ hi.icon }}</span>
+                    <span class="material-symbols-rounded text-[28px] text-[var(--color-accent)] group-hover:text-white transition-colors duration-300">{{ hi.icon || 'star' }}</span>
                   </div>
                   <div>
                     <h4 class="text-lg font-extrabold text-[var(--color-text-dark)] mb-2">{{ hi.title }}</h4>
@@ -125,11 +125,12 @@
                   สิ่งที่รวมในทริป
                 </h4>
                 <ul class="space-y-4 text-base font-medium text-[var(--color-text-dark)]">
-                  <li v-for="(item, i) in inclusions" :key="i" class="flex items-start gap-3">
+                  <li v-for="(item, i) in trip.inclusions" :key="i" class="flex items-start gap-3">
                     <span class="material-symbols-rounded text-[#2D7A4F] shrink-0 mt-0.5 text-[20px]">check</span>
                     <span>{{ item }}</span>
                   </li>
                 </ul>
+                <p v-if="!trip.inclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่รวมในทริป</p>
               </div>
               <div class="p-8 md:p-10 bg-white rounded-[2rem] border border-red-50 shadow-[0_10px_40px_rgba(239,68,68,0.05)]">
                 <h4 class="text-xl font-extrabold mb-6 flex items-center gap-3 text-red-500">
@@ -137,11 +138,12 @@
                   สิ่งที่ไม่รวม
                 </h4>
                 <ul class="space-y-4 text-base font-medium text-[var(--color-text-dark)]">
-                  <li v-for="(item, i) in exclusions" :key="i" class="flex items-start gap-3">
+                  <li v-for="(item, i) in trip.exclusions" :key="i" class="flex items-start gap-3">
                     <span class="material-symbols-rounded text-red-400 shrink-0 mt-0.5 text-[20px]">close</span>
                     <span>{{ item }}</span>
                   </li>
                 </ul>
+                <p v-if="!trip.exclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่ไม่รวมในทริป</p>
               </div>
             </section>
 
@@ -535,8 +537,12 @@ const typeLabel = ref('');
 const typeBadgeClass = ref('');
 const diffLabel = ref('');
 
-// Dynamic highlights based on trip type
 const highlights = computed(() => {
+  if (trip.value?.highlights && trip.value.highlights.length > 0) {
+    return trip.value.highlights;
+  }
+  
+  // Custom fallback defaults based on trip type
   const base = [
     { icon: 'shield_person', title: 'ประกันภัยการเดินทาง', desc: 'คุ้มครองอุบัติเหตุตลอดการเดินทางด้วยวงเงินสูงสุด 1 ล้านบาท' },
     { icon: 'restaurant', title: 'บริการอาหารและเครื่องดื่ม', desc: 'คัดสรรเมนูคุณภาพ พร้อมของว่างและเครื่องดื่มตลอดทริป' },
@@ -563,19 +569,7 @@ const highlights = computed(() => {
   ];
 });
 
-const inclusions = computed(() => {
-  const t = trip.value?.type;
-  if (t === 'diving' || t === 'snorkeling') {
-    return ['บริการรถรับ-ส่งจากที่พักในเขตพื้นที่กำหนด', 'ค่าธรรมเนียมเข้าอุทยานแห่งชาติ', 'อุปกรณ์ดำน้ำครบชุด (หน้ากาก, ท่อหายใจ, เสื้อชูชีพ)', 'อาหารกลางวัน ผลไม้ตามฤดูกาล และน้ำดื่ม', 'ไกด์นำเที่ยวมืออาชีพ', 'ประกันอุบัติเหตุการเดินทาง'];
-  } else if (t === 'trekking') {
-    return ['ไกด์ท้องถิ่นนำทางดูแลตลอดเส้นทาง', 'อุปกรณ์แคมป์ปิ้ง (เต็นท์, ถุงนอน)', 'อาหารและน้ำดื่มสำหรับทุกมื้อตามโปรแกรม', 'ค่าธรรมเนียมเข้าพื้นที่', 'ลูกหาบส่วนกลางสำหรับสัมภาระแคมป์', 'ประกันอุบัติเหตุ'];
-  }
-  return ['รถตู้ปรับอากาศ VIP พร้อมน้ำมันเชื้อเพลิง', 'พนักงานขับรถผู้ชำนาญเส้นทาง', 'น้ำดื่มและผ้าเย็นบริการบนรถ', 'ประกันอุบัติเหตุการเดินทาง'];
-});
-
-const exclusions = computed(() => {
-  return ['ค่าใช้จ่ายส่วนตัวอื่นๆ (เช่น ของที่ระลึก, เครื่องดื่มแอลกอฮอล์)', 'ทิปสำหรับมัคคุเทศก์และทีมงาน (ตามความพึงพอใจ)', 'อุปกรณ์เสริมส่วนตัวที่ไม่ได้ระบุในโปรแกรม', 'ภาษีมูลค่าเพิ่ม 7% และหัก ณ ที่จ่าย 3% (กรณีต้องการใบกำกับภาษี)'];
-});
+/* Inclusions/Exclusions are now directly from trip data */
 
 const urgentSeats = computed(() => {
   if (!schedules.value.length) return 0;
@@ -663,6 +657,7 @@ onMounted(async () => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  line-clamp: 2;
   overflow: hidden;
 }
 

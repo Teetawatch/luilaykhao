@@ -190,6 +190,80 @@
               <textarea v-model="form.description" rows="3" placeholder="อธิบายทริป..."></textarea>
             </div>
 
+            <!-- ─── Highlights ─── -->
+            <div class="form-group full-width">
+              <label class="list-editor-label text-[var(--color-primary)] font-black text-lg mb-4 flex items-center gap-2">
+                <i class="fas fa-star"></i> จุดเด่นของทริป
+              </label>
+              <div class="highlights-editor space-y-4">
+                <div v-for="(hi, idx) in form.highlights" :key="idx" class="highlight-item bg-gray-50 p-5 rounded-2xl border border-gray-100 flex gap-4 items-start relative group">
+                  <div class="highlight-icon-selector">
+                    <div class="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-[var(--color-accent)] cursor-pointer hover:bg-gray-50 transition-colors"
+                      @click="toggleIconPicker(idx)">
+                      <span class="material-symbols-rounded text-2xl">{{ hi.icon || 'star' }}</span>
+                    </div>
+                    <div v-if="activeIconPicker === idx" class="icon-picker-dropdown absolute top-full left-0 z-50 bg-white border border-gray-200 shadow-xl rounded-xl p-3 grid grid-cols-5 gap-2 mt-2 w-64">
+                      <button v-for="icon in commonIcons" :key="icon" type="button" @click="selectIcon(idx, icon)"
+                        class="w-10 h-10 rounded-lg hover:bg-[var(--color-sand)] flex items-center justify-center transition-colors">
+                        <span class="material-symbols-rounded text-xl">{{ icon }}</span>
+                      </button>
+                      <div class="col-span-5 pt-2 border-t mt-1">
+                        <input v-model="hi.icon" placeholder="ระบุชื่อไอคอน (Google)" class="text-xs p-2 w-full border rounded-md" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex-1 space-y-3">
+                    <input v-model="hi.title" placeholder="หัวข้อจุดเด่น (เช่น ประกันภัยการเดินทาง)" class="font-bold w-full bg-white px-3 py-2 border rounded-lg focus:ring-2 ring-[var(--color-accent)]/20" />
+                    <textarea v-model="hi.desc" rows="2" placeholder="คำอธิบาย (เช่น คุ้มครองอุบัติเหตุตลอดการเดินทาง...)" class="text-sm w-full bg-white px-3 py-2 border rounded-lg focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
+                  </div>
+                  <button type="button" class="remove-highlight-btn text-red-400 hover:text-red-600 p-2" @click="removeItem('highlights', idx)">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+                <button type="button" class="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2 group" @click="addItem('highlights')">
+                  <i class="fas fa-plus-circle group-hover:scale-110 transition-transform"></i> เพิ่มจุดเด่นใหม่
+                </button>
+              </div>
+            </div>
+
+            <!-- ─── Inclusions / Exclusions ─── -->
+            <div class="form-group full-width">
+              <div class="list-editor-container">
+                <div class="list-editor">
+                  <label class="list-editor-label text-green-700">
+                    <i class="fas fa-check-circle"></i> สิ่งที่รวมในทริป
+                  </label>
+                  <div class="list-items">
+                    <div v-for="(item, idx) in form.inclusions" :key="idx" class="list-item">
+                      <input v-model="form.inclusions[idx]" placeholder="เช่น ค่าธรรมเนียมเข้าอุทยาน" />
+                      <button type="button" class="remove-item-btn" @click="removeItem('inclusions', idx)">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                    <button type="button" class="add-item-btn" @click="addItem('inclusions')">
+                      <i class="fas fa-plus"></i> เพิ่มรายการ
+                    </button>
+                  </div>
+                </div>
+                <div class="list-editor">
+                  <label class="list-editor-label text-red-600">
+                    <i class="fas fa-times-circle"></i> สิ่งที่ไม่รวม
+                  </label>
+                  <div class="list-items">
+                    <div v-for="(item, idx) in form.exclusions" :key="idx" class="list-item">
+                      <input v-model="form.exclusions[idx]" placeholder="เช่น ค่าใช้จ่ายส่วนตัว" />
+                      <button type="button" class="remove-item-btn" @click="removeItem('exclusions', idx)">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                    <button type="button" class="add-item-btn" @click="addItem('exclusions')">
+                      <i class="fas fa-plus"></i> เพิ่มรายการ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- ─── Image Upload ─── -->
             <div class="form-group full-width">
               <label>แนะนำบนหน้าหลัก</label>
@@ -247,6 +321,31 @@
                   @change="handleFileSelect"
                 />
               </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label>รูปภาพเพิ่มเติมในแกลเลอรี่</label>
+              <div class="gallery-grid-editor">
+                <div v-for="(img, idx) in form.gallery" :key="idx" class="gallery-item-preview">
+                  <img :src="img" />
+                  <button type="button" class="remove-gallery-img" @click="removeItem('gallery', idx)">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+                <div class="gallery-add-btn" @click="triggerGalleryUpload">
+                  <i class="fas fa-plus" v-if="!galleryUploading"></i>
+                  <i class="fas fa-spinner fa-spin" v-else></i>
+                  <span>เพิ่มรูป</span>
+                </div>
+              </div>
+              <input
+                ref="galleryInput"
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                class="hidden-file-input"
+                @change="handleGallerySelect"
+              />
             </div>
           </div>
           <div class="modal-footer">
@@ -308,7 +407,28 @@ const form = reactive({
   difficulty: 'medium', duration_days: 1, max_participants: 10,
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '',
   latitude: null, longitude: null, is_featured: false,
+  gallery: [], inclusions: [], exclusions: [],
+  highlights: [],
 });
+
+const activeIconPicker = ref(null);
+const commonIcons = [
+  'shield_person', 'restaurant', 'scuba_diving', 'directions_boat', 'photo_camera',
+  'hiking', 'camping', 'airport_shuttle', 'badge', 'hotel', 'explore', 'terrain',
+  'schedule', 'verified_user', 'map', 'stars', 'local_taxi', 'groups', 'eco', 'waves'
+];
+
+const toggleIconPicker = (idx) => {
+  activeIconPicker.value = activeIconPicker.value === idx ? null : idx;
+};
+
+const selectIcon = (idx, icon) => {
+  form.highlights[idx].icon = icon;
+  activeIconPicker.value = null;
+};
+
+const galleryInput = ref(null);
+const galleryUploading = ref(false);
 
 const mapEmbedUrl = computed(() => {
   if (!form.latitude || !form.longitude) return '';
@@ -394,6 +514,52 @@ const removeImage = () => {
   if (fileInput.value) fileInput.value.value = '';
 };
 
+// ─── Gallery Upload ─────────────────────────
+
+const triggerGalleryUpload = () => {
+  galleryInput.value?.click();
+};
+
+const handleGallerySelect = async (event) => {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+
+  galleryUploading.value = true;
+  try {
+    const uploadPromises = files.map(async (file) => {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await api.post('/admin/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data.data.url;
+    });
+
+    const urls = await Promise.all(uploadPromises);
+    form.gallery = [...(form.gallery || []), ...urls];
+  } catch (e) {
+    alert('อัปโหลดรูปภาพแกลเลอรี่บางส่วนล้มเหลว');
+  } finally {
+    galleryUploading.value = false;
+    if (galleryInput.value) galleryInput.value.value = '';
+  }
+};
+
+// ─── Dynamic List Helpers ──────────────────
+
+const addItem = (field) => {
+  if (!form[field]) form[field] = [];
+  if (field === 'highlights') {
+    form[field].push({ title: '', desc: '', icon: 'star' });
+  } else {
+    form[field].push('');
+  }
+};
+
+const removeItem = (field, index) => {
+  form[field].splice(index, 1);
+};
+
 // ─── Form Methods ────────────────────────────
 
 const openForm = (trip = null) => {
@@ -403,12 +569,18 @@ const openForm = (trip = null) => {
     Object.assign(form, { ...trip });
     form.latitude = trip.latitude || null;
     form.longitude = trip.longitude || null;
+    form.gallery = trip.gallery || [];
+    form.inclusions = trip.inclusions || [];
+    form.exclusions = trip.exclusions || [];
+    form.highlights = trip.highlights || [];
   } else {
     Object.assign(form, {
       title: '', type: 'trekking', location: '', description: '',
       difficulty: 'medium', duration_days: 1, max_participants: 10,
       price_per_person: 0, departure_point: '', status: 'active', cover_image: '',
       latitude: null, longitude: null, is_featured: false,
+      gallery: [], inclusions: [], exclusions: [],
+      highlights: [],
     });
   }
   showForm.value = true;
@@ -680,6 +852,43 @@ onMounted(() => fetchData());
   white-space: nowrap;
 }
 
+/* ─── Highlights Editor ───────────────── */
+.highlights-editor {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid #f1f5f9;
+}
+
+.highlight-item {
+  transition: all 0.2s ease;
+}
+
+.highlight-item:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.highlight-icon-selector {
+  position: relative;
+}
+
+.icon-picker-dropdown {
+  width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+.remove-highlight-btn {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.highlight-item:hover .remove-highlight-btn {
+  opacity: 1;
+}
+
 /* ─── Map Preview ─────────────────────── */
 .map-preview {
   border-radius: 10px;
@@ -697,4 +906,120 @@ onMounted(() => fetchData());
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ─── List Editor ─── */
+.list-editor-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 640px) {
+  .list-editor-container { grid-template-columns: 1fr; }
+}
+.list-editor-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list-item {
+  display: flex;
+  gap: 8px;
+}
+.list-item input {
+  flex: 1;
+  font-size: 13px;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+.remove-item-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #ef4444;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.remove-item-btn:hover { background: #fef2f2; border-color: #fca5a5; }
+.add-item-btn {
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed #d1d5db;
+  background: #FAFAFA;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.add-item-btn:hover { border-color: #9ca3af; background: #EEEEEE; }
+
+/* ─── Gallery Editor ─── */
+.gallery-grid-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px;
+  background: #FAFAFA;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+.gallery-item-preview {
+  position: relative;
+  aspect-ratio: 1/1;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+.gallery-item-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.remove-gallery-img {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #ef4444;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+}
+.gallery-add-btn {
+  aspect-ratio: 1/1;
+  border: 2px dashed #d1d5db;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.gallery-add-btn:hover { border-color: #9ca3af; background: #EEEEEE; color: #374151; }
+.gallery-add-btn i { font-size: 16px; }
+.gallery-add-btn span { font-size: 10px; font-weight: 700; }
 </style>

@@ -16,6 +16,10 @@ import ProblemPage from '../pages/ProblemPage.vue';
 import MyReviewsPage from '../pages/MyReviewsPage.vue';
 import LoyaltyPage from '../pages/LoyaltyPage.vue';
 import NotificationsPage from '../pages/NotificationsPage.vue';
+import PrivacyPage from '../pages/PrivacyPage.vue';
+import TermsPage from '../pages/TermsPage.vue';
+import ContactPage from '../pages/ContactPage.vue';
+
 
 // Admin
 import AdminLayout from '../components/AdminLayout.vue';
@@ -51,6 +55,10 @@ const routes = [
   { path: '/about', name: 'about', component: AboutPage },
   { path: '/goal', name: 'goal', component: GoalPage },
   { path: '/problem', name: 'problem', component: ProblemPage },
+  { path: '/privacy', name: 'privacy', component: PrivacyPage },
+  { path: '/terms', name: 'terms', component: TermsPage },
+  { path: '/contact', name: 'contact', component: ContactPage },
+
 
   // ── Admin Routes ──
   {

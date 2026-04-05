@@ -14,7 +14,8 @@ class Trip extends Model
         'title', 'slug', 'type', 'location', 'description',
         'difficulty', 'duration_days', 'max_participants',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
-        'status', 'cover_image', 'is_featured',
+        'status', 'cover_image', 'gallery', 'inclusions', 'exclusions', 'is_featured',
+        'highlights',
     ];
 
     protected function casts(): array
@@ -26,6 +27,10 @@ class Trip extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'is_featured' => 'boolean',
+            'gallery' => 'array',
+            'inclusions' => 'array',
+            'exclusions' => 'array',
+            'highlights' => 'array',
         ];
     }
 

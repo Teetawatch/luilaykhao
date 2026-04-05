@@ -283,9 +283,30 @@
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อเล่น</label>
+                  <input v-model="p.nickname" type="text" placeholder="กรอกชื่อเล่น"
+                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">เลขที่บัตรประชาชน (สำหรับประกัน)</label>
+                  <input v-model="p.id_card" type="text" placeholder="X-XXXX-XXXXX-XX-X"
+                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                </div>
+                <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์</label>
                   <input v-model="p.phone" type="tel" placeholder="0XX-XXX-XXXX"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">กรุ๊ปเลือด</label>
+                  <select v-model="p.blood_group"
+                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white">
+                    <option value="">ไม่ระบุ</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="O">O</option>
+                    <option value="AB">AB</option>
+                  </select>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อฉุกเฉิน</label>
@@ -318,7 +339,13 @@
                 </template>
 
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุสุขภาพ</label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">การแพ้อาหาร / อื่นๆ</label>
+                  <input v-model="p.allergies" type="text" placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ"
+                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุสุขภาพ (ถ้ามี)</label>
                   <textarea v-model="p.health_notes" rows="2" placeholder="แพ้ยา, โรคประจำตัว ฯลฯ"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white resize-none"></textarea>
                 </div>
@@ -416,11 +443,15 @@
                     {{ i + 1 }}
                   </span>
                   <div class="flex-1 min-w-0">
-                    <p class="font-bold text-gray-900 text-sm truncate">{{ p.name }}</p>
+                    <p class="font-bold text-gray-900 text-sm truncate">{{ p.name }} <span v-if="p.nickname" class="text-teal-600 font-bold ml-1">({{ p.nickname }})</span></p>
                     <p v-if="p.phone" class="text-xs text-gray-500 mt-0.5 flex items-center gap-1 font-medium">
                       <span class="material-symbols-rounded text-[14px]">call</span>
                       {{ p.phone }}
                     </p>
+                    <div class="flex flex-wrap gap-2 mt-1">
+                      <span v-if="p.id_card" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">ID: {{ p.id_card }}</span>
+                      <span v-if="p.blood_group" class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">Blood: {{ p.blood_group }}</span>
+                    </div>
                   </div>
                   <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
                     class="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-bold border border-gray-200 shrink-0 flex items-center gap-1.5">
@@ -538,7 +569,7 @@
 
             <p class="text-center text-xs text-gray-500 font-medium mt-4 flex items-center justify-center gap-1.5 bg-gray-50 py-2 rounded-xl border border-gray-100">
               <span class="material-symbols-rounded text-[14px]">info</span>
-              สามารถยกเลิกได้ก่อนการเดินทาง 48 ชั่วโมง
+              สามารถยกเลิกได้ก่อนการเดินทางภายใน 60 วัน
             </p>
           </div>
 
@@ -674,11 +705,19 @@ const effectivePrice = computed(() => {
   return Number(schedule.value?.price || 0);
 });
 
-const passengers = ref([{ name: '', phone: '', health_notes: '', emergency_contact: '', emergency_phone: '', dive_cert_level: '', cert_number: '', weight: null }]);
+const passengers = ref([{ 
+  name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
+  health_notes: '', emergency_contact: '', emergency_phone: '', 
+  dive_cert_level: '', cert_number: '', weight: null 
+}]);
 
 watch(passengerCount, (n) => {
   while (passengers.value.length < n) {
-    passengers.value.push({ name: '', phone: '', health_notes: '', emergency_contact: '', emergency_phone: '', dive_cert_level: '', cert_number: '', weight: null });
+    passengers.value.push({ 
+      name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
+      health_notes: '', emergency_contact: '', emergency_phone: '', 
+      dive_cert_level: '', cert_number: '', weight: null 
+    });
   }
   if (passengers.value.length > n) passengers.value.length = n;
 });
@@ -729,7 +768,10 @@ async function createBooking() {
   const { isConfirmed } = await swal.confirm({
     title: 'ยืนยันการจอง?',
     text: `จำนวน ${passengers.value.length} ท่าน · ฿${totalAmount.value.toLocaleString()}`,
-    icon: 'question',
+    imageUrl: '/images/booking_confirm.png',
+    imageWidth: 200,
+    imageHeight: 180,
+    imageAlt: 'ยืนยันการจอง',
     confirmText: 'ยืนยันและชำระเงิน',
     cancelText: 'ยกเลิก',
   });
@@ -746,7 +788,11 @@ async function createBooking() {
       group_notes: isGroup.value ? groupNotes.value : null,
       passengers: passengers.value.map(p => ({
         name: p.name,
+        nickname: p.nickname || null,
+        id_card: p.id_card || null,
         phone: p.phone || null,
+        blood_group: p.blood_group || null,
+        allergies: p.allergies || null,
         health_notes: p.health_notes || null,
         emergency_contact: p.emergency_contact || null,
         emergency_phone: p.emergency_phone || null,

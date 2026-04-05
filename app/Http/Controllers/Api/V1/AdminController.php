@@ -352,7 +352,7 @@ class AdminController extends Controller
     public function vehiclePickupPoints(int $vehicleId): JsonResponse
     {
         $vehicle = Vehicle::findOrFail($vehicleId);
-        $points = $vehicle->pickupPoints()->get();
+        $points = $vehicle->pickupPoints()->orderBy('sort_order')->orderBy('id')->get();
 
         return $this->success($points->map(fn($p) => [
             'id' => $p->id,
@@ -555,7 +555,7 @@ class AdminController extends Controller
     public function pickupPoints(int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
-        $points = $schedule->pickupPoints()->get();
+        $points = $schedule->pickupPoints()->orderBy('sort_order')->orderBy('id')->get();
 
         return $this->success(SchedulePickupPointResource::collection($points));
     }
@@ -578,10 +578,7 @@ class AdminController extends Controller
 
         $validated['schedule_id'] = $scheduleId;
 
-        $point = SchedulePickupPoint::updateOrCreate(
-            ['schedule_id' => $scheduleId, 'region' => $validated['region']],
-            $validated,
-        );
+        $point = SchedulePickupPoint::create($validated);
 
         return $this->success(new SchedulePickupPointResource($point), 'บันทึกจุดรับผู้โดยสารสำเร็จ', 201);
     }
@@ -615,18 +612,17 @@ class AdminController extends Controller
         return $this->success(null, 'ลบจุดรับผู้โดยสารสำเร็จ');
     }
 
-    // ─── Image Upload ─────────────────────────────────────────
-
-    public function uploadImage(Request $request): JsonResponse
+    // ─── Media Upload ─────────────────────────────────────────
+    public function uploadMedia(Request $request): JsonResponse
     {
         $request->validate([
-            'image' => ['required', 'image', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120'], // max 5MB
+            'file' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,gif,mp4,mov,avi', 'max:51200'], // max 50MB
         ]);
 
-        $file = $request->file('image');
+        $file = $request->file('file');
         $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
 
-        // Move to public/images directory
+        // Move to public/images directory (keep images for now or use media)
         $file->move(public_path('images'), $filename);
 
         $url = '/images/' . $filename;
@@ -634,6 +630,6 @@ class AdminController extends Controller
         return $this->success([
             'url' => $url,
             'filename' => $filename,
-        ], 'อัปโหลดรูปภาพสำเร็จ');
+        ], 'อัปโหลดสื่อสำเร็จ');
     }
 }

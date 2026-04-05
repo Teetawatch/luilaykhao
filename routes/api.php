@@ -129,7 +129,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('users/{id}', [AdminController::class, 'deleteUser']);
 
         // Upload
-        Route::post('upload-image', [AdminController::class, 'uploadImage']);
+        Route::post('upload-image', [AdminController::class, 'uploadMedia']);
 
         // Calendar
         Route::get('calendar/schedules', [AdminExtendedController::class, 'calendarSchedules']);

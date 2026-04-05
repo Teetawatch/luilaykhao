@@ -13,6 +13,7 @@ class Vehicle extends Model
     protected $fillable = [
         'name', 'type', 'capacity', 'seat_layout',
         'license_plate', 'color', 'driver_name', 'driver_phone', 'images',
+        'driver_photo', 'interior_video',
     ];
 
     protected function casts(): array

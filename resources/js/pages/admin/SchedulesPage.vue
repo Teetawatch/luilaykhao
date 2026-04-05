@@ -225,7 +225,7 @@
 
           <!-- Existing pickup points list -->
           <div class="pickup-list-section">
-            <h3 class="section-label">จุดรับที่กำหนดไว้ ({{ pickupPoints.length }} ภูมิภาค)</h3>
+            <h3 class="section-label">จุดรับที่กำหนดไว้ ({{ pickupPoints.length }} รายการ)</h3>
             <div v-if="pickupLoading" class="pickup-loading"><div class="spinner"></div></div>
             <div v-else-if="!pickupPoints.length" class="pickup-empty">
               <i class="fas fa-map-marker-slash"></i>

@@ -59,7 +59,7 @@ class AnalyticsController extends Controller
             ]);
 
         // Top trips
-        $topTrips = Booking::where('status', 'confirmed')
+        $topTrips = Booking::where('bookings.status', 'confirmed')
             ->whereDate('bookings.created_at', '>=', $from)
             ->whereDate('bookings.created_at', '<=', $to)
             ->join('trip_schedules', 'bookings.schedule_id', '=', 'trip_schedules.id')

@@ -119,18 +119,27 @@ class SeatLockService
     {
         $statuses = [];
         $bookedSeats = \App\Models\BookingSeat::where('schedule_id', $scheduleId)
-            ->pluck('seat_id')
-            ->toArray();
+            ->get(['seat_id', 'passenger_name'])
+            ->keyBy('seat_id');
 
         $redisUp = $this->redisAvailable();
 
         foreach ($allSeatIds as $seatId) {
-            if (in_array($seatId, $bookedSeats)) {
-                $statuses[$seatId] = 'booked';
+            if ($bookedSeats->has($seatId)) {
+                $statuses[$seatId] = [
+                    'status' => 'booked',
+                    'passenger_name' => $bookedSeats->get($seatId)->passenger_name,
+                ];
             } elseif ($redisUp && Redis::exists($this->seatKey($scheduleId, $seatId))) {
-                $statuses[$seatId] = 'locked';
+                $statuses[$seatId] = [
+                    'status' => 'locked',
+                    'passenger_name' => null,
+                ];
             } else {
-                $statuses[$seatId] = 'available';
+                $statuses[$seatId] = [
+                    'status' => 'available',
+                    'passenger_name' => null,
+                ];
             }
         }
 

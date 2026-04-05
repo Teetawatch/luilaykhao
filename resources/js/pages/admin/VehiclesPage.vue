@@ -49,7 +49,10 @@
               <span>{{ v.color }}</span>
             </div>
             <div class="vehicle-detail-row" v-if="v.driver_name">
-              <i class="fas fa-user-tie"></i>
+              <div class="driver-photo-avatar" v-if="v.driver_photo">
+                <img :src="v.driver_photo" />
+              </div>
+              <i class="fas fa-user-tie" v-else></i>
               <span>{{ v.driver_name }}</span>
               <span v-if="v.driver_phone" class="driver-phone">
                 <i class="fas fa-phone"></i> {{ v.driver_phone }}
@@ -86,6 +89,7 @@
           </div>
           <div class="vehicle-actions">
             <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><i class="fas fa-edit"></i></button>
+            <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><i class="fas fa-th"></i></button>
             <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><i class="fas fa-map-marker-alt"></i></button>
             <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><i class="fas fa-trash"></i></button>
           </div>
@@ -140,6 +144,55 @@
             <div class="form-group">
               <label>เบอร์โทรศัพท์คนขับ</label>
               <input v-model="form.driver_phone" placeholder="08x-xxx-xxxx" />
+            </div>
+            <div class="form-group full-width">
+              <label>รูปคนขับประจำรถ</label>
+              <div class="media-upload-row">
+                <div class="media-preview-sm" v-if="form.driver_photo">
+                  <img :src="form.driver_photo" />
+                  <button type="button" class="remove-btn" @click="form.driver_photo = ''"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="upload-placeholder" v-else @click="triggerUpload(driverPhotoInput)">
+                  <i class="fas fa-spinner fa-spin" v-if="uploadState.driver"></i>
+                  <i class="fas fa-camera" v-else></i>
+                  <span>อัปโหลดรูปคนขับ</span>
+                </div>
+                <input ref="driverPhotoInput" type="file" hidden accept="image/*" @change="handleMediaUpload($event, 'driver')" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section-title"><i class="fas fa-images"></i> รูปภาพและวิดีโอ (สำหรับลูปพาเหรด)</div>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>รูปภาพภายในรถ (สูงสุด 10 รูป)</label>
+              <div class="gallery-grid-editor">
+                <div v-for="(img, idx) in form.images" :key="idx" class="gallery-item-preview">
+                  <img :src="img" />
+                  <button type="button" class="remove-btn" @click="removeItem('images', idx)"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="gallery-add-btn" v-if="form.images.length < 10" @click="triggerUpload(galleryInput)">
+                  <i class="fas fa-spinner fa-spin" v-if="uploadState.gallery"></i>
+                  <i class="fas fa-plus" v-else></i>
+                  <span>เพิ่มรูป</span>
+                </div>
+              </div>
+              <input ref="galleryInput" type="file" hidden multiple accept="image/*" @change="handleMediaUpload($event, 'gallery')" />
+            </div>
+            <div class="form-group full-width">
+              <label>วิดีโอภายในรถ</label>
+              <div class="media-upload-row">
+                <div class="video-preview" v-if="form.interior_video">
+                  <video :src="form.interior_video" controls></video>
+                  <button type="button" class="remove-btn" @click="form.interior_video = ''"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="upload-placeholder" v-else @click="triggerUpload(videoInput)">
+                  <i class="fas fa-spinner fa-spin" v-if="uploadState.video"></i>
+                  <i class="fas fa-video" v-else></i>
+                  <span>อัปโหลดวิดีโอ</span>
+                </div>
+                <input ref="videoInput" type="file" hidden accept="video/*" @change="handleMediaUpload($event, 'video')" />
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -269,12 +322,33 @@
         </div>
       </div>
     </div>
+
+    <!-- Seat Layout Editor Modal -->
+    <div class="modal-overlay" v-if="showLayoutEditor" @click.self="showLayoutEditor = false">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <h2><i class="fas fa-th"></i> ผังที่นั่ง — {{ layoutVehicle?.name }}</h2>
+          <button class="modal-close" @click="showLayoutEditor = false"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body p-0">
+          <SeatMapEditor v-model="layoutForm" />
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showLayoutEditor = false">ยกเลิก</button>
+          <button class="btn-primary" @click="saveLayout" :disabled="submittingLayout">
+            <i class="fas fa-spinner fa-spin" v-if="submittingLayout"></i>
+            บันทึกผังที่นั่ง
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
+import SeatMapEditor from '../../components/SeatMapEditor.vue';
 
 const admin = useAdminStore();
 const filters = reactive({ type: '' });
@@ -289,7 +363,13 @@ const expandedPickups = ref(new Set());
 const form = reactive({
   name: '', type: 'van', capacity: 10,
   license_plate: '', color: '', driver_name: '', driver_phone: '',
+  driver_photo: '', interior_video: '', images: [],
 });
+
+const driverPhotoInput = ref(null);
+const galleryInput = ref(null);
+const videoInput = ref(null);
+const uploadState = reactive({ driver: false, gallery: false, video: false });
 
 // Pickup manager state
 const showPickupManager = ref(false);
@@ -302,6 +382,12 @@ const pickupSubmitting = ref(false);
 const pickupForm = reactive({
   region: '', region_label: '', pickup_location: '', notes: '', map_url: '',
 });
+
+// Layout editor state
+const showLayoutEditor = ref(false);
+const layoutVehicle = ref(null);
+const layoutForm = ref({ rows: 4, columns: ['A','B','C','','D','E',], seats: [] });
+const submittingLayout = ref(false);
 
 const REGION_LABELS = {
   north: 'ภาคเหนือ', northeast: 'ภาคอีสาน', central: 'ภาคกลาง',
@@ -356,9 +442,15 @@ const openForm = (v = null) => {
       name: v.name, type: v.type, capacity: v.capacity,
       license_plate: v.license_plate || '', color: v.color || '',
       driver_name: v.driver_name || '', driver_phone: v.driver_phone || '',
+      driver_photo: v.driver_photo || '', interior_video: v.interior_video || '',
+      images: v.images || [],
     });
   } else {
-    Object.assign(form, { name: '', type: 'van', capacity: 10, license_plate: '', color: '', driver_name: '', driver_phone: '' });
+    Object.assign(form, {
+      name: '', type: 'van', capacity: 10, license_plate: '', color: '',
+      driver_name: '', driver_phone: '', driver_photo: '', interior_video: '',
+      images: [],
+    });
   }
   showForm.value = true;
 };
@@ -366,10 +458,11 @@ const openForm = (v = null) => {
 const submitForm = async () => {
   submitting.value = true;
   try {
+    const data = { ...form };
     if (editing.value) {
-      await admin.updateVehicle(editing.value.id, form);
+      await admin.updateVehicle(editing.value.id, data);
     } else {
-      await admin.createVehicle(form);
+      await admin.createVehicle(data);
     }
     showForm.value = false;
     fetchData();
@@ -378,6 +471,69 @@ const submitForm = async () => {
   } finally {
     submitting.value = false;
   }
+};
+
+// ─── Media Upload Methods ──────────────────
+
+const triggerUpload = (input) => input?.click();
+
+const handleMediaUpload = async (event, type) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  if (type === 'gallery') {
+    handleGalleryUpload(Array.from(event.target.files));
+    return;
+  }
+
+  // Validate size
+  const maxSize = type === 'video' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    alert(`ไฟล์มีขนาดเกินกำหนด (${type === 'video' ? '50MB' : '5MB'})`);
+    return;
+  }
+
+  uploadState[type] = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await api.post('/admin/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (type === 'driver') form.driver_photo = res.data.data.url;
+    else if (type === 'video') form.interior_video = res.data.data.url;
+  } catch (e) {
+    alert('อัปโหลดล้มเหลว');
+  } finally {
+    uploadState[type] = false;
+    if (event.target) event.target.value = '';
+  }
+};
+
+const handleGalleryUpload = async (files) => {
+  uploadState.gallery = true;
+  try {
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) continue;
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/admin/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      form.images.push(res.data.data.url);
+    }
+  } catch (e) {
+    alert('แกลเลอรี่บางส่วนล้มเหลว');
+  } finally {
+    uploadState.gallery = false;
+    if (galleryInput.value) galleryInput.value.value = '';
+  }
+};
+
+const removeItem = (field, index) => {
+  if (field === 'images') form.images.splice(index, 1);
 };
 
 const confirmDelete = (v) => { deleting.value = v; showDeleteConfirm.value = true; };
@@ -472,6 +628,49 @@ const doDeletePickup = async () => {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
     pickupSubmitting.value = false;
+  }
+};
+
+// ─── Layout Editor ──────────────────────────────────────────
+
+const openLayoutEditor = (v) => {
+  layoutVehicle.value = v;
+  // Deep copy the existing layout or use default
+  if (v.seat_layout && v.seat_layout.seats) {
+    layoutForm.value = JSON.parse(JSON.stringify(v.seat_layout));
+  } else {
+    layoutForm.value = { 
+      rows: 4, 
+      columns: ['A','B','C','','D','E'], 
+      seats: [] 
+    };
+  }
+  showLayoutEditor.value = true;
+};
+
+const saveLayout = async () => {
+  submittingLayout.value = true;
+  try {
+    // Prepare the update data for the whole vehicle
+    const vehicleData = {
+      name: layoutVehicle.value.name,
+      type: layoutVehicle.value.type,
+      capacity: layoutVehicle.value.capacity,
+      seat_layout: layoutForm.value,
+      license_plate: layoutVehicle.value.license_plate,
+      color: layoutVehicle.value.color,
+      driver_name: layoutVehicle.value.driver_name,
+      driver_phone: layoutVehicle.value.driver_phone,
+    };
+
+    await admin.updateVehicle(layoutVehicle.value.id, vehicleData);
+    showLayoutEditor.value = false;
+    fetchData();
+    alert('บันทึกผังที่นั่งสำเร็จ');
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกผังที่นั่ง');
+  } finally {
+    submittingLayout.value = false;
   }
 };
 
@@ -667,6 +866,23 @@ onMounted(() => fetchData());
 
 .btn-pickup:hover { background: #ddd6fe; }
 
+.btn-layout {
+  background: #fdf2f8;
+  color: #db2777;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.btn-layout:hover { background: #fce7f3; }
+
 .empty-state-card {
   grid-column: 1 / -1;
   text-align: center;
@@ -768,5 +984,35 @@ onMounted(() => fetchData());
   justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
+}
+.driver-photo-avatar { width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 1px solid #e5e7eb; }
+.driver-photo-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.media-upload-row { display: flex; gap: 12px; margin-top: 8px; }
+.media-preview-sm { position: relative; width: 100px; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+.media-preview-sm img { width: 100%; height: 100%; object-fit: cover; }
+.video-preview { position: relative; width: 100%; max-width: 300px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+.video-preview video { width: 100%; display: block; }
+.upload-placeholder { 
+  width: 120px; height: 100px; border: 2px dashed #d1d5db; border-radius: 8px; 
+  display: flex; flex-direction: column; align-items: center; justify-content: center; 
+  cursor: pointer; color: #9ca3af; font-size: 12px; transition: all 0.2s;
+}
+.upload-placeholder:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+.upload-placeholder i { font-size: 20px; margin-bottom: 4px; }
+
+.gallery-grid-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 8px; }
+.gallery-item-preview { position: relative; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+.gallery-item-preview img { width: 100%; height: 100%; object-fit: cover; }
+.gallery-add-btn { 
+  height: 100px; border: 2px dashed #d1d5db; border-radius: 8px; 
+  display: flex; flex-direction: column; align-items: center; justify-content: center; 
+  cursor: pointer; color: #9ca3af; font-size: 11px;
+}
+.gallery-add-btn:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+.remove-btn { 
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; 
+  border-radius: 50%; background: rgba(255, 255, 255, 0.9); color: #ef4444; 
+  border: 1px solid #fee2e2; display: flex; align-items: center; justify-content: center; 
+  cursor: pointer; font-size: 10px;
 }
 </style>
