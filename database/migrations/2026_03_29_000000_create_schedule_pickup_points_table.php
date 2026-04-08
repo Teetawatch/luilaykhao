@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('schedule_pickup_points')) {
+            return; // Table already exists, skip creation
+        }
+        
         Schema::create('schedule_pickup_points', function (Blueprint $table) {
             $table->id();
             $table->foreignId('schedule_id')->constrained('trip_schedules')->cascadeOnDelete();
