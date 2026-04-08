@@ -349,6 +349,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import SeatMapEditor from '../../components/SeatMapEditor.vue';
+import api from '../../lib/axios';
 
 const admin = useAdminStore();
 const filters = reactive({ type: '' });
@@ -487,9 +488,9 @@ const handleMediaUpload = async (event, type) => {
   }
 
   // Validate size
-  const maxSize = type === 'video' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+  const maxSize = type === 'video' ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
   if (file.size > maxSize) {
-    alert(`ไฟล์มีขนาดเกินกำหนด (${type === 'video' ? '50MB' : '5MB'})`);
+    alert(`ไฟล์มีขนาดเกินกำหนด (${type === 'video' ? '50MB' : '10MB'})`);
     return;
   }
 
@@ -513,19 +514,50 @@ const handleMediaUpload = async (event, type) => {
 };
 
 const handleGalleryUpload = async (files) => {
+  const currentCount = form.images.length;
+  const remainingCount = 10 - currentCount;
+  
+  if (remainingCount <= 0) {
+    alert('ครบโควตารูปภาพแล้ว (สูงสุด 10 รูป)');
+    return;
+  }
+
+  const filesToUpload = files.slice(0, remainingCount);
+  if (files.length > remainingCount) {
+    console.warn(`Allowed only ${remainingCount} more files, others ignored.`);
+  }
+
   uploadState.gallery = true;
+  let successCount = 0;
+  let errorCount = 0;
+
   try {
-    for (const file of files) {
-      if (file.size > 5 * 1024 * 1024) continue;
+    for (const file of filesToUpload) {
+      if (file.size > 10 * 1024 * 1024) {
+        errorCount++;
+        continue;
+      }
+
       const formData = new FormData();
       formData.append('file', file);
-      const res = await api.post('/admin/upload-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      form.images.push(res.data.data.url);
+
+      try {
+        const res = await api.post('/admin/upload-image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        form.images.push(res.data.data.url);
+        successCount++;
+      } catch (innerError) {
+        console.error('Individual upload failed:', innerError);
+        errorCount++;
+      }
+    }
+
+    if (errorCount > 0) {
+      alert(`อัปโหลดสำเร็จ ${successCount} รูป และล้มเหลว ${errorCount} รูป`);
     }
   } catch (e) {
-    alert('แกลเลอรี่บางส่วนล้มเหลว');
+    alert('เกิดข้อผิดพลาดในการอัปโหลด');
   } finally {
     uploadState.gallery = false;
     if (galleryInput.value) galleryInput.value.value = '';

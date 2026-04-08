@@ -25,7 +25,7 @@
       </div>
 
       <div v-else-if="notifications.length === 0" class="text-center py-20">
-        <div class="text-6xl mb-4">🔔</div>
+        <img src="/images/notification_notshow.png" alt="No notifications" class="w-100 h-100 mx-auto mb-4 object-contain opacity-90" />
         <p class="text-[#3e4949] text-lg" style="font-family:'Anuphan',sans-serif;">ยังไม่มีการแจ้งเตือน</p>
       </div>
 

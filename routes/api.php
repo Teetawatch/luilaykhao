@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\VehicleTrackingController;
+use App\Http\Controllers\Api\V1\DistanceController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -24,6 +26,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me', [AuthController::class, 'me']);
+            Route::post('profile', [AuthController::class, 'updateProfile']);
         });
     });
 
@@ -80,6 +83,21 @@ Route::prefix('v1')->group(function () {
 
     // Payment webhook (no auth, verify signature)
     Route::post('payments/webhook', [PaymentController::class, 'webhook']);
+
+    // Distance Matrix (public)
+    Route::post('distance', [DistanceController::class, 'calculate']);
+    Route::get('schedules/{id}/pickup-distances', [DistanceController::class, 'pickupDistances']);
+
+    // Vehicle GPS Tracking (Public - for testing without auth)
+    Route::prefix('tracking')->group(function () {
+        Route::post('update', [VehicleTrackingController::class, 'updateLocation']);
+        Route::post('batch', [VehicleTrackingController::class, 'batchUpdateLocation']);
+        Route::get('current', [VehicleTrackingController::class, 'currentLocations']);
+        Route::get('current/{vehicleId}', [VehicleTrackingController::class, 'currentLocation']);
+        Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
+        Route::get('{vehicleId}/eta', [DistanceController::class, 'vehicleETA']);
+        Route::get('{vehicleId}/eta/schedule/{scheduleId}', [DistanceController::class, 'vehicleETAToPickups']);
+    });
 
     // Admin routes
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {
@@ -169,5 +187,14 @@ Route::prefix('v1')->group(function () {
         // Analytics Dashboard
         Route::get('analytics/overview', [AnalyticsController::class, 'overview']);
         Route::get('analytics/seat-alerts', [AnalyticsController::class, 'seatAlerts']);
+
+        // Vehicle GPS Tracking
+        Route::prefix('tracking')->group(function () {
+            Route::post('update', [VehicleTrackingController::class, 'updateLocation']);
+            Route::post('batch', [VehicleTrackingController::class, 'batchUpdateLocation']);
+            Route::get('current', [VehicleTrackingController::class, 'currentLocations']);
+            Route::get('current/{vehicleId}', [VehicleTrackingController::class, 'currentLocation']);
+            Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
+        });
     });
 });

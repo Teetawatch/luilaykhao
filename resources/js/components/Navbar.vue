@@ -63,8 +63,9 @@
             <div class="relative group h-full flex items-center ml-2">
               <div class="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-sand/60 border border-sand-dark/60 hover:bg-sand transition-colors cursor-pointer">
                 <div class="relative">
-                  <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm">
-                    <span class="text-white text-xs font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                  <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm overflow-hidden border border-white/50">
+                    <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                    <span v-else class="text-white text-xs font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                   </div>
                   <span v-if="unreadNotifications > 0" class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full"></span>
                 </div>
@@ -84,14 +85,21 @@
                   
                   <!-- Profile Header (Mobile style but subtle for desktop) -->
                   <div class="px-5 py-4 bg-sand/30 border-b border-sand-dark/40 flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                      <span class="text-white text-lg font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                    <div class="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border-2 border-white">
+                      <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                      <span v-else class="text-white text-lg font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                     </div>
                     <div>
                       <div class="text-[15px] font-bold text-text-dark">{{ auth.userName }}</div>
-                      <div class="text-xs text-text-muted font-medium">สมาชิกตั้งแต่ปี 2024</div>
-                    </div>
                   </div>
+                </div>
+
+                <!-- Profile Link -->
+                <router-link to="/profile" class="flex items-center gap-3.5 px-5 py-3.5 bg-sand/10 hover:bg-sand border-b border-sand-dark/40 text-[13px] font-bold text-primary transition-all">
+                  <span class="material-symbols-rounded text-[20px]">account_circle</span>
+                  จัดการโปรไฟล์ / ข้อมูลส่วนตัว
+                </router-link>
+
 
                   <!-- Menu Items -->
                   <div class="py-2">
@@ -227,6 +235,15 @@
               แต้มสะสม
             </router-link>
             <router-link
+              to="/profile"
+              @click="mobileOpen = false"
+              class="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+            >
+              <span class="material-symbols-rounded text-[22px]">account_circle</span>
+              จัดการโปรไฟล์
+            </router-link>
+
+            <router-link
               to="/notifications"
               @click="mobileOpen = false"
               class="flex items-center justify-between px-5 py-3.5 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
@@ -256,8 +273,9 @@
             <div class="mt-4 p-4 bg-sand/50 rounded-3xl border border-sand-dark/40">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-md">
-                    <span class="text-white text-sm font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                  <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-md overflow-hidden border-2 border-white">
+                    <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                    <span v-else class="text-white text-sm font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                   </div>
                   <div>
                     <div class="text-sm font-bold text-text-dark">{{ auth.userName }}</div>

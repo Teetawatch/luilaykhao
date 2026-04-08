@@ -13,7 +13,7 @@
         <span class="text-[#3e4949]">ว่าง</span>
       </div>
       <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-lg bg-[#006565]"></div>
+        <div class="w-6 h-6 rounded-lg transition-colors duration-300" :class="isWomenOnly ? 'bg-[#db2777] shadow-lg shadow-[#db2777]/20 border border-white/20' : 'bg-[#006565]'"></div>
         <span class="text-[#3e4949]">กำลังเลือก</span>
       </div>
       <div class="flex items-center gap-2">
@@ -28,7 +28,7 @@
 
     <!-- Van layout container -->
     <div class="relative bg-white rounded-3xl p-6 md:p-10 shadow-xl border border-[#bdc9c8]/20 overflow-hidden">
-      <div class="absolute -top-20 -right-20 w-56 h-56 bg-[#006565]/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -top-20 -right-20 w-56 h-56 bg-opacity-10 rounded-full blur-3xl pointer-events-none" :class="isWomenOnly ? 'bg-[#db2777]/5' : 'bg-[#006565]/5'"></div>
       <div class="absolute -bottom-20 -left-20 w-56 h-56 bg-[#9e380d]/5 rounded-full blur-3xl pointer-events-none"></div>
 
       <div class="relative max-w-sm mx-auto">
@@ -61,7 +61,8 @@
 
           <!-- หน้ารถ label -->
           <div class="flex-1 flex justify-center">
-            <span class="px-3 py-1 rounded-full bg-[#006565]/10 text-[#006565] text-xs font-bold tracking-widest uppercase">หน้ารถ</span>
+            <span class="px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase transition-colors duration-300"
+              :class="isWomenOnly ? 'bg-[#db2777]/10 text-[#db2777]' : 'bg-[#006565]/10 text-[#006565]'">หน้ารถ</span>
           </div>
 
           <!-- Driver -->
@@ -78,7 +79,7 @@
           <div
             v-for="(rowDef, rowIdx) in vanBodyRows"
             :key="rowIdx"
-            class="flex items-center justify-center gap-1"
+            class="flex items-center justify-center gap-1 pl-18"
           >
             <!-- Left group -->
             <div class="flex gap-2">
@@ -175,7 +176,7 @@
 
     <!-- Seat availability info -->
     <div class="text-center text-sm text-[#6e7979]">
-      ที่นั่งว่าง: <span class="font-bold text-[#006565]">{{ seatMap.available_seats }}</span> / {{ seatMap.total_seats }}
+      ที่นั่งว่าง: <span class="font-bold transition-colors duration-300" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'">{{ seatMap.available_seats }}</span> / {{ seatMap.total_seats }}
     </div>
   </div>
 </template>
@@ -188,6 +189,7 @@ const seatsStore = useSeatsStore();
 
 const props = defineProps({
   seatMap: { type: Object, default: null },
+  isWomenOnly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['seat-click']);
@@ -196,8 +198,12 @@ function seatBgClass(seat) {
   if (!seat) return 'bg-[#e2e2e2]';
   if (seat.status === 'booked') return 'bg-[#6e7979]';
   if (seat.status === 'locked') return 'bg-[#bdc9c8] opacity-60';
-  if (isSelected(seat)) return 'bg-[#006565] shadow-lg shadow-[#006565]/25 scale-105';
-  return 'bg-[#e2e2e2] group-hover:bg-[#006565]/10 group-hover:scale-105';
+  
+  if (isSelected(seat)) {
+    return (props.isWomenOnly ? 'bg-[#db2777] shadow-[#db2777]/25' : 'bg-[#006565] shadow-[#006565]/25') + ' shadow-lg scale-105';
+  }
+  
+  return 'bg-[#e2e2e2] ' + (props.isWomenOnly ? 'group-hover:bg-[#db2777]/10' : 'group-hover:bg-[#006565]/10') + ' group-hover:scale-105';
 }
 
 function seatIconClass(seat) {
@@ -205,14 +211,14 @@ function seatIconClass(seat) {
   if (seat.status === 'booked') return 'text-white';
   if (seat.status === 'locked') return 'text-[#6e7979]';
   if (isSelected(seat)) return 'text-white';
-  return 'text-[#6e7979] group-hover:text-[#006565]';
+  return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
 }
 
 function seatLabelClass(seat) {
   if (!seat) return 'text-[#6e7979]';
   if (seat.status === 'booked' || seat.status === 'locked') return 'text-[#6e7979] opacity-40';
-  if (isSelected(seat)) return 'text-[#006565]';
-  return 'text-[#6e7979] group-hover:text-[#006565]';
+  if (isSelected(seat)) return (props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]');
+  return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
 }
 
 const frontPassengerSeat = computed(() => {

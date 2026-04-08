@@ -61,7 +61,7 @@ class Booking extends Model
 
         $seq = $last ? ((int) substr($last->booking_ref, -4)) + 1 : 1;
 
-        return sprintf('TRD-%s-%04d', $date, $seq);
+        return sprintf('LLK-%s-%04d', $date, $seq);
     }
 
     public static function generateQrCode(): string

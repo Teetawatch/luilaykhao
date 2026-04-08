@@ -188,7 +188,6 @@
             </div>
             
             <!-- Side subtle border -->
-            <div class="absolute inset-y-0 left-0 w-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" :style="`background: ${cat.color}`"></div>
           </router-link>
         </div>
       </div>
@@ -197,8 +196,17 @@
     <!-- ══════════════════════════════════════════
          POPULAR EXPERIENCES SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-24 bg-white relative">
-      <div class="max-w-7xl mx-auto px-6 md:px-8">
+    <section class="py-24 relative overflow-hidden bg-white">
+      <!-- Decorative Background Image -->
+      <div class="absolute inset-0 z-0 pointer-events-none opacity-50">
+        <img 
+          src="/images/experience_overlay.png" 
+          alt="" 
+          class="w-full h-full object-cover"
+        />
+      </div>
+
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
           <div>
             <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">ทริปยอดฮิต</span>
@@ -256,8 +264,20 @@
               </div>
               
               <!-- Wishlist -->
-              <button class="absolute top-4 right-4 text-white hover:text-red-400 transition-colors duration-300 bg-white/20 hover:bg-white/30 rounded-full p-2 backdrop-blur-md cursor-pointer" @click.prevent aria-label="บันทึกรายการโปรด">
-                <span class="material-symbols-rounded text-[20px] shadow-sm">favorite</span>
+              <button
+                class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full border-2 cursor-pointer active:scale-75 backdrop-blur-[2px] z-20"
+                :class="wishlistStore.isFavorite(trip.id) 
+                  ? 'border-red-500 text-red-500 bg-white/10 shadow-sm' 
+                  : 'border-white/60 text-white hover:border-white hover:bg-black/10 shadow-sm'"
+                @click.prevent="wishlistStore.toggleFavorite(trip.id)"
+                aria-label="บันทึกรายการโปรด"
+              >
+                <span 
+                  class="material-symbols-rounded text-[20px]"
+                  :style="wishlistStore.isFavorite(trip.id) ? 'font-variation-settings:\'FILL\' 1' : ''"
+                >
+                  favorite
+                </span>
               </button>
               
               <!-- Location / Duration indicator -->
@@ -275,8 +295,11 @@
                 <div class="flex text-[#FFB020] gap-0.5">
                   <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">star</span>
                 </div>
-                <span class="text-[var(--color-text-dark)] font-bold text-sm">4.{{ Math.floor(Math.random() * 5 + 5) }}</span>
-                <span class="text-gray-400 text-xs font-medium">({{ Math.floor(Math.random() * 900 + 100) }} รีวิว)</span>
+                <template v-if="trip.review_count > 0">
+                  <span class="text-[var(--color-text-dark)] font-bold text-sm">{{ Number(trip.rating).toFixed(1) }}</span>
+                  <span class="text-gray-400 text-xs font-medium">({{ trip.review_count }} รีวิว)</span>
+                </template>
+                <span v-else class="text-gray-400 text-xs font-medium italic">ยังไม่มีรีวิว</span>
               </div>
               
               <h4 class="text-[1.1rem] font-extrabold text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">
@@ -315,8 +338,14 @@
          FEATURED / ASYMMETRIC SECTION
     ══════════════════════════════════════════ -->
     <section class="py-24 bg-[var(--color-primary)] relative overflow-hidden" v-if="featuredTrips.length > 0">
-      <!-- Background pattern -->
-      <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 32px 32px;"></div>
+      <!-- Decorative Background Image -->
+      <div class="absolute inset-0 z-0 pointer-events-none opacity-20">
+        <img 
+          src="/images/recommend_overlay.png" 
+          alt="" 
+          class="w-full h-full object-cover"
+        />
+      </div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="mb-14 flex flex-col md:flex-row justify-between items-end gap-6">
@@ -347,7 +376,7 @@
                 <span class="bg-[var(--color-accent-light)] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">{{ typeLabel(featuredTrips[0].type) }}</span>
                 <span class="bg-white/20 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
                   <span class="material-symbols-rounded text-[14px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
-                  4.9
+                  {{ Number(featuredTrips[0].rating || 0).toFixed(1) }}
                 </span>
               </div>
               
@@ -373,30 +402,37 @@
               v-for="(trip, idx) in featuredTrips.slice(1, 3)"
               :key="trip.id"
               :to="`/trips/${trip.slug}`"
-              class="flex-1 group relative overflow-hidden rounded-[2rem] bg-white cursor-pointer block p-6 md:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              class="flex-1 group relative overflow-hidden rounded-[2rem] bg-gray-900 cursor-pointer block p-6 md:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 isolate"
             >
-              <div class="absolute -right-10 -top-10 w-32 h-32 bg-gray-50 rounded-full transition-transform duration-500 group-hover:scale-150 -z-10"></div>
+              <!-- Background Image -->
+              <img
+                :src="trip.cover_image || '/images/placeholder.jpg'"
+                :alt="trip.title"
+                class="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110 opacity-60"
+              />
+              <!-- Premium Overlay -->
+              <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 group-hover:via-black/50 transition-all duration-500"></div>
               
               <div class="relative z-10">
                 <div class="flex justify-between items-start mb-6">
                   <span
-                    class="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider"
-                    :class="idx === 0 ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]' : 'bg-[var(--color-gold)]/10 text-[var(--color-gold-dark)]'"
+                    class="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md border border-white/20"
+                    :class="idx === 0 ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-gold)] text-white'"
                   >{{ typeLabel(trip.type) }}</span>
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center" :class="idx === 0 ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]' : 'bg-[var(--color-gold)]/10 text-[var(--color-gold-dark)]'">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white">
                     <span class="material-symbols-rounded text-[20px]">{{ typeFeaturedIcon(trip.type) }}</span>
                   </div>
                 </div>
-                <h4 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-3 group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ trip.title }}</h4>
-                <p class="text-[var(--color-text-muted)] text-sm font-medium line-clamp-2 leading-relaxed">{{ trip.description || trip.location }}</p>
+                <h4 class="text-xl font-extrabold text-white mb-2 group-hover:text-[var(--color-accent-light)] transition-colors leading-snug drop-shadow-md">{{ trip.title }}</h4>
+                <p class="text-white/70 text-sm font-medium line-clamp-2 leading-relaxed">{{ trip.description || trip.location }}</p>
               </div>
               
-              <div class="relative z-10 pt-6 mt-6 border-t border-gray-100 flex justify-between items-end">
+              <div class="relative z-10 pt-6 mt-6 border-t border-white/10 flex justify-between items-end">
                 <div class="flex flex-col">
-                  <span class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">เริ่มต้น</span>
-                  <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.price_per_person).toLocaleString('th-TH') }}</span>
+                  <span class="text-[10px] text-white/50 font-bold uppercase tracking-wider mb-0.5">เริ่มต้น</span>
+                  <span class="text-xl font-black text-white">฿{{ Number(trip.price_per_person).toLocaleString('th-TH') }}</span>
                 </div>
-                <div class="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:border-transparent group-hover:text-white transition-all duration-300">
+                <div class="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--color-text-dark)] transition-all duration-500">
                   <span class="material-symbols-rounded text-[20px]">arrow_outward</span>
                 </div>
               </div>
@@ -428,10 +464,10 @@
           <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">นักเดินทางพูดถึงเรา</h2>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div v-if="reviews.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div
             v-for="review in reviews"
-            :key="review.name"
+            :key="review.id"
             class="bg-white rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-shadow duration-300 relative border border-gray-100"
           >
             <!-- Quote Icon -->
@@ -441,22 +477,34 @@
             
             <div class="relative z-10">
               <div class="flex text-[#FFB020] gap-1 mb-6">
-                <span v-for="n in 5" :key="n" class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">star</span>
+                <span v-for="n in 5" :key="n" class="material-symbols-rounded text-[20px]" 
+                  :class="n <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
+                  :style="n <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
+                  star
+                </span>
               </div>
               
-              <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mb-8 italic">"{{ review.text }}"</p>
+              <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mb-8 italic line-clamp-4">"{{ review.comment || 'ไม่มีความคิดเห็น' }}"</p>
               
               <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md" :style="`background: ${review.color}`">
-                  {{ review.name.charAt(0) }}
+                <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
+                  <img 
+                    v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
+                    :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
+                    class="w-full h-full object-cover" 
+                  />
+                  <span v-else>{{ review.user_name?.charAt(0) }}</span>
                 </div>
-                <div>
-                  <div class="font-extrabold text-[var(--color-text-dark)] text-base">{{ review.name }}</div>
-                  <div class="text-[var(--color-text-muted)] text-sm font-medium">{{ review.trip }}</div>
+                <div class="min-w-0">
+                  <div class="font-extrabold text-[var(--color-text-dark)] text-base truncate">{{ review.user_name }}</div>
+                  <div class="text-[var(--color-text-muted)] text-sm font-medium truncate">{{ review.trip_title }}</div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+        <div v-else class="text-center py-12 bg-white/50 rounded-[2rem] border-2 border-dashed border-gray-200">
+          <p class="text-[var(--color-text-muted)] font-bold">ยังไม่มีรีวิวจากนักเดินทาง</p>
         </div>
       </div>
     </section>
@@ -473,11 +521,20 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           <div
             v-for="trust in trustItems"
-            :key="trust.icon"
+            :key="trust.title"
             class="flex flex-col items-center text-center group"
           >
-            <div class="w-20 h-20 rounded-[1.5rem] bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] mb-6 group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-xl group-hover:-translate-y-2">
-              <span class="material-symbols-rounded text-[36px]">{{ trust.icon }}</span>
+            <div 
+              class="mb-6 transition-all duration-300 flex items-center justify-center"
+              :class="trust.image ? 'w-42 h-42' : 'w-20 h-20 rounded-[1.5rem] bg-[var(--color-sand)] text-[var(--color-accent)] group-hover:bg-[var(--color-accent)] group-hover:text-white shadow-sm group-hover:shadow-xl group-hover:-translate-y-2'"
+            >
+              <img 
+                v-if="trust.image" 
+                :src="trust.image" 
+                :alt="trust.title" 
+                class="w-full h-full object-contain group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300" 
+              />
+              <span v-else class="material-symbols-rounded text-[36px]">{{ trust.icon }}</span>
             </div>
             <h5 class="font-extrabold text-xl text-[var(--color-text-dark)] mb-3">{{ trust.title }}</h5>
             <p class="text-[var(--color-text-muted)] text-base font-medium leading-relaxed max-w-[250px]">{{ trust.desc }}</p>
@@ -545,6 +602,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
+import { useWishlistStore } from '../stores/wishlist';
+
+const wishlistStore = useWishlistStore();
 
 const trips = ref([]);
 const featuredTrips = ref([]);
@@ -564,7 +624,7 @@ const categories = [
   {
     type: 'snorkeling',
     label: 'ดำน้ำตื้น',
-    desc: 'สัมผัสความงามของโลกใต้ทะเลอันดามัน พร้อมทีมงานมืออาชีพ',
+    desc: 'สัมผัสความงามของโลกใต้ทะเล พร้อมทีมงานมืออาชีพ',
     image: '/images/diving_show.png',
     icon: 'scuba_diving',
     color: '#3B9DD4',
@@ -590,46 +650,27 @@ const categories = [
   },
 ];
 
-const reviews = [
-  {
-    name: 'ณัฐพงษ์ ส.',
-    trip: 'ทริปดำน้ำตื้น เกาะพีพี',
-    text: 'บริการเยี่ยมมาก ไกด์ดูแลดีมาก น้ำทะเลใสมาก ประทับใจมากครับ จะกลับมาจองซ้ำแน่นอน เป็นประสบการณ์ที่ยอดเยี่ยมที่สุด',
-    color: '#3B9DD4',
-  },
-  {
-    name: 'พิมพ์ใจ ร.',
-    trip: 'Luxury Sunset Cruise',
-    text: 'ประสบการณ์ที่ไม่มีวันลืม วิวพระอาทิตย์ตกสวยงามมาก อาหารอร่อย สตาฟฟ์ใจดีทุกคน แนะนำสำหรับคู่รักเลยค่ะ',
-    color: '#C8963E',
-  },
-  {
-    name: 'ธีรชัย ม.',
-    trip: 'เดินป่าเขาหลวง',
-    text: 'ไกด์มีความรู้มาก เส้นทางท้าทายดี ได้เห็นธรรมชาติในมุมที่ไม่เคยเห็นมาก่อน คุ้มค่าเหนื่อยจริงๆ ครับ',
-    color: '#2D7A4F',
-  },
-];
+const reviews = ref([]);
 
 const trustItems = [
   {
-    icon: 'verified_user',
+    image: '/images/travel_safety.png',
     title: 'ความปลอดภัยสูงสุด',
     desc: 'อุปกรณ์ผ่านการตรวจสอบมาตรฐานสากลทุกครั้งก่อนใช้งาน',
   },
   {
-    icon: 'support_agent',
+    image: '/images/247_support.png',
     title: 'บริการ 24 ชั่วโมง',
     desc: 'ทีมงานพร้อมดูแลและให้ความช่วยเหลือคุณตลอดการเดินทาง',
   },
   {
-    icon: 'eco',
+    image: '/images/nature_travel.png',
     title: 'ท่องเที่ยวอย่างยั่งยืน',
-    desc: 'ใส่ใจสิ่งแวดล้อมและสนับสนุนรายได้สู่ชุมชนท้องถิ่น',
+    desc: 'เราให้ความสำคัญกับการอนุรักษ์ธรรมชาติในทุกทริปการเดินทาง',
   },
   {
     icon: 'payments',
-    title: 'ราคายุติธรรม',
+    title: 'โปร่งใส ราคายุติธรรม',
     desc: 'ไม่มีค่าใช้จ่ายแอบแฝง คุ้มค่ากับบริการระดับพรีเมียมที่คุณได้รับ',
   },
 ];
@@ -656,12 +697,14 @@ const typeFeaturedIcon = (type) => {
 
 onMounted(async () => {
   try {
-    const [tripsRes, featuredRes] = await Promise.all([
+    const [tripsRes, featuredRes, reviewsRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
       api.get('/trips/featured'),
+      api.get('/reviews', { params: { per_page: 3 } }),
     ]);
     trips.value = tripsRes.data.data;
     featuredTrips.value = featuredRes.data.data || [];
+    reviews.value = reviewsRes.data.data || [];
   } catch (e) {
     console.error('Failed to load trips', e);
   } finally {
@@ -699,6 +742,7 @@ onMounted(async () => {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

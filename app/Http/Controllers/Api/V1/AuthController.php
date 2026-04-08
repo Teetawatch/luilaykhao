@@ -19,6 +19,9 @@ class AuthController extends Controller
     {
         $user = User::create([
             'name' => $request->name,
+            'title' => $request->title,
+            'nickname' => $request->nickname,
+            'blood_group' => $request->blood_group,
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
@@ -67,6 +70,67 @@ class AuthController extends Controller
         return $this->success($this->formatUser($user));
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'password' => ['nullable', 'string', 'min:6', 'confirmed'],
+            'avatar' => ['nullable', 'image', 'max:5120'], // 5MB
+            'title' => ['nullable', 'string', 'max:20'],
+            'nickname' => ['nullable', 'string', 'max:255'],
+            'id_card' => ['nullable', 'string', 'digits:13'],
+            'blood_group' => ['nullable', 'string', 'max:10'],
+            'emergency_contact' => ['nullable', 'string', 'max:255'],
+            'emergency_phone' => ['nullable', 'string', 'max:255'],
+            'allergies' => ['nullable', 'string'],
+            'health_notes' => ['nullable', 'string'],
+        ]);
+
+        if (isset($validated['name'])) {
+            $user->name = $validated['name'];
+        }
+        if (isset($validated['phone'])) {
+            $user->phone = $validated['phone'];
+        }
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        // Additional profile fields
+        foreach (['title', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $user->$field = $validated[$field];
+            }
+        }
+
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar if exists
+            if ($user->avatar && file_exists(public_path($user->avatar))) {
+                @unlink(public_path($user->avatar));
+            }
+
+            $file = $request->file('avatar');
+            $filename = time() . '_avatar_' . $user->id . '.' . $file->getClientOriginalExtension();
+            
+            // Ensure avatars directory exists
+            if (!file_exists(public_path('avatars'))) {
+                mkdir(public_path('avatars'), 0755, true);
+            }
+            
+            $file->move(public_path('avatars'), $filename);
+            $user->avatar = '/avatars/' . $filename;
+        }
+
+        $user->save();
+        $user->load('roles');
+
+        return $this->success($this->formatUser($user->fresh()), 'อัปเดตโปรไฟล์สำเร็จ');
+    }
+
+
     private function formatUser(User $user): array
     {
         return [
@@ -74,8 +138,18 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
+            'avatar_url' => $user->avatar ? url(ltrim($user->avatar, '/')) : null,
+            'title' => $user->title,
+            'nickname' => $user->nickname,
+            'id_card' => $user->id_card,
+            'blood_group' => $user->blood_group,
+            'emergency_contact' => $user->emergency_contact,
+            'emergency_phone' => $user->emergency_phone,
+            'allergies' => $user->allergies,
+            'health_notes' => $user->health_notes,
             'roles' => $user->roles->pluck('name'),
             'created_at' => $user->created_at?->toISOString(),
         ];
     }
+
 }

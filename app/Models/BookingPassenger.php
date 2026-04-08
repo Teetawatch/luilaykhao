@@ -10,7 +10,7 @@ class BookingPassenger extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'booking_id', 'name', 'nickname', 'id_card', 'phone', 'health_notes',
+        'booking_id', 'title', 'name', 'nickname', 'id_card', 'phone', 'health_notes',
         'emergency_contact', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
         'blood_group', 'allergies',

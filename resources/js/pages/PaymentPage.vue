@@ -54,65 +54,26 @@
           <h1 class="text-2xl font-bold mb-7 text-[#1a1c1c]">วิธีการชำระเงิน</h1>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-            <button @click="paymentMethod = 'credit_card'"
-              class="flex flex-col items-center gap-2.5 p-5 border-2 rounded-xl transition-all"
-              :class="paymentMethod === 'credit_card'
-                ? 'border-[#006565] bg-[#006565]/5 text-[#006565]'
-                : 'border-transparent bg-[#f3f3f3] hover:bg-[#e8e8e8] text-[#3e4949]'">
-              <span class="font-medium text-sm">บัตรเครดิต/เดบิต</span>
-            </button>
+
             <button @click="paymentMethod = 'promptpay'"
-              class="flex flex-col items-center gap-2.5 p-5 border-2 rounded-xl transition-all"
+              class="flex flex-col items-center justify-center gap-2.5 p-4 border-2 rounded-xl transition-all h-full"
               :class="paymentMethod === 'promptpay'
                 ? 'border-[#006565] bg-[#006565]/5 text-[#006565]'
                 : 'border-transparent bg-[#f3f3f3] hover:bg-[#e8e8e8] text-[#3e4949]'">
-              <span class="font-medium text-sm">พร้อมเพย์ (PromptPay)</span>
+              <img src="/images/qr_promptpay.png" alt="พร้อมเพย์" class="h-32 w-auto object-contain" />
+              <span class="font-bold text-[16px] uppercase tracking-tight">QR Code PromptPay</span>
             </button>
             <button @click="paymentMethod = 'mobile_banking'"
-              class="flex flex-col items-center gap-2.5 p-5 border-2 rounded-xl transition-all"
+              class="flex flex-col items-center justify-center gap-2.5 p-4 border-2 rounded-xl transition-all h-full"
               :class="paymentMethod === 'mobile_banking'
                 ? 'border-[#006565] bg-[#006565]/5 text-[#006565]'
                 : 'border-transparent bg-[#f3f3f3] hover:bg-[#e8e8e8] text-[#3e4949]'">
-              <span class="font-medium text-sm">โมบายแบงก์กิ้ง</span>
+              <img src="/images/pay_bank.png" alt="โมบายแบงก์กิ้ง" class="h-32 w-auto object-contain" />
+              <span class="font-bold text-[16px] uppercase tracking-tight">โอนเงินผ่านบัญชีธนาคาร</span>
             </button>
           </div>
-
-          <!-- Credit/Debit Card Form -->
-          <div v-if="paymentMethod === 'credit_card'" class="space-y-5">
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-[#3e4949] ml-0.5">หมายเลขบัตร</label>
-              <div class="relative">
-                <input v-model="cardNumber" type="text" placeholder="0000 0000 0000 0000"
-                  class="w-full px-4 py-3.5 bg-[#f3f3f3] border-none rounded-xl focus:ring-2 focus:ring-[#006565]/20 outline-none text-base text-[#1a1c1c] placeholder:text-[#bdc9c8]" />
-                <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-[#bdc9c8]">credit_card</span>
-              </div>
-            </div>
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-[#3e4949] ml-0.5">ชื่อผู้ถือบัตร</label>
-              <input v-model="cardHolder" type="text" placeholder="ชื่อภาษาอังกฤษตามหน้าบัตร"
-                class="w-full px-4 py-3.5 bg-[#f3f3f3] border-none rounded-xl focus:ring-2 focus:ring-[#006565]/20 outline-none text-base text-[#1a1c1c] placeholder:text-[#bdc9c8]" />
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-[#3e4949] ml-0.5">วันหมดอายุ</label>
-                <input v-model="cardExpiry" type="text" placeholder="ดด/ปป"
-                  class="w-full px-4 py-3.5 bg-[#f3f3f3] border-none rounded-xl focus:ring-2 focus:ring-[#006565]/20 outline-none text-base text-[#1a1c1c] placeholder:text-[#bdc9c8]" />
-              </div>
-              <div class="space-y-1.5">
-                <label class="block text-sm font-medium text-[#3e4949] ml-0.5">CVV</label>
-                <input v-model="cardCvv" type="password" placeholder="123"
-                  class="w-full px-4 py-3.5 bg-[#f3f3f3] border-none rounded-xl focus:ring-2 focus:ring-[#006565]/20 outline-none text-base text-[#1a1c1c] placeholder:text-[#bdc9c8]" />
-              </div>
-            </div>
-            <div class="flex items-center gap-3 py-2">
-              <input id="save-card" type="checkbox" v-model="saveCard"
-                class="w-5 h-5 rounded border-[#bdc9c8] text-[#006565] focus:ring-[#006565]" />
-              <label for="save-card" class="text-sm text-[#6e7979]">บันทึกข้อมูลบัตรไว้สำหรับการจองครั้งถัดไป</label>
-            </div>
-          </div>
-
           <!-- PromptPay -->
-          <div v-else-if="paymentMethod === 'promptpay'" class="text-center py-8 space-y-4">
+          <div v-if="paymentMethod === 'promptpay'" class="text-center py-8 space-y-4">
             <p class="text-[#3e4949] font-medium">QR Code PromptPay จะแสดงหลังกดชำระเงิน</p>
             <p class="text-sm text-[#6e7979]">สแกนจ่ายผ่าน Mobile Banking ได้ทุกธนาคาร</p>
             <p class="text-xs text-[#6e7979] bg-[#f3f3f3] rounded-xl px-4 py-2 inline-block">
@@ -144,8 +105,8 @@
 
           <!-- Trip image -->
           <div class="h-44 relative overflow-hidden bg-[#b4eae9]">
-            <img v-if="booking.schedule?.trip?.thumbnail_url"
-              :src="booking.schedule.trip.thumbnail_url"
+            <img v-if="booking.schedule?.trip?.cover_image || booking.schedule?.trip?.thumbnail_url"
+              :src="booking.schedule.trip.cover_image || booking.schedule.trip.thumbnail_url"
               :alt="booking.schedule?.trip?.title"
               class="w-full h-full object-cover" />
             <div v-else class="w-full h-full flex items-center justify-center">
@@ -234,7 +195,7 @@ const booking = ref(null);
 const loading = ref(true);
 const paying = ref(false);
 const paymentError = ref('');
-const paymentMethod = ref('credit_card');
+const paymentMethod = ref('promptpay');
 const cardNumber = ref('4242424242424242');
 const cardHolder = ref('');
 const cardExpiry = ref('12/28');

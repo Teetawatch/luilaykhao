@@ -57,7 +57,10 @@
                   <img :src="trip.cover_image || '/images/placeholder.jpg'" class="trip-thumb" />
                   <div>
                     <span class="trip-name">{{ trip.title }}</span>
-                    <span class="trip-duration">{{ trip.duration_days }} วัน · สูงสุด {{ trip.max_participants }} คน</span>
+                    <div class="trip-badges">
+                      <span v-if="trip.is_women_only" class="badge-women"><i class="fas fa-female"></i> หญิงล้วน</span>
+                      <span class="trip-duration">{{ trip.duration_days }} วัน · สูงสุด {{ trip.max_participants }} คน</span>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -264,14 +267,53 @@
               </div>
             </div>
 
-            <!-- ─── Image Upload ─── -->
+            <!-- ─── Must Know (Popup Info) ─── -->
             <div class="form-group full-width">
+              <label class="list-editor-label text-amber-600 font-black text-lg mb-4 flex items-center gap-2">
+                <i class="fas fa-bullhorn"></i> ข้อควรรู้สำหรับทริปนี้ (แสดงเป็น Popup ตอนเข้าชม)
+              </label>
+              <div class="must-know-editor bg-amber-50 p-6 rounded-[2rem] border border-amber-100 space-y-6">
+                <div class="space-y-4">
+                  <label class="text-sm font-black text-amber-700 uppercase tracking-widest pl-1 mb-1 block">รายการเพิ่มเติม / ราคาพิเศษ</label>
+                  <div class="space-y-3">
+                    <div v-for="(item, idx) in form.must_know.items" :key="idx" class="flex gap-3 items-center animate-fade-in">
+                      <input v-model="item.name" placeholder="ชื่อรายการ (เช่น ข้าวไข่เจียว)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
+                      <div class="flex items-center gap-2">
+                        <span class="text-gray-400 font-bold">฿</span>
+                        <input v-model.number="item.price" type="number" placeholder="ราคา" class="w-24 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
+                      </div>
+                      <button type="button" @click="removeItem('must_know_items', idx)" class="text-red-400 hover:text-red-600 p-2 transition-colors">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                    <button type="button" @click="addItem('must_know_items')" class="w-full py-4 border-2 border-dashed border-amber-200 rounded-2xl text-amber-600 font-bold hover:bg-white hover:border-amber-400 transition-all flex items-center justify-center gap-2 group">
+                      <i class="fas fa-plus-circle group-hover:scale-110 transition-transform"></i> เพิ่มรายการใหม่
+                    </button>
+                  </div>
+                </div>
+                <div class="pt-4 border-t border-amber-200 space-y-3">
+                  <label class="text-sm font-black text-amber-700 uppercase tracking-widest pl-1 mb-1 block">หมายเหตุเพิ่มเติม</label>
+                  <textarea v-model="form.must_know.remarks" rows="2" placeholder="เช่น กรุณาแจ้งล่วงหน้า 1 วันหากต้องการสั่งอาหารเพิ่มเติม" class="w-full px-4 py-4 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20 resize-none font-bold text-gray-700"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- ─── Image Upload ─── -->
+            <div class="form-group">
               <label>แนะนำบนหน้าหลัก</label>
               <label class="featured-toggle">
                 <input type="checkbox" v-model="form.is_featured" />
                 <span class="featured-toggle-label">
-                  <i class="fas fa-star"></i>
-                  ตั้งทริปนี้เป็น "แนะนำสำหรับคุณ" บนหน้าหลัก
+                  <i class="fas fa-star"></i> แนะนำ
+                </span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>กลุ่มเป้าหมาย</label>
+              <label class="women-only-toggle" :class="{ active: form.is_women_only }">
+                <input type="checkbox" v-model="form.is_women_only" />
+                <span class="women-only-label">
+                  <i class="fas fa-female"></i> ทริปสำหรับผู้หญิงเท่านั้น
                 </span>
               </label>
             </div>
@@ -301,7 +343,7 @@
                       <i class="fas fa-cloud-upload-alt"></i>
                     </div>
                     <p class="dropzone-text">คลิกเพื่อเลือกรูป หรือลากไฟล์มาวาง</p>
-                    <p class="dropzone-hint">รองรับ JPG, PNG, WebP, GIF (สูงสุด 5MB)</p>
+                    <p class="dropzone-hint">รองรับ JPG, PNG, WebP, GIF (สูงสุด 10MB)</p>
                   </div>
                 </div>
 
@@ -406,9 +448,10 @@ const form = reactive({
   title: '', type: 'trekking', location: '', description: '',
   difficulty: 'medium', duration_days: 1, max_participants: 10,
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '',
-  latitude: null, longitude: null, is_featured: false,
+  latitude: null, longitude: null, is_featured: false, is_women_only: false,
   gallery: [], inclusions: [], exclusions: [],
   highlights: [],
+  must_know: { items: [], remarks: '' },
 });
 
 const activeIconPicker = ref(null);
@@ -473,9 +516,9 @@ const handleDrop = (event) => {
 };
 
 const uploadFile = async (file) => {
-  // Validate file size (5MB max)
-  if (file.size > 5 * 1024 * 1024) {
-    alert('ไฟล์มีขนาดเกิน 5MB');
+  // Validate file size (10MB max)
+  if (file.size > 10 * 1024 * 1024) {
+    alert('ไฟล์มีขนาดเกิน 10MB');
     return;
   }
 
@@ -490,7 +533,7 @@ const uploadFile = async (file) => {
   uploading.value = true;
   try {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('file', file);
 
     const res = await api.post('/admin/upload-image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -526,9 +569,26 @@ const handleGallerySelect = async (event) => {
 
   galleryUploading.value = true;
   try {
-    const uploadPromises = files.map(async (file) => {
+    const validFiles = files.filter(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        console.warn(`File ${file.name} is too large (>10MB)`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length < files.length) {
+      alert(`มีบางไฟล์ขนาดเกิน 10MB และจะถูกข้ามไป`);
+    }
+
+    if (!validFiles.length) {
+      galleryUploading.value = false;
+      return;
+    }
+
+    const uploadPromises = validFiles.map(async (file) => {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('file', file);
       const res = await api.post('/admin/upload-image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -551,13 +611,20 @@ const addItem = (field) => {
   if (!form[field]) form[field] = [];
   if (field === 'highlights') {
     form[field].push({ title: '', desc: '', icon: 'star' });
+  } else if (field === 'must_know_items') {
+    if (!form.must_know.items) form.must_know.items = [];
+    form.must_know.items.push({ name: '', price: 0 });
   } else {
     form[field].push('');
   }
 };
 
 const removeItem = (field, index) => {
-  form[field].splice(index, 1);
+  if (field === 'must_know_items') {
+    form.must_know.items.splice(index, 1);
+  } else {
+    form[field].splice(index, 1);
+  }
 };
 
 // ─── Form Methods ────────────────────────────
@@ -573,14 +640,16 @@ const openForm = (trip = null) => {
     form.inclusions = trip.inclusions || [];
     form.exclusions = trip.exclusions || [];
     form.highlights = trip.highlights || [];
+    form.must_know = trip.must_know || { items: [], remarks: '' };
   } else {
     Object.assign(form, {
       title: '', type: 'trekking', location: '', description: '',
       difficulty: 'medium', duration_days: 1, max_participants: 10,
       price_per_person: 0, departure_point: '', status: 'active', cover_image: '',
-      latitude: null, longitude: null, is_featured: false,
+      latitude: null, longitude: null, is_featured: false, is_women_only: false,
       gallery: [], inclusions: [], exclusions: [],
       highlights: [],
+      must_know: { items: [], remarks: '' },
     });
   }
   showForm.value = true;
@@ -709,6 +778,62 @@ onMounted(() => fetchData());
 .featured-toggle-label i {
   color: #f59e0b;
   font-size: 13px;
+}
+
+/* ─── Women Only Toggle ───────────────── */
+.women-only-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.15s;
+  font-weight: normal;
+}
+.women-only-toggle:has(input:checked) {
+  border-color: #db2777;
+  background: #fdf2f8;
+}
+.women-only-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #db2777;
+  cursor: pointer;
+}
+.women-only-label {
+  font-size: 14px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.women-only-label i {
+  color: #db2777;
+  font-size: 15px;
+}
+
+/* ─── Table Badges ───────────────────── */
+.trip-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.badge-women {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fdf2f8;
+  color: #db2777;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid #f9a8d4;
+  width: fit-content;
 }
 
 /* ─── Image Upload ────────────────────── */

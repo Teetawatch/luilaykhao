@@ -121,6 +121,11 @@ class ReviewController extends Controller
         return [
             'id'               => $r->id,
             'user_name'        => $r->user?->name ?? 'ไม่ระบุชื่อ',
+            'user_avatar'      => $r->user?->avatar_url,
+            'user'             => [
+                'name'       => $r->user?->name,
+                'avatar_url' => $r->user?->avatar_url,
+            ],
             'user_id'          => $r->user_id,
             'trip_id'          => $r->trip_id,
             'trip_title'       => $r->trip?->title ?? '-',

@@ -39,4 +39,14 @@ class Vehicle extends Model
     {
         return $this->hasMany(VehiclePickupPoint::class)->orderBy('region')->orderBy('sort_order');
     }
+
+    public function locations(): HasMany
+    {
+        return $this->hasMany(VehicleLocation::class);
+    }
+
+    public function latestLocation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(VehicleLocation::class)->latestOfMany('recorded_at');
+    }
 }

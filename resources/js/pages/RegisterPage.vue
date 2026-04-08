@@ -41,18 +41,61 @@
         </div>
 
         <form @submit.prevent="handleRegister" class="space-y-5">
-          <!-- Name Field -->
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-              ชื่อ-นามสกุล
-            </label>
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <i class="fa-regular fa-user text-text-muted/60"></i>
+          <!-- Title & Name & Nickname -->
+          <div class="grid grid-cols-12 gap-4">
+            <div class="col-span-12 md:col-span-3 space-y-1.5">
+              <label class="text-sm font-medium text-text-dark flex items-center gap-2">
+                คำนำหน้า <span class="text-red-500">*</span>
+              </label>
+              <select v-model="form.title" required
+                class="w-full bg-white border border-sand-dark/60 rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none">
+                <option value="" disabled>เลือก...</option>
+                <option value="นาย">นาย</option>
+                <option value="นาง">นาง</option>
+                <option value="นางสาว">นางสาว</option>
+              </select>
+            </div>
+            <div class="col-span-12 md:col-span-9 space-y-1.5">
+              <label class="text-sm font-medium text-text-dark flex items-center gap-2">
+                ชื่อ-นามสกุล <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <i class="fa-regular fa-user text-text-muted/60"></i>
+                </div>
+                <input v-model="form.name" type="text" required
+                  class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
+                  placeholder="สมชาย ใจดี" />
               </div>
-              <input v-model="form.name" type="text" required autofocus
-                class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                placeholder="สมชาย ใจดี" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-text-dark flex items-center gap-2">
+                ชื่อเล่น
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <i class="fa-solid fa-tag text-text-muted/60"></i>
+                </div>
+                <input v-model="form.nickname" type="text"
+                  class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
+                  placeholder="น้องเอ" />
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-text-dark flex items-center gap-2">
+                กรุ๊ปเลือด
+              </label>
+              <select v-model="form.blood_group"
+                class="w-full bg-white border border-sand-dark/60 rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none">
+                <option value="">ไม่ระบุ</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="AB">AB</option>
+                <option value="O">O</option>
+              </select>
             </div>
           </div>
 
@@ -194,7 +237,10 @@ const router = useRouter();
 const error = ref('');
 
 const form = ref({
+  title: '',
   name: '',
+  nickname: '',
+  blood_group: '',
   email: '',
   phone: '',
   password: '',

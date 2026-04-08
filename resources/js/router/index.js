@@ -19,6 +19,8 @@ import NotificationsPage from '../pages/NotificationsPage.vue';
 import PrivacyPage from '../pages/PrivacyPage.vue';
 import TermsPage from '../pages/TermsPage.vue';
 import ContactPage from '../pages/ContactPage.vue';
+import ProfilePage from '../pages/ProfilePage.vue';
+
 
 
 // Admin
@@ -37,6 +39,7 @@ import AdminCheckIn from '../pages/admin/CheckInPage.vue';
 import AdminReviews from '../pages/admin/ReviewsPage.vue';
 import AdminLoyalty from '../pages/admin/LoyaltyPage.vue';
 import AdminAnalytics from '../pages/admin/AnalyticsPage.vue';
+import AdminTracking from '../pages/admin/TrackingPage.vue';
 
 const routes = [
   // ── Public / Customer Routes ──
@@ -58,6 +61,8 @@ const routes = [
   { path: '/privacy', name: 'privacy', component: PrivacyPage },
   { path: '/terms', name: 'terms', component: TermsPage },
   { path: '/contact', name: 'contact', component: ContactPage },
+  { path: '/profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
+
 
 
   // ── Admin Routes ──
@@ -80,6 +85,7 @@ const routes = [
       { path: 'reviews', name: 'admin-reviews', component: AdminReviews },
       { path: 'loyalty', name: 'admin-loyalty', component: AdminLoyalty },
       { path: 'analytics', name: 'admin-analytics', component: AdminAnalytics },
+      { path: 'tracking', name: 'admin-tracking', component: AdminTracking },
     ],
   },
 ];

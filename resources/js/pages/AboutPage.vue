@@ -24,7 +24,7 @@
             ลุยเลเขา
           </h1>
           <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto drop-shadow-md">
-            เพื่อนที่อยากให้คุณออกไปเที่ยว ได้ง่ายขึ้นจริง ๆ
+            เพื่อนที่อยากให้คุณออกไปเที่ยว
           </p>
         </div>
       </div>
@@ -138,31 +138,43 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 items-stretch">
           <!-- Pillar 1 -->
-          <div class="bg-white p-10 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent hover:-translate-y-2 cursor-default group reveal-section">
-            <div class="w-16 h-16 bg-[var(--color-sand)] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[var(--color-accent)]/10 group-hover:scale-110 transition-all duration-500">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-3xl">bolt</span>
+          <div class="bg-white p-12 pt-32 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-2">
+              <img 
+                src="/images/abouts_ready.png" 
+                alt="ไม่ต้องรอ" 
+                class="w-64 h-64 max-w-none object-contain"
+              />
             </div>
-            <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4">ไม่ต้องรอ</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed">เช็คได้เลยว่าทริปไหนว่าง จองได้เลยทันที ไม่ต้องรอแอดมินตอบ</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6">ไม่ต้องรอ</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">เช็คได้เลยว่าทริปไหนว่าง จองได้เลยทันที ไม่ต้องรอแอดมินตอบ</p>
           </div>
           
           <!-- Pillar 2 (Featured) -->
-          <div class="bg-gradient-to-br from-[#0D2B1E] to-[var(--color-primary)] text-white p-10 rounded-[2rem] shadow-xl md:-translate-y-6 cursor-default group hover:shadow-2xl transition-all duration-500 reveal-section">
-            <div class="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-500 border border-white/10 backdrop-blur-sm">
-              <span class="material-symbols-rounded text-[var(--color-accent-light)] text-3xl">favorite</span>
+          <div class="bg-white p-12 pt-32 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-2">
+              <img 
+                src="/images/abouts_buddy.png" 
+                alt="เพื่อนคู่เที่ยว" 
+                class="w-64 h-64 max-w-none object-contain"
+              />
             </div>
-            <h3 class="text-2xl font-bold mb-4">เพื่อนคู่เที่ยว</h3>
-            <p class="text-white/80 text-lg leading-relaxed">เราไม่ได้อยากเป็นแค่แพลตฟอร์ม แต่อยากเป็น "เพื่อน" ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น</p>
-            <div class="mt-10 w-12 h-1.5 bg-[var(--color-gold)] rounded-full"></div>
+            <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)]">เพื่อนคู่เที่ยว</h3>
+            <p class="text-[var(--color-text-mid)] text-lg leading-relaxed mx-auto max-w-xs">เราไม่ได้อยากเป็นแค่แพลตฟอร์ม แต่อยากเป็น "เพื่อน" ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น</p>
+            <div class="mt-10 mx-auto w-14 h-1.5 bg-[var(--color-gold)] rounded-full"></div>
           </div>
           
           <!-- Pillar 3 -->
-          <div class="bg-white p-10 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent hover:-translate-y-2 cursor-default group reveal-section">
-            <div class="w-16 h-16 bg-[#FFF8EE] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[var(--color-gold)]/10 group-hover:scale-110 transition-all duration-500">
-              <span class="material-symbols-rounded text-[var(--color-gold)] text-3xl">mood</span>
+          <div class="bg-white p-12 pt-32 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-2">
+              <img 
+                src="/images/abouts_happy.png" 
+                alt="มีความสุขมากขึ้น" 
+                class="w-72 h-72 max-w-none object-contain"
+              />
             </div>
-            <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4">มีความสุขมากขึ้น</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed">ทุกการเดินทางควรเต็มไปด้วยความสุข ไม่ใช่ความวุ่นวาย</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6">มีความสุขมากขึ้น</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">ทุกการเดินทางควรเต็มไปด้วยความสุข ไม่ใช่ความวุ่นวาย</p>
           </div>
         </div>
       </div>
@@ -223,11 +235,11 @@
       <div class="relative rounded-[3rem] overflow-hidden max-w-7xl mx-auto reveal-section shadow-2xl">
         <div class="absolute inset-0">
           <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmCKDLEGoOVQFw1kaPZN7DOFei4Sh2AuqBeGmnF3Km7RNvNgFDQ8o_eSEkgIR8J-JesfXKwY-sMDDt5zWcGg262wJt1lCJAMTaWA9RYnBb59T-vfGPo8j6TFSYKSmSwcVFpeHIlGaO8BNL3d8XU5NWsMJKxVgbIn9C6wko1DGIgjnrtRrIPHa162wC8nOlu53ULHWXy9YxgA1zj_jbXKw0bB5itdpH0WQyKflXCiuNByGNXlmK3DoV7RZ5BuOTe7DdNoz2lb3hfb-U"
-            alt=""
+            src="/images/phusoidao.png"
+            alt="พันธกิจของเรา"
             class="w-full h-full object-cover"
           />
-          <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#1A3A2E]/90 to-[#2D5A3D]/80"></div>
+          <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#1A3A2E]/90 to-[#2D5A3D]/80 opacity-80 backdrop-blur-[2px]"></div>
         </div>
         
         <!-- Decorative -->
@@ -240,7 +252,7 @@
             พันธกิจของเรา
             <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
           </div>
-          <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight max-w-4xl">
+          <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight max-w-4xl">
             เราไม่ได้อยากเป็นแค่แพลตฟอร์มจองทริป
           </h2>
           <p class="text-lg md:text-xl lg:text-2xl text-white/80 leading-relaxed max-w-3xl font-medium">

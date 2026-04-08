@@ -78,6 +78,7 @@ const menuItems = [
   { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
   { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },
   { to: '/admin/vehicles', icon: 'fas fa-shuttle-van', label: 'ยานพาหนะ' },
+  { to: '/admin/tracking', icon: 'fas fa-map-marked-alt', label: 'ติดตามรถ GPS' },
   { to: '/admin/maintenance', icon: 'fas fa-tools', label: 'บำรุงรักษา' },
   { to: '/admin/reviews', icon: 'fas fa-star', label: 'รีวิว' },
   { to: '/admin/loyalty', icon: 'fas fa-coins', label: 'สะสมแต้ม' },

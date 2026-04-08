@@ -35,7 +35,11 @@
               </span>
               <span class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
                 <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
-                {{ trip.rating || (Math.floor(Math.random() * 5 + 45) / 10).toFixed(1) }} ({{ trip.review_count || Math.floor(Math.random() * 900 + 100) }} รีวิว)
+                {{ Number(trip.rating || 0).toFixed(1) }} ({{ trip.review_count || 0 }} รีวิว)
+              </span>
+              <span v-if="trip.is_women_only" class="bg-pink-500/80 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-black shadow-lg flex items-center gap-1.5 border border-pink-400/30 animate-pulse">
+                <span class="material-symbols-rounded text-[18px]">female</span>
+                ทริปสำหรับผู้หญิงเท่านั้น
               </span>
             </div>
             
@@ -90,6 +94,46 @@
                       <span class="material-symbols-rounded text-3xl mb-1">photo_library</span>
                       <div class="font-extrabold text-lg">+{{ trip.gallery.length - 4 }}</div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Women-Only Benefits Section -->
+            <section v-if="trip.is_women_only" class="women-only-benefits bg-gradient-to-br from-pink-50 to-white px-8 md:px-12 py-10 rounded-[2.5rem] border border-pink-100 shadow-[0_20px_50px_rgba(219,39,119,0.08)] relative overflow-hidden">
+              <div class="absolute -right-16 -top-16 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl opacity-30"></div>
+              <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl opacity-30"></div>
+              <div class="relative z-10">
+                <div class="flex flex-col md:flex-row md:items-center gap-6 mb-10">
+                  <div class="w-20 h-20 rounded-3xl bg-pink-600 flex items-center justify-center text-white shadow-xl shadow-pink-600/30 shrink-0">
+                    <span class="material-symbols-rounded text-5xl" style="font-variation-settings:'FILL' 1">female</span>
+                  </div>
+                  <div>
+                    <h3 class="text-3xl md:text-4xl font-extrabold text-pink-700 tracking-tight mb-2">เพื่อความอุ่นใจและปลอดภัยสูงสุดสำหรับผู้หญิง</h3>
+                    <p class="text-pink-600/80 font-bold text-lg">ทริปนี้พิเศษสำหรับคุณ (Women-Only Trip)</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 shadow-sm transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                    <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
+                      <span class="material-symbols-rounded text-2xl">group</span>
+                    </div>
+                    <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">เพื่อนร่วมทริปหญิงล้วน</h4>
+                    <p class="text-sm text-gray-600 leading-relaxed font-bold">เดินทางร่วมกับกลุ่มผู้หญิงที่มีความชอบเหมือนกัน สบายใจได้ตลอดทั้งทริป</p>
+                  </div>
+                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 shadow-sm transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                    <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
+                      <span class="material-symbols-rounded text-2xl">verified_user</span>
+                    </div>
+                    <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">พื้นที่ส่วนตัวและปลอดภัย</h4>
+                    <p class="text-sm text-gray-600 leading-relaxed font-bold">ทุกรายละเอียดจัดการโดยเน้นความเป็นส่วนตัว (Privacy) สูงสุดสำหรับผู้หญิง</p>
+                  </div>
+                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 shadow-sm transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                    <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
+                      <span class="material-symbols-rounded text-2xl">favorite</span>
+                    </div>
+                    <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">มิตรภาพและรอยยิ้ม</h4>
+                    <p class="text-sm text-gray-600 leading-relaxed font-bold">แบ่งปันช่วงเวลาดีๆ ร่วมกับเพื่อนใหม่ในสังคมที่ดูแลกันอย่างอบอุ่นและใกล้ชิด</p>
                   </div>
                 </div>
               </div>
@@ -150,7 +194,18 @@
             <!-- Trekking: Pickup Regions Info Section -->
             <section v-if="isTrekking && allPickupPoints.length">
               <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] mb-3 tracking-tight">จุดขึ้นรถและราคาตามภูมิภาค</h3>
-              <p class="text-[var(--color-text-muted)] text-base font-medium mb-8">เลือกจุดขึ้นรถที่สะดวกสำหรับคุณ ราคาอาจแตกต่างกันในแต่ละพื้นที่</p>
+              <div class="flex items-center justify-between mb-8 flex-wrap gap-3">
+                <p class="text-[var(--color-text-muted)] text-base font-medium">เลือกจุดขึ้นรถที่สะดวกสำหรับคุณ ราคาอาจแตกต่างกันในแต่ละพื้นที่</p>
+                <button
+                  @click="calculateDistances"
+                  :disabled="distanceLoading"
+                  class="inline-flex items-center gap-2 text-sm text-white bg-[var(--color-primary)] hover:bg-[var(--color-accent)] px-5 py-2.5 rounded-full font-bold transition-all duration-300 shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span v-if="distanceLoading" class="material-symbols-rounded text-[16px] animate-spin">progress_activity</span>
+                  <span v-else class="material-symbols-rounded text-[16px]">near_me</span>
+                  {{ distanceLoading ? 'กำลังคำนวณ...' : (distanceData.length ? 'คำนวณใหม่' : 'คำนวณระยะทางจากตำแหน่งของฉัน') }}
+                </button>
+              </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div
                   v-for="pt in allPickupPoints" :key="pt.id"
@@ -172,11 +227,24 @@
                       <span class="material-symbols-rounded text-[#FFB020] shrink-0 mt-0.5 text-[18px]">schedule</span>
                       {{ pt.notes }}
                     </p>
-                    <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
-                      class="inline-flex items-center gap-1.5 text-sm text-white bg-[var(--color-primary)] hover:bg-[var(--color-accent)] px-4 py-2 rounded-lg font-bold transition-colors mt-2">
-                      <span class="material-symbols-rounded text-[16px]">map</span>
-                      ดูแผนที่จุดรับ
-                    </a>
+                    <!-- Distance info -->
+                    <div v-if="getDistanceForPickup(pt.id)" class="flex flex-wrap gap-3 mt-2">
+                      <span class="inline-flex items-center gap-1.5 text-sm bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold">
+                        <span class="material-symbols-rounded text-[16px]">straighten</span>
+                        {{ getDistanceForPickup(pt.id).distance?.text }}
+                      </span>
+                      <span class="inline-flex items-center gap-1.5 text-sm bg-green-50 text-green-700 px-3 py-1.5 rounded-lg font-bold">
+                        <span class="material-symbols-rounded text-[16px]">schedule</span>
+                        {{ getDistanceForPickup(pt.id).duration?.text }}
+                      </span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                      <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
+                        class="inline-flex items-center gap-1.5 text-sm text-white bg-[var(--color-primary)] hover:bg-[var(--color-accent)] px-4 py-2 rounded-lg font-bold transition-colors">
+                        <span class="material-symbols-rounded text-[16px]">map</span>
+                        ดูแผนที่จุดรับ
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -228,10 +296,97 @@
                   <p class="text-[var(--color-text-muted)] text-base font-medium">จุดนัดหมายสำหรับทริปนี้</p>
                 </div>
               </div>
-            </section>
-          </div>
+              </section>
 
-          <!-- Right Column: Sticky Booking Panel -->
+              <!-- Reviews Section -->
+              <section id="reviews" class="pt-8 border-t border-gray-100">
+                <div class="flex items-center justify-between mb-10">
+                  <div>
+                    <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2">รีวิวจากผู้ร่วมทริป</h3>
+                    <div class="flex items-center gap-3">
+                      <div class="flex text-[#FFB020]">
+                        <span v-for="star in 5" :key="star" class="material-symbols-rounded text-[20px]"
+                          :style="star <= Math.round(trip.rating) ? 'font-variation-settings:\'FILL\' 1' : ''">
+                          star
+                        </span>
+                      </div>
+                      <span class="font-extrabold text-[var(--color-text-dark)] text-lg">{{ Number(trip.rating || 0).toFixed(1) }}</span>
+                      <span class="text-[var(--color-text-muted)] font-medium text-sm">จาก {{ trip.review_count || 0 }} ความคิดเห็น</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="reviewsLoading" class="flex justify-center py-12">
+                  <div class="w-10 h-10 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
+                </div>
+                
+                <div v-else-if="reviews.length > 0" class="space-y-8">
+                  <div v-for="review in reviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)]">
+                    <div class="flex justify-between items-start mb-6">
+                      <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
+                          <img 
+                            v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
+                            :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
+                            class="w-full h-full object-cover" 
+                          />
+                          <span v-else>{{ review.user_name?.charAt(0) }}</span>
+                        </div>
+                        <div>
+                          <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1">{{ review.user_name }}</p>
+                          <div class="flex gap-0.5">
+                            <span v-for="s in 5" :key="s" class="material-symbols-rounded text-[18px]"
+                              :class="s <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
+                              :style="s <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
+                              star
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full">
+                        {{ formatDate(review.created_at) }}
+                      </span>
+                    </div>
+
+                    <p class="text-[var(--color-text-mid)] leading-relaxed text-base font-medium mb-5 whitespace-pre-line">
+                      {{ review.comment }}
+                    </p>
+
+                    <!-- Review Images -->
+                    <div v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-3 mb-5">
+                      <div v-for="(img, idx) in review.images" :key="idx" 
+                        class="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border border-gray-100 cursor-pointer group relative">
+                        <img :src="img" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      </div>
+                    </div>
+
+                    <!-- Admin Reply -->
+                    <div v-if="review.admin_reply" class="mt-6 bg-[var(--color-sand)]/50 rounded-2xl p-5 border-l-4 border-[var(--color-accent)] relative overflow-hidden">
+                      <div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
+                        <span class="material-symbols-rounded text-7xl text-[var(--color-accent)]">forum</span>
+                      </div>
+                      <p class="text-xs font-black text-[var(--color-accent)] uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                        <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">verified</span>
+                        การตอบกลับจากผู้ดูแล
+                      </p>
+                      <p class="text-sm font-bold text-[var(--color-text-dark)] leading-relaxed">
+                        {{ review.admin_reply }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="text-center py-20 bg-white/50 rounded-[2.5rem] border border-dashed border-gray-200">
+                  <div class="w-16 h-16 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span class="material-symbols-rounded text-gray-300 text-3xl">rate_review</span>
+                  </div>
+                  <p class="text-[var(--color-text-muted)] font-extrabold text-lg mb-1">ยังไม่มีการรีวิวสำหรับทริปนี้</p>
+                  <p class="text-[var(--color-text-muted)] text-sm font-medium">ร่วมแชร์ประสบการณ์การเดินทางของคุณได้ หลังจากจบทริป</p>
+                </div>
+              </section>
+            </div>
+
+            <!-- Right Column: Sticky Booking Panel -->
           <aside class="lg:col-span-4">
             <div class="sticky top-28 space-y-6">
 
@@ -499,6 +654,65 @@
         กลับไปหน้ากิจกรรมทั้งหมด
       </router-link>
     </div>
+
+    <!-- Must Know Modal Popup -->
+    <Teleport to="body">
+      <div v-if="showMustKnowModal && trip?.must_know" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" @click="showMustKnowModal = false"></div>
+        
+        <!-- Modal Content -->
+        <div class="bg-white rounded-[1.5rem] sm:rounded-[2rem] w-full max-w-md relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+          <!-- Close Button -->
+          <button @click="showMustKnowModal = false" class="absolute top-3 right-3 sm:top-5 sm:right-5 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all active:scale-95 z-20">
+            <span class="material-symbols-rounded text-gray-400 text-[20px] sm:text-2xl">close</span>
+          </button>
+
+          <!-- Top Banner -->
+          <div class="bg-amber-500 p-5 sm:p-7 text-white relative">
+            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/20 flex items-center justify-center mb-3 sm:mb-4 border border-white/20">
+              <span class="material-symbols-rounded text-2xl sm:text-3xl" style="font-variation-settings:'FILL' 1">campaign</span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-black tracking-tight">ข้อควรรู้สำหรับทริปนี้</h3>
+          </div>
+
+          <div class="p-5 sm:p-7 space-y-4 sm:space-y-5">
+            <!-- Items Selection / Info -->
+            <div v-if="trip.must_know.items && trip.must_know.items.length" class="space-y-3">
+              <p class="text-[10px] sm:text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">รายการเพิ่มเติม / ราคาพิเศษ</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div v-for="(item, idx) in trip.must_know.items" :key="idx" 
+                  class="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 group transition-all hover:bg-white hover:shadow-md hover:border-amber-200">
+                  <div class="flex items-center gap-2.5 overflow-hidden">
+                    <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 shrink-0 group-hover:scale-110 transition-transform">
+                      <span class="material-symbols-rounded text-lg text-amber-600">tips_and_updates</span>
+                    </div>
+                    <span class="font-extrabold text-gray-800 text-xs sm:text-sm truncate">{{ item.name }}</span>
+                  </div>
+                  <span class="font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100 text-[10px] sm:text-xs shrink-0 ml-2">฿{{ item.price }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes / Remarks -->
+            <div v-if="trip.must_know.remarks" class="p-4 rounded-xl bg-amber-50/50 border border-amber-100 relative overflow-hidden">
+               <div class="flex items-start gap-2.5 relative z-10">
+                 <span class="material-symbols-rounded text-amber-500 mt-0.5 text-lg sm:text-xl" style="font-variation-settings:'FILL' 1">info</span>
+                 <div class="flex-1">
+                   <p class="text-[10px] sm:text-[11px] font-black text-amber-700 mb-1 uppercase tracking-wide">หมายเหตุเพิ่มเติม</p>
+                   <p class="text-[11px] sm:text-xs text-gray-700 leading-relaxed font-bold">{{ trip.must_know.remarks }}</p>
+                 </div>
+               </div>
+            </div>
+
+            <button @click="showMustKnowModal = false" class="w-full bg-[var(--color-primary)] text-white font-extrabold py-3.5 sm:py-4 rounded-xl hover:bg-[var(--color-accent)] active:scale-[0.98] transition-all shadow-lg shadow-[var(--color-primary)]/20 text-sm sm:text-base">
+              เข้าใจแล้ว เริ่มจองทริปกันเลยครับ
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -514,6 +728,11 @@ const selectedSchedule = ref(null);
 const selectedPickup = ref(null);
 const loading = ref(true);
 const schedulesLoading = ref(false);
+const reviews = ref([]);
+const reviewsLoading = ref(false);
+const showMustKnowModal = ref(false);
+const distanceLoading = ref(false);
+const distanceData = ref([]);
 
 const isTrekking = computed(() => trip.value?.type === 'trekking');
 
@@ -607,6 +826,15 @@ onMounted(async () => {
     schedulesLoading.value = true;
     const sRes = await api.get(`/trips/${route.params.slug}/schedules`);
     schedules.value = sRes.data.data;
+    
+    // Show must know modal if exists
+    if (trip.value?.must_know && (trip.value.must_know.items?.length || trip.value.must_know.remarks)) {
+      setTimeout(() => {
+        showMustKnowModal.value = true;
+      }, 500);
+    }
+
+    await fetchReviews();
   } catch (e) {
     console.error(e);
   } finally {
@@ -614,6 +842,53 @@ onMounted(async () => {
     schedulesLoading.value = false;
   }
 });
+
+function getDistanceForPickup(pickupId) {
+  return distanceData.value.find(d => d.pickup_point_id === pickupId) || null;
+}
+
+async function calculateDistances() {
+  if (!selectedSchedule.value && !schedules.value.length) return;
+  const scheduleId = selectedSchedule.value?.id || schedules.value[0]?.id;
+  if (!scheduleId) return;
+
+  distanceLoading.value = true;
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('เบราว์เซอร์ไม่รองรับ Geolocation'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        (err) => reject(new Error('ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง')),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+
+    const res = await api.get(`/schedules/${scheduleId}/pickup-distances`, {
+      params: { lat: pos.lat, lng: pos.lng },
+    });
+    distanceData.value = res.data.data || [];
+  } catch (e) {
+    alert(e.message || 'ไม่สามารถคำนวณระยะทางได้');
+  } finally {
+    distanceLoading.value = false;
+  }
+}
+
+async function fetchReviews() {
+  if (!trip.value?.id) return;
+  reviewsLoading.value = true;
+  try {
+    const res = await api.get('/reviews', { params: { trip_id: trip.value.id, per_page: 10 } });
+    reviews.value = res.data.data;
+  } catch (error) {
+    console.error('Failed to fetch reviews:', error);
+  } finally {
+    reviewsLoading.value = false;
+  }
+}
 </script>
 
 <style scoped>

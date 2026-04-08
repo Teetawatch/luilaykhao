@@ -38,6 +38,10 @@
             <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
             <span>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
           </div>
+          <div v-if="schedule.trip?.is_women_only" class="flex items-center gap-2 bg-pink-50 px-4 py-2 rounded-xl text-pink-700 border border-pink-200 animate-pulse">
+            <span class="material-symbols-rounded text-pink-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">female</span>
+            <span class="font-bold">ทริปสำหรับผู้หญิงเท่านั้น</span>
+          </div>
         </div>
       </div>
 
@@ -184,7 +188,7 @@
               <p class="text-gray-500">สัมผัสความสบายระดับพรีเมียมในทุกการเดินทาง</p>
             </div>
 
-            <SeatMap :seat-map="seatsStore.seatMap" />
+            <SeatMap :seat-map="seatsStore.seatMap" :is-women-only="schedule.trip?.is_women_only" />
 
             <p v-if="seatError" class="flex items-center gap-2 text-red-600 text-sm mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
               <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">error</span>
@@ -269,18 +273,37 @@
                   <span class="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center text-base font-bold shadow-sm border border-gray-200">{{ i + 1 }}</span>
                   ผู้โดยสารคนที่ {{ i + 1 }}
                 </h3>
-                <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
-                  class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-bold shadow-sm shadow-teal-600/20 w-fit">
-                  <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_extra</span>
-                  ที่นั่ง {{ seatsStore.selectedSeats[i].id }}
+                <div class="flex flex-wrap items-center gap-3">
+                  <button v-if="i === 0 && authStore.isLoggedIn" type="button" @click="autoFillFromProfile(i)"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 text-teal-700 text-sm font-bold border border-gray-200 hover:bg-teal-50 hover:border-teal-100 transition-all active:scale-95 shadow-sm">
+                    <span class="material-symbols-rounded text-[18px]">account_circle</span>
+                    ดึงข้อมูลจากโปรไฟล์
+                  </button>
+                  <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-bold shadow-sm shadow-teal-600/20 w-fit">
+                    <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_extra</span>
+                    ที่นั่ง {{ seatsStore.selectedSeats[i].id }}
+                  </div>
                 </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
-                  <input v-model="p.name" type="text" required placeholder="กรอกชื่อ-นามสกุล"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                <div class="md:col-span-2 grid grid-cols-12 gap-5">
+                  <div class="col-span-12 md:col-span-3">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">คำนำหน้า <span class="text-red-500">*</span></label>
+                    <select v-model="p.title" required
+                      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white">
+                      <option value="" disabled>เลือก...</option>
+                      <option v-if="!schedule.trip?.is_women_only" value="นาย">นาย</option>
+                      <option value="นาง">นาง</option>
+                      <option value="นางสาว">นางสาว</option>
+                    </select>
+                  </div>
+                  <div class="col-span-12 md:col-span-9">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
+                    <input v-model="p.name" type="text" required placeholder="กรอกชื่อ-นามสกุล"
+                      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                  </div>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อเล่น</label>
@@ -288,12 +311,20 @@
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">เลขที่บัตรประชาชน (สำหรับประกัน)</label>
-                  <input v-model="p.id_card" type="text" placeholder="X-XXXX-XXXXX-XX-X"
+                  <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
+                    <span>เลขที่บัตรประชาชน (สำหรับประกัน) <span class="text-red-500">*</span></span>
+                    <button type="button" @click="showInsuranceModal = true" class="text-teal-600 hover:text-teal-700 flex items-center gap-1 text-[11px] font-bold bg-teal-50 px-2 py-1 rounded-lg border border-teal-100 transition-all active:scale-95">
+                      <span class="material-symbols-rounded text-[14px]">info</span>
+                      รายละเอียดประกัน
+                    </button>
+                  </label>
+                  <input v-model="p.id_card" type="text" required placeholder="เลขบัตรประชาชน 13 หลัก"
+                    maxlength="13"
+                    @input="p.id_card = p.id_card.replace(/\D/g, '')"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์</label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
                   <input v-model="p.phone" type="tel" placeholder="0XX-XXX-XXXX"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
@@ -309,35 +340,15 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อฉุกเฉิน</label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อฉุกเฉิน <span class="text-red-500">*</span></label>
                   <input v-model="p.emergency_contact" type="text" placeholder="ชื่อผู้ติดต่อ"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์ฉุกเฉิน</label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์ฉุกเฉิน <span class="text-red-500">*</span></label>
                   <input v-model="p.emergency_phone" type="tel" placeholder="0XX-XXX-XXXX"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
-
-                <!-- Diving specific -->
-                <template v-if="isDiving">
-                  <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Dive Cert Level</label>
-                    <input v-model="p.dive_cert_level" type="text" placeholder="เช่น OWD, AOWD"
-                      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">เลขที่ใบรับรอง</label>
-                    <input v-model="p.cert_number" type="text" placeholder="Cert Number"
-                      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">น้ำหนัก (kg)</label>
-                    <input v-model="p.weight" type="number" placeholder="กก."
-                      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
-                  </div>
-                </template>
-
                 <div class="md:col-span-2">
                   <label class="block text-sm font-bold text-gray-700 mb-2">การแพ้อาหาร / อื่นๆ</label>
                   <input v-model="p.allergies" type="text" placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ"
@@ -648,6 +659,60 @@
         กลับไปหน้ากิจกรรม
       </router-link>
     </div>
+    
+    <!-- Insurance Detail Modal -->
+    <Teleport to="body">
+      <div v-if="showInsuranceModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showInsuranceModal = false"></div>
+        <div class="bg-white rounded-[32px] w-full max-w-lg relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div class="bg-teal-600 p-8 text-white relative">
+            <div class="absolute top-0 right-0 p-6">
+              <button @click="showInsuranceModal = false" class="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+                <span class="material-symbols-rounded">close</span>
+              </button>
+            </div>
+            <div class="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mb-4">
+              <span class="material-symbols-rounded text-4xl" style="font-variation-settings:'FILL' 1">security</span>
+            </div>
+            <h3 class="text-2xl font-bold">รายละเอียดความคุ้มครองประกันภัย</h3>
+            <p class="text-white/80 text-sm mt-1">เพื่อความปลอดภัยและความอุ่นใจในการเดินทางไปกับเรา</p>
+          </div>
+          <div class="p-8 space-y-6">
+            <div class="flex gap-4">
+              <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                <span class="material-symbols-rounded text-teal-600">health_and_safety</span>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-900 text-sm mb-1">การเสียชีวิตและทุพพลภาพ</h4>
+                <p class="text-sm text-gray-600 leading-relaxed">การเสียชีวิต การสูญเสียอวัยวะ สายตาหรือทุพพลภาพถาวรสิ้นเชิง เนื่องจากอุบัติเหตุ (อ.บ.1) <span class="font-bold text-teal-700">500,000 บาท</span> (รวมการถูกฆาตกรรมหรือทำร้ายร่างกาย)</p>
+              </div>
+            </div>
+            <div class="flex gap-4">
+              <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                <span class="material-symbols-rounded text-teal-600">medical_services</span>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-900 text-sm mb-1">ค่ารักษาพยาบาล</h4>
+                <p class="text-sm text-gray-600 leading-relaxed">การรักษาพยาบาลการบาดเจ็บจากอุบัติเหตุ <span class="font-bold text-teal-700">100,000 บาท</span> (ต่ออุบัติเหตุแต่ละครั้ง)</p>
+              </div>
+            </div>
+            <div class="flex gap-4">
+              <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                <span class="material-symbols-rounded text-teal-600">emergency_home</span>
+              </div>
+              <div class="flex-1">
+                <h4 class="font-bold text-gray-900 text-sm mb-1">การเคลื่อนย้ายฉุกเฉิน</h4>
+                <p class="text-sm text-gray-600 leading-relaxed">การเคลื่อนย้ายเพื่อรักษาพยาบาลฉุกเฉินและการเคลื่อนย้ายข้ามจังหวัด <span class="font-bold text-teal-700">50,000 บาท</span></p>
+              </div>
+            </div>
+            
+            <button @click="showInsuranceModal = false" class="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl hover:bg-teal-700 active:scale-[0.98] transition-all shadow-lg shadow-teal-600/20 mt-4">
+              รับทราบ
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
   </div>
 </template>
@@ -655,6 +720,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 import api from '../lib/axios';
 import { useSeatsStore } from '../stores/seats';
 import { useBookingStore } from '../stores/booking';
@@ -665,6 +731,7 @@ import { useToast } from '../lib/toast';
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
 const seatsStore = useSeatsStore();
 const bookingStore = useBookingStore();
 const swal = useSwal();
@@ -682,6 +749,7 @@ const passengerCount = ref(1);
 const isGroup = ref(false);
 const groupName = ref('');
 const groupNotes = ref('');
+const showInsuranceModal = ref(false);
 
 const hasSeatMap = computed(() => seatsStore.seatMap?.has_seat_map ?? false);
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
@@ -706,7 +774,7 @@ const effectivePrice = computed(() => {
 });
 
 const passengers = ref([{ 
-  name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
+  title: '', name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '', 
   dive_cert_level: '', cert_number: '', weight: null 
 }]);
@@ -714,7 +782,7 @@ const passengers = ref([{
 watch(passengerCount, (n) => {
   while (passengers.value.length < n) {
     passengers.value.push({ 
-      name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
+      title: '', name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_phone: '', 
       dive_cert_level: '', cert_number: '', weight: null 
     });
@@ -722,7 +790,46 @@ watch(passengerCount, (n) => {
   if (passengers.value.length > n) passengers.value.length = n;
 });
 
-const isPassengerValid = computed(() => passengers.value.every(p => p.name.trim()));
+function autoFillFromProfile(index) {
+  if (!authStore.user) return;
+  const user = authStore.user;
+  
+  const isFemaleTrip = schedule.value?.trip?.is_women_only;
+  const isMaleTitle = user.title === 'นาย';
+  
+  if (isFemaleTrip && isMaleTitle) {
+    swal.warning(
+      'ทริปสำหรับผู้หญิงเท่านั้น',
+      'ขออภัยครับ ทริปนี้จำกัดเฉพาะผู้หญิงเท่านั้น ระบบจะดึงข้อมูลส่วนอื่นๆ ยกเว้นคำนำหน้าชื่อครับ'
+    );
+  }
+
+  passengers.value[index] = {
+    ...passengers.value[index],
+    title: (isFemaleTrip && isMaleTitle) ? '' : (user.title || ''),
+    name: user.name || '',
+    nickname: user.nickname || '',
+    id_card: user.id_card || '',
+    phone: user.phone || '',
+    blood_group: user.blood_group || '',
+    emergency_contact: user.emergency_contact || '',
+    emergency_phone: user.emergency_phone || '',
+    allergies: user.allergies || '',
+    health_notes: user.health_notes || '',
+  };
+  
+  if (!(isFemaleTrip && isMaleTitle)) {
+    toast.success('ดึงข้อมูลจากโปรไฟล์สำเร็จ');
+  }
+}
+
+const isPassengerValid = computed(() => passengers.value.every(p => 
+  p.title &&
+  p.name?.trim() && 
+  p.id_card && 
+  p.id_card.length === 13 &&
+  (!schedule.value?.trip?.is_women_only || ['นาง', 'นางสาว'].includes(p.title))
+));
 const totalAmount = computed(() => effectivePrice.value * passengers.value.length);
 
 function formatDate(d) {
@@ -787,6 +894,7 @@ async function createBooking() {
       group_name: isGroup.value ? groupName.value : null,
       group_notes: isGroup.value ? groupNotes.value : null,
       passengers: passengers.value.map(p => ({
+        title: p.title || null,
         name: p.name,
         nickname: p.nickname || null,
         id_card: p.id_card || null,

@@ -30,6 +30,10 @@ class TripResource extends JsonResource
             'exclusions' => $this->exclusions ?? [],
             'highlights' => $this->highlights ?? [],
             'is_featured' => (bool) $this->is_featured,
+            'is_women_only' => (bool) $this->is_women_only,
+            'must_know' => $this->must_know ?? null,
+            'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
+            'review_count' => $this->reviews()->where('is_approved', true)->count(),
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
             'created_at' => $this->created_at?->toISOString(),
         ];
