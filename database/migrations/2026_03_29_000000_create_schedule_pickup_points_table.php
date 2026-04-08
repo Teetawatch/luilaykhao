@@ -26,7 +26,8 @@ return new class extends Migration
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
 
-            $table->unique(['schedule_id', 'region']);
+            // Note: Unique constraint removed to avoid foreign key conflicts
+            // Will be handled in separate migration if needed
         });
     }
 
