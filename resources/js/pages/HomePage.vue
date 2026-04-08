@@ -21,75 +21,107 @@
       <div class="absolute bottom-1/3 right-1/4 w-[30rem] h-[30rem] bg-[var(--color-gold)]/15 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
 
       <!-- Content -->
-      <div class="hero-content relative z-10 text-center px-4 max-w-5xl w-full pt-16">
+      <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-16 md:pt-24 pb-12">
         
-        <h1 class="font-anuphan text-white text-4xl md:text-5xl lg:text-7xl font-extrabold mb-6 leading-[1.15] tracking-tight drop-shadow-2xl">
+        <!-- Premium Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-8 hover:bg-white/20 transition-colors cursor-default shadow-lg">
+          <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-light)] shadow-[0_0_8px_var(--color-accent-light)] animate-pulse"></span>
+          <span class="text-white/90 text-sm font-semibold tracking-wide">แพลตฟอร์มจองทริปอันดับ 1 ของคนรักการเดินทาง</span>
+        </div>
+
+        <!-- Headline -->
+        <h1 class="font-anuphan text-white text-5xl md:text-6xl lg:text-[5rem] font-extrabold mb-6 leading-[1.1] tracking-tight drop-shadow-2xl">
           การเที่ยวที่ดี เริ่มจาก<br class="hidden md:block" />
           <span class="text-[var(--color-accent-light)]">ความรู้สึกที่ดี</span>
           ตั้งแต่ตอนจอง
         </h1>
         
-        <p class="text-white/90 text-base md:text-xl mb-12 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+        <!-- Subheadline -->
+        <p class="text-white/80 text-lg md:text-xl mb-12 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-md">
           จองทริปดำน้ำ เดินป่า และรถตู้พรีเมียม ครบจบในที่เดียว<br class="hidden md:block" /> รวดเร็ว ปลอดภัย ประทับใจ ไม่ต้องรอ
         </p>
 
-        <!-- Glassmorphism Search Bar -->
-        <div class="search-bar bg-white/95 backdrop-blur-2xl rounded-[2rem] shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex flex-col md:flex-row items-stretch md:items-center p-3 gap-3 max-w-4xl mx-auto border border-white/50 transform transition-all duration-300 hover:shadow-[0_25px_50px_rgba(0,0,0,0.2)]">
+        <!-- Modern Floating Search Bar -->
+        <div class="search-bar relative bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] flex flex-col md:flex-row items-stretch md:items-center p-2 gap-2 max-w-5xl mx-auto border border-white/40 ring-1 ring-black/5 transform transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] z-20">
+          
           <!-- Destination -->
-          <div class="flex items-center flex-1 w-full px-5 py-3 md:py-2 md:border-r border-gray-200 group">
-            <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/10 transition-colors">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px]">location_on</span>
+          <div class="flex items-center flex-1 w-full px-6 py-4 md:py-3 hover:bg-gray-50/80 rounded-[1.5rem] md:rounded-[2rem] transition-colors group cursor-pointer">
+            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-4 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+              <span class="material-symbols-rounded text-[var(--color-primary)] text-[24px] md:text-[28px]">location_on</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold mb-0.5">จุดหมายปลายทาง</label>
+              <label class="text-[11px] md:text-[12px] uppercase tracking-widest text-gray-500 font-bold mb-1">จุดหมายปลายทาง</label>
               <input
                 v-model="searchDestination"
                 type="text"
                 placeholder="คุณต้องการไปที่ไหน?"
-                class="bg-transparent border-none focus:ring-0 p-0 text-[var(--color-text-dark)] font-bold placeholder:text-gray-400 w-full text-base outline-none"
+                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold placeholder:text-gray-300 w-full text-base md:text-lg outline-none truncate"
               />
             </div>
           </div>
+
+          <div class="hidden md:block w-px h-16 bg-gray-100 shrink-0"></div>
+
           <!-- Date -->
-          <div class="flex items-center flex-1 w-full px-5 py-3 md:py-2 md:border-r border-gray-200 group">
-            <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/10 transition-colors">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px]">calendar_today</span>
+          <div class="flex items-center flex-1 w-full px-6 py-4 md:py-3 hover:bg-gray-50/80 rounded-[1.5rem] md:rounded-[2rem] transition-colors group cursor-pointer">
+            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+              <span class="material-symbols-rounded text-[var(--color-accent)] text-[24px] md:text-[28px]">calendar_today</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold mb-0.5">วันที่เดินทาง</label>
+              <label class="text-[11px] md:text-[12px] uppercase tracking-widest text-gray-500 font-bold mb-1">วันที่เดินทาง</label>
               <input
                 v-model="searchDate"
                 type="date"
-                class="bg-transparent border-none focus:ring-0 p-0 text-[var(--color-text-dark)] font-bold placeholder:text-gray-400 w-full text-base outline-none"
+                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold placeholder:text-gray-300 w-full text-base md:text-lg outline-none cursor-pointer"
               />
             </div>
           </div>
+
+          <div class="hidden md:block w-px h-16 bg-gray-100 shrink-0"></div>
+
           <!-- Travelers -->
-          <div class="flex items-center flex-1 w-full px-5 py-3 md:py-2 group">
-            <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/10 transition-colors">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px]">group</span>
+          <div class="flex items-center flex-1 w-full px-6 py-4 md:py-3 hover:bg-gray-50/80 rounded-[1.5rem] md:rounded-[2rem] transition-colors group cursor-pointer relative">
+            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-4 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+              <span class="material-symbols-rounded text-[var(--color-primary)] text-[24px] md:text-[28px]">group</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold mb-0.5">ผู้เดินทาง</label>
+              <label class="text-[11px] md:text-[12px] uppercase tracking-widest text-gray-500 font-bold mb-1">ผู้เดินทาง</label>
               <select
                 v-model="searchTravelers"
-                class="bg-transparent border-none focus:ring-0 p-0 text-[var(--color-text-dark)] font-bold w-full text-base outline-none appearance-none cursor-pointer"
+                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-base md:text-lg outline-none appearance-none cursor-pointer pr-4"
               >
                 <option value="1">1 ท่าน</option>
                 <option value="2">2 ท่าน</option>
                 <option value="3">3 ท่าน+</option>
               </select>
+              <span class="material-symbols-rounded text-[20px] absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-transform group-hover:text-gray-600 group-hover:translate-y-[-30%]">expand_more</span>
             </div>
           </div>
+
           <!-- Search Button -->
           <router-link
             to="/trips"
-            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-4 rounded-[1.5rem] font-bold transition-all duration-300 shadow-[0_8px_20px_rgba(45,122,79,0.3)] hover:shadow-[0_12px_25px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-5 md:py-5 rounded-[1.5rem] md:rounded-[2rem] font-bold transition-all duration-500 shadow-[0_10px_20px_rgba(45,122,79,0.3)] hover:shadow-[0_15px_30px_rgba(45,122,79,0.5)] hover:-translate-y-1 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-2 md:mt-0 md:ml-2"
           >
-            <span class="material-symbols-rounded text-[22px]">search</span>
-            <span>ค้นหาทริป</span>
+            <span class="material-symbols-rounded text-[28px]">search</span>
+            <span class="text-xl md:text-lg lg:text-xl pr-2">ค้นหาทริป</span>
           </router-link>
         </div>
+        
+        <!-- Popular Searches / Quick Tags -->
+        <div class="mt-10 flex flex-wrap items-center justify-center gap-3 text-white/90 text-sm font-medium z-10 relative">
+          <span class="mr-2 opacity-80">ยอดนิยม:</span>
+          <router-link to="/trips?q=ดำน้ำเกาะเต่า" class="flex items-center gap-1.5 px-5 py-2 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
+            <span class="material-symbols-rounded text-[18px]">scuba_diving</span> ดำน้ำเกาะเต่า
+          </router-link>
+          <router-link to="/trips?q=เดินป่าสังขละบุรี" class="flex items-center gap-1.5 px-5 py-2 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
+            <span class="material-symbols-rounded text-[18px]">hiking</span> เดินป่าสังขละบุรี
+          </router-link>
+          <router-link to="/trips?q=รถตู้เชียงใหม่" class="flex items-center gap-1.5 px-5 py-2 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
+            <span class="material-symbols-rounded text-[18px]">airport_shuttle</span> รถตู้เชียงใหม่
+          </router-link>
+        </div>
+
       </div>
 
       <!-- Scroll indicator -->
