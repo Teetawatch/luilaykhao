@@ -23,14 +23,8 @@
       <!-- Content -->
       <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-16 md:pt-24 pb-12">
         
-        <!-- Premium Badge -->
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-8 hover:bg-white/20 transition-colors cursor-default shadow-lg">
-          <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-light)] shadow-[0_0_8px_var(--color-accent-light)] animate-pulse"></span>
-          <span class="text-white/90 text-sm font-semibold tracking-wide">แพลตฟอร์มจองทริปอันดับ 1 ของคนรักการเดินทาง</span>
-        </div>
-
         <!-- Headline -->
-        <h1 class="font-anuphan text-white text-5xl md:text-6xl lg:text-[5rem] font-extrabold mb-6 leading-[1.1] tracking-tight drop-shadow-2xl">
+        <h1 class="font-anuphan text-white text-4xl md:text-5xl lg:text-[4rem] font-extrabold mb-6 leading-[1.3] tracking-tight drop-shadow-2xl">
           การเที่ยวที่ดี เริ่มจาก<br class="hidden md:block" />
           <span class="text-[var(--color-accent-light)]">ความรู้สึกที่ดี</span>
           ตั้งแต่ตอนจอง
@@ -42,84 +36,98 @@
         </p>
 
         <!-- Modern Floating Search Bar -->
-        <div class="search-bar relative bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] flex flex-col md:flex-row items-stretch md:items-center p-2 gap-2 max-w-5xl mx-auto border border-white/40 ring-1 ring-black/5 transform transition-all duration-500 hover:shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] z-20">
+        <div class="search-bar relative bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] flex flex-col md:flex-row items-stretch md:items-center p-1.5 gap-1 max-w-4xl mx-auto border border-white/40 ring-1 ring-black/5 transform transition-all duration-500 hover:shadow-[0_30px_60px_-10px_rgba(0,0,0,0.3)] z-20">
           
           <!-- Destination -->
-          <div class="flex items-center flex-1 w-full px-6 py-4 md:py-3 hover:bg-gray-50/80 rounded-[1.5rem] md:rounded-[2rem] transition-colors group cursor-pointer">
-            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-4 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
-              <span class="material-symbols-rounded text-[var(--color-primary)] text-[24px] md:text-[28px]">location_on</span>
+          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
+            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+              <span class="material-symbols-rounded text-[var(--color-primary)] text-[22px] md:text-[24px]">explore</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[11px] md:text-[12px] uppercase tracking-widest text-gray-500 font-bold mb-1">จุดหมายปลายทาง</label>
-              <input
-                v-model="searchDestination"
-                type="text"
-                placeholder="คุณต้องการไปที่ไหน?"
-                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold placeholder:text-gray-300 w-full text-base md:text-lg outline-none truncate"
-              />
+              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">หมวดหมู่ทริป</label>
+              <select
+                v-model="searchCategory"
+                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6"
+              >
+                <option value="">เลือกหมวดหมู่</option>
+                <option value="snorkeling">ดำน้ำตื้น</option>
+                <option value="trekking">เดินป่า</option>
+                <option value="climbing">รถตู้พรีเมียม</option>
+              </select>
+              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-transform group-hover:text-gray-600">expand_more</span>
             </div>
           </div>
 
-          <div class="hidden md:block w-px h-16 bg-gray-100 shrink-0"></div>
+          <div class="hidden md:block w-px h-12 bg-gray-100 shrink-0"></div>
 
           <!-- Date -->
-          <div class="flex items-center flex-1 w-full px-6 py-4 md:py-3 hover:bg-gray-50/80 rounded-[1.5rem] md:rounded-[2rem] transition-colors group cursor-pointer">
-            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-4 group-hover:bg-[var(--color-accent)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-[24px] md:text-[28px]">calendar_today</span>
+          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer">
+            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-accent)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px] md:text-[24px]">calendar_today</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[11px] md:text-[12px] uppercase tracking-widest text-gray-500 font-bold mb-1">วันที่เดินทาง</label>
+              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">วันที่เดินทาง</label>
               <input
                 v-model="searchDate"
                 type="date"
-                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold placeholder:text-gray-300 w-full text-base md:text-lg outline-none cursor-pointer"
+                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold placeholder:text-gray-300 w-full text-sm md:text-base outline-none cursor-pointer"
               />
             </div>
           </div>
 
-          <div class="hidden md:block w-px h-16 bg-gray-100 shrink-0"></div>
+          <div class="hidden md:block w-px h-12 bg-gray-100 shrink-0"></div>
 
           <!-- Travelers -->
-          <div class="flex items-center flex-1 w-full px-6 py-4 md:py-3 hover:bg-gray-50/80 rounded-[1.5rem] md:rounded-[2rem] transition-colors group cursor-pointer relative">
-            <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-4 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
-              <span class="material-symbols-rounded text-[var(--color-primary)] text-[24px] md:text-[28px]">group</span>
+          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
+            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+              <span class="material-symbols-rounded text-[var(--color-primary)] text-[22px] md:text-[24px]">group</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[11px] md:text-[12px] uppercase tracking-widest text-gray-500 font-bold mb-1">ผู้เดินทาง</label>
+              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">ผู้เดินทาง</label>
               <select
                 v-model="searchTravelers"
-                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-base md:text-lg outline-none appearance-none cursor-pointer pr-4"
+                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-4"
               >
                 <option value="1">1 ท่าน</option>
                 <option value="2">2 ท่าน</option>
                 <option value="3">3 ท่าน+</option>
               </select>
-              <span class="material-symbols-rounded text-[20px] absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-transform group-hover:text-gray-600 group-hover:translate-y-[-30%]">expand_more</span>
+              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-transform group-hover:text-gray-600 group-hover:translate-y-[-30%]">expand_more</span>
             </div>
           </div>
 
           <!-- Search Button -->
           <router-link
-            to="/trips"
-            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-5 md:py-5 rounded-[1.5rem] md:rounded-[2rem] font-bold transition-all duration-500 shadow-[0_10px_20px_rgba(45,122,79,0.3)] hover:shadow-[0_15px_30px_rgba(45,122,79,0.5)] hover:-translate-y-1 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-2 md:mt-0 md:ml-2"
+            :to="searchCategory ? `/trips?type=${searchCategory}` : '/trips'"
+            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0 md:ml-1"
           >
-            <span class="material-symbols-rounded text-[28px]">search</span>
-            <span class="text-xl md:text-lg lg:text-xl pr-2">ค้นหาทริป</span>
+            <span class="material-symbols-rounded text-[24px]">search</span>
+            <span class="text-lg md:text-base lg:text-lg pr-1">ค้นหาทริป</span>
           </router-link>
         </div>
         
         <!-- Popular Searches / Quick Tags -->
-        <div class="mt-10 flex flex-wrap items-center justify-center gap-3 text-white/90 text-sm font-medium z-10 relative">
-          <span class="mr-2 opacity-80">ยอดนิยม:</span>
-          <router-link to="/trips?q=ดำน้ำเกาะเต่า" class="flex items-center gap-1.5 px-5 py-2 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
-            <span class="material-symbols-rounded text-[18px]">scuba_diving</span> ดำน้ำเกาะเต่า
-          </router-link>
-          <router-link to="/trips?q=เดินป่าสังขละบุรี" class="flex items-center gap-1.5 px-5 py-2 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
-            <span class="material-symbols-rounded text-[18px]">hiking</span> เดินป่าสังขละบุรี
-          </router-link>
-          <router-link to="/trips?q=รถตู้เชียงใหม่" class="flex items-center gap-1.5 px-5 py-2 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
-            <span class="material-symbols-rounded text-[18px]">airport_shuttle</span> รถตู้เชียงใหม่
-          </router-link>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3 text-white/90 text-sm font-medium z-10 relative">
+          <span class="mr-1 opacity-70">ทริปแนะนำ:</span>
+          <template v-if="featuredTrips.length > 0">
+            <router-link 
+              v-for="trip in featuredTrips.slice(0, 3)" 
+              :key="trip.id"
+              :to="`/trips/${trip.slug}`" 
+              class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/10 hover:bg-[var(--color-accent-light)] border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg"
+            >
+              <span class="material-symbols-rounded text-[16px]">{{ typeFeaturedIcon(trip.type) }}</span>
+              {{ trip.title.split(' ').slice(0, 2).join(' ') }}
+            </router-link>
+          </template>
+          <template v-else>
+            <router-link to="/trips?type=snorkeling" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
+              <span class="material-symbols-rounded text-[16px]">scuba_diving</span> ดำน้ำตื้น
+            </router-link>
+            <router-link to="/trips?type=trekking" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
+              <span class="material-symbols-rounded text-[16px]">hiking</span> เดินป่า
+            </router-link>
+          </template>
         </div>
 
       </div>
@@ -576,54 +584,74 @@
     </section>
 
     <!-- ══════════════════════════════════════════
-         NEWSLETTER CTA SECTION
+         NEWSLETTER CTA SECTION (Full-Width Redesign)
     ══════════════════════════════════════════ -->
-    <section class="py-24 px-6 md:px-8 bg-[var(--color-sand)]">
-      <div class="max-w-6xl mx-auto rounded-[3rem] overflow-hidden relative shadow-2xl bg-[var(--color-primary)]">
-        <!-- Decorative Elements -->
-        <div class="absolute top-0 right-0 w-[40rem] h-[40rem] bg-[var(--color-accent-light)]/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3 pointer-events-none mix-blend-screen"></div>
-        <div class="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-[var(--color-gold)]/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/4 pointer-events-none mix-blend-screen"></div>
-        
-        <!-- Pattern Overlay -->
-        <div class="absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
-
-        <div class="relative z-10 p-12 md:p-20 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-          <div class="flex-1 text-center lg:text-left">
-            <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-5 py-2 mb-6">
-              <span class="material-symbols-rounded text-[#FFB020] text-[18px]" style="font-variation-settings:'FILL' 1">local_fire_department</span>
-              <span class="text-white text-xs font-black tracking-widest uppercase">Special Offer</span>
-            </div>
-            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight">รับส่วนลด 10%<br />สำหรับทริปแรก</h2>
-            <p class="text-white/80 text-lg md:text-xl font-medium max-w-xl mx-auto lg:mx-0">
-              สมัครสมาชิกเพื่อรับดีลสุดพิเศษก่อนใคร และข่าวสารการเดินทางที่คัดสรรมาเพื่อคุณ
+    <section class="relative py-32 w-full overflow-hidden bg-[var(--color-primary)]">
+      <!-- Sophisticated Background Elements -->
+      <div class="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+      <div class="absolute top-0 right-0 w-[50rem] h-[50rem] bg-[var(--color-accent-light)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-[var(--color-gold)]/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
+      
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-24">
+          
+          <!-- Text Content -->
+          <div class="flex-1 text-center lg:text-left max-w-2xl">
+            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.05] tracking-tight">
+              รับดีลเกาะลับก่อนใคร<br />
+              <span class="text-[var(--color-accent-light)]">รับส่วนลด 10%</span> ทันที
+            </h2>
+            <p class="text-white/70 text-lg md:text-xl font-medium leading-relaxed mb-0 max-w-xl">
+              ร่วมเป็นสมาชิกครอบครัวนักเดินทางกับหน้าใหม่ของ "ลุยเลเขา" รับข่าวสารทริปคัดสรรพิเศษและส่วนลดสมาชิกที่คุณจะหาไม่ได้จากที่อื่น
             </p>
           </div>
 
-          <div class="flex-1 w-full max-w-lg">
-            <div class="bg-white/10 backdrop-blur-xl p-8 rounded-[2rem] border border-white/20 shadow-2xl">
-              <form @submit.prevent class="flex flex-col gap-4">
-                <div class="relative">
-                  <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <span class="material-symbols-rounded text-white/50">mail</span>
+          <!-- Integrated Form (No "box" frame) -->
+          <div class="flex-1 w-full max-w-xl">
+            <div class="relative group">
+              <!-- Subtle glow background -->
+              <div class="absolute -inset-1 bg-gradient-to-r from-[var(--color-accent-light)] to-[var(--color-gold)] rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+              
+              <div class="relative bg-white/5 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/10 shadow-3xl">
+                <form @submit.prevent class="space-y-6">
+                  <div class="relative">
+                    <label class="block text-white/50 text-[10px] items-center uppercase tracking-widest font-black mb-3 ml-1">Work Email Address</label>
+                    <div class="relative">
+                      <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                        <span class="material-symbols-rounded text-[var(--color-accent-light)] group-hover:scale-110 transition-transform">alternate_email</span>
+                      </div>
+                      <input
+                        type="email"
+                        placeholder="your@email.com"
+                        class="w-full bg-white/10 border border-white/20 rounded-2xl py-5 pl-16 pr-8 text-white placeholder:text-white/30 focus:ring-2 focus:ring-[var(--color-accent-light)] focus:border-transparent outline-none text-lg font-bold transition-all duration-500 shadow-inner"
+                      />
+                    </div>
                   </div>
-                  <input
-                    type="email"
-                    placeholder="กรอกอีเมลของคุณ"
-                    aria-label="อีเมล"
-                    class="w-full bg-white/10 border border-white/20 rounded-full py-4 pl-14 pr-6 text-white placeholder:text-white/50 focus:ring-2 focus:ring-[var(--color-accent-light)] focus:border-transparent outline-none text-base font-medium transition-all"
-                  />
+                  
+                  <button
+                    type="submit"
+                    class="w-full bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white py-5 rounded-2xl font-black text-xl transition-all duration-500 shadow-xl hover:shadow-[0_20px_40px_rgba(255,255,255,0.15)] flex items-center justify-center gap-3 cursor-pointer group/btn overflow-hidden relative isolate"
+                  >
+                    <span class="relative z-10">สมัครสมาชิกฟรี</span>
+                    <span class="material-symbols-rounded relative z-10 text-2xl transform group-hover/btn:translate-x-2 transition-transform duration-500">arrow_right_alt</span>
+                  </button>
+                </form>
+                
+                <div class="mt-8 flex items-center justify-center gap-6 opacity-40">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-rounded text-white text-[16px]">verified</span>
+                    <span class="text-white text-[10px] font-bold uppercase tracking-widest">No Spam</span>
+                  </div>
+                  <div class="w-px h-3 bg-white"></div>
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-rounded text-white text-[16px]">lock_open</span>
+                    <span class="text-white text-[10px] font-bold uppercase tracking-widest">Secure</span>
+                  </div>
                 </div>
-                <button
-                  type="submit"
-                  class="w-full bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white py-4 rounded-full font-extrabold text-lg transition-all duration-300 shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  สมัครรับข่าวสาร
-                  <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
-                </button>
-              </form>
-              <p class="text-white/40 text-xs font-medium mt-6 text-center">ไม่มีสแปม ยกเลิกได้ตลอดเวลา 100% ฟรี</p>
+              </div>
             </div>
           </div>
+
         </div>
       </div>
     </section>
@@ -642,15 +670,16 @@ const trips = ref([]);
 const featuredTrips = ref([]);
 const loading = ref(true);
 const searchDestination = ref('');
+const searchCategory = ref('');
 const searchDate = ref('');
 const searchTravelers = ref('1');
 
-const statItems = [
-  { icon: 'groups', value: '12K+', label: 'นักเดินทางที่ไว้ใจเรา' },
-  { icon: 'star', value: '4.9', label: 'คะแนนความพึงพอใจ' },
-  { icon: 'map', value: '50+', label: 'เส้นทางท่องเที่ยว' },
+const statItems = ref([
+  { icon: 'groups', value: '1,200+', label: 'นักเดินทางที่ไว้ใจเรา' },
+  { icon: 'star', value: '5.0', label: 'คะแนนความพึงพอใจ' },
+  { icon: 'map', value: '10+', label: 'เส้นทางท่องเที่ยว' },
   { icon: 'verified_user', value: '100%', label: 'รับประกันความปลอดภัย' },
-];
+]);
 
 const categories = [
   {
@@ -729,16 +758,28 @@ const typeFeaturedIcon = (type) => {
 
 onMounted(async () => {
   try {
-    const [tripsRes, featuredRes, reviewsRes] = await Promise.all([
+    const [tripsRes, featuredRes, reviewsRes, statsRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
       api.get('/trips/featured'),
       api.get('/reviews', { params: { per_page: 3 } }),
+      api.get('/stats'),
     ]);
     trips.value = tripsRes.data.data;
     featuredTrips.value = featuredRes.data.data || [];
     reviews.value = reviewsRes.data.data || [];
+    
+    // Update stats
+    if (statsRes.data?.data) {
+      const s = statsRes.data.data;
+      statItems.value = [
+        { icon: 'groups', value: `${s.total_customers.toLocaleString()}+`, label: 'นักเดินทางที่ไว้ใจเรา' },
+        { icon: 'star', value: s.avg_rating.toString(), label: 'คะแนนความพึงพอใจ' },
+        { icon: 'map', value: `${s.total_trips}+`, label: 'เส้นทางท่องเที่ยว' },
+        { icon: 'verified_user', value: '100%', label: 'รับประกันความปลอดภัย' },
+      ];
+    }
   } catch (e) {
-    console.error('Failed to load trips', e);
+    console.error('Failed to load home data', e);
   } finally {
     loading.value = false;
   }

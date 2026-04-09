@@ -19,12 +19,19 @@ class DatabaseSeeder extends Seeder
         Role::firstOrCreate(['name' => 'operator']);
         Role::firstOrCreate(['name' => 'customer']);
 
-        // Admin user
+        // Admin user (Primary)
         $admin = User::firstOrCreate(
+            ['email' => 'admin@gmail.com'],
+            ['name' => 'Admin User', 'phone' => '0800000000', 'password' => Hash::make('12345678')],
+        );
+        $admin->assignRole('admin');
+
+        // Admin user (Secondary/Backup)
+        $admin2 = User::firstOrCreate(
             ['email' => 'admin@traildive.com'],
             ['name' => 'Admin', 'phone' => '0800000000', 'password' => Hash::make('password')],
         );
-        $admin->assignRole('admin');
+        $admin2->assignRole('admin');
 
         // Demo customer
         $customer = User::firstOrCreate(

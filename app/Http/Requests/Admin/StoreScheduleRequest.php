@@ -15,7 +15,7 @@ class StoreScheduleRequest extends FormRequest
     {
         return [
             'trip_id' => ['required', 'exists:trips,id'],
-            'departure_date' => ['required', 'date', 'after:today'],
+            'departure_date' => ['required', 'date', 'after_or_equal:today'],
             'return_date' => ['required', 'date', 'after_or_equal:departure_date'],
             'total_seats' => ['required', 'integer', 'min:1'],
             'transport_type' => ['required', 'in:van,boat,bus'],

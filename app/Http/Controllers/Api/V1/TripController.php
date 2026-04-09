@@ -42,7 +42,7 @@ class TripController extends Controller
         }
 
         $trips = $query->withCount(['schedules' => function ($q) {
-            $q->where('status', 'open')->where('departure_date', '>=', today());
+            $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
         }])->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
 
         return $this->paginated($trips->through(fn($trip) => new TripResource($trip)));
@@ -62,7 +62,9 @@ class TripController extends Controller
     {
         $trip = Trip::where('slug', $slug)->firstOrFail();
 
-        return $this->success(new TripResource($trip));
+        return $this->success(new TripResource($trip->loadCount(['schedules' => function ($q) {
+            $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
+        }])));
     }
 
     public function schedules(string $slug, Request $request): JsonResponse
@@ -71,7 +73,7 @@ class TripController extends Controller
 
         $schedules = $trip->schedules()
             ->where('status', 'open')
-            ->where('departure_date', '>=', today())
+            ->where('departure_date', '>=', now()->startOfDay())
             ->with(['vehicle', 'pickupPoints'])
             ->orderBy('departure_date')
             ->get();

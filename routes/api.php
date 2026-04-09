@@ -36,6 +36,10 @@ Route::prefix('v1')->group(function () {
     Route::get('trips/{slug}', [TripController::class, 'show']);
     Route::get('trips/{slug}/schedules', [TripController::class, 'schedules']);
 
+    // Vehicles (public for driver app)
+    Route::get('vehicles', [VehicleTrackingController::class, 'vehicles']);
+    Route::get('vehicles/{id}/schedules/today', [VehicleTrackingController::class, 'vehicleTodaySchedules']);
+
     // Reviews (public read)
     Route::get('reviews', [ReviewController::class, 'index']);
 
@@ -84,6 +88,9 @@ Route::prefix('v1')->group(function () {
     // Payment webhook (no auth, verify signature)
     Route::post('payments/webhook', [PaymentController::class, 'webhook']);
 
+    // Customer Tracking (public - lookup by booking ID)
+    Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
+
     // Distance Matrix (public)
     Route::post('distance', [DistanceController::class, 'calculate']);
     Route::get('schedules/{id}/pickup-distances', [DistanceController::class, 'pickupDistances']);
@@ -98,6 +105,9 @@ Route::prefix('v1')->group(function () {
         Route::get('{vehicleId}/eta', [DistanceController::class, 'vehicleETA']);
         Route::get('{vehicleId}/eta/schedule/{scheduleId}', [DistanceController::class, 'vehicleETAToPickups']);
     });
+
+    // Analytics (public)
+    Route::get('stats', [AnalyticsController::class, 'publicStats']);
 
     // Admin routes
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {

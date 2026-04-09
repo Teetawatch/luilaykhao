@@ -125,7 +125,11 @@ class AdminController extends Controller
     public function storeTrip(StoreTripRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $data['slug'] = Str::slug($data['title']) . '-' . Str::random(5);
+        $slugBase = Str::slug($data['title']);
+        if (empty($slugBase)) {
+            $slugBase = 'trip-' . Str::random(3);
+        }
+        $data['slug'] = $slugBase . '-' . Str::lower(Str::random(5));
 
         $trip = Trip::create($data);
 
@@ -172,7 +176,7 @@ class AdminController extends Controller
             $query->where('status', $request->status);
         }
         if ($request->filled('upcoming')) {
-            $query->where('departure_date', '>=', now());
+            $query->where('departure_date', '>=', now()->startOfDay());
         }
 
         $schedules = $query->orderByDesc('departure_date')->paginate($request->get('per_page', 15));

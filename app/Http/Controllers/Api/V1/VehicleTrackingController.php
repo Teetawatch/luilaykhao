@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Events\VehicleLocationUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\Trip;
+use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
 use App\Traits\ApiResponse;
@@ -301,5 +303,105 @@ class VehicleTrackingController extends Controller
         } catch (\Exception $e) {
             return [];
         }
+    }
+
+    // ─── Customer App Endpoints ───────────────────────────────
+
+    /**
+     * ดึงข้อมูลการจอง + ข้อมูลรถ สำหรับ Customer Tracking App
+     * GET /api/v1/bookings/{ref}/tracking  (ref = booking_ref เช่น LLK-20250409-0001)
+     */
+    public function bookingTracking(string $ref): JsonResponse
+    {
+        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle'])
+            ->where('booking_ref', $ref)
+            ->first();
+
+        if (!$booking) {
+            return $this->error('ไม่พบข้อมูลการจอง กรุณาตรวจสอบรหัสการจอง', 404);
+        }
+
+        $schedule = $booking->schedule;
+        $trip     = $schedule?->trip;
+        $vehicle  = $schedule?->vehicle;
+
+        $data = [
+            'id'              => $booking->id,
+            'booking_ref'     => $booking->booking_ref,
+            'schedule_id'     => $booking->schedule_id,
+            'vehicle_id'      => $schedule?->vehicle_id,
+            'trip_title'      => $trip?->title ?? '',
+            'departure_point' => $trip?->departure_point ?? '',
+            'pickup_lat'      => $trip?->latitude,
+            'pickup_lng'      => $trip?->longitude,
+            'departure_date'  => $schedule?->departure_date?->toDateString() ?? '',
+            'status'          => $booking->status,
+            // Vehicle info for driver call button
+            'driver_name'     => $vehicle?->driver_name,
+            'driver_phone'    => $vehicle?->driver_phone,
+            'license_plate'   => $vehicle?->license_plate,
+        ];
+
+        return $this->success($data, 'ข้อมูลการจองสำหรับติดตาม');
+    }
+
+    // ─── Public Driver App Endpoints ─────────────────────────
+
+    /**
+     * รายการรถทั้งหมด (Public - สำหรับ Driver App)
+     */
+    public function vehicles(): JsonResponse
+    {
+        $vehicles = Vehicle::with('latestLocation')->orderBy('name')->get();
+
+        $data = $vehicles->map(function ($v) {
+            return [
+                'id' => $v->id,
+                'name' => $v->name,
+                'type' => $v->type,
+                'capacity' => $v->capacity,
+                'license_plate' => $v->license_plate,
+                'color' => $v->color,
+                'driver_name' => $v->driver_name,
+                'driver_phone' => $v->driver_phone,
+                'driver_photo' => $v->driver_photo,
+                'images' => $v->images ?? [],
+            ];
+        });
+
+        return $this->success($data, 'รายการรถทั้งหมด');
+    }
+
+    /**
+     * ดึง Schedule วันนี้ของรถคันนั้น (Public)
+     */
+    public function vehicleTodaySchedules(int $id): JsonResponse
+    {
+        $vehicle = Vehicle::findOrFail($id);
+
+        $schedules = TripSchedule::with('trip')
+            ->where('vehicle_id', $id)
+            ->whereDate('departure_date', today())
+            ->whereNotIn('status', ['cancelled'])
+            ->orderBy('departure_date')
+            ->get();
+
+        $data = $schedules->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'trip_title' => $s->trip->title ?? '',
+                'trip_location' => $s->trip->location ?? '',
+                'departure_point' => $s->trip->departure_point ?? '',
+                'destination_lat' => $s->trip->latitude,
+                'destination_lng' => $s->trip->longitude,
+                'departure_date' => $s->departure_date->toDateString(),
+                'total_seats' => $s->total_seats,
+                'booked_seats' => $s->booked_seats,
+                'available_seats' => $s->available_seats,
+                'status' => $s->status,
+            ];
+        });
+
+        return $this->success($data, 'รอบเดินทางวันนี้');
     }
 }

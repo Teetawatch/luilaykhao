@@ -168,6 +168,56 @@
     </section>
 
     <!-- ══════════════════════════════════════════
+         GOAL CTA (Full-Width Redesign)
+    ══════════════════════════════════════════ -->
+    <section class="relative py-32 w-full overflow-hidden bg-[#0D2B1E]">
+      <!-- Premium Background Effects -->
+      <div class="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+      <div class="absolute top-0 right-0 w-[50rem] h-[50rem] bg-[var(--color-accent)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-[var(--color-gold)]/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
+      
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-24">
+          
+          <!-- Text Content -->
+          <div class="flex-1 text-center lg:text-left max-w-3xl">
+            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.05] tracking-tight">
+              การท่องเที่ยวที่<br />
+              <span class="text-[var(--color-gold)]">"เข้าถึงง่าย"</span> สำหรับทุกคน
+            </h2>
+            <p class="text-white/70 text-lg md:text-2xl font-medium leading-relaxed mb-0">
+              ไม่ยุ่งยาก ไม่ซับซ้อน และไม่ต้องพึ่งโชค — <span class="text-white border-b-2 border-[var(--color-gold)] italic">เราออกแบบทุกอย่าง</span> ให้เหมือนกับคุณมีเพื่อนที่คอยเดินเคียงข้างในทุกเส้นทาง
+            </p>
+          </div>
+
+          <!-- Glassmorphism Action Card -->
+          <div class="flex-1 w-full max-w-lg">
+            <div class="relative group">
+              <div class="absolute -inset-1 bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-gold)] rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+              
+              <div class="relative bg-white/5 backdrop-blur-2xl p-10 md:p-14 rounded-[2.5rem] border border-white/10 shadow-3xl text-center">
+                <div class="w-20 h-20 bg-[var(--color-accent)]/20 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-white/20">
+                  <span class="material-symbols-rounded text-white text-[40px]">auto_awesome</span>
+                </div>
+                <h3 class="text-2xl md:text-3xl font-bold text-white mb-6">เริ่มสร้างประสบการณ์ใหม่</h3>
+                <p class="text-white/60 mb-10 font-medium">ให้เราเป็นส่วนหนึ่งในการเดินทางครั้งถัดไปของคุณ สัมผัสความง่ายในแบบที่ไม่เคยมีมาก่อน</p>
+                
+                <router-link
+                  to="/trips"
+                  class="w-full bg-white text-[#0D2B1E] hover:bg-[var(--color-gold)] hover:text-white py-5 rounded-2xl font-black text-xl transition-all duration-500 shadow-xl hover:shadow-[0_20px_40px_rgba(255,255,255,0.15)] flex items-center justify-center gap-3 cursor-pointer group/btn overflow-hidden"
+                >
+                  <span class="relative z-10">ไปดูทริปกันเลย</span>
+                  <span class="material-symbols-rounded relative z-10 text-2xl transform group-hover/btn:translate-x-2 transition-transform duration-500">arrow_right_alt</span>
+                </router-link>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
          LONG-TERM VISION
     ══════════════════════════════════════════ -->
     <section class="py-24 md:py-32 bg-white relative">

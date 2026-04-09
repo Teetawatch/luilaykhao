@@ -149,4 +149,18 @@ class AnalyticsController extends Controller
 
         return $this->success($schedules);
     }
+    public function publicStats(): JsonResponse
+    {
+        $totalTrips = Trip::count();
+        $avgRating = Review::where('is_approved', true)->avg('rating') ?: 5.0;
+        $totalReviews = Review::where('is_approved', true)->count();
+        $totalCustomers = User::role('customer')->count();
+
+        return $this->success([
+            'total_trips' => $totalTrips,
+            'avg_rating' => round((float) $avgRating, 1),
+            'total_reviews' => $totalReviews,
+            'total_customers' => $totalCustomers,
+        ]);
+    }
 }
