@@ -425,30 +425,33 @@
                     <p class="text-gray-500 font-medium text-sm mt-1">กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
                   </div>
 
-                  <div v-else class="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div v-else class="space-y-2 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
                     <button
                       v-for="s in schedules"
                       :key="s.id"
                       @click="selectSchedule(s)"
-                      class="schedule-btn w-full text-left border-2 rounded-[1.25rem] p-4 transition-all duration-300"
+                      class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
                       :class="selectedSchedule?.id === s.id
                         ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                         : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm'"
                     >
-                      <!-- Row 1: Date + Seats badge -->
-                      <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                          <p class="font-extrabold text-[var(--color-text-dark)] text-base">{{ formatDate(s.departure_date) }}</p>
-                          <p v-if="s.return_date !== s.departure_date" class="text-[var(--color-text-muted)] font-medium text-sm mt-1">
-                            ถึง {{ formatDate(s.return_date) }}
-                            <span class="ml-2 inline-flex items-center gap-1 bg-white border border-gray-200 px-2 py-0.5 rounded-md text-xs font-bold text-[var(--color-text-dark)]">
-                              <span class="material-symbols-rounded text-[14px]">schedule</span>
-                              {{ s.duration_days || trip.duration_days }} วัน
-                            </span>
-                          </p>
+                      <!-- Row 1: Date + Seats badge (always shown) -->
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="min-w-0 flex items-center gap-3">
+                          <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
+                          <div>
+                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight">{{ formatDate(s.departure_date) }}</p>
+                            <p v-if="s.return_date !== s.departure_date" class="text-[var(--color-text-muted)] font-medium text-xs mt-0.5 flex items-center gap-1">
+                              ถึง {{ formatDate(s.return_date) }}
+                              <span class="inline-flex items-center gap-0.5 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-dark)]">
+                                <span class="material-symbols-rounded text-[11px]">schedule</span>
+                                {{ s.duration_days || trip.duration_days }} วัน
+                              </span>
+                            </p>
+                          </div>
                         </div>
                         <span
-                          class="text-xs font-black px-3 py-1 rounded-full whitespace-nowrap shrink-0 border"
+                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
                           :class="s.available_seats > 3
                             ? 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20'
                             : s.available_seats > 0
@@ -459,32 +462,32 @@
                         </span>
                       </div>
 
-                      <!-- Row 2: Region prices for trekking -->
-                      <div v-if="isTrekking && s.pickup_points?.length" class="mt-3 flex flex-wrap gap-2">
+                      <!-- Row 2: Region prices for trekking (always shown) -->
+                      <div v-if="isTrekking && s.pickup_points?.length" class="mt-2 flex flex-wrap gap-1.5 pl-9">
                         <span
                           v-for="pt in s.pickup_points.slice(0,3)" :key="pt.id"
-                          class="text-xs px-2 py-1 rounded-md bg-[var(--color-sand)] text-[var(--color-text-dark)] font-bold border border-gray-200"
+                          class="text-[10px] px-2 py-0.5 rounded-md bg-[var(--color-sand)] text-[var(--color-text-dark)] font-bold border border-gray-200"
                         >
                           {{ pt.region_label }} <span class="text-[var(--color-accent)]">฿{{ Number(pt.price).toLocaleString() }}</span>
                         </span>
-                        <span v-if="s.pickup_points.length > 3" class="text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-500 font-bold border border-gray-200">
+                        <span v-if="s.pickup_points.length > 3" class="text-[10px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 font-bold border border-gray-200">
                           +{{ s.pickup_points.length - 3 }}
                         </span>
                       </div>
 
-                      <!-- Row 3: Transport info -->
-                      <div class="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-x-5 gap-y-2">
-                        <div class="flex items-center gap-2">
-                          <span class="material-symbols-rounded text-[16px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-                          <span class="text-xs font-bold text-[var(--color-text-muted)]">{{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}</span>
+                      <!-- Row 3: Transport info — only shown when selected -->
+                      <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1 pl-9">
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-rounded text-[14px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                          <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}</span>
                         </div>
-                        <div v-if="s.license_plate" class="flex items-center gap-2">
-                          <span class="material-symbols-rounded text-[16px] text-gray-400">tag</span>
-                          <span class="text-xs font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-2 py-0.5 rounded">{{ s.license_plate }}</span>
+                        <div v-if="s.license_plate" class="flex items-center gap-1.5">
+                          <span class="material-symbols-rounded text-[14px] text-gray-400">tag</span>
+                          <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-1.5 py-0.5 rounded">{{ s.license_plate }}</span>
                         </div>
-                        <div v-if="s.vehicle_color" class="flex items-center gap-2">
-                          <div class="w-4 h-4 rounded-full border border-gray-200 shadow-sm shrink-0" :style="{ backgroundColor: s.vehicle_color }"></div>
-                          <span class="text-xs font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
+                        <div v-if="s.vehicle_color" class="flex items-center gap-1.5">
+                          <div class="w-3 h-3 rounded-full border border-gray-200 shadow-sm shrink-0" :style="{ backgroundColor: s.vehicle_color }"></div>
+                          <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
                         </div>
                       </div>
                     </button>
