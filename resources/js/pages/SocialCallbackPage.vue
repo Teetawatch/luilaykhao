@@ -29,17 +29,23 @@ onMounted(() => {
   const userParam = route.query.user;
   const error = route.query.error;
 
+  console.log('Social callback:', { token, userParam, error });
+
   if (error || !token || !userParam) {
     errorMsg.value = 'การเข้าสู่ระบบผ่าน Social ล้มเหลว กรุณาลองใหม่อีกครั้ง';
+    console.error('Missing params:', { error, hasToken: !!token, hasUser: !!userParam });
     return;
   }
 
   try {
     const user = JSON.parse(decodeURIComponent(userParam));
+    console.log('Parsed user:', user);
     auth.setAuth({ user, token });
+    console.log('Auth set, redirecting to:', route.query.redirect || '/');
     const redirect = route.query.redirect || '/';
     router.replace(redirect);
-  } catch {
+  } catch (e) {
+    console.error('Parse error:', e);
     errorMsg.value = 'เกิดข้อผิดพลาดในการประมวลผลข้อมูล กรุณาลองใหม่อีกครั้ง';
   }
 });
