@@ -82,6 +82,12 @@
             <i class="fa-brands fa-facebook text-xl flex-shrink-0"></i>
             <span class="text-sm font-bold">ดำเนินการต่อด้วย Facebook</span>
           </button>
+
+          <button @click="loginWithSocial('line')"
+            class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#06C755] text-white rounded-xl hover:bg-[#05b34c] transition-all duration-200 shadow-sm">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" class="w-5 h-5 flex-shrink-0 brightness-0 invert" alt="LINE" />
+            <span class="text-sm font-bold">ดำเนินการต่อด้วย LINE</span>
+          </button>
         </div>
 
         <!-- Register Link -->
@@ -160,8 +166,9 @@ async function handleLogin() {
   }
 }
 
-function loginWithSocial(platform) {
-  alert(`ระบบเข้าสู่ระบบด้วย ${platform.charAt(0).toUpperCase() + platform.slice(1)} จะเปิดให้บริการเร็วๆ นี้!`);
+function loginWithSocial(provider) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  window.location.href = `${apiUrl}/api/v1/auth/${provider}/redirect`;
 }
 </script>
 

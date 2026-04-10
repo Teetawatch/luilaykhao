@@ -105,31 +105,6 @@
             <span class="text-lg md:text-base lg:text-lg pr-1">ค้นหาทริป</span>
           </router-link>
         </div>
-        
-        <!-- Popular Searches / Quick Tags -->
-        <div class="mt-8 flex flex-wrap items-center justify-center gap-3 text-white/90 text-sm font-medium z-10 relative">
-          <span class="mr-1 opacity-70">ทริปแนะนำ:</span>
-          <template v-if="featuredTrips.length > 0">
-            <router-link 
-              v-for="trip in featuredTrips.slice(0, 3)" 
-              :key="trip.id"
-              :to="`/trips/${trip.slug}`" 
-              class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/10 hover:bg-[var(--color-accent-light)] border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg"
-            >
-              <span class="material-symbols-rounded text-[16px]">{{ typeFeaturedIcon(trip.type) }}</span>
-              {{ trip.title.split(' ').slice(0, 2).join(' ') }}
-            </router-link>
-          </template>
-          <template v-else>
-            <router-link to="/trips?type=snorkeling" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
-              <span class="material-symbols-rounded text-[16px]">scuba_diving</span> ดำน้ำตื้น
-            </router-link>
-            <router-link to="/trips?type=trekking" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/25 border border-white/20 cursor-pointer transition-all hover:-translate-y-0.5 backdrop-blur-md shadow-lg">
-              <span class="material-symbols-rounded text-[16px]">hiking</span> เดินป่า
-            </router-link>
-          </template>
-        </div>
-
       </div>
 
       <!-- Scroll indicator -->

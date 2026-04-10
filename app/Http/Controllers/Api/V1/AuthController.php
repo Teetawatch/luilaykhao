@@ -10,6 +10,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -130,6 +131,64 @@ class AuthController extends Controller
         return $this->success($this->formatUser($user->fresh()), 'อัปเดตโปรไฟล์สำเร็จ');
     }
 
+
+    public function socialRedirect(string $provider): \Illuminate\Http\RedirectResponse
+    {
+        $this->validateProvider($provider);
+
+        return Socialite::driver($provider)->stateless()->redirect();
+    }
+
+    public function socialCallback(Request $request, string $provider): \Illuminate\Http\RedirectResponse
+    {
+        $this->validateProvider($provider);
+
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
+        try {
+            $socialUser = Socialite::driver($provider)->stateless()->user();
+        } catch (\Exception $e) {
+            return redirect($frontendUrl . '/login?error=social_auth_failed');
+        }
+
+        $user = User::where('social_provider', $provider)
+            ->where('social_id', $socialUser->getId())
+            ->first();
+
+        if (!$user) {
+            $user = User::where('email', $socialUser->getEmail())->first();
+
+            if ($user) {
+                $user->update([
+                    'social_provider' => $provider,
+                    'social_id' => $socialUser->getId(),
+                    'avatar' => $user->avatar ?: $socialUser->getAvatar(),
+                ]);
+            } else {
+                $user = User::create([
+                    'name' => $socialUser->getName() ?: ($socialUser->getNickname() ?: 'User'),
+                    'email' => $socialUser->getEmail(),
+                    'social_provider' => $provider,
+                    'social_id' => $socialUser->getId(),
+                    'avatar' => $socialUser->getAvatar(),
+                    'password' => null,
+                ]);
+                $user->assignRole('customer');
+            }
+        }
+
+        $user->load('roles');
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return redirect($frontendUrl . '/auth/social/callback?token=' . $token . '&user=' . urlencode(json_encode($this->formatUser($user))));
+    }
+
+    private function validateProvider(string $provider): void
+    {
+        if (!in_array($provider, ['google', 'facebook', 'line'])) {
+            abort(422, 'ผู้ให้บริการ OAuth ไม่รองรับ');
+        }
+    }
 
     private function formatUser(User $user): array
     {

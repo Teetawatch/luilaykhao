@@ -20,6 +20,7 @@ import PrivacyPage from '../pages/PrivacyPage.vue';
 import TermsPage from '../pages/TermsPage.vue';
 import ContactPage from '../pages/ContactPage.vue';
 import ProfilePage from '../pages/ProfilePage.vue';
+import SocialCallbackPage from '../pages/SocialCallbackPage.vue';
 
 
 
@@ -62,6 +63,7 @@ const routes = [
   { path: '/terms', name: 'terms', component: TermsPage },
   { path: '/contact', name: 'contact', component: ContactPage },
   { path: '/profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
+  { path: '/auth/social/callback', name: 'social-callback', component: SocialCallbackPage },
 
 
 
