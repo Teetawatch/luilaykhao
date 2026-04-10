@@ -12,6 +12,7 @@ export const useTripsStore = defineStore('trips', {
       type: '',
       difficulty: '',
       search: '',
+      date: '',
     },
   }),
 
@@ -23,6 +24,7 @@ export const useTripsStore = defineStore('trips', {
         if (this.filters.type) params.type = this.filters.type;
         if (this.filters.difficulty) params.difficulty = this.filters.difficulty;
         if (this.filters.search) params.search = this.filters.search;
+        if (this.filters.date) params.date = this.filters.date;
 
         const res = await api.get('/trips', { params });
         this.trips = res.data.data;
@@ -54,7 +56,7 @@ export const useTripsStore = defineStore('trips', {
     },
 
     clearFilters() {
-      this.filters = { type: '', difficulty: '', search: '' };
+      this.filters = { type: '', difficulty: '', search: '', date: '' };
     },
   },
 });

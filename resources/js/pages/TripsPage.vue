@@ -284,6 +284,7 @@ function clearAndFetch() {
 
 onMounted(() => {
   if (route.query.type) tripsStore.filters.type = route.query.type;
+  if (route.query.date) tripsStore.filters.date = route.query.date;
   tripsStore.fetchTrips();
 });
 </script>

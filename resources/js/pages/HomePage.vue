@@ -70,7 +70,9 @@
               <input
                 v-model="searchDate"
                 type="date"
-                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold placeholder:text-gray-300 w-full text-sm md:text-base outline-none cursor-pointer"
+                :min="todayStr"
+                class="bg-transparent border-none focus:ring-0 p-0 font-extrabold w-full text-sm md:text-base outline-none cursor-pointer"
+                :class="searchDate ? 'text-gray-900' : 'text-gray-400'"
               />
             </div>
           </div>
@@ -97,13 +99,13 @@
           </div>
 
           <!-- Search Button -->
-          <router-link
-            :to="searchCategory ? `/trips?type=${searchCategory}` : '/trips'"
+          <button
+            @click="goSearch"
             class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0 md:ml-1"
           >
             <span class="material-symbols-rounded text-[24px]">search</span>
             <span class="text-lg md:text-base lg:text-lg pr-1">ค้นหาทริป</span>
-          </router-link>
+          </button>
         </div>
       </div>
 
@@ -635,11 +637,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
 
 const wishlistStore = useWishlistStore();
+const router = useRouter();
 
 const trips = ref([]);
 const featuredTrips = ref([]);
@@ -648,6 +652,16 @@ const searchDestination = ref('');
 const searchCategory = ref('');
 const searchDate = ref('');
 const searchTravelers = ref('1');
+
+const todayStr = computed(() => new Date().toISOString().split('T')[0]);
+
+const goSearch = () => {
+  const params = new URLSearchParams();
+  if (searchCategory.value) params.set('type', searchCategory.value);
+  if (searchDate.value) params.set('date', searchDate.value);
+  const q = params.toString();
+  router.push(q ? `/trips?${q}` : '/trips');
+};
 
 const statItems = ref([
   { icon: 'groups', value: '1,200+', label: 'นักเดินทางที่ไว้ใจเรา' },
