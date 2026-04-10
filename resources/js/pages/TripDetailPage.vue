@@ -425,7 +425,7 @@
                     <p class="text-gray-500 font-medium text-sm mt-1">กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
                   </div>
 
-                  <div v-else class="space-y-2 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                  <div v-else class="space-y-2">
                     <button
                       v-for="s in schedules"
                       :key="s.id"
