@@ -16,26 +16,25 @@
           <div class="flex items-center gap-1 mr-4 h-full">
             <template v-for="link in navLinks" :key="link.label">
               <!-- Dropdown Menu -->
-              <div v-if="link.children" class="relative group h-full flex items-center">
+              <div v-if="link.children" ref="navDropdownRef" class="relative h-full flex items-center">
                 <div 
                   class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 cursor-pointer"
                   :class="{ 'text-primary bg-sand': isAboutActive }"
+                  @click.stop="navDropdownOpen = !navDropdownOpen"
                 >
                   <span class="material-symbols-rounded text-[18px] font-variation-settings-'FILL'-0">{{ link.icon }}</span>
                   {{ link.label }}
-                  <span class="material-symbols-rounded text-[16px] transition-transform duration-300 group-hover:rotate-180">expand_more</span>
+                  <span class="material-symbols-rounded text-[16px] transition-transform duration-300" :class="{ 'rotate-180': navDropdownOpen }">expand_more</span>
                 </div>
-                
-                <!-- Dropdown Overlay to Bridge Gap -->
-                <div class="absolute top-full left-0 w-full h-2 hidden group-hover:block"></div>
 
                 <!-- Dropdown List -->
-                <div class="absolute top-[calc(100%-8px)] left-0 w-64 pt-2 hidden group-hover:block transition-all duration-300 transform origin-top-left z-[60] animation-scale-in">
+                <div v-if="navDropdownOpen" class="absolute top-full left-0 w-64 pt-2 transition-all duration-300 transform origin-top-left z-[60] animation-scale-in">
                   <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden py-2.5">
                     <router-link 
                       v-for="child in link.children" 
                       :key="child.to" 
                       :to="child.to"
+                      @click="navDropdownOpen = false"
                       class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 border-l-4 border-transparent hover:border-primary"
                       :class="{ 'text-primary bg-sand border-primary': router.currentRoute.value.path === child.to }"
                     >
@@ -60,8 +59,8 @@
 
           <template v-if="auth.isLoggedIn">
             <!-- User Menu Dropdown -->
-            <div class="relative group h-full flex items-center ml-2">
-              <div class="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-sand/60 border border-sand-dark/60 hover:bg-sand transition-colors cursor-pointer">
+            <div ref="userDropdownRef" class="relative h-full flex items-center ml-2">
+              <div class="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-sand/60 border border-sand-dark/60 hover:bg-sand transition-colors cursor-pointer" @click.stop="userDropdownOpen = !userDropdownOpen">
                 <div class="relative">
                   <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm overflow-hidden border border-white/50">
                     <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
@@ -73,14 +72,11 @@
                   <span class="text-[13px] font-bold text-text-dark leading-tight">{{ auth.userName }}</span>
                   <span class="text-[10px] font-bold text-primary uppercase tracking-tighter">{{ isAdmin ? 'ทีมงาน / แอดมิน' : 'สมาชิกลุยเลเขา' }}</span>
                 </div>
-                <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300 group-hover:rotate-180">expand_more</span>
+                <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
               </div>
 
-              <!-- Bridge Gap -->
-              <div class="absolute top-full right-0 w-full h-2 hidden group-hover:block"></div>
-
               <!-- Dropdown List -->
-              <div class="absolute top-[calc(100%-8px)] right-0 w-72 pt-2 hidden group-hover:block transition-all duration-300 transform origin-top-right z-[60] animation-scale-in">
+              <div v-if="userDropdownOpen" class="absolute top-full right-0 w-72 pt-2 transition-all duration-300 transform origin-top-right z-[60] animation-scale-in">
                 <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
                   
                   <!-- Profile Header (Mobile style but subtle for desktop) -->
@@ -95,7 +91,7 @@
                 </div>
 
                 <!-- Profile Link -->
-                <router-link to="/profile" class="flex items-center gap-3.5 px-5 py-3.5 bg-sand/10 hover:bg-sand border-b border-sand-dark/40 text-[13px] font-bold text-primary transition-all">
+                <router-link to="/profile" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3.5 bg-sand/10 hover:bg-sand border-b border-sand-dark/40 text-[13px] font-bold text-primary transition-all">
                   <span class="material-symbols-rounded text-[20px]">account_circle</span>
                   จัดการโปรไฟล์ / ข้อมูลส่วนตัว
                 </router-link>
@@ -103,12 +99,12 @@
 
                   <!-- Menu Items -->
                   <div class="py-2">
-                    <router-link v-if="isAdmin" to="/admin" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                    <router-link v-if="isAdmin" to="/admin" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
                       <span class="material-symbols-rounded text-[20px] text-amber-600">admin_panel_settings</span>
                       Admin Dashboard
                     </router-link>
 
-                    <router-link to="/notifications" class="flex items-center justify-between px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                    <router-link to="/notifications" @click="userDropdownOpen = false" class="flex items-center justify-between px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
                       <div class="flex items-center gap-3.5">
                         <span class="material-symbols-rounded text-[20px] text-teal-600">notifications</span>
                         การแจ้งเตือน
@@ -120,17 +116,17 @@
 
                     <div class="h-px bg-sand-dark/40 mx-4 my-1"></div>
 
-                    <router-link to="/my-bookings" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                    <router-link to="/my-bookings" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
                       <span class="material-symbols-rounded text-[20px] text-blue-600">confirmation_number</span>
                       การจองของฉัน
                     </router-link>
 
-                    <router-link to="/my-reviews" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                    <router-link to="/my-reviews" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
                       <span class="material-symbols-rounded text-[20px] text-purple-600">reviews</span>
                       รีวิวของฉัน
                     </router-link>
 
-                    <router-link to="/loyalty" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                    <router-link to="/loyalty" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
                       <span class="material-symbols-rounded text-[20px] text-amber-500">stars</span>
                       แต้มสะสมลุยเลเขา
                     </router-link>
@@ -328,6 +324,21 @@ const auth = useAuthStore();
 const router = useRouter();
 const mobileOpen = ref(false);
 const unreadNotifications = ref(0);
+const navDropdownOpen = ref(false);
+const userDropdownOpen = ref(false);
+const navDropdownRef = ref(null);
+const userDropdownRef = ref(null);
+
+function handleClickOutside(e) {
+  const navEl = navDropdownRef.value?.$el ?? navDropdownRef.value;
+  const userEl = userDropdownRef.value?.$el ?? userDropdownRef.value;
+  if (navEl && !navEl.contains(e.target)) {
+    navDropdownOpen.value = false;
+  }
+  if (userEl && !userEl.contains(e.target)) {
+    userDropdownOpen.value = false;
+  }
+}
 
 async function fetchUnreadCount() {
   if (!auth.isLoggedIn) return;
@@ -341,8 +352,14 @@ let pollInterval = null;
 onMounted(() => {
   fetchUnreadCount();
   pollInterval = setInterval(fetchUnreadCount, 60000);
+  document.addEventListener('click', handleClickOutside);
+  document.addEventListener('touchstart', handleClickOutside);
 });
-onUnmounted(() => clearInterval(pollInterval));
+onUnmounted(() => {
+  clearInterval(pollInterval);
+  document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener('touchstart', handleClickOutside);
+});
 
 const navLinks = [
   { to: '/', icon: 'home', label: 'หน้าแรก' },
