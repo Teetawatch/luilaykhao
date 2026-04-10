@@ -168,7 +168,8 @@ async function handleLogin() {
 
 function loginWithSocial(provider) {
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  window.location.href = `${apiUrl}/api/v1/auth/${provider}/redirect`;
+  const baseUrl = apiUrl.replace(/\/api\/v1$/, '');
+  window.location.href = `${baseUrl}/api/v1/auth/${provider}/redirect`;
 }
 </script>
 
@@ -181,7 +182,7 @@ function loginWithSocial(provider) {
 @keyframes shake-x {
   0%, 100% { transform: translateX(0); }
   10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
+ ๅ 20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
 .animate-fade-in {
