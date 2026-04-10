@@ -427,7 +427,7 @@
 
                   <div v-else class="space-y-2">
                     <button
-                      v-for="s in schedules"
+                      v-for="s in showAllSchedules ? schedules : schedules.slice(0, 5)"
                       :key="s.id"
                       @click="selectSchedule(s)"
                       class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
@@ -490,6 +490,14 @@
                           <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
                         </div>
                       </div>
+                    </button>
+
+                    <!-- Show more / less -->
+                    <button v-if="schedules.length > 5"
+                      @click="showAllSchedules = !showAllSchedules"
+                      class="w-full py-2.5 rounded-[1.25rem] border-2 border-dashed border-gray-200 text-sm font-bold text-gray-500 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2">
+                      <span class="material-symbols-rounded text-[18px]">{{ showAllSchedules ? 'expand_less' : 'expand_more' }}</span>
+                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${schedules.length} รอบ` }}
                     </button>
                   </div>
                 </div>
@@ -727,6 +735,7 @@ import api from '../lib/axios';
 const route = useRoute();
 const trip = ref(null);
 const schedules = ref([]);
+const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);
 const selectedPickup = ref(null);
 const loading = ref(true);
