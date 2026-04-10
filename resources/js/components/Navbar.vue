@@ -330,8 +330,8 @@ const navDropdownRef = ref(null);
 const userDropdownRef = ref(null);
 
 function handleClickOutside(e) {
-  const navEl = navDropdownRef.value?.$el ?? navDropdownRef.value;
-  const userEl = userDropdownRef.value?.$el ?? userDropdownRef.value;
+  const navEl = navDropdownRef.value;
+  const userEl = userDropdownRef.value;
   if (navEl && !navEl.contains(e.target)) {
     navDropdownOpen.value = false;
   }
