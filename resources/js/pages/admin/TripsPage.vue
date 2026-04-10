@@ -535,9 +535,7 @@ const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await api.post('/admin/upload-image', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/admin/upload-image', formData);
 
     form.cover_image = res.data.data.url;
     imagePreview.value = null; // Use server URL now
@@ -589,9 +587,7 @@ const handleGallerySelect = async (event) => {
     const uploadPromises = validFiles.map(async (file) => {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await api.post('/admin/upload-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.post('/admin/upload-image', formData);
       return res.data.data.url;
     });
 

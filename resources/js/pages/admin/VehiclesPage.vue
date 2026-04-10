@@ -499,9 +499,7 @@ const handleMediaUpload = async (event, type) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await api.post('/admin/upload-image', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/admin/upload-image', formData);
 
     if (type === 'driver') form.driver_photo = res.data.data.url;
     else if (type === 'video') form.interior_video = res.data.data.url;
@@ -542,9 +540,7 @@ const handleGalleryUpload = async (files) => {
       formData.append('file', file);
 
       try {
-        const res = await api.post('/admin/upload-image', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        const res = await api.post('/admin/upload-image', formData);
         form.images.push(res.data.data.url);
         successCount++;
       } catch (innerError) {
