@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || '') + '/api/v1',
+  // แก้บรรทัดนี้: ให้ใช้ค่าจาก .env ตรงๆ ไม่ต้องบวกเพิ่ม
+  baseURL: import.meta.env.VITE_API_URL || '/api/v1', 
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
