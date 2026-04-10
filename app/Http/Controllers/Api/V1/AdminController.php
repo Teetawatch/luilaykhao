@@ -23,6 +23,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AdminController extends Controller
@@ -626,10 +627,8 @@ class AdminController extends Controller
         $file = $request->file('file');
         $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
 
-        // Move to public/images directory (keep images for now or use media)
-        $file->move(public_path('images'), $filename);
-
-        $url = '/images/' . $filename;
+        $path = $file->storeAs('media', $filename, 'public');
+        $url = Storage::disk('public')->url($path);
 
         return $this->success([
             'url' => $url,
