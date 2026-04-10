@@ -588,7 +588,9 @@
           <div v-if="schedule.vehicle" class="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
 
             <!-- Image Carousel -->
-            <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group">
+            <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group"
+              @touchstart="vehicleTouchStart"
+              @touchend="vehicleTouchEnd">
               <div class="overflow-hidden" style="aspect-ratio:16/9;">
                 <img
                   :src="schedule.vehicle.images[vehicleImageIndex]"
@@ -597,25 +599,27 @@
                 />
               </div>
 
-              <!-- Prev / Next arrows -->
+              <!-- Prev / Next arrows — always visible on touch, hover-only on desktop -->
               <button v-if="schedule.vehicle.images.length > 1"
                 @click="vehicleImageIndex = (vehicleImageIndex - 1 + schedule.vehicle.images.length) % schedule.vehicle.images.length"
-                class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0">
-                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_left</span>
+                class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all
+                  opacity-100 md:opacity-0 md:group-hover:opacity-100 md:-translate-x-2 md:group-hover:translate-x-0">
+                <span class="material-symbols-rounded text-[22px] md:text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_left</span>
               </button>
               <button v-if="schedule.vehicle.images.length > 1"
                 @click="vehicleImageIndex = (vehicleImageIndex + 1) % schedule.vehicle.images.length"
-                class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0">
-                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_right</span>
+                class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all
+                  opacity-100 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0">
+                <span class="material-symbols-rounded text-[22px] md:text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_right</span>
               </button>
 
               <!-- Dot indicators -->
-              <div v-if="schedule.vehicle.images.length > 1" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/20 backdrop-blur-sm px-2 py-1.5 rounded-full">
+              <div v-if="schedule.vehicle.images.length > 1" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/20 backdrop-blur-sm px-2.5 py-1.5 rounded-full">
                 <button
                   v-for="(_, i) in schedule.vehicle.images" :key="i"
                   @click="vehicleImageIndex = i"
-                  class="w-1.5 h-1.5 rounded-full transition-all"
-                  :class="vehicleImageIndex === i ? 'bg-white scale-125 w-3' : 'bg-white/50 hover:bg-white/80'">
+                  class="rounded-full transition-all touch-manipulation"
+                  :class="vehicleImageIndex === i ? 'bg-white w-4 h-2' : 'bg-white/50 hover:bg-white/80 w-2 h-2'">
                 </button>
               </div>
 
@@ -744,7 +748,23 @@ const lockingSeats = ref(false);
 const seatError = ref('');
 const bookingLoading = ref(false);
 const vehicleImageIndex = ref(0);
+const vehicleTouchStartX = ref(0);
 const bookingError = ref('');
+
+const vehicleTouchStart = (e) => {
+  vehicleTouchStartX.value = e.touches[0].clientX;
+};
+const vehicleTouchEnd = (e) => {
+  const diff = vehicleTouchStartX.value - e.changedTouches[0].clientX;
+  const images = schedule.value?.vehicle?.images;
+  if (!images || images.length <= 1) return;
+  if (Math.abs(diff) < 40) return;
+  if (diff > 0) {
+    vehicleImageIndex.value = (vehicleImageIndex.value + 1) % images.length;
+  } else {
+    vehicleImageIndex.value = (vehicleImageIndex.value - 1 + images.length) % images.length;
+  }
+};
 const passengerCount = ref(1);
 const isGroup = ref(false);
 const groupName = ref('');
