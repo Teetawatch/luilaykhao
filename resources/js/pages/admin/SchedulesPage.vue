@@ -5,9 +5,14 @@
         <h1 class="page-title"><i class="fas fa-calendar-alt"></i> รอบเดินทาง</h1>
         <p class="page-subtitle">จัดการรอบเดินทางและตารางวันเดินทาง</p>
       </div>
-      <button class="btn-primary" @click="openForm()">
-        <i class="fas fa-plus"></i> เพิ่มรอบใหม่
-      </button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-secondary" @click="openBatchForm()">
+          <i class="fas fa-layer-group"></i> สร้างหลายรอบพร้อมกัน
+        </button>
+        <button class="btn-primary" @click="openForm()">
+          <i class="fas fa-plus"></i> เพิ่มรอบใหม่
+        </button>
+      </div>
     </div>
 
     <!-- Filters -->
