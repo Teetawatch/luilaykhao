@@ -63,9 +63,10 @@
             </div>
           </section>
 
+          <template v-if="tripsStore.filters.type === 'trekking'">
           <hr class="border-gray-100" />
 
-          <!-- Difficulty -->
+          <!-- Difficulty (trekking only) -->
           <section class="animate-fade-in" style="animation-delay: 0.3s">
             <h3 class="text-sm font-extrabold text-[var(--color-text-dark)] mb-4 flex items-center gap-2">
               <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">terrain</span>
@@ -91,6 +92,7 @@
               </label>
             </div>
           </section>
+          </template>
 
           <!-- Actions -->
           <div class="pt-4 flex flex-col gap-3 animate-fade-in" style="animation-delay: 0.4s">
@@ -106,28 +108,6 @@
               ล้างตัวกรอง
             </button>
           </div>
-
-          <!-- Promo Card -->
-          <div class="mt-8 p-6 rounded-[1.5rem] bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-light)] overflow-hidden relative group animate-fade-in shadow-xl"
-            style="animation-delay: 0.5s">
-            <div class="absolute -top-12 -right-12 w-40 h-40 bg-[var(--color-gold)]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-[var(--color-accent-light)]/20 rounded-full blur-2xl"></div>
-            
-            <div class="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-white text-xs font-bold mb-4 border border-white/10">
-              <span class="material-symbols-rounded text-[#FFB020] text-[16px]" style="font-variation-settings:'FILL' 1">local_fire_department</span>
-              HOT DEAL
-            </div>
-            
-            <h4 class="text-xl font-extrabold text-white mb-2 relative z-10 leading-tight">
-              ดีลพิเศษ<br/>รับซัมเมอร์
-            </h4>
-            <p class="text-sm font-medium text-white/80 mb-5 relative z-10 leading-relaxed">
-              จองทริปดำน้ำหมู่เกาะสุรินทร์วันนี้ รับส่วนลดทันที 15%
-            </p>
-            <router-link to="/trips" class="inline-flex items-center justify-center w-full bg-white text-[var(--color-primary)] py-3 rounded-xl text-sm font-extrabold group-hover:bg-[var(--color-accent-light)] group-hover:text-white transition-colors duration-300 cursor-pointer">
-              รับสิทธิ์เลย
-            </router-link>
-          </div>
         </div>
       </aside>
 
@@ -140,9 +120,16 @@
           </p>
           <div class="flex gap-3 items-center">
             <span class="text-sm font-bold text-[var(--color-text-muted)]">เรียงโดย:</span>
-            <div class="bg-white px-5 py-2.5 rounded-full shadow-sm border border-gray-100 flex items-center gap-2 cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors text-sm font-bold text-[var(--color-text-dark)] group">
-              ทริปยอดนิยม
-              <span class="material-symbols-rounded text-[20px] text-gray-400 group-hover:text-[var(--color-accent)] transition-colors">keyboard_arrow_down</span>
+            <div class="relative">
+              <select
+                v-model="sortOrder"
+                class="appearance-none bg-white pl-5 pr-10 py-2.5 rounded-full shadow-sm border border-gray-100 text-sm font-bold text-[var(--color-text-dark)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+              >
+                <option value="popular">ทริปยอดนิยม</option>
+                <option value="price_asc">ราคาจากน้อยไปมาก</option>
+                <option value="price_desc">ราคาจากมากไปน้อย</option>
+              </select>
+              <span class="material-symbols-rounded text-[20px] text-gray-400 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">keyboard_arrow_down</span>
             </div>
           </div>
         </div>
@@ -173,7 +160,7 @@
         <div v-else>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
             <TripCard
-              v-for="(trip, index) in tripsStore.trips"
+              v-for="(trip, index) in sortedTrips"
               :key="trip.id"
               :trip="trip"
               class="animate-fade-in-up"
@@ -223,7 +210,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import TripCard from '../components/TripCard.vue';
 import { useTripsStore } from '../stores/trips';
@@ -244,9 +231,22 @@ const difficulties = [
   { value: 'hard', label: 'ระดับท้าทาย (Hard)' },
 ];
 
+const sortOrder = ref('popular');
+
 const hasFilters = computed(() =>
   tripsStore.filters.type || tripsStore.filters.difficulty || tripsStore.filters.search
 );
+
+const sortedTrips = computed(() => {
+  const list = [...tripsStore.trips];
+  if (sortOrder.value === 'price_asc') {
+    return list.sort((a, b) => Number(a.price_per_person) - Number(b.price_per_person));
+  }
+  if (sortOrder.value === 'price_desc') {
+    return list.sort((a, b) => Number(b.price_per_person) - Number(a.price_per_person));
+  }
+  return list;
+});
 
 const paginationPages = computed(() => {
   if (!tripsStore.meta) return [];
@@ -279,6 +279,7 @@ function toggleDifficulty(value) {
 
 function clearAndFetch() {
   tripsStore.clearFilters();
+  sortOrder.value = 'popular';
   tripsStore.fetchTrips();
 }
 
