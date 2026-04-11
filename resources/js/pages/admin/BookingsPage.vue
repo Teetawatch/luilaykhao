@@ -147,9 +147,30 @@
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ทริป</label>
               <div class="text-sm font-medium text-text-dark">{{ detailBooking.schedule?.trip?.title || '-' }}</div>
             </div>
+            <div v-if="detailBooking.pickup_region" class="space-y-1">
+              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ภูมิภาคขึ้นรถ</label>
+              <div class="text-sm font-medium text-text-dark flex flex-col gap-1">
+                <template v-for="pt in (detailBooking.schedule?.pickup_points || [])" :key="pt.id">
+                  <div v-if="pt.region === detailBooking.pickup_region" class="flex flex-col gap-0.5">
+                    <span class="inline-flex items-center gap-1.5 font-bold text-accent">
+                      <i class="fas fa-map-marker-alt text-[11px]"></i>
+                      {{ pt.region_label }}
+                    </span>
+                    <span class="text-xs text-text-muted">{{ pt.pickup_location }}<span v-if="pt.notes"> · {{ pt.notes }}</span></span>
+                  </div>
+                </template>
+                <span v-if="!(detailBooking.schedule?.pickup_points || []).some(pt => pt.region === detailBooking.pickup_region)" class="text-text-muted">
+                  {{ detailBooking.pickup_region }}
+                </span>
+              </div>
+            </div>
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">จำนวนเงินรวม</label>
               <div class="text-sm font-bold text-text-dark">{{ formatMoney(detailBooking.total_amount) }}</div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">วันเดินทาง</label>
+              <div class="text-sm font-medium text-text-dark">{{ detailBooking.schedule?.departure_date || '-' }}</div>
             </div>
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ชำระแล้ว</label>

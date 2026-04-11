@@ -124,6 +124,19 @@
               <span class="status-badge" :class="`status-${selectedEvent.status}`">{{ statusLabels[selectedEvent.status] }}</span>
             </div>
           </div>
+
+          <!-- Pickup Points -->
+          <div v-if="selectedEvent.pickup_points?.length" class="pickup-summary">
+            <div class="pickup-summary-title"><i class="fas fa-map-marker-alt"></i> จุดขึ้นรถ</div>
+            <div class="pickup-summary-list">
+              <div v-for="pt in selectedEvent.pickup_points" :key="pt.id" class="pickup-summary-item">
+                <span class="pickup-summary-region">{{ pt.region_label }}</span>
+                <span class="pickup-summary-loc">{{ pt.pickup_location }}<span v-if="pt.notes" class="pickup-summary-notes"> · {{ pt.notes }}</span></span>
+                <span class="pickup-summary-price">฿{{ Number(pt.price).toLocaleString() }}</span>
+              </div>
+            </div>
+          </div>
+
           <div class="modal-footer">
             <router-link :to="`/admin/schedules`" class="btn-primary">
               <i class="fas fa-edit"></i> จัดการรอบเดินทาง
@@ -490,6 +503,67 @@ onMounted(() => {
 
 .seats-avail {
   color: #2d7a4f;
+}
+
+.pickup-summary {
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pickup-summary-title {
+  padding: 8px 12px;
+  background: #f0faf4;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2d7a4f;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pickup-summary-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.pickup-summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+}
+
+.pickup-summary-item:last-child {
+  border-bottom: none;
+}
+
+.pickup-summary-region {
+  font-weight: 700;
+  color: #2d7a4f;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+
+.pickup-summary-loc {
+  flex: 1;
+  color: #374151;
+  font-size: 12px;
+}
+
+.pickup-summary-notes {
+  color: #9ca3af;
+}
+
+.pickup-summary-price {
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  font-size: 12px;
 }
 
 @media (max-width: 768px) {

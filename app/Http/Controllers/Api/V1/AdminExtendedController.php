@@ -26,7 +26,7 @@ class AdminExtendedController extends Controller
 
     public function calendarSchedules(Request $request): JsonResponse
     {
-        $query = TripSchedule::with(['trip', 'vehicle', 'bookings']);
+        $query = TripSchedule::with(['trip', 'vehicle', 'bookings', 'pickupPoints']);
 
         if ($request->filled('start')) {
             $query->where('departure_date', '>=', $request->start);
@@ -61,6 +61,15 @@ class AdminExtendedController extends Controller
                 'pending_bookings' => $pendingBookings,
                 'status' => $s->status,
                 'price' => $s->price_override ?? $s->trip->price_per_person,
+                'pickup_points' => $s->pickupPoints->map(fn($pt) => [
+                    'id' => $pt->id,
+                    'region' => $pt->region,
+                    'region_label' => $pt->region_label,
+                    'pickup_location' => $pt->pickup_location,
+                    'price' => (float) $pt->price,
+                    'notes' => $pt->notes,
+                    'map_url' => $pt->map_url,
+                ])->values()->all(),
             ];
         });
 

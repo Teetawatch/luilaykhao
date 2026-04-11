@@ -239,7 +239,7 @@ class AdminController extends Controller
 
     public function bookings(Request $request): JsonResponse
     {
-        $query = Booking::with(['schedule.trip', 'user', 'passengers', 'seats']);
+        $query = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -262,7 +262,7 @@ class AdminController extends Controller
 
     public function showBooking(string $ref): JsonResponse
     {
-        $booking = Booking::with(['schedule.trip', 'user', 'passengers', 'seats'])
+        $booking = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats'])
             ->where('booking_ref', $ref)
             ->firstOrFail();
 
