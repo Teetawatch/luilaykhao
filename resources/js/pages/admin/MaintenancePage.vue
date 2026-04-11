@@ -122,7 +122,7 @@
     </div>
 
     <!-- Form Modal -->
-    <div class="modal-overlay" v-if="showForm" @click.self="showForm = false">
+    <div class="modal-overlay" v-if="showForm">
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขรายการบำรุงรักษา' : 'เพิ่มรายการบำรุงรักษา' }}</h2>
@@ -201,7 +201,7 @@
     </div>
 
     <!-- Delete Confirm -->
-    <div class="modal-overlay" v-if="showDeleteConfirm" @click.self="showDeleteConfirm = false">
+    <div class="modal-overlay" v-if="showDeleteConfirm">
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>

@@ -118,7 +118,7 @@
     </div>
 
     <!-- Detail Modal -->
-    <div v-if="showDetail" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity" @click.self="showDetail = false">
+    <div v-if="showDetail" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity">
       <div class="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-sand-dark/20 animate-in fade-in zoom-in-95 duration-200">
         <div class="px-6 py-5 border-b border-sand-dark/50 flex items-center justify-between bg-sand/10">
           <h2 class="font-anuphan text-xl font-bold text-text-dark flex items-center gap-2">
@@ -244,7 +244,7 @@
     </div>
 
     <!-- Status Change Modal -->
-    <div v-if="showStatusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity" @click.self="showStatusModal = false">
+    <div v-if="showStatusModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity">
       <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col border border-sand-dark/20 animate-in fade-in zoom-in-95 duration-200">
         <div class="px-6 py-5 border-b border-sand-dark/50 flex items-center justify-between bg-sand/10">
           <h2 class="font-anuphan text-xl font-bold text-text-dark flex items-center gap-2">

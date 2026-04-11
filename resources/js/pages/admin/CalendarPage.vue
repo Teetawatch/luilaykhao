@@ -75,7 +75,7 @@
     </div>
 
     <!-- Detail Modal -->
-    <div class="modal-overlay" v-if="selectedEvent" @click.self="selectedEvent = null">
+    <div class="modal-overlay" v-if="selectedEvent">
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ selectedEvent.trip_title }}</h2>

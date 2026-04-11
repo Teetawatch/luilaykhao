@@ -122,7 +122,7 @@
     </div>
 
     <!-- Modal -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
+    <div v-if="showModal" class="modal-overlay">
       <div class="modal-box">
         <div class="modal-header">
           <h3>{{ editingId ? 'แก้ไขของรางวัล' : 'เพิ่มของรางวัล' }}</h3>

@@ -107,7 +107,7 @@
     </div>
 
     <!-- Modal Form -->
-    <div class="modal-overlay" v-if="showForm" @click.self="showForm = false">
+    <div class="modal-overlay" v-if="showForm">
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ editingTrip ? 'แก้ไขทริป' : 'เพิ่มทริปใหม่' }}</h2>
@@ -402,7 +402,7 @@
     </div>
 
     <!-- Delete Confirm Modal -->
-    <div class="modal-overlay" v-if="showDeleteConfirm" @click.self="showDeleteConfirm = false">
+    <div class="modal-overlay" v-if="showDeleteConfirm">
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>

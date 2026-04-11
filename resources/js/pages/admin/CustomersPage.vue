@@ -79,7 +79,7 @@
     </div>
 
     <!-- Customer Detail Modal -->
-    <div class="modal-overlay" v-if="showDetail" @click.self="showDetail = false">
+    <div class="modal-overlay" v-if="showDetail">
       <div class="modal-card modal-lg">
         <div class="modal-header">
           <h2><i class="fas fa-user"></i> {{ detail?.customer?.name }}</h2>

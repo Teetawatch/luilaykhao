@@ -103,7 +103,7 @@
     </div>
 
     <!-- Form Modal -->
-    <div class="modal-overlay" v-if="showForm" @click.self="showForm = false">
+    <div class="modal-overlay" v-if="showForm">
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขรอบเดินทาง' : 'เพิ่มรอบใหม่' }}</h2>
@@ -171,7 +171,7 @@
     </div>
 
     <!-- Pickup Points Manager Modal -->
-    <div class="modal-overlay" v-if="showPickupManager" @click.self="showPickupManager = false">
+    <div class="modal-overlay" v-if="showPickupManager">
       <div class="modal-card modal-lg">
         <div class="modal-header">
           <div>
@@ -269,7 +269,7 @@
     </div>
 
     <!-- Batch Create Modal -->
-    <div class="modal-overlay" v-if="showBatchForm" @click.self="showBatchForm = false">
+    <div class="modal-overlay" v-if="showBatchForm">
       <div class="modal-card modal-xl">
         <div class="modal-header">
           <div>
@@ -389,7 +389,7 @@
     </div>
 
     <!-- Copy Pickup Modal -->
-    <div class="modal-overlay" v-if="showCopyModal" @click.self="showCopyModal = false">
+    <div class="modal-overlay" v-if="showCopyModal">
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2><i class="fas fa-copy" style="color:#2d7a4f;margin-right:8px;"></i>คัดลอกจุดรับ</h2>
@@ -417,7 +417,7 @@
     </div>
 
     <!-- Delete Confirm -->
-    <div class="modal-overlay" v-if="showDeleteConfirm" @click.self="showDeleteConfirm = false">
+    <div class="modal-overlay" v-if="showDeleteConfirm">
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>
