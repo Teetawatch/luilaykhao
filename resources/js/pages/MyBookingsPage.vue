@@ -81,8 +81,8 @@
           <div class="md:w-1/3 h-56 md:h-auto relative overflow-hidden shrink-0"
             :class="{ 'grayscale opacity-75': b.status === 'cancelled' || b.status === 'refunded' }">
             <img
-              v-if="b.schedule?.trip?.image_url"
-              :src="b.schedule.trip.image_url"
+              v-if="b.schedule?.trip?.cover_image || b.schedule?.trip?.thumbnail_url"
+              :src="b.schedule.trip.cover_image || b.schedule.trip.thumbnail_url"
               :alt="b.schedule?.trip?.title"
               class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
             <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -118,7 +118,7 @@
                   <span class="font-medium text-gray-900">{{ formatDate(b.schedule?.departure_date) }}</span>
                 </div>
                 <div class="text-right">
-                  <span class="text-xs text-gray-500 font-bold block mb-0.5 uppercase tracking-wider">REF NUMBER</span>
+                  <span class="text-xs text-gray-500 font-bold block mb-0.5 uppercase tracking-wider">หมายเลขการจอง</span>
                   <span class="font-mono text-gray-700 font-medium">{{ b.booking_ref }}</span>
                 </div>
               </div>
