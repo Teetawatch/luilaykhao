@@ -87,8 +87,7 @@
                 เบอร์พร้อมเพย์: <span class="font-semibold text-[#006565]">062-612-6006</span>
               </p>
               <button v-if="qrGenerated" @click="saveQR"
-                class="flex items-center gap-2 px-5 py-2.5 bg-[#006565] text-white text-sm font-semibold rounded-full hover:bg-[#004f4f] active:scale-95 transition-all shadow-md shadow-[#006565]/20">
-                <span class="material-symbols-outlined text-[18px]">download</span>
+                class="flex items-center gap-2 px-5 py-2.5 bg-[#006565] text-white text-m font-semibold rounded-full hover:bg-[#004f4f] active:scale-95 transition-all shadow-md shadow-[#006565]/20">
                 บันทึก QR Code
               </button>
             </div>

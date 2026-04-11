@@ -171,8 +171,7 @@
           <p class="text-base font-mono font-bold text-teal-700 mb-2 relative z-10 bg-teal-50 px-4 py-1.5 rounded-lg border border-teal-100">{{ booking.qr_code }}</p>
           <p class="text-sm font-medium text-gray-500 mb-4 relative z-10">แสดง QR Code นี้เมื่อเช็คอินที่จุดนัดพบ</p>
           <button @click="saveQR"
-            class="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-full hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-600/20 mb-6 relative z-10">
-            <span class="material-symbols-outlined text-[18px]">download</span>
+            class="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-m font-semibold rounded-full hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-600/20 mb-6 relative z-10">
             บันทึกตั๋ว QR Code สำหรับเช็คอิน
           </button>
           
