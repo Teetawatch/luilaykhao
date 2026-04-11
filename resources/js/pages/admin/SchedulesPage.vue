@@ -59,6 +59,9 @@
             <button class="btn-sm btn-secondary" @click="openForm({ trip_id: group.trip_id })" title="เพิ่มรอบเดียว">
               <i class="fas fa-plus"></i> เพิ่มรอบ
             </button>
+            <button class="btn-sm btn-danger-sm" @click="deleteTripGroup(group)" title="ลบทุกรอบในทริปนี้">
+              <i class="fas fa-trash"></i> ลบทั้งหมด
+            </button>
           </div>
         </div>
 
@@ -640,6 +643,17 @@ const openBatchForm = (presetTripId = '') => {
 
 const openBatchFormForTrip = (tripId) => openBatchForm(tripId);
 
+const deleteTripGroup = async (group) => {
+  const count = group.schedules.length;
+  if (!confirm(`ลบรอบเดินทางทั้งหมด ${count} รอบ ของ "${group.trip_title}" ใช่หรือไม่?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`)) return;
+  try {
+    await Promise.all(group.schedules.map(sch => admin.deleteSchedule(sch.id)));
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  }
+};
+
 const addDateRow = () => batchForm.dates.push({ departure_date: '', return_date: '' });
 const removeDateRow = (i) => { if (batchForm.dates.length > 1) batchForm.dates.splice(i, 1); };
 
@@ -985,6 +999,25 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.btn-danger-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  background: #fff;
+  color: #dc2626;
+}
+.btn-danger-sm:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
 }
 
 /* ── Inner schedule table ── */
