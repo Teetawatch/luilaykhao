@@ -895,10 +895,7 @@ async function createBooking() {
   const { isConfirmed } = await swal.confirm({
     title: 'ยืนยันการจอง?',
     text: `จำนวน ${passengers.value.length} ท่าน · ฿${totalAmount.value.toLocaleString()}`,
-    imageUrl: '/images/booking_confirm.png',
-    imageWidth: 200,
-    imageHeight: 180,
-    imageAlt: 'ยืนยันการจอง',
+    icon: 'question',
     confirmText: 'ยืนยันและชำระเงิน',
     cancelText: 'ยกเลิก',
   });
