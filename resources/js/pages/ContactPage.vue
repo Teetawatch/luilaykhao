@@ -58,7 +58,7 @@
                   </div>
                   <div>
                     <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">อีเมล</p>
-                    <a href="mailto:hello@luilaykhao.com" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">info@luilaykhao.com</a>
+                    <a href="mailto:hello@luilaykhao.com" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">luilaykhao.info@gmail.com</a>
                   </div>
                 </div>
 
@@ -161,7 +161,7 @@
 
     <!-- Map Section -->
     <section class="h-[450px] w-full bg-sand-dark overflow-hidden relative grayscale hover:grayscale-0 transition-all duration-700">
-       <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m14!1m1!2se!1m2!1s0x30e29f17666270b7:0x2287413697eb509!2z4LiB4Lij4Li44LiH4LmA4LiX4Lie4Lih4Lir4Liy4LiZ4LiE4Lij!5e0!3m2!1sth!2sth!4v1712215200000!5m2!1sth!2sth" 
+       <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1142.796759501285!2d100.58578633819413!3d13.667300090214399!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sth!2sth!4v1775908057144!5m2!1sth!2sth" 
         width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
     </section>
 
