@@ -78,7 +78,7 @@
             <div class="relative group cursor-default">
               <div class="absolute -inset-4 bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-gold)]/20 rounded-[2.5rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <img
-                src="/images/about.jpg"
+                src=""
                 alt="วิวทะเลสวย"
                 class="relative rounded-[2rem] shadow-2xl w-full object-cover aspect-[4/5] transition-transform duration-700 group-hover:scale-[1.02]"
               />

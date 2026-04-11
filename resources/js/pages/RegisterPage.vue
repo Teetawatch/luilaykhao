@@ -3,7 +3,7 @@
     <!-- Image Side -->
     <div class="hidden lg:flex lg:w-1/2 relative bg-sand-dark overflow-hidden">
       <div class="absolute inset-0 bg-black/40 z-10"></div>
-      <img src="/images/about.jpg" alt="Adventure" class="absolute inset-0 w-full h-full object-cover" />
+      <img src="/images/van_show.png" alt="Adventure" class="absolute inset-0 w-full h-full object-cover" />
       <div class="relative z-20 flex flex-col justify-center px-16 text-white h-full">
         <h1 class="font-anuphan text-5xl font-bold mb-6 leading-tight">
           เริ่มต้นการเดินทาง<br />ครั้งใหม่ไปกับเรา
