@@ -392,23 +392,62 @@
 
               <!-- Price Card -->
               <div class="bg-white p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-gray-100 relative overflow-hidden z-10">
-                <!-- Background decoration -->
-                <div class="absolute -right-16 -top-16 w-48 h-48 bg-[var(--color-sand)] rounded-full -z-10"></div>
-
                 <!-- Starting price -->
                 <div class="flex items-end gap-2 mb-2">
                   <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
                   <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold uppercase tracking-wider">/ ท่าน</span>
                 </div>
-                <p v-if="isTrekking && selectedSchedule?.pickup_points?.length" class="text-sm font-medium text-gray-400 mb-8">
-                  * ราคาขึ้นอยู่กับจุดรับส่งที่เลือก
+                <p v-if="isTrekking && regionOptions.length" class="text-sm font-medium text-gray-400 mb-8">
+                  * ราคาขึ้นอยู่กับภูมิภาคที่ขึ้นรถ
                 </p>
                 <div v-else class="mb-8"></div>
 
                 <hr class="border-gray-100 mb-8" />
 
-                <!-- ── Step 1: Schedule Selection ── -->
-                <div class="mb-8">
+                <!-- ── Step 1: Region Selection (Trekking only) ── -->
+                <div v-if="isTrekking" class="mb-8">
+                  <label class="flex items-center gap-2 text-sm font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider mb-4">
+                    <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">location_on</span>
+                    เลือกภูมิภาคที่จะขึ้นรถ
+                  </label>
+
+                  <div v-if="schedulesLoading" class="py-8 text-center bg-[var(--color-sand)] rounded-[1.5rem]">
+                    <div class="w-8 h-8 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin mx-auto mb-3"></div>
+                    <p class="text-[var(--color-text-dark)] font-bold text-sm">กำลังค้นหารอบเดินทาง...</p>
+                  </div>
+
+                  <div v-else-if="schedules.length === 0" class="bg-[var(--color-sand)] rounded-[1.5rem] p-6 text-center border border-gray-100">
+                    <span class="material-symbols-rounded text-gray-400 text-4xl mb-3 block">event_busy</span>
+                    <p class="text-[var(--color-text-dark)] font-bold text-base">ยังไม่มีรอบเดินทางที่เปิดจอง</p>
+                    <p class="text-gray-500 font-medium text-sm mt-1">กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
+                  </div>
+
+                  <div v-else-if="regionOptions.length === 0" class="bg-[var(--color-sand)] rounded-[1.5rem] p-4 text-center border border-gray-100 text-sm font-bold text-[var(--color-text-dark)]">
+                    <span class="material-symbols-rounded mr-1 align-middle text-[var(--color-accent)]">info</span> จุดรับผู้โดยสารจะแจ้งให้ทราบอีกครั้ง
+                  </div>
+
+                  <div v-else class="grid grid-cols-2 gap-2">
+                    <button
+                      v-for="r in regionOptions"
+                      :key="r.region"
+                      @click="selectRegion(r.region)"
+                      class="text-left border-2 rounded-[1.25rem] p-3.5 transition-all duration-200"
+                      :class="selectedRegion === r.region
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
+                        : 'border-gray-100 bg-white hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-sand)] hover:shadow-sm'"
+                    >
+                      <div class="flex items-center justify-between gap-1 mb-1.5">
+                        <span class="font-black text-sm text-[var(--color-text-dark)] leading-tight">{{ r.region_label }}</span>
+                        <span v-if="selectedRegion === r.region" class="material-symbols-rounded text-[var(--color-accent)] text-[18px]" style="font-variation-settings:'FILL' 1">check_circle</span>
+                      </div>
+                      <p class="text-[11px] font-black text-[var(--color-accent)]">เริ่ม ฿{{ r.min_price.toLocaleString() }}</p>
+                      <p class="text-[10px] text-gray-400 font-bold mt-0.5">{{ r.schedule_count }} รอบที่ว่าง</p>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- ── Step 1b: Schedule Selection (non-trekking) ── -->
+                <div v-if="!isTrekking" class="mb-8">
                   <label class="flex items-center gap-2 text-sm font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider mb-4">
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">calendar_month</span>
                     เลือกวันเดินทาง
@@ -435,7 +474,74 @@
                         ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                         : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm'"
                     >
-                      <!-- Row 1: Date + Seats badge (always shown) -->
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="min-w-0 flex items-center gap-3">
+                          <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
+                          <div>
+                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight">{{ formatDate(s.departure_date) }}</p>
+                            <p v-if="s.return_date !== s.departure_date" class="text-[var(--color-text-muted)] font-medium text-xs mt-0.5 flex items-center gap-1">
+                              ถึง {{ formatDate(s.return_date) }}
+                              <span class="inline-flex items-center gap-0.5 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-dark)]">
+                                <span class="material-symbols-rounded text-[11px]">schedule</span>
+                                {{ s.duration_days || trip.duration_days }} วัน
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
+                          :class="s.available_seats > 3
+                            ? 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20'
+                            : s.available_seats > 0
+                              ? 'bg-amber-50 text-amber-600 border-amber-200'
+                              : 'bg-red-50 text-red-600 border-red-200'"
+                        >
+                          {{ s.available_seats > 0 ? `ว่าง ${s.available_seats} ที่` : 'เต็มแล้ว' }}
+                        </span>
+                      </div>
+                      <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-rounded text-[14px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                          <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}</span>
+                        </div>
+                        <div v-if="s.license_plate" class="flex items-center gap-1.5">
+                          <span class="material-symbols-rounded text-[14px] text-gray-400">tag</span>
+                          <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-1.5 py-0.5 rounded">{{ s.license_plate }}</span>
+                        </div>
+                      </div>
+                    </button>
+                    <button v-if="schedules.length > 5"
+                      @click="showAllSchedules = !showAllSchedules"
+                      class="w-full py-2.5 rounded-[1.25rem] border-2 border-dashed border-gray-200 text-sm font-bold text-gray-500 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2">
+                      <span class="material-symbols-rounded text-[18px]">{{ showAllSchedules ? 'expand_less' : 'expand_more' }}</span>
+                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${schedules.length} รอบ` }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- ── Step 2 (Trekking): Date + Pickup for selected region ── -->
+                <div v-if="isTrekking && selectedRegion" class="mb-8 animate-fade-in">
+                  <label class="flex items-center gap-2 text-sm font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider mb-4">
+                    <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">calendar_month</span>
+                    เลือกวันเดินทาง
+                  </label>
+
+                  <div v-if="schedulesForRegion.length === 0" class="bg-[var(--color-sand)] rounded-[1.5rem] p-5 text-center border border-gray-100">
+                    <span class="material-symbols-rounded text-gray-400 text-3xl mb-2 block">event_busy</span>
+                    <p class="text-[var(--color-text-dark)] font-bold text-sm">ยังไม่มีรอบสำหรับภูมิภาคนี้</p>
+                  </div>
+
+                  <div v-else class="space-y-2">
+                    <button
+                      v-for="s in showAllSchedules ? schedulesForRegion : schedulesForRegion.slice(0, 5)"
+                      :key="s.id"
+                      @click="selectSchedule(s)"
+                      class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
+                      :class="selectedSchedule?.id === s.id
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
+                        : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm'"
+                    >
+                      <!-- Date + seats -->
                       <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0 flex items-center gap-3">
                           <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
@@ -462,20 +568,31 @@
                         </span>
                       </div>
 
-                      <!-- Row 2: Region prices for trekking (always shown) -->
-                      <div v-if="isTrekking && s.pickup_points?.length" class="mt-2 flex flex-wrap gap-1.5 pl-9">
-                        <span
-                          v-for="pt in s.pickup_points.slice(0,3)" :key="pt.id"
-                          class="text-[10px] px-2 py-0.5 rounded-md bg-[var(--color-sand)] text-[var(--color-text-dark)] font-bold border border-gray-200"
-                        >
-                          {{ pt.region_label }} <span class="text-[var(--color-accent)]">฿{{ Number(pt.price).toLocaleString() }}</span>
-                        </span>
-                        <span v-if="s.pickup_points.length > 3" class="text-[10px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 font-bold border border-gray-200">
-                          +{{ s.pickup_points.length - 3 }}
-                        </span>
+                      <!-- Pickup point for this region (always shown) -->
+                      <div v-if="(s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9">
+                        <template v-for="pt in s.pickup_points" :key="pt.id">
+                          <div v-if="pt.region === selectedRegion" class="text-xs text-[var(--color-text-dark)] font-bold flex items-start gap-1.5">
+                            <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5">pin_drop</span>
+                            <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
+                          </div>
+                        </template>
                       </div>
 
-                      <!-- Row 3: Transport info — only shown when selected -->
+                      <!-- Price for this region -->
+                      <div v-if="(s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-1.5 pl-9 flex items-center justify-between">
+                        <template v-for="pt in s.pickup_points" :key="'price-' + pt.id">
+                          <span v-if="pt.region === selectedRegion" class="text-[11px] font-black text-[var(--color-accent)]">฿{{ Number(pt.price).toLocaleString() }} / ท่าน</span>
+                        </template>
+                        <template v-for="pt in s.pickup_points" :key="'map-' + pt.id">
+                          <a v-if="pt.region === selectedRegion && pt.map_url" :href="pt.map_url" target="_blank"
+                            @click.stop
+                            class="text-[10px] text-[var(--color-primary)] hover:text-[var(--color-accent)] font-bold flex items-center gap-1 transition-colors">
+                            <span class="material-symbols-rounded text-[12px]">map</span> แผนที่
+                          </a>
+                        </template>
+                      </div>
+
+                      <!-- Transport info when selected -->
                       <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1 pl-9">
                         <div class="flex items-center gap-1.5">
                           <span class="material-symbols-rounded text-[14px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
@@ -492,70 +609,15 @@
                       </div>
                     </button>
 
-                    <!-- Show more / less -->
-                    <button v-if="schedules.length > 5"
+                    <button v-if="schedulesForRegion.length > 5"
                       @click="showAllSchedules = !showAllSchedules"
                       class="w-full py-2.5 rounded-[1.25rem] border-2 border-dashed border-gray-200 text-sm font-bold text-gray-500 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2">
                       <span class="material-symbols-rounded text-[18px]">{{ showAllSchedules ? 'expand_less' : 'expand_more' }}</span>
-                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${schedules.length} รอบ` }}
+                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${schedulesForRegion.length} รอบ` }}
                     </button>
                   </div>
                 </div>
 
-                <!-- ── Step 2 (Trekking): Region Picker ── -->
-                <div v-if="isTrekking && selectedSchedule?.pickup_points?.length" class="mb-8 animate-fade-in">
-                  <label class="flex items-center gap-2 text-sm font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider mb-4">
-                    <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">pin_drop</span>
-                    เลือกจุดขึ้นรถ
-                  </label>
-                  <div class="space-y-3">
-                    <button
-                      v-for="pt in selectedSchedule.pickup_points"
-                      :key="pt.id"
-                      @click="selectPickup(pt)"
-                      class="w-full text-left rounded-[1.25rem] border-2 p-4 transition-all duration-300"
-                      :class="selectedPickup?.id === pt.id
-                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                        : 'border-gray-100 hover:border-[var(--color-accent)]/40 bg-white hover:bg-[var(--color-sand)]'"
-                    >
-                      <div class="flex items-center justify-between gap-3">
-                        <div class="min-w-0">
-                          <div class="flex items-center gap-2 mb-2">
-                            <span class="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-md uppercase tracking-wider"
-                              :class="selectedPickup?.id === pt.id ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-primary)] text-white'">
-                              {{ pt.region_label }}
-                            </span>
-                          </div>
-                          <p class="text-sm text-[var(--color-text-dark)] font-bold flex items-start gap-1.5 leading-snug">
-                            <span class="material-symbols-rounded text-red-500 shrink-0 mt-0.5 text-[18px]">location_on</span>
-                            <span class="line-clamp-2">{{ pt.pickup_location }}</span>
-                          </p>
-                          <p v-if="pt.notes" class="text-xs text-[var(--color-text-muted)] font-medium mt-1.5 flex items-start gap-1.5">
-                            <span class="material-symbols-rounded shrink-0 mt-0.5 text-[#FFB020] text-[16px]">schedule</span>
-                            {{ pt.notes }}
-                          </p>
-                        </div>
-                        <div class="shrink-0 text-right">
-                          <p class="font-black text-xl"
-                            :class="selectedPickup?.id === pt.id ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-dark)]'">
-                            ฿{{ Number(pt.price).toLocaleString() }}
-                          </p>
-                          <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
-                            @click.stop
-                            class="text-xs text-[var(--color-primary)] hover:text-[var(--color-accent)] font-bold hover:underline flex items-center gap-1 justify-end mt-2 transition-colors">
-                            <span class="material-symbols-rounded text-[14px]">map</span> แผนที่
-                          </a>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- No pickup points yet for trekking -->
-                <div v-else-if="isTrekking && selectedSchedule && !selectedSchedule.pickup_points?.length"
-                  class="mb-8 p-4 bg-[var(--color-sand)] rounded-[1.25rem] text-sm text-[var(--color-text-dark)] font-bold text-center border border-gray-100">
-                  <span class="material-symbols-rounded mr-1 align-middle text-[var(--color-accent)]">info</span> จุดรับผู้โดยสารจะแจ้งให้ทราบอีกครั้ง
-                </div>
 
                 <!-- ── Price Summary ── -->
                 <div v-if="selectedSchedule" class="p-5 bg-[var(--color-sand)] rounded-[1.25rem] mb-8 space-y-3 stagger-in border border-gray-100">
@@ -583,7 +645,7 @@
                 <!-- ── Book Now ── -->
                 <div v-if="selectedSchedule">
                   <router-link
-                    v-if="!isTrekking || !selectedSchedule.pickup_points?.length || selectedPickup"
+                    v-if="!isTrekking || (selectedSchedule && selectedPickup)"
                     :to="`/booking/${selectedSchedule.id}`"
                     class="block text-center bg-[var(--color-primary)] text-white py-4 rounded-full font-extrabold text-lg hover:bg-[var(--color-accent)] transition-all duration-300 shadow-[0_10px_20px_rgba(13,43,30,0.2)] hover:shadow-[0_15px_30px_rgba(45,122,79,0.3)] hover:-translate-y-1"
                   >
@@ -591,7 +653,7 @@
                   </router-link>
                   <button v-else disabled
                     class="w-full py-4 rounded-full font-extrabold text-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center border border-gray-200">
-                    กรุณาเลือกจุดขึ้นรถ
+                    {{ !selectedRegion ? 'กรุณาเลือกภูมิภาค' : !selectedSchedule ? 'กรุณาเลือกวันเดินทาง' : 'กรุณาเลือกจุดขึ้นรถ' }}
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
@@ -599,7 +661,7 @@
                   </p>
                 </div>
                 <div v-else class="text-center py-4 bg-gray-50 rounded-[1.25rem] border border-dashed border-gray-300">
-                  <p class="text-sm font-bold text-gray-500">โปรดเลือกวันเดินทางเพื่อจอง</p>
+                  <p class="text-sm font-bold text-gray-500">{{ isTrekking ? (selectedRegion ? 'โปรดเลือกวันเดินทาง' : 'โปรดเลือกภูมิภาคก่อน') : 'โปรดเลือกวันเดินทางเพื่อจอง' }}</p>
                 </div>
               </div>
 
@@ -738,6 +800,7 @@ const schedules = ref([]);
 const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);
 const selectedPickup = ref(null);
+const selectedRegion = ref(null);
 const loading = ref(true);
 const schedulesLoading = ref(false);
 const reviews = ref([]);
@@ -754,6 +817,42 @@ const allPickupPoints = computed(() => {
     || schedules.value[0]?.pickup_points
     || [];
   return pts;
+});
+
+const regionOptions = computed(() => {
+  if (!isTrekking.value) return [];
+  const map = new Map();
+  schedules.value.forEach(s => {
+    (s.pickup_points || []).forEach(pt => {
+      if (!map.has(pt.region)) {
+        map.set(pt.region, {
+          region: pt.region,
+          region_label: pt.region_label,
+          min_price: Number(pt.price),
+          schedule_count: 0,
+        });
+      } else {
+        const existing = map.get(pt.region);
+        if (Number(pt.price) < existing.min_price) existing.min_price = Number(pt.price);
+      }
+      map.get(pt.region).schedule_count++;
+    });
+  });
+  return [...map.values()];
+});
+
+const schedulesForRegion = computed(() => {
+  if (!selectedRegion.value) return [];
+  return schedules.value.filter(s =>
+    (s.pickup_points || []).some(pt => pt.region === selectedRegion.value)
+  );
+});
+
+const pickupForSelection = computed(() => {
+  if (!selectedSchedule.value || !selectedRegion.value) return null;
+  return (selectedSchedule.value.pickup_points || []).find(
+    pt => pt.region === selectedRegion.value
+  ) || null;
 });
 
 const typeMap = {
@@ -818,9 +917,21 @@ const displayPrice = computed(() => {
   return Number(trip.value?.price_per_person || 0);
 });
 
+function selectRegion(region) {
+  selectedRegion.value = region;
+  selectedSchedule.value = null;
+  selectedPickup.value = null;
+}
+
 function selectSchedule(s) {
   selectedSchedule.value = s;
-  selectedPickup.value = null;
+  if (selectedRegion.value) {
+    selectedPickup.value = (s.pickup_points || []).find(
+      pt => pt.region === selectedRegion.value
+    ) || null;
+  } else {
+    selectedPickup.value = null;
+  }
 }
 
 function selectPickup(pt) {
