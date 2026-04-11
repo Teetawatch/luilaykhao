@@ -74,8 +74,8 @@
       <div v-if="isTrekking && step === 0" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div class="lg:col-span-7 xl:col-span-8"> 
           <div class="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">เลือกภูมิภาคของคุณ</h2>
-            <p class="text-gray-500">เลือกภูมิภาคที่คุณต้องการขึ้นรถ ราคาและจุดนัดหมายอาจแตกต่างกันในแต่ละภูมิภาค</p>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">เลือกจุดขึ้นรถของคุณ</h2>
+            <p class="text-gray-500">เลือกจุดขึ้นรถที่คุณต้องการขึ้น ราคาและจุดนัดหมายอาจแตกต่างกันในแต่ละภูมิภาค</p>
           </div>
 
           <div v-if="!pickupPoints.length" class="flex flex-col items-center justify-center py-16 text-gray-400 bg-white rounded-3xl shadow-sm border border-gray-100">
@@ -776,7 +776,13 @@ const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value
 const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking');
 const maxPassengers = computed(() => Math.min(schedule.value?.available_seats || 10, 10));
 
-const pickupPoints = computed(() => schedule.value?.pickup_points || []);
+const preselectedRegion = route.query.region || null;
+const pickupPoints = computed(() => {
+  const all = schedule.value?.pickup_points || [];
+  if (!preselectedRegion) return all;
+  const filtered = all.filter(pt => pt.region === preselectedRegion);
+  return filtered.length ? filtered : all;
+});
 const selectedPickup = ref(null);
 
 const steps = computed(() => {
@@ -944,6 +950,9 @@ onMounted(async () => {
     const res = await api.get(`/schedules/${route.params.scheduleId}`);
     schedule.value = res.data.data;
     await seatsStore.fetchSeatMap(route.params.scheduleId);
+    if (preselectedRegion && pickupPoints.value.length === 1) {
+      selectedPickup.value = pickupPoints.value[0];
+    }
   } catch (e) {
     console.error(e);
   } finally {
