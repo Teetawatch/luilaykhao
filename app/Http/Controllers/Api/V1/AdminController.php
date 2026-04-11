@@ -173,6 +173,9 @@ class AdminController extends Controller
         if ($request->filled('trip_id')) {
             $query->where('trip_id', $request->trip_id);
         }
+        if ($request->filled('search')) {
+            $query->whereHas('trip', fn($q) => $q->where('title', 'like', "%{$request->search}%"));
+        }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }

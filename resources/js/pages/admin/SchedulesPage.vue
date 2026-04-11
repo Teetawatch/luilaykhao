@@ -5,21 +5,16 @@
         <h1 class="page-title"><i class="fas fa-calendar-alt"></i> รอบเดินทาง</h1>
         <p class="page-subtitle">จัดการรอบเดินทางและตารางวันเดินทาง</p>
       </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn-secondary" @click="openBatchForm()">
-          <i class="fas fa-layer-group"></i> สร้างหลายรอบพร้อมกัน
-        </button>
-        <button class="btn-primary" @click="openForm()">
-          <i class="fas fa-plus"></i> เพิ่มรอบใหม่
-        </button>
-      </div>
+      <button class="btn-primary" @click="openForm()">
+        <i class="fas fa-plus"></i> เพิ่มรอบใหม่
+      </button>
     </div>
 
     <!-- Filters -->
     <div class="filters-bar">
       <div class="search-box">
         <i class="fas fa-search"></i>
-        <input v-model="filters.trip_id" placeholder="กรอง Trip ID..." @input="debouncedFetch" />
+        <input v-model="filters.search" placeholder="ค้นหาชื่อทริป..." @input="debouncedFetch" />
       </div>
       <select v-model="filters.status" @change="fetchData()">
         <option value="">ทุกสถานะ</option>
@@ -34,73 +29,93 @@
       </label>
     </div>
 
-    <!-- Table -->
-    <div class="table-card">
-      <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
-      <div class="table-container" v-else>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>ทริป</th>
-              <th>วันเดินทาง</th>
-              <th>วันกลับ</th>
-              <th>พาหนะ</th>
-              <th>ที่นั่ง</th>
-              <th>สถานะ</th>
-              <th>การจัดการ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="sch in admin.schedules.data" :key="sch.id">
-              <td><span class="trip-name">{{ sch.trip?.title || 'N/A' }}</span></td>
-              <td class="date">
-                {{ sch.departure_date }}
-                <div v-if="sch.pickup_points?.length" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">
-                  <span v-for="pt in sch.pickup_points" :key="pt.id" class="region-pill">{{ pt.region_label }}</span>
-                </div>
-              </td>
-              <td class="date">{{ sch.return_date }}</td>
-              <td>
-                <span class="type-tag" :class="`type-${sch.transport_type === 'van' ? 'trekking' : 'diving'}`">
-                  <i :class="sch.transport_type === 'van' ? 'fas fa-shuttle-van' : 'fas fa-ship'"></i>
-                  {{ sch.vehicle?.name || sch.transport_type }}
-                </span>
-              </td>
-              <td>
-                <div class="seats-info">
-                  <div class="seats-bar">
-                    <div class="seats-fill" :style="{ width: Math.min(100, ((sch.booked_seats || 0) / sch.total_seats) * 100) + '%' }"></div>
-                  </div>
-                  <span class="seats-text">{{ sch.booked_seats || 0 }}/{{ sch.total_seats }}</span>
-                </div>
-              </td>
-              <td><span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span></td>
-              <td>
-                <div class="action-btns">
-                  <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จุดรับผู้โดยสาร">
-                    <i class="fas fa-map-marker-alt"></i>
-                  </button>
-                  <button class="btn-icon btn-copy" @click="copyPickupPoints(sch)" title="คัดลอกจุดรับไปรอบอื่น">
-                    <i class="fas fa-copy"></i>
-                  </button>
-                  <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                  <button class="btn-icon btn-delete" @click="confirmDelete(sch)" title="ลบ"><i class="fas fa-trash"></i></button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="!admin.schedules.data?.length">
-              <td colspan="7" class="empty-state">ไม่พบรอบเดินทาง</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- Trip-grouped Accordion -->
+    <div class="accordion-loading" v-if="admin.loading"><div class="spinner"></div></div>
+    <template v-else>
+      <div v-if="!groupedByTrip.length" class="empty-card">ไม่พบรอบเดินทาง</div>
 
-      <div class="pagination" v-if="admin.schedules.meta?.last_page > 1">
-        <button :disabled="admin.schedules.meta.current_page <= 1" @click="goPage(admin.schedules.meta.current_page - 1)"><i class="fas fa-chevron-left"></i></button>
-        <span class="page-info">{{ admin.schedules.meta.current_page }} / {{ admin.schedules.meta.last_page }}</span>
-        <button :disabled="admin.schedules.meta.current_page >= admin.schedules.meta.last_page" @click="goPage(admin.schedules.meta.current_page + 1)"><i class="fas fa-chevron-right"></i></button>
+      <div v-for="group in groupedByTrip" :key="group.trip_id" class="trip-group">
+        <!-- Trip header -->
+        <div class="trip-group-header" @click="toggleGroup(group.trip_id)">
+          <div class="tgh-left">
+            <i class="fas fa-chevron-right tgh-chevron" :class="{ expanded: openGroups.has(group.trip_id) }"></i>
+            <div class="tgh-info">
+              <span class="tgh-title">{{ group.trip_title }}</span>
+              <span class="tgh-meta">
+                {{ group.schedules.length }} รอบ
+                <span v-if="group.nextDate" class="tgh-next"> · รอบถัดไป {{ group.nextDate }}</span>
+              </span>
+            </div>
+          </div>
+          <div class="tgh-actions" @click.stop>
+            <button class="btn-sm btn-secondary" @click="openBatchFormForTrip(group.trip_id)" title="สร้างหลายรอบ">
+              <i class="fas fa-layer-group"></i> เพิ่มหลายรอบ
+            </button>
+            <button class="btn-sm btn-secondary" @click="openForm({ trip_id: group.trip_id })" title="เพิ่มรอบเดียว">
+              <i class="fas fa-plus"></i> เพิ่มรอบ
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule rows -->
+        <div v-if="openGroups.has(group.trip_id)" class="trip-group-body">
+          <div class="schedule-table-wrap">
+            <table class="data-table schedule-inner-table">
+              <thead>
+                <tr>
+                  <th>วันเดินทาง</th>
+                  <th>วันกลับ</th>
+                  <th>พาหนะ</th>
+                  <th>ที่นั่ง</th>
+                  <th>จุดรับ</th>
+                  <th>สถานะ</th>
+                  <th>การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sch in group.schedules" :key="sch.id">
+                  <td class="date">{{ sch.departure_date }}</td>
+                  <td class="date">{{ sch.return_date }}</td>
+                  <td>
+                    <span class="type-tag" :class="`type-${sch.transport_type === 'van' ? 'trekking' : 'diving'}`">
+                      <i :class="sch.transport_type === 'van' ? 'fas fa-shuttle-van' : 'fas fa-ship'"></i>
+                      {{ sch.vehicle?.name || sch.transport_type }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="seats-info">
+                      <div class="seats-bar">
+                        <div class="seats-fill" :style="{ width: Math.min(100, ((sch.booked_seats || 0) / sch.total_seats) * 100) + '%' }"></div>
+                      </div>
+                      <span class="seats-text">{{ sch.booked_seats || 0 }}/{{ sch.total_seats }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div v-if="sch.pickup_points?.length" style="display:flex;flex-wrap:wrap;gap:3px;">
+                      <span v-for="pt in sch.pickup_points" :key="pt.id" class="region-pill">{{ pt.region_label }}</span>
+                    </div>
+                    <span v-else class="text-muted-sm">—</span>
+                  </td>
+                  <td><span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span></td>
+                  <td>
+                    <div class="action-btns">
+                      <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จัดการจุดรับ">
+                        <i class="fas fa-map-marker-alt"></i>
+                      </button>
+                      <button class="btn-icon btn-copy" @click="copyPickupPoints(sch)" title="คัดลอกจุดรับไปรอบอื่น">
+                        <i class="fas fa-copy"></i>
+                      </button>
+                      <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                      <button class="btn-icon btn-delete" @click="confirmDelete(sch)" title="ลบ"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    </div>
+    </template>
 
     <!-- Form Modal -->
     <div class="modal-overlay" v-if="showForm">
@@ -462,7 +477,43 @@ const REGIONS = [
 ];
 
 const admin = useAdminStore();
-const filters = reactive({ trip_id: '', status: '', upcoming: false });
+const filters = reactive({ search: '', status: '', upcoming: false });
+const openGroups = ref(new Set());
+
+// Group all schedules by trip, sorted by departure_date
+const groupedByTrip = computed(() => {
+  const all = admin.schedules.data || [];
+  const map = new Map();
+  for (const sch of all) {
+    const tid = sch.trip_id;
+    if (!map.has(tid)) {
+      map.set(tid, {
+        trip_id: tid,
+        trip_title: sch.trip?.title || 'N/A',
+        schedules: [],
+        nextDate: null,
+      });
+    }
+    map.get(tid).schedules.push(sch);
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const groups = [];
+  for (const g of map.values()) {
+    g.schedules.sort((a, b) => a.departure_date > b.departure_date ? 1 : -1);
+    const next = g.schedules.find(s => s.departure_date >= today && s.status === 'open');
+    g.nextDate = next?.departure_date || null;
+    groups.push(g);
+  }
+  groups.sort((a, b) => (a.nextDate || '9999') > (b.nextDate || '9999') ? 1 : -1);
+  return groups;
+});
+
+const toggleGroup = (tripId) => {
+  const s = new Set(openGroups.value);
+  if (s.has(tripId)) s.delete(tripId);
+  else s.add(tripId);
+  openGroups.value = s;
+};
 const showForm = ref(false);
 const showDeleteConfirm = ref(false);
 const editing = ref(null);
@@ -485,15 +536,18 @@ const debouncedFetch = () => {
   debounceTimer = setTimeout(() => fetchData(), 300);
 };
 
-const fetchData = (page = 1) => {
-  const params = { page };
-  if (filters.trip_id) params.trip_id = filters.trip_id;
+const fetchData = () => {
+  const params = { per_page: 500 };
+  if (filters.search) params.search = filters.search;
   if (filters.status) params.status = filters.status;
   if (filters.upcoming) params.upcoming = 1;
-  admin.fetchSchedules(params);
+  admin.fetchSchedules(params).then(() => {
+    // Auto-expand all groups on first load
+    if (openGroups.value.size === 0) {
+      openGroups.value = new Set((admin.schedules.data || []).map(s => s.trip_id));
+    }
+  });
 };
-
-const goPage = (page) => fetchData(page);
 
 const loadOptions = async () => {
   try {
@@ -507,8 +561,9 @@ const loadOptions = async () => {
 };
 
 const openForm = (item = null) => {
-  editing.value = item;
-  if (item) {
+  // item can be a full schedule (edit) or { trip_id } (new schedule for trip)
+  editing.value = item?.departure_date ? item : null;
+  if (item?.departure_date) {
     Object.assign(form, {
       trip_id: item.trip_id,
       departure_date: item.departure_date,
@@ -521,7 +576,8 @@ const openForm = (item = null) => {
     });
   } else {
     Object.assign(form, {
-      trip_id: '', departure_date: '', return_date: '',
+      trip_id: item?.trip_id || '',
+      departure_date: '', return_date: '',
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
     });
@@ -564,9 +620,9 @@ const batchForm = reactive({
   pickups: [],
 });
 
-const openBatchForm = () => {
+const openBatchForm = (presetTripId = '') => {
   Object.assign(batchForm, {
-    trip_id: '',
+    trip_id: presetTripId || '',
     transport_type: 'van',
     vehicle_id: null,
     total_seats: 10,
@@ -576,6 +632,8 @@ const openBatchForm = () => {
   });
   showBatchForm.value = true;
 };
+
+const openBatchFormForTrip = (tripId) => openBatchForm(tripId);
 
 const addDateRow = () => batchForm.dates.push({ departure_date: '', return_date: '' });
 const removeDateRow = (i) => { if (batchForm.dates.length > 1) batchForm.dates.splice(i, 1); };
@@ -829,6 +887,136 @@ onMounted(() => {
 
 <style scoped>
 @import url('./admin-shared.css');
+
+/* ── Accordion loading / empty ── */
+.accordion-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.empty-card {
+  text-align: center;
+  padding: 48px;
+  color: #9ca3af;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+/* ── Trip group ── */
+.trip-group {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.trip-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  background: #fafafa;
+  transition: background 0.15s;
+  gap: 12px;
+}
+
+.trip-group-header:hover {
+  background: #f0faf4;
+}
+
+.tgh-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tgh-chevron {
+  color: #9ca3af;
+  font-size: 12px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.tgh-chevron.expanded {
+  transform: rotate(90deg);
+  color: #2d7a4f;
+}
+
+.tgh-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tgh-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tgh-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.tgh-next {
+  color: #2d7a4f;
+  font-weight: 600;
+}
+
+.tgh-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Inner schedule table ── */
+.trip-group-body {
+  border-top: 1px solid #e5e7eb;
+}
+
+.schedule-table-wrap {
+  overflow-x: auto;
+}
+
+.schedule-inner-table {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+}
+
+.schedule-inner-table thead tr {
+  background: #f9fafb;
+}
+
+.schedule-inner-table thead th {
+  font-size: 11px;
+  padding: 8px 12px;
+  color: #9ca3af;
+}
+
+.schedule-inner-table tbody td {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.text-muted-sm {
+  font-size: 12px;
+  color: #d1d5db;
+}
 
 .region-pill {
   display: inline-block;
