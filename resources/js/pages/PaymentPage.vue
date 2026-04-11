@@ -106,7 +106,7 @@
               <div v-if="!slipPreview"
                 @click="slipInputRef?.click()"
                 class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#b4eae9] rounded-2xl p-8 cursor-pointer hover:border-[#006565] hover:bg-[#006565]/5 transition-all">
-                <span class="material-symbols-outlined text-4xl text-[#b4eae9]">upload_file</span>
+                <span class="material-symbols-outlined text-4xl text-[#b4eae9]">อัปโหลดสลิป</span>
                 <p class="text-sm text-[#6e7979]">คลิกหรือลากไฟล์รูปสลิปมาวางที่นี่</p>
                 <p class="text-xs text-[#9eadad]">รองรับ JPG, PNG ขนาดไม่เกิน 5MB</p>
               </div>
@@ -373,14 +373,14 @@ async function processPayment() {
 onMounted(async () => {
   try {
     booking.value = await bookingStore.fetchBooking(route.params.bookingRef);
-    if (paymentMethod.value === 'promptpay') {
-      await nextTick();
-      generateQR();
-    }
   } catch (e) {
     console.error(e);
   } finally {
     loading.value = false;
+  }
+  if (paymentMethod.value === 'promptpay') {
+    await nextTick();
+    generateQR();
   }
 });
 </script>
