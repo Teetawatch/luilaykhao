@@ -38,73 +38,58 @@
         <!-- Modern Floating Search Bar -->
         <div class="search-bar relative bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] flex flex-col md:flex-row items-stretch md:items-center p-1.5 gap-1 max-w-4xl mx-auto border border-white/40 ring-1 ring-black/5 transform transition-all duration-500 hover:shadow-[0_30px_60px_-10px_rgba(0,0,0,0.3)] z-20">
           
-          <!-- Destination -->
+          <!-- Trip Selector -->
           <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
             <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
               <span class="material-symbols-rounded text-[var(--color-primary)] text-[22px] md:text-[24px]">explore</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">หมวดหมู่ทริป</label>
+              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">เลือกทริป</label>
               <select
-                v-model="searchCategory"
+                v-model="selectedTripSlug"
+                @change="onTripChange"
                 class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6"
+                :class="selectedTripSlug ? 'text-gray-900' : 'text-gray-400'"
               >
-                <option value="">เลือกหมวดหมู่</option>
-                <option value="snorkeling">ดำน้ำตื้น</option>
-                <option value="trekking">เดินป่า</option>
-                <option value="climbing">รถตู้พรีเมียม</option>
+                <option value="">เลือกทริปที่ต้องการ</option>
+                <option v-for="t in allTrips" :key="t.id" :value="t.slug">{{ t.title }}</option>
               </select>
-              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-transform group-hover:text-gray-600">expand_more</span>
+              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
             </div>
           </div>
 
           <div class="hidden md:block w-px h-12 bg-gray-100 shrink-0"></div>
 
-          <!-- Date -->
-          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer">
-            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-accent)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-[22px] md:text-[24px]">calendar_today</span>
-            </div>
-            <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">วันที่เดินทาง</label>
-              <input
-                v-model="searchDate"
-                type="date"
-                :min="todayStr"
-                class="bg-transparent border-none focus:ring-0 p-0 font-extrabold w-full text-sm md:text-base outline-none cursor-pointer"
-                :class="searchDate ? 'text-gray-900' : 'text-gray-400'"
-              />
-            </div>
-          </div>
-
-          <div class="hidden md:block w-px h-12 bg-gray-100 shrink-0"></div>
-
-          <!-- Travelers -->
+          <!-- Schedule / Departure Date Selector -->
           <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
-            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
-              <span class="material-symbols-rounded text-[var(--color-primary)] text-[22px] md:text-[24px]">group</span>
+            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-accent)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+              <span v-if="schedulesLoading" class="w-5 h-5 border-2 border-[var(--color-accent)]/30 border-t-[var(--color-accent)] rounded-full animate-spin"></span>
+              <span v-else class="material-symbols-rounded text-[var(--color-accent)] text-[22px] md:text-[24px]">calendar_today</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">ผู้เดินทาง</label>
+              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">รอบวันเดินทาง</label>
               <select
-                v-model="searchTravelers"
-                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-4"
+                v-model="selectedScheduleId"
+                :disabled="!selectedTripSlug || schedulesLoading"
+                class="bg-transparent border-none focus:ring-0 p-0 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6 disabled:cursor-not-allowed"
+                :class="selectedScheduleId ? 'text-gray-900' : 'text-gray-400'"
               >
-                <option value="1">1 ท่าน</option>
-                <option value="2">2 ท่าน</option>
-                <option value="3">3 ท่าน+</option>
+                <option value="">{{ !selectedTripSlug ? 'เลือกทริปก่อน' : schedulesLoading ? 'กำลังโหลด...' : tripSchedules.length === 0 ? 'ไม่มีรอบว่าง' : 'เลือกวันเดินทาง' }}</option>
+                <option v-for="s in tripSchedules" :key="s.id" :value="s.id">
+                  {{ formatScheduleOption(s) }}
+                </option>
               </select>
-              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-transform group-hover:text-gray-600 group-hover:translate-y-[-30%]">expand_more</span>
+              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
             </div>
           </div>
 
-          <!-- Search Button -->
+          <!-- Book / Search Button -->
           <button
-            @click="goSearch"
+            @click="goBook"
             class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0 md:ml-1"
           >
-            <span class="material-symbols-rounded text-[24px]">search</span>
-            <span class="text-lg md:text-base lg:text-lg pr-1">ค้นหาทริป</span>
+            <span class="material-symbols-rounded text-[24px]">{{ selectedScheduleId ? 'bookmark_add' : 'search' }}</span>
+            <span class="text-lg md:text-base lg:text-lg pr-1">{{ selectedScheduleId ? 'จองเลย' : 'ดูทริป' }}</span>
           </button>
         </div>
       </div>
@@ -637,7 +622,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
@@ -648,19 +633,45 @@ const router = useRouter();
 const trips = ref([]);
 const featuredTrips = ref([]);
 const loading = ref(true);
-const searchDestination = ref('');
-const searchCategory = ref('');
-const searchDate = ref('');
-const searchTravelers = ref('1');
 
-const todayStr = computed(() => new Date().toISOString().split('T')[0]);
+// Search bar state
+const allTrips = ref([]);
+const selectedTripSlug = ref('');
+const tripSchedules = ref([]);
+const selectedScheduleId = ref('');
+const schedulesLoading = ref(false);
 
-const goSearch = () => {
-  const params = new URLSearchParams();
-  if (searchCategory.value) params.set('type', searchCategory.value);
-  if (searchDate.value) params.set('date', searchDate.value);
-  const q = params.toString();
-  router.push(q ? `/trips?${q}` : '/trips');
+function formatScheduleOption(s) {
+  const dep = new Date(s.departure_date);
+  const dateStr = dep.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const seats = s.available_seats > 0 ? `ว่าง ${s.available_seats} ที่` : 'เต็มแล้ว';
+  const price = `฿${Number(s.price ?? 0).toLocaleString()}`;
+  return `${dateStr} — ${price} (${seats})`;
+}
+
+async function onTripChange() {
+  selectedScheduleId.value = '';
+  tripSchedules.value = [];
+  if (!selectedTripSlug.value) return;
+  schedulesLoading.value = true;
+  try {
+    const res = await api.get(`/trips/${selectedTripSlug.value}/schedules`);
+    tripSchedules.value = (res.data.data || []).filter(s => s.available_seats > 0);
+  } catch (e) {
+    console.error('Failed to load schedules', e);
+  } finally {
+    schedulesLoading.value = false;
+  }
+}
+
+const goBook = () => {
+  if (selectedScheduleId.value) {
+    router.push(`/booking/${selectedScheduleId.value}`);
+  } else if (selectedTripSlug.value) {
+    router.push(`/trips/${selectedTripSlug.value}`);
+  } else {
+    router.push('/trips');
+  }
 };
 
 const statItems = ref([
@@ -747,13 +758,15 @@ const typeFeaturedIcon = (type) => {
 
 onMounted(async () => {
   try {
-    const [tripsRes, featuredRes, reviewsRes, statsRes] = await Promise.all([
+    const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
       api.get('/trips/featured'),
       api.get('/reviews', { params: { per_page: 3 } }),
       api.get('/stats'),
+      api.get('/trips', { params: { per_page: 100 } }),
     ]);
     trips.value = tripsRes.data.data;
+    allTrips.value = allTripsRes.data.data || [];
     featuredTrips.value = featuredRes.data.data || [];
     reviews.value = reviewsRes.data.data || [];
     
