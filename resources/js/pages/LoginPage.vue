@@ -21,7 +21,7 @@
               </div>
               <input v-model="form.email" type="email" required autofocus
                 class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                placeholder="email@example.com" />
+                placeholder="luilaykhao@example.com" />
             </div>
           </div>
 
@@ -35,9 +35,13 @@
               <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <i class="fa-solid fa-lock text-text-muted/60"></i>
               </div>
-              <input v-model="form.password" type="password" required
-                class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
+              <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required
+                class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-12 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
                 placeholder="••••••••" />
+              <button type="button" @click="showPassword = !showPassword"
+                class="absolute inset-y-0 right-0 pr-4 flex items-center text-text-muted/60 hover:text-text-muted transition-colors">
+                <i :class="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+              </button>
             </div>
           </div>
 
@@ -85,7 +89,7 @@
 
           <button @click="loginWithSocial('line')"
             class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#06C755] text-white rounded-xl hover:bg-[#05b34c] transition-all duration-200 shadow-sm">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" class="w-5 h-5 flex-shrink-0 brightness-0 invert" alt="LINE" />
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" class="w-5 h-5 flex-shrink-0" alt="LINE" />
             <span class="text-sm font-bold">ดำเนินการต่อด้วย LINE</span>
           </button>
         </div>
@@ -100,26 +104,7 @@
             </router-link>
           </p>
         </div>
-      </div>
-
-      <!-- Demo credentials -->
-      <div class="mt-6 p-4 bg-white/60 backdrop-blur-sm rounded-2xl text-center text-xs text-text-muted border border-sand-dark/40 shadow-sm">
-        <p class="font-semibold mb-2 text-text-dark flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-flask text-accent"></i> บัญชีทดสอบ
-        </p>
-        <div class="space-y-1.5">
-          <p class="flex justify-center gap-2">
-            <span class="font-medium text-text-dark w-16 text-right">Customer:</span>
-            <span class="font-mono bg-white px-2 py-0.5 rounded border border-sand-dark/30">demo@traildive.com</span>
-            <span class="font-mono bg-white px-2 py-0.5 rounded border border-sand-dark/30">password</span>
-          </p>
-          <p class="flex justify-center gap-2">
-            <span class="font-medium text-text-dark w-16 text-right">Admin:</span>
-            <span class="font-mono bg-white px-2 py-0.5 rounded border border-sand-dark/30">admin@traildive.com</span>
-            <span class="font-mono bg-white px-2 py-0.5 rounded border border-sand-dark/30">password</span>
-          </p>
-        </div>
-      </div>
+      </div> 
     </div>
   </div>
 </template>
@@ -134,6 +119,7 @@ const router = useRouter();
 const route = useRoute();
 const error = ref('');
 const shake = ref(false);
+const showPassword = ref(false);
 
 const form = ref({
   email: '',

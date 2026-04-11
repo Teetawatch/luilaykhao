@@ -185,33 +185,7 @@
             <i v-else class="fa-solid fa-user-plus"></i>
             {{ auth.loading ? 'กำลังสร้างบัญชี...' : 'สมัครสมาชิก' }}
           </button>
-
-          <!-- Divider -->
-          <div class="relative flex items-center gap-3 my-1">
-            <div class="flex-1 h-px bg-sand-dark/40"></div>
-            <span class="text-xs text-text-muted/60 font-medium">หรือ</span>
-            <div class="flex-1 h-px bg-sand-dark/40"></div>
-          </div>
-
-          <!-- Social Buttons -->
-          <button type="button" @click="loginWithGoogle"
-            class="w-full bg-white border border-sand-dark/60 text-text-dark py-3 rounded-xl font-medium text-sm hover:bg-sand/30 hover:border-sand-dark transition-all duration-200 flex items-center justify-center gap-3 shadow-sm">
-            <svg class="w-5 h-5 shrink-0" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M47.532 24.552c0-1.636-.132-3.2-.396-4.704H24.48v8.896h12.984c-.56 3.024-2.252 5.588-4.8 7.308v6.076h7.776c4.552-4.196 7.092-10.38 7.092-17.576z" fill="#4285F4"/>
-              <path d="M24.48 48c6.516 0 11.984-2.16 15.98-5.872l-7.776-6.076c-2.16 1.448-4.916 2.3-8.204 2.3-6.308 0-11.648-4.26-13.556-9.988H2.892v6.268C6.872 42.66 15.1 48 24.48 48z" fill="#34A853"/>
-              <path d="M10.924 28.364A14.54 14.54 0 0 1 10.16 24c0-1.516.26-2.988.764-4.364v-6.268H2.892A23.956 23.956 0 0 0 .48 24c0 3.872.928 7.532 2.412 10.632l8.032-6.268z" fill="#FBBC05"/>
-              <path d="M24.48 9.648c3.552 0 6.74 1.22 9.248 3.624l6.932-6.932C36.46 2.412 30.996 0 24.48 0 15.1 0 6.872 5.34 2.892 13.368l8.032 6.268C12.832 13.908 18.172 9.648 24.48 9.648z" fill="#EA4335"/>
-            </svg>
-            เข้าสู่ระบบด้วย Google
-          </button>
-
-          <button type="button" @click="loginWithFacebook"
-            class="w-full bg-[#1877F2] text-white py-3 rounded-xl font-medium text-sm hover:bg-[#166fe5] transition-all duration-200 flex items-center justify-center gap-3 shadow-sm">
-            <i class="fa-brands fa-facebook text-lg"></i>
-            เข้าสู่ระบบด้วย Facebook
-          </button>
         </form>
-
         <!-- Login Link -->
         <div class="mt-8 text-center lg:text-left border-t border-sand-dark/50 pt-6">
           <p class="text-sm text-text-muted">
