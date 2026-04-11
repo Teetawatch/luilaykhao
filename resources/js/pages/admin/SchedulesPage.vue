@@ -170,9 +170,9 @@
       </div>
     </div>
 
-    <!-- Pickup Points Manager Modal -->
+    <!-- Pickup Points Manager Modal (Region-grouped) -->
     <div class="modal-overlay" v-if="showPickupManager">
-      <div class="modal-card modal-lg">
+      <div class="modal-card modal-xl">
         <div class="modal-header">
           <div>
             <h2><i class="fas fa-map-marker-alt" style="color:#2d7a4f;margin-right:8px;"></i>จุดรับผู้โดยสาร</h2>
@@ -181,89 +181,100 @@
           <button class="modal-close" @click="showPickupManager = false"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-          <!-- Add / Edit pickup point form -->
-          <div class="pickup-form-section">
-            <h3 class="section-label">{{ editingPickup ? 'แก้ไขจุดรับ' : 'เพิ่มจุดรับใหม่' }}</h3>
-            <form @submit.prevent="submitPickupForm" class="pickup-form">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>ภูมิภาค *</label>
-                  <select v-model="pickupForm.region" required @change="onRegionChange">
-                    <option value="" disabled>เลือกภูมิภาค</option>
-                    <option v-for="r in REGIONS" :key="r.value" :value="r.value">{{ r.label }}</option>
-                  </select>
+          <div v-if="pickupLoading" class="pickup-loading"><div class="spinner"></div></div>
+          <template v-else>
+
+            <!-- Region sections -->
+            <div v-for="r in REGIONS" :key="r.value" class="pickup-region-section">
+              <div class="pickup-region-header">
+                <div class="pickup-region-title">
+                  <span class="region-dot"></span>
+                  <span>{{ r.label }}</span>
+                  <span class="pickup-region-count">{{ pickupPointsByRegion[r.value]?.length || 0 }} จุด</span>
                 </div>
-                <div class="form-group">
-                  <label>ชื่อภูมิภาค (ไทย) *</label>
-                  <input v-model="pickupForm.region_label" required placeholder="เช่น ภาคเหนือ" />
-                </div>
-                <div class="form-group full-width">
-                  <label>จุดนัดหมาย / จุดขึ้นรถ *</label>
-                  <input v-model="pickupForm.pickup_location" required placeholder="เช่น ปั้ม PTT สาขาเชียงใหม่ เหนือ" />
-                </div>
-                <div class="form-group">
-                  <label>ราคา (฿) *</label>
-                  <input v-model.number="pickupForm.price" type="number" min="0" required placeholder="0" />
-                </div>
-                <div class="form-group">
-                  <label>ลำดับการแสดง</label>
-                  <input v-model.number="pickupForm.sort_order" type="number" min="0" placeholder="0" />
-                </div>
-                <div class="form-group full-width">
-                  <label>Google Maps URL</label>
-                  <input v-model="pickupForm.map_url" type="url" placeholder="https://maps.google.com/..." />
-                </div>
-                <div class="form-group">
-                  <label>Latitude</label>
-                  <input v-model.number="pickupForm.latitude" type="number" step="any" placeholder="18.7883" />
-                </div>
-                <div class="form-group">
-                  <label>Longitude</label>
-                  <input v-model.number="pickupForm.longitude" type="number" step="any" placeholder="98.9853" />
-                </div>
-                <div class="form-group full-width">
-                  <label>หมายเหตุ (เวลานัด, landmark ฯลฯ)</label>
-                  <textarea v-model="pickupForm.notes" rows="2" placeholder="เช่น นัดพบ 05:30 น. ก่อนรถออก"></textarea>
-                </div>
-              </div>
-              <div class="pickup-form-actions">
-                <button type="button" class="btn-secondary" v-if="editingPickup" @click="cancelEditPickup">ยกเลิก</button>
-                <button type="submit" class="btn-primary" :disabled="pickupSubmitting">
-                  <i class="fas fa-spinner fa-spin" v-if="pickupSubmitting"></i>
-                  {{ editingPickup ? 'บันทึกการแก้ไข' : 'เพิ่มจุดรับ' }}
+                <button type="button" class="btn-sm btn-secondary" @click="startAddInRegion(r.value)">
+                  <i class="fas fa-plus"></i> เพิ่มจุด
                 </button>
               </div>
-            </form>
-          </div>
 
-          <!-- Existing pickup points list -->
-          <div class="pickup-list-section">
-            <h3 class="section-label">จุดรับที่กำหนดไว้ ({{ pickupPoints.length }} รายการ)</h3>
-            <div v-if="pickupLoading" class="pickup-loading"><div class="spinner"></div></div>
-            <div v-else-if="!pickupPoints.length" class="pickup-empty">
-              <i class="fas fa-map-marker-slash"></i>
-              <p>ยังไม่มีจุดรับผู้โดยสาร<br>เพิ่มจากฟอร์มด้านบน</p>
-            </div>
-            <div v-else class="pickup-cards">
-              <div v-for="pt in pickupPoints" :key="pt.id" class="pickup-card">
-                <div class="pickup-card-header">
-                  <span class="region-badge">{{ pt.region_label }}</span>
-                  <span class="pickup-price">฿{{ Number(pt.price).toLocaleString() }}</span>
+              <!-- Points in this region -->
+              <div class="pickup-region-body">
+                <!-- Existing points -->
+                <div v-if="pickupPointsByRegion[r.value]?.length" class="pickup-region-list">
+                  <div v-for="pt in pickupPointsByRegion[r.value]" :key="pt.id" class="pickup-item">
+                    <template v-if="editingPickup?.id === pt.id">
+                      <!-- Inline edit form -->
+                      <div class="pickup-item-edit">
+                        <div class="pif-row">
+                          <input v-model="pickupForm.pickup_location" placeholder="จุดขึ้นรถ *" class="pif-location" />
+                          <input v-model="pickupForm.notes" placeholder="เวลานัด / หมายเหตุ" class="pif-notes" />
+                          <div class="pif-price-wrap">
+                            <span class="pif-baht">฿</span>
+                            <input v-model.number="pickupForm.price" type="number" min="0" placeholder="ราคา" class="pif-price" />
+                          </div>
+                        </div>
+                        <div class="pif-row">
+                          <input v-model="pickupForm.map_url" placeholder="Google Maps URL (ไม่บังคับ)" class="pif-map" />
+                          <input v-model.number="pickupForm.sort_order" type="number" min="0" placeholder="ลำดับ" class="pif-order" />
+                        </div>
+                        <div class="pif-actions">
+                          <button type="button" class="btn-sm btn-secondary" @click="cancelEditPickup">ยกเลิก</button>
+                          <button type="button" class="btn-sm btn-primary" @click="submitPickupForm" :disabled="pickupSubmitting">
+                            <i class="fas fa-spinner fa-spin" v-if="pickupSubmitting"></i> บันทึก
+                          </button>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <!-- Display row -->
+                      <div class="pickup-item-display">
+                        <div class="pid-left">
+                          <span class="pid-location"><i class="fas fa-map-pin"></i> {{ pt.pickup_location }}</span>
+                          <span class="pid-notes" v-if="pt.notes"><i class="fas fa-clock"></i> {{ pt.notes }}</span>
+                        </div>
+                        <div class="pid-right">
+                          <a :href="pt.map_url" target="_blank" class="pid-map" v-if="pt.map_url" title="ดูแผนที่">
+                            <i class="fas fa-map"></i>
+                          </a>
+                          <span class="pid-price">฿{{ Number(pt.price).toLocaleString() }}</span>
+                          <button class="btn-icon btn-edit" @click="editPickupPoint(pt)" title="แก้ไข"><i class="fas fa-edit"></i></button>
+                          <button class="btn-icon btn-delete" @click="deletePickupPoint(pt)" title="ลบ"><i class="fas fa-trash"></i></button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
                 </div>
-                <div class="pickup-card-body">
-                  <p class="pickup-location"><i class="fas fa-map-pin"></i> {{ pt.pickup_location }}</p>
-                  <p class="pickup-notes" v-if="pt.notes"><i class="fas fa-clock"></i> {{ pt.notes }}</p>
-                  <a :href="pt.map_url" target="_blank" class="pickup-map-link" v-if="pt.map_url">
-                    <i class="fas fa-external-link-alt"></i> ดูแผนที่
-                  </a>
+
+                <!-- Inline add form for this region -->
+                <div v-if="addingInRegion === r.value" class="pickup-item-edit pickup-item-add">
+                  <div class="pif-row">
+                    <input v-model="pickupForm.pickup_location" placeholder="จุดขึ้นรถ *" class="pif-location" />
+                    <input v-model="pickupForm.notes" placeholder="เวลานัด / หมายเหตุ" class="pif-notes" />
+                    <div class="pif-price-wrap">
+                      <span class="pif-baht">฿</span>
+                      <input v-model.number="pickupForm.price" type="number" min="0" placeholder="ราคา" class="pif-price" />
+                    </div>
+                  </div>
+                  <div class="pif-row">
+                    <input v-model="pickupForm.map_url" placeholder="Google Maps URL (ไม่บังคับ)" class="pif-map" />
+                    <input v-model.number="pickupForm.sort_order" type="number" min="0" placeholder="ลำดับ" class="pif-order" />
+                  </div>
+                  <div class="pif-actions">
+                    <button type="button" class="btn-sm btn-secondary" @click="addingInRegion = null">ยกเลิก</button>
+                    <button type="button" class="btn-sm btn-primary" @click="submitPickupForm" :disabled="pickupSubmitting">
+                      <i class="fas fa-spinner fa-spin" v-if="pickupSubmitting"></i> เพิ่มจุดรับ
+                    </button>
+                  </div>
                 </div>
-                <div class="pickup-card-actions">
-                  <button class="btn-icon btn-edit" @click="editPickupPoint(pt)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                  <button class="btn-icon btn-delete" @click="deletePickupPoint(pt)" title="ลบ"><i class="fas fa-trash"></i></button>
+
+                <!-- Empty state for region -->
+                <div v-if="!pickupPointsByRegion[r.value]?.length && addingInRegion !== r.value" class="pickup-region-empty">
+                  <i class="fas fa-map-marker-slash"></i> ยังไม่มีจุดรับในภาคนี้
                 </div>
               </div>
             </div>
-          </div>
+
+          </template>
         </div>
       </div>
     </div>
@@ -671,11 +682,22 @@ const pickupPoints = ref([]);
 const pickupLoading = ref(false);
 const pickupSubmitting = ref(false);
 const editingPickup = ref(null);
+const addingInRegion = ref(null); // which region's inline-add form is open
 
 const pickupForm = reactive({
   region: '', region_label: '', pickup_location: '',
   price: '', map_url: '', latitude: null, longitude: null,
   notes: '', sort_order: 0,
+});
+
+// Group pickup points by region value
+const pickupPointsByRegion = computed(() => {
+  const map = {};
+  for (const pt of pickupPoints.value) {
+    if (!map[pt.region]) map[pt.region] = [];
+    map[pt.region].push(pt);
+  }
+  return map;
 });
 
 const resetPickupForm = () => {
@@ -697,6 +719,7 @@ const onRegionChange = () => {
 const openPickupManager = async (sch) => {
   pickupSchedule.value = sch;
   resetPickupForm();
+  addingInRegion.value = null;
   showPickupManager.value = true;
   await loadPickupPoints(sch.id);
 };
@@ -713,7 +736,24 @@ const loadPickupPoints = async (scheduleId) => {
   }
 };
 
+// Open inline-add form for a specific region
+const startAddInRegion = (regionValue) => {
+  editingPickup.value = null;
+  const found = REGIONS.find(r => r.value === regionValue);
+  Object.assign(pickupForm, {
+    region: regionValue,
+    region_label: found?.label || regionValue,
+    pickup_location: '', price: '', map_url: '',
+    latitude: null, longitude: null, notes: '', sort_order: 0,
+  });
+  addingInRegion.value = regionValue;
+};
+
 const submitPickupForm = async () => {
+  if (!pickupForm.pickup_location || pickupForm.price === '') {
+    alert('กรุณากรอกจุดขึ้นรถและราคา');
+    return;
+  }
   pickupSubmitting.value = true;
   try {
     const scheduleId = pickupSchedule.value.id;
@@ -728,6 +768,7 @@ const submitPickupForm = async () => {
       await api.post(`/admin/schedules/${scheduleId}/pickup-points`, payload);
     }
     resetPickupForm();
+    addingInRegion.value = null;
     await loadPickupPoints(scheduleId);
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
@@ -737,6 +778,7 @@ const submitPickupForm = async () => {
 };
 
 const editPickupPoint = (pt) => {
+  addingInRegion.value = null;
   editingPickup.value = pt;
   Object.assign(pickupForm, {
     region: pt.region,
@@ -751,10 +793,13 @@ const editPickupPoint = (pt) => {
   });
 };
 
-const cancelEditPickup = () => resetPickupForm();
+const cancelEditPickup = () => {
+  resetPickupForm();
+  addingInRegion.value = null;
+};
 
 const deletePickupPoint = async (pt) => {
-  if (!confirm(`ลบจุดรับ "${pt.region_label}" ใช่หรือไม่?`)) return;
+  if (!confirm(`ลบจุดรับ "${pt.pickup_location}" ใช่หรือไม่?`)) return;
   try {
     await api.delete(`/admin/schedules/${pickupSchedule.value.id}/pickup-points/${pt.id}`);
     await loadPickupPoints(pickupSchedule.value.id);
@@ -995,14 +1040,6 @@ onMounted(() => {
   margin: 2px 0 0;
 }
 
-.pickup-form-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 18px;
-  margin-bottom: 24px;
-  background: #FAFAFA;
-}
-
 .section-label {
   font-size: 13px;
   font-weight: 700;
@@ -1012,59 +1049,21 @@ onMounted(() => {
   margin: 0 0 14px;
 }
 
-.pickup-form .form-grid {
-  gap: 12px;
-}
-
-.pickup-form-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
-
-.pickup-list-section {
-  margin-top: 8px;
-}
-
 .pickup-loading {
   display: flex;
   justify-content: center;
   padding: 30px;
 }
 
-.pickup-empty {
-  text-align: center;
-  padding: 32px;
-  color: #9ca3af;
-}
-
-.pickup-empty i {
-  font-size: 28px;
-  margin-bottom: 10px;
-  display: block;
-}
-
-.pickup-empty p {
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.pickup-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.pickup-card {
+/* ── Region-grouped pickup manager ── */
+.pickup-region-section {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  background: #ffffff;
   overflow: hidden;
+  margin-bottom: 12px;
 }
 
-.pickup-card-header {
+.pickup-region-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1073,61 +1072,178 @@ onMounted(() => {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.region-badge {
-  font-size: 13px;
-  font-weight: 700;
-  color: #2d7a4f;
-}
-
-.pickup-price {
+.pickup-region-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #111827;
+  color: #2d7a4f;
 }
 
-.pickup-card-body {
-  padding: 12px 14px;
+.region-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2d7a4f;
+  flex-shrink: 0;
 }
 
-.pickup-location {
-  font-size: 13px;
-  color: #374151;
-  margin: 0 0 6px;
+.pickup-region-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #e5e7eb;
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+
+.pickup-region-body {
+  background: #fff;
+}
+
+.pickup-region-list {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+}
+
+.pickup-region-empty {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
-.pickup-location i { color: #dc2626; margin-top: 2px; flex-shrink: 0; }
+/* ── Pickup item display row ── */
+.pickup-item {
+  border-bottom: 1px solid #f3f4f6;
+}
+.pickup-item:last-child {
+  border-bottom: none;
+}
 
-.pickup-notes {
+.pickup-item-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  gap: 12px;
+}
+
+.pid-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pid-location {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pid-location i { color: #dc2626; font-size: 11px; flex-shrink: 0; }
+
+.pid-notes {
   font-size: 12px;
   color: #6b7280;
-  margin: 0 0 6px;
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
+  gap: 5px;
+}
+.pid-notes i { color: #f59e0b; font-size: 11px; flex-shrink: 0; }
+
+.pid-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.pickup-notes i { color: #f59e0b; margin-top: 2px; flex-shrink: 0; }
+.pid-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+}
 
-.pickup-map-link {
-  font-size: 12px;
+.pid-map {
   color: #2d7a4f;
+  font-size: 13px;
   text-decoration: none;
-  display: inline-flex;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+.pid-map:hover { background: #e8f5ec; }
+
+/* ── Inline add/edit form (inside region body) ── */
+.pickup-item-edit {
+  padding: 12px 14px;
+  background: #fafafa;
+  border-top: 1px dashed #d1fae5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pickup-item-add {
+  border-top: 1px dashed #d1fae5;
+}
+
+.pif-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pif-location {
+  flex: 2;
+  min-width: 160px;
+}
+
+.pif-notes {
+  flex: 1.5;
+  min-width: 130px;
+}
+
+.pif-price-wrap {
+  display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 4px;
+  flex-shrink: 0;
 }
 
-.pickup-map-link:hover { text-decoration: underline; }
+.pif-baht {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+}
 
-.pickup-card-actions {
+.pif-price {
+  width: 90px;
+}
+
+.pif-map {
+  flex: 2;
+  min-width: 160px;
+}
+
+.pif-order {
+  width: 70px;
+  flex-shrink: 0;
+}
+
+.pif-actions {
   display: flex;
-  gap: 6px;
-  padding: 8px 14px;
-  border-top: 1px solid #f3f4f6;
+  gap: 8px;
   justify-content: flex-end;
 }
 </style>
