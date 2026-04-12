@@ -22,25 +22,34 @@
       </nav>
 
       <!-- Title -->
-      <div class="mb-10 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
-        <h1 class="font-anuphan text-2xl md:text-4xl font-extrabold text-gray-900 mb-4 relative z-10">
-          {{ schedule.trip?.title }}
-        </h1>
-        <div class="flex flex-wrap gap-4 text-sm font-medium relative z-10">
-          <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200/60">
-            <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">calendar_month</span>
-            <span>
-              {{ formatDate(schedule.departure_date) }}
-              <template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
-            </span>
-          </div>
-          <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200">
-            <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
-            <span>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
-          </div>
-          <div v-if="schedule.trip?.is_women_only" class="flex items-center gap-2 bg-pink-50 px-4 py-2 rounded-xl text-pink-700 border border-pink-200 animate-pulse">
-            <span class="material-symbols-rounded text-pink-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">female</span>
-            <span class="font-bold">ทริปสำหรับผู้หญิงเท่านั้น</span>
+      <div class="mb-10 bg-white rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden flex flex-col md:flex-row">
+        <!-- Cover image -->
+        <div v-if="schedule.trip?.cover_image" class="md:w-72 md:shrink-0 h-48 md:h-auto relative">
+          <img :src="schedule.trip.cover_image" :alt="schedule.trip.title"
+            class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent md:bg-gradient-to-l"></div>
+        </div>
+        <!-- Content -->
+        <div class="flex-1 p-6 md:p-8 relative overflow-hidden">
+          <h1 class="font-anuphan text-2xl md:text-4xl font-extrabold text-gray-900 mb-4 relative z-10">
+            {{ schedule.trip?.title }}
+          </h1>
+          <div class="flex flex-wrap gap-4 text-sm font-medium relative z-10">
+            <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200/60">
+              <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">calendar_month</span>
+              <span>
+                {{ formatDate(schedule.departure_date) }}
+                <template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
+              </span>
+            </div>
+            <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200">
+              <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
+              <span>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
+            </div>
+            <div v-if="schedule.trip?.is_women_only" class="flex items-center gap-2 bg-pink-50 px-4 py-2 rounded-xl text-pink-700 border border-pink-200 animate-pulse">
+              <span class="material-symbols-rounded text-pink-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">female</span>
+              <span class="font-bold">ทริปสำหรับผู้หญิงเท่านั้น</span>
+            </div>
           </div>
         </div>
       </div>
@@ -199,6 +208,79 @@
               <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">error</span>
               {{ seatError }}
             </p>
+
+            <!-- Vehicle Info (below seat map) -->
+            <div v-if="schedule.vehicle" class="mt-8 bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+
+              <!-- Image Carousel -->
+              <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group"
+                @touchstart="vehicleTouchStart"
+                @touchend="vehicleTouchEnd">
+                <div class="overflow-hidden" style="aspect-ratio:16/9;">
+                  <img
+                    :src="schedule.vehicle.images[vehicleImageIndex]"
+                    :alt="schedule.vehicle.name"
+                    class="w-full h-full object-cover transition-opacity duration-300"
+                  />
+                </div>
+                <button v-if="schedule.vehicle.images.length > 1"
+                  @click="vehicleImageIndex = (vehicleImageIndex - 1 + schedule.vehicle.images.length) % schedule.vehicle.images.length"
+                  class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 md:-translate-x-2 md:group-hover:translate-x-0">
+                  <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_left</span>
+                </button>
+                <button v-if="schedule.vehicle.images.length > 1"
+                  @click="vehicleImageIndex = (vehicleImageIndex + 1) % schedule.vehicle.images.length"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0">
+                  <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_right</span>
+                </button>
+                <div v-if="schedule.vehicle.images.length > 1" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/20 backdrop-blur-sm px-2.5 py-1.5 rounded-full">
+                  <button v-for="(_, i) in schedule.vehicle.images" :key="i"
+                    @click="vehicleImageIndex = i"
+                    class="rounded-full transition-all touch-manipulation"
+                    :class="vehicleImageIndex === i ? 'bg-white w-4 h-2' : 'bg-white/50 hover:bg-white/80 w-2 h-2'">
+                  </button>
+                </div>
+                <div class="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-sm text-white text-xs font-bold shadow-sm">
+                  {{ vehicleImageIndex + 1 }}/{{ schedule.vehicle.images.length }}
+                </div>
+              </div>
+
+              <!-- Interior video -->
+              <div v-if="schedule.vehicle.interior_video" class="px-5 pt-5">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-[16px]">videocam</span>วิดีโอภายในรถ
+                </p>
+                <video :src="schedule.vehicle.interior_video" controls class="w-full rounded-2xl border border-gray-100"></video>
+              </div>
+
+              <!-- Info row -->
+              <div class="p-5 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 shadow-sm shrink-0">
+                  <span class="material-symbols-rounded text-teal-600 text-[24px]" style="font-variation-settings:'FILL' 1,'wght' 400">directions_bus</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-gray-900 text-base truncate mb-1">{{ schedule.vehicle.name }}</p>
+                  <div class="flex flex-wrap gap-2 text-xs font-medium text-gray-500">
+                    <span class="bg-gray-100 px-2 py-0.5 rounded-md">{{ schedule.vehicle.capacity }} ที่นั่ง</span>
+                    <span v-if="schedule.vehicle.color" class="bg-gray-100 px-2 py-0.5 rounded-md">{{ schedule.vehicle.color }}</span>
+                    <span v-if="schedule.vehicle.license_plate" class="bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 text-gray-700">{{ schedule.vehicle.license_plate }}</span>
+                  </div>
+                  <div v-if="schedule.vehicle.driver_name" class="mt-3 flex items-center gap-3">
+                    <img v-if="schedule.vehicle.driver_photo" :src="schedule.vehicle.driver_photo"
+                      class="w-9 h-9 rounded-full object-cover border-2 border-gray-200 shrink-0" />
+                    <span v-else class="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                      <span class="material-symbols-rounded text-[18px] text-gray-400">person</span>
+                    </span>
+                    <div class="min-w-0">
+                      <p class="text-xs text-gray-500 font-medium">คนขับ</p>
+                      <p class="text-sm font-bold text-gray-900 truncate">{{ schedule.vehicle.driver_name }}</p>
+                      <p v-if="schedule.vehicle.driver_phone" class="text-xs text-teal-600 font-medium">{{ schedule.vehicle.driver_phone }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
 
           <!-- Passenger Info step -->
@@ -593,73 +675,6 @@
               สามารถยกเลิกได้ก่อนการเดินทางภายใน 60 วัน
             </p>
           </div>
-
-          <!-- Vehicle Info Card -->
-          <div v-if="schedule.vehicle" class="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
-
-            <!-- Image Carousel -->
-            <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group"
-              @touchstart="vehicleTouchStart"
-              @touchend="vehicleTouchEnd">
-              <div class="overflow-hidden" style="aspect-ratio:16/9;">
-                <img
-                  :src="schedule.vehicle.images[vehicleImageIndex]"
-                  :alt="schedule.vehicle.name"
-                  class="w-full h-full object-cover transition-opacity duration-300"
-                />
-              </div>
-
-              <!-- Prev / Next arrows — always visible on touch, hover-only on desktop -->
-              <button v-if="schedule.vehicle.images.length > 1"
-                @click="vehicleImageIndex = (vehicleImageIndex - 1 + schedule.vehicle.images.length) % schedule.vehicle.images.length"
-                class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all
-                  opacity-100 md:opacity-0 md:group-hover:opacity-100 md:-translate-x-2 md:group-hover:translate-x-0">
-                <span class="material-symbols-rounded text-[22px] md:text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_left</span>
-              </button>
-              <button v-if="schedule.vehicle.images.length > 1"
-                @click="vehicleImageIndex = (vehicleImageIndex + 1) % schedule.vehicle.images.length"
-                class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 md:w-8 md:h-8 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all
-                  opacity-100 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0">
-                <span class="material-symbols-rounded text-[22px] md:text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_right</span>
-              </button>
-
-              <!-- Dot indicators -->
-              <div v-if="schedule.vehicle.images.length > 1" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/20 backdrop-blur-sm px-2.5 py-1.5 rounded-full">
-                <button
-                  v-for="(_, i) in schedule.vehicle.images" :key="i"
-                  @click="vehicleImageIndex = i"
-                  class="rounded-full transition-all touch-manipulation"
-                  :class="vehicleImageIndex === i ? 'bg-white w-4 h-2' : 'bg-white/50 hover:bg-white/80 w-2 h-2'">
-                </button>
-              </div>
-
-              <!-- Image counter -->
-              <div class="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-sm text-white text-xs font-bold shadow-sm">
-                {{ vehicleImageIndex + 1 }}/{{ schedule.vehicle.images.length }}
-              </div>
-            </div>
-
-            <!-- Info row -->
-            <div class="p-5 flex items-center gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 shadow-sm shrink-0">
-                <span class="material-symbols-rounded text-teal-600 text-[24px]" style="font-variation-settings:'FILL' 1,'wght' 400">directions_bus</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-bold text-gray-900 text-base truncate mb-1">{{ schedule.vehicle.name }}</p>
-                <div class="flex flex-wrap gap-2 text-xs font-medium text-gray-500">
-                  <span class="bg-gray-100 px-2 py-0.5 rounded-md">{{ schedule.vehicle.capacity }} ที่นั่ง</span>
-                  <span v-if="schedule.vehicle.color" class="bg-gray-100 px-2 py-0.5 rounded-md">{{ schedule.vehicle.color }}</span>
-                  <span v-if="schedule.vehicle.license_plate" class="bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 text-gray-700">{{ schedule.vehicle.license_plate }}</span>
-                </div>
-                <p v-if="schedule.vehicle.driver_name" class="text-xs text-gray-500 mt-2 flex items-center gap-1.5 font-medium">
-                  <span class="material-symbols-rounded text-[14px]">person</span>
-                  คนขับ: <span class="text-gray-900">{{ schedule.vehicle.driver_name }}</span>
-                </p>
-              </div>
-            </div>
-
-          </div>
-
         </aside>
       </div>
     </div>
