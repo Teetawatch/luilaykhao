@@ -108,17 +108,15 @@
     <!-- ══════════════════════════════════════════
          SOCIAL PROOF BAR
     ══════════════════════════════════════════ -->
-    <section class="bg-[var(--color-sand)] relative z-10 pb-16 pt-8">
+    <section class="bg-[var(--color-sand)] relative z-10 pb-20 pt-4">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="bg-white rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.05)] border border-gray-100 p-8 md:p-10 -mt-16 relative z-20">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4 divide-x-0 md:divide-x divide-gray-100">
-            <div v-for="(stat, index) in statItems" :key="stat.label" class="flex flex-col items-center justify-center text-center px-4 group">
-              <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] mb-4 group-hover:scale-110 group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300">
-                <span class="material-symbols-rounded text-[28px]">{{ stat.icon }}</span>
-              </div>
-              <div class="text-3xl font-extrabold text-[var(--color-text-dark)] mb-1">{{ stat.value }}</div>
-              <div class="text-sm font-medium text-[var(--color-text-muted)]">{{ stat.label }}</div>
+        <div class=" grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 -mt-16 md:-mt-20 relative z-20">
+          <div v-for="(stat, index) in statItems" :key="stat.label" class="bg-white rounded-[1.5rem] p-6 lg:p-8 flex flex-col items-center text-center shadow-[0_8px_20px_rgba(0,0,0,0.03)] border border-gray-100 hover:border-[var(--color-primary)] hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(13,43,30,0.08)] transition-all duration-300 group">
+            <div class="w-14 h-14 rounded-full bg-[var(--color-primary)]/5 flex items-center justify-center text-[var(--color-primary)] mb-5 group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors duration-300">
+              <span class="material-symbols-rounded text-[28px]">{{ stat.icon }}</span>
             </div>
+            <div class="text-3xl lg:text-4xl font-black text-[var(--color-text-dark)] mb-1 tracking-tight">{{ stat.value }}</div>
+            <div class="text-sm font-bold text-[var(--color-text-muted)]">{{ stat.label }}</div>
           </div>
         </div>
       </div>
