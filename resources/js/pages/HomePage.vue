@@ -547,65 +547,60 @@
          NEWSLETTER CTA SECTION (Full-Width Redesign)
     ══════════════════════════════════════════ -->
     <section class="relative py-32 w-full overflow-hidden bg-[var(--color-primary)]">
-      <!-- Sophisticated Background Elements -->
-      <div class="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-      <div class="absolute top-0 right-0 w-[50rem] h-[50rem] bg-[var(--color-accent-light)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-[var(--color-gold)]/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
+      <!-- Sophisticated Background Pattern -->
+      <div class="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-24">
           
           <!-- Text Content -->
           <div class="flex-1 text-center lg:text-left max-w-2xl">
-            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.05] tracking-tight">
+            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-6 leading-[1.1] tracking-tight drop-shadow-md">
               รับดีลเกาะลับก่อนใคร<br />
               <span class="text-[var(--color-accent-light)]">รับส่วนลด 10%</span> ทันที
             </h2>
-            <p class="text-white/70 text-lg md:text-xl font-medium leading-relaxed mb-0 max-w-xl">
+            <p class="text-white/80 text-lg md:text-xl font-bold leading-relaxed mb-0 max-w-xl">
               ร่วมเป็นสมาชิกครอบครัวนักเดินทางกับหน้าใหม่ของ "ลุยเลเขา" รับข่าวสารทริปคัดสรรพิเศษและส่วนลดสมาชิกที่คุณจะหาไม่ได้จากที่อื่น
             </p>
           </div>
 
-          <!-- Integrated Form (No "box" frame) -->
+          <!-- Integrated Form -->
           <div class="flex-1 w-full max-w-xl">
             <div class="relative group">
-              <!-- Subtle glow background -->
-              <div class="absolute -inset-1 bg-gradient-to-r from-[var(--color-accent-light)] to-[var(--color-gold)] rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-              
-              <div class="relative bg-white/5 backdrop-blur-2xl p-10 md:p-12 rounded-[2.5rem] border border-white/10 shadow-3xl">
+              <div class="relative bg-white/10 backdrop-blur-md p-10 md:p-12 rounded-[2rem] border border-white/20 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] transition-all duration-300 group-hover:border-white/30 group-hover:bg-white/15">
                 <form @submit.prevent class="space-y-6">
-                  <div class="relative">
-                    <label class="block text-white/50 text-[10px] items-center uppercase tracking-widest font-black mb-3 ml-1">Work Email Address</label>
+                  <div class="relative group/input">
+                    <label class="block text-white/70 text-[10px] font-black uppercase tracking-widest mb-3 ml-1">อีเมลของคุณ (Work Email Address)</label>
                     <div class="relative">
                       <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                        <span class="material-symbols-rounded text-[var(--color-accent-light)] group-hover:scale-110 transition-transform">alternate_email</span>
+                        <span class="material-symbols-rounded text-white/50 group-focus-within/input:text-white transition-colors duration-300">alternate_email</span>
                       </div>
                       <input
                         type="email"
                         placeholder="your@email.com"
-                        class="w-full bg-white/10 border border-white/20 rounded-2xl py-5 pl-16 pr-8 text-white placeholder:text-white/30 focus:ring-2 focus:ring-[var(--color-accent-light)] focus:border-transparent outline-none text-lg font-bold transition-all duration-500 shadow-inner"
+                        class="w-full bg-black/20 border border-white/10 rounded-[1.5rem] py-5 pl-16 pr-8 text-white placeholder:text-white/30 focus:ring-2 focus:ring-[var(--color-accent-light)] focus:border-[var(--color-accent-light)] focus:bg-black/40 outline-none text-lg font-bold transition-all duration-300"
                       />
                     </div>
                   </div>
                   
                   <button
                     type="submit"
-                    class="w-full bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white py-5 rounded-2xl font-black text-xl transition-all duration-500 shadow-xl hover:shadow-[0_20px_40px_rgba(255,255,255,0.15)] flex items-center justify-center gap-3 cursor-pointer group/btn overflow-hidden relative isolate"
+                    class="w-full bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white py-5 rounded-[1.5rem] font-black text-xl transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgba(76,175,125,0.4)] hover:-translate-y-1 flex items-center justify-center gap-3 cursor-pointer"
                   >
-                    <span class="relative z-10">สมัครสมาชิกฟรี</span>
-                    <span class="material-symbols-rounded relative z-10 text-2xl transform group-hover/btn:translate-x-2 transition-transform duration-500">arrow_right_alt</span>
+                    สมัครสมาชิกฟรี
+                    <span class="material-symbols-rounded text-[24px]">arrow_forward</span>
                   </button>
                 </form>
                 
-                <div class="mt-8 flex items-center justify-center gap-6 opacity-40">
+                <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 opacity-50">
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-rounded text-white text-[16px]">verified</span>
-                    <span class="text-white text-[10px] font-bold uppercase tracking-widest">No Spam</span>
+                    <span class="text-white text-[10px] font-bold uppercase tracking-widest">ไม่มีสแปม (No Spam)</span>
                   </div>
-                  <div class="w-px h-3 bg-white"></div>
+                  <div class="hidden sm:block w-1.5 h-1.5 rounded-full bg-white/50"></div>
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-rounded text-white text-[16px]">lock_open</span>
-                    <span class="text-white text-[10px] font-bold uppercase tracking-widest">Secure</span>
+                    <span class="text-white text-[10px] font-bold uppercase tracking-widest">ปลอดภัย (Secure)</span>
                   </div>
                 </div>
               </div>

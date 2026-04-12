@@ -4,37 +4,35 @@
     <!-- ══════════════════════════════════════════
          HERO SECTION
     ══════════════════════════════════════════ -->
-    <section class="relative min-h-[520px] md:min-h-[700px] flex items-center overflow-hidden -mt-16 bg-[#0D2B1E]">
+    <section class="relative min-h-[520px] md:min-h-[700px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
           src="/images/hiking.png"
           alt="จุดมุ่งหมายของเรา"
-          class="w-full h-full object-cover opacity-80"
+          class="w-full h-full object-cover mix-blend-overlay opacity-50"
         />
-        <div class="absolute inset-0 bg-gradient-to-b from-[#0D2B1E]/60 via-[#1A3A2E]/40 to-[#0D2B1E]/90"></div>
+        <!-- Solid color overlay instead of gradient -->
+        <div class="absolute inset-0 bg-black/40"></div>
       </div>
-      <!-- Decorative orbs -->
-      <div class="absolute top-20 left-10 w-72 h-72 bg-[var(--color-accent)]/20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div class="absolute bottom-16 right-10 w-64 h-64 bg-[var(--color-gold)]/20 rounded-full blur-[80px] pointer-events-none"></div>
 
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
-        <div class="text-center max-w-4xl mt-10">
-          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-[var(--color-gold)] font-medium tracking-widest uppercase text-xs mb-6">
+        <div class="text-center max-w-4xl mt-10 flex flex-col items-center">
+          <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-[var(--color-sand)]/10 border border-white/10 backdrop-blur-md text-[var(--color-gold)] font-bold tracking-[0.2em] uppercase text-xs mb-8 shadow-sm">
             จุดมุ่งหมาย
           </div>
-          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white leading-tight mb-8 drop-shadow-lg">
+          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight mb-6 tracking-tight drop-shadow-md">
             เป้าหมายของเรา
           </h1>
-          <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto drop-shadow-md">
+          <p class="text-xl md:text-2xl lg:text-3xl text-white/80 font-bold leading-relaxed max-w-3xl mx-auto tracking-wide">
             เราไม่ได้เริ่มจากความอยากสร้างธุรกิจใหญ่ แต่เริ่มจากความตั้งใจเล็ก ๆ
           </p>
         </div>
       </div>
 
       <!-- Scroll indicator -->
-      <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
-        <div class="w-7 h-12 border-2 border-white/20 rounded-full flex justify-center pt-2 backdrop-blur-sm">
-          <div class="w-1.5 h-3 bg-white/70 rounded-full scroll-dot"></div>
+      <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 opacity-70 hover:opacity-100 transition-opacity">
+        <div class="w-8 h-14 border-[3px] border-white/20 rounded-full flex justify-center pt-2 backdrop-blur-sm">
+          <div class="w-2 h-3 bg-white rounded-full scroll-dot"></div>
         </div>
       </div>
     </section>

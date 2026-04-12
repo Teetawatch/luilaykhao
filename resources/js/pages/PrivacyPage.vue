@@ -1,20 +1,21 @@
 <template>
   <div class="privacy-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     <!-- HERO SECTION -->
-    <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[#0D2B1E]">
+    <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
           src="/images/phusoidao.png"
           alt="Privacy Policy"
-          class="w-full h-full object-cover opacity-60"
+          class="w-full h-full object-cover mix-blend-overlay opacity-50"
         />
-        <div class="absolute inset-0 bg-gradient-to-b from-[#0D2B1E]/60 via-[#1A3A2E]/40 to-[#0D2B1E]/90"></div>
+        <div class="absolute inset-0 bg-black/40"></div>
       </div>
-      <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center">
-        <h1 class="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4 drop-shadow-lg">
+      <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
+        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
+        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight drop-shadow-md">
           นโยบายความเป็นส่วนตัว
         </h1>
-        <p class="text-lg md:text-xl text-white/90 font-medium max-w-2xl mx-auto">
+        <p class="text-lg md:text-xl text-white/80 font-bold max-w-2xl mx-auto tracking-wide">
           ความสัมพันธ์ที่ยั่งยืนเริ่มต้นจากความไว้วางใจ เราปกป้องข้อมูลของคุณเหมือนเพื่อนดูแลเพื่อน
         </p>
       </div>
