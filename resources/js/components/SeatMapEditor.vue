@@ -234,7 +234,12 @@ const DEFAULT_LAYOUT = {
 const props = defineProps({
   modelValue: { 
     type: Object, 
-    default: () => ({ ...DEFAULT_LAYOUT })
+    default: () => ({
+      rows: 4, columns: ['A','B','C','','D','E'], seats: [],
+      front_seat: null, last_row_center: [],
+      front_label: 'หน้ารถ', rear_label: 'ท้ายรถ (สำหรับเก็บสัมภาระ)',
+      driver_icon: 'directions_car', show_driver: true,
+    })
   }
 });
 const emit = defineEmits(['update:modelValue']);
