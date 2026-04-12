@@ -26,23 +26,23 @@
       </div>
     </div>
 
-    <!-- Van layout container -->
+    <!-- Vehicle layout container -->
     <div class="relative bg-white rounded-3xl p-6 md:p-10 shadow-xl border border-[#bdc9c8]/20 overflow-hidden">
       <div class="absolute -top-20 -right-20 w-56 h-56 bg-opacity-10 rounded-full blur-3xl pointer-events-none" :class="isWomenOnly ? 'bg-[#db2777]/5' : 'bg-[#006565]/5'"></div>
       <div class="absolute -bottom-20 -left-20 w-56 h-56 bg-[#9e380d]/5 rounded-full blur-3xl pointer-events-none"></div>
 
       <div class="relative max-w-sm mx-auto">
 
-        <!-- Front of Van: Front passenger (LEFT) + Driver (RIGHT) -->
+        <!-- Front section: Front passenger seat + Driver -->
         <div class="flex items-end justify-between mb-8 pb-6 border-b-2 border-dashed border-[#bdc9c8]/50">
-          <!-- Front passenger seat -->
+          <!-- Front passenger seat (from config) -->
           <button
             v-if="frontPassengerSeat"
             :disabled="frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked'"
             @click="handleSeatClick(frontPassengerSeat)"
             class="group flex flex-col items-center transition-all duration-200 shrink-0"
             :class="frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-            :title="frontPassengerSeat.status === 'booked' ? 'จองโดย ' + (frontPassengerSeat.passenger_name || 'ไ่ม่ระบุชื่อ') : ''"
+            :title="frontPassengerSeat.status === 'booked' ? 'จองโดย ' + (frontPassengerSeat.passenger_name || 'ไม่ระบุชื่อ') : ''"
           >
             <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
               :class="seatBgClass(frontPassengerSeat)">
@@ -59,77 +59,42 @@
           </button>
           <div v-else class="w-12 md:w-14 shrink-0"></div>
 
-          <!-- หน้ารถ label -->
+          <!-- Front label -->
           <div class="flex-1 flex justify-center">
             <span class="px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase transition-colors duration-300"
-              :class="isWomenOnly ? 'bg-[#db2777]/10 text-[#db2777]' : 'bg-[#006565]/10 text-[#006565]'">หน้ารถ</span>
+              :class="isWomenOnly ? 'bg-[#db2777]/10 text-[#db2777]' : 'bg-[#006565]/10 text-[#006565]'">{{ layoutConfig.front_label }}</span>
           </div>
 
           <!-- Driver -->
-          <div class="flex flex-col items-center opacity-50 shrink-0">
+          <div v-if="layoutConfig.show_driver" class="flex flex-col items-center opacity-50 shrink-0">
             <div class="w-12 h-12 rounded-xl bg-[#e8e8e8] flex items-center justify-center">
-              <span class="material-symbols-rounded text-2xl text-[#3e4949]" style="font-variation-settings:'FILL' 0,'wght' 400">directions_car</span>
+              <span class="material-symbols-rounded text-2xl text-[#3e4949]" style="font-variation-settings:'FILL' 0,'wght' 400">{{ layoutConfig.driver_icon }}</span>
             </div>
             <span class="text-xs mt-1.5 font-medium text-[#6e7979]">คนขับ</span>
           </div>
+          <div v-else class="w-12 shrink-0"></div>
         </div>
 
         <!-- Seat rows -->
         <div class="space-y-4">
           <div
-            v-for="(rowDef, rowIdx) in vanBodyRows"
+            v-for="(rowDef, rowIdx) in bodyRows"
             :key="rowIdx"
             class="flex items-center justify-center gap-1 pl-18"
           >
             <!-- Left group -->
             <div class="flex gap-2">
               <template v-for="seatId in rowDef.left" :key="seatId">
-                <button
-                  :disabled="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked'"
-                  @click="handleSeatClick(getSeat(seatId))"
-                  class="group flex flex-col items-center transition-all duration-200"
-                  :class="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-                  :title="getSeat(seatId)?.status === 'booked' ? 'จองโดย ' + (getSeat(seatId).passenger_name || 'ไม่ระบุชื่อ') : ''"
-                >
-                  <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
-                    :class="seatBgClass(getSeat(seatId))">
-                    <span class="material-symbols-rounded text-xl transition-all duration-200"
-                      :class="seatIconClass(getSeat(seatId))"
-                      style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_normal</span>
-                  </div>
-                  <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(getSeat(seatId))">
-                    {{ getSeat(seatId)?.label ?? seatId }}
-                  </span>
-                  <span v-if="getSeat(seatId)?.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
-                    {{ getSeat(seatId).passenger_name || '...' }}
-                  </span>
-                </button>
+                <SeatButton :seat="getSeat(seatId)" :seat-id="seatId" :is-women-only="isWomenOnly"
+                  @click="handleSeatClick(getSeat(seatId))" />
               </template>
             </div>
 
-            <!-- Center group (for A4, B4, C4) -->
+            <!-- Center group (from config last_row_center) -->
             <div v-if="rowDef.center && rowDef.center.length > 0" class="flex gap-3 ml-2">
               <template v-for="seatId in rowDef.center" :key="seatId">
-                <button
-                  :disabled="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked'"
-                  @click="handleSeatClick(getSeat(seatId))"
-                  class="group flex flex-col items-center transition-all duration-200"
-                  :class="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-                  :title="getSeat(seatId)?.status === 'booked' ? 'จองโดย ' + (getSeat(seatId).passenger_name || 'ไม่ระบุชื่อ') : ''"
-                >
-                  <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
-                    :class="seatBgClass(getSeat(seatId))">
-                    <span class="material-symbols-rounded text-xl transition-all duration-200"
-                      :class="seatIconClass(getSeat(seatId))"
-                      style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_normal</span>
-                  </div>
-                  <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(getSeat(seatId))">
-                    {{ getSeat(seatId)?.label ?? seatId }}
-                  </span>
-                  <span v-if="getSeat(seatId)?.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
-                    {{ getSeat(seatId).passenger_name || '...' }}
-                  </span>
-                </button>
+                <SeatButton :seat="getSeat(seatId)" :seat-id="seatId" :is-women-only="isWomenOnly"
+                  @click="handleSeatClick(getSeat(seatId))" />
               </template>
             </div>
 
@@ -142,34 +107,16 @@
             <!-- Right group -->
             <div class="flex gap-2">
               <template v-for="seatId in rowDef.right" :key="seatId">
-                <button
-                  :disabled="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked'"
-                  @click="handleSeatClick(getSeat(seatId))"
-                  class="group flex flex-col items-center transition-all duration-200"
-                  :class="getSeat(seatId)?.status === 'booked' || getSeat(seatId)?.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-                  :title="getSeat(seatId)?.status === 'booked' ? 'จองโดย ' + (getSeat(seatId).passenger_name || 'ไม่ระบุชื่อ') : ''"
-                >
-                  <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
-                    :class="seatBgClass(getSeat(seatId))">
-                    <span class="material-symbols-rounded text-xl transition-all duration-200"
-                      :class="seatIconClass(getSeat(seatId))"
-                      style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_normal</span>
-                  </div>
-                  <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(getSeat(seatId))">
-                    {{ getSeat(seatId)?.label ?? seatId }}
-                  </span>
-                  <span v-if="getSeat(seatId)?.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
-                    {{ getSeat(seatId).passenger_name || '...' }}
-                  </span>
-                </button>
+                <SeatButton :seat="getSeat(seatId)" :seat-id="seatId" :is-women-only="isWomenOnly"
+                  @click="handleSeatClick(getSeat(seatId))" />
               </template>
             </div>
           </div>
         </div>
 
-        <!-- Rear bumper -->
+        <!-- Rear label -->
         <div class="mt-8 pt-5 border-t-2 border-dashed border-[#bdc9c8]/50 flex justify-center">
-          <span class="px-3 py-1 rounded-full bg-[#f3f3f3] text-[#6e7979] text-xs font-bold tracking-widest uppercase">ท้ายรถ (สำหรับเก็บสัมภาระ)</span>
+          <span class="px-3 py-1 rounded-full bg-[#f3f3f3] text-[#6e7979] text-xs font-bold tracking-widest uppercase">{{ layoutConfig.rear_label }}</span>
         </div>
       </div>
     </div>
@@ -182,7 +129,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, h } from 'vue';
 import { useSeatsStore } from '../stores/seats';
 
 const seatsStore = useSeatsStore();
@@ -194,6 +141,20 @@ const props = defineProps({
 
 const emit = defineEmits(['seat-click']);
 
+// ─── Layout config from seat_layout (all admin-configurable) ──────
+const layoutConfig = computed(() => {
+  const sm = props.seatMap;
+  return {
+    front_seat: sm?.front_seat ?? null,
+    last_row_center: sm?.last_row_center ?? [],
+    front_label: sm?.front_label || 'หน้ารถ',
+    rear_label: sm?.rear_label || 'ท้ายรถ (สำหรับเก็บสัมภาระ)',
+    driver_icon: sm?.driver_icon || 'directions_car',
+    show_driver: sm?.show_driver !== false,
+  };
+});
+
+// ─── Seat style helpers ───────────────────────────────────────────
 function seatBgClass(seat) {
   if (!seat) return 'bg-[#e2e2e2]';
   if (seat.status === 'booked') return 'bg-[#6e7979]';
@@ -221,19 +182,21 @@ function seatLabelClass(seat) {
   return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
 }
 
+// ─── Front passenger seat (data-driven from config) ───────────────
 const frontPassengerSeat = computed(() => {
-  if (!props.seatMap?.seats || !props.seatMap?.columns) return null;
-  const firstCol = props.seatMap.columns.find(c => c !== '');
-  if (!firstCol) return null;
-  return props.seatMap.seats.find(s => s.id === firstCol + '1') ?? null;
+  const frontId = layoutConfig.value.front_seat;
+  if (!frontId || !props.seatMap?.seats) return null;
+  return props.seatMap.seats.find(s => s.id === frontId) ?? null;
 });
 
-const vanRows = computed(() => {
+// ─── Build seat rows from layout data (fully dynamic) ─────────────
+const centerSeatIds = computed(() => new Set(layoutConfig.value.last_row_center || []));
+
+const allRows = computed(() => {
   if (!props.seatMap?.seats) return [];
 
   const rows = props.seatMap.rows ?? 0;
   const columns = props.seatMap.columns ?? [];
-
   const result = [];
 
   for (let r = 1; r <= rows; r++) {
@@ -253,8 +216,7 @@ const vanRows = computed(() => {
       const exists = props.seatMap.seats.some(s => s.id === seatId);
       if (!exists) continue;
 
-      // Check if this is A4, B4, or C4 - move to center
-      if ((col === 'A' || col === 'B' || col === 'C') && r === 4) {
+      if (centerSeatIds.value.has(seatId)) {
         center.push(seatId);
       } else if (inRight) {
         right.push(seatId);
@@ -269,11 +231,13 @@ const vanRows = computed(() => {
   return result;
 });
 
-const vanBodyRows = computed(() => {
-  if (!frontPassengerSeat.value) return vanRows.value;
-  return vanRows.value.filter(row => {
+// Body rows = all rows minus the front passenger seat row (if configured)
+const bodyRows = computed(() => {
+  const frontId = layoutConfig.value.front_seat;
+  if (!frontId) return allRows.value;
+  return allRows.value.filter(row => {
     const allIds = [...row.left, ...row.right, ...row.center];
-    return !allIds.includes(frontPassengerSeat.value.id);
+    return !allIds.includes(frontId);
   });
 });
 
@@ -290,4 +254,38 @@ function handleSeatClick(seat) {
   seatsStore.toggleSeat(seat);
   emit('seat-click', seat);
 }
+
+// ─── Inline SeatButton component ──────────────────────────────────
+const SeatButton = (btnProps, { emit: btnEmit }) => {
+  const seat = btnProps.seat;
+  const seatId = btnProps.seatId;
+  const disabled = seat?.status === 'booked' || seat?.status === 'locked';
+
+  return h('button', {
+    disabled,
+    onClick: () => { if (!disabled) btnEmit('click'); },
+    class: [
+      'group flex flex-col items-center transition-all duration-200',
+      disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+    ],
+    title: seat?.status === 'booked' ? 'จองโดย ' + (seat.passenger_name || 'ไม่ระบุชื่อ') : '',
+  }, [
+    h('div', {
+      class: ['w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200', seatBgClass(seat)],
+    }, [
+      h('span', {
+        class: ['material-symbols-rounded text-xl transition-all duration-200', seatIconClass(seat)],
+        style: "font-variation-settings:'FILL' 1,'wght' 400",
+      }, 'airline_seat_recline_normal'),
+    ]),
+    h('span', {
+      class: ['text-[10px] mt-1 font-bold transition-colors', seatLabelClass(seat)],
+    }, seat?.label ?? seatId),
+    seat?.status === 'booked'
+      ? h('span', { class: 'text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium' }, seat.passenger_name || '...')
+      : null,
+  ]);
+};
+SeatButton.props = { seat: Object, seatId: String, isWomenOnly: Boolean };
+SeatButton.emits = ['click'];
 </script>

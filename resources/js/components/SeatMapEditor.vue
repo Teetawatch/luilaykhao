@@ -39,8 +39,75 @@
           <p class="text-[10px] text-slate-400 mt-2 font-medium">เว้นว่างไว้เป็นทางเดิน (e.g. A,B,,C,D)</p>
         </div>
       </div>
+
+      <!-- Advanced config -->
+      <div class="mt-6 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-2 mb-4">
+          <button type="button" @click="showAdvanced = !showAdvanced" class="text-xs font-black text-slate-500 flex items-center gap-1.5 hover:text-slate-700 transition-colors">
+            <i :class="showAdvanced ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" class="text-[10px]"></i>
+            <i class="fas fa-cog"></i> ตั้งค่าขั้นสูง
+          </button>
+        </div>
+        <div v-if="showAdvanced" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div class="form-group">
+            <label class="block text-sm font-extrabold text-slate-700 mb-2 uppercase tracking-wider">ที่นั่งด้านหน้า (แยกจากแถวปกติ)</label>
+            <input 
+              type="text" 
+              v-model="frontSeatRaw" 
+              @input="onFrontSeatInput"
+              placeholder="เช่น A1 (เว้นว่างถ้าไม่มี)"
+              class="w-full font-bold border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]"
+            />
+            <p class="text-[10px] text-slate-400 mt-2 font-medium">ที่นั่งคู่คนขับ (จะแสดงแถวบนสุดแยกออกมา)</p>
+          </div>
+          <div class="form-group">
+            <label class="block text-sm font-extrabold text-slate-700 mb-2 uppercase tracking-wider">ที่นั่งแถวสุดท้ายรวมกลาง</label>
+            <input 
+              type="text" 
+              v-model="lastRowCenterRaw" 
+              @input="onLastRowCenterInput"
+              placeholder="เช่น A4,B4,C4 (เว้นว่างถ้าไม่มี)"
+              class="w-full font-bold border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]"
+            />
+            <p class="text-[10px] text-slate-400 mt-2 font-medium">ที่นั่งที่จะจัดกลุ่มตรงกลาง (เช่น แถวหลังสุด)</p>
+          </div>
+          <div class="form-group">
+            <label class="block text-sm font-extrabold text-slate-700 mb-2 uppercase tracking-wider">ป้ายด้านหน้า</label>
+            <input 
+              type="text" 
+              v-model="layout.front_label" 
+              placeholder="หน้ารถ"
+              class="w-full font-bold border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]"
+            />
+          </div>
+          <div class="form-group">
+            <label class="block text-sm font-extrabold text-slate-700 mb-2 uppercase tracking-wider">ป้ายด้านหลัง</label>
+            <input 
+              type="text" 
+              v-model="layout.rear_label" 
+              placeholder="ท้ายรถ (สำหรับเก็บสัมภาระ)"
+              class="w-full font-bold border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]"
+            />
+          </div>
+          <div class="form-group">
+            <label class="block text-sm font-extrabold text-slate-700 mb-2 uppercase tracking-wider">ไอคอนคนขับ</label>
+            <select v-model="layout.driver_icon" class="w-full font-bold border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]">
+              <option value="directions_car">รถยนต์</option>
+              <option value="sailing">เรือ</option>
+              <option value="directions_bus">รถบัส</option>
+              <option value="two_wheeler">มอเตอร์ไซค์</option>
+            </select>
+          </div>
+          <div class="form-group flex items-end">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" v-model="layout.show_driver" class="w-5 h-5 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]" />
+              <span class="text-sm font-extrabold text-slate-700 uppercase tracking-wider">แสดงช่องคนขับ</span>
+            </label>
+          </div>
+        </div>
+      </div>
       
-      <div class="mt-6 pt-6 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
+      <div class="mt-4 pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-2 text-xs font-bold text-slate-500">
           <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
           คลิกที่บล็อก {{ totalSeats }} จุดเพื่อเปิด/ปิดที่นั่ง
@@ -51,6 +118,9 @@
           </button>
           <button type="button" @click="fillAll" class="px-4 py-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 text-xs font-black hover:bg-blue-100 transition-colors flex items-center gap-2">
             <i class="fas fa-check-double"></i> เลือกทั้งหมด
+          </button>
+          <button type="button" @click="clearAll" class="px-4 py-2 rounded-lg bg-red-50 text-red-500 border border-red-100 text-xs font-black hover:bg-red-100 transition-colors flex items-center gap-2">
+            <i class="fas fa-times"></i> ล้างทั้งหมด
           </button>
         </div>
       </div>
@@ -63,33 +133,35 @@
         
         <!-- Dashboard / Front Section -->
         <div class="front-dashboard flex justify-between items-center mb-12 border-b-2 border-dashed border-slate-200 pb-8 px-4">
-          <div class="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-400 shadow-inner">
-             <i class="fas fa-steering-wheel text-xl opacity-60"></i>
+          <div v-if="layout.show_driver !== false" class="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-400 shadow-inner">
+             <span class="material-symbols-rounded text-xl opacity-60" style="font-variation-settings:'FILL' 0,'wght' 400">{{ layout.driver_icon || 'directions_car' }}</span>
           </div>
+          <div v-else class="w-14 shrink-0"></div>
           <div class="text-center">
             <div class="w-16 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 opacity-50"></div>
-            <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest">FRONT / ด้านหน้าทริป</span>
+            <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest">{{ layout.front_label || 'หน้ารถ' }}</span>
           </div>
           <div 
+            v-if="layout.front_seat"
             class="w-14 h-14 rounded-2xl border-2 flex items-center justify-center cursor-pointer transition-all duration-300 transform active:scale-95 shadow-sm"
-            :class="hasSeat(getFirstCol() + '1') ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white font-black' : 'bg-white border-slate-100 text-slate-200 border-dashed'"
-            @click="toggleSeat(getFirstCol(), 1)"
+            :class="hasSeat(layout.front_seat) ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white font-black' : 'bg-white border-slate-100 text-slate-200 border-dashed'"
+            @click="toggleSeatById(layout.front_seat)"
           >
             <div class="flex flex-col items-center">
               <i class="fas fa-user text-[10px] mb-0.5"></i>
-              <span class="text-[10px]">{{ getFirstCol() }}1</span>
+              <span class="text-[10px]">{{ layout.front_seat }}</span>
             </div>
           </div>
+          <div v-else class="w-14 shrink-0"></div>
         </div>
 
         <!-- Passenger Rows -->
         <div class="rows-container space-y-4">
           <div v-for="r in layout.rows" :key="r" class="flex justify-center gap-3">
             <!-- Row Number Label -->
-            <div v-if="r > 1" class="w-6 flex items-center justify-center text-[10px] font-black text-slate-300 uppercase shrink-0">
+            <div class="w-6 flex items-center justify-center text-[10px] font-black text-slate-300 uppercase shrink-0">
               R{{ r }}
             </div>
-            <div v-else class="w-6 shrink-0"></div>
 
             <template v-for="(col, cIdx) in columns" :key="cIdx">
               <!-- Aisle Spacer -->
@@ -99,11 +171,9 @@
               
               <!-- Seat Block -->
               <div 
-                v-else-if="r > 1 || true"
+                v-else
                 class="w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center cursor-pointer transition-all duration-300 transform active:scale-95 shadow-sm"
-                :class="hasSeat(col + r) 
-                  ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md' 
-                  : 'bg-white border-slate-100 text-slate-200 border-dashed hover:border-slate-300'"
+                :class="seatEditorClass(col, r)"
                 @click="toggleSeat(col, r)"
               >
                 <div class="flex flex-col items-center">
@@ -118,8 +188,28 @@
 
         <!-- Back Label -->
         <div class="mt-12 text-center">
-          <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-100 px-4 py-1 rounded-full">REAR / ด้านหลัง</span>
+          <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-100 px-4 py-1 rounded-full">{{ layout.rear_label || 'ท้ายรถ' }}</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Indicators -->
+    <div class="mt-4 flex flex-wrap gap-4 px-4 text-xs">
+      <div class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-lg bg-[var(--color-primary)]"></div>
+        <span class="text-slate-500 font-bold">ที่นั่งเปิด</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-lg bg-white border-2 border-dashed border-slate-200"></div>
+        <span class="text-slate-500 font-bold">ที่นั่งปิด</span>
+      </div>
+      <div v-if="layout.front_seat" class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-lg bg-amber-500"></div>
+        <span class="text-slate-500 font-bold">ที่นั่งด้านหน้า ({{ layout.front_seat }})</span>
+      </div>
+      <div v-if="lastRowCenterSeats.length" class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-lg bg-purple-500"></div>
+        <span class="text-slate-500 font-bold">แถวรวมกลาง ({{ lastRowCenterSeats.join(', ') }})</span>
       </div>
     </div>
 
@@ -134,27 +224,53 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 
+const DEFAULT_LAYOUT = { 
+  rows: 4, columns: ['A','B','C','','D','E'], seats: [],
+  front_seat: null, last_row_center: [], 
+  front_label: 'หน้ารถ', rear_label: 'ท้ายรถ (สำหรับเก็บสัมภาระ)',
+  driver_icon: 'directions_car', show_driver: true,
+};
+
 const props = defineProps({
   modelValue: { 
     type: Object, 
-    default: () => ({ rows: 4, columns: ['A','B','C','','D','E'], seats: [] }) 
+    default: () => ({ ...DEFAULT_LAYOUT })
   }
 });
 const emit = defineEmits(['update:modelValue']);
 
 // Initialize with deep copy
-const layout = ref(JSON.parse(JSON.stringify(props.modelValue || { rows: 4, columns: ['A','B','C','','D','E'], seats: [] })));
+const layout = ref(JSON.parse(JSON.stringify({ ...DEFAULT_LAYOUT, ...props.modelValue })));
 
 // Sync columns raw input
 const columnsRaw = ref(layout.value.columns ? layout.value.columns.join(',') : "A,B,,C,D");
+const showAdvanced = ref(false);
+
+// Front seat raw
+const frontSeatRaw = ref(layout.value.front_seat || '');
+// Last row center raw
+const lastRowCenterRaw = ref((layout.value.last_row_center || []).join(','));
 
 const columns = computed(() => columnsRaw.value.split(',').map(c => c.trim()));
 const totalSeats = computed(() => layout.value.seats?.length || 0);
+const lastRowCenterSeats = computed(() => (layout.value.last_row_center || []).filter(Boolean));
 
 // Sync with parent
 watch(layout, (newVal) => {
   emit('update:modelValue', newVal);
 }, { deep: true });
+
+function onFrontSeatInput() {
+  const val = frontSeatRaw.value.trim().toUpperCase();
+  layout.value.front_seat = val || null;
+}
+
+function onLastRowCenterInput() {
+  layout.value.last_row_center = lastRowCenterRaw.value
+    .split(',')
+    .map(s => s.trim().toUpperCase())
+    .filter(Boolean);
+}
 
 function getFirstCol() {
   return columns.value.find(c => c !== '') || 'A';
@@ -177,6 +293,18 @@ function hasSeat(id) {
   return layout.value.seats?.some(s => s.id === id);
 }
 
+function seatEditorClass(col, row) {
+  const id = `${col}${row}`;
+  const active = hasSeat(id);
+  const isFront = layout.value.front_seat === id;
+  const isCenter = (layout.value.last_row_center || []).includes(id);
+
+  if (active && isFront) return 'bg-amber-500 border-amber-500 text-white shadow-md';
+  if (active && isCenter) return 'bg-purple-500 border-purple-500 text-white shadow-md';
+  if (active) return 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md';
+  return 'bg-white border-slate-100 text-slate-200 border-dashed hover:border-slate-300';
+}
+
 function toggleSeat(col, row) {
   if (!layout.value.seats) layout.value.seats = [];
   const id = `${col}${row}`;
@@ -187,6 +315,12 @@ function toggleSeat(col, row) {
   } else {
     layout.value.seats.push({ id, row, col, label: id });
   }
+}
+
+function toggleSeatById(seatId) {
+  if (!seatId) return;
+  const match = seatId.match(/^([A-Za-z]+)(\d+)$/);
+  if (match) toggleSeat(match[1].toUpperCase(), parseInt(match[2]));
 }
 
 function fillAll() {
@@ -202,11 +336,25 @@ function fillAll() {
   layout.value.seats = newSeats;
 }
 
+function clearAll() {
+  if (confirm('ล้างที่นั่งทั้งหมด?')) {
+    layout.value.seats = [];
+  }
+}
+
 function resetToVan() {
   if (confirm('คุณต้องการรีเซ็ตเป็นรูปแบบรถตู้ VIP มาตรฐานใช่หรือไม่?')) {
     layout.value.rows = 4;
     columnsRaw.value = "A,B,C,,D,E";
     layout.value.columns = ["A","B","C","","D","E"];
+    layout.value.front_seat = "A1";
+    layout.value.last_row_center = ["A4","B4","C4"];
+    layout.value.front_label = "หน้ารถ";
+    layout.value.rear_label = "ท้ายรถ (สำหรับเก็บสัมภาระ)";
+    layout.value.driver_icon = "directions_car";
+    layout.value.show_driver = true;
+    frontSeatRaw.value = "A1";
+    lastRowCenterRaw.value = "A4,B4,C4";
     layout.value.seats = [
       {id:'A1', row:1, col:'A', label:'A1'},
       {id:'A2', row:2, col:'A', label:'A2'}, {id:'D2', row:2, col:'D', label:'D2'}, {id:'E2', row:2, col:'E', label:'E2'},
@@ -220,7 +368,15 @@ onMounted(() => {
   // Ensure default structure if missing
   if (!layout.value.columns) layout.value.columns = ["A","B","C","","D","E"];
   if (!layout.value.seats) layout.value.seats = [];
+  if (layout.value.front_seat === undefined) layout.value.front_seat = null;
+  if (!layout.value.last_row_center) layout.value.last_row_center = [];
+  if (!layout.value.front_label) layout.value.front_label = 'หน้ารถ';
+  if (!layout.value.rear_label) layout.value.rear_label = 'ท้ายรถ (สำหรับเก็บสัมภาระ)';
+  if (!layout.value.driver_icon) layout.value.driver_icon = 'directions_car';
+  if (layout.value.show_driver === undefined) layout.value.show_driver = true;
   columnsRaw.value = layout.value.columns.join(',');
+  frontSeatRaw.value = layout.value.front_seat || '';
+  lastRowCenterRaw.value = (layout.value.last_row_center || []).join(',');
 });
 </script>
 

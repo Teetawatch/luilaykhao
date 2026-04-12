@@ -56,6 +56,12 @@ class ScheduleController extends Controller
             'seats' => $seats,
             'total_seats' => $schedule->total_seats,
             'available_seats' => $schedule->available_seats,
+            'front_seat' => $layout['front_seat'] ?? null,
+            'last_row_center' => $layout['last_row_center'] ?? [],
+            'front_label' => $layout['front_label'] ?? 'หน้ารถ',
+            'rear_label' => $layout['rear_label'] ?? 'ท้ายรถ (สำหรับเก็บสัมภาระ)',
+            'driver_icon' => $layout['driver_icon'] ?? 'directions_car',
+            'show_driver' => $layout['show_driver'] ?? true,
         ]);
     }
 }
