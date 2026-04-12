@@ -128,7 +128,12 @@
             </button>
           </div>
 
-          <div class="mt-8 flex justify-end">
+          <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
+            <button @click="$router.push('/trips')"
+              class="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-all duration-300">
+              <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_back</span>
+              ยกเลิก
+            </button>
             <button
               @click="confirmRegion"
               :disabled="!selectedPickup && pickupPoints.length > 0"
@@ -363,7 +368,12 @@
               </div>
             </div>
 
-            <div class="mt-8 flex justify-end">
+            <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
+              <button @click="step = hasSeatMap ? (isTrekking ? 1 : 0) : (isTrekking ? 0 : -1); if (step === -1) $router.push('/trips')"
+                class="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-all duration-300">
+                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_back</span>
+                ย้อนกลับ
+              </button>
               <button @click="goToSummary"
                 :disabled="!isPassengerValid"
                 class="w-full sm:w-auto bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
