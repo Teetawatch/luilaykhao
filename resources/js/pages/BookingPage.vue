@@ -21,34 +21,36 @@
         <span class="text-gray-700 font-bold bg-gray-100 px-3 py-1 rounded-full">จองกิจกรรม</span>
       </nav>
 
-      <!-- Title -->
-      <div class="mb-10 bg-white rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden flex flex-col md:flex-row">
-        <!-- Cover image -->
-        <div v-if="schedule.trip?.cover_image" class="md:w-72 md:shrink-0 h-48 md:h-auto relative">
+      <!-- Title Hero -->
+      <div class="mb-10 bg-white rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
+        <!-- Hero Image -->
+        <div v-if="schedule.trip?.cover_image" class="relative w-full h-64 md:h-80">
           <img :src="schedule.trip.cover_image" :alt="schedule.trip.title"
             class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent md:bg-gradient-to-l"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent"></div>
         </div>
         <!-- Content -->
-        <div class="flex-1 p-6 md:p-8 relative overflow-hidden">
-          <h1 class="font-anuphan text-2xl md:text-4xl font-extrabold text-gray-900 mb-4 relative z-10">
-            {{ schedule.trip?.title }}
-          </h1>
-          <div class="flex flex-wrap gap-4 text-sm font-medium relative z-10">
-            <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200/60">
-              <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">calendar_month</span>
-              <span>
-                {{ formatDate(schedule.departure_date) }}
-                <template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
-              </span>
-            </div>
-            <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200">
-              <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
-              <span>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
-            </div>
-            <div v-if="schedule.trip?.is_women_only" class="flex items-center gap-2 bg-pink-50 px-4 py-2 rounded-xl text-pink-700 border border-pink-200 animate-pulse">
-              <span class="material-symbols-rounded text-pink-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">female</span>
-              <span class="font-bold">ทริปสำหรับผู้หญิงเท่านั้น</span>
+        <div class="p-6 md:p-8 relative" :class="schedule.trip?.cover_image ? '-mt-20 md:-mt-24 relative z-10' : ''">
+          <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-lg border border-gray-100/50">
+            <h1 class="font-anuphan text-2xl md:text-4xl font-extrabold text-gray-900 mb-4">
+              {{ schedule.trip?.title }}
+            </h1>
+            <div class="flex flex-wrap gap-4 text-sm font-medium">
+              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200/60">
+                <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">calendar_month</span>
+                <span>
+                  {{ formatDate(schedule.departure_date) }}
+                  <template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
+                </span>
+              </div>
+              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200">
+                <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
+                <span>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
+              </div>
+              <div v-if="schedule.trip?.is_women_only" class="flex items-center gap-2 bg-pink-50 px-4 py-2 rounded-xl text-pink-700 border border-pink-200 animate-pulse">
+                <span class="material-symbols-rounded text-pink-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">female</span>
+                <span class="font-bold">ทริปสำหรับผู้หญิงเท่านั้น</span>
+              </div>
             </div>
           </div>
         </div>
