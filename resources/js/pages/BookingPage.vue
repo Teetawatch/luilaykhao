@@ -635,7 +635,7 @@
               </div>
               <div class="flex justify-between items-center text-sm font-medium">
                 <span class="text-gray-500">จำนวนผู้โดยสาร</span>
-                <span class="text-gray-900">{{ passengers.length }} คน</span>
+                <span class="text-gray-900">{{ seatCount }} คน</span>
               </div>
               <div class="pt-4 border-t border-dashed border-gray-300 flex justify-between items-end">
                 <div>
@@ -883,7 +883,8 @@ const isPassengerValid = computed(() => passengers.value.every(p =>
   p.id_card.length === 13 &&
   (!schedule.value?.trip?.is_women_only || ['นาง', 'นางสาว'].includes(p.title))
 ));
-const totalAmount = computed(() => effectivePrice.value * passengers.value.length);
+const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
+const totalAmount = computed(() => effectivePrice.value * seatCount.value);
 
 function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });

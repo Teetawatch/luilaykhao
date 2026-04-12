@@ -42,7 +42,7 @@
             @click="handleSeatClick(frontPassengerSeat)"
             class="group flex flex-col items-center transition-all duration-200 shrink-0"
             :class="frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-            :title="frontPassengerSeat.status === 'booked' ? 'จองโดย ' + (frontPassengerSeat.passenger_name || 'ไม่ระบุชื่อ') : ''"
+            :title="frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : ''"
           >
             <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
               :class="seatBgClass(frontPassengerSeat)">
@@ -53,9 +53,7 @@
             <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(frontPassengerSeat)">
               {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
             </span>
-            <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">
-              {{ frontPassengerSeat.passenger_name || '...' }}
-            </span>
+            <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">จองแล้ว</span>
           </button>
           <div v-else class="w-12 md:w-14 shrink-0"></div>
 
@@ -268,7 +266,7 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
       'group flex flex-col items-center transition-all duration-200',
       disabled ? 'cursor-not-allowed' : 'cursor-pointer',
     ],
-    title: seat?.status === 'booked' ? 'จองโดย ' + (seat.passenger_name || 'ไม่ระบุชื่อ') : '',
+    title: seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : '',
   }, [
     h('div', {
       class: ['w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200', seatBgClass(seat)],
@@ -282,7 +280,7 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
       class: ['text-[10px] mt-1 font-bold transition-colors', seatLabelClass(seat)],
     }, seat?.label ?? seatId),
     seat?.status === 'booked'
-      ? h('span', { class: 'text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium' }, seat.passenger_name || '...')
+      ? h('span', { class: 'text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium' }, 'จองแล้ว')
       : null,
   ]);
 };
