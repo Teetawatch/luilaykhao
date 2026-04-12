@@ -1,66 +1,78 @@
 <template>
-  <div class="min-h-screen bg-[#f9f9f9] pt-8 pb-32">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6">
+  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6">
 
-      <section class="mb-6 flex items-center justify-between">
+      <section class="mb-8 flex items-end justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-1" style="font-family:'Anuphan',sans-serif;">
+          <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'Anuphan',sans-serif;">
             การแจ้งเตือน
           </h1>
-          <p class="text-[#3e4949]" style="font-family:'Anuphan',sans-serif;">
-            {{ unreadCount > 0 ? `${unreadCount} รายการที่ยังไม่ได้อ่าน` : 'อ่านครบทุกรายการแล้ว' }}
+          <p class="text-[#505E5E] text-sm" style="font-family:'Anuphan',sans-serif;">
+            {{ unreadCount > 0 ? `คุณมี ${unreadCount} รายการใหม่ที่ยังไม่ได้อ่าน` : 'คุณอ่านการแจ้งเตือนครบทุกรายการแล้ว' }}
           </p>
         </div>
         <button
           v-if="unreadCount > 0"
           @click="markAllRead"
-          class="text-sm text-[#006565] font-semibold hover:opacity-70 transition-opacity"
+          class="flex items-center gap-1.5 text-sm text-[#006565] font-semibold hover:text-[#004f4f] bg-[#006565]/10 hover:bg-[#006565]/15 px-4 py-2.5 rounded-full transition-all"
           style="font-family:'Anuphan',sans-serif;">
-          อ่านทั้งหมด
+          <span class="material-symbols-rounded text-[20px]">done_all</span>
+          <span>อ่านทั้งหมด</span>
         </button>
       </section>
 
-      <div v-if="loading" class="text-center py-20">
-        <div class="inline-block w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+      <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
+        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family:'Anuphan',sans-serif;">กำลังโหลดข้อมูล...</p>
       </div>
 
-      <div v-else-if="notifications.length === 0" class="text-center py-20">
-        <img src="/images/notification_notshow.png" alt="No notifications" class="w-100 h-100 mx-auto mb-4 object-contain opacity-90" />
-        <p class="text-[#3e4949] text-lg" style="font-family:'Anuphan',sans-serif;">ยังไม่มีการแจ้งเตือน</p>
+      <div v-else-if="notifications.length === 0" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] flex flex-col items-center justify-center">
+        <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
+          <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">notifications_off</span>
+        </div>
+        <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family:'Anuphan',sans-serif;">ไม่มีการแจ้งเตือนใหม่</h3>
+        <p class="text-[#505E5E] text-sm" style="font-family:'Anuphan',sans-serif;">ขณะนี้คุณยังไม่มีข้อความแจ้งเตือนใดๆ</p>
       </div>
 
-      <div v-else class="space-y-2">
+      <div v-else class="space-y-3">
         <div
           v-for="n in notifications"
           :key="n.id"
           @click="handleNotificationClick(n)"
-          class="bg-white rounded-2xl p-4 flex gap-4 cursor-pointer transition-all hover:shadow-md"
-          :class="{ 'border-l-4 border-[#006565]': !n.is_read }"
-          style="box-shadow:0px 2px 8px rgba(0,64,64,0.04);">
+          class="group relative bg-white rounded-[20px] p-5 flex gap-4 cursor-pointer transition-all duration-300 border border-[#E8EEEF] hover:border-[#006565]/30 hover:shadow-md overflow-hidden"
+          :class="{ 'opacity-80': n.is_read }">
+          
+          <!-- Unread Indicator Line -->
+          <div v-if="!n.is_read" class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#006565]"></div>
 
           <div
-            class="w-11 h-11 rounded-full flex items-center justify-center text-xl shrink-0"
-            :class="notifBg(n.type)">
-            {{ notifIcon(n.type) }}
+            class="w-14 h-14 rounded-[16px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+            :class="[notifStyle(n.type).bg, !n.is_read ? 'ml-1' : '']">
+            <span class="material-symbols-rounded text-[28px]" :class="notifStyle(n.type).text">
+              {{ notifIcon(n.type) }}
+            </span>
           </div>
 
-          <div class="flex-1 min-w-0">
-            <div class="flex justify-between items-start gap-2">
-              <p class="font-semibold text-[#1a1c1c] text-sm" :class="{ 'font-bold': !n.is_read }" style="font-family:'Anuphan',sans-serif;">
+          <div class="flex-1 min-w-0 pr-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 mb-1">
+              <h4 class="font-semibold text-[15px] text-[#1a1c1c] line-clamp-1" :class="{ 'font-bold': !n.is_read }" style="font-family:'Anuphan',sans-serif;">
                 {{ n.title }}
+              </h4>
+              <p class="text-xs font-medium text-[#889696] whitespace-nowrap shrink-0 sm:mt-0.5" style="font-family:'Anuphan',sans-serif;">
+                {{ timeAgo(n.created_at) }}
               </p>
-              <div class="flex items-center gap-2 shrink-0">
-                <span v-if="!n.is_read" class="w-2 h-2 bg-[#006565] rounded-full"></span>
-                <button
-                  @click.stop="deleteNotification(n.id)"
-                  class="text-[#bdc9c8] hover:text-red-400 text-lg transition-colors leading-none">
-                  ×
-                </button>
-              </div>
             </div>
-            <p class="text-sm text-[#3e4949] mt-0.5 leading-relaxed" style="font-family:'Anuphan',sans-serif;">{{ n.body }}</p>
-            <p class="text-xs text-[#bdc9c8] mt-1.5" style="font-family:'Anuphan',sans-serif;">{{ timeAgo(n.created_at) }}</p>
+            <p class="text-[14px] text-[#505E5E] line-clamp-2 leading-relaxed" style="font-family:'Anuphan',sans-serif;">
+              {{ n.body }}
+            </p>
           </div>
+
+          <button
+            @click.stop="deleteNotification(n.id)"
+            class="absolute top-1/2 -translate-y-1/2 right-4 w-10 h-10 flex items-center justify-center rounded-full text-[#A0B0B0] bg-white opacity-0 md:group-hover:opacity-100 max-md:opacity-100 hover:bg-[#FFF0F0] hover:text-[#DC2626] transition-all duration-200 border border-transparent hover:border-[#FCA5A5] shadow-sm"
+            title="ลบการแจ้งเตือน">
+            <span class="material-symbols-rounded text-[20px]">delete</span>
+          </button>
         </div>
       </div>
 
@@ -114,24 +126,24 @@ async function deleteNotification(id) {
 
 function notifIcon(type) {
   const map = {
-    seat_alert: '🔥',
-    booking_reminder: '📅',
-    promo: '🎁',
-    system: 'ℹ️',
-    loyalty: '⭐',
+    seat_alert: 'local_fire_department',
+    booking_reminder: 'calendar_month',
+    promo: 'featured_seasonal_and_gifts',
+    system: 'info',
+    loyalty: 'star',
   };
-  return map[type] || '🔔';
+  return map[type] || 'notifications';
 }
 
-function notifBg(type) {
+function notifStyle(type) {
   const map = {
-    seat_alert: 'bg-red-100',
-    booking_reminder: 'bg-blue-100',
-    promo: 'bg-yellow-100',
-    system: 'bg-gray-100',
-    loyalty: 'bg-yellow-100',
+    seat_alert: { bg: 'bg-[#FEF2F2]', text: 'text-[#DC2626]' },
+    booking_reminder: { bg: 'bg-[#EFF6FF]', text: 'text-[#2563EB]' },
+    promo: { bg: 'bg-[#FFFBEB]', text: 'text-[#D97706]' },
+    system: { bg: 'bg-[#F4F7F6]', text: 'text-[#505E5E]' },
+    loyalty: { bg: 'bg-[#FFF7ED]', text: 'text-[#EA580C]' },
   };
-  return map[type] || 'bg-[#f0fafa]';
+  return map[type] || { bg: 'bg-[#E3F2F2]', text: 'text-[#006565]' };
 }
 
 function timeAgo(dateStr) {

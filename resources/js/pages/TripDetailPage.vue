@@ -193,9 +193,9 @@
 
             <!-- Trekking: Pickup Regions Info Section -->
             <section v-if="isTrekking && allPickupPoints.length">
-              <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] mb-3 tracking-tight">จุดขึ้นรถและราคาตามภูมิภาค</h3>
+              <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] mb-3 tracking-tight">จุดรับและราคาตามภูมิภาค</h3>
               <div class="flex items-center justify-between mb-8 flex-wrap gap-3">
-                <p class="text-[var(--color-text-muted)] text-base font-medium">เลือกจุดขึ้นรถที่สะดวกสำหรับคุณ ราคาอาจแตกต่างกันในแต่ละพื้นที่</p>
+                <p class="text-[var(--color-text-muted)] text-base font-medium">ข้อมูลจุดรับและราคาโดยประมาณในแต่ละภูมิภาค — ราคาจริงจะแจ้งเมื่อติดต่อจอง</p>
                 <button
                   @click="calculateDistances"
                   :disabled="distanceLoading"
@@ -209,7 +209,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div
                   v-for="pt in allPickupPoints" :key="pt.id"
-                  class="bg-white rounded-[1.5rem] border border-gray-100 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1"
+                  class="bg-white rounded-[1.5rem] border border-gray-100 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
                 >
                   <div class="flex items-center justify-between px-6 py-4 bg-[var(--color-sand)] border-b border-gray-100">
                     <span class="font-extrabold text-[var(--color-text-dark)] text-base flex items-center gap-2">
@@ -252,7 +252,7 @@
 
             <!-- Departure Point / Map area -->
             <section v-if="trip.departure_point || (trip.latitude && trip.longitude)">
-              <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] mb-8 tracking-tight">จุดนัดหมาย</h3>
+              <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] mb-8 tracking-tight">ปลายทาง</h3>
 
               <!-- Google Maps embed -->
               <div v-if="trip.latitude && trip.longitude" class="rounded-[2rem] overflow-hidden border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.05)] bg-white">

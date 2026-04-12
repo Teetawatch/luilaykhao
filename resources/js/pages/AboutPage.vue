@@ -9,10 +9,10 @@
         <img
           src="/images/phusoidao.png"
           alt="ลุยเลเขา"
-          class="w-full h-full object-cover mix-blend-overlay opacity-50"
+          class="w-full h-full object-cover"
         />
-        <!-- Solid color overlay instead of gradient -->
-        <div class="absolute inset-0 bg-black/40"></div>
+        <!-- Soft color overlay -->
+        <div class="absolute inset-0 bg-black/20"></div>
       </div>
 
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">

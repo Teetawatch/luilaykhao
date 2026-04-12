@@ -6,9 +6,9 @@
         <img
           src="/images/phusoidao.png"
           alt="Privacy Policy"
-          class="w-full h-full object-cover mix-blend-overlay opacity-50"
+          class="w-full h-full object-cover"
         />
-        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="absolute inset-0 bg-black/20"></div>
       </div>
       <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
         <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
