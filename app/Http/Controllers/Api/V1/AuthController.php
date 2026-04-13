@@ -136,6 +136,9 @@ class AuthController extends Controller
     {
         $this->validateProvider($provider);
 
+        $redirectUrl = Socialite::driver($provider)->stateless()->redirect()->getTargetUrl();
+        \Log::info('Social Redirect URL: ' . $redirectUrl);
+
         return Socialite::driver($provider)->stateless()->redirect();
     }
 
