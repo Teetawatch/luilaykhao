@@ -148,7 +148,11 @@ class AuthController extends Controller
         try {
             $socialUser = Socialite::driver($provider)->stateless()->user();
         } catch (\Exception $e) {
-            return redirect($frontendUrl . '/login?error=social_auth_failed');
+            \Log::error('LINE Login Error: ' . $e->getMessage(), [
+                'provider' => $provider,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode($e->getMessage()));
         }
 
         $user = User::where('social_provider', $provider)
