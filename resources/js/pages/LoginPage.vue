@@ -126,6 +126,15 @@ const form = ref({
   password: '',
 });
 
+// Handle errors from URL parameters (e.g. social auth errors)
+if (route.query.error) {
+  if (route.query.error === 'social_auth_cancelled') {
+    error.value = 'ยกเลิกการเข้าสู่ระบบแล้ว';
+  } else {
+    error.value = route.query.message || 'การเข้าสู่ระบบล้มเหลว กรุณาลองใหม่อีกครั้ง';
+  }
+}
+
 async function handleLogin() {
   error.value = '';
   shake.value = false;

@@ -136,10 +136,11 @@ class AuthController extends Controller
     {
         $this->validateProvider($provider);
 
-        $redirectUrl = Socialite::driver($provider)->stateless()->redirect()->getTargetUrl();
-        \Log::info('Social Redirect URL: ' . $redirectUrl);
+        $driver = Socialite::driver($provider)->stateless();
+        
+        \Log::info('Social Redirect URL: ' . $driver->redirect()->getTargetUrl());
 
-        return Socialite::driver($provider)->stateless()->redirect();
+        return $driver->redirect();
     }
 
     public function socialCallback(Request $request, string $provider): \Illuminate\Http\RedirectResponse
@@ -148,19 +149,38 @@ class AuthController extends Controller
 
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
 
-        \Log::info('LINE Callback params', [
-            'all' => $request->all(),
+        \Log::info('Social Callback params', [
+            'provider' => $provider,
+            'params' => $request->all(),
             'url' => $request->fullUrl(),
         ]);
+
+        // Handle error from provider (e.g. user cancelled)
+        if ($request->has('error')) {
+            $errorMessage = $request->get('error_description') ?: $request->get('error_message') ?: $request->get('error');
+            return redirect($frontendUrl . '/login?error=social_auth_cancelled&message=' . urlencode($errorMessage));
+        }
+
+        // Check if code is present
+        if (!$request->has('code')) {
+            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode('ไม่พบรหัสยืนยันตัวตน กรุณาลองใหม่อีกครั้ง'));
+        }
 
         try {
             $socialUser = Socialite::driver($provider)->stateless()->user();
         } catch (\Exception $e) {
-            \Log::error('LINE Login Error: ' . $e->getMessage(), [
+            \Log::error('Social Login Error: ' . $e->getMessage(), [
                 'provider' => $provider,
                 'trace' => $e->getTraceAsString()
             ]);
-            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode($e->getMessage()));
+            
+            $message = $e->getMessage();
+            // Simplify Guzzle error messages for the user if they contain JSON strings
+            if (str_contains($message, '{')) {
+                $message = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับผู้ให้บริการภายนอก';
+            }
+            
+            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode($message));
         }
 
         $user = User::where('social_provider', $provider)
