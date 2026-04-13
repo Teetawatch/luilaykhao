@@ -148,6 +148,11 @@ class AuthController extends Controller
 
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
 
+        \Log::info('LINE Callback params', [
+            'all' => $request->all(),
+            'url' => $request->fullUrl(),
+        ]);
+
         try {
             $socialUser = Socialite::driver($provider)->stateless()->user();
         } catch (\Exception $e) {
