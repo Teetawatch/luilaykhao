@@ -147,7 +147,7 @@ class AuthController extends Controller
     {
         $this->validateProvider($provider);
 
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $frontendUrl = env('FRONTEND_URL', config('app.url'));
 
         \Log::info('Social Callback params', [
             'provider' => $provider,
