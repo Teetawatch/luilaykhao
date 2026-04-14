@@ -216,12 +216,59 @@
             <h3 class="text-sm font-bold text-text-dark mb-4 flex items-center gap-2 border-b border-sand-dark/50 pb-2">
               <i class="fas fa-users text-accent"></i> ผู้โดยสาร ({{ detailBooking.passengers.length }})
             </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div v-for="p in detailBooking.passengers" :key="p.id" class="bg-sand/20 border border-sand-dark/50 rounded-xl p-3 flex flex-col gap-1.5 hover:bg-sand/40 transition-colors">
-                <div class="font-semibold text-text-dark text-sm">{{ p.name }}</div>
-                <div class="flex items-center gap-4 text-xs text-text-muted">
-                  <span v-if="p.phone"><i class="fas fa-phone mr-1"></i>{{ p.phone }}</span>
-                  <span v-if="p.health_notes" class="text-orange-600"><i class="fas fa-notes-medical mr-1"></i>{{ p.health_notes }}</span>
+            <div class="grid grid-cols-1 gap-4">
+              <div v-for="(p, idx) in detailBooking.passengers" :key="p.id" class="bg-sand/20 border border-sand-dark/50 rounded-2xl p-4 hover:bg-sand/40 transition-colors">
+                <!-- Header -->
+                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-sand-dark/30">
+                  <span class="w-6 h-6 rounded-full bg-accent text-white text-xs font-bold flex items-center justify-center shrink-0">{{ idx + 1 }}</span>
+                  <span class="font-bold text-text-dark">{{ p.title }} {{ p.name }}</span>
+                  <span v-if="p.nickname" class="text-xs text-text-muted">({{ p.nickname }})</span>
+                  <span v-if="p.halal_food === true" class="ml-auto text-[11px] font-bold bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <i class="fas fa-leaf"></i> ฮาลาล
+                  </span>
+                  <span v-else-if="p.halal_food === false" class="ml-auto text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
+                    ไม่ฮาลาล
+                  </span>
+                </div>
+                <!-- Info grid -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-xs">
+                  <div v-if="p.phone">
+                    <span class="text-text-muted block">เบอร์โทร</span>
+                    <span class="font-semibold text-text-dark">{{ p.phone }}</span>
+                  </div>
+                  <div v-if="p.id_card">
+                    <span class="text-text-muted block">เลขบัตรประชาชน</span>
+                    <span class="font-semibold text-text-dark">{{ p.id_card }}</span>
+                  </div>
+                  <div v-if="p.blood_group">
+                    <span class="text-text-muted block">กรุ๊ปเลือด</span>
+                    <span class="font-bold text-red-600">{{ p.blood_group }}</span>
+                  </div>
+                  <div v-if="p.emergency_contact">
+                    <span class="text-text-muted block">ผู้ติดต่อฉุกเฉิน</span>
+                    <span class="font-semibold text-text-dark">{{ p.emergency_contact }}</span>
+                  </div>
+                  <div v-if="p.emergency_phone">
+                    <span class="text-text-muted block">เบอร์ฉุกเฉิน</span>
+                    <span class="font-semibold text-text-dark">{{ p.emergency_phone }}</span>
+                  </div>
+                  <div v-if="p.weight">
+                    <span class="text-text-muted block">น้ำหนัก</span>
+                    <span class="font-semibold text-text-dark">{{ p.weight }} กก.</span>
+                  </div>
+                  <div v-if="p.dive_cert_level" class="col-span-2 md:col-span-1">
+                    <span class="text-text-muted block">ระดับใบดำน้ำ</span>
+                    <span class="font-semibold text-text-dark">{{ p.dive_cert_level }}</span>
+                    <span v-if="p.cert_number" class="text-text-muted ml-1">({{ p.cert_number }})</span>
+                  </div>
+                  <div v-if="p.allergies" class="col-span-2 md:col-span-3">
+                    <span class="text-text-muted block">การแพ้อาหาร / อื่นๆ</span>
+                    <span class="font-semibold text-orange-600">{{ p.allergies }}</span>
+                  </div>
+                  <div v-if="p.health_notes" class="col-span-2 md:col-span-3">
+                    <span class="text-text-muted block">หมายเหตุสุขภาพ</span>
+                    <span class="font-semibold text-orange-700">{{ p.health_notes }}</span>
+                  </div>
                 </div>
               </div>
             </div>
