@@ -896,11 +896,23 @@ function selectRegion(pt) {
 
 function confirmRegion() {
   // Move to seat map step (step 1) or passenger step (step 1) — step 0 is region
+  if (!hasSeatMap.value) {
+    seatsStore.startManualCountdown(
+      schedule.value?.trip?.title || 'กิจกรรม',
+      route.params.scheduleId
+    );
+  }
   step.value = 1;
 }
 
 function skipRegionStep() {
   selectedPickup.value = null;
+  if (!hasSeatMap.value) {
+    seatsStore.startManualCountdown(
+      schedule.value?.trip?.title || 'กิจกรรม',
+      route.params.scheduleId
+    );
+  }
   step.value = 1;
 }
 
@@ -909,6 +921,10 @@ async function lockAndNext() {
   seatError.value = '';
   try {
     await seatsStore.lockSeats(route.params.scheduleId, seatsStore.selectedSeatIds);
+    seatsStore.setActiveBookingInfo({
+      tripTitle: schedule.value?.trip?.title || 'กิจกรรม',
+      scheduleId: route.params.scheduleId,
+    });
     passengerCount.value = seatsStore.selectedSeats.length;
     step.value = isTrekking.value ? 2 : 1;
     toast.success(`ล็อคที่นั่ง ${seatsStore.selectedSeatIds.join(', ')} สำเร็จ`);
@@ -973,13 +989,31 @@ async function createBooking() {
   }
 }
 
+function handleExpiry() {
+  seatsStore.clearSelection();
+  swal.error(
+    'หมดเวลาการจองแล้ว!',
+    'เวลา 10 นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่'
+  ).then(() => {
+    router.push('/trips');
+  });
+}
+
 onMounted(async () => {
+  seatsStore.onExpire(handleExpiry);
   try {
     const res = await api.get(`/schedules/${route.params.scheduleId}`);
     schedule.value = res.data.data;
     await seatsStore.fetchSeatMap(route.params.scheduleId);
     if (preselectedRegion && pickupPoints.value.length === 1) {
       selectedPickup.value = pickupPoints.value[0];
+    }
+    // For non-seat-map, non-trekking trips: start countdown immediately on page load
+    if (!hasSeatMap.value && !isTrekking.value) {
+      seatsStore.startManualCountdown(
+        schedule.value?.trip?.title || 'กิจกรรม',
+        route.params.scheduleId
+      );
     }
   } catch (e) {
     console.error(e);
@@ -989,6 +1023,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  seatsStore.offExpire(handleExpiry);
   seatsStore.clearSelection();
 });
 </script>

@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import api from '../lib/axios';
 
+const MAX_BOOKING_SECONDS = 10 * 60; // 10 minutes hard limit
+
 export const useSeatsStore = defineStore('seats', {
   state: () => ({
     seatMap: null,
@@ -9,11 +11,14 @@ export const useSeatsStore = defineStore('seats', {
     lockExpiry: null,
     countdownSeconds: 0,
     countdownTimer: null,
+    activeBookingInfo: null, // { tripTitle, scheduleId, seatIds, startedAt }
+    _onExpireCallbacks: [],
   }),
 
   getters: {
     hasSelectedSeats: (state) => state.selectedSeats.length > 0,
     selectedSeatIds: (state) => state.selectedSeats.map(s => s.id),
+    hasActiveBooking: (state) => state.activeBookingInfo !== null && state.countdownSeconds > 0,
   },
 
   actions: {
@@ -34,7 +39,10 @@ export const useSeatsStore = defineStore('seats', {
           seat_ids: seatIds,
         });
         if (res.data.data?.locked) {
-          this.lockExpiry = res.data.data.expires_at;
+          // Enforce 10-minute hard limit regardless of server expiry
+          const serverExpiry = res.data.data.expires_at ? new Date(res.data.data.expires_at) : null;
+          const maxExpiry = new Date(Date.now() + MAX_BOOKING_SECONDS * 1000);
+          this.lockExpiry = serverExpiry && serverExpiry < maxExpiry ? serverExpiry.toISOString() : maxExpiry.toISOString();
           this.startCountdown();
         }
         return res.data;
@@ -51,6 +59,18 @@ export const useSeatsStore = defineStore('seats', {
         });
       } catch {}
       this.clearSelection();
+    },
+
+    setActiveBookingInfo(info) {
+      this.activeBookingInfo = info;
+    },
+
+    onExpire(callback) {
+      this._onExpireCallbacks.push(callback);
+    },
+
+    offExpire(callback) {
+      this._onExpireCallbacks = this._onExpireCallbacks.filter(cb => cb !== callback);
     },
 
     toggleSeat(seat) {
@@ -71,6 +91,8 @@ export const useSeatsStore = defineStore('seats', {
     clearSelection() {
       this.selectedSeats = [];
       this.lockExpiry = null;
+      this.activeBookingInfo = null;
+      this._onExpireCallbacks = [];
       this.stopCountdown();
     },
 
@@ -83,6 +105,8 @@ export const useSeatsStore = defineStore('seats', {
         this.countdownSeconds = Math.max(0, diff);
         if (this.countdownSeconds <= 0) {
           this.stopCountdown();
+          const callbacks = [...this._onExpireCallbacks];
+          callbacks.forEach(cb => cb());
         }
       };
 
@@ -96,6 +120,13 @@ export const useSeatsStore = defineStore('seats', {
         this.countdownTimer = null;
       }
       this.countdownSeconds = 0;
+    },
+
+    startManualCountdown(tripTitle, scheduleId) {
+      this.stopCountdown();
+      this.lockExpiry = new Date(Date.now() + MAX_BOOKING_SECONDS * 1000).toISOString();
+      this.activeBookingInfo = { tripTitle, scheduleId, startedAt: Date.now() };
+      this.startCountdown();
     },
   },
 });
