@@ -229,23 +229,6 @@
       </div>
     </div>
 
-  <!-- Toast Notification -->
-  <Transition name="toast">
-    <div
-      v-if="wishlistStore.lastAdded"
-      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-sand-dark/40 px-5 py-3.5 min-w-[260px] max-w-sm w-[calc(100%-2rem)] sm:w-auto"
-    >
-      <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-sand-dark/20">
-        <img v-if="wishlistStore.lastAdded.cover_image" :src="wishlistStore.lastAdded.cover_image" class="w-full h-full object-cover" />
-        <span v-else class="material-symbols-rounded text-[20px] text-red-400 flex items-center justify-center w-full h-full" style="font-variation-settings:'FILL' 1">favorite</span>
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-[12px] font-bold text-primary">เพิ่มเข้าสำหรับรายการที่ชอบแล้ว</p>
-        <p class="text-[13px] font-bold text-text-dark truncate">{{ wishlistStore.lastAdded.title || `ทริป #${wishlistStore.lastAdded.id}` }}</p>
-      </div>
-      <span class="material-symbols-rounded text-[20px] text-red-500 shrink-0" style="font-variation-settings:'FILL' 1">favorite</span>
-    </div>
-  </Transition>
 
     <!-- Mobile Menu -->
     <Transition name="mobile-menu">
@@ -543,19 +526,4 @@ async function handleLogout() {
   }
 }
 
-/* Toast transition */
-.toast-enter-active,
-.toast-leave-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(20px) scale(0.9);
-}
-.toast-enter-to,
-.toast-leave-from {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0) scale(1);
-}
 </style>

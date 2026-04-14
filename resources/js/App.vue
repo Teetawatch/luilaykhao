@@ -56,6 +56,27 @@
   </div>
   <router-view v-else />
   <ToastNotification />
+
+  <!-- Wishlist Toast (Teleported to body to avoid transform conflicts) -->
+  <Teleport to="body">
+    <Transition name="wishlist-toast">
+      <div
+        v-if="wishlistStore.lastAdded"
+        class="fixed bottom-16 left-1/2 z-[300] flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-gray-200 px-5 py-3.5"
+        style="transform: translateX(-50%); min-width: 280px; max-width: 400px;"
+      >
+        <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gray-100">
+          <img v-if="wishlistStore.lastAdded.cover_image" :src="wishlistStore.lastAdded.cover_image" class="w-full h-full object-cover" />
+          <span v-else class="material-symbols-rounded text-[20px] text-red-400 flex items-center justify-center w-full h-full" style="font-variation-settings:'FILL' 1">favorite</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-[12px] font-bold text-teal-600">เพิ่มเข้ารายการที่ชอบแล้ว</p>
+          <p class="text-[13px] font-bold text-gray-900 truncate">{{ wishlistStore.lastAdded.title || `ทริป #${wishlistStore.lastAdded.id}` }}</p>
+        </div>
+        <span class="material-symbols-rounded text-[22px] text-red-500 shrink-0" style="font-variation-settings:'FILL' 1">favorite</span>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -65,12 +86,14 @@ import Navbar from './components/Navbar.vue';
 import Footer from './components/Footer.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { useSeatsStore } from './stores/seats';
+import { useWishlistStore } from './stores/wishlist';
 import { useSwal } from './lib/swal';
 
 const route = useRoute();
 const router = useRouter();
 const isAdminRoute = computed(() => route.path.startsWith('/admin'));
 const seatsStore = useSeatsStore();
+const wishlistStore = useWishlistStore();
 const swal = useSwal();
 
 const formattedGlobal = computed(() => {
@@ -102,6 +125,28 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Wishlist toast */
+.wishlist-toast-enter-active,
+.wishlist-toast-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wishlist-toast-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px) scale(0.9);
+}
+.wishlist-toast-enter-to {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+.wishlist-toast-leave-from {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+.wishlist-toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px) scale(0.9);
+}
+
 .booking-banner-enter-active,
 .booking-banner-leave-active {
   transition: all 0.3s ease;
