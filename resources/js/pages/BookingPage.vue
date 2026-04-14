@@ -832,6 +832,10 @@ const passengers = ref([{
   dive_cert_level: '', cert_number: '', weight: null 
 }]);
 
+watch(step, (newStep) => {
+  seatsStore.saveStep(newStep);
+});
+
 watch(passengerCount, (n) => {
   while (passengers.value.length < n) {
     passengers.value.push({ 
@@ -1009,8 +1013,14 @@ onMounted(async () => {
     if (preselectedRegion && pickupPoints.value.length === 1) {
       selectedPickup.value = pickupPoints.value[0];
     }
-    // For non-seat-map, non-trekking trips: start countdown immediately on page load
-    if (!hasSeatMap.value && !isTrekking.value) {
+    // Resume countdown first (may have been restored from sessionStorage)
+    seatsStore.restoreCountdown();
+    // Restore step from session if returning mid-booking
+    const savedStep = seatsStore.activeBookingInfo?.step;
+    if (savedStep != null && savedStep > 0 && seatsStore.lockExpiry && new Date(seatsStore.lockExpiry) > new Date()) {
+      step.value = savedStep;
+    } else if (!hasSeatMap.value && !isTrekking.value) {
+      // For non-seat-map, non-trekking trips: start countdown immediately on page load
       seatsStore.startManualCountdown(
         schedule.value?.trip?.title || 'กิจกรรม',
         route.params.scheduleId

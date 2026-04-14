@@ -94,6 +94,13 @@ export const useSeatsStore = defineStore('seats', {
       saveSession(this.lockExpiry, this.activeBookingInfo);
     },
 
+    saveStep(step) {
+      if (this.activeBookingInfo) {
+        this.activeBookingInfo = { ...this.activeBookingInfo, step };
+        saveSession(this.lockExpiry, this.activeBookingInfo);
+      }
+    },
+
     restoreCountdown() {
       if (this.lockExpiry && this.activeBookingInfo) {
         this.startCountdown();
