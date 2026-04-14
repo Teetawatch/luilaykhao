@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import api from '../lib/axios';
+import { useSeatsStore } from './seats';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -65,6 +66,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
+      useSeatsStore().clearSelection();
     },
   },
 });
