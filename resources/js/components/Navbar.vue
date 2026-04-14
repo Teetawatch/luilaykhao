@@ -20,7 +20,7 @@
                 <div 
                   class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 cursor-pointer"
                   :class="{ 'text-primary bg-sand': isAboutActive }"
-                  @click.stop="navDropdownOpen = !navDropdownOpen"
+                  @click="navDropdownOpen = !navDropdownOpen"
                 >
                   <span class="material-symbols-rounded text-[18px] font-variation-settings-'FILL'-0">{{ link.icon }}</span>
                   {{ link.label }}
@@ -406,16 +406,22 @@ const wishlistDropdownRef = ref(null);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
 
 function handleClickOutside(e) {
-  const navEl = navDropdownRef.value;
-  const userEl = userDropdownRef.value;
-  const wishlistEl = wishlistDropdownRef.value;
-  if (navEl && !navEl.contains(e.target)) {
+  const navEl = Array.isArray(navDropdownRef.value)
+    ? navDropdownRef.value[0]
+    : navDropdownRef.value;
+  const userEl = Array.isArray(userDropdownRef.value)
+    ? userDropdownRef.value[0]
+    : userDropdownRef.value;
+  const wishlistEl = Array.isArray(wishlistDropdownRef.value)
+    ? wishlistDropdownRef.value[0]
+    : wishlistDropdownRef.value;
+  if (!navEl || !navEl.contains(e.target)) {
     navDropdownOpen.value = false;
   }
-  if (userEl && !userEl.contains(e.target)) {
+  if (!userEl || !userEl.contains(e.target)) {
     userDropdownOpen.value = false;
   }
-  if (wishlistEl && !wishlistEl.contains(e.target)) {
+  if (!wishlistEl || !wishlistEl.contains(e.target)) {
     wishlistDropdownOpen.value = false;
   }
 }
