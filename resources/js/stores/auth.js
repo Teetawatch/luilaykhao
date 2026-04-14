@@ -31,6 +31,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         const res = await api.post('/auth/login', data);
         this.setAuth(res.data.data);
+        useSeatsStore().restoreCountdown();
         return res.data;
       } finally {
         this.loading = false;
@@ -66,7 +67,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
-      useSeatsStore().clearSelection();
+      useSeatsStore().pauseSession();
     },
   },
 });

@@ -107,6 +107,14 @@ export const useSeatsStore = defineStore('seats', {
       }
     },
 
+    pauseSession() {
+      // Stop in-memory countdown but keep sessionStorage so it can resume after re-login
+      this.stopCountdown();
+      this.activeBookingInfo = null;
+      this.lockExpiry = null;
+      this._onExpireCallbacks = [];
+    },
+
     onExpire(callback) {
       this._onExpireCallbacks.push(callback);
     },
