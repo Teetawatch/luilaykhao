@@ -2,16 +2,43 @@ import { defineStore } from 'pinia';
 import api from '../lib/axios';
 
 const MAX_BOOKING_SECONDS = 10 * 60; // 10 minutes hard limit
+const SESSION_KEY = 'booking_session';
+
+function saveSession(lockExpiry, activeBookingInfo) {
+  if (lockExpiry && activeBookingInfo) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ lockExpiry, activeBookingInfo }));
+  } else {
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+}
+
+function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    // Check if expiry is still in the future
+    if (data.lockExpiry && new Date(data.lockExpiry) > new Date()) {
+      return data;
+    }
+    sessionStorage.removeItem(SESSION_KEY);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+const _saved = loadSession();
 
 export const useSeatsStore = defineStore('seats', {
   state: () => ({
     seatMap: null,
     selectedSeats: [],
     loading: false,
-    lockExpiry: null,
+    lockExpiry: _saved?.lockExpiry ?? null,
     countdownSeconds: 0,
     countdownTimer: null,
-    activeBookingInfo: null, // { tripTitle, scheduleId, seatIds, startedAt }
+    activeBookingInfo: _saved?.activeBookingInfo ?? null,
     _onExpireCallbacks: [],
   }),
 
@@ -43,6 +70,7 @@ export const useSeatsStore = defineStore('seats', {
           const serverExpiry = res.data.data.expires_at ? new Date(res.data.data.expires_at) : null;
           const maxExpiry = new Date(Date.now() + MAX_BOOKING_SECONDS * 1000);
           this.lockExpiry = serverExpiry && serverExpiry < maxExpiry ? serverExpiry.toISOString() : maxExpiry.toISOString();
+          saveSession(this.lockExpiry, this.activeBookingInfo);
           this.startCountdown();
         }
         return res.data;
@@ -63,6 +91,13 @@ export const useSeatsStore = defineStore('seats', {
 
     setActiveBookingInfo(info) {
       this.activeBookingInfo = info;
+      saveSession(this.lockExpiry, this.activeBookingInfo);
+    },
+
+    restoreCountdown() {
+      if (this.lockExpiry && this.activeBookingInfo) {
+        this.startCountdown();
+      }
     },
 
     onExpire(callback) {
@@ -93,6 +128,7 @@ export const useSeatsStore = defineStore('seats', {
       this.lockExpiry = null;
       this.activeBookingInfo = null;
       this._onExpireCallbacks = [];
+      saveSession(null, null);
       this.stopCountdown();
     },
 
@@ -126,6 +162,7 @@ export const useSeatsStore = defineStore('seats', {
       this.stopCountdown();
       this.lockExpiry = new Date(Date.now() + MAX_BOOKING_SECONDS * 1000).toISOString();
       this.activeBookingInfo = { tripTitle, scheduleId, startedAt: Date.now() };
+      saveSession(this.lockExpiry, this.activeBookingInfo);
       this.startCountdown();
     },
   },

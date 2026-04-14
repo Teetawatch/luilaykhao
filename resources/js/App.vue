@@ -116,6 +116,7 @@ function handleGlobalExpiry() {
 }
 
 onMounted(() => {
+  seatsStore.restoreCountdown();
   seatsStore.onExpire(handleGlobalExpiry);
 });
 
