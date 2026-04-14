@@ -657,7 +657,7 @@
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
-                    ยกเลิกฟรีล่วงหน้าอย่างน้อย 48 ชั่วโมง
+                    สามารถปรับเปลี่ยนวันหรือเปลี่ยนผู้เข้าใช้สิทธิ์แทนได้ โดยไม่มีค่าใช้จ่าย หากแจ้งล่วงหน้าภายใน 45 วัน
                   </p>
                 </div>
                 <div v-else class="text-center py-4 bg-gray-50 rounded-[1.25rem] border border-dashed border-gray-300">
@@ -673,6 +673,13 @@
                 <div>
                   <p class="font-extrabold text-[var(--color-text-dark)] text-lg mb-0.5">จองด่วน!</p>
                   <p class="text-sm font-bold text-[#A87830]">เหลือเพียง {{ urgentSeats }} ที่นั่งสุดท้าย</p>
+                  <p class="text-xs font-semibold text-[#A87830]/80 mt-0.5 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[13px]">calendar_today</span>
+                    ทริปวันที่ {{ formatDate(urgentSchedule.departure_date) }}
+                    <template v-if="urgentSchedule.return_date && urgentSchedule.return_date !== urgentSchedule.departure_date">
+                      &ndash; {{ formatDate(urgentSchedule.return_date) }}
+                    </template>
+                  </p>
                 </div>
               </div>
 
@@ -901,11 +908,13 @@ const highlights = computed(() => {
 
 /* Inclusions/Exclusions are now directly from trip data */
 
-const urgentSeats = computed(() => {
-  if (!schedules.value.length) return 0;
-  const min = Math.min(...schedules.value.map(s => s.available_seats));
-  return min > 0 && min <= 5 ? min : 0;
+const urgentSchedule = computed(() => {
+  if (!schedules.value.length) return null;
+  const s = schedules.value.reduce((a, b) => a.available_seats < b.available_seats ? a : b);
+  return s.available_seats > 0 && s.available_seats <= 5 ? s : null;
 });
+
+const urgentSeats = computed(() => urgentSchedule.value?.available_seats ?? 0);
 
 function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });

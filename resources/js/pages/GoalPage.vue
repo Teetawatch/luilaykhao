@@ -17,9 +17,7 @@
 
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
         <div class="text-center max-w-4xl mt-10 flex flex-col items-center">
-          <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-[var(--color-sand)]/10 border border-white/10 backdrop-blur-md text-[var(--color-gold)] font-bold tracking-[0.2em] uppercase text-xs mb-8 shadow-sm">
-            จุดมุ่งหมาย
-          </div>
+                    <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-8 rounded-full shadow-lg"></div>
           <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight mb-6 tracking-tight drop-shadow-md">
             เป้าหมายของเรา
           </h1>

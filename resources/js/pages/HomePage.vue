@@ -269,7 +269,7 @@
                 :class="wishlistStore.isFavorite(trip.id) 
                   ? 'border-red-500 text-red-500 bg-white/10 shadow-sm' 
                   : 'border-white/60 text-white hover:border-white hover:bg-black/10 shadow-sm'"
-                @click.prevent="wishlistStore.toggleFavorite(trip.id)"
+                @click.prevent="wishlistStore.toggleFavorite(trip)"
                 aria-label="บันทึกรายการโปรด"
               >
                 <span 

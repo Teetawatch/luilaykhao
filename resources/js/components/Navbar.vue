@@ -57,6 +57,66 @@
             </template>
           </div>
 
+          <!-- Wishlist Button (Desktop) -->
+          <div ref="wishlistDropdownRef" class="relative h-full flex items-center">
+            <button
+              @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
+              class="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors duration-200 text-text-mid hover:text-primary cursor-pointer"
+              aria-label="รายการที่ชอบ"
+            >
+              <span class="material-symbols-rounded text-[22px]" :class="wishlistStore.favorites.length > 0 ? 'text-red-500' : ''" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
+              <span v-if="wishlistStore.favorites.length > 0" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                {{ wishlistStore.favorites.length > 9 ? '9+' : wishlistStore.favorites.length }}
+              </span>
+            </button>
+
+            <!-- Wishlist Dropdown -->
+            <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-2 z-[60] animation-scale-in">
+              <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
+                <div class="px-5 py-3.5 bg-sand/40 border-b border-sand-dark/40 flex items-center gap-2">
+                  <span class="material-symbols-rounded text-[18px] text-red-500" style="font-variation-settings:'FILL' 1">favorite</span>
+                  <span class="text-[13px] font-bold text-text-dark">รายการที่ชอบ</span>
+                  <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }} รายการ</span>
+                </div>
+                <div v-if="wishlistStore.favorites.length === 0" class="flex flex-col items-center gap-2 py-8 px-5">
+                  <span class="material-symbols-rounded text-[40px] text-sand-dark/60">favorite_border</span>
+                  <p class="text-[13px] text-text-muted font-medium text-center">ยังไม่มีรายการที่ชอบ<br/>กดหัวใจที่ทริปที่คุณสนใจได้เลย</p>
+                </div>
+                <div v-else class="max-h-72 overflow-y-auto py-1.5">
+                  <router-link
+                    v-for="trip in wishlistStore.favorites"
+                    :key="typeof trip === 'object' ? trip.id : trip"
+                    :to="`/trips/${typeof trip === 'object' ? trip.id : trip}`"
+                    @click="wishlistDropdownOpen = false"
+                    class="flex items-center gap-3.5 px-4 py-2.5 hover:bg-sand transition-all group"
+                  >
+                    <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-sand-dark/20">
+                      <img v-if="trip.cover_image" :src="trip.cover_image" class="w-full h-full object-cover" />
+                      <span v-else class="material-symbols-rounded text-[20px] text-sand-dark/50 flex items-center justify-center w-full h-full">image</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-[13px] font-bold text-text-dark truncate group-hover:text-primary">{{ typeof trip === 'object' ? trip.title : `ทริป #${trip}` }}</p>
+                      <p v-if="trip.price" class="text-[11px] text-text-muted font-semibold">฿{{ Number(trip.price).toLocaleString() }}</p>
+                    </div>
+                    <button
+                      @click.prevent.stop="wishlistStore.toggleFavorite(trip)"
+                      class="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-red-400 hover:bg-red-50 hover:text-red-600 transition-all"
+                      aria-label="ลบออก"
+                    >
+                      <span class="material-symbols-rounded text-[16px]">close</span>
+                    </button>
+                  </router-link>
+                </div>
+                <div v-if="wishlistStore.favorites.length > 0" class="px-4 py-3 border-t border-sand-dark/40">
+                  <router-link to="/trips" @click="wishlistDropdownOpen = false" class="flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-primary/10 text-primary text-[12px] font-bold hover:bg-primary/20 transition-all">
+                    <span class="material-symbols-rounded text-[16px]">explore</span>
+                    ดูกิจกรรมทั้งหมด
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <template v-if="auth.isLoggedIn">
             <!-- User Menu Dropdown -->
             <div ref="userDropdownRef" class="relative h-full flex items-center ml-2">
@@ -169,6 +229,24 @@
       </div>
     </div>
 
+  <!-- Toast Notification -->
+  <Transition name="toast">
+    <div
+      v-if="wishlistStore.lastAdded"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-sand-dark/40 px-5 py-3.5 min-w-[260px] max-w-sm"
+    >
+      <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-sand-dark/20">
+        <img v-if="wishlistStore.lastAdded.cover_image" :src="wishlistStore.lastAdded.cover_image" class="w-full h-full object-cover" />
+        <span v-else class="material-symbols-rounded text-[20px] text-red-400 flex items-center justify-center w-full h-full" style="font-variation-settings:'FILL' 1">favorite</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-[12px] font-bold text-primary">เพิ่มเข้าสำหรับรายการที่ชอบแล้ว</p>
+        <p class="text-[13px] font-bold text-text-dark truncate">{{ wishlistStore.lastAdded.title || `ทริป #${wishlistStore.lastAdded.id}` }}</p>
+      </div>
+      <span class="material-symbols-rounded text-[20px] text-red-500 shrink-0" style="font-variation-settings:'FILL' 1">favorite</span>
+    </div>
+  </Transition>
+
     <!-- Mobile Menu -->
     <Transition name="mobile-menu">
       <div v-if="mobileOpen" class="md:hidden bg-white/95 backdrop-blur-xl border-t border-sand-dark/40 absolute w-full shadow-lg">
@@ -205,6 +283,16 @@
 
           <template v-if="auth.isLoggedIn">
             <div class="w-full h-px bg-sand-dark/60 my-3"></div>
+            <router-link
+              to="/trips"
+              @click="mobileOpen = false"
+              class="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-base font-semibold hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+              :class="wishlistStore.favorites.length > 0 ? 'text-red-500' : 'text-text-mid'"
+            >
+              <span class="material-symbols-rounded text-[22px]" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
+              <span class="flex-1">รายการที่ชอบ</span>
+              <span v-if="wishlistStore.favorites.length > 0" class="bg-red-500 text-white text-xs font-bold rounded-full px-2.5 py-1">{{ wishlistStore.favorites.length }}</span>
+            </router-link>
             
             <router-link
               to="/my-bookings"
@@ -318,25 +406,34 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useWishlistStore } from '../stores/wishlist';
 import api from '../lib/axios';
 
 const auth = useAuthStore();
+const wishlistStore = useWishlistStore();
 const router = useRouter();
 const mobileOpen = ref(false);
 const unreadNotifications = ref(0);
 const navDropdownOpen = ref(false);
 const userDropdownOpen = ref(false);
+const wishlistDropdownOpen = ref(false);
 const navDropdownRef = ref(null);
 const userDropdownRef = ref(null);
+const wishlistDropdownRef = ref(null);
+const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
 
 function handleClickOutside(e) {
   const navEl = navDropdownRef.value;
   const userEl = userDropdownRef.value;
+  const wishlistEl = wishlistDropdownRef.value;
   if (navEl && !navEl.contains(e.target)) {
     navDropdownOpen.value = false;
   }
   if (userEl && !userEl.contains(e.target)) {
     userDropdownOpen.value = false;
+  }
+  if (wishlistEl && !wishlistEl.contains(e.target)) {
+    wishlistDropdownOpen.value = false;
   }
 }
 
@@ -444,5 +541,21 @@ async function handleLogout() {
   .mobile-menu-leave-active {
     transition: none;
   }
+}
+
+/* Toast transition */
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px) scale(0.9);
+}
+.toast-enter-to,
+.toast-leave-from {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
 }
 </style>
