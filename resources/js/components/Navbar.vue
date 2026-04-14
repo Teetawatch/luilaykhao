@@ -233,7 +233,7 @@
   <Transition name="toast">
     <div
       v-if="wishlistStore.lastAdded"
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-sand-dark/40 px-5 py-3.5 min-w-[260px] max-w-sm"
+      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 bg-white rounded-2xl shadow-2xl border border-sand-dark/40 px-5 py-3.5 min-w-[260px] max-w-sm w-[calc(100%-2rem)] sm:w-auto"
     >
       <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-sand-dark/20">
         <img v-if="wishlistStore.lastAdded.cover_image" :src="wishlistStore.lastAdded.cover_image" class="w-full h-full object-cover" />
