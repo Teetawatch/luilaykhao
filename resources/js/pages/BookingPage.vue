@@ -439,6 +439,31 @@
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div class="md:col-span-2">
+                  <label class="block text-sm font-bold text-gray-700 mb-2">ต้องการอาหารฮาลาล <span class="text-red-500">*</span></label>
+                  <p class="text-xs text-gray-500 mb-3">เพื่อให้เราจัดเตรียมอาหารได้เหมาะสม รบกวนแจ้งว่าท่านต้องการอาหารฮาลาลหรือไม่</p>
+                  <div class="flex gap-3">
+                    <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
+                      :class="p.halal_food === true ? 'border-teal-600 bg-teal-50' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
+                      <input type="radio" :name="`halal_food_${i}`" :value="true" v-model="p.halal_food" class="hidden" />
+                      <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                        :class="p.halal_food === true ? 'border-teal-600' : 'border-gray-300'">
+                        <span v-if="p.halal_food === true" class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+                      </span>
+                      <span class="text-sm font-bold" :class="p.halal_food === true ? 'text-teal-700' : 'text-gray-700'">ต้องการ</span>
+                    </label>
+                    <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
+                      :class="p.halal_food === false ? 'border-gray-400 bg-gray-100' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
+                      <input type="radio" :name="`halal_food_${i}`" :value="false" v-model="p.halal_food" class="hidden" />
+                      <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                        :class="p.halal_food === false ? 'border-gray-500' : 'border-gray-300'">
+                        <span v-if="p.halal_food === false" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+                      </span>
+                      <span class="text-sm font-bold" :class="p.halal_food === false ? 'text-gray-700' : 'text-gray-700'">ไม่จำเป็น</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="md:col-span-2">
                   <label class="block text-sm font-bold text-gray-700 mb-2">การแพ้อาหาร / อื่นๆ</label>
                   <input v-model="p.allergies" type="text" placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
@@ -829,7 +854,7 @@ const effectivePrice = computed(() => {
 const passengers = ref([{ 
   title: '', name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '', 
-  dive_cert_level: '', cert_number: '', weight: null 
+  dive_cert_level: '', cert_number: '', weight: null, halal_food: null
 }]);
 
 watch(step, (newStep) => {
@@ -841,7 +866,7 @@ watch(passengerCount, (n) => {
     passengers.value.push({ 
       title: '', name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_phone: '', 
-      dive_cert_level: '', cert_number: '', weight: null 
+      dive_cert_level: '', cert_number: '', weight: null, halal_food: null
     });
   }
   if (passengers.value.length > n) passengers.value.length = n;
@@ -885,6 +910,7 @@ const isPassengerValid = computed(() => passengers.value.every(p =>
   p.name?.trim() && 
   p.id_card && 
   p.id_card.length === 13 &&
+  p.halal_food !== null &&
   (!schedule.value?.trip?.is_women_only || ['นาง', 'นางสาว'].includes(p.title))
 ));
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
@@ -972,6 +998,7 @@ async function createBooking() {
         phone: p.phone || null,
         blood_group: p.blood_group || null,
         allergies: p.allergies || null,
+        halal_food: p.halal_food,
         health_notes: p.health_notes || null,
         emergency_contact: p.emergency_contact || null,
         emergency_phone: p.emergency_phone || null,
