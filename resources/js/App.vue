@@ -59,22 +59,45 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import Navbar from './components/Navbar.vue';
 import Footer from './components/Footer.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { useSeatsStore } from './stores/seats';
+import { useSwal } from './lib/swal';
 
 const route = useRoute();
+const router = useRouter();
 const isAdminRoute = computed(() => route.path.startsWith('/admin'));
 const seatsStore = useSeatsStore();
+const swal = useSwal();
 
 const formattedGlobal = computed(() => {
   const s = seatsStore.countdownSeconds;
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${m}:${sec.toString().padStart(2, '0')}`;
+});
+
+function handleGlobalExpiry() {
+  const isOnBookingPage = route.path.startsWith('/booking/');
+  if (isOnBookingPage) return; // BookingPage handles its own expiry
+  seatsStore.clearSelection();
+  swal.error(
+    'หมดเวลาการจองแล้ว!',
+    'เวลา 10 นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่'
+  ).then(() => {
+    router.push('/trips');
+  });
+}
+
+onMounted(() => {
+  seatsStore.onExpire(handleGlobalExpiry);
+});
+
+onUnmounted(() => {
+  seatsStore.offExpire(handleGlobalExpiry);
 });
 </script>
 

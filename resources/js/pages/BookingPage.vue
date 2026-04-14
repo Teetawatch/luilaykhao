@@ -979,6 +979,7 @@ async function createBooking() {
     if (hasSeatMap.value) data.seat_ids = seatsStore.selectedSeatIds;
 
     const res = await bookingStore.createBooking(data);
+    seatsStore.clearSelection();
     toast.success('สร้างการจองสำเร็จ! กำลังไปยังหน้าชำระเงิน...');
     router.push(`/payment/${res.data.booking_ref}`);
   } catch (e) {
@@ -1024,6 +1025,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   seatsStore.offExpire(handleExpiry);
-  seatsStore.clearSelection();
+  // Do NOT clearSelection here — keep the countdown alive so the global banner
+  // continues to show on other pages. It will be cleared on expiry or booking success.
 });
 </script>
