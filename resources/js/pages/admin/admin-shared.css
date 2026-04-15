@@ -11,6 +11,10 @@
   font-family: 'Anuphan', sans-serif;
 }
 
+.admin-page .material-symbols-rounded {
+  font-family: 'Material Symbols Rounded' !important;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
