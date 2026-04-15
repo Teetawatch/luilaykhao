@@ -2,18 +2,18 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-users"></i> ผู้ใช้งาน</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">group</span> ผู้ใช้งาน</h1>
         <p class="page-subtitle">จัดการบัญชีผู้ใช้งานทั้งหมด</p>
       </div>
       <button class="btn-primary" @click="openForm()">
-        <i class="fas fa-user-plus"></i> เพิ่มผู้ใช้ใหม่
+        <span class="material-symbols-rounded">person_add</span> เพิ่มผู้ใช้ใหม่
       </button>
     </div>
 
     <!-- Filters -->
     <div class="filters-bar">
       <div class="search-box">
-        <i class="fas fa-search"></i>
+        <span class="material-symbols-rounded">search</span>
         <input v-model="filters.search" placeholder="ค้นหาชื่อ, อีเมล, เบอร์โทร..." @input="debouncedFetch" />
       </div>
       <select v-model="filters.role" @change="fetchData()">
@@ -59,8 +59,8 @@
               <td class="date">{{ formatDate(u.created_at) }}</td>
               <td>
                 <div class="action-btns">
-                  <button class="btn-icon btn-edit" @click="openForm(u)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                  <button class="btn-icon btn-delete" @click="confirmDelete(u)" title="ลบ"><i class="fas fa-trash"></i></button>
+                  <button class="btn-icon btn-edit" @click="openForm(u)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
+                  <button class="btn-icon btn-delete" @click="confirmDelete(u)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
                 </div>
               </td>
             </tr>
@@ -72,9 +72,9 @@
       </div>
 
       <div class="pagination" v-if="admin.users.meta?.last_page > 1">
-        <button :disabled="admin.users.meta.current_page <= 1" @click="goPage(admin.users.meta.current_page - 1)"><i class="fas fa-chevron-left"></i></button>
+        <button :disabled="admin.users.meta.current_page <= 1" @click="goPage(admin.users.meta.current_page - 1)"><span class="material-symbols-rounded">chevron_left</span></button>
         <span class="page-info">{{ admin.users.meta.current_page }} / {{ admin.users.meta.last_page }}</span>
-        <button :disabled="admin.users.meta.current_page >= admin.users.meta.last_page" @click="goPage(admin.users.meta.current_page + 1)"><i class="fas fa-chevron-right"></i></button>
+        <button :disabled="admin.users.meta.current_page >= admin.users.meta.last_page" @click="goPage(admin.users.meta.current_page + 1)"><span class="material-symbols-rounded">chevron_right</span></button>
       </div>
     </div>
 
@@ -83,7 +83,7 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้ใหม่' }}</h2>
-          <button class="modal-close" @click="showForm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <form @submit.prevent="submitForm" class="modal-body">
           <div class="form-grid">
@@ -115,7 +115,7 @@
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="submitting">
-              <i class="fas fa-spinner fa-spin" v-if="submitting"></i>
+              <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
               {{ editing ? 'บันทึก' : 'สร้างผู้ใช้' }}
             </button>
           </div>
@@ -128,11 +128,11 @@
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>
-          <button class="modal-close" @click="showDeleteConfirm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showDeleteConfirm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <p class="confirm-text">คุณต้องการลบผู้ใช้ <strong>{{ deleting?.name }}</strong> ใช่หรือไม่?</p>
-          <p class="confirm-warning"><i class="fas fa-exclamation-triangle"></i> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <p class="confirm-warning"><span class="material-symbols-rounded">warning</span> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
@@ -228,11 +228,11 @@ onMounted(() => fetchData());
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: #2d7a4f;
+  background: var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-white);
   font-weight: 700;
   font-size: 14px;
   flex-shrink: 0;
@@ -240,6 +240,6 @@ onMounted(() => fetchData());
 
 .user-name-cell {
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 </style>

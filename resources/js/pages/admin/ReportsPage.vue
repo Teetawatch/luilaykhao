@@ -2,7 +2,7 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-chart-line"></i> รายงานและส่งออก</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">show_chart</span> รายงานและส่งออก</h1>
         <p class="page-subtitle">สร้างรายงานและส่งออก Excel/PDF สำหรับบัญชี</p>
       </div>
     </div>
@@ -10,13 +10,13 @@
     <!-- Report Tabs -->
     <div class="report-tabs">
       <button :class="{ active: activeTab === 'bookings' }" @click="activeTab = 'bookings'">
-        <i class="fas fa-ticket-alt"></i> รายงานการจอง
+        <span class="material-symbols-rounded">confirmation_number</span> รายงานการจอง
       </button>
       <button :class="{ active: activeTab === 'revenue' }" @click="activeTab = 'revenue'">
-        <i class="fas fa-coins"></i> รายงานรายได้
+        <span class="material-symbols-rounded">payments</span> รายงานรายได้
       </button>
       <button :class="{ active: activeTab === 'vehicles' }" @click="activeTab = 'vehicles'">
-        <i class="fas fa-shuttle-van"></i> รายงานยานพาหนะ
+        <span class="material-symbols-rounded">airport_shuttle</span> รายงานยานพาหนะ
       </button>
     </div>
 
@@ -42,7 +42,7 @@
         </div>
         <div class="filter-actions">
           <button class="btn-primary" @click="loadBookingReport" :disabled="loadingReport">
-            <i class="fas fa-search"></i> สร้างรายงาน
+            <span class="material-symbols-rounded">search</span> สร้างรายงาน
           </button>
         </div>
       </div>
@@ -63,10 +63,10 @@
         <!-- Export Buttons -->
         <div class="export-actions">
           <button class="btn-export btn-excel" @click="exportExcel('bookings')">
-            <i class="fas fa-file-excel"></i> ส่งออก Excel
+            <span class="material-symbols-rounded">table_view</span> ส่งออก Excel
           </button>
           <button class="btn-export btn-pdf" @click="exportPdf('bookings')">
-            <i class="fas fa-file-pdf"></i> ส่งออก PDF
+            <span class="material-symbols-rounded">picture_as_pdf</span> ส่งออก PDF
           </button>
         </div>
 
@@ -121,7 +121,7 @@
         </div>
         <div class="filter-actions">
           <button class="btn-primary" @click="loadRevenueReport" :disabled="loadingReport">
-            <i class="fas fa-search"></i> สร้างรายงาน
+            <span class="material-symbols-rounded">search</span> สร้างรายงาน
           </button>
         </div>
       </div>
@@ -137,16 +137,16 @@
 
         <div class="export-actions">
           <button class="btn-export btn-excel" @click="exportExcel('revenue')">
-            <i class="fas fa-file-excel"></i> ส่งออก Excel
+            <span class="material-symbols-rounded">table_view</span> ส่งออก Excel
           </button>
           <button class="btn-export btn-pdf" @click="exportPdf('revenue')">
-            <i class="fas fa-file-pdf"></i> ส่งออก PDF
+            <span class="material-symbols-rounded">picture_as_pdf</span> ส่งออก PDF
           </button>
         </div>
 
         <!-- Monthly Chart -->
         <div class="chart-section">
-          <h3><i class="fas fa-chart-bar"></i> รายได้รายเดือน</h3>
+          <h3><span class="material-symbols-rounded">bar_chart</span> รายได้รายเดือน</h3>
           <div class="bar-chart">
             <div v-for="m in revenueReport.monthly" :key="m.month" class="bar-col">
               <div class="bar-value">{{ formatShort(m.revenue) }}</div>
@@ -161,7 +161,7 @@
 
         <!-- By Trip -->
         <div class="table-card">
-          <div class="card-header"><h3><i class="fas fa-route"></i> รายได้ตามทริป</h3></div>
+          <div class="card-header"><h3><span class="material-symbols-rounded">route</span> รายได้ตามทริป</h3></div>
           <div class="table-container">
             <table class="data-table">
               <thead>
@@ -189,7 +189,7 @@
       <div class="report-filters">
         <div class="filter-actions">
           <button class="btn-primary" @click="loadVehicleReport" :disabled="loadingReport">
-            <i class="fas fa-search"></i> สร้างรายงาน
+            <span class="material-symbols-rounded">search</span> สร้างรายงาน
           </button>
         </div>
       </div>
@@ -199,10 +199,10 @@
       <template v-if="vehicleReport">
         <div class="export-actions">
           <button class="btn-export btn-excel" @click="exportExcel('vehicles')">
-            <i class="fas fa-file-excel"></i> ส่งออก Excel
+            <span class="material-symbols-rounded">table_view</span> ส่งออก Excel
           </button>
           <button class="btn-export btn-pdf" @click="exportPdf('vehicles')">
-            <i class="fas fa-file-pdf"></i> ส่งออก PDF
+            <span class="material-symbols-rounded">picture_as_pdf</span> ส่งออก PDF
           </button>
         </div>
 
@@ -371,7 +371,7 @@ function exportPdf(type) {
   // Generate printable HTML
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>
-  body{font-family:'Sarabun',sans-serif;padding:40px;color:#333}
+  body{font-family:'Anuphan',sans-serif;padding:40px;color:#333}
   h1{color:#2d7a4f;margin-bottom:8px}
   .summary{margin:16px 0;padding:12px;background:#FAFAFA;border-radius:8px}
   .summary p{margin:4px 0;font-size:14px}
@@ -412,9 +412,9 @@ function downloadFile(content, filename, contentType) {
   display: flex;
   gap: 4px;
   margin-bottom: 20px;
-  background: #ffffff;
+  background: var(--color-white);
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   padding: 4px;
 }
 
@@ -425,8 +425,8 @@ function downloadFile(content, filename, contentType) {
   background: transparent;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
-  color: #6b7280;
+  font-weight: 600;
+  color: var(--color-text-mid);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -436,14 +436,13 @@ function downloadFile(content, filename, contentType) {
 }
 
 .report-tabs button:hover {
-  background: #FAFAFA;
-  color: #374151;
+  background: var(--color-sand);
+  color: var(--color-text-dark);
 }
 
 .report-tabs button.active {
-  background: #2d7a4f;
+  background: var(--color-accent);
   color: white;
-  font-weight: 600;
 }
 
 .report-filters {
@@ -463,23 +462,23 @@ function downloadFile(content, filename, contentType) {
 .report-filters label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .report-filters input,
 .report-filters select {
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   font-size: 14px;
-  color: #111827;
-  background: #fff;
+  color: var(--color-text-dark);
+  background: var(--color-white);
   outline: none;
 }
 
 .report-filters input:focus,
 .report-filters select:focus {
-  border-color: #2d7a4f;
+  border-color: var(--color-accent);
 }
 
 .filter-actions {
@@ -496,8 +495,8 @@ function downloadFile(content, filename, contentType) {
 .rs-item {
   flex: 1;
   min-width: 120px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
   border-radius: 10px;
   padding: 14px;
   text-align: center;
@@ -507,17 +506,17 @@ function downloadFile(content, filename, contentType) {
   display: block;
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 .rs-green .rs-val { color: #16a34a; }
-.rs-yellow .rs-val { color: #d97706; }
+.rs-yellow .rs-val { color: #ca8a04; }
 .rs-red .rs-val { color: #dc2626; }
-.rs-blue .rs-val { color: #1d4ed8; font-size: 16px; }
+.rs-blue .rs-val { color: var(--color-ocean); font-size: 18px; }
 
 .rs-label {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
@@ -532,13 +531,13 @@ function downloadFile(content, filename, contentType) {
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  background: #fff;
+  background: var(--color-white);
 }
 
 .btn-excel {
@@ -564,8 +563,8 @@ function downloadFile(content, filename, contentType) {
 }
 
 .chart-section {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -574,15 +573,15 @@ function downloadFile(content, filename, contentType) {
 .chart-section h3 {
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
   margin: 0 0 16px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.chart-section h3 i {
-  color: #2d7a4f;
+.chart-section h3 .material-symbols-rounded {
+  color: var(--color-accent);
 }
 
 .bar-chart {
@@ -604,7 +603,7 @@ function downloadFile(content, filename, contentType) {
 .bar-value {
   font-size: 12px;
   font-weight: 700;
-  color: #374151;
+  color: var(--color-text-mid);
 }
 
 .bar-track-v {
@@ -617,7 +616,7 @@ function downloadFile(content, filename, contentType) {
 
 .bar-fill-v {
   width: 100%;
-  background: linear-gradient(to top, #2d7a4f, #4ade80);
+  background: var(--color-accent);
   border-radius: 5px 5px 0 0;
   min-height: 4px;
   transition: height 0.5s ease;
@@ -625,32 +624,32 @@ function downloadFile(content, filename, contentType) {
 
 .bar-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-weight: 500;
 }
 
 .bar-sub {
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .card-header {
   padding: 14px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-sand-dark);
 }
 
 .card-header h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.card-header h3 i {
-  color: #2d7a4f;
+.card-header h3 .material-symbols-rounded {
+  color: var(--color-accent);
 }
 
 @media (max-width: 768px) {

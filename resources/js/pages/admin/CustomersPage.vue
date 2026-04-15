@@ -2,7 +2,7 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-user-friends"></i> จัดการลูกค้า</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">group</span> จัดการลูกค้า</h1>
         <p class="page-subtitle">ข้อมูลลูกค้าและประวัติการจอง</p>
       </div>
     </div>
@@ -10,7 +10,7 @@
     <!-- Filters -->
     <div class="filters-bar">
       <div class="search-box">
-        <i class="fas fa-search"></i>
+        <span class="material-symbols-rounded" style="font-size:18px;">search</span>
         <input v-model="searchQuery" placeholder="ค้นหาชื่อ, อีเมล, เบอร์โทร..." @keyup.enter="fetchData()" />
       </div>
       <select v-model="filters.sort" @change="fetchData()">
@@ -55,7 +55,7 @@
                 <td class="date">{{ formatDate(c.created_at) }}</td>
                 <td>
                   <button class="btn-icon btn-edit" @click="openDetail(c)" title="ดูรายละเอียด">
-                    <i class="fas fa-eye"></i>
+                    <span class="material-symbols-rounded" style="font-size:16px;">visibility</span>
                   </button>
                 </td>
               </tr>
@@ -68,11 +68,11 @@
         <!-- Pagination -->
         <div class="pagination" v-if="admin.customers.meta?.last_page > 1">
           <button @click="goPage(admin.customers.meta.current_page - 1)" :disabled="admin.customers.meta.current_page <= 1">
-            <i class="fas fa-chevron-left"></i>
+            <span class="material-symbols-rounded">chevron_left</span>
           </button>
           <span class="page-info">{{ admin.customers.meta.current_page }} / {{ admin.customers.meta.last_page }}</span>
           <button @click="goPage(admin.customers.meta.current_page + 1)" :disabled="admin.customers.meta.current_page >= admin.customers.meta.last_page">
-            <i class="fas fa-chevron-right"></i>
+            <span class="material-symbols-rounded">chevron_right</span>
           </button>
         </div>
       </template>
@@ -82,28 +82,28 @@
     <div class="modal-overlay" v-if="showDetail">
       <div class="modal-card modal-lg">
         <div class="modal-header">
-          <h2><i class="fas fa-user"></i> {{ detail?.customer?.name }}</h2>
-          <button class="modal-close" @click="showDetail = false"><i class="fas fa-times"></i></button>
+          <h2><span class="material-symbols-rounded" style="margin-right:8px; vertical-align:text-bottom;">person</span> {{ detail?.customer?.name }}</h2>
+          <button class="modal-close" @click="showDetail = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body" v-if="detail">
           <!-- Customer Info -->
           <div class="customer-info-grid">
             <div class="info-card">
-              <i class="fas fa-envelope"></i>
+              <span class="material-symbols-rounded">mail</span>
               <div>
                 <span class="info-label">อีเมล</span>
                 <span class="info-value">{{ detail.customer.email }}</span>
               </div>
             </div>
             <div class="info-card">
-              <i class="fas fa-phone"></i>
+              <span class="material-symbols-rounded">phone</span>
               <div>
                 <span class="info-label">เบอร์โทร</span>
                 <span class="info-value">{{ detail.customer.phone || '-' }}</span>
               </div>
             </div>
             <div class="info-card">
-              <i class="fas fa-calendar"></i>
+              <span class="material-symbols-rounded">calendar_today</span>
               <div>
                 <span class="info-label">สมัครเมื่อ</span>
                 <span class="info-value">{{ formatDate(detail.customer.created_at) }}</span>
@@ -136,7 +136,7 @@
           </div>
 
           <!-- Booking History -->
-          <h3 class="section-title"><i class="fas fa-history"></i> ประวัติการจอง</h3>
+          <h3 class="section-title"><span class="material-symbols-rounded">history</span> ประวัติการจอง</h3>
           <div class="booking-history">
             <div v-for="b in detail.bookings" :key="b.id" class="history-item">
               <div class="history-main">
@@ -216,7 +216,7 @@ onMounted(() => fetchData());
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: #2d7a4f;
+  background: var(--color-accent);
   color: white;
   display: flex;
   align-items: center;
@@ -229,13 +229,13 @@ onMounted(() => fetchData());
 .customer-name {
   display: block;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
   font-size: 14px;
 }
 
 .customer-email {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .booking-count-badge {
@@ -244,8 +244,8 @@ onMounted(() => fetchData());
   justify-content: center;
   min-width: 28px;
   height: 24px;
-  background: #f0faf4;
-  color: #2d7a4f;
+  background: var(--color-sand);
+  color: var(--color-accent);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 700;
@@ -267,27 +267,27 @@ onMounted(() => fetchData());
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: #FAFAFA;
+  background: var(--color-sand);
   border-radius: 8px;
-  border: 1px solid #EEEEEE;
+  border: 1px solid var(--color-sand-dark);
 }
 
-.info-card i {
-  color: #2d7a4f;
-  font-size: 15px;
+.info-card .material-symbols-rounded {
+  color: var(--color-accent);
+  font-size: 20px;
 }
 
 .info-label {
   display: block;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .info-value {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 .customer-stats {
@@ -302,40 +302,40 @@ onMounted(() => fetchData());
   min-width: 100px;
   text-align: center;
   padding: 14px 10px;
-  background: #FAFAFA;
+  background: var(--color-sand);
   border-radius: 8px;
-  border: 1px solid #EEEEEE;
+  border: 1px solid var(--color-sand-dark);
 }
 
 .cs-value {
   display: block;
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 .cs-confirmed .cs-value { color: #16a34a; }
 .cs-cancelled .cs-value { color: #dc2626; }
-.cs-spent .cs-value { color: #2d7a4f; font-size: 16px; }
+.cs-spent .cs-value { color: var(--color-ocean); font-size: 18px; }
 
 .cs-label {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
 .section-title {
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
   margin: 0 0 14px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.section-title i {
-  color: #2d7a4f;
+.section-title .material-symbols-rounded {
+  color: var(--color-accent);
 }
 
 .booking-history {
@@ -348,9 +348,9 @@ onMounted(() => fetchData());
 
 .history-item {
   padding: 10px 14px;
-  background: #FAFAFA;
+  background: var(--color-white);
   border-radius: 8px;
-  border: 1px solid #EEEEEE;
+  border: 1px solid var(--color-sand-dark);
 }
 
 .history-main {
@@ -364,28 +364,28 @@ onMounted(() => fetchData());
   flex: 1;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-mid);
 }
 
 .history-meta {
   display: flex;
   gap: 16px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .money-sm {
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 .date-sm {
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .empty-text {
   text-align: center;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 14px;
   padding: 24px;
 }

@@ -2,7 +2,7 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-calendar-alt"></i> ปฏิทินทริปและตารางเวลา</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">calendar_month</span> ปฏิทินทริปและตารางเวลา</h1>
         <p class="page-subtitle">ดูรอบเดินทางทั้งหมดในรูปแบบปฏิทิน</p>
       </div>
       <div class="header-actions">
@@ -15,9 +15,9 @@
 
     <!-- Month Navigation -->
     <div class="calendar-nav">
-      <button class="btn-icon" @click="prevMonth"><i class="fas fa-chevron-left"></i></button>
+      <button class="btn-icon" @click="prevMonth"><span class="material-symbols-rounded">chevron_left</span></button>
       <h2 class="month-label">{{ monthLabel }}</h2>
-      <button class="btn-icon" @click="nextMonth"><i class="fas fa-chevron-right"></i></button>
+      <button class="btn-icon" @click="nextMonth"><span class="material-symbols-rounded">chevron_right</span></button>
       <button class="btn-secondary btn-today" @click="goToday">วันนี้</button>
     </div>
 
@@ -79,7 +79,7 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ selectedEvent.trip_title }}</h2>
-          <button class="modal-close" @click="selectedEvent = null"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="selectedEvent = null"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <div class="detail-grid">
@@ -127,7 +127,7 @@
 
           <!-- Pickup Points -->
           <div v-if="selectedEvent.pickup_points?.length" class="pickup-summary">
-            <div class="pickup-summary-title"><i class="fas fa-map-marker-alt"></i> จุดขึ้นรถ</div>
+            <div class="pickup-summary-title"><span class="material-symbols-rounded" style="font-size:16px;">location_on</span> จุดขึ้นรถ</div>
             <div class="pickup-summary-list">
               <div v-for="pt in selectedEvent.pickup_points" :key="pt.id" class="pickup-summary-item">
                 <span class="pickup-summary-region">{{ pt.region_label }}</span>
@@ -139,7 +139,7 @@
 
           <div class="modal-footer">
             <router-link :to="`/admin/schedules`" class="btn-primary">
-              <i class="fas fa-edit"></i> จัดการรอบเดินทาง
+              <span class="material-symbols-rounded" style="font-size: 18px;">edit</span> จัดการรอบเดินทาง
             </router-link>
           </div>
         </div>
@@ -271,10 +271,10 @@ onMounted(() => {
 
 .filter-select {
   padding: 9px 14px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
-  color: #111827;
+  color: var(--color-text-dark);
   font-size: 14px;
   outline: none;
   min-width: 180px;
@@ -290,7 +290,7 @@ onMounted(() => {
 .month-label {
   font-size: 20px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
   margin: 0;
   min-width: 200px;
   text-align: center;
@@ -303,17 +303,17 @@ onMounted(() => {
 }
 
 .calendar-card {
-  background: #ffffff;
+  background: var(--color-white);
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   overflow: hidden;
 }
 
 .calendar-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: #FAFAFA;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-sand);
+  border-bottom: 1px solid var(--color-sand-dark);
 }
 
 .cal-head {
@@ -321,7 +321,7 @@ onMounted(() => {
   text-align: center;
   font-size: 12px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -333,8 +333,8 @@ onMounted(() => {
 
 .cal-cell {
   min-height: 100px;
-  border-right: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
+  border-right: 1px solid var(--color-sand-dark);
+  border-bottom: 1px solid var(--color-sand-dark);
   padding: 6px;
   position: relative;
 }
@@ -344,19 +344,20 @@ onMounted(() => {
 }
 
 .cal-cell.other-month {
-  background: #fafafa;
+  background: var(--color-sand);
+  opacity: 0.6;
 }
 
 .cal-cell.other-month .cal-date {
-  color: #d1d5db;
+  color: var(--color-text-muted);
 }
 
 .cal-cell.today {
-  background: #f0faf4;
+  background: rgba(45, 122, 79, 0.05);
 }
 
 .cal-cell.today .cal-date {
-  background: #2d7a4f;
+  background: var(--color-accent);
   color: #fff;
   border-radius: 50%;
   width: 26px;
@@ -369,7 +370,7 @@ onMounted(() => {
 .cal-date {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-mid);
   margin-bottom: 4px;
   display: inline-block;
 }
@@ -389,8 +390,8 @@ onMounted(() => {
   font-size: 11px;
   cursor: pointer;
   transition: background 0.1s;
-  background: #FAFAFA;
-  border: 1px solid #EEEEEE;
+  background: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
 }
 
 .cal-event:hover {
@@ -404,8 +405,8 @@ onMounted(() => {
 }
 
 .cal-event.event-closed, .cal-event.event-cancelled {
-  background: #EEEEEE;
-  border-color: #e5e7eb;
+  background: var(--color-sand);
+  border-color: var(--color-sand-dark);
   opacity: 0.6;
 }
 
@@ -426,19 +427,19 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #374151;
+  color: var(--color-text-mid);
   font-weight: 500;
 }
 
 .ev-seats {
   font-size: 10px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .cal-more {
   font-size: 10px;
-  color: #2d7a4f;
+  color: var(--color-accent);
   font-weight: 600;
   padding: 1px 5px;
   cursor: pointer;
@@ -457,13 +458,13 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .legend-sep {
   width: 1px;
   height: 16px;
-  background: #e5e7eb;
+  background: var(--color-sand-dark);
 }
 
 .status-dot-legend {
@@ -474,7 +475,7 @@ onMounted(() => {
 
 .status-dot-legend.open { background: #16a34a; }
 .status-dot-legend.full { background: #d97706; }
-.status-dot-legend.closed { background: #9ca3af; }
+.status-dot-legend.closed { background: var(--color-text-muted); }
 
 /* Detail Grid */
 .detail-grid {
@@ -491,34 +492,34 @@ onMounted(() => {
 
 .detail-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-weight: 500;
 }
 
 .detail-value {
   font-size: 15px;
-  color: #111827;
+  color: var(--color-text-dark);
   font-weight: 600;
 }
 
 .seats-avail {
-  color: #2d7a4f;
+  color: var(--color-accent);
 }
 
 .pickup-summary {
   margin-top: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .pickup-summary-title {
   padding: 8px 12px;
-  background: #f0faf4;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-sand);
+  border-bottom: 1px solid var(--color-sand-dark);
   font-size: 12px;
   font-weight: 700;
-  color: #2d7a4f;
+  color: var(--color-accent);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -527,6 +528,7 @@ onMounted(() => {
 .pickup-summary-list {
   display: flex;
   flex-direction: column;
+  background: var(--color-white);
 }
 
 .pickup-summary-item {
@@ -534,7 +536,7 @@ onMounted(() => {
   align-items: baseline;
   gap: 8px;
   padding: 7px 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-sand-dark);
   font-size: 13px;
 }
 
@@ -544,24 +546,24 @@ onMounted(() => {
 
 .pickup-summary-region {
   font-weight: 700;
-  color: #2d7a4f;
+  color: var(--color-accent);
   min-width: 72px;
   flex-shrink: 0;
 }
 
 .pickup-summary-loc {
   flex: 1;
-  color: #374151;
+  color: var(--color-text-mid);
   font-size: 12px;
 }
 
 .pickup-summary-notes {
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .pickup-summary-price {
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
   white-space: nowrap;
   font-size: 12px;
 }

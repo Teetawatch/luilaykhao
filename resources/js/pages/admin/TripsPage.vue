@@ -2,18 +2,18 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-route"></i> จัดการทริป</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">route</span> จัดการทริป</h1>
         <p class="page-subtitle">จัดการทริปและกิจกรรมทั้งหมด</p>
       </div>
       <button class="btn-primary" @click="openForm()">
-        <i class="fas fa-plus"></i> เพิ่มทริปใหม่
+        <span class="material-symbols-rounded">add</span> เพิ่มทริปใหม่
       </button>
     </div>
 
     <!-- Filters -->
     <div class="filters-bar">
       <div class="search-box">
-        <i class="fas fa-search"></i>
+        <span class="material-symbols-rounded">search</span>
         <input v-model="filters.search" placeholder="ค้นหาทริป..." @input="debouncedFetch" />
       </div>
       <select v-model="filters.type" @change="fetchData()">
@@ -58,7 +58,7 @@
                   <div>
                     <span class="trip-name">{{ trip.title }}</span>
                     <div class="trip-badges">
-                      <span v-if="trip.is_women_only" class="badge-women"><i class="fas fa-female"></i> หญิงล้วน</span>
+                      <span v-if="trip.is_women_only" class="badge-women"><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">woman</span> หญิงล้วน</span>
                       <span class="trip-duration">{{ trip.duration_days }} วัน · สูงสุด {{ trip.max_participants }} คน</span>
                     </div>
                   </div>
@@ -76,14 +76,14 @@
                   @click="toggleFeatured(trip)"
                   :title="trip.is_featured ? 'ยกเลิกแนะนำ' : 'ตั้งเป็นแนะนำ'"
                 >
-                  <i class="fas fa-star"></i>
+                  <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">star</span>
                 </button>
               </td>
               <td>
                 <div class="action-btns">
-                  <button class="btn-icon btn-edit" @click="openForm(trip)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                  <button class="btn-icon btn-copy" @click="duplicateTrip(trip)" title="คัดลอกทริป"><i class="fas fa-copy"></i></button>
-                  <button class="btn-icon btn-delete" @click="confirmDelete(trip)" title="ลบ"><i class="fas fa-trash"></i></button>
+                  <button class="btn-icon btn-edit" @click="openForm(trip)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
+                  <button class="btn-icon btn-copy" @click="duplicateTrip(trip)" title="คัดลอกทริป"><span class="material-symbols-rounded" style="font-size:16px;">content_copy</span></button>
+                  <button class="btn-icon btn-delete" @click="confirmDelete(trip)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
                 </div>
               </td>
             </tr>
@@ -97,11 +97,11 @@
       <!-- Pagination -->
       <div class="pagination" v-if="admin.trips.meta?.last_page > 1">
         <button :disabled="admin.trips.meta.current_page <= 1" @click="goPage(admin.trips.meta.current_page - 1)">
-          <i class="fas fa-chevron-left"></i>
+          <span class="material-symbols-rounded">chevron_left</span>
         </button>
         <span class="page-info">{{ admin.trips.meta.current_page }} / {{ admin.trips.meta.last_page }}</span>
         <button :disabled="admin.trips.meta.current_page >= admin.trips.meta.last_page" @click="goPage(admin.trips.meta.current_page + 1)">
-          <i class="fas fa-chevron-right"></i>
+          <span class="material-symbols-rounded">chevron_right</span>
         </button>
       </div>
     </div>
@@ -111,7 +111,7 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ editingTrip ? 'แก้ไขทริป' : 'เพิ่มทริปใหม่' }}</h2>
-          <button class="modal-close" @click="showForm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">close</span></button>
         </div>
         <form @submit.prevent="submitForm" class="modal-body">
           <div class="form-grid">
@@ -167,15 +167,15 @@
 
             <!-- ─── Location (Lat/Lng + Map) ─── -->
             <div class="form-group">
-              <label><i class="fas fa-map-marker-alt"></i> Latitude</label>
+              <label><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">location_on</span> Latitude</label>
               <input v-model.number="form.latitude" type="number" step="0.0000001" min="-90" max="90" placeholder="เช่น 8.0863" />
             </div>
             <div class="form-group">
-              <label><i class="fas fa-map-marker-alt"></i> Longitude</label>
+              <label><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">location_on</span> Longitude</label>
               <input v-model.number="form.longitude" type="number" step="0.0000001" min="-180" max="180" placeholder="เช่น 98.3706" />
             </div>
             <div class="form-group full-width" v-if="form.latitude && form.longitude">
-              <label><i class="fas fa-map"></i> ตำแหน่งบนแผนที่</label>
+              <label><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">map</span> ตำแหน่งบนแผนที่</label>
               <div class="map-preview">
                 <iframe
                   :src="mapEmbedUrl"
@@ -196,7 +196,7 @@
             <!-- ─── Highlights ─── -->
             <div class="form-group full-width">
               <label class="list-editor-label text-[var(--color-primary)] font-black text-lg mb-4 flex items-center gap-2">
-                <i class="fas fa-star"></i> จุดเด่นของทริป
+                <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">star</span> จุดเด่นของทริป
               </label>
               <div class="highlights-editor space-y-4">
                 <div v-for="(hi, idx) in form.highlights" :key="idx" class="highlight-item bg-gray-50 p-5 rounded-2xl border border-gray-100 flex gap-4 items-start relative group">
@@ -220,11 +220,11 @@
                     <textarea v-model="hi.desc" rows="2" placeholder="คำอธิบาย (เช่น คุ้มครองอุบัติเหตุตลอดการเดินทาง...)" class="text-sm w-full bg-white px-3 py-2 border rounded-lg focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
                   </div>
                   <button type="button" class="remove-highlight-btn text-red-400 hover:text-red-600 p-2" @click="removeItem('highlights', idx)">
-                    <i class="fas fa-trash-alt"></i>
+                    <span class="material-symbols-rounded" style="font-size:inherit;">delete</span>
                   </button>
                 </div>
                 <button type="button" class="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2 group" @click="addItem('highlights')">
-                  <i class="fas fa-plus-circle group-hover:scale-110 transition-transform"></i> เพิ่มจุดเด่นใหม่
+                  <span class="material-symbols-rounded group-hover:scale-110 transition-transform">add_circle</span> เพิ่มจุดเด่นใหม่
                 </button>
               </div>
             </div>
@@ -234,33 +234,33 @@
               <div class="list-editor-container">
                 <div class="list-editor">
                   <label class="list-editor-label text-green-700">
-                    <i class="fas fa-check-circle"></i> สิ่งที่รวมในทริป
+                    <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">check_circle</span> สิ่งที่รวมในทริป
                   </label>
                   <div class="list-items">
                     <div v-for="(item, idx) in form.inclusions" :key="idx" class="list-item">
                       <input v-model="form.inclusions[idx]" placeholder="เช่น ค่าธรรมเนียมเข้าอุทยาน" />
                       <button type="button" class="remove-item-btn" @click="removeItem('inclusions', idx)">
-                        <i class="fas fa-times"></i>
+                        <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">close</span>
                       </button>
                     </div>
                     <button type="button" class="add-item-btn" @click="addItem('inclusions')">
-                      <i class="fas fa-plus"></i> เพิ่มรายการ
+                      <span class="material-symbols-rounded">add</span> เพิ่มรายการ
                     </button>
                   </div>
                 </div>
                 <div class="list-editor">
                   <label class="list-editor-label text-red-600">
-                    <i class="fas fa-times-circle"></i> สิ่งที่ไม่รวม
+                    <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">cancel</span> สิ่งที่ไม่รวม
                   </label>
                   <div class="list-items">
                     <div v-for="(item, idx) in form.exclusions" :key="idx" class="list-item">
                       <input v-model="form.exclusions[idx]" placeholder="เช่น ค่าใช้จ่ายส่วนตัว" />
                       <button type="button" class="remove-item-btn" @click="removeItem('exclusions', idx)">
-                        <i class="fas fa-times"></i>
+                        <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">close</span>
                       </button>
                     </div>
                     <button type="button" class="add-item-btn" @click="addItem('exclusions')">
-                      <i class="fas fa-plus"></i> เพิ่มรายการ
+                      <span class="material-symbols-rounded">add</span> เพิ่มรายการ
                     </button>
                   </div>
                 </div>
@@ -270,7 +270,7 @@
             <!-- ─── Must Know (Popup Info) ─── -->
             <div class="form-group full-width">
               <label class="list-editor-label text-amber-600 font-black text-lg mb-4 flex items-center gap-2">
-                <i class="fas fa-bullhorn"></i> ข้อควรรู้สำหรับทริปนี้ (แสดงเป็น Popup ตอนเข้าชม)
+                <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">campaign</span> ข้อควรรู้สำหรับทริปนี้ (แสดงเป็น Popup ตอนเข้าชม)
               </label>
               <div class="must-know-editor bg-amber-50 p-6 rounded-[2rem] border border-amber-100 space-y-6">
                 <div class="space-y-4">
@@ -283,11 +283,11 @@
                         <input v-model.number="item.price" type="number" placeholder="ราคา" class="w-24 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
                       </div>
                       <button type="button" @click="removeItem('must_know_items', idx)" class="text-red-400 hover:text-red-600 p-2 transition-colors">
-                        <i class="fas fa-trash-alt"></i>
+                        <span class="material-symbols-rounded" style="font-size:inherit;">delete</span>
                       </button>
                     </div>
                     <button type="button" @click="addItem('must_know_items')" class="w-full py-4 border-2 border-dashed border-amber-200 rounded-2xl text-amber-600 font-bold hover:bg-white hover:border-amber-400 transition-all flex items-center justify-center gap-2 group">
-                      <i class="fas fa-plus-circle group-hover:scale-110 transition-transform"></i> เพิ่มรายการใหม่
+                      <span class="material-symbols-rounded group-hover:scale-110 transition-transform">add_circle</span> เพิ่มรายการใหม่
                     </button>
                   </div>
                 </div>
@@ -304,7 +304,7 @@
               <label class="featured-toggle">
                 <input type="checkbox" v-model="form.is_featured" />
                 <span class="featured-toggle-label">
-                  <i class="fas fa-star"></i> แนะนำ
+                  <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">star</span> แนะนำ
                 </span>
               </label>
             </div>
@@ -313,7 +313,7 @@
               <label class="women-only-toggle" :class="{ active: form.is_women_only }">
                 <input type="checkbox" v-model="form.is_women_only" />
                 <span class="women-only-label">
-                  <i class="fas fa-female"></i> ทริปสำหรับผู้หญิงเท่านั้น
+                  <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">woman</span> ทริปสำหรับผู้หญิงเท่านั้น
                 </span>
               </label>
             </div>
@@ -324,7 +324,7 @@
                 <div class="upload-preview" v-if="imagePreview || form.cover_image">
                   <img :src="imagePreview || form.cover_image" alt="Cover preview" />
                   <button type="button" class="remove-image-btn" @click="removeImage" title="ลบรูป">
-                    <i class="fas fa-times"></i>
+                    <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">close</span>
                   </button>
                 </div>
 
@@ -340,7 +340,7 @@
                 >
                   <div class="dropzone-content">
                     <div class="dropzone-icon">
-                      <i class="fas fa-cloud-upload-alt"></i>
+                      <span class="material-symbols-rounded" style="font-size:32px;">cloud_upload</span>
                     </div>
                     <p class="dropzone-text">คลิกเพื่อเลือกรูป หรือลากไฟล์มาวาง</p>
                     <p class="dropzone-hint">รองรับ JPG, PNG, WebP, GIF (สูงสุด 10MB)</p>
@@ -371,12 +371,12 @@
                 <div v-for="(img, idx) in form.gallery" :key="idx" class="gallery-item-preview">
                   <img :src="img" />
                   <button type="button" class="remove-gallery-img" @click="removeItem('gallery', idx)">
-                    <i class="fas fa-times"></i>
+                    <span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">close</span>
                   </button>
                 </div>
                 <div class="gallery-add-btn" @click="triggerGalleryUpload">
-                  <i class="fas fa-plus" v-if="!galleryUploading"></i>
-                  <i class="fas fa-spinner fa-spin" v-else></i>
+                  <span class="material-symbols-rounded" style="font-size:24px;" v-if="!galleryUploading">add_photo_alternate</span>
+                  <span class="material-symbols-rounded animate-spin" v-else>sync</span>
                   <span>เพิ่มรูป</span>
                 </div>
               </div>
@@ -393,7 +393,7 @@
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="submitting || uploading">
-              <i class="fas fa-spinner fa-spin" v-if="submitting"></i>
+              <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
               {{ editingTrip ? 'บันทึก' : 'สร้างทริป' }}
             </button>
           </div>
@@ -406,16 +406,16 @@
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>
-          <button class="modal-close" @click="showDeleteConfirm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showDeleteConfirm = false"><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">close</span></button>
         </div>
         <div class="modal-body">
           <p class="confirm-text">คุณต้องการลบทริป <strong>{{ deletingTrip?.title }}</strong> ใช่หรือไม่?</p>
-          <p class="confirm-warning"><i class="fas fa-exclamation-triangle"></i> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <p class="confirm-warning"><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">warning</span> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
           <button class="btn-danger" @click="doDelete" :disabled="submitting">
-            <i class="fas fa-spinner fa-spin" v-if="submitting"></i>
+            <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
             ลบทริป
           </button>
         </div>
@@ -728,17 +728,17 @@ onMounted(() => fetchData());
   color: #d1d5db;
 }
 .btn-featured:hover {
-  background: #fefce8;
-  border-color: #fde68a;
-  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--color-gold);
 }
 .btn-featured.active {
-  color: #f59e0b;
+  color: var(--color-gold);
 }
 .btn-featured.active:hover {
-  background: #fef3c7;
-  border-color: #fcd34d;
-  color: #d97706;
+  background: rgba(217, 119, 6, 0.1);
+  border-color: var(--color-gold);
+  color: var(--color-gold);
 }
 
 /* ─── Featured Toggle ───────────────── */
@@ -754,13 +754,13 @@ onMounted(() => fetchData());
   font-weight: normal;
 }
 .featured-toggle:has(input:checked) {
-  border-color: #fcd34d;
-  background: #fefce8;
+  border-color: var(--color-gold);
+  background: rgba(245, 158, 11, 0.05);
 }
 .featured-toggle input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #f59e0b;
+  accent-color: var(--color-gold);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -772,7 +772,7 @@ onMounted(() => fetchData());
   gap: 7px;
 }
 .featured-toggle-label i {
-  color: #f59e0b;
+  color: var(--color-gold);
   font-size: 13px;
 }
 
@@ -848,17 +848,17 @@ onMounted(() => fetchData());
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: #FAFAFA;
+  background: var(--color-white);
 }
 
 .upload-dropzone:hover {
   border-color: #EEEEEE;
-  background: #F5F5F5;
+  background: var(--color-sand);
 }
 
 .upload-dropzone.dragging {
   border-color: #d1d5db;
-  background: #EEEEEE;
+  background: var(--color-sand);
   box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
 }
 
@@ -873,7 +873,7 @@ onMounted(() => fetchData());
   width: 52px;
   height: 52px;
   border-radius: 12px;
-  background: #F5F5F5;
+  background: var(--color-sand);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -882,7 +882,7 @@ onMounted(() => fetchData());
 
 .dropzone-icon i {
   font-size: 20px;
-  color: #15803d;
+  color: var(--color-accent);
 }
 
 .dropzone-text {
@@ -904,7 +904,7 @@ onMounted(() => fetchData());
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #e5e7eb;
-  background: #FAFAFA;
+  background: var(--color-white);
 }
 
 .upload-preview img {
@@ -1015,7 +1015,7 @@ onMounted(() => fetchData());
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #e5e7eb;
-  background: #FAFAFA;
+  background: var(--color-white);
   animation: fadeIn 0.3s ease;
 }
 
@@ -1079,7 +1079,7 @@ onMounted(() => fetchData());
   width: 100%;
   padding: 8px;
   border: 1px dashed #d1d5db;
-  background: #FAFAFA;
+  background: var(--color-white);
   color: #6b7280;
   font-size: 12px;
   font-weight: 600;
@@ -1087,14 +1087,14 @@ onMounted(() => fetchData());
   cursor: pointer;
   transition: all 0.15s;
 }
-.add-item-btn:hover { border-color: #9ca3af; background: #EEEEEE; }
+.add-item-btn:hover { border-color: #9ca3af; background: var(--color-sand); }
 
 /* ─── Gallery Editor ─── */
 .gallery-grid-editor {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 12px;
-  background: #FAFAFA;
+  background: var(--color-white);
   padding: 16px;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
@@ -1140,7 +1140,7 @@ onMounted(() => fetchData());
   cursor: pointer;
   transition: all 0.15s;
 }
-.gallery-add-btn:hover { border-color: #9ca3af; background: #EEEEEE; color: #374151; }
-.gallery-add-btn i { font-size: 16px; }
+.gallery-add-btn:hover { border-color: #9ca3af; background: var(--color-sand); color: #374151; }
+.gallery-add-btn .material-symbols-rounded { font-size: 24px; }
 .gallery-add-btn span { font-size: 10px; font-weight: 700; }
 </style>

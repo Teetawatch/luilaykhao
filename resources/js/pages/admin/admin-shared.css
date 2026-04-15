@@ -4,6 +4,11 @@
 
 .admin-page {
   animation: fadeIn 0.3s ease;
+  font-family: 'Anuphan', sans-serif;
+}
+
+.admin-page * {
+  font-family: 'Anuphan', sans-serif;
 }
 
 @keyframes fadeIn {
@@ -32,7 +37,7 @@
   gap: 10px;
 }
 
-.page-title i { color: #2d7a4f; }
+.page-title .material-symbols-rounded { font-size: 28px; color: var(--color-accent); vertical-align: text-bottom; }
 
 .page-subtitle {
   font-size: 14px;
@@ -46,7 +51,7 @@
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
-  background: #2d7a4f;
+  background: var(--color-accent);
   color: white;
   border: none;
   border-radius: 8px;
@@ -158,13 +163,13 @@
   min-width: 200px;
 }
 
-.search-box i {
+.search-box .material-symbols-rounded {
   position: absolute;
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: 22px;
 }
 
 .search-box input {
@@ -184,7 +189,7 @@
 }
 
 .search-box input:focus {
-  border-color: #2d7a4f;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
 }
 
@@ -202,7 +207,7 @@
 }
 
 .filters-bar select:focus {
-  border-color: #2d7a4f;
+  border-color: var(--color-accent);
 }
 
 /* ─── Table Card ──────────────────────── */

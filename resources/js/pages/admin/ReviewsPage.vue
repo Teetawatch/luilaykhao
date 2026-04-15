@@ -2,7 +2,7 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-star"></i> จัดการรีวิว</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">star</span> จัดการรีวิว</h1>
         <p class="page-subtitle">ดูและตอบกลับรีวิวจากลูกค้า</p>
       </div>
     </div>
@@ -33,7 +33,7 @@
         <span class="rs-lbl">รีวิวทั้งหมด</span>
       </div>
       <div class="rs-card rs-gold">
-        <span class="rs-val">{{ stats.avg_rating?.toFixed(1) }} ★</span>
+        <span class="rs-val">{{ stats.avg_rating?.toFixed(1) }} <span class="material-symbols-rounded" style="font-size:18px; vertical-align:middle;">star</span></span>
         <span class="rs-lbl">คะแนนเฉลี่ย</span>
       </div>
       <div class="rs-card rs-green">
@@ -67,7 +67,7 @@
             </div>
             <div class="review-meta">
               <div class="stars">
-                <span v-for="s in 5" :key="s" :class="s <= r.rating ? 'star-on' : 'star-off'">★</span>
+                <span v-for="s in 5" :key="s" class="material-symbols-rounded" :class="s <= r.rating ? 'star-on' : 'star-off'">star</span>
               </div>
               <span class="review-date">{{ formatDate(r.created_at) }}</span>
               <span class="trip-badge">{{ r.trip_title }}</span>
@@ -90,7 +90,7 @@
           <!-- Admin Reply -->
           <div v-if="r.admin_reply" class="admin-reply-box">
             <p class="admin-reply-label">
-              <i class="fas fa-reply"></i> ตอบกลับโดย {{ r.admin_replied_by }}
+              <span class="material-symbols-rounded" style="font-size:14px; vertical-align:text-bottom;">reply</span> ตอบกลับโดย {{ r.admin_replied_by }}
             </p>
             <p class="admin-reply-text">{{ r.admin_reply }}</p>
           </div>
@@ -104,7 +104,7 @@
               class="reply-textarea"></textarea>
             <div class="reply-actions">
               <button class="btn-primary btn-sm" @click="submitReply(r.id)" :disabled="!replyText || submitting">
-                <i class="fas fa-paper-plane"></i> ส่งคำตอบ
+                <span class="material-symbols-rounded" style="font-size:16px;">send</span> ส่งคำตอบ
               </button>
               <button class="btn-secondary btn-sm" @click="replyingId = null">ยกเลิก</button>
             </div>
@@ -116,15 +116,15 @@
               class="action-btn"
               @click="toggleReply(r.id)"
               :class="{ 'action-active': replyingId === r.id }">
-              <i class="fas fa-reply"></i>
+              <span class="material-symbols-rounded" style="font-size:16px;">reply</span>
               {{ r.admin_reply ? 'แก้ไขคำตอบ' : 'ตอบกลับ' }}
             </button>
             <button class="action-btn" @click="toggleApproval(r)">
-              <i :class="r.is_approved ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              <span class="material-symbols-rounded" style="font-size:16px;">{{ r.is_approved ? 'visibility_off' : 'visibility' }}</span>
               {{ r.is_approved ? 'ซ่อน' : 'เผยแพร่' }}
             </button>
             <button class="action-btn action-danger" @click="deleteReview(r.id)">
-              <i class="fas fa-trash"></i> ลบ
+              <span class="material-symbols-rounded" style="font-size:16px;">delete</span> ลบ
             </button>
           </div>
         </div>
@@ -271,23 +271,28 @@ onMounted(() => loadReviews());
   flex: 1;
   min-width: 200px;
   padding: 9px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
+  background: var(--color-white);
+  color: var(--color-text-dark);
 }
 
-.filter-input:focus { border-color: #2d7a4f; }
+.filter-input:focus { border-color: var(--color-accent); }
 
 .filter-select {
   padding: 9px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
-  background: #fff;
+  background: var(--color-white);
+  color: var(--color-text-dark);
   cursor: pointer;
 }
+
+.filter-select:focus { border-color: var(--color-accent); }
 
 /* Stats */
 .review-stats {
@@ -300,8 +305,8 @@ onMounted(() => loadReviews());
 .rs-card {
   flex: 1;
   min-width: 110px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
   border-radius: 10px;
   padding: 14px;
   text-align: center;
@@ -311,16 +316,16 @@ onMounted(() => loadReviews());
   display: block;
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
-.rs-gold .rs-val { color: #d97706; }
+.rs-gold .rs-val { color: var(--color-gold); }
 .rs-green .rs-val { color: #16a34a; }
-.rs-gray .rs-val { color: #6b7280; }
+.rs-gray .rs-val { color: var(--color-text-muted); }
 
 .rs-lbl {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
@@ -332,8 +337,8 @@ onMounted(() => loadReviews());
 }
 
 .review-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
   border-radius: 12px;
   padding: 20px;
   transition: box-shadow 0.15s;
@@ -367,8 +372,8 @@ onMounted(() => loadReviews());
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #2d7a4f;
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--color-white);
   font-weight: 700;
   font-size: 15px;
   display: flex;
@@ -379,13 +384,13 @@ onMounted(() => loadReviews());
 .reviewer-name {
   font-size: 14px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
   margin: 0;
 }
 
 .reviewer-email {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -398,22 +403,24 @@ onMounted(() => loadReviews());
 
 .stars {
   font-size: 16px;
-  letter-spacing: 1px;
+  letter-spacing: 0px;
+  display: flex;
+  gap: 2px;
 }
 
-.star-on { color: #f59e0b; }
-.star-off { color: #d1d5db; }
+.star-on { color: var(--color-gold); font-size:18px; }
+.star-off { color: var(--color-sand-dark); font-size:18px;}
 
 .review-date {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-mid);
 }
 
 .trip-badge {
   font-size: 11px;
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: var(--color-sand);
+  color: var(--color-accent);
+  border: 1px solid var(--color-sand-dark);
   border-radius: 20px;
   padding: 2px 10px;
   font-weight: 600;
@@ -421,7 +428,7 @@ onMounted(() => loadReviews());
 
 .review-comment {
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-mid);
   line-height: 1.6;
   margin-bottom: 12px;
 }
@@ -439,15 +446,15 @@ onMounted(() => loadReviews());
   border-radius: 8px;
   object-fit: cover;
   cursor: pointer;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   transition: opacity 0.15s;
 }
 
 .review-img:hover { opacity: 0.85; }
 
 .admin-reply-box {
-  background: #f0fdf4;
-  border-left: 3px solid #2d7a4f;
+  background: var(--color-sand);
+  border-left: 3px solid var(--color-accent);
   border-radius: 0 8px 8px 0;
   padding: 10px 14px;
   margin-bottom: 12px;
@@ -456,13 +463,13 @@ onMounted(() => loadReviews());
 .admin-reply-label {
   font-size: 11px;
   font-weight: 700;
-  color: #2d7a4f;
+  color: var(--color-accent);
   margin: 0 0 4px;
 }
 
 .admin-reply-text {
   font-size: 13px;
-  color: #374151;
+  color: var(--color-text-mid);
   margin: 0;
 }
 
@@ -472,16 +479,17 @@ onMounted(() => loadReviews());
 
 .reply-textarea {
   width: 100%;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
   resize: none;
   outline: none;
   box-sizing: border-box;
+  font-family: 'Anuphan', sans-serif;
 }
 
-.reply-textarea:focus { border-color: #2d7a4f; }
+.reply-textarea:focus { border-color: var(--color-accent); }
 
 .reply-actions {
   display: flex;
@@ -498,7 +506,7 @@ onMounted(() => loadReviews());
   display: flex;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--color-sand-dark);
   flex-wrap: wrap;
 }
 
@@ -507,25 +515,25 @@ onMounted(() => loadReviews());
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #6b7280;
-  background: #fff;
+  color: var(--color-text-muted);
+  background: var(--color-white);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .action-btn:hover {
-  background: #f9fafb;
-  color: #374151;
+  background: var(--color-sand);
+  color: var(--color-text-dark);
 }
 
 .action-active {
-  border-color: #2d7a4f;
-  color: #2d7a4f;
-  background: #f0fdf4;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(45, 122, 79, 0.05);
 }
 
 .action-danger {
@@ -547,18 +555,18 @@ onMounted(() => loadReviews());
 .page-btn {
   width: 34px;
   height: 34px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
-  background: #fff;
+  color: var(--color-text-mid);
+  background: var(--color-white);
   cursor: pointer;
   transition: all 0.15s;
 }
 
-.page-btn:hover { background: #f9fafb; }
-.page-active { background: #2d7a4f; color: #fff; border-color: #2d7a4f; }
+.page-btn:hover { background: var(--color-sand); }
+.page-active { background: var(--color-accent); color: var(--color-white); border-color: var(--color-accent); }
 
 /* Image Preview */
 .img-preview-overlay {

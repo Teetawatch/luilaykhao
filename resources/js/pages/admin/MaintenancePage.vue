@@ -2,18 +2,18 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-tools"></i> การบำรุงรักษายานพาหนะ</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">build</span> การบำรุงรักษายานพาหนะ</h1>
         <p class="page-subtitle">ติดตามการบำรุงรักษาและซ่อมบำรุง</p>
       </div>
       <button class="btn-primary" @click="openForm()">
-        <i class="fas fa-plus"></i> เพิ่มรายการ
+        <span class="material-symbols-rounded">add</span> เพิ่มรายการ
       </button>
     </div>
 
     <!-- Filters -->
     <div class="filters-bar">
       <div class="search-box">
-        <i class="fas fa-search"></i>
+        <span class="material-symbols-rounded">search</span>
         <input v-model="searchQuery" placeholder="ค้นหา..." @input="filterLocal" />
       </div>
       <select v-model="filters.vehicle_id" @change="fetchData()">
@@ -40,22 +40,22 @@
     <!-- Status Summary -->
     <div class="status-summary">
       <div class="summary-card summary-scheduled">
-        <i class="fas fa-clock"></i>
+        <span class="material-symbols-rounded">schedule</span>
         <span class="sum-val">{{ statusCounts.scheduled }}</span>
         <span class="sum-label">นัดหมาย</span>
       </div>
       <div class="summary-card summary-progress">
-        <i class="fas fa-wrench"></i>
+        <span class="material-symbols-rounded">handyman</span>
         <span class="sum-val">{{ statusCounts.in_progress }}</span>
         <span class="sum-label">กำลังดำเนินการ</span>
       </div>
       <div class="summary-card summary-completed">
-        <i class="fas fa-check-circle"></i>
+        <span class="material-symbols-rounded">check_circle</span>
         <span class="sum-val">{{ statusCounts.completed }}</span>
         <span class="sum-label">เสร็จสิ้น</span>
       </div>
       <div class="summary-card summary-overdue">
-        <i class="fas fa-exclamation-triangle"></i>
+        <span class="material-symbols-rounded">warning</span>
         <span class="sum-val">{{ statusCounts.overdue }}</span>
         <span class="sum-label">เกินกำหนด</span>
       </div>
@@ -83,7 +83,9 @@
                 <td>
                   <div class="vehicle-cell">
                     <div class="vehicle-mini-icon" :class="`vtype-${m.vehicle_type}`">
-                      <i :class="m.vehicle_type === 'van' ? 'fas fa-shuttle-van' : 'fas fa-ship'"></i>
+                      <span class="material-symbols-rounded" style="font-size:16px;">
+                        {{ m.vehicle_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}
+                      </span>
                     </div>
                     <span>{{ m.vehicle_name }}</span>
                   </div>
@@ -98,8 +100,8 @@
                 <td class="money">{{ formatMoney(m.cost) }}</td>
                 <td>
                   <div class="action-btns">
-                    <button class="btn-icon btn-edit" @click="openForm(m)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon btn-delete" @click="confirmDelete(m)" title="ลบ"><i class="fas fa-trash"></i></button>
+                    <button class="btn-icon btn-edit" @click="openForm(m)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
+                    <button class="btn-icon btn-delete" @click="confirmDelete(m)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
                   </div>
                 </td>
               </tr>
@@ -111,11 +113,11 @@
         </div>
         <div class="pagination" v-if="admin.maintenances.meta?.last_page > 1">
           <button @click="goPage(admin.maintenances.meta.current_page - 1)" :disabled="admin.maintenances.meta.current_page <= 1">
-            <i class="fas fa-chevron-left"></i>
+            <span class="material-symbols-rounded">chevron_left</span>
           </button>
           <span class="page-info">{{ admin.maintenances.meta.current_page }} / {{ admin.maintenances.meta.last_page }}</span>
           <button @click="goPage(admin.maintenances.meta.current_page + 1)" :disabled="admin.maintenances.meta.current_page >= admin.maintenances.meta.last_page">
-            <i class="fas fa-chevron-right"></i>
+            <span class="material-symbols-rounded">chevron_right</span>
           </button>
         </div>
       </template>
@@ -126,7 +128,7 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขรายการบำรุงรักษา' : 'เพิ่มรายการบำรุงรักษา' }}</h2>
-          <button class="modal-close" @click="showForm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <form @submit.prevent="submitForm" class="modal-body">
           <div class="form-grid">
@@ -192,7 +194,7 @@
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="submitting">
-              <i class="fas fa-spinner fa-spin" v-if="submitting"></i>
+              <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
               {{ editing ? 'บันทึก' : 'สร้าง' }}
             </button>
           </div>
@@ -205,11 +207,11 @@
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>
-          <button class="modal-close" @click="showDeleteConfirm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showDeleteConfirm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <p class="confirm-text">คุณต้องการลบ <strong>{{ deleting?.title }}</strong> ใช่หรือไม่?</p>
-          <p class="confirm-warning"><i class="fas fa-exclamation-triangle"></i> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <p class="confirm-warning"><span class="material-symbols-rounded">warning</span> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
@@ -361,29 +363,29 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: #ffffff;
+  background: var(--color-white);
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
 }
 
-.summary-card i {
-  font-size: 18px;
+.summary-card .material-symbols-rounded {
+  font-size: 24px;
 }
 
-.summary-scheduled i { color: #1d4ed8; }
-.summary-progress i { color: #d97706; }
-.summary-completed i { color: #16a34a; }
-.summary-overdue i { color: #dc2626; }
+.summary-scheduled .material-symbols-rounded { color: #1d4ed8; }
+.summary-progress .material-symbols-rounded { color: #d97706; }
+.summary-completed .material-symbols-rounded { color: #16a34a; }
+.summary-overdue .material-symbols-rounded { color: #dc2626; }
 
 .sum-val {
   font-size: 22px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 .sum-label {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .vehicle-cell {
@@ -399,34 +401,33 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
 }
 
-.vtype-van { background: #f0faf4; color: #15803d; }
-.vtype-boat { background: #dbeafe; color: #1d4ed8; }
+.vtype-van { background: var(--color-sand); color: var(--color-accent); }
+.vtype-boat { background: #eff6ff; color: #2563eb; }
 
-.mtype-routine { background: #dbeafe; color: #1d4ed8; }
-.mtype-repair { background: #fee2e2; color: #b91c1c; }
-.mtype-inspection { background: #fef9c3; color: #a16207; }
-.mtype-insurance { background: #ede9fe; color: #6d28d9; }
-.mtype-registration { background: #f0faf4; color: #15803d; }
+.mtype-routine { background: #eff6ff; color: #2563eb; }
+.mtype-repair { background: #fef2f2; color: #dc2626; }
+.mtype-inspection { background: #fef9c3; color: #ca8a04; }
+.mtype-insurance { background: #f3e8ff; color: #9333ea; }
+.mtype-registration { background: var(--color-sand); color: var(--color-accent); }
 
-.mstatus-scheduled { background: #dbeafe; color: #1d4ed8; }
-.mstatus-in_progress { background: #fef9c3; color: #a16207; }
-.mstatus-completed { background: #f0faf4; color: #15803d; }
-.mstatus-overdue { background: #fee2e2; color: #b91c1c; }
+.mstatus-scheduled { background: #eff6ff; color: #2563eb; }
+.mstatus-in_progress { background: #fef9c3; color: #ca8a04; }
+.mstatus-completed { background: var(--color-sand); color: var(--color-accent); }
+.mstatus-overdue { background: #fef2f2; color: #dc2626; }
 
 .maint-title {
   display: block;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
   font-size: 14px;
 }
 
 .maint-desc {
   display: block;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 2px;
   max-width: 200px;
   overflow: hidden;
