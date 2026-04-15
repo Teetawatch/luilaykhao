@@ -37,6 +37,8 @@ class BookingResource extends JsonResource
             'installment_count' => $this->installment_count,
             'installment_interval_days' => $this->installment_interval_days,
             'payment_ref' => $this->payment_ref,
+            'slip_url' => $this->slip_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->slip_path) : null,
+            'transfer_datetime' => $this->transfer_datetime?->toISOString(),
             'paid_at' => $this->paid_at?->toISOString(),
             'installment_payments' => $this->when(
                 $this->relationLoaded('installmentPayments'),
@@ -46,6 +48,9 @@ class BookingResource extends JsonResource
                     'amount'          => $ip->amount,
                     'due_date'        => $ip->due_date?->toDateString(),
                     'status'          => $ip->status,
+                    'payment_method'  => $ip->payment_method,
+                    'slip_url'        => $ip->slip_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($ip->slip_path) : null,
+                    'transfer_datetime' => $ip->transfer_datetime?->toISOString(),
                     'paid_at'         => $ip->paid_at?->toISOString(),
                 ])
             ),

@@ -130,7 +130,8 @@
         </div>
         
         <div class="p-6 overflow-y-auto custom-scrollbar" v-if="detailBooking">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <!-- Section: ข้อมูลการจอง -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">รหัสจอง</label>
               <div class="font-anuphan font-bold text-accent text-lg">{{ detailBooking.booking_ref }}</div>
@@ -147,42 +148,13 @@
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ทริป</label>
               <div class="text-sm font-medium text-text-dark">{{ detailBooking.schedule?.trip?.title || '-' }}</div>
             </div>
-            <div v-if="detailBooking.pickup_region" class="space-y-1">
-              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ภูมิภาคขึ้นรถ</label>
-              <div class="text-sm font-medium text-text-dark flex flex-col gap-1">
-                <template v-for="pt in (detailBooking.schedule?.pickup_points || [])" :key="pt.id">
-                  <div v-if="pt.region === detailBooking.pickup_region" class="flex flex-col gap-0.5">
-                    <span class="inline-flex items-center gap-1.5 font-bold text-accent">
-                      <span class="material-symbols-rounded text-[16px]">location_on</span>
-                      {{ pt.region_label }}
-                    </span>
-                    <span class="text-xs text-text-muted">{{ pt.pickup_location }}<span v-if="pt.notes"> · {{ pt.notes }}</span></span>
-                  </div>
-                </template>
-                <span v-if="!(detailBooking.schedule?.pickup_points || []).some(pt => pt.region === detailBooking.pickup_region)" class="text-text-muted">
-                  {{ detailBooking.pickup_region }}
-                </span>
-              </div>
-            </div>
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">จำนวนเงินรวม</label>
-              <div class="text-sm font-bold text-text-dark">{{ formatMoney(detailBooking.total_amount) }}</div>
-            </div>
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">วันเดินทาง</label>
               <div class="text-sm font-medium text-text-dark">{{ detailBooking.schedule?.departure_date || '-' }}</div>
             </div>
             <div class="space-y-1">
-              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ชำระแล้ว</label>
-              <div class="text-sm font-medium text-green-600">{{ formatMoney(detailBooking.paid_amount) }}</div>
-            </div>
-            <div class="space-y-1">
-              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">วิธีชำระ</label>
-              <div class="text-sm font-medium text-text-dark">{{ detailBooking.payment_method || '-' }}</div>
-            </div>
-            <div v-if="detailBooking.paid_at" class="space-y-1">
-              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ชำระเมื่อ</label>
-              <div class="text-sm font-medium text-text-dark">{{ formatDate(detailBooking.paid_at) }}</div>
+              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">วันที่จอง</label>
+              <div class="text-sm font-medium text-text-dark">{{ formatDate(detailBooking.created_at) }}</div>
             </div>
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">เช็คอิน</label>
@@ -191,12 +163,155 @@
               </div>
               <div v-else class="text-sm font-medium text-text-muted italic">ยังไม่เช็คอิน</div>
             </div>
-            
+          </div>
+
+          <!-- Section: ผู้จอง -->
+          <div v-if="detailBooking.user" class="mb-6 p-4 bg-sand/20 border border-sand-dark/40 rounded-2xl">
+            <h3 class="text-xs font-bold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span class="material-symbols-rounded text-[16px] text-accent">person</span> ข้อมูลผู้จอง
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div>
+                <span class="text-xs text-text-muted block">ชื่อ</span>
+                <span class="font-semibold text-text-dark">{{ detailBooking.user.name }}</span>
+              </div>
+              <div>
+                <span class="text-xs text-text-muted block">อีเมล</span>
+                <span class="font-medium text-text-dark">{{ detailBooking.user.email }}</span>
+              </div>
+              <div v-if="detailBooking.user.phone">
+                <span class="text-xs text-text-muted block">เบอร์โทร</span>
+                <span class="font-medium text-text-dark">{{ detailBooking.user.phone }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: จุดขึ้นรถ -->
+          <div v-if="detailBooking.pickup_region" class="mb-6 p-4 bg-blue-50/60 border border-blue-100 rounded-2xl">
+            <h3 class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span class="material-symbols-rounded text-[16px]">directions_bus</span> จุดขึ้นรถ
+            </h3>
+            <div class="text-sm font-medium text-text-dark flex flex-col gap-1">
+              <template v-for="pt in (detailBooking.schedule?.pickup_points || [])" :key="pt.id">
+                <div v-if="pt.region === detailBooking.pickup_region" class="flex flex-col gap-0.5">
+                  <span class="inline-flex items-center gap-1.5 font-bold text-accent">
+                    <span class="material-symbols-rounded text-[16px]">location_on</span>
+                    {{ pt.region_label }}
+                  </span>
+                  <span class="text-xs text-text-muted">{{ pt.pickup_location }}<span v-if="pt.notes"> · {{ pt.notes }}</span></span>
+                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-0.5">
+                    <span class="material-symbols-rounded text-[14px]">map</span> ดูแผนที่
+                  </a>
+                </div>
+              </template>
+              <span v-if="!(detailBooking.schedule?.pickup_points || []).some(pt => pt.region === detailBooking.pickup_region)" class="text-text-muted">
+                {{ detailBooking.pickup_region }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Section: การชำระเงิน -->
+          <div class="mb-6 p-4 bg-green-50/60 border border-green-100 rounded-2xl">
+            <h3 class="text-xs font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <span class="material-symbols-rounded text-[16px]">payments</span> การชำระเงิน
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">จำนวนเงินรวม</label>
+                <div class="font-bold text-text-dark">{{ formatMoney(detailBooking.total_amount) }}</div>
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ชำระแล้ว</label>
+                <div class="font-semibold text-green-600">{{ formatMoney(detailBooking.paid_amount) }}</div>
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ประเภทการชำระ</label>
+                <div>
+                  <span v-if="detailBooking.payment_type === 'installment'" class="inline-flex items-center gap-1 text-purple-700 bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-full text-xs font-bold">
+                    <span class="material-symbols-rounded text-[13px]">calendar_month</span> ผ่อนชำระ {{ detailBooking.installment_count }} งวด
+                  </span>
+                  <span v-else class="inline-flex items-center gap-1 text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-full text-xs font-bold">
+                    <span class="material-symbols-rounded text-[13px]">check_circle</span> ชำระเต็มจำนวน
+                  </span>
+                </div>
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ช่องทางชำระ</label>
+                <div class="font-medium text-text-dark flex items-center gap-1.5">
+                  <span v-if="detailBooking.payment_method === 'promptpay'" class="material-symbols-rounded text-[18px] text-purple-500">qr_code</span>
+                  <span v-else-if="detailBooking.payment_method === 'mobile_banking'" class="material-symbols-rounded text-[18px] text-blue-500">smartphone</span>
+                  <span v-else-if="detailBooking.payment_method" class="material-symbols-rounded text-[18px] text-text-muted">credit_card</span>
+                  {{ paymentMethodLabel(detailBooking.payment_method) }}
+                </div>
+              </div>
+              <div v-if="detailBooking.paid_at" class="space-y-1">
+                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">ชำระเมื่อ</label>
+                <div class="font-medium text-text-dark">{{ formatDate(detailBooking.paid_at) }}</div>
+              </div>
+              <div v-if="detailBooking.transfer_datetime" class="space-y-1">
+                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">วันเวลาโอนเงิน</label>
+                <div class="font-medium text-text-dark">{{ formatDateTime(detailBooking.transfer_datetime) }}</div>
+              </div>
+              <div v-if="detailBooking.payment_ref" class="space-y-1 col-span-1 md:col-span-2">
+                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">รหัสอ้างอิงการชำระ</label>
+                <div class="font-mono text-xs text-text-dark bg-sand/30 px-2 py-1 rounded-lg inline-block">{{ detailBooking.payment_ref }}</div>
+              </div>
+            </div>
+
+            <!-- Slip image -->
+            <div v-if="detailBooking.slip_url" class="mt-4">
+              <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">สลิปการโอนเงิน</label>
+              <a :href="detailBooking.slip_url" target="_blank" class="inline-block">
+                <img :src="detailBooking.slip_url" alt="สลิปโอนเงิน"
+                  class="max-h-64 rounded-xl border border-sand-dark/40 shadow-sm hover:shadow-md transition-shadow object-contain bg-white" />
+              </a>
+            </div>
+            <div v-else-if="detailBooking.status === 'confirmed' || detailBooking.status === 'pending'" class="mt-3 text-xs text-text-muted italic flex items-center gap-1">
+              <span class="material-symbols-rounded text-[15px]">image_not_supported</span> ไม่มีสลิปแนบ
+            </div>
+          </div>
+
+          <!-- Section: การผ่อนชำระ -->
+          <div v-if="detailBooking.payment_type === 'installment' && detailBooking.installment_payments?.length" class="mb-6">
+            <h3 class="text-sm font-bold text-text-dark mb-3 flex items-center gap-2 border-b border-sand-dark/50 pb-2">
+              <span class="material-symbols-rounded text-accent">calendar_month</span> งวดการผ่อนชำระ ({{ detailBooking.installment_payments.length }} งวด)
+            </h3>
+            <div class="space-y-2">
+              <div v-for="ip in detailBooking.installment_payments" :key="ip.id"
+                class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-xl border"
+                :class="ip.status === 'paid' ? 'bg-green-50/60 border-green-200' : 'bg-sand/20 border-sand-dark/40'">
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center"
+                    :class="ip.status === 'paid' ? 'bg-green-500 text-white' : 'bg-sand-dark/30 text-text-muted'">
+                    {{ ip.installment_no }}
+                  </span>
+                  <span class="text-sm font-bold" :class="ip.status === 'paid' ? 'text-green-700' : 'text-text-muted'">{{ formatMoney(ip.amount) }}</span>
+                </div>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted flex-1">
+                  <span>ครบกำหนด: <span class="font-medium text-text-dark">{{ ip.due_date || '-' }}</span></span>
+                  <span v-if="ip.paid_at">ชำระเมื่อ: <span class="font-medium text-green-700">{{ formatDate(ip.paid_at) }}</span></span>
+                  <span v-if="ip.payment_method">ช่องทาง: <span class="font-medium text-text-dark">{{ paymentMethodLabel(ip.payment_method) }}</span></span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                    :class="ip.status === 'paid' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-yellow-100 text-yellow-700 border border-yellow-200'">
+                    {{ ip.status === 'paid' ? 'ชำระแล้ว' : 'รอชำระ' }}
+                  </span>
+                  <a v-if="ip.slip_url" :href="ip.slip_url" target="_blank"
+                    class="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-0.5 font-medium">
+                    <span class="material-symbols-rounded text-[15px]">receipt</span> สลิป
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: หมายเหตุ / อื่นๆ -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div v-if="detailBooking.cancellation_reason" class="space-y-1 col-span-1 md:col-span-2 p-3 bg-red-50 rounded-xl border border-red-100">
               <label class="text-xs font-bold text-red-500 uppercase tracking-wider">เหตุผลที่ยกเลิก</label>
               <div class="text-sm font-medium text-red-700 mt-1">{{ detailBooking.cancellation_reason }}</div>
             </div>
-            
             <div v-if="detailBooking.is_group" class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">การจองกลุ่ม</label>
               <div class="text-sm font-medium text-text-dark">{{ detailBooking.group_name || 'ใช่' }}</div>
@@ -364,6 +479,14 @@ const formatMoney = (amount) => new Intl.NumberFormat('th-TH', { style: 'currenc
 const formatDate = (date) => {
   if (!date) return '-';
   return new Date(date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+const formatDateTime = (date) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+const paymentMethodLabel = (method) => {
+  const labels = { promptpay: 'พร้อมเพย์', mobile_banking: 'Mobile Banking', credit_card: 'บัตรเครดิต' };
+  return labels[method] || method || '-';
 };
 
 let debounceTimer = null;
