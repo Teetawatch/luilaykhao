@@ -43,7 +43,7 @@ class BookingController extends Controller
     public function show(string $ref): JsonResponse
     {
         $booking = Booking::where('booking_ref', $ref)
-            ->with(['schedule.trip', 'schedule.pickupPoints', 'seats', 'passengers'])
+            ->with(['schedule.trip', 'schedule.pickupPoints', 'seats', 'passengers', 'installmentPayments'])
             ->firstOrFail();
 
         return $this->success(new BookingResource($booking));

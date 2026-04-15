@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\InstallmentPayment;
 
 class Booking extends Model
 {
@@ -16,6 +17,7 @@ class Booking extends Model
         'is_group', 'group_name', 'group_notes',
         'qr_code', 'checked_in', 'checked_in_at',
         'total_amount', 'paid_amount', 'payment_method',
+        'payment_type', 'installment_count', 'installment_interval_days',
         'payment_ref', 'paid_at', 'cancellation_reason', 'cancelled_at',
     ];
 
@@ -29,6 +31,8 @@ class Booking extends Model
             'checked_in_at' => 'datetime',
             'is_group' => 'boolean',
             'checked_in' => 'boolean',
+            'installment_count' => 'integer',
+            'installment_interval_days' => 'integer',
         ];
     }
 
@@ -50,6 +54,11 @@ class Booking extends Model
     public function passengers(): HasMany
     {
         return $this->hasMany(BookingPassenger::class);
+    }
+
+    public function installmentPayments(): HasMany
+    {
+        return $this->hasMany(InstallmentPayment::class)->orderBy('installment_no');
     }
 
     public static function generateRef(): string

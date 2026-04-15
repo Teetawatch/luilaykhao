@@ -62,5 +62,15 @@ export const useBookingStore = defineStore('booking', {
         this.loading = false;
       }
     },
+
+    async chargeInstallment(data) {
+      this.loading = true;
+      try {
+        const res = await api.post('/payments/charge-installment', data);
+        return res.data;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });

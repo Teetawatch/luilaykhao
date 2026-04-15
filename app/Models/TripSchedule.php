@@ -18,6 +18,7 @@ class TripSchedule extends Model
         'trip_id', 'departure_date', 'return_date',
         'total_seats', 'booked_seats', 'transport_type',
         'vehicle_id', 'status', 'price_override',
+        'installment_enabled', 'installment_count', 'installment_interval_days',
     ];
 
     protected function casts(): array
@@ -27,7 +28,10 @@ class TripSchedule extends Model
             'return_date' => 'date',
             'total_seats' => 'integer',
             'booked_seats' => 'integer',
-            'price_override' => 'decimal:2',
+            'price_override'            => 'decimal:2',
+            'installment_enabled'       => 'boolean',
+            'installment_count'         => 'integer',
+            'installment_interval_days' => 'integer',
         ];
     }
 

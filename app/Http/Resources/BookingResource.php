@@ -33,8 +33,22 @@ class BookingResource extends JsonResource
             'total_amount' => $this->total_amount,
             'paid_amount' => $this->paid_amount,
             'payment_method' => $this->payment_method,
+            'payment_type' => $this->payment_type ?? 'full',
+            'installment_count' => $this->installment_count,
+            'installment_interval_days' => $this->installment_interval_days,
             'payment_ref' => $this->payment_ref,
             'paid_at' => $this->paid_at?->toISOString(),
+            'installment_payments' => $this->when(
+                $this->relationLoaded('installmentPayments'),
+                fn () => $this->installmentPayments->map(fn ($ip) => [
+                    'id'              => $ip->id,
+                    'installment_no'  => $ip->installment_no,
+                    'amount'          => $ip->amount,
+                    'due_date'        => $ip->due_date?->toDateString(),
+                    'status'          => $ip->status,
+                    'paid_at'         => $ip->paid_at?->toISOString(),
+                ])
+            ),
             'seats' => BookingSeatResource::collection($this->whenLoaded('seats')),
             'passengers' => BookingPassengerResource::collection($this->whenLoaded('passengers')),
             'cancellation_reason' => $this->cancellation_reason,

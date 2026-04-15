@@ -94,11 +94,15 @@ class GoogleDistanceService
         float $destLat,
         float $destLng
     ): ?array {
+        if (empty($this->apiKey)) {
+            return $this->haversineETA($vehicleLat, $vehicleLng, $destLat, $destLng);
+        }
+
         // ETA cache สั้นกว่า (5 นาที) เพราะรถเคลื่อนที่ตลอด
         $cacheKey = "eta:" . round($vehicleLat, 3) . "," . round($vehicleLng, 3)
                   . ":" . round($destLat, 3) . "," . round($destLng, 3);
 
-        return Cache::remember($cacheKey, 300, function () use ($vehicleLat, $vehicleLng, $destLat, $destLng) {
+        $result = Cache::remember($cacheKey, 300, function () use ($vehicleLat, $vehicleLng, $destLat, $destLng) {
             return $this->callApi(
                 "{$vehicleLat},{$vehicleLng}",
                 "{$destLat},{$destLng}",
@@ -106,6 +110,59 @@ class GoogleDistanceService
                 'best_guess'
             );
         });
+
+        // If Google API call failed, fall back to haversine
+        return $result ?? $this->haversineETA($vehicleLat, $vehicleLng, $destLat, $destLng);
+    }
+
+    /**
+     * Haversine fallback: คำนวณ ETA จากระยะทางเส้นตรง
+     * ใช้เมื่อไม่มี Google API key หรือ API ไม่ตอบสนอง
+     */
+    private function haversineETA(
+        float $originLat,
+        float $originLng,
+        float $destLat,
+        float $destLng
+    ): array {
+        $R = 6371000; // รัศมีโลก (เมตร)
+        $dLat = deg2rad($destLat - $originLat);
+        $dLng = deg2rad($destLng - $originLng);
+        $a = sin($dLat / 2) ** 2
+           + cos(deg2rad($originLat)) * cos(deg2rad($destLat)) * sin($dLng / 2) ** 2;
+        $distanceM = 2 * $R * asin(sqrt($a));
+
+        // สมมติความเร็วเฉลี่ยในเมือง 40 km/h → ≈ 11.1 m/s
+        $avgSpeedMs = 40 * 1000 / 3600;
+        $durationSec = (int) round($distanceM / $avgSpeedMs);
+
+        $distanceKm = $distanceM / 1000;
+        $distanceText = $distanceKm >= 1
+            ? round($distanceKm, 1) . ' กม.'
+            : round($distanceM) . ' ม.';
+
+        $durationMin = (int) round($durationSec / 60);
+        if ($durationMin < 60) {
+            $durationText = $durationMin . ' นาที';
+        } else {
+            $h = intdiv($durationMin, 60);
+            $m = $durationMin % 60;
+            $durationText = $m > 0 ? "{$h} ชม. {$m} นาที" : "{$h} ชม.";
+        }
+
+        return [
+            'distance' => [
+                'text'  => $distanceText,
+                'value' => (int) round($distanceM),
+            ],
+            'duration' => [
+                'text'  => $durationText,
+                'value' => $durationSec,
+            ],
+            'origin'      => "{$originLat},{$originLng}",
+            'destination' => "{$destLat},{$destLng}",
+            'source'      => 'haversine',
+        ];
     }
 
     /**

@@ -182,6 +182,27 @@
               </select>
             </div>
           </div>
+
+          <!-- Installment Settings -->
+          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:4px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+                <input type="checkbox" v-model="form.installment_enabled" style="width:16px;height:16px;accent-color:#006565;" />
+                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">เปิดใช้ระบบผ่อนชำระ</span>
+              </label>
+            </div>
+            <div v-if="form.installment_enabled" class="form-grid">
+              <div class="form-group">
+                <label>จำนวนงวด (2–12)</label>
+                <input v-model.number="form.installment_count" type="number" min="2" max="12" required />
+              </div>
+              <div class="form-group">
+                <label>ระยะห่างระหว่างงวด (วัน)</label>
+                <input v-model.number="form.installment_interval_days" type="number" min="1" required />
+              </div>
+            </div>
+          </div>
+
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="submitting">
@@ -534,6 +555,7 @@ const form = reactive({
   trip_id: '', departure_date: '', return_date: '',
   total_seats: 10, transport_type: 'van', vehicle_id: null,
   price_override: null, status: 'open',
+  installment_enabled: false, installment_count: 2, installment_interval_days: 30,
 });
 
 const statusLabels = { open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก' };
@@ -581,6 +603,9 @@ const openForm = (item = null) => {
       vehicle_id: item.vehicle?.id || null,
       price_override: item.price || null,
       status: item.status,
+      installment_enabled: !!item.installment_enabled,
+      installment_count: item.installment_count || 2,
+      installment_interval_days: item.installment_interval_days || 30,
     });
   } else {
     Object.assign(form, {
@@ -588,6 +613,7 @@ const openForm = (item = null) => {
       departure_date: '', return_date: '',
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
+      installment_enabled: false, installment_count: 2, installment_interval_days: 30,
     });
   }
   showForm.value = true;

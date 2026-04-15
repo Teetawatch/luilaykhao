@@ -65,6 +65,7 @@ Route::prefix('v1')->group(function () {
 
         // Payments
         Route::post('payments/charge', [PaymentController::class, 'charge']);
+        Route::post('payments/charge-installment', [PaymentController::class, 'chargeInstallment']);
         Route::get('payments/{booking_ref}', [PaymentController::class, 'status']);
 
         // Reviews (authenticated)

@@ -18,19 +18,16 @@
     <!-- Progress Stepper -->
     <div class="flex items-center justify-center mb-12 max-w-7xl mx-auto">
       <div class="flex items-center w-full max-w-2xl">
-        <!-- Step 1 -->
         <div class="flex flex-col items-center flex-1">
           <div class="w-10 h-10 rounded-full bg-[#b4eae9] text-[#376b6a] flex items-center justify-center mb-2 font-bold text-sm">1</div>
           <span class="text-xs font-medium text-[#6e7979]">เลือกทริป</span>
         </div>
         <div class="h-[2px] flex-1 bg-[#b4eae9]"></div>
-        <!-- Step 2 -->
         <div class="flex flex-col items-center flex-1">
           <div class="w-10 h-10 rounded-full bg-[#b4eae9] text-[#376b6a] flex items-center justify-center mb-2 font-bold text-sm">2</div>
           <span class="text-xs font-medium text-[#6e7979]">รายละเอียด</span>
         </div>
         <div class="h-[2px] flex-1 bg-[#006565]"></div>
-        <!-- Step 3 Active -->
         <div class="flex flex-col items-center flex-1">
           <div class="w-10 h-10 rounded-full bg-[#006565] text-white flex items-center justify-center mb-2 font-bold text-sm ring-4 ring-[#93f2f2]/40">3</div>
           <span class="text-xs font-bold text-[#006565]">ชำระเงิน</span>
@@ -49,12 +46,94 @@
       <!-- LEFT: Payment Form -->
       <div class="lg:col-span-8 space-y-6">
 
-        <!-- Payment Method Tabs -->
+        <!-- ── Payment Type Selection (show only if installment available) ── -->
+        <section v-if="installmentAvailable" class="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,101,101,0.08)] p-8">
+          <h2 class="text-lg font-bold mb-5 text-[#1a1c1c]">เลือกรูปแบบการชำระเงิน</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Full Payment -->
+            <button @click="paymentType = 'full'"
+              class="flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left"
+              :class="paymentType === 'full'
+                ? 'border-[#006565] bg-[#006565]/5'
+                : 'border-[#e2e2e2] hover:border-[#b4eae9]'">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]" :class="paymentType === 'full' ? 'text-[#006565]' : 'text-[#6e7979]'">payments</span>
+                <span class="font-bold" :class="paymentType === 'full' ? 'text-[#006565]' : 'text-[#1a1c1c]'">ชำระเต็มจำนวน</span>
+                <span v-if="paymentType === 'full'" class="ml-auto w-5 h-5 rounded-full bg-[#006565] flex items-center justify-center">
+                  <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                </span>
+              </div>
+              <p class="text-sm text-[#6e7979]">ชำระทั้งหมด <span class="font-semibold text-[#1a1c1c]">฿{{ Number(booking.total_amount).toLocaleString() }}</span> ในครั้งเดียว</p>
+            </button>
+
+            <!-- Installment Payment -->
+            <button @click="paymentType = 'installment'"
+              class="flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left"
+              :class="paymentType === 'installment'
+                ? 'border-[#e87c2a] bg-[#e87c2a]/5'
+                : 'border-[#e2e2e2] hover:border-[#f5c99a]'">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]" :class="paymentType === 'installment' ? 'text-[#e87c2a]' : 'text-[#6e7979]'">calendar_month</span>
+                <span class="font-bold" :class="paymentType === 'installment' ? 'text-[#e87c2a]' : 'text-[#1a1c1c]'">ผ่อนชำระ {{ installmentCount }} งวด</span>
+                <span v-if="paymentType === 'installment'" class="ml-auto w-5 h-5 rounded-full bg-[#e87c2a] flex items-center justify-center">
+                  <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                </span>
+              </div>
+              <p class="text-sm text-[#6e7979]">งวดละ <span class="font-semibold text-[#1a1c1c]">฿{{ perInstallment.toLocaleString() }}</span> · ทุก {{ installmentIntervalDays }} วัน</p>
+            </button>
+          </div>
+
+          <!-- Installment Schedule Table -->
+          <div v-if="paymentType === 'installment'" class="mt-6 space-y-4">
+            <h3 class="font-semibold text-[#1a1c1c]">ตารางการผ่อนชำระ</h3>
+            <div class="overflow-hidden rounded-xl border border-[#e2e2e2]">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-[#f3f9f9]">
+                    <th class="text-left px-4 py-3 font-semibold text-[#1a1c1c]">งวดที่</th>
+                    <th class="text-left px-4 py-3 font-semibold text-[#1a1c1c]">ครบกำหนด</th>
+                    <th class="text-right px-4 py-3 font-semibold text-[#1a1c1c]">จำนวนเงิน</th>
+                    <th class="text-center px-4 py-3 font-semibold text-[#1a1c1c]">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="inst in installmentSchedule" :key="inst.no"
+                    class="border-t border-[#f0f0f0]"
+                    :class="inst.no === 1 ? 'bg-[#006565]/3' : ''">
+                    <td class="px-4 py-3 text-[#3e4949]">งวดที่ {{ inst.no }}</td>
+                    <td class="px-4 py-3 text-[#3e4949]">{{ formatDate(inst.dueDate) }}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-[#1a1c1c]">฿{{ inst.amount.toLocaleString() }}</td>
+                    <td class="px-4 py-3 text-center">
+                      <span v-if="inst.no === 1"
+                        class="text-xs font-bold px-2.5 py-1 rounded-full bg-[#006565]/10 text-[#006565]">
+                        ชำระตอนนี้
+                      </span>
+                      <span v-else
+                        class="text-xs font-medium px-2.5 py-1 rounded-full bg-[#f3f3f3] text-[#6e7979]">
+                        รอชำระ
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- No-refund Warning -->
+            <div class="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <span class="material-symbols-outlined text-red-500 text-[20px] flex-shrink-0 mt-0.5">warning</span>
+              <div class="text-sm text-red-700 leading-relaxed">
+                <p class="font-bold mb-1">ข้อสงวนสิทธิ์การผ่อนชำระ</p>
+                <p>หากท่านไม่ชำระเงินภายในวันครบกำหนดของแต่ละงวด <strong>ทางบริษัทขอสงวนสิทธิ์ไม่คืนเงินในทุกกรณี</strong> และอาจยกเลิกการจองโดยไม่แจ้งล่วงหน้า กรุณาตรวจสอบวันครบกำหนดในตารางข้างต้นและชำระให้ตรงเวลา</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Payment Method ── -->
         <section class="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,101,101,0.08)] p-8">
           <h1 class="text-2xl font-bold mb-7 text-[#1a1c1c]">วิธีการชำระเงิน</h1>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
             <button @click="paymentMethod = 'promptpay'"
               class="flex flex-col items-center justify-center gap-2.5 p-4 border-2 rounded-xl transition-all h-full"
               :class="paymentMethod === 'promptpay'
@@ -72,11 +151,18 @@
               <span class="font-bold text-[16px] uppercase tracking-tight">โอนเงินผ่านบัญชีธนาคาร</span>
             </button>
           </div>
+
           <!-- PromptPay -->
           <div v-if="paymentMethod === 'promptpay'" class="space-y-6">
-            <!-- QR Section -->
             <div class="flex flex-col items-center gap-4 py-6">
-              <p class="text-sm text-[#6e7979]">สแกน QR ชำระเงินผ่าน Mobile Banking ได้ทุกธนาคาร</p>
+              <p class="text-sm text-[#6e7979]">สแกน QR ชำระเงิน
+                <template v-if="paymentType === 'installment'">
+                  <strong class="text-[#e87c2a]">งวดแรก ฿{{ perInstallment.toLocaleString() }}</strong>
+                </template>
+                <template v-else>
+                  ผ่าน Mobile Banking ได้ทุกธนาคาร
+                </template>
+              </p>
               <div class="relative p-3 bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,101,101,0.12)] border border-[#b4eae9]">
                 <canvas ref="qrCanvas" class="block rounded-xl"></canvas>
                 <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center">
@@ -92,7 +178,6 @@
               </button>
             </div>
 
-            <!-- Divider -->
             <div class="flex items-center gap-3">
               <div class="flex-1 h-px bg-[#e2e2e2]"></div>
               <span class="text-xs text-[#6e7979] font-medium">หลังโอนแล้ว อัปโหลดหลักฐาน</span>
@@ -105,7 +190,7 @@
               <div v-if="!slipPreview"
                 @click="slipInputRef?.click()"
                 class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#b4eae9] rounded-2xl p-8 cursor-pointer hover:border-[#006565] hover:bg-[#006565]/5 transition-all">
-                <span class="material-symbols-outlined text-4xl text-[#b4eae9]">อัปโหลดสลิป</span>
+                <span class="material-symbols-outlined text-4xl text-[#b4eae9]">upload_file</span>
                 <p class="text-sm text-[#6e7979]">คลิกหรือลากไฟล์รูปสลิปมาวางที่นี่</p>
                 <p class="text-xs text-[#9eadad]">รองรับ JPG, PNG ขนาดไม่เกิน 5MB</p>
               </div>
@@ -162,8 +247,7 @@
               :src="booking.schedule.trip.cover_image || booking.schedule.trip.thumbnail_url"
               :alt="booking.schedule?.trip?.title"
               class="w-full h-full object-cover" />
-            <div v-else class="w-full h-full flex items-center justify-center">
-            </div>
+            <div v-else class="w-full h-full flex items-center justify-center"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-5">
               <span class="bg-[#93f2f2] text-[#002020] text-xs font-bold px-3 py-1 rounded-full tracking-wide">
                 รหัสจอง: {{ booking.booking_ref }}
@@ -171,23 +255,16 @@
             </div>
           </div>
 
-          <!-- Summary details -->
           <div class="p-7">
             <h2 class="text-lg font-bold mb-5 text-[#1a1c1c]">สรุปการจอง</h2>
 
             <div class="space-y-4 mb-6">
-              <div class="flex gap-3">
-                <div>
-                  <p class="font-bold text-[#1a1c1c] leading-snug">{{ booking.schedule?.trip?.title }}</p>
-                  <p class="text-sm text-[#6e7979] mt-0.5">{{ booking.passengers?.length || 0 }} ที่นั่ง</p>
-                </div>
+              <div>
+                <p class="font-bold text-[#1a1c1c] leading-snug">{{ booking.schedule?.trip?.title }}</p>
+                <p class="text-sm text-[#6e7979] mt-0.5">{{ booking.passengers?.length || 0 }} ที่นั่ง</p>
               </div>
-              <div class="flex gap-3 items-center">
-                <p class="text-sm text-[#3e4949]">{{ formatDate(booking.schedule?.departure_date) }}</p>
-              </div>
-              <div v-if="booking.seats?.length" class="flex gap-3 items-center">
-                <p class="text-sm text-[#3e4949]">ที่นั่ง: {{ booking.seats.map(s => s.seat_id).join(', ') }}</p>
-              </div>
+              <p class="text-sm text-[#3e4949]">{{ formatDate(booking.schedule?.departure_date) }}</p>
+              <p v-if="booking.seats?.length" class="text-sm text-[#3e4949]">ที่นั่ง: {{ booking.seats.map(s => s.seat_id).join(', ') }}</p>
             </div>
 
             <!-- Price breakdown -->
@@ -202,16 +279,35 @@
               </div>
             </div>
 
-            <div class="flex justify-between items-end mb-7">
+            <!-- Total / First installment amount -->
+            <div v-if="paymentType === 'installment'" class="mb-7 space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-[#6e7979]">ยอดรวมทั้งหมด</span>
+                <span class="text-base font-bold text-[#6e7979]">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
+              </div>
+              <div class="flex justify-between items-end">
+                <span class="font-bold text-[#1a1c1c]">ชำระงวดแรกตอนนี้</span>
+                <span class="text-3xl font-extrabold text-[#e87c2a]">฿{{ perInstallment.toLocaleString() }}</span>
+              </div>
+              <p class="text-xs text-[#6e7979]">ยังเหลืออีก {{ installmentCount - 1 }} งวด · งวดละ ฿{{ perInstallment.toLocaleString() }}</p>
+            </div>
+            <div v-else class="flex justify-between items-end mb-7">
               <span class="font-bold text-[#1a1c1c]">ยอดชำระสุทธิ</span>
               <span class="text-3xl font-extrabold text-[#9e380d]">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
             </div>
 
             <!-- Pay Button -->
             <button @click="processPayment" :disabled="paying"
-              class="w-full bg-[#006565] text-white py-4 rounded-full font-bold text-base flex items-center justify-center gap-2.5 hover:bg-[#004f4f] active:scale-95 transition-all shadow-lg shadow-[#006565]/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100">
+              class="w-full py-4 rounded-full font-bold text-base flex items-center justify-center gap-2.5 active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+              :class="paymentType === 'installment'
+                ? 'bg-[#e87c2a] hover:bg-[#c96516] text-white shadow-[#e87c2a]/20'
+                : 'bg-[#006565] hover:bg-[#004f4f] text-white shadow-[#006565]/20'">
               <span v-if="paying" class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
-              {{ paying ? 'กำลังประมวลผล...' : 'ชำระเงินตอนนี้' }}
+              <template v-if="!paying">
+                <span v-if="paymentType === 'installment'">ชำระงวดแรก ฿{{ perInstallment.toLocaleString() }}</span>
+                <span v-else>ชำระเงินตอนนี้</span>
+              </template>
+              <template v-else>กำลังประมวลผล...</template>
             </button>
 
             <p v-if="paymentError" class="mt-4 text-sm text-red-600 text-center flex items-center justify-center gap-1.5">
@@ -233,7 +329,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import QRCode from 'qrcode';
 import { useRoute, useRouter } from 'vue-router';
 import { useBookingStore } from '../stores/booking';
@@ -250,11 +346,7 @@ const loading = ref(true);
 const paying = ref(false);
 const paymentError = ref('');
 const paymentMethod = ref('promptpay');
-const cardNumber = ref('4242424242424242');
-const cardHolder = ref('');
-const cardExpiry = ref('12/28');
-const cardCvv = ref('123');
-const saveCard = ref(false);
+const paymentType = ref('full');
 
 // PromptPay QR
 const qrCanvas = ref(null);
@@ -269,6 +361,44 @@ const slipInputRef = ref(null);
 const transferDate = ref('');
 const transferTime = ref('');
 
+// ── Installment helpers ──────────────────────────────────────
+const installmentAvailable = computed(() =>
+  !!booking.value?.schedule?.installment_enabled
+);
+const installmentCount = computed(() =>
+  booking.value?.schedule?.installment_count ?? 2
+);
+const installmentIntervalDays = computed(() =>
+  booking.value?.schedule?.installment_interval_days ?? 30
+);
+const perInstallment = computed(() => {
+  if (!booking.value) return 0;
+  const total = parseFloat(booking.value.total_amount);
+  return Math.round((total / installmentCount.value) * 100) / 100;
+});
+const installmentSchedule = computed(() => {
+  if (!booking.value) return [];
+  const total = parseFloat(booking.value.total_amount);
+  const n = installmentCount.value;
+  const interval = installmentIntervalDays.value;
+  const per = Math.round((total / n) * 100) / 100;
+  const rows = [];
+  const now = new Date();
+  for (let i = 1; i <= n; i++) {
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + (i - 1) * interval);
+    const amount = i === n ? Math.round((total - per * (n - 1)) * 100) / 100 : per;
+    rows.push({ no: i, dueDate: dueDate.toISOString().split('T')[0], amount });
+  }
+  return rows;
+});
+
+// ── QR regenerates when paymentType or paymentMethod changes ─
+watch([paymentType, paymentMethod], ([, method]) => {
+  if (method === 'promptpay') nextTick(generateQR);
+});
+
+// ── PromptPay QR ─────────────────────────────────────────────
 function buildPromptPayPayload(phone, amount) {
   const normalizePhone = (p) => {
     p = p.replace(/\D/g, '');
@@ -310,7 +440,10 @@ function crc16(str) {
 async function generateQR() {
   await nextTick();
   if (!qrCanvas.value || !booking.value) return;
-  const amount = parseFloat(booking.value.total_amount);
+  const amount = paymentType.value === 'installment'
+    ? perInstallment.value
+    : parseFloat(booking.value.total_amount);
+  qrGenerated.value = false;
   const payload = buildPromptPayPayload('0626126006', amount);
   await QRCode.toCanvas(qrCanvas.value, payload, {
     width: 240,
@@ -319,10 +452,6 @@ async function generateQR() {
   });
   qrGenerated.value = true;
 }
-
-watch(paymentMethod, (val) => {
-  if (val === 'promptpay') nextTick(generateQR);
-});
 
 function saveQR() {
   if (!qrCanvas.value) return;
@@ -358,8 +487,11 @@ async function processPayment() {
   try {
     await bookingStore.chargePayment({
       booking_ref: booking.value.booking_ref,
-      omise_token: 'tokn_test_' + Date.now(),
-      amount: parseFloat(booking.value.total_amount),
+      payment_type: paymentType.value,
+      payment_method: paymentMethod.value,
+      amount: paymentType.value === 'installment'
+        ? perInstallment.value
+        : parseFloat(booking.value.total_amount),
     });
     router.push(`/confirmation/${booking.value.booking_ref}`);
   } catch (e) {

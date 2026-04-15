@@ -119,7 +119,13 @@
           </div>
           <!-- ETA Section -->
           <div v-if="etaData[selectedVehicle.vehicle_id]" class="map-info-eta">
-            <div class="eta-header"><span class="material-symbols-rounded" style="font-size:14px;">route</span> ETA ถึงปลายทาง</div>
+            <div class="eta-header">
+              <span class="material-symbols-rounded" style="font-size:14px;">route</span> ETA ถึงปลายทาง
+              <span v-if="etaData[selectedVehicle.vehicle_id].source === 'haversine'"
+                style="margin-left:auto;font-size:10px;font-weight:500;color:#92400e;background:#fef3c7;padding:2px 6px;border-radius:4px;border:1px solid #fde68a;">
+                ประมาณการ
+              </span>
+            </div>
             <div class="eta-row">
               <span class="eta-badge distance"><span class="material-symbols-rounded" style="font-size:12px;">add_road</span> {{ etaData[selectedVehicle.vehicle_id].distance?.text }}</span>
               <span class="eta-badge duration"><span class="material-symbols-rounded" style="font-size:12px;">schedule</span> {{ etaData[selectedVehicle.vehicle_id].duration?.text }}</span>

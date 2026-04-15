@@ -211,6 +211,9 @@ class AdminController extends Controller
             'vehicle_id' => ['nullable', 'exists:vehicles,id'],
             'status' => ['sometimes', 'in:open,closed,full,cancelled'],
             'price_override' => ['nullable', 'numeric', 'min:0'],
+            'installment_enabled' => ['nullable', 'boolean'],
+            'installment_count' => ['nullable', 'integer', 'min:2', 'max:12'],
+            'installment_interval_days' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $schedule->update($validated);

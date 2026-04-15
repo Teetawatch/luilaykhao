@@ -23,6 +23,9 @@ class TripScheduleResource extends JsonResource
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,
             'price' => $this->effective_price,
+            'installment_enabled' => (bool) $this->installment_enabled,
+            'installment_count' => $this->installment_count,
+            'installment_interval_days' => $this->installment_interval_days,
             'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
             'created_at' => $this->created_at?->toISOString(),
         ];
