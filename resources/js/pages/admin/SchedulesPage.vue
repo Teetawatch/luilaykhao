@@ -6,6 +6,9 @@
         <p class="page-subtitle">จัดการรอบเดินทางและตารางวันเดินทาง</p>
       </div>
       <div style="display:flex;gap:10px;">
+        <button class="btn-secondary" @click="openTemplateManager()">
+          <span class="material-symbols-rounded">bookmark</span> เทมเพลตจุดรับ
+        </button>
         <button class="btn-secondary" @click="openBatchForm()">
           <span class="material-symbols-rounded">layers</span> สร้างหลายรอบพร้อมกัน
         </button>
@@ -112,6 +115,9 @@
                       </button>
                       <button class="btn-icon btn-copy" @click="copyPickupPoints(sch)" title="คัดลอกจุดรับไปรอบอื่น">
                         <span class="material-symbols-rounded">content_copy</span>
+                      </button>
+                      <button class="btn-icon btn-clone" @click="openCopyScheduleModal(sch)" title="คัดลอกรอบเดินทาง">
+                        <span class="material-symbols-rounded">file_copy</span>
                       </button>
                       <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
                       <button class="btn-icon btn-delete" @click="confirmDelete(sch)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
@@ -222,7 +228,22 @@
             <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">location_on</span>จุดรับผู้โดยสาร</h2>
             <p class="modal-subtitle" v-if="pickupSchedule">{{ pickupSchedule.trip?.title }} — {{ pickupSchedule.departure_date }}</p>
           </div>
-          <button class="modal-close" @click="showPickupManager = false"><span class="material-symbols-rounded">close</span></button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button v-if="pickupTemplates.length" class="btn-sm btn-secondary" @click="showApplyTemplateDropdown = !showApplyTemplateDropdown" style="position:relative;">
+              <span class="material-symbols-rounded">bookmark_add</span> ใช้เทมเพลต
+              <div v-if="showApplyTemplateDropdown" class="template-dropdown" @click.stop>
+                <div v-for="tpl in pickupTemplates" :key="tpl.id" class="template-dropdown-item" @click="applyTemplateToSchedule(tpl)">
+                  <span class="material-symbols-rounded" style="font-size:15px;">bookmark</span>
+                  <span>{{ tpl.name }}</span>
+                  <span class="tpl-count">{{ tpl.points.length }} จุด</span>
+                </div>
+              </div>
+            </button>
+            <button class="btn-sm btn-secondary" @click="saveCurrentAsTemplate()">
+              <span class="material-symbols-rounded">bookmark</span> บันทึกเป็นเทมเพลต
+            </button>
+            <button class="modal-close" @click="showPickupManager = false"><span class="material-symbols-rounded">close</span></button>
+          </div>
         </div>
         <div class="modal-body">
           <div v-if="pickupLoading" class="pickup-loading"><div class="spinner"></div></div>
@@ -440,6 +461,169 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Copy Schedule Modal -->
+    <div class="modal-overlay" v-if="showCopyScheduleModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">file_copy</span>คัดลอกรอบเดินทาง</h2>
+            <p class="modal-subtitle" v-if="copyScheduleSource">ต้นฉบับ: {{ copyScheduleSource.trip?.title }} — {{ copyScheduleSource.departure_date }}</p>
+          </div>
+          <button class="modal-close" @click="showCopyScheduleModal = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>ทริปปลายทาง *</label>
+              <select v-model.number="copyScheduleForm.trip_id" required>
+                <option value="" disabled>เลือกทริป</option>
+                <option v-for="t in tripOptions" :key="t.id" :value="t.id">{{ t.title }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>วันเดินทางใหม่ *</label>
+              <input v-model="copyScheduleForm.departure_date" type="date" required />
+            </div>
+            <div class="form-group">
+              <label>วันกลับใหม่ *</label>
+              <input v-model="copyScheduleForm.return_date" type="date" required />
+            </div>
+          </div>
+          <label class="checkbox-filter" style="margin-top:4px;">
+            <input type="checkbox" v-model="copyScheduleForm.include_pickups" />
+            <span>คัดลอกจุดรับพร้อมกัน</span>
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showCopyScheduleModal = false">ยกเลิก</button>
+          <button class="btn-primary" @click="doCopySchedule" :disabled="copyScheduleSubmitting || !copyScheduleForm.trip_id || !copyScheduleForm.departure_date || !copyScheduleForm.return_date">
+            <span class="material-symbols-rounded" :class="{ 'animate-spin': copyScheduleSubmitting }" v-if="copyScheduleSubmitting">sync</span>
+            คัดลอกรอบ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pickup Template Manager Modal -->
+    <div class="modal-overlay" v-if="showTemplateManager">
+      <div class="modal-card modal-xl">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">bookmark</span>เทมเพลตจุดรับ</h2>
+            <p class="modal-subtitle">จัดการชุดจุดรับที่ใช้บ่อย แก้ครั้งเดียวนำไปใช้ได้หลายรอบ</p>
+          </div>
+          <button class="modal-close" @click="showTemplateManager = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <div style="display:flex;gap:12px;margin-bottom:16px;">
+            <button class="btn-sm btn-primary" @click="startNewTemplate()">
+              <span class="material-symbols-rounded">add</span> สร้างเทมเพลตใหม่
+            </button>
+          </div>
+
+          <div v-if="!pickupTemplates.length" class="pickup-inline-empty">
+            <span class="material-symbols-rounded">bookmark_border</span> ยังไม่มีเทมเพลต
+          </div>
+
+          <div v-for="tpl in pickupTemplates" :key="tpl.id" class="tpl-card">
+            <div class="tpl-card-header">
+              <div class="tpl-card-title">
+                <span class="material-symbols-rounded" style="color:var(--color-accent);">bookmark</span>
+                <template v-if="editingTemplate?.id === tpl.id">
+                  <input v-model="editingTemplate.name" class="tpl-name-input" placeholder="ชื่อเทมเพลต" />
+                </template>
+                <template v-else>
+                  <span>{{ tpl.name }}</span>
+                  <span class="tpl-count">{{ tpl.points.length }} จุด</span>
+                </template>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button v-if="editingTemplate?.id !== tpl.id" class="btn-sm btn-secondary" @click="openApplyTemplateModal(tpl)">
+                  <span class="material-symbols-rounded">rocket_launch</span> นำไปใช้
+                </button>
+                <button v-if="editingTemplate?.id !== tpl.id" class="btn-icon btn-edit" @click="startEditTemplate(tpl)"><span class="material-symbols-rounded">edit</span></button>
+                <button v-if="editingTemplate?.id !== tpl.id" class="btn-icon btn-delete" @click="deleteTemplate(tpl.id)"><span class="material-symbols-rounded">delete</span></button>
+                <template v-if="editingTemplate?.id === tpl.id">
+                  <button class="btn-sm btn-secondary" @click="cancelEditTemplate">ยกเลิก</button>
+                  <button class="btn-sm btn-primary" @click="saveEditTemplate">บันทึก</button>
+                </template>
+              </div>
+            </div>
+            <div class="tpl-card-body">
+              <div v-if="editingTemplate?.id === tpl.id">
+                <div v-for="r in REGIONS" :key="r.value" class="tpl-region-section">
+                  <div class="tpl-region-label">
+                    <span class="region-dot"></span>{{ r.label }}
+                    <button type="button" class="btn-sm btn-secondary" style="margin-left:auto;" @click="addTplPoint(r.value)">
+                      <span class="material-symbols-rounded">add</span>
+                    </button>
+                  </div>
+                  <div v-for="(pt, pi) in editingTemplate.points.filter(p => p.region === r.value)" :key="pi" class="tpl-point-row">
+                    <input v-model="pt.pickup_location" placeholder="จุดขึ้นรถ *" style="flex:2;" />
+                    <input v-model="pt.notes" placeholder="เวลา / หมายเหตุ" style="flex:1;" />
+                    <div style="display:flex;align-items:center;gap:4px;">
+                      <span style="font-size:12px;color:#6b7280;">฿</span>
+                      <input v-model.number="pt.price" type="number" min="0" placeholder="ราคา" style="width:80px;" />
+                    </div>
+                    <input v-model="pt.map_url" placeholder="Maps URL" style="flex:1.5;" />
+                    <button type="button" class="btn-icon btn-delete" @click="removeTplPoint(r.value, pi)"><span class="material-symbols-rounded">close</span></button>
+                  </div>
+                  <div v-if="!editingTemplate.points.filter(p => p.region === r.value).length" class="tpl-region-empty">ไม่มีจุดรับในภาคนี้</div>
+                </div>
+              </div>
+              <div v-else class="tpl-points-preview">
+                <div v-for="pt in tpl.points" :key="pt.pickup_location + pt.region" class="tpl-preview-item">
+                  <span class="region-pill">{{ REGIONS.find(r=>r.value===pt.region)?.label || pt.region }}</span>
+                  <span>{{ pt.pickup_location }}</span>
+                  <span style="color:#6b7280;font-size:12px;">{{ pt.notes }}</span>
+                  <span style="font-weight:700;color:var(--color-text-dark);white-space:nowrap;">฿{{ Number(pt.price||0).toLocaleString() }}</span>
+                </div>
+                <div v-if="!tpl.points.length" style="font-size:12px;color:#9ca3af;padding:8px;">ไม่มีจุดรับในเทมเพลตนี้</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Apply Template to Schedules Modal -->
+    <div class="modal-overlay" v-if="showApplyTemplateModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">rocket_launch</span>นำเทมเพลตไปใช้</h2>
+            <p class="modal-subtitle" v-if="applyTemplateTarget">เทมเพลต: <strong>{{ applyTemplateTarget.name }}</strong> ({{ applyTemplateTarget.points.length }} จุด)</p>
+          </div>
+          <button class="modal-close" @click="showApplyTemplateModal = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13px;color:#374151;margin-bottom:4px;">เลือกรอบที่ต้องการเขียนทับจุดรับด้วยเทมเพลตนี้:</p>
+          <p style="font-size:12px;color:#ef4444;margin-bottom:12px;"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;">warning</span> จุดรับเดิมทุกจุดในรอบที่เลือกจะถูกลบและเขียนทับใหม่</p>
+          <div style="margin-bottom:10px;display:flex;gap:8px;">
+            <button class="btn-sm btn-secondary" @click="applySelectAll()">เลือกทั้งหมด</button>
+            <button class="btn-sm btn-secondary" @click="applySelectedScheduleIds = []">ยกเลิกทั้งหมด</button>
+          </div>
+          <div class="copy-target-list">
+            <div v-for="group in groupedByTrip" :key="group.trip_id" style="margin-bottom:8px;">
+              <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
+              <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item">
+                <input type="checkbox" v-model="applySelectedScheduleIds" :value="sch.id" />
+                <span>{{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span></span>
+                <span class="status-badge" :class="`status-${sch.status}`" style="margin-left:auto;">{{ statusLabels[sch.status] }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showApplyTemplateModal = false">ยกเลิก</button>
+          <button class="btn-primary" @click="doApplyTemplate" :disabled="!applySelectedScheduleIds.length || applyTemplateSubmitting">
+            <span class="material-symbols-rounded" :class="{ 'animate-spin': applyTemplateSubmitting }" v-if="applyTemplateSubmitting">sync</span>
+            ใช้กับ {{ applySelectedScheduleIds.length }} รอบ
+          </button>
+        </div>
       </div>
     </div>
 
@@ -732,6 +916,73 @@ const submitBatchForm = async () => {
   }
 };
 
+// ─── Copy Schedule ─────────────────────────────────────────
+const showCopyScheduleModal = ref(false);
+const copyScheduleSource = ref(null);
+const copyScheduleSubmitting = ref(false);
+const copyScheduleForm = reactive({
+  trip_id: '',
+  departure_date: '',
+  return_date: '',
+  include_pickups: true,
+});
+
+const openCopyScheduleModal = (sch) => {
+  copyScheduleSource.value = sch;
+  Object.assign(copyScheduleForm, {
+    trip_id: sch.trip_id,
+    departure_date: '',
+    return_date: '',
+    include_pickups: true,
+  });
+  showCopyScheduleModal.value = true;
+};
+
+const doCopySchedule = async () => {
+  copyScheduleSubmitting.value = true;
+  try {
+    const src = copyScheduleSource.value;
+    const newScheduleRes = await api.post('/admin/schedules', {
+      trip_id: copyScheduleForm.trip_id,
+      departure_date: copyScheduleForm.departure_date,
+      return_date: copyScheduleForm.return_date,
+      total_seats: src.total_seats,
+      transport_type: src.transport_type,
+      vehicle_id: src.vehicle?.id || null,
+      price_override: src.price || null,
+      status: 'open',
+      installment_enabled: src.installment_enabled || false,
+      installment_count: src.installment_count || 2,
+      installment_interval_days: src.installment_interval_days || 30,
+    });
+    const newId = newScheduleRes.data.data.id;
+    if (copyScheduleForm.include_pickups) {
+      const ptRes = await api.get(`/admin/schedules/${src.id}/pickup-points`);
+      for (const pt of ptRes.data.data) {
+        await api.post(`/admin/schedules/${newId}/pickup-points`, {
+          region: pt.region,
+          region_label: pt.region_label,
+          pickup_location: pt.pickup_location,
+          price: pt.price,
+          notes: pt.notes || null,
+          map_url: pt.map_url || null,
+          latitude: pt.latitude || null,
+          longitude: pt.longitude || null,
+          sort_order: pt.sort_order || 0,
+        });
+      }
+    }
+    showCopyScheduleModal.value = false;
+    fetchData();
+    const destTrip = tripOptions.value.find(t => t.id === copyScheduleForm.trip_id);
+    alert(`คัดลอกรอบเดินทางสำเร็จ${destTrip ? ` ไปยัง ${destTrip.title}` : ''}`);
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    copyScheduleSubmitting.value = false;
+  }
+};
+
 // ─── Copy Pickup Points ────────────────────────────────────
 const showCopyModal = ref(false);
 const copySource = ref(null);
@@ -775,6 +1026,176 @@ const doCopyPickups = async () => {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
     copySubmitting.value = false;
+  }
+};
+
+// ─── Pickup Templates (localStorage) ─────────────────────
+const TEMPLATES_KEY = 'luilaykhao_pickup_templates';
+const loadTemplates = () => {
+  try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]'); } catch { return []; }
+};
+const saveTemplates = (list) => localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
+
+const pickupTemplates = ref(loadTemplates());
+const showTemplateManager = ref(false);
+const editingTemplate = ref(null);
+
+const openTemplateManager = () => {
+  pickupTemplates.value = loadTemplates();
+  editingTemplate.value = null;
+  showTemplateManager.value = true;
+};
+
+const startNewTemplate = () => {
+  editingTemplate.value = {
+    id: Date.now().toString(),
+    name: 'เทมเพลตใหม่',
+    points: [],
+    _isNew: true,
+  };
+  pickupTemplates.value = [editingTemplate.value, ...pickupTemplates.value];
+};
+
+const startEditTemplate = (tpl) => {
+  editingTemplate.value = JSON.parse(JSON.stringify(tpl));
+};
+
+const cancelEditTemplate = () => {
+  if (editingTemplate.value?._isNew) {
+    pickupTemplates.value = pickupTemplates.value.filter(t => t.id !== editingTemplate.value.id);
+    saveTemplates(pickupTemplates.value);
+  }
+  editingTemplate.value = null;
+};
+
+const saveEditTemplate = () => {
+  const idx = pickupTemplates.value.findIndex(t => t.id === editingTemplate.value.id);
+  const saved = { ...editingTemplate.value };
+  delete saved._isNew;
+  if (idx >= 0) pickupTemplates.value[idx] = saved;
+  else pickupTemplates.value.unshift(saved);
+  saveTemplates(pickupTemplates.value);
+  editingTemplate.value = null;
+};
+
+const deleteTemplate = (id) => {
+  if (!confirm('ลบเทมเพลตนี้ใช่หรือไม่?')) return;
+  pickupTemplates.value = pickupTemplates.value.filter(t => t.id !== id);
+  saveTemplates(pickupTemplates.value);
+};
+
+const addTplPoint = (regionValue) => {
+  const found = REGIONS.find(r => r.value === regionValue);
+  editingTemplate.value.points.push({
+    region: regionValue,
+    region_label: found?.label || regionValue,
+    pickup_location: '',
+    notes: '',
+    price: 0,
+    map_url: '',
+  });
+};
+
+const removeTplPoint = (regionValue, displayIndex) => {
+  const regionPoints = editingTemplate.value.points.filter(p => p.region === regionValue);
+  const target = regionPoints[displayIndex];
+  const actualIndex = editingTemplate.value.points.indexOf(target);
+  if (actualIndex >= 0) editingTemplate.value.points.splice(actualIndex, 1);
+};
+
+const saveCurrentAsTemplate = async () => {
+  const name = prompt('ชื่อเทมเพลต:', `${pickupSchedule.value?.trip?.title || 'เทมเพลต'} - ${pickupSchedule.value?.departure_date || ''}`);
+  if (!name) return;
+  const points = pickupPoints.value.map(pt => ({
+    region: pt.region,
+    region_label: pt.region_label,
+    pickup_location: pt.pickup_location,
+    notes: pt.notes || '',
+    price: pt.price,
+    map_url: pt.map_url || '',
+  }));
+  const newTpl = { id: Date.now().toString(), name, points };
+  pickupTemplates.value = loadTemplates();
+  pickupTemplates.value.unshift(newTpl);
+  saveTemplates(pickupTemplates.value);
+  alert(`บันทึกเทมเพลต "${name}" สำเร็จ (${points.length} จุด)`);
+};
+
+// dropdown flag inside pickup manager
+const showApplyTemplateDropdown = ref(false);
+
+const applyTemplateToSchedule = async (tpl) => {
+  showApplyTemplateDropdown.value = false;
+  if (!confirm(`ใช้เทมเพลต "${tpl.name}" กับรอบนี้?\nจุดรับเดิมทั้งหมดจะถูกลบและเขียนทับ`)) return;
+  pickupSubmitting.value = true;
+  try {
+    const scheduleId = pickupSchedule.value.id;
+    for (const pt of pickupPoints.value) {
+      await api.delete(`/admin/schedules/${scheduleId}/pickup-points/${pt.id}`);
+    }
+    for (const pt of tpl.points) {
+      if (!pt.pickup_location) continue;
+      await api.post(`/admin/schedules/${scheduleId}/pickup-points`, {
+        region: pt.region,
+        region_label: pt.region_label,
+        pickup_location: pt.pickup_location,
+        price: pt.price,
+        notes: pt.notes || null,
+        map_url: pt.map_url || null,
+      });
+    }
+    await loadPickupPoints(scheduleId);
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    pickupSubmitting.value = false;
+  }
+};
+
+// Apply template to many schedules at once
+const showApplyTemplateModal = ref(false);
+const applyTemplateTarget = ref(null);
+const applySelectedScheduleIds = ref([]);
+const applyTemplateSubmitting = ref(false);
+
+const openApplyTemplateModal = (tpl) => {
+  applyTemplateTarget.value = tpl;
+  applySelectedScheduleIds.value = [];
+  showTemplateManager.value = false;
+  showApplyTemplateModal.value = true;
+};
+
+const applySelectAll = () => {
+  applySelectedScheduleIds.value = (admin.schedules.data || []).map(s => s.id);
+};
+
+const doApplyTemplate = async () => {
+  applyTemplateSubmitting.value = true;
+  try {
+    for (const scheduleId of applySelectedScheduleIds.value) {
+      const ptRes = await api.get(`/admin/schedules/${scheduleId}/pickup-points`);
+      for (const pt of ptRes.data.data) {
+        await api.delete(`/admin/schedules/${scheduleId}/pickup-points/${pt.id}`);
+      }
+      for (const pt of applyTemplateTarget.value.points) {
+        if (!pt.pickup_location) continue;
+        await api.post(`/admin/schedules/${scheduleId}/pickup-points`, {
+          region: pt.region,
+          region_label: pt.region_label,
+          pickup_location: pt.pickup_location,
+          price: pt.price,
+          notes: pt.notes || null,
+          map_url: pt.map_url || null,
+        });
+      }
+    }
+    showApplyTemplateModal.value = false;
+    fetchData();
+    alert(`ใช้เทมเพลตกับ ${applySelectedScheduleIds.value.length} รอบสำเร็จ`);
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    applyTemplateSubmitting.value = false;
   }
 };
 
@@ -1099,6 +1520,14 @@ onMounted(() => {
 .btn-copy:hover {
   background: #eff6ff;
   border-color: #bfdbfe;
+}
+
+.btn-clone {
+  color: #7c3aed;
+}
+.btn-clone:hover {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
 }
 
 .modal-xl {
@@ -1497,5 +1926,130 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+/* ── Template dropdown inside pickup manager header ── */
+.template-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 200;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  min-width: 220px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.template-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--color-text-mid);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.template-dropdown-item:hover {
+  background: var(--color-sand);
+}
+
+/* ── Template manager modal ── */
+.tpl-card {
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.tpl-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--color-sand);
+  border-bottom: 1px solid var(--color-sand-dark);
+  gap: 12px;
+}
+
+.tpl-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  min-width: 0;
+  flex: 1;
+}
+
+.tpl-name-input {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.tpl-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-sand-dark);
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+
+.tpl-card-body {
+  background: var(--color-white);
+  padding: 12px 14px;
+}
+
+.tpl-region-section {
+  margin-bottom: 10px;
+}
+
+.tpl-region-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.tpl-point-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.tpl-region-empty {
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 4px 0 4px 16px;
+}
+
+.tpl-points-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tpl-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--color-text-mid);
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f9fafb;
 }
 </style>
