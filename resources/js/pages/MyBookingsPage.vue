@@ -102,12 +102,19 @@
               <h2 class="text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]" style="font-family:'Anuphan',sans-serif;">
                 {{ b.schedule?.trip?.title || 'การจอง' }}
               </h2>
-              <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] shrink-0 flex items-center gap-1.5 whitespace-nowrap"
-                :class="statusClass(b.status)"
-                style="font-family:'Anuphan',sans-serif;">
-                <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(b.status)"></span>
-                {{ statusLabel(b.status) }}
-              </span>
+              <div class="flex flex-col items-end gap-2 shrink-0">
+                <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] flex items-center gap-1.5 whitespace-nowrap"
+                  :class="statusClass(b.status)"
+                  style="font-family:'Anuphan',sans-serif;">
+                  <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(b.status)"></span>
+                  {{ statusLabel(b.status) }}
+                </span>
+                <CountdownTimer
+                  v-if="isPendingWithTimer(b)"
+                  :seconds="seatsStore.countdownSeconds"
+                  :total-seconds="600"
+                  class="text-xs w-full" />
+              </div>
             </div>
 
             <div class="space-y-3 mb-5 bg-[#F9FAFA] p-3.5 rounded-[16px] border border-[#E8EEEF]">
@@ -135,6 +142,7 @@
             <!-- Actions -->
             <div class="mt-auto flex gap-2.5 flex-wrap sm:flex-nowrap">
               <router-link
+                v-if="b.status !== 'pending'"
                 :to="`/confirmation/${b.booking_ref}`"
                 class="flex-1 text-center bg-[#006565] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#004f4f] transition-all flex items-center justify-center gap-1.5"
                 style="font-family:'Anuphan',sans-serif;">
@@ -142,7 +150,16 @@
                 <span v-else class="material-symbols-rounded text-[18px]">visibility</span>
                 {{ b.status === 'confirmed' ? 'ดาวน์โหลดตั๋ว' : 'ดูรายละเอียด' }}
               </router-link>
-              
+
+              <router-link
+                v-if="b.status === 'pending'"
+                :to="`/payment/${b.booking_ref}`"
+                class="flex-1 text-center bg-[#D97706] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all flex items-center justify-center gap-1.5 animate-pulse"
+                style="font-family:'Anuphan',sans-serif;">
+                <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">payments</span>
+                ชำระเงิน
+              </router-link>
+
               <button
                 v-if="b.status === 'confirmed' || b.status === 'pending'"
                 @click="$router.push(`/confirmation/${b.booking_ref}`)"
@@ -194,10 +211,21 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useBookingStore } from '../stores/booking';
+import { useSeatsStore } from '../stores/seats';
+import CountdownTimer from '../components/CountdownTimer.vue';
 
 const bookingStore = useBookingStore();
+const seatsStore = useSeatsStore();
+const router = useRouter();
 const activeTab = ref('upcoming');
+
+function isPendingWithTimer(b) {
+  return b.status === 'pending'
+    && seatsStore.activeBookingInfo?.scheduleId == b.schedule?.id
+    && seatsStore.countdownSeconds > 0;
+}
 
 const upcomingStatuses = ['pending', 'confirmed'];
 const pastStatuses = ['cancelled', 'refunded', 'completed'];
