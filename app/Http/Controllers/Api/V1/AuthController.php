@@ -239,6 +239,7 @@ class AuthController extends Controller
             'allergies' => $user->allergies,
             'health_notes' => $user->health_notes,
             'roles' => $user->roles->pluck('name'),
+            'social_provider' => $user->social_provider,
             'created_at' => $user->created_at?->toISOString(),
         ];
     }
