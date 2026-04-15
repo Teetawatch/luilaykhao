@@ -1129,6 +1129,9 @@ onMounted(async () => {
       if (savedStep != null && savedStep > 0) {
         step.value = savedStep;
       }
+      if (hasSeatMap.value && seatsStore.selectedSeats.length > 0) {
+        passengerCount.value = seatsStore.selectedSeats.length;
+      }
     } else if (!hasSeatMap.value && !isTrekking.value) {
       // For non-seat-map, non-trekking trips: start countdown immediately on page load
       seatsStore.startManualCountdown(

@@ -156,27 +156,26 @@ const layoutConfig = computed(() => {
 function seatBgClass(seat) {
   if (!seat) return 'bg-[#e2e2e2]';
   if (seat.status === 'booked') return 'bg-[#6e7979]';
-  if (seat.status === 'locked') return 'bg-[#bdc9c8] opacity-60';
-  
   if (isSelected(seat)) {
     return (props.isWomenOnly ? 'bg-[#db2777] shadow-[#db2777]/25' : 'bg-[#006565] shadow-[#006565]/25') + ' shadow-lg scale-105';
   }
-  
+  if (seat.status === 'locked') return 'bg-[#bdc9c8] opacity-60';
   return 'bg-[#e2e2e2] ' + (props.isWomenOnly ? 'group-hover:bg-[#db2777]/10' : 'group-hover:bg-[#006565]/10') + ' group-hover:scale-105';
 }
 
 function seatIconClass(seat) {
   if (!seat) return 'text-[#6e7979]';
   if (seat.status === 'booked') return 'text-white';
-  if (seat.status === 'locked') return 'text-[#6e7979]';
   if (isSelected(seat)) return 'text-white';
+  if (seat.status === 'locked') return 'text-[#6e7979]';
   return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
 }
 
 function seatLabelClass(seat) {
   if (!seat) return 'text-[#6e7979]';
-  if (seat.status === 'booked' || seat.status === 'locked') return 'text-[#6e7979] opacity-40';
+  if (seat.status === 'booked') return 'text-[#6e7979] opacity-40';
   if (isSelected(seat)) return (props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]');
+  if (seat.status === 'locked') return 'text-[#6e7979] opacity-40';
   return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
 }
 

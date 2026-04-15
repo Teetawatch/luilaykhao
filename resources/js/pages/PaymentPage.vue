@@ -123,7 +123,7 @@
               <span class="material-symbols-rounded text-red-500 text-[20px] flex-shrink-0 mt-0.5">warning</span>
               <div class="text-sm text-red-700 leading-relaxed">
                 <p class="font-bold mb-1">ข้อสงวนสิทธิ์การผ่อนชำระ</p>
-                <p>หากท่านไม่ชำระเงินภายในวันครบกำหนดของแต่ละงวด <strong>ทางบริษัทขอสงวนสิทธิ์ไม่คืนเงินในทุกกรณี</strong> และอาจยกเลิกการจองโดยไม่แจ้งล่วงหน้า กรุณาตรวจสอบวันครบกำหนดในตารางข้างต้นและชำระให้ตรงเวลา</p>
+                <p>หากท่านไม่ชำระเงินภายในวันครบกำหนดของแต่ละงวด <strong>ทางลุยเลเขาขอสงวนสิทธิ์ไม่คืนเงินในทุกกรณี</strong> และอาจยกเลิกการจองโดยไม่แจ้งล่วงหน้า กรุณาตรวจสอบวันครบกำหนดในตารางข้างต้นและชำระให้ตรงเวลา</p>
               </div>
             </div>
           </div>
@@ -184,7 +184,7 @@
             </p>
             <div class="space-y-2 text-sm text-[#3e4949]">
               <div class="flex justify-between"><span class="text-[#6e7979]">ธนาคาร</span><span class="font-semibold">กสิกรไทย (KBank)</span></div>
-              <div class="flex justify-between"><span class="text-[#6e7979]">ชื่อบัญชี</span><span class="font-semibold">บริษัท ลุยเลยขาว จำกัด</span></div>
+              <div class="flex justify-between"><span class="text-[#6e7979]">ชื่อบัญชี</span><span class="font-semibold">ลุยเลเขา</span></div>
               <div class="flex justify-between"><span class="text-[#6e7979]">เลขที่บัญชี</span><span class="font-semibold tracking-wider">062-6-12600-6</span></div>
             </div>
             <p class="text-xs text-[#6e7979]">
@@ -220,19 +220,19 @@
                 <span class="material-symbols-rounded text-[18px] text-red-500">close</span>
               </button>
             </div>
-            <input ref="slipInputRef" type="file" accept="image/*" class="hidden" @change="onSlipChange" />
+            <input ref="slipInputRef" type="file" accept="image/*" required class="hidden" @change="onSlipChange" />
           </div>
 
           <!-- Transfer Datetime -->
           <div class="grid grid-cols-2 gap-4 mt-4">
             <div class="space-y-1.5">
-              <label class="block text-sm font-semibold text-[#1a1c1c]">วันที่โอน</label>
-              <input v-model="transferDate" type="date"
+              <label class="block text-sm font-semibold text-[#1a1c1c]">วันที่โอน <span class="text-red-500">*</span></label>
+              <input v-model="transferDate" type="date" required
                 class="w-full px-4 py-2.5 rounded-xl border border-[#e2e2e2] bg-white text-sm text-[#1a1c1c] focus:outline-none focus:border-[#006565] focus:ring-2 focus:ring-[#006565]/20 transition" />
             </div>
             <div class="space-y-1.5">
-              <label class="block text-sm font-semibold text-[#1a1c1c]">เวลาที่โอน</label>
-              <input v-model="transferTime" type="time"
+              <label class="block text-sm font-semibold text-[#1a1c1c]">เวลาที่โอน <span class="text-red-500">*</span></label>
+              <input v-model="transferTime" type="time" required
                 class="w-full px-4 py-2.5 rounded-xl border border-[#e2e2e2] bg-white text-sm text-[#1a1c1c] focus:outline-none focus:border-[#006565] focus:ring-2 focus:ring-[#006565]/20 transition" />
             </div>
           </div>
@@ -333,7 +333,6 @@
           </div>
         </div>
       </aside>
-
     </div>
   </div>
 </template>
@@ -494,6 +493,14 @@ function formatDate(d) {
 async function processPayment() {
   if (!slipFile.value) {
     paymentError.value = 'กรุณาอัปโหลดสลิปการโอนเงินก่อนกดชำระ';
+    return;
+  }
+  if (!transferDate.value) {
+    paymentError.value = 'กรุณาระบุวันที่โอนเงิน';
+    return;
+  }
+  if (!transferTime.value) {
+    paymentError.value = 'กรุณาระบุเวลาที่โอนเงิน';
     return;
   }
   paying.value = true;

@@ -19,6 +19,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
+use App\Services\BookingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,10 @@ use Illuminate\Support\Str;
 class AdminController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(
+        private BookingService $bookingService,
+    ) {}
 
     // ─── Dashboard Stats ──────────────────────────────────────
 
@@ -282,15 +287,16 @@ class AdminController extends Controller
             'cancellation_reason' => ['nullable', 'string'],
         ]);
 
-        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+        $booking = Booking::with('seats')->where('booking_ref', $ref)->firstOrFail();
 
-        $updateData = ['status' => $request->status];
         if ($request->status === 'cancelled' || $request->status === 'refunded') {
-            $updateData['cancellation_reason'] = $request->cancellation_reason;
-            $updateData['cancelled_at'] = now();
+            $booking = $this->bookingService->cancelBooking($booking, $request->cancellation_reason);
+            if ($request->status === 'refunded') {
+                $booking->update(['status' => 'refunded']);
+            }
+        } else {
+            $booking->update(['status' => $request->status]);
         }
-
-        $booking->update($updateData);
 
         return $this->success(new BookingResource($booking->fresh()), 'อัปเดตสถานะสำเร็จ');
     }
