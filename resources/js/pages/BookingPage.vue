@@ -1037,6 +1037,7 @@ async function createBooking() {
     icon: 'info',
     showCancelButton: true,
     confirmButtonText: 'ยืนยันและชำระเงิน',
+
     cancelButtonText: 'ยกเลิก',
     customClass: {
       popup: 'swal-popup',

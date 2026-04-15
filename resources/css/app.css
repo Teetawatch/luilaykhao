@@ -93,6 +93,7 @@ body {
     font-weight: 700 !important;
     font-size: 0.875rem !important;
     transition: background-color 0.2s, transform 0.15s !important;
+    margin-right: 0.75rem !important;
 }
 .swal-btn-confirm:hover {
     background-color: var(--color-accent-mid) !important;
