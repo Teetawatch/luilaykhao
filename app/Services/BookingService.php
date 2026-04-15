@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Mail\BookingCreatedMail;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class BookingService
 {
@@ -92,7 +94,11 @@ class BookingService
             // Update booked seats count
             $schedule->increment('booked_seats', $participantCount);
 
-            return $booking->load(['passengers', 'seats', 'schedule.trip']);
+            $booking->load(['passengers', 'seats', 'schedule.trip']);
+
+            Mail::to($booking->user->email)->send(new BookingCreatedMail($booking));
+
+            return $booking;
         });
     }
 

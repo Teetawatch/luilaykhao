@@ -782,6 +782,7 @@ import { useSeatsStore } from '../stores/seats';
 import { useBookingStore } from '../stores/booking';
 import SeatMap from '../components/SeatMap.vue';
 import CountdownTimer from '../components/CountdownTimer.vue';
+import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
 
@@ -972,12 +973,46 @@ function goToSummary() {
 }
 
 async function createBooking() {
-  const { isConfirmed } = await swal.confirm({
-    title: 'ยืนยันการจอง?',
-    text: `จำนวน ${passengers.value.length} ท่าน · ฿${totalAmount.value.toLocaleString()}`,
-    icon: 'question',
-    confirmText: 'ยืนยันและชำระเงิน',
-    cancelText: 'ยกเลิก',
+  const { isConfirmed } = await Swal.fire({
+    title: 'เงื่อนไขก่อนยืนยันการจอง',
+    html: `
+      <div style="text-align:left; font-size:14px; color:#374151; line-height:1.7;">
+        <p style="font-weight:700; color:#0f766e; margin-bottom:10px; font-size:15px;">การสำรองที่นั่ง และการเปลี่ยนแปลง</p>
+        <ol style="padding-left:18px; margin:0 0 16px 0; display:flex; flex-direction:column; gap:8px;">
+          <li>เมื่อท่านยืนยันสิทธิ์การเดินทางแล้ว ทางทีมงานขอสงวนสิทธิ์ในการคืนเงินมัดจำ / ค่าทริป<strong>ทุกกรณี</strong></li>
+          <li>หากไม่สะดวกในวันดังกล่าว สามารถแจ้งเลื่อนได้ <strong>1 ครั้ง</strong> โดยรบกวนแจ้งล่วงหน้าอย่างน้อย <strong>45 วัน</strong> ก่อนวันเดินทางเดิม</li>
+          <li>กรณีต้องการเปลี่ยนแปลงตัวผู้เดินทาง สามารถหาคนมาแทนได้ โดยรบกวนแจ้งรายละเอียดให้ทีมงานทราบล่วงหน้าอย่างน้อย <strong>15 วัน</strong></li>
+        </ol>
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; color:#166534;">
+          <strong>สรุปการจอง:</strong> จำนวน ${passengers.value.length} ท่าน · ฿${totalAmount.value.toLocaleString()}
+        </div>
+        <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; user-select:none;">
+          <input type="checkbox" id="swal-terms-checkbox" style="margin-top:3px; width:16px; height:16px; accent-color:#0f766e; cursor:pointer; flex-shrink:0;" />
+          <span>ข้าพเจ้าได้อ่านและ<strong>ยอมรับเงื่อนไข</strong>ข้างต้นทุกข้อแล้ว</span>
+        </label>
+      </div>
+    `,
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยันและชำระเงิน',
+    cancelButtonText: 'ยกเลิก',
+    customClass: {
+      popup: 'swal-popup',
+      confirmButton: 'swal-btn-confirm',
+      cancelButton: 'swal-btn-cancel',
+      title: 'swal-title',
+      htmlContainer: 'swal-html',
+    },
+    buttonsStyling: false,
+    reverseButtons: true,
+    preConfirm: () => {
+      const cb = document.getElementById('swal-terms-checkbox');
+      if (!cb || !cb.checked) {
+        Swal.showValidationMessage('กรุณายอมรับเงื่อนไขก่อนดำเนินการต่อ');
+        return false;
+      }
+      return true;
+    },
   });
   if (!isConfirmed) return;
 

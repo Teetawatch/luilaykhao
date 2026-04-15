@@ -31,7 +31,7 @@
             <!-- Go back to booking button -->
             <router-link
               :to="`/booking/${seatsStore.activeBookingInfo?.scheduleId}`"
-              class="shrink-0 hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors active:scale-95">
+              class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors active:scale-95">
               <span class="material-symbols-rounded text-[16px]">arrow_forward</span>
               ดำเนินการต่อ
             </router-link>
