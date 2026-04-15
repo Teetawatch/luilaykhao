@@ -380,7 +380,7 @@ onMounted(loadAnalytics);
   font-size: 28px;
   font-weight: 700;
   color: var(--color-text-dark);
-  font-family: var(--font-playfair);
+  font-family: var(--font-anuphan);
 }
 
 .stat-badge {
