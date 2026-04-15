@@ -2,10 +2,10 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-map-marked-alt"></i> ติดตามรถแบบเรียลไทม์</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">map</span> ติดตามรถแบบเรียลไทม์</h1>
         <p class="page-subtitle">
           <span class="ws-status" :class="wsConnected ? 'connected' : 'disconnected'">
-            <i class="fas fa-circle"></i>
+            <span class="material-symbols-rounded" style="font-size: 10px;">circle</span>
             {{ wsConnected ? 'เชื่อมต่อแล้ว (Real-time)' : 'ไม่ได้เชื่อมต่อ' }}
           </span>
         </p>
@@ -13,13 +13,15 @@
       <div class="header-actions">
         <label class="toggle-trail">
           <input type="checkbox" v-model="showTrail" @change="toggleTrail" />
-          <span><i class="fas fa-route"></i> แสดงเส้นทาง</span>
+          <span style="display:flex;align-items:center;gap:4px;">
+            <span class="material-symbols-rounded" style="font-size:16px;">route</span> แสดงเส้นทาง
+          </span>
         </label>
         <button class="btn-secondary" @click="centerAll">
-          <i class="fas fa-expand-arrows-alt"></i> แสดงทั้งหมด
+          <span class="material-symbols-rounded">zoom_out_map</span> แสดงทั้งหมด
         </button>
         <button class="btn-primary" @click="refreshLocations" :disabled="loading">
-          <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i> รีเฟรช
+          <span class="material-symbols-rounded" :class="{ 'animate-spin': loading }">sync</span> รีเฟรช
         </button>
       </div>
     </div>
@@ -28,7 +30,7 @@
       <!-- Sidebar -->
       <div class="tracking-sidebar">
         <div class="sidebar-search">
-          <i class="fas fa-search"></i>
+          <span class="material-symbols-rounded">search</span>
           <input v-model="searchQuery" placeholder="ค้นหารถ..." />
         </div>
 
@@ -45,16 +47,16 @@
               <div class="vehicle-list-name">{{ v.vehicle_name }}</div>
               <div class="vehicle-list-plate">{{ v.license_plate || 'ไม่มีทะเบียน' }}</div>
               <div class="vehicle-list-meta">
-                <span v-if="v.speed != null">
-                  <i class="fas fa-tachometer-alt"></i> {{ Math.round(v.speed) }} km/h
+                <span v-if="v.speed != null" style="display:flex;align-items:center;gap:2px;">
+                  <span class="material-symbols-rounded" style="font-size:12px;">speed</span> {{ Math.round(v.speed) }} km/h
                 </span>
                 <span>{{ timeAgo(v.recorded_at) }}</span>
               </div>
             </div>
-            <i class="fas fa-chevron-right vehicle-list-arrow"></i>
+            <span class="material-symbols-rounded vehicle-list-arrow">chevron_right</span>
           </div>
           <div v-if="!filteredVehicles.length" class="vehicle-list-empty">
-            <i class="fas fa-car-side"></i>
+            <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 8px;">directions_car</span>
             <p>{{ loading ? 'กำลังโหลด...' : 'ไม่พบข้อมูลรถ' }}</p>
           </div>
         </div>
@@ -82,10 +84,12 @@
         <!-- Selected vehicle overlay -->
         <div v-if="selectedVehicle" class="map-info-overlay">
           <button class="map-info-close" @click="selectedVehicleId = null">
-            <i class="fas fa-times"></i>
+            <span class="material-symbols-rounded">close</span>
           </button>
           <div class="map-info-header">
-            <i :class="selectedVehicle.type === 'boat' ? 'fas fa-ship' : 'fas fa-shuttle-van'"></i>
+            <span class="material-symbols-rounded icon-lg highlight">
+              {{ selectedVehicle.type === 'boat' ? 'directions_boat' : 'airport_shuttle' }}
+            </span>
             <div>
               <div class="map-info-name">{{ selectedVehicle.vehicle_name }}</div>
               <div class="map-info-plate">{{ selectedVehicle.license_plate }}</div>
@@ -93,47 +97,47 @@
           </div>
           <div class="map-info-details">
             <div class="map-info-row">
-              <i class="fas fa-map-pin"></i>
+              <span class="material-symbols-rounded text-icon">location_on</span>
               <span>{{ selectedVehicle.latitude?.toFixed(5) }}, {{ selectedVehicle.longitude?.toFixed(5) }}</span>
             </div>
             <div class="map-info-row" v-if="selectedVehicle.speed != null">
-              <i class="fas fa-tachometer-alt"></i>
+              <span class="material-symbols-rounded text-icon">speed</span>
               <span>{{ Math.round(selectedVehicle.speed) }} km/h</span>
             </div>
             <div class="map-info-row" v-if="selectedVehicle.heading != null">
-              <i class="fas fa-compass"></i>
+              <span class="material-symbols-rounded text-icon">explore</span>
               <span>{{ Math.round(selectedVehicle.heading) }}°</span>
             </div>
             <div class="map-info-row">
-              <i class="fas fa-clock"></i>
+              <span class="material-symbols-rounded text-icon">schedule</span>
               <span>{{ timeAgo(selectedVehicle.recorded_at) }}</span>
             </div>
             <div class="map-info-row" v-if="trailPoints[selectedVehicle.vehicle_id]?.length">
-              <i class="fas fa-route"></i>
+              <span class="material-symbols-rounded text-icon">route</span>
               <span>{{ trailPoints[selectedVehicle.vehicle_id].length }} จุดในเส้นทาง</span>
             </div>
           </div>
           <!-- ETA Section -->
           <div v-if="etaData[selectedVehicle.vehicle_id]" class="map-info-eta">
-            <div class="eta-header"><i class="fas fa-route"></i> ETA ถึงปลายทาง</div>
+            <div class="eta-header"><span class="material-symbols-rounded" style="font-size:14px;">route</span> ETA ถึงปลายทาง</div>
             <div class="eta-row">
-              <span class="eta-badge distance"><i class="fas fa-road"></i> {{ etaData[selectedVehicle.vehicle_id].distance?.text }}</span>
-              <span class="eta-badge duration"><i class="fas fa-clock"></i> {{ etaData[selectedVehicle.vehicle_id].duration?.text }}</span>
+              <span class="eta-badge distance"><span class="material-symbols-rounded" style="font-size:12px;">add_road</span> {{ etaData[selectedVehicle.vehicle_id].distance?.text }}</span>
+              <span class="eta-badge duration"><span class="material-symbols-rounded" style="font-size:12px;">schedule</span> {{ etaData[selectedVehicle.vehicle_id].duration?.text }}</span>
             </div>
             <div v-if="etaData[selectedVehicle.vehicle_id].duration_in_traffic" class="eta-row">
-              <span class="eta-badge traffic"><i class="fas fa-car"></i> สภาพจราจร: {{ etaData[selectedVehicle.vehicle_id].duration_in_traffic?.text }}</span>
+              <span class="eta-badge traffic"><span class="material-symbols-rounded" style="font-size:12px;">directions_car</span> สภาพจราจร: {{ etaData[selectedVehicle.vehicle_id].duration_in_traffic?.text }}</span>
             </div>
           </div>
           <div class="map-info-actions">
             <button class="btn-eta btn-sm" @click="promptETACalculation(selectedVehicle)" :disabled="etaLoading">
-              <i class="fas fa-spinner fa-spin" v-if="etaLoading"></i>
-              <i class="fas fa-map-signs" v-else></i>
+              <span class="material-symbols-rounded animate-spin" v-if="etaLoading">sync</span>
+              <span class="material-symbols-rounded" v-else>directions</span>
               {{ etaLoading ? 'กำลังคำนวณ...' : 'คำนวณ ETA' }}
             </button>
             <button class="btn-danger btn-sm btn-clear-trail"
               v-if="trailPoints[selectedVehicle.vehicle_id]?.length"
               @click="clearTrail(selectedVehicle.vehicle_id)">
-              <i class="fas fa-trash"></i> ล้างเส้นทาง
+              <span class="material-symbols-rounded">delete</span> ล้างเส้นทาง
             </button>
           </div>
         </div>
@@ -209,24 +213,15 @@ function initMap() {
   }).addTo(map);
 }
 
-// SVG icons — ใช้ inline เพราะ Font Awesome ไม่โหลดใน Leaflet divIcon
-const SVG_VAN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18">
-  <path d="M20 8h-3L15 4H5C3.9 4 3 4.9 3 6v11h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-5l-3-4zM8 18a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm10 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2zM5 13V6h9l1.5 4H5v3z"/>
-</svg>`;
-
-const SVG_BOAT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18">
-  <path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.02-.88 4-2 .98 1.12 2.4 2 4 2s3.02-.88 4-2c.98 1.12 2.4 2 4 2h.05l1.89-6.68c.08-.26.06-.54-.06-.78s-.34-.42-.6-.5L20 10.62V6c0-1.1-.9-2-2-2h-3V1H9v3H6c-1.1 0-2 .9-2 2v4.62l-1.29.42c-.26.08-.48.26-.6.5s-.14.52-.06.78L3.95 19zM6 6h12v3.97L12 8 6 9.97V6z"/>
-</svg>`;
-
 function createIcon(vehicle, online) {
-  const color  = online ? '#22c55e' : '#9ca3af';
-  const border = online ? '#16a34a' : '#6b7280';
-  const svgIcon = vehicle.type === 'boat' ? SVG_BOAT : SVG_VAN;
+  const color  = online ? 'var(--color-accent)' : 'var(--color-text-muted)';
+  const border = online ? 'var(--color-ocean)' : 'var(--color-sand-dark)';
+  const materialIcon = vehicle.type === 'boat' ? 'directions_boat' : 'airport_shuttle';
 
   // Heading rotation — หมุนเฉพาะไอคอน ไม่หมุน label
   const rot = (vehicle.heading != null)
-    ? `style="transform:rotate(${vehicle.heading}deg);display:flex;align-items:center;justify-content:center;"`
-    : 'style="display:flex;align-items:center;justify-content:center;"';
+    ? `style="transform:rotate(${vehicle.heading}deg);display:flex;align-items:center;justify-content:center;background:${color};border-color:${border};"`
+    : `style="display:flex;align-items:center;justify-content:center;background:${color};border-color:${border};"`;
 
   // Label: ชื่อรถ + ทะเบียน (ถ้ามี)
   const name  = vehicle.vehicle_name ?? '';
@@ -234,8 +229,8 @@ function createIcon(vehicle, online) {
 
   const html = `
     <div class="mk-wrap">
-      <div class="mk-dot" style="background:${color};border-color:${border}" ${rot}>
-        ${svgIcon}
+      <div class="mk-dot" ${rot}>
+        <span class="material-symbols-rounded" style="color:white; font-size:18px;">${materialIcon}</span>
       </div>
       <div class="mk-label">
         <span class="mk-name">${name}</span>
@@ -484,6 +479,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+@import url('./admin-shared.css');
+
 /* ─── Header ─────────────────────────────── */
 .ws-status {
   display: inline-flex;
@@ -494,132 +491,136 @@ onUnmounted(() => {
   padding: 3px 10px;
   border-radius: 20px;
 }
-.ws-status.connected  { background: #dcfce7; color: #16a34a; }
+.ws-status.connected  { background: var(--color-sand); color: var(--color-accent); }
 .ws-status.disconnected { background: #fee2e2; color: #dc2626; }
-.ws-status i { font-size: 8px; }
 
 .header-actions { display: flex; gap: 10px; align-items: center; }
 
 .toggle-trail {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
   font-size: 13px;
-  color: #374151;
-  padding: 7px 12px;
-  border: 1px solid #d1d5db;
+  color: var(--color-text-mid);
+  padding: 8px 14px;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
-  background: white;
+  background: var(--color-white);
   user-select: none;
+  font-weight: 600;
 }
-.toggle-trail input { accent-color: #3b82f6; width: 15px; height: 15px; }
+.toggle-trail input { accent-color: var(--color-accent); width: 15px; height: 15px; }
 
 /* ─── Layout ─────────────────────────────── */
 .tracking-container {
   display: flex;
   height: calc(100vh - 200px);
   min-height: 500px;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  border: 1px solid var(--color-sand-dark);
+  background: var(--color-white);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
 }
 
 /* ─── Sidebar ────────────────────────────── */
 .tracking-sidebar {
-  width: 300px;
+  width: 320px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--color-sand-dark);
 }
 
 .sidebar-search {
-  padding: 12px 14px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-sand-dark);
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
-.sidebar-search input { border: none; outline: none; flex: 1; font-size: 14px; color: #374151; }
+.sidebar-search input { border: none; outline: none; flex: 1; font-size: 14px; color: var(--color-text-dark); background: transparent; }
 
 .vehicle-list { flex: 1; overflow-y: auto; }
 
 .vehicle-list-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
+  gap: 12px;
+  padding: 14px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #f3f4f6;
-  transition: background 0.12s;
+  border-bottom: 1px solid var(--color-sand-dark);
+  transition: background 0.15s;
 }
-.vehicle-list-item:hover { background: #f9fafb; }
-.vehicle-list-item.active { background: #eff6ff; border-left: 3px solid #3b82f6; }
+.vehicle-list-item:hover { background: var(--color-sand); }
+.vehicle-list-item.active { background: #eff6ff; border-left: 4px solid var(--color-accent); padding-left: 12px; }
 
-.vehicle-status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.vehicle-status-dot.online  { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.5); }
-.vehicle-status-dot.offline { background: #d1d5db; }
+.vehicle-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.vehicle-status-dot.online  { background: var(--color-accent); box-shadow: 0 0 6px rgba(45, 122, 79, 0.4); }
+.vehicle-status-dot.offline { background: var(--color-text-muted); }
 
 .vehicle-list-info { flex: 1; min-width: 0; }
-.vehicle-list-name  { font-size: 13px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vehicle-list-plate { font-size: 12px; color: #6b7280; }
-.vehicle-list-meta  { display: flex; gap: 8px; font-size: 11px; color: #9ca3af; margin-top: 2px; }
-.vehicle-list-arrow { color: #d1d5db; font-size: 11px; }
+.vehicle-list-name  { font-size: 14px; font-weight: 700; color: var(--color-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vehicle-list-plate { font-size: 12px; color: var(--color-text-muted); margin-top: 2px;}
+.vehicle-list-meta  { display: flex; gap: 8px; font-size: 11px; color: var(--color-text-muted); margin-top: 4px; }
+.vehicle-list-arrow { color: var(--color-text-muted); font-size: 16px; }
 
-.vehicle-list-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: #9ca3af; }
-.vehicle-list-empty i { font-size: 30px; margin-bottom: 8px; }
+.vehicle-list-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--color-text-muted); }
+.vehicle-list-empty p { font-size: 14px; margin-top: 8px; }
 
-.sidebar-stats { display: flex; border-top: 1px solid #e5e7eb; padding: 10px 12px; gap: 8px; }
-.stat-item { flex: 1; text-align: center; padding: 7px; border-radius: 8px; background: #f9fafb; }
-.stat-item.online  .stat-count { color: #22c55e; }
-.stat-item.offline .stat-count { color: #9ca3af; }
-.stat-item.total   .stat-count { color: #3b82f6; }
+.sidebar-stats { display: flex; border-top: 1px solid var(--color-sand-dark); padding: 12px; gap: 8px; background: var(--color-white); }
+.stat-item { flex: 1; text-align: center; padding: 10px; border-radius: 10px; background: var(--color-sand); border: 1px solid var(--color-sand-dark); }
+.stat-item.online  .stat-count { color: var(--color-accent); }
+.stat-item.offline .stat-count { color: var(--color-text-muted); }
+.stat-item.total   .stat-count { color: var(--color-ocean); }
 .stat-count { display: block; font-size: 20px; font-weight: 700; }
-.stat-label { font-size: 11px; color: #6b7280; }
+.stat-label { font-size: 11px; color: var(--color-text-mid); font-weight: 500; margin-top: 4px; display: block; }
 
 /* ─── Map ─────────────────────────────────── */
 .tracking-map-wrapper { flex: 1; position: relative; }
-.tracking-map { width: 100%; height: 100%; }
+.tracking-map { width: 100%; height: 100%; border-top-right-radius: 16px; border-bottom-right-radius: 16px;}
 
 /* ─── Info Overlay ───────────────────────── */
 .map-info-overlay {
   position: absolute;
   bottom: 20px;
   left: 20px;
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.15);
+  background: var(--color-white);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.1);
   z-index: 1000;
-  min-width: 250px;
+  min-width: 280px;
+  border: 1px solid var(--color-sand-dark);
 }
-.map-info-close { position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; color: #9ca3af; }
-.map-info-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.map-info-header > i { font-size: 22px; color: #2d7a4f; }
-.map-info-name  { font-size: 15px; font-weight: 700; color: #111827; }
-.map-info-plate { font-size: 12px; color: #6b7280; }
-.map-info-details { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
-.map-info-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; }
-.map-info-row i { width: 14px; text-align: center; color: #9ca3af; }
+.map-info-close { position: absolute; top: 12px; right: 12px; background: none; border: none; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; }
+.map-info-close:hover { color: var(--color-text-dark); }
 
-.map-info-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.btn-clear-trail { flex: 1; justify-content: center; }
-.btn-danger { background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.map-info-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--color-sand-dark);}
+.icon-lg { font-size: 28px; color: var(--color-accent); }
+.map-info-name  { font-size: 16px; font-weight: 700; color: var(--color-text-dark); }
+.map-info-plate { font-size: 12px; color: var(--color-text-muted); margin-top: 2px;}
+
+.map-info-details { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.map-info-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--color-text-mid); }
+.text-icon { font-size: 16px; color: var(--color-text-muted); }
+
+.map-info-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--color-sand-dark);}
+.btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; font-weight: 600;}
 .btn-danger:hover { background: #fecaca; }
-.btn-eta { background: #eff6ff; color: #2563eb; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; }
+.btn-eta { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; font-weight: 600;}
 .btn-eta:hover { background: #dbeafe; }
 .btn-eta:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.map-info-eta { margin: 8px 0; padding: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; }
-.eta-header { font-size: 12px; font-weight: 700; color: #16a34a; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.eta-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
-.eta-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
-.eta-badge.distance { background: #dbeafe; color: #1e40af; }
-.eta-badge.duration { background: #dcfce7; color: #166534; }
-.eta-badge.traffic  { background: #fef3c7; color: #92400e; }
+.map-info-eta { margin: 12px 0 0 0; padding: 12px; background: var(--color-sand); border: 1px solid var(--color-sand-dark); border-radius: 10px; }
+.eta-header { font-size: 12px; font-weight: 700; color: var(--color-text-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.eta-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.eta-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
+.eta-badge.distance { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.eta-badge.duration { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.eta-badge.traffic  { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 
 /* ─── Custom Marker ──────────────────────── */
 :deep(.vehicle-marker-icon) {
@@ -640,28 +641,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
   border: 3px solid white;
   flex-shrink: 0;
   transition: transform 0.4s ease;
 }
-:deep(.mk-dot svg) {
-  display: block;
-  flex-shrink: 0;
-}
 :deep(.mk-label) {
-  background: rgba(17,24,39,0.85);
-  color: white;
-  padding: 3px 7px;
+  background: var(--color-white);
+  color: var(--color-text-dark);
+  padding: 4px 8px;
   border-radius: 6px;
   margin-top: 4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
   max-width: 80px;
   pointer-events: none;
+  border: 1px solid var(--color-sand-dark);
 }
 :deep(.mk-name) {
   font-size: 11px;
@@ -674,8 +672,8 @@ onUnmounted(() => {
 }
 :deep(.mk-plate) {
   font-size: 10px;
-  font-weight: 400;
-  opacity: 0.85;
+  font-weight: 500;
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -686,7 +684,8 @@ onUnmounted(() => {
 /* ─── Responsive ─────────────────────────── */
 @media (max-width: 768px) {
   .tracking-container { flex-direction: column; height: auto; }
-  .tracking-sidebar   { width: 100%; max-height: 250px; border-right: none; border-bottom: 1px solid #e5e7eb; }
+  .tracking-sidebar   { width: 100%; max-height: 280px; border-right: none; border-bottom: 1px solid var(--color-sand-dark); }
   .tracking-map-wrapper { min-height: 400px; }
+  .map-info-overlay { left: 10px; right: 10px; bottom: 10px; min-width: 0; }
 }
 </style>

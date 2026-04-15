@@ -2,39 +2,39 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-star"></i> ระบบสะสมแต้ม</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">star</span> ระบบสะสมแต้ม</h1>
         <p class="page-subtitle">จัดการของรางวัลและดูสถิติโปรแกรมสมาชิก</p>
       </div>
       <button class="btn-primary" @click="openCreate">
-        <i class="fas fa-plus"></i> เพิ่มของรางวัล
+        <span class="material-symbols-rounded">add</span> เพิ่มของรางวัล
       </button>
     </div>
 
     <!-- Stats -->
     <div class="stats-grid mb-20" v-if="loyaltyStats">
       <div class="stat-card stat-primary">
-        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-icon"><span class="material-symbols-rounded">group</span></div>
         <div class="stat-content">
           <span class="stat-value">{{ loyaltyStats.total_accounts?.toLocaleString() }}</span>
           <span class="stat-label">สมาชิกทั้งหมด</span>
         </div>
       </div>
       <div class="stat-card stat-success">
-        <div class="stat-icon"><i class="fas fa-coins"></i></div>
+        <div class="stat-icon"><span class="material-symbols-rounded">monetization_on</span></div>
         <div class="stat-content">
           <span class="stat-value">{{ loyaltyStats.total_points_issued?.toLocaleString() }}</span>
           <span class="stat-label">แต้มที่ออกทั้งหมด</span>
         </div>
       </div>
       <div class="stat-card stat-revenue">
-        <div class="stat-icon"><i class="fas fa-gift"></i></div>
+        <div class="stat-icon"><span class="material-symbols-rounded">card_giftcard</span></div>
         <div class="stat-content">
           <span class="stat-value">{{ loyaltyStats.total_points_redeemed?.toLocaleString() }}</span>
           <span class="stat-label">แต้มที่แลกไปแล้ว</span>
         </div>
       </div>
       <div class="stat-card stat-info">
-        <div class="stat-icon"><i class="fas fa-medal"></i></div>
+        <div class="stat-icon"><span class="material-symbols-rounded">workspace_premium</span></div>
         <div class="stat-content">
           <span class="stat-value">{{ loyaltyStats.tier_counts?.gold }}</span>
           <span class="stat-label">Gold / {{ loyaltyStats.tier_counts?.silver }} Silver</span>
@@ -45,11 +45,11 @@
     <!-- Tier Overview -->
     <div class="table-card mb-20" v-if="loyaltyStats">
       <div class="card-header">
-        <h3><i class="fas fa-layer-group"></i> สัดส่วนระดับสมาชิก</h3>
+        <h3><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">layers</span> สัดส่วนระดับสมาชิก</h3>
       </div>
       <div class="tier-bars">
         <div v-for="tier in tierList" :key="tier.key" class="tier-bar-row">
-          <div class="tier-icon">{{ tier.emoji }}</div>
+          <span class="material-symbols-rounded tier-icon" :class="tier.colorClass">{{ tier.icon }}</span>
           <span class="tier-name">{{ tier.label }}</span>
           <div class="tier-track">
             <div
@@ -65,7 +65,7 @@
     <!-- Rewards Table -->
     <div class="table-card">
       <div class="card-header">
-        <h3><i class="fas fa-gift"></i> ของรางวัลทั้งหมด</h3>
+        <h3><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">card_giftcard</span> ของรางวัลทั้งหมด</h3>
       </div>
 
       <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
@@ -104,10 +104,10 @@
                 <td>
                   <div class="action-group">
                     <button class="btn-icon" @click="openEdit(r)" title="แก้ไข">
-                      <i class="fas fa-edit"></i>
+                      <span class="material-symbols-rounded">edit</span>
                     </button>
                     <button class="btn-icon btn-danger" @click="deleteReward(r.id)" title="ลบ">
-                      <i class="fas fa-trash"></i>
+                      <span class="material-symbols-rounded">delete</span>
                     </button>
                   </div>
                 </td>
@@ -126,7 +126,7 @@
       <div class="modal-box">
         <div class="modal-header">
           <h3>{{ editingId ? 'แก้ไขของรางวัล' : 'เพิ่มของรางวัล' }}</h3>
-          <button class="modal-close" @click="showModal = false">×</button>
+          <button class="modal-close" @click="showModal = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -202,9 +202,9 @@ const typeLabels = {
 };
 
 const tierList = [
-  { key: 'regular', label: 'Regular', emoji: '🌿', cls: 'fill-regular' },
-  { key: 'silver',  label: 'Silver',  emoji: '🥈', cls: 'fill-silver' },
-  { key: 'gold',    label: 'Gold',    emoji: '🥇', cls: 'fill-gold' },
+  { key: 'regular', label: 'Regular', icon: 'local_florist', colorClass: 'tier-color-regular', cls: 'fill-regular' },
+  { key: 'silver',  label: 'Silver',  icon: 'military_tech', colorClass: 'tier-color-silver', cls: 'fill-silver' },
+  { key: 'gold',    label: 'Gold',    icon: 'emoji_events', colorClass: 'tier-color-gold', cls: 'fill-gold' },
 ];
 
 function getTierPercent(key) {
@@ -300,19 +300,27 @@ onMounted(loadData);
   gap: 12px;
 }
 
-.tier-icon { font-size: 18px; width: 24px; text-align: center; }
+.tier-icon { 
+  font-size: 20px; 
+  width: 24px; 
+  text-align: center;
+}
+
+.tier-color-regular { color: var(--color-accent); }
+.tier-color-silver { color: #9ca3af; }
+.tier-color-gold { color: #d97706; }
 
 .tier-name {
   width: 65px;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-text-mid);
   font-weight: 500;
 }
 
 .tier-track {
   flex: 1;
   height: 8px;
-  background: #f3f4f6;
+  background: var(--color-sand-dark);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -323,33 +331,33 @@ onMounted(loadData);
   transition: width 0.6s ease;
 }
 
-.fill-regular { background: #6b7280; }
-.fill-silver  { background: #94a3b8; }
-.fill-gold    { background: #d97706; }
+.fill-regular { background: var(--color-accent); opacity: 0.8; }
+.fill-silver  { background: #9ca3af; }
+.fill-gold    { background: #f59e0b; }
 
 .tier-count {
   width: 30px;
   text-align: right;
   font-size: 13px;
   font-weight: 700;
-  color: #374151;
+  color: var(--color-text-mid);
 }
 
 .type-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 600;
 }
 
-.type-discount_percent { background: #dbeafe; color: #1d4ed8; }
-.type-discount_fixed   { background: #fef9c3; color: #a16207; }
-.type-free_item        { background: #ede9fe; color: #6d28d9; }
+.type-discount_percent { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+.type-discount_fixed   { background: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+.type-free_item        { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
 
 .text-muted-small {
   font-size: 11px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin: 2px 0 0;
 }
 
@@ -364,7 +372,7 @@ onMounted(loadData);
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-mid);
   cursor: pointer;
 }
 </style>

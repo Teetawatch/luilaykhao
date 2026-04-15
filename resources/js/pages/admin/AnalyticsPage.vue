@@ -2,7 +2,10 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-chart-area"></i> Analytics Dashboard</h1>
+        <h1 class="page-title">
+          <span class="material-symbols-rounded heading-icon">analytics</span>
+          Analytics Dashboard
+        </h1>
         <p class="page-subtitle">สถิติเชิงลึก การจอง รายได้ และแนวโน้ม</p>
       </div>
       <div class="date-range">
@@ -10,7 +13,7 @@
         <span class="date-sep">—</span>
         <input v-model="filters.to" type="date" class="date-input" />
         <button class="btn-primary" @click="loadAnalytics" :disabled="loading">
-          <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i> โหลด
+          <span class="material-symbols-rounded" :class="{ 'anim-spin': loading }">sync</span> โหลด
         </button>
       </div>
     </div>
@@ -21,46 +24,54 @@
 
       <!-- KPI Cards -->
       <div class="stats-grid">
-        <div class="stat-card stat-primary">
-          <div class="stat-icon"><i class="fas fa-ticket-alt"></i></div>
+        <div class="stat-card">
+          <div class="stat-icon bg-primary-light">
+            <span class="material-symbols-rounded">confirmation_number</span>
+          </div>
           <div class="stat-content">
-            <span class="stat-value">{{ data.summary.total_bookings.toLocaleString() }}</span>
             <span class="stat-label">จองทั้งหมด</span>
+            <span class="stat-value">{{ data.summary.total_bookings.toLocaleString() }}</span>
           </div>
-          <div class="stat-badge">ยืนยัน {{ data.summary.confirmed }} | ยกเลิก {{ data.summary.cancelled }}</div>
+          <div class="stat-badge fill-primary">ยืนยัน {{ data.summary.confirmed }} | ยกเลิก {{ data.summary.cancelled }}</div>
         </div>
 
-        <div class="stat-card stat-revenue">
-          <div class="stat-icon"><i class="fas fa-coins"></i></div>
+        <div class="stat-card">
+          <div class="stat-icon bg-accent-light">
+            <span class="material-symbols-rounded">payments</span>
+          </div>
           <div class="stat-content">
-            <span class="stat-value">{{ formatShort(data.summary.total_revenue) }}</span>
             <span class="stat-label">รายได้รวม</span>
+            <span class="stat-value">{{ formatShort(data.summary.total_revenue) }}</span>
           </div>
-          <div class="stat-badge">เฉลี่ย {{ formatMoney(data.summary.avg_order_value) }}/จอง</div>
+          <div class="stat-badge fill-accent">เฉลี่ย {{ formatMoney(data.summary.avg_order_value) }}/จอง</div>
         </div>
 
-        <div class="stat-card stat-success">
-          <div class="stat-icon"><i class="fas fa-user-plus"></i></div>
+        <div class="stat-card">
+          <div class="stat-icon bg-ocean-light">
+            <span class="material-symbols-rounded">group_add</span>
+          </div>
           <div class="stat-content">
-            <span class="stat-value">{{ data.summary.new_customers.toLocaleString() }}</span>
             <span class="stat-label">ลูกค้าใหม่</span>
+            <span class="stat-value">{{ data.summary.new_customers.toLocaleString() }}</span>
           </div>
-          <div class="stat-badge">Conversion {{ data.summary.conversion_rate }}%</div>
+          <div class="stat-badge fill-ocean">Conversion {{ data.summary.conversion_rate }}%</div>
         </div>
 
-        <div class="stat-card stat-info">
-          <div class="stat-icon"><i class="fas fa-star"></i></div>
-          <div class="stat-content">
-            <span class="stat-value">{{ data.summary.avg_rating }} ★</span>
-            <span class="stat-label">คะแนนเฉลี่ย</span>
+        <div class="stat-card">
+          <div class="stat-icon bg-gold-light">
+            <span class="material-symbols-rounded">star</span>
           </div>
-          <div class="stat-badge">จาก {{ data.summary.total_reviews }} รีวิว</div>
+          <div class="stat-content">
+            <span class="stat-label">คะแนนเฉลี่ย</span>
+            <span class="stat-value">{{ data.summary.avg_rating }}</span>
+          </div>
+          <div class="stat-badge fill-gold">จาก {{ data.summary.total_reviews }} รีวิว</div>
         </div>
       </div>
 
       <!-- Seat Alerts Banner -->
       <div v-if="seatAlerts.length > 0" class="alert-banner">
-        <div class="alert-icon"><i class="fas fa-fire"></i></div>
+        <div class="alert-icon"><span class="material-symbols-rounded">local_fire_department</span></div>
         <div class="alert-content">
           <p class="alert-title">ที่นั่งใกล้เต็ม! {{ seatAlerts.length }} รอบเดินทาง</p>
           <div class="alert-items">
@@ -77,7 +88,9 @@
       <!-- Revenue Trend Chart -->
       <div class="chart-card full-width">
         <div class="card-header">
-          <h3><i class="fas fa-chart-line"></i> แนวโน้มรายได้</h3>
+          <h3>
+            <span class="material-symbols-rounded">trending_up</span> แนวโน้มรายได้
+          </h3>
           <span class="period-label">{{ data.period.from }} ถึง {{ data.period.to }}</span>
         </div>
         <div class="trend-chart" v-if="data.revenue_trend.length">
@@ -110,7 +123,7 @@
         <!-- Top Trips -->
         <div class="chart-card">
           <div class="card-header">
-            <h3><i class="fas fa-trophy"></i> ทริปยอดนิยม</h3>
+            <h3><span class="material-symbols-rounded">emoji_events</span> ทริปยอดนิยม</h3>
           </div>
           <div class="top-trips">
             <div
@@ -138,7 +151,7 @@
         <!-- Day of Week -->
         <div class="chart-card">
           <div class="card-header">
-            <h3><i class="fas fa-calendar-week"></i> การจองตามวัน</h3>
+            <h3><span class="material-symbols-rounded">calendar_month</span> การจองตามวัน</h3>
           </div>
           <div class="dow-chart">
             <div
@@ -159,14 +172,16 @@
         <!-- Rating Distribution -->
         <div class="chart-card">
           <div class="card-header">
-            <h3><i class="fas fa-star"></i> การกระจายคะแนน</h3>
+            <h3><span class="material-symbols-rounded">star_half</span> การกระจายคะแนน</h3>
           </div>
           <div class="rating-dist">
             <div
               v-for="r in [...data.rating_distribution].reverse()"
               :key="r.stars"
               class="rating-row">
-              <span class="rating-stars">{{ '★'.repeat(r.stars) }}</span>
+              <div class="rating-stars">
+                <span v-for="s in r.stars" :key="s" class="material-symbols-rounded star-icon">star</span>
+              </div>
               <div class="rating-track">
                 <div
                   class="rating-fill"
@@ -272,80 +287,172 @@ onMounted(loadAnalytics);
 <style scoped>
 @import url('./admin-shared.css');
 
+.heading-icon {
+  color: var(--color-accent);
+  font-size: 28px;
+}
+
+.anim-spin {
+  animation: spin 1s linear infinite;
+}
+
 .date-range {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .date-input {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  font-size: 14px;
   outline: none;
-  color: #111827;
+  color: var(--color-text-dark);
+  background-color: var(--color-white);
+  transition: all 0.2s ease;
+  font-family: var(--font-anuphan);
 }
 
-.date-input:focus { border-color: #2d7a4f; }
-.date-sep { color: #9ca3af; font-size: 14px; }
+.date-input:focus { 
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.1);
+}
+.date-sep { color: var(--color-text-muted); font-size: 14px; }
+
+/* KPI Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon span {
+  font-size: 24px;
+}
+
+.bg-primary-light { background: #E8F0EC; color: var(--color-primary); }
+.bg-accent-light { background: #EAF2EE; color: var(--color-accent); }
+.bg-ocean-light { background: #E8F0F5; color: var(--color-ocean); }
+.bg-gold-light { background: #F9F4EB; color: var(--color-gold); }
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  font-family: var(--font-playfair);
+}
+
+.stat-badge {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.fill-primary { background: var(--color-sand); color: var(--color-primary-mid); }
+.fill-accent { background: var(--color-sand); color: var(--color-accent); }
+.fill-ocean { background: var(--color-sand); color: var(--color-ocean); }
+.fill-gold { background: var(--color-sand); color: var(--color-gold-dark); }
 
 /* Alert Banner */
 .alert-banner {
   display: flex;
-  gap: 14px;
-  background: #fff7ed;
+  gap: 16px;
+  background: var(--color-white);
   border: 1px solid #fed7aa;
   border-left: 4px solid #ea580c;
-  border-radius: 10px;
-  padding: 14px 18px;
-  margin-bottom: 20px;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
   align-items: flex-start;
+  box-shadow: 0 4px 6px rgba(234, 88, 12, 0.05);
 }
 
 .alert-icon {
-  font-size: 20px;
+  font-size: 24px;
   color: #ea580c;
-  padding-top: 2px;
 }
 
 .alert-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: #9a3412;
-  margin: 0 0 6px;
+  margin: 0 0 8px;
 }
 
 .alert-items {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .alert-item {
-  font-size: 12px;
+  font-size: 13px;
   background: #ffedd5;
-  color: #7c2d12;
-  border-radius: 20px;
-  padding: 2px 10px;
-  font-weight: 500;
+  color: #9a3412;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-weight: 600;
 }
 
 /* Chart Cards */
 .chart-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
 }
 
 .full-width { width: 100%; }
 
 .card-header {
-  padding: 14px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--color-sand-dark);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -353,173 +460,195 @@ onMounted(loadAnalytics);
 
 .card-header h3 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-dark);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.card-header h3 i { color: #2d7a4f; }
+.card-header h3 span { color: var(--color-accent); font-size: 20px; }
 
 .period-label {
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 /* Trend Chart */
 .trend-chart {
   display: flex;
-  padding: 16px 20px 8px;
-  height: 220px;
-  gap: 8px;
+  padding: 24px 24px 16px;
+  height: 260px;
+  gap: 16px;
 }
 
 .trend-y-axis {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding-bottom: 24px;
-  width: 44px;
+  padding-bottom: 28px;
+  width: 50px;
   text-align: right;
 }
 
 .y-label {
-  font-size: 10px;
-  color: #9ca3af;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 .trend-bars-wrap {
   flex: 1;
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 12px;
   overflow-x: auto;
   padding-bottom: 8px;
 }
 
 .trend-bar-col {
   flex: 1;
-  min-width: 28px;
-  max-width: 60px;
+  min-width: 32px;
+  max-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   height: 100%;
   justify-content: flex-end;
 }
 
 .trend-bar-container {
   width: 100%;
-  height: 160px;
+  height: 180px;
   display: flex;
   align-items: flex-end;
+  border-radius: 6px;
+  background: var(--color-sand);
+  overflow: hidden;
 }
 
 .trend-bar {
   width: 100%;
-  background: linear-gradient(to top, #2d7a4f, #4ade80);
-  border-radius: 4px 4px 0 0;
+  background: var(--color-accent);
   min-height: 4px;
-  transition: height 0.5s ease;
+  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   cursor: pointer;
+  border-radius: 6px 6px 0 0;
 }
 
-.trend-bar:hover .trend-tooltip { display: block; }
+.trend-bar:hover { background: var(--color-accent-mid); }
+
+.trend-bar:hover .trend-tooltip { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 .trend-tooltip {
-  display: none;
+  opacity: 0;
   position: absolute;
-  top: -28px;
+  top: -36px;
   left: 50%;
-  transform: translateX(-50%);
-  background: #111827;
-  color: #fff;
-  font-size: 10px;
-  padding: 3px 6px;
-  border-radius: 4px;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--color-text-dark);
+  color: var(--color-white);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
   white-space: nowrap;
+  pointer-events: none;
+  transition: all 0.2s ease;
   z-index: 10;
 }
 
+.trend-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: var(--color-text-dark) transparent transparent transparent;
+}
+
 .trend-label {
-  font-size: 10px;
-  color: #6b7280;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 600;
   text-align: center;
 }
 
 /* Bottom Row */
 .bottom-row {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 24px;
 }
 
 /* Top Trips */
 .top-trips {
-  padding: 12px 20px 16px;
+  padding: 16px 24px 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .top-trip-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
 .rank {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  font-size: 11px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-sand);
+  color: var(--color-text-muted);
   flex-shrink: 0;
 }
 
-.rank-1 { background: #fef9c3; color: #a16207; }
-.rank-2 { background: #f3f4f6; color: #4b5563; }
-.rank-3 { background: #fff7ed; color: #ea580c; }
+.rank-1 { background: #FEF3C7; color: #B45309; }
+.rank-2 { background: #E5E7EB; color: #4B5563; }
+.rank-3 { background: #FFEDD5; color: #C2410C; }
 
 .trip-info { flex: 1; min-width: 0; }
-.trip-name { font-size: 13px; font-weight: 600; color: #111827; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.trip-sub { font-size: 11px; color: #9ca3af; margin: 0; }
+.trip-name { font-size: 14px; font-weight: 700; color: var(--color-text-dark); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-sub { font-size: 12px; color: var(--color-text-muted); margin: 4px 0 0; }
 
-.trip-revenue { text-align: right; min-width: 80px; }
-.rev-amount { font-size: 13px; font-weight: 700; color: #2d7a4f; display: block; }
+.trip-revenue { text-align: right; min-width: 90px; }
+.rev-amount { font-size: 14px; font-weight: 700; color: var(--color-accent); display: block; }
 
 .rev-bar-track {
-  height: 4px;
-  background: #f3f4f6;
-  border-radius: 2px;
-  margin-top: 4px;
+  height: 6px;
+  background: var(--color-sand);
+  border-radius: 3px;
+  margin-top: 6px;
   overflow: hidden;
 }
 
 .rev-bar-fill {
   height: 100%;
-  background: #2d7a4f;
-  border-radius: 2px;
-  transition: width 0.5s ease;
+  background: var(--color-accent);
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Day of Week */
 .dow-chart {
-  padding: 16px 20px;
+  padding: 24px;
   display: flex;
   justify-content: space-around;
   align-items: flex-end;
-  height: 180px;
-  gap: 4px;
+  height: 220px;
+  gap: 8px;
 }
 
 .dow-col {
@@ -527,86 +656,104 @@ onMounted(loadAnalytics);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-.dow-count { font-size: 11px; font-weight: 700; color: #374151; }
+.dow-count { font-size: 12px; font-weight: 700; color: var(--color-text-mid); }
 
 .dow-bar-track {
   width: 100%;
-  max-width: 32px;
-  height: 100px;
+  max-width: 36px;
+  height: 120px;
   display: flex;
   align-items: flex-end;
+  background: var(--color-sand);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .dow-bar {
   width: 100%;
-  background: #1d4ed8;
-  border-radius: 3px 3px 0 0;
-  min-height: 3px;
-  transition: height 0.5s ease;
+  background: var(--color-ocean);
+  border-radius: 6px 6px 0 0;
+  min-height: 4px;
+  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.dow-label { font-size: 11px; color: #6b7280; }
+.dow-bar:hover {
+  background: var(--color-ocean-mid);
+}
+
+.dow-label { font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
 
 /* Rating Distribution */
 .rating-dist {
-  padding: 16px 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 .rating-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .rating-stars {
-  width: 52px;
-  font-size: 12px;
-  color: #f59e0b;
-  letter-spacing: 1px;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  width: 70px;
+  justify-content: flex-end;
+}
+
+.star-icon {
+  font-size: 14px;
+  color: var(--color-gold);
 }
 
 .rating-track {
   flex: 1;
-  height: 8px;
-  background: #f3f4f6;
-  border-radius: 4px;
+  height: 10px;
+  background: var(--color-sand);
+  border-radius: 5px;
   overflow: hidden;
 }
 
 .rating-fill {
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.6s ease;
+  border-radius: 5px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.rating-fill-5 { background: #16a34a; }
-.rating-fill-4 { background: #65a30d; }
-.rating-fill-3 { background: #d97706; }
-.rating-fill-2 { background: #ea580c; }
-.rating-fill-1 { background: #dc2626; }
+/* Solid non-gradient ratings */
+.rating-fill-5 { background: var(--color-accent); }
+.rating-fill-4 { background: #4ADE80; }
+.rating-fill-3 { background: var(--color-gold); }
+.rating-fill-2 { background: #F97316; }
+.rating-fill-1 { background: #EF4444; }
 
-.rating-count { font-size: 12px; font-weight: 600; color: #374151; width: 24px; text-align: right; }
+.rating-count { font-size: 13px; font-weight: 700; color: var(--color-text-mid); width: 28px; text-align: right; }
 
 .no-data {
-  padding: 32px;
+  padding: 40px;
   text-align: center;
-  color: #9ca3af;
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  font-weight: 500;
 }
 
 @media (max-width: 1100px) {
   .bottom-row { grid-template-columns: 1fr 1fr; }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .bottom-row { grid-template-columns: 1fr; }
   .date-range { flex-wrap: wrap; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
 }
 </style>

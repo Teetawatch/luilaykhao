@@ -2,18 +2,18 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-shuttle-van"></i> ยานพาหนะ</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">airport_shuttle</span> ยานพาหนะ</h1>
         <p class="page-subtitle">จัดการรถตู้และเรือ</p>
       </div>
       <button class="btn-primary" @click="openForm()">
-        <i class="fas fa-plus"></i> เพิ่มยานพาหนะ
+        <span class="material-symbols-rounded">add</span> เพิ่มยานพาหนะ
       </button>
     </div>
 
     <!-- Filters -->
     <div class="filters-bar">
       <div class="search-box">
-        <i class="fas fa-search"></i>
+        <span class="material-symbols-rounded">search</span>
         <input v-model="searchQuery" placeholder="ค้นหาชื่อ, ทะเบียน, คนขับ..." />
       </div>
       <select v-model="filters.type" @change="fetchData()">
@@ -24,12 +24,12 @@
     </div>
 
     <!-- Grid Cards -->
-    <div class="table-card">
+    <div class="table-card" style="background: transparent; border: none; padding: 0;">
       <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
       <div class="vehicles-grid" v-else>
         <div class="vehicle-card" v-for="v in filteredVehicles" :key="v.id">
           <div class="vehicle-icon" :class="`vtype-${v.type}`">
-            <i :class="v.type === 'van' ? 'fas fa-shuttle-van' : 'fas fa-ship'"></i>
+            <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
           </div>
           <div class="vehicle-info">
             <h3>{{ v.name }}</h3>
@@ -38,31 +38,31 @@
                 {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
               </span>
               <span class="capacity-badge">
-                <i class="fas fa-users"></i> {{ v.capacity }} ที่นั่ง
+                <span class="material-symbols-rounded" style="font-size:14px;">groups</span> {{ v.capacity }} ที่นั่ง
               </span>
               <span class="plate-badge" v-if="v.license_plate">
-                <i class="fas fa-id-card"></i> {{ v.license_plate }}
+                <span class="material-symbols-rounded" style="font-size:14px;">badge</span> {{ v.license_plate }}
               </span>
             </div>
             <div class="vehicle-detail-row" v-if="v.color">
-              <i class="fas fa-circle" :style="{ color: colorHex(v.color) }"></i>
+              <span class="material-symbols-rounded" :style="{ color: colorHex(v.color), fontSize: '14px' }">circle</span>
               <span>{{ v.color }}</span>
             </div>
             <div class="vehicle-detail-row" v-if="v.driver_name">
               <div class="driver-photo-avatar" v-if="v.driver_photo">
                 <img :src="v.driver_photo" />
               </div>
-              <i class="fas fa-user-tie" v-else></i>
+              <span class="material-symbols-rounded" style="font-size:14px;" v-else>person</span>
               <span>{{ v.driver_name }}</span>
               <span v-if="v.driver_phone" class="driver-phone">
-                <i class="fas fa-phone"></i> {{ v.driver_phone }}
+                <span class="material-symbols-rounded" style="font-size:14px;">phone</span> {{ v.driver_phone }}
               </span>
             </div>
             <div class="pickup-summary" v-if="v.pickup_points?.length">
               <div class="pickup-summary-header" @click="togglePickups(v.id)">
-                <i class="fas fa-map-marker-alt"></i>
+                <span class="material-symbols-rounded" style="font-size:14px;">location_on</span>
                 <span>{{ v.pickup_points.length }} จุดรับผู้โดยสาร</span>
-                <i :class="expandedPickups.has(v.id) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="toggle-icon"></i>
+                <span class="material-symbols-rounded toggle-icon">{{ expandedPickups.has(v.id) ? 'expand_less' : 'expand_more' }}</span>
               </div>
               <div class="pickup-list" v-if="expandedPickups.has(v.id)">
                 <div
@@ -73,7 +73,7 @@
                   <span class="region-chip">{{ pt.region_label }}</span>
                   <div class="pickup-locations">
                     <div v-for="loc in pt.locations" :key="loc.id" class="pickup-loc-row">
-                      <i class="fas fa-dot-circle"></i>
+                      <span class="material-symbols-rounded" style="font-size:12px;">radio_button_checked</span>
                       <span>{{ loc.pickup_location }}</span>
                       <span v-if="loc.notes" class="pickup-notes">{{ loc.notes }}</span>
                     </div>
@@ -83,19 +83,19 @@
             </div>
             <div class="seat-layout-info" v-if="v.seat_layout">
               <span class="layout-badge">
-                <i class="fas fa-th"></i> {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่นั่ง
+                <span class="material-symbols-rounded" style="font-size:14px;">grid_view</span> {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่นั่ง
               </span>
             </div>
           </div>
           <div class="vehicle-actions">
-            <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-            <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><i class="fas fa-th"></i></button>
-            <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><i class="fas fa-map-marker-alt"></i></button>
-            <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><i class="fas fa-trash"></i></button>
+            <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
+            <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded" style="font-size:16px;">grid_view</span></button>
+            <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded" style="font-size:16px;">location_on</span></button>
+            <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
           </div>
         </div>
         <div class="empty-state-card" v-if="!filteredVehicles.length">
-          <i class="fas fa-car-side"></i>
+          <span class="material-symbols-rounded" style="font-size:48px;">directions_car</span>
           <p>ไม่พบยานพาหนะ</p>
         </div>
       </div>
@@ -106,55 +106,55 @@
       <div class="modal-card modal-lg">
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขยานพาหนะ' : 'เพิ่มยานพาหนะใหม่' }}</h2>
-          <button class="modal-close" @click="showForm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <form @submit.prevent="submitForm" class="modal-body">
-          <div class="form-section-title"><i class="fas fa-car"></i> ข้อมูลยานพาหนะ</div>
+          <div class="form-section-title"><span class="material-symbols-rounded" style="font-size:18px;">directions_car</span> ข้อมูลยานพาหนะ</div>
           <div class="form-grid">
             <div class="form-group full-width">
               <label>ชื่อ *</label>
-              <input v-model="form.name" required placeholder="เช่น รถตู้ VIP-01" />
+              <input v-model="form.name" required placeholder="เช่น รถตู้ VIP-01" class="form-input" />
             </div>
             <div class="form-group">
               <label>ประเภท *</label>
-              <select v-model="form.type" required>
+              <select v-model="form.type" required class="form-input">
                 <option value="van">รถตู้</option>
                 <option value="boat">เรือ</option>
               </select>
             </div>
             <div class="form-group">
               <label>ความจุ (ที่นั่ง) *</label>
-              <input v-model.number="form.capacity" type="number" min="1" required />
+              <input v-model.number="form.capacity" type="number" min="1" required class="form-input" />
             </div>
             <div class="form-group">
               <label>เลขทะเบียนรถ</label>
-              <input v-model="form.license_plate" placeholder="เช่น กข 1234 กรุงเทพ" />
+              <input v-model="form.license_plate" placeholder="เช่น กข 1234 กรุงเทพ" class="form-input" />
             </div>
             <div class="form-group">
               <label>สีรถ</label>
-              <input v-model="form.color" placeholder="เช่น ขาว, เทา, น้ำเงิน" />
+              <input v-model="form.color" placeholder="เช่น ขาว, เทา, น้ำเงิน" class="form-input" />
             </div>
           </div>
-          <div class="form-section-title"><i class="fas fa-user-tie"></i> ข้อมูลคนขับ</div>
+          <div class="form-section-title"><span class="material-symbols-rounded" style="font-size:18px;">person</span> ข้อมูลคนขับ</div>
           <div class="form-grid">
             <div class="form-group">
               <label>ชื่อคนขับ</label>
-              <input v-model="form.driver_name" placeholder="ชื่อ-นามสกุลคนขับ" />
+              <input v-model="form.driver_name" placeholder="ชื่อ-นามสกุลคนขับ" class="form-input" />
             </div>
             <div class="form-group">
               <label>เบอร์โทรศัพท์คนขับ</label>
-              <input v-model="form.driver_phone" placeholder="08x-xxx-xxxx" />
+              <input v-model="form.driver_phone" placeholder="08x-xxx-xxxx" class="form-input" />
             </div>
             <div class="form-group full-width">
               <label>รูปคนขับประจำรถ</label>
               <div class="media-upload-row">
                 <div class="media-preview-sm" v-if="form.driver_photo">
                   <img :src="form.driver_photo" />
-                  <button type="button" class="remove-btn" @click="form.driver_photo = ''"><i class="fas fa-times"></i></button>
+                  <button type="button" class="remove-btn" @click="form.driver_photo = ''"><span class="material-symbols-rounded" style="font-size:12px;">close</span></button>
                 </div>
                 <div class="upload-placeholder" v-else @click="triggerUpload(driverPhotoInput)">
-                  <i class="fas fa-spinner fa-spin" v-if="uploadState.driver"></i>
-                  <i class="fas fa-camera" v-else></i>
+                  <span class="material-symbols-rounded animate-spin" v-if="uploadState.driver">sync</span>
+                  <span class="material-symbols-rounded" v-else>photo_camera</span>
                   <span>อัปโหลดรูปคนขับ</span>
                 </div>
                 <input ref="driverPhotoInput" type="file" hidden accept="image/*" @change="handleMediaUpload($event, 'driver')" />
@@ -162,18 +162,18 @@
             </div>
           </div>
 
-          <div class="form-section-title"><i class="fas fa-images"></i> รูปภาพและวิดีโอ (สำหรับลูปพาเหรด)</div>
+          <div class="form-section-title"><span class="material-symbols-rounded" style="font-size:18px;">photo_library</span> รูปภาพและวิดีโอ (สำหรับลูปพาเหรด)</div>
           <div class="form-grid">
             <div class="form-group full-width">
               <label>รูปภาพภายในรถ (สูงสุด 10 รูป)</label>
               <div class="gallery-grid-editor">
                 <div v-for="(img, idx) in form.images" :key="idx" class="gallery-item-preview">
                   <img :src="img" />
-                  <button type="button" class="remove-btn" @click="removeItem('images', idx)"><i class="fas fa-times"></i></button>
+                  <button type="button" class="remove-btn" @click="removeItem('images', idx)"><span class="material-symbols-rounded" style="font-size:12px;">close</span></button>
                 </div>
                 <div class="gallery-add-btn" v-if="form.images.length < 10" @click="triggerUpload(galleryInput)">
-                  <i class="fas fa-spinner fa-spin" v-if="uploadState.gallery"></i>
-                  <i class="fas fa-plus" v-else></i>
+                  <span class="material-symbols-rounded animate-spin" v-if="uploadState.gallery">sync</span>
+                  <span class="material-symbols-rounded" v-else>add</span>
                   <span>เพิ่มรูป</span>
                 </div>
               </div>
@@ -184,11 +184,11 @@
               <div class="media-upload-row">
                 <div class="video-preview" v-if="form.interior_video">
                   <video :src="form.interior_video" controls></video>
-                  <button type="button" class="remove-btn" @click="form.interior_video = ''"><i class="fas fa-times"></i></button>
+                  <button type="button" class="remove-btn" @click="form.interior_video = ''"><span class="material-symbols-rounded" style="font-size:12px;">close</span></button>
                 </div>
                 <div class="upload-placeholder" v-else @click="triggerUpload(videoInput)">
-                  <i class="fas fa-spinner fa-spin" v-if="uploadState.video"></i>
-                  <i class="fas fa-video" v-else></i>
+                  <span class="material-symbols-rounded animate-spin" v-if="uploadState.video">sync</span>
+                  <span class="material-symbols-rounded" v-else>videocam</span>
                   <span>อัปโหลดวิดีโอ</span>
                 </div>
                 <input ref="videoInput" type="file" hidden accept="video/*" @change="handleMediaUpload($event, 'video')" />
@@ -198,7 +198,7 @@
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="submitting">
-              <i class="fas fa-spinner fa-spin" v-if="submitting"></i>
+              <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
               {{ editing ? 'บันทึก' : 'สร้าง' }}
             </button>
           </div>
@@ -210,8 +210,8 @@
     <div class="modal-overlay" v-if="showPickupManager">
       <div class="modal-card modal-xl">
         <div class="modal-header">
-          <h2><i class="fas fa-map-marker-alt"></i> จุดรับผู้โดยสาร — {{ pickupVehicle?.name }}</h2>
-          <button class="modal-close" @click="closePickupManager"><i class="fas fa-times"></i></button>
+          <h2><span class="material-symbols-rounded heading-icon">location_on</span> จุดรับผู้โดยสาร — {{ pickupVehicle?.name }}</h2>
+          <button class="modal-close" @click="closePickupManager"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <!-- Pickup list grouped by region -->
@@ -224,20 +224,20 @@
               <div class="pickup-manager-items">
                 <div v-for="pt in group.locations" :key="pt.id" class="pickup-manager-item">
                   <div class="pickup-manager-item-info">
-                    <span class="pickup-loc-name"><i class="fas fa-map-pin"></i> {{ pt.pickup_location }}</span>
-                    <span v-if="pt.notes" class="pickup-notes-text"><i class="fas fa-sticky-note"></i> {{ pt.notes }}</span>
-                    <a v-if="pt.map_url" :href="pt.map_url" target="_blank" class="map-link"><i class="fas fa-external-link-alt"></i> แผนที่</a>
+                    <span class="pickup-loc-name"><span class="material-symbols-rounded" style="font-size:14px;">location_on</span> {{ pt.pickup_location }}</span>
+                    <span v-if="pt.notes" class="pickup-notes-text"><span class="material-symbols-rounded" style="font-size:14px;">notes</span> {{ pt.notes }}</span>
+                    <a v-if="pt.map_url" :href="pt.map_url" target="_blank" class="map-link"><span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span> แผนที่</a>
                   </div>
                   <div class="pickup-manager-item-actions">
-                    <button class="btn-icon btn-edit btn-sm" @click="openPickupForm(pt)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon btn-delete btn-sm" @click="confirmDeletePickup(pt)" title="ลบ"><i class="fas fa-trash"></i></button>
+                    <button class="btn-icon btn-edit btn-sm" @click="openPickupForm(pt)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:14px;">edit</span></button>
+                    <button class="btn-icon btn-delete btn-sm" @click="confirmDeletePickup(pt)" title="ลบ"><span class="material-symbols-rounded" style="font-size:14px;">delete</span></button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           <div class="pickup-empty" v-else>
-            <i class="fas fa-map-marked-alt"></i>
+            <span class="material-symbols-rounded" style="font-size:48px;">map</span>
             <p>ยังไม่มีจุดรับผู้โดยสาร</p>
           </div>
 
@@ -249,7 +249,7 @@
             <div class="form-grid">
               <div class="form-group">
                 <label>ภูมิภาค (region key) *</label>
-                <select v-model="pickupForm.region" @change="onRegionChange">
+                <select v-model="pickupForm.region" @change="onRegionChange" class="form-input">
                   <option value="">-- เลือกภูมิภาค --</option>
                   <option value="north">north — ภาคเหนือ</option>
                   <option value="northeast">northeast — ภาคอีสาน</option>
@@ -261,25 +261,25 @@
               </div>
               <div class="form-group">
                 <label>ชื่อภูมิภาค (ไทย) *</label>
-                <input v-model="pickupForm.region_label" placeholder="เช่น ภาคเหนือ" required />
+                <input v-model="pickupForm.region_label" placeholder="เช่น ภาคเหนือ" required class="form-input" />
               </div>
               <div class="form-group full-width">
                 <label>ชื่อจุดขึ้นรถ *</label>
-                <input v-model="pickupForm.pickup_location" placeholder="เช่น ปั๊มน้ำมัน ปตท. แยกลาดพร้าว" required />
+                <input v-model="pickupForm.pickup_location" placeholder="เช่น ปั๊มน้ำมัน ปตท. แยกลาดพร้าว" required class="form-input" />
               </div>
               <div class="form-group full-width">
                 <label>หมายเหตุ / เวลานัดพบ</label>
-                <input v-model="pickupForm.notes" placeholder="เช่น นัดพบ 05:30 น." />
+                <input v-model="pickupForm.notes" placeholder="เช่น นัดพบ 05:30 น." class="form-input" />
               </div>
               <div class="form-group full-width">
                 <label>ลิงก์ Google Maps</label>
-                <input v-model="pickupForm.map_url" placeholder="https://maps.google.com/..." />
+                <input v-model="pickupForm.map_url" placeholder="https://maps.google.com/..." class="form-input" />
               </div>
             </div>
             <div class="pickup-form-actions">
               <button v-if="editingPickup" type="button" class="btn-secondary btn-sm" @click="cancelPickupEdit">ยกเลิก</button>
               <button type="button" class="btn-primary btn-sm" @click="submitPickupForm" :disabled="pickupSubmitting">
-                <i class="fas fa-spinner fa-spin" v-if="pickupSubmitting"></i>
+                <span class="material-symbols-rounded animate-spin" v-if="pickupSubmitting">sync</span>
                 {{ editingPickup ? 'บันทึกการแก้ไข' : 'เพิ่มจุดรับ' }}
               </button>
             </div>
@@ -293,7 +293,7 @@
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบจุดรับ</h2>
-          <button class="modal-close" @click="showDeletePickupConfirm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showDeletePickupConfirm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <p class="confirm-text">ลบจุดรับ <strong>{{ deletingPickup?.pickup_location }}</strong>?</p>
@@ -310,11 +310,11 @@
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>
-          <button class="modal-close" @click="showDeleteConfirm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showDeleteConfirm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <p class="confirm-text">คุณต้องการลบ <strong>{{ deleting?.name }}</strong> ใช่หรือไม่?</p>
-          <p class="confirm-warning"><i class="fas fa-exclamation-triangle"></i> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <p class="confirm-warning"><span class="material-symbols-rounded" style="color:var(--color-gold);">warning</span> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
@@ -327,8 +327,8 @@
     <div class="modal-overlay" v-if="showLayoutEditor">
       <div class="modal-card modal-lg">
         <div class="modal-header">
-          <h2><i class="fas fa-th"></i> ผังที่นั่ง — {{ layoutVehicle?.name }}</h2>
-          <button class="modal-close" @click="showLayoutEditor = false"><i class="fas fa-times"></i></button>
+          <h2><span class="material-symbols-rounded heading-icon">grid_view</span> ผังที่นั่ง — {{ layoutVehicle?.name }}</h2>
+          <button class="modal-close" @click="showLayoutEditor = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body p-0">
           <SeatMapEditor v-model="layoutForm" />
@@ -336,7 +336,7 @@
         <div class="modal-footer">
           <button class="btn-secondary" @click="showLayoutEditor = false">ยกเลิก</button>
           <button class="btn-primary" @click="saveLayout" :disabled="submittingLayout">
-            <i class="fas fa-spinner fa-spin" v-if="submittingLayout"></i>
+            <span class="material-symbols-rounded animate-spin" v-if="submittingLayout">sync</span>
             บันทึกผังที่นั่ง
           </button>
         </div>
@@ -425,7 +425,7 @@ const colorHex = (colorName) => {
     'น้ำเงิน': '#3b82f6', 'เขียว': '#22c55e', 'เหลือง': '#eab308',
     'ส้ม': '#f97316', 'ม่วง': '#a855f7', 'ชมพู': '#ec4899',
   };
-  return map[colorName] || '#6b7280';
+  return map[colorName] || 'var(--color-text-muted)';
 };
 
 const togglePickups = (id) => {
@@ -711,38 +711,40 @@ onMounted(() => fetchData());
 .vehicles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 14px;
-  padding: 20px;
+  gap: 16px;
+  padding: 0 0 20px 0;
 }
 
 .vehicle-card {
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  padding: 18px;
+  background: var(--color-white);
+  border-radius: 16px;
+  border: 1px solid var(--color-sand-dark);
+  padding: 20px;
   display: flex;
-  gap: 14px;
+  gap: 16px;
   align-items: flex-start;
-  transition: box-shadow 0.15s;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
 }
 
 .vehicle-card:hover {
-  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.07);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+  transform: translateY(-2px);
 }
 
 .vehicle-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
   flex-shrink: 0;
 }
+.vehicle-icon .material-symbols-rounded { font-size: 28px; }
 
-.vtype-van { background: #f0fdf4; color: #15803d; }
-.vtype-boat { background: #dbeafe; color: #1d4ed8; }
+.vtype-van { background: var(--color-sand); color: var(--color-accent); }
+.vtype-boat { background: #eff6ff; color: #2563eb; }
 
 .vehicle-info {
   flex: 1;
@@ -751,9 +753,9 @@ onMounted(() => fetchData());
 
 .vehicle-info h3 {
   margin: 0 0 8px;
-  font-size: 15px;
-  color: #111827;
-  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-text-dark);
+  font-weight: 700;
 }
 
 .vehicle-meta {
@@ -761,12 +763,12 @@ onMounted(() => fetchData());
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .capacity-badge {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-mid);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -774,50 +776,50 @@ onMounted(() => fetchData());
 
 .plate-badge {
   font-size: 12px;
-  background: #EEEEEE;
-  color: #374151;
-  padding: 2px 8px;
-  border-radius: 4px;
+  background: var(--color-sand);
+  color: var(--color-text-mid);
+  padding: 4px 8px;
+  border-radius: 6px;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-sand-dark);
 }
 
 .vehicle-detail-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
 }
 
 .driver-phone {
   margin-left: 8px;
-  color: #3b82f6;
+  color: var(--color-ocean);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .seat-layout-info {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .layout-badge {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-mid);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .pickup-summary {
-  margin-top: 8px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  margin-top: 12px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -825,103 +827,91 @@ onMounted(() => fetchData());
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: #6b7280;
-  padding: 6px 10px;
-  background: #FAFAFA;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 8px 12px;
+  background: var(--color-sand);
   cursor: pointer;
   user-select: none;
+  font-weight: 500;
 }
 
-.pickup-summary-header:hover { background: #EEEEEE; }
+.pickup-summary-header:hover { background: var(--color-sand-dark); color: var(--color-text-dark); }
 
-.toggle-icon { margin-left: auto; font-size: 10px; }
+.toggle-icon { margin-left: auto; font-size: 18px; }
 
-.pickup-list { padding: 8px 10px; }
+.pickup-list { padding: 8px 12px; background: var(--color-white); }
 
-.pickup-item { margin-bottom: 8px; }
+.pickup-item { margin-bottom: 10px; }
+.pickup-item:last-child { margin-bottom: 0; }
 
 .region-chip {
   display: inline-block;
   font-size: 11px;
-  background: #ede9fe;
-  color: #6d28d9;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-weight: 600;
-  margin-bottom: 4px;
+  background: #f3e8ff;
+  color: #7e22ce;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
 }
 
-.pickup-locations { padding-left: 4px; }
+.pickup-locations { padding-left: 6px; }
 
 .pickup-loc-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
-  font-size: 12px;
-  color: #374151;
-  margin-top: 3px;
+  font-size: 13px;
+  color: var(--color-text-dark);
+  margin-top: 4px;
 }
 
-.pickup-loc-row i { color: #9ca3af; font-size: 10px; }
-
 .pickup-notes {
-  font-size: 11px;
-  color: #9ca3af;
+  font-size: 12px;
+  color: var(--color-text-mid);
   margin-left: 4px;
 }
 
 .vehicle-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  transition: all 0.15s;
 }
 
 .btn-pickup {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: #f3e8ff;
+  color: #7e22ce;
   border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  transition: background 0.15s;
 }
-
-.btn-pickup:hover { background: #ddd6fe; }
+.btn-pickup:hover { background: #e9d5ff; }
 
 .btn-layout {
-  background: #fdf2f8;
-  color: #db2777;
+  background: #fce7f3;
+  color: #be185d;
   border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  transition: background 0.15s;
 }
-
-.btn-layout:hover { background: #fce7f3; }
+.btn-layout:hover { background: #fbcfe8; }
 
 .empty-state-card {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 60px;
-  color: #9ca3af;
+  padding: 80px 20px;
+  color: var(--color-text-muted);
+  background: var(--color-white);
+  border-radius: 16px;
+  border: 1px dashed var(--color-sand-dark);
 }
-
-.empty-state-card i {
-  font-size: 36px;
-  margin-bottom: 12px;
-  display: block;
+.empty-state-card p {
+  margin-top: 12px;
+  font-size: 15px;
 }
 
 /* Modal sizes */
@@ -930,117 +920,116 @@ onMounted(() => fetchData());
 
 /* Form sections */
 .form-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 16px 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  margin: 20px 0 12px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* Pickup manager */
 .pickup-manager-list { margin-bottom: 20px; }
 
-.pickup-region-group { margin-bottom: 16px; }
+.pickup-region-group { margin-bottom: 20px; }
 
 .pickup-region-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .region-chip-lg {
   display: inline-block;
-  background: #ede9fe;
-  color: #6d28d9;
-  font-size: 12px;
+  background: #f3e8ff;
+  color: #7e22ce;
+  font-size: 13px;
   font-weight: 700;
-  padding: 3px 12px;
-  border-radius: 12px;
+  padding: 4px 14px;
+  border-radius: 16px;
 }
 
-.region-code { font-size: 12px; color: #9ca3af; }
+.region-code { font-size: 12px; color: var(--color-text-mid); }
 
-.pickup-manager-items { display: flex; flex-direction: column; gap: 6px; }
+.pickup-manager-items { display: flex; flex-direction: column; gap: 8px; }
 
 .pickup-manager-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #FAFAFA;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 10px 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 12px 14px;
 }
 
 .pickup-manager-item-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   flex: 1;
 }
 
-.pickup-loc-name { font-size: 13px; color: #111827; font-weight: 500; }
-.pickup-notes-text { font-size: 12px; color: #9ca3af; }
-.map-link { font-size: 12px; color: #3b82f6; text-decoration: none; }
+.pickup-loc-name { display:flex; align-items:center; gap:4px; font-size: 14px; color: var(--color-text-dark); font-weight: 600; }
+.pickup-notes-text { display:flex; align-items:center; gap:4px; font-size: 13px; color: var(--color-text-muted); }
+.map-link { display:flex; align-items:center; gap:4px; font-size: 13px; color: var(--color-ocean); text-decoration: none; }
 .map-link:hover { text-decoration: underline; }
 
 .pickup-manager-item-actions { display: flex; gap: 6px; }
 
-.btn-sm { padding: 4px 10px !important; font-size: 12px !important; height: 28px; }
+.btn-sm { padding: 6px 12px !important; font-size: 13px !important; height: auto; border-radius: 8px;}
 
 .pickup-empty {
   text-align: center;
-  padding: 24px;
-  color: #9ca3af;
+  padding: 40px;
+  color: var(--color-text-muted);
 }
-
-.pickup-empty i { font-size: 28px; margin-bottom: 8px; display: block; }
+.pickup-empty p { margin-top: 12px; font-size: 15px;}
 
 .pickup-add-section {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 16px;
+  border-top: 1px solid var(--color-sand-dark);
+  padding-top: 20px;
 }
 
 .pickup-form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 16px;
 }
-.driver-photo-avatar { width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 1px solid #e5e7eb; }
+.driver-photo-avatar { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .driver-photo-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .media-upload-row { display: flex; gap: 12px; margin-top: 8px; }
-.media-preview-sm { position: relative; width: 100px; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+.media-preview-sm { position: relative; width: 120px; height: 120px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .media-preview-sm img { width: 100%; height: 100%; object-fit: cover; }
-.video-preview { position: relative; width: 100%; max-width: 300px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+.video-preview { position: relative; width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .video-preview video { width: 100%; display: block; }
 .upload-placeholder { 
-  width: 120px; height: 100px; border: 2px dashed #d1d5db; border-radius: 8px; 
+  width: 140px; height: 120px; border: 2px dashed var(--color-sand-dark); border-radius: 12px; 
   display: flex; flex-direction: column; align-items: center; justify-content: center; 
-  cursor: pointer; color: #9ca3af; font-size: 12px; transition: all 0.2s;
+  cursor: pointer; color: var(--color-text-mid); font-size: 13px; transition: all 0.2s; background: var(--color-white);
 }
-.upload-placeholder:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
-.upload-placeholder i { font-size: 20px; margin-bottom: 4px; }
+.upload-placeholder:hover { border-color: var(--color-ocean); color: var(--color-ocean); background: #eff6ff; }
+.upload-placeholder .material-symbols-rounded { font-size: 28px; margin-bottom: 6px; }
 
-.gallery-grid-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 8px; }
-.gallery-item-preview { position: relative; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+.gallery-grid-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; margin-top: 8px; }
+.gallery-item-preview { position: relative; height: 110px; border-radius: 10px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .gallery-item-preview img { width: 100%; height: 100%; object-fit: cover; }
 .gallery-add-btn { 
-  height: 100px; border: 2px dashed #d1d5db; border-radius: 8px; 
+  height: 110px; border: 2px dashed var(--color-sand-dark); border-radius: 10px; 
   display: flex; flex-direction: column; align-items: center; justify-content: center; 
-  cursor: pointer; color: #9ca3af; font-size: 11px;
+  cursor: pointer; color: var(--color-text-mid); font-size: 12px; background: var(--color-white);
 }
-.gallery-add-btn:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+.gallery-add-btn:hover { border-color: var(--color-ocean); color: var(--color-ocean); background: #eff6ff; }
+.gallery-add-btn .material-symbols-rounded { font-size: 24px; margin-bottom: 4px; }
 .remove-btn { 
-  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; 
-  border-radius: 50%; background: rgba(255, 255, 255, 0.9); color: #ef4444; 
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; 
+  border-radius: 50%; background: rgba(255, 255, 255, 0.95); color: #ef4444; 
   border: 1px solid #fee2e2; display: flex; align-items: center; justify-content: center; 
-  cursor: pointer; font-size: 10px;
+  cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.15s;
 }
+.remove-btn:hover { transform: scale(1.1); }
 </style>

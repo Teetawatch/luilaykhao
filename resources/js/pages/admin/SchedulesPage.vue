@@ -2,15 +2,15 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-calendar-alt"></i> รอบเดินทาง</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded">calendar_month</span> รอบเดินทาง</h1>
         <p class="page-subtitle">จัดการรอบเดินทางและตารางวันเดินทาง</p>
       </div>
       <div style="display:flex;gap:10px;">
         <button class="btn-secondary" @click="openBatchForm()">
-          <i class="fas fa-layer-group"></i> สร้างหลายรอบพร้อมกัน
+          <span class="material-symbols-rounded">layers</span> สร้างหลายรอบพร้อมกัน
         </button>
         <button class="btn-primary" @click="openForm()">
-          <i class="fas fa-plus"></i> เพิ่มรอบใหม่
+          <span class="material-symbols-rounded">add</span> เพิ่มรอบใหม่
         </button>
       </div>
     </div>
@@ -18,7 +18,7 @@
     <!-- Filters -->
     <div class="filters-bar">
       <div class="search-box">
-        <i class="fas fa-search"></i>
+        <span class="material-symbols-rounded">search</span>
         <input v-model="filters.search" placeholder="ค้นหาชื่อทริป..." @input="debouncedFetch" />
       </div>
       <select v-model="filters.status" @change="fetchData()">
@@ -43,7 +43,7 @@
         <!-- Trip header -->
         <div class="trip-group-header" @click="toggleGroup(group.trip_id)">
           <div class="tgh-left">
-            <i class="fas fa-chevron-right tgh-chevron" :class="{ expanded: openGroups.has(group.trip_id) }"></i>
+            <span class="material-symbols-rounded tgh-chevron" :class="{ expanded: openGroups.has(group.trip_id) }">chevron_right</span>
             <div class="tgh-info">
               <span class="tgh-title">{{ group.trip_title }}</span>
               <span class="tgh-meta">
@@ -54,13 +54,13 @@
           </div>
           <div class="tgh-actions" @click.stop>
             <button class="btn-sm btn-secondary" @click="openBatchFormForTrip(group.trip_id)" title="สร้างหลายรอบ">
-              <i class="fas fa-layer-group"></i> เพิ่มหลายรอบ
+              <span class="material-symbols-rounded">layers</span> เพิ่มหลายรอบ
             </button>
             <button class="btn-sm btn-secondary" @click="openForm({ trip_id: group.trip_id })" title="เพิ่มรอบเดียว">
-              <i class="fas fa-plus"></i> เพิ่มรอบ
+              <span class="material-symbols-rounded">add</span> เพิ่มรอบ
             </button>
             <button class="btn-sm btn-danger-sm" @click="deleteTripGroup(group)" title="ลบทุกรอบในทริปนี้">
-              <i class="fas fa-trash"></i> ลบทั้งหมด
+              <span class="material-symbols-rounded">delete</span> ลบทั้งหมด
             </button>
           </div>
         </div>
@@ -86,7 +86,7 @@
                   <td class="date">{{ sch.return_date }}</td>
                   <td>
                     <span class="type-tag" :class="`type-${sch.transport_type === 'van' ? 'trekking' : 'diving'}`">
-                      <i :class="sch.transport_type === 'van' ? 'fas fa-shuttle-van' : 'fas fa-ship'"></i>
+                      <span class="material-symbols-rounded" style="font-size:14px;">{{ sch.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
                       {{ sch.vehicle?.name || sch.transport_type }}
                     </span>
                   </td>
@@ -108,13 +108,13 @@
                   <td>
                     <div class="action-btns">
                       <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จัดการจุดรับ">
-                        <i class="fas fa-map-marker-alt"></i>
+                        <span class="material-symbols-rounded">location_on</span>
                       </button>
                       <button class="btn-icon btn-copy" @click="copyPickupPoints(sch)" title="คัดลอกจุดรับไปรอบอื่น">
-                        <i class="fas fa-copy"></i>
+                        <span class="material-symbols-rounded">content_copy</span>
                       </button>
-                      <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                      <button class="btn-icon btn-delete" @click="confirmDelete(sch)" title="ลบ"><i class="fas fa-trash"></i></button>
+                      <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
+                      <button class="btn-icon btn-delete" @click="confirmDelete(sch)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
                     </div>
                   </td>
                 </tr>
@@ -130,7 +130,7 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขรอบเดินทาง' : 'เพิ่มรอบใหม่' }}</h2>
-          <button class="modal-close" @click="showForm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <form @submit.prevent="submitForm" class="modal-body">
           <div class="form-grid">
@@ -185,7 +185,7 @@
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="submitting">
-              <i class="fas fa-spinner fa-spin" v-if="submitting"></i>
+              <span class="material-symbols-rounded" :class="{ 'animate-spin': submitting }" v-if="submitting">sync</span>
               {{ editing ? 'บันทึก' : 'สร้างรอบ' }}
             </button>
           </div>
@@ -198,10 +198,10 @@
       <div class="modal-card modal-xl">
         <div class="modal-header">
           <div>
-            <h2><i class="fas fa-map-marker-alt" style="color:#2d7a4f;margin-right:8px;"></i>จุดรับผู้โดยสาร</h2>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">location_on</span>จุดรับผู้โดยสาร</h2>
             <p class="modal-subtitle" v-if="pickupSchedule">{{ pickupSchedule.trip?.title }} — {{ pickupSchedule.departure_date }}</p>
           </div>
-          <button class="modal-close" @click="showPickupManager = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showPickupManager = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <div v-if="pickupLoading" class="pickup-loading"><div class="spinner"></div></div>
@@ -216,7 +216,7 @@
                   <span class="pickup-region-count">{{ pickupPointsByRegion[r.value]?.length || 0 }} จุด</span>
                 </div>
                 <button type="button" class="btn-sm btn-secondary" @click="startAddInRegion(r.value)">
-                  <i class="fas fa-plus"></i> เพิ่มจุด
+                  <span class="material-symbols-rounded">add</span> เพิ่มจุด
                 </button>
               </div>
 
@@ -243,7 +243,7 @@
                         <div class="pif-actions">
                           <button type="button" class="btn-sm btn-secondary" @click="cancelEditPickup">ยกเลิก</button>
                           <button type="button" class="btn-sm btn-primary" @click="submitPickupForm" :disabled="pickupSubmitting">
-                            <i class="fas fa-spinner fa-spin" v-if="pickupSubmitting"></i> บันทึก
+                            <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupSubmitting }" v-if="pickupSubmitting">sync</span> บันทึก
                           </button>
                         </div>
                       </div>
@@ -252,16 +252,16 @@
                       <!-- Display row -->
                       <div class="pickup-item-display">
                         <div class="pid-left">
-                          <span class="pid-location"><i class="fas fa-map-pin"></i> {{ pt.pickup_location }}</span>
-                          <span class="pid-notes" v-if="pt.notes"><i class="fas fa-clock"></i> {{ pt.notes }}</span>
+                          <span class="pid-location"><span class="material-symbols-rounded" style="font-size:16px;">push_pin</span> {{ pt.pickup_location }}</span>
+                          <span class="pid-notes" v-if="pt.notes"><span class="material-symbols-rounded" style="font-size:16px;">schedule</span> {{ pt.notes }}</span>
                         </div>
                         <div class="pid-right">
                           <a :href="pt.map_url" target="_blank" class="pid-map" v-if="pt.map_url" title="ดูแผนที่">
-                            <i class="fas fa-map"></i>
+                            <span class="material-symbols-rounded">map</span>
                           </a>
                           <span class="pid-price">฿{{ Number(pt.price).toLocaleString() }}</span>
-                          <button class="btn-icon btn-edit" @click="editPickupPoint(pt)" title="แก้ไข"><i class="fas fa-edit"></i></button>
-                          <button class="btn-icon btn-delete" @click="deletePickupPoint(pt)" title="ลบ"><i class="fas fa-trash"></i></button>
+                          <button class="btn-icon btn-edit" @click="editPickupPoint(pt)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
+                          <button class="btn-icon btn-delete" @click="deletePickupPoint(pt)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
                         </div>
                       </div>
                     </template>
@@ -285,14 +285,14 @@
                   <div class="pif-actions">
                     <button type="button" class="btn-sm btn-secondary" @click="addingInRegion = null">ยกเลิก</button>
                     <button type="button" class="btn-sm btn-primary" @click="submitPickupForm" :disabled="pickupSubmitting">
-                      <i class="fas fa-spinner fa-spin" v-if="pickupSubmitting"></i> เพิ่มจุดรับ
+                      <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupSubmitting }" v-if="pickupSubmitting">sync</span> เพิ่มจุดรับ
                     </button>
                   </div>
                 </div>
 
                 <!-- Empty state for region -->
                 <div v-if="!pickupPointsByRegion[r.value]?.length && addingInRegion !== r.value" class="pickup-region-empty">
-                  <i class="fas fa-map-marker-slash"></i> ยังไม่มีจุดรับในภาคนี้
+                  <span class="material-symbols-rounded">wrong_location</span> ยังไม่มีจุดรับในภาคนี้
                 </div>
               </div>
             </div>
@@ -307,16 +307,16 @@
       <div class="modal-card modal-xl">
         <div class="modal-header">
           <div>
-            <h2><i class="fas fa-layer-group" style="color:#2d7a4f;margin-right:8px;"></i>สร้างหลายรอบพร้อมกัน</h2>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">layers</span>สร้างหลายรอบพร้อมกัน</h2>
             <p class="modal-subtitle">กำหนดพาหนะ + จุดขึ้นรถครั้งเดียว แล้วเพิ่มวันเดินทางได้หลายรอบ</p>
           </div>
-          <button class="modal-close" @click="showBatchForm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showBatchForm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <form @submit.prevent="submitBatchForm" class="modal-body">
 
           <!-- Section 1: Trip + Vehicle -->
           <div class="batch-section">
-            <h3 class="section-label"><i class="fas fa-info-circle"></i> ข้อมูลพื้นฐาน</h3>
+            <h3 class="section-label"><span class="material-symbols-rounded">info</span> ข้อมูลพื้นฐาน</h3>
             <div class="form-grid">
               <div class="form-group full-width">
                 <label>ทริป *</label>
@@ -354,9 +354,9 @@
           <!-- Section 2: Dates -->
           <div class="batch-section">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-              <h3 class="section-label" style="margin:0;"><i class="fas fa-calendar-alt"></i> วันเดินทาง ({{ batchForm.dates.length }} รอบ)</h3>
+              <h3 class="section-label" style="margin:0;"><span class="material-symbols-rounded">calendar_month</span> วันเดินทาง ({{ batchForm.dates.length }} รอบ)</h3>
               <button type="button" class="btn-sm btn-secondary" @click="addDateRow">
-                <i class="fas fa-plus"></i> เพิ่มวัน
+                <span class="material-symbols-rounded">add</span> เพิ่มวัน
               </button>
             </div>
             <div class="date-rows">
@@ -370,7 +370,7 @@
                   <input v-model="d.return_date" type="date" required placeholder="วันกลับ" />
                 </div>
                 <button type="button" class="btn-icon btn-delete" @click="removeDateRow(i)" :disabled="batchForm.dates.length <= 1">
-                  <i class="fas fa-times"></i>
+                  <span class="material-symbols-rounded">close</span>
                 </button>
               </div>
             </div>
@@ -379,9 +379,9 @@
           <!-- Section 3: Pickup Points -->
           <div class="batch-section">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-              <h3 class="section-label" style="margin:0;"><i class="fas fa-map-marker-alt"></i> จุดขึ้นรถแต่ละภูมิภาค</h3>
+              <h3 class="section-label" style="margin:0;"><span class="material-symbols-rounded">location_on</span> จุดขึ้นรถแต่ละภูมิภาค</h3>
               <button type="button" class="btn-sm btn-secondary" @click="addPickupRow">
-                <i class="fas fa-plus"></i> เพิ่มภูมิภาค
+                <span class="material-symbols-rounded">add</span> เพิ่มภูมิภาค
               </button>
             </div>
             <div class="pickup-inline-list">
@@ -401,12 +401,12 @@
                   </div>
                   <input v-model="pt.map_url" placeholder="Maps URL (ไม่บังคับ)" style="flex:1;" />
                   <button type="button" class="btn-icon btn-delete" @click="removePickupRow(i)">
-                    <i class="fas fa-times"></i>
+                    <span class="material-symbols-rounded">close</span>
                   </button>
                 </div>
               </div>
               <div v-if="!batchForm.pickups.length" class="pickup-inline-empty">
-                <i class="fas fa-map-marker-slash"></i> ไม่มีจุดขึ้นรถ (เพิ่มได้ภายหลัง)
+                <span class="material-symbols-rounded">wrong_location</span> ไม่มีจุดขึ้นรถ (เพิ่มได้ภายหลัง)
               </div>
             </div>
           </div>
@@ -414,7 +414,7 @@
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showBatchForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="batchSubmitting">
-              <i class="fas fa-spinner fa-spin" v-if="batchSubmitting"></i>
+              <span class="material-symbols-rounded" :class="{ 'animate-spin': batchSubmitting }" v-if="batchSubmitting">sync</span>
               {{ batchSubmitting ? 'กำลังสร้าง...' : `สร้าง ${batchForm.dates.length} รอบ` }}
             </button>
           </div>
@@ -426,8 +426,8 @@
     <div class="modal-overlay" v-if="showCopyModal">
       <div class="modal-card modal-sm">
         <div class="modal-header">
-          <h2><i class="fas fa-copy" style="color:#2d7a4f;margin-right:8px;"></i>คัดลอกจุดรับ</h2>
-          <button class="modal-close" @click="showCopyModal = false"><i class="fas fa-times"></i></button>
+          <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">content_copy</span>คัดลอกจุดรับ</h2>
+          <button class="modal-close" @click="showCopyModal = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <p style="font-size:13px;color:#374151;margin-bottom:12px;">
@@ -443,7 +443,7 @@
         <div class="modal-footer">
           <button class="btn-secondary" @click="showCopyModal = false">ยกเลิก</button>
           <button class="btn-primary" @click="doCopyPickups" :disabled="!copySelectedIds.length || copySubmitting">
-            <i class="fas fa-spinner fa-spin" v-if="copySubmitting"></i>
+            <span class="material-symbols-rounded" :class="{ 'animate-spin': copySubmitting }" v-if="copySubmitting">sync</span>
             คัดลอกไป {{ copySelectedIds.length }} รอบ
           </button>
         </div>
@@ -455,11 +455,11 @@
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>
-          <button class="modal-close" @click="showDeleteConfirm = false"><i class="fas fa-times"></i></button>
+          <button class="modal-close" @click="showDeleteConfirm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <p class="confirm-text">คุณต้องการลบรอบเดินทางนี้ใช่หรือไม่?</p>
-          <p class="confirm-warning"><i class="fas fa-exclamation-triangle"></i> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <p class="confirm-warning"><span class="material-symbols-rounded">warning</span> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
@@ -917,37 +917,37 @@ onMounted(() => {
 .empty-card {
   text-align: center;
   padding: 48px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 14px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
 }
 
 /* ── Trip group ── */
 .trip-group {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
   margin-bottom: 10px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
 }
 
 .trip-group-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 16px 20px;
   cursor: pointer;
   user-select: none;
-  background: #fafafa;
+  background: var(--color-white);
   transition: background 0.15s;
   gap: 12px;
 }
 
 .trip-group-header:hover {
-  background: #f0faf4;
+  background: var(--color-sand);
 }
 
 .tgh-left {
@@ -958,7 +958,7 @@ onMounted(() => {
 }
 
 .tgh-chevron {
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 12px;
   transition: transform 0.2s;
   flex-shrink: 0;
@@ -966,7 +966,7 @@ onMounted(() => {
 
 .tgh-chevron.expanded {
   transform: rotate(90deg);
-  color: #2d7a4f;
+  color: var(--color-accent);
 }
 
 .tgh-info {
@@ -979,7 +979,7 @@ onMounted(() => {
 .tgh-title {
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -987,11 +987,11 @@ onMounted(() => {
 
 .tgh-meta {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .tgh-next {
-  color: #2d7a4f;
+  color: var(--color-accent);
   font-weight: 600;
 }
 
@@ -1012,7 +1012,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  background: #fff;
+  background: var(--color-white);
   color: #dc2626;
 }
 .btn-danger-sm:hover {
@@ -1022,7 +1022,7 @@ onMounted(() => {
 
 /* ── Inner schedule table ── */
 .trip-group-body {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-sand-dark);
 }
 
 .schedule-table-wrap {
@@ -1043,7 +1043,7 @@ onMounted(() => {
 .schedule-inner-table thead th {
   font-size: 11px;
   padding: 8px 12px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .schedule-inner-table tbody td {
@@ -1060,7 +1060,7 @@ onMounted(() => {
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
-  color: #2d7a4f;
+  color: var(--color-accent);
   background: #e8f5ec;
   border: 1px solid #b7dfc5;
   border-radius: 20px;
@@ -1081,11 +1081,11 @@ onMounted(() => {
 }
 
 .batch-section {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 10px;
   padding: 18px;
   margin-bottom: 18px;
-  background: #fafafa;
+  background: var(--color-white);
 }
 
 .date-rows {
@@ -1104,8 +1104,8 @@ onMounted(() => {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--color-sand-dark);
+  color: var(--color-text-mid);
   font-size: 11px;
   font-weight: 700;
   display: flex;
@@ -1121,10 +1121,10 @@ onMounted(() => {
 }
 
 .pickup-inline-row {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--color-white);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1145,7 +1145,7 @@ onMounted(() => {
 .pickup-inline-empty {
   text-align: center;
   padding: 20px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   font-size: 13px;
   border: 1px dashed #e5e7eb;
   border-radius: 8px;
@@ -1164,9 +1164,9 @@ onMounted(() => {
 }
 
 .btn-sm.btn-secondary {
-  background: #fff;
-  border-color: #d1d5db;
-  color: #374151;
+  background: var(--color-white);
+  border-color: var(--color-sand-dark);
+  color: var(--color-text-mid);
 }
 .btn-sm.btn-secondary:hover {
   background: #f9fafb;
@@ -1185,21 +1185,21 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: #374151;
+  color: var(--color-text-mid);
   cursor: pointer;
   padding: 8px 10px;
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   transition: background 0.15s;
 }
 
 .copy-target-item:hover {
-  background: #f0faf4;
+  background: var(--color-sand);
   border-color: #b7dfc5;
 }
 
 .copy-target-item input {
-  accent-color: #2d7a4f;
+  accent-color: var(--color-accent);
   width: 14px;
   height: 14px;
   flex-shrink: 0;
@@ -1210,13 +1210,13 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-mid);
   cursor: pointer;
   padding: 0 4px;
 }
 
 .checkbox-filter input[type="checkbox"] {
-  accent-color: #2d7a4f;
+  accent-color: var(--color-accent);
   width: 15px;
   height: 15px;
 }
@@ -1230,21 +1230,21 @@ onMounted(() => {
 .seats-bar {
   width: 60px;
   height: 5px;
-  background: #e5e7eb;
+  background: var(--color-sand-dark);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .seats-fill {
   height: 100%;
-  background: #2d7a4f;
+  background: var(--color-accent);
   border-radius: 3px;
   transition: width 0.3s;
 }
 
 .seats-text {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-weight: 600;
 }
 
@@ -1262,14 +1262,14 @@ onMounted(() => {
 
 .modal-subtitle {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 2px 0 0;
 }
 
 .section-label {
   font-size: 13px;
   font-weight: 700;
-  color: #374151;
+  color: var(--color-text-mid);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 14px;
@@ -1283,7 +1283,7 @@ onMounted(() => {
 
 /* ── Region-grouped pickup manager ── */
 .pickup-region-section {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: 12px;
@@ -1294,8 +1294,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: #f0faf4;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-sand);
+  border-bottom: 1px solid var(--color-sand-dark);
 }
 
 .pickup-region-title {
@@ -1304,28 +1304,28 @@ onMounted(() => {
   gap: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #2d7a4f;
+  color: var(--color-accent);
 }
 
 .region-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #2d7a4f;
+  background: var(--color-accent);
   flex-shrink: 0;
 }
 
 .pickup-region-count {
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
-  background: #e5e7eb;
+  color: var(--color-text-muted);
+  background: var(--color-sand-dark);
   border-radius: 20px;
   padding: 1px 7px;
 }
 
 .pickup-region-body {
-  background: #fff;
+  background: var(--color-white);
 }
 
 .pickup-region-list {
@@ -1336,7 +1336,7 @@ onMounted(() => {
 .pickup-region-empty {
   padding: 12px 16px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1369,7 +1369,7 @@ onMounted(() => {
 .pid-location {
   font-size: 13px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1378,7 +1378,7 @@ onMounted(() => {
 
 .pid-notes {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -1395,12 +1395,12 @@ onMounted(() => {
 .pid-price {
   font-size: 13px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
   white-space: nowrap;
 }
 
 .pid-map {
-  color: #2d7a4f;
+  color: var(--color-accent);
   font-size: 13px;
   text-decoration: none;
   padding: 4px;
@@ -1412,7 +1412,7 @@ onMounted(() => {
 /* ── Inline add/edit form (inside region body) ── */
 .pickup-item-edit {
   padding: 12px 14px;
-  background: #fafafa;
+  background: var(--color-white);
   border-top: 1px dashed #d1fae5;
   display: flex;
   flex-direction: column;
@@ -1449,7 +1449,7 @@ onMounted(() => {
 
 .pif-baht {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-weight: 600;
 }
 

@@ -2,7 +2,7 @@
   <div class="admin-dashboard">
     <div class="page-header">
       <h1 class="page-title">
-        <i class="fas fa-tachometer-alt"></i>
+        <span class="material-symbols-rounded heading-icon">dashboard</span>
         แดชบอร์ด
       </h1>
       <p class="page-subtitle">ภาพรวมระบบ TrailDive</p>
@@ -17,40 +17,48 @@
     <template v-else-if="stats">
       <!-- Stats Grid -->
       <div class="stats-grid">
-        <div class="stat-card stat-primary">
-          <div class="stat-icon"><i class="fas fa-route"></i></div>
+        <div class="stat-card">
+          <div class="stat-icon bg-primary-light">
+            <span class="material-symbols-rounded">map</span>
+          </div>
           <div class="stat-content">
-            <span class="stat-value">{{ stats.active_trips }}</span>
             <span class="stat-label">ทริปที่เปิดอยู่</span>
+            <span class="stat-value">{{ stats.active_trips }}</span>
           </div>
-          <div class="stat-badge">จาก {{ stats.total_trips }} ทริป</div>
+          <div class="stat-badge fill-primary">จาก {{ stats.total_trips }} ทริป</div>
         </div>
 
-        <div class="stat-card stat-success">
-          <div class="stat-icon"><i class="fas fa-ticket-alt"></i></div>
+        <div class="stat-card">
+          <div class="stat-icon bg-accent-light">
+            <span class="material-symbols-rounded">confirmation_number</span>
+          </div>
           <div class="stat-content">
-            <span class="stat-value">{{ stats.total_bookings }}</span>
             <span class="stat-label">การจองทั้งหมด</span>
+            <span class="stat-value">{{ stats.total_bookings }}</span>
           </div>
-          <div class="stat-badge">{{ stats.pending_bookings }} รอดำเนินการ</div>
+          <div class="stat-badge fill-accent">{{ stats.pending_bookings }} รอดำเนินการ</div>
         </div>
 
-        <div class="stat-card stat-revenue">
-          <div class="stat-icon"><i class="fas fa-coins"></i></div>
+        <div class="stat-card">
+          <div class="stat-icon bg-gold-light">
+            <span class="material-symbols-rounded">payments</span>
+          </div>
           <div class="stat-content">
-            <span class="stat-value">{{ formatMoney(stats.monthly_revenue) }}</span>
             <span class="stat-label">รายได้เดือนนี้</span>
+            <span class="stat-value">{{ formatMoney(stats.monthly_revenue) }}</span>
           </div>
-          <div class="stat-badge">รวม {{ formatMoney(stats.total_revenue) }}</div>
+          <div class="stat-badge fill-gold">รวม {{ formatMoney(stats.total_revenue) }}</div>
         </div>
 
-        <div class="stat-card stat-info">
-          <div class="stat-icon"><i class="fas fa-users"></i></div>
-          <div class="stat-content">
-            <span class="stat-value">{{ stats.total_customers }}</span>
-            <span class="stat-label">ลูกค้าทั้งหมด</span>
+        <div class="stat-card">
+          <div class="stat-icon bg-ocean-light">
+            <span class="material-symbols-rounded">group</span>
           </div>
-          <div class="stat-badge">{{ stats.total_vehicles }} ยานพาหนะ</div>
+          <div class="stat-content">
+            <span class="stat-label">ลูกค้าทั้งหมด</span>
+            <span class="stat-value">{{ stats.total_customers }}</span>
+          </div>
+          <div class="stat-badge fill-ocean">{{ stats.total_vehicles }} ยานพาหนะ</div>
         </div>
       </div>
 
@@ -59,7 +67,7 @@
         <!-- Booking Status -->
         <div class="chart-card">
           <div class="card-header">
-            <h3><i class="fas fa-chart-pie"></i> สถานะการจอง</h3>
+            <h3><span class="material-symbols-rounded">pie_chart</span> สถานะการจอง</h3>
           </div>
           <div class="booking-status-grid">
             <div class="status-item confirmed">
@@ -85,15 +93,13 @@
             <div
               v-for="(count, type) in stats.bookings_by_type"
               :key="type"
-              class="type-bar"
-            >
+              class="type-bar">
               <span class="type-name">{{ typeLabels[type] || type }}</span>
               <div class="bar-track">
                 <div
                   class="bar-fill"
                   :class="`bar-${type}`"
-                  :style="{ width: getTypePercent(count) + '%' }"
-                ></div>
+                  :style="{ width: getTypePercent(count) + '%' }"></div>
               </div>
               <span class="type-count">{{ count }}</span>
             </div>
@@ -103,19 +109,17 @@
         <!-- Revenue Chart -->
         <div class="chart-card">
           <div class="card-header">
-            <h3><i class="fas fa-chart-bar"></i> รายได้ 6 เดือนล่าสุด</h3>
+            <h3><span class="material-symbols-rounded">bar_chart</span> รายได้ 6 เดือนล่าสุด</h3>
           </div>
           <div class="revenue-chart">
             <div
               v-for="(item, idx) in stats.revenue_chart"
               :key="idx"
-              class="revenue-bar-wrapper"
-            >
+              class="revenue-bar-wrapper">
               <div class="revenue-bar-container">
                 <div
                   class="revenue-bar"
-                  :style="{ height: getRevenuePercent(item.revenue) + '%' }"
-                ></div>
+                  :style="{ height: getRevenuePercent(item.revenue) + '%' }"></div>
               </div>
               <span class="revenue-label">{{ item.month.split(' ')[0] }}</span>
               <span class="revenue-value">{{ formatShortMoney(item.revenue) }}</span>
@@ -127,7 +131,7 @@
       <!-- Quick Stats -->
       <div class="quick-stats-row">
         <div class="quick-stat">
-          <i class="fas fa-calendar-check"></i>
+          <span class="material-symbols-rounded qs-icon">event_available</span>
           <div>
             <span class="qs-value">{{ stats.upcoming_schedules }}</span>
             <span class="qs-label">รอบเดินทางที่กำลังจะถึง</span>
@@ -138,9 +142,9 @@
       <!-- Recent Bookings -->
       <div class="recent-section">
         <div class="section-header">
-          <h3><i class="fas fa-clock"></i> การจองล่าสุด</h3>
+          <h3><span class="material-symbols-rounded">history</span> การจองล่าสุด</h3>
           <router-link to="/admin/bookings" class="view-all-btn">
-            ดูทั้งหมด <i class="fas fa-arrow-right"></i>
+            ดูทั้งหมด <span class="material-symbols-rounded">arrow_forward</span>
           </router-link>
         </div>
 
@@ -243,6 +247,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import url('./admin-shared.css');
+
 .admin-dashboard {
   animation: fadeIn 0.3s ease;
 }
@@ -252,28 +258,29 @@ onMounted(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.heading-icon {
+  color: var(--color-accent);
+  font-size: 28px;
+}
+
 .page-header {
   margin-bottom: 24px;
 }
 
 .page-title {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-anuphan);
   font-size: 26px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
   margin: 0 0 4px 0;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.page-title i {
-  color: #2d7a4f;
-}
-
 .page-subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -284,14 +291,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 60px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
 }
 
 .spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #2d7a4f;
+  border: 3px solid var(--color-sand-dark);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   margin-bottom: 14px;
@@ -304,185 +311,186 @@ onMounted(() => {
 /* ─── Stats Grid ──────────────────────── */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
   margin-bottom: 24px;
 }
 
 .stat-card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
+  padding: 24px;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 14px;
-  position: relative;
-  overflow: hidden;
-  transition: box-shadow 0.15s;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
-  box-shadow: 0 4px 16px rgba(17, 24, 39, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
 }
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-}
-
-.stat-primary::before { background: #2d7a4f; }
-.stat-success::before { background: #1d4ed8; }
-.stat-revenue::before { background: #d97706; }
-.stat-info::before { background: #7c3aed; }
 
 .stat-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
 }
 
-.stat-primary .stat-icon { background: #F5F5F5; color: #15803d; }
-.stat-success .stat-icon { background: #dbeafe; color: #1d4ed8; }
-.stat-revenue .stat-icon { background: #fef9c3; color: #a16207; }
-.stat-info .stat-icon { background: #ede9fe; color: #6d28d9; }
+.stat-icon span {
+  font-size: 24px;
+}
+
+.bg-primary-light { background: #E8F0EC; color: var(--color-primary); }
+.bg-accent-light { background: #EAF2EE; color: var(--color-accent); }
+.bg-ocean-light { background: #E8F0F5; color: var(--color-ocean); }
+.bg-gold-light { background: #F9F4EB; color: var(--color-gold); }
 
 .stat-content {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 .stat-value {
   display: block;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
+  font-family: var(--font-playfair);
   line-height: 1.2;
 }
 
-.stat-label {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 2px;
+.stat-badge {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-block;
+  align-self: flex-start;
 }
 
-.stat-badge {
-  width: 100%;
-  font-size: 12px;
-  color: #9ca3af;
-  padding-top: 10px;
-  border-top: 1px solid #f3f4f6;
-}
+.fill-primary { background: var(--color-sand); color: var(--color-primary-mid); }
+.fill-accent { background: var(--color-sand); color: var(--color-accent); }
+.fill-ocean { background: var(--color-sand); color: var(--color-ocean); }
+.fill-gold { background: var(--color-sand); color: var(--color-gold-dark); }
 
 /* ─── Charts Row ──────────────────────── */
 .charts-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 24px;
   margin-bottom: 24px;
 }
 
 .chart-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border-radius: 16px;
+  border: 1px solid var(--color-sand-dark);
   overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
 }
 
 .card-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--color-sand-dark);
 }
 
 .card-header h3 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-dark);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.card-header h3 i {
-  color: #2d7a4f;
+.card-header h3 span {
+  color: var(--color-accent);
+  font-size: 20px;
 }
 
 /* Booking Status */
 .booking-status-grid {
-  padding: 16px 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .status-dot {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
-.confirmed .status-dot { background: #16a34a; }
-.pending .status-dot { background: #d97706; }
-.cancelled .status-dot { background: #dc2626; }
+.confirmed .status-dot { background: var(--color-accent); }
+.pending .status-dot { background: var(--color-gold); }
+.cancelled .status-dot { background: #EF4444; }
 
 .status-label {
   flex: 1;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 .status-count {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 /* Type Distribution */
 .type-distribution {
-  padding: 0 20px 20px;
+  padding: 0 24px 24px;
 }
 
 .type-distribution h4 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #9ca3af;
-  margin: 0 0 10px 0;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
 }
 
 .type-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .type-name {
-  width: 70px;
+  width: 75px;
   font-size: 13px;
-  color: #6b7280;
+  color: var(--color-text-mid);
+  font-weight: 500;
 }
 
 .bar-track {
   flex: 1;
-  height: 7px;
-  background: #EEEEEE;
+  height: 8px;
+  background: var(--color-sand);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -490,29 +498,29 @@ onMounted(() => {
 .bar-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.6s ease;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.bar-trekking { background: #16a34a; }
-.bar-diving { background: #1d4ed8; }
-.bar-snorkeling { background: #0369a1; }
-.bar-climbing { background: #d97706; }
+.bar-trekking { background: var(--color-primary-light); }
+.bar-diving { background: var(--color-ocean); }
+.bar-snorkeling { background: var(--color-ocean-light); }
+.bar-climbing { background: var(--color-gold); }
 
 .type-count {
   font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-  width: 30px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  width: 32px;
   text-align: right;
 }
 
 /* Revenue Chart */
 .revenue-chart {
-  padding: 20px;
+  padding: 24px;
   display: flex;
   justify-content: space-around;
   align-items: flex-end;
-  height: 220px;
+  height: 240px;
   gap: 8px;
 }
 
@@ -521,83 +529,96 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   flex: 1;
-  gap: 6px;
+  gap: 8px;
 }
 
 .revenue-bar-container {
   width: 100%;
-  max-width: 44px;
-  height: 150px;
+  max-width: 48px;
+  height: 160px;
   display: flex;
   align-items: flex-end;
+  background: var(--color-sand);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .revenue-bar {
   width: 100%;
-  background: #FAFAFA;
-  border: 1px solid #EEEEEE;
-  border-radius: 5px 5px 0 0;
+  background: var(--color-accent);
+  border-radius: 6px 6px 0 0;
   min-height: 4px;
-  transition: height 0.5s ease;
+  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.revenue-bar:hover {
+  background: var(--color-accent-mid);
 }
 
 .revenue-label {
-  font-size: 11px;
-  color: #9ca3af;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 600;
 }
 
 .revenue-value {
-  font-size: 11px;
-  color: #374151;
-  font-weight: 600;
+  font-size: 12px;
+  color: var(--color-text-dark);
+  font-weight: 700;
 }
 
 /* ─── Quick Stats ─────────────────────── */
 .quick-stats-row {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   margin-bottom: 24px;
 }
 
 .quick-stat {
   flex: 1;
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  padding: 14px 18px;
+  background: var(--color-white);
+  border-radius: 16px;
+  border: 1px solid var(--color-sand-dark);
+  padding: 20px 24px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
 }
 
-.quick-stat i {
-  font-size: 18px;
-  color: #2d7a4f;
+.qs-icon {
+  font-size: 28px;
+  color: var(--color-accent);
+  background: #EAF2EE;
+  padding: 12px;
+  border-radius: 12px;
 }
 
 .qs-value {
   display: block;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 .qs-label {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 /* ─── Recent Bookings ─────────────────── */
 .recent-section {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border-radius: 16px;
+  border: 1px solid var(--color-sand-dark);
   overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
 }
 
 .section-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--color-sand-dark);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -605,31 +626,32 @@ onMounted(() => {
 
 .section-header h3 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-dark);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.section-header h3 i {
-  color: #2d7a4f;
+.section-header h3 span {
+  color: var(--color-accent);
+  font-size: 20px;
 }
 
 .view-all-btn {
   font-size: 13px;
-  color: #2d7a4f;
+  color: var(--color-accent);
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-weight: 500;
+  gap: 4px;
+  font-weight: 600;
   transition: color 0.15s;
 }
 
 .view-all-btn:hover {
-  color: #1a5535;
+  color: var(--color-accent-mid);
 }
 
 /* ─── Table ───────────────────────────── */
@@ -643,23 +665,24 @@ onMounted(() => {
 }
 
 .data-table th {
-  padding: 12px 20px;
-  font-size: 11px;
+  padding: 14px 24px;
+  font-size: 12px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-  background: #FAFAFA;
+  border-bottom: 1px solid var(--color-sand-dark);
+  background: var(--color-sand);
   white-space: nowrap;
 }
 
 .data-table td {
-  padding: 13px 20px;
+  padding: 16px 24px;
   font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #f3f4f6;
+  color: var(--color-text-mid);
+  border-bottom: 1px solid var(--color-sand-dark);
+  font-weight: 500;
 }
 
 .data-table tr:last-child td {
@@ -667,44 +690,46 @@ onMounted(() => {
 }
 
 .data-table tr:hover td {
-  background: #FAFAFA;
+  background: var(--color-sand);
 }
 
 .booking-ref {
   font-family: monospace;
-  font-size: 13px;
-  color: #2d7a4f;
+  font-size: 14px;
+  color: var(--color-accent);
   font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .status-badge {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 20px;
+  padding: 4px 12px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
 }
 
-.status-pending { background: #fef9c3; color: #a16207; }
-.status-confirmed { background: #F5F5F5; color: #15803d; }
-.status-cancelled { background: #fee2e2; color: #b91c1c; }
-.status-refunded { background: #ede9fe; color: #6d28d9; }
+.status-pending { background: #FEF3C7; color: #B45309; }
+.status-confirmed { background: #EAF2EE; color: var(--color-accent); }
+.status-cancelled { background: #FEE2E2; color: #B91C1C; }
+.status-refunded { background: #EDE9FE; color: #6D28D9; }
 
 td.money {
-  font-weight: 600;
-  color: #111827;
+  font-weight: 700;
+  color: var(--color-text-dark);
 }
 
 td.date {
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
 .empty-state {
   text-align: center;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   padding: 48px !important;
   font-size: 14px;
+  font-weight: 500;
 }
 
 /* ─── Responsive ──────────────────────── */
@@ -714,7 +739,16 @@ td.date {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .quick-stats-row {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
   .stats-grid {
     grid-template-columns: 1fr;
   }

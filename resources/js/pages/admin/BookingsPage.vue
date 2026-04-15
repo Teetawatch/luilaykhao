@@ -5,7 +5,7 @@
       <div>
         <h1 class="font-anuphan text-2xl font-bold text-text-dark flex items-center gap-3">
           <div class="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent">
-            <i class="fas fa-ticket-alt"></i>
+            <span class="material-symbols-rounded">confirmation_number</span>
           </div>
           จัดการการจอง
         </h1>
@@ -17,7 +17,7 @@
     <div class="bg-white p-4 rounded-2xl shadow-sm border border-sand-dark/50 flex flex-col sm:flex-row gap-4">
       <div class="relative flex-1">
         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <i class="fas fa-search text-text-muted/60"></i>
+          <span class="material-symbols-rounded text-text-muted/60 text-[20px]">search</span>
         </div>
         <input v-model="filters.search" placeholder="ค้นหารหัสจอง, ชื่อ, อีเมล..." @input="debouncedFetch"
           class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl pl-11 pr-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50" />
@@ -82,18 +82,18 @@
               <td class="px-6 py-4">
                 <div class="flex items-center justify-center gap-2">
                   <button @click="openDetail(b)" class="w-8 h-8 rounded-lg bg-sand/50 text-accent hover:bg-accent/10 border border-transparent hover:border-accent/20 flex items-center justify-center transition-all" title="รายละเอียด">
-                    <i class="fas fa-eye"></i>
+                    <span class="material-symbols-rounded text-[18px]">visibility</span>
                   </button>
                   <button @click="openStatusModal(b)" class="w-8 h-8 rounded-lg bg-sand/50 border border-transparent flex items-center justify-center transition-all"
                     :class="b.status === 'pending' ? 'text-accent hover:bg-accent/10 hover:border-accent/20' : 'text-red-500 hover:bg-red-50 hover:border-red-200'" title="เปลี่ยนสถานะ">
-                    <i class="fas fa-exchange-alt"></i>
+                    <span class="material-symbols-rounded text-[18px]">swap_horiz</span>
                   </button>
                 </div>
               </td>
             </tr>
             <tr v-if="!admin.bookings.data?.length">
               <td colspan="7" class="px-6 py-12 text-center text-text-muted text-sm">
-                <i class="fas fa-inbox text-3xl mb-3 text-sand-dark block"></i>
+                <span class="material-symbols-rounded text-4xl mb-3 text-sand-dark block">inbox</span>
                 ไม่พบข้อมูลการจอง
               </td>
             </tr>
@@ -105,14 +105,14 @@
       <div v-if="admin.bookings.meta?.last_page > 1" class="flex items-center justify-center gap-4 px-6 py-4 border-t border-sand-dark/50 bg-sand/10">
         <button :disabled="admin.bookings.meta.current_page <= 1" @click="goPage(admin.bookings.meta.current_page - 1)"
           class="w-9 h-9 rounded-xl border border-sand-dark/60 bg-white flex items-center justify-center text-text-muted hover:bg-sand hover:text-accent hover:border-accent/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-          <i class="fas fa-chevron-left text-xs"></i>
+          <span class="material-symbols-rounded text-[20px]">chevron_left</span>
         </button>
         <span class="text-sm font-medium text-text-muted">
           {{ admin.bookings.meta.current_page }} / {{ admin.bookings.meta.last_page }}
         </span>
         <button :disabled="admin.bookings.meta.current_page >= admin.bookings.meta.last_page" @click="goPage(admin.bookings.meta.current_page + 1)"
           class="w-9 h-9 rounded-xl border border-sand-dark/60 bg-white flex items-center justify-center text-text-muted hover:bg-sand hover:text-accent hover:border-accent/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-          <i class="fas fa-chevron-right text-xs"></i>
+          <span class="material-symbols-rounded text-[20px]">chevron_right</span>
         </button>
       </div>
     </div>
@@ -122,10 +122,10 @@
       <div class="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-sand-dark/20 animate-in fade-in zoom-in-95 duration-200">
         <div class="px-6 py-5 border-b border-sand-dark/50 flex items-center justify-between bg-sand/10">
           <h2 class="font-anuphan text-xl font-bold text-text-dark flex items-center gap-2">
-            <i class="fas fa-file-invoice text-accent"></i> รายละเอียดการจอง
+            <span class="material-symbols-rounded text-accent">receipt_long</span> รายละเอียดการจอง
           </h2>
           <button @click="showDetail = false" class="w-8 h-8 rounded-full bg-white border border-sand-dark/50 flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-all">
-            <i class="fas fa-times"></i>
+            <span class="material-symbols-rounded text-[20px]">close</span>
           </button>
         </div>
         
@@ -153,7 +153,7 @@
                 <template v-for="pt in (detailBooking.schedule?.pickup_points || [])" :key="pt.id">
                   <div v-if="pt.region === detailBooking.pickup_region" class="flex flex-col gap-0.5">
                     <span class="inline-flex items-center gap-1.5 font-bold text-accent">
-                      <i class="fas fa-map-marker-alt text-[11px]"></i>
+                      <span class="material-symbols-rounded text-[16px]">location_on</span>
                       {{ pt.region_label }}
                     </span>
                     <span class="text-xs text-text-muted">{{ pt.pickup_location }}<span v-if="pt.notes"> · {{ pt.notes }}</span></span>
@@ -187,7 +187,7 @@
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">เช็คอิน</label>
               <div v-if="detailBooking.checked_in" class="text-sm font-medium text-green-600 flex items-center gap-1.5">
-                <i class="fas fa-check-circle"></i> {{ formatDate(detailBooking.checked_in_at) }}
+                <span class="material-symbols-rounded text-[18px]">check_circle</span> {{ formatDate(detailBooking.checked_in_at) }}
               </div>
               <div v-else class="text-sm font-medium text-text-muted italic">ยังไม่เช็คอิน</div>
             </div>
@@ -214,7 +214,7 @@
           <!-- Passengers -->
           <div v-if="detailBooking.passengers?.length" class="mb-8">
             <h3 class="text-sm font-bold text-text-dark mb-4 flex items-center gap-2 border-b border-sand-dark/50 pb-2">
-              <i class="fas fa-users text-accent"></i> ผู้โดยสาร ({{ detailBooking.passengers.length }})
+              <span class="material-symbols-rounded text-accent">group</span> ผู้โดยสาร ({{ detailBooking.passengers.length }})
             </h3>
             <div class="grid grid-cols-1 gap-4">
               <div v-for="(p, idx) in detailBooking.passengers" :key="p.id" class="bg-sand/20 border border-sand-dark/50 rounded-2xl p-4 hover:bg-sand/40 transition-colors">
@@ -224,7 +224,7 @@
                   <span class="font-bold text-text-dark">{{ p.title }} {{ p.name }}</span>
                   <span v-if="p.nickname" class="text-xs text-text-muted">({{ p.nickname }})</span>
                   <span v-if="p.halal_food === true" class="ml-auto text-[11px] font-bold bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <i class="fas fa-leaf"></i> ฮาลาล
+                    <span class="material-symbols-rounded text-[14px]">eco</span> ฮาลาล
                   </span>
                   <span v-else-if="p.halal_food === false" class="ml-auto text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
                     ไม่ฮาลาล
@@ -277,7 +277,7 @@
           <!-- Seats -->
           <div v-if="detailBooking.seats?.length">
             <h3 class="text-sm font-bold text-text-dark mb-4 flex items-center gap-2 border-b border-sand-dark/50 pb-2">
-              <i class="fas fa-chair text-accent"></i> ที่นั่ง
+              <span class="material-symbols-rounded text-accent text-[20px]">chair</span> ที่นั่ง
             </h3>
             <div class="flex flex-wrap gap-2">
               <span v-for="s in detailBooking.seats" :key="s.id" 
@@ -295,10 +295,10 @@
       <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col border border-sand-dark/20 animate-in fade-in zoom-in-95 duration-200">
         <div class="px-6 py-5 border-b border-sand-dark/50 flex items-center justify-between bg-sand/10">
           <h2 class="font-anuphan text-xl font-bold text-text-dark flex items-center gap-2">
-            <i class="fas fa-exchange-alt text-accent"></i> เปลี่ยนสถานะ
+            <span class="material-symbols-rounded text-accent">swap_horiz</span> เปลี่ยนสถานะ
           </h2>
           <button @click="showStatusModal = false" class="w-8 h-8 rounded-full bg-white border border-sand-dark/50 flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-all">
-            <i class="fas fa-times"></i>
+            <span class="material-symbols-rounded text-[20px]">close</span>
           </button>
         </div>
         <div class="p-6 space-y-4">
@@ -325,8 +325,8 @@
           </button>
           <button @click="doUpdateStatus" :disabled="submitting"
             class="px-5 py-2.5 rounded-xl bg-accent text-white font-bold hover:bg-accent-mid shadow-lg shadow-accent/20 hover:shadow-xl transition-all disabled:opacity-70 flex items-center gap-2 text-sm">
-            <i v-if="submitting" class="fas fa-spinner fa-spin"></i>
-            <i v-else class="fas fa-save"></i>
+            <span v-if="submitting" class="material-symbols-rounded animate-spin text-[20px]">sync</span>
+            <span v-else class="material-symbols-rounded text-[20px]">save</span>
             บันทึกการเปลี่ยนแปลง
           </button>
         </div>

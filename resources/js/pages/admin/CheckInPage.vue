@@ -2,7 +2,7 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><i class="fas fa-qrcode"></i> เช็คอิน QR Code</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">qr_code_scanner</span> เช็คอิน QR Code</h1>
         <p class="page-subtitle">สแกน QR Code หรือค้นหารหัสจองเพื่อเช็คอิน</p>
       </div>
     </div>
@@ -11,17 +11,17 @@
     <div class="checkin-card">
       <div class="checkin-tabs">
         <button :class="{ active: mode === 'qr' }" @click="mode = 'qr'">
-          <i class="fas fa-qrcode"></i> สแกน QR Code
+          <span class="material-symbols-rounded">qr_code_scanner</span> สแกน QR Code
         </button>
         <button :class="{ active: mode === 'ref' }" @click="mode = 'ref'">
-          <i class="fas fa-search"></i> ค้นหารหัสจอง
+          <span class="material-symbols-rounded">search</span> ค้นหารหัสจอง
         </button>
       </div>
 
       <div class="checkin-input-area">
         <div v-if="mode === 'qr'" class="qr-scan-area">
           <div class="qr-icon-wrapper">
-            <i class="fas fa-camera"></i>
+            <span class="material-symbols-rounded text-accent" style="font-size:32px; color:var(--color-accent);">photo_camera</span>
           </div>
           <p class="qr-instruction">วาง QR Code หน้ากล้อง หรือพิมพ์รหัส QR ด้านล่าง</p>
           <div class="input-group">
@@ -32,8 +32,8 @@
               class="checkin-input"
             />
             <button class="btn-primary btn-checkin" @click="doCheckInQr" :disabled="!qrInput || processing">
-              <i class="fas fa-spinner fa-spin" v-if="processing"></i>
-              <i class="fas fa-check" v-else></i>
+              <span class="material-symbols-rounded animate-spin" v-if="processing">sync</span>
+              <span class="material-symbols-rounded" v-else>check</span>
               เช็คอิน
             </button>
           </div>
@@ -48,8 +48,8 @@
               class="checkin-input"
             />
             <button class="btn-primary btn-checkin" @click="doCheckInRef" :disabled="!refInput || processing">
-              <i class="fas fa-spinner fa-spin" v-if="processing"></i>
-              <i class="fas fa-check" v-else></i>
+              <span class="material-symbols-rounded animate-spin" v-if="processing">sync</span>
+              <span class="material-symbols-rounded" v-else>check</span>
               เช็คอิน
             </button>
           </div>
@@ -60,7 +60,7 @@
     <!-- Result -->
     <div class="result-card success" v-if="result && result.success">
       <div class="result-icon success-icon">
-        <i class="fas fa-check-circle"></i>
+        <span class="material-symbols-rounded" style="font-size:32px;">check_circle</span>
       </div>
       <h2>เช็คอินสำเร็จ!</h2>
       <div class="result-details">
@@ -85,24 +85,24 @@
           <span>{{ formatDateTime(result.booking.checked_in_at) }}</span>
         </div>
       </div>
-      <button class="btn-secondary" @click="resetResult"><i class="fas fa-redo"></i> เช็คอินคนถัดไป</button>
+      <button class="btn-secondary" @click="resetResult"><span class="material-symbols-rounded" style="font-size:18px;">refresh</span> เช็คอินคนถัดไป</button>
     </div>
 
     <div class="result-card error" v-if="result && !result.success">
       <div class="result-icon error-icon">
-        <i class="fas fa-times-circle"></i>
+        <span class="material-symbols-rounded" style="font-size:32px;">cancel</span>
       </div>
       <h2>ไม่สามารถเช็คอินได้</h2>
       <p class="error-msg">{{ result.message }}</p>
-      <button class="btn-secondary" @click="resetResult"><i class="fas fa-redo"></i> ลองใหม่</button>
+      <button class="btn-secondary" @click="resetResult"><span class="material-symbols-rounded" style="font-size:18px;">refresh</span> ลองใหม่</button>
     </div>
 
     <!-- Recent Check-ins -->
     <div class="recent-checkins" v-if="recentCheckins.length">
-      <h3><i class="fas fa-history"></i> เช็คอินล่าสุด</h3>
+      <h3><span class="material-symbols-rounded" style="color:var(--color-accent); margin-right:8px;">history</span> เช็คอินล่าสุด</h3>
       <div class="checkin-list">
         <div v-for="c in recentCheckins" :key="c.booking_ref" class="checkin-item">
-          <div class="ci-icon"><i class="fas fa-check"></i></div>
+          <div class="ci-icon"><span class="material-symbols-rounded" style="font-size:16px;">check</span></div>
           <div class="ci-info">
             <span class="ci-ref">{{ c.booking_ref }}</span>
             <span class="ci-name">{{ c.user?.name }} — {{ c.schedule?.trip?.title }}</span>
@@ -179,16 +179,17 @@ function resetResult() {
 @import url('./admin-shared.css');
 
 .checkin-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border-radius: 16px;
+  border: 1px solid var(--color-sand-dark);
   overflow: hidden;
   margin-bottom: 24px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
 }
 
 .checkin-tabs {
   display: flex;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-sand-dark);
 }
 
 .checkin-tabs button {
@@ -198,7 +199,7 @@ function resetResult() {
   background: transparent;
   font-size: 14px;
   font-weight: 500;
-  color: #6b7280;
+  color: var(--color-text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -207,13 +208,13 @@ function resetResult() {
   transition: all 0.15s;
 }
 
-.checkin-tabs button:hover { background: #FAFAFA; }
+.checkin-tabs button:hover { background: var(--color-sand); }
 
 .checkin-tabs button.active {
-  color: #2d7a4f;
+  color: var(--color-accent);
   font-weight: 600;
-  border-bottom: 2px solid #2d7a4f;
-  background: #f0faf4;
+  border-bottom: 2px solid var(--color-accent);
+  background: var(--color-white);
 }
 
 .checkin-input-area {
@@ -228,20 +229,15 @@ function resetResult() {
   width: 80px;
   height: 80px;
   border-radius: 20px;
-  background: #f0faf4;
+  background: var(--color-sand);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
 }
 
-.qr-icon-wrapper i {
-  font-size: 32px;
-  color: #2d7a4f;
-}
-
 .qr-instruction {
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 14px;
   margin-bottom: 20px;
 }
@@ -256,17 +252,17 @@ function resetResult() {
 .checkin-input {
   flex: 1;
   padding: 12px 16px;
-  border: 2px solid #d1d5db;
+  border: 2px solid var(--color-sand-dark);
   border-radius: 10px;
   font-size: 16px;
-  color: #111827;
+  color: var(--color-text-dark);
   outline: none;
   transition: border-color 0.15s;
   font-family: monospace;
 }
 
 .checkin-input:focus {
-  border-color: #2d7a4f;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 4px rgba(45, 122, 79, 0.1);
 }
 
@@ -280,7 +276,7 @@ function resetResult() {
 .result-card {
   text-align: center;
   padding: 30px;
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 24px;
 }
 
@@ -301,7 +297,6 @@ function resetResult() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
   margin-bottom: 12px;
 }
 
@@ -311,7 +306,7 @@ function resetResult() {
 .result-card h2 {
   font-size: 20px;
   margin: 0 0 16px;
-  color: #111827;
+  color: var(--color-text-dark);
 }
 
 .result-details {
@@ -329,7 +324,7 @@ function resetResult() {
 
 .rd-label {
   width: 100px;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-weight: 500;
 }
 
@@ -341,26 +336,22 @@ function resetResult() {
 
 /* Recent */
 .recent-checkins {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  background: var(--color-white);
+  border-radius: 16px;
+  border: 1px solid var(--color-sand-dark);
   overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
 }
 
 .recent-checkins h3 {
   padding: 14px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-sand-dark);
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text-dark);
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.recent-checkins h3 i {
-  color: #2d7a4f;
 }
 
 .checkin-list {
@@ -373,7 +364,7 @@ function resetResult() {
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-sand-dark);
 }
 
 .checkin-item:last-child { border-bottom: none; }
@@ -387,7 +378,6 @@ function resetResult() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
   flex-shrink: 0;
 }
 
@@ -399,18 +389,18 @@ function resetResult() {
   display: block;
   font-family: monospace;
   font-size: 13px;
-  color: #2d7a4f;
+  color: var(--color-accent);
   font-weight: 700;
 }
 
 .ci-name {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .ci-time {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 </style>
