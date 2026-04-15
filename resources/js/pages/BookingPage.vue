@@ -579,8 +579,8 @@
                       {{ p.phone }}
                     </p>
                     <div class="flex flex-wrap gap-2 mt-1">
-                      <span v-if="p.id_card" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">ID: {{ p.id_card }}</span>
-                      <span v-if="p.blood_group" class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">Blood: {{ p.blood_group }}</span>
+                      <span v-if="p.id_card" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">หมายเลขบัตรประจำตัวประชาชน : {{ p.id_card }}</span>
+                      <span v-if="p.blood_group" class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">กรุ๊ปเลือด : {{ p.blood_group }}</span>
                     </div>
                   </div>
                   <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
@@ -979,9 +979,9 @@ async function createBooking() {
       <div style="text-align:left; font-size:14px; color:#374151; line-height:1.7;">
         <p style="font-weight:700; color:#0f766e; margin-bottom:10px; font-size:15px;">การสำรองที่นั่ง และการเปลี่ยนแปลง</p>
         <ol style="padding-left:18px; margin:0 0 16px 0; display:flex; flex-direction:column; gap:8px;">
-          <li>เมื่อท่านยืนยันสิทธิ์การเดินทางแล้ว ทางทีมงานขอสงวนสิทธิ์ในการคืนเงินมัดจำ / ค่าทริป<strong>ทุกกรณี</strong></li>
-          <li>หากไม่สะดวกในวันดังกล่าว สามารถแจ้งเลื่อนได้ <strong>1 ครั้ง</strong> โดยรบกวนแจ้งล่วงหน้าอย่างน้อย <strong>45 วัน</strong> ก่อนวันเดินทางเดิม</li>
-          <li>กรณีต้องการเปลี่ยนแปลงตัวผู้เดินทาง สามารถหาคนมาแทนได้ โดยรบกวนแจ้งรายละเอียดให้ทีมงานทราบล่วงหน้าอย่างน้อย <strong>15 วัน</strong></li>
+          <li>1.เมื่อท่านยืนยันสิทธิ์การเดินทางแล้ว ทางทีมงานขอสงวนสิทธิ์ในการคืนเงินมัดจำ / ค่าทริป<strong>ทุกกรณี</strong></li>
+          <li>2.หากไม่สะดวกในวันดังกล่าว สามารถแจ้งเลื่อนได้ <strong>1 ครั้ง</strong> โดยรบกวนแจ้งล่วงหน้าอย่างน้อย <strong>30 วัน</strong> ก่อนวันเดินทางเดิม</li>
+          <li>3.กรณีต้องการเปลี่ยนแปลงตัวผู้เดินทาง สามารถหาคนมาแทนได้ โดยรบกวนแจ้งรายละเอียดให้ทีมงานทราบล่วงหน้าอย่างน้อย <strong>15 วัน</strong></li>
         </ol>
         <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; color:#166534;">
           <strong>สรุปการจอง:</strong> จำนวน ${passengers.value.length} ท่าน · ฿${totalAmount.value.toLocaleString()}
