@@ -12,40 +12,40 @@
 
     <!-- Stats -->
     <div class="stats-grid mb-20" v-if="loyaltyStats">
-      <div class="stat-card stat-primary">
-        <div class="stat-icon"><span class="material-symbols-rounded">group</span></div>
+      <div class="stat-card">
+        <div class="stat-icon bg-blue-50 text-blue-600"><span class="material-symbols-rounded">group</span></div>
         <div class="stat-content">
           <span class="stat-value">{{ loyaltyStats.total_accounts?.toLocaleString() }}</span>
           <span class="stat-label">สมาชิกทั้งหมด</span>
         </div>
       </div>
-      <div class="stat-card stat-success">
-        <div class="stat-icon"><span class="material-symbols-rounded">monetization_on</span></div>
+      <div class="stat-card">
+        <div class="stat-icon bg-green-50 text-green-600"><span class="material-symbols-rounded">monetization_on</span></div>
         <div class="stat-content">
           <span class="stat-value">{{ loyaltyStats.total_points_issued?.toLocaleString() }}</span>
           <span class="stat-label">แต้มที่ออกทั้งหมด</span>
         </div>
       </div>
-      <div class="stat-card stat-revenue">
-        <div class="stat-icon"><span class="material-symbols-rounded">card_giftcard</span></div>
+      <div class="stat-card">
+        <div class="stat-icon bg-purple-50 text-purple-600"><span class="material-symbols-rounded">card_giftcard</span></div>
         <div class="stat-content">
           <span class="stat-value">{{ loyaltyStats.total_points_redeemed?.toLocaleString() }}</span>
           <span class="stat-label">แต้มที่แลกไปแล้ว</span>
         </div>
       </div>
-      <div class="stat-card stat-info">
-        <div class="stat-icon"><span class="material-symbols-rounded">workspace_premium</span></div>
+      <div class="stat-card">
+        <div class="stat-icon bg-amber-50 text-amber-600"><span class="material-symbols-rounded">workspace_premium</span></div>
         <div class="stat-content">
-          <span class="stat-value">{{ loyaltyStats.tier_counts?.gold }}</span>
-          <span class="stat-label">Gold / {{ loyaltyStats.tier_counts?.silver }} Silver</span>
+          <span class="stat-value">{{ loyaltyStats.tier_counts?.gold || 0 }}</span>
+          <span class="stat-label">Gold / {{ loyaltyStats.tier_counts?.silver || 0 }} Silver</span>
         </div>
       </div>
     </div>
 
     <!-- Tier Overview -->
     <div class="table-card mb-20" v-if="loyaltyStats">
-      <div class="card-header">
-        <h3><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">layers</span> สัดส่วนระดับสมาชิก</h3>
+      <div class="card-header border-b border-[var(--color-sand-dark)] pb-4 mb-4">
+        <h3 class="flex items-center gap-2 m-0 text-[15px] font-semibold text-[var(--color-text-dark)]"><span class="material-symbols-rounded text-[var(--color-accent)]">layers</span> สัดส่วนระดับสมาชิก</h3>
       </div>
       <div class="tier-bars">
         <div v-for="tier in tierList" :key="tier.key" class="tier-bar-row">
@@ -64,8 +64,8 @@
 
     <!-- Rewards Table -->
     <div class="table-card">
-      <div class="card-header">
-        <h3><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">card_giftcard</span> ของรางวัลทั้งหมด</h3>
+      <div class="card-header border-b border-[var(--color-sand-dark)] pb-4 mb-4">
+        <h3 class="flex items-center gap-2 m-0 text-[15px] font-semibold text-[var(--color-text-dark)]"><span class="material-symbols-rounded text-[var(--color-accent)]">card_giftcard</span> ของรางวัลทั้งหมด</h3>
       </div>
 
       <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
@@ -88,8 +88,8 @@
             <tbody>
               <tr v-for="r in rewards" :key="r.id">
                 <td>
-                  <strong>{{ r.name }}</strong>
-                  <p v-if="r.description" class="text-muted-small">{{ r.description }}</p>
+                  <strong class="text-[var(--color-text-dark)]">{{ r.name }}</strong>
+                  <p v-if="r.description" class="text-[11px] text-[var(--color-text-muted)] mt-1 mb-0">{{ r.description }}</p>
                 </td>
                 <td><span class="type-badge" :class="`type-${r.type}`">{{ typeLabels[r.type] }}</span></td>
                 <td><strong>{{ r.points_required?.toLocaleString() }}</strong></td>
@@ -102,12 +102,12 @@
                   </span>
                 </td>
                 <td>
-                  <div class="action-group">
-                    <button class="btn-icon" @click="openEdit(r)" title="แก้ไข">
-                      <span class="material-symbols-rounded">edit</span>
+                  <div class="action-btns">
+                    <button class="btn-icon btn-edit" @click="openEdit(r)" title="แก้ไข">
+                      <span class="material-symbols-rounded" style="font-size:16px;">edit</span>
                     </button>
-                    <button class="btn-icon btn-danger" @click="deleteReward(r.id)" title="ลบ">
-                      <span class="material-symbols-rounded">delete</span>
+                    <button class="btn-icon btn-delete" @click="deleteReward(r.id)" title="ลบ">
+                      <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
                     </button>
                   </div>
                 </td>
@@ -123,21 +123,21 @@
 
     <!-- Modal -->
     <div v-if="showModal" class="modal-overlay">
-      <div class="modal-box">
+      <div class="modal-box modal-card">
         <div class="modal-header">
           <h3>{{ editingId ? 'แก้ไขของรางวัล' : 'เพิ่มของรางวัล' }}</h3>
           <button class="modal-close" @click="showModal = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>ชื่อ *</label>
-            <input v-model="form.name" type="text" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label>คำอธิบาย</label>
-            <textarea v-model="form.description" rows="2" class="form-input"></textarea>
-          </div>
-          <div class="form-row">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>ชื่อ *</label>
+              <input v-model="form.name" type="text" class="form-input" />
+            </div>
+            <div class="form-group full-width">
+              <label>คำอธิบาย</label>
+              <textarea v-model="form.description" rows="2" class="form-input"></textarea>
+            </div>
             <div class="form-group">
               <label>ประเภท *</label>
               <select v-model="form.type" class="form-input">
@@ -150,8 +150,6 @@
               <label>แต้มที่ต้องใช้ *</label>
               <input v-model.number="form.points_required" type="number" min="1" class="form-input" />
             </div>
-          </div>
-          <div class="form-row">
             <div class="form-group">
               <label>มูลค่าส่วนลด</label>
               <input v-model.number="form.discount_value" type="number" min="0" step="0.01" class="form-input" />
@@ -160,19 +158,20 @@
               <label>สต็อก (ว่างไว้ = ไม่จำกัด)</label>
               <input v-model.number="form.stock" type="number" min="0" class="form-input" placeholder="ไม่จำกัด" />
             </div>
-          </div>
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="form.is_active" />
-              เปิดใช้งาน
-            </label>
+            <div class="form-group full-width">
+              <label class="checkbox-label" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" v-model="form.is_active" style="width:16px; height:16px;" />
+                เปิดใช้งาน
+              </label>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
+          <button class="btn-secondary" @click="showModal = false">ยกเลิก</button>
           <button class="btn-primary" @click="saveReward" :disabled="saving">
+            <span class="material-symbols-rounded animate-spin" v-if="saving">sync</span>
             {{ saving ? 'กำลังบันทึก...' : 'บันทึก' }}
           </button>
-          <button class="btn-secondary" @click="showModal = false">ยกเลิก</button>
         </div>
       </div>
     </div>
@@ -287,11 +286,72 @@ onMounted(loadData);
 
 .mb-20 { margin-bottom: 20px; }
 
-.tier-bars {
-  padding: 16px 20px;
+/* ─── Stats Grid ─── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon .material-symbols-rounded {
+  font-size: 28px;
+}
+
+.stat-content {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.bg-blue-50 { background-color: #eff6ff; }
+.text-blue-600 { color: #2563eb; }
+
+.bg-green-50 { background-color: #f0fdf4; }
+.text-green-600 { color: #16a34a; }
+
+.bg-purple-50 { background-color: #faf5ff; }
+.text-purple-600 { color: #9333ea; }
+
+.bg-amber-50 { background-color: #fffbeb; }
+.text-amber-600 { color: #d97706; }
+
+/* ─── Tier Bars ─── */
+.tier-bars {
+  padding: 0 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .tier-bar-row {
@@ -314,7 +374,7 @@ onMounted(loadData);
   width: 65px;
   font-size: 13px;
   color: var(--color-text-mid);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .tier-track {
@@ -331,7 +391,7 @@ onMounted(loadData);
   transition: width 0.6s ease;
 }
 
-.fill-regular { background: var(--color-accent); opacity: 0.8; }
+.fill-regular { background: var(--color-accent); opacity: 0.9; }
 .fill-silver  { background: #9ca3af; }
 .fill-gold    { background: #f59e0b; }
 
@@ -343,6 +403,7 @@ onMounted(loadData);
   color: var(--color-text-mid);
 }
 
+/* ─── Type Badge ─── */
 .type-badge {
   display: inline-block;
   padding: 4px 10px;
@@ -351,28 +412,29 @@ onMounted(loadData);
   font-weight: 600;
 }
 
-.type-discount_percent { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
-.type-discount_fixed   { background: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
-.type-free_item        { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+.type-discount_percent { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.type-discount_fixed   { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
+.type-free_item        { background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff; }
 
-.text-muted-small {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  margin: 2px 0 0;
+/* ─── Shared ─── */
+.table-card {
+  padding-top: 16px;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.form-input {
+  width: 100%;
+  padding: 9px 13px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  color: var(--color-text-dark);
   font-size: 14px;
-  color: var(--color-text-mid);
-  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.form-input:focus {
+  border-color: var(--color-accent);
 }
 </style>
