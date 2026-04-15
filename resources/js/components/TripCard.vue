@@ -31,7 +31,7 @@
         class="absolute top-4 right-4 transition-all duration-300 rounded-full p-2 backdrop-blur-md cursor-pointer z-10"
         :class="isFav ? 'bg-red-500/80 hover:bg-red-600/80 text-white' : 'bg-white/20 hover:bg-white/30 text-white hover:text-red-400'">
         <span class="material-symbols-rounded text-[20px] shadow-sm"
-          :style="isFav ? 'font-variation-settings: FILL 1' : 'font-variation-settings: FILL 0'">favorite</span>
+          :style="isFav ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">favorite</span>
       </button>
 
       <!-- Location / Duration indicator -->
