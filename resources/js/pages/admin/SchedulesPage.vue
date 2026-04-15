@@ -595,33 +595,73 @@
         <div class="modal-header">
           <div>
             <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">rocket_launch</span>นำเทมเพลตไปใช้</h2>
-            <p class="modal-subtitle" v-if="applyTemplateTarget">เทมเพลต: <strong>{{ applyTemplateTarget.name }}</strong> ({{ applyTemplateTarget.points.length }} จุด)</p>
+            <p class="modal-subtitle">เทมเพลตที่เลือก: <strong>{{ applyTemplateIds.length }}</strong> เทมเพลต · {{ applyTotalPoints }} จุด</p>
           </div>
           <button class="modal-close" @click="showApplyTemplateModal = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
-          <p style="font-size:13px;color:#374151;margin-bottom:4px;">เลือกรอบที่ต้องการเขียนทับจุดรับด้วยเทมเพลตนี้:</p>
-          <p style="font-size:12px;color:#ef4444;margin-bottom:12px;"><span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;">warning</span> จุดรับเดิมทุกจุดในรอบที่เลือกจะถูกลบและเขียนทับใหม่</p>
-          <div style="margin-bottom:10px;display:flex;gap:8px;">
-            <button class="btn-sm btn-secondary" @click="applySelectAll()">เลือกทั้งหมด</button>
-            <button class="btn-sm btn-secondary" @click="applySelectedScheduleIds = []">ยกเลิกทั้งหมด</button>
-          </div>
-          <div class="copy-target-list">
-            <div v-for="group in groupedByTrip" :key="group.trip_id" style="margin-bottom:8px;">
-              <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
-              <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item">
-                <input type="checkbox" v-model="applySelectedScheduleIds" :value="sch.id" />
-                <span>{{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span></span>
-                <span class="status-badge" :class="`status-${sch.status}`" style="margin-left:auto;">{{ statusLabels[sch.status] }}</span>
+
+          <!-- Step 1: เลือกเทมเพลต -->
+          <div class="apply-section">
+            <div class="apply-section-title"><span class="material-symbols-rounded">bookmark</span> เลือกเทมเพลต (เลือกได้หลายอัน)</div>
+            <div class="apply-tpl-list">
+              <label v-for="tpl in pickupTemplates" :key="tpl.id" class="apply-tpl-item" :class="{ selected: applyTemplateIds.includes(tpl.id) }">
+                <input type="checkbox" v-model="applyTemplateIds" :value="tpl.id" style="accent-color:var(--color-accent);width:14px;height:14px;flex-shrink:0;" />
+                <span class="material-symbols-rounded" style="font-size:15px;color:var(--color-accent);">bookmark</span>
+                <span style="flex:1;">{{ tpl.name }}</span>
+                <span class="tpl-count">{{ tpl.points.length }} จุด</span>
               </label>
             </div>
           </div>
+
+          <!-- Step 2: mode -->
+          <div class="apply-section">
+            <div class="apply-section-title"><span class="material-symbols-rounded">tune</span> วิธีใช้งาน</div>
+            <div class="apply-mode-wrap">
+              <label class="apply-mode-option" :class="{ active: applyMode === 'append' }">
+                <input type="radio" v-model="applyMode" value="append" />
+                <span class="material-symbols-rounded">add_circle</span>
+                <div>
+                  <div style="font-weight:700;"> เพิ่มเข้าไป</div>
+                  <div style="font-size:11px;color:#6b7280;">จุดรับเดิมยังคงอยู่ เพิ่มจากเทมเพลตที่เลือก</div>
+                </div>
+              </label>
+              <label class="apply-mode-option" :class="{ active: applyMode === 'replace' }">
+                <input type="radio" v-model="applyMode" value="replace" />
+                <span class="material-symbols-rounded">sync</span>
+                <div>
+                  <div style="font-weight:700;">เขียนทับทั้งหมด</div>
+                  <div style="font-size:11px;color:#ef4444;">ลบจุดรับเดิมทั้งหมดแล้วเขียนใหม่</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Step 3: เลือกรอบ -->
+          <div class="apply-section">
+            <div class="apply-section-title"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบเดินทาง</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <button class="btn-sm btn-secondary" @click="applySelectAll()">เลือกทั้งหมด</button>
+              <button class="btn-sm btn-secondary" @click="applySelectedScheduleIds = []">ยกเลิกทั้งหมด</button>
+            </div>
+            <div class="copy-target-list">
+              <div v-for="group in groupedByTrip" :key="group.trip_id" style="margin-bottom:8px;">
+                <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
+                <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item">
+                  <input type="checkbox" v-model="applySelectedScheduleIds" :value="sch.id" />
+                  <span>{{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span></span>
+                  <span class="status-badge" :class="`status-${sch.status}`" style="margin-left:auto;">{{ statusLabels[sch.status] }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showApplyTemplateModal = false">ยกเลิก</button>
-          <button class="btn-primary" @click="doApplyTemplate" :disabled="!applySelectedScheduleIds.length || applyTemplateSubmitting">
+          <button class="btn-primary" @click="doApplyTemplate" :disabled="!applySelectedScheduleIds.length || !applyTemplateIds.length || applyTemplateSubmitting">
             <span class="material-symbols-rounded" :class="{ 'animate-spin': applyTemplateSubmitting }" v-if="applyTemplateSubmitting">sync</span>
-            ใช้กับ {{ applySelectedScheduleIds.length }} รอบ
+            {{ applyMode === 'replace' ? 'เขียนทับ' : 'เพิ่มจุดรับ' }}ใน {{ applySelectedScheduleIds.length }} รอบ
           </button>
         </div>
       </div>
@@ -1126,13 +1166,11 @@ const showApplyTemplateDropdown = ref(false);
 
 const applyTemplateToSchedule = async (tpl) => {
   showApplyTemplateDropdown.value = false;
-  if (!confirm(`ใช้เทมเพลต "${tpl.name}" กับรอบนี้?\nจุดรับเดิมทั้งหมดจะถูกลบและเขียนทับ`)) return;
+  const mode = confirm(`ใช้เทมเพลต "${tpl.name}" กับรอบนี้\n\n[OK] = เพิ่มเข้าไป (จุดรับเดิมยังอยู่)\n[Cancel] = ยกเลิก`);
+  if (!mode) return;
   pickupSubmitting.value = true;
   try {
     const scheduleId = pickupSchedule.value.id;
-    for (const pt of pickupPoints.value) {
-      await api.delete(`/admin/schedules/${scheduleId}/pickup-points/${pt.id}`);
-    }
     for (const pt of tpl.points) {
       if (!pt.pickup_location) continue;
       await api.post(`/admin/schedules/${scheduleId}/pickup-points`, {
@@ -1154,12 +1192,21 @@ const applyTemplateToSchedule = async (tpl) => {
 
 // Apply template to many schedules at once
 const showApplyTemplateModal = ref(false);
-const applyTemplateTarget = ref(null);
+const applyTemplateIds = ref([]);     // เลือกได้หลาย template
+const applyMode = ref('append');      // 'append' | 'replace'
 const applySelectedScheduleIds = ref([]);
 const applyTemplateSubmitting = ref(false);
 
+const applyTotalPoints = computed(() =>
+  applyTemplateIds.value.reduce((sum, id) => {
+    const tpl = pickupTemplates.value.find(t => t.id === id);
+    return sum + (tpl?.points?.length || 0);
+  }, 0)
+);
+
 const openApplyTemplateModal = (tpl) => {
-  applyTemplateTarget.value = tpl;
+  applyTemplateIds.value = tpl ? [tpl.id] : [];
+  applyMode.value = 'append';
   applySelectedScheduleIds.value = [];
   showTemplateManager.value = false;
   showApplyTemplateModal.value = true;
@@ -1170,14 +1217,18 @@ const applySelectAll = () => {
 };
 
 const doApplyTemplate = async () => {
+  const selectedTemplates = pickupTemplates.value.filter(t => applyTemplateIds.value.includes(t.id));
+  const allPoints = selectedTemplates.flatMap(t => t.points);
   applyTemplateSubmitting.value = true;
   try {
     for (const scheduleId of applySelectedScheduleIds.value) {
-      const ptRes = await api.get(`/admin/schedules/${scheduleId}/pickup-points`);
-      for (const pt of ptRes.data.data) {
-        await api.delete(`/admin/schedules/${scheduleId}/pickup-points/${pt.id}`);
+      if (applyMode.value === 'replace') {
+        const ptRes = await api.get(`/admin/schedules/${scheduleId}/pickup-points`);
+        for (const pt of ptRes.data.data) {
+          await api.delete(`/admin/schedules/${scheduleId}/pickup-points/${pt.id}`);
+        }
       }
-      for (const pt of applyTemplateTarget.value.points) {
+      for (const pt of allPoints) {
         if (!pt.pickup_location) continue;
         await api.post(`/admin/schedules/${scheduleId}/pickup-points`, {
           region: pt.region,
@@ -1191,7 +1242,7 @@ const doApplyTemplate = async () => {
     }
     showApplyTemplateModal.value = false;
     fetchData();
-    alert(`ใช้เทมเพลตกับ ${applySelectedScheduleIds.value.length} รอบสำเร็จ`);
+    alert(`${applyMode.value === 'replace' ? 'เขียนทับ' : 'เพิ่มจุดรับ'}${allPoints.length} จุด (จาก ${selectedTemplates.length} เทมเพลต) ใน ${applySelectedScheduleIds.value.length} รอบสำเร็จ`);
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
@@ -2051,5 +2102,79 @@ onMounted(() => {
   padding: 6px 8px;
   border-radius: 6px;
   background: #f9fafb;
+}
+
+/* ── Apply Template Modal sections ── */
+.apply-section {
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.apply-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 10px;
+}
+
+.apply-tpl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.apply-tpl-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-mid);
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--color-sand-dark);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.apply-tpl-item:hover {
+  background: var(--color-sand);
+}
+.apply-tpl-item.selected {
+  background: #e8f5ec;
+  border-color: #b7dfc5;
+}
+
+.apply-mode-wrap {
+  display: flex;
+  gap: 10px;
+}
+
+.apply-mode-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-sand-dark);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-size: 13px;
+}
+.apply-mode-option input { display: none; }
+.apply-mode-option:hover { background: var(--color-sand); }
+.apply-mode-option.active {
+  background: #e8f5ec;
+  border-color: var(--color-accent);
+}
+.apply-mode-option .material-symbols-rounded {
+  font-size: 20px;
+  color: var(--color-accent);
 }
 </style>
