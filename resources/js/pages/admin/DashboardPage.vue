@@ -5,7 +5,7 @@
         <span class="material-symbols-rounded heading-icon">dashboard</span>
         แดชบอร์ด
       </h1>
-      <p class="page-subtitle">ภาพรวมระบบ TrailDive</p>
+      <p class="page-subtitle">ภาพรวมระบบ Luilaykhao</p>
     </div>
 
     <!-- Loading State -->
@@ -368,7 +368,7 @@ onMounted(() => {
   font-size: 28px;
   font-weight: 700;
   color: var(--color-text-dark);
-  font-family: var(--font-playfair);
+  font-family: var(--font-anuphan);
   line-height: 1.2;
 }
 
@@ -694,7 +694,7 @@ onMounted(() => {
 }
 
 .booking-ref {
-  font-family: monospace;
+  font-family: var(--font-anuphan);
   font-size: 14px;
   color: var(--color-accent);
   font-weight: 700;
