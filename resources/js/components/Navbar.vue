@@ -8,7 +8,6 @@
           <div class="relative flex items-center justify-center w-16 h-16">
             <img src="/images/logo.png" alt="ลุยเลเขา Logo" class="w-16 h-16" />
           </div>
-          <span class="font-anuphan text-xl font-bold tracking-tight text-primary">ลุยเลเขา</span>
         </router-link>
 
         <!-- Desktop Menu -->
