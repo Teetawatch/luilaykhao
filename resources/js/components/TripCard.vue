@@ -27,9 +27,11 @@
       </div>
       
       <!-- Favorite button -->
-      <button @click.prevent aria-label="บันทึกรายการโปรด"
-        class="absolute top-4 right-4 text-white hover:text-red-400 transition-colors duration-300 bg-white/20 hover:bg-white/30 rounded-full p-2 backdrop-blur-md cursor-pointer z-10">
-        <span class="material-symbols-rounded text-[20px] shadow-sm">favorite</span>
+      <button @click.prevent="toggleFav" :aria-label="isFav ? 'นำออกจากรายการโปรด' : 'บันทึกรายการโปรด'"
+        class="absolute top-4 right-4 transition-all duration-300 rounded-full p-2 backdrop-blur-md cursor-pointer z-10"
+        :class="isFav ? 'bg-red-500/80 hover:bg-red-600/80 text-white' : 'bg-white/20 hover:bg-white/30 text-white hover:text-red-400'">
+        <span class="material-symbols-rounded text-[20px] shadow-sm"
+          :style="isFav ? 'font-variation-settings: FILL 1' : 'font-variation-settings: FILL 0'">favorite</span>
       </button>
 
       <!-- Location / Duration indicator -->
@@ -52,8 +54,13 @@
         <div class="flex text-[#FFB020] gap-0.5">
           <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">star</span>
         </div>
-        <span class="text-[var(--color-text-dark)] font-bold text-sm">{{ trip.rating || (Math.floor(Math.random() * 5 + 45) / 10).toFixed(1) }}</span>
-        <span class="text-gray-400 text-xs font-medium">({{ trip.review_count || Math.floor(Math.random() * 900 + 100) }} รีวิว)</span>
+        <template v-if="trip.review_count > 0">
+          <span class="text-[var(--color-text-dark)] font-bold text-sm">{{ Number(trip.rating).toFixed(1) }}</span>
+          <span class="text-gray-400 text-xs font-medium">({{ trip.review_count }} รีวิว)</span>
+        </template>
+        <template v-else>
+          <span class="text-gray-400 text-xs font-medium">ยังไม่มีรีวิว</span>
+        </template>
       </div>
 
       <h3 class="text-[1.1rem] font-extrabold text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">
@@ -86,10 +93,17 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useWishlistStore } from '../stores/wishlist';
 
 const props = defineProps({
   trip: { type: Object, required: true },
 });
+
+const wishlist = useWishlistStore();
+const isFav = computed(() => wishlist.isFavorite(props.trip.id));
+function toggleFav() {
+  wishlist.toggleFavorite(props.trip);
+}
 
 /* Category color mapping per design spec */
 const typeMap = {

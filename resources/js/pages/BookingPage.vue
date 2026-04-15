@@ -858,9 +858,51 @@ const passengers = ref([{
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null
 }]);
 
+const FORM_SESSION_KEY = computed(() => `booking_form_${route.params.scheduleId}`);
+
+function saveFormData() {
+  const scheduleId = route.params.scheduleId;
+  if (!scheduleId) return;
+  const data = {
+    passengers: passengers.value,
+    passengerCount: passengerCount.value,
+    isGroup: isGroup.value,
+    groupName: groupName.value,
+    groupNotes: groupNotes.value,
+    selectedPickupId: selectedPickup.value?.id ?? null,
+  };
+  sessionStorage.setItem(FORM_SESSION_KEY.value, JSON.stringify(data));
+}
+
+function restoreFormData() {
+  const raw = sessionStorage.getItem(FORM_SESSION_KEY.value);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
+      passengers.value = data.passengers;
+      passengerCount.value = data.passengerCount ?? data.passengers.length;
+    }
+    isGroup.value = data.isGroup ?? false;
+    groupName.value = data.groupName ?? '';
+    groupNotes.value = data.groupNotes ?? '';
+    if (data.selectedPickupId != null && pickupPoints.value.length > 0) {
+      const pt = pickupPoints.value.find(p => p.id === data.selectedPickupId);
+      if (pt) selectedPickup.value = pt;
+    }
+  } catch {}
+}
+
+function clearFormData() {
+  sessionStorage.removeItem(FORM_SESSION_KEY.value);
+}
+
 watch(step, (newStep) => {
   seatsStore.saveStep(newStep);
 });
+
+watch(passengers, saveFormData, { deep: true });
+watch([isGroup, groupName, groupNotes, passengerCount, selectedPickup], saveFormData);
 
 watch(passengerCount, (n) => {
   while (passengers.value.length < n) {
@@ -1046,6 +1088,7 @@ async function createBooking() {
 
     const res = await bookingStore.createBooking(data);
     seatsStore.clearSelection();
+    clearFormData();
     toast.success('สร้างการจองสำเร็จ! กำลังไปยังหน้าชำระเงิน...');
     router.push(`/payment/${res.data.booking_ref}`);
   } catch (e) {
@@ -1058,6 +1101,7 @@ async function createBooking() {
 
 function handleExpiry() {
   seatsStore.clearSelection();
+  clearFormData();
   swal.error(
     'หมดเวลาการจองแล้ว!',
     'เวลา 10 นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่'
@@ -1078,9 +1122,13 @@ onMounted(async () => {
     // Resume countdown first (may have been restored from sessionStorage)
     seatsStore.restoreCountdown();
     // Restore step from session if returning mid-booking
+    const hasValidSession = seatsStore.lockExpiry && new Date(seatsStore.lockExpiry) > new Date();
     const savedStep = seatsStore.activeBookingInfo?.step;
-    if (savedStep != null && savedStep > 0 && seatsStore.lockExpiry && new Date(seatsStore.lockExpiry) > new Date()) {
-      step.value = savedStep;
+    if (hasValidSession) {
+      restoreFormData();
+      if (savedStep != null && savedStep > 0) {
+        step.value = savedStep;
+      }
     } else if (!hasSeatMap.value && !isTrekking.value) {
       // For non-seat-map, non-trekking trips: start countdown immediately on page load
       seatsStore.startManualCountdown(
