@@ -14,9 +14,13 @@ class ChargeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'booking_ref' => ['required', 'string', 'exists:bookings,booking_ref'],
-            'omise_token' => ['required', 'string'],
-            'amount' => ['required', 'numeric', 'min:1'],
+            'booking_ref'     => ['required', 'string', 'exists:bookings,booking_ref'],
+            'payment_type'    => ['nullable', 'in:full,installment'],
+            'payment_method'  => ['nullable', 'in:promptpay,mobile_banking'],
+            'amount'          => ['required', 'numeric', 'min:1'],
+            'slip_image'      => ['nullable', 'image', 'max:5120'],
+            'transfer_date'   => ['nullable', 'date'],
+            'transfer_time'   => ['nullable', 'string', 'regex:/^\d{2}:\d{2}$/'],
         ];
     }
 }

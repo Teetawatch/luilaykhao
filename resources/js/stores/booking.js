@@ -56,7 +56,10 @@ export const useBookingStore = defineStore('booking', {
     async chargePayment(data) {
       this.loading = true;
       try {
-        const res = await api.post('/payments/charge', data);
+        const isFormData = data instanceof FormData;
+        const res = await api.post('/payments/charge', data, {
+          headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+        });
         return res.data;
       } finally {
         this.loading = false;

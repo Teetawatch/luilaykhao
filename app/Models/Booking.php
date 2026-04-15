@@ -18,7 +18,8 @@ class Booking extends Model
         'qr_code', 'checked_in', 'checked_in_at',
         'total_amount', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
-        'payment_ref', 'paid_at', 'cancellation_reason', 'cancelled_at',
+        'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
+        'cancellation_reason', 'cancelled_at',
     ];
 
     protected function casts(): array
@@ -33,6 +34,7 @@ class Booking extends Model
             'checked_in' => 'boolean',
             'installment_count' => 'integer',
             'installment_interval_days' => 'integer',
+            'transfer_datetime' => 'datetime',
         ];
     }
 

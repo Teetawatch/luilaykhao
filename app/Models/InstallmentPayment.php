@@ -9,7 +9,8 @@ class InstallmentPayment extends Model
 {
     protected $fillable = [
         'booking_id', 'installment_no', 'amount', 'due_date',
-        'status', 'payment_method', 'payment_ref', 'paid_at', 'slip_path',
+        'status', 'payment_method', 'payment_ref', 'paid_at',
+        'slip_path', 'transfer_datetime',
     ];
 
     protected function casts(): array
@@ -17,7 +18,8 @@ class InstallmentPayment extends Model
         return [
             'amount'     => 'decimal:2',
             'due_date'   => 'date',
-            'paid_at'    => 'datetime',
+            'paid_at'             => 'datetime',
+            'transfer_datetime'   => 'datetime',
         ];
     }
 

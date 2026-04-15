@@ -30,7 +30,15 @@ class PaymentController extends Controller
             ->with(['schedule', 'seats'])
             ->firstOrFail();
 
-        $paymentType = $request->input('payment_type', 'full');
+        $paymentType    = $request->input('payment_type', 'full');
+        $paymentMethod  = $request->input('payment_method', 'promptpay');
+        $transferDt     = $this->resolveTransferDatetime($request);
+
+        // Store slip image
+        $slipPath = null;
+        if ($request->hasFile('slip_image')) {
+            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+        }
 
         // ── Installment payment ──────────────────────────────────
         if ($paymentType === 'installment') {
@@ -45,62 +53,46 @@ class PaymentController extends Controller
             $totalAmount             = (float) $booking->total_amount;
             $perInstallment          = round($totalAmount / $installmentCount, 2);
 
-            // Validate that first-installment amount matches what frontend sent
-            $expectedFirst = (float) $request->amount;
-            if (abs($expectedFirst - $perInstallment) > 0.02) {
-                return $this->error('จำนวนเงินงวดแรกไม่ถูกต้อง', 422);
-            }
+            DB::transaction(function () use (
+                $booking, $installmentCount, $installmentIntervalDays,
+                $perInstallment, $totalAmount, $paymentMethod, $slipPath, $transferDt
+            ) {
+                $paymentRef = 'PAY-INST-' . strtoupper(uniqid());
+                $now = now();
 
-            DB::transaction(function () use ($booking, $installmentCount, $installmentIntervalDays, $perInstallment, $totalAmount, $request) {
-                // Save installment meta on booking
                 $booking->update([
                     'payment_type'              => 'installment',
                     'installment_count'         => $installmentCount,
                     'installment_interval_days' => $installmentIntervalDays,
-                    'payment_method'            => $request->input('payment_method', 'promptpay'),
+                    'payment_method'            => $paymentMethod,
+                    'payment_ref'               => $paymentRef,
+                    'slip_path'                 => $slipPath,
+                    'transfer_datetime'         => $transferDt,
                 ]);
 
-                $chargeId = 'chrg_inst_' . uniqid();
-
-                // Build installment schedule
-                $now = now();
                 for ($i = 1; $i <= $installmentCount; $i++) {
                     $dueDate = $now->copy()->addDays(($i - 1) * $installmentIntervalDays);
-                    // Adjust last installment amount for rounding difference
-                    $amount = ($i === $installmentCount)
+                    $amount  = ($i === $installmentCount)
                         ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
                         : $perInstallment;
 
-                    $status = 'pending';
-                    $paidAt = null;
-                    $ref    = null;
-
-                    if ($i === 1) {
-                        $status = 'paid';
-                        $paidAt = $now;
-                        $ref    = $chargeId;
-                    }
-
                     InstallmentPayment::create([
-                        'booking_id'     => $booking->id,
-                        'installment_no' => $i,
-                        'amount'         => $amount,
-                        'due_date'       => $dueDate->toDateString(),
-                        'status'         => $status,
-                        'payment_method' => $i === 1 ? $request->input('payment_method', 'promptpay') : null,
-                        'payment_ref'    => $ref,
-                        'paid_at'        => $paidAt,
+                        'booking_id'       => $booking->id,
+                        'installment_no'   => $i,
+                        'amount'           => $amount,
+                        'due_date'         => $dueDate->toDateString(),
+                        'status'           => $i === 1 ? 'paid'      : 'pending',
+                        'payment_method'   => $i === 1 ? $paymentMethod : null,
+                        'payment_ref'      => $i === 1 ? $paymentRef    : null,
+                        'paid_at'          => $i === 1 ? $now            : null,
+                        'slip_path'        => $i === 1 ? $slipPath       : null,
+                        'transfer_datetime'=> $i === 1 ? $transferDt     : null,
                     ]);
                 }
 
-                // Update paid_amount with first installment
-                $booking->update([
-                    'paid_amount' => $perInstallment,
-                    'payment_ref' => $chargeId,
-                ]);
+                $booking->update(['paid_amount' => $perInstallment]);
 
-                // Confirm booking (seats locked in)
-                $this->bookingService->confirmBooking($booking->fresh(), 'installment', $chargeId);
+                $this->bookingService->confirmBooking($booking->fresh(), 'installment', $paymentRef);
             });
 
             $booking = $booking->fresh()->load(['seats', 'installmentPayments']);
@@ -119,19 +111,19 @@ class PaymentController extends Controller
         }
 
         // ── Full payment ─────────────────────────────────────────
-        if ((float) $request->amount !== (float) $booking->total_amount) {
-            return $this->error('จำนวนเงินไม่ตรงกับยอดจอง', 422);
-        }
-
-        $chargeId = 'chrg_test_' . uniqid();
+        $paymentRef = 'PAY-' . strtoupper(uniqid());
 
         $booking = $this->bookingService->confirmBooking(
             $booking,
-            $request->input('payment_method', 'promptpay'),
-            $chargeId,
+            $paymentMethod,
+            $paymentRef,
         );
 
-        $booking->update(['payment_type' => 'full']);
+        $booking->update([
+            'payment_type'      => 'full',
+            'slip_path'         => $slipPath,
+            'transfer_datetime' => $transferDt,
+        ]);
 
         foreach ($booking->seats as $seat) {
             broadcast(new SeatBooked(
@@ -149,28 +141,30 @@ class PaymentController extends Controller
         ));
 
         return $this->success([
-            'charge_id' => $chargeId,
-            'status'    => 'confirmed',
-            'booking'   => new \App\Http\Resources\BookingResource($booking),
+            'status'  => 'confirmed',
+            'booking' => new \App\Http\Resources\BookingResource($booking),
         ], 'ชำระเงินสำเร็จ');
     }
 
     public function chargeInstallment(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'booking_ref'      => ['required', 'string'],
-            'installment_no'   => ['required', 'integer', 'min:2'],
-            'payment_method'   => ['nullable', 'string'],
+        $request->validate([
+            'booking_ref'    => ['required', 'string'],
+            'installment_no' => ['required', 'integer', 'min:2'],
+            'payment_method' => ['nullable', 'in:promptpay,mobile_banking'],
+            'slip_image'     => ['nullable', 'image', 'max:5120'],
+            'transfer_date'  => ['nullable', 'date'],
+            'transfer_time'  => ['nullable', 'string'],
         ]);
 
-        $booking = Booking::where('booking_ref', $validated['booking_ref'])
+        $booking = Booking::where('booking_ref', $request->booking_ref)
             ->where('status', 'confirmed')
             ->where('payment_type', 'installment')
             ->with('installmentPayments')
             ->firstOrFail();
 
         $installment = $booking->installmentPayments
-            ->where('installment_no', $validated['installment_no'])
+            ->where('installment_no', $request->installment_no)
             ->where('status', '!=', 'paid')
             ->first();
 
@@ -178,43 +172,36 @@ class PaymentController extends Controller
             return $this->error('ไม่พบงวดที่ต้องชำระ หรือชำระแล้ว', 422);
         }
 
-        $chargeId = 'chrg_inst_' . uniqid();
+        $slipPath = null;
+        if ($request->hasFile('slip_image')) {
+            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+        }
+
+        $paymentRef = 'PAY-INST-' . strtoupper(uniqid());
+        $transferDt = $this->resolveTransferDatetime($request);
+
         $installment->update([
-            'status'         => 'paid',
-            'payment_method' => $validated['payment_method'] ?? 'promptpay',
-            'payment_ref'    => $chargeId,
-            'paid_at'        => now(),
+            'status'            => 'paid',
+            'payment_method'    => $request->input('payment_method', 'promptpay'),
+            'payment_ref'       => $paymentRef,
+            'paid_at'           => now(),
+            'slip_path'         => $slipPath,
+            'transfer_datetime' => $transferDt,
         ]);
 
-        // Update paid_amount on booking
         $totalPaid = (float) $booking->paid_amount + (float) $installment->amount;
         $booking->update(['paid_amount' => $totalPaid]);
 
         return $this->success([
-            'charge_id'        => $chargeId,
-            'installment_no'   => $installment->installment_no,
-            'amount'           => $installment->amount,
+            'installment_no' => $installment->installment_no,
+            'amount'         => $installment->amount,
         ], "ชำระงวดที่ {$installment->installment_no} สำเร็จ");
     }
 
     public function webhook(Request $request): JsonResponse
     {
-        // In production: verify Omise webhook signature
-        // $secret = config('services.omise.webhook_secret');
-
         $payload = $request->all();
         Log::info('Payment webhook received', $payload);
-
-        $event = $payload['event'] ?? null;
-        $chargeId = $payload['data']['id'] ?? null;
-
-        if ($event === 'charge.complete' && $chargeId) {
-            $booking = Booking::where('payment_ref', $chargeId)->first();
-            if ($booking && $booking->status === 'pending') {
-                $this->bookingService->confirmBooking($booking, 'credit_card', $chargeId);
-            }
-        }
-
         return $this->success(null, 'Webhook processed');
     }
 
@@ -225,19 +212,28 @@ class PaymentController extends Controller
             ->firstOrFail();
 
         return $this->success([
-            'booking_ref'        => $booking->booking_ref,
-            'status'             => $booking->status,
-            'payment_type'       => $booking->payment_type ?? 'full',
-            'paid_amount'        => $booking->paid_amount,
-            'total_amount'       => $booking->total_amount,
-            'paid_at'            => $booking->paid_at?->toISOString(),
+            'booking_ref'          => $booking->booking_ref,
+            'status'               => $booking->status,
+            'payment_type'         => $booking->payment_type ?? 'full',
+            'paid_amount'          => $booking->paid_amount,
+            'total_amount'         => $booking->total_amount,
+            'paid_at'              => $booking->paid_at?->toISOString(),
             'installment_payments' => $booking->installmentPayments->map(fn ($ip) => [
-                'installment_no' => $ip->installment_no,
-                'amount'         => $ip->amount,
-                'due_date'       => $ip->due_date?->toDateString(),
-                'status'         => $ip->status,
-                'paid_at'        => $ip->paid_at?->toISOString(),
+                'installment_no'   => $ip->installment_no,
+                'amount'           => $ip->amount,
+                'due_date'         => $ip->due_date?->toDateString(),
+                'status'           => $ip->status,
+                'paid_at'          => $ip->paid_at?->toISOString(),
             ]),
         ]);
+    }
+
+    private function resolveTransferDatetime(Request $request): ?string
+    {
+        $date = $request->input('transfer_date');
+        $time = $request->input('transfer_time');
+        if ($date && $time) return "{$date} {$time}:00";
+        if ($date)           return "{$date} 00:00:00";
+        return null;
     }
 }
