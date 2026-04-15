@@ -5,8 +5,8 @@
 
         <!-- Logo -->
         <router-link to="/" class="flex items-center gap-3 shrink-0 group">
-          <div class="relative flex items-center justify-center w-11 h-11 bg-sand/80 rounded-xl group-hover:bg-white group-hover:shadow-sm transition-all duration-300">
-            <img src="/images/logo.png" alt="ลุยเลเขา Logo" class="w-8 h-8 object-contain transition-transform duration-300 group-hover:scale-110" />
+          <div class="relative flex items-center justify-center w-16 h-16">
+            <img src="/images/logo.png" alt="ลุยเลเขา Logo" class="w-16 h-16" />
           </div>
           <span class="font-anuphan text-xl font-bold tracking-tight text-primary">ลุยเลเขา</span>
         </router-link>
