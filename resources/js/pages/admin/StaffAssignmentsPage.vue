@@ -131,14 +131,43 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const normalizeStaffFromUsersApi = (users = []) => {
+  return users.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    avatar_url: user.avatar_url,
+    assigned_schedules_count: user.assigned_schedules_count || 0,
+    avg_staff_rating: null,
+  }));
+};
+
+const loadStaffUsers = async () => {
+  try {
+    const staffRes = await admin.fetchStaffUsers({ per_page: 200 });
+    const primaryData = staffRes?.data || [];
+
+    if (primaryData.length) {
+      staffUsers.value = primaryData;
+      return;
+    }
+
+    await admin.fetchUsers({ role: 'staff', per_page: 200 });
+    staffUsers.value = normalizeStaffFromUsersApi(admin.users.data || []);
+  } catch (e) {
+    await admin.fetchUsers({ role: 'staff', per_page: 200 });
+    staffUsers.value = normalizeStaffFromUsersApi(admin.users.data || []);
+  }
+};
+
 const loadData = async () => {
   loading.value = true;
   try {
     await admin.fetchSchedules({ upcoming: 1, per_page: 100 });
     schedules.value = admin.schedules.data || [];
 
-    const staffRes = await admin.fetchStaffUsers({ per_page: 200 });
-    staffUsers.value = staffRes.data || [];
+    await loadStaffUsers();
 
     if (!selectedScheduleId.value && schedules.value.length) {
       selectedScheduleId.value = schedules.value[0].id;
