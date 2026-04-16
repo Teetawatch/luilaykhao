@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -137,10 +138,21 @@ class AuthController extends Controller
         $this->validateProvider($provider);
 
         $driver = Socialite::driver($provider)->stateless();
-        
-        \Log::info('Social Redirect URL: ' . $driver->redirect()->getTargetUrl());
 
-        return $driver->redirect();
+        if ($provider === 'line') {
+            $driver = $driver->with([
+                'state' => Str::random(40),
+            ]);
+        }
+
+        $redirectResponse = $driver->redirect();
+
+        \Log::info('Social Redirect URL', [
+            'provider' => $provider,
+            'url' => $redirectResponse->getTargetUrl(),
+        ]);
+
+        return $redirectResponse;
     }
 
     public function socialCallback(Request $request, string $provider): \Illuminate\Http\RedirectResponse
@@ -157,8 +169,12 @@ class AuthController extends Controller
 
         // Handle error from provider (e.g. user cancelled)
         if ($request->has('error')) {
+            $errorCode = (string) $request->get('error');
             $errorMessage = $request->get('error_description') ?: $request->get('error_message') ?: $request->get('error');
-            return redirect($frontendUrl . '/login?error=social_auth_cancelled&message=' . urlencode($errorMessage));
+            $isCancelled = in_array($errorCode, ['access_denied', 'user_cancelled_login'], true);
+            $errorType = $isCancelled ? 'social_auth_cancelled' : 'social_auth_failed';
+
+            return redirect($frontendUrl . '/login?error=' . $errorType . '&message=' . urlencode($errorMessage));
         }
 
         // Check if code is present
