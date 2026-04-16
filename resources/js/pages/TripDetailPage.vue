@@ -430,6 +430,30 @@
                 </p>
                 <div v-else class="mb-8"></div>
 
+                <div class="mb-8 p-4 rounded-[1.25rem] bg-[var(--color-sand)] border border-gray-100">
+                  <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-3">ขั้นตอนการจอง</p>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-bold">
+                    <div class="px-3 py-2 rounded-lg border"
+                      :class="!isTrekking || selectedRegion
+                        ? 'bg-[#E8F5EC] border-[#2D7A4F]/20 text-[#2D7A4F]'
+                        : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
+                      1) {{ isTrekking ? 'เลือกภูมิภาค' : 'เลือกวันเดินทาง' }}
+                    </div>
+                    <div class="px-3 py-2 rounded-lg border"
+                      :class="selectedSchedule
+                        ? 'bg-[#E8F5EC] border-[#2D7A4F]/20 text-[#2D7A4F]'
+                        : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
+                      2) เลือกรอบเดินทาง
+                    </div>
+                    <div class="px-3 py-2 rounded-lg border"
+                      :class="selectedSchedule && (!isTrekking || selectedPickup)
+                        ? 'bg-[#E8F5EC] border-[#2D7A4F]/20 text-[#2D7A4F]'
+                        : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
+                      3) ดำเนินการจอง
+                    </div>
+                  </div>
+                </div>
+
                 <hr class="border-gray-100 mb-8" />
 
                 <!-- ── Step 1: Region Selection (Trekking only) ── -->
@@ -454,12 +478,12 @@
                     <span class="material-symbols-rounded mr-1 align-middle text-[var(--color-accent)]">info</span> จุดรับผู้โดยสารจะแจ้งให้ทราบอีกครั้ง
                   </div>
 
-                  <div v-else class="grid grid-cols-2 gap-2">
+                  <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
                       v-for="r in regionOptions"
                       :key="r.region"
                       @click="selectRegion(r.region)"
-                      class="text-left border-2 rounded-[1.25rem] p-3.5 transition-all duration-200"
+                      class="text-left border-2 rounded-[1.25rem] p-4 transition-all duration-200"
                       :class="selectedRegion === r.region
                         ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                         : 'border-gray-100 bg-white hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-sand)] hover:shadow-sm'"
@@ -470,6 +494,19 @@
                       </div>
                       <p class="text-[11px] font-black text-[var(--color-accent)]">เริ่ม ฿{{ r.min_price.toLocaleString() }}</p>
                       <p class="text-[10px] text-gray-400 font-bold mt-0.5">{{ r.schedule_count }} รอบที่ว่าง</p>
+                    </button>
+                  </div>
+
+                  <div v-if="selectedRegion" class="mt-4 p-3 rounded-xl bg-[#E8F5EC] border border-[#2D7A4F]/20 flex items-center justify-between gap-3">
+                    <p class="text-xs font-bold text-[#2D7A4F] flex items-center gap-1.5">
+                      <span class="material-symbols-rounded text-[16px]">check_circle</span>
+                      เลือกแล้ว: {{ regionOptions.find(r => r.region === selectedRegion)?.region_label || selectedRegion }}
+                    </p>
+                    <button
+                      @click="selectRegion(null)"
+                      class="text-[11px] font-black text-[#2D7A4F] hover:text-[var(--color-accent)] transition-colors"
+                    >
+                      เปลี่ยนภูมิภาค
                     </button>
                   </div>
                 </div>
@@ -492,9 +529,20 @@
                     <p class="text-gray-500 font-medium text-sm mt-1">กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
                   </div>
 
-                  <div v-else class="space-y-2">
+                  <div v-else class="space-y-3">
+                    <label class="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] cursor-pointer select-none">
+                      <input v-model="onlyAvailableSchedules" type="checkbox" class="rounded border-gray-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]" />
+                      แสดงเฉพาะรอบที่ยังว่าง
+                    </label>
+
+                    <div v-if="filteredSchedules.length === 0" class="bg-[var(--color-sand)] rounded-[1.25rem] p-4 text-center border border-gray-100">
+                      <p class="text-[var(--color-text-dark)] font-bold text-sm">ไม่พบรอบที่ตรงเงื่อนไข</p>
+                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง “เฉพาะรอบที่ยังว่าง”</p>
+                    </div>
+
+                    <div v-else class="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
                     <button
-                      v-for="s in showAllSchedules ? schedules : schedules.slice(0, 5)"
+                      v-for="s in showAllSchedules ? filteredSchedules : filteredSchedules.slice(0, 5)"
                       :key="s.id"
                       @click="selectSchedule(s)"
                       class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
@@ -538,11 +586,13 @@
                         </div>
                       </div>
                     </button>
-                    <button v-if="schedules.length > 5"
+                    </div>
+
+                    <button v-if="filteredSchedules.length > 5"
                       @click="showAllSchedules = !showAllSchedules"
                       class="w-full py-2.5 rounded-[1.25rem] border-2 border-dashed border-gray-200 text-sm font-bold text-gray-500 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2">
                       <span class="material-symbols-rounded text-[18px]">{{ showAllSchedules ? 'expand_less' : 'expand_more' }}</span>
-                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${schedules.length} รอบ` }}
+                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${filteredSchedules.length} รอบ` }}
                     </button>
                   </div>
                 </div>
@@ -559,9 +609,20 @@
                     <p class="text-[var(--color-text-dark)] font-bold text-sm">ยังไม่มีรอบสำหรับภูมิภาคนี้</p>
                   </div>
 
-                  <div v-else class="space-y-2">
+                  <div v-else class="space-y-3">
+                    <label class="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] cursor-pointer select-none">
+                      <input v-model="onlyAvailableSchedules" type="checkbox" class="rounded border-gray-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]" />
+                      แสดงเฉพาะรอบที่ยังว่าง
+                    </label>
+
+                    <div v-if="filteredSchedulesForRegion.length === 0" class="bg-[var(--color-sand)] rounded-[1.25rem] p-4 text-center border border-gray-100">
+                      <p class="text-[var(--color-text-dark)] font-bold text-sm">ไม่พบรอบที่ตรงเงื่อนไขในภูมิภาคนี้</p>
+                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง “เฉพาะรอบที่ยังว่าง”</p>
+                    </div>
+
+                    <div v-else class="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
                     <button
-                      v-for="s in showAllSchedules ? schedulesForRegion : schedulesForRegion.slice(0, 5)"
+                      v-for="s in showAllSchedules ? filteredSchedulesForRegion : filteredSchedulesForRegion.slice(0, 5)"
                       :key="s.id"
                       @click="selectSchedule(s)"
                       class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
@@ -636,12 +697,13 @@
                         </div>
                       </div>
                     </button>
+                    </div>
 
-                    <button v-if="schedulesForRegion.length > 5"
+                    <button v-if="filteredSchedulesForRegion.length > 5"
                       @click="showAllSchedules = !showAllSchedules"
                       class="w-full py-2.5 rounded-[1.25rem] border-2 border-dashed border-gray-200 text-sm font-bold text-gray-500 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2">
                       <span class="material-symbols-rounded text-[18px]">{{ showAllSchedules ? 'expand_less' : 'expand_more' }}</span>
-                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${schedulesForRegion.length} รอบ` }}
+                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${filteredSchedulesForRegion.length} รอบ` }}
                     </button>
                   </div>
                 </div>
@@ -836,6 +898,7 @@ const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);
 const selectedPickup = ref(null);
 const selectedRegion = ref(null);
+const onlyAvailableSchedules = ref(true);
 const loading = ref(true);
 const schedulesLoading = ref(false);
 const reviews = ref([]);
@@ -922,6 +985,16 @@ const schedulesForRegion = computed(() => {
   return schedules.value.filter(s =>
     (s.pickup_points || []).some(pt => pt.region === selectedRegion.value)
   );
+});
+
+const filteredSchedules = computed(() => {
+  if (!onlyAvailableSchedules.value) return schedules.value;
+  return schedules.value.filter(s => Number(s.available_seats) > 0);
+});
+
+const filteredSchedulesForRegion = computed(() => {
+  if (!onlyAvailableSchedules.value) return schedulesForRegion.value;
+  return schedulesForRegion.value.filter(s => Number(s.available_seats) > 0);
 });
 
 const pickupForSelection = computed(() => {
