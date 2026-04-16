@@ -206,44 +206,72 @@
                   {{ distanceLoading ? 'กำลังคำนวณ...' : (distanceData.length ? 'คำนวณใหม่' : 'คำนวณระยะทางจากตำแหน่งของฉัน') }}
                 </button>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+              <div class="flex flex-wrap gap-2 mb-6">
+                <span class="inline-flex items-center gap-1.5 text-xs bg-[var(--color-sand)] text-[var(--color-text-dark)] px-3 py-1.5 rounded-full font-bold border border-gray-200">
+                  <span class="material-symbols-rounded text-[14px]">map</span>
+                  ทั้งหมด {{ groupedPickupPointsByRegion.length }} ภาค
+                </span>
+                <span class="inline-flex items-center gap-1.5 text-xs bg-[var(--color-sand)] text-[var(--color-text-dark)] px-3 py-1.5 rounded-full font-bold border border-gray-200">
+                  <span class="material-symbols-rounded text-[14px]">pin_drop</span>
+                  {{ allPickupPoints.length }} จุดรับ
+                </span>
+              </div>
+
+              <div class="space-y-6">
                 <div
-                  v-for="pt in allPickupPoints" :key="pt.id"
-                  class="bg-white rounded-[1.5rem] border border-gray-100 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
+                  v-for="group in groupedPickupPointsByRegion" :key="group.region"
+                  class="bg-white rounded-[1.75rem] border border-gray-100 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
                 >
-                  <div class="flex items-center justify-between px-6 py-4 bg-[var(--color-sand)] border-b border-gray-100">
-                    <span class="font-extrabold text-[var(--color-text-dark)] text-base flex items-center gap-2">
-                      <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px]">location_on</span>
-                      {{ pt.region_label }}
-                    </span>
-                    <span class="font-black text-[var(--color-accent)] text-lg">฿{{ Number(pt.price).toLocaleString() }}</span>
-                  </div>
-                  <div class="px-6 py-5 space-y-3">
-                    <p class="text-sm text-[var(--color-text-dark)] font-bold flex items-start gap-2.5">
-                      <span class="material-symbols-rounded text-red-400 shrink-0 mt-0.5 text-[18px]">pin_drop</span>
-                      {{ pt.pickup_location }}
-                    </p>
-                    <p v-if="pt.notes" class="text-sm text-[var(--color-text-muted)] font-medium flex items-start gap-2.5">
-                      <span class="material-symbols-rounded text-[#FFB020] shrink-0 mt-0.5 text-[18px]">schedule</span>
-                      {{ pt.notes }}
-                    </p>
-                    <!-- Distance info -->
-                    <div v-if="getDistanceForPickup(pt.id)" class="flex flex-wrap gap-3 mt-2">
-                      <span class="inline-flex items-center gap-1.5 text-sm bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg font-bold">
-                        <span class="material-symbols-rounded text-[16px]">straighten</span>
-                        {{ getDistanceForPickup(pt.id).distance?.text }}
+                  <div class="flex items-center justify-between px-6 py-4 bg-[var(--color-sand)] border-b border-gray-100 flex-wrap gap-3">
+                    <div>
+                      <span class="font-extrabold text-[var(--color-text-dark)] text-base flex items-center gap-2">
+                        <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px]">location_on</span>
+                        {{ group.region_label }}
                       </span>
-                      <span class="inline-flex items-center gap-1.5 text-sm bg-green-50 text-green-700 px-3 py-1.5 rounded-lg font-bold">
-                        <span class="material-symbols-rounded text-[16px]">schedule</span>
-                        {{ getDistanceForPickup(pt.id).duration?.text }}
-                      </span>
+                      <p class="text-xs text-[var(--color-text-muted)] font-bold mt-1">{{ group.points.length }} จุดรับในภูมิภาคนี้</p>
                     </div>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                      <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
-                        class="inline-flex items-center gap-1.5 text-sm text-white bg-[var(--color-primary)] hover:bg-[var(--color-accent)] px-4 py-2 rounded-lg font-bold transition-colors">
-                        <span class="material-symbols-rounded text-[16px]">map</span>
-                        ดูแผนที่จุดรับ
-                      </a>
+                    <span class="font-black text-[var(--color-accent)] text-sm md:text-base bg-white px-3 py-1.5 rounded-full border border-[var(--color-accent)]/20">
+                      {{ group.min_price === group.max_price
+                        ? `ราคาเริ่มต้น ฿${group.min_price.toLocaleString()}`
+                        : `฿${group.min_price.toLocaleString()} - ฿${group.max_price.toLocaleString()}` }}
+                    </span>
+                  </div>
+
+                  <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div
+                      v-for="pt in group.points"
+                      :key="pt.id"
+                      class="rounded-[1.25rem] border border-gray-100 bg-white p-4 space-y-3"
+                    >
+                      <p class="text-sm text-[var(--color-text-dark)] font-bold flex items-start gap-2.5">
+                        <span class="material-symbols-rounded text-red-400 shrink-0 mt-0.5 text-[18px]">pin_drop</span>
+                        {{ pt.pickup_location }}
+                      </p>
+                      <p v-if="pt.notes" class="text-sm text-[var(--color-text-muted)] font-medium flex items-start gap-2.5">
+                        <span class="material-symbols-rounded text-[#FFB020] shrink-0 mt-0.5 text-[18px]">schedule</span>
+                        {{ pt.notes }}
+                      </p>
+
+                      <div class="flex items-center justify-between flex-wrap gap-2 mt-1">
+                        <span class="text-sm font-black text-[var(--color-accent)]">฿{{ Number(pt.price).toLocaleString() }}</span>
+                        <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
+                          class="inline-flex items-center gap-1.5 text-xs text-white bg-[var(--color-primary)] hover:bg-[var(--color-accent)] px-3 py-1.5 rounded-lg font-bold transition-colors">
+                          <span class="material-symbols-rounded text-[14px]">map</span>
+                          ดูแผนที่
+                        </a>
+                      </div>
+
+                      <div v-if="getDistanceForPickup(pt.id)" class="flex flex-wrap gap-2 mt-2">
+                        <span class="inline-flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 px-2.5 py-1.5 rounded-lg font-bold">
+                          <span class="material-symbols-rounded text-[14px]">straighten</span>
+                          {{ getDistanceForPickup(pt.id).distance?.text }}
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 text-xs bg-green-50 text-green-700 px-2.5 py-1.5 rounded-lg font-bold">
+                          <span class="material-symbols-rounded text-[14px]">schedule</span>
+                          {{ getDistanceForPickup(pt.id).duration?.text }}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -824,6 +852,47 @@ const allPickupPoints = computed(() => {
     || schedules.value[0]?.pickup_points
     || [];
   return pts;
+});
+
+const groupedPickupPointsByRegion = computed(() => {
+  if (!allPickupPoints.value.length) return [];
+
+  const regionOrder = ['bangkok', 'central', 'north', 'northeast', 'east', 'west', 'south'];
+  const regionOrderMap = new Map(regionOrder.map((name, index) => [name, index]));
+  const grouped = new Map();
+
+  allPickupPoints.value.forEach((pt) => {
+    const regionKey = pt.region || 'other';
+    const regionLabel = pt.region_label || 'อื่นๆ';
+    const price = Number(pt.price || 0);
+
+    if (!grouped.has(regionKey)) {
+      grouped.set(regionKey, {
+        region: regionKey,
+        region_label: regionLabel,
+        points: [],
+        min_price: price,
+        max_price: price,
+      });
+    }
+
+    const bucket = grouped.get(regionKey);
+    bucket.points.push(pt);
+    bucket.min_price = Math.min(bucket.min_price, price);
+    bucket.max_price = Math.max(bucket.max_price, price);
+  });
+
+  return [...grouped.values()]
+    .map((group) => ({
+      ...group,
+      points: [...group.points].sort((a, b) => Number(a.price || 0) - Number(b.price || 0)),
+    }))
+    .sort((a, b) => {
+      const aOrder = regionOrderMap.has(a.region) ? regionOrderMap.get(a.region) : Number.MAX_SAFE_INTEGER;
+      const bOrder = regionOrderMap.has(b.region) ? regionOrderMap.get(b.region) : Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.region_label.localeCompare(b.region_label, 'th');
+    });
 });
 
 const regionOptions = computed(() => {
