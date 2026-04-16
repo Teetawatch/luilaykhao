@@ -105,7 +105,8 @@ const formattedGlobal = computed(() => {
 
 function handleGlobalExpiry() {
   const isOnBookingPage = route.path.startsWith('/booking/');
-  if (isOnBookingPage) return; // BookingPage handles its own expiry
+  const isOnPaymentPage = route.path.startsWith('/payment/');
+  if (isOnBookingPage || isOnPaymentPage) return; // These pages handle their own expiry
   seatsStore.clearSelection();
   swal.error(
     'หมดเวลาการจองแล้ว!',

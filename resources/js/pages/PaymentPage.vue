@@ -338,21 +338,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import QRCode from 'qrcode';
 import { useRoute, useRouter } from 'vue-router';
 import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
 import CountdownTimer from '../components/CountdownTimer.vue';
+import { useSwal } from '../lib/swal';
 
 const route = useRoute();
 const router = useRouter();
 const bookingStore = useBookingStore();
 const seatsStore = useSeatsStore();
+const swal = useSwal();
+
+const PAYMENT_TIMEOUT_SECONDS = 10 * 60;
 
 const booking = ref(null);
 const loading = ref(true);
 const paying = ref(false);
+const autoCancelling = ref(false);
 const paymentError = ref('');
 const paymentMethod = ref('promptpay');
 const paymentType = ref('full');
@@ -490,7 +495,62 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function initPaymentCountdown() {
+  if (!booking.value || booking.value.status !== 'pending') {
+    seatsStore.clearSelection();
+    return;
+  }
+
+  const createdAtMs = booking.value.created_at ? new Date(booking.value.created_at).getTime() : Date.now();
+  const baseTimeMs = Number.isFinite(createdAtMs) ? createdAtMs : Date.now();
+
+  seatsStore.lockExpiry = new Date(baseTimeMs + PAYMENT_TIMEOUT_SECONDS * 1000).toISOString();
+  seatsStore.setActiveBookingInfo({
+    tripTitle: booking.value.schedule?.trip?.title || 'กิจกรรม',
+    scheduleId: booking.value.schedule_id ?? booking.value.schedule?.id,
+    bookingRef: booking.value.booking_ref,
+    step: 'payment',
+    startedAt: baseTimeMs,
+  });
+  seatsStore.startCountdown();
+}
+
+async function handlePaymentExpiry() {
+  if (autoCancelling.value) return;
+  autoCancelling.value = true;
+
+  try {
+    if (booking.value?.booking_ref && booking.value?.status === 'pending') {
+      await bookingStore.cancelBooking(
+        booking.value.booking_ref,
+        'หมดเวลาชำระเงินเกิน 10 นาที ระบบยกเลิกการจองอัตโนมัติ'
+      );
+      booking.value.status = 'cancelled';
+    }
+  } catch (e) {
+    console.error('Auto-cancel booking failed:', e);
+  } finally {
+    seatsStore.clearSelection();
+  }
+
+  await swal.error(
+    'หมดเวลาชำระเงินแล้ว',
+    'ครบกำหนด 10 นาที ระบบได้ยกเลิกการจองและคืนที่นั่งเรียบร้อยแล้ว กรุณาทำรายการใหม่อีกครั้ง'
+  );
+  router.push('/trips');
+}
+
 async function processPayment() {
+  if (seatsStore.countdownSeconds <= 0) {
+    paymentError.value = 'หมดเวลาชำระเงินแล้ว ระบบได้ยกเลิกการจองอัตโนมัติ';
+    return;
+  }
+
+  if (booking.value?.status !== 'pending') {
+    paymentError.value = 'สถานะการจองนี้ไม่สามารถชำระเงินได้';
+    return;
+  }
+
   if (!slipFile.value) {
     paymentError.value = 'กรุณาอัปโหลดสลิปการโอนเงินก่อนกดชำระ';
     return;
@@ -518,6 +578,8 @@ async function processPayment() {
     if (transferTime.value) fd.append('transfer_time', transferTime.value);
 
     await bookingStore.chargePayment(fd);
+    seatsStore.offExpire(handlePaymentExpiry);
+    seatsStore.clearSelection();
     router.push(`/confirmation/${booking.value.booking_ref}`);
   } catch (e) {
     paymentError.value = e?.response?.data?.message || 'การชำระเงินล้มเหลว กรุณาลองใหม่';
@@ -527,8 +589,11 @@ async function processPayment() {
 }
 
 onMounted(async () => {
+  seatsStore.onExpire(handlePaymentExpiry);
+
   try {
     booking.value = await bookingStore.fetchBooking(route.params.bookingRef);
+    initPaymentCountdown();
   } catch (e) {
     console.error(e);
   } finally {
@@ -538,5 +603,9 @@ onMounted(async () => {
     await nextTick();
     generateQR();
   }
+});
+
+onBeforeUnmount(() => {
+  seatsStore.offExpire(handlePaymentExpiry);
 });
 </script>
