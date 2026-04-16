@@ -1,0 +1,140 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Models\Booking;
+use App\Models\StaffReview;
+use App\Models\TripSchedule;
+use App\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class StaffController extends Controller
+{
+    use ApiResponse;
+
+    public function mySchedules(Request $request): JsonResponse
+    {
+        if (!$request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedules = TripSchedule::with(['trip', 'vehicle'])
+            ->whereHas('staff', fn ($q) => $q->where('users.id', $request->user()->id))
+            ->orderBy('departure_date')
+            ->get();
+
+        $summary = StaffReview::where('staff_user_id', $request->user()->id)
+            ->selectRaw('COUNT(*) as total_reviews, AVG(rating) as avg_rating')
+            ->first();
+
+        return $this->success([
+            'summary' => [
+                'total_reviews' => (int) ($summary?->total_reviews ?? 0),
+                'avg_rating' => $summary?->avg_rating ? round((float) $summary->avg_rating, 2) : null,
+            ],
+            'schedules' => $schedules->map(fn ($s) => [
+                'id' => $s->id,
+                'trip' => [
+                    'id' => $s->trip?->id,
+                    'title' => $s->trip?->title,
+                    'location' => $s->trip?->location,
+                    'cover_image' => $s->trip?->cover_image,
+                ],
+                'vehicle' => $s->vehicle ? [
+                    'id' => $s->vehicle->id,
+                    'name' => $s->vehicle->name,
+                    'type' => $s->vehicle->type,
+                ] : null,
+                'departure_date' => $s->departure_date?->toDateString(),
+                'return_date' => $s->return_date?->toDateString(),
+                'status' => $s->status,
+                'transport_type' => $s->transport_type,
+            ])->values(),
+        ]);
+    }
+
+    public function myReviews(Request $request): JsonResponse
+    {
+        if (!$request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $reviews = StaffReview::with(['reviewer', 'schedule.trip'])
+            ->where('staff_user_id', $request->user()->id)
+            ->orderByDesc('created_at')
+            ->paginate($request->get('per_page', 20));
+
+        return $this->paginated($reviews->through(fn ($review) => [
+            'id' => $review->id,
+            'rating' => $review->rating,
+            'comment' => $review->comment,
+            'reviewer_name' => $review->reviewer?->name,
+            'trip_title' => $review->schedule?->trip?->title,
+            'departure_date' => $review->schedule?->departure_date?->toDateString(),
+            'created_at' => $review->created_at?->toISOString(),
+        ]));
+    }
+
+    public function storeReview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'booking_id' => ['required', 'integer', 'exists:bookings,id'],
+            'staff_user_id' => ['required', 'integer', 'exists:users,id'],
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $booking = Booking::with('schedule.staff')
+            ->where('id', $validated['booking_id'])
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->firstOrFail();
+
+        $isAssigned = $booking->schedule?->staff
+            ?->contains(fn ($staff) => (int) $staff->id === (int) $validated['staff_user_id']);
+
+        if (!$isAssigned) {
+            return $this->error('ไม่พบสตาฟคนนี้ในรอบเดินทางของการจองนี้', 422);
+        }
+
+        $existing = StaffReview::where('booking_id', $booking->id)
+            ->where('staff_user_id', $validated['staff_user_id'])
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'rating' => $validated['rating'],
+                'comment' => $validated['comment'] ?? null,
+            ]);
+
+            return $this->success([
+                'id' => $existing->id,
+                'booking_id' => $existing->booking_id,
+                'staff_user_id' => $existing->staff_user_id,
+                'rating' => $existing->rating,
+                'comment' => $existing->comment,
+                'updated_at' => $existing->updated_at?->toISOString(),
+            ], 'อัปเดตรีวิวสตาฟสำเร็จ');
+        }
+
+        $review = StaffReview::create([
+            'booking_id' => $booking->id,
+            'schedule_id' => $booking->schedule_id,
+            'reviewer_user_id' => $request->user()->id,
+            'staff_user_id' => $validated['staff_user_id'],
+            'rating' => $validated['rating'],
+            'comment' => $validated['comment'] ?? null,
+        ]);
+
+        return $this->success([
+            'id' => $review->id,
+            'booking_id' => $review->booking_id,
+            'staff_user_id' => $review->staff_user_id,
+            'rating' => $review->rating,
+            'comment' => $review->comment,
+            'created_at' => $review->created_at?->toISOString(),
+        ], 'รีวิวสตาฟสำเร็จ', 201);
+    }
+}

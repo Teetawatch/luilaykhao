@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -53,6 +54,23 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(SmartNotification::class);
+    }
+
+    public function assignedSchedules(): BelongsToMany
+    {
+        return $this->belongsToMany(TripSchedule::class, 'schedule_staff_assignments', 'user_id', 'schedule_id')
+            ->withPivot(['assigned_by', 'created_at'])
+            ->withTimestamps();
+    }
+
+    public function staffReviewsReceived(): HasMany
+    {
+        return $this->hasMany(StaffReview::class, 'staff_user_id');
+    }
+
+    public function staffReviewsGiven(): HasMany
+    {
+        return $this->hasMany(StaffReview::class, 'reviewer_user_id');
     }
 
     public function getAvatarUrlAttribute(): string

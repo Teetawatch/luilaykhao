@@ -177,6 +177,15 @@
                 <span class="material-symbols-rounded text-[18px]">star</span>
                 เขียนรีวิว
               </router-link>
+
+              <button
+                v-if="canReviewStaff(b)"
+                @click="openStaffReviewModal(b)"
+                class="flex-1 text-center border-2 border-[#0C4A6E] text-[#0C4A6E] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E0F2FE] transition-all flex items-center justify-center gap-1.5"
+                style="font-family:'Anuphan',sans-serif;">
+                <span class="material-symbols-rounded text-[18px]">badge</span>
+                รีวิวสตาฟ
+              </button>
               
               <button
                 v-if="b.status === 'pending'"
@@ -205,21 +214,107 @@
         </div>
       </div>
 
+      <!-- Staff Review Modal -->
+      <div v-if="showStaffReviewModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" @click.self="showStaffReviewModal = false">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-[#E8EEEF] overflow-hidden">
+          <div class="px-5 py-4 border-b border-[#E8EEEF] flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'Anuphan',sans-serif;">รีวิวสตาฟประจำทริป</h3>
+              <p class="text-xs text-[#6b7280] mt-0.5" style="font-family:'Anuphan',sans-serif;">{{ reviewingBooking?.schedule?.trip?.title || '-' }}</p>
+            </div>
+            <button @click="showStaffReviewModal = false" class="w-8 h-8 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] inline-flex items-center justify-center">
+              <span class="material-symbols-rounded text-[18px]">close</span>
+            </button>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <div>
+              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'Anuphan',sans-serif;">เลือกสตาฟ</label>
+              <select v-model.number="staffReviewForm.staff_user_id" @change="hydrateStaffReviewForm" class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm" style="font-family:'Anuphan',sans-serif;">
+                <option :value="0" disabled>-- เลือกสตาฟ --</option>
+                <option v-for="staff in reviewingBooking?.assigned_staff || []" :key="staff.id" :value="staff.id">
+                  {{ staff.name }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'Anuphan',sans-serif;">คะแนนความพึงพอใจ</label>
+              <div class="grid grid-cols-5 gap-2">
+                <button
+                  v-for="score in [1,2,3,4,5]"
+                  :key="score"
+                  type="button"
+                  @click="staffReviewForm.rating = score"
+                  class="h-10 rounded-xl border text-sm font-bold transition"
+                  :class="staffReviewForm.rating === score ? 'bg-[#006565] text-white border-[#006565]' : 'bg-white text-[#475569] border-[#D7E0E1] hover:bg-[#F8FAFC]'"
+                  style="font-family:'Anuphan',sans-serif;"
+                >
+                  {{ score }} ★
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'Anuphan',sans-serif;">ความคิดเห็น (ไม่บังคับ)</label>
+              <textarea
+                v-model="staffReviewForm.comment"
+                rows="4"
+                class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm"
+                placeholder="เล่าประสบการณ์การดูแลของสตาฟคนนี้"
+                style="font-family:'Anuphan',sans-serif;"
+              ></textarea>
+            </div>
+
+            <div v-if="selectedStaffReview" class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-xs text-[#475569]" style="font-family:'Anuphan',sans-serif;">
+              คุณเคยรีวิวสตาฟคนนี้แล้ว ระบบจะอัปเดตรีวิวเดิม
+            </div>
+          </div>
+
+          <div class="px-5 py-4 border-t border-[#E8EEEF] flex justify-end gap-2">
+            <button @click="showStaffReviewModal = false" class="px-4 py-2.5 rounded-xl border border-[#D7E0E1] text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC]" style="font-family:'Anuphan',sans-serif;">ยกเลิก</button>
+            <button
+              @click="submitStaffReview"
+              :disabled="reviewSubmitting || !staffReviewForm.staff_user_id"
+              class="px-4 py-2.5 rounded-xl bg-[#006565] text-white text-sm font-bold hover:bg-[#004f4f] disabled:opacity-60"
+              style="font-family:'Anuphan',sans-serif;"
+            >
+              {{ selectedStaffReview ? 'อัปเดตรีวิวสตาฟ' : 'ส่งรีวิวสตาฟ' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
+import api from '../lib/axios';
 import CountdownTimer from '../components/CountdownTimer.vue';
 
 const bookingStore = useBookingStore();
 const seatsStore = useSeatsStore();
-const router = useRouter();
 const activeTab = ref('upcoming');
+const showStaffReviewModal = ref(false);
+const reviewSubmitting = ref(false);
+const reviewingBooking = ref(null);
+const staffReviewForm = ref({
+  staff_user_id: 0,
+  rating: 5,
+  comment: '',
+});
+
+const selectedStaffReview = computed(() => {
+  if (!reviewingBooking.value || !staffReviewForm.value.staff_user_id) return null;
+
+  return (reviewingBooking.value.staff_reviews || []).find(
+    (review) => Number(review.staff_user_id) === Number(staffReviewForm.value.staff_user_id),
+  ) || null;
+});
 
 function isPendingWithTimer(b) {
   return b.status === 'pending'
@@ -283,6 +378,59 @@ function getDay(d) {
 function getMonthShort(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('th-TH', { month: 'short' });
+}
+
+function canReviewStaff(booking) {
+  return ['confirmed', 'completed'].includes(booking.status) && (booking.assigned_staff?.length || 0) > 0;
+}
+
+function openStaffReviewModal(booking) {
+  reviewingBooking.value = booking;
+  showStaffReviewModal.value = true;
+
+  const firstStaffId = booking.assigned_staff?.[0]?.id || 0;
+  staffReviewForm.value = {
+    staff_user_id: firstStaffId,
+    rating: 5,
+    comment: '',
+  };
+
+  hydrateStaffReviewForm();
+}
+
+function hydrateStaffReviewForm() {
+  const existing = selectedStaffReview.value;
+
+  if (!existing) {
+    staffReviewForm.value.rating = 5;
+    staffReviewForm.value.comment = '';
+    return;
+  }
+
+  staffReviewForm.value.rating = Number(existing.rating) || 5;
+  staffReviewForm.value.comment = existing.comment || '';
+}
+
+async function submitStaffReview() {
+  if (!reviewingBooking.value || !staffReviewForm.value.staff_user_id) return;
+
+  reviewSubmitting.value = true;
+  try {
+    await api.post('/staff/reviews', {
+      booking_id: reviewingBooking.value.id,
+      staff_user_id: staffReviewForm.value.staff_user_id,
+      rating: staffReviewForm.value.rating,
+      comment: staffReviewForm.value.comment || null,
+    });
+
+    showStaffReviewModal.value = false;
+    await bookingStore.fetchMyBookings(bookingStore.meta?.current_page || 1);
+    alert('บันทึกรีวิวสตาฟเรียบร้อยแล้ว');
+  } catch (e) {
+    alert(e?.response?.data?.message || 'ส่งรีวิวสตาฟไม่สำเร็จ');
+  } finally {
+    reviewSubmitting.value = false;
+  }
 }
 
 async function handleCancel(b) {

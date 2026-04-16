@@ -85,6 +85,7 @@ const menuItems = [
   { to: '/admin/reports', icon: 'fas fa-chart-line', label: 'รายงาน' },
   { to: '/admin/check-in', icon: 'fas fa-qrcode', label: 'เช็คอิน QR' },
   { to: '/admin/users', icon: 'fas fa-users', label: 'ผู้ใช้งาน' },
+  { to: '/admin/staff-assignments', icon: 'fas fa-user-check', label: 'มอบหมายสตาฟ' },
 ];
 
 const handleLogout = async () => {

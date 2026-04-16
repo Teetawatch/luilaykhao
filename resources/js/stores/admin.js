@@ -86,6 +86,16 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    async fetchScheduleStaff(scheduleId) {
+      const res = await api.get(`/admin/schedules/${scheduleId}/staff`);
+      return res.data;
+    },
+
+    async syncScheduleStaff(scheduleId, staffIds = []) {
+      const res = await api.put(`/admin/schedules/${scheduleId}/staff`, { staff_ids: staffIds });
+      return res.data;
+    },
+
     // ─── Bookings ───────────────────
     async fetchBookings(params = {}) {
       this.loading = true;
@@ -186,6 +196,16 @@ export const useAdminStore = defineStore('admin', {
     async deleteUser(id) {
       const res = await api.delete(`/admin/users/${id}`);
       return res.data;
+    },
+
+    async fetchStaffUsers(params = {}) {
+      this.loading = true;
+      try {
+        const res = await api.get('/admin/staff/users', { params });
+        return { data: res.data.data, meta: res.data.meta };
+      } finally {
+        this.loading = false;
+      }
     },
 
     // ─── Calendar ────────────────────

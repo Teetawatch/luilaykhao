@@ -63,6 +63,11 @@ class Booking extends Model
         return $this->hasMany(InstallmentPayment::class)->orderBy('installment_no');
     }
 
+    public function staffReviews(): HasMany
+    {
+        return $this->hasMany(StaffReview::class);
+    }
+
     public static function generateRef(): string
     {
         $date = now()->format('Ymd');

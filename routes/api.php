@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SeatController;
+use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\DistanceController;
@@ -75,6 +76,11 @@ Route::prefix('v1')->group(function () {
         Route::delete('reviews/{id}', [ReviewController::class, 'destroy']);
         Route::post('reviews/upload-image', [ReviewController::class, 'uploadImage']);
 
+        // Staff assignment and reviews
+        Route::get('staff/schedules/my', [StaffController::class, 'mySchedules']);
+        Route::get('staff/reviews/my', [StaffController::class, 'myReviews']);
+        Route::post('staff/reviews', [StaffController::class, 'storeReview']);
+
         // Loyalty program
         Route::get('loyalty/account', [LoyaltyController::class, 'account']);
         Route::get('loyalty/rewards', [LoyaltyController::class, 'rewards']);
@@ -129,6 +135,8 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules', [AdminController::class, 'storeSchedule']);
         Route::put('schedules/{id}', [AdminController::class, 'updateSchedule']);
         Route::delete('schedules/{id}', [AdminController::class, 'deleteSchedule']);
+        Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);
+        Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);
 
         // Schedule Pickup Points
         Route::get('schedules/{id}/pickup-points', [AdminController::class, 'pickupPoints']);
@@ -156,6 +164,7 @@ Route::prefix('v1')->group(function () {
 
         // Users management
         Route::get('users', [AdminController::class, 'users']);
+        Route::get('staff/users', [AdminController::class, 'staffUsers']);
         Route::post('users', [AdminController::class, 'storeUser']);
         Route::put('users/{id}', [AdminController::class, 'updateUser']);
         Route::delete('users/{id}', [AdminController::class, 'deleteUser']);

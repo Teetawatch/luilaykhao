@@ -22,6 +22,16 @@ class BookingResource extends JsonResource
                 ];
             }),
             'schedule' => new TripScheduleResource($this->whenLoaded('schedule')),
+            'assigned_staff' => $this->when(
+                $this->relationLoaded('schedule') && $this->schedule?->relationLoaded('staff'),
+                fn () => $this->schedule->staff->map(fn ($staff) => [
+                    'id' => $staff->id,
+                    'name' => $staff->name,
+                    'email' => $staff->email,
+                    'phone' => $staff->phone,
+                    'avatar_url' => $staff->avatar_url,
+                ])->values(),
+            ),
             'pickup_region' => $this->pickup_region,
             'is_group' => $this->is_group,
             'group_name' => $this->group_name,
@@ -56,6 +66,16 @@ class BookingResource extends JsonResource
             ),
             'seats' => BookingSeatResource::collection($this->whenLoaded('seats')),
             'passengers' => BookingPassengerResource::collection($this->whenLoaded('passengers')),
+            'staff_reviews' => $this->when(
+                $this->relationLoaded('staffReviews'),
+                fn () => $this->staffReviews->map(fn ($review) => [
+                    'id' => $review->id,
+                    'staff_user_id' => $review->staff_user_id,
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'created_at' => $review->created_at?->toISOString(),
+                ])->values(),
+            ),
             'cancellation_reason' => $this->cancellation_reason,
             'cancelled_at' => $this->cancelled_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),

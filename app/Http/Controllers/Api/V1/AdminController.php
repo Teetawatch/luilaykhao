@@ -246,6 +246,65 @@ class AdminController extends Controller
         return $this->success(null, 'ลบรอบเดินทางสำเร็จ');
     }
 
+    public function scheduleStaff(int $id): JsonResponse
+    {
+        $schedule = TripSchedule::with(['trip', 'staff'])->findOrFail($id);
+
+        return $this->success([
+            'schedule' => [
+                'id' => $schedule->id,
+                'trip_title' => $schedule->trip?->title,
+                'departure_date' => $schedule->departure_date?->toDateString(),
+                'return_date' => $schedule->return_date?->toDateString(),
+                'status' => $schedule->status,
+            ],
+            'staff' => $schedule->staff->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'avatar_url' => $user->avatar_url,
+                'assigned_at' => $user->pivot?->created_at,
+            ])->values(),
+        ]);
+    }
+
+    public function syncScheduleStaff(Request $request, int $id): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($id);
+
+        $validated = $request->validate([
+            'staff_ids' => ['nullable', 'array'],
+            'staff_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+        ]);
+
+        $staffIds = collect($validated['staff_ids'] ?? [])->values();
+
+        if ($staffIds->isNotEmpty()) {
+            $validStaffIds = User::role('staff')->whereIn('id', $staffIds)->pluck('id');
+
+            if ($validStaffIds->count() !== $staffIds->count()) {
+                return $this->error('พบผู้ใช้ที่ไม่ได้เป็นสิทธิ์ staff', 422);
+            }
+        }
+
+        $syncPayload = $staffIds
+            ->mapWithKeys(fn ($staffId) => [(int) $staffId => ['assigned_by' => $request->user()->id]])
+            ->all();
+
+        $schedule->staff()->sync($syncPayload);
+        $schedule->load('staff');
+
+        return $this->success($schedule->staff->map(fn ($user) => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'avatar_url' => $user->avatar_url,
+            'assigned_at' => $user->pivot?->created_at,
+        ])->values(), 'อัปเดตรายชื่อสตาฟประจำรอบสำเร็จ');
+    }
+
     // ─── Bookings ─────────────────────────────────────────────
 
     public function bookings(Request $request): JsonResponse
@@ -458,7 +517,7 @@ class AdminController extends Controller
 
     public function users(Request $request): JsonResponse
     {
-        $query = User::withCount('bookings')->with('roles');
+        $query = User::withCount(['bookings', 'assignedSchedules'])->with('roles');
 
         if ($request->filled('role')) {
             $query->role($request->role);
@@ -479,11 +538,41 @@ class AdminController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'avatar_url' => $user->avatar_url,
+                'social_provider' => $user->social_provider,
                 'roles' => $user->roles->pluck('name'),
                 'bookings_count' => $user->bookings_count,
+                'assigned_schedules_count' => $user->assigned_schedules_count,
                 'created_at' => $user->created_at?->toISOString(),
             ];
         }));
+    }
+
+    public function staffUsers(Request $request): JsonResponse
+    {
+        $query = User::role('staff')
+            ->withCount('assignedSchedules')
+            ->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%")
+                  ->orWhere('phone', 'like', "%{$request->search}%");
+            });
+        }
+
+        $staff = $query->orderBy('name')->paginate($request->get('per_page', 30));
+
+        return $this->paginated($staff->through(fn ($user) => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'avatar_url' => $user->avatar_url,
+            'assigned_schedules_count' => $user->assigned_schedules_count,
+            'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
+        ]));
     }
 
     public function storeUser(Request $request): JsonResponse
@@ -493,7 +582,7 @@ class AdminController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'in:admin,operator,customer'],
+            'role' => ['required', 'in:admin,operator,staff,customer'],
         ]);
 
         $user = User::create([
@@ -523,7 +612,7 @@ class AdminController extends Controller
             'email' => ['sometimes', 'email', 'unique:users,email,' . $id],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['nullable', 'string', 'min:6'],
-            'role' => ['sometimes', 'in:admin,operator,customer'],
+            'role' => ['sometimes', 'in:admin,operator,staff,customer'],
         ]);
 
         $userData = collect($validated)->except(['password', 'role'])->toArray();

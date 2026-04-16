@@ -14,6 +14,7 @@ import AboutPage from '../pages/AboutPage.vue';
 import GoalPage from '../pages/GoalPage.vue';
 import ProblemPage from '../pages/ProblemPage.vue';
 import MyReviewsPage from '../pages/MyReviewsPage.vue';
+import MyStaffTripsPage from '../pages/MyStaffTripsPage.vue';
 import LoyaltyPage from '../pages/LoyaltyPage.vue';
 import NotificationsPage from '../pages/NotificationsPage.vue';
 import PrivacyPage from '../pages/PrivacyPage.vue';
@@ -41,6 +42,7 @@ import AdminReviews from '../pages/admin/ReviewsPage.vue';
 import AdminLoyalty from '../pages/admin/LoyaltyPage.vue';
 import AdminAnalytics from '../pages/admin/AnalyticsPage.vue';
 import AdminTracking from '../pages/admin/TrackingPage.vue';
+import AdminStaffAssignments from '../pages/admin/StaffAssignmentsPage.vue';
 
 const routes = [
   // ── Public / Customer Routes ──
@@ -54,6 +56,7 @@ const routes = [
   { path: '/register', name: 'register', component: RegisterPage },
   { path: '/my-bookings', name: 'my-bookings', component: MyBookingsPage, meta: { requiresAuth: true } },
   { path: '/my-reviews', name: 'my-reviews', component: MyReviewsPage, meta: { requiresAuth: true } },
+  { path: '/my-staff-trips', name: 'my-staff-trips', component: MyStaffTripsPage, meta: { requiresAuth: true } },
   { path: '/loyalty', name: 'loyalty', component: LoyaltyPage, meta: { requiresAuth: true } },
   { path: '/notifications', name: 'notifications', component: NotificationsPage, meta: { requiresAuth: true } },
   { path: '/about', name: 'about', component: AboutPage },
@@ -79,6 +82,7 @@ const routes = [
       { path: 'bookings', name: 'admin-bookings', component: AdminBookings },
       { path: 'vehicles', name: 'admin-vehicles', component: AdminVehicles },
       { path: 'users', name: 'admin-users', component: AdminUsers },
+      { path: 'staff-assignments', name: 'admin-staff-assignments', component: AdminStaffAssignments },
       { path: 'calendar', name: 'admin-calendar', component: AdminCalendar },
       { path: 'customers', name: 'admin-customers', component: AdminCustomers },
       { path: 'maintenance', name: 'admin-maintenance', component: AdminMaintenance },

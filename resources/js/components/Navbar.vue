@@ -185,6 +185,11 @@
                       รีวิวของฉัน
                     </router-link>
 
+                    <router-link v-if="isStaff" to="/my-staff-trips" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
+                      <span class="material-symbols-rounded text-[20px] text-cyan-700">badge</span>
+                      ตารางงานสตาฟ
+                    </router-link>
+
                     <router-link to="/loyalty" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
                       <span class="material-symbols-rounded text-[20px] text-amber-500">stars</span>
                       แต้มสะสมลุยเลเขา
@@ -291,6 +296,15 @@
             >
               <span class="material-symbols-rounded text-[22px]">reviews</span>
               รีวิวของฉัน
+            </router-link>
+            <router-link
+              v-if="isStaff"
+              to="/my-staff-trips"
+              @click="mobileOpen = false"
+              class="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+            >
+              <span class="material-symbols-rounded text-[22px]">badge</span>
+              ตารางงานสตาฟ
             </router-link>
             <router-link
               to="/loyalty"
@@ -472,6 +486,11 @@ const isAboutActive = computed(() => {
 const isAdmin = computed(() => {
   const roles = auth.user?.roles?.map(r => typeof r === 'string' ? r : r.name) || [];
   return roles.includes('admin') || roles.includes('operator');
+});
+
+const isStaff = computed(() => {
+  const roles = auth.user?.roles?.map(r => typeof r === 'string' ? r : r.name) || [];
+  return roles.includes('staff');
 });
 
 async function handleLogout() {

@@ -43,7 +43,15 @@ class BookingController extends Controller
     public function show(string $ref): JsonResponse
     {
         $booking = Booking::where('booking_ref', $ref)
-            ->with(['schedule.trip', 'schedule.pickupPoints', 'seats', 'passengers', 'installmentPayments'])
+            ->with([
+                'schedule.trip',
+                'schedule.pickupPoints',
+                'schedule.staff',
+                'seats',
+                'passengers',
+                'installmentPayments',
+                'staffReviews' => fn ($q) => $q->where('reviewer_user_id', auth()->id()),
+            ])
             ->firstOrFail();
 
         return $this->success(new BookingResource($booking));
@@ -52,7 +60,11 @@ class BookingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $bookings = Booking::where('user_id', $request->user()->id)
-            ->with(['schedule.trip'])
+            ->with([
+                'schedule.trip',
+                'schedule.staff',
+                'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
+            ])
             ->orderByDesc('created_at')
             ->paginate(10);
 

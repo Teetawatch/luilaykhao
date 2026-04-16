@@ -20,6 +20,7 @@
         <option value="">ทุกบทบาท</option>
         <option value="admin">ผู้ดูแล</option>
         <option value="operator">เจ้าหน้าที่</option>
+        <option value="staff">สตาฟ</option>
         <option value="customer">ลูกค้า</option>
       </select>
     </div>
@@ -33,6 +34,7 @@
             <tr>
               <th>ผู้ใช้</th>
               <th>อีเมล</th>
+              <th>สมัครผ่าน</th>
               <th>เบอร์โทร</th>
               <th>บทบาท</th>
               <th>การจอง</th>
@@ -44,11 +46,19 @@
             <tr v-for="u in admin.users.data" :key="u.id">
               <td>
                 <div class="user-cell">
-                  <div class="user-avatar-sm">{{ u.name?.charAt(0)?.toUpperCase() }}</div>
+                  <div class="user-avatar-sm">
+                    <img v-if="u.avatar_url" :src="u.avatar_url" :alt="u.name" class="user-avatar-img" />
+                    <span v-else>{{ u.name?.charAt(0)?.toUpperCase() }}</span>
+                  </div>
                   <span class="user-name-cell">{{ u.name }}</span>
                 </div>
               </td>
               <td>{{ u.email }}</td>
+              <td>
+                <span class="signup-provider" :class="`provider-${normalizeSignupProvider(u.social_provider)}`">
+                  {{ signupProviderLabel(u.social_provider) }}
+                </span>
+              </td>
               <td>{{ u.phone || '-' }}</td>
               <td>
                 <span class="role-badge" :class="`role-${u.roles?.[0] || 'customer'}`">
@@ -65,7 +75,7 @@
               </td>
             </tr>
             <tr v-if="!admin.users.data?.length">
-              <td colspan="7" class="empty-state">ไม่พบผู้ใช้</td>
+              <td colspan="8" class="empty-state">ไม่พบผู้ใช้</td>
             </tr>
           </tbody>
         </table>
@@ -108,6 +118,7 @@
               <select v-model="form.role" required>
                 <option value="customer">ลูกค้า</option>
                 <option value="operator">เจ้าหน้าที่</option>
+                <option value="staff">สตาฟ</option>
                 <option value="admin">ผู้ดูแล</option>
               </select>
             </div>
@@ -156,7 +167,15 @@ const deleting = ref(null);
 const submitting = ref(false);
 const form = reactive({ name: '', email: '', phone: '', password: '', role: 'customer' });
 
-const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', customer: 'ลูกค้า' };
+const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า' };
+const signupProviderLabels = { email: 'อีเมล', google: 'Gmail', facebook: 'Facebook', line: 'LINE' };
+
+const normalizeSignupProvider = (provider) => {
+  const key = (provider || '').toString().trim().toLowerCase();
+  return ['google', 'facebook', 'line'].includes(key) ? key : 'email';
+};
+
+const signupProviderLabel = (provider) => signupProviderLabels[normalizeSignupProvider(provider)] || 'อีเมล';
 
 const formatDate = (date) => {
   if (!date) return '-';
@@ -238,8 +257,46 @@ onMounted(() => fetchData());
   flex-shrink: 0;
 }
 
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
 .user-name-cell {
   font-weight: 600;
   color: var(--color-text-dark);
+}
+
+.signup-provider {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.provider-email {
+  background: #eef2f7;
+  color: #3f4a5a;
+}
+
+.provider-google {
+  background: #fff1f0;
+  color: #c2410c;
+}
+
+.provider-facebook {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.provider-line {
+  background: #ecfdf3;
+  color: #047857;
 }
 </style>

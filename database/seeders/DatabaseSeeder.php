@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         // Roles
         Role::firstOrCreate(['name' => 'admin']);
         Role::firstOrCreate(['name' => 'operator']);
+        Role::firstOrCreate(['name' => 'staff']);
         Role::firstOrCreate(['name' => 'customer']);
 
         // Admin user (Primary)

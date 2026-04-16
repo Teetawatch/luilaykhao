@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\SchedulePickupPoint;
 
@@ -58,6 +59,13 @@ class TripSchedule extends Model
     public function pickupPoints(): HasMany
     {
         return $this->hasMany(SchedulePickupPoint::class, 'schedule_id')->orderBy('sort_order');
+    }
+
+    public function staff(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'schedule_staff_assignments', 'schedule_id', 'user_id')
+            ->withPivot(['assigned_by', 'created_at'])
+            ->withTimestamps();
     }
 
     public function getAvailableSeatsAttribute(): int
