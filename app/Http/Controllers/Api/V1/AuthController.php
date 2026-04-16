@@ -199,36 +199,57 @@ class AuthController extends Controller
             return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode($message));
         }
 
-        $user = User::where('social_provider', $provider)
-            ->where('social_id', $socialUser->getId())
-            ->first();
+        try {
+            $socialId = (string) $socialUser->getId();
+            $email = $socialUser->getEmail();
 
-        if (!$user) {
-            $user = User::where('email', $socialUser->getEmail())->first();
-
-            if ($user) {
-                $user->update([
-                    'social_provider' => $provider,
-                    'social_id' => $socialUser->getId(),
-                    'avatar' => $user->avatar ?: $socialUser->getAvatar(),
-                ]);
-            } else {
-                $user = User::create([
-                    'name' => $socialUser->getName() ?: ($socialUser->getNickname() ?: 'User'),
-                    'email' => $socialUser->getEmail(),
-                    'social_provider' => $provider,
-                    'social_id' => $socialUser->getId(),
-                    'avatar' => $socialUser->getAvatar(),
-                    'password' => null,
-                ]);
-                $user->assignRole('customer');
+            if (!$email) {
+                $sanitizedSocialId = preg_replace('/[^a-zA-Z0-9]/', '', $socialId) ?: Str::random(12);
+                $email = $provider . '_' . $sanitizedSocialId . '@social.local';
             }
+
+            $user = User::where('social_provider', $provider)
+                ->where('social_id', $socialId)
+                ->first();
+
+            if (!$user) {
+                if ($socialUser->getEmail()) {
+                    $user = User::where('email', $socialUser->getEmail())->first();
+                }
+
+                if ($user) {
+                    $user->update([
+                        'social_provider' => $provider,
+                        'social_id' => $socialId,
+                        'avatar' => $user->avatar ?: $socialUser->getAvatar(),
+                    ]);
+                } else {
+                    $user = User::create([
+                        'name' => $socialUser->getName() ?: ($socialUser->getNickname() ?: 'User'),
+                        'email' => $email,
+                        'social_provider' => $provider,
+                        'social_id' => $socialId,
+                        'avatar' => $socialUser->getAvatar(),
+                        'password' => null,
+                    ]);
+                    $user->assignRole('customer');
+                }
+            }
+
+            $user->load('roles');
+            $token = $user->createToken('auth-token')->plainTextToken;
+
+            return redirect($frontendUrl . '/auth/social/callback?token=' . $token . '&user=' . urlencode(json_encode($this->formatUser($user))));
+        } catch (\Throwable $e) {
+            \Log::error('Social user processing error: ' . $e->getMessage(), [
+                'provider' => $provider,
+                'social_id' => $socialUser->getId(),
+                'email' => $socialUser->getEmail(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode('เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง'));
         }
-
-        $user->load('roles');
-        $token = $user->createToken('auth-token')->plainTextToken;
-
-        return redirect($frontendUrl . '/auth/social/callback?token=' . $token . '&user=' . urlencode(json_encode($this->formatUser($user))));
     }
 
     private function validateProvider(string $provider): void
