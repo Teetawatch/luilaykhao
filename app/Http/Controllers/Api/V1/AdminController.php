@@ -24,8 +24,10 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class AdminController extends Controller
 {
@@ -248,7 +250,22 @@ class AdminController extends Controller
 
     public function scheduleStaff(int $id): JsonResponse
     {
-        $schedule = TripSchedule::with(['trip', 'staff'])->findOrFail($id);
+        $schedule = TripSchedule::with('trip')->findOrFail($id);
+
+        if (!Schema::hasTable('schedule_staff_assignments')) {
+            return $this->success([
+                'schedule' => [
+                    'id' => $schedule->id,
+                    'trip_title' => $schedule->trip?->title,
+                    'departure_date' => $schedule->departure_date?->toDateString(),
+                    'return_date' => $schedule->return_date?->toDateString(),
+                    'status' => $schedule->status,
+                ],
+                'staff' => [],
+            ]);
+        }
+
+        $schedule->load('staff');
 
         return $this->success([
             'schedule' => [
@@ -273,12 +290,25 @@ class AdminController extends Controller
     {
         $schedule = TripSchedule::findOrFail($id);
 
+        if (!Schema::hasTable('schedule_staff_assignments')) {
+            return $this->error('ยังไม่ได้ตั้งค่าตารางมอบหมายสตาฟในระบบ', 422);
+        }
+
         $validated = $request->validate([
             'staff_ids' => ['nullable', 'array'],
             'staff_ids.*' => ['integer', 'distinct', 'exists:users,id'],
         ]);
 
         $staffIds = collect($validated['staff_ids'] ?? [])->values();
+
+        $staffRoleExists = Role::query()
+            ->where('name', 'staff')
+            ->where('guard_name', config('auth.defaults.guard', 'web'))
+            ->exists();
+
+        if (!$staffRoleExists && $staffIds->isNotEmpty()) {
+            return $this->error('ยังไม่ได้ตั้งค่า role staff ในระบบ', 422);
+        }
 
         if ($staffIds->isNotEmpty()) {
             $validStaffIds = User::role('staff')->whereIn('id', $staffIds)->pluck('id');
@@ -550,9 +580,31 @@ class AdminController extends Controller
 
     public function staffUsers(Request $request): JsonResponse
     {
-        $query = User::role('staff')
-            ->withCount('assignedSchedules')
-            ->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
+        $staffRoleExists = Role::query()
+            ->where('name', 'staff')
+            ->where('guard_name', config('auth.defaults.guard', 'web'))
+            ->exists();
+
+        if (!$staffRoleExists) {
+            $empty = User::query()
+                ->whereRaw('1 = 0')
+                ->paginate($request->get('per_page', 30));
+
+            return $this->paginated($empty);
+        }
+
+        $hasAssignmentsTable = Schema::hasTable('schedule_staff_assignments');
+        $hasReviewsTable = Schema::hasTable('staff_reviews');
+
+        $query = User::role('staff');
+
+        if ($hasAssignmentsTable) {
+            $query->withCount('assignedSchedules');
+        }
+
+        if ($hasReviewsTable) {
+            $query->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
+        }
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -570,7 +622,7 @@ class AdminController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'avatar_url' => $user->avatar_url,
-            'assigned_schedules_count' => $user->assigned_schedules_count,
+            'assigned_schedules_count' => $user->assigned_schedules_count ?? 0,
             'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
         ]));
     }
