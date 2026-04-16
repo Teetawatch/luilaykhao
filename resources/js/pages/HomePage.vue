@@ -5,15 +5,22 @@
          HERO SECTION
     ══════════════════════════════════════════ -->
     <section class="relative h-[90vh] min-h-[700px] w-full flex items-center justify-center overflow-hidden -mt-16">
-      <!-- Background with Parallax effect -->
-      <div class="absolute inset-0 transform scale-105 transition-transform duration-[20s] ease-out hover:scale-110">
-        <img
-          src="/images/khaochangphueak.png"
-          alt="ลุยเลเขา"
-          class="w-full h-full object-cover"
-        />
+      <!-- Background Slider -->
+      <div class="absolute inset-0 overflow-hidden">
+        <div
+          v-for="(img, index) in heroImages"
+          :key="img"
+          class="hero-slide absolute inset-0"
+          :class="{ 'hero-slide--active': index === currentSlide }"
+        >
+          <img
+            :src="img"
+            alt="ลุยเลเขา"
+            class="w-full h-full object-cover scale-105 hero-slide-img"
+          />
+        </div>
         <!-- Gradient Overlay for better text readability -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-[var(--color-sand)]/90"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-[var(--color-sand)]/90 z-10"></div>
       </div>
 
       <!-- Atmospheric orbs -->
@@ -615,13 +622,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
 
 const wishlistStore = useWishlistStore();
 const router = useRouter();
+
+const heroImages = [
+  '/images/snorkel.png',
+  '/images/phusoidao.png',
+  '/images/phukradueng.png',
+  '/images/landscape.png',
+  '/images/khaochangphueak.png',
+  '/images/hiking.png',
+];
+const currentSlide = ref(0);
+let sliderInterval = null;
 
 const trips = ref([]);
 const featuredTrips = ref([]);
@@ -749,7 +767,14 @@ const typeFeaturedIcon = (type) => {
   return icons[type] || 'explore';
 };
 
+onUnmounted(() => {
+  clearInterval(sliderInterval);
+});
+
 onMounted(async () => {
+  sliderInterval = setInterval(() => {
+    currentSlide.value = (currentSlide.value + 1) % heroImages.length;
+  }, 5000);
   try {
     const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
@@ -782,6 +807,24 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Hero Slider */
+.hero-slide {
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+  z-index: 0;
+}
+.hero-slide--active {
+  opacity: 1;
+  z-index: 1;
+}
+.hero-slide--active .hero-slide-img {
+  animation: heroZoom 6s ease-out forwards;
+}
+@keyframes heroZoom {
+  from { transform: scale(1.05); }
+  to   { transform: scale(1.12); }
+}
+
 /* Hero animations */
 .hero-content {
   animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
