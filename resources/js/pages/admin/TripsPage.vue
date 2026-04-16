@@ -168,11 +168,11 @@
             <!-- ─── Location (Lat/Lng + Map) ─── -->
             <div class="form-group">
               <label><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">location_on</span> Latitude</label>
-              <input v-model.number="form.latitude" type="number" placeholder="เช่น 8.0863" />
+              <input v-model.number="form.latitude" type="number" step="any" placeholder="เช่น 8.0863" />
             </div>
             <div class="form-group">
               <label><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">location_on</span> Longitude</label>
-              <input v-model.number="form.longitude" type="number" placeholder="เช่น 98.3706" />
+              <input v-model.number="form.longitude" type="number" step="any" placeholder="เช่น 98.3706" />
             </div>
             <div class="form-group full-width" v-if="form.latitude && form.longitude">
               <label><span class="material-symbols-rounded" style="font-size:inherit; vertical-align:middle;">map</span> ตำแหน่งบนแผนที่</label>
