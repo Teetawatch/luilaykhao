@@ -6,7 +6,7 @@
     ══════════════════════════════════════════ -->
     <section class="relative h-[90vh] min-h-[700px] w-full flex items-center justify-center overflow-hidden -mt-16">
       <!-- Background Slider -->
-      <div class="absolute inset-0 overflow-hidden">
+      <div class="hero-slider absolute inset-0 overflow-hidden">
         <div
           v-for="(img, index) in heroImages"
           :key="img"
@@ -16,11 +16,13 @@
           <img
             :src="img"
             alt="ลุยเลเขา"
-            class="w-full h-full object-cover scale-105 hero-slide-img"
+            class="hero-slide-img w-full h-full object-cover"
           />
         </div>
+        <div class="hero-slider-glow absolute inset-0 z-[1]" aria-hidden="true"></div>
+        <div class="hero-slider-vignette absolute inset-0 z-[2]" aria-hidden="true"></div>
         <!-- Gradient Overlay for better text readability -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-[var(--color-sand)]/90 z-10"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-[var(--color-sand)]/90 z-[3]"></div>
       </div>
 
       <!-- Atmospheric orbs -->
@@ -638,7 +640,9 @@ const heroImages = [
   '/images/khaochangphueak.png',
   '/images/hiking.png',
 ];
+const HERO_SLIDE_INTERVAL_MS = 6500;
 const currentSlide = ref(0);
+const prefersReducedMotion = ref(false);
 let sliderInterval = null;
 
 const trips = ref([]);
@@ -772,9 +776,16 @@ onUnmounted(() => {
 });
 
 onMounted(async () => {
-  sliderInterval = setInterval(() => {
-    currentSlide.value = (currentSlide.value + 1) % heroImages.length;
-  }, 5000);
+  if (typeof window !== 'undefined') {
+    prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  if (!prefersReducedMotion.value && heroImages.length > 1) {
+    sliderInterval = setInterval(() => {
+      currentSlide.value = (currentSlide.value + 1) % heroImages.length;
+    }, HERO_SLIDE_INTERVAL_MS);
+  }
+
   try {
     const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
@@ -808,21 +819,53 @@ onMounted(async () => {
 
 <style scoped>
 /* Hero Slider */
+.hero-slider {
+  isolation: isolate;
+  background: #0b1510;
+}
+
 .hero-slide {
   opacity: 0;
-  transition: opacity 1.5s ease-in-out;
+  transition: opacity 2.4s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 0;
+  will-change: opacity;
 }
+
+.hero-slide-img {
+  transform: scale(1.04) translate3d(0, 0, 0);
+  filter: saturate(1.06) contrast(1.04) brightness(0.78);
+  transition:
+    transform 8.5s cubic-bezier(0.2, 0.6, 0.2, 1),
+    filter 2.4s ease;
+  will-change: transform, filter;
+}
+
 .hero-slide--active {
   opacity: 1;
   z-index: 1;
 }
+
 .hero-slide--active .hero-slide-img {
-  animation: heroZoom 6s ease-out forwards;
+  transform: scale(1.14) translate3d(0, 0, 0);
+  filter: saturate(1.12) contrast(1.08) brightness(0.9);
 }
-@keyframes heroZoom {
-  from { transform: scale(1.05); }
-  to   { transform: scale(1.12); }
+
+.hero-slider-glow {
+  background:
+    radial-gradient(80% 60% at 15% 20%, rgba(255, 255, 255, 0.14), transparent 60%),
+    radial-gradient(70% 55% at 85% 30%, rgba(76, 175, 125, 0.18), transparent 62%);
+  mix-blend-mode: screen;
+  opacity: 0.45;
+  animation: heroGlowShift 14s ease-in-out infinite alternate;
+}
+
+.hero-slider-vignette {
+  background: radial-gradient(circle at center, transparent 35%, rgba(0, 0, 0, 0.32) 100%);
+}
+
+@keyframes heroGlowShift {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to   { transform: translate3d(1.5%, 1%, 0) scale(1.04); }
 }
 
 /* Hero animations */
@@ -872,6 +915,9 @@ input[type="date"] {
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  .hero-slide,
+  .hero-slide-img,
+  .hero-slider-glow,
   .hero-content,
   .search-bar,
   .scroll-dot,
