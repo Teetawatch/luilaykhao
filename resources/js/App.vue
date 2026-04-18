@@ -88,6 +88,7 @@ import ToastNotification from './components/ToastNotification.vue';
 import { useSeatsStore } from './stores/seats';
 import { useWishlistStore } from './stores/wishlist';
 import { useSwal } from './lib/swal';
+import { useHead } from '@unhead/vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -95,6 +96,16 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'));
 const seatsStore = useSeatsStore();
 const wishlistStore = useWishlistStore();
 const swal = useSwal();
+
+useHead({
+  title: computed(() => route.meta.title || 'แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย การันตีความสนุก'),
+  titleTemplate: '%s | ลุยเลเขา',
+  meta: [
+    { name: 'description', content: computed(() => route.meta.description || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย ตอบโจทย์คนรักธรรมชาติและการผจญภัย ให้ทุกการเดินทางของคุณเป็นเรื่องง่าย') },
+    { property: 'og:title', content: computed(() => (route.meta.title ? `${route.meta.title} | ลุยเลเขา` : 'ลุยเลเขา | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย การันตีความสนุก')) },
+    { property: 'og:description', content: computed(() => route.meta.description || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย ตอบโจทย์คนรักธรรมชาติและการผจญภัย ให้ทุกการเดินทางของคุณเป็นเรื่องง่าย') }
+  ]
+});
 
 const formattedGlobal = computed(() => {
   const s = seatsStore.countdownSeconds;

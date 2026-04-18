@@ -890,9 +890,20 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
+import { useHead } from '@unhead/vue';
 
 const route = useRoute();
 const trip = ref(null);
+
+useHead({
+  title: computed(() => trip.value ? trip.value.title : 'รายละเอียดทริป'),
+  meta: [
+    { name: 'description', content: computed(() => trip.value ? trip.value.description : '') },
+    { property: 'og:title', content: computed(() => trip.value ? `${trip.value.title} | ลุยเลเขา` : '') },
+    { property: 'og:description', content: computed(() => trip.value ? trip.value.description : '') },
+    { property: 'og:image', content: computed(() => trip.value?.cover_image || '') }
+  ]
+});
 const schedules = ref([]);
 const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);

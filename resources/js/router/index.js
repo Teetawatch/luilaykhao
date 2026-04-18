@@ -46,8 +46,8 @@ import AdminStaffAssignments from '../pages/admin/StaffAssignmentsPage.vue';
 
 const routes = [
   // ── Public / Customer Routes ──
-  { path: '/', name: 'home', component: HomePage },
-  { path: '/trips', name: 'trips', component: TripsPage },
+  { path: '/', name: 'home', component: HomePage, meta: { title: 'หน้าแรก', description: 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย ตอบโจทย์คนรักธรรมชาติ ให้ทุกการเดินทางของคุณเป็นเรื่องง่าย' } },
+  { path: '/trips', name: 'trips', component: TripsPage, meta: { title: 'ค้นหาทริปทั้งหมด', description: 'รวมทริปท่องเที่ยวทั่วประเทศไทยยอดฮิต ทั้งขึ้นเขา ลงห้วย เที่ยวทะเล และสถานที่ธรรมชาติที่น่าสนใจ' } },
   { path: '/trips/:slug', name: 'trip-detail', component: TripDetailPage },
   { path: '/booking/:scheduleId', name: 'booking', component: BookingPage, meta: { requiresAuth: true } },
   { path: '/payment/:bookingRef', name: 'payment', component: PaymentPage, meta: { requiresAuth: true } },
@@ -59,12 +59,12 @@ const routes = [
   { path: '/my-staff-trips', name: 'my-staff-trips', component: MyStaffTripsPage, meta: { requiresAuth: true } },
   { path: '/loyalty', name: 'loyalty', component: LoyaltyPage, meta: { requiresAuth: true } },
   { path: '/notifications', name: 'notifications', component: NotificationsPage, meta: { requiresAuth: true } },
-  { path: '/about', name: 'about', component: AboutPage },
+  { path: '/about', name: 'about', component: AboutPage, meta: { title: 'เกี่ยวกับเรา', description: 'ทำความรู้จักกับลุยเลเขา ทีมงานผู้อยู่เบื้องหลังการจัดทริปที่ใส่ใจในทุกรายละเอียดของคุณ' } },
   { path: '/goal', name: 'goal', component: GoalPage },
   { path: '/problem', name: 'problem', component: ProblemPage },
   { path: '/privacy', name: 'privacy', component: PrivacyPage },
   { path: '/terms', name: 'terms', component: TermsPage },
-  { path: '/contact', name: 'contact', component: ContactPage },
+  { path: '/contact', name: 'contact', component: ContactPage, meta: { title: 'ติดต่อเรา', description: 'ติดต่อสอบถามเรื่องการจัดทริป แจ้งปัญหาการใช้งาน หรือขอคำแนะนำการเดินทาง' } },
   { path: '/profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
   { path: '/auth/social/callback', name: 'social-callback', component: SocialCallbackPage },
 
