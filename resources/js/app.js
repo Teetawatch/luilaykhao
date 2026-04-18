@@ -1,7 +1,7 @@
 import './bootstrap';
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
-import { createHead } from '@unhead/vue';
+import { createHead } from '@unhead/vue/client';
 import router from './router';
 import App from './App.vue';
 
