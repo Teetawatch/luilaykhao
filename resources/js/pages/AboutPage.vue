@@ -16,14 +16,23 @@
       </div>
 
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
-        <div class="text-center max-w-4xl mt-10 flex flex-col items-center">
+        <div class="text-center max-w-5xl mt-10 flex flex-col items-center">
           <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-8 rounded-full shadow-lg"></div>
-          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight mb-6 tracking-tight drop-shadow-md">
-            ลุยเลเขา
+          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-9xl font-black text-white leading-[1.1] mb-8 tracking-tighter drop-shadow-2xl">
+            เปลี่ยนความอยากเที่ยว<br />
+            <span class="text-[var(--color-accent)]">เป็นการเดินทางที่ง่ายที่สุด</span>
           </h1>
-          <p class="text-xl md:text-2xl lg:text-3xl text-white/80 font-bold leading-relaxed max-w-3xl mx-auto tracking-wide">
-            เพื่อนที่อยากให้คุณออกไปเที่ยว
+          <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto tracking-wide mb-10">
+            แพลตฟอร์มที่รวมทริปคุณภาพ จองง่ายเพียงไม่กี่คลิก <br class="hidden md:block"/> พร้อมระบบยืนยันที่ทันใจ เหมือนมีเพื่อนสนิทมาวางแผนให้คุณ
           </p>
+          <div class="flex flex-col sm:flex-row items-center gap-4">
+            <router-link to="/trips" class="px-10 py-5 bg-[var(--color-accent)] hover:bg-[#3d8b63] text-white rounded-2xl font-black text-xl transition-all duration-300 shadow-xl hover:shadow-[0_20px_40px_rgba(76,175,125,0.3)] hover:-translate-y-1">
+              ค้นหาทริปของคุณ
+            </router-link>
+            <a href="#our-story" class="px-10 py-5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold text-xl transition-all duration-300 hover:-translate-y-1">
+              ทำความรู้จักเรา
+            </a>
+          </div>
         </div>
       </div>
 
@@ -42,7 +51,7 @@
       <!-- Decorative element -->
       <div class="absolute top-0 right-0 w-[800px] h-[800px] bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 opacity-50"></div>
 
-      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+      <div id="our-story" class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">
           <!-- Text -->
           <div class="lg:col-span-6 order-2 lg:order-1 space-y-8 reveal-section">
@@ -51,35 +60,42 @@
               จุดเริ่มต้นของเรา
             </div>
             <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[var(--color-text-dark)] leading-[1.15]">
-              เราเริ่มต้นจาก<br class="hidden sm:block" />ความรู้สึกเดียวกัน
+              เราเริ่มต้นจาก<br class="hidden sm:block" />ความรักในการเดินทาง
             </h2>
             <div class="space-y-6 text-lg text-[var(--color-text-mid)] leading-relaxed">
               <p>
-                เราเป็นกลุ่มคนธรรมดาที่ชอบออกไปเที่ยว ชอบทะเล ชอบภูเขา
-                และชอบความรู้สึกของการได้ออกไปเจออะไรใหม่ ๆ
+                เราคือกลุ่มคนที่หลงรักในเสียงคลื่น และตกหลุมรักในสายหมอก 
+                เราเชื่อว่าหัวใจของการเดินทาง คือการได้ออกไปเห็นโลกกว้าง 
+                สัมผัสอากาศบริสุทธิ์ และเก็บเกี่ยวความทรงจำใหม่ ๆ
               </p>
               <p>
-                แต่ทุกครั้งที่อยากจะไปเที่ยว เราต้องกลับเจอเรื่องเดิม ๆ
-                ต้องทักแชท รอคำตอบ ไม่รู้ว่าทริปว่างไหม บางครั้งก็พลาดโอกาส
-                ทั้งที่อยากไปมาก เราเลยตั้งคำถามว่า
+                แต่เราก็รู้ดีว่า บ่อยครั้งที่ "ความอยากไป" ต้องจบลงที่ "ความยุ่งยาก" 
+                ทั้งการรอแอดมินตอบ ข้อมูลทริปที่ไม่ชัดเจน หรือการจองที่ซับซ้อน 
+                เราจึงตั้งคำถามง่าย ๆ กับตัวเองว่า
               </p>
-              <blockquote class="relative pl-8 py-2 mt-8">
-                <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[var(--color-accent)] to-[var(--color-gold)] rounded-full"></div>
-                <p class="text-[var(--color-text-dark)] font-bold text-2xl md:text-3xl italic">
-                  "ทำไมการไปเที่ยว มันต้องยากขนาดนี้"
+              <div class="relative py-10 px-8 bg-white/50 rounded-3xl border border-white/80 backdrop-blur-sm shadow-inner group overflow-hidden">
+                <div class="absolute -top-4 -left-2 text-[var(--color-accent)]/10 text-9xl font-serif">“</div>
+                <p class="relative z-10 text-[var(--color-text-dark)] font-bold text-2xl md:text-3xl italic leading-snug">
+                  ทำไมการออกไปพบเจอความสุข <br class="hidden sm:block" />
+                  มันถึงต้องเป็นเรื่องยากขนาดนี้?
                 </p>
-              </blockquote>
+                <div class="absolute -bottom-16 -right-4 text-[var(--color-accent)]/10 text-9xl font-serif">”</div>
+              </div>
             </div>
           </div>
           <!-- Image -->
           <div class="lg:col-span-6 order-1 lg:order-2 reveal-section">
             <div class="relative group cursor-default">
-              <div class="absolute -inset-4 bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-gold)]/20 rounded-[2.5rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+              <div class="absolute -inset-4 bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-gold)]/20 rounded-[2.5rem] blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
               <img
-                src=""
-                alt="วิวทะเลสวย"
+                src="/images/about.jpg"
+                alt="บรรยากาศการเดินทางที่เต็มไปด้วยความสุข"
                 class="relative rounded-[2rem] shadow-2xl w-full object-cover aspect-[4/5] transition-transform duration-700 group-hover:scale-[1.02]"
               />
+              <div class="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-xl transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500">
+                <p class="text-[var(--color-text-dark)] font-bold text-lg">"ธรรมชาติบำบัดเราได้เสมอ..."</p>
+                <p class="text-[var(--color-text-muted)] text-sm italic">— ทีมงานลุยเลเขา</p>
+              </div>
             </div>
           </div>
         </div>
@@ -99,19 +115,18 @@
           ทำไมเราถึงสร้างสิ่งนี้
           <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
         </div>
-        <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[var(--color-text-dark)] leading-tight">
-          เพื่อให้การออกไปเที่ยว<br />
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent)] to-[#2D5A3D]">"ง่ายขึ้นจริง ๆ"</span>
+        <h2 class="text-4xl md:text-5xl lg:text-7xl font-extrabold text-[var(--color-text-dark)] leading-tight">
+          เราสร้างที่นี่ เพื่อให้การออกไปเห็นโลก<br />
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent)] to-[#2D5A3D]">"เป็นเรื่องที่ง่ายที่สุด"</span>
         </h2>
-        <div class="space-y-6 text-lg md:text-xl text-[var(--color-text-mid)] leading-relaxed max-w-3xl mx-auto font-medium">
+        <div class="space-y-6 text-lg md:text-2xl text-[var(--color-text-mid)] leading-relaxed max-w-3xl mx-auto font-medium">
           <p>
-            เราเลยสร้างสิ่งนี้ขึ้นมา เพื่อให้การออกไปเที่ยว "ง่ายขึ้นจริง ๆ"<br class="hidden md:block" />
-            ไม่ต้องรอ ไม่ต้องเดา ไม่ต้องลุ้น — แค่อยากไป…ก็ไปได้เลย
+            ไม่ต้องรอคำตอบที่เนิ่นนาน ไม่ต้องสับสนกับตารางที่ดูยาก<br class="hidden md:block" />
+            แค่คุณเริ่ม "อยากไป" ระบบของเราพร้อมพาคุณ "ไปได้ทันที"
           </p>
-          <p>
-            เราอยากให้ทุกคนรู้สึกแบบเดียวกับเรา ในวันที่ได้ออกไปเจอทะเลสวย ๆ
-            หรือเดินป่า สูดอากาศดี ๆ แบบเต็มปอด
-            และที่สำคัญ…ไม่ต้องเสียเวลาไปกับความยุ่งยากก่อนจะได้ออกเดินทาง
+          <p class="text-[var(--color-text-muted)] text-base md:text-lg">
+            เราดูแลตั้งแต่ระบบหลังบ้านที่ทันสมัย ไปจนถึงการคัดสรรพาร์ทเนอร์ทริปที่ไว้ใจได้
+            เพื่อให้ทุกวินาทีที่คุณอยู่กับเรา คือจุดเริ่มต้นของความสุขอย่างแท้จริง
           </p>
         </div>
       </div>
@@ -136,43 +151,44 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 items-stretch">
           <!-- Pillar 1 -->
-          <div class="bg-white p-12 pt-32 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-2">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/abouts_ready.png" 
-                alt="ไม่ต้องรอ" 
-                class="w-64 h-64 max-w-none object-contain"
+                alt="ระบบจองอัจฉริยะ" 
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
-            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6">ไม่ต้องรอ</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">เช็คได้เลยว่าทริปไหนว่าง จองได้เลยทันที ไม่ต้องรอแอดมินตอบ</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">ไม่ต้องรอแอดมิน</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">เช็คที่ว่างแบบ Real-time และจองได้ทันทีตลอด 24 ชั่วโมง สะดวก รวดเร็ว ไม่ต้องรอ</p>
           </div>
           
           <!-- Pillar 2 (Featured) -->
-          <div class="bg-white p-12 pt-32 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-2">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/abouts_buddy.png" 
-                alt="เพื่อนคู่เที่ยว" 
-                class="w-64 h-64 max-w-none object-contain"
+                alt="เพื่อนคู่เที่ยวที่ไว้วางใจ" 
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
-            <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)]">เพื่อนคู่เที่ยว</h3>
-            <p class="text-[var(--color-text-mid)] text-lg leading-relaxed mx-auto max-w-xs">เราไม่ได้อยากเป็นแค่แพลตฟอร์ม แต่อยากเป็น "เพื่อน" ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น</p>
-            <div class="mt-10 mx-auto w-14 h-1.5 bg-[var(--color-gold)] rounded-full"></div>
+            <div class="absolute top-6 right-8 bg-[var(--color-accent)] text-white text-[10px] uppercase font-black px-3 py-1 rounded-full tracking-widest">Our Mission</div>
+            <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">เพื่อนร่วมทางตัวจริง</h3>
+            <p class="text-[var(--color-text-mid)] text-lg leading-relaxed mx-auto max-w-xs">เราไม่ได้ทำแค่ระบบจอง แต่เราคอยดูแลคุณตั้งแต่ก้าวแรกที่เริ่มแพลน จนก้าวสุดท้ายที่กลับถึงบ้าน</p>
+            <div class="mt-10 mx-auto w-14 h-1.5 bg-[var(--color-accent)] rounded-full"></div>
           </div>
           
           <!-- Pillar 3 -->
-          <div class="bg-white p-12 pt-32 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-2">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/abouts_happy.png" 
-                alt="มีความสุขมากขึ้น" 
-                class="w-72 h-72 max-w-none object-contain"
+                alt="ความสุขในการเดินทาง" 
+                class="w-72 h-72 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
-            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6">มีความสุขมากขึ้น</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">ทุกการเดินทางควรเต็มไปด้วยความสุข ไม่ใช่ความวุ่นวาย</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">สุขใจทุกกิโลเมตร</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">ทุกทริปถูกคัดสรรมาเพื่อสร้างรอยยิ้ม ให้คุณได้พักผ่อนและชาร์จพลังชีวิตอย่างเต็มที่</p>
           </div>
         </div>
       </div>
@@ -259,18 +275,18 @@
               <div class="absolute -inset-1 bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-gold)] rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
               
               <div class="relative bg-white/5 backdrop-blur-2xl p-10 md:p-14 rounded-[2.5rem] border border-white/10 shadow-3xl text-center">
-                <div class="w-20 h-20 bg-[var(--color-gold)]/20 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-white/20">
+                <div class="w-20 h-20 bg-[var(--color-accent)]/20 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-white/20">
                   <span class="material-symbols-rounded text-white text-[40px]">explore</span>
                 </div>
-                <h3 class="text-2xl md:text-3xl font-bold text-white mb-6">เริ่มการเดินทางครั้งใหม่</h3>
-                <p class="text-white/60 mb-10 font-medium">ค้นหาทริปที่คุณต้องการได้ทันที และจองได้ง่าย ๆ ในไม่กี่ขั้นตอน</p>
+                <h3 class="text-2xl md:text-3xl font-bold text-white mb-6">ค้นหาทริปที่ใช่สำหรับคุณ</h3>
+                <p class="text-white/60 mb-10 font-medium">เริ่มต้นความประทับใจครั้งใหม่ได้ทันที <br /> จองง่าย ข้อมูลครบ พร้อมออกเดินทางได้เลย</p>
                 
                 <router-link
                   to="/trips"
-                  class="w-full bg-white text-[#0D2B1E] hover:bg-[var(--color-gold)] hover:text-white py-5 rounded-2xl font-black text-xl transition-all duration-500 shadow-xl hover:shadow-[0_20px_40px_rgba(255,255,255,0.15)] flex items-center justify-center gap-3 cursor-pointer group/btn overflow-hidden"
+                  class="w-full bg-[var(--color-accent)] text-white hover:bg-[#3d8b63] py-5 rounded-2xl font-black text-xl transition-all duration-500 shadow-xl hover:shadow-[0_20px_40px_rgba(76,175,125,0.3)] flex items-center justify-center gap-3 cursor-pointer group/btn overflow-hidden"
                 >
-                  <span class="relative z-10">ไปดูทริปกันเลย</span>
-                  <span class="material-symbols-rounded relative z-10 text-2xl transform group-hover/btn:translate-x-2 transition-transform duration-500">arrow_right_alt</span>
+                  <span class="relative z-10">เริ่มการเดินทางครั้งใหม่</span>
+                  <span class="material-symbols-rounded relative z-10 text-2xl animate-pulse">hiking</span>
                 </router-link>
               </div>
             </div>
@@ -287,17 +303,17 @@
 import { ref, onMounted } from 'vue'
 
 const stats = ref([
-  { icon: 'tour', value: '500+', label: 'ทริปที่ผ่านมา', color: '#0D2B1E' }, // primary
-  { icon: 'groups', value: '10k+', label: 'นักเดินทาง', color: '#4CAF7D' }, // accent
-  { icon: 'pin_drop', value: '50+', label: 'จุดหมายปลายทาง', color: '#C8963E' }, // gold
-  { icon: 'star', value: '4.9', label: 'คะแนนความพึงพอใจ', color: '#0D2B1E' }, // primary
+  { icon: 'tour', value: '1,240+', label: 'ทริปที่ประทับใจ', color: '#0D2B1E' },
+  { icon: 'sentiment_very_satisfied', value: '9,650+', label: 'รอยยิ้มจากนักเดินทาง', color: '#4CAF7D' },
+  { icon: 'location_on', value: '45+', label: 'จุดหมายปลายทาง', color: '#C8963E' },
+  { icon: 'verified', value: '100%', label: 'ความไว้วางใจ', color: '#0D2B1E' },
 ])
 
 const values = ref([
-  { icon: 'verified_user', title: 'ความปลอดภัย', desc: 'ทุกทริปผ่านมาตรฐานความปลอดภัยระดับสากล ให้คุณเที่ยวอย่างมั่นใจ', color: '#4CAF7D' },
-  { icon: 'eco', title: 'ท่องเที่ยวยั่งยืน', desc: 'เราใส่ใจสิ่งแวดล้อมและสนับสนุนชุมชนท้องถิ่นในทุกกิจกรรม', color: '#66C291' },
-  { icon: 'handshake', title: 'จริงใจ โปร่งใส', desc: 'ราคายุติธรรม ไม่มีค่าใช้จ่ายแฝง สิ่งที่เห็นคือสิ่งที่ได้', color: '#C8963E' },
-  { icon: 'support_agent', title: 'ดูแลตลอดทริป', desc: 'ทีมงานพร้อมดูแลคุณทุกย่างก้าว ตั้งแต่จองจนกลับถึงบ้าน', color: '#007B8F' },
+  { icon: 'security', title: 'ปลอดภัย 100%', desc: 'ตรวจสอบอุปกรณ์และเส้นทางเดินรถทุกครั้งก่อนออกเดินทาง เพื่อความปลอดภัยสูงสุดของคุณ', color: '#4CAF7D' },
+  { icon: 'local_mall', title: 'ราคา Net โปร่งใส', desc: 'ไม่มีค่าใช้จ่ายแอบแฝง สิ่งที่เห็นคือสิ่งที่คุณจ่าย มั่นใจได้ในทุกการทำธุรกรรม', color: '#66C291' },
+  { icon: 'volunteer_activism', title: 'ใส่ใจชุมชน', desc: 'เราทำงานร่วมกับคนในท้องถิ่น เพื่อกระจายรายได้และรักษาความงามของธรรมชาติอย่างยั่งยืน', color: '#C8963E' },
+  { icon: 'support_agent', title: 'ดูแลแบบ VIP', desc: 'ทีมงานพร้อมให้ความช่วยเหลือตลอดการเดินทาง เพื่อให้คุณอุ่นใจเหมือนมีเพื่อนอยู่ข้างๆ', color: '#007B8F' },
 ])
 
 onMounted(() => {
