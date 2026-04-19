@@ -74,7 +74,7 @@
                   v-model="searchQuery" 
                   ref="desktopSearchInput"
                   @keyup.enter="doSearch(); desktopSearchExpanded = false"
-                  @blur="if(!searchQuery) desktopSearchExpanded = false"
+                  @blur="!searchQuery && (desktopSearchExpanded = false)"
                   placeholder="ค้นหาทริป..." 
                   class="w-full bg-white border-2 border-primary rounded-full py-1.5 pl-9 pr-8 text-[12px] font-bold text-text-dark outline-none shadow-md shadow-primary/5"
                 />
