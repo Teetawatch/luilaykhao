@@ -29,33 +29,6 @@
             </a>
           </div>
 
-        <!-- Visitor Stats Section (Compact) -->
-        <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 bg-sand/20 rounded-2xl border border-sand-dark/10 max-w-fit transition-all duration-300 hover:border-accent/20">
-          <div class="flex items-center gap-2 group cursor-default">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            <span class="text-[12px] font-black text-text-dark tabular-nums tracking-tight">{{ stats.online }}</span>
-            <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Online</span>
-          </div>
-          
-          <div class="w-px h-3 bg-sand-dark/30 hidden sm:block"></div>
-          
-          <div class="flex items-center gap-2 group cursor-default">
-            <span class="material-symbols-rounded text-sm text-accent opacity-70">visibility</span>
-            <span class="text-[12px] font-black text-text-dark tabular-nums tracking-tight">{{ stats.today.toLocaleString() }}</span>
-            <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Today</span>
-          </div>
-
-          <div class="w-px h-3 bg-sand-dark/30 hidden sm:block"></div>
-
-          <div class="flex items-center gap-2 group cursor-default">
-            <span class="material-symbols-rounded text-sm text-accent opacity-70">public</span>
-            <span class="text-[12px] font-black text-text-dark tabular-nums tracking-tight">{{ stats.total >= 1000 ? (stats.total / 1000).toFixed(1) + 'K' : stats.total }}</span>
-            <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total</span>
-          </div>
-        </div>
       </div>
 
         <!-- Activities -->
@@ -162,30 +135,3 @@
   </footer>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import api from '../lib/axios'
-
-const stats = ref({
-  today: 0,
-  total: 0,
-  online: 0
-})
-
-const fetchStats = async () => {
-  try {
-    const res = await api.get('/visitor-stats')
-    if (res.data.success) {
-      stats.value = res.data.data
-    }
-  } catch (e) {
-    console.error('Failed to fetch stats', e)
-  }
-}
-
-onMounted(() => {
-  fetchStats()
-  // Refresh stats every 5 minutes
-  setInterval(fetchStats, 5 * 60 * 1000)
-})
-</script>

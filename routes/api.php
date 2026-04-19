@@ -128,7 +128,6 @@ Route::prefix('v1')->group(function () {
 
     // Analytics (public)
     Route::get('stats', [AnalyticsController::class, 'publicStats']);
-    Route::get('visitor-stats', [\App\Http\Controllers\Api\StatsController::class, 'getVisitorStats']);
 
     // Admin routes
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {
