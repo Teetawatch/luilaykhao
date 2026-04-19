@@ -22,6 +22,9 @@ import TermsPage from '../pages/TermsPage.vue';
 import ContactPage from '../pages/ContactPage.vue';
 import ProfilePage from '../pages/ProfilePage.vue';
 import SocialCallbackPage from '../pages/SocialCallbackPage.vue';
+import ReviewsPage from '../pages/ReviewsPage.vue';
+import BookingGuidePage from '../pages/BookingGuidePage.vue';
+import FAQPage from '../pages/FAQPage.vue';
 
 
 
@@ -64,6 +67,9 @@ const routes = [
   { path: '/problem', name: 'problem', component: ProblemPage },
   { path: '/privacy', name: 'privacy', component: PrivacyPage },
   { path: '/terms', name: 'terms', component: TermsPage },
+  { path: '/reviews', name: 'reviews', component: ReviewsPage, meta: { title: 'รีวิวลูกค้า' } },
+  { path: '/how-to-book', name: 'how-to-book', component: BookingGuidePage, meta: { title: 'วิธีการจอง' } },
+  { path: '/faq', name: 'faq', component: FAQPage, meta: { title: 'คำถามที่พบบ่อย' } },
   { path: '/contact', name: 'contact', component: ContactPage, meta: { title: 'ติดต่อเรา', description: 'ติดต่อสอบถามเรื่องการจัดทริป แจ้งปัญหาการใช้งาน หรือขอคำแนะนำการเดินทาง' } },
   { path: '/profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
   { path: '/auth/social/callback', name: 'social-callback', component: SocialCallbackPage },

@@ -36,7 +36,7 @@
         <!-- Headline -->
         <h1 class="font-anuphan text-white text-[2.2rem] md:text-5xl lg:text-[4rem] font-extrabold mb-6 leading-[1.2] md:leading-[1.3] tracking-tight drop-shadow-2xl">
           การเที่ยวที่ดี เริ่มจาก<br />
-          <span class="text-[var(--color-accent-mid)] font-black">ความรู้สึกที่ดี</span>
+          <span class="text-[var(--color-accent-light)] font-black">ความรู้สึกที่ดี</span>
           ตั้งแต่การจอง
         </h1>
         
