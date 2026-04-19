@@ -21,8 +21,9 @@
         </div>
         <div class="hero-slider-glow absolute inset-0 z-[1]" aria-hidden="true"></div>
         <div class="hero-slider-vignette absolute inset-0 z-[2]" aria-hidden="true"></div>
-        <!-- Gradient Overlay for better text readability -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-[var(--color-sand)]/90 z-[3]"></div>
+        <!-- Dark Overlay (20-40%) & Gradient -->
+        <div class="absolute inset-0 bg-black/30 z-[3]"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[var(--color-sand)]/90 z-[4]"></div>
       </div>
 
       <!-- Atmospheric orbs -->
@@ -35,8 +36,8 @@
         <!-- Headline -->
         <h1 class="font-anuphan text-white text-4xl md:text-5xl lg:text-[4rem] font-extrabold mb-6 leading-[1.3] tracking-tight drop-shadow-2xl">
           การเที่ยวที่ดี เริ่มจาก<br class="hidden md:block" />
-          <span class="text-[var(--color-accent-light)]">ความรู้สึกที่ดี</span>
-          ตั้งแต่ตอนจอง
+          <span class="text-[var(--color-accent-mid)] font-black">ความรู้สึกที่ดี</span>
+          ตั้งแต่การจอง
         </h1>
         
         <!-- Subheadline -->
@@ -60,7 +61,7 @@
                 class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6"
                 :class="selectedTripSlug ? 'text-gray-900' : 'text-gray-400'"
               >
-                <option value="">เลือกทริปที่ต้องการ</option>
+                <option value="">อยากไปเที่ยวที่ไหน?</option>
                 <option v-for="t in allTrips" :key="t.id" :value="t.slug">{{ t.title }}</option>
               </select>
               <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
@@ -83,7 +84,7 @@
                 class="bg-transparent border-none focus:ring-0 p-0 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6 disabled:cursor-not-allowed"
                 :class="selectedScheduleId ? 'text-gray-900' : 'text-gray-400'"
               >
-                <option value="">{{ !selectedTripSlug ? 'เลือกทริปก่อน' : schedulesLoading ? 'กำลังโหลด...' : tripSchedules.length === 0 ? 'ไม่มีรอบว่าง' : 'เลือกวันเดินทาง' }}</option>
+                <option value="">{{ !selectedTripSlug ? 'เลือกวันเดินทาง' : schedulesLoading ? 'กำลังโหลด...' : tripSchedules.length === 0 ? 'ไม่มีรอบว่าง' : 'เลือกวันเดินทาง' }}</option>
                 <option v-for="s in tripSchedules" :key="s.id" :value="s.id">
                   {{ formatScheduleOption(s) }}
                 </option>
@@ -98,7 +99,7 @@
             class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0 md:ml-1"
           >
             <span class="material-symbols-rounded text-[24px]">{{ selectedScheduleId ? 'bookmark_add' : 'search' }}</span>
-            <span class="text-lg md:text-base lg:text-lg pr-1">{{ selectedScheduleId ? 'จองเลย' : 'ดูทริป' }}</span>
+            <span class="text-lg md:text-base lg:text-lg pr-1">{{ selectedScheduleId ? 'จองเลย' : 'เริ่มเที่ยวเลย' }}</span>
           </button>
         </div>
       </div>
