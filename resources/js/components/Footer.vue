@@ -28,7 +28,44 @@
               <i class="fa-brands fa-line text-lg"></i>
             </a>
           </div>
+
+        <!-- Visitor Stats Section -->
+        <div class="mt-10 p-5 rounded-2xl bg-sand/20 border border-sand-dark/10 group overflow-hidden relative max-w-[280px]">
+          <!-- Decorative circle -->
+          <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors duration-500"></div>
+          
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-1.5 h-1.5 rounded-full bg-accent" :class="{ 'animate-pulse': stats.online > 0 }"></span>
+            <span class="text-[10px] font-black uppercase tracking-widest text-text-muted">Website Statistics</span>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 text-text-dark">
+                <span class="material-symbols-rounded text-lg">person_pin_circle</span>
+                <span class="text-base font-black tabular-nums">{{ stats.today.toLocaleString() }}</span>
+              </div>
+              <p class="text-[9px] font-bold text-text-muted uppercase tracking-wider">ผู้เข้าชมวันนี้</p>
+            </div>
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 text-text-dark">
+                <span class="material-symbols-rounded text-lg">public</span>
+                <span class="text-base font-black tabular-nums">{{ stats.total >= 1000 ? (stats.total / 1000).toFixed(1) + 'K' : stats.total }}</span>
+              </div>
+              <p class="text-[9px] font-bold text-text-muted uppercase tracking-wider">ยอดชมทั้งหมด</p>
+            </div>
+          </div>
+          
+          <!-- Online status indicator -->
+          <div class="mt-4 pt-3 border-t border-sand-dark/20 flex items-center justify-between">
+            <span class="text-[9px] font-bold text-text-muted">กำลังออนไลน์</span>
+            <div class="flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full bg-green-500" :class="{ 'animate-pulse': stats.online > 0 }"></div>
+              <span class="text-[11px] font-black text-text-dark">{{ stats.online }}</span>
+            </div>
+          </div>
         </div>
+      </div>
 
         <!-- Activities -->
         <div class="md:col-span-3 lg:col-span-2 lg:pl-4">
@@ -133,3 +170,31 @@
     </div>
   </footer>
 </template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import api from '../lib/axios'
+
+const stats = ref({
+  today: 0,
+  total: 0,
+  online: 0
+})
+
+const fetchStats = async () => {
+  try {
+    const res = await api.get('/visitor-stats')
+    if (res.data.success) {
+      stats.value = res.data.data
+    }
+  } catch (e) {
+    console.error('Failed to fetch stats', e)
+  }
+}
+
+onMounted(() => {
+  fetchStats()
+  // Refresh stats every 5 minutes
+  setInterval(fetchStats, 5 * 60 * 1000)
+})
+</script>
