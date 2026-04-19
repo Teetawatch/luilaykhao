@@ -598,30 +598,29 @@
           </p>
         </div>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mt-16 md:mt-12 items-stretch">
           <div
-            v-for="trust in trustItems"
+            v-for="(trust, idx) in trustItems"
             :key="trust.title"
-            class="group relative bg-white p-10 rounded-[3rem] border border-gray-100/80 shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(13,43,30,0.1)] transition-all duration-500 hover:-translate-y-3 flex flex-col items-center text-center overflow-hidden"
+            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between"
+            :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
           >
-            <!-- Card Glow -->
-            <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-[var(--color-primary)]/5 rounded-full blur-3xl group-hover:bg-[var(--color-primary)]/10 transition-colors duration-500"></div>
-
-            <!-- Icon Container -->
-            <div class="w-20 h-20 rounded-[2rem] bg-[var(--color-sand)] text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white shadow-sm flex items-center justify-center mb-8 transition-all duration-500 transform group-hover:rotate-[10deg] group-hover:scale-110">
-              <span class="material-symbols-rounded text-4xl">{{ trust.icon }}</span>
+            <!-- Image Wrapper (Out-of-bound) -->
+            <div class="absolute -top-24 md:-top-28 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
+              <img 
+                :src="trust.image" 
+                :alt="trust.title" 
+                class="w-48 h-48 md:w-56 md:h-56 max-w-none object-contain drop-shadow-2xl"
+              />
             </div>
 
-            <div class="relative z-10">
-              <h5 class="font-black text-2xl text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-primary)] transition-colors">{{ trust.title }}</h5>
-              <div class="w-10 h-1 bg-[var(--color-sand)] mx-auto mb-6 group-hover:w-20 group-hover:bg-[var(--color-accent)] transition-all duration-500"></div>
-              <p class="text-[var(--color-text-muted)] text-base font-medium leading-[1.7]">{{ trust.desc }}</p>
-            </div>
-
-            <!-- Trust Indicator Badge (Optional detail) -->
-            <div class="mt-8 pt-6 border-t border-gray-50 w-full flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
-              <span class="material-symbols-rounded text-xs text-[var(--color-accent)]" style="font-variation-settings:'FILL' 1">verified</span>
-              <span class="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)]">Verified Quality</span>
+            <div class="relative z-10 flex flex-col items-center h-full">
+              <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors">{{ trust.title }}</h3>
+              <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mx-auto max-w-xs">{{ trust.desc }}</p>
+              <!-- Decorative Line mimicking AboutPage -->
+              <div class="mt-auto pt-8">
+                <div class="mx-auto w-12 h-1.5 bg-[var(--color-accent)]/20 group-hover:bg-[var(--color-accent)] transition-all duration-500 rounded-full"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -709,8 +708,8 @@ const wishlistStore = useWishlistStore();
 const router = useRouter();
 
 const heroImages = [
-  '/images/snorkel.png',
   '/images/phusoidao.png',
+  '/images/snorkel.png',
   '/images/phukradueng.png',
   '/images/landscape.png',
   '/images/khaochangphueak.png',
@@ -868,22 +867,22 @@ const reviews = ref([]);
 
 const trustItems = [
   {
-    icon: 'verified_user',
+    image: '/images/travel_safety.png',
     title: 'ความปลอดภัยสูงสุด',
     desc: 'เราตรวจสอบอุปกรณ์ 100% ทุกครั้งก่อนออกเดินทาง เพื่อให้แน่ใจว่าคุณจะปลอดภัยตลอดทริป',
   },
   {
-    icon: 'support_agent',
+    image: '/images/247_support.png',
     title: 'ผู้ดูแลส่วนตัว 24/7',
     desc: 'ทีมงานมืออาชีพพร้อมให้ความช่วยเหลือคุณทุกนาที ไม่ว่าจะเป็นการจองหรือช่วยเหลือหน้างาน',
   },
   {
-    icon: 'eco',
+    image: '/images/nature_travel.png',
     title: 'ท่องเที่ยวสายอนุรักษ์',
     desc: 'ทุกทริปของเรามุ่งเน้นความยั่งยืน สนับสนุนชุมชนท้องถิ่นและอนุรักษ์ธรรมชาติอย่างจริงจัง',
   },
   {
-    icon: 'payments',
+    image: '/images/nohidden_show.png',
     title: 'ราคาโปร่งใส No Hidden',
     desc: 'ราคาสุทธิที่แจ้งคือราคาที่คุณต้องจ่ายจริง ไม่มีค่าธรรมเนียมแอบแฝง จ่ายครั้งเดียวจบ',
   },
