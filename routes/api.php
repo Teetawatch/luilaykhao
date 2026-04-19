@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\DistanceController;
+use App\Http\Controllers\Api\V1\ContactController;
+
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -119,6 +121,10 @@ Route::prefix('v1')->group(function () {
         Route::get('{vehicleId}/eta', [DistanceController::class, 'vehicleETA']);
         Route::get('{vehicleId}/eta/schedule/{scheduleId}', [DistanceController::class, 'vehicleETAToPickups']);
     });
+    
+    // Contacts
+    Route::post('contacts', [ContactController::class, 'store']);
+
 
     // Analytics (public)
     Route::get('stats', [AnalyticsController::class, 'publicStats']);
@@ -229,5 +235,11 @@ Route::prefix('v1')->group(function () {
             Route::get('current/{vehicleId}', [VehicleTrackingController::class, 'currentLocation']);
             Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
         });
+
+        // Contacts Management
+        Route::get('contacts', [ContactController::class, 'index']);
+        Route::put('contacts/{id}/read', [ContactController::class, 'markAsRead']);
+        Route::delete('contacts/{id}', [ContactController::class, 'destroy']);
     });
 });
+

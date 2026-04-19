@@ -12,7 +12,9 @@ export const useAdminStore = defineStore('admin', {
     calendarEvents: [],
     customers: { data: [], meta: null },
     maintenances: { data: [], meta: null },
+    contacts: { data: [], meta: null },
     loading: false,
+
     error: null,
   }),
 
@@ -293,5 +295,29 @@ export const useAdminStore = defineStore('admin', {
       const res = await api.post(`/admin/check-in/${ref}`);
       return res.data;
     },
+
+    // ─── Contacts ────────────────────
+    async fetchContacts(params = {}) {
+      this.loading = true;
+      try {
+        const res = await api.get('/admin/contacts', { params });
+        this.contacts = { data: res.data };
+      } catch (e) {
+        this.error = e.response?.data?.message || 'เกิดข้อผิดพลาด';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async markContactAsRead(id) {
+      const res = await api.put(`/admin/contacts/${id}/read`);
+      return res.data;
+    },
+
+    async deleteContact(id) {
+      const res = await api.delete(`/admin/contacts/${id}`);
+      return res.data;
+    },
+
   },
 });
