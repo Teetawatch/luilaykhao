@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen flex flex-col" v-if="!isAdminRoute">
+    <TopBanner />
     <Navbar />
 
     <!-- Global Active Booking Banner -->
@@ -83,6 +84,7 @@
 import { computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Navbar from './components/Navbar.vue';
+import TopBanner from './components/TopBanner.vue';
 import Footer from './components/Footer.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { useSeatsStore } from './stores/seats';
