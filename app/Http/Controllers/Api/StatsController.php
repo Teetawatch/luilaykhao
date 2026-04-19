@@ -17,7 +17,7 @@ class StatsController extends Controller
             'data' => [
                 'today' => \App\Models\Visitor::where('visited_on', $today)->count(),
                 'total' => \App\Models\Visitor::distinct('ip_address')->count('ip_address'),
-                'online' => \App\Models\Visitor::where('last_seen_at', '>=', $fifteenMinutesAgo)->count(),
+                'online' => \App\Models\Visitor::where('last_seen_at', '>=', $fifteenMinutesAgo)->distinct('ip_address')->count('ip_address'),
             ]
         ]);
     }

@@ -29,40 +29,31 @@
             </a>
           </div>
 
-        <!-- Visitor Stats Section -->
-        <div class="mt-10 p-5 rounded-2xl bg-sand/20 border border-sand-dark/10 group overflow-hidden relative max-w-[280px]">
-          <!-- Decorative circle -->
-          <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors duration-500"></div>
-          
-          <div class="flex items-center gap-2 mb-4">
-            <span class="w-1.5 h-1.5 rounded-full bg-accent" :class="{ 'animate-pulse': stats.online > 0 }"></span>
-            <span class="text-[10px] font-black uppercase tracking-widest text-text-muted">Website Statistics</span>
+        <!-- Visitor Stats Section (Compact) -->
+        <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 bg-sand/20 rounded-2xl border border-sand-dark/10 max-w-fit transition-all duration-300 hover:border-accent/20">
+          <div class="flex items-center gap-2 group cursor-default">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span class="text-[12px] font-black text-text-dark tabular-nums tracking-tight">{{ stats.online }}</span>
+            <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Online</span>
           </div>
           
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2 text-text-dark">
-                <span class="material-symbols-rounded text-lg">person_pin_circle</span>
-                <span class="text-base font-black tabular-nums">{{ stats.today.toLocaleString() }}</span>
-              </div>
-              <p class="text-[9px] font-bold text-text-muted uppercase tracking-wider">ผู้เข้าชมวันนี้</p>
-            </div>
-            <div class="space-y-1">
-              <div class="flex items-center gap-2 text-text-dark">
-                <span class="material-symbols-rounded text-lg">public</span>
-                <span class="text-base font-black tabular-nums">{{ stats.total >= 1000 ? (stats.total / 1000).toFixed(1) + 'K' : stats.total }}</span>
-              </div>
-              <p class="text-[9px] font-bold text-text-muted uppercase tracking-wider">ยอดชมทั้งหมด</p>
-            </div>
-          </div>
+          <div class="w-px h-3 bg-sand-dark/30 hidden sm:block"></div>
           
-          <!-- Online status indicator -->
-          <div class="mt-4 pt-3 border-t border-sand-dark/20 flex items-center justify-between">
-            <span class="text-[9px] font-bold text-text-muted">กำลังออนไลน์</span>
-            <div class="flex items-center gap-1.5">
-              <div class="w-1.5 h-1.5 rounded-full bg-green-500" :class="{ 'animate-pulse': stats.online > 0 }"></div>
-              <span class="text-[11px] font-black text-text-dark">{{ stats.online }}</span>
-            </div>
+          <div class="flex items-center gap-2 group cursor-default">
+            <span class="material-symbols-rounded text-sm text-accent opacity-70">visibility</span>
+            <span class="text-[12px] font-black text-text-dark tabular-nums tracking-tight">{{ stats.today.toLocaleString() }}</span>
+            <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Today</span>
+          </div>
+
+          <div class="w-px h-3 bg-sand-dark/30 hidden sm:block"></div>
+
+          <div class="flex items-center gap-2 group cursor-default">
+            <span class="material-symbols-rounded text-sm text-accent opacity-70">public</span>
+            <span class="text-[12px] font-black text-text-dark tabular-nums tracking-tight">{{ stats.total >= 1000 ? (stats.total / 1000).toFixed(1) + 'K' : stats.total }}</span>
+            <span class="text-[10px] font-bold text-text-muted uppercase tracking-wider">Total</span>
           </div>
         </div>
       </div>
