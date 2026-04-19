@@ -426,7 +426,8 @@
           </template>
         </div>
       </div>
-    </Transition>
+    </div>
+  </Transition>
   </nav>
 </template>
 
