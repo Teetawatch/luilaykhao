@@ -172,7 +172,6 @@
                 class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
-            <div class="absolute top-6 right-8 bg-[var(--color-accent)] text-white text-[10px] uppercase font-black px-3 py-1 rounded-full tracking-widest">Our Mission</div>
             <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">เพื่อนร่วมทางตัวจริง</h3>
             <p class="text-[var(--color-text-mid)] text-lg leading-relaxed mx-auto max-w-xs">เราไม่ได้ทำแค่ระบบจอง แต่เราคอยดูแลคุณตั้งแต่ก้าวแรกที่เริ่มแพลน จนก้าวสุดท้ายที่กลับถึงบ้าน</p>
             <div class="mt-10 mx-auto w-14 h-1.5 bg-[var(--color-accent)] rounded-full"></div>
