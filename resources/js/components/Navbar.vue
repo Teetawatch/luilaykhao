@@ -95,11 +95,20 @@
             <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative h-full flex items-center">
               <button
                 @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
-                class="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors duration-200 text-text-mid hover:text-primary cursor-pointer"
-                aria-label="รายการที่ชอบ"
+                class="group relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors duration-200 text-text-mid hover:text-primary cursor-pointer"
+                aria-label="รายการโปรด"
               >
+                <!-- Tooltip -->
+                <div 
+                  class="invisible lg:group-hover:visible opacity-0 group-hover:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-text-dark text-white text-[10px] font-bold rounded-lg shadow-xl transition-all duration-200 pointer-events-none whitespace-nowrap z-[70] transform translate-y-1 group-hover:translate-y-0"
+                  :class="{ '!invisible': wishlistDropdownOpen }"
+                >
+                  รายการโปรด
+                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-text-dark"></div>
+                </div>
+
                 <span class="material-symbols-rounded text-[22px]" :class="wishlistStore.favorites.length > 0 ? 'text-red-500' : ''" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
-                <span v-if="wishlistStore.favorites.length > 0" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                <span v-if="wishlistStore.favorites.length > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-sm border border-white">
                   {{ wishlistStore.favorites.length > 9 ? '9+' : wishlistStore.favorites.length }}
                 </span>
               </button>
@@ -109,12 +118,12 @@
                 <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
                   <div class="px-5 py-3.5 bg-sand/40 border-b border-sand-dark/40 flex items-center gap-2">
                     <span class="material-symbols-rounded text-[18px] text-red-500" style="font-variation-settings:'FILL' 1">favorite</span>
-                    <span class="text-[13px] font-bold text-text-dark">รายการที่ชอบ</span>
+                    <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
                     <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }} รายการ</span>
                   </div>
                   <div v-if="wishlistStore.favorites.length === 0" class="flex flex-col items-center gap-2 py-8 px-5">
                     <span class="material-symbols-rounded text-[40px] text-sand-dark/60">favorite_border</span>
-                    <p class="text-[13px] text-text-muted font-medium text-center">ยังไม่มีรายการที่ชอบ<br/>กดหัวใจที่ทริปที่คุณสนใจได้เลย</p>
+                    <p class="text-[13px] text-text-muted font-medium text-center">ยังไม่มีรายการโปรด<br/>กดหัวใจที่ทริปที่คุณสนใจได้เลย</p>
                   </div>
                   <div v-else class="max-h-72 overflow-y-auto py-1.5">
                     <router-link
@@ -331,8 +340,8 @@
               :class="wishlistStore.favorites.length > 0 ? 'text-red-500' : 'text-text-mid'"
             >
               <span class="material-symbols-rounded text-[22px]" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
-              <span class="flex-1">รายการที่ชอบ</span>
-              <span v-if="wishlistStore.favorites.length > 0" class="bg-red-500 text-white text-xs font-bold rounded-full px-2.5 py-1">{{ wishlistStore.favorites.length }}</span>
+              <span class="flex-1">รายการโปรด</span>
+              <span v-if="wishlistStore.favorites.length > 0" class="bg-red-500 text-white text-xs font-bold rounded-full px-2.5 py-1 shadow-sm border border-white/20">{{ wishlistStore.favorites.length }}</span>
             </router-link>
             
             <router-link
