@@ -12,19 +12,6 @@
 
         <!-- Desktop Menu -->
         <div class="hidden md:flex items-center flex-1 justify-end gap-6">
-          
-          <!-- Desktop Search Bar -->
-          <div class="hidden lg:flex items-center relative group max-w-[280px] w-full transition-all duration-300 focus-within:max-w-[350px]">
-            <span class="material-symbols-rounded absolute left-4 text-[20px] text-text-muted group-focus-within:text-primary transition-colors">search</span>
-            <input 
-              type="text" 
-              v-model="searchQuery" 
-              @keyup.enter="doSearch"
-              placeholder="ค้นหาทริป..." 
-              class="w-full bg-sand/50 border border-sand-dark/40 rounded-full py-2.5 pl-11 pr-4 text-[13px] font-bold text-text-dark placeholder:text-text-muted/60 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all"
-            />
-          </div>
-
           <div class="flex items-center gap-2">
             <div class="flex items-center gap-1 mr-4 h-full">
               <template v-for="link in navLinks" :key="link.label">
@@ -70,8 +57,20 @@
               </template>
             </div>
 
+            <!-- Desktop Search Bar -->
+            <div class="hidden lg:flex items-center relative group max-w-[240px] w-full transition-all duration-300 focus-within:max-w-[300px] mr-2">
+              <span class="material-symbols-rounded absolute left-3.5 text-[18px] text-text-muted group-focus-within:text-primary transition-colors">search</span>
+              <input 
+                type="text" 
+                v-model="searchQuery" 
+                @keyup.enter="doSearch"
+                placeholder="ค้นหา..." 
+                class="w-full bg-sand/50 border border-sand-dark/40 rounded-full py-2 pl-9 pr-4 text-[12px] font-bold text-text-dark placeholder:text-text-muted/60 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+              />
+            </div>
+
             <!-- Wishlist Button (Desktop) -->
-            <div ref="wishlistDropdownRef" class="relative h-full flex items-center">
+            <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative h-full flex items-center">
               <button
                 @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
                 class="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors duration-200 text-text-mid hover:text-primary cursor-pointer"
