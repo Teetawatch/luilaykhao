@@ -15,7 +15,7 @@ class StoreTripRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:trekking,diving,snorkeling,climbing'],
+            'type' => ['required', 'exists:categories,slug'],
             'location' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'difficulty' => ['required', 'in:easy,medium,hard'],
