@@ -57,16 +57,34 @@
               </template>
             </div>
 
-            <!-- Desktop Search Bar -->
-            <div class="hidden lg:flex items-center relative group max-w-[160px] w-full transition-all duration-300 focus-within:max-w-[220px] mx-1">
-              <span class="material-symbols-rounded absolute left-3 text-[16px] text-text-muted group-focus-within:text-primary transition-colors">search</span>
-              <input 
-                type="text" 
-                v-model="searchQuery" 
-                @keyup.enter="doSearch"
-                placeholder="ค้นหา..." 
-                class="w-full bg-sand/50 border border-sand-dark/40 rounded-full py-1.5 pl-8 pr-3 text-[11px] font-bold text-text-dark placeholder:text-text-muted/60 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all"
-              />
+            <!-- Desktop Search Icon/Bar -->
+            <div class="hidden lg:flex items-center relative transition-all duration-300 h-10" :class="desktopSearchExpanded ? 'w-[240px] mx-2' : 'w-10 mx-1'">
+              <button 
+                v-if="!desktopSearchExpanded"
+                @click="toggleDesktopSearch"
+                class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand text-text-mid hover:text-primary transition-all duration-300 cursor-pointer"
+              >
+                <span class="material-symbols-rounded text-[22px]">search</span>
+              </button>
+              
+              <div v-else class="relative w-full flex items-center animate-in fade-in zoom-in-95 duration-200">
+                <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
+                <input 
+                  type="text" 
+                  v-model="searchQuery" 
+                  ref="desktopSearchInput"
+                  @keyup.enter="doSearch(); desktopSearchExpanded = false"
+                  @blur="if(!searchQuery) desktopSearchExpanded = false"
+                  placeholder="ค้นหาทริป..." 
+                  class="w-full bg-white border-2 border-primary rounded-full py-1.5 pl-9 pr-8 text-[12px] font-bold text-text-dark outline-none shadow-md shadow-primary/5"
+                />
+                <button 
+                  @click="desktopSearchExpanded = false; searchQuery = ''" 
+                  class="absolute right-2.5 w-5 h-5 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
+                >
+                  <span class="material-symbols-rounded text-[14px]">close</span>
+                </button>
+              </div>
             </div>
 
             <!-- Wishlist Button (Desktop) -->
@@ -449,7 +467,18 @@ const wishlistDropdownOpen = ref(false);
 const navDropdownRef = ref(null);
 const userDropdownRef = ref(null);
 const wishlistDropdownRef = ref(null);
+const desktopSearchInput = ref(null);
+const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
+
+function toggleDesktopSearch() {
+  desktopSearchExpanded.value = !desktopSearchExpanded.value;
+  if (desktopSearchExpanded.value) {
+    setTimeout(() => {
+      desktopSearchInput.value?.focus();
+    }, 100);
+  }
+}
 
 function handleClickOutside(e) {
   const navEl = Array.isArray(navDropdownRef.value)

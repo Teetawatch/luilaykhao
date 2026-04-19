@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\DistanceController;
@@ -46,6 +47,9 @@ Route::prefix('v1')->group(function () {
 
     // Reviews (public read)
     Route::get('reviews', [ReviewController::class, 'index']);
+
+    // Categories (public)
+    Route::get('categories', [CategoryController::class, 'index']);
 
     // Schedules (public)
     Route::get('schedules/{id}', [ScheduleController::class, 'show']);
@@ -206,6 +210,12 @@ Route::prefix('v1')->group(function () {
         Route::put('loyalty/rewards/{id}', [AdminExtendedController::class, 'adminUpdateReward']);
         Route::delete('loyalty/rewards/{id}', [AdminExtendedController::class, 'adminDeleteReward']);
         Route::get('loyalty/stats', [AdminExtendedController::class, 'adminLoyaltyStats']);
+
+        // Categories CRUD
+        Route::get('categories', [CategoryController::class, 'adminIndex']);
+        Route::post('categories', [CategoryController::class, 'store']);
+        Route::put('categories/{id}', [CategoryController::class, 'update']);
+        Route::delete('categories/{id}', [CategoryController::class, 'destroy']);
 
         // Analytics Dashboard
         Route::get('analytics/overview', [AnalyticsController::class, 'overview']);

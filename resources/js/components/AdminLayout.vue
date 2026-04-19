@@ -74,6 +74,7 @@ const menuItems = [
   { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
   { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },
   { to: '/admin/trips', icon: 'fas fa-route', label: 'จัดการทริป' },
+  { to: '/admin/categories', icon: 'fas fa-tags', label: 'หมวดหมู่กิจกรรม' },
   { to: '/admin/schedules', icon: 'fas fa-calendar-alt', label: 'รอบเดินทาง' },
   { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
   { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },

@@ -46,6 +46,7 @@ import AdminLoyalty from '../pages/admin/LoyaltyPage.vue';
 import AdminAnalytics from '../pages/admin/AnalyticsPage.vue';
 import AdminTracking from '../pages/admin/TrackingPage.vue';
 import AdminStaffAssignments from '../pages/admin/StaffAssignmentsPage.vue';
+import AdminCategories from '../pages/admin/CategoriesPage.vue';
 
 const routes = [
   // ── Public / Customer Routes ──
@@ -98,6 +99,7 @@ const routes = [
       { path: 'loyalty', name: 'admin-loyalty', component: AdminLoyalty },
       { path: 'analytics', name: 'admin-analytics', component: AdminAnalytics },
       { path: 'tracking', name: 'admin-tracking', component: AdminTracking },
+      { path: 'categories', name: 'admin-categories', component: AdminCategories },
     ],
   },
 ];

@@ -7,8 +7,7 @@
         ค้นพบประสบการณ์ใหม่
       </div>
       <h1 class="text-5xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-6 leading-[1.15]">
-        กิจกรรมและ<br class="hidden md:block" />
-        <span class="text-[var(--color-accent)]">ทริปทั้งหมด</span>
+        กิจกรรมและ <span class="text-[var(--color-accent)]">ทริปทั้งหมด</span>
       </h1>
       <p class="text-lg md:text-xl text-[var(--color-text-muted)] leading-relaxed font-medium max-w-2xl">
         สำรวจทริปที่คัดสรรมาเพื่อคุณ ตั้งแต่ดำน้ำตื้น เดินป่า จนถึงบริการรถตู้ระดับพรีเมียม เพื่อประสบการณ์การเดินทางที่สมบูรณ์แบบที่สุด
@@ -214,16 +213,16 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import TripCard from '../components/TripCard.vue';
 import { useTripsStore } from '../stores/trips';
+import { useCategoriesStore } from '../stores/categories';
 
 const tripsStore = useTripsStore();
+const categoriesStore = useCategoriesStore();
 const route = useRoute();
 
-const categories = [
-  { value: 'snorkeling', label: 'ดำน้ำตื้น (Snorkeling)' },
-  { value: 'trekking', label: 'เดินป่า (Trekking)' },
-  { value: 'diving', label: 'ดำน้ำ (Diving)' },
-  { value: 'climbing', label: 'บริการรถตู้ (Van Service)' },
-];
+const categories = computed(() => categoriesStore.categories.map(c => ({
+  value: c.slug,
+  label: c.name,
+})));
 
 const difficulties = [
   { value: 'easy', label: 'ระดับเริ่มต้น (Easy)' },
@@ -284,6 +283,7 @@ function clearAndFetch() {
 }
 
 onMounted(() => {
+  categoriesStore.fetchCategories();
   if (route.query.type) tripsStore.filters.type = route.query.type;
   if (route.query.date) tripsStore.filters.date = route.query.date;
   tripsStore.fetchTrips();
