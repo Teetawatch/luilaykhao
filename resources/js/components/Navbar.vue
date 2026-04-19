@@ -1,7 +1,10 @@
 <template>
-  <nav class="navbar-root sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-sand-dark/50 shadow-sm transition-all duration-300">
+  <nav 
+    class="navbar-root sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-sand-dark/30 transition-all duration-300"
+    :class="[isScrolled ? 'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] py-0' : 'shadow-sm py-1']"
+  >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20">
+      <div class="flex items-center justify-between transition-all duration-300" :class="isScrolled ? 'h-16' : 'h-20'">
 
         <!-- Logo -->
         <router-link to="/" class="flex items-center gap-3 shrink-0 group">
@@ -18,17 +21,17 @@
                 <!-- Dropdown Menu -->
                 <div v-if="link.children" ref="navDropdownRef" class="relative h-full flex items-center">
                   <div 
-                    class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 cursor-pointer"
-                    :class="{ 'text-primary bg-sand': isAboutActive }"
+                    class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 cursor-pointer group"
+                    :class="{ 'active-state': isAboutActive }"
                     @click="navDropdownOpen = !navDropdownOpen"
                   >
-                    <span class="material-symbols-rounded text-[18px] font-variation-settings-'FILL'-0">{{ link.icon }}</span>
+                    <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover:scale-110" :class="{ 'filled-icon': isAboutActive }">{{ link.icon }}</span>
                     {{ link.label }}
-                    <span class="material-symbols-rounded text-[16px] transition-transform duration-300" :class="{ 'rotate-180': navDropdownOpen }">expand_more</span>
+                    <span class="material-symbols-rounded text-[16px] transition-transform duration-300 group-hover:translate-y-0.5" :class="{ 'rotate-180': navDropdownOpen }">expand_more</span>
                   </div>
 
                   <!-- Dropdown List -->
-                  <div v-if="navDropdownOpen" class="absolute top-full left-0 w-64 pt-2 transition-all duration-300 transform origin-top-left z-[60] animation-scale-in">
+                  <div v-if="navDropdownOpen" class="absolute top-full left-0 w-64 pt-2 transition-all duration-300 transform origin-top-left z-[60] animation-fade-slide">
                     <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden py-2.5">
                       <router-link 
                         v-for="child in link.children" 
@@ -36,9 +39,9 @@
                         :to="child.to"
                         @click="navDropdownOpen = false"
                         class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 border-l-4 border-transparent hover:border-primary"
-                        :class="{ 'text-primary bg-sand border-primary': router.currentRoute.value.path === child.to }"
+                        active-class="bg-sand text-primary border-primary"
                       >
-                        <span class="material-symbols-rounded text-[18px]">{{ child.icon }}</span>
+                        <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" :class="{ 'filled-icon': router.currentRoute.value.path === child.to }">{{ child.icon }}</span>
                         {{ child.label }}
                       </router-link>
                     </div>
@@ -50,8 +53,9 @@
                   v-else
                   :to="link.to"
                   class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200"
+                  :exact="link.to === '/'"
                 >
-                  <span class="material-symbols-rounded text-[18px]">{{ link.icon }}</span>
+                  <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover:scale-110" :class="{ 'filled-icon': router.currentRoute.value.path === link.to }">{{ link.icon }}</span>
                   {{ link.label }}
                 </router-link>
               </template>
@@ -101,7 +105,7 @@
               </button>
 
               <!-- Wishlist Dropdown -->
-              <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-2 z-[60] animation-scale-in">
+              <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-2 z-[60] animation-fade-slide">
                 <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
                   <div class="px-5 py-3.5 bg-sand/40 border-b border-sand-dark/40 flex items-center gap-2">
                     <span class="material-symbols-rounded text-[18px] text-red-500" style="font-variation-settings:'FILL' 1">favorite</span>
@@ -166,7 +170,7 @@
                 </div>
 
                 <!-- Dropdown List -->
-                <div v-if="userDropdownOpen" class="absolute top-full right-0 w-72 pt-2 transition-all duration-300 transform origin-top-right z-[60] animation-scale-in">
+                <div v-if="userDropdownOpen" class="absolute top-full right-0 w-72 pt-2 transition-all duration-300 transform origin-top-right z-[60] animation-fade-slide">
                   <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
                     
                     <!-- Profile Header (Mobile style but subtle for desktop) -->
@@ -228,8 +232,8 @@
 
                       <div class="h-px bg-sand-dark/40 mx-4 my-1"></div>
 
-                      <button @click="handleLogout" class="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-red-600 hover:bg-red-50 transition-all border-l-4 border-transparent hover:border-red-600">
-                        <span class="material-symbols-rounded text-[20px]">logout</span>
+                      <button @click="handleLogout" class="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-red-600 hover:bg-red-50 transition-all border-l-4 border-transparent hover:border-red-600 group">
+                        <span class="material-symbols-rounded text-[20px] transition-transform duration-300 group-hover:scale-110 group-hover:-translate-x-1">logout</span>
                         ออกจากระบบ
                       </button>
                     </div>
@@ -301,7 +305,7 @@
                 @click="mobileOpen = false"
                 class="flex items-center gap-3.5 px-8 py-3 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
               >
-                <span class="material-symbols-rounded text-[20px]">{{ child.icon }}</span>
+                <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
                 {{ child.label }}
               </router-link>
             </div>
@@ -310,7 +314,8 @@
               v-else
               :to="link.to"
               @click="mobileOpen = false"
-              class="flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+              class="mobile-nav-link flex items-center gap-3.5 px-5 py-3.5 rounded-2xl text-base font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+              :exact="link.to === '/'"
             >
               <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
               {{ link.label }}
@@ -461,6 +466,7 @@ const router = useRouter();
 const mobileOpen = ref(false);
 const searchQuery = ref('');
 const unreadNotifications = ref(0);
+const isScrolled = ref(false);
 const navDropdownOpen = ref(false);
 const userDropdownOpen = ref(false);
 const wishlistDropdownOpen = ref(false);
@@ -517,14 +523,20 @@ async function fetchUnreadCount() {
 }
 
 let pollInterval = null;
+function handleScroll() {
+  isScrolled.value = window.scrollY > 20;
+}
+
 onMounted(() => {
   fetchUnreadCount();
   pollInterval = setInterval(fetchUnreadCount, 60000);
+  window.addEventListener('scroll', handleScroll);
   document.addEventListener('click', handleClickOutside);
   document.addEventListener('touchstart', handleClickOutside);
 });
 onUnmounted(() => {
   clearInterval(pollInterval);
+  window.removeEventListener('scroll', handleScroll);
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('touchstart', handleClickOutside);
 });
@@ -593,25 +605,50 @@ async function handleLogout() {
 }
 
 /* Active route highlight */
-.nav-link.router-link-active {
-  color: var(--color-primary);
-  background-color: var(--color-sand);
+.nav-link.router-link-active,
+.nav-link.router-link-exact-active,
+.nav-link.active-state,
+.mobile-nav-link.router-link-active,
+.mobile-nav-link.router-link-exact-active {
+  color: var(--color-primary) !important;
+  background-color: var(--color-sand) !important;
+  box-shadow: inset 0 0 0 1px rgba(212, 163, 115, 0.1);
 }
 
-/* Dropdown animation */
-.animation-scale-in {
-  animation: scaleIn 0.2s ease-out;
+.nav-link.router-link-active span.material-symbols-rounded,
+.mobile-nav-link.router-link-active span.material-symbols-rounded,
+.filled-icon {
+  font-variation-settings: 'FILL' 1 !important;
 }
 
-@keyframes scaleIn {
+/* Dropdown animation with fade and slide */
+.animation-fade-slide {
+  animation: fadeSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeSlide {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
   }
+}
+
+/* Icon Hover Micro-interactions */
+.nav-link {
+  transition: all 0.3s ease;
+}
+
+.nav-link span.material-symbols-rounded {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-link:hover span.material-symbols-rounded:not(.filled-icon) {
+  font-variation-settings: 'FILL' 0;
 }
 
 /* Respect reduced motion */
