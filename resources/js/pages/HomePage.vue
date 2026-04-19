@@ -431,9 +431,7 @@
                   Trip ใหม่ ✨
                 </span>
               </div>
-              
               <div class="max-w-2xl mb-10 transform transition-transform duration-700 group-hover:-translate-y-2">
-                <span class="text-[var(--color-accent-light)] text-sm font-black uppercase tracking-[0.3em] mb-3 block opacity-0 group-hover:opacity-100 transition-all duration-700 delay-100">Experience Excellence</span>
                 <h3 class="font-anuphan text-white text-4xl md:text-6xl font-black mb-5 leading-[1.1] tracking-tight group-hover:text-white transition-colors drop-shadow-2xl">
                   {{ featuredTrips[0].title }}
                 </h3>
@@ -444,7 +442,6 @@
               
               <div class="flex items-center justify-between flex-wrap gap-8 mt-auto border-t border-white/10 pt-10">
                 <div class="flex flex-col">
-                  <span class="text-white/50 text-xs font-black uppercase tracking-[0.2em] mb-2">Exclusive Offer</span>
                   <div class="flex items-baseline gap-2">
                     <span class="text-white/70 text-sm font-bold">เริ่มต้นเพียง</span>
                     <span class="text-white text-4xl md:text-5xl font-black tracking-tighter">฿{{ Number(featuredTrips[0].price_per_person).toLocaleString('th-TH') }}</span>
@@ -595,10 +592,9 @@
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="text-center max-w-3xl mx-auto mb-20">
-          <span class="text-[var(--color-accent)] font-bold tracking-[0.2em] uppercase text-xs mb-4 block">Our Values</span>
           <h2 class="font-anuphan text-4xl md:text-5xl font-black text-[var(--color-text-dark)] tracking-tight mb-6">ทำไมต้องก้าวไปกับ <span class="text-[var(--color-primary)]">ลุยเลเขา?</span></h2>
           <p class="text-[var(--color-text-muted)] text-lg font-medium leading-relaxed">
-            เราไม่ใช่แค่บริษัททัวร์ แต่เราคือทีมงานที่พร้อมเติมเต็มทุกประสบการณ์การเดินทางของคุณ<br class="hidden md:block" /> ด้วยหัวใจและการบริการที่เหนือระดับ
+            เราไม่ได้อยากเป็นแค่แพลตฟอร์มจองทริปแต่อยากเป็น "เพื่อน"<br class="hidden md:block" /> ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทางที่คุณเลือกไปกับเรา
           </p>
         </div>
         
