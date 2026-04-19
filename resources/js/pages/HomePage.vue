@@ -34,8 +34,8 @@
       <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-16 md:pt-24 pb-12">
         
         <!-- Headline -->
-        <h1 class="font-anuphan text-white text-4xl md:text-5xl lg:text-[4rem] font-extrabold mb-6 leading-[1.3] tracking-tight drop-shadow-2xl">
-          การเที่ยวที่ดี เริ่มจาก<br class="hidden md:block" />
+        <h1 class="font-anuphan text-white text-[2.2rem] md:text-5xl lg:text-[4rem] font-extrabold mb-6 leading-[1.2] md:leading-[1.3] tracking-tight drop-shadow-2xl">
+          การเที่ยวที่ดี เริ่มจาก<br />
           <span class="text-[var(--color-accent-mid)] font-black">ความรู้สึกที่ดี</span>
           ตั้งแต่การจอง
         </h1>
@@ -46,22 +46,22 @@
         </p>
 
         <!-- Modern Floating Search Bar -->
-        <div class="search-bar relative bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] flex flex-col md:flex-row items-stretch md:items-center p-1.5 gap-1 max-w-4xl mx-auto border border-white/40 ring-1 ring-black/5 transform transition-all duration-500 hover:shadow-[0_30px_60px_-10px_rgba(0,0,0,0.3)] z-20">
+        <div class="search-bar relative bg-white rounded-[1.8rem] md:rounded-[2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-4xl mx-auto border border-white/40 ring-1 ring-black/5 transform transition-all duration-500 hover:shadow-[0_30px_60px_-10px_rgba(0,0,0,0.3)] z-20">
           
           <!-- Trip Selector -->
-          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
+          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
             <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
               <span class="material-symbols-rounded text-[var(--color-primary)] text-[22px] md:text-[24px]">explore</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">เลือกทริป</label>
+              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">อยากไปเที่ยวที่ไหน?</label>
               <select
                 v-model="selectedTripSlug"
                 @change="onTripChange"
                 class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6"
                 :class="selectedTripSlug ? 'text-gray-900' : 'text-gray-400'"
               >
-                <option value="">อยากไปเที่ยวที่ไหน?</option>
+                <option value="">เลือกทริปที่ต้องการ</option>
                 <option v-for="t in allTrips" :key="t.id" :value="t.slug">{{ t.title }}</option>
               </select>
               <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
@@ -71,7 +71,7 @@
           <div class="hidden md:block w-px h-12 bg-gray-100 shrink-0"></div>
 
           <!-- Schedule / Departure Date Selector -->
-          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
+          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
             <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-accent)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
               <span v-if="schedulesLoading" class="w-5 h-5 border-2 border-[var(--color-accent)]/30 border-t-[var(--color-accent)] rounded-full animate-spin"></span>
               <span v-else class="material-symbols-rounded text-[var(--color-accent)] text-[22px] md:text-[24px]">calendar_today</span>
@@ -96,10 +96,10 @@
           <!-- Book / Search Button -->
           <button
             @click="goBook"
-            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0 md:ml-1"
+            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-5 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0"
           >
             <span class="material-symbols-rounded text-[24px]">{{ selectedScheduleId ? 'bookmark_add' : 'search' }}</span>
-            <span class="text-lg md:text-base lg:text-lg pr-1">{{ selectedScheduleId ? 'จองเลย' : 'เริ่มเที่ยวเลย' }}</span>
+            <span class="text-xl md:text-base lg:text-lg pr-1">เริ่มเที่ยวเลย</span>
           </button>
         </div>
       </div>
