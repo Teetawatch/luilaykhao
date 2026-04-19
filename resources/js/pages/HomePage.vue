@@ -722,12 +722,7 @@
                 <!-- Trust Signals -->
                 <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6 pt-8 border-t border-white/10">
                   <div class="flex flex-col items-center gap-1">
-                    <div class="flex -space-x-3 mb-2">
-                      <img src="https://i.pravatar.cc/100?u=1" class="w-8 h-8 rounded-full border-2 border-[var(--color-primary)] object-cover" />
-                      <img src="https://i.pravatar.cc/100?u=2" class="w-8 h-8 rounded-full border-2 border-[var(--color-primary)] object-cover" />
-                      <img src="https://i.pravatar.cc/100?u=3" class="w-8 h-8 rounded-full border-2 border-[var(--color-primary)] object-cover" />
-                    </div>
-                    <span class="text-white text-[11px] font-black uppercase tracking-wider">สมาชิกแล้ว 10,000+ คน</span>
+                    <span class="text-white text-[11px] font-black uppercase tracking-wider">สมาชิกแล้ว 10+ คน</span>
                   </div>
                   <div class="hidden sm:block w-px h-10 bg-white/10"></div>
                   <div class="flex flex-col gap-2">
