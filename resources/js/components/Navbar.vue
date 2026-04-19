@@ -13,7 +13,7 @@
         <!-- Desktop Menu -->
         <div class="hidden md:flex items-center flex-1 justify-end gap-6">
           <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1 mr-4 h-full">
+            <div class="flex items-center gap-1 mr-1 h-full">
               <template v-for="link in navLinks" :key="link.label">
                 <!-- Dropdown Menu -->
                 <div v-if="link.children" ref="navDropdownRef" class="relative h-full flex items-center">
@@ -58,14 +58,14 @@
             </div>
 
             <!-- Desktop Search Bar -->
-            <div class="hidden lg:flex items-center relative group max-w-[240px] w-full transition-all duration-300 focus-within:max-w-[300px] mr-2">
-              <span class="material-symbols-rounded absolute left-3.5 text-[18px] text-text-muted group-focus-within:text-primary transition-colors">search</span>
+            <div class="hidden lg:flex items-center relative group max-w-[160px] w-full transition-all duration-300 focus-within:max-w-[220px] mx-1">
+              <span class="material-symbols-rounded absolute left-3 text-[16px] text-text-muted group-focus-within:text-primary transition-colors">search</span>
               <input 
                 type="text" 
                 v-model="searchQuery" 
                 @keyup.enter="doSearch"
                 placeholder="ค้นหา..." 
-                class="w-full bg-sand/50 border border-sand-dark/40 rounded-full py-2 pl-9 pr-4 text-[12px] font-bold text-text-dark placeholder:text-text-muted/60 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+                class="w-full bg-sand/50 border border-sand-dark/40 rounded-full py-1.5 pl-8 pr-3 text-[11px] font-bold text-text-dark placeholder:text-text-muted/60 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all"
               />
             </div>
 
