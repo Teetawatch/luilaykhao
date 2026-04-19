@@ -162,13 +162,12 @@
     <section class="py-24 bg-[var(--color-sand)] relative overflow-hidden">
       <!-- Decorative background text -->
       <div class="absolute -top-10 -left-10 text-[15rem] font-black text-gray-200/30 select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter">
-        CATEGORIES
+        ลุยเลเขา
       </div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
           <div class="max-w-2xl">
-            <span class="bg-[var(--color-accent)]/10 text-[var(--color-accent)] px-4 py-1.5 rounded-full font-bold tracking-wider uppercase text-xs mb-4 inline-block">Explore by Category</span>
             <h2 class="font-anuphan text-4xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.1]">เลือกประสบการณ์<br /><span class="text-[var(--color-primary)]">ในแบบของคุณ</span></h2>
           </div>
           <p class="text-[var(--color-text-muted)] text-lg max-w-sm md:text-right font-medium leading-relaxed">
@@ -403,96 +402,128 @@
           </p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          <!-- Large Featured Card (first trip) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          <!-- Main Hero Featured Card (Large) -->
           <router-link
             :to="`/trips/${featuredTrips[0].slug}`"
-            class="lg:col-span-8 group relative overflow-hidden rounded-[2rem] shadow-2xl h-[500px] lg:h-[600px] cursor-pointer block isolate"
+            class="lg:col-span-8 group relative overflow-hidden rounded-[3rem] shadow-2xl h-[550px] lg:h-[650px] cursor-pointer block isolate"
           >
+            <!-- Premium Image Background with Zoom -->
             <img
               :src="featuredTrips[0].cover_image || '/images/placeholder.jpg'"
               :alt="featuredTrips[0].title"
-              class="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+              class="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] ease-out group-hover:scale-110"
             />
-            <div class="absolute inset-0 bg-gradient-to-t from-[var(--color-primary)] via-[var(--color-primary)]/40 to-transparent opacity-90"></div>
+            <!-- Multiple Overlay Layers for Depth & Contrast -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-700"></div>
+            <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-[3rem]"></div>
             
-            <div class="absolute inset-0 p-8 md:p-12 flex flex-col justify-end">
-              <div class="flex flex-wrap items-center gap-3 mb-6">
-                <span class="bg-[var(--color-accent-light)] text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">{{ typeLabel(featuredTrips[0].type) }}</span>
-                <span class="bg-white/20 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                  <span class="material-symbols-rounded text-[14px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
-                  {{ Number(featuredTrips[0].rating || 0).toFixed(1) }}
+            <div class="absolute inset-0 p-10 md:p-14 flex flex-col justify-end">
+              <div class="flex flex-wrap items-center gap-3 mb-8 transform transition-transform duration-500 group-hover:-translate-y-2">
+                <span class="bg-[var(--color-accent-light)] text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl">{{ typeLabel(featuredTrips[0].type) }}</span>
+                
+                <!-- Smart Rating / New Badge -->
+                <span v-if="Number(featuredTrips[0].rating) > 0" class="bg-white/10 backdrop-blur-md text-white px-5 py-2 rounded-full text-[10px] font-black shadow-xl flex items-center gap-2 border border-white/10">
+                  <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
+                  {{ Number(featuredTrips[0].rating).toFixed(1) }}
+                </span>
+                <span v-else class="bg-white text-[var(--color-primary)] px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl border border-white">
+                  Trip ใหม่ ✨
                 </span>
               </div>
               
-              <h3 class="font-anuphan text-white text-3xl md:text-5xl font-extrabold mb-4 leading-tight group-hover:text-[var(--color-accent-light)] transition-colors">{{ featuredTrips[0].title }}</h3>
-              <p class="text-white/80 max-w-xl mb-8 leading-relaxed text-base md:text-lg font-medium line-clamp-2">{{ featuredTrips[0].description || featuredTrips[0].location }}</p>
+              <div class="max-w-2xl mb-10 transform transition-transform duration-700 group-hover:-translate-y-2">
+                <span class="text-[var(--color-accent-light)] text-sm font-black uppercase tracking-[0.3em] mb-3 block opacity-0 group-hover:opacity-100 transition-all duration-700 delay-100">Experience Excellence</span>
+                <h3 class="font-anuphan text-white text-4xl md:text-6xl font-black mb-5 leading-[1.1] tracking-tight group-hover:text-white transition-colors drop-shadow-2xl">
+                  {{ featuredTrips[0].title }}
+                </h3>
+                <p class="text-white/70 text-lg md:text-xl font-medium leading-relaxed drop-shadow-lg line-clamp-2 max-w-xl group-hover:text-white/90 transition-colors">
+                  {{ featuredTrips[0].description || featuredTrips[0].location }}
+                </p>
+              </div>
               
-              <div class="flex items-center justify-between flex-wrap gap-4 mt-auto">
+              <div class="flex items-center justify-between flex-wrap gap-8 mt-auto border-t border-white/10 pt-10">
                 <div class="flex flex-col">
-                  <span class="text-white/60 text-sm font-bold uppercase tracking-wider mb-1">ราคาเริ่มต้น</span>
-                  <span class="text-white text-3xl font-black">฿{{ Number(featuredTrips[0].price_per_person).toLocaleString('th-TH') }}</span>
+                  <span class="text-white/50 text-xs font-black uppercase tracking-[0.2em] mb-2">Exclusive Offer</span>
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-white/70 text-sm font-bold">เริ่มต้นเพียง</span>
+                    <span class="text-white text-4xl md:text-5xl font-black tracking-tighter">฿{{ Number(featuredTrips[0].price_per_person).toLocaleString('th-TH') }}</span>
+                  </div>
                 </div>
-                <div class="bg-white text-[var(--color-text-dark)] group-hover:bg-[var(--color-accent-light)] group-hover:text-white px-8 py-4 rounded-full font-extrabold shadow-xl transition-all duration-300 flex items-center gap-2">
-                  ดูรายละเอียด
-                  <span class="material-symbols-rounded text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                
+                <div class="bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white px-10 py-5 rounded-2xl font-black text-lg shadow-[0_20px_40px_rgba(0,0,0,0.3)] transition-all duration-500 flex items-center gap-3 group/btn hover:-translate-y-1">
+                  <span>สำรวจทริปนี้</span>
+                  <div class="w-8 h-8 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center group-hover/btn:bg-white/20 transition-colors">
+                    <span class="material-symbols-rounded text-[24px] transform group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>
+                  </div>
                 </div>
               </div>
             </div>
           </router-link>
 
-          <!-- Side Cards (trip 2 & 3) -->
-          <div class="lg:col-span-4 flex flex-col gap-6">
+          <!-- Secondary Side Cards -->
+          <div class="lg:col-span-4 flex flex-col gap-8">
             <router-link
               v-for="(trip, idx) in featuredTrips.slice(1, 3)"
               :key="trip.id"
               :to="`/trips/${trip.slug}`"
-              class="flex-1 group relative overflow-hidden rounded-[2rem] bg-gray-900 cursor-pointer block p-6 md:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 isolate"
+              class="flex-1 group relative overflow-hidden rounded-[2.5rem] bg-gray-900 cursor-pointer block p-8 md:p-10 flex flex-col justify-between hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 isolate"
             >
               <!-- Background Image -->
               <img
                 :src="trip.cover_image || '/images/placeholder.jpg'"
                 :alt="trip.title"
-                class="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110 opacity-60"
+                class="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-60"
               />
-              <!-- Premium Overlay -->
-              <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 group-hover:via-black/50 transition-all duration-500"></div>
+              <!-- Consistent Premium Overlay -->
+              <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent group-hover:from-black transition-all duration-700"></div>
               
-              <div class="relative z-10">
-                <div class="flex justify-between items-start mb-6">
-                  <span
-                    class="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md border border-white/20"
-                    :class="idx === 0 ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-gold)] text-white'"
-                  >{{ typeLabel(trip.type) }}</span>
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white">
-                    <span class="material-symbols-rounded text-[20px]">{{ typeFeaturedIcon(trip.type) }}</span>
+              <div class="relative z-10 transform transition-transform duration-500 group-hover:-translate-y-2">
+                <div class="flex justify-between items-start mb-8">
+                  <div class="flex gap-2">
+                    <span class="px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest backdrop-blur-md border border-white/20 bg-white/10 text-white">
+                      {{ typeLabel(trip.type) }}
+                    </span>
+                    <span v-if="idx === 0" class="px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-[var(--color-accent)] text-white shadow-lg">ยอดนิยม</span>
+                  </div>
+                  <div class="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-xl transition-transform duration-500 group-hover:rotate-12">
+                    <span class="material-symbols-rounded text-[24px]">{{ typeFeaturedIcon(trip.type) }}</span>
                   </div>
                 </div>
-                <h4 class="text-xl font-extrabold text-white mb-2 group-hover:text-[var(--color-accent-light)] transition-colors leading-snug drop-shadow-md">{{ trip.title }}</h4>
-                <p class="text-white/70 text-sm font-medium line-clamp-2 leading-relaxed">{{ trip.description || trip.location }}</p>
+                
+                <h4 class="text-2xl md:text-3xl font-black text-white mb-3 group-hover:text-[var(--color-accent-light)] transition-colors leading-tight drop-shadow-md">
+                  {{ trip.title }}
+                </h4>
+                <div v-if="Number(trip.rating) > 0" class="flex items-center gap-1.5 mb-2">
+                  <span class="material-symbols-rounded text-[14px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
+                  <span class="text-white/80 text-xs font-bold">{{ Number(trip.rating).toFixed(1) }} Rating</span>
+                </div>
               </div>
               
-              <div class="relative z-10 pt-6 mt-6 border-t border-white/10 flex justify-between items-end">
+              <div class="relative z-10 pt-8 mt-4 border-t border-white/10 flex justify-between items-end">
                 <div class="flex flex-col">
-                  <span class="text-[10px] text-white/50 font-bold uppercase tracking-wider mb-0.5">เริ่มต้น</span>
-                  <span class="text-xl font-black text-white">฿{{ Number(trip.price_per_person).toLocaleString('th-TH') }}</span>
+                  <span class="text-[10px] text-white/40 font-black uppercase tracking-[0.2em] mb-1">เริ่มต้นที่</span>
+                  <span class="text-2xl font-black text-white tracking-tight">฿{{ Number(trip.price_per_person).toLocaleString('th-TH') }}</span>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--color-text-dark)] transition-all duration-500">
-                  <span class="material-symbols-rounded text-[20px]">arrow_outward</span>
+                <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--color-primary)] transition-all duration-500 shadow-xl">
+                  <span class="material-symbols-rounded text-[28px]">arrow_outward</span>
                 </div>
               </div>
             </router-link>
 
-            <!-- Placeholder card when only 1 featured trip exists -->
+            <!-- Sophisticated Empty State -->
             <router-link
               v-if="featuredTrips.length === 1"
               to="/trips"
-              class="flex-1 group cursor-pointer bg-white/5 backdrop-blur-sm rounded-[2rem] p-6 flex flex-col items-center justify-center hover:bg-white/10 transition-all duration-300 border-2 border-dashed border-white/20 text-center gap-4"
+              class="flex-1 group cursor-pointer bg-white/5 backdrop-blur-md rounded-[2.5rem] p-10 flex flex-col items-center justify-center hover:bg-white/10 transition-all duration-500 border-2 border-dashed border-white/20 text-center gap-6"
             >
-              <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                <span class="material-symbols-rounded text-[32px]">explore</span>
+              <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[var(--color-accent-light)] transition-all duration-500">
+                <span class="material-symbols-rounded text-[40px]">explore</span>
               </div>
-              <p class="text-white font-bold tracking-wide">ดูทริปแนะนำทั้งหมด</p>
+              <div>
+                <p class="text-white text-xl font-black tracking-tight mb-2">ดูทริปแนะนำทั้งหมด</p>
+                <p class="text-white/50 text-sm font-medium">ค้นหาแรงบันดาลใจครั้งใหม่ของคุณที่นี่</p>
+              </div>
             </router-link>
           </div>
         </div>
@@ -557,32 +588,45 @@
     <!-- ══════════════════════════════════════════
          WHY ANDAMAN LUXE SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-24 bg-white border-t border-gray-100">
-      <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="text-center mb-16">
-          <h2 class="font-anuphan text-4xl font-extrabold text-[var(--color-text-dark)] tracking-tight">ทำไมต้องเลือก ลุยเลเขา?</h2>
+    <section class="py-32 bg-white relative overflow-hidden">
+      <!-- Decorative background elements -->
+      <div class="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/5 rounded-full blur-3xl -mr-48 -mt-48 pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 w-96 h-96 bg-[var(--color-accent)]/5 rounded-full blur-3xl -ml-48 -mb-48 pointer-events-none"></div>
+
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+        <div class="text-center max-w-3xl mx-auto mb-20">
+          <span class="text-[var(--color-accent)] font-bold tracking-[0.2em] uppercase text-xs mb-4 block">Our Values</span>
+          <h2 class="font-anuphan text-4xl md:text-5xl font-black text-[var(--color-text-dark)] tracking-tight mb-6">ทำไมต้องก้าวไปกับ <span class="text-[var(--color-primary)]">ลุยเลเขา?</span></h2>
+          <p class="text-[var(--color-text-muted)] text-lg font-medium leading-relaxed">
+            เราไม่ใช่แค่บริษัททัวร์ แต่เราคือทีมงานที่พร้อมเติมเต็มทุกประสบการณ์การเดินทางของคุณ<br class="hidden md:block" /> ด้วยหัวใจและการบริการที่เหนือระดับ
+          </p>
         </div>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
           <div
             v-for="trust in trustItems"
             :key="trust.title"
-            class="flex flex-col items-center text-center group"
+            class="group relative bg-white p-10 rounded-[3rem] border border-gray-100/80 shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_40px_80px_rgba(13,43,30,0.1)] transition-all duration-500 hover:-translate-y-3 flex flex-col items-center text-center overflow-hidden"
           >
-            <div 
-              class="mb-6 transition-all duration-300 flex items-center justify-center"
-              :class="trust.image ? 'w-42 h-42' : 'w-20 h-20 rounded-[1.5rem] bg-[var(--color-sand)] text-[var(--color-accent)] group-hover:bg-[var(--color-accent)] group-hover:text-white shadow-sm group-hover:shadow-xl group-hover:-translate-y-2'"
-            >
-              <img 
-                v-if="trust.image" 
-                :src="trust.image" 
-                :alt="trust.title" 
-                class="w-full h-full object-contain group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300" 
-              />
-              <span v-else class="material-symbols-rounded text-[36px]">{{ trust.icon }}</span>
+            <!-- Card Glow -->
+            <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-[var(--color-primary)]/5 rounded-full blur-3xl group-hover:bg-[var(--color-primary)]/10 transition-colors duration-500"></div>
+
+            <!-- Icon Container -->
+            <div class="w-20 h-20 rounded-[2rem] bg-[var(--color-sand)] text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white shadow-sm flex items-center justify-center mb-8 transition-all duration-500 transform group-hover:rotate-[10deg] group-hover:scale-110">
+              <span class="material-symbols-rounded text-4xl">{{ trust.icon }}</span>
             </div>
-            <h5 class="font-extrabold text-xl text-[var(--color-text-dark)] mb-3">{{ trust.title }}</h5>
-            <p class="text-[var(--color-text-muted)] text-base font-medium leading-relaxed max-w-[250px]">{{ trust.desc }}</p>
+
+            <div class="relative z-10">
+              <h5 class="font-black text-2xl text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-primary)] transition-colors">{{ trust.title }}</h5>
+              <div class="w-10 h-1 bg-[var(--color-sand)] mx-auto mb-6 group-hover:w-20 group-hover:bg-[var(--color-accent)] transition-all duration-500"></div>
+              <p class="text-[var(--color-text-muted)] text-base font-medium leading-[1.7]">{{ trust.desc }}</p>
+            </div>
+
+            <!-- Trust Indicator Badge (Optional detail) -->
+            <div class="mt-8 pt-6 border-t border-gray-50 w-full flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+              <span class="material-symbols-rounded text-xs text-[var(--color-accent)]" style="font-variation-settings:'FILL' 1">verified</span>
+              <span class="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)]">Verified Quality</span>
+            </div>
           </div>
         </div>
       </div>
@@ -828,24 +872,24 @@ const reviews = ref([]);
 
 const trustItems = [
   {
-    image: '/images/travel_safety.png',
+    icon: 'verified_user',
     title: 'ความปลอดภัยสูงสุด',
-    desc: 'อุปกรณ์ผ่านการตรวจสอบมาตรฐานสากลทุกครั้งก่อนใช้งาน',
+    desc: 'เราตรวจสอบอุปกรณ์ 100% ทุกครั้งก่อนออกเดินทาง เพื่อให้แน่ใจว่าคุณจะปลอดภัยตลอดทริป',
   },
   {
-    image: '/images/247_support.png',
-    title: 'บริการ 24 ชั่วโมง',
-    desc: 'ทีมงานพร้อมดูแลและให้ความช่วยเหลือคุณตลอดการเดินทาง',
+    icon: 'support_agent',
+    title: 'ผู้ดูแลส่วนตัว 24/7',
+    desc: 'ทีมงานมืออาชีพพร้อมให้ความช่วยเหลือคุณทุกนาที ไม่ว่าจะเป็นการจองหรือช่วยเหลือหน้างาน',
   },
   {
-    image: '/images/nature_travel.png',
-    title: 'ท่องเที่ยวอย่างยั่งยืน',
-    desc: 'เราให้ความสำคัญกับการอนุรักษ์ธรรมชาติในทุกทริปการเดินทาง',
+    icon: 'eco',
+    title: 'ท่องเที่ยวสายอนุรักษ์',
+    desc: 'ทุกทริปของเรามุ่งเน้นความยั่งยืน สนับสนุนชุมชนท้องถิ่นและอนุรักษ์ธรรมชาติอย่างจริงจัง',
   },
   {
     icon: 'payments',
-    title: 'โปร่งใส ราคายุติธรรม',
-    desc: 'ไม่มีค่าใช้จ่ายแอบแฝง คุ้มค่ากับบริการระดับพรีเมียมที่คุณได้รับ',
+    title: 'ราคาโปร่งใส No Hidden',
+    desc: 'ราคาสุทธิที่แจ้งคือราคาที่คุณต้องจ่ายจริง ไม่มีค่าธรรมเนียมแอบแฝง จ่ายครั้งเดียวจบ',
   },
 ];
 
