@@ -116,17 +116,41 @@
     </section>
 
     <!-- ══════════════════════════════════════════
-         SOCIAL PROOF BAR
+         SOCIAL PROOF & TRUST SECTION (Redesigned)
     ══════════════════════════════════════════ -->
-    <section class="bg-[var(--color-sand)] relative z-10 pb-20 pt-4">
+    <section 
+      ref="statsSection"
+      class="bg-[var(--color-sand)] relative z-10 pb-28 pt-4"
+    >
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class=" grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 -mt-16 md:-mt-20 relative z-20">
-          <div v-for="(stat, index) in statItems" :key="stat.label" class="bg-white rounded-[1.5rem] p-6 lg:p-8 flex flex-col items-center text-center shadow-[0_8px_20px_rgba(0,0,0,0.03)] border border-gray-100 hover:border-[var(--color-primary)] hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(13,43,30,0.08)] transition-all duration-300 group">
-            <div class="w-14 h-14 rounded-full bg-[var(--color-primary)]/5 flex items-center justify-center text-[var(--color-primary)] mb-5 group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors duration-300">
-              <span class="material-symbols-rounded text-[28px]">{{ stat.icon }}</span>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 -mt-20 md:-mt-24 relative z-20">
+          <div 
+            v-for="(stat, index) in statItems" 
+            :key="stat.label" 
+            class="bg-white rounded-[2.5rem] p-8 lg:p-10 flex flex-col items-center text-center shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100/50 hover:border-[var(--color-primary)]/30 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(13,43,30,0.12)] transition-all duration-500 group overflow-hidden relative"
+            :class="[isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10']"
+            :style="{ transitionDelay: `${index * 150}ms` }"
+          >
+            <!-- Decorative Background Glow -->
+            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-[var(--color-primary)]/5 rounded-full blur-3xl group-hover:bg-[var(--color-primary)]/10 transition-colors duration-500"></div>
+            
+            <!-- Icon with modern container -->
+            <div class="w-16 h-16 rounded-2xl bg-[var(--color-primary)]/5 flex items-center justify-center text-[var(--color-primary)] mb-6 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:rotate-[10deg] transition-all duration-500 relative z-10">
+              <span class="material-symbols-rounded text-[32px]">{{ stat.icon }}</span>
             </div>
-            <div class="text-3xl lg:text-4xl font-black text-[var(--color-text-dark)] mb-1 tracking-tight">{{ stat.value }}</div>
-            <div class="text-sm font-bold text-[var(--color-text-muted)]">{{ stat.label }}</div>
+            
+            <!-- Statistical Value with Count-up -->
+            <div class="flex items-baseline gap-0.5 mb-2 relative z-10">
+              <span class="text-4xl lg:text-5xl font-black text-[var(--color-text-dark)] tracking-tight leading-none">
+                {{ stat.displayValue }}
+              </span>
+              <span v-if="stat.suffix" class="text-2xl lg:text-3xl font-black text-[var(--color-accent)]">{{ stat.suffix }}</span>
+            </div>
+            
+            <!-- Persuasive Copy -->
+            <div class="text-[13px] lg:text-sm font-bold text-[var(--color-text-muted)] tracking-wide uppercase max-w-[140px] leading-relaxed relative z-10">
+              {{ stat.label }}
+            </div>
           </div>
         </div>
       </div>
@@ -135,69 +159,80 @@
     <!-- ══════════════════════════════════════════
          CATEGORIES SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-20 bg-[var(--color-sand)] relative overflow-hidden">
+    <section class="py-24 bg-[var(--color-sand)] relative overflow-hidden">
       <!-- Decorative background text -->
-      <div class="absolute top-10 left-0 text-[12rem] font-black text-gray-200/40 select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter">
-        ลุยเลเขา
+      <div class="absolute -top-10 -left-10 text-[15rem] font-black text-gray-200/30 select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter">
+        CATEGORIES
       </div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
           <div class="max-w-2xl">
-            <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">หมวดหมู่การเดินทาง</span>
-            <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">เลือกประสบการณ์<br />ในแบบของคุณ</h2>
+            <span class="bg-[var(--color-accent)]/10 text-[var(--color-accent)] px-4 py-1.5 rounded-full font-bold tracking-wider uppercase text-xs mb-4 inline-block">Explore by Category</span>
+            <h2 class="font-anuphan text-4xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.1]">เลือกประสบการณ์<br /><span class="text-[var(--color-primary)]">ในแบบของคุณ</span></h2>
           </div>
-          <p class="text-[var(--color-text-muted)] text-base max-w-sm md:text-right font-medium">
-            ค้นพบการเดินทางที่ออกแบบมาเพื่อคุณ ไม่ว่าจะเป็นการผจญภัยหรือการพักผ่อน
+          <p class="text-[var(--color-text-muted)] text-lg max-w-sm md:text-right font-medium leading-relaxed">
+            สัมผัสความงามที่แตกต่างผ่านทริปที่เราคัดสรรมาเพื่อความประทับใจสูงสุดของคุณ
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
           <router-link
             v-for="cat in categories"
             :key="cat.type"
             :to="`/trips?type=${cat.type}`"
-            class="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_40px_60px_rgba(0,0,0,0.12)] transition-all duration-700 hover:-translate-y-3 border border-gray-100 block isolate h-[450px]"
+            class="group relative bg-white rounded-[3rem] overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_50px_80px_rgba(0,0,0,0.15)] transition-all duration-500 hover:-translate-y-4 border border-gray-100/50 block isolate h-[520px]"
           >
-            <!-- Background Image with Zoom Effect -->
+            <!-- Premium Background Image with Dynamic Zoom -->
             <div class="absolute inset-0 z-[-1] overflow-hidden">
               <img 
                 :src="cat.image" 
                 :alt="cat.label"
-                class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110"
               />
-              <!-- Premium Overlays -->
+              <!-- Enhanced Readability Overlays -->
               <div 
-                class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 transition-opacity duration-500 opacity-80 group-hover:opacity-90"
+                class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent transition-opacity duration-500 opacity-70 group-hover:opacity-85"
               ></div>
               <div 
-                class="absolute inset-0 mix-blend-overlay opacity-30 group-hover:opacity-50 transition-opacity duration-500"
+                class="absolute inset-0 mix-blend-soft-light transition-opacity duration-700 opacity-20 group-hover:opacity-40"
                 :style="`background: ${cat.color}`"
               ></div>
             </div>
             
-            <div class="p-8 md:p-10 flex flex-col h-full relative z-10">
-              <!-- Animated Badge -->
-              <div class="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-xl group-hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] mb-auto backdrop-blur-md border border-white/20" :style="`background: ${cat.bgColor}; color: ${cat.color}`">
-                <span class="material-symbols-rounded text-[28px] transform group-hover:rotate-[360deg] transition-transform duration-1000">{{ cat.icon }}</span>
+            <div class="p-10 md:p-12 flex flex-col h-full relative z-10">
+              <!-- Top Badge / Info Row -->
+              <div class="flex justify-between items-start mb-auto">
+                <div 
+                  v-if="cat.isPopular" 
+                  class="bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full shadow-lg"
+                >
+                  ยอดนิยม
+                </div>
+                <!-- Mini Icon Badge -->
+                <div class="ml-auto w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-xl transition-transform duration-500 group-hover:rotate-12">
+                  <span class="material-symbols-rounded text-2xl">{{ cat.icon }}</span>
+                </div>
               </div>
               
-              <div class="mt-auto transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                <h3 class="text-3xl font-black text-white tracking-tight mb-3 transition-colors drop-shadow-md">
+              <!-- Content Area with Stagger Effect -->
+              <div class="transform transition-all duration-500 group-hover:translate-y-[-10px]">
+                <h3 class="text-4xl font-black text-white tracking-tight mb-3 drop-shadow-lg leading-none">
                   {{ cat.label }}
                 </h3>
-                <p class="text-white/80 text-base font-medium mb-8 leading-relaxed opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100">
-                  {{ cat.desc }}
+                <p class="text-white/70 text-base font-medium mb-8 leading-relaxed max-w-[90%] transform transition-all duration-500 opacity-80 group-hover:text-white group-hover:opacity-100">
+                  {{ cat.subtext }}
                 </p>
                 
-                <div class="flex items-center text-sm font-black text-white uppercase tracking-widest bg-white/10 backdrop-blur-md w-fit px-6 py-3 rounded-full border border-white/20 shadow-lg hover:bg-white hover:text-[var(--color-text-dark)] transition-all duration-300">
-                  <span class="mr-3">ดูทริปทั้งหมด</span>
-                  <span class="material-symbols-rounded text-[20px] transform group-hover:translate-x-2 transition-transform duration-300">arrow_right_alt</span>
+                <!-- Category-Specific Actionable CTA -->
+                <div class="inline-flex items-center gap-4 text-sm font-black text-white uppercase tracking-widest bg-white/10 backdrop-blur-xl px-8 py-4 rounded-2xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.2)] hover:bg-white hover:text-[var(--color-primary)] hover:border-white transition-all duration-500 group/btn">
+                  <span>{{ cat.ctaText }}</span>
+                  <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover/btn:bg-[var(--color-primary)] transition-colors duration-300">
+                    <span class="material-symbols-rounded text-lg transform group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <!-- Side subtle border -->
           </router-link>
         </div>
       </div>
@@ -690,40 +725,102 @@ const goBook = () => {
   }
 };
 
+const statsSection = ref(null);
+const isVisible = ref(false);
+
 const statItems = ref([
-  { icon: 'groups', value: '1,200+', label: 'นักเดินทางที่ไว้ใจเรา' },
-  { icon: 'star', value: '5.0', label: 'คะแนนความพึงพอใจ' },
-  { icon: 'map', value: '10+', label: 'เส้นทางท่องเที่ยว' },
-  { icon: 'verified_user', value: '100%', label: 'รับประกันความปลอดภัย' },
+  { 
+    icon: 'groups', 
+    target: 1420, 
+    displayValue: '0', 
+    suffix: '+', 
+    label: 'นักเดินทางที่ไว้ใจก้าวไปกับเรา' 
+  },
+  { 
+    icon: 'star', 
+    target: 4.9, 
+    displayValue: '0.0', 
+    suffix: '/5', 
+    label: 'คะแนนรีวิวจากความประทับใจ' 
+  },
+  { 
+    icon: 'map', 
+    target: 24, 
+    displayValue: '0', 
+    suffix: '+', 
+    label: 'เส้นทางท่องเที่ยวที่คัดสรรมาเพื่อคุณ' 
+  },
+  { 
+    icon: 'verified_user', 
+    target: 99.9, 
+    displayValue: '0', 
+    suffix: '%', 
+    label: 'อัตราความปลอดภัยระดับพรีเมียม' 
+  },
 ]);
+
+const animateStats = () => {
+  statItems.value.forEach((stat) => {
+    const duration = 2000; // ms
+    const startTime = performance.now();
+    const frame = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const easeProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      
+      const current = easeProgress * stat.target;
+      
+      if (typeof stat.target === 'number' && stat.target % 1 !== 0) {
+        stat.displayValue = current.toFixed(1);
+      } else {
+        stat.displayValue = Math.floor(current).toLocaleString();
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        // Final values for perfection
+        stat.displayValue = stat.target % 1 !== 0 
+          ? stat.target.toFixed(1) 
+          : stat.target.toLocaleString();
+      }
+    };
+    requestAnimationFrame(frame);
+  });
+};
 
 const categories = [
   {
     type: 'snorkeling',
-    label: 'ดำน้ำตื้น',
-    desc: 'สัมผัสความงามของโลกใต้ทะเล พร้อมทีมงานมืออาชีพ',
+    label: 'Snorkeling',
+    subtext: 'สำรวจโลกใต้ทะเลที่สวยที่สุดในอันดามัน พร้อมทีมงานมืออาชีพ',
+    ctaText: 'ดูทริปดำน้ำ',
     image: '/images/diving_show.png',
     icon: 'scuba_diving',
     color: '#3B9DD4',
     bgColor: '#E8F4FA',
+    isPopular: true,
   },
   {
     type: 'trekking',
-    label: 'เดินป่า',
-    desc: 'ผจญภัยในเส้นทางธรรมชาติที่ท้าทาย สูดอากาศบริสุทธิ์ให้เต็มปอด',
+    label: 'Trekking',
+    subtext: 'ผจญภัยสู่ยอดเขาและเส้นทางธรรมชาติที่ยังไม่ถูกรบกวน',
+    ctaText: 'สำรวจเส้นทาง',
     image: '/images/hiking_show.png',
     icon: 'hiking',
     color: '#2D7A4F',
     bgColor: '#E8F5EC',
+    isPopular: false,
   },
   {
     type: 'climbing',
-    label: 'รถตู้พรีเมียม',
-    desc: 'เดินทางอย่างสะดวกสบายและปลอดภัย ด้วยบริการรถตู้ระดับพรีเมียม',
+    label: 'Premium Van',
+    subtext: 'เดินทางระดับ Exclusive พร้อมความสะดวกสบายครบครันทุกเส้นทาง',
+    ctaText: 'ดูแพ็กเกจทัวร์',
     image: '/images/van_show.png',
     icon: 'airport_shuttle',
     color: '#C8963E',
     bgColor: '#FFF8EE',
+    isPopular: false,
   },
 ];
 
@@ -803,12 +900,21 @@ onMounted(async () => {
     // Update stats
     if (statsRes.data?.data) {
       const s = statsRes.data.data;
-      statItems.value = [
-        { icon: 'groups', value: `${s.total_customers.toLocaleString()}+`, label: 'นักเดินทางที่ไว้ใจเรา' },
-        { icon: 'star', value: s.avg_rating.toString(), label: 'คะแนนความพึงพอใจ' },
-        { icon: 'map', value: `${s.total_trips}+`, label: 'เส้นทางท่องเที่ยว' },
-        { icon: 'verified_user', value: '100%', label: 'รับประกันความปลอดภัย' },
-      ];
+      statItems.value[0].target = s.total_customers;
+      statItems.value[1].target = s.avg_rating;
+      statItems.value[2].target = s.total_trips;
+    }
+
+    // Set up IntersectionObserver
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !isVisible.value) {
+        isVisible.value = true;
+        animateStats();
+      }
+    }, { threshold: 0.2 });
+
+    if (statsSection.value) {
+      observer.observe(statsSection.value);
     }
   } catch (e) {
     console.error('Failed to load home data', e);
