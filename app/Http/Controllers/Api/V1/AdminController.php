@@ -130,6 +130,12 @@ class AdminController extends Controller
         return $this->paginated($trips->through(fn($t) => new TripResource($t)));
     }
 
+    public function showTrip(int $id): JsonResponse
+    {
+        $trip = Trip::findOrFail($id);
+        return $this->success(new TripResource($trip));
+    }
+
     public function storeTrip(StoreTripRequest $request): JsonResponse
     {
         $data = $request->validated();

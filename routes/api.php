@@ -136,6 +136,7 @@ Route::prefix('v1')->group(function () {
 
         // Trips CRUD
         Route::get('trips', [AdminController::class, 'trips']);
+        Route::get('trips/{id}', [AdminController::class, 'showTrip']);
         Route::post('trips', [AdminController::class, 'storeTrip']);
         Route::put('trips/{id}', [AdminController::class, 'updateTrip']);
         Route::delete('trips/{id}', [AdminController::class, 'deleteTrip']);
