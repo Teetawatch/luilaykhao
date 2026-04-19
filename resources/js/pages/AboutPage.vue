@@ -18,11 +18,11 @@
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
         <div class="text-center max-w-5xl mt-10 flex flex-col items-center">
           <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-8 rounded-full shadow-lg"></div>
-          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-9xl font-black text-white leading-[1.1] mb-8 tracking-tighter drop-shadow-2xl">
+          <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-8 tracking-tighter drop-shadow-2xl">
             เปลี่ยนความอยากเที่ยว<br />
             <span class="text-[var(--color-accent)]">เป็นการเดินทางที่ง่ายที่สุด</span>
           </h1>
-          <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto tracking-wide mb-10">
+          <p class="text-base md:text-xl lg:text-2xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto tracking-wide mb-10">
             แพลตฟอร์มที่รวมทริปคุณภาพ จองง่ายเพียงไม่กี่คลิก <br class="hidden md:block"/> พร้อมระบบยืนยันที่ทันใจ เหมือนมีเพื่อนสนิทมาวางแผนให้คุณ
           </p>
           <div class="flex flex-col sm:flex-row items-center gap-4">
@@ -115,7 +115,7 @@
           ทำไมเราถึงสร้างสิ่งนี้
           <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
         </div>
-        <h2 class="text-4xl md:text-5xl lg:text-7xl font-extrabold text-[var(--color-text-dark)] leading-tight">
+        <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)] leading-tight">
           เราสร้างที่นี่ เพื่อให้การออกไปเห็นโลก<br />
           <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent)] to-[#2D5A3D]">"เป็นเรื่องที่ง่ายที่สุด"</span>
         </h2>
