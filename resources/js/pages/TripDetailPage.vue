@@ -43,7 +43,7 @@
               </span>
             </div>
             
-            <h1 class="text-white text-4xl md:text-5xl lg:text-7xl font-extrabold mb-6 leading-tight drop-shadow-xl tracking-tight">
+            <h1 class="text-white text-2xl md:text-4xl lg:text-5xl font-black mb-4 leading-tight drop-shadow-2xl tracking-tight truncate" :title="trip.title">
               {{ trip.title }}
             </h1>
             

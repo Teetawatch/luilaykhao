@@ -8,8 +8,8 @@
 
         <!-- Logo -->
         <router-link to="/" class="flex items-center gap-3 shrink-0 group">
-          <div class="relative flex items-center justify-center w-12 h-12">
-            <img src="/images/logo.png" alt="ลุยเลเขา Logo" class="w-12 h-12" />
+          <div class="relative flex items-center justify-center w-14 h-14">
+            <img src="/images/logo.png" alt="ลุยเลเขา Logo" class="w-14 h-14" />
           </div>
         </router-link>
 
