@@ -18,10 +18,9 @@
       </div>
       <select v-model="filters.type" @change="fetchData()">
         <option value="">ทุกประเภท</option>
-        <option value="trekking">เดินป่า</option>
-        <option value="diving">ดำน้ำ</option>
-        <option value="snorkeling">ดำน้ำตื้น</option>
-        <option value="climbing">ปีนผา</option>
+        <option v-for="cat in categoriesStore.categories" :key="cat.id" :value="cat.slug">
+          {{ cat.name }}
+        </option>
       </select>
       <select v-model="filters.status" @change="fetchData()">
         <option value="">ทุกสถานะ</option>
@@ -64,7 +63,7 @@
                   </div>
                 </div>
               </td>
-              <td><span class="type-tag" :class="`type-${trip.type}`">{{ typeLabels[trip.type] }}</span></td>
+              <td><span class="type-tag" :class="`type-${trip.type}`">{{ getCategoryLabel(trip.type) }}</span></td>
               <td>{{ trip.location }}</td>
               <td class="money">{{ formatMoney(trip.price_per_person) }}</td>
               <td><span class="diff-badge" :class="`diff-${trip.difficulty}`">{{ diffLabels[trip.difficulty] }}</span></td>
@@ -122,10 +121,9 @@
             <div class="form-group">
               <label>ประเภท *</label>
               <select v-model="form.type" required>
-                <option value="trekking">เดินป่า</option>
-                <option value="diving">ดำน้ำ</option>
-                <option value="snorkeling">ดำน้ำตื้น</option>
-                <option value="climbing">ปีนผา</option>
+                <option v-for="cat in categoriesStore.categories" :key="cat.id" :value="cat.slug">
+                  {{ cat.name }}
+                </option>
               </select>
             </div>
             <div class="form-group">
@@ -427,9 +425,11 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
+import { useCategoriesStore } from '../../stores/categories';
 import api from '../../lib/axios';
 
 const admin = useAdminStore();
+const categoriesStore = useCategoriesStore();
 
 const filters = reactive({ search: '', type: '', status: '' });
 const showForm = ref(false);
@@ -478,7 +478,11 @@ const mapEmbedUrl = computed(() => {
   return `https://www.google.com/maps?q=${form.latitude},${form.longitude}&z=14&output=embed`;
 });
 
-const typeLabels = { trekking: 'เดินป่า', diving: 'ดำน้ำ', snorkeling: 'ดำน้ำตื้น', climbing: 'ปีนผา' };
+const getCategoryLabel = (slug) => {
+  const cat = categoriesStore.categories.find(c => c.slug === slug);
+  return cat ? cat.name : slug;
+};
+
 const diffLabels = { easy: 'ง่าย', medium: 'ปานกลาง', hard: 'ยาก' };
 const statusLabels = { active: 'ใช้งาน', inactive: 'ปิด', full: 'เต็ม' };
 
@@ -708,7 +712,10 @@ const doDelete = async () => {
   }
 };
 
-onMounted(() => fetchData());
+onMounted(() => {
+  fetchData();
+  categoriesStore.fetchAdminCategories();
+});
 </script>
 
 <style scoped>
