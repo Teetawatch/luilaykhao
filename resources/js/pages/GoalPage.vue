@@ -321,9 +321,9 @@
 import { ref, onMounted } from 'vue'
 
 const visions = ref([
-  { image: '/images/no_hassle.webp', title: 'เข้าถึงง่าย', desc: 'ทุกคนสามารถเข้าถึงการท่องเที่ยวที่ดีได้โดยไม่มีอุปสรรคใด ๆ', color: '#4CAF7D' },
+  { image: '/images/no_wating.webp', title: 'เข้าถึงง่าย', desc: 'ทุกคนสามารถเข้าถึงการท่องเที่ยวที่ดีได้โดยไม่มีอุปสรรคใด ๆ', color: '#4CAF7D' },
   { image: '/images/no_hassle.webp', title: 'ไม่ยุ่งยาก', desc: 'กระบวนการจองที่เรียบง่าย ตรงไปตรงมา ทำได้ทุกที่ทุกเวลา', color: '#66C291' },
-  { image: '/images/no_hidden.webp', title: 'ไม่ซับซ้อน', desc: 'ข้อมูลครบ ชัดเจน ไม่มีค่าใช้จ่ายแฝง สิ่งที่เห็นคือสิ่งที่ได้', color: '#C8963E' },
+  { image: '/images/nohidden_show.webp', title: 'ไม่ซับซ้อน', desc: 'ข้อมูลครบ ชัดเจน ไม่มีค่าใช้จ่ายแฝง สิ่งที่เห็นคือสิ่งที่ได้', color: '#C8963E' },
   { image: '/images/no_lucky.webp', title: 'ไม่ต้องพึ่งโชค', desc: 'ออกแบบให้ทุกอย่างมีระบบ เชื่อถือได้ มั่นใจได้ทุกครั้ง', color: '#007B8F' },
 ])
 
