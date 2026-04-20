@@ -225,17 +225,30 @@
           <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)]">สิ่งที่เราเชื่อมั่น</h2>
         </div>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mt-16 md:mt-12 items-stretch">
           <div
-            v-for="val in values"
-            :key="val.icon"
-            class="bg-white rounded-[2rem] p-8 text-center border border-[var(--color-sand-dark)] hover:border-transparent hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 reveal-section group"
+            v-for="(val, idx) in values"
+            :key="val.title"
+            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
+            :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
           >
-            <div class="w-16 h-16 bg-[var(--color-sand)] rounded-2xl flex items-center justify-center mx-auto mb-6 transition-transform duration-300 group-hover:scale-110" :style="`background-color: ${val.color}15; color: ${val.color}`">
-              <span class="material-symbols-rounded text-3xl">{{ val.icon }}</span>
+            <!-- Image Wrapper (Out-of-bound) -->
+            <div class="absolute -top-24 md:-top-28 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
+              <img 
+                :src="val.image" 
+                :alt="val.title" 
+                class="w-48 h-48 md:w-56 md:h-56 max-w-none object-contain drop-shadow-2xl"
+              />
             </div>
-            <h5 class="font-bold text-xl text-[var(--color-text-dark)] mb-3">{{ val.title }}</h5>
-            <p class="text-[var(--color-text-muted)] text-base leading-relaxed">{{ val.desc }}</p>
+
+            <div class="relative z-10 flex flex-col items-center h-full">
+              <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors">{{ val.title }}</h3>
+              <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mx-auto max-w-xs">{{ val.desc }}</p>
+              <!-- Decorative Line -->
+              <div class="mt-auto pt-8">
+                <div class="mx-auto w-12 h-1.5 bg-[var(--color-accent)]/20 group-hover:bg-[var(--color-accent)] transition-all duration-500 rounded-full"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -309,10 +322,10 @@ const stats = ref([
 ])
 
 const values = ref([
-  { icon: 'security', title: 'ปลอดภัย 100%', desc: 'ตรวจสอบอุปกรณ์และเส้นทางเดินรถทุกครั้งก่อนออกเดินทาง เพื่อความปลอดภัยสูงสุดของคุณ', color: '#4CAF7D' },
-  { icon: 'local_mall', title: 'ราคา Net โปร่งใส', desc: 'ไม่มีค่าใช้จ่ายแอบแฝง สิ่งที่เห็นคือสิ่งที่คุณจ่าย มั่นใจได้ในทุกการทำธุรกรรม', color: '#66C291' },
-  { icon: 'volunteer_activism', title: 'ใส่ใจชุมชน', desc: 'เราทำงานร่วมกับคนในท้องถิ่น เพื่อกระจายรายได้และรักษาความงามของธรรมชาติอย่างยั่งยืน', color: '#C8963E' },
-  { icon: 'support_agent', title: 'ดูแลแบบ VIP', desc: 'ทีมงานพร้อมให้ความช่วยเหลือตลอดการเดินทาง เพื่อให้คุณอุ่นใจเหมือนมีเพื่อนอยู่ข้างๆ', color: '#007B8F' },
+  { image: '/images/travel_safety.png', title: 'ปลอดภัย 100%', desc: 'ตรวจสอบอุปกรณ์และเส้นทางเดินรถทุกครั้งก่อนออกเดินทาง เพื่อความปลอดภัยสูงสุดของคุณ', color: '#4CAF7D' },
+  { image: '/images/nohidden_show.png', title: 'ราคา Net โปร่งใส', desc: 'ไม่มีค่าใช้จ่ายแอบแฝง สิ่งที่เห็นคือสิ่งที่คุณจ่าย มั่นใจได้ในทุกการทำธุรกรรม', color: '#66C291' },
+  { image: '/images/nature_travel.png', title: 'ใส่ใจชุมชน', desc: 'เราทำงานร่วมกับคนในท้องถิ่น เพื่อกระจายรายได้และรักษาความงามของธรรมชาติอย่างยั่งยืน', color: '#C8963E' },
+  { image: '/images/247_support.png', title: 'ดูแลแบบ VIP', desc: 'ทีมงานพร้อมให้ความช่วยเหลือตลอดการเดินทาง เพื่อให้คุณอุ่นใจเหมือนมีเพื่อนอยู่ข้างๆ', color: '#007B8F' },
 ])
 
 onMounted(() => {
