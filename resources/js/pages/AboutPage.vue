@@ -313,6 +313,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '../lib/axios'
 
 const stats = ref([
   { icon: 'tour', value: '1,240+', label: 'ทริปที่ประทับใจ', color: '#0D2B1E' },
@@ -328,7 +329,24 @@ const values = ref([
   { image: '/images/247_support.png', title: 'ดูแลแบบ VIP', desc: 'ทีมงานพร้อมให้ความช่วยเหลือตลอดการเดินทาง เพื่อให้คุณอุ่นใจเหมือนมีเพื่อนอยู่ข้างๆ', color: '#007B8F' },
 ])
 
-onMounted(() => {
+onMounted(async () => {
+  // Fetch real stats
+  try {
+    const res = await api.get('/stats')
+    if (res.data?.data) {
+      const s = res.data.data
+      stats.value[0].value = `${(s.total_trips || 0).toLocaleString()}+`
+      stats.value[1].value = `${(s.total_customers || 0).toLocaleString()}+`
+      // For destinations, if not in stats, we can use a reasonable number or fetch from elsewhere
+      // but usually total_trips is a good proxy or we keep the placeholder if not available
+      if (s.total_destinations) {
+        stats.value[2].value = `${s.total_destinations}+`
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch stats', e)
+  }
+
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
   const observer = new IntersectionObserver(
