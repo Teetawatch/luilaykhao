@@ -260,50 +260,22 @@
     <!-- ══════════════════════════════════════════
          CLOSING CTA (Full-Width Redesign)
     ══════════════════════════════════════════ -->
-    <section class="relative py-32 w-full overflow-hidden bg-[#0D2B1E]">
+    <section class="relative py-40 w-full overflow-hidden bg-[#0D2B1E]">
       <!-- Sophisticated Background Elements -->
       <div class="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
       <div class="absolute top-0 right-0 w-[50rem] h-[50rem] bg-[var(--color-accent)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
       <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-[var(--color-gold)]/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
       
-      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10 text-center lg:text-left">
-        <div class="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-24">
-          
-          <!-- Text Content -->
-          <div class="flex-1 max-w-3xl">
-            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.05] tracking-tight">
-              เราไม่ได้อยากเป็นแค่<br />
-              <span class="text-[var(--color-gold)]">แพลตฟอร์มจองทริป</span>
-            </h2>
-            <p class="text-white/70 text-lg md:text-2xl font-medium leading-relaxed mb-0">
-              แต่อยากเป็น <span class="text-white font-black underline decoration-[var(--color-gold)] decoration-4 underline-offset-8">"เพื่อน"</span> ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทางที่คุณเลือกไปกับเรา
-            </p>
-          </div>
-
-          <!-- Glassmorphism Call to Action -->
-          <div class="flex-1 w-full max-w-lg">
-            <div class="relative group">
-              <!-- Subtle glow background -->
-              <div class="absolute -inset-1 bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-gold)] rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-              
-              <div class="relative bg-white/5 backdrop-blur-2xl p-10 md:p-14 rounded-[2.5rem] border border-white/10 shadow-3xl text-center">
-                <div class="w-20 h-20 bg-[var(--color-accent)]/20 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-inner ring-1 ring-white/20">
-                  <span class="material-symbols-rounded text-white text-[40px]">explore</span>
-                </div>
-                <h3 class="text-2xl md:text-3xl font-bold text-white mb-6">ค้นหาทริปที่ใช่สำหรับคุณ</h3>
-                <p class="text-white/60 mb-10 font-medium">เริ่มต้นความประทับใจครั้งใหม่ได้ทันที <br /> จองง่าย ข้อมูลครบ พร้อมออกเดินทางได้เลย</p>
-                
-                <router-link
-                  to="/trips"
-                  class="w-full bg-[var(--color-accent)] text-white hover:bg-[#3d8b63] py-5 rounded-2xl font-black text-xl transition-all duration-500 shadow-xl hover:shadow-[0_20px_40px_rgba(76,175,125,0.3)] flex items-center justify-center gap-3 cursor-pointer group/btn overflow-hidden"
-                >
-                  <span class="relative z-10">เริ่มการเดินทางครั้งใหม่</span>
-                  <span class="material-symbols-rounded relative z-10 text-2xl animate-pulse">hiking</span>
-                </router-link>
-              </div>
-            </div>
-          </div>
-
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10 text-center reveal-section">
+        <!-- Text Content Centered -->
+        <div class="max-w-4xl mx-auto">
+          <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.1] tracking-tighter">
+            เราไม่ได้อยากเป็นแค่<br />
+            <span class="text-[var(--color-gold)]">แพลตฟอร์มจองทริป</span>
+          </h2>
+          <p class="text-white/70 text-lg md:text-2xl font-medium leading-relaxed mb-0 max-w-3xl mx-auto">
+            แต่อยากเป็น <span class="text-white font-black underline decoration-[var(--color-gold)] decoration-4 underline-offset-8">"เพื่อน"</span> ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทางที่คุณเลือกไปกับเรา
+          </p>
         </div>
       </div>
     </section>
