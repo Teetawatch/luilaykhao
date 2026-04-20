@@ -295,12 +295,13 @@ function updateTrailPolyline(vehicleId) {
     if (showTrail.value) {
       trailPolylines[vehicleId].setLatLngs(pts);
     }
-  } else {
+  } else if (showTrail.value) {
     trailPolylines[vehicleId] = L.polyline(pts, {
-      color: '#3b82f6',
-      weight: 3,
-      opacity: 0.7,
-      dashArray: '6 4',
+      color: 'var(--color-accent)',
+      weight: 4,
+      opacity: 0.6,
+      dashArray: '8 8',
+      lineJoin: 'round',
     }).addTo(map);
   }
 
@@ -417,6 +418,7 @@ async function refreshLocations(isAutoRefresh) {
       if (existing) Object.assign(existing, v);
       else vehicles.value.push(v);
       upsertMarker(v);
+      updateTrailPolyline(v.vehicle_id);
     });
   } catch (e) {
     console.error('Failed to fetch locations:', e);
@@ -464,10 +466,26 @@ function handleLocationUpdate(data) {
 }
 
 // ─── UI Actions ───────────────────────────────────────────
-function selectVehicle(v) {
+async function selectVehicle(v) {
   selectedVehicleId.value = v.vehicle_id;
   if (map && v.latitude && v.longitude) {
     map.flyTo([v.latitude, v.longitude], 14, { duration: 0.8 });
+  }
+
+  // Fetch history for trail if selecting for the first time or if trail is very short
+  if (!trailPoints.value[v.vehicle_id] || trailPoints.value[v.vehicle_id].length < 5) {
+    try {
+      const res = await api.get(`/tracking/history/${v.vehicle_id}`, { params: { limit: 50 } });
+      const history = res.data.data || [];
+      if (history.length > 0) {
+        // Reverse because history is desc (newest first)
+        const pts = history.reverse().map(loc => [loc.latitude, loc.longitude]);
+        trailPoints.value[v.vehicle_id] = pts;
+        updateTrailPolyline(v.vehicle_id);
+      }
+    } catch (e) {
+      console.error('Failed to fetch history for trail:', e);
+    }
   }
 }
 
