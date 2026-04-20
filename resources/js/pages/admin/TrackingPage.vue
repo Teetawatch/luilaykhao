@@ -216,9 +216,9 @@ function timeAgo(dateStr) {
 function getVehicleIcon(type) {
   switch (type) {
     case 'boat': return 'directions_boat';
-    case 'van': return 'airport_shuttle';
+    case 'van': return 'directions_bus'; /* Changing to directions_bus as it looks more like a van front-on */
     case 'bus': return 'directions_bus';
-    default: return 'airport_shuttle';
+    default: return 'directions_bus';
   }
 }
 
@@ -237,10 +237,9 @@ function createIcon(vehicle, online) {
   const border = online ? 'var(--color-ocean)' : 'var(--color-sand-dark)';
   const materialIcon = getVehicleIcon(vehicle.type);
 
-  // Heading rotation — หมุนเฉพาะไอคอน ไม่หมุน label
-  const rot = (vehicle.heading != null)
-    ? `style="transform:rotate(${vehicle.heading}deg);display:flex;align-items:center;justify-content:center;background:${color};border-color:${border};"`
-    : `style="display:flex;align-items:center;justify-content:center;background:${color};border-color:${border};"`;
+  // Pointer rotation — หมุนเฉพาะเข็มชี้ทิศทาง ไอคอนรถจะตั้งตรงเสมอ
+  const heading = vehicle.heading ?? 0;
+  const hasHeading = vehicle.heading != null;
 
   // Label: ชื่อรถ + ทะเบียน (ถ้ามี)
   const name  = vehicle.vehicle_name ?? '';
@@ -248,8 +247,9 @@ function createIcon(vehicle, online) {
 
   const html = `
     <div class="mk-wrap">
-      <div class="mk-dot" ${rot}>
-        <span class="material-symbols-rounded" style="color:white; font-size:18px;">${materialIcon}</span>
+      <div class="mk-dot" style="background:${color}; border-color:${border};">
+        <span class="material-symbols-rounded" style="color:white; font-size:20px;">${materialIcon}</span>
+        ${hasHeading ? `<div class="mk-pointer" style="transform: rotate(${heading}deg)"></div>` : ''}
       </div>
       <div class="mk-label">
         <span class="mk-name">${name}</span>
@@ -257,13 +257,12 @@ function createIcon(vehicle, online) {
       </div>
     </div>`;
 
-  // iconSize: กว้าง 80px สูง 60px, anchor ล่างกลาง
   return L.divIcon({
     className: 'vehicle-marker-icon',
     html,
-    iconSize:   [80, 60],
-    iconAnchor: [40, 60],
-    popupAnchor:[0, -60],
+    iconSize:   [80, 70],
+    iconAnchor: [40, 50],
+    popupAnchor:[0, -50],
   });
 }
 
@@ -689,7 +688,21 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(0,0,0,.15);
   border: 3px solid white;
   flex-shrink: 0;
-  transition: transform 0.4s ease;
+  position: relative;
+}
+:deep(.mk-pointer) {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  margin-left: -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid var(--color-accent);
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+  transform-origin: 50% 27px; /* หมุนรอบจุดศูนย์กลางของ mk-dot (38px/2 + 8px = 27px) */
+  z-index: 2;
 }
 :deep(.mk-label) {
   background: var(--color-white);
