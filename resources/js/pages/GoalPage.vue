@@ -184,52 +184,45 @@
           <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[var(--color-text-dark)]">สิ่งที่เราตั้งใจมอบให้คุณ</h2>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-12 items-stretch">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 items-stretch">
           <!-- Card 1 -->
-          <div class="bg-white p-10 pt-36 rounded-[3.5rem] shadow-lg hover:shadow-2xl transition-all duration-700 border border-white hover:border-[var(--color-accent)]/20 cursor-default group reveal-section relative mt-24 text-center overflow-hidden">
-             <!-- Card background decoration -->
-            <div class="absolute top-0 right-0 w-32 h-32 bg-[var(--color-accent)]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-            
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-6">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/fast_nowaitng.webp" 
                 alt="จองทริปได้ในไม่กี่คลิก" 
-                class="w-72 h-72 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
-            <h3 class="text-2xl font-black text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">จองทริปได้ในไม่กี่คลิก</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed font-medium">ไม่ต้องเสียเวลาหาข้อมูล ไม่ต้องรอแอดมินตอบกลับ อยากไปวันไหนระบบเราจัดให้ทันที</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">จองทริปได้ในไม่กี่คลิก</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">ไม่ต้องเสียเวลาหาข้อมูล ไม่ต้องรอแอดมินตอบกลับ อยากไปวันไหนระบบเราจัดให้ทันที</p>
           </div>
           
           <!-- Card 2 (Featured) -->
-          <div class="bg-white p-10 pt-36 rounded-[3.5rem] shadow-xl hover:shadow-2xl transition-all duration-700 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 cursor-default group reveal-section relative mt-24 text-center overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-b from-[var(--color-accent)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-6">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/feel_good.webp" 
                 alt="ดูแลคุณตลอดเส้นทาง" 
-                class="w-72 h-72 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
-            <h3 class="text-2xl font-black mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">ดูแลคุณตลอดเส้นทาง</h3>
-            <p class="text-[var(--color-text-mid)] text-lg leading-relaxed font-medium">ไม่ใช่แค่การจอง แต่เราคือเพื่อนร่วมทางที่พร้อมช่วยเหลือคุณจนถึงจุดหมายอย่างปลอดภัย</p>
-            <div class="mt-8 mx-auto w-16 h-1.5 bg-[var(--color-gold)] rounded-full"></div>
+            <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">ดูแลคุณตลอดเส้นทาง</h3>
+            <p class="text-[var(--color-text-mid)] text-lg leading-relaxed mx-auto max-w-xs">ไม่ใช่แค่การจอง แต่เราคือเพื่อนร่วมทางที่พร้อมช่วยเหลือคุณจนถึงจุดหมายอย่างปลอดภัย</p>
+            <div class="mt-10 mx-auto w-14 h-1.5 bg-[var(--color-accent)] rounded-full"></div>
           </div>
           
           <!-- Card 3 -->
-          <div class="bg-white p-10 pt-36 rounded-[3.5rem] shadow-lg hover:shadow-2xl transition-all duration-700 border border-white hover:border-[var(--color-accent)]/20 cursor-default group reveal-section relative mt-24 text-center overflow-hidden">
-            <div class="absolute bottom-0 left-0 w-32 h-32 bg-[var(--color-gold)]/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-            
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-6">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/no_wating.webp" 
                 alt="เริ่มผจญภัยได้ทุกคน" 
-                class="w-72 h-72 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
-            <h3 class="text-2xl font-black text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">เริ่มผจญภัยได้ทุกคน</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed font-medium">มีแผนการเดินทางที่ออกแบบมาให้เหมาะสม ตั้งแต่นักเดินป่ามือใหม่ไปจนถึงสายลุยระดับโปร</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">เริ่มผจญภัยได้ทุกคน</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">มีแผนการเดินทางที่ออกแบบมาให้เหมาะสม ตั้งแต่นักเดินป่ามือใหม่ไปจนถึงสายลุยระดับโปร</p>
           </div>
         </div>
       </div>
