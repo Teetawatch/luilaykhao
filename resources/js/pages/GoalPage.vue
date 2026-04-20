@@ -296,28 +296,28 @@
           </h2>
         </div>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 mt-16 md:mt-12 items-stretch">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mt-16 md:mt-12 items-stretch">
           <div
             v-for="(vision, idx) in visions"
             :key="vision.title"
-            class="bg-white p-8 md:p-10 pt-32 rounded-[3.5rem] shadow-lg hover:shadow-2xl transition-all duration-700 border border-white hover:border-[var(--color-accent)]/20 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
-            :class="{ 'lg:translate-y-12': idx % 2 === 1 }"
+            class="bg-white p-12 pt-32 rounded-[3.5rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/20 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
+            :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
           >
             <!-- Image Wrapper (Out-of-bound) -->
-            <div class="absolute -top-28 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-6">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 :src="vision.image" 
                 :alt="vision.title" 
-                class="w-56 h-56 md:w-64 md:h-64 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
             </div>
 
             <div class="relative z-10 flex flex-col items-center h-full pt-4">
-              <h3 class="text-2xl font-black text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors">{{ vision.title }}</h3>
+              <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">{{ vision.title }}</h3>
               <p class="text-[var(--color-text-mid)] text-lg font-medium leading-relaxed mx-auto max-w-xs">{{ vision.desc }}</p>
               <!-- Decorative Line -->
               <div class="mt-auto pt-10">
-                <div class="mx-auto w-12 h-1.5 bg-[var(--color-accent)]/20 group-hover:bg-[var(--color-accent)] group-hover:w-20 transition-all duration-700 rounded-full"></div>
+                <div class="mx-auto w-14 h-1.5 bg-[var(--color-accent)]/20 group-hover:bg-[var(--color-accent)] transition-all duration-500 rounded-full"></div>
               </div>
             </div>
           </div>
