@@ -19,12 +19,12 @@
         <div class="text-center max-w-5xl mt-10 flex flex-col items-center">
           <div class="w-20 h-1.5 bg-[var(--color-accent)] mb-8 rounded-full shadow-lg"></div>
           
-          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-[1.1] mb-8 tracking-tight drop-shadow-xl">
+          <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-8 tracking-tight drop-shadow-xl">
             ทำให้การท่องเที่ยวธรรมชาติ<br/>
             <span class="text-[var(--color-accent-light)]">เป็นเรื่องง่าย</span> สำหรับทุกคน
           </h1>
           
-          <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto tracking-wide mb-12 drop-shadow-md">
+          <p class="text-lg md:text-xl lg:text-2xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto tracking-wide mb-12 drop-shadow-md">
             เพราะเราเชื่อว่าการผจญภัยที่ยอดเยี่ยม ไม่ควรถูกขัดจังหวะด้วยความยุ่งยากในการจองและข้อมูลที่สับสน
           </p>
 
@@ -356,7 +356,7 @@
             พร้อมจะออกไปลุยหรือยัง?
           </div>
           
-          <h2 class="text-5xl md:text-6xl lg:text-8xl font-black leading-[1.05] mb-10 tracking-tight">
+          <h2 class="text-4xl md:text-5xl lg:text-7xl font-black leading-[1.05] mb-10 tracking-tight">
             ให้เราช่วยสร้าง<br/>
             <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 underline decoration-[var(--color-gold)] decoration-8">ความทรงจำ</span> ที่สวยงามของคุณ
           </h2>
