@@ -7,7 +7,7 @@
     <section class="relative min-h-[520px] md:min-h-[700px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
-          src="/images/phusoidao.png"
+          src="/images/phusoidao.webp"
           alt="ลุยเลเขา"
           class="w-full h-full object-cover"
         />
@@ -154,7 +154,7 @@
           <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
-                src="/images/abouts_ready.png" 
+                src="/images/abouts_ready.webp" 
                 alt="ระบบจองอัจฉริยะ" 
                 class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
@@ -167,7 +167,7 @@
           <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
-                src="/images/abouts_buddy.png" 
+                src="/images/abouts_buddy.webp" 
                 alt="เพื่อนคู่เที่ยวที่ไว้วางใจ" 
                 class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
               />
@@ -181,7 +181,7 @@
           <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
-                src="/images/abouts_happy.png" 
+                src="/images/abouts_happy.webp" 
                 alt="ความสุขในการเดินทาง" 
                 class="w-72 h-72 max-w-none object-contain drop-shadow-2xl"
               />
@@ -295,10 +295,10 @@ const stats = ref([
 ])
 
 const values = ref([
-  { image: '/images/travel_safety.png', title: 'ปลอดภัย 100%', desc: 'ตรวจสอบอุปกรณ์และเส้นทางเดินรถทุกครั้งก่อนออกเดินทาง เพื่อความปลอดภัยสูงสุดของคุณ', color: '#4CAF7D' },
-  { image: '/images/nohidden_show.png', title: 'ราคา Net โปร่งใส', desc: 'ไม่มีค่าใช้จ่ายแอบแฝง สิ่งที่เห็นคือสิ่งที่คุณจ่าย มั่นใจได้ในทุกการทำธุรกรรม', color: '#66C291' },
-  { image: '/images/nature_travel.png', title: 'ใส่ใจชุมชน', desc: 'เราทำงานร่วมกับคนในท้องถิ่น เพื่อกระจายรายได้และรักษาความงามของธรรมชาติอย่างยั่งยืน', color: '#C8963E' },
-  { image: '/images/247_support.png', title: 'ดูแลแบบ VIP', desc: 'ทีมงานพร้อมให้ความช่วยเหลือตลอดการเดินทาง เพื่อให้คุณอุ่นใจเหมือนมีเพื่อนอยู่ข้างๆ', color: '#007B8F' },
+  { image: '/images/travel_safety.webp', title: 'ปลอดภัย 100%', desc: 'ตรวจสอบอุปกรณ์และเส้นทางเดินรถทุกครั้งก่อนออกเดินทาง เพื่อความปลอดภัยสูงสุดของคุณ', color: '#4CAF7D' },
+  { image: '/images/nohidden_show.webp', title: 'ราคา Net โปร่งใส', desc: 'ไม่มีค่าใช้จ่ายแอบแฝง สิ่งที่เห็นคือสิ่งที่คุณจ่าย มั่นใจได้ในทุกการทำธุรกรรม', color: '#66C291' },
+  { image: '/images/nature_travel.webp', title: 'ใส่ใจชุมชน', desc: 'เราทำงานร่วมกับคนในท้องถิ่น เพื่อกระจายรายได้และรักษาความงามของธรรมชาติอย่างยั่งยืน', color: '#C8963E' },
+  { image: '/images/247_support.webp', title: 'ดูแลแบบ VIP', desc: 'ทีมงานพร้อมให้ความช่วยเหลือตลอดการเดินทาง เพื่อให้คุณอุ่นใจเหมือนมีเพื่อนอยู่ข้างๆ', color: '#007B8F' },
 ])
 
 onMounted(async () => {

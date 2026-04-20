@@ -17,16 +17,16 @@
         <div class="text-center mb-12 flex flex-col items-center">
           <div class="mb-6">
             <template v-if="booking.status === 'confirmed'">
-              <img src="/images/suscess_show.png" alt="Success" class="w-52 h-auto mx-auto object-contain drop-shadow-2xl animate-in zoom-in fade-in duration-700" />
+              <img src="/images/suscess_show.webp" alt="Success" class="w-52 h-auto mx-auto object-contain drop-shadow-2xl animate-in zoom-in fade-in duration-700" />
             </template>
             <template v-else-if="booking.status === 'cancelled'">
-              <img src="/images/cancel_booking.png" alt="Cancelled" class="w-52 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
+              <img src="/images/cancel_booking.webp" alt="Cancelled" class="w-52 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
             </template>
             <template v-else-if="booking.status === 'pending'">
-              <img src="/images/pending_show.png" alt="Pending" class="w-52 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
+              <img src="/images/pending_show.webp" alt="Pending" class="w-52 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
             </template>
             <template v-else-if="booking.status === 'refunded'">
-              <img src="/images/refund_show.png" alt="Refunded" class="w-52 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
+              <img src="/images/refund_show.webp" alt="Refunded" class="w-52 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
             </template>
             <div v-else class="text-gray-400">
               <span class="material-symbols-rounded text-[120px]" style="font-variation-settings:'FILL' 1,'wght' 400">info</span>

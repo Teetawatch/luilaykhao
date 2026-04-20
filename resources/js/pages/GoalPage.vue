@@ -7,7 +7,7 @@
     <section class="relative min-h-[520px] md:min-h-[700px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
-          src="/images/hiking.png"
+          src="/images/hiking.webp"
           alt="จุดมุ่งหมายของเรา"
           class="w-full h-full object-cover"
         />

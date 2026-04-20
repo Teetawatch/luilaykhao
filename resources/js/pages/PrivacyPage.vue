@@ -4,7 +4,7 @@
     <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
-          src="/images/phusoidao.png"
+          src="/images/phusoidao.webp"
           alt="Privacy Policy"
           class="w-full h-full object-cover"
         />

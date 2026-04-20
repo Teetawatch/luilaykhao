@@ -139,7 +139,7 @@
               :class="paymentMethod === 'promptpay'
                 ? 'border-[#006565] bg-[#006565]/5 text-[#006565]'
                 : 'border-transparent bg-[#f3f3f3] hover:bg-[#e8e8e8] text-[#3e4949]'">
-              <img src="/images/qr_promptpay.png" alt="พร้อมเพย์" class="h-32 w-auto object-contain" />
+              <img src="/images/qr_promptpay.webp" alt="พร้อมเพย์" class="h-32 w-auto object-contain" />
               <span class="font-bold text-[16px] uppercase tracking-tight">QR Code PromptPay</span>
             </button>
             <button @click="paymentMethod = 'mobile_banking'"
@@ -147,7 +147,7 @@
               :class="paymentMethod === 'mobile_banking'
                 ? 'border-[#006565] bg-[#006565]/5 text-[#006565]'
                 : 'border-transparent bg-[#f3f3f3] hover:bg-[#e8e8e8] text-[#3e4949]'">
-              <img src="/images/pay_bank.png" alt="โมบายแบงก์กิ้ง" class="h-32 w-auto object-contain" />
+              <img src="/images/pay_bank.webp" alt="โมบายแบงก์กิ้ง" class="h-32 w-auto object-contain" />
               <span class="font-bold text-[16px] uppercase tracking-tight">โอนเงินผ่านบัญชีธนาคาร</span>
             </button>
           </div>

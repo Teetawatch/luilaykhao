@@ -4,7 +4,7 @@
     <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
-          src="/images/landscape.png"
+          src="/images/landscape.webp"
           alt="How to Book"
           class="w-full h-full object-cover"
         />

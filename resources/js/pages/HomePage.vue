@@ -244,7 +244,7 @@
       <!-- Decorative Background Image -->
       <div class="absolute inset-0 z-0 pointer-events-none opacity-50">
         <img 
-          src="/images/experience_overlay.png" 
+          src="/images/experience_overlay.webp" 
           alt="" 
           class="w-full h-full object-cover"
         />
@@ -385,7 +385,7 @@
       <!-- Decorative Background Image -->
       <div class="absolute inset-0 z-0 pointer-events-none opacity-20">
         <img 
-          src="/images/recommend_overlay.png" 
+          src="/images/recommend_overlay.webp" 
           alt="" 
           class="w-full h-full object-cover"
         />
@@ -758,12 +758,12 @@ const wishlistStore = useWishlistStore();
 const router = useRouter();
 
 const heroImages = [
-  '/images/phusoidao.png',
-  '/images/snorkel.png',
-  '/images/phukradueng.png',
-  '/images/landscape.png',
-  '/images/khaochangphueak.png',
-  '/images/hiking.png',
+  '/images/phusoidao.webp',
+  '/images/snorkel.webp',
+  '/images/phukradueng.webp',
+  '/images/landscape.webp',
+  '/images/khaochangphueak.webp',
+  '/images/hiking.webp',
 ];
 const HERO_SLIDE_INTERVAL_MS = 6500;
 const currentSlide = ref(0);
@@ -898,7 +898,7 @@ const categories = [
     label: 'Snorkeling',
     subtext: 'สำรวจโลกใต้ทะเลที่สวยที่สุดในอันดามัน พร้อมทีมงานมืออาชีพ',
     ctaText: 'ดูทริปดำน้ำ',
-    image: '/images/diving_show.png',
+    image: '/images/diving_show.webp',
     icon: 'scuba_diving',
     color: '#3B9DD4',
     bgColor: '#E8F4FA',
@@ -909,7 +909,7 @@ const categories = [
     label: 'Trekking',
     subtext: 'ผจญภัยสู่ยอดเขาและเส้นทางธรรมชาติที่ยังไม่ถูกรบกวน',
     ctaText: 'สำรวจเส้นทาง',
-    image: '/images/hiking_show.png',
+    image: '/images/hiking_show.webp',
     icon: 'hiking',
     color: '#2D7A4F',
     bgColor: '#E8F5EC',
@@ -920,7 +920,7 @@ const categories = [
     label: 'Premium Van',
     subtext: 'เดินทางระดับ Exclusive พร้อมความสะดวกสบายครบครันทุกเส้นทาง',
     ctaText: 'ดูแพ็กเกจทัวร์',
-    image: '/images/van_show.png',
+    image: '/images/van_show.webp',
     icon: 'airport_shuttle',
     color: '#C8963E',
     bgColor: '#FFF8EE',
@@ -932,22 +932,22 @@ const reviews = ref([]);
 
 const trustItems = [
   {
-    image: '/images/travel_safety.png',
+    image: '/images/travel_safety.webp',
     title: 'ความปลอดภัยสูงสุด',
     desc: 'เราตรวจสอบอุปกรณ์ 100% ทุกครั้งก่อนออกเดินทาง เพื่อให้แน่ใจว่าคุณจะปลอดภัยตลอดทริป',
   },
   {
-    image: '/images/247_support.png',
+    image: '/images/247_support.webp',
     title: 'ผู้ดูแลส่วนตัว 24/7',
     desc: 'ทีมงานมืออาชีพพร้อมให้ความช่วยเหลือคุณทุกนาที ไม่ว่าจะเป็นการจองหรือช่วยเหลือหน้างาน',
   },
   {
-    image: '/images/nature_travel.png',
+    image: '/images/nature_travel.webp',
     title: 'ท่องเที่ยวสายอนุรักษ์',
     desc: 'ทุกทริปของเรามุ่งเน้นความยั่งยืน สนับสนุนชุมชนท้องถิ่นและอนุรักษ์ธรรมชาติอย่างจริงจัง',
   },
   {
-    image: '/images/nohidden_show.png',
+    image: '/images/nohidden_show.webp',
     title: 'ราคาโปร่งใส No Hidden',
     desc: 'ราคาสุทธิที่แจ้งคือราคาที่คุณต้องจ่ายจริง ไม่มีค่าธรรมเนียมแอบแฝง จ่ายครั้งเดียวจบ',
   },

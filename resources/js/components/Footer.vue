@@ -102,10 +102,10 @@
             </div>
             <div class="flex flex-col gap-0 -mt-10">
               <div class="block">
-                <img src="/images/icon-appstore.png" alt="App Store" class="w-28 h-28 object-contain" />
+                <img src="/images/icon-appstore.webp" alt="App Store" class="w-28 h-28 object-contain" />
               </div>
               <div class="block -mt-15">
-                <img src="/images/icon-playstore.png" alt="Play Store" class="w-28 h-28 object-contain" />
+                <img src="/images/icon-playstore.webp" alt="Play Store" class="w-28 h-28 object-contain" />
               </div>
             </div>
           </div>
