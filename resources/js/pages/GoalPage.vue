@@ -133,31 +133,43 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 items-stretch">
           <!-- Goal 1 -->
-          <div class="bg-white p-10 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent hover:-translate-y-2 cursor-default group reveal-section">
-            <div class="w-16 h-16 bg-[var(--color-sand)] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[var(--color-accent)]/10 group-hover:scale-110 transition-all duration-500">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-3xl">schedule</span>
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
+              <img 
+                src="/images/fast_nowaitng.webp" 
+                alt="ไม่ต้องเสียเวลา" 
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+              />
             </div>
-            <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4">ไม่ต้องเสียเวลา</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed">ไม่ต้องหาข้อมูล ไม่ต้องรอใครตอบกลับ อยากไปก็จองได้เลยทันที</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">ไม่ต้องเสียเวลา</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">ไม่ต้องหาข้อมูล ไม่ต้องรอใครตอบกลับ อยากไปก็จองได้เลยทันที</p>
           </div>
           
           <!-- Goal 2 (Featured) -->
-          <div class="bg-gradient-to-br from-[#0D2B1E] to-[var(--color-primary)] text-white p-10 rounded-[2rem] shadow-xl md:-translate-y-6 cursor-default group hover:shadow-2xl transition-all duration-500 reveal-section">
-            <div class="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-white/20 group-hover:scale-110 transition-all duration-500 border border-white/10 backdrop-blur-sm">
-              <span class="material-symbols-rounded text-[var(--color-accent-light)] text-3xl">directions_walk</span>
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
+              <img 
+                src="/images/feel_good.webp" 
+                alt="เป็นส่วนหนึ่งของทริปคุณ" 
+                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+              />
             </div>
-            <h3 class="text-2xl font-bold mb-4">เป็นส่วนหนึ่งของทริปคุณ</h3>
-            <p class="text-white/80 text-lg leading-relaxed">ตั้งแต่กดจองจนถึงช่วงเวลาที่คุณยิ้มอยู่กลางทะเลหรือสูดอากาศดี ๆ บนภูเขา</p>
-            <div class="mt-10 w-12 h-1.5 bg-[var(--color-gold)] rounded-full"></div>
+            <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">เป็นส่วนหนึ่งของทริปคุณ</h3>
+            <p class="text-[var(--color-text-mid)] text-lg leading-relaxed mx-auto max-w-xs">ตั้งแต่กดจองจนถึงช่วงเวลาที่คุณยิ้มอยู่กลางทะเลหรือสูดอากาศดี ๆ บนภูเขา</p>
+            <div class="mt-10 mx-auto w-14 h-1.5 bg-[var(--color-accent)] rounded-full"></div>
           </div>
           
           <!-- Goal 3 -->
-          <div class="bg-white p-10 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-transparent hover:-translate-y-2 cursor-default group reveal-section">
-            <div class="w-16 h-16 bg-[#FFF8EE] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[var(--color-gold)]/10 group-hover:scale-110 transition-all duration-500">
-              <span class="material-symbols-rounded text-[var(--color-gold)] text-3xl">public</span>
+          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
+              <img 
+                src="/images/no_wating.webp" 
+                alt="เข้าถึงง่ายสำหรับทุกคน" 
+                class="w-72 h-72 max-w-none object-contain drop-shadow-2xl"
+              />
             </div>
-            <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4">เข้าถึงง่ายสำหรับทุกคน</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed">ไม่ยุ่งยาก ไม่ซับซ้อน และไม่ต้องพึ่งโชค ออกแบบให้ทุกคนใช้งานได้จริง</p>
+            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">เข้าถึงง่ายสำหรับทุกคน</h3>
+            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">ไม่ยุ่งยาก ไม่ซับซ้อน และไม่ต้องพึ่งโชค ออกแบบให้ทุกคนใช้งานได้จริง</p>
           </div>
         </div>
       </div>
@@ -216,7 +228,7 @@
     <!-- ══════════════════════════════════════════
          LONG-TERM VISION
     ══════════════════════════════════════════ -->
-    <section class="py-24 md:py-32 bg-white relative">
+    <section class="py-24 md:py-32 bg-[var(--color-sand)] relative">
       <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[var(--color-sand-dark)] to-transparent"></div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8">
@@ -229,17 +241,30 @@
           <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)]">สิ่งที่เราอยากเห็น</h2>
         </div>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mt-16 md:mt-12 items-stretch">
           <div
-            v-for="vision in visions"
-            :key="vision.icon"
-            class="bg-[var(--color-sand)]/50 rounded-[2rem] p-8 text-center border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 reveal-section group"
+            v-for="(vision, idx) in visions"
+            :key="vision.title"
+            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
+            :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
           >
-            <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 transition-transform duration-300 group-hover:scale-110 shadow-sm" :style="`color: ${vision.color}`">
-              <span class="material-symbols-rounded text-3xl">{{ vision.icon }}</span>
+            <!-- Image Wrapper (Out-of-bound) -->
+            <div class="absolute -top-24 md:-top-28 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
+              <img 
+                :src="vision.image" 
+                :alt="vision.title" 
+                class="w-48 h-48 md:w-56 md:h-56 max-w-none object-contain drop-shadow-2xl"
+              />
             </div>
-            <h5 class="font-bold text-xl text-[var(--color-text-dark)] mb-3">{{ vision.title }}</h5>
-            <p class="text-[var(--color-text-muted)] text-base leading-relaxed">{{ vision.desc }}</p>
+
+            <div class="relative z-10 flex flex-col items-center h-full">
+              <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors">{{ vision.title }}</h3>
+              <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mx-auto max-w-xs">{{ vision.desc }}</p>
+              <!-- Decorative Line -->
+              <div class="mt-auto pt-8">
+                <div class="mx-auto w-12 h-1.5 bg-[var(--color-accent)]/20 group-hover:bg-[var(--color-accent)] transition-all duration-500 rounded-full"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -296,10 +321,10 @@
 import { ref, onMounted } from 'vue'
 
 const visions = ref([
-  { icon: 'lock_open', title: 'เข้าถึงง่าย', desc: 'ทุกคนสามารถเข้าถึงการท่องเที่ยวที่ดีได้โดยไม่มีอุปสรรคใด ๆ', color: '#4CAF7D' },
-  { icon: 'remove_road', title: 'ไม่ยุ่งยาก', desc: 'กระบวนการจองที่เรียบง่าย ตรงไปตรงมา ทำได้ทุกที่ทุกเวลา', color: '#66C291' },
-  { icon: 'workspace_premium', title: 'ไม่ซับซ้อน', desc: 'ข้อมูลครบ ชัดเจน ไม่มีค่าใช้จ่ายแฝง สิ่งที่เห็นคือสิ่งที่ได้', color: '#C8963E' },
-  { icon: 'favorite', title: 'ไม่ต้องพึ่งโชค', desc: 'ออกแบบให้ทุกอย่างมีระบบ เชื่อถือได้ มั่นใจได้ทุกครั้ง', color: '#007B8F' },
+  { image: '/images/no_hassle.webp', title: 'เข้าถึงง่าย', desc: 'ทุกคนสามารถเข้าถึงการท่องเที่ยวที่ดีได้โดยไม่มีอุปสรรคใด ๆ', color: '#4CAF7D' },
+  { image: '/images/no_hassle.webp', title: 'ไม่ยุ่งยาก', desc: 'กระบวนการจองที่เรียบง่าย ตรงไปตรงมา ทำได้ทุกที่ทุกเวลา', color: '#66C291' },
+  { image: '/images/no_hidden.webp', title: 'ไม่ซับซ้อน', desc: 'ข้อมูลครบ ชัดเจน ไม่มีค่าใช้จ่ายแฝง สิ่งที่เห็นคือสิ่งที่ได้', color: '#C8963E' },
+  { image: '/images/no_lucky.webp', title: 'ไม่ต้องพึ่งโชค', desc: 'ออกแบบให้ทุกอย่างมีระบบ เชื่อถือได้ มั่นใจได้ทุกครั้ง', color: '#007B8F' },
 ])
 
 onMounted(() => {
