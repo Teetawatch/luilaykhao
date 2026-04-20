@@ -36,30 +36,21 @@
           <h4 class="font-anuphan font-bold text-lg mb-6 text-text-dark">
             กิจกรรมยอดนิยม
           </h4>
-          <ul class="space-y-3 text-sm text-text-muted">
-            <li>
-              <router-link to="/trips?type=trekking" class="group flex items-center gap-3 hover:text-accent transition-colors">
+          <ul v-if="categories.length > 0" class="space-y-3 text-sm text-text-muted">
+            <li v-for="cat in categories" :key="cat.id">
+              <router-link :to="`/trips?type=${cat.slug}`" class="group flex items-center gap-3 hover:text-accent transition-colors">
                 <span class="w-8 h-8 rounded-lg bg-sand/50 flex items-center justify-center group-hover:bg-accent/10 group-hover:text-accent transition-colors">
-                  <span class="material-symbols-rounded text-[18px]">hiking</span>
+                  <span class="material-symbols-rounded text-[18px]">{{ cat.icon || 'explore' }}</span>
                 </span>
-                <span class="font-medium">เดินป่า</span>
+                <span class="font-medium">{{ cat.name }}</span>
               </router-link>
             </li>
-            <li>
-              <router-link to="/trips?type=snorkeling" class="group flex items-center gap-3 hover:text-accent transition-colors">
-                <span class="w-8 h-8 rounded-lg bg-sand/50 flex items-center justify-center group-hover:bg-accent/10 group-hover:text-accent transition-colors">
-                  <span class="material-symbols-rounded text-[18px]">scuba_diving</span>
-                </span>
-                <span class="font-medium">ดำน้ำตื้น</span>
-              </router-link>
-            </li>
-            <li>
-              <router-link to="/trips?type=climbing" class="group flex items-center gap-3 hover:text-accent transition-colors">
-                <span class="w-8 h-8 rounded-lg bg-sand/50 flex items-center justify-center group-hover:bg-accent/10 group-hover:text-accent transition-colors">
-                  <span class="material-symbols-rounded text-[18px]">landscape</span>
-                </span>
-                <span class="font-medium">ปีนผา</span>
-              </router-link>
+          </ul>
+          <!-- Skeleton / Loading state -->
+          <ul v-else-if="loading" class="space-y-3">
+            <li v-for="i in 3" :key="i" class="flex items-center gap-3 animate-pulse">
+              <div class="w-8 h-8 rounded-lg bg-sand/50"></div>
+              <div class="h-4 bg-sand/50 rounded w-20"></div>
             </li>
           </ul>
         </div>
@@ -134,4 +125,24 @@
     </div>
   </footer>
 </template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import api from '../lib/axios';
+
+const categories = ref([]);
+const loading = ref(true);
+
+onMounted(async () => {
+  try {
+    const res = await api.get('/categories');
+    // Show only first 6 popular categories in footer
+    categories.value = (res.data.data || []).slice(0, 6);
+  } catch (e) {
+    console.error('Failed to fetch footer categories:', e);
+  } finally {
+    loading.value = false;
+  }
+});
+</script>
 
