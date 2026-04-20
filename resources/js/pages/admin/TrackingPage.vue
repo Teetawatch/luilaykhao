@@ -34,6 +34,23 @@
           <input v-model="searchQuery" placeholder="ค้นหารถ..." />
         </div>
 
+        <div class="sidebar-filters">
+          <div class="filter-group">
+            <button v-for="t in ['all', 'van', 'boat']" :key="t" 
+              class="filter-pill" :class="{ active: filterType === t }"
+              @click="filterType = t">
+              {{ t === 'all' ? 'ทั้งหมด' : (t === 'van' ? 'รถตู้' : 'เรือ') }}
+            </button>
+          </div>
+          <div class="filter-group">
+            <button v-for="s in ['all', 'moving', 'stopped', 'offline']" :key="s" 
+              class="filter-pill sm" :class="{ active: filterStatus === s }"
+              @click="filterStatus = s">
+              {{ s === 'all' ? 'ทุกสถานะ' : (s === 'moving' ? 'กำลังวิ่ง' : (s === 'stopped' ? 'จอด' : 'ออฟไลน์')) }}
+            </button>
+          </div>
+        </div>
+
         <div class="vehicle-list">
           <div
             v-for="v in filteredVehicles"
@@ -96,6 +113,10 @@
             <div>
               <div class="map-info-name">{{ selectedVehicle.vehicle_name }}</div>
               <div class="map-info-plate">{{ selectedVehicle.license_plate }}</div>
+              <div v-if="selectedVehicle.trip_title" 
+                style="font-size:11px; color:var(--color-accent); font-weight:700; margin-top:2px; display:flex; align-items:center; gap:2px;">
+                <span class="material-symbols-rounded" style="font-size:12px;">route</span> {{ selectedVehicle.trip_title }}
+              </div>
             </div>
           </div>
           <div class="map-info-details">
@@ -138,15 +159,18 @@
             </div>
           </div>
           <div class="map-info-actions">
+            <a :href="`tel:${selectedVehicle.driver_phone}`" class="btn-eta btn-sm" v-if="selectedVehicle.driver_phone" style="text-decoration:none;">
+              <span class="material-symbols-rounded">call</span> โทรหาคนขับ
+            </a>
             <button class="btn-eta btn-sm" @click="promptETACalculation(selectedVehicle)" :disabled="etaLoading">
               <span class="material-symbols-rounded animate-spin" v-if="etaLoading">sync</span>
               <span class="material-symbols-rounded" v-else>directions</span>
-              {{ etaLoading ? 'กำลังคำนวณ...' : 'คำนวณ ETA' }}
+              {{ etaLoading ? 'ETA' : 'คำนวณ ETA' }}
             </button>
             <button class="btn-danger btn-sm btn-clear-trail"
               v-if="trailPoints[selectedVehicle.vehicle_id]?.length"
               @click="clearTrail(selectedVehicle.vehicle_id)">
-              <span class="material-symbols-rounded">delete</span> ล้างเส้นทาง
+              <span class="material-symbols-rounded">delete</span>
             </button>
           </div>
         </div>
@@ -164,9 +188,10 @@ const mapContainer = ref(null);
 const vehicles = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
-const selectedVehicleId = ref(null);
 const wsConnected = ref(false);
 const showTrail = ref(true);
+const filterType = ref('all'); // all, van, boat
+const filterStatus = ref('all'); // all, moving, stopped, idle
 let pollInterval = null;
 
 // เก็บ trail points สำหรับแต่ละรถ
@@ -180,12 +205,35 @@ let L = null;
 
 // ─── Computed ────────────────────────────────────────────
 const filteredVehicles = computed(() => {
-  if (!searchQuery.value) return vehicles.value;
-  const q = searchQuery.value.toLowerCase();
-  return vehicles.value.filter(v =>
-    v.vehicle_name?.toLowerCase().includes(q) ||
-    v.license_plate?.toLowerCase().includes(q)
-  );
+  let list = vehicles.value;
+  
+  // Search
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    list = list.filter(v =>
+      v.vehicle_name?.toLowerCase().includes(q) ||
+      v.license_plate?.toLowerCase().includes(q)
+    );
+  }
+
+  // Type Filter
+  if (filterType.value !== 'all') {
+    list = list.filter(v => v.type === filterType.value);
+  }
+
+  // Status Filter
+  if (filterStatus.value !== 'all') {
+    list = list.filter(v => {
+      const online = isOnline(v);
+      const moving = v.speed > 5;
+      if (filterStatus.value === 'moving') return online && moving;
+      if (filterStatus.value === 'stopped') return online && !moving;
+      if (filterStatus.value === 'offline') return !online;
+      return true;
+    });
+  }
+
+  return list;
 });
 
 const selectedVehicle = computed(() =>
@@ -233,8 +281,9 @@ function initMap() {
 }
 
 function createIcon(vehicle, online) {
-  const color  = online ? 'var(--color-accent)' : 'var(--color-text-muted)';
-  const border = online ? 'var(--color-ocean)' : 'var(--color-sand-dark)';
+  const isSpeeding = vehicle.speed > 90;
+  const color  = online ? (isSpeeding ? '#ef4444' : 'var(--color-accent)') : 'var(--color-text-muted)';
+  const border = online ? (isSpeeding ? '#fca5a5' : 'var(--color-ocean)') : 'var(--color-sand-dark)';
   const materialIcon = getVehicleIcon(vehicle.type);
 
   // Pointer rotation — หมุนเฉพาะเข็มชี้ทิศทาง ไอคอนรถจะตั้งตรงเสมอ
@@ -247,7 +296,7 @@ function createIcon(vehicle, online) {
 
   const html = `
     <div class="mk-wrap">
-      <div class="mk-dot" style="background:${color}; border-color:${border}; display:flex; align-items:center; justify-content:center; position:relative;">
+      <div class="mk-dot ${isSpeeding ? 'animate-pulse' : ''}" style="background:${color}; border-color:${border}; display:flex; align-items:center; justify-content:center; position:relative;">
         <span class="material-symbols-rounded" style="color:white; font-size:22px; font-family: 'Material Symbols Rounded';">
           ${materialIcon}
         </span>
@@ -381,6 +430,21 @@ const etaLoading = ref(false);
 const etaData = ref({});   // { vehicleId: { distance, duration, duration_in_traffic } }
 const etaDestination = ref({ lat: null, lng: null });
 
+async function calculateETA(vehicle, lat, lng) {
+  if (!lat || !lng) return;
+  etaLoading.value = true;
+  try {
+    const res = await api.get(`/tracking/${vehicle.vehicle_id}/eta`, {
+      params: { dest_lat: lat, dest_lng: lng },
+    });
+    etaData.value[vehicle.vehicle_id] = res.data.data;
+  } catch (e) {
+    console.error('Failed to calculate ETA:', e);
+  } finally {
+    etaLoading.value = false;
+  }
+}
+
 async function promptETACalculation(vehicle) {
   const destInput = prompt('กรอกพิกัดปลายทาง (lat, lng)\nเช่น: 18.7883, 98.9853');
   if (!destInput) return;
@@ -390,18 +454,8 @@ async function promptETACalculation(vehicle) {
     alert('รูปแบบไม่ถูกต้อง กรุณากรอก lat, lng');
     return;
   }
-
-  etaLoading.value = true;
-  try {
-    const res = await api.get(`/tracking/${vehicle.vehicle_id}/eta`, {
-      params: { dest_lat: parts[0], dest_lng: parts[1] },
-    });
-    etaData.value[vehicle.vehicle_id] = res.data.data;
-  } catch (e) {
-    alert(e.response?.data?.message || 'ไม่สามารถคำนวณ ETA ได้');
-  } finally {
-    etaLoading.value = false;
-  }
+  
+  await calculateETA(vehicle, parts[0], parts[1]);
 }
 
 // ─── Data ─────────────────────────────────────────────────
@@ -474,18 +528,26 @@ async function selectVehicle(v) {
 
   // Fetch history for trail if selecting for the first time or if trail is very short
   if (!trailPoints.value[v.vehicle_id] || trailPoints.value[v.vehicle_id].length < 5) {
-    try {
-      const res = await api.get(`/tracking/history/${v.vehicle_id}`, { params: { limit: 50 } });
-      const history = res.data.data || [];
-      if (history.length > 0) {
-        // Reverse because history is desc (newest first)
-        const pts = history.reverse().map(loc => [loc.latitude, loc.longitude]);
-        trailPoints.value[v.vehicle_id] = pts;
-        updateTrailPolyline(v.vehicle_id);
-      }
-    } catch (e) {
-      console.error('Failed to fetch history for trail:', e);
+    fetchHistory(v.vehicle_id);
+  }
+
+  // Auto-ETA if destination exists
+  if (v.dest_lat && v.dest_lng && !etaData.value[v.vehicle_id]) {
+    calculateETA(v, v.dest_lat, v.dest_lng);
+  }
+}
+
+async function fetchHistory(vehicleId) {
+  try {
+    const res = await api.get(`/tracking/history/${vehicleId}`, { params: { limit: 50 } });
+    const history = res.data.data || [];
+    if (history.length > 0) {
+      const pts = history.reverse().map(loc => [loc.latitude, loc.longitude]);
+      trailPoints.value[vehicleId] = pts;
+      updateTrailPolyline(vehicleId);
     }
+  } catch (e) {
+    console.error('Failed to fetch history for trail:', e);
   }
 }
 
@@ -639,6 +701,13 @@ onUnmounted(() => {
 .stat-item.online  .stat-count { color: var(--color-accent); }
 .stat-item.offline .stat-count { color: var(--color-text-muted); }
 .stat-item.total   .stat-count { color: var(--color-ocean); }
+.sidebar-filters { padding: 12px 16px; border-bottom: 1px solid var(--color-sand-dark); background: #f8fafc; }
+.filter-group { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.filter-group:last-child { margin-bottom: 0; }
+.filter-pill { border: 1px solid var(--color-sand-dark); background: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--color-text-mid); }
+.filter-pill.sm { padding: 2px 8px; font-size: 11px; }
+.filter-pill.active { background: var(--color-accent); color: white; border-color: var(--color-accent); }
+
 .stat-count { display: block; font-size: 20px; font-weight: 700; }
 .stat-label { font-size: 11px; color: var(--color-text-mid); font-weight: 500; margin-top: 4px; display: block; }
 

@@ -12,16 +12,14 @@ class VehicleLocationUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(
-        public int $vehicleId,
-        public float $latitude,
-        public float $longitude,
-        public ?float $speed,
-        public ?float $heading,
-        public string $vehicleName,
         public string $licensePlate,
         public string $type,
         public string $recordedAt,
+        public ?string $driverName = null,
+        public ?string $driverPhone = null,
+        public ?float $destLat = null,
+        public ?float $destLng = null,
+        public ?string $tripTitle = null,
     ) {}
 
     public function broadcastOn(): array
@@ -49,6 +47,11 @@ class VehicleLocationUpdated implements ShouldBroadcast
             'license_plate' => $this->licensePlate,
             'type' => $this->type,
             'recorded_at' => $this->recordedAt,
+            'driver_name' => $this->driverName,
+            'driver_phone' => $this->driverPhone,
+            'dest_lat' => $this->destLat,
+            'dest_lng' => $this->destLng,
+            'trip_title' => $this->tripTitle,
         ];
     }
 }
