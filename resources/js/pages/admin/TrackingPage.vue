@@ -247,8 +247,10 @@ function createIcon(vehicle, online) {
 
   const html = `
     <div class="mk-wrap">
-      <div class="mk-dot" style="background:${color}; border-color:${border};">
-        <span class="material-symbols-rounded" style="color:white; font-size:20px;">${materialIcon}</span>
+      <div class="mk-dot" style="background:${color}; border-color:${border}; display:flex; align-items:center; justify-content:center; position:relative;">
+        <span class="material-symbols-rounded" style="color:white; font-size:22px; font-family: 'Material Symbols Rounded';">
+          ${materialIcon}
+        </span>
         ${hasHeading ? `<div class="mk-pointer" style="transform: rotate(${heading}deg)"></div>` : ''}
       </div>
       <div class="mk-label">
