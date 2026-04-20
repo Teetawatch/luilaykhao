@@ -43,6 +43,9 @@
             @click="selectVehicle(v)"
           >
             <div class="vehicle-status-dot" :class="isOnline(v) ? 'online' : 'offline'"></div>
+            <div class="vehicle-list-icon">
+              <span class="material-symbols-rounded">{{ getVehicleIcon(v.type) }}</span>
+            </div>
             <div class="vehicle-list-info">
               <div class="vehicle-list-name">{{ v.vehicle_name }}</div>
               <div class="vehicle-list-plate">{{ v.license_plate || 'ไม่มีทะเบียน' }}</div>
@@ -88,7 +91,7 @@
           </button>
           <div class="map-info-header">
             <span class="material-symbols-rounded icon-lg highlight">
-              {{ selectedVehicle.type === 'boat' ? 'directions_boat' : 'airport_shuttle' }}
+              {{ getVehicleIcon(selectedVehicle.type) }}
             </span>
             <div>
               <div class="map-info-name">{{ selectedVehicle.vehicle_name }}</div>
@@ -164,6 +167,7 @@ const searchQuery = ref('');
 const selectedVehicleId = ref(null);
 const wsConnected = ref(false);
 const showTrail = ref(true);
+let pollInterval = null;
 
 // เก็บ trail points สำหรับแต่ละรถ
 const trailPoints = ref({});   // { vehicleId: [[lat, lng], ...] }
@@ -209,6 +213,15 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)} วัน ที่แล้ว`;
 }
 
+function getVehicleIcon(type) {
+  switch (type) {
+    case 'boat': return 'directions_boat';
+    case 'van': return 'airport_shuttle';
+    case 'bus': return 'directions_bus';
+    default: return 'airport_shuttle';
+  }
+}
+
 // ─── Map Init ────────────────────────────────────────────
 function initMap() {
   if (!L || !mapContainer.value || map) return;
@@ -222,7 +235,7 @@ function initMap() {
 function createIcon(vehicle, online) {
   const color  = online ? 'var(--color-accent)' : 'var(--color-text-muted)';
   const border = online ? 'var(--color-ocean)' : 'var(--color-sand-dark)';
-  const materialIcon = vehicle.type === 'boat' ? 'directions_boat' : 'airport_shuttle';
+  const materialIcon = getVehicleIcon(vehicle.type);
 
   // Heading rotation — หมุนเฉพาะไอคอน ไม่หมุน label
   const rot = (vehicle.heading != null)
@@ -260,6 +273,14 @@ function addTrailPoint(vehicleId, lat, lng) {
     trailPoints.value[vehicleId] = [];
   }
   const pts = trailPoints.value[vehicleId];
+  
+  if (pts.length > 0) {
+    const lastPt = pts[pts.length - 1];
+    if (lastPt[0] === lat && lastPt[1] === lng) {
+      return;
+    }
+  }
+
   pts.push([lat, lng]);
   if (pts.length > MAX_TRAIL_POINTS) pts.shift();
 }
@@ -382,8 +403,8 @@ async function promptETACalculation(vehicle) {
 }
 
 // ─── Data ─────────────────────────────────────────────────
-async function refreshLocations() {
-  loading.value = true;
+async function refreshLocations(isAutoRefresh) {
+  if (isAutoRefresh !== true) loading.value = true;
   try {
     const res = await api.get('/tracking/current');
     const data = res.data.data ?? [];
@@ -399,7 +420,7 @@ async function refreshLocations() {
   } catch (e) {
     console.error('Failed to fetch locations:', e);
   } finally {
-    loading.value = false;
+    if (isAutoRefresh !== true) loading.value = false;
   }
 }
 
@@ -476,9 +497,14 @@ onMounted(async () => {
   initMap();
   await refreshLocations();
   initEcho();
+  
+  pollInterval = setInterval(() => {
+    refreshLocations(true);
+  }, 5000);
 });
 
 onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval);
   if (window.Echo) window.Echo.leave('vehicle-tracking');
   if (map) { map.remove(); map = null; }
 });
@@ -572,6 +598,19 @@ onUnmounted(() => {
 .vehicle-list-plate { font-size: 12px; color: var(--color-text-muted); margin-top: 2px;}
 .vehicle-list-meta  { display: flex; gap: 8px; font-size: 11px; color: var(--color-text-muted); margin-top: 4px; }
 .vehicle-list-arrow { color: var(--color-text-muted); font-size: 16px; }
+
+.vehicle-list-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--color-sand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-ocean);
+  flex-shrink: 0;
+}
+.vehicle-list-item.active .vehicle-list-icon { background: var(--color-white); color: var(--color-accent); }
 
 .vehicle-list-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--color-text-muted); }
 .vehicle-list-empty p { font-size: 14px; margin-top: 8px; }

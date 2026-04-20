@@ -20,6 +20,7 @@ class VehicleLocationUpdated implements ShouldBroadcast
         public ?float $heading,
         public string $vehicleName,
         public string $licensePlate,
+        public string $type,
         public string $recordedAt,
     ) {}
 
@@ -46,6 +47,7 @@ class VehicleLocationUpdated implements ShouldBroadcast
             'heading' => $this->heading,
             'vehicle_name' => $this->vehicleName,
             'license_plate' => $this->licensePlate,
+            'type' => $this->type,
             'recorded_at' => $this->recordedAt,
         ];
     }

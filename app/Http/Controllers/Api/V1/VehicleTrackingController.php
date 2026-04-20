@@ -64,6 +64,7 @@ class VehicleTrackingController extends Controller
             heading: $request->heading ? (float) $request->heading : null,
             vehicleName: $vehicle->name,
             licensePlate: $vehicle->license_plate ?? '',
+            type: $vehicle->type,
             recordedAt: $location->recorded_at->toIso8601String(),
         ));
 
@@ -132,6 +133,7 @@ class VehicleTrackingController extends Controller
                 heading: $location->heading ? (float) $location->heading : null,
                 vehicleName: $vehicle->name,
                 licensePlate: $vehicle->license_plate ?? '',
+                type: $vehicle->type,
                 recordedAt: $location->recorded_at->toIso8601String(),
             ));
         }
