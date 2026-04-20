@@ -303,28 +303,29 @@
     <!-- ══════════════════════════════════════════
          FINAL CTA
     ══════════════════════════════════════════ -->
-    <section class="py-24 md:py-40 px-6 md:px-8 bg-white overflow-hidden">
-      <div class="relative rounded-[4rem] overflow-hidden max-w-7xl mx-auto reveal-section shadow-3xl">
-        <div class="absolute inset-0">
-          <img
-            src="/images/landscape.webp"
-            alt="Ready to explore"
-            class="w-full h-full object-cover scale-105 motion-safe:animate-[subtle-zoom_30s_infinite_alternate]"
-          />
-          <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#1A3A2E]/80 to-transparent"></div>
-        </div>
-        
-        <!-- Premium UI Decorations -->
-        <div class="absolute top-0 right-0 w-[40rem] h-[40rem] bg-[var(--color-accent)]/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-        <div class="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-white/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
+    <section class="relative py-32 md:py-48 w-full overflow-hidden bg-[#0D2B1E]">
+      <!-- Full-Width Background Wrapper -->
+      <div class="absolute inset-0 z-0">
+        <img
+          src="/images/landscape.webp"
+          alt="Ready to explore"
+          class="w-full h-full object-cover scale-105 motion-safe:animate-[subtle-zoom_60s_infinite_alternate]"
+        />
+        <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#1A3A2E]/80 to-transparent"></div>
+      </div>
+      
+      <!-- Premium UI Decorations -->
+      <div class="absolute top-0 right-0 w-[60rem] h-[60rem] bg-[var(--color-accent)]/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-white/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
 
-        <div class="relative z-10 p-12 md:p-24 lg:p-32 text-left text-white max-w-4xl">
+      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
+        <div class="reveal-section max-w-4xl">
           <div class="inline-flex items-center gap-3 text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-10">
             <span class="w-12 h-[2px] bg-[var(--color-gold)]"></span>
             พร้อมจะออกไปลุยหรือยัง?
           </div>
           
-          <h2 class="text-4xl md:text-5xl lg:text-7xl font-black leading-[1.05] mb-10 tracking-tight">
+          <h2 class="text-5xl md:text-6xl lg:text-8xl font-black text-white leading-[1.05] mb-10 tracking-tight">
             ให้เราช่วยสร้าง<br/>
             <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 underline decoration-[var(--color-gold)] decoration-8">ความทรงจำ</span> ที่สวยงามของคุณ
           </h2>
@@ -353,11 +354,11 @@
           <div class="mt-20 flex items-center gap-10 opacity-70">
             <div class="flex items-center gap-3">
               <span class="material-symbols-rounded text-white">verified_user</span>
-              <span class="font-bold">จองปลอดภัย 100%</span>
+              <span class="font-bold text-white">จองปลอดภัย 100%</span>
             </div>
             <div class="flex items-center gap-3">
               <span class="material-symbols-rounded text-white">thumb_up</span>
-              <span class="font-bold">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
+              <span class="font-bold text-white">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
             </div>
           </div>
         </div>
