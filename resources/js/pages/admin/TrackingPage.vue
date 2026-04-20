@@ -188,6 +188,7 @@ const mapContainer = ref(null);
 const vehicles = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
+const selectedVehicleId = ref(null);
 const wsConnected = ref(false);
 const showTrail = ref(true);
 const filterType = ref('all'); // all, van, boat
