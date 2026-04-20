@@ -238,41 +238,16 @@
       <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-[var(--color-gold)]/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-24">
-          
-          <!-- Text Content -->
-          <div class="flex-1 text-center lg:text-left max-w-3xl">
-            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.05] tracking-tight">
-              การท่องเที่ยวที่คุณ<br />
-              <span class="text-[var(--color-gold)]">"วางใจได้"</span> ในทุกคลิก
-            </h2>
-            <p class="text-white/70 text-lg md:text-2xl font-medium leading-relaxed mb-0">
-              ลบภาพการจองทริปที่แสนวุ่นวายออกไป — <span class="text-white border-b-2 border-[var(--color-gold)] italic">เราเปลี่ยนความกังวลของคุณ</span> ให้เป็นความตื่นเต้นที่จะได้ออกไปเจอโลกกว้าง
-            </p>
-          </div>
+        <div class="max-w-4xl mx-auto text-center reveal-section">
+          <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.1] tracking-tight">
+            การท่องเที่ยวที่คุณ<br />
+            <span class="text-[var(--color-gold)]">"วางใจได้"</span> ในทุกคลิก
+          </h2>
+          <p class="text-white/70 text-lg md:text-2xl font-medium leading-relaxed max-w-3xl mx-auto">
+            ลบภาพการจองทริปที่แสนวุ่นวายออกไป — <span class="text-white border-b-2 border-[var(--color-gold)] italic">เราเปลี่ยนความกังวลของคุณ</span> ให้เป็นความตื่นเต้นที่จะได้ออกไปเจอโลกกว้าง
+          </p>
+        </div>
 
-          <!-- Glassmorphism Action Card -->
-          <div class="flex-1 w-full max-w-lg">
-            <div class="relative group">
-              <div class="absolute -inset-1 bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-gold)] rounded-[3.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-              
-              <div class="relative bg-white/5 backdrop-blur-2xl p-10 md:p-14 rounded-[3.5rem] border border-white/10 shadow-3xl text-center">
-                <div class="w-24 h-24 bg-[var(--color-accent)] rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl ring-1 ring-white/20 transform group-hover:rotate-6 transition-transform">
-                  <span class="material-symbols-rounded text-white text-[48px]">search_check</span>
-                </div>
-                <h3 class="text-2xl md:text-4xl font-bold text-white mb-6">ค้นหาทริปที่ใช่สำหรับคุณ</h3>
-                <p class="text-white/60 mb-10 font-medium text-lg">เริ่มต้นวางแผนการเดินทางครั้งใหม่กับเราวันนี้ สัมผัสความง่ายที่คุณไม่เคยเจอที่ไหนมาก่อน</p>
-                
-                <router-link
-                  to="/trips"
-                  class="w-full bg-white text-[#0D2B1E] hover:bg-[var(--color-gold)] hover:text-white py-6 rounded-2xl font-black text-xl transition-all duration-500 shadow-xl hover:shadow-[0_20px_40px_rgba(255,255,255,0.15)] flex items-center justify-center gap-3 cursor-pointer group/btn overflow-hidden"
-                >
-                  <span class="relative z-10">เริ่มวางแผนทริปวันนี้</span>
-                  <span class="material-symbols-rounded relative z-10 text-2xl transform group-hover/btn:translate-x-2 transition-transform duration-500">travel_explore</span>
-                </router-link>
-              </div>
-            </div>
-          </div>
 
         </div>
       </div>
