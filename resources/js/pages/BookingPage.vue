@@ -79,8 +79,13 @@
             </div>
             <!-- Progress Line -->
             <div v-if="i < steps.length - 1" class="h-1 flex-1 mx-2 mb-8 transition-all duration-700 rounded-full bg-gray-100 overflow-hidden">
-              <div class="h-full bg-teal-600 transition-all duration-700 ease-out" 
-         <!-- Step: Region Picker (Trekking only, before seat map / passenger info) -->
+                   :style="{ width: step > i ? '100%' : '0%' }"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Step: Region Picker (Trekking only, before seat map / passenger info) -->
       <div v-if="isTrekking && step === 0" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div class="lg:col-span-7 xl:col-span-8"> 
           <div class="mb-8 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
