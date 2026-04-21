@@ -190,7 +190,8 @@
         </div>
 
         <!-- Sidebar region summary -->
-        <aside class="lg:col-span-5 xl:col-span-4 sticky top-8">
+        <aside class="lg:col-span-5 xl:col-span-4 sticky transition-all duration-300 z-30"
+          :class="seatsStore.hasActiveBooking ? 'top-[140px]' : 'top-[100px]'">
           <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 overflow-hidden relative">
             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
               <span class="material-symbols-rounded text-teal-600">receipt_long</span>
@@ -679,7 +680,11 @@
         </div>
 
         <!-- Right: Booking Panel (Sidebar) -->
-        <aside class="lg:col-span-5 xl:col-span-4 sticky top-8 space-y-6" v-if="!isTrekking || step > 0">
+        <aside class="lg:col-span-5 xl:col-span-4 sticky transition-all duration-300 space-y-6 z-30"
+          :class="[
+            seatsStore.hasActiveBooking ? 'top-[140px]' : 'top-[100px]',
+            'lg:block'
+          ]" v-if="!isTrekking || step > 0">
 
           <!-- Summary Card -->
           <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 overflow-hidden relative">
@@ -784,7 +789,7 @@
 
             <div class="mt-6 flex items-center justify-center gap-2 text-gray-400 group">
               <span class="material-symbols-rounded text-sm">verified_user</span>
-              <span class="text-[11px] font-bold group-hover:text-teal-600 transition-colors tracking-wide uppercase">Secure Payment & SSL Encrypted</span>
+              <span class="text-[11px] font-bold group-hover:text-teal-600 transition-colors tracking-wide uppercase">การชำระเงินที่ปลอดภัยและการเข้ารหัส SSL</span>
             </div>
           </div>
         </aside>

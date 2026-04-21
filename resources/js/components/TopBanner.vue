@@ -27,7 +27,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 const messages = [
   { emoji: '🔥', text: 'โปรลดราคา ประจำเดือนเมษายน!' },
   { emoji: '🏔️', text: 'เปิดจองทริปใหม่ สัมผัสธรรมชาติกับลุยเลเขา' },
-  { emoji: '✨', text: 'สมัครสมาชิกวันนี้ รับส่วนลดพิเศษทันที' }
+  { emoji: '✨', text: 'สมัครสมาชิกวันนี้ รับส่วนลดพิเศษทันที 5%' }
 ];
 
 const currentMessage = ref(0);

@@ -6,42 +6,50 @@
     <!-- Global Active Booking Banner -->
     <Transition name="booking-banner">
       <div v-if="seatsStore.hasActiveBooking"
-        class="sticky top-[80px] z-40 w-full">
-        <div class="bg-white border-b border-gray-200 shadow-sm">
-          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-3">
+        class="sticky z-40 w-full transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+        :style="{ top: isScrolled ? '64px' : '80px' }">
+        <div class="bg-white/80 backdrop-blur-md border-b border-gray-200/50">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 md:py-3 flex items-center gap-3">
             <!-- Icon + Status -->
-            <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-100' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-100' : 'bg-teal-100'">
-              <span class="material-symbols-rounded text-[18px]"
+            <div class="w-8 h-8 md:w-9 md:h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border"
+              :class="seatsStore.countdownSeconds <= 60 
+                ? 'bg-red-50 border-red-100' 
+                : seatsStore.countdownSeconds <= 180 
+                  ? 'bg-amber-50 border-amber-100' 
+                  : 'bg-teal-50 border-teal-100'">
+              <span class="material-symbols-rounded text-[18px] md:text-[20px]"
                 :class="seatsStore.countdownSeconds <= 60 ? 'text-red-600 animate-pulse' : seatsStore.countdownSeconds <= 180 ? 'text-amber-600' : 'text-teal-600'"
                 style="font-variation-settings:'FILL' 1,'wght' 400">timer</span>
             </div>
 
             <div class="flex-1 min-w-0">
-              <p class="text-xs font-medium text-gray-500 leading-none mb-0.5">รายการจองที่ค้างอยู่</p>
-              <p class="text-sm font-bold text-gray-900 truncate">{{ seatsStore.activeBookingInfo?.tripTitle || 'กำลังทำรายการจอง...' }}</p>
+              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">รายการจองที่ค้างอยู่</p>
+              <p class="text-sm font-bold text-gray-900 truncate leading-tight">{{ seatsStore.activeBookingInfo?.tripTitle || 'กำลังทำรายการจอง...' }}</p>
             </div>
 
             <!-- Countdown pill -->
-            <div class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-sm"
-              :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-100 text-red-700' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'">
-              <span class="material-symbols-rounded text-[16px]">hourglass_bottom</span>
-              <span class="font-anuphan tracking-tight">{{ formattedGlobal }}</span>
+            <div class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs md:text-sm shadow-sm border transition-all duration-500"
+              :class="seatsStore.countdownSeconds <= 60 
+                ? 'bg-red-600 text-white border-red-500' 
+                : seatsStore.countdownSeconds <= 180 
+                  ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                  : 'bg-teal-600 text-white border-teal-500'">
+              <span class="material-symbols-rounded text-[14px] md:text-[16px]" :class="seatsStore.countdownSeconds <= 60 ? 'animate-spin-slow' : ''">hourglass_bottom</span>
+              <span class="font-anuphan tracking-tighter">{{ formattedGlobal }}</span>
             </div>
 
             <!-- Go back to booking button -->
             <router-link
               :to="`/booking/${seatsStore.activeBookingInfo?.scheduleId}`"
-              class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors active:scale-95">
-              <span class="material-symbols-rounded text-[16px]">arrow_forward</span>
-              ดำเนินการต่อ
+              class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-black bg-gray-900 text-white hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-900/10">
+              <span class="hidden md:inline">ดำเนินการต่อ</span>
+              <span class="material-symbols-rounded text-[16px] md:text-[18px]">arrow_forward</span>
             </router-link>
           </div>
 
           <!-- Progress bar -->
-          <div class="h-1 w-full"
-            :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-100' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-100' : 'bg-teal-100'">
-            <div class="h-full transition-all duration-1000"
+          <div class="h-1 w-full bg-gray-100/50 relative overflow-hidden">
+            <div class="h-full transition-all duration-1000 ease-linear shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
               :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-500' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-500' : 'bg-teal-500'"
               :style="{ width: `${(seatsStore.countdownSeconds / 600) * 100}%` }">
             </div>
@@ -145,9 +153,11 @@ function handleGlobalExpiry() {
 }
 
 const showBackToTop = ref(false);
+const isScrolled = ref(false);
 
 const handleScroll = () => {
   showBackToTop.value = window.scrollY > 400;
+  isScrolled.value = window.scrollY > 20;
 };
 
 const scrollToTop = () => {
