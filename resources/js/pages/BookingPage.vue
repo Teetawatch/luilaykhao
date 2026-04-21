@@ -187,11 +187,6 @@
           <p v-if="!selectedPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-red-500 font-bold animate-pulse">
             * กรุณาเลือกจุดขึ้นรถก่อนเดินทางต่อ
           </p>
-        </div>ont-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
-              <span>{{ pickupPoints.length ? 'ยืนยันภูมิภาคและดำเนินการต่อ' : 'ดำเนินการต่อ' }}</span>
-              <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_forward</span>
-            </button>
-          </div>
         </div>
 
         <!-- Sidebar region summary -->
@@ -710,7 +705,7 @@
             <div v-if="selectedPickup" class="mb-6 p-4 rounded-3xl bg-gray-50 border border-gray-100">
               <p class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.1em] mb-3">จุดขึ้นรถ</p>
               <div class="flex items-start gap-3">
-                <span class="material-symbols-rounded text-emerald-600 text-xl text-red-500">location_on</span>
+                <span class="material-symbols-rounded text-emerald-600 text-xl">location_on</span>
                 <div>
                   <p class="text-sm font-bold text-gray-900 leading-tight">{{ selectedPickup.pickup_location }}</p>
                   <p class="text-[11px] text-emerald-700 font-bold mt-1 bg-emerald-100 px-2 py-0.5 rounded-full w-fit">ภูมิภาค: {{ selectedPickup.region_label }}</p>
@@ -857,7 +852,6 @@
             </button>
           </div>
         </div>
-      </div>
     </Teleport>
 
     <!-- Sticky Mobile Bottom Bar -->
@@ -903,7 +897,7 @@
         </button>
       </div>
     </div>
-  </div>
+</div>
 </template>
 
 <script setup>
