@@ -79,6 +79,7 @@
             </div>
             <!-- Progress Line -->
             <div v-if="i < steps.length - 1" class="h-1 flex-1 mx-2 mb-8 transition-all duration-700 rounded-full bg-gray-100 overflow-hidden">
+              <div class="h-full bg-teal-600 transition-all duration-700 ease-out" 
                    :style="{ width: step > i ? '100%' : '0%' }"></div>
             </div>
           </template>
