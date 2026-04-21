@@ -35,81 +35,125 @@
       </div>
     </div>
 
-    <!-- Countdown -->
-    <div v-if="seatsStore.countdownSeconds > 0" class="max-w-7xl mx-auto mb-6">
-      <CountdownTimer :seconds="seatsStore.countdownSeconds" />
+    <!-- Urgency Message & Timer -->
+    <div v-if="seatsStore.countdownSeconds > 0" class="max-w-7xl mx-auto mb-10">
+      <div class="bg-red-50 border border-red-100 rounded-3xl p-5 md:p-6 mb-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <span class="material-symbols-rounded text-red-600 text-2xl animate-pulse">crisis_alert</span>
+          </div>
+          <div>
+            <h3 class="text-red-900 font-bold text-base md:text-lg">กรุณาชำระเงินเพื่อยืนยันสิทธิ์</h3>
+            <p class="text-red-700 text-sm">เราจะสำรองที่นั่งให้คุณเป็นเวลา 10 นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ</p>
+          </div>
+        </div>
+        <div class="bg-white px-6 py-3 rounded-2xl border border-red-200 shadow-sm">
+          <CountdownTimer :seconds="seatsStore.countdownSeconds" />
+        </div>
+      </div>
     </div>
 
-    <!-- Two-column layout -->
-    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+      <!-- LEFT: Payment Flow -->
+      <div class="lg:col-span-8 space-y-8 pb-10">
 
-      <!-- LEFT: Payment Form -->
-      <div class="lg:col-span-8 space-y-6">
+        <!-- ── Step Instructions ── -->
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+           <h2 class="text-xl font-bold mb-8 text-gray-900 flex items-center gap-2">
+            <span class="material-symbols-rounded text-teal-600">checklist</span>
+            ขั้นตอนการชำระเงิน
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+            <!-- Connector lines (Desktop) -->
+            <div class="hidden md:block absolute top-7 left-[15%] right-[15%] h-[2px] bg-gray-100"></div>
+            
+            <div class="relative flex flex-col items-center text-center gap-3">
+              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 shadow-sm z-10">1</div>
+              <p class="font-bold text-gray-900">สแกน QR เพื่อชำระเงิน</p>
+              <p class="text-xs text-gray-500 leading-relaxed px-2">เปิดแอปธนาคารแล้วสแกน QR Code ด้านล่าง</p>
+            </div>
+            <div class="relative flex flex-col items-center text-center gap-3">
+              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 shadow-sm z-10">2</div>
+              <p class="font-bold text-gray-900">อัปโหลดสลิป</p>
+              <p class="text-xs text-gray-500 leading-relaxed px-2">แนบหลักฐานการโอนเงินเพื่อตรวจสอบความถูกต้อง</p>
+            </div>
+            <div class="relative flex flex-col items-center text-center gap-3">
+              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 shadow-sm z-10">3</div>
+              <p class="font-bold text-gray-900">กดยืนยันการชำระเงิน</p>
+              <p class="text-xs text-gray-500 leading-relaxed px-2">เสร็จสิ้น! รอเจ้าหน้าที่ตรวจสอบใน 10 นาที</p>
+            </div>
+          </div>
+        </div>
 
         <!-- ── Payment Type Selection (show only if installment available) ── -->
-        <section v-if="installmentAvailable" class="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,101,101,0.08)] p-8">
-          <h2 class="text-lg font-bold mb-5 text-[#1a1c1c]">เลือกรูปแบบการชำระเงิน</h2>
+        <section v-if="installmentAvailable" class="bg-white rounded-3xl shadow-sm p-8 border border-gray-100">
+          <h2 class="text-lg font-bold mb-5 text-gray-900 flex items-center gap-2">
+            <span class="material-symbols-rounded text-amber-500">credit_card</span>
+            เลือกรูปแบบการชำระเงิน
+          </h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Full Payment -->
             <button @click="paymentType = 'full'"
-              class="flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left"
+              class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
               :class="paymentType === 'full'
-                ? 'border-[#006565] bg-[#006565]/5'
-                : 'border-[#e2e2e2] hover:border-[#b4eae9]'">
+                ? 'border-teal-600 bg-teal-50/30'
+                : 'border-gray-100 hover:border-teal-100 hover:bg-gray-50'">
               <div class="flex items-center gap-2">
-                <span class="material-symbols-rounded text-[22px]" :class="paymentType === 'full' ? 'text-[#006565]' : 'text-[#6e7979]'">payments</span>
-                <span class="font-bold" :class="paymentType === 'full' ? 'text-[#006565]' : 'text-[#1a1c1c]'">ชำระเต็มจำนวน</span>
-                <span v-if="paymentType === 'full'" class="ml-auto w-5 h-5 rounded-full bg-[#006565] flex items-center justify-center">
-                  <span class="material-symbols-rounded text-white text-[14px]">check</span>
-                </span>
+                <span class="material-symbols-rounded text-[24px] group-hover:scale-110 transition-transform" :class="paymentType === 'full' ? 'text-teal-600' : 'text-gray-400'">payments</span>
+                <span class="font-bold text-base" :class="paymentType === 'full' ? 'text-teal-900' : 'text-gray-700'">ชำระเต็มจำนวน</span>
+                <div v-if="paymentType === 'full'" class="ml-auto w-6 h-6 rounded-full bg-teal-600 flex items-center justify-center shadow-md">
+                  <span class="material-symbols-rounded text-white text-[16px]">check</span>
+                </div>
               </div>
-              <p class="text-sm text-[#6e7979]">ชำระทั้งหมด <span class="font-semibold text-[#1a1c1c]">฿{{ Number(booking.total_amount).toLocaleString() }}</span> ในครั้งเดียว</p>
+              <p class="text-sm text-gray-500">ชำระทั้งหมด <span class="font-bold text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</span> ในครั้งเดียว</p>
             </button>
 
             <!-- Installment Payment -->
             <button @click="paymentType = 'installment'"
-              class="flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left"
+              class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
               :class="paymentType === 'installment'
-                ? 'border-[#e87c2a] bg-[#e87c2a]/5'
-                : 'border-[#e2e2e2] hover:border-[#f5c99a]'">
+                ? 'border-amber-500 bg-amber-50/30'
+                : 'border-gray-100 hover:border-amber-100 hover:bg-gray-50'">
               <div class="flex items-center gap-2">
-                <span class="material-symbols-rounded text-[22px]" :class="paymentType === 'installment' ? 'text-[#e87c2a]' : 'text-[#6e7979]'">calendar_month</span>
-                <span class="font-bold" :class="paymentType === 'installment' ? 'text-[#e87c2a]' : 'text-[#1a1c1c]'">ผ่อนชำระ {{ installmentCount }} งวด</span>
-                <span v-if="paymentType === 'installment'" class="ml-auto w-5 h-5 rounded-full bg-[#e87c2a] flex items-center justify-center">
-                  <span class="material-symbols-rounded text-white text-[14px]">check</span>
-                </span>
+                <span class="material-symbols-rounded text-[24px] group-hover:scale-110 transition-transform" :class="paymentType === 'installment' ? 'text-amber-600' : 'text-gray-400'">calendar_month</span>
+                <span class="font-bold text-base" :class="paymentType === 'installment' ? 'text-amber-900' : 'text-gray-700'">ผ่อนชำระ {{ installmentCount }} งวด</span>
+                <div v-if="paymentType === 'installment'" class="ml-auto w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shadow-md">
+                  <span class="material-symbols-rounded text-white text-[16px]">check</span>
+                </div>
               </div>
-              <p class="text-sm text-[#6e7979]">งวดละ <span class="font-semibold text-[#1a1c1c]">฿{{ perInstallment.toLocaleString() }}</span> · ทุก {{ installmentIntervalDays }} วัน</p>
+              <p class="text-sm text-gray-500">งวดละ <span class="font-bold text-amber-600">฿{{ perInstallment.toLocaleString() }}</span> · ทุก {{ installmentIntervalDays }} วัน</p>
             </button>
           </div>
 
           <!-- Installment Schedule Table -->
-          <div v-if="paymentType === 'installment'" class="mt-6 space-y-4">
-            <h3 class="font-semibold text-[#1a1c1c]">ตารางการผ่อนชำระ</h3>
-            <div class="overflow-hidden rounded-xl border border-[#e2e2e2]">
+          <div v-if="paymentType === 'installment'" class="mt-8">
+             <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-900 tracking-tight">ตารางการผ่อนชำระ</h3>
+                <span class="text-[11px] font-black text-amber-600 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-tighter">ยอดรวมคงเดิม ไม่มีดอกเบี้ย</span>
+             </div>
+            <div class="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
               <table class="w-full text-sm">
                 <thead>
-                  <tr class="bg-[#f3f9f9]">
-                    <th class="text-left px-4 py-3 font-semibold text-[#1a1c1c]">งวดที่</th>
-                    <th class="text-left px-4 py-3 font-semibold text-[#1a1c1c]">ครบกำหนด</th>
-                    <th class="text-right px-4 py-3 font-semibold text-[#1a1c1c]">จำนวนเงิน</th>
-                    <th class="text-center px-4 py-3 font-semibold text-[#1a1c1c]">สถานะ</th>
+                  <tr class="bg-gray-50">
+                    <th class="text-left px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">งวดที่</th>
+                    <th class="text-left px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">ครบกำหนด</th>
+                    <th class="text-right px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">จำนวนเงิน</th>
+                    <th class="text-center px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">สถานะ</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-50">
                   <tr v-for="inst in installmentSchedule" :key="inst.no"
-                    class="border-t border-[#f0f0f0]"
-                    :class="inst.no === 1 ? 'bg-[#006565]/3' : ''">
-                    <td class="px-4 py-3 text-[#3e4949]">งวดที่ {{ inst.no }}</td>
-                    <td class="px-4 py-3 text-[#3e4949]">{{ formatDate(inst.dueDate) }}</td>
-                    <td class="px-4 py-3 text-right font-semibold text-[#1a1c1c]">฿{{ inst.amount.toLocaleString() }}</td>
-                    <td class="px-4 py-3 text-center">
+                    class="transition-colors"
+                    :class="inst.no === 1 ? 'bg-amber-50/20' : 'hover:bg-gray-50'">
+                    <td class="px-5 py-4 text-gray-700 font-bold">งวดที่ {{ inst.no }}</td>
+                    <td class="px-5 py-4 text-gray-600">{{ formatDate(inst.dueDate) }}</td>
+                    <td class="px-5 py-4 text-right font-black text-gray-900 border-r border-gray-50">฿{{ inst.amount.toLocaleString() }}</td>
+                    <td class="px-5 py-4 text-center">
                       <span v-if="inst.no === 1"
-                        class="text-xs font-bold px-2.5 py-1 rounded-full bg-[#006565]/10 text-[#006565]">
-                        ชำระตอนนี้
+                        class="text-[10px] font-black px-3 py-1.5 rounded-full bg-teal-600 text-white shadow-sm uppercase tracking-tighter">
+                        ชำระงวดแรก
                       </span>
                       <span v-else
-                        class="text-xs font-medium px-2.5 py-1 rounded-full bg-[#f3f3f3] text-[#6e7979]">
+                        class="text-[10px] font-black px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 uppercase tracking-tighter">
                         รอชำระ
                       </span>
                     </td>
@@ -119,218 +163,401 @@
             </div>
 
             <!-- No-refund Warning -->
-            <div class="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-              <span class="material-symbols-rounded text-red-500 text-[20px] flex-shrink-0 mt-0.5">warning</span>
-              <div class="text-sm text-red-700 leading-relaxed">
-                <p class="font-bold mb-1">ข้อสงวนสิทธิ์การผ่อนชำระ</p>
-                <p>หากท่านไม่ชำระเงินภายในวันครบกำหนดของแต่ละงวด <strong>ทางลุยเลเขาขอสงวนสิทธิ์ไม่คืนเงินในทุกกรณี</strong> และอาจยกเลิกการจองโดยไม่แจ้งล่วงหน้า กรุณาตรวจสอบวันครบกำหนดในตารางข้างต้นและชำระให้ตรงเวลา</p>
+            <div class="flex gap-4 p-5 bg-red-50/50 border border-red-100 rounded-2xl mt-6">
+              <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <span class="material-symbols-rounded text-red-600 text-[24px]">priority_high</span>
+              </div>
+              <div class="text-[13px] text-red-700 leading-relaxed">
+                <p class="font-black mb-1 text-sm uppercase tracking-tight">สำคัญมาก: เงื่อนไขการยกเลิก</p>
+                <p>หากท่านไม่ชำระเงินตามตารางผ่อนชำระที่เลือกไว้ภายในวันครบกำหนด <strong>ลุยเลเขาขอสงวนสิทธิ์ในการยกเลิกทริปและไม่คืนเงินทุกกรณี</strong> เพื่อความมั่นใจในการเดินทางของเพื่อนร่วมทริปท่านอื่น</p>
               </div>
             </div>
           </div>
         </section>
 
         <!-- ── Payment Method ── -->
-        <section class="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,101,101,0.08)] p-8">
-          <h1 class="text-2xl font-bold mb-7 text-[#1a1c1c]">วิธีการชำระเงิน</h1>
+        <section class="bg-white rounded-3xl shadow-sm p-8 border border-gray-100">
+          <h2 class="text-xl font-extrabold mb-8 text-gray-900 flex items-center gap-2">
+            <span class="material-symbols-rounded text-teal-600">account_balance_wallet</span>
+            เลือกช่องทางชำระเงิน
+          </h2>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
             <button @click="paymentMethod = 'promptpay'"
-              class="flex flex-col items-center justify-center gap-2.5 p-4 border-2 rounded-xl transition-all h-full"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full shadow-sm"
               :class="paymentMethod === 'promptpay'
-                ? 'border-[#006565] bg-[#006565]/5 text-[#006565]'
-                : 'border-transparent bg-[#f3f3f3] hover:bg-[#e8e8e8] text-[#3e4949]'">
-              <img src="/images/qr_promptpay.webp" alt="พร้อมเพย์" class="h-32 w-auto object-contain" />
-              <span class="font-bold text-[16px] uppercase tracking-tight">QR Code PromptPay</span>
+                ? 'border-teal-600 bg-teal-50/30'
+                : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
+              <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
+                <img src="/images/qr_promptpay.webp" alt="พร้อมเพย์" class="h-12 w-auto object-contain" />
+              </div>
+              <div class="text-center">
+                <p class="font-black text-gray-900 tracking-tight">QR PromptPay</p>
+                <p class="text-[11px] text-gray-500 font-medium tracking-tight">ชำระผ่าน Mobile Banking ได้ทันที</p>
+              </div>
             </button>
+            
             <button @click="paymentMethod = 'mobile_banking'"
-              class="flex flex-col items-center justify-center gap-2.5 p-4 border-2 rounded-xl transition-all h-full"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full shadow-sm"
               :class="paymentMethod === 'mobile_banking'
-                ? 'border-[#006565] bg-[#006565]/5 text-[#006565]'
-                : 'border-transparent bg-[#f3f3f3] hover:bg-[#e8e8e8] text-[#3e4949]'">
-              <img src="/images/pay_bank.webp" alt="โมบายแบงก์กิ้ง" class="h-32 w-auto object-contain" />
-              <span class="font-bold text-[16px] uppercase tracking-tight">โอนเงินผ่านบัญชีธนาคาร</span>
+                ? 'border-teal-600 bg-teal-50/30'
+                : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
+              <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
+                <img src="/images/pay_bank.webp" alt="โมบายแบงก์กิ้ง" class="h-12 w-auto object-contain" />
+              </div>
+              <div class="text-center">
+                <p class="font-black text-gray-900 tracking-tight">โอนผ่านบัญชีธนาคาร</p>
+                <p class="text-[11px] text-gray-500 font-medium tracking-tight">แนบสลิปผ่านทางหน้านี้</p>
+              </div>
             </button>
           </div>
 
-          <!-- PromptPay QR (shown only for promptpay) -->
-          <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-4 py-4">
-            <p class="text-sm text-[#6e7979]">
-              สแกน QR ชำระเงิน
-              <template v-if="paymentType === 'installment'">
-                <strong class="text-[#e87c2a]">งวดแรก ฿{{ perInstallment.toLocaleString() }}</strong>
-              </template>
-              <template v-else>
-                <strong class="text-[#006565]">฿{{ Number(booking.total_amount).toLocaleString() }}</strong> ผ่าน Mobile Banking ได้ทุกธนาคาร
-              </template>
-            </p>
-            <div class="relative p-3 bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,101,101,0.12)] border border-[#b4eae9]">
-              <canvas ref="qrCanvas" class="block rounded-xl"></canvas>
-              <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center">
-                <div class="w-8 h-8 rounded-full border-4 border-[#b4eae9] border-t-[#006565] animate-spin"></div>
+          <!-- PromptPay QR -->
+          <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-6 py-6 bg-gray-50/50 rounded-3xl border border-gray-100">
+             <div class="text-center space-y-1">
+                <p class="text-base font-bold text-gray-900">เปิดแอปธนาคารแล้วสแกน QR นี้</p>
+                <p class="text-xs text-gray-500 px-4">ระบบจะคำนวณยอดชำระเบื้องต้นให้โดยอัตโนมัติ</p>
+             </div>
+
+            <div class="relative group">
+               <div class="absolute -inset-4 bg-teal-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+               <div class="relative p-6 bg-white rounded-3xl shadow-xl border border-teal-100">
+                <canvas ref="qrCanvas" class="block rounded-2xl w-[200px] h-[200px]"></canvas>
+                <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-3xl">
+                  <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
+                </div>
               </div>
             </div>
-            <p class="text-xs text-[#6e7979]">เบอร์พร้อมเพย์: <span class="font-semibold text-[#006565]">062-612-6006</span></p>
-            <button v-if="qrGenerated" @click="saveQR"
-              class="flex items-center gap-2 px-5 py-2 bg-[#006565] text-white text-sm font-semibold rounded-full hover:bg-[#004f4f] active:scale-95 transition-all shadow-md shadow-[#006565]/20">
-              <span class="material-symbols-rounded text-[16px]">download</span> บันทึก QR Code
-            </button>
+
+            <div class="flex flex-col items-center gap-3 w-full px-6">
+                <div class="flex items-center justify-between w-full max-w-xs bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                   <div class="flex flex-col">
+                      <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ยอดเงินที่ต้องชำระ</span>
+                      <span class="text-lg font-black text-teal-600">฿{{ (paymentType === 'installment' ? perInstallment : booking.total_amount).toLocaleString() }}</span>
+                   </div>
+                    <button @click="copyAmount" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl transition-colors active:scale-95">
+                      <span class="material-symbols-rounded text-base">content_copy</span>
+                      คัดลอกยอด
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <button v-if="qrGenerated" @click="saveQR"
+                    class="flex items-center gap-2.5 px-6 py-3 bg-teal-600 text-white text-sm font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20">
+                    <span class="material-symbols-rounded text-[18px]">download</span> บันทึก QR Code
+                  </button>
+                </div>
+            </div>
+             
+             <div class="flex items-center gap-2 py-2 px-4 rounded-full bg-white border border-gray-100 shadow-sm">
+                <span class="material-symbols-rounded text-teal-600 text-sm" style="font-variation-settings:'FILL' 1">verified_user</span>
+                <p class="text-[11px] text-gray-500 font-bold">ชื่อบัญชี: <span class="text-gray-900">ลุยเลเขา (บจก. ลุยเลเขา)</span></p>
+             </div>
           </div>
 
-          <!-- Mobile Banking account info -->
-          <div v-else class="bg-[#f3f9f9] rounded-2xl p-5 space-y-3 border border-[#b4eae9]">
-            <p class="text-sm font-bold text-[#1a1c1c] flex items-center gap-2">
-              <span class="material-symbols-rounded text-[#006565] text-[18px]">account_balance</span>
-              ข้อมูลบัญชีสำหรับโอนเงิน
+          <!-- Bank Transfer info -->
+          <div v-else class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100 shadow-inner">
+            <p class="text-sm font-black text-teal-900 flex items-center gap-2">
+              <span class="material-symbols-rounded text-teal-600 text-[20px]">account_balance</span>
+              ข้อมูลบัญชีธนาคาร
             </p>
-            <div class="space-y-2 text-sm text-[#3e4949]">
-              <div class="flex justify-between"><span class="text-[#6e7979]">ธนาคาร</span><span class="font-semibold">กสิกรไทย (KBank)</span></div>
-              <div class="flex justify-between"><span class="text-[#6e7979]">ชื่อบัญชี</span><span class="font-semibold">ลุยเลเขา</span></div>
-              <div class="flex justify-between"><span class="text-[#6e7979]">เลขที่บัญชี</span><span class="font-semibold tracking-wider">062-6-12600-6</span></div>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shrink-0">
+                      <span class="material-symbols-rounded text-white text-xl">account_balance</span>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ธนาคาร</p>
+                      <p class="text-sm font-bold text-gray-900">กสิกรไทย (KBANK)</p>
+                    </div>
+                  </div>
+              </div>
+              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50 shadow-sm relative group">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
+                      <span class="material-symbols-rounded text-teal-600 text-xl">person</span>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ชื่อบัญชี</p>
+                      <p class="text-sm font-bold text-gray-900">ลุยเลเขา</p>
+                    </div>
+                  </div>
+              </div>
+               <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-600/30 shadow-md relative group">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+                      <span class="material-symbols-rounded text-teal-600 text-xl">numbers</span>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">เลขที่บัญชี</p>
+                      <p class="text-lg font-black text-gray-900 tracking-wider">062-6-12600-6</p>
+                    </div>
+                  </div>
+                  <button @click="copyAccount" class="p-2.5 rounded-xl bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors shadow-sm active:scale-90">
+                    <span class="material-symbols-rounded text-xl">content_copy</span>
+                  </button>
+              </div>
             </div>
-            <p class="text-xs text-[#6e7979]">
-              กรุณาโอนยอด
-              <strong class="text-[#1a1c1c]">
-                {{ paymentType === 'installment' ? `฿${perInstallment.toLocaleString()} (งวดแรก)` : `฿${Number(booking.total_amount).toLocaleString()}` }}
-              </strong>
-              แล้วอัปโหลดสลิปด้านล่าง
-            </p>
+            
+            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
+               <span class="material-symbols-rounded text-amber-500 text-xl font-bold">info</span>
+               <p class="text-xs text-amber-800 font-medium leading-relaxed">
+                  กรุณาโอนยอด <strong class="text-amber-900">฿{{ (paymentType === 'installment' ? perInstallment : booking.total_amount).toLocaleString() }}</strong> ให้ครบถ้วน แล้วระบุวันและเวลาโอนตามจริงในสลิป
+               </p>
+            </div>
           </div>
 
           <!-- Divider -->
-          <div class="flex items-center gap-3 mt-6">
-            <div class="flex-1 h-px bg-[#e2e2e2]"></div>
-            <span class="text-xs text-[#6e7979] font-medium">อัปโหลดหลักฐานการโอนเงิน</span>
-            <div class="flex-1 h-px bg-[#e2e2e2]"></div>
+          <div class="flex items-center gap-4 my-10">
+            <div class="flex-1 h-[2px] bg-gray-50"></div>
+            <span class="text-[11px] text-gray-400 font-black uppercase tracking-[0.2em]">หลักฐานการโอนเงิน</span>
+            <div class="flex-1 h-[2px] bg-gray-50"></div>
           </div>
 
-          <!-- Slip Upload (always shown) -->
-          <div class="mt-4 space-y-3">
-            <label class="block text-sm font-semibold text-[#1a1c1c]">สลิปการโอนเงิน <span class="text-red-500">*</span></label>
-            <div v-if="!slipPreview"
+          <!-- Slip Upload -->
+          <div class="space-y-6">
+            <div class="flex items-center justify-between">
+               <label class="block text-sm font-black text-gray-900">อัปโหลดสลิปการโอนเงินที่นี่ <span class="text-red-500 font-normal">*</span></label>
+               <span v-if="slipFile" class="text-xs font-bold text-teal-600 flex items-center gap-1">
+                 <span class="material-symbols-rounded text-base">check_circle</span>
+                 เลือกไฟล์แล้ว
+               </span>
+            </div>
+
+            <div 
               @click="slipInputRef?.click()"
-              class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-[#b4eae9] rounded-2xl p-8 cursor-pointer hover:border-[#006565] hover:bg-[#006565]/5 transition-all">
-              <span class="material-symbols-rounded text-4xl text-[#b4eae9]">upload_file</span>
-              <p class="text-sm text-[#6e7979]">คลิกหรือลากไฟล์รูปสลิปมาวางที่นี่</p>
-              <p class="text-xs text-[#9eadad]">รองรับ JPG, PNG ขนาดไม่เกิน 5MB</p>
-            </div>
-            <div v-else class="relative rounded-2xl overflow-hidden border border-[#b4eae9]">
-              <img :src="slipPreview" alt="slip" class="w-full max-h-64 object-contain bg-[#f9f9f9]" />
-              <button @click="removeSlip"
-                class="absolute top-2 right-2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center shadow hover:bg-red-50 transition-colors">
-                <span class="material-symbols-rounded text-[18px] text-red-500">close</span>
-              </button>
-            </div>
-            <input ref="slipInputRef" type="file" accept="image/*" required class="hidden" @change="onSlipChange" />
-          </div>
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop.prevent="handleDrop"
+              class="group relative flex flex-col items-center justify-center gap-4 border-3 border-dashed rounded-[2.5rem] py-12 px-6 cursor-pointer transition-all duration-500 shadow-sm"
+              :class="[
+                isDragging ? 'border-teal-600 bg-teal-50 scale-[0.99]' : 'border-gray-200 bg-gray-50/50 hover:border-teal-400 hover:bg-teal-50/20',
+                slipPreview ? 'border-none p-0 overflow-hidden bg-transparent' : ''
+              ]">
+              
+              <template v-if="!slipPreview">
+                <div class="w-20 h-20 rounded-[2rem] bg-white text-teal-500 flex items-center justify-center shadow-lg border border-gray-100 group-hover:scale-110 transition-transform duration-500">
+                  <span class="material-symbols-rounded text-4xl">cloud_upload</span>
+                </div>
+                <div class="text-center space-y-1">
+                  <p class="text-base font-black text-gray-900">ลากไฟล์มาวาง หรือคลิกเพื่ออัปโหลด</p>
+                  <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest">JPG, PNG, PDF ขนาดไม่เกิน 5MB</p>
+                </div>
+              </template>
 
-          <!-- Transfer Datetime -->
-          <div class="grid grid-cols-2 gap-4 mt-4">
-            <div class="space-y-1.5">
-              <label class="block text-sm font-semibold text-[#1a1c1c]">วันที่โอน <span class="text-red-500">*</span></label>
-              <input v-model="transferDate" type="date" required
-                class="w-full px-4 py-2.5 rounded-xl border border-[#e2e2e2] bg-white text-sm text-[#1a1c1c] focus:outline-none focus:border-[#006565] focus:ring-2 focus:ring-[#006565]/20 transition" />
+              <template v-else>
+                 <div class="relative w-full max-h-[400px] group/preview">
+                    <img :src="slipPreview" alt="slip" class="w-full h-full object-contain rounded-[2rem] bg-gray-100 shadow-inner" />
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity rounded-[2rem] flex items-center justify-center">
+                       <p class="text-white font-bold text-sm bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">คลิกเพื่อเปลี่ยนรูป</p>
+                    </div>
+                    <button @click.stop="removeSlip"
+                      class="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-md text-red-600 rounded-full flex items-center justify-center shadow-xl hover:bg-red-600 hover:text-white transition-all z-20">
+                      <span class="material-symbols-rounded text-[22px]">delete</span>
+                    </button>
+                    <!-- Success indicator -->
+                    <div class="absolute bottom-4 left-4 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 shadow-lg shadow-teal-600/30">
+                       <span class="material-symbols-rounded text-[18px]">check_circle</span>
+                       อัปโหลดสำเร็จ
+                    </div>
+                 </div>
+              </template>
             </div>
-            <div class="space-y-1.5">
-              <label class="block text-sm font-semibold text-[#1a1c1c]">เวลาที่โอน <span class="text-red-500">*</span></label>
-              <input v-model="transferTime" type="time" required
-                class="w-full px-4 py-2.5 rounded-xl border border-[#e2e2e2] bg-white text-sm text-[#1a1c1c] focus:outline-none focus:border-[#006565] focus:ring-2 focus:ring-[#006565]/20 transition" />
+            
+            <input ref="slipInputRef" type="file" accept="image/*" required class="hidden" @change="onSlipChange" />
+
+            <!-- Datetime Inputs with Premium Feel -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+              <div class="space-y-2">
+                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">วันที่โอน (ตามสลิป)</label>
+                <div class="relative">
+                   <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">calendar_today</span>
+                   <input v-model="transferDate" type="date" required
+                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white shadow-sm text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
+                </div>
+              </div>
+              <div class="space-y-2">
+                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">เวลาที่โอน (ตามสลิป)</label>
+                <div class="relative">
+                   <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">schedule</span>
+                   <input v-model="transferTime" type="time" required
+                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white shadow-sm text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <!-- Security Badge -->
-        <div class="flex items-center gap-4 p-5 bg-[#93f2f2]/20 rounded-2xl border border-[#93f2f2]/40">
-          <p class="text-sm text-[#3e4949] leading-relaxed">
-            ข้อมูลการชำระเงินของคุณได้รับการคุ้มครองด้วยเทคโนโลยีการเข้ารหัสความปลอดภัยระดับสากลสูงสุด (SSL Encryption)
-          </p>
+        <!-- Trust Badges & Support -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 shadow-inner">
+               <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">verified</span>
+             </div>
+             <div>
+                <p class="text-sm font-bold text-gray-900">ความปลอดภัย 100%</p>
+                <p class="text-xs text-gray-500">ข้อมูลของคุณได้รับการเข้ารหัส SSL Encryption</p>
+             </div>
+           </div>
+           <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 shadow-inner">
+               <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">support_agent</span>
+             </div>
+             <div>
+                <p class="text-sm font-bold text-gray-900">ทีมงานพร้อมช่วยเหลือ</p>
+                <p class="text-xs text-gray-500">สอบถามโทร 062-612-6006 (8:00 - 20:00)</p>
+             </div>
+           </div>
         </div>
 
       </div>
 
-      <!-- RIGHT: Booking Summary -->
-      <aside class="lg:col-span-4 lg:sticky lg:top-24">
-        <div class="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,101,101,0.08)] overflow-hidden">
+      <!-- RIGHT: Booking Summary Card -->
+      <aside class="lg:col-span-4 sticky top-24 pb-20">
+        <div class="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-[0_30px_70px_rgba(0,0,0,0.1)]">
 
-          <!-- Trip image -->
-          <div class="h-44 relative overflow-hidden bg-[#b4eae9]">
+          <!-- Trip Premium Header -->
+          <div class="h-56 relative overflow-hidden bg-gray-100">
             <img v-if="booking.schedule?.trip?.cover_image || booking.schedule?.trip?.thumbnail_url"
               :src="booking.schedule.trip.cover_image || booking.schedule.trip.thumbnail_url"
               :alt="booking.schedule?.trip?.title"
-              class="w-full h-full object-cover" />
-            <div v-else class="w-full h-full flex items-center justify-center"></div>
-            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-5">
-              <span class="bg-[#93f2f2] text-[#002020] text-xs font-bold px-3 py-1 rounded-full tracking-wide">
-                รหัสจอง: {{ booking.booking_ref }}
+              class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
+            
+            <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/20 to-transparent"></div>
+            
+            <div class="absolute top-4 left-4">
+               <span class="bg-white/20 backdrop-blur-md text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-white/30">
+                #{{ booking.booking_ref }}
               </span>
             </div>
+
+            <div class="absolute bottom-5 left-6 right-6">
+               <p class="text-white text-lg font-black leading-tight drop-shadow-md mb-2">{{ booking.schedule?.trip?.title }}</p>
+               <div class="flex items-center gap-4 text-white/90 text-xs font-bold">
+                  <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1.5 rounded-xl border border-white/10">
+                    <span class="material-symbols-rounded text-[14px]">calendar_today</span>
+                    {{ formatDate(booking.schedule?.departure_date) }}
+                  </div>
+                  <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1.5 rounded-xl border border-white/10">
+                    <span class="material-symbols-rounded text-[14px]">group</span>
+                    {{ booking.passengers?.length || 0 }} ท่าน
+                  </div>
+               </div>
+            </div>
           </div>
 
-          <div class="p-7">
-            <h2 class="text-lg font-bold mb-5 text-[#1a1c1c]">สรุปการจอง</h2>
+          <div class="p-8">
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6">รายละเอียดการจอง</h2>
 
-            <div class="space-y-4 mb-6">
-              <div>
-                <p class="font-bold text-[#1a1c1c] leading-snug">{{ booking.schedule?.trip?.title }}</p>
-                <p class="text-sm text-[#6e7979] mt-0.5">{{ booking.passengers?.length || 0 }} ที่นั่ง</p>
-              </div>
-              <p class="text-sm text-[#3e4949]">{{ formatDate(booking.schedule?.departure_date) }}</p>
-              <p v-if="booking.seats?.length" class="text-sm text-[#3e4949]">ที่นั่ง: {{ booking.seats.map(s => s.seat_id).join(', ') }}</p>
+            <div class="space-y-4 mb-8">
+               <div v-if="booking.seats?.length" class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-in fade-in slide-in-from-bottom-2">
+                 <div class="w-10 h-10 rounded-xl bg-white text-teal-600 flex items-center justify-center shadow-sm shrink-0">
+                    <span class="material-symbols-rounded text-xl">airline_seat_recline_extra</span>
+                 </div>
+                 <div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">หมายเลขที่นั่ง</p>
+                    <p class="text-sm font-bold text-gray-900">{{ booking.seats.map(s => s.seat_id).join(', ') }}</p>
+                 </div>
+               </div>
+               
+               <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                 <div class="w-10 h-10 rounded-xl bg-white text-amber-600 flex items-center justify-center shadow-sm shrink-0">
+                    <span class="material-symbols-rounded text-xl">location_on</span>
+                 </div>
+                 <div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">จุดรับเดินทาง</p>
+                    <p class="text-sm font-bold text-gray-900 truncate max-w-[180px]">{{ booking.pickup_region || 'ระบุก่อนเดินทาง' }}</p>
+                 </div>
+               </div>
             </div>
 
-            <!-- Price breakdown -->
-            <div class="space-y-2.5 py-5 border-y border-[#e2e2e2] mb-5">
-              <div class="flex justify-between text-sm text-[#6e7979]">
-                <span>ราคาต่อที่นั่ง × {{ booking.passengers?.length || 0 }}</span>
-                <span>฿{{ Number(booking.total_amount).toLocaleString() }}</span>
-              </div>
-              <div class="flex justify-between text-sm text-[#6e7979]">
-                <span>ค่าบริการ</span>
-                <span>ฟรี</span>
-              </div>
+            <!-- Price Summary -->
+            <div class="space-y-3 pt-6 border-t border-gray-100 mb-8">
+               <div class="flex justify-between items-center text-sm">
+                  <span class="font-bold text-gray-500">ยอดรวมทั้งหมด</span>
+                  <span class="font-bold text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
+               </div>
+               
+               <template v-if="paymentType === 'installment'">
+                 <div class="flex justify-between items-end bg-amber-50 rounded-2xl p-4 border border-amber-100 shadow-inner">
+                    <span class="text-xs font-bold text-amber-700">ชำระงวดแรกตอนนี้</span>
+                    <div class="text-right">
+                       <span class="text-2xl font-black text-amber-600 leading-none">฿{{ perInstallment.toLocaleString() }}</span>
+                       <p class="text-[10px] font-bold text-amber-500 leading-none mt-1">จากทั้งหมด {{ installmentCount }} งวด</p>
+                    </div>
+                 </div>
+               </template>
+               
+               <template v-else>
+                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-5 border border-teal-100 shadow-inner">
+                    <span class="text-sm font-black text-teal-900 uppercase tracking-tight">ยอดชำระสุทธิ</span>
+                    <span class="text-3xl font-black text-teal-600 leading-none">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
+                 </div>
+               </template>
             </div>
 
-            <!-- Total / First installment amount -->
-            <div v-if="paymentType === 'installment'" class="mb-7 space-y-2">
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-[#6e7979]">ยอดรวมทั้งหมด</span>
-                <span class="text-base font-bold text-[#6e7979]">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
-              </div>
-              <div class="flex justify-between items-end">
-                <span class="font-bold text-[#1a1c1c]">ชำระงวดแรกตอนนี้</span>
-                <span class="text-3xl font-extrabold text-[#e87c2a]">฿{{ perInstallment.toLocaleString() }}</span>
-              </div>
-              <p class="text-xs text-[#6e7979]">ยังเหลืออีก {{ installmentCount - 1 }} งวด · งวดละ ฿{{ perInstallment.toLocaleString() }}</p>
-            </div>
-            <div v-else class="flex justify-between items-end mb-7">
-              <span class="font-bold text-[#1a1c1c]">ยอดชำระสุทธิ</span>
-              <span class="text-3xl font-extrabold text-[#9e380d]">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
+            <!-- Main CTA Button -->
+            <div class="space-y-4">
+              <button @click="processPayment" 
+                :disabled="paying || !slipFile"
+                class="group w-full py-5 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden relative shadow-xl disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                :class="[
+                  paymentType === 'installment'
+                    ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-600/30'
+                    : 'bg-gray-900 text-white hover:bg-black shadow-gray-900/30'
+                ]">
+                <!-- Loading State overlay -->
+                <div v-if="paying" class="absolute inset-0 bg-inherit flex items-center justify-center z-10">
+                   <div class="w-6 h-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                </div>
+
+                <div class="flex items-center gap-2.5 transition-transform group-hover:scale-105" :class="paying ? 'opacity-0' : 'opacity-100'">
+                  <span class="material-symbols-rounded text-xl" style="font-variation-settings:'FILL' 1">verified_user</span>
+                  <span>ยืนยันและส่งหลักฐานการชำระเงิน</span>
+                </div>
+                <div class="text-[10px] opacity-70 tracking-widest uppercase font-bold" :class="paying ? 'opacity-0' : 'opacity-70'">
+                   Secure SSL Encrypted
+                </div>
+              </button>
+              
+              <button v-if="!slipFile" @click="slipInputRef?.click()" class="w-full text-center text-xs font-bold text-amber-600 hover:text-amber-700 underline underline-offset-4 animate-bounce">
+                 ⚠ กรุณาอัปโหลดสลิปเพื่อดำเนินการต่อ
+              </button>
             </div>
 
-            <!-- Pay Button -->
-            <button @click="processPayment" :disabled="paying"
-              class="w-full py-4 rounded-full font-bold text-base flex items-center justify-center gap-2.5 active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-              :class="paymentType === 'installment'
-                ? 'bg-[#e87c2a] hover:bg-[#c96516] text-white shadow-[#e87c2a]/20'
-                : 'bg-[#006565] hover:bg-[#004f4f] text-white shadow-[#006565]/20'">
-              <span v-if="paying" class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+            <!-- Error message -->
+            <Transition name="fade">
+              <div v-if="paymentError" class="mt-6 p-4 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3">
+                <span class="material-symbols-rounded text-red-500 shrink-0">error</span>
+                <p class="text-xs font-bold text-red-600">{{ paymentError }}</p>
+              </div>
+            </Transition>
+
+            <!-- Verification promise -->
+            <div class="mt-8 pt-6 border-t border-gray-50">
+               <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-rounded text-teal-600 text-base" style="font-variation-settings:'FILL' 1">av_timer</span>
+                  </div>
+                  <p class="text-xs text-gray-500 font-medium">เจ้าหน้าที่จะตรวจสอบยอดโอนและยืนยันการจอง ภายใน 10-15 นาที</p>
+               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sticky Mobile Button (Only visible on mobile via class) -->
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] translate-y-0 transition-transform duration-500"
+          :class="!loading && booking ? 'translate-y-0' : 'translate-y-full'">
+            <button @click="processPayment" 
+              :disabled="paying || !slipFile"
+              class="w-full py-4 rounded-2xl bg-gray-900 text-white font-black shadow-lg shadow-gray-900/30 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying">
-                <span v-if="paymentType === 'installment'">ชำระงวดแรก ฿{{ perInstallment.toLocaleString() }}</span>
-                <span v-else>ชำระเงินตอนนี้</span>
+                <span>ยืนยันการชำระ ฿{{ (paymentType === 'installment' ? perInstallment : booking.total_amount).toLocaleString() }}</span>
+                <span class="material-symbols-rounded text-lg">arrow_forward</span>
               </template>
-              <template v-else>กำลังประมวลผล...</template>
+              <div v-else class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
             </button>
-
-            <p v-if="paymentError" class="mt-4 text-sm text-red-600 text-center flex items-center justify-center gap-1.5">
-              <span class="material-symbols-rounded text-base">error</span>
-              {{ paymentError }}
-            </p>
-
-            <p class="text-center mt-5 text-xs text-[#6e7979] leading-relaxed px-2">
-              โดยการคลิกชำระเงิน แสดงว่าคุณยอมรับ
-              <a href="#" class="text-[#006565] underline decoration-[#006565]/30">ข้อกำหนดและเงื่อนไข</a>
-              ของเรา
-            </p>
-          </div>
         </div>
       </aside>
     </div>
@@ -370,6 +597,34 @@ const qrGenerated = ref(false);
 const slipFile = ref(null);
 const slipPreview = ref(null);
 const slipInputRef = ref(null);
+const isDragging = ref(false);
+
+function handleDrop(e) {
+  isDragging.value = false;
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    setFile(file);
+  }
+}
+
+function setFile(file) {
+  if (!file) return;
+  slipFile.value = file;
+  const reader = new FileReader();
+  reader.onload = (ev) => { slipPreview.value = ev.target.result; };
+  reader.readAsDataURL(file);
+}
+
+function copyAmount() {
+  const amount = paymentType.value === 'installment' ? perInstallment.value : booking.value.total_amount;
+  navigator.clipboard.writeText(amount.toString());
+  swal.success('คัดลอกยอดเงินแล้ว', `฿${amount.toLocaleString()}`);
+}
+
+function copyAccount() {
+  navigator.clipboard.writeText('0626126006');
+  swal.success('คัดลอกเลขที่บัญชีแล้ว', '062-6-12600-6');
+}
 
 // Transfer datetime
 const transferDate = ref('');
