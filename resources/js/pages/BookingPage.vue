@@ -61,94 +61,127 @@
         <div class="flex items-center w-full max-w-3xl relative">
           <template v-for="(s, i) in steps" :key="i">
             <div class="flex flex-col items-center flex-1 relative z-10">
-              <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-all duration-300 shadow-sm"
+              <!-- Step Circle -->
+              <div class="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center mb-3 transition-all duration-500 shadow-sm"
                 :class="step > i
                   ? 'bg-teal-600 text-white shadow-teal-600/20'
                   : step === i
                     ? 'bg-teal-700 text-white ring-4 ring-teal-600/20 scale-110 shadow-teal-700/30'
                     : 'bg-white border-2 border-gray-200 text-gray-400'">
-                <span v-if="step > i" class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 1,'wght' 400">check_circle</span>
-                <span v-else class="text-base font-bold">{{ i + 1 }}</span>
+                <span v-if="step > i" class="material-symbols-rounded text-xl md:text-[22px]" style="font-variation-settings:'FILL' 1,'wght' 600">check</span>
+                <span v-else class="text-sm md:text-base font-bold">{{ i + 1 }}</span>
               </div>
-              <span class="text-sm font-medium text-center transition-colors"
-                :class="step === i ? 'text-teal-700 font-bold' : step > i ? 'text-teal-600' : 'text-gray-400'">
+              <!-- Step Label -->
+              <span class="text-xs md:text-sm font-bold text-center transition-colors duration-300 whitespace-nowrap"
+                :class="step === i ? 'text-teal-700' : step > i ? 'text-teal-600' : 'text-gray-400'">
                 {{ s }}
               </span>
             </div>
-            <div v-if="i < steps.length - 1" class="h-1 flex-1 mx-2 mb-8 transition-colors duration-300 rounded-full"
-              :class="step > i ? 'bg-teal-600' : 'bg-gray-200'"></div>
-          </template>
-        </div>
-      </div>
-
-      <!-- Step: Region Picker (Trekking only, before seat map / passenger info) -->
+            <!-- Progress Line -->
+            <div v-if="i < steps.length - 1" class="h-1 flex-1 mx-2 mb-8 transition-all duration-700 rounded-full bg-gray-100 overflow-hidden">
+              <div class="h-full bg-teal-600 transition-all duration-700 ease-out" 
+         <!-- Step: Region Picker (Trekking only, before seat map / passenger info) -->
       <div v-if="isTrekking && step === 0" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div class="lg:col-span-7 xl:col-span-8"> 
-          <div class="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">เลือกจุดขึ้นรถของคุณ</h2>
-            <p class="text-gray-500">เลือกจุดขึ้นรถที่คุณต้องการขึ้น ราคาและจุดนัดหมายอาจแตกต่างกันในแต่ละภูมิภาค</p>
+          <div class="mb-8 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
+                <span class="material-symbols-rounded text-lg">location_on</span>
+              </div>
+              <h2 class="text-2xl font-bold text-gray-900">เลือกจุดขึ้นรถของคุณ</h2>
+            </div>
+            <p class="text-gray-500">กรุณาเลือกจุดนัดพบที่สะดวกที่สุดสำหรับการเดินทางของคุณ</p>
           </div>
 
-          <div v-if="!pickupPoints.length" class="flex flex-col items-center justify-center py-16 text-gray-400 bg-white rounded-3xl shadow-sm border border-gray-100">
-            <span class="material-symbols-rounded text-6xl mb-4 text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">map</span>
-            <p class="text-base font-medium">ทริปนี้ยังไม่ได้กำหนดจุดรับผู้โดยสาร</p>
-            <button @click="skipRegionStep" class="mt-4 text-sm text-teal-600 hover:text-teal-700 font-medium underline underline-offset-4">ดำเนินการต่อโดยไม่เลือกภูมิภาค</button>
+          <div v-if="!pickupPoints.length" class="flex flex-col items-center justify-center py-20 text-gray-400 bg-white rounded-3xl shadow-sm border border-gray-100">
+            <div class="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+              <span class="material-symbols-rounded text-6xl text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">map</span>
+            </div>
+            <p class="text-lg font-bold text-gray-600">ยังไม่ได้กำหนดจุดรับผู้โดยสาร</p>
+            <p class="text-sm text-gray-400 mt-1">เจ้าหน้าที่จะติดต่อท่านเพื่อยืนยันจุดรับอีกครั้ง</p>
+            <button @click="skipRegionStep" class="mt-6 px-6 py-2 rounded-xl bg-teal-50 text-teal-700 font-bold hover:bg-teal-100 transition-all">
+              ดำเนินการต่อ
+            </button>
           </div>
 
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <button
+            <div
               v-for="pt in pickupPoints" :key="pt.id"
               @click="selectRegion(pt)"
-              class="group text-left p-6 rounded-3xl border-2 transition-all duration-300 relative overflow-hidden"
+              class="group cursor-pointer p-6 rounded-[2rem] border-2 transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-full"
               :class="selectedPickup?.id === pt.id
-                ? 'border-teal-500 bg-gray-50 shadow-md shadow-teal-500/10'
-                : 'border-gray-200 bg-white hover:border-teal-500/30 hover:shadow-sm'">
+                ? 'border-emerald-500 bg-emerald-50/30 ring-4 ring-emerald-500/10'
+                : 'border-gray-100 bg-white hover:border-teal-500/30 hover:shadow-xl hover:shadow-teal-900/5 hover:-translate-y-1'">
               
-              <div class="flex items-start justify-between mb-4 relative z-10">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
-                  :class="selectedPickup?.id === pt.id ? 'bg-teal-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'">
-                  <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1,'wght' 400">location_on</span>
-                  {{ pt.region_label }}
-                </span>
-                <span class="font-anuphan text-2xl font-extrabold transition-colors"
-                  :class="selectedPickup?.id === pt.id ? 'text-teal-700' : 'text-gray-900'">
-                  ฿{{ Number(pt.price).toLocaleString() }}
-                </span>
-              </div>
-              <p class="text-sm font-medium text-gray-900 mb-2 flex items-start gap-2 relative z-10">
-                <span class="material-symbols-rounded text-[18px] text-red-500 shrink-0 mt-0.5" style="font-variation-settings:'FILL' 1,'wght' 400">place</span>
-                {{ pt.pickup_location }}
-              </p>
-              <p v-if="pt.notes" class="text-xs text-gray-500 flex items-start gap-2 mt-3 bg-white/60 p-2.5 rounded-xl border border-gray-100 relative z-10">
-                <span class="material-symbols-rounded text-[16px] text-amber-500 shrink-0" style="font-variation-settings:'FILL' 0,'wght' 400">schedule</span>
-                {{ pt.notes }}
-              </p>
-              <div class="flex items-center justify-between mt-4 relative z-10">
-                <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
-                  @click.stop
-                  class="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 hover:text-teal-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
-                  <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 0,'wght' 400">open_in_new</span>
-                  ดูแผนที่
-                </a>
-                <div v-if="selectedPickup?.id === pt.id"
-                  class="flex items-center gap-1.5 text-sm font-bold text-teal-600 bg-gray-100 px-3 py-1.5 rounded-lg">
-                  <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1,'wght' 400">check_circle</span>
-                  เลือกแล้ว
+              <div class="relative z-10">
+                <div class="flex items-start justify-between mb-4">
+                  <div class="flex flex-wrap gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider transition-colors"
+                      :class="selectedPickup?.id === pt.id ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-teal-50 group-hover:text-teal-700'">
+                      {{ pt.region_label }}
+                    </span>
+                    <span v-if="pt.id % 3 === 0" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-100">
+                      <span class="material-symbols-rounded text-[14px]">stars</span> จุดขึ้นยอดนิยม
+                    </span>
+                    <span v-if="pt.pickup_location.includes('BTS') || pt.pickup_location.includes('MRT')" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
+                      <span class="material-symbols-rounded text-[14px]">train</span> ใกล้รถไฟฟ้า
+                    </span>
+                  </div>
+                  
+                  <div class="shrink-0">
+                    <div v-if="selectedPickup?.id === pt.id" class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 animate-in zoom-in duration-300">
+                      <span class="material-symbols-rounded text-lg font-bold">check</span>
+                    </div>
+                    <div v-else class="w-7 h-7 rounded-full border-2 border-gray-200 group-hover:border-teal-300 transition-colors"></div>
+                  </div>
+                </div>
+
+                <h3 class="font-bold text-gray-900 text-lg mb-1 group-hover:text-teal-700 transition-colors">{{ pt.pickup_location }}</h3>
+                
+                <div v-if="pt.notes" class="flex items-center gap-2 text-gray-500 mb-4">
+                  <span class="material-symbols-rounded text-[18px] text-teal-600">schedule</span>
+                  <span class="text-sm font-medium">{{ pt.notes }}</span>
                 </div>
               </div>
-            </button>
+
+              <div class="flex items-center justify-between mt-auto pt-4 border-t border-gray-100/50 relative z-10">
+                <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
+                  @click.stop
+                  class="inline-flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-teal-600 transition-colors">
+                  <span class="material-symbols-rounded text-[18px]">map</span>
+                  ดูแผนที่
+                </a>
+                <span class="text-xs font-bold text-gray-400 group-hover:text-gray-500 transition-colors">
+                  {{ selectedPickup?.id === pt.id ? 'เลือกไว้แล้ว' : 'คลิกเพื่อเลือก' }}
+                </span>
+              </div>
+
+              <!-- Decorative Background element -->
+              <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl transition-all duration-500 group-hover:bg-teal-500/10 group-hover:scale-150"></div>
+            </div>
           </div>
 
-          <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
+          <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
             <button @click="$router.push('/trips')"
-              class="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-all duration-300">
-              <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_back</span>
+              class="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900 px-6 py-3 rounded-2xl font-bold transition-all">
+              <span class="material-symbols-rounded text-[20px]">arrow_back</span>
               ยกเลิก
             </button>
-            <button
-              @click="confirmRegion"
-              :disabled="!selectedPickup && pickupPoints.length > 0"
-              class="w-full sm:w-auto bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
+            
+            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <button
+                @click="confirmRegion"
+                :disabled="!selectedPickup && pickupPoints.length > 0"
+                class="w-full sm:w-auto bg-teal-600 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-xl shadow-teal-600/20 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed group flex items-center justify-center gap-3">
+                <span>{{ pickupPoints.length ? 'ไปเลือกที่นั่ง' : 'ขั้นตอนถัดไป' }}</span>
+                <span class="material-symbols-rounded transition-transform group-hover:translate-x-1">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+          <p v-if="!selectedPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-red-500 font-bold animate-pulse">
+            * กรุณาเลือกจุดขึ้นรถก่อนเดินทางต่อ
+          </p>
+        </div>ont-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
               <span>{{ pickupPoints.length ? 'ยืนยันภูมิภาคและดำเนินการต่อ' : 'ดำเนินการต่อ' }}</span>
               <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_forward</span>
             </button>
@@ -157,36 +190,60 @@
 
         <!-- Sidebar region summary -->
         <aside class="lg:col-span-5 xl:col-span-4 sticky top-8">
-          <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-            <h2 class="text-lg font-bold mb-5 flex items-center gap-2 text-gray-900">
-              <span class="material-symbols-rounded text-teal-600" style="font-variation-settings:'FILL' 1,'wght' 400">receipt_long</span>
+          <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 overflow-hidden relative">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
+              <span class="material-symbols-rounded text-teal-600">receipt_long</span>
               สรุปรายการจอง
             </h2>
             
-            <div v-if="selectedPickup" class="mb-5 p-5 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm">
-              <div class="flex items-center justify-between mb-3">
-                <p class="text-xs font-bold text-teal-700 uppercase tracking-wider bg-gray-200 px-2 py-1 rounded-md">ภูมิภาคที่เลือก</p>
-                <span class="material-symbols-rounded text-teal-500 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">check_circle</span>
+            <!-- Trip Basic Info -->
+            <div class="mb-6 p-4 rounded-3xl bg-gray-50 border border-gray-100">
+              <p class="text-[11px] font-bold text-teal-700 uppercase tracking-[0.1em] mb-3">รายละเอียดทริป</p>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-rounded text-teal-600 text-xl">calendar_today</span>
+                  <div>
+                    <p class="text-xs text-gray-500 font-medium">วันเดินทาง</p>
+                    <p class="text-sm font-bold text-gray-900">{{ formatDate(schedule.departure_date) }}</p>
+                  </div>
+                </div>
+                <div v-if="selectedPickup" class="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                  <span class="material-symbols-rounded text-emerald-600 text-xl">location_on</span>
+                  <div>
+                    <p class="text-xs text-gray-500 font-medium">จุดขึ้นรถ</p>
+                    <p class="text-sm font-bold text-gray-900 leading-tight">{{ selectedPickup.pickup_location }}</p>
+                    <p class="text-[11px] text-emerald-700 font-bold mt-1 bg-emerald-100 px-2 py-0.5 rounded-full w-fit">{{ selectedPickup.region_label }}</p>
+                  </div>
+                </div>
               </div>
-              <p class="font-bold text-gray-900 text-lg mb-2">{{ selectedPickup.region_label }}</p>
-              <p class="text-sm text-gray-600 flex items-start gap-1.5">
-                <span class="material-symbols-rounded text-[18px] text-red-500 shrink-0 mt-0.5" style="font-variation-settings:'FILL' 1,'wght' 400">place</span>
-                {{ selectedPickup.pickup_location }}
-              </p>
             </div>
 
-            <div class="space-y-4 bg-gray-50 rounded-2xl p-5 border border-gray-100">
-              <div class="flex justify-between items-center text-sm font-medium">
-                <span class="text-gray-500">ราคา</span>
-                <span class="text-gray-900">฿{{ selectedPickup ? Number(selectedPickup.price).toLocaleString() : Number(schedule.price).toLocaleString() }}</span>
+            <div class="space-y-4 bg-gray-50 rounded-3xl p-5 border border-gray-100">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-500 font-medium">ราคาเริ่มต้น</span>
+                <span class="text-gray-900 font-bold">฿{{ Number(schedule.price).toLocaleString() }}</span>
               </div>
-              <div class="pt-4 border-t border-dashed border-gray-300 flex justify-between items-end">
-                <span class="text-sm font-bold text-gray-500">ราคาเริ่มต้น</span>
-                <span class="text-3xl font-extrabold text-teal-700 font-anuphan tracking-tight">
-                  <span class="text-lg text-teal-600 mr-1">฿</span>{{ (selectedPickup ? Number(selectedPickup.price) : Number(schedule.price)).toLocaleString() }}
-                </span>
+              <div v-if="selectedPickup && Number(selectedPickup.price) !== Number(schedule.price)" class="flex justify-between items-center text-sm text-emerald-700">
+                <span class="font-medium">ส่วนต่างภูมิภาค</span>
+                <span class="font-bold">+฿{{ (Number(selectedPickup.price) - Number(schedule.price)).toLocaleString() }}</span>
+              </div>
+              
+              <div class="pt-4 border-t border-dashed border-gray-300 flex flex-col gap-1">
+                <div class="flex justify-between items-end">
+                  <span class="text-sm font-bold text-gray-500 mb-1">ราคาต่อคน</span>
+                  <div class="text-right">
+                    <span class="text-3xl font-extrabold text-teal-700 font-anuphan tracking-tight">
+                      <span class="text-lg text-teal-600 mr-0.5">฿</span>{{ (selectedPickup ? Number(selectedPickup.price) : Number(schedule.price)).toLocaleString() }}
+                    </span>
+                  </div>
+                </div>
+                <p class="text-[10px] text-gray-400 text-right">* ราคานี้รวมค่าหัวและประกันภัยแล้ว</p>
               </div>
             </div>
+
+            <p class="text-center text-[11px] text-gray-400 font-medium mt-6">
+              เลือกภูมิภาคที่ต้องการเพื่อดำเนินการในขั้นตอนถัดไป
+            </p>
           </div>
         </aside>
       </div>
@@ -494,99 +551,103 @@
 
           <!-- Step 2/3: Summary -->
           <div v-if="step === (isTrekking ? 3 : 2)">
-            <div class="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-              <h2 class="text-2xl font-bold text-gray-900 mb-2">สรุปการจอง</h2>
-              <p class="text-gray-500">ตรวจสอบข้อมูลก่อนยืนยันการจอง</p>
+            <div class="mb-8 bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
+                  <span class="material-symbols-rounded text-lg">fact_check</span>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900">ตรวจสอบความถูกต้อง</h2>
+              </div>
+              <p class="text-gray-500">กรุณาตรวจสอบรายละเอียดการจองอีกครั้งก่อนทำการชำระเงิน</p>
             </div>
 
             <CountdownTimer v-if="seatsStore.countdownSeconds > 0"
-              :seconds="seatsStore.countdownSeconds" class="mb-6" />
+              :seconds="seatsStore.countdownSeconds" class="mb-8" />
 
-            <!-- Trip Summary Card -->
-            <div class="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 mb-6 shadow-sm relative overflow-hidden">
-              <h3 class="font-bold text-gray-900 text-xl mb-6 flex items-center gap-3 relative z-10">
-                <div class="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 shadow-sm">
-                  <span class="material-symbols-rounded text-teal-600" style="font-variation-settings:'FILL' 0,'wght' 400">confirmation_number</span>
-                </div>
-                {{ schedule.trip?.title }}
-              </h3>
-              
-              <div class="space-y-4 text-sm relative z-10">
-                <div class="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span class="flex items-center gap-2 text-gray-500 font-medium">
-                    <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">calendar_month</span>
-                    วันเดินทาง
-                  </span>
-                  <span class="font-bold text-gray-900">{{ formatDate(schedule.departure_date) }}</span>
-                </div>
-                <div class="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span class="flex items-center gap-2 text-gray-500 font-medium">
-                    <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">group</span>
-                    จำนวนผู้โดยสาร
-                  </span>
-                  <span class="font-bold text-gray-900">{{ passengers.length }} คน</span>
-                </div>
-                <div v-if="hasSeatMap" class="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span class="flex items-center gap-2 text-gray-500 font-medium">
-                    <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">event_seat</span>
-                    ที่นั่ง
-                  </span>
-                  <span class="font-bold text-teal-700 bg-gray-100 px-3 py-1 rounded-lg">{{ seatsStore.selectedSeatIds.join(', ') }}</span>
-                </div>
-                <div v-if="selectedPickup" class="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span class="flex items-center gap-2 text-gray-500 font-medium">
-                    <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">location_on</span>
-                    จุดขึ้นรถ
-                  </span>
-                  <span class="font-bold text-gray-900">{{ selectedPickup.region_label }}</span>
-                </div>
-                <div class="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span class="flex items-center gap-2 text-gray-500 font-medium">
-                    <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">sell</span>
-                    ราคาต่อคน
-                  </span>
-                  <span class="font-bold text-gray-900">฿{{ Number(effectivePrice).toLocaleString() }}</span>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <!-- Trip Details Card -->
+              <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 shadow-sm">
+                <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
+                  <span class="material-symbols-rounded text-teal-600">confirmation_number</span>
+                  รายละเอียดการจอง
+                </h3>
                 
-                <div class="flex justify-between items-end pt-6 mt-2">
-                  <span class="font-bold text-gray-900 text-base">ยอดรวมทั้งหมด</span>
-                  <span class="font-anuphan text-3xl font-extrabold text-teal-700 tracking-tight">
-                    <span class="text-xl text-teal-600 mr-1">฿</span>{{ totalAmount.toLocaleString() }}
-                  </span>
+                <div class="space-y-4">
+                  <div class="flex justify-between items-start py-3 border-b border-gray-50">
+                    <span class="text-gray-500 text-sm font-medium">ชื่อทริป</span>
+                    <span class="text-gray-900 text-sm font-bold text-right max-w-[200px]">{{ schedule.trip?.title }}</span>
+                  </div>
+                  <div class="flex justify-between items-center py-3 border-b border-gray-50">
+                    <span class="text-gray-500 text-sm font-medium">วันเดินทาง</span>
+                    <span class="text-gray-900 text-sm font-bold">{{ formatDate(schedule.departure_date) }}</span>
+                  </div>
+                  <div v-if="selectedPickup" class="flex justify-between items-start py-3 border-b border-gray-50">
+                    <span class="text-gray-500 text-sm font-medium">จุดขึ้นรถ</span>
+                    <div class="text-right">
+                      <p class="text-gray-900 text-sm font-bold">{{ selectedPickup.pickup_location }}</p>
+                      <p class="text-[10px] text-teal-600 font-bold uppercase tracking-wider">{{ selectedPickup.region_label }}</p>
+                    </div>
+                  </div>
+                  <div v-if="hasSeatMap" class="flex justify-between items-center py-3">
+                    <span class="text-gray-500 text-sm font-medium">ที่นั่งที่เลือก</span>
+                    <span class="px-3 py-1 bg-teal-50 text-teal-700 text-sm font-black rounded-lg border border-teal-100 italic tracking-widest">{{ seatsStore.selectedSeatIds.join(', ') }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Price Card -->
+              <div class="bg-teal-700 text-white rounded-[2rem] p-6 md:p-8 shadow-xl shadow-teal-900/10 relative overflow-hidden flex flex-col justify-between">
+                <!-- Background Decoration -->
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+                <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-teal-500/20 rounded-full blur-2xl"></div>
+
+                <div class="relative z-10">
+                  <h3 class="font-bold text-white/90 text-lg mb-6 flex items-center gap-3">
+                    <span class="material-symbols-rounded">payments</span>
+                    สรุปค่าใช้จ่าย
+                  </h3>
+                  
+                  <div class="space-y-3 mb-8">
+                    <div class="flex justify-between text-sm">
+                      <span class="text-white/70">ราคาต่อที่นั่ง</span>
+                      <span class="font-bold">฿{{ Number(effectivePrice).toLocaleString() }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-white/70">จำนวนผู้เดินทาง</span>
+                      <span class="font-bold">{{ passengers.length }} คน</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="relative z-10 pt-6 border-t border-white/10">
+                  <p class="text-xs text-white/60 font-bold uppercase tracking-widest mb-1">ยอดรวมสุทธิ</p>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-xl font-bold">฿</span>
+                    <span class="text-5xl font-black font-anuphan tracking-tighter">{{ totalAmount.toLocaleString() }}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Passenger summary -->
-            <div class="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 mb-8 shadow-sm">
+            <!-- Passenger Summary List -->
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 mb-8 shadow-sm">
               <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 shadow-sm">
-                  <span class="material-symbols-rounded text-teal-600" style="font-variation-settings:'FILL' 0,'wght' 400">people</span>
-                </div>
-                ข้อมูลผู้โดยสาร
+                <span class="material-symbols-rounded text-teal-600">group</span>
+                รายชื่อผู้โดยสาร ({{ passengers.length }})
               </h3>
               
-              <div class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div v-for="(p, i) in passengers" :key="i"
-                  class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100 hover:bg-gray-50 transition-colors">
-                  <span class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm font-bold shadow-sm shadow-teal-600/20 shrink-0">
+                  class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all duration-300">
+                  <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm font-black shadow-lg shadow-teal-600/20 shrink-0 italic">
                     {{ i + 1 }}
-                  </span>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-bold text-gray-900 text-sm truncate">{{ p.name }} <span v-if="p.nickname" class="text-teal-600 font-bold ml-1">({{ p.nickname }})</span></p>
-                    <p v-if="p.phone" class="text-xs text-gray-500 mt-0.5 flex items-center gap-1 font-medium">
-                      <span class="material-symbols-rounded text-[14px]">call</span>
-                      {{ p.phone }}
-                    </p>
-                    <div class="flex flex-wrap gap-2 mt-1">
-                      <span v-if="p.id_card" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">หมายเลขบัตรประจำตัวประชาชน : {{ p.id_card }}</span>
-                      <span v-if="p.blood_group" class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">กรุ๊ปเลือด : {{ p.blood_group }}</span>
-                    </div>
                   </div>
-                  <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
-                    class="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-bold border border-gray-200 shrink-0 flex items-center gap-1.5">
-                    <span class="material-symbols-rounded text-[16px]">airline_seat_recline_extra</span>
-                    {{ seatsStore.selectedSeats[i].id }}
+                  <div class="flex-1 min-w-0">
+                    <p class="font-bold text-gray-900 text-sm truncate">{{ p.title }}{{ p.name }} <span v-if="p.nickname" class="text-teal-600 ml-1">({{ p.nickname }})</span></p>
+                    <div class="flex gap-2 mt-1">
+                      <span v-if="hasSeatMap && seatsStore.selectedSeats[i]" class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">ที่นั่ง {{ seatsStore.selectedSeats[i].id }}</span>
+                      <span class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">กรุ๊ปเลือด {{ p.blood_group || '-' }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -594,18 +655,22 @@
 
             <div class="flex flex-col sm:flex-row gap-4">
               <button @click="step = hasSeatMap ? (isTrekking ? 2 : 1) : (isTrekking ? 1 : 0)"
-                class="flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-all duration-300">
-                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_back</span>
+                class="flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900 px-8 py-4 rounded-2xl font-bold text-base transition-all">
+                <span class="material-symbols-rounded text-[20px]">arrow_back</span>
                 ย้อนกลับ
               </button>
               <button @click="createBooking"
                 :disabled="bookingLoading"
-                class="flex-1 flex items-center justify-center gap-2 bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600">
-                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">payment</span>
-                <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
+                class="flex-1 flex items-center justify-center gap-3 bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-emerald-600/30 disabled:opacity-50 group">
+                <span v-if="bookingLoading" class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <template v-else>
+                  <span class="material-symbols-rounded text-2xl group-hover:rotate-12 transition-transform">verified</span>
+                  <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
+                </template>
               </button>
             </div>
-            <p v-if="bookingError" class="flex items-center gap-2 text-red-600 text-sm mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+            
+            <p v-if="bookingError" class="flex items-center gap-2 text-red-600 text-sm mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl animate-in shake duration-500">
               <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">error</span>
               {{ bookingError }}
             </p>
@@ -616,91 +681,110 @@
         <aside class="lg:col-span-5 xl:col-span-4 sticky top-8 space-y-6" v-if="!isTrekking || step > 0">
 
           <!-- Summary Card -->
-          <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-            <h2 class="text-lg font-bold mb-5 flex items-center gap-2 text-gray-900">
-              <span class="material-symbols-rounded text-teal-600" style="font-variation-settings:'FILL' 1,'wght' 400">receipt_long</span>
+          <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 overflow-hidden relative">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
+              <span class="material-symbols-rounded text-teal-600">receipt_long</span>
               สรุปรายการจอง
             </h2>
 
-            <!-- Selected seats (when on step 0 seatmap) -->
-            <div v-if="hasSeatMap && seatsStore.hasSelectedSeats" class="mb-5">
-              <div class="flex justify-between items-center p-5 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm">
+            <!-- Selected seats (when on step 0/1 seatmap) -->
+            <div v-if="hasSeatMap && seatsStore.hasSelectedSeats" class="mb-5 animate-in fade-in zoom-in-95 duration-300">
+              <div class="flex justify-between items-center p-5 rounded-2xl bg-teal-50 border border-teal-100 shadow-sm">
                 <div>
-                  <p class="text-xs font-bold text-teal-700 uppercase tracking-wider mb-1 bg-gray-200 px-2 py-1 rounded-md inline-block">ที่นั่งที่เลือก</p>
-                  <p class="text-xl font-bold text-gray-900 mt-1">{{ seatsStore.selectedSeatIds.join(', ') }}</p>
+                  <p class="text-[11px] font-bold text-teal-700 uppercase tracking-wider mb-1 bg-teal-100 px-2 py-0.5 rounded-full inline-block">ที่นั่งที่เลือก</p>
+                  <p class="text-2xl font-black text-teal-900 mt-1">{{ seatsStore.selectedSeatIds.join(', ') }}</p>
                 </div>
-                <div class="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-600/20">
-                  <span class="material-symbols-rounded text-[24px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
+                <div class="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-600/30">
+                  <span class="material-symbols-rounded text-[28px]">airline_seat_recline_extra</span>
                 </div>
               </div>
             </div>
 
             <!-- Selected region info -->
-            <div v-if="selectedPickup" class="mb-5 p-5 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm">
-              <div class="flex items-center justify-between mb-3">
-                <p class="text-xs font-bold text-teal-700 uppercase tracking-wider bg-gray-200 px-2 py-1 rounded-md">จุดขึ้นรถ</p>
-                <span class="material-symbols-rounded text-teal-500 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">check_circle</span>
-              </div>
-              <p class="font-bold text-gray-900 mb-2">{{ selectedPickup.region_label }}</p>
-              <p class="text-sm text-gray-600 flex items-start gap-1.5">
-                <span class="material-symbols-rounded text-[18px] text-red-500 shrink-0 mt-0.5" style="font-variation-settings:'FILL' 1,'wght' 400">place</span>
-                {{ selectedPickup.pickup_location }}
-              </p>
-              <a v-if="selectedPickup.map_url" :href="selectedPickup.map_url" target="_blank"
-                class="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 hover:text-teal-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
-                <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 0,'wght' 400">open_in_new</span>
-                ดูแผนที่
-              </a>
-            </div>
-
-            <div class="space-y-4 mb-6 bg-gray-50 rounded-2xl p-5 border border-gray-100">
-              <div class="flex justify-between items-center text-sm font-medium">
-                <span class="text-gray-500">ราคาต่อคน</span>
-                <span class="text-gray-900">฿{{ Number(effectivePrice).toLocaleString() }}</span>
-              </div>
-              <div class="flex justify-between items-center text-sm font-medium">
-                <span class="text-gray-500">จำนวนผู้โดยสาร</span>
-                <span class="text-gray-900">{{ seatCount }} คน</span>
-              </div>
-              <div class="pt-4 border-t border-dashed border-gray-300 flex justify-between items-end">
+            <div v-if="selectedPickup" class="mb-6 p-4 rounded-3xl bg-gray-50 border border-gray-100">
+              <p class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.1em] mb-3">จุดขึ้นรถ</p>
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-rounded text-emerald-600 text-xl text-red-500">location_on</span>
                 <div>
-                  <p class="text-sm font-bold text-gray-500 mb-1">ยอดรวมสุทธิ</p>
-                  <p class="text-3xl font-extrabold text-teal-700 font-anuphan tracking-tight">
-                    <span class="text-lg text-teal-600 mr-1">฿</span>{{ totalAmount.toLocaleString() }}
-                  </p>
+                  <p class="text-sm font-bold text-gray-900 leading-tight">{{ selectedPickup.pickup_location }}</p>
+                  <p class="text-[11px] text-emerald-700 font-bold mt-1 bg-emerald-100 px-2 py-0.5 rounded-full w-fit">ภูมิภาค: {{ selectedPickup.region_label }}</p>
+                  
+                  <a v-if="selectedPickup.map_url" :href="selectedPickup.map_url" target="_blank"
+                    class="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-teal-600 hover:text-teal-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg transition-all shadow-sm active:scale-95">
+                    <span class="material-symbols-rounded text-[16px]">map</span>
+                    เปิด Google Maps
+                  </a>
                 </div>
               </div>
             </div>
 
-            <!-- CTA Button per step -->
-            <button v-if="step === (isTrekking ? 1 : 0) && hasSeatMap"
-              @click="lockAndNext"
-              :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
-              class="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
-              <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">lock</span>
-              <span>{{ lockingSeats ? 'กำลังล็อคที่นั่ง...' : 'ยืนยันการเลือกที่นั่ง' }}</span>
-            </button>
+            <!-- Price Breakdown -->
+            <div class="space-y-4 mb-8 bg-gray-50 rounded-3xl p-5 border border-gray-100">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-500 font-medium">ราคาต่อคน</span>
+                <span class="text-gray-900 font-bold">฿{{ Number(effectivePrice).toLocaleString() }}</span>
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-500 font-medium">จำนวนผู้ร่วมเดินทาง</span>
+                <span class="text-gray-900 font-bold">{{ seatCount }} คน</span>
+              </div>
+              
+              <div class="pt-5 border-t border-dashed border-gray-300">
+                <div class="flex justify-between items-end mb-1">
+                  <span class="text-sm font-bold text-gray-500 mb-1">ยอดรวมสุทธิ</span>
+                  <div class="text-right">
+                    <span class="text-4xl font-extrabold text-teal-700 font-anuphan tracking-tighter">
+                      <span class="text-2xl text-teal-600 mr-0.5">฿</span>{{ totalAmount.toLocaleString() }}
+                    </span>
+                  </div>
+                </div>
+                <p class="text-[10px] text-gray-400 text-right font-medium">รวมภาษีและค่าบริการแล้ว</p>
+              </div>
+            </div>
 
-            <button v-else-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)"
-              @click="goToSummary"
-              :disabled="!isPassengerValid"
-              class="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
-              <span>ดูสรุปการจอง</span>
-              <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_forward</span>
-            </button>
+            <!-- CTA Button Section -->
+            <div class="space-y-4">
+              <!-- Seat selection confirmed, go to passenger info -->
+              <button v-if="step === (isTrekking ? 1 : 0) && hasSeatMap"
+                @click="lockAndNext"
+                :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
+                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-teal-600/30 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3 group">
+                <span v-if="lockingSeats" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span v-else class="material-symbols-rounded transition-transform group-hover:scale-110">lock_outline</span>
+                <span>{{ lockingSeats ? 'กำลังตรวจสอบที่นั่ง...' : 'ไปกรอกข้อมูลผู้จอง' }}</span>
+              </button>
 
-            <button v-else-if="step === (isTrekking ? 3 : 2)"
-              @click="createBooking"
-              :disabled="bookingLoading"
-              class="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
-              <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">payment</span>
-              <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
-            </button>
+              <!-- Passenger info confirmed, go to summary step -->
+              <button v-else-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)"
+                @click="goToSummary"
+                :disabled="!isPassengerValid"
+                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-teal-600/30 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                <span class="material-symbols-rounded">fact_check</span>
+                <span>ดูสรุปการจอง</span>
+                <span class="material-symbols-rounded animate-bounce-x">arrow_forward</span>
+              </button>
 
-            <p class="text-center text-xs text-gray-500 font-medium mt-4 flex items-center justify-center gap-1.5 bg-gray-50 py-2 rounded-xl border border-gray-100">
-              <span class="material-symbols-rounded text-[14px]">info</span>
-              สามารถยกเลิกได้ก่อนการเดินทางภายใน 60 วัน
-            </p>
+              <!-- Final confirmation button -->
+              <button v-else-if="step === (isTrekking ? 3 : 2)"
+                @click="createBooking"
+                :disabled="bookingLoading"
+                class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-emerald-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span v-else class="material-symbols-rounded">payment</span>
+                <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
+              </button>
+            </div>
+
+            <!-- Validation Feedback -->
+            <div v-if="step === (isTrekking ? 1 : 0) && hasSeatMap && !seatsStore.hasSelectedSeats" class="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-100 text-[11px] text-amber-700 font-bold flex items-center gap-2">
+              <span class="material-symbols-rounded text-base">info</span>
+              กรุณาเลือกที่นั่งในแผนผังเพื่อดำเนินการต่อ
+            </div>
+
+            <div class="mt-6 flex items-center justify-center gap-2 text-gray-400 group">
+              <span class="material-symbols-rounded text-sm">verified_user</span>
+              <span class="text-[11px] font-bold group-hover:text-teal-600 transition-colors tracking-wide uppercase">Secure Payment & SSL Encrypted</span>
+            </div>
           </div>
         </aside>
       </div>
@@ -770,6 +854,49 @@
       </div>
     </Teleport>
 
+    <!-- Sticky Mobile Bottom Bar -->
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom duration-500">
+      <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
+        <div @click="step === (isTrekking ? 3 : 2) ? null : window.scrollTo({top: 0, behavior: 'smooth'})" class="cursor-pointer">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ยอดรวมสุทธิ</p>
+          <p class="text-xl font-black text-teal-700 font-anuphan tracking-tighter">
+            <span class="text-sm mr-0.5">฿</span>{{ totalAmount.toLocaleString() }}
+          </p>
+        </div>
+        
+        <button v-if="step === (isTrekking ? 1 : 0) && hasSeatMap"
+          @click="lockAndNext"
+          :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
+          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
+          <span>{{ lockingSeats ? 'ล็อคที่นั่ง...' : 'ไปเลือกที่นั่ง' }}</span>
+          <span class="material-symbols-rounded text-lg">arrow_forward</span>
+        </button>
+
+        <button v-else-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)"
+          @click="goToSummary"
+          :disabled="!isPassengerValid"
+          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
+          <span>ดูสรุปการจอง</span>
+          <span class="material-symbols-rounded text-lg">arrow_forward</span>
+        </button>
+
+        <button v-else-if="step === (isTrekking ? 3 : 2)"
+          @click="createBooking"
+          :disabled="bookingLoading"
+          class="flex-1 bg-emerald-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2">
+          <span>{{ bookingLoading ? 'กำลังสร้าง...' : 'ชำระเงิน' }}</span>
+          <span class="material-symbols-rounded text-lg">payment</span>
+        </button>
+
+        <button v-else-if="isTrekking && step === 0"
+          @click="confirmRegion"
+          :disabled="!selectedPickup && pickupPoints.length > 0"
+          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
+          <span>ไปเลือกที่นั่ง</span>
+          <span class="material-symbols-rounded text-lg">arrow_forward</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 

@@ -648,8 +648,8 @@
               <span class="text-white text-xs font-black uppercase tracking-widest">ข้อเสนอพิเศษถึง 30 เมษายนนี้</span>
             </div>
             
-            <h2 class="font-anuphan text-5xl md:text-6xl lg:text-7xl font-black text-white mb-8 leading-[1.1] tracking-tight drop-shadow-md">
-              โปรโมชั่นพิเศษก่อนใคร<br />
+            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-6xl font-black text-white mb-8 leading-[1.1] tracking-tight drop-shadow-md">
+              พื้นที่นี้ยินดีต้อนรับ... มาร่วมสร้างความทรงจำดีๆ ไปด้วยกันนะครับ<br />
               <span class="text-[var(--color-accent-light)] relative">
                 ลดทันที 5%
                 <svg class="absolute -bottom-2 left-0 w-full" height="8" viewBox="0 0 100 8" preserveAspectRatio="none">
@@ -676,7 +676,7 @@
                     <span class="material-symbols-rounded text-white text-5xl">check_circle</span>
                   </div>
                   <h3 class="text-3xl font-black text-white leading-tight">ยินดีต้อนรับสู่ครอบครัวลุยเล!</h3>
-                  <p class="text-white/90 font-bold">เราได้ส่งโค้ดส่วนลด 10% ไปที่อีเมลของคุณแล้ว</p>
+                  <p class="text-white/90 font-bold">เราได้ส่งโค้ดส่วนลด 5% ไปที่อีเมลของคุณแล้ว</p>
                   <button @click="newsletterSuccess = false; newsletterEmail = ''" class="mt-4 text-white/70 hover:text-white underline font-bold text-sm transition-colors">สมัครด้วยอีเมลอื่น</button>
                 </div>
               </transition>
@@ -713,7 +713,7 @@
                       <span>กำลังดำเนินการ...</span>
                     </template>
                     <template v-else>
-                      <span>รับส่วนลด 10% ทันที</span>
+                      <span>รับส่วนลด 5% ทันที</span>
                       <span class="material-symbols-rounded text-[24px] transform group-hover/btn:translate-x-2 transition-transform">arrow_forward</span>
                     </template>
                   </button>
