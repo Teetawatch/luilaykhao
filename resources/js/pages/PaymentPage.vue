@@ -520,7 +520,7 @@
                   <span>ยืนยันและส่งหลักฐานการชำระเงิน</span>
                 </div>
                 <div class="text-[10px] opacity-70 tracking-widest uppercase font-bold" :class="paying ? 'opacity-0' : 'opacity-70'">
-                   Secure SSL Encrypted
+                   เข้ารหัส SSL ที่ปลอดภัย
                 </div>
               </button>
               

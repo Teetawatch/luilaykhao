@@ -183,11 +183,11 @@
             class="group relative bg-white rounded-[3rem] overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_50px_80px_rgba(0,0,0,0.15)] transition-all duration-500 hover:-translate-y-4 border border-gray-100/50 block isolate h-[520px]"
           >
             <!-- Premium Background Image with Dynamic Zoom -->
-            <div class="absolute inset-0 z-[-1] overflow-hidden">
+            <div class="absolute inset-0 z-[-1] overflow-hidden" :style="`background-color: ${cat.bgColor}`">
               <img 
                 :src="cat.image" 
                 :alt="cat.label"
-                class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110"
+                class="w-full h-full object-contain object-center transition-transform duration-[1.5s] ease-out group-hover:scale-110"
               />
               <!-- Enhanced Readability Overlays -->
               <div 
