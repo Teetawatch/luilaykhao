@@ -852,6 +852,7 @@
             </button>
           </div>
         </div>
+      </div>
     </Teleport>
 
     <!-- Sticky Mobile Bottom Bar -->
