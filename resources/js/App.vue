@@ -38,13 +38,24 @@
               <span class="font-anuphan tracking-tighter">{{ formattedGlobal }}</span>
             </div>
 
-            <!-- Go back to booking button -->
-            <router-link
-              :to="`/booking/${seatsStore.activeBookingInfo?.scheduleId}`"
-              class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-black bg-gray-900 text-white hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-900/10">
-              <span class="hidden md:inline">ดำเนินการต่อ</span>
-              <span class="material-symbols-rounded text-[16px] md:text-[18px]">arrow_forward</span>
-            </router-link>
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2 shrink-0">
+               <!-- Cancel button -->
+               <button
+                  @click="cancelCurrentBooking"
+                  class="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-black text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all active:scale-95">
+                  <span class="material-symbols-rounded text-[16px] md:text-[18px]">close</span>
+                  <span class="hidden md:inline">ยกเลิก</span>
+               </button>
+
+              <!-- Go back to booking button -->
+              <router-link
+                :to="`/booking/${seatsStore.activeBookingInfo?.scheduleId}`"
+                class="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-black bg-gray-900 text-white hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-900/10">
+                <span class="hidden md:inline">ดำเนินการต่อ</span>
+                <span class="material-symbols-rounded text-[16px] md:text-[18px]">arrow_forward</span>
+              </router-link>
+            </div>
           </div>
 
           <!-- Progress bar -->
@@ -111,6 +122,7 @@ import TopBanner from './components/TopBanner.vue';
 import Footer from './components/Footer.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { useSeatsStore } from './stores/seats';
+import { useBookingStore } from './stores/booking';
 import { useWishlistStore } from './stores/wishlist';
 import { useSwal } from './lib/swal';
 import { useHead } from '@unhead/vue';
@@ -119,6 +131,7 @@ const route = useRoute();
 const router = useRouter();
 const isAdminRoute = computed(() => route.path.startsWith('/admin'));
 const seatsStore = useSeatsStore();
+const bookingStore = useBookingStore();
 const wishlistStore = useWishlistStore();
 const swal = useSwal();
 
@@ -138,6 +151,40 @@ const formattedGlobal = computed(() => {
   const sec = s % 60;
   return `${m}:${sec.toString().padStart(2, '0')}`;
 });
+
+async function cancelCurrentBooking() {
+  const isConfirmed = await swal.confirm(
+    'ยกเลิกการจองนี้?',
+    'ที่นั่งที่คุณเลือกจะถูกปลดล็อค และข้อมูลที่กรอกไว้จะหายไป',
+    'ยืนยันยกเลิก',
+    'ไม่ ยกเลิก'
+  );
+
+  if (!isConfirmed) return;
+
+  try {
+    const bookingRef = seatsStore.activeBookingInfo?.bookingRef;
+    if (bookingRef) {
+      await bookingStore.cancelBooking(bookingRef, 'ผู้ใช้กดยกเลิกจากแถบแจ้งเตือนส่วนกลาง');
+    } else if (seatsStore.activeBookingInfo?.scheduleId) {
+      // If only seats are locked but no booking record yet
+      await seatsStore.unlockSeats(seatsStore.activeBookingInfo.scheduleId);
+    }
+    
+    seatsStore.clearSelection();
+    swal.success('ยกเลิกการจองแล้ว', 'คุณสามารถเลือกทริปและที่นั่งใหม่ได้ตามต้องการ');
+    
+    // Redirect if we are currently on booking/payment pages
+    if (route.path.startsWith('/booking/') || route.path.startsWith('/payment/')) {
+      router.push('/trips');
+    }
+  } catch (err) {
+    console.error('Cancellation failed:', err);
+    // Even if server call fails, we clear local state to avoid getting stuck
+    seatsStore.clearSelection();
+    router.push('/trips');
+  }
+}
 
 function handleGlobalExpiry() {
   const isOnBookingPage = route.path.startsWith('/booking/');

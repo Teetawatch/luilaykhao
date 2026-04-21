@@ -53,6 +53,9 @@
       </div>
     </div>
 
+    <!-- Two-column layout -->
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+
       <!-- LEFT: Payment Flow -->
       <div class="lg:col-span-8 space-y-8 pb-10">
 
