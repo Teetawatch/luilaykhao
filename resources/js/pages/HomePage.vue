@@ -187,7 +187,7 @@
               <img 
                 :src="cat.image" 
                 :alt="cat.label"
-                class="w-full h-full object-contain object-center transition-transform duration-[1.5s] ease-out group-hover:scale-110"
+                class="w-full h-full object-cover object-center transition-transform duration-[1.5s] ease-out group-hover:scale-110"
               />
               <!-- Enhanced Readability Overlays -->
               <div 
