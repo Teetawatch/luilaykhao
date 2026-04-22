@@ -1,8 +1,37 @@
 <template>
-  <nav 
-    class="navbar-root sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-sand-dark/30 transition-all duration-300"
-    :class="[isScrolled ? 'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] py-0' : 'shadow-sm py-1']"
-  >
+  <header class="sticky top-0 z-50 w-full transition-all duration-300">
+    <!-- Trust Bar (Top Bar) -->
+    <div 
+      class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out"
+      :class="isScrolled ? 'h-0 opacity-0' : 'h-8 md:h-9 opacity-100'"
+    >
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between animate-trust-bar">
+        <!-- Left: License -->
+        <div class="flex items-center gap-1.5 text-[11px] md:text-[13px] font-medium tracking-wide">
+          <span class="material-symbols-rounded text-[14px] md:text-[18px] text-accent-light">verified_user</span>
+          <span class="hidden md:inline">ใบอนุญาตนำเที่ยวเลขที่ 12/03773</span>
+          <span class="md:hidden truncate max-w-[220px]">ใบอนุญาต 12/03773</span>
+        </div>
+        
+        <!-- Right: Phone (Desktop Only) -->
+        <div class="hidden md:flex items-center">
+          <a 
+            href="tel:0626126006" 
+            class="flex items-center gap-2 hover:text-accent-light transition-all duration-300 group/phone"
+            aria-label="โทรติดต่อสอบถาม 062-612-6006"
+          >
+            <span class="material-symbols-rounded text-[16px] group-hover/phone:rotate-12 transition-transform">call</span>
+            <span class="text-[13px] font-bold">062-612-6006</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Navbar -->
+    <nav 
+      class="navbar-root bg-white/95 backdrop-blur-md border-b border-sand-dark/30 transition-all duration-300"
+      :class="[isScrolled ? 'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] py-0' : 'shadow-sm py-1']"
+    >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between transition-all duration-300" :class="isScrolled ? 'h-16' : 'h-20'">
 
@@ -460,6 +489,7 @@
     </div>
   </Transition>
   </nav>
+  </header>
 </template>
 
 <script setup>
@@ -660,11 +690,22 @@ async function handleLogout() {
   font-variation-settings: 'FILL' 0;
 }
 
+/* Trust Bar Animation */
+@keyframes slideDownTrust {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-trust-bar {
+  animation: slideDownTrust 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .mobile-menu-enter-active,
-  .mobile-menu-leave-active {
+  .mobile-menu-leave-active,
+  .animate-trust-bar {
     transition: none;
+    animation: none;
   }
 }
 
