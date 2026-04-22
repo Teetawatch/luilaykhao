@@ -181,6 +181,20 @@
               </div>
             </div>
 
+            <!-- Notifications (Desktop) -->
+            <div v-if="auth.isLoggedIn" class="relative flex items-center">
+              <router-link
+                to="/notifications"
+                class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
+                title="การแจ้งเตือน"
+              >
+                <span class="material-symbols-rounded text-[20px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
+                <span v-if="unreadNotifications > 0" class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  {{ unreadNotifications }}
+                </span>
+              </router-link>
+            </div>
+
             <!-- User / Login -->
             <template v-if="auth.isLoggedIn">
               <div ref="userDropdownRef" class="relative flex items-center">
@@ -210,6 +224,30 @@
                       <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
                       การจองของฉัน
                     </router-link>
+                    <router-link to="/my-reviews" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                      <span class="material-symbols-rounded text-[20px]">reviews</span>
+                      รีวิวของฉัน
+                    </router-link>
+                    <router-link to="/loyalty" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                      <span class="material-symbols-rounded text-[20px]">stars</span>
+                      แต้มสะสม
+                    </router-link>
+                    
+                    <template v-if="isStaff">
+                      <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
+                      <router-link to="/my-staff-trips" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                        <span class="material-symbols-rounded text-[20px]">badge</span>
+                        ตารางงานสตาฟ
+                      </router-link>
+                    </template>
+
+                    <template v-if="isAdmin">
+                      <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
+                      <router-link to="/admin" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-primary hover:bg-primary/5 transition-all">
+                        <span class="material-symbols-rounded text-[20px]">admin_panel_settings</span>
+                        Admin Panel
+                      </router-link>
+                    </template>
                     <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
                     <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-red-500 hover:bg-red-50 transition-all">
                       <span class="material-symbols-rounded text-[20px]">logout</span>
