@@ -1,4 +1,42 @@
+# Robots.txt for ลุยเลเขา Luilaykhao
+# https://luilaykhao.com
+
 User-agent: *
 Allow: /
+Allow: /trips
+Allow: /trips/*
+Allow: /about
+Allow: /contact
+Allow: /reviews
+Allow: /how-to-book
+Allow: /faq
+Allow: /goal
+Allow: /terms
+Allow: /privacy
 
-Sitemap: {{APP_URL}}/sitemap.xml
+# Disallow non-public / admin / auth pages
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /my-bookings
+Disallow: /my-reviews
+Disallow: /my-staff-trips
+Disallow: /loyalty
+Disallow: /notifications
+Disallow: /booking/*
+Disallow: /payment/*
+Disallow: /confirmation/*
+Disallow: /auth/*
+
+# Disallow build assets and API
+Disallow: /build/
+Disallow: /api/
+Disallow: /storage/
+
+# Crawl delay
+Crawl-delay: 1
+
+# Sitemap
+Sitemap: https://luilaykhao.com/sitemap.xml

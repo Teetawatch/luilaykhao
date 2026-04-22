@@ -62,7 +62,8 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
+import { useHead } from '@unhead/vue';
 
 const faqGroups = [
   {
@@ -90,6 +91,31 @@ const faqGroups = [
     ]
   }
 ];
+
+// Generate FAQ JSON-LD for Google rich results
+const faqJsonLd = computed(() => {
+  const allQuestions = faqGroups.flatMap(group =>
+    group.questions.map(item => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.a
+      }
+    }))
+  );
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: allQuestions
+  });
+});
+
+useHead({
+  script: [
+    { type: 'application/ld+json', innerHTML: faqJsonLd }
+  ]
+});
 
 onMounted(() => {
   window.scrollTo(0, 0)

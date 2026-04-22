@@ -1,0 +1,30 @@
+{
+    "name": "ลุยเลเขา - แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย",
+    "short_name": "ลุยเลเขา",
+    "description": "จองทริปเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ครบจบในที่เดียว ปลอดภัย ประทับใจ ใบอนุญาตนำเที่ยว 12/03773",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#F5F0E8",
+    "theme_color": "#0D2B1E",
+    "orientation": "portrait-primary",
+    "lang": "th",
+    "categories": ["travel", "tourism", "lifestyle"],
+    "icons": [
+        {
+            "src": "/images/logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/images/favicon-32x32.png",
+            "sizes": "32x32",
+            "type": "image/png"
+        },
+        {
+            "src": "/images/favicon-16x16.png",
+            "sizes": "16x16",
+            "type": "image/png"
+        }
+    ]
+}

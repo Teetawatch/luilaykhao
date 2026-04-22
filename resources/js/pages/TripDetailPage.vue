@@ -990,14 +990,91 @@ const route = useRoute();
 const trip = ref(null);
 
 useHead({
-  title: computed(() => trip.value ? trip.value.title : 'รายละเอียดทริป'),
+  title: computed(() => trip.value ? `${trip.value.title} - ทริป${trip.value.type === 'trekking' ? 'เดินป่า' : trip.value.type === 'snorkeling' ? 'ดำน้ำตื้น' : 'เช่ารถตู้'}` : 'รายละเอียดทริป'),
+  link: [
+    { rel: 'canonical', href: computed(() => `${window.location.origin}/trips/${route.params.slug}`) }
+  ],
   meta: [
-    { name: 'description', content: computed(() => trip.value ? trip.value.description : '') },
+    // SEO Meta
+    { name: 'description', content: computed(() => {
+      if (!trip.value) return '';
+      const desc = trip.value.description || '';
+      const location = trip.value.location ? ` สถานที่: ${trip.value.location}` : '';
+      const price = trip.value.price_per_person ? ` ราคาเริ่มต้น ฿${Number(trip.value.price_per_person).toLocaleString()}` : '';
+      const truncated = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+      return `${trip.value.title} - ลุยเลเขา${location}${price} ${truncated}`;
+    })},
+    { name: 'robots', content: 'index, follow, max-image-preview:large' },
+
+    // Open Graph
+    { property: 'og:type', content: 'product' },
+    { property: 'og:site_name', content: 'ลุยเลเขา Luilaykhao' },
+    { property: 'og:locale', content: 'th_TH' },
+    { property: 'og:url', content: computed(() => `${window.location.origin}/trips/${route.params.slug}`) },
     { property: 'og:title', content: computed(() => trip.value ? `${trip.value.title} | ลุยเลเขา` : '') },
-    { property: 'og:description', content: computed(() => trip.value ? trip.value.description : '') },
-    { property: 'og:image', content: computed(() => trip.value?.cover_image || '') }
+    { property: 'og:description', content: computed(() => trip.value ? (trip.value.description || '').substring(0, 200) : '') },
+    { property: 'og:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png`) },
+    { property: 'og:image:alt', content: computed(() => trip.value ? `${trip.value.title} - ลุยเลเขา` : '') },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
+    { property: 'product:price:amount', content: computed(() => trip.value?.price_per_person?.toString() || '') },
+    { property: 'product:price:currency', content: 'THB' },
+
+    // Twitter Card
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: computed(() => trip.value ? `${trip.value.title} | ลุยเลเขา` : '') },
+    { name: 'twitter:description', content: computed(() => trip.value ? (trip.value.description || '').substring(0, 200) : '') },
+    { name: 'twitter:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png`) },
+    { name: 'twitter:image:alt', content: computed(() => trip.value ? trip.value.title : 'ลุยเลเขา') }
+  ],
+  // JSON-LD Structured Data for Trip (Product + TouristTrip)
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: computed(() => {
+        if (!trip.value) return '{}';
+        const t = trip.value;
+        const imageUrl = t.cover_image ? (t.cover_image.startsWith('http') ? t.cover_image : `${window.location.origin}${t.cover_image}`) : `${window.location.origin}/images/logo.png`;
+        const data = {
+          '@context': 'https://schema.org',
+          '@type': 'TouristTrip',
+          name: t.title,
+          description: t.description || '',
+          url: `${window.location.origin}/trips/${route.params.slug}`,
+          image: imageUrl,
+          touristType: t.type === 'trekking' ? 'เดินป่า' : t.type === 'snorkeling' ? 'ดำน้ำตื้น' : 'เช่ารถตู้นำเที่ยว',
+          provider: {
+            '@type': 'TravelAgency',
+            name: 'ลุยเลเขา Luilaykhao',
+            url: window.location.origin,
+            telephone: '+66-62-612-6006'
+          },
+          offers: {
+            '@type': 'Offer',
+            price: t.price_per_person,
+            priceCurrency: 'THB',
+            availability: 'https://schema.org/InStock',
+            url: `${window.location.origin}/trips/${route.params.slug}`,
+            validFrom: new Date().toISOString().split('T')[0]
+          }
+        };
+        if (t.location) data.itinerary = { '@type': 'Place', name: t.location };
+        if (t.duration_days) data.duration = `P${t.duration_days}D`;
+        if (t.rating && Number(t.review_count) > 0) {
+          data.aggregateRating = {
+            '@type': 'AggregateRating',
+            ratingValue: Number(t.rating).toFixed(1),
+            reviewCount: t.review_count,
+            bestRating: '5',
+            worstRating: '1'
+          };
+        }
+        return JSON.stringify(data);
+      })
+    }
   ]
 });
+
 const schedules = ref([]);
 const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);

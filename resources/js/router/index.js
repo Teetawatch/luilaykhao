@@ -53,30 +53,134 @@ import AdminTripEdit from '../pages/admin/TripEditPage.vue';
 
 const routes = [
   // ── Public / Customer Routes ──
-  { path: '/', name: 'home', component: HomePage, meta: { title: 'หน้าแรก', description: 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย ตอบโจทย์คนรักธรรมชาติ ให้ทุกการเดินทางของคุณเป็นเรื่องง่าย' } },
-  { path: '/trips', name: 'trips', component: TripsPage, meta: { title: 'ค้นหาทริปทั้งหมด', description: 'รวมทริปท่องเที่ยวทั่วประเทศไทยยอดฮิต ทั้งขึ้นเขา ลงห้วย เที่ยวทะเล และสถานที่ธรรมชาติที่น่าสนใจ' } },
-  { path: '/trips/:slug', name: 'trip-detail', component: TripDetailPage },
-  { path: '/booking/:scheduleId', name: 'booking', component: BookingPage, meta: { requiresAuth: true } },
-  { path: '/payment/:bookingRef', name: 'payment', component: PaymentPage, meta: { requiresAuth: true } },
-  { path: '/confirmation/:bookingRef', name: 'confirmation', component: ConfirmationPage },
-  { path: '/login', name: 'login', component: LoginPage },
-  { path: '/register', name: 'register', component: RegisterPage },
-  { path: '/my-bookings', name: 'my-bookings', component: MyBookingsPage, meta: { requiresAuth: true } },
-  { path: '/my-reviews', name: 'my-reviews', component: MyReviewsPage, meta: { requiresAuth: true } },
-  { path: '/my-staff-trips', name: 'my-staff-trips', component: MyStaffTripsPage, meta: { requiresAuth: true } },
-  { path: '/loyalty', name: 'loyalty', component: LoyaltyPage, meta: { requiresAuth: true } },
-  { path: '/notifications', name: 'notifications', component: NotificationsPage, meta: { requiresAuth: true } },
-  { path: '/about', name: 'about', component: AboutPage, meta: { title: 'เกี่ยวกับเรา', description: 'ทำความรู้จักกับลุยเลเขา ทีมงานผู้อยู่เบื้องหลังการจัดทริปที่ใส่ใจในทุกรายละเอียดของคุณ' } },
-  { path: '/goal', name: 'goal', component: GoalPage },
-  { path: '/problem', name: 'problem', component: ProblemPage },
-  { path: '/privacy', name: 'privacy', component: PrivacyPage },
-  { path: '/terms', name: 'terms', component: TermsPage },
-  { path: '/reviews', name: 'reviews', component: ReviewsPage, meta: { title: 'รีวิวลูกค้า' } },
-  { path: '/how-to-book', name: 'how-to-book', component: BookingGuidePage, meta: { title: 'วิธีการจอง' } },
-  { path: '/faq', name: 'faq', component: FAQPage, meta: { title: 'คำถามที่พบบ่อย' } },
-  { path: '/contact', name: 'contact', component: ContactPage, meta: { title: 'ติดต่อเรา', description: 'ติดต่อสอบถามเรื่องการจัดทริป แจ้งปัญหาการใช้งาน หรือขอคำแนะนำการเดินทาง' } },
-  { path: '/profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
-  { path: '/auth/social/callback', name: 'social-callback', component: SocialCallbackPage },
+  {
+    path: '/',
+    name: 'home',
+    component: HomePage,
+    meta: {
+      title: 'แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว',
+      description: 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย ใบอนุญาต 12/03773',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/trips',
+    name: 'trips',
+    component: TripsPage,
+    meta: {
+      title: 'ค้นหาทริปทั้งหมด | เดินป่า ดำน้ำตื้น เช่ารถตู้',
+      description: 'รวมทริปท่องเที่ยวทั่วประเทศไทย ทริปเดินป่าภูกระดึง ภูสอยดาว เขาช้างเผือก ทริปดำน้ำตื้นดูปะการัง และบริการเช่ารถตู้นำเที่ยว VIP พร้อมคนขับ จองออนไลน์ได้เลย',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/trips/:slug',
+    name: 'trip-detail',
+    component: TripDetailPage,
+    meta: {
+      ogType: 'product'
+    }
+  },
+  { path: '/booking/:scheduleId', name: 'booking', component: BookingPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/payment/:bookingRef', name: 'payment', component: PaymentPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/confirmation/:bookingRef', name: 'confirmation', component: ConfirmationPage, meta: { robots: 'noindex, nofollow' } },
+  { path: '/login', name: 'login', component: LoginPage, meta: { title: 'เข้าสู่ระบบ', description: 'เข้าสู่ระบบลุยเลเขา เพื่อจองทริปเดินป่า ดำน้ำตื้น และเช่ารถตู้นำเที่ยว', robots: 'noindex, follow' } },
+  { path: '/register', name: 'register', component: RegisterPage, meta: { title: 'สมัครสมาชิก', description: 'สมัครสมาชิกลุยเลเขา เพื่อรับสิทธิพิเศษและจองทริปได้ง่ายขึ้น', robots: 'noindex, follow' } },
+  { path: '/my-bookings', name: 'my-bookings', component: MyBookingsPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/my-reviews', name: 'my-reviews', component: MyReviewsPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/my-staff-trips', name: 'my-staff-trips', component: MyStaffTripsPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/loyalty', name: 'loyalty', component: LoyaltyPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/notifications', name: 'notifications', component: NotificationsPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  {
+    path: '/about',
+    name: 'about',
+    component: AboutPage,
+    meta: {
+      title: 'เกี่ยวกับเรา',
+      description: 'ทำความรู้จักกับลุยเลเขา ทีมงานผู้อยู่เบื้องหลังการจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้ ที่ใส่ใจในทุกรายละเอียด ใบอนุญาตนำเที่ยว 12/03773',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/goal',
+    name: 'goal',
+    component: GoalPage,
+    meta: {
+      title: 'จุดมุ่งหมายของเรา',
+      description: 'เป้าหมายของลุยเลเขาคือการทำให้ทุกคนออกไปเที่ยวธรรมชาติได้ง่ายขึ้น ปลอดภัย และมีความสุขในทุกการเดินทาง',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/problem',
+    name: 'problem',
+    component: ProblemPage,
+    meta: {
+      title: 'แจ้งปัญหาการใช้งาน',
+      description: 'แจ้งปัญหาเกี่ยวกับการจองทริป การชำระเงิน หรือการใช้งานเว็บไซต์ลุยเลเขา ทีมงานพร้อมช่วยเหลือ',
+      robots: 'noindex, follow'
+    }
+  },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: PrivacyPage,
+    meta: {
+      title: 'นโยบายความเป็นส่วนตัว',
+      description: 'นโยบายความเป็นส่วนตัวของลุยเลเขา เราให้ความสำคัญกับการปกป้องข้อมูลส่วนบุคคลของผู้ใช้งานทุกท่าน'
+    }
+  },
+  {
+    path: '/terms',
+    name: 'terms',
+    component: TermsPage,
+    meta: {
+      title: 'เงื่อนไขการให้บริการ',
+      description: 'เงื่อนไขการให้บริการของลุยเลเขา ข้อกำหนดการจองทริป การยกเลิก การคืนเงิน และข้อตกลงในการใช้บริการ'
+    }
+  },
+  {
+    path: '/reviews',
+    name: 'reviews',
+    component: ReviewsPage,
+    meta: {
+      title: 'รีวิวจากนักเดินทาง',
+      description: 'อ่านรีวิวจากนักเดินทางที่เคยไปทริปกับลุยเลเขา ประสบการณ์จริงจากผู้ใช้งาน ทริปเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/how-to-book',
+    name: 'how-to-book',
+    component: BookingGuidePage,
+    meta: {
+      title: 'วิธีการจองทริป',
+      description: 'คู่มือวิธีการจองทริปกับลุยเลเขา ขั้นตอนง่ายๆ เลือกทริป เลือกวัน จ่ายเงิน รอรับการยืนยัน พร้อมชำระผ่าน PromptPay',
+      ogType: 'article'
+    }
+  },
+  {
+    path: '/faq',
+    name: 'faq',
+    component: FAQPage,
+    meta: {
+      title: 'คำถามที่พบบ่อย (FAQ)',
+      description: 'รวมคำถามที่พบบ่อยเกี่ยวกับการจองทริปลุยเลเขา การยกเลิก การคืนเงิน สิ่งที่ต้องเตรียม ความปลอดภัย และอื่นๆ',
+      ogType: 'article'
+    }
+  },
+  {
+    path: '/contact',
+    name: 'contact',
+    component: ContactPage,
+    meta: {
+      title: 'ติดต่อเรา',
+      description: 'ติดต่อลุยเลเขา สอบถามเรื่องจองทริปเดินป่า ดำน้ำตื้น เช่ารถตู้ โทร 062-612-6006 LINE @luilaykhao อีเมล luilaykhao.info@gmail.com',
+      ogType: 'website'
+    }
+  },
+  { path: '/profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/auth/social/callback', name: 'social-callback', component: SocialCallbackPage, meta: { robots: 'noindex, nofollow' } },
 
 
 
@@ -84,7 +188,7 @@ const routes = [
   {
     path: '/admin',
     component: AdminLayout,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, robots: 'noindex, nofollow' },
     children: [
       { path: '', name: 'admin-dashboard', component: AdminDashboard },
       { path: 'trips', name: 'admin-trips', component: AdminTrips },
