@@ -426,6 +426,7 @@
           </template>
         </div>
       </div>
+    </div>
     </Transition>
     </nav>
   </header>
