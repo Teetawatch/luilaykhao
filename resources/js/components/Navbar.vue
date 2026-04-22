@@ -3,14 +3,14 @@
     <!-- Trust Bar (Top Bar) -->
     <div 
       class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out"
-      :class="isScrolled ? 'h-0 opacity-0' : 'h-9 md:h-10 opacity-100'"
+      :class="isScrolled ? 'h-0 opacity-0' : 'h-10 md:h-12 opacity-100'"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between animate-trust-bar">
         <!-- Left: License -->
-        <div class="flex items-center gap-2 text-[12px] md:text-[14px] font-medium tracking-wide">
-          <span class="material-symbols-rounded text-[16px] md:text-[20px] text-accent-light">verified_user</span>
+        <div class="flex items-center gap-2 text-[13px] md:text-[15px] font-medium tracking-wide">
+          <span class="material-symbols-rounded text-[18px] md:text-[22px] text-accent-light">verified_user</span>
           <span class="hidden md:inline">ใบอนุญาตนำเที่ยวเลขที่ 12/03773</span>
-          <span class="md:hidden truncate max-w-[220px]">ใบอนุญาต 12/03773</span>
+          <span class="md:hidden truncate max-w-[240px]">ใบอนุญาต 12/03773</span>
         </div>
         
         <!-- Right: Phone (Desktop Only) -->
@@ -20,8 +20,8 @@
             class="flex items-center gap-2 hover:text-accent-light transition-all duration-300 group/phone"
             aria-label="โทรติดต่อสอบถาม 062-612-6006"
           >
-            <span class="material-symbols-rounded text-[18px] group-hover/phone:rotate-12 transition-transform">call</span>
-            <span class="text-[14px] font-bold">062-612-6006</span>
+            <span class="material-symbols-rounded text-[20px] group-hover/phone:rotate-12 transition-transform">call</span>
+            <span class="text-[15px] font-bold">062-612-6006</span>
           </a>
         </div>
       </div>
