@@ -1028,7 +1028,10 @@ const passengers = ref([{
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null
 }]);
 
-const FORM_SESSION_KEY = computed(() => `booking_form_${route.params.scheduleId}`);
+const FORM_SESSION_KEY = computed(() => {
+  const base = `booking_form_${route.params.scheduleId}`;
+  return preselectedRegion ? `${base}_${preselectedRegion}` : base;
+});
 
 function saveFormData() {
   const scheduleId = route.params.scheduleId;
@@ -1153,7 +1156,8 @@ function skipRegionStep() {
   if (!hasSeatMap.value) {
     seatsStore.startManualCountdown(
       schedule.value?.trip?.title || 'กิจกรรม',
-      route.params.scheduleId
+      route.params.scheduleId,
+      preselectedRegion
     );
   }
   step.value = 1;
@@ -1167,6 +1171,8 @@ async function lockAndNext() {
     seatsStore.setActiveBookingInfo({
       tripTitle: schedule.value?.trip?.title || 'กิจกรรม',
       scheduleId: route.params.scheduleId,
+      region: preselectedRegion,
+      step: isTrekking.value ? 2 : 1,
     });
     passengerCount.value = seatsStore.selectedSeats.length;
     step.value = isTrekking.value ? 2 : 1;
@@ -1294,8 +1300,12 @@ onMounted(async () => {
     seatsStore.restoreCountdown();
     // Restore step from session if returning mid-booking
     const hasValidSession = seatsStore.lockExpiry && new Date(seatsStore.lockExpiry) > new Date();
+    // Validate if the current session matches the schedule and region
+    const isSameSchedule = seatsStore.activeBookingInfo?.scheduleId == route.params.scheduleId;
+    const isSameRegion = seatsStore.activeBookingInfo?.region === preselectedRegion;
     const savedStep = seatsStore.activeBookingInfo?.step;
-    if (hasValidSession) {
+
+    if (hasValidSession && isSameSchedule && isSameRegion) {
       restoreFormData();
       if (savedStep != null && savedStep > 0) {
         step.value = savedStep;
@@ -1303,11 +1313,16 @@ onMounted(async () => {
       if (hasSeatMap.value && seatsStore.selectedSeats.length > 0) {
         passengerCount.value = seatsStore.selectedSeats.length;
       }
+    } else if (hasValidSession && (!isSameSchedule || !isSameRegion)) {
+      // Session exists but for a different trip or region.
+      // We clear the selection to avoid mixing up data from different regional bookings.
+      seatsStore.clearSelection();
     } else if (!hasSeatMap.value && !isTrekking.value) {
       // For non-seat-map, non-trekking trips: start countdown immediately on page load
       seatsStore.startManualCountdown(
         schedule.value?.trip?.title || 'กิจกรรม',
-        route.params.scheduleId
+        route.params.scheduleId,
+        preselectedRegion
       );
     }
   } catch (e) {

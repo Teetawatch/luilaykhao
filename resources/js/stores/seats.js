@@ -174,10 +174,10 @@ export const useSeatsStore = defineStore('seats', {
       this.countdownSeconds = 0;
     },
 
-    startManualCountdown(tripTitle, scheduleId) {
+    startManualCountdown(tripTitle, scheduleId, region = null) {
       this.stopCountdown();
       this.lockExpiry = new Date(Date.now() + MAX_BOOKING_SECONDS * 1000).toISOString();
-      this.activeBookingInfo = { tripTitle, scheduleId, startedAt: Date.now() };
+      this.activeBookingInfo = { tripTitle, scheduleId, region, startedAt: Date.now() };
       saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
       this.startCountdown();
     },
