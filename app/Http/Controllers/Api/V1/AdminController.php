@@ -740,6 +740,16 @@ class AdminController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        // Prevent duplicate pickup points (same schedule + region + location)
+        $exists = SchedulePickupPoint::where('schedule_id', $scheduleId)
+            ->where('region', $validated['region'])
+            ->where('pickup_location', $validated['pickup_location'])
+            ->exists();
+
+        if ($exists) {
+            return $this->error('จุดรับนี้มีอยู่แล้วในรอบเดินทางนี้', 422);
+        }
+
         $validated['schedule_id'] = $scheduleId;
 
         $point = SchedulePickupPoint::create($validated);

@@ -1044,8 +1044,18 @@ const doCopyPickups = async () => {
   try {
     const res = await api.get(`/admin/schedules/${copySource.value.id}/pickup-points`);
     const points = res.data.data;
+    let skippedCount = 0;
     for (const targetId of copySelectedIds.value) {
+      // Fetch existing pickup points to prevent duplicates
+      const existingRes = await api.get(`/admin/schedules/${targetId}/pickup-points`);
+      const existingPoints = existingRes.data.data || [];
+      const existingKeys = new Set(existingPoints.map(p => `${p.region}::${p.pickup_location}`));
       for (const pt of points) {
+        const key = `${pt.region}::${pt.pickup_location}`;
+        if (existingKeys.has(key)) {
+          skippedCount++;
+          continue; // skip duplicate
+        }
         await api.post(`/admin/schedules/${targetId}/pickup-points`, {
           region: pt.region,
           region_label: pt.region_label,
@@ -1061,7 +1071,8 @@ const doCopyPickups = async () => {
     }
     showCopyModal.value = false;
     fetchData();
-    alert(`คัดลอกจุดรับไป ${copySelectedIds.value.length} รอบสำเร็จ`);
+    const msg = `คัดลอกจุดรับไป ${copySelectedIds.value.length} รอบสำเร็จ`;
+    alert(skippedCount ? `${msg}\n(ข้ามจุดรับที่ซ้ำ ${skippedCount} จุด)` : msg);
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
@@ -1171,8 +1182,16 @@ const applyTemplateToSchedule = async (tpl) => {
   pickupSubmitting.value = true;
   try {
     const scheduleId = pickupSchedule.value.id;
+    // Build set of existing pickup keys to prevent duplicates
+    const existingKeys = new Set(pickupPoints.value.map(p => `${p.region}::${p.pickup_location}`));
+    let skippedCount = 0;
     for (const pt of tpl.points) {
       if (!pt.pickup_location) continue;
+      const key = `${pt.region}::${pt.pickup_location}`;
+      if (existingKeys.has(key)) {
+        skippedCount++;
+        continue; // skip duplicate
+      }
       await api.post(`/admin/schedules/${scheduleId}/pickup-points`, {
         region: pt.region,
         region_label: pt.region_label,
@@ -1181,8 +1200,10 @@ const applyTemplateToSchedule = async (tpl) => {
         notes: pt.notes || null,
         map_url: pt.map_url || null,
       });
+      existingKeys.add(key); // track newly added
     }
     await loadPickupPoints(scheduleId);
+    if (skippedCount) alert(`เพิ่มจุดรับสำเร็จ (ข้ามจุดรับที่ซ้ำ ${skippedCount} จุด)`);
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
@@ -1220,16 +1241,29 @@ const doApplyTemplate = async () => {
   const selectedTemplates = pickupTemplates.value.filter(t => applyTemplateIds.value.includes(t.id));
   const allPoints = selectedTemplates.flatMap(t => t.points);
   applyTemplateSubmitting.value = true;
+  let totalSkipped = 0;
   try {
     for (const scheduleId of applySelectedScheduleIds.value) {
       if (applyMode.value === 'replace') {
+        // In replace mode, delete everything first — no duplicate issue
         const ptRes = await api.get(`/admin/schedules/${scheduleId}/pickup-points`);
         for (const pt of ptRes.data.data) {
           await api.delete(`/admin/schedules/${scheduleId}/pickup-points/${pt.id}`);
         }
       }
+      // Fetch existing to prevent duplicates (in append mode)
+      let existingKeys = new Set();
+      if (applyMode.value === 'append') {
+        const existingRes = await api.get(`/admin/schedules/${scheduleId}/pickup-points`);
+        existingKeys = new Set((existingRes.data.data || []).map(p => `${p.region}::${p.pickup_location}`));
+      }
       for (const pt of allPoints) {
         if (!pt.pickup_location) continue;
+        const key = `${pt.region}::${pt.pickup_location}`;
+        if (existingKeys.has(key)) {
+          totalSkipped++;
+          continue; // skip duplicate
+        }
         await api.post(`/admin/schedules/${scheduleId}/pickup-points`, {
           region: pt.region,
           region_label: pt.region_label,
@@ -1238,11 +1272,13 @@ const doApplyTemplate = async () => {
           notes: pt.notes || null,
           map_url: pt.map_url || null,
         });
+        existingKeys.add(key); // track newly added
       }
     }
     showApplyTemplateModal.value = false;
     fetchData();
-    alert(`${applyMode.value === 'replace' ? 'เขียนทับ' : 'เพิ่มจุดรับ'}${allPoints.length} จุด (จาก ${selectedTemplates.length} เทมเพลต) ใน ${applySelectedScheduleIds.value.length} รอบสำเร็จ`);
+    const base = `${applyMode.value === 'replace' ? 'เขียนทับ' : 'เพิ่มจุดรับ'}${allPoints.length} จุด (จาก ${selectedTemplates.length} เทมเพลต) ใน ${applySelectedScheduleIds.value.length} รอบสำเร็จ`;
+    alert(totalSkipped ? `${base}\n(ข้ามจุดรับที่ซ้ำ ${totalSkipped} จุด)` : base);
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
