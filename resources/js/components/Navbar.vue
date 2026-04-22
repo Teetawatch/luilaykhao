@@ -2,27 +2,34 @@
   <header class="sticky top-0 z-50 w-full transition-all duration-300">
     <!-- Trust Bar (Top Bar) -->
     <div 
-      class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out transform-gpu"
+      class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out transform-gpu border-b border-white/5"
       :class="isScrolled ? 'h-0 opacity-0' : 'h-10 md:h-12 opacity-100'"
       style="will-change: height, opacity;"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between animate-trust-bar">
         <!-- Left: License -->
-        <div class="flex items-center gap-2 text-[13px] md:text-[15px] font-medium tracking-wide">
-          <span class="material-symbols-rounded text-[18px] md:text-[22px] text-accent-light">verified_user</span>
-          <span class="hidden md:inline">ใบอนุญาตนำเที่ยวเลขที่ 12/03773</span>
-          <span class="md:hidden truncate max-w-[240px]">ใบอนุญาต 12/03773</span>
+        <div class="flex items-center gap-3 text-[12px] md:text-[14px] font-medium tracking-wide opacity-90 hover:opacity-100 transition-opacity">
+          <div class="flex items-center gap-1.5">
+            <span class="material-symbols-rounded text-[18px] md:text-[20px] text-accent-light filled-icon">verified_user</span>
+            <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ 12/03773</span>
+            <span class="sm:hidden">ใบอนุญาต 12/03773</span>
+          </div>
+          <div class="hidden md:block h-3 w-[1px] bg-white/20 mx-1"></div>
+          <div class="hidden lg:flex items-center gap-1.5 text-accent-light/80">
+            <span class="material-symbols-rounded text-[16px]">verified</span>
+            <span class="text-[11px] uppercase tracking-widest font-bold">Verified Travel Agent</span>
+          </div>
         </div>
         
-        <!-- Right: Phone (Desktop Only) -->
-        <div class="hidden md:flex items-center">
+        <!-- Right: Phone -->
+        <div class="flex items-center gap-4">
           <a 
             href="tel:0626126006" 
-            class="flex items-center gap-2 hover:text-accent-light transition-all duration-300 group/phone"
+            class="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-300 group/phone"
             aria-label="โทรติดต่อสอบถาม 062-612-6006"
           >
-            <span class="material-symbols-rounded text-[20px] group-hover/phone:rotate-12 transition-transform">call</span>
-            <span class="text-[15px] font-bold">062-612-6006</span>
+            <span class="material-symbols-rounded text-[18px] text-accent-light group-hover/phone:rotate-12 transition-transform">call</span>
+            <span class="text-[14px] md:text-[15px] font-bold tracking-tight">062-612-6006</span>
           </a>
         </div>
       </div>
@@ -43,256 +50,188 @@
           </div>
         </router-link>
 
-        <!-- Desktop Menu -->
-        <div class="hidden md:flex items-center flex-1 justify-end gap-6">
-          <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1 mr-1 h-full">
-              <template v-for="link in navLinks" :key="link.label">
-                <!-- Dropdown Menu -->
-                <div v-if="link.children" ref="navDropdownRef" class="relative h-full flex items-center">
-                  <div 
-                    class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 cursor-pointer group"
-                    :class="{ 'active-state': isAboutActive }"
-                    @click="navDropdownOpen = !navDropdownOpen"
-                  >
-                    <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover:scale-110" :class="{ 'filled-icon': isAboutActive }">{{ link.icon }}</span>
-                    {{ link.label }}
-                    <span class="material-symbols-rounded text-[16px] transition-transform duration-300 group-hover:translate-y-0.5" :class="{ 'rotate-180': navDropdownOpen }">expand_more</span>
-                  </div>
-
-                  <!-- Dropdown List -->
-                  <div v-if="navDropdownOpen" class="absolute top-full left-0 w-64 pt-2 transition-all duration-300 transform origin-top-left z-[60] animation-fade-slide">
-                    <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden py-2.5">
-                      <router-link 
-                        v-for="child in link.children" 
-                        :key="child.to" 
-                        :to="child.to"
-                        @click="navDropdownOpen = false"
-                        class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 border-l-4 border-transparent hover:border-primary"
-                        active-class="bg-sand text-primary border-primary"
-                      >
-                        <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" :class="{ 'filled-icon': router.currentRoute.value.path === child.to }">{{ child.icon }}</span>
-                        {{ child.label }}
-                      </router-link>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Simple Link -->
-                <router-link
-                  v-else
-                  :to="link.to"
-                  class="nav-link flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200"
-                  :exact="link.to === '/'"
-                >
-                  <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover:scale-110" :class="{ 'filled-icon': router.currentRoute.value.path === link.to }">{{ link.icon }}</span>
-                  {{ link.label }}
-                </router-link>
-              </template>
-            </div>
-
-            <!-- Desktop Search Icon/Bar -->
-            <div class="hidden lg:flex items-center relative transition-all duration-300 h-10" :class="desktopSearchExpanded ? 'w-[240px] mx-2' : 'w-10 mx-1'">
-              <button 
-                v-if="!desktopSearchExpanded"
-                @click="toggleDesktopSearch"
-                class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand text-text-mid hover:text-primary transition-all duration-300 cursor-pointer"
-              >
-                <span class="material-symbols-rounded text-[22px]">search</span>
-              </button>
-              
-              <div v-else class="relative w-full flex items-center animate-in fade-in zoom-in-95 duration-200">
-                <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
-                <input 
-                  type="text" 
-                  v-model="searchQuery" 
-                  ref="desktopSearchInput"
-                  @keyup.enter="doSearch(); desktopSearchExpanded = false"
-                  @blur="!searchQuery && (desktopSearchExpanded = false)"
-                  placeholder="ค้นหาทริป..." 
-                  class="w-full bg-white border-2 border-primary rounded-full py-1.5 pl-9 pr-8 text-[12px] font-bold text-text-dark outline-none shadow-md shadow-primary/5"
-                />
-                <button 
-                  @click="desktopSearchExpanded = false; searchQuery = ''" 
-                  class="absolute right-2.5 w-5 h-5 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
-                >
-                  <span class="material-symbols-rounded text-[14px]">close</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Wishlist Button (Desktop) -->
-            <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative h-full flex items-center">
-              <button
-                @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
-                class="group relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors duration-200 text-text-mid hover:text-primary cursor-pointer"
-                aria-label="รายการโปรด"
-              >
-                <!-- Tooltip -->
+        <!-- Desktop Menu (Centered) -->
+        <div class="hidden md:flex items-center justify-center flex-1 px-4 lg:px-8">
+          <div class="flex items-center gap-1 lg:gap-2">
+            <template v-for="link in navLinks" :key="link.label">
+              <!-- Dropdown Menu -->
+              <div v-if="link.children" ref="navDropdownRef" class="relative group/nav">
                 <div 
-                  class="invisible lg:group-hover:visible opacity-0 group-hover:opacity-100 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-text-dark text-white text-[10px] font-bold rounded-lg shadow-xl transition-all duration-200 pointer-events-none whitespace-nowrap z-[70] transform translate-y-1 group-hover:translate-y-0"
-                  :class="{ '!invisible': wishlistDropdownOpen }"
+                  class="nav-link flex items-center gap-1.5 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300 cursor-pointer"
+                  :class="{ 'active-state': isAboutActive }"
+                  @click="navDropdownOpen = !navDropdownOpen"
                 >
-                  รายการโปรด
-                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-[4px] border-transparent border-t-text-dark"></div>
-                </div>
-
-                <span class="material-symbols-rounded text-[22px]" :class="wishlistStore.favorites.length > 0 ? 'text-red-500' : ''" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
-                <span v-if="wishlistStore.favorites.length > 0" class="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-sm border border-white">
-                  {{ wishlistStore.favorites.length > 9 ? '9+' : wishlistStore.favorites.length }}
-                </span>
-              </button>
-
-              <!-- Wishlist Dropdown -->
-              <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-2 z-[60] animation-fade-slide">
-                <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
-                  <div class="px-5 py-3.5 bg-sand/40 border-b border-sand-dark/40 flex items-center gap-2">
-                    <span class="material-symbols-rounded text-[18px] text-red-500" style="font-variation-settings:'FILL' 1">favorite</span>
-                    <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
-                    <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }} รายการ</span>
-                  </div>
-                  <div v-if="wishlistStore.favorites.length === 0" class="flex flex-col items-center gap-2 py-8 px-5">
-                    <span class="material-symbols-rounded text-[40px] text-sand-dark/60">favorite_border</span>
-                    <p class="text-[13px] text-text-muted font-medium text-center">ยังไม่มีรายการโปรด<br/>กดหัวใจที่ทริปที่คุณสนใจได้เลย</p>
-                  </div>
-                  <div v-else class="max-h-72 overflow-y-auto py-1.5">
-                    <router-link
-                      v-for="trip in wishlistStore.favorites"
-                      :key="typeof trip === 'object' ? trip.id : trip"
-                      :to="`/trips/${typeof trip === 'object' ? trip.id : trip}`"
-                      @click="wishlistDropdownOpen = false"
-                      class="flex items-center gap-3.5 px-4 py-2.5 hover:bg-sand transition-all group"
-                    >
-                      <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-sand-dark/20">
-                        <img v-if="trip.cover_image" :src="trip.cover_image" class="w-full h-full object-cover" />
-                        <span v-else class="material-symbols-rounded text-[20px] text-sand-dark/50 flex items-center justify-center w-full h-full">image</span>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-[13px] font-bold text-text-dark truncate group-hover:text-primary">{{ typeof trip === 'object' ? trip.title : `ทริป #${trip}` }}</p>
-                        <p v-if="trip.price" class="text-[11px] text-text-muted font-semibold">฿{{ Number(trip.price).toLocaleString() }}</p>
-                      </div>
-                      <button
-                        @click.prevent.stop="wishlistStore.toggleFavorite(trip)"
-                        class="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-red-400 hover:bg-red-50 hover:text-red-600 transition-all"
-                        aria-label="ลบออก"
-                      >
-                        <span class="material-symbols-rounded text-[16px]">close</span>
-                      </button>
-                    </router-link>
-                  </div>
-                  <div v-if="wishlistStore.favorites.length > 0" class="px-4 py-3 border-t border-sand-dark/40">
-                    <router-link to="/trips" @click="wishlistDropdownOpen = false" class="flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-primary/10 text-primary text-[12px] font-bold hover:bg-primary/20 transition-all">
-                      <span class="material-symbols-rounded text-[16px]">explore</span>
-                      ดูกิจกรรมทั้งหมด
-                    </router-link>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <template v-if="auth.isLoggedIn">
-              <!-- User Menu Dropdown -->
-              <div ref="userDropdownRef" class="relative h-full flex items-center ml-2">
-                <div class="flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-sand/60 border border-sand-dark/60 hover:bg-sand transition-colors cursor-pointer" @click.stop="userDropdownOpen = !userDropdownOpen">
-                  <div class="relative">
-                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm overflow-hidden border border-white/50">
-                      <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                      <span v-else class="text-white text-xs font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
-                    </div>
-                    <span v-if="unreadNotifications > 0" class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full"></span>
-                  </div>
-                  <div class="flex flex-col">
-                    <span class="text-[13px] font-bold text-text-dark leading-tight">{{ auth.userName }}</span>
-                    <span class="text-[10px] font-bold text-primary uppercase tracking-tighter">{{ isAdmin ? 'ทีมงาน / แอดมิน' : 'สมาชิกลุยเลเขา' }}</span>
-                  </div>
-                  <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
+                  <span>{{ link.label }}</span>
+                  <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover/nav:translate-y-0.5" :class="{ 'rotate-180': navDropdownOpen }">expand_more</span>
                 </div>
 
                 <!-- Dropdown List -->
-                <div v-if="userDropdownOpen" class="absolute top-full right-0 w-72 pt-2 transition-all duration-300 transform origin-top-right z-[60] animation-fade-slide">
-                  <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-sand-dark/50 overflow-hidden">
-                    
-                    <!-- Profile Header (Mobile style but subtle for desktop) -->
-                    <div class="px-5 py-4 bg-sand/30 border-b border-sand-dark/40 flex items-center gap-4">
-                      <div class="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border-2 border-white">
-                        <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                        <span v-else class="text-white text-lg font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
-                      </div>
-                      <div>
-                        <div class="text-[15px] font-bold text-text-dark">{{ auth.userName }}</div>
-                    </div>
-                  </div>
-
-                  <!-- Profile Link -->
-                  <router-link to="/profile" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3.5 bg-sand/10 hover:bg-sand border-b border-sand-dark/40 text-[13px] font-bold text-primary transition-all">
-                    <span class="material-symbols-rounded text-[20px]">account_circle</span>
-                    จัดการโปรไฟล์ / ข้อมูลส่วนตัว
-                  </router-link>
-
-
-                    <!-- Menu Items -->
-                    <div class="py-2">
-                      <router-link v-if="isAdmin" to="/admin" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
-                        <span class="material-symbols-rounded text-[20px] text-amber-600">admin_panel_settings</span>
-                        Admin Dashboard
-                      </router-link>
-
-                      <router-link to="/notifications" @click="userDropdownOpen = false" class="flex items-center justify-between px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
-                        <div class="flex items-center gap-3.5">
-                          <span class="material-symbols-rounded text-[20px] text-teal-600">notifications</span>
-                          การแจ้งเตือน
-                        </div>
-                        <span v-if="unreadNotifications > 0" class="bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
-                          {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
-                        </span>
-                      </router-link>
-
-                      <div class="h-px bg-sand-dark/40 mx-4 my-1"></div>
-
-                      <router-link to="/my-bookings" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
-                        <span class="material-symbols-rounded text-[20px] text-blue-600">confirmation_number</span>
-                        การจองของฉัน
-                      </router-link>
-
-                      <router-link to="/my-reviews" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
-                        <span class="material-symbols-rounded text-[20px] text-purple-600">reviews</span>
-                        รีวิวของฉัน
-                      </router-link>
-
-                      <router-link v-if="isStaff" to="/my-staff-trips" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
-                        <span class="material-symbols-rounded text-[20px] text-cyan-700">badge</span>
-                        ตารางงานสตาฟ
-                      </router-link>
-
-                      <router-link to="/loyalty" @click="userDropdownOpen = false" class="flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand transition-all border-l-4 border-transparent hover:border-primary">
-                        <span class="material-symbols-rounded text-[20px] text-amber-500">stars</span>
-                        แต้มสะสมลุยเลเขา
-                      </router-link>
-
-                      <div class="h-px bg-sand-dark/40 mx-4 my-1"></div>
-
-                      <button @click="handleLogout" class="w-full flex items-center gap-3.5 px-5 py-3 text-[13px] font-bold text-red-600 hover:bg-red-50 transition-all border-l-4 border-transparent hover:border-red-600 group">
-                        <span class="material-symbols-rounded text-[20px] transition-transform duration-300 group-hover:scale-110 group-hover:-translate-x-1">logout</span>
-                        ออกจากระบบ
-                      </button>
-                    </div>
+                <div v-if="navDropdownOpen" class="absolute top-full left-1/2 -translate-x-1/2 w-64 pt-3 transition-all duration-300 transform z-[60] animation-fade-slide">
+                  <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
+                    <router-link 
+                      v-for="child in link.children" 
+                      :key="child.to" 
+                      :to="child.to"
+                      @click="navDropdownOpen = false"
+                      class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-200"
+                      active-class="bg-primary/5 text-primary"
+                    >
+                      <span class="material-symbols-rounded text-[18px] opacity-70 group-hover:opacity-100 transition-opacity" :class="{ 'filled-icon': router.currentRoute.value.path === child.to }">{{ child.icon }}</span>
+                      {{ child.label }}
+                    </router-link>
                   </div>
                 </div>
               </div>
-            </template>
 
-            <template v-else>
-              <div class="flex items-center gap-3 ml-2">
-                <router-link
-                  to="/login"
-                  class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-primary-mid transition-all duration-300 shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5"
-                >
-                  <span class="material-symbols-rounded text-[18px]">login</span>
-                  เข้าสู่ระบบ
-                </router-link>
-              </div>
+              <!-- Simple Link -->
+              <router-link
+                v-else
+                :to="link.to"
+                class="nav-link flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300 group/link"
+                :exact="link.to === '/'"
+              >
+                <span>{{ link.label }}</span>
+              </router-link>
             </template>
           </div>
+        </div>
+
+        <!-- Right Side Actions -->
+        <div class="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
+          <!-- Search -->
+          <div class="relative transition-all duration-300" :class="desktopSearchExpanded ? 'w-[180px] lg:w-[220px]' : 'w-10'">
+            <button 
+              v-if="!desktopSearchExpanded"
+              @click="toggleDesktopSearch"
+              class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand text-text-mid hover:text-primary transition-all duration-300"
+              title="ค้นหา"
+            >
+              <span class="material-symbols-rounded text-[22px]">search</span>
+            </button>
+            
+            <div v-else class="relative w-full flex items-center animate-in fade-in zoom-in-95 duration-300">
+              <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
+              <input 
+                type="text" 
+                v-model="searchQuery" 
+                ref="desktopSearchInput"
+                @keyup.enter="doSearch(); desktopSearchExpanded = false"
+                @blur="!searchQuery && (desktopSearchExpanded = false)"
+                placeholder="ค้นหา..." 
+                class="w-full bg-sand/30 border-none rounded-full py-2 pl-9 pr-8 text-[12px] font-bold text-text-dark outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+              <button 
+                @click="desktopSearchExpanded = false; searchQuery = ''" 
+                class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
+              >
+                <span class="material-symbols-rounded text-[14px]">close</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Wishlist -->
+          <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative">
+            <button
+              @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
+              class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand text-text-mid hover:text-primary transition-all"
+            >
+              <span class="material-symbols-rounded text-[22px]" :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
+              <span v-if="wishlistStore.favorites.length > 0" class="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                {{ wishlistStore.favorites.length }}
+              </span>
+            </button>
+
+            <!-- Wishlist Dropdown -->
+            <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-3 z-[60] animation-fade-slide">
+              <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden">
+                <div class="px-5 py-3.5 bg-sand/30 border-b border-sand-dark/30 flex items-center gap-2">
+                  <span class="material-symbols-rounded text-[18px] text-red-500 filled-icon">favorite</span>
+                  <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
+                  <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }}</span>
+                </div>
+                <div v-if="wishlistStore.favorites.length === 0" class="py-8 px-5 text-center">
+                  <span class="material-symbols-rounded text-[40px] text-sand-dark/40">favorite_border</span>
+                  <p class="mt-2 text-[12px] text-text-muted font-medium">ยังไม่มีรายการโปรด</p>
+                </div>
+                <div v-else class="max-h-64 overflow-y-auto">
+                   <router-link
+                    v-for="trip in wishlistStore.favorites"
+                    :key="typeof trip === 'object' ? trip.id : trip"
+                    :to="`/trips/${typeof trip === 'object' ? trip.id : trip}`"
+                    @click="wishlistDropdownOpen = false"
+                    class="flex items-center gap-3 px-4 py-2.5 hover:bg-sand/50 transition-all border-b border-sand-dark/10 last:border-0"
+                  >
+                    <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-sand-dark/20">
+                      <img v-if="trip.cover_image" :src="trip.cover_image" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-[12px] font-bold text-text-dark truncate">{{ typeof trip === 'object' ? trip.title : `ทริป #${trip}` }}</p>
+                      <p class="text-[10px] text-primary font-bold">฿{{ Number(trip.price || 0).toLocaleString() }}</p>
+                    </div>
+                  </router-link>
+                </div>
+                <div class="p-3 bg-sand/10">
+                  <router-link to="/trips" @click="wishlistDropdownOpen = false" class="block w-full py-2 text-center text-[11px] font-bold text-primary bg-primary/5 hover:bg-primary/10 rounded-xl transition-all">ดูทริปทั้งหมด</router-link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User -->
+          <template v-if="auth.isLoggedIn">
+            <div ref="userDropdownRef" class="relative">
+              <button 
+                @click.stop="userDropdownOpen = !userDropdownOpen"
+                class="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-sand transition-all border border-transparent hover:border-sand-dark/30"
+              >
+                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-sm">
+                  <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                  <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                </div>
+                <span class="text-[13px] font-bold text-text-dark hidden lg:block">{{ auth.userName }}</span>
+                <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
+              </button>
+
+              <div v-if="userDropdownOpen" class="absolute top-full right-0 w-64 pt-3 z-[60] animation-fade-slide">
+                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
+                  <div class="px-4 py-3 border-b border-sand-dark/10 mb-1">
+                    <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
+                    <p class="text-[10px] text-primary font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : 'Member' }}</p>
+                  </div>
+                  <router-link to="/profile" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                    <span class="material-symbols-rounded text-[20px]">account_circle</span>
+                    ข้อมูลส่วนตัว
+                  </router-link>
+                  <router-link to="/my-bookings" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                    <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
+                    การจองของฉัน
+                  </router-link>
+                  <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
+                  <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-red-500 hover:bg-red-50 transition-all">
+                    <span class="material-symbols-rounded text-[20px]">logout</span>
+                    ออกจากระบบ
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <router-link
+              to="/login"
+              class="text-[14px] font-bold text-text-mid hover:text-primary px-3 py-2 transition-colors"
+            >
+              เข้าสู่ระบบ
+            </router-link>
+          </template>
+
+          <!-- Primary CTA -->
+          <router-link
+            to="/trips"
+            class="hidden lg:flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-full font-bold text-[14px] hover:bg-primary-dark transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 active:scale-95 group"
+          >
+            <span class="material-symbols-rounded text-[20px] group-hover:rotate-12 transition-transform">explore</span>
+            จองทริป
+          </router-link>
         </div>
 
         <!-- Mobile menu button -->
@@ -487,9 +426,8 @@
           </template>
         </div>
       </div>
-    </div>
-  </Transition>
-  </nav>
+    </Transition>
+    </nav>
   </header>
 </template>
 
@@ -564,8 +502,7 @@ async function fetchUnreadCount() {
 
 let pollInterval = null;
 function handleScroll() {
-  // Use a larger threshold to prevent jitter (feedback loop between height change and scroll position)
-  // 120px is safely above the total height change of the header (top bar + navbar height diff)
+  // Use a larger threshold to prevent jitter
   isScrolled.value = window.scrollY > 120;
 }
 
@@ -599,8 +536,8 @@ const navLinks = [
       { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว' },
     ]
   },
-    { to: '/trips', icon: 'explore', label: 'กิจกรรม' },
-    { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
+  { to: '/trips', icon: 'explore', label: 'กิจกรรม' },
+  { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
 ];
 
 const isAboutActive = computed(() => {
@@ -653,14 +590,18 @@ async function handleLogout() {
 .mobile-nav-link.router-link-active,
 .mobile-nav-link.router-link-exact-active {
   color: var(--color-primary) !important;
-  background-color: var(--color-sand) !important;
-  box-shadow: inset 0 0 0 1px rgba(212, 163, 115, 0.1);
+  background-color: rgba(var(--color-primary-rgb), 0.08) !important;
 }
 
 .nav-link.router-link-active span.material-symbols-rounded,
 .mobile-nav-link.router-link-active span.material-symbols-rounded,
 .filled-icon {
   font-variation-settings: 'FILL' 1 !important;
+}
+
+/* Glassmorphism for dropdowns */
+.bg-white\/98 {
+  background-color: rgba(255, 255, 255, 0.98);
 }
 
 /* Dropdown animation with fade and slide */
@@ -711,5 +652,4 @@ async function handleLogout() {
     animation: none;
   }
 }
-
 </style>
