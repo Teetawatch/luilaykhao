@@ -30,7 +30,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="icon" href="/images/logo.png">
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/logo.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/favicon-16x16.png') }}">
+    <link rel="shortcut icon" href="{{ asset('images/favicon.ico') }}">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-[var(--color-white)] text-[var(--color-text-mid)] antialiased" style="font-family: 'Anuphan', sans-serif;">
