@@ -80,7 +80,7 @@
         "image": "{{ asset('images/logo.png') }}",
         "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ใบอนุญาตนำเที่ยวเลขที่ 12/03773",
         "telephone": "+66-62-612-6006",
-        "email": "luilaykhao.info@gmail.com",
+        "email": "luilaykhao.info@@gmail.com",
         "address": {
             "@type": "PostalAddress",
             "addressCountry": "TH"
