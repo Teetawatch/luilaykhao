@@ -1302,13 +1302,21 @@ onMounted(async () => {
     if (preselectedRegion && pickupPoints.value.length === 1) {
       selectedPickup.value = pickupPoints.value[0];
     }
+
+    // ── Session isolation: clear stale session from a different schedule/region ──
+    const wasMismatch = seatsStore.clearIfMismatch(route.params.scheduleId, preselectedRegion);
+    if (wasMismatch) {
+      // Also clear the form data for this specific page (prevents stale passenger data)
+      clearFormData();
+    }
+
     // Resume countdown first (may have been restored from sessionStorage)
     seatsStore.restoreCountdown();
+
     // Restore step from session if returning mid-booking
     const hasValidSession = seatsStore.lockExpiry && new Date(seatsStore.lockExpiry) > new Date();
-    // Validate if the current session matches the schedule and region
     const isSameSchedule = seatsStore.activeBookingInfo?.scheduleId == route.params.scheduleId;
-    const isSameRegion = seatsStore.activeBookingInfo?.region === preselectedRegion;
+    const isSameRegion = (seatsStore.activeBookingInfo?.region || null) === (preselectedRegion || null);
     const savedStep = seatsStore.activeBookingInfo?.step;
 
     if (hasValidSession && isSameSchedule && isSameRegion) {
@@ -1319,10 +1327,6 @@ onMounted(async () => {
       if (hasSeatMap.value && seatsStore.selectedSeats.length > 0) {
         passengerCount.value = seatsStore.selectedSeats.length;
       }
-    } else if (hasValidSession && (!isSameSchedule || !isSameRegion)) {
-      // Session exists but for a different trip or region.
-      // We clear the selection to avoid mixing up data from different regional bookings.
-      seatsStore.clearSelection();
     } else if (!hasSeatMap.value && !isTrekking.value) {
       // For non-seat-map, non-trekking trips: start countdown immediately on page load
       seatsStore.startManualCountdown(

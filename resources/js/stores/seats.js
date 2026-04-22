@@ -2,26 +2,67 @@ import { defineStore } from 'pinia';
 import api from '../lib/axios';
 
 const MAX_BOOKING_SECONDS = 10 * 60; // 10 minutes hard limit
-const SESSION_KEY = 'booking_session';
+const SESSION_KEY_PREFIX = 'booking_session';
+// Master index key tracks which scoped session is currently active
+const ACTIVE_SESSION_INDEX_KEY = 'booking_session_active';
+
+function buildSessionKey(scheduleId, region) {
+  let key = `${SESSION_KEY_PREFIX}_${scheduleId || 'unknown'}`;
+  if (region) key += `_${region}`;
+  return key;
+}
+
+function saveActiveIndex(scheduleId, region) {
+  sessionStorage.setItem(ACTIVE_SESSION_INDEX_KEY, JSON.stringify({ scheduleId, region }));
+}
+
+function loadActiveIndex() {
+  try {
+    const raw = sessionStorage.getItem(ACTIVE_SESSION_INDEX_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearActiveIndex() {
+  sessionStorage.removeItem(ACTIVE_SESSION_INDEX_KEY);
+}
 
 function saveSession(lockExpiry, activeBookingInfo, selectedSeats) {
   if (lockExpiry && activeBookingInfo) {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ lockExpiry, activeBookingInfo, selectedSeats: selectedSeats ?? [] }));
+    const scheduleId = activeBookingInfo.scheduleId;
+    const region = activeBookingInfo.region;
+    const key = buildSessionKey(scheduleId, region);
+    sessionStorage.setItem(key, JSON.stringify({ lockExpiry, activeBookingInfo, selectedSeats: selectedSeats ?? [] }));
+    saveActiveIndex(scheduleId, region);
   } else {
-    sessionStorage.removeItem(SESSION_KEY);
+    // Clear the currently active session
+    const idx = loadActiveIndex();
+    if (idx) {
+      sessionStorage.removeItem(buildSessionKey(idx.scheduleId, idx.region));
+    }
+    clearActiveIndex();
   }
 }
 
 function loadSession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
+    const idx = loadActiveIndex();
+    if (!idx) return null;
+    const key = buildSessionKey(idx.scheduleId, idx.region);
+    const raw = sessionStorage.getItem(key);
+    if (!raw) {
+      clearActiveIndex();
+      return null;
+    }
     const data = JSON.parse(raw);
     // Check if expiry is still in the future
     if (data.lockExpiry && new Date(data.lockExpiry) > new Date()) {
       return data;
     }
-    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(key);
+    clearActiveIndex();
     return null;
   } catch {
     return null;
@@ -146,6 +187,22 @@ export const useSeatsStore = defineStore('seats', {
       this._onExpireCallbacks = [];
       saveSession(null, null);
       this.stopCountdown();
+    },
+
+    /**
+     * Clear any session that does NOT match the given scheduleId+region.
+     * This prevents stale data from a different booking context from interfering.
+     */
+    clearIfMismatch(scheduleId, region) {
+      const idx = loadActiveIndex();
+      if (!idx) return false;
+      const sameSchedule = String(idx.scheduleId) === String(scheduleId);
+      const sameRegion = (idx.region || null) === (region || null);
+      if (!sameSchedule || !sameRegion) {
+        this.clearSelection();
+        return true; // was cleared
+      }
+      return false; // matched, not cleared
     },
 
     startCountdown() {

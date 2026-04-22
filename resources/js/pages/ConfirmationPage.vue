@@ -27,7 +27,7 @@
         <div class="text-center mb-16 flex flex-col items-center animate-in fade-in slide-in-from-top-8 duration-1000">
           <div class="mb-8 relative">
             <!-- Glow effect for success -->
-            <div v-if="booking.status === 'confirmed'" class="absolute inset-0 bg-teal-400/20 blur-3xl rounded-full animate-pulse"></div>
+            <div v-if="booking.status === 'confirmed'" class="absolute inset-0"></div>
             
             <template v-if="booking.status === 'confirmed'">
               <img src="/images/suscess_show.webp" alt="Success" class="w-56 h-auto mx-auto object-contain drop-shadow-[0_20px_50px_rgba(13,148,136,0.2)] animate-in zoom-in fade-in duration-700 hover:scale-105 transition-transform" />
