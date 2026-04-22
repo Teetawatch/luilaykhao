@@ -17,7 +17,7 @@
           <div class="hidden md:block h-3 w-[1px] bg-white/20 mx-1"></div>
           <div class="hidden lg:flex items-center gap-1.5 text-accent-light/80">
             <span class="material-symbols-rounded text-[16px]">verified</span>
-            <span class="text-[11px] uppercase tracking-widest font-bold">Verified Travel Agent</span>
+            <span class="text-[11px] uppercase tracking-widest font-bold">ใบอนุญาตประกอบธุรกิจนำเที่ยว กรมการท่องเที่ยว</span>
           </div>
         </div>
         
