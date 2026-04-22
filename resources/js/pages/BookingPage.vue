@@ -274,43 +274,49 @@
             <div v-if="schedule.vehicle" class="mt-8 bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
 
               <!-- Image Carousel -->
-              <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group touch-pan-y"
+              <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group touch-pan-y overflow-hidden rounded-3xl"
                 @touchstart="vehicleTouchStart"
                 @touchend="vehicleTouchEnd">
-                <div class="overflow-hidden relative bg-gray-200" style="aspect-ratio:16/9; touch-action: pan-y;">
+                <div class="overflow-hidden relative bg-gray-200 z-0" style="aspect-ratio:16/9; touch-action: pan-y;">
                   <!-- Preload & Render Images -->
                   <img
                     v-for="(img, i) in schedule.vehicle.images"
                     :key="i"
                     :src="img"
                     :alt="schedule.vehicle.name"
-                    class="absolute inset-0 w-full h-full object-cover transition-all duration-300 transform-gpu"
+                    class="absolute inset-0 w-full h-full object-cover transition-all duration-500 transform-gpu"
                     :class="[
-                      vehicleImageIndex === i ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-105 z-0 pointer-events-none'
+                      vehicleImageIndex === i ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-110 z-0 pointer-events-none'
                     ]"
                     :loading="i === 0 ? 'eager' : 'lazy'"
                     style="will-change: opacity, transform;"
                   />
                 </div>
+
+                <!-- Navigation Buttons -->
                 <button v-if="schedule.vehicle.images.length > 1"
-                  @click="vehicleImageIndex = (vehicleImageIndex - 1 + schedule.vehicle.images.length) % schedule.vehicle.images.length"
-                  class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 md:-translate-x-2 md:group-hover:translate-x-0">
-                  <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_left</span>
+                  @click.stop="vehicleImageIndex = (vehicleImageIndex - 1 + schedule.vehicle.images.length) % schedule.vehicle.images.length"
+                  class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:-translate-x-2 md:group-hover:translate-x-0 active:scale-90">
+                  <span class="material-symbols-rounded text-[24px]">chevron_left</span>
                 </button>
                 <button v-if="schedule.vehicle.images.length > 1"
-                  @click="vehicleImageIndex = (vehicleImageIndex + 1) % schedule.vehicle.images.length"
-                  class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 active:bg-black/60 hover:bg-black/50 text-white backdrop-blur-sm flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0">
-                  <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 0,'wght' 400">chevron_right</span>
+                  @click.stop="vehicleImageIndex = (vehicleImageIndex + 1) % schedule.vehicle.images.length"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0 active:scale-90">
+                  <span class="material-symbols-rounded text-[24px]">chevron_right</span>
                 </button>
-                <div v-if="schedule.vehicle.images.length > 1" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/20 backdrop-blur-sm px-2.5 py-1.5 rounded-full">
+
+                <!-- Indicators -->
+                <div v-if="schedule.vehicle.images.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/20 backdrop-blur-md px-3 py-2 rounded-full z-20">
                   <button v-for="(_, i) in schedule.vehicle.images" :key="i"
-                    @click="vehicleImageIndex = i"
+                    @click.stop="vehicleImageIndex = i"
                     class="rounded-full transition-all touch-manipulation"
-                    :class="vehicleImageIndex === i ? 'bg-white w-4 h-2' : 'bg-white/50 hover:bg-white/80 w-2 h-2'">
+                    :class="vehicleImageIndex === i ? 'bg-white w-5 h-1.5' : 'bg-white/40 hover:bg-white/70 w-1.5 h-1.5'">
                   </button>
                 </div>
-                <div class="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-sm text-white text-xs font-bold shadow-sm">
-                  {{ vehicleImageIndex + 1 }}/{{ schedule.vehicle.images.length }}
+
+                <!-- Counter -->
+                <div class="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md text-white text-[10px] font-black shadow-lg z-20 tracking-wider">
+                  {{ vehicleImageIndex + 1 }} / {{ schedule.vehicle.images.length }}
                 </div>
               </div>
 
