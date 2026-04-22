@@ -274,14 +274,22 @@
             <div v-if="schedule.vehicle" class="mt-8 bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
 
               <!-- Image Carousel -->
-              <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group"
+              <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group touch-pan-y"
                 @touchstart="vehicleTouchStart"
                 @touchend="vehicleTouchEnd">
-                <div class="overflow-hidden" style="aspect-ratio:16/9;">
+                <div class="overflow-hidden relative bg-gray-200" style="aspect-ratio:16/9; touch-action: pan-y;">
+                  <!-- Preload & Render Images -->
                   <img
-                    :src="schedule.vehicle.images[vehicleImageIndex]"
+                    v-for="(img, i) in schedule.vehicle.images"
+                    :key="i"
+                    :src="img"
                     :alt="schedule.vehicle.name"
-                    class="w-full h-full object-cover transition-opacity duration-300"
+                    class="absolute inset-0 w-full h-full object-cover transition-all duration-300 transform-gpu"
+                    :class="[
+                      vehicleImageIndex === i ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-105 z-0 pointer-events-none'
+                    ]"
+                    :loading="i === 0 ? 'eager' : 'lazy'"
+                    style="will-change: opacity, transform;"
                   />
                 </div>
                 <button v-if="schedule.vehicle.images.length > 1"
