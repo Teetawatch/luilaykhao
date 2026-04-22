@@ -11,6 +11,7 @@
     <meta name="keywords" content="ลุยเลเขา, จัดทริป, ไปเที่ยว, เที่ยวภูเขา, เที่ยวทะเล, จองทริป, เที่ยวไทย, เดินป่า">
     <meta name="author" content="ลุยเลเขา">
     <meta name="robots" content="index, follow">
+    <meta name="google-site-verification" content="6E_H_ur05qV8VIU5BXFa3-4sCSv-C9nQGDcMceZLVc8" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
