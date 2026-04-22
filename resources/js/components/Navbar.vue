@@ -2,9 +2,9 @@
   <header class="sticky top-0 z-50 w-full">
     <!-- Trust Bar (Top Bar) -->
     <div 
-      class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out transform-gpu"
+      class="w-full bg-primary text-white overflow-hidden transition-all duration-500 cubic-bezier transform-gpu"
       :class="isScrolled ? 'h-0 md:h-0 max-h-0 opacity-0 border-none' : 'h-10 md:h-12 opacity-100 border-b border-white/5'"
-      style="will-change: height, opacity;"
+      style="will-change: height, opacity; transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between animate-trust-bar">
         <!-- Left: License -->
@@ -37,11 +37,12 @@
 
     <!-- Main Navbar -->
     <nav 
-      class="navbar-root bg-white/95 backdrop-blur-md border-b border-sand-dark/30 transition-all duration-300"
+      class="navbar-root bg-white/95 backdrop-blur-md border-b border-sand-dark/30 transition-all duration-500"
       :class="[isScrolled ? 'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] py-0' : 'shadow-sm py-1']"
+      style="transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);"
     >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between transition-all duration-300 transform-gpu" :class="isScrolled ? 'h-16' : 'h-20'" style="will-change: height;">
+      <div class="flex items-center justify-between transition-all duration-500 transform-gpu" :class="isScrolled ? 'h-16' : 'h-20'" style="will-change: height; transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);">
 
         <!-- Logo -->
         <router-link to="/" class="flex items-center gap-3 shrink-0 group">
@@ -503,8 +504,8 @@ async function fetchUnreadCount() {
 
 let pollInterval = null;
 function handleScroll() {
-  // Use a larger threshold to prevent jitter
-  isScrolled.value = window.scrollY > 120;
+  // Use a smaller threshold for a more responsive feel
+  isScrolled.value = window.scrollY > 50;
 }
 
 onMounted(() => {
