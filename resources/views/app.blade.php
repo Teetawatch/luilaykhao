@@ -51,15 +51,15 @@
     <!-- JSON-LD Structured Data: Organization -->
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "Organization",
+        "@@context": "https://schema.org",
+        "@@type": "Organization",
         "name": "ลุยเลเขา",
         "alternateName": "Luilaykhao",
         "url": "{{ url('/') }}",
         "logo": "{{ asset('images/logo.png') }}",
         "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว",
         "contactPoint": {
-            "@type": "ContactPoint",
+            "@@type": "ContactPoint",
             "telephone": "+66-62-612-6006",
             "contactType": "customer service",
             "areaServed": "TH",
@@ -72,8 +72,8 @@
     <!-- JSON-LD Structured Data: LocalBusiness (TravelAgency) -->
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "TravelAgency",
+        "@@context": "https://schema.org",
+        "@@type": "TravelAgency",
         "name": "ลุยเลเขา Luilaykhao",
         "url": "{{ url('/') }}",
         "logo": "{{ asset('images/logo.png') }}",
@@ -82,32 +82,32 @@
         "telephone": "+66-62-612-6006",
         "email": "luilaykhao.info@@gmail.com",
         "address": {
-            "@type": "PostalAddress",
+            "@@type": "PostalAddress",
             "addressCountry": "TH"
         },
         "priceRange": "฿฿",
         "openingHoursSpecification": {
-            "@type": "OpeningHoursSpecification",
+            "@@type": "OpeningHoursSpecification",
             "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
             "opens": "08:00",
             "closes": "22:00"
         },
         "hasOfferCatalog": {
-            "@type": "OfferCatalog",
+            "@@type": "OfferCatalog",
             "name": "ทริปท่องเที่ยว",
             "itemListElement": [
                 {
-                    "@type": "OfferCatalog",
+                    "@@type": "OfferCatalog",
                     "name": "ทริปเดินป่า",
                     "description": "ทริปเดินป่าสำรวจธรรมชาติทั่วประเทศไทย ภูกระดึง ภูสอยดาว เขาช้างเผือก"
                 },
                 {
-                    "@type": "OfferCatalog",
+                    "@@type": "OfferCatalog",
                     "name": "ทริปดำน้ำตื้น",
                     "description": "ดำน้ำดูปะการังและสัตว์ทะเลในทะเลไทย"
                 },
                 {
-                    "@type": "OfferCatalog",
+                    "@@type": "OfferCatalog",
                     "name": "เช่ารถตู้นำเที่ยว",
                     "description": "บริการรถตู้ VIP พร้อมคนขับนำเที่ยวทั่วประเทศไทย"
                 }
@@ -119,17 +119,17 @@
     <!-- JSON-LD Structured Data: WebSite with SearchAction -->
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
+        "@@context": "https://schema.org",
+        "@@type": "WebSite",
         "name": "ลุยเลเขา Luilaykhao",
         "alternateName": "Luilaykhao",
         "url": "{{ url('/') }}",
         "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย",
         "inLanguage": "th",
         "potentialAction": {
-            "@type": "SearchAction",
+            "@@type": "SearchAction",
             "target": {
-                "@type": "EntryPoint",
+                "@@type": "EntryPoint",
                 "urlTemplate": "{{ url('/trips') }}?search={search_term_string}"
             },
             "query-input": "required name=search_term_string"
@@ -140,29 +140,29 @@
     <!-- JSON-LD BreadcrumbList -->
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
+        "@@context": "https://schema.org",
+        "@@type": "BreadcrumbList",
         "itemListElement": [
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 1,
                 "name": "หน้าแรก",
                 "item": "{{ url('/') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 2,
                 "name": "ค้นหาทริปทั้งหมด",
                 "item": "{{ url('/trips') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 3,
                 "name": "เกี่ยวกับเรา",
                 "item": "{{ url('/about') }}"
             },
             {
-                "@type": "ListItem",
+                "@@type": "ListItem",
                 "position": 4,
                 "name": "ติดต่อเรา",
                 "item": "{{ url('/contact') }}"
