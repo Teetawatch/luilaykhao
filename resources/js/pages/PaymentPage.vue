@@ -216,7 +216,12 @@
           </div>
 
           <!-- PromptPay QR -->
-          <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-6 py-6 bg-gray-50/50 rounded-3xl border border-gray-100">
+          <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-5 py-10 bg-gray-50/50 rounded-3xl border border-gray-100">
+             <!-- Thai QR Logo Header -->
+             <div class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
+               <img src="/images/Thai_QR_Payment_Logo-01.jpg" alt="Thai QR Payment" class="h-10 w-auto object-contain" />
+             </div>
+
              <div class="text-center space-y-1">
                 <p class="text-base font-bold text-gray-900">เปิดแอปธนาคารแล้วสแกน QR นี้</p>
                 <p class="text-xs text-gray-500 px-4">ระบบจะคำนวณยอดชำระเบื้องต้นให้โดยอัตโนมัติ</p>
@@ -674,7 +679,7 @@ watch([paymentType, paymentMethod], ([, method]) => {
 function buildPromptPayPayload(phone, amount) {
   const normalizePhone = (p) => {
     p = p.replace(/\D/g, '');
-    if (p.startsWith('0')) p = '66' + p.slice(1);
+    if (p.startsWith('0')) p = '0066' + p.slice(1);
     return p;
   };
   const normalized = normalizePhone(phone);

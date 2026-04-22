@@ -831,36 +831,65 @@
             <h3 class="text-2xl font-bold">รายละเอียดความคุ้มครองประกันภัย</h3>
             <p class="text-white/80 text-sm mt-1">เพื่อความปลอดภัยและความอุ่นใจในการเดินทางไปกับเรา</p>
           </div>
-          <div class="p-8 space-y-6">
-            <div class="flex gap-4">
-              <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
-                <span class="material-symbols-rounded text-teal-600">health_and_safety</span>
+          <div class="p-8">
+            <div class="space-y-6 max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-teal-200">
+              <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                  <span class="material-symbols-rounded text-teal-600">health_and_safety</span>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">การเสียชีวิตและทุพพลภาพ</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">การเสียชีวิต การสูญเสียอวัยวะ สายตา หรือทุพพลภาพถาวรสิ้นเชิงเนื่องจากอุบัติเหตุ <span class="font-bold text-teal-700">1,000,000 บาท</span></p>
+                </div>
               </div>
-              <div class="flex-1">
-                <h4 class="font-bold text-gray-900 text-sm mb-1">การเสียชีวิตและทุพพลภาพ</h4>
-                <p class="text-sm text-gray-600 leading-relaxed">การเสียชีวิต การสูญเสียอวัยวะ สายตาหรือทุพพลภาพถาวรสิ้นเชิง เนื่องจากอุบัติเหตุ (อ.บ.1) <span class="font-bold text-teal-700">500,000 บาท</span> (รวมการถูกฆาตกรรมหรือทำร้ายร่างกาย)</p>
+              <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                  <span class="material-symbols-rounded text-teal-600">medical_services</span>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">ค่ารักษาพยาบาลจากอุบัติเหตุ</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">การรักษาพยาบาลเนื่องจากการบาดเจ็บจากอุบัติเหตุ <span class="font-bold text-teal-700">500,000 บาท</span></p>
+                </div>
               </div>
-            </div>
-            <div class="flex gap-4">
-              <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
-                <span class="material-symbols-rounded text-teal-600">medical_services</span>
+              <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                  <span class="material-symbols-rounded text-teal-600">gavel</span>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">ความรับผิดชอบต่อบุคคลภายนอก</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">ความรับผิดชอบตามกฎหมายต่อบุคคลภายนอก <span class="font-bold text-teal-700">200,000 บาท</span></p>
+                </div>
               </div>
-              <div class="flex-1">
-                <h4 class="font-bold text-gray-900 text-sm mb-1">ค่ารักษาพยาบาล</h4>
-                <p class="text-sm text-gray-600 leading-relaxed">การรักษาพยาบาลการบาดเจ็บจากอุบัติเหตุ <span class="font-bold text-teal-700">100,000 บาท</span> (ต่ออุบัติเหตุแต่ละครั้ง)</p>
+              <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                  <span class="material-symbols-rounded text-teal-600">restaurant</span>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">ค่ารักษาอาหารเป็นพิษ</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">ค่ารักษาพยาบาลอันเกิดจากโรคอาหารเป็นพิษ <span class="font-bold text-teal-700">5,000 บาท</span></p>
+                </div>
               </div>
-            </div>
-            <div class="flex gap-4">
-              <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
-                <span class="material-symbols-rounded text-teal-600">emergency_home</span>
+              <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                  <span class="material-symbols-rounded text-teal-600">emergency_share</span>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">การเคลื่อนย้ายฉุกเฉิน</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">การเคลื่อนย้ายเพื่อการรักษาพยาบาลฉุกเฉินหรือการเคลื่อนย้ายกลับประเทศเนื่องจากการบาดเจ็บจากอุบัติเหตุ <span class="font-bold text-teal-700">100,000 บาท</span></p>
+                </div>
               </div>
-              <div class="flex-1">
-                <h4 class="font-bold text-gray-900 text-sm mb-1">การเคลื่อนย้ายฉุกเฉิน</h4>
-                <p class="text-sm text-gray-600 leading-relaxed">การเคลื่อนย้ายเพื่อรักษาพยาบาลฉุกเฉินและการเคลื่อนย้ายข้ามจังหวัด <span class="font-bold text-teal-700">50,000 บาท</span></p>
+              <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                  <span class="material-symbols-rounded text-teal-600">flight_takeoff</span>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">การส่งศพหรืออัฐิกลับประเทศ</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">ค่าใช้จ่ายในการส่งศพหรืออัฐิกลับประเทศเนื่องจากการเสียชีวิตจากอุบัติเหตุ <span class="font-bold text-teal-700">100,000 บาท</span></p>
+                </div>
               </div>
             </div>
             
-            <button @click="showInsuranceModal = false" class="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl hover:bg-teal-700 active:scale-[0.98] transition-all shadow-lg shadow-teal-600/20 mt-4">
+            <button @click="showInsuranceModal = false" class="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl hover:bg-teal-700 active:scale-[0.98] transition-all shadow-lg shadow-teal-600/20 mt-8">
               รับทราบ
             </button>
           </div>
