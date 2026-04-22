@@ -103,7 +103,7 @@
       <button
         v-if="showBackToTop"
         @click="scrollToTop"
-        class="fixed bottom-8 right-8 z-[150] w-14 h-14 bg-[var(--color-accent)] text-white rounded-2xl shadow-[0_15px_40px_rgba(45,122,79,0.3)] hover:shadow-[0_20px_50px_rgba(45,122,79,0.5)] hover:bg-[var(--color-primary)] transition-all duration-500 hover:-translate-y-2 group flex items-center justify-center cursor-pointer border border-white/20 backdrop-blur-md"
+        class="fixed bottom-24 right-8 z-[150] w-14 h-14 bg-[var(--color-accent)] text-white rounded-2xl shadow-[0_15px_40px_rgba(45,122,79,0.3)] hover:shadow-[0_20px_50px_rgba(45,122,79,0.5)] hover:bg-[var(--color-primary)] transition-all duration-500 hover:-translate-y-2 group flex items-center justify-center cursor-pointer border border-white/20 backdrop-blur-md"
         aria-label="Back to Top"
       >
         <span class="material-symbols-rounded text-3xl transition-transform duration-500 group-hover:-translate-y-1">arrow_upward</span>
