@@ -1,9 +1,9 @@
 <template>
-  <header class="sticky top-0 z-50 w-full transition-all duration-300">
+  <header class="sticky top-0 z-50 w-full">
     <!-- Trust Bar (Top Bar) -->
     <div 
       class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out transform-gpu border-b border-white/5"
-      :class="isScrolled ? 'h-0 opacity-0' : 'h-10 md:h-12 opacity-100'"
+      :class="isScrolled ? 'h-0 md:h-0 opacity-0' : 'h-10 md:h-12 opacity-100'"
       style="will-change: height, opacity;"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between animate-trust-bar">
