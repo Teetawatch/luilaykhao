@@ -50,8 +50,8 @@
           </div>
         </router-link>
 
-        <!-- Desktop Menu (Centered) -->
-        <div class="hidden md:flex items-center justify-center flex-1 px-4 lg:px-8">
+        <!-- Desktop Menu (Right-aligned) -->
+        <div class="hidden md:flex items-center justify-end flex-1 px-4 lg:px-8">
           <div class="flex items-center gap-1 lg:gap-2">
             <template v-for="link in navLinks" :key="link.label">
               <!-- Dropdown Menu -->
