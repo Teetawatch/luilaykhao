@@ -98,141 +98,145 @@
         </div>
 
         <!-- Right Side Actions -->
-        <div class="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
-          <!-- Search -->
-          <div class="relative transition-all duration-300" :class="desktopSearchExpanded ? 'w-[180px] lg:w-[220px]' : 'w-10'">
-            <button 
-              v-if="!desktopSearchExpanded"
-              @click="toggleDesktopSearch"
-              class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand text-text-mid hover:text-primary transition-all duration-300"
-              title="ค้นหา"
-            >
-              <span class="material-symbols-rounded text-[22px]">search</span>
-            </button>
-            
-            <div v-else class="relative w-full flex items-center animate-in fade-in zoom-in-95 duration-300">
-              <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
-              <input 
-                type="text" 
-                v-model="searchQuery" 
-                ref="desktopSearchInput"
-                @keyup.enter="doSearch(); desktopSearchExpanded = false"
-                @blur="!searchQuery && (desktopSearchExpanded = false)"
-                placeholder="ค้นหา..." 
-                class="w-full bg-sand/30 border-none rounded-full py-2 pl-9 pr-8 text-[12px] font-bold text-text-dark outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              />
+        <div class="hidden md:flex items-center gap-5 lg:gap-6 shrink-0">
+          
+          <!-- Utility Actions (Search, Wishlist, Login) -->
+          <div class="flex items-center gap-4">
+            <!-- Search -->
+            <div class="relative flex items-center transition-all duration-300">
               <button 
-                @click="desktopSearchExpanded = false; searchQuery = ''" 
-                class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
+                v-if="!desktopSearchExpanded"
+                @click="toggleDesktopSearch"
+                class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-300"
+                title="ค้นหา"
               >
-                <span class="material-symbols-rounded text-[14px]">close</span>
+                <span class="material-symbols-rounded text-[20px]">search</span>
               </button>
-            </div>
-          </div>
-
-          <!-- Wishlist -->
-          <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative">
-            <button
-              @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
-              class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand text-text-mid hover:text-primary transition-all"
-            >
-              <span class="material-symbols-rounded text-[22px]" :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
-              <span v-if="wishlistStore.favorites.length > 0" class="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {{ wishlistStore.favorites.length }}
-              </span>
-            </button>
-
-            <!-- Wishlist Dropdown -->
-            <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-3 z-[60] animation-fade-slide">
-              <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden">
-                <div class="px-5 py-3.5 bg-sand/30 border-b border-sand-dark/30 flex items-center gap-2">
-                  <span class="material-symbols-rounded text-[18px] text-red-500 filled-icon">favorite</span>
-                  <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
-                  <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }}</span>
-                </div>
-                <div v-if="wishlistStore.favorites.length === 0" class="py-8 px-5 text-center">
-                  <span class="material-symbols-rounded text-[40px] text-sand-dark/40">favorite_border</span>
-                  <p class="mt-2 text-[12px] text-text-muted font-medium">ยังไม่มีรายการโปรด</p>
-                </div>
-                <div v-else class="max-h-64 overflow-y-auto">
-                   <router-link
-                    v-for="trip in wishlistStore.favorites"
-                    :key="typeof trip === 'object' ? trip.id : trip"
-                    :to="`/trips/${typeof trip === 'object' ? trip.id : trip}`"
-                    @click="wishlistDropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 hover:bg-sand/50 transition-all border-b border-sand-dark/10 last:border-0"
-                  >
-                    <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-sand-dark/20">
-                      <img v-if="trip.cover_image" :src="trip.cover_image" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-[12px] font-bold text-text-dark truncate">{{ typeof trip === 'object' ? trip.title : `ทริป #${trip}` }}</p>
-                      <p class="text-[10px] text-primary font-bold">฿{{ Number(trip.price || 0).toLocaleString() }}</p>
-                    </div>
-                  </router-link>
-                </div>
-                <div class="p-3 bg-sand/10">
-                  <router-link to="/trips" @click="wishlistDropdownOpen = false" class="block w-full py-2 text-center text-[11px] font-bold text-primary bg-primary/5 hover:bg-primary/10 rounded-xl transition-all">ดูทริปทั้งหมด</router-link>
-                </div>
+              
+              <div v-else class="relative w-[180px] lg:w-[220px] flex items-center animate-in fade-in zoom-in-95 duration-300">
+                <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
+                <input 
+                  type="text" 
+                  v-model="searchQuery" 
+                  ref="desktopSearchInput"
+                  @keyup.enter="doSearch(); desktopSearchExpanded = false"
+                  @blur="!searchQuery && (desktopSearchExpanded = false)"
+                  placeholder="ค้นหา..." 
+                  class="w-full bg-sand/30 border-none rounded-full py-2 pl-9 pr-8 text-[12px] font-bold text-text-dark outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+                <button 
+                  @click="desktopSearchExpanded = false; searchQuery = ''" 
+                  class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
+                >
+                  <span class="material-symbols-rounded text-[14px]">close</span>
+                </button>
               </div>
             </div>
-          </div>
 
-          <!-- User -->
-          <template v-if="auth.isLoggedIn">
-            <div ref="userDropdownRef" class="relative">
-              <button 
-                @click.stop="userDropdownOpen = !userDropdownOpen"
-                class="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-sand transition-all border border-transparent hover:border-sand-dark/30"
+            <!-- Wishlist (Only for logged in) -->
+            <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative flex items-center">
+              <button
+                @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
+                class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
               >
-                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-sm">
-                  <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                  <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
-                </div>
-                <span class="text-[13px] font-bold text-text-dark hidden lg:block">{{ auth.userName }}</span>
-                <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
+                <span class="material-symbols-rounded text-[20px]" :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
+                <span v-if="wishlistStore.favorites.length > 0" class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  {{ wishlistStore.favorites.length }}
+                </span>
               </button>
 
-              <div v-if="userDropdownOpen" class="absolute top-full right-0 w-64 pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
-                  <div class="px-4 py-3 border-b border-sand-dark/10 mb-1">
-                    <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
-                    <p class="text-[10px] text-primary font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : 'Member' }}</p>
+              <!-- Wishlist Dropdown -->
+              <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-3 z-[60] animation-fade-slide">
+                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden">
+                  <div class="px-5 py-3.5 bg-sand/30 border-b border-sand-dark/30 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-[18px] text-red-500 filled-icon">favorite</span>
+                    <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
+                    <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }}</span>
                   </div>
-                  <router-link to="/profile" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                    <span class="material-symbols-rounded text-[20px]">account_circle</span>
-                    ข้อมูลส่วนตัว
-                  </router-link>
-                  <router-link to="/my-bookings" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                    <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
-                    การจองของฉัน
-                  </router-link>
-                  <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
-                  <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-red-500 hover:bg-red-50 transition-all">
-                    <span class="material-symbols-rounded text-[20px]">logout</span>
-                    ออกจากระบบ
-                  </button>
+                  <div v-if="wishlistStore.favorites.length === 0" class="py-8 px-5 text-center">
+                    <span class="material-symbols-rounded text-[40px] text-sand-dark/40">favorite_border</span>
+                    <p class="mt-2 text-[12px] text-text-muted font-medium">ยังไม่มีรายการโปรด</p>
+                  </div>
+                  <div v-else class="max-h-64 overflow-y-auto">
+                     <router-link
+                      v-for="trip in wishlistStore.favorites"
+                      :key="typeof trip === 'object' ? trip.id : trip"
+                      :to="`/trips/${typeof trip === 'object' ? trip.id : trip}`"
+                      @click="wishlistDropdownOpen = false"
+                      class="flex items-center gap-3 px-4 py-2.5 hover:bg-sand/50 transition-all border-b border-sand-dark/10 last:border-0"
+                    >
+                      <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-sand-dark/20">
+                        <img v-if="trip.cover_image" :src="trip.cover_image" class="w-full h-full object-cover" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-[12px] font-bold text-text-dark truncate">{{ typeof trip === 'object' ? trip.title : `ทริป #${trip}` }}</p>
+                        <p class="text-[10px] text-primary font-bold">฿{{ Number(trip.price || 0).toLocaleString() }}</p>
+                      </div>
+                    </router-link>
+                  </div>
+                  <div class="p-3 bg-sand/10">
+                    <router-link to="/trips" @click="wishlistDropdownOpen = false" class="block w-full py-2 text-center text-[11px] font-bold text-primary bg-primary/5 hover:bg-primary/10 rounded-xl transition-all">ดูทริปทั้งหมด</router-link>
+                  </div>
                 </div>
               </div>
             </div>
-          </template>
-          <template v-else>
-            <router-link
-              to="/login"
-              class="flex items-center gap-1.5 px-3 py-2 text-[14px] font-bold text-text-mid hover:text-primary transition-all duration-300 group/login"
-            >
-              <span class="material-symbols-rounded text-[20px] text-text-muted group-hover/login:text-primary transition-colors">account_circle</span>
-              <span>เข้าสู่ระบบ</span>
-            </router-link>
-          </template>
 
-          <!-- Primary CTA -->
+            <!-- User / Login -->
+            <template v-if="auth.isLoggedIn">
+              <div ref="userDropdownRef" class="relative flex items-center">
+                <button 
+                  @click.stop="userDropdownOpen = !userDropdownOpen"
+                  class="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-sand/50 transition-all border border-transparent hover:border-sand-dark/20"
+                >
+                  <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-sm">
+                    <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                    <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                  </div>
+                  <span class="text-[13px] font-bold text-text-dark hidden lg:block">{{ auth.userName }}</span>
+                  <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
+                </button>
+
+                <div v-if="userDropdownOpen" class="absolute top-full right-0 w-64 pt-3 z-[60] animation-fade-slide">
+                  <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
+                    <div class="px-4 py-3 border-b border-sand-dark/10 mb-1">
+                      <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
+                      <p class="text-[10px] text-primary font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : 'Member' }}</p>
+                    </div>
+                    <router-link to="/profile" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                      <span class="material-symbols-rounded text-[20px]">account_circle</span>
+                      ข้อมูลส่วนตัว
+                    </router-link>
+                    <router-link to="/my-bookings" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                      <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
+                      การจองของฉัน
+                    </router-link>
+                    <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
+                    <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-red-500 hover:bg-red-50 transition-all">
+                      <span class="material-symbols-rounded text-[20px]">logout</span>
+                      ออกจากระบบ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <router-link
+                to="/login"
+                class="flex items-center gap-2 px-2 py-1.5 text-[14px] font-medium text-text-mid hover:text-primary transition-all duration-150 group/login cursor-pointer"
+              >
+                <span class="material-symbols-rounded text-[20px] text-text-muted group-hover/login:text-primary group-hover/login:scale-105 transition-all duration-150">account_circle</span>
+                <span class="hover:underline underline-offset-4 decoration-primary/30">เข้าสู่ระบบ</span>
+              </router-link>
+            </template>
+          </div>
+
+          <!-- Primary CTA Button -->
           <router-link
             to="/trips"
-            class="hidden lg:flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-full font-bold text-[14px] hover:bg-primary-dark transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 active:scale-95 group"
+            class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full font-semibold text-[14px] shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 hover:bg-primary-dark hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98] transition-all duration-200 group"
           >
             <span class="material-symbols-rounded text-[20px] group-hover:rotate-12 transition-transform">explore</span>
-            จองทริป
+            <span>จองทริป</span>
           </router-link>
         </div>
 
