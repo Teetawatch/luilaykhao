@@ -2,8 +2,9 @@
   <header class="sticky top-0 z-50 w-full transition-all duration-300">
     <!-- Trust Bar (Top Bar) -->
     <div 
-      class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out"
+      class="w-full bg-primary text-white overflow-hidden transition-all duration-500 ease-in-out transform-gpu"
       :class="isScrolled ? 'h-0 opacity-0' : 'h-10 md:h-12 opacity-100'"
+      style="will-change: height, opacity;"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between animate-trust-bar">
         <!-- Left: License -->
@@ -33,7 +34,7 @@
       :class="[isScrolled ? 'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] py-0' : 'shadow-sm py-1']"
     >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between transition-all duration-300" :class="isScrolled ? 'h-16' : 'h-20'">
+      <div class="flex items-center justify-between transition-all duration-300 transform-gpu" :class="isScrolled ? 'h-16' : 'h-20'" style="will-change: height;">
 
         <!-- Logo -->
         <router-link to="/" class="flex items-center gap-3 shrink-0 group">
@@ -563,7 +564,9 @@ async function fetchUnreadCount() {
 
 let pollInterval = null;
 function handleScroll() {
-  isScrolled.value = window.scrollY > 20;
+  // Use a larger threshold to prevent jitter (feedback loop between height change and scroll position)
+  // 120px is safely above the total height change of the header (top bar + navbar height diff)
+  isScrolled.value = window.scrollY > 120;
 }
 
 onMounted(() => {
