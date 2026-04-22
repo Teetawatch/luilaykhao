@@ -73,28 +73,48 @@
           <div class="lg:col-span-8 space-y-16">
 
             <!-- Gallery Bento Grid -->
-            <section v-if="trip.gallery && trip.gallery.length > 0" class="gallery-section">
-              <div class="grid grid-cols-4 grid-rows-2 gap-4 h-[400px] md:h-[500px]">
-                <div class="col-span-2 row-span-2 overflow-hidden rounded-[2rem] group relative">
-                  <img :src="trip.gallery[0]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+            <section v-if="trip.gallery && trip.gallery.length > 0" class="gallery-section stagger-in">
+              <div class="grid grid-cols-1 md:grid-cols-4 grid-rows-1 md:grid-rows-2 gap-4 h-auto md:h-[500px]">
+                <!-- Main Large Image -->
+                <div 
+                  @click="openGallery(0)"
+                  class="md:col-span-2 md:row-span-2 h-[300px] md:h-full overflow-hidden rounded-[2rem] md:rounded-[3rem] group relative cursor-pointer shadow-2xl shadow-black/5"
+                >
+                  <img :src="trip.gallery[0]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
+                  <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
+                  <div class="absolute bottom-6 left-6 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-sm">zoom_in</span>
+                    คลิกเพื่อขยาย
+                  </div>
                 </div>
-                <div v-if="trip.gallery[1]" class="col-span-2 row-span-1 overflow-hidden rounded-[1.5rem] group relative">
-                  <img :src="trip.gallery[1]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
+
+                <!-- Secondary Image (Top Right) -->
+                <div v-if="trip.gallery[1]" 
+                  @click="openGallery(1)"
+                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] group relative cursor-pointer shadow-xl shadow-black/5"
+                >
+                  <img :src="trip.gallery[1]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
+                  <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
                 </div>
-                <div v-if="trip.gallery[2]" class="col-span-1 row-span-1 overflow-hidden rounded-[1.5rem] group relative">
-                  <img :src="trip.gallery[2]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300"></div>
-                </div>
-                <div v-if="trip.gallery[3]" class="col-span-1 row-span-1 overflow-hidden rounded-[1.5rem] relative group cursor-pointer">
-                  <img :src="trip.gallery[3]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div v-if="trip.gallery.length > 4" class="absolute inset-0 bg-black/50 flex items-center justify-center text-white backdrop-blur-sm transition-colors duration-300 group-hover:bg-black/60">
-                    <div class="text-center">
-                      <span class="material-symbols-rounded text-3xl mb-1">photo_library</span>
-                      <div class="font-extrabold text-lg">+{{ trip.gallery.length - 4 }}</div>
+
+                <!-- Third Image + Overlay (Bottom Right) -->
+                <div v-if="trip.gallery[2]" 
+                  @click="openGallery(2)"
+                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] relative group cursor-pointer shadow-xl shadow-black/5"
+                >
+                  <img :src="trip.gallery[2]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
+                  
+                  <!-- Overlay for more images -->
+                  <div v-if="trip.gallery.length > 3" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white backdrop-blur-sm transition-all duration-500 group-hover:bg-black/60 group-hover:backdrop-blur-[2px]">
+                    <div class="text-center transform transition-transform duration-500 group-hover:scale-110">
+                      <div class="w-14 h-14 rounded-3xl bg-white/20 flex items-center justify-center mx-auto mb-3 border border-white/30 shadow-lg">
+                        <span class="material-symbols-rounded text-3xl">photo_library</span>
+                      </div>
+                      <div class="font-black text-xl tracking-tight uppercase">+{{ trip.gallery.length - 3 }} รูปภาพ</div>
+                      <p class="text-[10px] font-bold text-white/70 mt-1 uppercase tracking-widest">ดูทั้งหมด</p>
                     </div>
                   </div>
+                  <div v-else class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
                 </div>
               </div>
             </section>
@@ -883,11 +903,85 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Gallery Lightbox Modal -->
+    <Teleport to="body">
+      <Transition 
+        enter-active-class="transition duration-400 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-300 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="showGalleryModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-2xl">
+          <!-- Close Button -->
+          <button @click="closeGallery" class="absolute top-6 right-6 z-[210] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl border border-white/10">
+            <span class="material-symbols-rounded text-3xl">close</span>
+          </button>
+
+          <!-- Navigation Buttons -->
+          <button v-if="trip.gallery.length > 1" @click="prevGalleryImage" class="absolute left-6 z-[210] w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 hidden md:flex border border-white/10">
+            <span class="material-symbols-rounded text-4xl">chevron_left</span>
+          </button>
+          <button v-if="trip.gallery.length > 1" @click="nextGalleryImage" class="absolute right-6 z-[210] w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 hidden md:flex border border-white/10">
+            <span class="material-symbols-rounded text-4xl">chevron_right</span>
+          </button>
+
+          <!-- Main Image Container -->
+          <div class="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-12 lg:p-20 overflow-hidden">
+            <div class="relative max-w-6xl w-full h-full flex items-center justify-center">
+              <Transition 
+                mode="out-in"
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-250 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-105"
+              >
+                <img 
+                  :key="activeGalleryIndex"
+                  :src="trip.gallery[activeGalleryIndex]" 
+                  class="max-w-full max-h-full object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-2xl"
+                />
+              </Transition>
+            </div>
+            
+            <!-- Caption / Counter / Thumbnails Container -->
+            <div class="mt-8 w-full max-w-4xl animate-fade-in-up">
+              <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
+                <div class="text-white">
+                  <p class="font-black text-2xl md:text-3xl mb-1 tracking-tight">{{ trip.title }}</p>
+                  <p class="text-white/50 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs flex items-center gap-2">
+                    <span class="material-symbols-rounded text-sm">photo_camera</span>
+                    ภาพที่ {{ activeGalleryIndex + 1 }} จาก {{ trip.gallery.length }}
+                  </p>
+                </div>
+
+                <!-- Thumbnails -->
+                <div class="flex gap-3 overflow-x-auto pb-4 custom-scrollbar max-w-full md:max-w-md">
+                  <div 
+                    v-for="(img, idx) in trip.gallery" 
+                    :key="idx"
+                    @click="activeGalleryIndex = idx"
+                    class="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shrink-0 shadow-lg"
+                    :class="activeGalleryIndex === idx ? 'border-[var(--color-accent)] scale-110 shadow-[0_0_20px_rgba(45,122,79,0.4)]' : 'border-white/10 opacity-30 hover:opacity-100 hover:border-white/30'"
+                  >
+                    <img :src="img" class="w-full h-full object-cover" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
@@ -917,6 +1011,8 @@ const reviewsLoading = ref(false);
 const showMustKnowModal = ref(false);
 const distanceLoading = ref(false);
 const distanceData = ref([]);
+const showGalleryModal = ref(false);
+const activeGalleryIndex = ref(0);
 
 const isTrekking = computed(() => trip.value?.type === 'trekking');
 
@@ -1100,6 +1196,34 @@ function selectPickup(pt) {
   selectedPickup.value = selectedPickup.value?.id === pt.id ? null : pt;
 }
 
+function openGallery(index) {
+  activeGalleryIndex.value = index;
+  showGalleryModal.value = true;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeGallery() {
+  showGalleryModal.value = false;
+  document.body.style.overflow = '';
+}
+
+function nextGalleryImage() {
+  if (!trip.value?.gallery?.length) return;
+  activeGalleryIndex.value = (activeGalleryIndex.value + 1) % trip.value.gallery.length;
+}
+
+function prevGalleryImage() {
+  if (!trip.value?.gallery?.length) return;
+  activeGalleryIndex.value = (activeGalleryIndex.value - 1 + trip.value.gallery.length) % trip.value.gallery.length;
+}
+
+const handleKeyDown = (e) => {
+  if (!showGalleryModal.value) return;
+  if (e.key === 'Escape') closeGallery();
+  if (e.key === 'ArrowRight') nextGalleryImage();
+  if (e.key === 'ArrowLeft') prevGalleryImage();
+};
+
 onMounted(async () => {
   try {
     const res = await api.get(`/trips/${route.params.slug}`);
@@ -1120,12 +1244,18 @@ onMounted(async () => {
     }
 
     await fetchReviews();
+    window.addEventListener('keydown', handleKeyDown);
   } catch (e) {
     console.error(e);
   } finally {
     loading.value = false;
     schedulesLoading.value = false;
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+  document.body.style.overflow = '';
 });
 
 function getDistanceForPickup(pickupId) {
