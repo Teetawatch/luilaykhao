@@ -219,10 +219,10 @@
           <template v-else>
             <router-link
               to="/login"
-              class="flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-primary border border-primary/30 hover:bg-primary hover:text-white hover:border-primary transition-all duration-300 hover:shadow-md hover:shadow-primary/15"
+              class="flex items-center gap-1.5 px-3 py-2 text-[14px] font-bold text-text-mid hover:text-primary transition-all duration-300 group/login"
             >
-              <span class="material-symbols-rounded text-[18px]">login</span>
-              เข้าสู่ระบบ
+              <span class="material-symbols-rounded text-[20px] text-text-muted group-hover/login:text-primary transition-colors">account_circle</span>
+              <span>เข้าสู่ระบบ</span>
             </router-link>
           </template>
 
