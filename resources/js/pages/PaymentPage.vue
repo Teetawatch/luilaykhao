@@ -229,12 +229,16 @@
 
             <div class="relative group">
                <div class="absolute -inset-4 bg-teal-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-               <div class="relative p-6 bg-white rounded-3xl shadow-xl border border-teal-100">
-                <canvas ref="qrCanvas" class="block rounded-2xl w-[200px] h-[200px]"></canvas>
+               <div class="relative p-2 bg-white rounded-3xl shadow-xl border border-teal-100 overflow-hidden">
+                <canvas ref="qrCanvas" class="block rounded-2xl w-full max-w-[320px] h-auto mx-auto shadow-sm"></canvas>
                 <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-3xl">
                   <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
                 </div>
               </div>
+              <button @click="saveQR" class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-teal-600 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-all active:scale-95 flex items-center gap-2">
+                <span class="material-symbols-rounded text-sm">download</span>
+                บันทึกรูป QR
+              </button>
             </div>
 
             <div class="flex flex-col items-center gap-3 w-full px-6">
@@ -259,7 +263,7 @@
              
              <div class="flex items-center gap-2 py-2 px-4 rounded-full bg-white border border-gray-100 shadow-sm">
                 <span class="material-symbols-rounded text-teal-600 text-sm" style="font-variation-settings:'FILL' 1">verified_user</span>
-                <p class="text-[11px] text-gray-500 font-bold">ชื่อบัญชี: <span class="text-gray-900">ลุยเลเขา (บจก. ลุยเลเขา)</span></p>
+                <p class="text-[11px] text-gray-500 font-bold">ชื่อบัญชี: <span class="text-gray-900">นายธีร์ธวัช พิพัฒน์เดชธน</span></p>
              </div>
           </div>
 
@@ -717,17 +721,49 @@ function crc16(str) {
 async function generateQR() {
   await nextTick();
   if (!qrCanvas.value || !booking.value) return;
+  
   const amount = paymentType.value === 'installment'
     ? perInstallment.value
     : parseFloat(booking.value.total_amount);
+    
   qrGenerated.value = false;
   const payload = buildPromptPayPayload('0626126006', amount);
-  await QRCode.toCanvas(qrCanvas.value, payload, {
-    width: 240,
-    margin: 2,
-    color: { dark: '#006565', light: '#ffffff' },
-  });
-  qrGenerated.value = true;
+  
+  const ctx = qrCanvas.value.getContext('2d');
+  const bgImg = new Image();
+  bgImg.src = '/images/IMG_7195.JPG';
+  
+  bgImg.onload = async () => {
+    // Set canvas dimensions to match image
+    qrCanvas.value.width = bgImg.width;
+    qrCanvas.value.height = bgImg.height;
+    
+    // Draw template background
+    ctx.drawImage(bgImg, 0, 0);
+    
+    // Create temporary canvas for QR code
+    const tempCanvas = document.createElement('canvas');
+    const qrSize = bgImg.width * 0.52; // QR size relative to template width
+    
+    await QRCode.toCanvas(tempCanvas, payload, {
+      width: qrSize,
+      margin: 0,
+      color: { 
+        dark: '#000000', 
+        light: '#ffffff' 
+      },
+      errorCorrectionLevel: 'H'
+    });
+    
+    // Position QR code in the white box of the template
+    // Coordinates calibrated for IMG_7195.JPG layout
+    const x = (bgImg.width - qrSize) / 2;
+    const y = bgImg.height * 0.245; 
+    
+    ctx.drawImage(tempCanvas, x, y);
+    
+    qrGenerated.value = true;
+  };
 }
 
 function saveQR() {
