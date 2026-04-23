@@ -74,9 +74,19 @@
 
         <!-- Highlights Section -->
         <div class="card section-card">
-          <h3 class="section-title text-[var(--color-primary)]">
-            <span class="material-symbols-rounded">star</span> จุดเด่นของทริป
-          </h3>
+          <div class="section-header-flex">
+            <h3 class="section-title text-[var(--color-primary)]">
+              <span class="material-symbols-rounded">star</span> จุดเด่นของทริป
+            </h3>
+            <div class="section-actions-mini">
+              <button type="button" @click="copySection('highlights')" title="คัดลอกส่วนนี้">
+                <span class="material-symbols-rounded">content_copy</span>
+              </button>
+              <button type="button" @click="pasteSection('highlights')" title="วางข้อมูล">
+                <span class="material-symbols-rounded">content_paste</span>
+              </button>
+            </div>
+          </div>
           <div class="highlights-editor space-y-4">
             <div v-for="(hi, idx) in form.highlights" :key="idx" class="highlight-item bg-gray-50 p-5 rounded-2xl border border-gray-100 flex gap-4 items-start relative group">
               <div class="highlight-icon-selector">
@@ -110,9 +120,19 @@
 
         <!-- Itinerary Section -->
         <div class="card section-card">
-          <h3 class="section-title text-[var(--color-primary)]">
-            <span class="material-symbols-rounded">event_note</span> กำหนดการเดินทาง (Itinerary)
-          </h3>
+          <div class="section-header-flex">
+            <h3 class="section-title text-[var(--color-primary)]">
+              <span class="material-symbols-rounded">event_note</span> กำหนดการเดินทาง (Itinerary)
+            </h3>
+            <div class="section-actions-mini">
+              <button type="button" @click="copySection('itinerary')" title="คัดลอกส่วนนี้">
+                <span class="material-symbols-rounded">content_copy</span>
+              </button>
+              <button type="button" @click="pasteSection('itinerary')" title="วางข้อมูล">
+                <span class="material-symbols-rounded">content_paste</span>
+              </button>
+            </div>
+          </div>
           <div class="itinerary-editor space-y-4">
             <div v-for="(item, idx) in form.itinerary" :key="idx" class="itinerary-item bg-gray-50 p-6 rounded-2xl border border-gray-100 relative group">
               <div class="flex items-center gap-4 mb-4">
@@ -134,9 +154,19 @@
 
         <!-- Preparations Section -->
         <div class="card section-card">
-          <h3 class="section-title text-[var(--color-primary)]">
-            <span class="material-symbols-rounded">backpack</span> การเตรียมตัว และสิ่งที่สมาชิกต้องเตรียม
-          </h3>
+          <div class="section-header-flex">
+            <h3 class="section-title text-[var(--color-primary)]">
+              <span class="material-symbols-rounded">backpack</span> การเตรียมตัว และสิ่งที่สมาชิกต้องเตรียม
+            </h3>
+            <div class="section-actions-mini">
+              <button type="button" @click="copySection('preparations')" title="คัดลอกส่วนนี้">
+                <span class="material-symbols-rounded">content_copy</span>
+              </button>
+              <button type="button" @click="pasteSection('preparations')" title="วางข้อมูล">
+                <span class="material-symbols-rounded">content_paste</span>
+              </button>
+            </div>
+          </div>
           <div class="preparations-editor space-y-3">
             <div v-for="(item, idx) in form.preparations" :key="idx" class="flex gap-3 items-center">
               <span class="material-symbols-rounded text-[var(--color-accent)]">check_circle</span>
@@ -155,9 +185,19 @@
         <div class="card section-card">
           <div class="list-editor-container">
             <div class="list-editor">
-              <label class="list-editor-label text-green-700">
-                <span class="material-symbols-rounded">check_circle</span> สิ่งที่รวมในทริป
-              </label>
+              <div class="flex items-center justify-between mb-4 pr-1">
+                <label class="list-editor-label text-green-700 !mb-0">
+                  <span class="material-symbols-rounded">check_circle</span> สิ่งที่รวมในทริป
+                </label>
+                <div class="section-actions-mini">
+                  <button type="button" @click="copySection('inclusions')" title="คัดลอก">
+                    <span class="material-symbols-rounded text-sm">content_copy</span>
+                  </button>
+                  <button type="button" @click="pasteSection('inclusions')" title="วาง">
+                    <span class="material-symbols-rounded text-sm">content_paste</span>
+                  </button>
+                </div>
+              </div>
               <div class="list-items">
                 <div v-for="(item, idx) in form.inclusions" :key="idx" class="list-item">
                   <input v-model="form.inclusions[idx]" placeholder="เช่น ค่าธรรมเนียมเข้าอุทยาน" />
@@ -171,9 +211,19 @@
               </div>
             </div>
             <div class="list-editor">
-              <label class="list-editor-label text-red-600">
-                <span class="material-symbols-rounded">cancel</span> สิ่งที่ไม่รวม
-              </label>
+              <div class="flex items-center justify-between mb-4 pr-1">
+                <label class="list-editor-label text-red-600 !mb-0">
+                  <span class="material-symbols-rounded">cancel</span> สิ่งที่ไม่รวม
+                </label>
+                <div class="section-actions-mini">
+                  <button type="button" @click="copySection('exclusions')" title="คัดลอก">
+                    <span class="material-symbols-rounded text-sm">content_copy</span>
+                  </button>
+                  <button type="button" @click="pasteSection('exclusions')" title="วาง">
+                    <span class="material-symbols-rounded text-sm">content_paste</span>
+                  </button>
+                </div>
+              </div>
               <div class="list-items">
                 <div v-for="(item, idx) in form.exclusions" :key="idx" class="list-item">
                   <input v-model="form.exclusions[idx]" placeholder="เช่น ค่าใช้จ่ายส่วนตัว" />
@@ -191,9 +241,19 @@
 
         <!-- Must Know -->
         <div class="card section-card">
-          <h3 class="section-title text-amber-600">
-            <span class="material-symbols-rounded">campaign</span> ข้อควรรู้สำหรับทริปนี้
-          </h3>
+          <div class="section-header-flex">
+            <h3 class="section-title text-amber-600">
+              <span class="material-symbols-rounded">campaign</span> ข้อควรรู้สำหรับทริปนี้
+            </h3>
+            <div class="section-actions-mini">
+              <button type="button" @click="copySection('must_know')" title="คัดลอกส่วนนี้">
+                <span class="material-symbols-rounded">content_copy</span>
+              </button>
+              <button type="button" @click="pasteSection('must_know')" title="วางข้อมูล">
+                <span class="material-symbols-rounded">content_paste</span>
+              </button>
+            </div>
+          </div>
           <div class="must-know-editor bg-amber-50 p-6 rounded-[2rem] border border-amber-100 space-y-6">
             <div class="space-y-4">
               <label class="text-sm font-black text-amber-700 uppercase tracking-widest pl-1 mb-1 block">รายการเพิ่มเติม / ราคาพิเศษ</label>
@@ -528,6 +588,27 @@ const submitForm = async () => {
   }
 };
 
+const copySection = (field) => {
+  const data = form[field];
+  localStorage.setItem(`copied_trip_${field}`, JSON.stringify(data));
+};
+
+const pasteSection = (field) => {
+  const data = localStorage.getItem(`copied_trip_${field}`);
+  if (data) {
+    try {
+      const parsedData = JSON.parse(data);
+      if (field === 'must_know') {
+        form.must_know = { ...parsedData };
+      } else {
+        form[field] = [...parsedData];
+      }
+    } catch (e) {
+      console.error('Failed to paste data', e);
+    }
+  }
+};
+
 const initData = async () => {
   if (isEdit.value) {
     loading.value = true;
@@ -820,6 +901,42 @@ onMounted(() => {
   border-color: var(--color-accent);
   color: var(--color-accent);
   background: #f0faf4;
+}
+
+.section-header-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.section-header-flex .section-title {
+  margin-bottom: 0;
+}
+
+.section-actions-mini {
+  display: flex;
+  gap: 8px;
+}
+.section-actions-mini button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.section-actions-mini button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: #f0faf4;
+}
+.section-actions-mini button .material-symbols-rounded {
+  font-size: 18px;
 }
 
 .remove-highlight-btn {
