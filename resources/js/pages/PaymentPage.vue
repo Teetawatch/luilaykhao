@@ -263,7 +263,7 @@
              
              <div class="flex items-center gap-2 py-2 px-4 rounded-full bg-white border border-gray-100 shadow-sm">
                 <span class="material-symbols-rounded text-teal-600 text-sm" style="font-variation-settings:'FILL' 1">verified_user</span>
-                <p class="text-[11px] text-gray-500 font-bold">ชื่อบัญชี: <span class="text-gray-900">นายธีร์ธวัช พิพัฒน์เดชธน</span></p>
+                <p class="text-[11px] text-gray-500 font-bold">e-Wallet: <span class="text-gray-900">004-99923936-2071</span></p>
              </div>
           </div>
 
@@ -634,8 +634,8 @@ function copyAmount() {
 }
 
 function copyAccount() {
-  navigator.clipboard.writeText('0626126006');
-  swal.success('คัดลอกเลขที่บัญชีแล้ว', '062-6-12600-6');
+  navigator.clipboard.writeText('004999239362071');
+  swal.success('คัดลอกเลข e-Wallet แล้ว', '004-99923936-2071');
 }
 
 // Transfer datetime
@@ -680,18 +680,24 @@ watch([paymentType, paymentMethod], ([, method]) => {
 });
 
 // ── PromptPay QR ─────────────────────────────────────────────
-function buildPromptPayPayload(phone, amount) {
-  const normalizePhone = (p) => {
-    p = p.replace(/\D/g, '');
-    if (p.startsWith('0')) p = '0066' + p.slice(1);
-    return p;
-  };
-  const normalized = normalizePhone(phone);
+function buildPromptPayPayload(identifier, amount) {
+  const cleanId = identifier.replace(/\D/g, '');
+  let normalized = cleanId;
+  let typeTag = '03'; // Default to e-Wallet (15 digits)
+  
+  if (cleanId.length === 10 && cleanId.startsWith('0')) {
+    normalized = '0066' + cleanId.slice(1);
+    typeTag = '01'; // Mobile
+  } else if (cleanId.length === 13) {
+    typeTag = '02'; // ID Card / Tax ID
+  }
+  
   const tag = (id, value) => {
     const len = value.length.toString().padStart(2, '0');
     return `${id}${len}${value}`;
   };
-  const merchantAccInfo = tag('00', 'A000000677010111') + tag('01', normalized);
+  
+  const merchantAccInfo = tag('00', 'A000000677010111') + tag(typeTag, normalized);
   const merchantInfo = tag('29', merchantAccInfo);
   const amtStr = amount.toFixed(2);
   let payload =
@@ -727,7 +733,7 @@ async function generateQR() {
     : parseFloat(booking.value.total_amount);
     
   qrGenerated.value = false;
-  const payload = buildPromptPayPayload('0626126006', amount);
+  const payload = buildPromptPayPayload('004999239362071', amount);
   
   const ctx = qrCanvas.value.getContext('2d');
   const bgImg = new Image();
