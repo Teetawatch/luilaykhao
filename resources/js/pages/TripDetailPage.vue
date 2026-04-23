@@ -280,230 +280,8 @@
                 <p v-if="!trip.exclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่ไม่รวมในทริป</p>
               </div>
             </section>
-
-            <!-- Trekking: Pickup Regions Info Section -->
-            <section v-if="isTrekking && allPickupPoints.length">
-              <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] mb-3 tracking-tight">จุดรับและราคาตามภูมิภาค</h3>
-              <div class="flex items-center justify-between mb-8 flex-wrap gap-3">
-                <p class="text-[var(--color-text-muted)] text-base font-medium">ข้อมูลจุดรับและราคาโดยประมาณในแต่ละภูมิภาค — ราคาจริงจะแจ้งเมื่อติดต่อจอง</p>
-                <button
-                  @click="calculateDistances"
-                  :disabled="distanceLoading"
-                  class="inline-flex items-center gap-2 text-sm text-white bg-[var(--color-primary)] hover:bg-[var(--color-accent)] px-5 py-2.5 rounded-full font-bold transition-all duration-300 shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span v-if="distanceLoading" class="material-symbols-rounded text-[16px] animate-spin">progress_activity</span>
-                  <span v-else class="material-symbols-rounded text-[16px]">near_me</span>
-                  {{ distanceLoading ? 'กำลังคำนวณ...' : (distanceData.length ? 'คำนวณใหม่' : 'คำนวณระยะทางจากตำแหน่งของฉัน') }}
-                </button>
-              </div>
-
-              <div class="flex flex-wrap gap-2 mb-6">
-                <span class="inline-flex items-center gap-1.5 text-xs bg-[var(--color-sand)] text-[var(--color-text-dark)] px-3 py-1.5 rounded-full font-bold border border-gray-200">
-                  <span class="material-symbols-rounded text-[14px]">map</span>
-                  ทั้งหมด {{ groupedPickupPointsByRegion.length }} ภาค
-                </span>
-                <span class="inline-flex items-center gap-1.5 text-xs bg-[var(--color-sand)] text-[var(--color-text-dark)] px-3 py-1.5 rounded-full font-bold border border-gray-200">
-                  <span class="material-symbols-rounded text-[14px]">pin_drop</span>
-                  {{ allPickupPoints.length }} จุดรับ
-                </span>
-              </div>
-
-              <div class="space-y-6">
-                <div
-                  v-for="group in groupedPickupPointsByRegion" :key="group.region"
-                  class="bg-white rounded-[1.75rem] border border-gray-100 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
-                >
-                  <div class="flex items-center justify-between px-6 py-4 bg-[var(--color-sand)] border-b border-gray-100 flex-wrap gap-3">
-                    <div>
-                      <span class="font-extrabold text-[var(--color-text-dark)] text-base flex items-center gap-2">
-                        <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px]">location_on</span>
-                        {{ group.region_label }}
-                      </span>
-                      <p class="text-xs text-[var(--color-text-muted)] font-bold mt-1">{{ group.points.length }} จุดรับในภูมิภาคนี้</p>
-                    </div>
-                    <span class="font-black text-[var(--color-accent)] text-sm md:text-base bg-white px-3 py-1.5 rounded-full border border-[var(--color-accent)]/20">
-                      {{ group.min_price === group.max_price
-                        ? `ราคาเริ่มต้น ฿${group.min_price.toLocaleString()}`
-                        : `฿${group.min_price.toLocaleString()} - ฿${group.max_price.toLocaleString()}` }}
-                    </span>
-                  </div>
-
-                  <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div
-                      v-for="pt in group.points"
-                      :key="pt.id"
-                      class="rounded-[1.25rem] border border-gray-100 bg-white p-4 space-y-3"
-                    >
-                      <p class="text-sm text-[var(--color-text-dark)] font-bold flex items-start gap-2.5">
-                        <span class="material-symbols-rounded text-red-400 shrink-0 mt-0.5 text-[18px]">pin_drop</span>
-                        {{ pt.pickup_location }}
-                      </p>
-                      <p v-if="pt.notes" class="text-sm text-[var(--color-text-muted)] font-medium flex items-start gap-2.5">
-                        <span class="material-symbols-rounded text-[#FFB020] shrink-0 mt-0.5 text-[18px]">schedule</span>
-                        {{ pt.notes }}
-                      </p>
-
-                      <div class="flex items-center justify-between flex-wrap gap-2 mt-1">
-                        <span class="text-sm font-black text-[var(--color-accent)]">฿{{ Number(pt.price).toLocaleString() }}</span>
-                        <a v-if="pt.map_url" :href="pt.map_url" target="_blank"
-                          class="inline-flex items-center gap-1.5 text-xs text-white bg-[var(--color-primary)] hover:bg-[var(--color-accent)] px-3 py-1.5 rounded-lg font-bold transition-colors">
-                          <span class="material-symbols-rounded text-[14px]">map</span>
-                          ดูแผนที่
-                        </a>
-                      </div>
-
-                      <div v-if="getDistanceForPickup(pt.id)" class="flex flex-wrap gap-2 mt-2">
-                        <span class="inline-flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 px-2.5 py-1.5 rounded-lg font-bold">
-                          <span class="material-symbols-rounded text-[14px]">straighten</span>
-                          {{ getDistanceForPickup(pt.id).distance?.text }}
-                        </span>
-                        <span class="inline-flex items-center gap-1.5 text-xs bg-green-50 text-green-700 px-2.5 py-1.5 rounded-lg font-bold">
-                          <span class="material-symbols-rounded text-[14px]">schedule</span>
-                          {{ getDistanceForPickup(pt.id).duration?.text }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Departure Point / Map area -->
-            <section v-if="trip.departure_point || (trip.latitude && trip.longitude)">
-              <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] mb-8 tracking-tight">ปลายทาง</h3>
-
-              <!-- Google Maps embed -->
-              <div v-if="trip.latitude && trip.longitude" class="rounded-[2rem] overflow-hidden border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.05)] bg-white">
-                <iframe
-                  :src="`https://www.google.com/maps?q=${trip.latitude},${trip.longitude}&z=14&output=embed`"
-                  width="100%"
-                  height="400"
-                  style="border:0; display:block;"
-                  allowfullscreen
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                ></iframe>
-                <div class="bg-white px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center shrink-0">
-                      <span class="material-symbols-rounded text-[var(--color-accent)] text-[24px]">location_on</span>
-                    </div>
-                    <div>
-                      <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1">{{ trip.departure_point || trip.location }}</p>
-                      <p class="text-[var(--color-text-muted)] text-sm font-medium">{{ trip.latitude }}, {{ trip.longitude }}</p>
-                    </div>
-                  </div>
-                  <a
-                    :href="`https://www.google.com/maps/dir/?api=1&destination=${trip.latitude},${trip.longitude}`"
-                    target="_blank"
-                    class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white text-sm font-extrabold px-6 py-3 rounded-full transition-all duration-300 flex items-center gap-2 shadow-md hover:-translate-y-0.5"
-                  >
-                    <span class="material-symbols-rounded text-[18px]">directions</span>
-                    นำทาง
-                  </a>
-                </div>
-              </div>
-
-              <!-- Fallback: no lat/lng -->
-              <div v-else class="h-[300px] bg-white rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex items-center justify-center">
-                <div class="text-center">
-                  <div class="w-20 h-20 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span class="material-symbols-rounded text-[var(--color-accent)] text-[40px]">pin_drop</span>
-                  </div>
-                  <p class="font-extrabold text-[var(--color-text-dark)] text-xl mb-2">{{ trip.departure_point }}</p>
-                  <p class="text-[var(--color-text-muted)] text-base font-medium">จุดนัดหมายสำหรับทริปนี้</p>
-                </div>
-              </div>
-              </section>
-
-              <!-- Reviews Section -->
-              <section id="reviews" class="pt-8 border-t border-gray-100">
-                <div class="flex items-center justify-between mb-10">
-                  <div>
-                    <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2">รีวิวจากผู้ร่วมทริป</h3>
-                    <div class="flex items-center gap-3">
-                      <div class="flex text-[#FFB020]">
-                        <span v-for="star in 5" :key="star" class="material-symbols-rounded text-[20px]"
-                          :style="star <= Math.round(trip.rating) ? 'font-variation-settings:\'FILL\' 1' : ''">
-                          star
-                        </span>
-                      </div>
-                      <span class="font-extrabold text-[var(--color-text-dark)] text-lg">{{ Number(trip.rating || 0).toFixed(1) }}</span>
-                      <span class="text-[var(--color-text-muted)] font-medium text-sm">จาก {{ trip.review_count || 0 }} ความคิดเห็น</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-if="reviewsLoading" class="flex justify-center py-12">
-                  <div class="w-10 h-10 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-                </div>
-                
-                <div v-else-if="reviews.length > 0" class="space-y-8">
-                  <div v-for="review in reviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)]">
-                    <div class="flex justify-between items-start mb-6">
-                      <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
-                          <img 
-                            v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
-                            :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
-                            class="w-full h-full object-cover" 
-                          />
-                          <span v-else>{{ review.user_name?.charAt(0) }}</span>
-                        </div>
-                        <div>
-                          <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1">{{ review.user_name }}</p>
-                          <div class="flex gap-0.5">
-                            <span v-for="s in 5" :key="s" class="material-symbols-rounded text-[18px]"
-                              :class="s <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
-                              :style="s <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
-                              star
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full">
-                        {{ formatDate(review.created_at) }}
-                      </span>
-                    </div>
-
-                    <p class="text-[var(--color-text-mid)] leading-relaxed text-base font-medium mb-5 whitespace-pre-line">
-                      {{ review.comment }}
-                    </p>
-
-                    <!-- Review Images -->
-                    <div v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-3 mb-5">
-                      <div v-for="(img, idx) in review.images" :key="idx" 
-                        class="w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border border-gray-100 cursor-pointer group relative">
-                        <img :src="img" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                      </div>
-                    </div>
-
-                    <!-- Admin Reply -->
-                    <div v-if="review.admin_reply" class="mt-6 bg-[var(--color-sand)]/50 rounded-2xl p-5 border-l-4 border-[var(--color-accent)] relative overflow-hidden">
-                      <div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
-                        <span class="material-symbols-rounded text-7xl text-[var(--color-accent)]">forum</span>
-                      </div>
-                      <p class="text-xs font-black text-[var(--color-accent)] uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">verified</span>
-                        การตอบกลับจากผู้ดูแล
-                      </p>
-                      <p class="text-sm font-bold text-[var(--color-text-dark)] leading-relaxed">
-                        {{ review.admin_reply }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-else class="text-center py-20 bg-white/50 rounded-[2.5rem] border border-dashed border-gray-200">
-                  <div class="w-16 h-16 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span class="material-symbols-rounded text-gray-300 text-3xl">rate_review</span>
-                  </div>
-                  <p class="text-[var(--color-text-muted)] font-extrabold text-lg mb-1">ยังไม่มีการรีวิวสำหรับทริปนี้</p>
-                  <p class="text-[var(--color-text-muted)] text-sm font-medium">ร่วมแชร์ประสบการณ์การเดินทางของคุณได้ หลังจากจบทริป</p>
-                </div>
-              </section>
             </div>
-
+            
             <!-- Right Column: Sticky Booking Panel -->
           <aside class="lg:col-span-4">
             <div class="sticky top-28 space-y-6">
@@ -899,6 +677,93 @@
           </aside>
 
         </div>
+
+        <!-- Reviews Section (Moved to bottom for Mobile flow) -->
+        <section id="reviews" class="mt-16 pt-16 border-t border-gray-200">
+          <div class="flex items-center justify-between mb-10">
+            <div>
+              <h3 class="text-2xl md:text-4xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2">รีวิวจากผู้ร่วมทริป</h3>
+              <div class="flex items-center gap-3">
+                <div class="flex text-[#FFB020]">
+                  <span v-for="star in 5" :key="star" class="material-symbols-rounded text-[24px]"
+                    :style="star <= Math.round(trip.rating) ? 'font-variation-settings:\'FILL\' 1' : ''">
+                    star
+                  </span>
+                </div>
+                <span class="font-extrabold text-[var(--color-text-dark)] text-xl">{{ Number(trip.rating || 0).toFixed(1) }}</span>
+                <span class="text-[var(--color-text-muted)] font-medium text-base">จาก {{ trip.review_count || 0 }} ความคิดเห็น</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="reviewsLoading" class="flex justify-center py-20">
+            <div class="w-12 h-12 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
+          </div>
+          
+          <div v-else-if="reviews.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div v-for="review in reviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)] h-full flex flex-col">
+              <div class="flex justify-between items-start mb-6">
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
+                    <img 
+                      v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
+                      :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
+                      class="w-full h-full object-cover" 
+                    />
+                    <span v-else>{{ review.user_name?.charAt(0) }}</span>
+                  </div>
+                  <div>
+                    <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1">{{ review.user_name }}</p>
+                    <div class="flex gap-0.5">
+                      <span v-for="s in 5" :key="s" class="material-symbols-rounded text-[18px]"
+                        :class="s <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
+                        :style="s <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
+                        star
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full">
+                  {{ formatDate(review.created_at) }}
+                </span>
+              </div>
+
+              <p class="text-[var(--color-text-mid)] leading-relaxed text-base font-medium mb-5 whitespace-pre-line flex-grow">
+                {{ review.comment }}
+              </p>
+
+              <!-- Review Images -->
+              <div v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-3 mb-5">
+                <div v-for="(img, idx) in review.images" :key="idx" 
+                  class="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 cursor-pointer group relative">
+                  <img :src="img" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                </div>
+              </div>
+
+              <!-- Admin Reply -->
+              <div v-if="review.admin_reply" class="mt-auto bg-[var(--color-sand)]/50 rounded-2xl p-5 border-l-4 border-[var(--color-accent)] relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
+                  <span class="material-symbols-rounded text-7xl text-[var(--color-accent)]">forum</span>
+                </div>
+                <p class="text-xs font-black text-[var(--color-accent)] uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">verified</span>
+                  การตอบกลับจากผู้ดูแล
+                </p>
+                <p class="text-sm font-bold text-[var(--color-text-dark)] leading-relaxed">
+                  {{ review.admin_reply }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="text-center py-20 bg-white/50 rounded-[2.5rem] border border-dashed border-gray-200">
+            <div class="w-16 h-16 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
+              <span class="material-symbols-rounded text-gray-300 text-3xl">rate_review</span>
+            </div>
+            <p class="text-[var(--color-text-muted)] font-extrabold text-lg mb-1">ยังไม่มีการรีวิวสำหรับทริปนี้</p>
+            <p class="text-[var(--color-text-muted)] text-sm font-medium">ร่วมแชร์ประสบการณ์การเดินทางของคุณได้ หลังจากจบทริป</p>
+          </div>
+        </section>
       </div>
     </div>
 

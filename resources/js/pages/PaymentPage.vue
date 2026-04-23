@@ -237,7 +237,16 @@
               </div>
             </div>
 
-            <div class="flex flex-col items-center gap-3 w-full px-6 mt-6">
+            <div class="flex flex-col items-center gap-4 w-full px-6 mt-6">
+                <!-- Save QR Button moved up -->
+                <div class="flex items-center gap-3">
+                  <button v-if="qrGenerated" @click="saveQR"
+                    class="flex items-center gap-2.5 px-6 py-3 bg-teal-600 text-white text-sm font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20">
+                    <span class="material-symbols-rounded text-[18px]">download</span> บันทึก QR Code
+                  </button>
+                </div>
+
+                <!-- Payment Details -->
                 <div class="flex items-center justify-between w-full max-w-xs bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
                    <div class="flex flex-col">
                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ยอดเงินที่ต้องชำระ</span>
@@ -247,13 +256,6 @@
                       <span class="material-symbols-rounded text-base">content_copy</span>
                       คัดลอกยอด
                     </button>
-                </div>
-
-                <div class="flex items-center gap-3">
-                  <button v-if="qrGenerated" @click="saveQR"
-                    class="flex items-center gap-2.5 px-6 py-3 bg-teal-600 text-white text-sm font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20">
-                    <span class="material-symbols-rounded text-[18px]">download</span> บันทึก QR Code
-                  </button>
                 </div>
             </div>
              
