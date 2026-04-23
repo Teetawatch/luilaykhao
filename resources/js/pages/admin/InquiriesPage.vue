@@ -21,6 +21,7 @@
               <th>สถานะ</th>
               <th>หัวข้อ</th>
               <th>ผู้ติดต่อ</th>
+              <th>รูปแนบ</th>
               <th>วันที่</th>
               <th>จัดการ</th>
             </tr>
@@ -38,6 +39,16 @@
               <td>
                 <div class="font-bold">{{ item.name }}</div>
                 <div class="text-xs text-text-muted">{{ item.phone }}</div>
+              </td>
+              <td>
+                <div v-if="item.images?.length" class="flex -space-x-2">
+                  <img v-for="(img, idx) in item.images.slice(0, 3)" :key="idx" :src="img" 
+                       class="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm" />
+                  <div v-if="item.images.length > 3" class="w-8 h-8 rounded-full bg-sand-dark flex items-center justify-center text-[10px] font-bold border-2 border-white">
+                    +{{ item.images.length - 3 }}
+                  </div>
+                </div>
+                <span v-else class="text-text-muted text-xs">-</span>
               </td>
               <td class="text-sm">{{ formatDate(item.created_at) }}</td>
               <td>

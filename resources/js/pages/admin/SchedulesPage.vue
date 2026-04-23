@@ -226,7 +226,12 @@
         <div class="modal-header">
           <div>
             <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">location_on</span>จุดรับผู้โดยสาร</h2>
-            <p class="modal-subtitle" v-if="pickupSchedule">{{ pickupSchedule.trip?.title }} — {{ pickupSchedule.departure_date }}</p>
+            <p class="modal-subtitle" v-if="pickupSchedule">
+              {{ pickupSchedule.trip?.title }} — {{ pickupSchedule.departure_date }}
+              <span v-if="pickupSchedule.vehicle?.license_plate" style="color:var(--color-accent); font-weight:700; margin-left:4px;">
+                ({{ pickupSchedule.vehicle.license_plate }})
+              </span>
+            </p>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <button v-if="pickupTemplates.length" class="btn-sm btn-secondary" @click="showApplyTemplateDropdown = !showApplyTemplateDropdown" style="position:relative;">
@@ -649,7 +654,12 @@
                 <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
                 <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item">
                   <input type="checkbox" v-model="applySelectedScheduleIds" :value="sch.id" />
-                  <span>{{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span></span>
+                  <span>
+                    {{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span>
+                    <span v-if="sch.vehicle?.license_plate" style="margin-left:8px; color:var(--color-accent); font-weight:700;">
+                      ({{ sch.vehicle.license_plate }})
+                    </span>
+                  </span>
                   <span class="status-badge" :class="`status-${sch.status}`" style="margin-left:auto;">{{ statusLabels[sch.status] }}</span>
                 </label>
               </div>
@@ -676,12 +686,17 @@
         </div>
         <div class="modal-body">
           <p style="font-size:13px;color:#374151;margin-bottom:12px;">
-            คัดลอกจุดรับจาก <strong>{{ copySource?.departure_date }}</strong> ไปยังรอบ:
+            คัดลอกจุดรับจาก <strong>{{ copySource?.departure_date }} <span v-if="copySource?.vehicle?.license_plate">({{ copySource.vehicle.license_plate }})</span></strong> ไปยังรอบ:
           </p>
           <div class="copy-target-list">
             <label v-for="sch in copyTargets" :key="sch.id" class="copy-target-item">
               <input type="checkbox" v-model="copySelectedIds" :value="sch.id" />
-              <span>{{ sch.departure_date }} — {{ sch.trip?.title }}</span>
+              <span>
+                {{ sch.departure_date }} — {{ sch.trip?.title }}
+                <span v-if="sch.vehicle?.license_plate" style="margin-left:8px; color:var(--color-accent); font-weight:700;">
+                  ({{ sch.vehicle.license_plate }})
+                </span>
+              </span>
             </label>
           </div>
         </div>

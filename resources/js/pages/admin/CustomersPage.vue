@@ -41,7 +41,10 @@
               <tr v-for="c in admin.customers.data" :key="c.id">
                 <td>
                   <div class="customer-cell">
-                    <div class="customer-avatar">{{ c.name?.charAt(0)?.toUpperCase() }}</div>
+                    <div class="customer-avatar">
+                      <img v-if="c.avatar_url" :src="c.avatar_url" :alt="c.name" class="avatar-img" />
+                      <span v-else>{{ c.name?.charAt(0)?.toUpperCase() }}</span>
+                    </div>
                     <div>
                       <span class="customer-name">{{ c.name }}</span>
                       <span class="customer-email">{{ c.email }}</span>
@@ -224,6 +227,13 @@ onMounted(() => fetchData());
   font-weight: 700;
   font-size: 14px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .customer-name {

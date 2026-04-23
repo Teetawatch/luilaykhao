@@ -55,9 +55,13 @@
               </td>
               <td>{{ u.email }}</td>
               <td>
-                <span class="signup-provider" :class="`provider-${normalizeSignupProvider(u.social_provider)}`">
-                  {{ signupProviderLabel(u.social_provider) }}
-                </span>
+                  <span class="signup-provider" :class="`provider-${normalizeSignupProvider(u.social_provider)}`">
+                    <i v-if="normalizeSignupProvider(u.social_provider) === 'google'" class="fa-brands fa-google mr-1"></i>
+                    <i v-else-if="normalizeSignupProvider(u.social_provider) === 'facebook'" class="fa-brands fa-facebook mr-1"></i>
+                    <i v-else-if="normalizeSignupProvider(u.social_provider) === 'line'" class="fa-brands fa-line mr-1"></i>
+                    <i v-else class="fa-regular fa-envelope mr-1"></i>
+                    {{ signupProviderLabel(u.social_provider) }}
+                  </span>
               </td>
               <td>{{ u.phone || '-' }}</td>
               <td>
