@@ -235,13 +235,9 @@
                   <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
                 </div>
               </div>
-              <button @click="saveQR" class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-teal-600 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-teal-700 transition-all active:scale-95 flex items-center gap-2">
-                <span class="material-symbols-rounded text-sm">download</span>
-                บันทึกรูป QR
-              </button>
             </div>
 
-            <div class="flex flex-col items-center gap-3 w-full px-6">
+            <div class="flex flex-col items-center gap-3 w-full px-6 mt-6">
                 <div class="flex items-center justify-between w-full max-w-xs bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
                    <div class="flex flex-col">
                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ยอดเงินที่ต้องชำระ</span>
