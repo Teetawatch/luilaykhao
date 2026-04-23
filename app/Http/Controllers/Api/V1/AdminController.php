@@ -62,7 +62,7 @@ class AdminController extends Controller
             ->where('status', 'open')
             ->count();
 
-        $recentBookings = Booking::with(['schedule.trip', 'user'])
+        $recentBookings = Booking::with(['schedule.trip', 'user', 'pickupPoint'])
             ->orderByDesc('created_at')
             ->take(5)
             ->get()
@@ -345,7 +345,7 @@ class AdminController extends Controller
 
     public function bookings(Request $request): JsonResponse
     {
-        $query = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats', 'installmentPayments']);
+        $query = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats', 'installmentPayments', 'pickupPoint']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -368,7 +368,7 @@ class AdminController extends Controller
 
     public function showBooking(string $ref): JsonResponse
     {
-        $booking = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats', 'installmentPayments'])
+        $booking = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats', 'installmentPayments', 'pickupPoint'])
             ->where('booking_ref', $ref)
             ->firstOrFail();
 

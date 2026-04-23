@@ -154,7 +154,7 @@
             </div>
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">วันที่จอง</label>
-              <div class="text-sm font-medium text-text-dark">{{ formatDate(detailBooking.created_at) }}</div>
+              <div class="text-sm font-medium text-text-dark">{{ formatDateTime(detailBooking.created_at) }}</div>
             </div>
             <div class="space-y-1">
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">เช็คอิน</label>
@@ -183,6 +183,12 @@
                 <span class="text-xs text-text-muted block">เบอร์โทร</span>
                 <span class="font-medium text-text-dark">{{ detailBooking.user.phone }}</span>
               </div>
+              <div v-if="detailBooking.passengers?.some(p => p.halal_food)" class="col-span-1 md:col-span-2">
+                <span class="text-xs text-text-muted block mb-1">ความต้องการพิเศษ</span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-bold">
+                  <span class="material-symbols-rounded text-[16px]">eco</span> ต้องการอาหารฮาลาล
+                </span>
+              </div>
             </div>
           </div>
 
@@ -192,21 +198,39 @@
               <span class="material-symbols-rounded text-[16px]">directions_bus</span> จุดขึ้นรถ
             </h3>
             <div class="text-sm font-medium text-text-dark flex flex-col gap-1">
-              <template v-for="pt in (detailBooking.schedule?.pickup_points || [])" :key="pt.id">
-                <div v-if="pt.region === detailBooking.pickup_region" class="flex flex-col gap-0.5">
-                  <span class="inline-flex items-center gap-1.5 font-bold text-accent">
-                    <span class="material-symbols-rounded text-[16px]">location_on</span>
-                    {{ pt.region_label }}
-                  </span>
-                  <span class="text-xs text-text-muted">{{ pt.pickup_location }}<span v-if="pt.notes"> · {{ pt.notes }}</span></span>
-                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-0.5">
-                    <span class="material-symbols-rounded text-[14px]">map</span> ดูแผนที่
-                  </a>
-                </div>
+              <!-- Selected Point (New Bookings) -->
+              <div v-if="detailBooking.pickup_point" class="flex flex-col gap-0.5">
+                <span class="inline-flex items-center gap-1.5 font-bold text-accent">
+                  <span class="material-symbols-rounded text-[16px]">location_on</span>
+                  {{ detailBooking.pickup_point.region_label }}
+                </span>
+                <span class="text-xs text-text-muted">
+                  {{ detailBooking.pickup_point.pickup_location }}
+                  <span v-if="detailBooking.pickup_point.notes"> · {{ detailBooking.pickup_point.notes }}</span>
+                </span>
+                <a v-if="detailBooking.pickup_point.map_url" :href="detailBooking.pickup_point.map_url" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-0.5">
+                  <span class="material-symbols-rounded text-[14px]">map</span> ดูแผนที่
+                </a>
+              </div>
+              
+              <!-- Fallback for Old Bookings -->
+              <template v-else-if="detailBooking.pickup_region">
+                <template v-for="pt in (detailBooking.schedule?.pickup_points || [])" :key="pt.id">
+                  <div v-if="pt.region === detailBooking.pickup_region" class="flex flex-col gap-0.5">
+                    <span class="inline-flex items-center gap-1.5 font-bold text-accent">
+                      <span class="material-symbols-rounded text-[16px]">location_on</span>
+                      {{ pt.region_label }}
+                    </span>
+                    <span class="text-xs text-text-muted">{{ pt.pickup_location }}<span v-if="pt.notes"> · {{ pt.notes }}</span></span>
+                    <a v-if="pt.map_url" :href="pt.map_url" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-0.5">
+                      <span class="material-symbols-rounded text-[14px]">map</span> ดูแผนที่
+                    </a>
+                  </div>
+                </template>
+                <span v-if="!(detailBooking.schedule?.pickup_points || []).some(pt => pt.region === detailBooking.pickup_region)" class="text-text-muted">
+                  {{ detailBooking.pickup_region }}
+                </span>
               </template>
-              <span v-if="!(detailBooking.schedule?.pickup_points || []).some(pt => pt.region === detailBooking.pickup_region)" class="text-text-muted">
-                {{ detailBooking.pickup_region }}
-              </span>
             </div>
           </div>
 

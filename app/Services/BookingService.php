@@ -22,12 +22,13 @@ class BookingService
         int $scheduleId,
         array $passengers,
         array $seatIds = [],
+        ?int $pickupPointId = null,
         ?string $pickupRegion = null,
         bool $isGroup = false,
         ?string $groupName = null,
         ?string $groupNotes = null,
     ): Booking {
-        return DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupRegion, $isGroup, $groupName, $groupNotes) {
+        return DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
 
             $participantCount = count($passengers);
@@ -45,15 +46,21 @@ class BookingService
                 }
             }
 
-            // Use pickup point price if region is specified
+            // Use pickup point price if specified
             $pricePerPerson = $schedule->effective_price;
-            if ($pickupRegion) {
+            $pickupPoint = null;
+
+            if ($pickupPointId) {
+                $pickupPoint = SchedulePickupPoint::find($pickupPointId);
+            } elseif ($pickupRegion) {
                 $pickupPoint = SchedulePickupPoint::where('schedule_id', $scheduleId)
                     ->where('region', $pickupRegion)
                     ->first();
-                if ($pickupPoint) {
-                    $pricePerPerson = $pickupPoint->price;
-                }
+            }
+
+            if ($pickupPoint) {
+                $pricePerPerson = $pickupPoint->price;
+                $pickupRegion = $pickupPoint->region; // Ensure region is set if only ID was passed
             }
 
             $totalAmount = $pricePerPerson * $participantCount;
@@ -63,6 +70,7 @@ class BookingService
                 'user_id' => $userId,
                 'schedule_id' => $scheduleId,
                 'pickup_region' => $pickupRegion,
+                'pickup_point_id' => $pickupPoint?->id,
                 'is_group' => $isGroup || $participantCount > 1,
                 'group_name' => $groupName,
                 'group_notes' => $groupNotes,

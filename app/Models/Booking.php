@@ -13,7 +13,7 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = [
-        'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'status',
+        'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'is_group', 'group_name', 'group_notes',
         'qr_code', 'checked_in', 'checked_in_at',
         'total_amount', 'paid_amount', 'payment_method',
@@ -46,6 +46,11 @@ class Booking extends Model
     public function schedule(): BelongsTo
     {
         return $this->belongsTo(TripSchedule::class, 'schedule_id');
+    }
+
+    public function pickupPoint(): BelongsTo
+    {
+        return $this->belongsTo(SchedulePickupPoint::class, 'pickup_point_id');
     }
 
     public function seats(): HasMany

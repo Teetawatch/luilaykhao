@@ -28,6 +28,7 @@ class BookingController extends Controller
                 scheduleId: $request->schedule_id,
                 passengers: $request->passengers,
                 seatIds: $request->seat_ids ?? [],
+                pickupPointId: $request->pickup_point_id,
                 pickupRegion: $request->pickup_region,
                 isGroup: (bool) $request->is_group,
                 groupName: $request->group_name,

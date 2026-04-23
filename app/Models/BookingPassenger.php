@@ -13,7 +13,7 @@ class BookingPassenger extends Model
         'booking_id', 'title', 'name', 'nickname', 'id_card', 'phone', 'health_notes',
         'emergency_contact', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
-        'blood_group', 'allergies',
+        'blood_group', 'allergies', 'halal_food',
     ];
 
     protected function casts(): array
@@ -23,6 +23,7 @@ class BookingPassenger extends Model
             'health_notes' => 'encrypted',
             'id_card' => 'encrypted',
             'allergies' => 'encrypted',
+            'halal_food' => 'boolean',
         ];
     }
 

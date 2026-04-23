@@ -1247,6 +1247,7 @@ async function createBooking() {
     const data = {
       schedule_id: parseInt(route.params.scheduleId),
       pickup_region: selectedPickup.value?.region || null,
+      pickup_point_id: selectedPickup.value?.id || null,
       is_group: isGroup.value,
       group_name: isGroup.value ? groupName.value : null,
       group_notes: isGroup.value ? groupNotes.value : null,

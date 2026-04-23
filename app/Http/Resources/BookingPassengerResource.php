@@ -23,6 +23,7 @@ class BookingPassengerResource extends JsonResource
             'dive_cert_level' => $this->dive_cert_level,
             'cert_number' => $this->cert_number,
             'weight' => $this->weight,
+            'halal_food' => $this->halal_food,
         ];
     }
 }
