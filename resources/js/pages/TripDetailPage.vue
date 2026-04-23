@@ -779,106 +779,107 @@
             <p class="text-[var(--color-text-muted)] text-sm font-medium">ร่วมแชร์ประสบการณ์การเดินทางของคุณได้ หลังจากจบทริป</p>
           </div>
         </section>
-      </div>
-    </div>
 
-    <!-- Availability Modal -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-300 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition duration-200 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
-        <div v-if="showAvailabilityModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <!-- Backdrop -->
-          <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" @click="showAvailabilityModal = false"></div>
-          
-          <!-- Modal Content -->
-          <div class="bg-white rounded-[2.5rem] w-full max-w-2xl relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
-            <!-- Header -->
-            <div class="bg-[var(--color-primary)] p-6 md:p-8 text-white relative shrink-0">
-              <div class="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-              <button @click="showAvailabilityModal = false" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all active:scale-95 z-20">
-                <span class="material-symbols-rounded">close</span>
-              </button>
-              <div class="flex items-center gap-4 mb-3">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center border border-white/20">
-                  <span class="material-symbols-rounded text-3xl">calendar_month</span>
-                </div>
-                <h3 class="text-2xl font-black tracking-tight">เช็ครอบการเดินทาง</h3>
-              </div>
-              <p class="text-white/80 font-bold flex items-center gap-2 text-sm md:text-base">
-                <span class="material-symbols-rounded text-sm">info</span>
-                {{ trip.title }}
-              </p>
-            </div>
-
-            <!-- Body -->
-            <div class="p-4 md:p-8 overflow-y-auto custom-scrollbar bg-gray-50/50 flex-grow">
-              <div v-if="schedules.length > 0" class="space-y-4">
-                <div v-for="s in schedules" :key="s.id" 
-                  class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-md"
-                  :class="{'opacity-60': Number(s.available_seats) === 0}">
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[var(--color-sand)] flex flex-col items-center justify-center shrink-0 border border-gray-100">
-                      <span class="text-[9px] font-black uppercase text-[var(--color-text-muted)] leading-none mb-1">{{ new Date(s.departure_date).toLocaleDateString('th-TH', {month: 'short'}) }}</span>
-                      <span class="text-xl font-black text-[var(--color-text-dark)] leading-none">{{ new Date(s.departure_date).getDate() }}</span>
+        <!-- Availability Modal (Moved inside v-if to fix adjacency) -->
+        <Teleport to="body">
+          <Transition
+            enter-active-class="transition duration-300 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-200 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+          >
+            <div v-if="showAvailabilityModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <!-- Backdrop -->
+              <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" @click="showAvailabilityModal = false"></div>
+              
+              <!-- Modal Content -->
+              <div class="bg-white rounded-[2.5rem] w-full max-w-2xl relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
+                <!-- Header -->
+                <div class="bg-[var(--color-primary)] p-6 md:p-8 text-white relative shrink-0">
+                  <div class="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+                  <button @click="showAvailabilityModal = false" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all active:scale-95 z-20">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
+                  <div class="flex items-center gap-4 mb-3">
+                    <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center border border-white/20">
+                      <span class="material-symbols-rounded text-3xl">calendar_month</span>
                     </div>
-                    <div>
-                      <p class="font-extrabold text-[var(--color-text-dark)] text-sm md:text-base">
-                        {{ formatDate(s.departure_date) }} 
-                        <span v-if="s.return_date && s.return_date !== s.departure_date" class="text-gray-400 font-bold mx-1">/</span>
-                        <span v-if="s.return_date && s.return_date !== s.departure_date">{{ formatDate(s.return_date) }}</span>
-                      </p>
-                      <div class="flex items-center gap-3 mt-1">
-                        <div class="flex items-center gap-1">
-                          <span class="w-2 h-2 rounded-full" :class="Number(s.available_seats) > 0 ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
-                          <span class="text-xs md:text-sm font-bold" :class="Number(s.available_seats) > 0 ? 'text-[var(--color-accent)]' : 'text-red-500'">
-                            {{ Number(s.available_seats) > 0 ? `ว่าง ${s.available_seats} ที่นั่ง` : 'เต็มแล้ว' }}
-                          </span>
+                    <h3 class="text-2xl font-black tracking-tight">เช็ครอบการเดินทาง</h3>
+                  </div>
+                  <p class="text-white/80 font-bold flex items-center gap-2 text-sm md:text-base">
+                    <span class="material-symbols-rounded text-sm">info</span>
+                    {{ trip.title }}
+                  </p>
+                </div>
+
+                <!-- Body -->
+                <div class="p-4 md:p-8 overflow-y-auto custom-scrollbar bg-gray-50/50 flex-grow">
+                  <div v-if="schedules.length > 0" class="space-y-4">
+                    <div v-for="s in schedules" :key="s.id" 
+                      class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-md"
+                      :class="{'opacity-60': Number(s.available_seats) === 0}">
+                      <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[var(--color-sand)] flex flex-col items-center justify-center shrink-0 border border-gray-100">
+                          <span class="text-[9px] font-black uppercase text-[var(--color-text-muted)] leading-none mb-1">{{ new Date(s.departure_date).toLocaleDateString('th-TH', {month: 'short'}) }}</span>
+                          <span class="text-xl font-black text-[var(--color-text-dark)] leading-none">{{ new Date(s.departure_date).getDate() }}</span>
                         </div>
-                        <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-                        <span class="text-xs md:text-sm font-black text-[var(--color-text-dark)]">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
+                        <div>
+                          <p class="font-extrabold text-[var(--color-text-dark)] text-sm md:text-base">
+                            {{ formatDate(s.departure_date) }} 
+                            <span v-if="s.return_date && s.return_date !== s.departure_date" class="text-gray-400 font-bold mx-1">/</span>
+                            <span v-if="s.return_date && s.return_date !== s.departure_date">{{ formatDate(s.return_date) }}</span>
+                          </p>
+                          <div class="flex items-center gap-3 mt-1">
+                            <div class="flex items-center gap-1">
+                              <span class="w-2 h-2 rounded-full" :class="Number(s.available_seats) > 0 ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
+                              <span class="text-xs md:text-sm font-bold" :class="Number(s.available_seats) > 0 ? 'text-[var(--color-accent)]' : 'text-red-500'">
+                                {{ Number(s.available_seats) > 0 ? `ว่าง ${s.available_seats} ที่นั่ง` : 'เต็มแล้ว' }}
+                              </span>
+                            </div>
+                            <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                            <span class="text-xs md:text-sm font-black text-[var(--color-text-dark)]">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <router-link 
+                        v-if="Number(s.available_seats) > 0"
+                        :to="`/booking/${s.id}`"
+                        @click="showAvailabilityModal = false"
+                        class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all shadow-md hover:-translate-y-0.5 text-center active:scale-95"
+                      >
+                        จองรอบนี้
+                      </router-link>
+                      <div v-else class="px-6 py-2.5 rounded-xl text-sm font-black bg-gray-100 text-gray-400 border border-gray-200 text-center">
+                        จองเต็มแล้ว
                       </div>
                     </div>
                   </div>
                   
-                  <router-link 
-                    v-if="Number(s.available_seats) > 0"
-                    :to="`/booking/${s.id}`"
-                    @click="showAvailabilityModal = false"
-                    class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all shadow-md hover:-translate-y-0.5 text-center active:scale-95"
-                  >
-                    จองรอบนี้
-                  </router-link>
-                  <div v-else class="px-6 py-2.5 rounded-xl text-sm font-black bg-gray-100 text-gray-400 border border-gray-200 text-center">
-                    จองเต็มแล้ว
+                  <div v-else class="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
+                    <div class="w-20 h-20 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span class="material-symbols-rounded text-gray-300 text-5xl">event_busy</span>
+                    </div>
+                    <p class="text-[var(--color-text-muted)] font-extrabold text-lg">ยังไม่มีรอบการเดินทางที่เปิดจอง</p>
+                    <p class="text-gray-400 text-sm font-medium mt-1">กรุณาติดตามอัปเดตรอบเดินทางใหม่เร็วๆ นี้</p>
                   </div>
                 </div>
-              </div>
-              
-              <div v-else class="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
-                <div class="w-20 h-20 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span class="material-symbols-rounded text-gray-300 text-5xl">event_busy</span>
+                
+                <!-- Footer -->
+                <div class="p-5 md:p-6 bg-white border-t border-gray-100 text-center shrink-0">
+                   <p class="text-[10px] md:text-xs font-bold text-[var(--color-text-muted)] leading-relaxed uppercase tracking-widest">
+                      * หมายเหตุ: จำนวนที่นั่งอาจมีการเปลี่ยนแปลงแบบเรียลไทม์ตามการชำระเงินของลูกค้าท่านอื่น
+                   </p>
                 </div>
-                <p class="text-[var(--color-text-muted)] font-extrabold text-lg">ยังไม่มีรอบการเดินทางที่เปิดจอง</p>
-                <p class="text-gray-400 text-sm font-medium mt-1">กรุณาติดตามอัปเดตรอบเดินทางใหม่เร็วๆ นี้</p>
               </div>
             </div>
-            
-            <!-- Footer -->
-            <div class="p-5 md:p-6 bg-white border-t border-gray-100 text-center shrink-0">
-               <p class="text-[10px] md:text-xs font-bold text-[var(--color-text-muted)] leading-relaxed uppercase tracking-widest">
-                  * หมายเหตุ: จำนวนที่นั่งอาจมีการเปลี่ยนแปลงแบบเรียลไทม์ตามการชำระเงินของลูกค้าท่านอื่น
-               </p>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+          </Transition>
+        </Teleport>
+      </div>
+    </div>
+
 
     <!-- Not Found -->
     <div v-else class="text-center py-32 bg-white m-8 rounded-[2rem] border border-gray-100 shadow-sm max-w-3xl mx-auto">
