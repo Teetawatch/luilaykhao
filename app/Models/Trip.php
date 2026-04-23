@@ -15,7 +15,7 @@ class Trip extends Model
         'difficulty', 'duration_days', 'max_participants',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'gallery', 'inclusions', 'exclusions', 'is_featured',
-        'highlights', 'is_women_only', 'must_know',
+        'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations',
     ];
 
     protected function casts(): array
@@ -33,6 +33,8 @@ class Trip extends Model
             'highlights' => 'array',
             'is_women_only' => 'boolean',
             'must_know' => 'array',
+            'itinerary' => 'array',
+            'preparations' => 'array',
         ];
     }
 

@@ -159,10 +159,80 @@
               </div>
             </section>
 
-            <!-- Story-telling Description -->
             <section class="description-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
               <h2 class="text-3xl md:text-4xl font-extrabold text-[var(--color-text-dark)] mb-6 tracking-tight">เกี่ยวกับทริปนี้</h2>
               <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg whitespace-pre-line font-medium">{{ trip.description }}</p>
+            </section>
+
+            <!-- Itinerary (Day by Day) -->
+            <section v-if="trip.itinerary && trip.itinerary.length > 0" class="itinerary-section">
+              <div class="flex items-center justify-between mb-8">
+                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">แผนการเดินทาง</h3>
+                <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full border border-gray-100">
+                  {{ trip.itinerary.length }} วัน
+                </span>
+              </div>
+              
+              <div class="space-y-4">
+                <div 
+                  v-for="(item, idx) in trip.itinerary" 
+                  :key="idx" 
+                  class="itinerary-day-card bg-white rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden transition-all duration-300"
+                  :class="{'ring-2 ring-[var(--color-accent)]/10 shadow-[0_15px_40px_rgba(0,0,0,0.05)]': openDays.includes(item.day)}"
+                >
+                  <div 
+                    @click="toggleDay(item.day)"
+                    class="p-6 md:p-8 flex items-center justify-between cursor-pointer group"
+                  >
+                    <div class="flex items-center gap-5 md:gap-8">
+                      <div class="day-number-circle w-12 h-12 md:w-16 md:h-16 rounded-3xl bg-[var(--color-sand)] flex flex-col items-center justify-center transition-colors group-hover:bg-[var(--color-accent)]/10"
+                        :class="{'!bg-[var(--color-accent)] text-white': openDays.includes(item.day)}">
+                        <span class="text-[10px] font-black uppercase tracking-widest opacity-70">Day</span>
+                        <span class="text-xl md:text-2xl font-black leading-none">{{ item.day }}</span>
+                      </div>
+                      <div>
+                        <h4 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">{{ item.title }}</h4>
+                        <p v-if="!openDays.includes(item.day)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1 max-w-[200px] md:max-w-md">
+                          {{ item.description }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
+                      :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(item.day)}">
+                      <span class="material-symbols-rounded">expand_more</span>
+                    </div>
+                  </div>
+                  
+                  <div v-show="openDays.includes(item.day)" class="px-6 pb-8 md:px-8 md:pb-10 md:ml-[104px] animate-fade-in">
+                    <div class="w-full h-px bg-gray-100 mb-6"></div>
+                    <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg font-medium whitespace-pre-line">
+                      {{ item.description }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Preparations Section -->
+            <section v-if="trip.preparations && trip.preparations.length > 0" class="preparations-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] relative overflow-hidden">
+              <div class="absolute -right-12 -top-12 w-48 h-48 bg-[var(--color-sand)] rounded-full blur-3xl opacity-50"></div>
+              <div class="relative z-10">
+                <div class="flex items-center gap-4 mb-8">
+                  <div class="w-12 h-12 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)]">
+                    <span class="material-symbols-rounded text-3xl">backpack</span>
+                  </div>
+                  <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">การเตรียมตัวและสิ่งที่ต้องเตรียม</h3>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                  <div v-for="(item, idx) in trip.preparations" :key="idx" class="flex items-start gap-4 p-4 rounded-2xl hover:bg-[var(--color-sand)]/30 transition-colors group">
+                    <div class="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                      <span class="material-symbols-rounded text-[var(--color-accent)] text-lg">check</span>
+                    </div>
+                    <p class="text-[var(--color-text-mid)] font-bold text-base md:text-lg leading-relaxed pt-0.5">{{ item }}</p>
+                  </div>
+                </div>
+              </div>
             </section>
 
             <!-- Highlights -->
@@ -1078,6 +1148,16 @@ useHead({
 const schedules = ref([]);
 const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);
+const activeIconPicker = ref(null);
+const openDays = ref([0]); // Default open Day 0
+
+const toggleDay = (day) => {
+  if (openDays.value.includes(day)) {
+    openDays.value = openDays.value.filter(d => d !== day);
+  } else {
+    openDays.value.push(day);
+  }
+};
 const selectedPickup = ref(null);
 const selectedRegion = ref(null);
 const onlyAvailableSchedules = ref(true);

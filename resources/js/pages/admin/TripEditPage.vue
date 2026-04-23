@@ -108,6 +108,49 @@
           </div>
         </div>
 
+        <!-- Itinerary Section -->
+        <div class="card section-card">
+          <h3 class="section-title text-[var(--color-primary)]">
+            <span class="material-symbols-rounded">event_note</span> กำหนดการเดินทาง (Itinerary)
+          </h3>
+          <div class="itinerary-editor space-y-4">
+            <div v-for="(item, idx) in form.itinerary" :key="idx" class="itinerary-item bg-gray-50 p-6 rounded-2xl border border-gray-100 relative group">
+              <div class="flex items-center gap-4 mb-4">
+                <div class="day-badge bg-[var(--color-accent)] text-white px-4 py-1 rounded-full font-bold text-sm">
+                  วันที่ {{ item.day }}
+                </div>
+                <input v-model="item.title" placeholder="หัวข้อของวันนี้ (เช่น เดินทางถึงจุดหมาย)" class="flex-1 font-bold bg-white px-4 py-2 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20" />
+                <button type="button" class="text-red-400 hover:text-red-600 p-2" @click="removeItem('itinerary', idx)">
+                  <span class="material-symbols-rounded">delete</span>
+                </button>
+              </div>
+              <textarea v-model="item.description" rows="3" placeholder="รายละเอียดกิจกรรมในวันนี้..." class="text-sm w-full bg-white px-4 py-3 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
+            </div>
+            <button type="button" class="btn-add-dashed" @click="addItem('itinerary')">
+              <span class="material-symbols-rounded">add_circle</span> เพิ่มวันเดินทาง
+            </button>
+          </div>
+        </div>
+
+        <!-- Preparations Section -->
+        <div class="card section-card">
+          <h3 class="section-title text-[var(--color-primary)]">
+            <span class="material-symbols-rounded">backpack</span> การเตรียมตัว และสิ่งที่สมาชิกต้องเตรียม
+          </h3>
+          <div class="preparations-editor space-y-3">
+            <div v-for="(item, idx) in form.preparations" :key="idx" class="flex gap-3 items-center">
+              <span class="material-symbols-rounded text-[var(--color-accent)]">check_circle</span>
+              <input v-model="form.preparations[idx]" placeholder="เช่น เสื้อกันหนาว, รองเท้าเดินป่า" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-[var(--color-accent)]/20" />
+              <button type="button" @click="removeItem('preparations', idx)" class="text-red-400 hover:text-red-600 p-2">
+                <span class="material-symbols-rounded">delete</span>
+              </button>
+            </div>
+            <button type="button" class="btn-add-dashed" @click="addItem('preparations')">
+              <span class="material-symbols-rounded">add_circle</span> เพิ่มรายการเตรียมตัว
+            </button>
+          </div>
+        </div>
+
         <!-- Inclusions / Exclusions -->
         <div class="card section-card">
           <div class="list-editor-container">
@@ -345,6 +388,8 @@ const form = reactive({
   gallery: [], inclusions: [], exclusions: [],
   highlights: [],
   must_know: { items: [], remarks: '' },
+  itinerary: [],
+  preparations: [],
 });
 
 // Image upload state
@@ -380,6 +425,11 @@ const addItem = (field) => {
   if (!form[field]) form[field] = [];
   if (field === 'highlights') {
     form[field].push({ title: '', desc: '', icon: 'star' });
+  } else if (field === 'itinerary') {
+    const nextDay = form.itinerary.length;
+    form.itinerary.push({ day: nextDay, title: '', description: '' });
+  } else if (field === 'preparations') {
+    form[field].push('');
   } else if (field === 'must_know_items') {
     if (!form.must_know.items) form.must_know.items = [];
     form.must_know.items.push({ name: '', price: 0 });
@@ -492,6 +542,8 @@ const initData = async () => {
       form.exclusions = trip.exclusions || [];
       form.highlights = trip.highlights || [];
       form.must_know = trip.must_know || { items: [], remarks: '' };
+      form.itinerary = trip.itinerary || [];
+      form.preparations = trip.preparations || [];
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
       router.push({ name: 'admin-trips' });

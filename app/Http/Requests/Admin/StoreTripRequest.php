@@ -44,6 +44,12 @@ class StoreTripRequest extends FormRequest
             'must_know.items.*.name' => ['required_with:must_know.items', 'string', 'max:255'],
             'must_know.items.*.price' => ['required_with:must_know.items', 'numeric', 'min:0'],
             'must_know.remarks' => ['nullable', 'string', 'max:1000'],
+            'itinerary' => ['nullable', 'array'],
+            'itinerary.*.day' => ['required_with:itinerary', 'integer'],
+            'itinerary.*.title' => ['required_with:itinerary', 'string', 'max:255'],
+            'itinerary.*.description' => ['required_with:itinerary', 'string'],
+            'preparations' => ['nullable', 'array'],
+            'preparations.*' => ['string'],
         ];
     }
 }
