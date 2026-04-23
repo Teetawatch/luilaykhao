@@ -88,7 +88,7 @@
             <div class="relative group cursor-default">
               <div class="absolute -inset-4 bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-gold)]/20 rounded-[2.5rem] blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
               <img
-                src="/images/about5555.jpg"
+                src="/images/abouts_luilaykhao.jpg"
                 alt="บรรยากาศการเดินทางที่เต็มไปด้วยความสุข"
                 class="relative rounded-[2rem] shadow-2xl w-full object-cover aspect-[4/5] transition-transform duration-700 group-hover:scale-[1.02]"
               />
