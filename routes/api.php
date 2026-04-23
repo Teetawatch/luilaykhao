@@ -139,6 +139,7 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/{id}', [AdminController::class, 'showTrip']);
         Route::post('trips', [AdminController::class, 'storeTrip']);
         Route::put('trips/{id}', [AdminController::class, 'updateTrip']);
+        Route::patch('trips/bulk-update-field', [AdminController::class, 'bulkUpdateTripField']);
         Route::delete('trips/{id}', [AdminController::class, 'deleteTrip']);
 
         // Schedules CRUD

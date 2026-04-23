@@ -79,6 +79,9 @@
               <span class="material-symbols-rounded">star</span> จุดเด่นของทริป
             </h3>
             <div class="section-actions-mini">
+              <button type="button" @click="openCopyModal('highlights')" title="คัดลอกไปยังทริปอื่น">
+                <span class="material-symbols-rounded">move_to_inbox</span>
+              </button>
               <button type="button" @click="copySection('highlights')" title="คัดลอกส่วนนี้">
                 <span class="material-symbols-rounded">content_copy</span>
               </button>
@@ -125,6 +128,9 @@
               <span class="material-symbols-rounded">event_note</span> กำหนดการเดินทาง (Itinerary)
             </h3>
             <div class="section-actions-mini">
+              <button type="button" @click="openCopyModal('itinerary')" title="คัดลอกไปยังทริปอื่น">
+                <span class="material-symbols-rounded">move_to_inbox</span>
+              </button>
               <button type="button" @click="copySection('itinerary')" title="คัดลอกส่วนนี้">
                 <span class="material-symbols-rounded">content_copy</span>
               </button>
@@ -159,6 +165,9 @@
               <span class="material-symbols-rounded">backpack</span> การเตรียมตัว และสิ่งที่สมาชิกต้องเตรียม
             </h3>
             <div class="section-actions-mini">
+              <button type="button" @click="openCopyModal('preparations')" title="คัดลอกไปยังทริปอื่น">
+                <span class="material-symbols-rounded">move_to_inbox</span>
+              </button>
               <button type="button" @click="copySection('preparations')" title="คัดลอกส่วนนี้">
                 <span class="material-symbols-rounded">content_copy</span>
               </button>
@@ -190,6 +199,9 @@
                   <span class="material-symbols-rounded">check_circle</span> สิ่งที่รวมในทริป
                 </label>
                 <div class="section-actions-mini">
+                  <button type="button" @click="openCopyModal('inclusions')" title="คัดลอกไปยังทริปอื่น">
+                    <span class="material-symbols-rounded text-sm">move_to_inbox</span>
+                  </button>
                   <button type="button" @click="copySection('inclusions')" title="คัดลอก">
                     <span class="material-symbols-rounded text-sm">content_copy</span>
                   </button>
@@ -216,6 +228,9 @@
                   <span class="material-symbols-rounded">cancel</span> สิ่งที่ไม่รวม
                 </label>
                 <div class="section-actions-mini">
+                  <button type="button" @click="openCopyModal('exclusions')" title="คัดลอกไปยังทริปอื่น">
+                    <span class="material-symbols-rounded text-sm">move_to_inbox</span>
+                  </button>
                   <button type="button" @click="copySection('exclusions')" title="คัดลอก">
                     <span class="material-symbols-rounded text-sm">content_copy</span>
                   </button>
@@ -246,6 +261,9 @@
               <span class="material-symbols-rounded">campaign</span> ข้อควรรู้สำหรับทริปนี้
             </h3>
             <div class="section-actions-mini">
+              <button type="button" @click="openCopyModal('must_know')" title="คัดลอกไปยังทริปอื่น">
+                <span class="material-symbols-rounded">move_to_inbox</span>
+              </button>
               <button type="button" @click="copySection('must_know')" title="คัดลอกส่วนนี้">
                 <span class="material-symbols-rounded">content_copy</span>
               </button>
@@ -422,6 +440,57 @@
       <p>กำลังโหลดข้อมูลทริป...</p>
     </div>
   </div>
+
+  <!-- Copy to Other Trips Modal -->
+  <div v-if="showCopyModal" class="modal-overlay">
+    <div class="modal-container copy-trips-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">คัดลอกข้อมูลไปยังทริปอื่น</h3>
+        <button class="btn-close" @click="showCopyModal = false">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-gray-500 mb-4">
+          เลือกทริปที่ต้องการนำข้อมูล <strong class="text-[var(--color-primary)]">"{{ targetField }}"</strong> ไปวางทับ
+        </p>
+        
+        <div class="search-box mb-4">
+          <span class="material-symbols-rounded">search</span>
+          <input v-model="searchTripQuery" placeholder="ค้นหาทริป..." />
+        </div>
+
+        <div class="trips-selection-list">
+          <label v-for="trip in filteredTrips" :key="trip.id" class="trip-selection-item" :class="{ active: selectedTripsIds.includes(trip.id) }">
+            <input type="checkbox" v-model="selectedTripsIds" :value="trip.id" class="hidden" />
+            <div class="item-content">
+              <div class="trip-thumb" v-if="trip.cover_image">
+                <img :src="trip.cover_image" />
+              </div>
+              <div class="trip-info">
+                <div class="trip-title">{{ trip.title }}</div>
+                <div class="trip-meta">{{ trip.location }} • {{ trip.duration_days }} วัน</div>
+              </div>
+              <div class="selection-status">
+                <span class="material-symbols-rounded">{{ selectedTripsIds.includes(trip.id) ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="selected-count">เลือกแล้ว {{ selectedTripsIds.length }} ทริป</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showCopyModal = false">ยกเลิก</button>
+          <button class="btn-primary" @click="confirmBulkCopy" :disabled="bulkCopying || selectedTripsIds.length === 0">
+            <span class="material-symbols-rounded animate-spin" v-if="bulkCopying">sync</span>
+            <span class="material-symbols-rounded" v-else>content_paste_go</span>
+            วางข้อมูลทันที
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -460,6 +529,14 @@ const isDragging = ref(false);
 const galleryInput = ref(null);
 const galleryUploading = ref(false);
 const activeIconPicker = ref(null);
+
+// Bulk Copy state
+const showCopyModal = ref(false);
+const allTrips = ref([]);
+const targetField = ref('');
+const selectedTripsIds = ref([]);
+const searchTripQuery = ref('');
+const bulkCopying = ref(false);
 
 const commonIcons = [
   'shield_person', 'restaurant', 'scuba_diving', 'directions_boat', 'photo_camera',
@@ -608,6 +685,52 @@ const pasteSection = (field) => {
     }
   }
 };
+
+const openCopyModal = async (field) => {
+  targetField.value = field;
+  showCopyModal.value = true;
+  selectedTripsIds.value = [];
+  if (allTrips.value.length === 0) {
+    try {
+      const res = await api.get('/admin/trips?per_page=100');
+      allTrips.value = res.data.data.filter(t => t.id !== Number(route.params.id));
+    } catch (e) {
+      alert('โหลดข้อมูลทริปอื่นๆ ไม่สำเร็จ');
+    }
+  }
+};
+
+const confirmBulkCopy = async () => {
+  if (selectedTripsIds.value.length === 0) {
+    alert('กรุณาเลือกทริปที่ต้องการวางข้อมูล');
+    return;
+  }
+  
+  if (!confirm(`ยืนยันการวางข้อมูลลงใน ${selectedTripsIds.value.length} ทริปที่เลือก? (ข้อมูลเดิมในทริปเหล่านั้นจะถูกเขียนทับ)`)) {
+    return;
+  }
+
+  bulkCopying.value = true;
+  try {
+    await api.patch('/admin/trips/bulk-update-field', {
+      trip_ids: selectedTripsIds.value,
+      field: targetField.value,
+      value: form[targetField.value]
+    });
+    alert('อัปเดตข้อมูลทริปที่เลือกเรียบร้อยแล้ว');
+    showCopyModal.value = false;
+  } catch (e) {
+    alert('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+  } finally {
+    bulkCopying.value = false;
+  }
+};
+
+const filteredTrips = computed(() => {
+  if (!searchTripQuery.value) return allTrips.value;
+  const q = searchTripQuery.value.toLowerCase();
+  return allTrips.value.filter(t => t.title.toLowerCase().includes(q) || t.location.toLowerCase().includes(q));
+});
 
 const initData = async () => {
   if (isEdit.value) {
@@ -941,6 +1064,180 @@ onMounted(() => {
 
 .remove-highlight-btn {
   display: flex;
+}
+
+/* ─── Modal Styles ───────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-container {
+  background: white;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.btn-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-close:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-box .material-symbols-rounded {
+  position: absolute;
+  left: 12px;
+  color: #9ca3af;
+}
+.search-box input {
+  width: 100%;
+  padding: 10px 12px 10px 40px !important;
+  border-radius: 12px !important;
+  border: 1px solid #e5e7eb !important;
+  font-size: 14px !important;
+}
+
+.trips-selection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trip-selection-item {
+  cursor: pointer;
+}
+
+.trip-selection-item .item-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #f3f4f6;
+  transition: all 0.2s;
+}
+
+.trip-selection-item:hover .item-content {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.trip-selection-item.active .item-content {
+  background: #f0faf4;
+  border-color: var(--color-accent);
+}
+
+.trip-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.trip-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trip-info {
+  flex: 1;
+}
+.trip-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+.trip-meta {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.selection-status .material-symbols-rounded {
+  font-size: 20px;
+  color: #d1d5db;
+}
+.trip-selection-item.active .selection-status .material-symbols-rounded {
+  color: var(--color-accent);
+}
+
+.modal-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selected-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ─── Gallery ─── */

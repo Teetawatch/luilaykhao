@@ -158,6 +158,25 @@ class AdminController extends Controller
         return $this->success(new TripResource($trip->fresh()), 'อัปเดตทริปสำเร็จ');
     }
 
+    public function bulkUpdateTripField(Request $request): JsonResponse
+    {
+        $request->validate([
+            'trip_ids' => ['required', 'array'],
+            'trip_ids.*' => ['exists:trips,id'],
+            'field' => ['required', 'string', 'in:highlights,itinerary,preparations,inclusions,exclusions,must_know'],
+            'value' => ['required'],
+        ]);
+
+        $trips = Trip::whereIn('id', $request->trip_ids)->get();
+        foreach ($trips as $trip) {
+            $trip->update([
+                $request->field => $request->value
+            ]);
+        }
+
+        return $this->success(null, 'อัปเดตข้อมูลทริปที่เลือกสำเร็จ');
+    }
+
     public function deleteTrip(int $id): JsonResponse
     {
         $trip = Trip::findOrFail($id);
