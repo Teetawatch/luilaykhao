@@ -28,7 +28,7 @@
       <div class="max-w-7xl mx-auto">
         <!-- Quick Contact Buttons -->
         <div class="flex flex-col sm:flex-row gap-4 mb-16 justify-center lg:justify-start">
-          <a href="https://line.me/R/ti/p/@luilaykhao" target="_blank" 
+          <a href="https://line.me/ti/p/@luilaykhao" target="_blank" 
              class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-[#06C755] text-white rounded-2xl font-bold text-lg hover:bg-[#05b34c] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
             <i class="fab fa-line text-2xl"></i>
             แชทผ่าน LINE

@@ -9,22 +9,22 @@
         <!-- Brand & About -->
         <!-- Brand & About -->
         <div class="md:col-span-6 lg:col-span-4">
-          <div class="flex items-center gap-3 mb-6">
+          <router-link to="/" class="flex items-center gap-3 mb-6">
             <img src="/images/logo.png" alt="ลุยเลเขา Logo" class="w-24 h-24 object-contain drop-shadow-sm" />
-          </div>
+          </router-link>
           <p class="text-m text-text-muted leading-relaxed max-w-sm mb-6">
             เราไม่ได้อยากเป็นแค่แพลตฟอร์มจองทริป แต่อยากเป็น "เพื่อน" ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทาง
           </p>
           
           <!-- Social Icons -->
           <div class="flex items-center gap-3">
-            <a href="#" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
+            <a href="https://www.facebook.com/profile.php?id=61572124170207" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
               <i class="fa-brands fa-facebook-f"></i>
             </a>
-            <a href="#" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
+            <a href="https://instagram.com/luilaykhao" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
               <i class="fa-brands fa-instagram"></i>
             </a>
-            <a href="#" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
+            <a href="https://line.me/ti/p/@luilaykhao" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
               <i class="fa-brands fa-line text-lg"></i>
             </a>
           </div>
@@ -61,32 +61,38 @@
             ติดต่อเรา
           </h4>
           <ul class="space-y-4 text-sm text-text-muted">
-            <li class="flex items-start gap-3.5 group cursor-default">
-              <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                <i class="fa-brands fa-line text-lg"></i>
-              </div>
-              <div class="pt-1.5">
-                <p class="font-semibold text-text-dark leading-none mb-1">LINE Official</p>
-                <p>@luilaykhao</p>
-              </div>
+            <li>
+              <a href="https://line.me/ti/p/@luilaykhao" target="_blank" class="flex items-start gap-3.5 group">
+                <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                  <i class="fa-brands fa-line text-lg"></i>
+                </div>
+                <div class="pt-1.5">
+                  <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">LINE Official</p>
+                  <p>@luilaykhao</p>
+                </div>
+              </a>
             </li>
-            <li class="flex items-start gap-3.5 group cursor-default">
-              <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                <span class="material-symbols-rounded text-[18px]">call</span>
-              </div>
-              <div class="pt-1.5">
-                <p class="font-semibold text-text-dark leading-none mb-1">โทรศัพท์</p>
-                <p>062-612-6006</p>
-              </div>
+            <li>
+              <a href="tel:0626126006" class="flex items-start gap-3.5 group">
+                <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                  <span class="material-symbols-rounded text-[18px]">call</span>
+                </div>
+                <div class="pt-1.5">
+                  <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">โทรศัพท์</p>
+                  <p>062-612-6006</p>
+                </div>
+              </a>
             </li>
-            <li class="flex items-start gap-3.5 group cursor-default">
-              <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                <span class="material-symbols-rounded text-[18px]">mail</span>
-              </div>
-              <div class="pt-1.5">
-                <p class="font-semibold text-text-dark leading-none mb-1">อีเมล</p>
-                <p>luilaykhao.info@gmail.com</p>
-              </div>
+            <li>
+              <a href="mailto:[EMAIL_ADDRESS]" class="flex items-start gap-3.5 group">
+                <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                  <span class="material-symbols-rounded text-[18px]">mail</span>
+                </div>
+                <div class="pt-1.5">
+                  <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">อีเมล</p>
+                  <p>luilaykhao.info@gmail.com</p>
+                </div>
+              </a>
             </li>
           </ul>
         </div>
@@ -101,12 +107,12 @@
               <img src="/images/logo.png" alt="Luilaykhao Logo" class="w-20 h-20 rounded-[1.25rem] shadow-sm border border-gray-100 bg-white p-2 object-contain" />
             </div>
             <div class="flex flex-col gap-0 -mt-10">
-              <div class="block">
+              <a href="#" class="block hover:opacity-80 transition-opacity">
                 <img src="/images/icon-appstore.webp" alt="App Store" class="w-28 h-28 object-contain" />
-              </div>
-              <div class="block -mt-15">
+              </a>
+              <a href="#" class="block -mt-15 hover:opacity-80 transition-opacity">
                 <img src="/images/icon-playstore.webp" alt="Play Store" class="w-28 h-28 object-contain" />
-              </div>
+              </a>
             </div>
           </div>
         </div>
