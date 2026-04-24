@@ -435,14 +435,19 @@
                         <div class="min-w-0 flex items-center gap-3">
                           <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
                           <div>
-                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight">{{ formatDate(s.departure_date) }}</p>
-                            <p v-if="s.return_date !== s.departure_date" class="text-[var(--color-text-muted)] font-medium text-xs mt-0.5 flex items-center gap-1">
-                              ถึง {{ formatDate(s.return_date) }}
-                              <span class="inline-flex items-center gap-0.5 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-dark)]">
+                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight">
+                              {{ formatDate(s.departure_date) }}
+                              <template v-if="s.return_date !== s.departure_date">
+                                <span class="mx-1 text-gray-400 font-medium">-</span>
+                                {{ formatDate(s.return_date) }}
+                              </template>
+                            </p>
+                            <div v-if="s.return_date !== s.departure_date" class="mt-1">
+                              <span class="inline-flex items-center gap-0.5 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)]">
                                 <span class="material-symbols-rounded text-[11px]">schedule</span>
                                 {{ s.duration_days || trip.duration_days }} วัน
                               </span>
-                            </p>
+                            </div>
                           </div>
                         </div>
                         <span
@@ -516,14 +521,19 @@
                         <div class="min-w-0 flex items-center gap-3">
                           <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
                           <div>
-                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight">{{ formatDate(s.departure_date) }}</p>
-                            <p v-if="s.return_date !== s.departure_date" class="text-[var(--color-text-muted)] font-medium text-xs mt-0.5 flex items-center gap-1">
-                              ถึง {{ formatDate(s.return_date) }}
-                              <span class="inline-flex items-center gap-0.5 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-dark)]">
+                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight">
+                              {{ formatDate(s.departure_date) }}
+                              <template v-if="s.return_date !== s.departure_date">
+                                <span class="mx-1 text-gray-400 font-medium">-</span>
+                                {{ formatDate(s.return_date) }}
+                              </template>
+                            </p>
+                            <div v-if="s.return_date !== s.departure_date" class="mt-1">
+                              <span class="inline-flex items-center gap-0.5 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)]">
                                 <span class="material-symbols-rounded text-[11px]">schedule</span>
                                 {{ s.duration_days || trip.duration_days }} วัน
                               </span>
-                            </p>
+                            </div>
                           </div>
                         </div>
                         <span
