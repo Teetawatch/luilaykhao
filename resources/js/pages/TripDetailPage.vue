@@ -539,7 +539,7 @@
                       </div>
 
                       <!-- Pickup point and price for this region -->
-                      <div v-if="(s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9 space-y-1.5">
+                      <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9 space-y-1.5">
                         <template v-for="pt in s.pickup_points" :key="pt.id">
                           <div v-if="pt.region === selectedRegion" class="text-xs text-[var(--color-text-dark)] font-bold">
                             <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
