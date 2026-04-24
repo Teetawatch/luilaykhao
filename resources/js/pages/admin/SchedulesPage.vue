@@ -736,6 +736,7 @@ import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
 
 const REGIONS = [
+  { value: 'bangkok',   label: 'กรุงเทพมหานคร' },
   { value: 'north',     label: 'ภาคเหนือ' },
   { value: 'northeast', label: 'ภาคอีสาน' },
   { value: 'central',   label: 'ภาคกลาง' },
