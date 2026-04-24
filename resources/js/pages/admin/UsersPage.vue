@@ -47,8 +47,8 @@
               <td>
                 <div class="user-cell">
                   <div class="user-avatar-sm">
-                    <img v-if="u.avatar_url" :src="u.avatar_url" :alt="u.name" class="user-avatar-img" />
-                    <span v-else>{{ u.name?.charAt(0)?.toUpperCase() }}</span>
+                    <img :src="u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || '')}&background=2D7A4F&color=fff`" :alt="u.name" class="user-avatar-img" @error="(e) => { e.target.style.display = 'none'; e.target.nextElementSibling.style.display = 'flex'; }" />
+                    <span class="avatar-fallback" style="display: none;">{{ u.name?.charAt(0)?.toUpperCase() }}</span>
                   </div>
                   <span class="user-name-cell">{{ u.name }}</span>
                 </div>
@@ -56,7 +56,7 @@
               <td>{{ u.email }}</td>
               <td>
                   <span class="signup-provider" :class="`provider-${normalizeSignupProvider(u.social_provider)}`">
-                    <i v-if="normalizeSignupProvider(u.social_provider) === 'google'" class="fa-brands fa-google mr-1"></i>
+                    <svg v-if="normalizeSignupProvider(u.social_provider) === 'google'" class="provider-icon" viewBox="0 0 48 48" width="14" height="14"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                     <i v-else-if="normalizeSignupProvider(u.social_provider) === 'facebook'" class="fa-brands fa-facebook mr-1"></i>
                     <i v-else-if="normalizeSignupProvider(u.social_provider) === 'line'" class="fa-brands fa-line mr-1"></i>
                     <i v-else class="fa-regular fa-envelope mr-1"></i>
@@ -267,6 +267,20 @@ onMounted(() => fetchData());
   object-fit: cover;
   border-radius: inherit;
   display: block;
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.provider-icon {
+  flex-shrink: 0;
+  margin-right: 4px;
 }
 
 .user-name-cell {
