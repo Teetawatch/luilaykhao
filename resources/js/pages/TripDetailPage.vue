@@ -538,28 +538,28 @@
                         </span>
                       </div>
 
-                      <!-- Pickup point for this region (always shown) -->
-                      <div v-if="(s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9">
+                      <!-- Pickup point and price for this region -->
+                      <div v-if="(s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9 space-y-1.5">
                         <template v-for="pt in s.pickup_points" :key="pt.id">
-                          <div v-if="pt.region === selectedRegion" class="text-xs text-[var(--color-text-dark)] font-bold flex items-start gap-1.5">
-                            <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5">pin_drop</span>
-                            <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
+                          <div v-if="pt.region === selectedRegion" class="text-xs text-[var(--color-text-dark)] font-bold">
+                            <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
+                              class="flex items-start gap-1.5 hover:text-[var(--color-accent)] transition-colors group">
+                              <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5 group-hover:text-[var(--color-accent)]">map</span>
+                              <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
+                            </a>
+                            <div v-else class="flex items-start gap-1.5">
+                              <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5">pin_drop</span>
+                              <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
+                            </div>
                           </div>
                         </template>
-                      </div>
 
-                      <!-- Price for this region -->
-                      <div v-if="(s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-1.5 pl-9 flex items-center justify-between">
-                        <template v-for="pt in s.pickup_points" :key="'price-' + pt.id">
-                          <span v-if="pt.region === selectedRegion" class="text-[11px] font-black text-[var(--color-accent)]">฿{{ Number(pt.price).toLocaleString() }} / ท่าน</span>
-                        </template>
-                        <template v-for="pt in s.pickup_points" :key="'map-' + pt.id">
-                          <a v-if="pt.region === selectedRegion && pt.map_url" :href="pt.map_url" target="_blank"
-                            @click.stop
-                            class="text-[10px] text-[var(--color-primary)] hover:text-[var(--color-accent)] font-bold flex items-center gap-1 transition-colors">
-                            <span class="material-symbols-rounded text-[12px]">map</span> แผนที่
-                          </a>
-                        </template>
+                        <!-- Price for this region (Show only one price) -->
+                        <div class="flex items-center justify-between">
+                          <span class="text-[11px] font-black text-[var(--color-accent)]">
+                            ฿{{ Number(s.pickup_points.find(pt => pt.region === selectedRegion).price).toLocaleString() }} / ท่าน
+                          </span>
+                        </div>
                       </div>
 
                       <!-- Transport info when selected -->
