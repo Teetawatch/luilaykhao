@@ -2,23 +2,23 @@
   <div class="admin-page edit-trip-page">
     <div class="page-header">
       <div class="header-left">
-        <button class="btn-back" @click="router.push({ name: 'admin-trips' })">
+        <button class="btn-back" @click="router.push({ name: backRouteName })">
           <span class="material-symbols-rounded">arrow_back</span>
         </button>
         <div>
           <h1 class="page-title">
-            <span class="material-symbols-rounded heading-icon">{{ isEdit ? 'edit_square' : 'add_circle' }}</span>
-            {{ isEdit ? 'แก้ไขทริป' : 'เพิ่มทริปใหม่' }}
+            <span class="material-symbols-rounded heading-icon">{{ isVanMode ? 'airport_shuttle' : (isEdit ? 'edit_square' : 'add_circle') }}</span>
+            {{ isVanMode ? (isEdit ? 'แก้ไขบริการรถตู้' : 'เพิ่มบริการรถตู้ใหม่') : (isEdit ? 'แก้ไขทริป' : 'เพิ่มทริปใหม่') }}
           </h1>
-          <p class="page-subtitle">{{ form.title || (isEdit ? 'กำลังโหลด...' : 'ระบุรายละเอียดทริปของคุณ') }}</p>
+          <p class="page-subtitle">{{ form.title || (isEdit ? 'กำลังโหลด...' : (isVanMode ? 'ระบุรายละเอียดบริการรถตู้' : 'ระบุรายละเอียดทริปของคุณ')) }}</p>
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn-secondary" @click="router.push({ name: 'admin-trips' })">ยกเลิก</button>
+        <button class="btn-secondary" @click="router.push({ name: backRouteName })">ยกเลิก</button>
         <button class="btn-primary" @click="submitForm" :disabled="submitting || uploading">
           <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
           <span class="material-symbols-rounded" v-else>save</span>
-          {{ isEdit ? 'บันทึกการเปลี่ยนแปลง' : 'สร้างทริป' }}
+          {{ isEdit ? 'บันทึกการเปลี่ยนแปลง' : (isVanMode ? 'สร้างบริการรถตู้' : 'สร้างทริป') }}
         </button>
       </div>
     </div>
@@ -352,7 +352,7 @@
           <div class="sidebar-footer">
             <button class="btn-primary w-full" @click="submitForm" :disabled="submitting">
               <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
-              {{ isEdit ? 'บันทึกการเปลี่ยนแปลง' : 'สร้างทริป' }}
+              {{ isEdit ? 'บันทึกการเปลี่ยนแปลง' : (isVanMode ? 'สร้างบริการรถตู้' : 'สร้างทริป') }}
             </button>
           </div>
         </div>
@@ -506,6 +506,8 @@ const admin = useAdminStore();
 const categoriesStore = useCategoriesStore();
 
 const isEdit = computed(() => !!route.params.id);
+const isVanMode = computed(() => route.name?.startsWith('admin-van-trip'));
+const backRouteName = computed(() => isVanMode.value ? 'admin-van-trips' : 'admin-trips');
 const loading = ref(false);
 const submitting = ref(false);
 
@@ -657,7 +659,7 @@ const submitForm = async () => {
     } else {
       await admin.createTrip(form);
     }
-    router.push({ name: 'admin-trips' });
+    router.push({ name: backRouteName.value });
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
@@ -750,7 +752,7 @@ const initData = async () => {
       form.preparations = trip.preparations || [];
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
-      router.push({ name: 'admin-trips' });
+      router.push({ name: backRouteName.value });
     } finally {
       loading.value = false;
     }
@@ -760,6 +762,10 @@ const initData = async () => {
 };
 
 onMounted(() => {
+  // In van mode, default type to 'climbing' (van category slug)
+  if (isVanMode.value && !isEdit.value) {
+    form.type = 'climbing';
+  }
   initData();
   categoriesStore.fetchAdminCategories();
 });

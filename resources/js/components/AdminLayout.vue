@@ -13,7 +13,7 @@
           :key="item.to"
           :to="item.to"
           class="nav-item"
-          :class="{ active: $route.path === item.to }"
+          :class="{ active: item.to === '/admin' ? $route.path === '/admin' : $route.path.startsWith(item.to) }"
         >
           <i :class="item.icon"></i>
           <span v-if="!sidebarCollapsed">{{ item.label }}</span>
@@ -74,6 +74,7 @@ const menuItems = [
   { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
   { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },
   { to: '/admin/trips', icon: 'fas fa-route', label: 'จัดการทริป' },
+  { to: '/admin/van-trips', icon: 'fas fa-shuttle-van', label: 'บริการรถตู้' },
   { to: '/admin/categories', icon: 'fas fa-tags', label: 'หมวดหมู่กิจกรรม' },
   { to: '/admin/schedules', icon: 'fas fa-calendar-alt', label: 'รอบเดินทาง' },
   { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
