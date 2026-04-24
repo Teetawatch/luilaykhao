@@ -300,7 +300,7 @@
             <div class="sticky top-28 space-y-6">
 
               <!-- Price Card -->
-              <div class="bg-white p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-gray-100 relative overflow-hidden z-10">
+              <div id="booking-section" class="bg-white p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-gray-100 relative overflow-hidden z-10">
                 <!-- Starting price -->
                 <div class="flex items-end gap-2 mb-2">
                   <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
@@ -1376,6 +1376,29 @@ onMounted(async () => {
     const sRes = await api.get(`/trips/${route.params.slug}/schedules`);
     schedules.value = sRes.data.data;
     
+    // Auto-select schedule and region from query params
+    if (route.query.schedule) {
+      const scheduleId = Number(route.query.schedule);
+      const found = schedules.value.find(s => s.id === scheduleId);
+      if (found) {
+        selectSchedule(found);
+        
+        // If region is also provided, select it
+        if (route.query.region) {
+          selectedRegion.value = route.query.region;
+        }
+
+        // Scroll to schedule selection section
+        setTimeout(() => {
+          const el = document.getElementById('booking-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 800);
+      }
+    } else if (route.query.region) {
+      // If only region is provided
+      selectedRegion.value = route.query.region;
+    }
+
     // Show must know modal if exists
     if (trip.value?.must_know && (trip.value.must_know.items?.length || trip.value.must_know.remarks)) {
       setTimeout(() => {

@@ -98,7 +98,7 @@
             @click="goBook"
             class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-5 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0"
           >
-            <span class="material-symbols-rounded text-[24px]">{{ selectedScheduleId ? 'bookmark_add' : 'search' }}</span>
+            <span class="material-symbols-rounded text-[24px]">explore</span>
             <span class="text-xl md:text-base lg:text-lg pr-1">เริ่มเที่ยวเลย</span>
           </button>
         </div>
@@ -797,11 +797,22 @@ const selectedScheduleId = ref('');
 const schedulesLoading = ref(false);
 
 function formatScheduleOption(s) {
-  const dep = new Date(s.departure_date);
-  const dateStr = dep.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-  const seats = s.available_seats > 0 ? `ว่าง ${s.available_seats} ที่` : 'เต็มแล้ว';
-  const price = `฿${Number(s.price ?? 0).toLocaleString()}`;
-  return `${dateStr} — ${price} (${seats})`;
+  const formatDateTh = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('th-TH', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
+  
+  const depStr = formatDateTh(s.departure_date);
+  const retStr = formatDateTh(s.return_date);
+  
+  if (retStr && retStr !== depStr) {
+    return `${depStr} - ${retStr}`;
+  }
+  return depStr;
 }
 
 async function onTripChange() {
@@ -811,7 +822,21 @@ async function onTripChange() {
   schedulesLoading.value = true;
   try {
     const res = await api.get(`/trips/${selectedTripSlug.value}/schedules`);
-    tripSchedules.value = (res.data.data || []).filter(s => s.available_seats > 0);
+    const allSchedules = (res.data.data || []).filter(s => s.available_seats > 0);
+    
+    // Filter to unique dates (only show one per date range)
+    const uniqueSchedules = [];
+    const seenDates = new Set();
+    
+    allSchedules.forEach(s => {
+      const dateKey = `${s.departure_date}_${s.return_date}`;
+      if (!seenDates.has(dateKey)) {
+        seenDates.add(dateKey);
+        uniqueSchedules.push(s);
+      }
+    });
+    
+    tripSchedules.value = uniqueSchedules;
   } catch (e) {
     console.error('Failed to load schedules', e);
   } finally {
@@ -820,10 +845,12 @@ async function onTripChange() {
 }
 
 const goBook = () => {
-  if (selectedScheduleId.value) {
-    router.push(`/booking/${selectedScheduleId.value}`);
-  } else if (selectedTripSlug.value) {
-    router.push(`/trips/${selectedTripSlug.value}`);
+  if (selectedTripSlug.value) {
+    // Navigate to trip detail page with optional schedule query
+    router.push({
+      path: `/trips/${selectedTripSlug.value}`,
+      query: selectedScheduleId.value ? { schedule: selectedScheduleId.value } : {}
+    });
   } else {
     router.push('/trips');
   }
