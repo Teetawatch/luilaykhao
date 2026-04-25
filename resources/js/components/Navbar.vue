@@ -21,7 +21,7 @@
           </div>
         </div>
         
-        <!-- Right: Phone -->
+        <!-- Right: Phone 
         <div class="flex items-center gap-4">
           <a 
             href="tel:0626126006" 
@@ -31,7 +31,7 @@
             <span class="material-symbols-rounded text-[18px] text-accent-light group-hover/phone:rotate-12 transition-transform">call</span>
             <span class="text-[14px] md:text-[15px] font-bold tracking-tight">062-612-6006</span>
           </a>
-        </div>
+        </div>-->
       </div>
     </div>
 
