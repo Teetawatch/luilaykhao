@@ -4,7 +4,7 @@
     <!-- Hero Banner Section -->
     <section class="relative mb-8 overflow-hidden h-auto pt-24 sm:pt-0 sm:h-64 md:h-72 flex items-end bg-[#1a1a1a]">
       <img
-        class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60 grayscale"
+        class="absolute inset-0 w-full h-full object-cover opacity-30"
         src="/images/khaochangphueak.webp"
         alt="banner"
       />
