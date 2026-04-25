@@ -2,14 +2,14 @@
   <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan">
 
     <!-- Hero Banner Section -->
-    <section class="relative mb-8 overflow-hidden h-auto pt-24 sm:pt-0 sm:h-64 md:h-72 flex items-end bg-neutral-900">
+    <section class="relative mb-8 overflow-hidden h-auto pt-24 sm:pt-0 sm:h-64 md:h-72 flex items-end bg-[#1a1a1a]">
       <img
-        class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-30 grayscale"
+        class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60 grayscale"
         src="/images/khaochangphueak.webp"
         alt="banner"
       />
       <!-- Gradient Overlay -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50"></div>
 
       <div class="relative w-full px-4 sm:px-6 md:px-8 pb-8 md:pb-10 flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-8 max-w-7xl mx-auto z-10">
         <!-- Avatar -->
