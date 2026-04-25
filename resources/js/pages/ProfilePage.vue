@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan">
 
     <!-- Hero Banner Section -->
-    <section class="relative mb-8 overflow-hidden h-auto pt-24 sm:pt-0 sm:h-64 md:h-72 flex items-end bg-[var(--color-primary)]">
+    <section class="relative mb-8 overflow-hidden h-auto pt-24 sm:pt-0 sm:h-64 md:h-72 flex items-end bg-neutral-900">
       <img
         class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-30 grayscale"
         src="/images/khaochangphueak.webp"
