@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
+use App\Services\MailService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,10 @@ use Laravel\Socialite\Facades\Socialite;
 class AuthController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(
+        private MailService $mailService,
+    ) {}
 
     public function register(RegisterRequest $request): JsonResponse
     {
@@ -33,6 +38,9 @@ class AuthController extends Controller
         $user->load('roles');
 
         $token = $user->createToken('auth-token')->plainTextToken;
+
+        // Send welcome email
+        $this->mailService->sendWelcomeEmail($user);
 
         return $this->success([
             'user' => $this->formatUser($user),
@@ -233,6 +241,9 @@ class AuthController extends Controller
                         'password' => null,
                     ]);
                     $user->assignRole('customer');
+
+                    // Send welcome email for new social users
+                    $this->mailService->sendWelcomeEmail($user);
                 }
             }
 

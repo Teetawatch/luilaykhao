@@ -2,19 +2,18 @@
 
 namespace App\Services;
 
-use App\Mail\BookingCreatedMail;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 
 class BookingService
 {
     public function __construct(
         private SeatLockService $seatLockService,
+        private MailService $mailService,
     ) {}
 
     public function createBooking(
@@ -28,7 +27,7 @@ class BookingService
         ?string $groupName = null,
         ?string $groupNotes = null,
     ): Booking {
-        return DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
 
             $participantCount = count($passengers);
@@ -104,10 +103,13 @@ class BookingService
 
             $booking->load(['passengers', 'seats', 'schedule.trip']);
 
-            Mail::to($booking->user->email)->send(new BookingCreatedMail($booking));
-
             return $booking;
         });
+
+        // Send emails outside of DB transaction
+        $this->mailService->sendBookingCreatedEmail($booking);
+
+        return $booking;
     }
 
     public function confirmBooking(Booking $booking, string $paymentMethod, string $paymentRef): Booking
@@ -134,7 +136,7 @@ class BookingService
 
     public function cancelBooking(Booking $booking, ?string $reason = null): Booking
     {
-        return DB::transaction(function () use ($booking, $reason) {
+        $cancelled = DB::transaction(function () use ($booking, $reason) {
             $passengerCount = $booking->passengers()->count();
 
             $booking->update([
@@ -155,6 +157,11 @@ class BookingService
 
             return $booking->fresh(['passengers', 'schedule.trip']);
         });
+
+        // Send cancellation email outside of DB transaction
+        $this->mailService->sendBookingCancelledEmail($cancelled, $reason);
+
+        return $cancelled;
     }
 
     public function calculateRefundPercent(Booking $booking): int

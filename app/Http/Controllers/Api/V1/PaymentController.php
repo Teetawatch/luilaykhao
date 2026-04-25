@@ -9,6 +9,7 @@ use App\Http\Requests\Payment\ChargeRequest;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Services\BookingService;
+use App\Services\MailService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class PaymentController extends Controller
 
     public function __construct(
         private BookingService $bookingService,
+        private MailService $mailService,
     ) {}
 
     public function charge(ChargeRequest $request): JsonResponse
@@ -104,6 +106,9 @@ class PaymentController extends Controller
                 $booking->seats->pluck('seat_id')->toArray(),
             ));
 
+            // Send payment confirmation email (installment)
+            $this->mailService->sendPaymentConfirmedEmail($booking, 'installment');
+
             return $this->success([
                 'status'  => 'confirmed',
                 'booking' => new \App\Http\Resources\BookingResource($booking),
@@ -139,6 +144,9 @@ class PaymentController extends Controller
             'confirmed',
             $booking->seats->pluck('seat_id')->toArray(),
         ));
+
+        // Send payment confirmation email (full)
+        $this->mailService->sendPaymentConfirmedEmail($booking, 'full');
 
         return $this->success([
             'status'  => 'confirmed',
@@ -191,6 +199,9 @@ class PaymentController extends Controller
 
         $totalPaid = (float) $booking->paid_amount + (float) $installment->amount;
         $booking->update(['paid_amount' => $totalPaid]);
+
+        // Send installment payment confirmation email
+        $this->mailService->sendInstallmentPaidEmail($booking->fresh(), $installment);
 
         return $this->success([
             'installment_no' => $installment->installment_no,

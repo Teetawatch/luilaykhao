@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
 use App\Services\BookingService;
+use App\Services\MailService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class AdminController extends Controller
 
     public function __construct(
         private BookingService $bookingService,
+        private MailService $mailService,
     ) {}
 
     // ─── Dashboard Stats ──────────────────────────────────────
@@ -411,6 +413,9 @@ class AdminController extends Controller
         } else {
             $booking->update(['status' => $request->status]);
         }
+
+        // Send status change email notification to customer
+        $this->mailService->sendBookingStatusChangedEmail($booking->fresh(), $request->status);
 
         return $this->success(new BookingResource($booking->fresh()), 'อัปเดตสถานะสำเร็จ');
     }
