@@ -287,17 +287,13 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div v-for="(hi, idx) in highlights" :key="idx" 
-                  @click="showAvailabilityModal = true"
-                  class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:-translate-y-1 hover:border-[var(--color-accent)]/30 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-300 group flex gap-5 items-start cursor-pointer">
+                  class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:-translate-y-1 hover:border-[var(--color-accent)]/30 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-300 group flex gap-5 items-start">
                   <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] group-hover:bg-[var(--color-accent)] transition-colors duration-300 flex items-center justify-center shrink-0">
                     <span class="material-symbols-rounded text-[28px] text-[var(--color-accent)] group-hover:text-white transition-colors duration-300">{{ hi.icon || 'star' }}</span>
                   </div>
                   <div class="flex-grow">
                     <h4 class="text-lg font-extrabold text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors">{{ hi.title }}</h4>
                     <p class="text-sm text-[var(--color-text-muted)] font-medium leading-relaxed">{{ hi.desc }}</p>
-                  </div>
-                  <div class="opacity-0 group-hover:opacity-100 transition-opacity self-center text-[var(--color-accent)]">
-                    <span class="material-symbols-rounded">chevron_right</span>
                   </div>
                 </div>
               </div>
@@ -1007,8 +1003,32 @@
 
             <!-- Body -->
             <div class="p-4 md:p-8 overflow-y-auto custom-scrollbar bg-gray-50/50 flex-grow">
-              <div v-if="schedules.length > 0" class="space-y-4">
-                <div v-for="s in schedules" :key="s.id" 
+              <!-- Region Tabs for Trekking Trips -->
+              <div v-if="isTrekking && regionOptions.length > 0" class="mb-6">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">เลือกภาค/ภูมิภาคที่ต้องการเดินทาง</p>
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                  <button 
+                    @click="selectedModalRegion = null"
+                    class="px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all border"
+                    :class="!selectedModalRegion ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
+                  >
+                    ทุกภาค
+                  </button>
+                  <button 
+                    v-for="reg in regionOptions" 
+                    :key="reg.region"
+                    @click="selectedModalRegion = reg.region"
+                    class="px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all border flex items-center gap-2"
+                    :class="selectedModalRegion === reg.region ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
+                  >
+                    {{ reg.region_label }}
+                    <span class="text-[10px] opacity-60 bg-black/10 px-1.5 py-0.5 rounded-full">{{ reg.schedule_count }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="modalSchedules.length > 0" class="space-y-4">
+                <div v-for="s in modalSchedules" :key="s.id" 
                   class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-md"
                   :class="{'opacity-60': Number(s.available_seats) === 0}">
                   <div class="flex items-center gap-4">
@@ -1031,6 +1051,13 @@
                         </div>
                         <span class="w-1 h-1 rounded-full bg-gray-300"></span>
                         <span class="text-xs md:text-sm font-black text-[var(--color-text-dark)]">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
+                      </div>
+
+                      <!-- Region Badges -->
+                      <div v-if="isTrekking && s.pickup_points?.length" class="flex flex-wrap gap-1 mt-2">
+                        <span v-for="reg in [...new Set(s.pickup_points.map(p => p.region_label))]" :key="reg" class="text-[9px] font-black bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md uppercase tracking-tighter">
+                          {{ reg }}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1223,6 +1250,20 @@ const activeGalleryIndex = ref(0);
 const showAvailabilityModal = ref(false);
 
 const isTrekking = computed(() => trip.value?.type === 'trekking');
+const selectedModalRegion = ref(null);
+
+const modalSchedules = computed(() => {
+  let list = schedules.value;
+  if (onlyAvailableSchedules.value) {
+    list = list.filter(s => Number(s.available_seats) > 0);
+  }
+  
+  if (isTrekking.value && selectedModalRegion.value) {
+    list = list.filter(s => (s.pickup_points || []).some(pt => pt.region === selectedModalRegion.value));
+  }
+  
+  return list;
+});
 
 const itinerarySectors = computed(() => {
   const raw = trip.value?.itinerary || [];
