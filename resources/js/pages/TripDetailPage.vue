@@ -163,53 +163,87 @@
             </section>
 
             <!-- Itinerary (Day by Day) -->
-            <section v-if="itinerarySectors.length > 0" class="itinerary-section">
-              <div v-for="(sector, sIdx) in itinerarySectors" :key="sIdx" class="itinerary-sector mb-12 last:mb-0">
-                <div class="flex items-center justify-between mb-8">
-                  <div class="flex items-center gap-4">
-                    <div v-if="itinerarySectors.length > 1" class="w-2 h-8 bg-[var(--color-accent)] rounded-full"></div>
-                    <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">{{ sector.sector || 'แผนการเดินทาง' }}</h3>
-                  </div>
-                  <span v-if="sIdx === 0" class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full border border-gray-100">
-                    {{ totalTripDays }} วัน
-                  </span>
-                </div>
-                
-                <div class="space-y-4">
-                  <div 
-                    v-for="(item, idx) in sector.items" 
-                    :key="idx" 
-                    class="itinerary-day-card bg-white rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden transition-all duration-300"
-                    :class="{'ring-2 ring-[var(--color-accent)]/10 shadow-[0_15px_40px_rgba(0,0,0,0.05)]': openDays.includes(sIdx + '-' + idx)}"
+            <!-- Itinerary (Day by Day) -->
+            <section v-if="itinerarySectors.length > 0" class="itinerary-section scroll-mt-24" id="itinerary">
+              <div class="flex items-center justify-between mb-8">
+                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">แผนการเดินทาง</h3>
+                <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full border border-gray-100">
+                  {{ totalTripDays }} วัน
+                </span>
+              </div>
+
+              <!-- Sector Navigation (Sticky Tabs) -->
+              <div v-if="itinerarySectors.length > 1" class="sector-tabs-container sticky top-20 z-[30] bg-[var(--color-bg)]/90 backdrop-blur-md -mx-4 px-4 py-3 mb-8 md:mx-0 md:px-0 md:rounded-3xl border-b md:border border-gray-100 shadow-sm transition-all">
+                <div class="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+                  <button 
+                    v-for="(sector, sIdx) in itinerarySectors" 
+                    :key="sIdx"
+                    @click="scrollToSector(sIdx)"
+                    class="sector-tab-btn px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all flex items-center gap-2"
+                    :class="activeSector === sIdx ? 'bg-[var(--color-primary)] text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'"
                   >
-                    <div 
-                      @click="toggleDay(sIdx + '-' + idx)"
-                      class="p-6 md:p-8 flex items-center justify-between cursor-pointer group"
-                    >
-                      <div class="flex items-center gap-5 md:gap-8">
-                        <div class="day-number-circle w-12 h-12 md:w-16 md:h-16 rounded-3xl bg-[var(--color-sand)] flex flex-col items-center justify-center transition-colors group-hover:bg-[var(--color-accent)]/10"
-                          :class="{'!bg-[var(--color-accent)] text-white': openDays.includes(sIdx + '-' + idx)}">
-                          <span class="text-[10px] font-black uppercase tracking-widest opacity-70">Day</span>
-                          <span class="text-xl md:text-2xl font-black leading-none">{{ item.day }}</span>
-                        </div>
-                        <div>
-                          <h4 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">{{ item.title }}</h4>
-                          <p v-if="!openDays.includes(sIdx + '-' + idx)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1 max-w-[200px] md:max-w-md">
-                            {{ item.description }}
-                          </p>
-                        </div>
-                      </div>
-                      <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
-                        :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(sIdx + '-' + idx)}">
-                        <span class="material-symbols-rounded">expand_more</span>
-                      </div>
+                    <span class="material-symbols-rounded text-lg" v-if="activeSector === sIdx">location_on</span>
+                    {{ sector.sector || `ช่วงที่ ${sIdx + 1}` }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="sectors-container space-y-16">
+                <div 
+                  v-for="(sector, sIdx) in itinerarySectors" 
+                  :key="sIdx" 
+                  :id="`sector-${sIdx}`"
+                  class="itinerary-sector scroll-mt-40"
+                >
+                  <div v-if="itinerarySectors.length > 1" class="sector-header flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] border border-[var(--color-accent)]/10">
+                      <span class="material-symbols-rounded text-2xl">map</span>
                     </div>
-                    
-                    <div v-show="openDays.includes(sIdx + '-' + idx)" class="px-6 pb-8 md:px-8 md:pb-10 md:ml-[104px] animate-fade-in">
-                      <div class="w-full h-px bg-gray-100 mb-6"></div>
-                      <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg font-medium whitespace-pre-line">
-                        {{ item.description }}
-                      </p>
+                    <div>
+                      <p class="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest mb-0.5">ส่วนที่ {{ sIdx + 1 }}</p>
+                      <h4 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">{{ sector.sector }}</h4>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-6 relative">
+                    <!-- Vertical Timeline Line -->
+                    <div class="absolute left-6 md:left-8 top-10 bottom-10 w-0.5 bg-dashed border-l-2 border-dashed border-gray-200 z-0"></div>
+
+                    <div 
+                      v-for="(item, idx) in sector.items" 
+                      :key="idx" 
+                      class="itinerary-day-card bg-white rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden transition-all duration-300 relative z-10"
+                      :class="{'ring-2 ring-[var(--color-accent)]/10 shadow-[0_15px_40px_rgba(0,0,0,0.05)]': openDays.includes(sIdx + '-' + idx)}"
+                    >
+                      <div 
+                        @click="toggleDay(sIdx + '-' + idx)"
+                        class="p-6 md:p-8 flex items-center justify-between cursor-pointer group"
+                      >
+                        <div class="flex items-center gap-5 md:gap-8">
+                          <div class="day-number-circle w-12 h-12 md:w-16 md:h-16 rounded-3xl bg-white border-2 border-[var(--color-sand)] flex flex-col items-center justify-center transition-all group-hover:border-[var(--color-accent)]/30"
+                            :class="{'!bg-[var(--color-accent)] !border-[var(--color-accent)] text-white shadow-lg': openDays.includes(sIdx + '-' + idx)}">
+                            <span class="text-[10px] font-black uppercase tracking-widest opacity-70">Day</span>
+                            <span class="text-xl md:text-2xl font-black leading-none">{{ item.day }}</span>
+                          </div>
+                          <div>
+                            <h4 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">{{ item.title }}</h4>
+                            <p v-if="!openDays.includes(sIdx + '-' + idx)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1 max-w-[200px] md:max-w-md">
+                              {{ item.description }}
+                            </p>
+                          </div>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
+                          :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(sIdx + '-' + idx)}">
+                          <span class="material-symbols-rounded">expand_more</span>
+                        </div>
+                      </div>
+                      
+                      <div v-show="openDays.includes(sIdx + '-' + idx)" class="px-6 pb-8 md:px-8 md:pb-10 md:ml-[104px] animate-fade-in">
+                        <div class="w-full h-px bg-gray-100 mb-6"></div>
+                        <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg font-medium whitespace-pre-line">
+                          {{ item.description }}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1137,6 +1171,8 @@ const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);
 const activeIconPicker = ref(null);
 const openDays = ref(['0-0']); // Default open first item of first sector
+const activeSector = ref(0);
+let sectorObserver = null;
 
 const toggleDay = (key) => {
   if (openDays.value.includes(key)) {
@@ -1144,6 +1180,33 @@ const toggleDay = (key) => {
   } else {
     openDays.value.push(key);
   }
+};
+
+const scrollToSector = (idx) => {
+  activeSector.value = idx;
+  const el = document.getElementById(`sector-${idx}`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' });
+  }
+};
+
+const setupSectorObserver = () => {
+  if (sectorObserver) sectorObserver.disconnect();
+  
+  sectorObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        const idx = parseInt(id.split('-')[1]);
+        activeSector.value = idx;
+      }
+    });
+  }, { threshold: 0.2, rootMargin: '-100px 0px -50% 0px' });
+
+  itinerarySectors.value.forEach((_, idx) => {
+    const el = document.getElementById(`sector-${idx}`);
+    if (el) sectorObserver.observe(el);
+  });
 };
 const selectedPickup = ref(null);
 const selectedRegion = ref(null);
@@ -1437,6 +1500,11 @@ onMounted(async () => {
 
     await fetchReviews();
     window.addEventListener('keydown', handleKeyDown);
+    
+    // Setup observer for itinerary sectors
+    setTimeout(() => {
+      setupSectorObserver();
+    }, 1000);
   } catch (e) {
     console.error(e);
   } finally {
@@ -1447,6 +1515,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  if (sectorObserver) sectorObserver.disconnect();
   document.body.style.overflow = '';
 });
 
@@ -1513,6 +1582,18 @@ async function fetchReviews() {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sector-tabs-container {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Animations */
