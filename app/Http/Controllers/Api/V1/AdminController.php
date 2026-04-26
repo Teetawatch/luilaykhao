@@ -828,4 +828,35 @@ class AdminController extends Controller
             'filename' => $filename,
         ], 'อัปโหลดสื่อสำเร็จ');
     }
+
+    public function listMedia(): JsonResponse
+    {
+        $files = Storage::disk('public')->files('media');
+        $media = collect($files)->map(function ($path) {
+            return [
+                'filename' => basename($path),
+                'url' => Storage::disk('public')->url($path),
+                'size' => Storage::disk('public')->size($path),
+                'last_modified' => Storage::disk('public')->lastModified($path),
+            ];
+        })->sortByDesc('last_modified')->values();
+
+        return $this->success($media);
+    }
+
+    public function deleteMedia(Request $request): JsonResponse
+    {
+        $request->validate([
+            'filename' => ['required', 'string'],
+        ]);
+
+        $path = 'media/' . $request->filename;
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+            return $this->success(null, 'ลบไฟล์สำเร็จ');
+        }
+
+        return $this->error('ไม่พบไฟล์ที่ต้องการลบ', 404);
+    }
 }

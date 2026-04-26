@@ -183,6 +183,8 @@ Route::prefix('v1')->group(function () {
 
         // Upload
         Route::post('upload-image', [AdminController::class, 'uploadMedia']);
+        Route::get('media', [AdminController::class, 'listMedia']);
+        Route::delete('media', [AdminController::class, 'deleteMedia']);
 
         // Calendar
         Route::get('calendar/schedules', [AdminExtendedController::class, 'calendarSchedules']);

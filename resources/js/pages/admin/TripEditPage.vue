@@ -328,10 +328,16 @@
                 <span class="material-symbols-rounded">close</span>
               </button>
             </div>
-            <div class="gallery-add-btn" @click="triggerGalleryUpload">
-              <span class="material-symbols-rounded" style="font-size:32px;" v-if="!galleryUploading">add_photo_alternate</span>
-              <span class="material-symbols-rounded animate-spin" v-else>sync</span>
-              <span>เพิ่มรูป</span>
+            <div class="flex flex-col gap-2">
+              <button type="button" class="gallery-add-btn h-full" @click="triggerGalleryUpload">
+                <span class="material-symbols-rounded" style="font-size:32px;" v-if="!galleryUploading">add_photo_alternate</span>
+                <span class="material-symbols-rounded animate-spin" v-else>sync</span>
+                <span class="text-xs">อัปโหลดใหม่</span>
+              </button>
+              <button type="button" class="gallery-add-btn h-full !border-[var(--color-primary)] !text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5" @click="openMediaLibrary('gallery')">
+                <span class="material-symbols-rounded" style="font-size:32px;">photo_library</span>
+                <span class="text-xs">เลือกจากคลัง</span>
+              </button>
             </div>
           </div>
           <input ref="galleryInput" type="file" multiple accept="image/*" class="hidden-file-input" @change="handleGallerySelect" />
@@ -444,6 +450,12 @@
                 <span class="material-symbols-rounded">cloud_upload</span>
                 <p>คลิกเพื่อเลือกรูป</p>
               </div>
+              <div class="mt-3">
+                <button type="button" @click="openMediaLibrary('cover')" class="w-full py-2.5 bg-white border border-[var(--color-primary)] text-[var(--color-primary)] rounded-xl font-bold text-sm hover:bg-[var(--color-primary)]/5 transition-all flex items-center justify-center gap-2">
+                  <span class="material-symbols-rounded">photo_library</span>
+                  เลือกจากคลังสื่อ
+                </button>
+              </div>
               <input ref="fileInput" type="file" accept="image/*" class="hidden-file-input" @change="handleFileSelect" />
             </div>
             <div class="upload-progress mt-2" v-if="uploading">
@@ -510,6 +522,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Media Library Modal -->
+    <MediaLibrary 
+      :show="showMediaLibrary" 
+      @close="showMediaLibrary = false" 
+      @select="handleMediaSelect"
+      :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : null"
+    />
   </div>
 </template>
 
@@ -519,6 +539,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import { useCategoriesStore } from '../../stores/categories';
 import api from '../../lib/axios';
+import MediaLibrary from '../../components/MediaLibrary.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -530,6 +551,25 @@ const isVanMode = computed(() => route.name?.startsWith('admin-van-trip'));
 const backRouteName = computed(() => isVanMode.value ? 'admin-van-trips' : 'admin-trips');
 const loading = ref(false);
 const submitting = ref(false);
+
+// Media Library State
+const showMediaLibrary = ref(false);
+const mediaLibraryTarget = ref('cover'); // 'cover' or 'gallery'
+
+const openMediaLibrary = (target) => {
+  mediaLibraryTarget.value = target;
+  showMediaLibrary.value = true;
+};
+
+const handleMediaSelect = (url) => {
+  if (mediaLibraryTarget.value === 'cover') {
+    form.cover_image = url;
+  } else if (mediaLibraryTarget.value === 'gallery') {
+    if (!form.gallery.includes(url)) {
+      form.gallery.push(url);
+    }
+  }
+};
 
 const form = reactive({
   title: '', type: 'trekking', location: '', description: '',
