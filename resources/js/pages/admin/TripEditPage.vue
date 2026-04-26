@@ -527,11 +527,12 @@
 
   <!-- Media Library Modal -->
   <MediaLibrary 
+    :key="mediaLibraryTarget"
     :show="showMediaLibrary" 
     @close="showMediaLibrary = false" 
     @select="handleMediaSelect"
-    :multiple="mediaLibraryTarget === 'gallery'"
-    :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : form.gallery"
+    :multiple="isGalleryMediaPicker"
+    :initial-selection="isGalleryMediaPicker ? form.gallery : form.cover_image"
   />
 </template>
 
@@ -557,9 +558,13 @@ const submitting = ref(false);
 // Media Library State
 const showMediaLibrary = ref(false);
 const mediaLibraryTarget = ref('cover'); // 'cover' or 'gallery'
+const isGalleryMediaPicker = computed(() => mediaLibraryTarget.value === 'gallery');
 
 const openMediaLibrary = (target) => {
   mediaLibraryTarget.value = target;
+  if (target === 'gallery' && !Array.isArray(form.gallery)) {
+    form.gallery = normalizeArray(form.gallery);
+  }
   showMediaLibrary.value = true;
 };
 
@@ -584,6 +589,22 @@ const form = reactive({
   itinerary: [],
   preparations: [],
 });
+
+const normalizeArray = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (!value) return [];
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [value].filter(Boolean);
+    } catch (e) {
+      return [value].filter(Boolean);
+    }
+  }
+
+  return [];
+};
 
 // Image upload state
 const fileInput = ref(null);
@@ -720,7 +741,7 @@ const handleGallerySelect = async (event) => {
     });
 
     const urls = await Promise.all(uploadPromises);
-    form.gallery = [...(form.gallery || []), ...urls];
+    form.gallery = [...normalizeArray(form.gallery), ...urls];
   } catch (e) {
     alert('อัปโหลดรูปภาพแกลเลอรี่บางส่วนล้มเหลว');
   } finally {
@@ -821,14 +842,14 @@ const initData = async () => {
       Object.assign(form, { ...trip });
       form.latitude = trip.latitude || null;
       form.longitude = trip.longitude || null;
-      form.gallery = trip.gallery || [];
-      form.inclusions = trip.inclusions || [];
-      form.exclusions = trip.exclusions || [];
-      form.highlights = trip.highlights || [];
+      form.gallery = normalizeArray(trip.gallery);
+      form.inclusions = normalizeArray(trip.inclusions);
+      form.exclusions = normalizeArray(trip.exclusions);
+      form.highlights = normalizeArray(trip.highlights);
       form.must_know = trip.must_know || { items: [], remarks: '' };
       
       // Transform old itinerary format to new sector-based format
-      const rawItinerary = trip.itinerary || [];
+      const rawItinerary = normalizeArray(trip.itinerary);
       if (rawItinerary.length > 0 && !rawItinerary[0].hasOwnProperty('sector')) {
         form.itinerary = [{
           sector: 'กำหนดการเดินทาง',
@@ -838,7 +859,7 @@ const initData = async () => {
         form.itinerary = rawItinerary;
       }
 
-      form.preparations = trip.preparations || [];
+      form.preparations = normalizeArray(trip.preparations);
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
       router.push({ name: backRouteName.value });

@@ -18,7 +18,7 @@
             </div>
             <p class="text-white/80 font-bold flex items-center gap-2 text-sm">
               <span class="material-symbols-rounded text-sm">info</span>
-              {{ multiple ? 'เลือกได้หลายรูปจากคลัง แล้วกดเลือกใช้งานเมื่อครบตามต้องการ' : 'เลือกรูปภาพที่มีอยู่แล้วเพื่อนำมาใช้งาน หรือจัดการลบไฟล์ที่ไม่จำเป็น' }}
+              {{ isMultipleMode ? 'เลือกได้หลายรูปจากคลัง แล้วกดเลือกใช้งานเมื่อครบตามต้องการ' : 'เลือกรูปภาพที่มีอยู่แล้วเพื่อนำมาใช้งาน หรือจัดการลบไฟล์ที่ไม่จำเป็น' }}
             </p>
           </div>
 
@@ -42,7 +42,7 @@
                 <span class="material-symbols-rounded text-sm">{{ filterUnused ? 'filter_list' : 'filter_list_off' }}</span>
                 แสดงเฉพาะที่ไม่ได้ใช้งาน
               </button>
-              <template v-if="multiple">
+              <template v-if="isMultipleMode">
                 <div class="h-8 w-px bg-gray-200 mx-1 hidden sm:block"></div>
                 <button
                   @click="selectAllVisible"
@@ -117,7 +117,7 @@
                 <!-- Selected Indicator -->
                 <div v-if="isSelected(m)" class="absolute inset-0 border-4 border-[var(--color-accent)] pointer-events-none rounded-2xl z-10 transition-all duration-200"></div>
                 <div v-if="isSelected(m)" class="absolute top-2 right-2 w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center shadow-lg animate-in zoom-in z-20">
-                  <span class="material-symbols-rounded text-sm" v-if="!multiple">check</span>
+                  <span class="material-symbols-rounded text-sm" v-if="!isMultipleMode">check</span>
                   <span class="text-xs font-bold" v-else>{{ selectionOrder(m) }}</span>
                 </div>
               </div>
@@ -128,7 +128,7 @@
           <div class="p-6 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
             <p class="text-xs text-gray-400 font-bold">
               {{ filteredMedia.length }} ไฟล์ | ค้นหาจากทั้งหมด {{ media.length }} ไฟล์
-              <span v-if="multiple" class="text-[var(--color-primary)]"> | เลือกแล้ว {{ selectedCount }} รูป</span>
+              <span v-if="isMultipleMode" class="text-[var(--color-primary)]"> | เลือกแล้ว {{ selectedCount }} รูป</span>
             </p>
             <div class="flex gap-3">
               <button @click="$emit('close')" class="px-6 py-2.5 rounded-xl text-sm font-black text-gray-500 hover:bg-gray-100 transition-all">
@@ -136,7 +136,7 @@
               </button>
               <button @click="confirmSelection" :disabled="!hasSelection" class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2">
                 เลือกใช้งาน
-                <span v-if="multiple && selectedCount > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs">{{ selectedCount }}</span>
+                <span v-if="isMultipleMode && selectedCount > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs">{{ selectedCount }}</span>
               </button>
             </div>
           </div>
@@ -162,7 +162,7 @@ import api from '../lib/axios';
 
 const props = defineProps({
   show: Boolean,
-  multiple: { type: Boolean, default: false },
+  multiple: { type: [Boolean, String], default: false },
   initialSelection: [String, Array]
 });
 
@@ -172,16 +172,27 @@ const media = ref([]);
 const loading = ref(false);
 const uploading = ref(false);
 const search = ref('');
-const selected = ref(props.multiple ? (Array.isArray(props.initialSelection) ? [...props.initialSelection] : []) : (props.initialSelection || null));
+const selected = ref([]);
 const previewing = ref(null);
 const filterUnused = ref(false);
 
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    fetchMedia();
-    selected.value = props.multiple ? (Array.isArray(props.initialSelection) ? [...props.initialSelection] : []) : (props.initialSelection || null);
+const isMultipleMode = computed(() => props.multiple === true || props.multiple === 'true');
+
+const normalizeSelection = () => {
+  if (isMultipleMode.value) {
+    selected.value = Array.isArray(props.initialSelection) ? [...props.initialSelection.filter(Boolean)] : [];
+    return;
   }
-});
+
+  selected.value = props.initialSelection || null;
+};
+
+watch([() => props.show, isMultipleMode, () => props.initialSelection], ([newShow]) => {
+  if (newShow) {
+    fetchMedia();
+    normalizeSelection();
+  }
+}, { deep: true });
 
 const fetchMedia = async () => {
   loading.value = true;
@@ -208,12 +219,12 @@ const filteredMedia = computed(() => {
 });
 
 const selectedCount = computed(() => {
-  if (props.multiple) return Array.isArray(selected.value) ? selected.value.length : 0;
+  if (isMultipleMode.value) return Array.isArray(selected.value) ? selected.value.length : 0;
   return selected.value ? 1 : 0;
 });
 
 const isSelected = (m) => {
-  if (props.multiple) {
+  if (isMultipleMode.value) {
     return Array.isArray(selected.value) && selected.value.includes(m.url);
   }
   return selected.value === m.url;
@@ -224,7 +235,7 @@ const hasSelection = computed(() => {
 });
 
 const select = (m) => {
-  if (props.multiple) {
+  if (isMultipleMode.value) {
     if (!Array.isArray(selected.value)) selected.value = [];
     const idx = selected.value.indexOf(m.url);
     if (idx === -1) {
@@ -244,14 +255,14 @@ const selectionOrder = (m) => {
 };
 
 const selectAllVisible = () => {
-  if (!props.multiple) return;
+  if (!isMultipleMode.value) return;
   const next = new Set(Array.isArray(selected.value) ? selected.value : []);
   filteredMedia.value.forEach(m => next.add(m.url));
   selected.value = [...next];
 };
 
 const clearSelection = () => {
-  selected.value = props.multiple ? [] : null;
+  selected.value = isMultipleMode.value ? [] : null;
 };
 
 const preview = (m) => {
@@ -259,7 +270,7 @@ const preview = (m) => {
 };
 
 const confirmSelection = () => {
-  emit('select', props.multiple ? [...selected.value] : selected.value);
+  emit('select', isMultipleMode.value ? [...selected.value] : selected.value);
   emit('close');
 };
 
@@ -294,7 +305,7 @@ const confirmDelete = async (m) => {
     try {
       await api.delete('/admin/media', { data: { filename: m.filename } });
       media.value = media.value.filter(item => item.filename !== m.filename);
-      if (props.multiple) {
+      if (isMultipleMode.value) {
         if (Array.isArray(selected.value)) {
           selected.value = selected.value.filter(url => url !== m.url);
         }
@@ -316,7 +327,10 @@ const formatSize = (bytes) => {
 };
 
 onMounted(() => {
-  if (props.show) fetchMedia();
+  if (props.show) {
+    normalizeSelection();
+    fetchMedia();
+  }
 });
 </script>
 
