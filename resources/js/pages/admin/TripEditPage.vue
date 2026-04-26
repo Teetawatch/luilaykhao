@@ -591,11 +591,9 @@ const addItem = (field, extra = null) => {
     const sIdx = extra;
     const sector = form.itinerary[sIdx];
     let nextDay = 1;
-    // Calculate next day based on all sectors
-    form.itinerary.forEach(s => {
-      s.items.forEach(item => {
-        if (item.day >= nextDay) nextDay = item.day + 1;
-      });
+    // Calculate next day based only on this sector
+    sector.items.forEach(item => {
+      if (item.day >= nextDay) nextDay = item.day + 1;
     });
     sector.items.push({ day: nextDay, title: '', description: '' });
   } else if (field === 'preparations') {

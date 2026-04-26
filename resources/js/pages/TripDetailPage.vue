@@ -180,32 +180,32 @@
                     v-for="(item, idx) in sector.items" 
                     :key="idx" 
                     class="itinerary-day-card bg-white rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden transition-all duration-300"
-                    :class="{'ring-2 ring-[var(--color-accent)]/10 shadow-[0_15px_40px_rgba(0,0,0,0.05)]': openDays.includes(item.day)}"
+                    :class="{'ring-2 ring-[var(--color-accent)]/10 shadow-[0_15px_40px_rgba(0,0,0,0.05)]': openDays.includes(sIdx + '-' + idx)}"
                   >
                     <div 
-                      @click="toggleDay(item.day)"
+                      @click="toggleDay(sIdx + '-' + idx)"
                       class="p-6 md:p-8 flex items-center justify-between cursor-pointer group"
                     >
                       <div class="flex items-center gap-5 md:gap-8">
                         <div class="day-number-circle w-12 h-12 md:w-16 md:h-16 rounded-3xl bg-[var(--color-sand)] flex flex-col items-center justify-center transition-colors group-hover:bg-[var(--color-accent)]/10"
-                          :class="{'!bg-[var(--color-accent)] text-white': openDays.includes(item.day)}">
+                          :class="{'!bg-[var(--color-accent)] text-white': openDays.includes(sIdx + '-' + idx)}">
                           <span class="text-[10px] font-black uppercase tracking-widest opacity-70">Day</span>
                           <span class="text-xl md:text-2xl font-black leading-none">{{ item.day }}</span>
                         </div>
                         <div>
                           <h4 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">{{ item.title }}</h4>
-                          <p v-if="!openDays.includes(item.day)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1 max-w-[200px] md:max-w-md">
+                          <p v-if="!openDays.includes(sIdx + '-' + idx)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1 max-w-[200px] md:max-w-md">
                             {{ item.description }}
                           </p>
                         </div>
                       </div>
                       <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
-                        :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(item.day)}">
+                        :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(sIdx + '-' + idx)}">
                         <span class="material-symbols-rounded">expand_more</span>
                       </div>
                     </div>
                     
-                    <div v-show="openDays.includes(item.day)" class="px-6 pb-8 md:px-8 md:pb-10 md:ml-[104px] animate-fade-in">
+                    <div v-show="openDays.includes(sIdx + '-' + idx)" class="px-6 pb-8 md:px-8 md:pb-10 md:ml-[104px] animate-fade-in">
                       <div class="w-full h-px bg-gray-100 mb-6"></div>
                       <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg font-medium whitespace-pre-line">
                         {{ item.description }}
@@ -1136,13 +1136,13 @@ const schedules = ref([]);
 const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);
 const activeIconPicker = ref(null);
-const openDays = ref([0]); // Default open Day 0
+const openDays = ref(['0-0']); // Default open first item of first sector
 
-const toggleDay = (day) => {
-  if (openDays.value.includes(day)) {
-    openDays.value = openDays.value.filter(d => d !== day);
+const toggleDay = (key) => {
+  if (openDays.value.includes(key)) {
+    openDays.value = openDays.value.filter(k => k !== key);
   } else {
-    openDays.value.push(day);
+    openDays.value.push(key);
   }
 };
 const selectedPickup = ref(null);
