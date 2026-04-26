@@ -834,13 +834,17 @@ class AdminController extends Controller
     {
         $files = Storage::disk('public')->files('media');
         
-        // Collect all in-use images from Trips
+        $extractFilename = function($url) {
+            return basename(parse_url((string)$url, PHP_URL_PATH));
+        };
+
+        // Collect all in-use filenames from Trips
         $trips = Trip::select('cover_image', 'gallery')->get();
-        $inUseUrls = collect();
+        $inUseFilenames = collect();
         foreach ($trips as $trip) {
-            if ($trip->cover_image) $inUseUrls->push($trip->cover_image);
+            if ($trip->cover_image) $inUseFilenames->push($extractFilename($trip->cover_image));
             if ($trip->gallery && is_array($trip->gallery)) {
-                foreach ($trip->gallery as $img) $inUseUrls->push($img);
+                foreach ($trip->gallery as $img) $inUseFilenames->push($extractFilename($img));
             }
         }
 
@@ -848,21 +852,22 @@ class AdminController extends Controller
         $reviews = Review::select('images')->get();
         foreach ($reviews as $review) {
             if ($review->images && is_array($review->images)) {
-                foreach ($review->images as $img) $inUseUrls->push($img);
+                foreach ($review->images as $img) $inUseFilenames->push($extractFilename($img));
             }
         }
 
-        // Unique URLs only
-        $inUseUrls = $inUseUrls->unique()->values();
+        // Unique filenames only
+        $inUseFilenames = $inUseFilenames->unique()->values();
 
-        $media = collect($files)->map(function ($path) use ($inUseUrls) {
+        $media = collect($files)->map(function ($path) use ($inUseFilenames) {
+            $filename = basename($path);
             $url = Storage::disk('public')->url($path);
             return [
-                'filename' => basename($path),
+                'filename' => $filename,
                 'url' => $url,
                 'size' => Storage::disk('public')->size($path),
                 'last_modified' => Storage::disk('public')->lastModified($path),
-                'in_use' => $inUseUrls->contains($url),
+                'in_use' => $inUseFilenames->contains($filename),
             ];
         })->sortByDesc('last_modified')->values();
 
