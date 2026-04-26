@@ -523,14 +523,15 @@
       </div>
     </div>
 
-    <!-- Media Library Modal -->
-    <MediaLibrary 
-      :show="showMediaLibrary" 
-      @close="showMediaLibrary = false" 
-      @select="handleMediaSelect"
-      :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : null"
-    />
   </div>
+
+  <!-- Media Library Modal -->
+  <MediaLibrary 
+    :show="showMediaLibrary" 
+    @close="showMediaLibrary = false" 
+    @select="handleMediaSelect"
+    :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : null"
+  />
 </template>
 
 <script setup>
