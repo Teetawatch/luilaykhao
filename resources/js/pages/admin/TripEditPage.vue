@@ -530,7 +530,8 @@
     :show="showMediaLibrary" 
     @close="showMediaLibrary = false" 
     @select="handleMediaSelect"
-    :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : null"
+    :multiple="mediaLibraryTarget === 'gallery'"
+    :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : []"
   />
 </template>
 
@@ -562,12 +563,16 @@ const openMediaLibrary = (target) => {
   showMediaLibrary.value = true;
 };
 
-const handleMediaSelect = (url) => {
+const handleMediaSelect = (data) => {
   if (mediaLibraryTarget.value === 'cover') {
-    form.cover_image = url;
+    form.cover_image = data;
   } else if (mediaLibraryTarget.value === 'gallery') {
-    if (!form.gallery.includes(url)) {
-      form.gallery.push(url);
+    if (Array.isArray(data)) {
+      data.forEach(url => {
+        if (!form.gallery.includes(url)) {
+          form.gallery.push(url);
+        }
+      });
     }
   }
 };

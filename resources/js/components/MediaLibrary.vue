@@ -63,7 +63,7 @@
             <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <div v-for="m in filteredMedia" :key="m.filename" 
                 class="group relative aspect-square rounded-2xl border-2 border-transparent hover:border-[var(--color-accent)] overflow-hidden cursor-pointer transition-all bg-gray-100 shadow-sm"
-                :class="{'border-[var(--color-accent)] shadow-md ring-4 ring-[var(--color-accent)]/10': selected === m.url}"
+                :class="{'border-[var(--color-accent)] shadow-md ring-4 ring-[var(--color-accent)]/10': isSelected(m)}"
                 @click="select(m)"
               >
                 <img :src="m.url" :alt="m.filename" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
@@ -96,8 +96,10 @@
                 </div>
 
                 <!-- Selected Indicator -->
-                <div v-if="selected === m.url" class="absolute top-2 right-2 w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center shadow-lg animate-in zoom-in">
-                  <span class="material-symbols-rounded text-sm">check</span>
+                <div v-if="isSelected(m)" class="absolute inset-0 border-4 border-[var(--color-accent)] pointer-events-none rounded-2xl z-10 transition-all duration-200"></div>
+                <div v-if="isSelected(m)" class="absolute top-2 right-2 w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center shadow-lg animate-in zoom-in z-20">
+                  <span class="material-symbols-rounded text-sm" v-if="!multiple">check</span>
+                  <span class="text-xs font-bold" v-else>{{ selected.indexOf(m.url) + 1 }}</span>
                 </div>
               </div>
             </div>
@@ -112,8 +114,9 @@
               <button @click="$emit('close')" class="px-6 py-2.5 rounded-xl text-sm font-black text-gray-500 hover:bg-gray-100 transition-all">
                 ยกเลิก
               </button>
-              <button @click="confirmSelection" :disabled="!selected" class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95">
+              <button @click="confirmSelection" :disabled="!hasSelection" class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2">
                 เลือกใช้งาน
+                <span v-if="multiple && selected.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs">{{ selected.length }}</span>
               </button>
             </div>
           </div>
@@ -139,7 +142,8 @@ import api from '../lib/axios';
 
 const props = defineProps({
   show: Boolean,
-  initialSelection: String
+  multiple: { type: Boolean, default: false },
+  initialSelection: [String, Array]
 });
 
 const emit = defineEmits(['close', 'select']);
@@ -148,14 +152,14 @@ const media = ref([]);
 const loading = ref(false);
 const uploading = ref(false);
 const search = ref('');
-const selected = ref(props.initialSelection || null);
+const selected = ref(props.multiple ? (Array.isArray(props.initialSelection) ? [...props.initialSelection] : []) : (props.initialSelection || null));
 const previewing = ref(null);
 const filterUnused = ref(false);
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
     fetchMedia();
-    selected.value = props.initialSelection || null;
+    selected.value = props.multiple ? (Array.isArray(props.initialSelection) ? [...props.initialSelection] : []) : (props.initialSelection || null);
   }
 });
 
@@ -183,8 +187,30 @@ const filteredMedia = computed(() => {
   return list.filter(m => m.filename.toLowerCase().includes(q));
 });
 
+const isSelected = (m) => {
+  if (props.multiple) {
+    return Array.isArray(selected.value) && selected.value.includes(m.url);
+  }
+  return selected.value === m.url;
+};
+
+const hasSelection = computed(() => {
+  if (props.multiple) return Array.isArray(selected.value) && selected.value.length > 0;
+  return !!selected.value;
+});
+
 const select = (m) => {
-  selected.value = m.url;
+  if (props.multiple) {
+    if (!Array.isArray(selected.value)) selected.value = [];
+    const idx = selected.value.indexOf(m.url);
+    if (idx === -1) {
+      selected.value.push(m.url);
+    } else {
+      selected.value.splice(idx, 1);
+    }
+  } else {
+    selected.value = m.url;
+  }
 };
 
 const preview = (m) => {
@@ -192,7 +218,7 @@ const preview = (m) => {
 };
 
 const confirmSelection = () => {
-  emit('select', selected.value);
+  emit('select', props.multiple ? [...selected.value] : selected.value);
   emit('close');
 };
 
@@ -227,7 +253,13 @@ const confirmDelete = async (m) => {
     try {
       await api.delete('/admin/media', { data: { filename: m.filename } });
       media.value = media.value.filter(item => item.filename !== m.filename);
-      if (selected.value === m.url) selected.value = null;
+      if (props.multiple) {
+        if (Array.isArray(selected.value)) {
+          selected.value = selected.value.filter(url => url !== m.url);
+        }
+      } else {
+        if (selected.value === m.url) selected.value = null;
+      }
     } catch (e) {
       alert('ลบไฟล์ไม่สำเร็จ');
     }
