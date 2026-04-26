@@ -33,6 +33,15 @@
               <button @click="fetchMedia" class="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 transition-all text-gray-500 bg-white" title="รีเฟรช">
                 <span class="material-symbols-rounded">refresh</span>
               </button>
+              <div class="h-8 w-px bg-gray-200 mx-1 hidden sm:block"></div>
+              <button 
+                @click="filterUnused = !filterUnused" 
+                class="px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 border"
+                :class="filterUnused ? 'bg-amber-50 text-amber-600 border-amber-200 shadow-sm' : 'bg-white text-gray-400 border-gray-100'"
+              >
+                <span class="material-symbols-rounded text-sm">{{ filterUnused ? 'filter_list' : 'filter_list_off' }}</span>
+                แสดงเฉพาะที่ไม่ได้ใช้งาน
+              </button>
             </div>
             <div class="relative w-full max-w-xs">
               <span class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
@@ -59,6 +68,17 @@
               >
                 <img :src="m.url" :alt="m.filename" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
                 
+                <!-- Status Badge -->
+                <div class="absolute top-2 left-2 z-10">
+                  <span v-if="m.in_use" class="bg-green-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm flex items-center gap-1">
+                    <span class="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+                    ใช้งานอยู่
+                  </span>
+                  <span v-else class="bg-gray-500/80 text-white text-[8px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm">
+                    ไม่ได้ใช้
+                  </span>
+                </div>
+
                 <!-- Overlay Actions -->
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <button @click.stop="confirmDelete(m)" class="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 shadow-lg transition-transform hover:scale-110" title="ลบรูป">
@@ -130,6 +150,7 @@ const uploading = ref(false);
 const search = ref('');
 const selected = ref(props.initialSelection || null);
 const previewing = ref(null);
+const filterUnused = ref(false);
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
@@ -151,9 +172,15 @@ const fetchMedia = async () => {
 };
 
 const filteredMedia = computed(() => {
-  if (!search.value) return media.value;
+  let list = media.value;
+  
+  if (filterUnused.value) {
+    list = list.filter(m => !m.in_use);
+  }
+  
+  if (!search.value) return list;
   const q = search.value.toLowerCase();
-  return media.value.filter(m => m.filename.toLowerCase().includes(q));
+  return list.filter(m => m.filename.toLowerCase().includes(q));
 });
 
 const select = (m) => {
@@ -191,7 +218,12 @@ const handleUpload = async (event) => {
 };
 
 const confirmDelete = async (m) => {
-  if (confirm(`ยืนยันการลบไฟล์ "${m.filename}"? ไฟล์นี้จะหายไปจากเซิร์ฟเวอร์ทันทีและอาจส่งผลกระทบต่อทริปที่ใช้รูปนี้อยู่`)) {
+  let message = `ยืนยันการลบไฟล์ "${m.filename}"? ไฟล์นี้จะหายไปจากเซิร์ฟเวอร์ทันที`;
+  if (m.in_use) {
+    message = `⚠️ คำเตือน: ไฟล์นี้ "กำลังถูกใช้งานอยู่" ในทริปหรือรีวิวบางรายการ การลบจะทำให้รูปภาพในส่วนนั้นหายไป! ยืนยันการลบไฟล์ "${m.filename}" หรือไม่?`;
+  }
+
+  if (confirm(message)) {
     try {
       await api.delete('/admin/media', { data: { filename: m.filename } });
       media.value = media.value.filter(item => item.filename !== m.filename);

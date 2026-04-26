@@ -832,12 +832,36 @@ class AdminController extends Controller
     public function listMedia(): JsonResponse
     {
         $files = Storage::disk('public')->files('media');
-        $media = collect($files)->map(function ($path) {
+        
+        // Collect all in-use images from Trips
+        $trips = Trip::select('cover_image', 'gallery')->get();
+        $inUseUrls = collect();
+        foreach ($trips as $trip) {
+            if ($trip->cover_image) $inUseUrls->push($trip->cover_image);
+            if ($trip->gallery) {
+                foreach ($trip->gallery as $img) $inUseUrls->push($img);
+            }
+        }
+
+        // Collect from Reviews
+        $reviews = Review::select('images')->get();
+        foreach ($reviews as $review) {
+            if ($review->images) {
+                foreach ($review->images as $img) $inUseUrls->push($img);
+            }
+        }
+
+        // Unique URLs only
+        $inUseUrls = $inUseUrls->unique()->values();
+
+        $media = collect($files)->map(function ($path) use ($inUseUrls) {
+            $url = Storage::disk('public')->url($path);
             return [
                 'filename' => basename($path),
-                'url' => Storage::disk('public')->url($path),
+                'url' => $url,
                 'size' => Storage::disk('public')->size($path),
                 'last_modified' => Storage::disk('public')->lastModified($path),
+                'in_use' => $inUseUrls->contains($url),
             ];
         })->sortByDesc('last_modified')->values();
 
