@@ -13,6 +13,7 @@ use App\Http\Resources\TripScheduleResource;
 use App\Http\Resources\VehicleResource;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\Review;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -838,7 +839,7 @@ class AdminController extends Controller
         $inUseUrls = collect();
         foreach ($trips as $trip) {
             if ($trip->cover_image) $inUseUrls->push($trip->cover_image);
-            if ($trip->gallery) {
+            if ($trip->gallery && is_array($trip->gallery)) {
                 foreach ($trip->gallery as $img) $inUseUrls->push($img);
             }
         }
@@ -846,7 +847,7 @@ class AdminController extends Controller
         // Collect from Reviews
         $reviews = Review::select('images')->get();
         foreach ($reviews as $review) {
-            if ($review->images) {
+            if ($review->images && is_array($review->images)) {
                 foreach ($review->images as $img) $inUseUrls->push($img);
             }
         }
