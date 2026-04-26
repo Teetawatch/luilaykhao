@@ -139,21 +139,41 @@
               </button>
             </div>
           </div>
-          <div class="itinerary-editor space-y-4">
-            <div v-for="(item, idx) in form.itinerary" :key="idx" class="itinerary-item bg-gray-50 p-6 rounded-2xl border border-gray-100 relative group">
-              <div class="flex items-center gap-4 mb-4">
-                <div class="day-badge bg-[var(--color-accent)] text-white px-4 py-1 rounded-full font-bold text-sm">
-                  วันที่ {{ item.day }}
+          <div class="itinerary-editor space-y-8">
+            <div v-for="(sector, sIdx) in form.itinerary" :key="sIdx" class="itinerary-sector-card bg-white p-6 rounded-[2rem] border-2 border-gray-100 relative group transition-all hover:border-[var(--color-accent)]/20 shadow-sm">
+              <div class="flex items-center gap-4 mb-6">
+                <div class="flex-1">
+                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">ชื่อภาค / ช่วงการเดินทาง</label>
+                  <input v-model="sector.sector" placeholder="เช่น ภาคใต้ (ภูเก็ต-กระบี่) หรือ วันที่ 1-3" class="w-full font-black text-xl bg-gray-50 px-5 py-3 rounded-2xl border-none focus:ring-2 ring-[var(--color-accent)]/20" />
                 </div>
-                <input v-model="item.title" placeholder="หัวข้อของวันนี้ (เช่น เดินทางถึงจุดหมาย)" class="flex-1 font-bold bg-white px-4 py-2 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20" />
-                <button type="button" class="text-red-400 hover:text-red-600 p-2" @click="removeItem('itinerary', idx)">
-                  <span class="material-symbols-rounded">delete</span>
+                <button type="button" class="text-red-400 hover:text-red-600 p-2 mt-6" @click="removeItem('itinerary_sector', sIdx)" title="ลบทั้งภาค">
+                  <span class="material-symbols-rounded">delete_sweep</span>
                 </button>
               </div>
-              <textarea v-model="item.description" rows="3" placeholder="รายละเอียดกิจกรรมในวันนี้..." class="text-sm w-full bg-white px-4 py-3 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
+
+              <div class="space-y-4 ml-4 md:ml-8 border-l-2 border-dashed border-gray-100 pl-4 md:pl-8">
+                <div v-for="(item, idx) in sector.items" :key="idx" class="itinerary-item bg-gray-50 p-6 rounded-2xl border border-gray-100 relative group">
+                  <div class="flex items-center gap-4 mb-4">
+                    <div class="day-badge bg-[var(--color-accent)] text-white px-4 py-1 rounded-full font-bold text-sm shrink-0">
+                      วันที่ {{ item.day }}
+                    </div>
+                    <input v-model="item.title" placeholder="หัวข้อของวันนี้ (เช่น เดินทางถึงจุดหมาย)" class="flex-1 font-bold bg-white px-4 py-2 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20" />
+                    <button type="button" class="text-red-400 hover:text-red-600 p-2" @click="removeItem('itinerary_item', { sIdx, idx })">
+                      <span class="material-symbols-rounded">delete</span>
+                    </button>
+                  </div>
+                  <textarea v-model="item.description" rows="3" placeholder="รายละเอียดกิจกรรมในวันนี้..." class="text-sm w-full bg-white px-4 py-3 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
+                </div>
+                
+                <button type="button" class="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:bg-white hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2 group" @click="addItem('itinerary_item', sIdx)">
+                  <span class="material-symbols-rounded group-hover:scale-110 transition-transform">add_circle</span> เพิ่มวันเดินทางในส่วนนี้
+                </button>
+              </div>
             </div>
-            <button type="button" class="btn-add-dashed" @click="addItem('itinerary')">
-              <span class="material-symbols-rounded">add_circle</span> เพิ่มวันเดินทาง
+
+            <button type="button" class="btn-add-sector w-full py-6 bg-[var(--color-sand)] rounded-[2rem] border-2 border-dashed border-[var(--color-accent)]/30 text-[var(--color-accent)] font-black flex items-center justify-center gap-3 hover:bg-[var(--color-accent)]/5 hover:border-[var(--color-accent)] transition-all" @click="addItem('itinerary_sector')">
+              <span class="material-symbols-rounded text-3xl">add_location_alt</span>
+              เพิ่มภาค / ช่วงการเดินทางใหม่
             </button>
           </div>
         </div>
@@ -560,19 +580,32 @@ const selectIcon = (idx, icon) => {
   activeIconPicker.value = null;
 };
 
-const addItem = (field) => {
-  if (!form[field]) form[field] = [];
+const addItem = (field, extra = null) => {
   if (field === 'highlights') {
-    form[field].push({ title: '', desc: '', icon: 'star' });
-  } else if (field === 'itinerary') {
-    const nextDay = form.itinerary.length;
-    form.itinerary.push({ day: nextDay, title: '', description: '' });
+    if (!form.highlights) form.highlights = [];
+    form.highlights.push({ title: '', desc: '', icon: 'star' });
+  } else if (field === 'itinerary_sector') {
+    if (!form.itinerary) form.itinerary = [];
+    form.itinerary.push({ sector: '', items: [] });
+  } else if (field === 'itinerary_item') {
+    const sIdx = extra;
+    const sector = form.itinerary[sIdx];
+    let nextDay = 1;
+    // Calculate next day based on all sectors
+    form.itinerary.forEach(s => {
+      s.items.forEach(item => {
+        if (item.day >= nextDay) nextDay = item.day + 1;
+      });
+    });
+    sector.items.push({ day: nextDay, title: '', description: '' });
   } else if (field === 'preparations') {
-    form[field].push('');
+    if (!form.preparations) form.preparations = [];
+    form.preparations.push('');
   } else if (field === 'must_know_items') {
     if (!form.must_know.items) form.must_know.items = [];
     form.must_know.items.push({ name: '', price: 0 });
   } else {
+    if (!form[field]) form[field] = [];
     form[field].push('');
   }
 };
@@ -580,6 +613,11 @@ const addItem = (field) => {
 const removeItem = (field, index) => {
   if (field === 'must_know_items') {
     form.must_know.items.splice(index, 1);
+  } else if (field === 'itinerary_sector') {
+    form.itinerary.splice(index, 1);
+  } else if (field === 'itinerary_item') {
+    const { sIdx, idx } = index;
+    form.itinerary[sIdx].items.splice(idx, 1);
   } else {
     form[field].splice(index, 1);
   }
@@ -748,7 +786,18 @@ const initData = async () => {
       form.exclusions = trip.exclusions || [];
       form.highlights = trip.highlights || [];
       form.must_know = trip.must_know || { items: [], remarks: '' };
-      form.itinerary = trip.itinerary || [];
+      
+      // Transform old itinerary format to new sector-based format
+      const rawItinerary = trip.itinerary || [];
+      if (rawItinerary.length > 0 && !rawItinerary[0].hasOwnProperty('sector')) {
+        form.itinerary = [{
+          sector: 'กำหนดการเดินทาง',
+          items: rawItinerary
+        }];
+      } else {
+        form.itinerary = rawItinerary;
+      }
+
       form.preparations = trip.preparations || [];
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
