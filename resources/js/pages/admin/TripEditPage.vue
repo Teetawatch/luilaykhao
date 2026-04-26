@@ -590,7 +590,7 @@ const addItem = (field, extra = null) => {
   } else if (field === 'itinerary_item') {
     const sIdx = extra;
     const sector = form.itinerary[sIdx];
-    let nextDay = 1;
+    let nextDay = 0;
     // Calculate next day based only on this sector
     sector.items.forEach(item => {
       if (item.day >= nextDay) nextDay = item.day + 1;
