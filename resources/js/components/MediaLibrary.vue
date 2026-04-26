@@ -18,7 +18,7 @@
             </div>
             <p class="text-white/80 font-bold flex items-center gap-2 text-sm">
               <span class="material-symbols-rounded text-sm">info</span>
-              เลือกรูปภาพที่มีอยู่แล้วเพื่อนำมาใช้งาน หรือจัดการลบไฟล์ที่ไม่จำเป็น
+              {{ multiple ? 'เลือกได้หลายรูปจากคลัง แล้วกดเลือกใช้งานเมื่อครบตามต้องการ' : 'เลือกรูปภาพที่มีอยู่แล้วเพื่อนำมาใช้งาน หรือจัดการลบไฟล์ที่ไม่จำเป็น' }}
             </p>
           </div>
 
@@ -42,6 +42,25 @@
                 <span class="material-symbols-rounded text-sm">{{ filterUnused ? 'filter_list' : 'filter_list_off' }}</span>
                 แสดงเฉพาะที่ไม่ได้ใช้งาน
               </button>
+              <template v-if="multiple">
+                <div class="h-8 w-px bg-gray-200 mx-1 hidden sm:block"></div>
+                <button
+                  @click="selectAllVisible"
+                  :disabled="filteredMedia.length === 0"
+                  class="px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 border bg-white text-[var(--color-primary)] border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span class="material-symbols-rounded text-sm">select_all</span>
+                  เลือกทั้งหมด
+                </button>
+                <button
+                  @click="clearSelection"
+                  :disabled="selectedCount === 0"
+                  class="px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 border bg-white text-gray-400 border-gray-100 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span class="material-symbols-rounded text-sm">backspace</span>
+                  ล้าง
+                </button>
+              </template>
             </div>
             <div class="relative w-full max-w-xs">
               <span class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
@@ -99,7 +118,7 @@
                 <div v-if="isSelected(m)" class="absolute inset-0 border-4 border-[var(--color-accent)] pointer-events-none rounded-2xl z-10 transition-all duration-200"></div>
                 <div v-if="isSelected(m)" class="absolute top-2 right-2 w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center shadow-lg animate-in zoom-in z-20">
                   <span class="material-symbols-rounded text-sm" v-if="!multiple">check</span>
-                  <span class="text-xs font-bold" v-else>{{ selected.indexOf(m.url) + 1 }}</span>
+                  <span class="text-xs font-bold" v-else>{{ selectionOrder(m) }}</span>
                 </div>
               </div>
             </div>
@@ -109,6 +128,7 @@
           <div class="p-6 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
             <p class="text-xs text-gray-400 font-bold">
               {{ filteredMedia.length }} ไฟล์ | ค้นหาจากทั้งหมด {{ media.length }} ไฟล์
+              <span v-if="multiple" class="text-[var(--color-primary)]"> | เลือกแล้ว {{ selectedCount }} รูป</span>
             </p>
             <div class="flex gap-3">
               <button @click="$emit('close')" class="px-6 py-2.5 rounded-xl text-sm font-black text-gray-500 hover:bg-gray-100 transition-all">
@@ -116,7 +136,7 @@
               </button>
               <button @click="confirmSelection" :disabled="!hasSelection" class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2">
                 เลือกใช้งาน
-                <span v-if="multiple && selected.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs">{{ selected.length }}</span>
+                <span v-if="multiple && selectedCount > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs">{{ selectedCount }}</span>
               </button>
             </div>
           </div>
@@ -187,6 +207,11 @@ const filteredMedia = computed(() => {
   return list.filter(m => m.filename.toLowerCase().includes(q));
 });
 
+const selectedCount = computed(() => {
+  if (props.multiple) return Array.isArray(selected.value) ? selected.value.length : 0;
+  return selected.value ? 1 : 0;
+});
+
 const isSelected = (m) => {
   if (props.multiple) {
     return Array.isArray(selected.value) && selected.value.includes(m.url);
@@ -195,8 +220,7 @@ const isSelected = (m) => {
 };
 
 const hasSelection = computed(() => {
-  if (props.multiple) return Array.isArray(selected.value) && selected.value.length > 0;
-  return !!selected.value;
+  return selectedCount.value > 0;
 });
 
 const select = (m) => {
@@ -211,6 +235,23 @@ const select = (m) => {
   } else {
     selected.value = m.url;
   }
+};
+
+const selectionOrder = (m) => {
+  if (!Array.isArray(selected.value)) return '';
+  const idx = selected.value.indexOf(m.url);
+  return idx === -1 ? '' : idx + 1;
+};
+
+const selectAllVisible = () => {
+  if (!props.multiple) return;
+  const next = new Set(Array.isArray(selected.value) ? selected.value : []);
+  filteredMedia.value.forEach(m => next.add(m.url));
+  selected.value = [...next];
+};
+
+const clearSelection = () => {
+  selected.value = props.multiple ? [] : null;
 };
 
 const preview = (m) => {

@@ -531,7 +531,7 @@
     @close="showMediaLibrary = false" 
     @select="handleMediaSelect"
     :multiple="mediaLibraryTarget === 'gallery'"
-    :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : []"
+    :initial-selection="mediaLibraryTarget === 'cover' ? form.cover_image : form.gallery"
   />
 </template>
 
@@ -568,11 +568,7 @@ const handleMediaSelect = (data) => {
     form.cover_image = data;
   } else if (mediaLibraryTarget.value === 'gallery') {
     if (Array.isArray(data)) {
-      data.forEach(url => {
-        if (!form.gallery.includes(url)) {
-          form.gallery.push(url);
-        }
-      });
+      form.gallery = [...new Set(data.filter(Boolean))];
     }
   }
 };
