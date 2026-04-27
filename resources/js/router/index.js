@@ -32,6 +32,7 @@ import FAQPage from '../pages/FAQPage.vue';
 import AdminLayout from '../components/AdminLayout.vue';
 import AdminDashboard from '../pages/admin/DashboardPage.vue';
 import AdminTrips from '../pages/admin/TripsPage.vue';
+import AdminTripEdit from '../pages/admin/TripEditPage.vue';
 import AdminSchedules from '../pages/admin/SchedulesPage.vue';
 import AdminBookings from '../pages/admin/BookingsPage.vue';
 import AdminVehicles from '../pages/admin/VehiclesPage.vue';
