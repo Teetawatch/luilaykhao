@@ -75,8 +75,8 @@
                 <!-- Trip Image Banner -->
                 <div class="w-full h-48 md:h-56 overflow-hidden relative group">
                   <img
-                    v-if="booking.schedule?.trip?.cover_image || booking.schedule?.trip?.thumbnail_url"
-                    :src="booking.schedule.trip.cover_image || booking.schedule.trip.thumbnail_url"
+                    v-if="booking.schedule?.trip?.thumbnail_image || booking.schedule?.trip?.cover_image"
+                    :src="booking.schedule.trip.thumbnail_image || booking.schedule.trip.cover_image"
                     :alt="booking.schedule.trip.title"
                     class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />

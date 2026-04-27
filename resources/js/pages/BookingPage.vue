@@ -25,7 +25,7 @@
       <div class="mb-10 bg-white rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
         <!-- Hero Image -->
         <div v-if="schedule.trip?.cover_image" class="relative w-full h-64 md:h-80">
-          <img :src="schedule.trip.cover_image" :alt="schedule.trip.title"
+          <img :src="schedule.trip.thumbnail_image || schedule.trip.cover_image" :alt="schedule.trip.title"
             class="w-full h-full object-cover" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent"></div>
         </div>

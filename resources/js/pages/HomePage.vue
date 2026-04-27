@@ -284,8 +284,8 @@
             <!-- Image Container -->
             <div class="relative overflow-hidden aspect-[4/5] m-2 rounded-[1.5rem]">
               <img
-                v-if="trip.cover_image"
-                :src="trip.cover_image"
+                v-if="trip.thumbnail_image || trip.cover_image"
+                :src="trip.thumbnail_image || trip.cover_image"
                 :alt="trip.title"
                 class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 @error="(e) => e.target.style.display='none'"
@@ -467,8 +467,8 @@
               class="flex-1 group relative overflow-hidden rounded-[2.5rem] bg-gray-900 cursor-pointer block p-8 md:p-10 flex flex-col justify-between hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 isolate"
             >
               <!-- Background Image -->
-              <img
-                :src="trip.cover_image || '/images/placeholder.jpg'"
+               <img
+                :src="trip.thumbnail_image || trip.cover_image || '/images/placeholder.jpg'"
                 :alt="trip.title"
                 class="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-60"
               />

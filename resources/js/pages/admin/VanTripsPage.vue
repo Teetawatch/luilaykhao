@@ -72,7 +72,7 @@
             <tr v-for="trip in vanTrips" :key="trip.id">
               <td>
                 <div class="trip-cell">
-                  <img :src="trip.cover_image || '/images/placeholder.jpg'" class="trip-thumb" />
+                  <img :src="trip.thumbnail_image || trip.cover_image || '/images/placeholder.jpg'" class="trip-thumb" />
                   <div>
                     <span class="trip-name">{{ trip.title }}</span>
                     <div class="trip-badges">

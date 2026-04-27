@@ -121,8 +121,8 @@
               class="bg-white rounded-[20px] p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 border border-[#E8EEEF] hover:shadow-md transition-all shadow-sm">
               <div class="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
                 <img
-                  v-if="b.schedule?.trip?.image_url || b.schedule?.trip?.cover_image"
-                  :src="b.schedule.trip.image_url || b.schedule.trip.cover_image"
+                  v-if="b.schedule?.trip?.thumbnail_image || b.schedule?.trip?.cover_image"
+                  :src="b.schedule.trip.thumbnail_image || b.schedule.trip.cover_image"
                   class="w-[72px] h-[72px] rounded-[16px] object-cover shrink-0 border border-[#E8EEEF]" />
                 <div v-else class="w-[72px] h-[72px] rounded-[16px] bg-[#F4F7F6] flex justify-center items-center shrink-0 border border-[#E8EEEF]">
                    <span class="material-symbols-rounded text-[#A0B0B0] text-3xl">image_not_supported</span>

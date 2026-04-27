@@ -429,8 +429,8 @@
 
           <!-- Trip Premium Header -->
           <div class="h-56 relative overflow-hidden bg-gray-100">
-            <img v-if="booking.schedule?.trip?.cover_image || booking.schedule?.trip?.thumbnail_url"
-              :src="booking.schedule.trip.cover_image || booking.schedule.trip.thumbnail_url"
+            <img v-if="booking.schedule?.trip?.thumbnail_image || booking.schedule?.trip?.cover_image"
+              :src="booking.schedule.trip.thumbnail_image || booking.schedule.trip.cover_image"
               :alt="booking.schedule?.trip?.title"
               class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
             

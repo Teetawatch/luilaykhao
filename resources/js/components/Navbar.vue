@@ -166,7 +166,7 @@
                       class="flex items-center gap-3 px-4 py-2.5 hover:bg-sand/50 transition-all border-b border-sand-dark/10 last:border-0"
                     >
                       <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-sand-dark/20">
-                        <img v-if="trip.cover_image" :src="trip.cover_image" class="w-full h-full object-cover" />
+                        <img v-if="trip.thumbnail_image || trip.cover_image" :src="trip.thumbnail_image || trip.cover_image" class="w-full h-full object-cover" />
                       </div>
                       <div class="flex-1 min-w-0">
                         <p class="text-[12px] font-bold text-text-dark truncate">{{ typeof trip === 'object' ? trip.title : `ทริป #${trip}` }}</p>

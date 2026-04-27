@@ -81,13 +81,9 @@
           <div class="md:w-[240px] h-48 md:h-auto relative overflow-hidden shrink-0"
             :class="{ 'grayscale opacity-75': b.status === 'cancelled' || b.status === 'refunded' }">
             <img
-              v-if="b.schedule?.trip?.cover_image || b.schedule?.trip?.thumbnail_url"
-              :src="b.schedule.trip.cover_image || b.schedule.trip.thumbnail_url"
+              :src="b.schedule.trip.thumbnail_image || b.schedule.trip.cover_image"
               :alt="b.schedule?.trip?.title"
               class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-            <div v-else class="w-full h-full bg-[#F4F7F6] flex items-center justify-center">
-              <span class="material-symbols-rounded text-[#A0B0B0] text-3xl">image_not_supported</span>
-            </div>
             
             <!-- Date Badge on Image (Mobile only) -->
             <div class="absolute top-4 left-4 md:hidden bg-white px-3 py-1.5 rounded-[12px] shadow-sm flex flex-col items-center leading-tight">
