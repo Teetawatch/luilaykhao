@@ -48,8 +48,8 @@ import AdminTracking from '../pages/admin/TrackingPage.vue';
 import AdminStaffAssignments from '../pages/admin/StaffAssignmentsPage.vue';
 import AdminCategories from '../pages/admin/CategoriesPage.vue';
 import AdminInquiries from '../pages/admin/InquiriesPage.vue';
-import AdminTripEdit from '../pages/admin/TripEditPage.vue';
 import AdminVanTrips from '../pages/admin/VanTripsPage.vue';
+import AdminPromotions from '../pages/admin/PromotionsPage.vue';
 
 
 const routes = [
@@ -214,6 +214,7 @@ const routes = [
       { path: 'tracking', name: 'admin-tracking', component: AdminTracking },
       { path: 'categories', name: 'admin-categories', component: AdminCategories },
       { path: 'inquiries', name: 'admin-inquiries', component: AdminInquiries },
+      { path: 'promotions', name: 'admin-promotions', component: AdminPromotions },
     ],
 
   },

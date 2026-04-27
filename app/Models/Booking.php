@@ -20,6 +20,7 @@ class Booking extends Model
         'payment_type', 'installment_count', 'installment_interval_days',
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
         'cancellation_reason', 'cancelled_at',
+        'promotion_id', 'promotion_code', 'discount_amount',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class Booking extends Model
         return [
             'total_amount' => 'decimal:2',
             'paid_amount' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'checked_in_at' => 'datetime',
@@ -41,6 +43,11 @@ class Booking extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
     }
 
     public function schedule(): BelongsTo

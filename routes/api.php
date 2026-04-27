@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\PromotionController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -69,6 +70,9 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings', [BookingController::class, 'index']);
         Route::get('bookings/{ref}', [BookingController::class, 'show']);
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
+
+        // Promotions validation
+        Route::post('promotions/validate', [PromotionController::class, 'validateCode']);
 
         // Payments
         Route::post('payments/charge', [PaymentController::class, 'charge']);
@@ -244,6 +248,13 @@ Route::prefix('v1')->group(function () {
         Route::get('contacts', [ContactController::class, 'index']);
         Route::put('contacts/{id}/read', [ContactController::class, 'markAsRead']);
         Route::delete('contacts/{id}', [ContactController::class, 'destroy']);
+
+        // Promotions CRUD
+        Route::get('promotions', [PromotionController::class, 'index']);
+        Route::post('promotions', [PromotionController::class, 'store']);
+        Route::get('promotions/{id}', [PromotionController::class, 'show']);
+        Route::put('promotions/{id}', [PromotionController::class, 'update']);
+        Route::delete('promotions/{id}', [PromotionController::class, 'destroy']);
     });
 });
 

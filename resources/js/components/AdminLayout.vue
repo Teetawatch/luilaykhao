@@ -75,6 +75,7 @@ const menuItems = [
   { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },
   { to: '/admin/trips', icon: 'fas fa-route', label: 'จัดการทริป' },
   { to: '/admin/van-trips', icon: 'fas fa-shuttle-van', label: 'บริการรถตู้' },
+  { to: '/admin/promotions', icon: 'fas fa-percent', label: 'โปรโมชั่น/ส่วนลด' },
   { to: '/admin/categories', icon: 'fas fa-tags', label: 'หมวดหมู่กิจกรรม' },
   { to: '/admin/schedules', icon: 'fas fa-calendar-alt', label: 'รอบเดินทาง' },
   { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },

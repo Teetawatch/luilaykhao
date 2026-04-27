@@ -33,6 +33,7 @@ class BookingController extends Controller
                 isGroup: (bool) $request->is_group,
                 groupName: $request->group_name,
                 groupNotes: $request->group_notes,
+                promotionCode: $request->promotion_code,
             );
 
             return $this->success(new BookingResource($booking), 'สร้างการจองสำเร็จ', 201);

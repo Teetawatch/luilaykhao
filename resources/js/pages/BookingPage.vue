@@ -581,32 +581,69 @@
               :seconds="seatsStore.countdownSeconds" class="mb-8" />
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <!-- Trip Details Card -->
-              <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 shadow-sm">
-                <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
-                  <span class="material-symbols-rounded text-teal-600">confirmation_number</span>
-                  รายละเอียดการจอง
-                </h3>
-                
-                <div class="space-y-4">
-                  <div class="flex justify-between items-start py-3 border-b border-gray-50">
-                    <span class="text-gray-500 text-sm font-medium">ชื่อทริป</span>
-                    <span class="text-gray-900 text-sm font-bold text-right max-w-[200px]">{{ schedule.trip?.title }}</span>
-                  </div>
-                  <div class="flex justify-between items-center py-3 border-b border-gray-50">
-                    <span class="text-gray-500 text-sm font-medium">วันเดินทาง</span>
-                    <span class="text-gray-900 text-sm font-bold">{{ formatDate(schedule.departure_date) }}</span>
-                  </div>
-                  <div v-if="selectedPickup" class="flex justify-between items-start py-3 border-b border-gray-50">
-                    <span class="text-gray-500 text-sm font-medium">จุดขึ้นรถ</span>
-                    <div class="text-right">
-                      <p class="text-gray-900 text-sm font-bold">{{ selectedPickup.pickup_location }}</p>
-                      <p class="text-[10px] text-teal-600 font-bold uppercase tracking-wider">{{ selectedPickup.region_label }}</p>
+              <div class="flex flex-col gap-6">
+                <!-- Trip Details Card -->
+                <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 shadow-sm">
+                  <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
+                    <span class="material-symbols-rounded text-teal-600">confirmation_number</span>
+                    รายละเอียดการจอง
+                  </h3>
+                  
+                  <div class="space-y-4">
+                    <div class="flex justify-between items-start py-3 border-b border-gray-50">
+                      <span class="text-gray-500 text-sm font-medium">ชื่อทริป</span>
+                      <span class="text-gray-900 text-sm font-bold text-right max-w-[200px]">{{ schedule.trip?.title }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3 border-b border-gray-50">
+                      <span class="text-gray-500 text-sm font-medium">วันเดินทาง</span>
+                      <span class="text-gray-900 text-sm font-bold">{{ formatDate(schedule.departure_date) }}</span>
+                    </div>
+                    <div v-if="selectedPickup" class="flex justify-between items-start py-3 border-b border-gray-50">
+                      <span class="text-gray-500 text-sm font-medium">จุดขึ้นรถ</span>
+                      <div class="text-right">
+                        <p class="text-gray-900 text-sm font-bold">{{ selectedPickup.pickup_location }}</p>
+                        <p class="text-[10px] text-teal-600 font-bold uppercase tracking-wider">{{ selectedPickup.region_label }}</p>
+                      </div>
+                    </div>
+                    <div v-if="hasSeatMap" class="flex justify-between items-center py-3">
+                      <span class="text-gray-500 text-sm font-medium">ที่นั่งที่เลือก</span>
+                      <span class="px-3 py-1 bg-teal-50 text-teal-700 text-sm font-black rounded-lg border border-teal-100 italic tracking-widest">{{ seatsStore.selectedSeatIds.join(', ') }}</span>
                     </div>
                   </div>
-                  <div v-if="hasSeatMap" class="flex justify-between items-center py-3">
-                    <span class="text-gray-500 text-sm font-medium">ที่นั่งที่เลือก</span>
-                    <span class="px-3 py-1 bg-teal-50 text-teal-700 text-sm font-black rounded-lg border border-teal-100 italic tracking-widest">{{ seatsStore.selectedSeatIds.join(', ') }}</span>
+                </div>
+
+                <!-- Promo Code Card -->
+                <div class="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
+                  <h3 class="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-teal-600">local_offer</span>
+                    โค้ดส่วนลด / โปรโมชั่น
+                  </h3>
+                  
+                  <div v-if="!promotionData" class="flex flex-col gap-2">
+                    <div class="flex gap-2">
+                      <input v-model="promotionInput" type="text" placeholder="กรอกโค้ดส่วนลด (ถ้ามี)"
+                        class="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all uppercase"
+                        @keyup.enter="applyPromotion" />
+                      <button @click="applyPromotion" :disabled="promotionLoading || !promotionInput.trim()"
+                        class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shrink-0">
+                        <span v-if="promotionLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        <span>ใช้งาน</span>
+                      </button>
+                    </div>
+                    <p v-if="promotionError" class="text-red-500 text-xs font-bold mt-1">{{ promotionError }}</p>
+                  </div>
+                  
+                  <div v-else class="bg-teal-50 border border-teal-100 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="material-symbols-rounded text-teal-600 text-[18px]">check_circle</span>
+                        <span class="font-bold text-teal-800 text-sm">โค้ด {{ promotionCode }} ถูกใช้งานแล้ว</span>
+                      </div>
+                      <p class="text-xs text-teal-600 font-medium">ได้รับส่วนลด ฿{{ discountAmount.toLocaleString() }}</p>
+                    </div>
+                    <button @click="removePromotion" class="text-gray-400 hover:text-red-500 transition-colors p-2">
+                      <span class="material-symbols-rounded text-xl">close</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -631,6 +668,13 @@
                     <div class="flex justify-between text-sm">
                       <span class="text-white/70">จำนวนผู้เดินทาง</span>
                       <span class="font-bold">{{ passengers.length }} คน</span>
+                    </div>
+                    <div v-if="promotionData" class="flex justify-between text-sm text-teal-200 pt-2 border-t border-white/20">
+                      <span class="flex items-center gap-1">
+                        <span class="material-symbols-rounded text-[16px]">local_offer</span>
+                        ส่วนลด ({{ promotionCode }})
+                      </span>
+                      <span class="font-bold">-฿{{ discountAmount.toLocaleString() }}</span>
                     </div>
                   </div>
                 </div>
@@ -747,6 +791,14 @@
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500 font-medium">จำนวนผู้ร่วมเดินทาง</span>
                 <span class="text-gray-900 font-bold">{{ seatCount }} คน</span>
+              </div>
+              
+              <div v-if="promotionData" class="flex justify-between items-center text-sm text-teal-600">
+                <span class="font-bold flex items-center gap-1">
+                  <span class="material-symbols-rounded text-[16px]">local_offer</span>
+                  ส่วนลด
+                </span>
+                <span class="font-bold">-฿{{ discountAmount.toLocaleString() }}</span>
               </div>
               
               <div class="pt-5 border-t border-dashed border-gray-300">
@@ -1000,6 +1052,12 @@ const groupName = ref('');
 const groupNotes = ref('');
 const showInsuranceModal = ref(false);
 
+const promotionCode = ref('');
+const promotionInput = ref('');
+const promotionData = ref(null);
+const promotionLoading = ref(false);
+const promotionError = ref('');
+
 const hasSeatMap = computed(() => seatsStore.seatMap?.has_seat_map ?? false);
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking');
@@ -1049,6 +1107,8 @@ function saveFormData() {
     groupName: groupName.value,
     groupNotes: groupNotes.value,
     selectedPickupId: selectedPickup.value?.id ?? null,
+    promotionCode: promotionCode.value,
+    promotionData: promotionData.value,
   };
   sessionStorage.setItem(FORM_SESSION_KEY.value, JSON.stringify(data));
 }
@@ -1065,6 +1125,9 @@ function restoreFormData() {
     isGroup.value = data.isGroup ?? false;
     groupName.value = data.groupName ?? '';
     groupNotes.value = data.groupNotes ?? '';
+    promotionCode.value = data.promotionCode ?? '';
+    promotionInput.value = data.promotionCode ?? '';
+    promotionData.value = data.promotionData ?? null;
     if (data.selectedPickupId != null && pickupPoints.value.length > 0) {
       const pt = pickupPoints.value.find(p => p.id === data.selectedPickupId);
       if (pt) selectedPickup.value = pt;
@@ -1136,7 +1199,50 @@ const isPassengerValid = computed(() => passengers.value.every(p =>
   (!schedule.value?.trip?.is_women_only || ['นาง', 'นางสาว'].includes(p.title))
 ));
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
-const totalAmount = computed(() => effectivePrice.value * seatCount.value);
+
+const subtotalAmount = computed(() => effectivePrice.value * seatCount.value);
+
+const discountAmount = computed(() => {
+  if (!promotionData.value) return 0;
+  if (promotionData.value.type === 'percent') {
+    return subtotalAmount.value * (promotionData.value.value / 100);
+  }
+  return Number(promotionData.value.value);
+});
+
+const totalAmount = computed(() => Math.max(0, subtotalAmount.value - discountAmount.value));
+
+async function applyPromotion() {
+  if (!promotionInput.value.trim()) return;
+  promotionLoading.value = true;
+  promotionError.value = '';
+  
+  try {
+    const res = await api.post('/promotions/validate', {
+      code: promotionInput.value.trim(),
+      trip_id: schedule.value?.trip?.id
+    });
+    
+    if (res.data.valid) {
+      promotionData.value = res.data.promotion;
+      promotionCode.value = res.data.promotion.code;
+      toast.success('ใช้โค้ดส่วนลดสำเร็จ');
+    }
+  } catch (e) {
+    promotionData.value = null;
+    promotionCode.value = '';
+    promotionError.value = e.response?.data?.message || 'โค้ดส่วนลดไม่ถูกต้องหรือหมดอายุแล้ว';
+  } finally {
+    promotionLoading.value = false;
+  }
+}
+
+function removePromotion() {
+  promotionInput.value = '';
+  promotionCode.value = '';
+  promotionData.value = null;
+  promotionError.value = '';
+}
 
 function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1268,6 +1374,9 @@ async function createBooking() {
         weight: p.weight || null,
       })),
     };
+    if (promotionCode.value) {
+      data.promotion_code = promotionCode.value;
+    }
     if (hasSeatMap.value) data.seat_ids = seatsStore.selectedSeatIds;
 
     const res = await bookingStore.createBooking(data);

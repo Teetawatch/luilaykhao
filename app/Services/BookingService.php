@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\Promotion;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use Illuminate\Support\Facades\DB;
@@ -26,8 +27,9 @@ class BookingService
         bool $isGroup = false,
         ?string $groupName = null,
         ?string $groupNotes = null,
+        ?string $promotionCode = null,
     ): Booking {
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
 
             $participantCount = count($passengers);
@@ -64,6 +66,40 @@ class BookingService
 
             $totalAmount = $pricePerPerson * $participantCount;
 
+            $promotionId = null;
+            $discountAmount = 0;
+
+            if ($promotionCode) {
+                $promotion = Promotion::where('code', $promotionCode)->where('is_active', true)->lockForUpdate()->first();
+                if ($promotion) {
+                    $isValid = true;
+                    if ($promotion->start_date && now()->startOfDay()->lt($promotion->start_date)) $isValid = false;
+                    if ($promotion->end_date && now()->startOfDay()->gt($promotion->end_date)) $isValid = false;
+                    if ($promotion->max_uses && $promotion->used_count >= $promotion->max_uses) $isValid = false;
+                    if ($promotion->trip_ids && is_array($promotion->trip_ids) && !in_array($schedule->trip_id, $promotion->trip_ids)) $isValid = false;
+
+                    if ($isValid) {
+                        $promotionId = $promotion->id;
+                        if ($promotion->type === 'percent') {
+                            $discountAmount = ($totalAmount * $promotion->value) / 100;
+                        } else {
+                            $discountAmount = $promotion->value;
+                        }
+
+                        if ($discountAmount > $totalAmount) {
+                            $discountAmount = $totalAmount;
+                        }
+
+                        $totalAmount -= $discountAmount;
+                        $promotion->increment('used_count');
+                    } else {
+                        throw new \Exception('โค้ดส่วนลดไม่สามารถใช้งานได้');
+                    }
+                } else {
+                    throw new \Exception('ไม่พบโค้ดส่วนลดนี้');
+                }
+            }
+
             $booking = Booking::create([
                 'booking_ref' => Booking::generateRef(),
                 'user_id' => $userId,
@@ -76,6 +112,9 @@ class BookingService
                 'qr_code' => Booking::generateQrCode(),
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
+                'promotion_id' => $promotionId,
+                'promotion_code' => $promotionId ? $promotionCode : null,
+                'discount_amount' => $discountAmount,
             ]);
 
             // Create passengers

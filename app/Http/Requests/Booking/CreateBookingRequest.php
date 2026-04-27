@@ -37,6 +37,7 @@ class CreateBookingRequest extends FormRequest
             'is_group' => ['nullable', 'boolean'],
             'group_name' => ['nullable', 'string', 'max:255'],
             'group_notes' => ['nullable', 'string', 'max:1000'],
+            'promotion_code' => ['nullable', 'string', 'max:50'],
         ];
     }
 
