@@ -430,6 +430,36 @@
           </div>
         </div>
 
+        <!-- Thumbnail Image Card -->
+        <div class="card sidebar-card">
+          <h3 class="sidebar-title">รูปประจำทริป (Thumbnail)</h3>
+          <div class="sidebar-body">
+            <div class="cover-upload-area">
+              <div class="cover-preview" v-if="thumbnailPreview || form.thumbnail_image" @click="triggerThumbnailInput">
+                <img :src="thumbnailPreview || form.thumbnail_image" alt="Thumbnail preview" />
+                <div class="cover-overlay">
+                  <span class="material-symbols-rounded">change_circle</span>
+                  เปลี่ยนรูป
+                </div>
+                <button type="button" class="remove-cover-btn" @click.stop="removeThumbnail">
+                  <span class="material-symbols-rounded">close</span>
+                </button>
+              </div>
+              <div class="cover-dropzone" v-else @click="triggerThumbnailInput">
+                <span class="material-symbols-rounded">image</span>
+                <p>คลิกเพื่อเลือกรูปประจำทริป</p>
+              </div>
+              <div class="mt-3">
+                <button type="button" @click="openMediaLibrary('thumbnail')" class="w-full py-2.5 bg-white border border-[var(--color-accent)] text-[var(--color-accent)] rounded-xl font-bold text-sm hover:bg-[var(--color-accent)]/5 transition-all flex items-center justify-center gap-2">
+                  <span class="material-symbols-rounded">photo_library</span>
+                  เลือกจากคลังสื่อ
+                </button>
+              </div>
+              <input ref="thumbnailInput" type="file" accept="image/*" class="hidden-file-input" @change="handleThumbnailSelect" />
+            </div>
+          </div>
+        </div>
+
         <!-- Cover Image Card -->
         <div class="card sidebar-card">
           <h3 class="sidebar-title">รูปปกทริป</h3>
@@ -557,7 +587,7 @@ const submitting = ref(false);
 
 // Media Library State
 const showMediaLibrary = ref(false);
-const mediaLibraryTarget = ref('cover'); // 'cover' or 'gallery'
+const mediaLibraryTarget = ref('cover'); // 'cover', 'thumbnail', or 'gallery'
 const isGalleryMediaPicker = computed(() => mediaLibraryTarget.value === 'gallery');
 
 const openMediaLibrary = (target) => {
@@ -571,6 +601,8 @@ const openMediaLibrary = (target) => {
 const handleMediaSelect = (data) => {
   if (mediaLibraryTarget.value === 'cover') {
     form.cover_image = data;
+  } else if (mediaLibraryTarget.value === 'thumbnail') {
+    form.thumbnail_image = data;
   } else if (mediaLibraryTarget.value === 'gallery') {
     if (Array.isArray(data)) {
       form.gallery = [...new Set(data.filter(Boolean))];
@@ -581,7 +613,7 @@ const handleMediaSelect = (data) => {
 const form = reactive({
   title: '', type: 'trekking', location: '', description: '',
   difficulty: 'medium', duration_days: 1, max_participants: 10,
-  price_per_person: 0, departure_point: '', status: 'active', cover_image: '',
+  price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
   latitude: null, longitude: null, is_featured: false, is_women_only: false,
   gallery: [], inclusions: [], exclusions: [],
   highlights: [],
@@ -613,6 +645,8 @@ const uploading = ref(false);
 const isDragging = ref(false);
 const galleryInput = ref(null);
 const galleryUploading = ref(false);
+const thumbnailInput = ref(null);
+const thumbnailPreview = ref(null);
 const activeIconPicker = ref(null);
 
 // Bulk Copy state
@@ -721,6 +755,40 @@ const removeImage = () => {
   form.cover_image = '';
   imagePreview.value = null;
   if (fileInput.value) fileInput.value.value = '';
+};
+
+const triggerThumbnailInput = () => thumbnailInput.value?.click();
+const handleThumbnailSelect = (event) => {
+  const file = event.target.files?.[0];
+  if (file) uploadThumbnail(file);
+};
+
+const uploadThumbnail = async (file) => {
+  if (file.size > 10 * 1024 * 1024) { alert('ไฟล์มีขนาดเกิน 10MB'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => { thumbnailPreview.value = e.target.result; };
+  reader.readAsDataURL(file);
+
+  uploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/upload-image', formData);
+    form.thumbnail_image = res.data.data.url;
+    thumbnailPreview.value = null;
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+    thumbnailPreview.value = null;
+  } finally {
+    uploading.value = false;
+    if (thumbnailInput.value) thumbnailInput.value.value = '';
+  }
+};
+
+const removeThumbnail = () => {
+  form.thumbnail_image = '';
+  thumbnailPreview.value = null;
+  if (thumbnailInput.value) thumbnailInput.value.value = '';
 };
 
 const triggerGalleryUpload = () => galleryInput.value?.click();

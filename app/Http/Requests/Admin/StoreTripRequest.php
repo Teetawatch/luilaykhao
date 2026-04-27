@@ -27,6 +27,7 @@ class StoreTripRequest extends FormRequest
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'status' => ['nullable', 'in:active,inactive,full'],
             'cover_image' => ['nullable', 'string'],
+            'thumbnail_image' => ['nullable', 'string'],
             'is_featured' => ['nullable', 'boolean'],
             'is_women_only' => ['nullable', 'boolean'],
             'gallery' => ['nullable', 'array'],

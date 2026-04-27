@@ -4,7 +4,7 @@
     
     <!-- Image Container -->
     <div class="relative overflow-hidden aspect-[4/5] m-2 rounded-[1.5rem] shrink-0">
-      <img v-if="trip.cover_image" :src="trip.cover_image" :alt="trip.title"
+      <img v-if="trip.thumbnail_image || trip.cover_image" :src="trip.thumbnail_image || trip.cover_image" :alt="trip.title"
         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         @error="(e) => e.target.style.display='none'" />
       <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center">

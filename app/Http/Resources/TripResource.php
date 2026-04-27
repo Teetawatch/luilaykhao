@@ -25,6 +25,7 @@ class TripResource extends JsonResource
             'longitude' => $this->longitude,
             'status' => $this->status,
             'cover_image' => $this->cover_image,
+            'thumbnail_image' => $this->thumbnail_image,
             'gallery' => $this->gallery ?? [],
             'inclusions' => $this->inclusions ?? [],
             'exclusions' => $this->exclusions ?? [],
