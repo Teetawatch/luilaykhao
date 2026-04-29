@@ -628,118 +628,66 @@
     </section>
 
     <!-- ══════════════════════════════════════════
-         NEWSLETTER CTA SECTION (Full-Width Redesign)
+         FINAL CTA
     ══════════════════════════════════════════ -->
-    <section class="relative py-32 w-full overflow-hidden bg-[var(--color-primary)]">
-      <!-- Sophisticated Background Pattern -->
-      <div class="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
+    <section class="relative py-32 md:py-48 w-full overflow-hidden bg-[#0D2B1E]">
+      <!-- Full-Width Background Wrapper -->
+      <div class="absolute inset-0 z-0">
+        <img
+          src="/images/landscape.webp"
+          alt="Ready to explore"
+          class="w-full h-full object-cover scale-105 motion-safe:animate-[subtle-zoom_60s_infinite_alternate]"
+        />
+        <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#1A3A2E]/80 to-transparent"></div>
+      </div>
       
-      <!-- Decorative Orbs -->
-      <div class="absolute -top-24 -left-24 w-96 h-96 bg-[var(--color-accent-light)]/20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-[100px] pointer-events-none"></div>
+      <!-- Premium UI Decorations -->
+      <div class="absolute top-0 right-0 w-[60rem] h-[60rem] bg-[var(--color-accent)]/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-white/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-24">
+        <div class="reveal-section max-w-4xl">
+          <div class="inline-flex items-center gap-3 text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-10">
+            <span class="w-12 h-[2px] bg-[var(--color-gold)]"></span>
+            พร้อมจะออกไปลุยหรือยัง?
+          </div>
           
-          <!-- Text Content -->
-          <div class="flex-1 text-center lg:text-left max-w-2xl">
-            <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 mb-8 transform transition-all hover:bg-white/20">
-              <span class="flex h-2 w-2 rounded-full bg-[var(--color-accent-light)] animate-pulse"></span>
-              <span class="text-white text-xs font-black uppercase tracking-widest">ข้อเสนอพิเศษถึง 30 เมษายนนี้</span>
-            </div>
-            
-            <h2 class="font-anuphan text-4xl md:text-5xl lg:text-6xl font-black text-white mb-8 leading-[1.1] tracking-tight drop-shadow-md">
-              พื้นที่นี้ยินดีต้อนรับ... มาร่วมสร้างความทรงจำดีๆ ไปด้วยกันนะครับ<br />
-              <span class="text-[var(--color-accent-light)] relative">
-                ลดทันที 5%
-                <svg class="absolute -bottom-2 left-0 w-full" height="8" viewBox="0 0 100 8" preserveAspectRatio="none">
-                  <path d="M0 5 Q 25 8, 50 5 T 100 5" stroke="var(--color-accent-light)" stroke-width="4" fill="none" class="opacity-50"/>
-                </svg>
-              </span>
-            </h2>
-            <p class="text-white/80 text-lg md:text-xl font-bold leading-relaxed mb-0 max-w-lg">
-              รับสิทธิ์เข้าถึงทริปคัดสรรพิเศษเฉพาะสมาชิก "ลุยเลเขา" เท่านั้น ส่งตรงถึงคุณก่อนใคร
-            </p>
+          <h2 class="text-5xl md:text-6xl lg:text-8xl font-black text-white leading-[1.05] mb-10 tracking-tight">
+            ให้เราช่วยสร้าง<br/>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 underline decoration-[var(--color-gold)] decoration-8">ความทรงจำ</span> ที่สวยงามของคุณ
+          </h2>
+          
+          <p class="text-xl md:text-2xl text-white/80 leading-relaxed font-medium mb-16 max-w-2xl border-l-4 border-[var(--color-gold)] pl-8">
+            เราดูแลทุกรายละเอียด เพื่อให้คุณได้ใช้เวลาที่มีค่าไปกับการ "ซึมซับบรรยากาศ" และ "สนุกกับการเดินทาง" อย่างเต็มที่
+          </p>
+          
+          <div class="flex flex-col sm:flex-row gap-6">
+            <router-link
+              to="/trips"
+              class="inline-flex items-center justify-center gap-4 bg-[var(--color-accent)] text-white px-12 py-6 rounded-[2rem] text-2xl font-black hover:bg-[#3D8F66] hover:shadow-[0_20px_50px_rgba(76,175,125,0.4)] transition-all duration-500 group/btn"
+            >
+              <span>เริ่มผจญภัยกับเราวันนี้</span>
+              <span class="material-symbols-rounded text-3xl group-hover/btn:translate-x-2 transition-transform">explore</span>
+            </router-link>
+            <router-link
+              to="/about"
+              class="inline-flex items-center justify-center gap-4 bg-white/10 backdrop-blur-md border border-white/20 text-white px-12 py-6 rounded-[2rem] text-2xl font-black hover:bg-white/20 transition-all duration-500"
+            >
+              รู้จักเรามากขึ้น
+            </router-link>
           </div>
-
-          <!-- Integrated Form -->
-          <div class="flex-1 w-full max-w-xl">
-            <div class="relative group">
-              <!-- Success State Overlay -->
-              <transition
-                enter-active-class="transition duration-500 ease-out"
-                enter-from-class="opacity-0 scale-95"
-                enter-to-class="opacity-100 scale-100"
-              >
-                <div v-if="newsletterSuccess" class="absolute inset-0 z-50 bg-[#2D7A4F] rounded-[2rem] flex flex-col items-center justify-center text-center p-8 space-y-4">
-                  <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-2">
-                    <span class="material-symbols-rounded text-white text-5xl">check_circle</span>
-                  </div>
-                  <h3 class="text-3xl font-black text-white leading-tight">ยินดีต้อนรับสู่ครอบครัวลุยเล!</h3>
-                  <p class="text-white/90 font-bold">เราได้ส่งโค้ดส่วนลด 5% ไปที่อีเมลของคุณแล้ว</p>
-                  <button @click="newsletterSuccess = false; newsletterEmail = ''" class="mt-4 text-white/70 hover:text-white underline font-bold text-sm transition-colors">สมัครด้วยอีเมลอื่น</button>
-                </div>
-              </transition>
-
-              <div class="relative bg-white/10 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] border border-white/20 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.5)] transition-all duration-500 hover:border-white/40 hover:bg-white/15">
-                <form @submit.prevent="subscribeNewsletter" class="space-y-6">
-                  <div class="relative group/input">
-                    <div class="flex justify-between items-end mb-3 px-1">
-                      <label class="block text-white/70 text-[11px] font-black uppercase tracking-widest">อีเมลของคุณ</label>
-                      <span class="text-white/40 text-[10px] font-bold">สมัครฟรี ใช้เวลาไม่ถึง 10 วินาที</span>
-                    </div>
-                    
-                    <div class="relative">
-                      <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                        <span class="material-symbols-rounded text-white/50 group-focus-within/input:text-[var(--color-accent-light)] transition-colors duration-300">alternate_email</span>
-                      </div>
-                      <input
-                        v-model="newsletterEmail"
-                        type="email"
-                        required
-                        placeholder="example@email.com"
-                        class="w-full bg-black/30 border border-white/10 rounded-[1.8rem] py-5 pl-16 pr-8 text-white placeholder:text-white/20 focus:ring-4 focus:ring-[var(--color-accent-light)]/20 focus:border-[var(--color-accent-light)] focus:bg-black/50 outline-none text-lg font-bold transition-all duration-300"
-                      />
-                    </div>
-                  </div>
-                  
-                  <button
-                    type="submit"
-                    :disabled="newsletterLoading"
-                    class="group/btn w-full bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white py-5 rounded-[1.8rem] font-black text-xl transition-all duration-300 shadow-[0_15px_30px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_50px_rgba(76,175,125,0.4)] hover:-translate-y-1.5 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden relative"
-                  >
-                    <template v-if="newsletterLoading">
-                      <div class="w-6 h-6 border-4 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
-                      <span>กำลังดำเนินการ...</span>
-                    </template>
-                    <template v-else>
-                      <span>รับส่วนลด 5% ทันที</span>
-                      <span class="material-symbols-rounded text-[24px] transform group-hover/btn:translate-x-2 transition-transform">arrow_forward</span>
-                    </template>
-                  </button>
-                </form>
-                
-                <!-- Trust Signals -->
-                <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6 pt-8 border-t border-white/10">
-                  <div class="flex flex-col items-center gap-1">
-                    <span class="text-white text-[11px] font-black uppercase tracking-wider">สมาชิกแล้ว 10+ คน</span>
-                  </div>
-                  <div class="hidden sm:block w-px h-10 bg-white/10"></div>
-                  <div class="flex flex-col gap-2">
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-rounded text-[var(--color-accent-light)] text-[16px]">verified</span>
-                      <span class="text-white/60 text-[10px] font-bold uppercase tracking-widest">ไม่มีสแปม ยกเลิกเมื่อไหร่ก็ได้</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="material-symbols-rounded text-[var(--color-accent-light)] text-[16px]">lock</span>
-                      <span class="text-white/60 text-[10px] font-bold uppercase tracking-widest">ข้อมูลของคุณปลอดภัย 100%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          
+          <!-- Quick Status -->
+          <div class="mt-20 flex items-center gap-10 opacity-70">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-rounded text-white">verified_user</span>
+              <span class="font-bold text-white">จองปลอดภัย 100%</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-rounded text-white">thumb_up</span>
+              <span class="font-bold text-white">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
             </div>
           </div>
-
         </div>
       </div>
     </section>
@@ -774,19 +722,7 @@ const trips = ref([]);
 const featuredTrips = ref([]);
 const loading = ref(true);
 
-// Newsletter state
-const newsletterEmail = ref('');
-const newsletterLoading = ref(false);
-const newsletterSuccess = ref(false);
 
-async function subscribeNewsletter() {
-  if (!newsletterEmail.value) return;
-  newsletterLoading.value = true;
-  // Simulate API call
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  newsletterLoading.value = false;
-  newsletterSuccess.value = true;
-}
 
 
 // Search bar state
@@ -1047,6 +983,20 @@ onMounted(async () => {
     if (statsSection.value) {
       observer.observe(statsSection.value);
     }
+
+    // Reveal animation observer
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible')
+            revealObserver.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
+    )
+    document.querySelectorAll('.reveal-section').forEach((el) => revealObserver.observe(el))
   } catch (e) {
     console.error('Failed to load home data', e);
   } finally {
@@ -1118,6 +1068,23 @@ onMounted(async () => {
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(40px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes subtle-zoom {
+  from { transform: scale(1); }
+  to   { transform: scale(1.1); }
+}
+
+/* Reveal on scroll */
+.reveal-section {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-section.is-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Scroll indicator dot */

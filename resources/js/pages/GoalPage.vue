@@ -31,12 +31,12 @@
           <!-- Trust Signals -->
           <div class="flex flex-wrap justify-center gap-8 md:gap-16 pt-8 border-t border-white/20 w-full max-w-2xl">
             <div class="flex flex-col items-center">
-              <span class="text-3xl md:text-4xl font-black text-white">10,000+</span>
+              <span class="text-3xl md:text-4xl font-black text-white">{{ stats.total_customers.toLocaleString() }}+</span>
               <span class="text-sm md:text-base text-white/70 font-bold uppercase tracking-widest">นักเดินทางที่ไว้วางใจ</span>
             </div>
             <div class="flex flex-col items-center">
               <div class="flex items-center gap-1 mb-1">
-                <span class="text-3xl md:text-4xl font-black text-white">4.8</span>
+                <span class="text-3xl md:text-4xl font-black text-white">{{ stats.avg_rating.toFixed(1) }}</span>
                 <span class="material-symbols-rounded text-[var(--color-gold)] text-2xl md:text-3xl">star</span>
               </div>
               <span class="text-sm md:text-base text-white/70 font-bold uppercase tracking-widest">คะแนนรีวิวจากผู้ใช้จริง</span>
@@ -73,7 +73,7 @@
               <span class="w-10 h-[2px] bg-[var(--color-accent)]"></span>
               จุดเริ่มต้นของเรา
             </div>
-            <h2 class="text-4xl md:text-5xl lg:text-7xl font-extrabold text-[var(--color-text-dark)] leading-[1.1]">
+            <h2 class="text-3xl md:text-4xl lg:text-6xl font-extrabold text-[var(--color-text-dark)] leading-[1.1]">
               จากความเจ็บปวด<br class="hidden sm:block" />สู่ความตั้งใจที่จะเปลี่ยน
             </h2>
             <div class="space-y-8 text-xl text-[var(--color-text-mid)] leading-relaxed font-medium">
@@ -100,8 +100,8 @@
               <div class="absolute -inset-6 bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-gold)]/20 rounded-[3rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
               <div class="relative rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[4/5]">
                 <img
-                  src="/images/nature_travel.webp"
-                  alt="ความสุขของการเดินทางธรรมชาติ"
+                  src="/images/ceoluilaykhao.webp"
+                  alt="ผู้ก่อตั้งลุยเลเขา"
                   class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 />
                 <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -298,77 +298,18 @@
         </div>
       </div>
     </section>
-
-    <!-- ══════════════════════════════════════════
-         FINAL CTA
-    ══════════════════════════════════════════ -->
-    <section class="relative py-32 md:py-48 w-full overflow-hidden bg-[#0D2B1E]">
-      <!-- Full-Width Background Wrapper -->
-      <div class="absolute inset-0 z-0">
-        <img
-          src="/images/landscape.webp"
-          alt="Ready to explore"
-          class="w-full h-full object-cover scale-105 motion-safe:animate-[subtle-zoom_60s_infinite_alternate]"
-        />
-        <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#1A3A2E]/80 to-transparent"></div>
-      </div>
-      
-      <!-- Premium UI Decorations -->
-      <div class="absolute top-0 right-0 w-[60rem] h-[60rem] bg-[var(--color-accent)]/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-white/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
-
-      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="reveal-section max-w-4xl">
-          <div class="inline-flex items-center gap-3 text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-10">
-            <span class="w-12 h-[2px] bg-[var(--color-gold)]"></span>
-            พร้อมจะออกไปลุยหรือยัง?
-          </div>
-          
-          <h2 class="text-5xl md:text-6xl lg:text-8xl font-black text-white leading-[1.05] mb-10 tracking-tight">
-            ให้เราช่วยสร้าง<br/>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 underline decoration-[var(--color-gold)] decoration-8">ความทรงจำ</span> ที่สวยงามของคุณ
-          </h2>
-          
-          <p class="text-xl md:text-2xl text-white/80 leading-relaxed font-medium mb-16 max-w-2xl border-l-4 border-[var(--color-gold)] pl-8">
-            เราดูแลทุกรายละเอียด เพื่อให้คุณได้ใช้เวลาที่มีค่าไปกับการ "ซึมซับบรรยากาศ" และ "สนุกกับการเดินทาง" อย่างเต็มที่
-          </p>
-          
-          <div class="flex flex-col sm:flex-row gap-6">
-            <router-link
-              to="/trips"
-              class="inline-flex items-center justify-center gap-4 bg-[var(--color-accent)] text-white px-12 py-6 rounded-[2rem] text-2xl font-black hover:bg-[#3D8F66] hover:shadow-[0_20px_50px_rgba(76,175,125,0.4)] transition-all duration-500 group/btn"
-            >
-              <span>เริ่มผจญภัยกับเราวันนี้</span>
-              <span class="material-symbols-rounded text-3xl group-hover/btn:translate-x-2 transition-transform">explore</span>
-            </router-link>
-            <router-link
-              to="/about"
-              class="inline-flex items-center justify-center gap-4 bg-white/10 backdrop-blur-md border border-white/20 text-white px-12 py-6 rounded-[2rem] text-2xl font-black hover:bg-white/20 transition-all duration-500"
-            >
-              รู้จักเรามากขึ้น
-            </router-link>
-          </div>
-          
-          <!-- Quick Status -->
-          <div class="mt-20 flex items-center gap-10 opacity-70">
-            <div class="flex items-center gap-3">
-              <span class="material-symbols-rounded text-white">verified_user</span>
-              <span class="font-bold text-white">จองปลอดภัย 100%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="material-symbols-rounded text-white">thumb_up</span>
-              <span class="font-bold text-white">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '../lib/axios'
+
+const stats = ref({
+  total_customers: 0,
+  avg_rating: 0,
+  total_trips: 0
+})
 
 const visions = ref([
   { image: '/images/no_wating.webp', title: 'เที่ยวได้ทันที', desc: 'ไม่ต้องรอคิว ไม่ต้องรอแอดมิน ทุกอย่างจัดการได้ด้วยตัวเองแบบเรียลไทม์', color: '#4CAF7D' },
@@ -377,7 +318,16 @@ const visions = ref([
   { image: '/images/no_lucky.webp', title: 'มั่นใจได้ทุกทริป', desc: 'ระบบที่เชื่อถือได้ พร้อมทีมงานดูแล เพื่อให้ทุกการเดินทางของคุณราบรื่นที่สุด', color: '#007B8F' },
 ])
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res = await api.get('/stats')
+    if (res.data?.data) {
+      stats.value = res.data.data
+    }
+  } catch (e) {
+    console.error('Failed to load stats', e)
+  }
+
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
   const observer = new IntersectionObserver(

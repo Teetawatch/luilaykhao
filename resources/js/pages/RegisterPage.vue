@@ -1,27 +1,27 @@
 <template>
-  <div class="min-h-[calc(100vh-4rem)] flex bg-white">
+  <div class="min-h-screen flex flex-col lg:flex-row bg-white">
     <!-- Image Side -->
-    <div class="hidden lg:flex lg:w-1/2 relative bg-sand-dark overflow-hidden">
+    <div class="w-full lg:w-1/2 relative bg-sand-dark h-64 sm:h-80 md:h-96 lg:h-auto overflow-hidden">
       <div class="absolute inset-0 bg-black/40 z-10"></div>
-      <img src="/images/van_show.webp" alt="Adventure" class="absolute inset-0 w-full h-full object-contain" />
-      <div class="relative z-20 flex flex-col justify-center px-16 text-white h-full">
-        <h1 class="font-anuphan text-5xl font-bold mb-6 leading-tight">
+      <img src="/images/register_page.png" alt="เริ่มต้นการเดินทาง" class="absolute inset-0 w-full h-full object-cover" />
+      <div class="relative z-20 flex flex-col justify-center px-6 sm:px-10 md:px-16 text-white h-full">
+        <h1 class="font-anuphan text-2xl sm:text-3xl md:text-5xl font-bold mb-3 md:mb-6 leading-tight">
           เริ่มต้นการเดินทาง<br />ครั้งใหม่ไปกับเรา
         </h1>
-        <p class="text-lg text-white/90 max-w-md leading-relaxed mb-12">
+        <p class="hidden sm:block text-sm md:text-lg text-white/90 max-w-md leading-relaxed mb-6 md:mb-12">
           เข้าร่วมกับ ลุยเลเขา เพื่อค้นพบเส้นทางธรรมชาติที่สวยงาม และประสบการณ์การผจญภัยที่คุณจะไม่มีวันลืม
         </p>
         
-        <div class="flex items-center space-x-4 text-sm font-medium">
+        <div class="hidden sm:flex items-center space-x-4 text-xs md:text-sm font-medium">
           <div class="flex -space-x-3">
-            <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center border-2 border-transparent text-white z-30 shadow-md">
+            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent flex items-center justify-center border-2 border-transparent text-white z-30 shadow-md">
               <i class="fa-solid fa-user"></i>
             </div>
-            <div class="w-10 h-10 rounded-full bg-accent-mid flex items-center justify-center border-2 border-white text-white z-20 shadow-md">
+            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent-mid flex items-center justify-center border-2 border-white text-white z-20 shadow-md">
               <i class="fa-solid fa-star"></i>
             </div>
-            <div class="w-10 h-10 rounded-full bg-sand-dark flex items-center justify-center border-2 border-white text-text-dark z-10 shadow-md">
-              <span class="text-xs">+1k</span>
+            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-sand-dark flex items-center justify-center border-2 border-white text-text-dark z-10 shadow-md">
+              <span class="text-[10px] md:text-xs">+1k</span>
             </div>
           </div>
           <span class="text-white/90">นักเดินทางกว่า 1,000+ คนไว้วางใจเรา</span>
@@ -30,8 +30,8 @@
     </div>
 
     <!-- Form Side -->
-    <div class="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 lg:px-16 bg-sand/20">
-      <div class="w-full max-w-md">
+    <div class="w-full lg:w-1/2 flex items-center justify-center px-6 py-10 md:py-16 lg:px-16 bg-sand/5">
+      <div class="w-full max-w-xl">
         <div class="text-center lg:text-left mb-10">
           <div class="lg:hidden w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fa-solid fa-mountain-sun text-accent text-2xl"></i>
