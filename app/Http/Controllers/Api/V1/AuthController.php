@@ -141,15 +141,16 @@ class AuthController extends Controller
     }
 
 
-    public function socialRedirect(string $provider): \Illuminate\Http\RedirectResponse
+    public function socialRedirect(Request $request, string $provider): \Illuminate\Http\RedirectResponse
     {
         $this->validateProvider($provider);
 
         $driver = Socialite::driver($provider)->stateless();
+        $state = $this->makeSocialState($request->query('return_to'));
 
-        if ($provider === 'line') {
+        if ($state) {
             $driver = $driver->with([
-                'state' => Str::random(40),
+                'state' => $state,
             ]);
         }
 
@@ -168,6 +169,7 @@ class AuthController extends Controller
         $this->validateProvider($provider);
 
         $frontendUrl = env('FRONTEND_URL', config('app.url'));
+        $mobileReturnTo = $this->mobileReturnToFromState($request->get('state'));
 
         \Log::info('Social Callback params', [
             'provider' => $provider,
@@ -182,12 +184,12 @@ class AuthController extends Controller
             $isCancelled = in_array($errorCode, ['access_denied', 'user_cancelled_login'], true);
             $errorType = $isCancelled ? 'social_auth_cancelled' : 'social_auth_failed';
 
-            return redirect($frontendUrl . '/login?error=' . $errorType . '&message=' . urlencode($errorMessage));
+            return $this->redirectSocialError($frontendUrl, $mobileReturnTo, $errorType, $errorMessage);
         }
 
         // Check if code is present
         if (!$request->has('code')) {
-            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode('ไม่พบรหัสยืนยันตัวตน กรุณาลองใหม่อีกครั้ง'));
+            return $this->redirectSocialError($frontendUrl, $mobileReturnTo, 'social_auth_failed', 'ไม่พบรหัสยืนยันตัวตน กรุณาลองใหม่อีกครั้ง');
         }
 
         try {
@@ -204,7 +206,7 @@ class AuthController extends Controller
                 $message = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับผู้ให้บริการภายนอก';
             }
             
-            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode($message));
+            return $this->redirectSocialError($frontendUrl, $mobileReturnTo, 'social_auth_failed', $message);
         }
 
         try {
@@ -250,7 +252,7 @@ class AuthController extends Controller
             $user->load('roles');
             $token = $user->createToken('auth-token')->plainTextToken;
 
-            return redirect($frontendUrl . '/auth/social/callback?token=' . $token . '&user=' . urlencode(json_encode($this->formatUser($user))));
+            return $this->redirectSocialSuccess($frontendUrl, $mobileReturnTo, $token, $this->formatUser($user));
         } catch (\Throwable $e) {
             \Log::error('Social user processing error: ' . $e->getMessage(), [
                 'provider' => $provider,
@@ -259,8 +261,90 @@ class AuthController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect($frontendUrl . '/login?error=social_auth_failed&message=' . urlencode('เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง'));
+            return $this->redirectSocialError($frontendUrl, $mobileReturnTo, 'social_auth_failed', 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง');
         }
+    }
+
+    private function makeSocialState(?string $returnTo): string
+    {
+        $payload = [
+            'nonce' => Str::random(24),
+        ];
+
+        if ($returnTo && $this->isAllowedMobileReturnTo($returnTo)) {
+            $payload['return_to'] = $returnTo;
+        }
+
+        return rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
+    }
+
+    private function mobileReturnToFromState(mixed $state): ?string
+    {
+        if (!is_string($state) || $state === '') {
+            return null;
+        }
+
+        $encoded = strtr($state, '-_', '+/');
+        $padding = strlen($encoded) % 4;
+        if ($padding > 0) {
+            $encoded .= str_repeat('=', 4 - $padding);
+        }
+
+        $json = base64_decode($encoded, true);
+        if ($json === false) {
+            return null;
+        }
+
+        $payload = json_decode($json, true);
+        $returnTo = is_array($payload) ? ($payload['return_to'] ?? null) : null;
+
+        return is_string($returnTo) && $this->isAllowedMobileReturnTo($returnTo)
+            ? $returnTo
+            : null;
+    }
+
+    private function isAllowedMobileReturnTo(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        return ($parts['scheme'] ?? null) === 'luilaykhao'
+            && ($parts['host'] ?? null) === 'auth'
+            && ($parts['path'] ?? null) === '/social/callback';
+    }
+
+    private function redirectSocialSuccess(
+        string $frontendUrl,
+        ?string $mobileReturnTo,
+        string $token,
+        array $user,
+    ): \Illuminate\Http\RedirectResponse {
+        $baseUrl = $mobileReturnTo ?: rtrim($frontendUrl, '/') . '/auth/social/callback';
+
+        return $this->redirectWithQuery($baseUrl, [
+            'token' => $token,
+            'user' => json_encode($user),
+        ]);
+    }
+
+    private function redirectSocialError(
+        string $frontendUrl,
+        ?string $mobileReturnTo,
+        string $error,
+        mixed $message,
+    ): \Illuminate\Http\RedirectResponse {
+        $baseUrl = $mobileReturnTo ?: rtrim($frontendUrl, '/') . '/login';
+
+        return $this->redirectWithQuery($baseUrl, [
+            'error' => $error,
+            'message' => (string) $message,
+        ]);
+    }
+
+    private function redirectWithQuery(string $baseUrl, array $params): \Illuminate\Http\RedirectResponse
+    {
+        $separator = str_contains($baseUrl, '?') ? '&' : '?';
+
+        return redirect($baseUrl . $separator . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
     }
 
     private function validateProvider(string $provider): void
