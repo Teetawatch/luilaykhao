@@ -22,5 +22,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
-/driver_app
-/luilaykhao_app
+# /driver_app
+# /luilaykhao_app
+
