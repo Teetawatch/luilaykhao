@@ -5,20 +5,20 @@ use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
+use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\DistanceController;
+use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\StaffController;
-use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
-use App\Http\Controllers\Api\V1\DistanceController;
-use App\Http\Controllers\Api\V1\ContactController;
-use App\Http\Controllers\Api\V1\PromotionController;
-
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -103,6 +103,13 @@ Route::prefix('v1')->group(function () {
         Route::put('notifications/{id}/read', [NotificationController::class, 'markRead']);
         Route::put('notifications/read-all', [NotificationController::class, 'markAllRead']);
         Route::delete('notifications/{id}', [NotificationController::class, 'destroy']);
+
+        // Driver app
+        Route::prefix('driver')->group(function () {
+            Route::get('me', [DriverController::class, 'me']);
+            Route::get('schedules', [DriverController::class, 'schedules']);
+            Route::post('check-in', [DriverController::class, 'checkIn']);
+        });
     });
 
     // Payment webhook (no auth, verify signature)
@@ -125,10 +132,9 @@ Route::prefix('v1')->group(function () {
         Route::get('{vehicleId}/eta', [DistanceController::class, 'vehicleETA']);
         Route::get('{vehicleId}/eta/schedule/{scheduleId}', [DistanceController::class, 'vehicleETAToPickups']);
     });
-    
+
     // Contacts
     Route::post('contacts', [ContactController::class, 'store']);
-
 
     // Analytics (public)
     Route::get('stats', [AnalyticsController::class, 'publicStats']);
@@ -257,4 +263,3 @@ Route::prefix('v1')->group(function () {
         Route::delete('promotions/{id}', [PromotionController::class, 'destroy']);
     });
 });
-
