@@ -36,6 +36,7 @@ class BookingResource extends JsonResource
             'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function() {
                 return [
                     'id' => $this->pickupPoint->id,
+                    'region' => $this->pickupPoint->region,
                     'pickup_location' => $this->pickupPoint->pickup_location,
                     'region_label' => $this->pickupPoint->region_label,
                     'map_url' => $this->pickupPoint->map_url,

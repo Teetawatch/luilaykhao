@@ -49,6 +49,7 @@ class BookingController extends Controller
                 'schedule.trip',
                 'schedule.pickupPoints',
                 'schedule.staff',
+                'pickupPoint',
                 'seats',
                 'passengers',
                 'installmentPayments',
@@ -64,7 +65,11 @@ class BookingController extends Controller
         $bookings = Booking::where('user_id', $request->user()->id)
             ->with([
                 'schedule.trip',
+                'schedule.pickupPoints',
                 'schedule.staff',
+                'pickupPoint',
+                'seats',
+                'passengers',
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
             ])
             ->orderByDesc('created_at')
