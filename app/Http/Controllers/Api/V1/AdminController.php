@@ -69,7 +69,7 @@ class AdminController extends Controller
             ->orderByDesc('created_at')
             ->take(5)
             ->get()
-            ->map(fn($b) => new BookingResource($b));
+            ->map(fn ($b) => new BookingResource($b));
 
         // Monthly revenue chart data (last 6 months)
         $revenueChart = [];
@@ -124,18 +124,19 @@ class AdminController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('title', 'like', "%{$request->search}%")
-                  ->orWhere('location', 'like', "%{$request->search}%");
+                    ->orWhere('location', 'like', "%{$request->search}%");
             });
         }
 
         $trips = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
 
-        return $this->paginated($trips->through(fn($t) => new TripResource($t)));
+        return $this->paginated($trips->through(fn ($t) => new TripResource($t)));
     }
 
     public function showTrip(int $id): JsonResponse
     {
         $trip = Trip::findOrFail($id);
+
         return $this->success(new TripResource($trip));
     }
 
@@ -144,9 +145,9 @@ class AdminController extends Controller
         $data = $request->validated();
         $slugBase = Str::slug($data['title']);
         if (empty($slugBase)) {
-            $slugBase = 'trip-' . Str::random(3);
+            $slugBase = 'trip-'.Str::random(3);
         }
-        $data['slug'] = $slugBase . '-' . Str::lower(Str::random(5));
+        $data['slug'] = $slugBase.'-'.Str::lower(Str::random(5));
 
         $trip = Trip::create($data);
 
@@ -173,7 +174,7 @@ class AdminController extends Controller
         $trips = Trip::whereIn('id', $request->trip_ids)->get();
         foreach ($trips as $trip) {
             $trip->update([
-                $request->field => $request->value
+                $request->field => $request->value,
             ]);
         }
 
@@ -185,7 +186,7 @@ class AdminController extends Controller
         $trip = Trip::findOrFail($id);
 
         // check if trip has any confirmed bookings
-        $hasBookings = Booking::whereHas('schedule', fn($q) => $q->where('trip_id', $id))
+        $hasBookings = Booking::whereHas('schedule', fn ($q) => $q->where('trip_id', $id))
             ->whereIn('status', ['pending', 'confirmed'])
             ->exists();
 
@@ -209,7 +210,7 @@ class AdminController extends Controller
             $query->where('trip_id', $request->trip_id);
         }
         if ($request->filled('search')) {
-            $query->whereHas('trip', fn($q) => $q->where('title', 'like', "%{$request->search}%"));
+            $query->whereHas('trip', fn ($q) => $q->where('title', 'like', "%{$request->search}%"));
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -220,7 +221,7 @@ class AdminController extends Controller
 
         $schedules = $query->orderByDesc('departure_date')->paginate($request->get('per_page', 15));
 
-        return $this->paginated($schedules->through(fn($s) => new TripScheduleResource($s)));
+        return $this->paginated($schedules->through(fn ($s) => new TripScheduleResource($s)));
     }
 
     public function storeSchedule(StoreScheduleRequest $request): JsonResponse
@@ -280,7 +281,7 @@ class AdminController extends Controller
     {
         $schedule = TripSchedule::with('trip')->findOrFail($id);
 
-        if (!Schema::hasTable('schedule_staff_assignments')) {
+        if (! Schema::hasTable('schedule_staff_assignments')) {
             return $this->success([
                 'schedule' => [
                     'id' => $schedule->id,
@@ -318,7 +319,7 @@ class AdminController extends Controller
     {
         $schedule = TripSchedule::findOrFail($id);
 
-        if (!Schema::hasTable('schedule_staff_assignments')) {
+        if (! Schema::hasTable('schedule_staff_assignments')) {
             return $this->error('ยังไม่ได้ตั้งค่าตารางมอบหมายสตาฟในระบบ', 422);
         }
 
@@ -334,7 +335,7 @@ class AdminController extends Controller
             ->where('guard_name', config('auth.defaults.guard', 'web'))
             ->exists();
 
-        if (!$staffRoleExists && $staffIds->isNotEmpty()) {
+        if (! $staffRoleExists && $staffIds->isNotEmpty()) {
             return $this->error('ยังไม่ได้ตั้งค่า role staff ในระบบ', 422);
         }
 
@@ -378,14 +379,14 @@ class AdminController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('booking_ref', 'like', "%{$request->search}%")
-                  ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$request->search}%")
-                      ->orWhere('email', 'like', "%{$request->search}%"));
+                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%")
+                        ->orWhere('email', 'like', "%{$request->search}%"));
             });
         }
 
         $bookings = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
 
-        return $this->paginated($bookings->through(fn($b) => new BookingResource($b)));
+        return $this->paginated($bookings->through(fn ($b) => new BookingResource($b)));
     }
 
     public function showBooking(string $ref): JsonResponse
@@ -427,7 +428,7 @@ class AdminController extends Controller
 
         $passengers = BookingPassenger::whereHas('booking', function ($q) use ($scheduleId) {
             $q->where('schedule_id', $scheduleId)
-              ->whereIn('status', ['confirmed', 'pending']);
+                ->whereIn('status', ['confirmed', 'pending']);
         })->with('booking.seats')->get();
 
         return $this->success([
@@ -449,7 +450,7 @@ class AdminController extends Controller
 
         $vehicles = $query->orderBy('name')->paginate($request->get('per_page', 15));
 
-        return $this->paginated($vehicles->through(fn($v) => new VehicleResource($v)));
+        return $this->paginated($vehicles->through(fn ($v) => new VehicleResource($v)));
     }
 
     public function storeVehicle(StoreVehicleRequest $request): JsonResponse
@@ -491,7 +492,7 @@ class AdminController extends Controller
         $vehicle = Vehicle::findOrFail($vehicleId);
         $points = $vehicle->pickupPoints()->orderBy('sort_order')->orderBy('id')->get();
 
-        return $this->success($points->map(fn($p) => [
+        return $this->success($points->map(fn ($p) => [
             'id' => $p->id,
             'region' => $p->region,
             'region_label' => $p->region_label,
@@ -586,8 +587,8 @@ class AdminController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('email', 'like', "%{$request->search}%")
-                  ->orWhere('phone', 'like', "%{$request->search}%");
+                    ->orWhere('email', 'like', "%{$request->search}%")
+                    ->orWhere('phone', 'like', "%{$request->search}%");
             });
         }
 
@@ -602,6 +603,7 @@ class AdminController extends Controller
                 'avatar_url' => $user->avatar_url,
                 'social_provider' => $user->social_provider,
                 'roles' => $user->roles->pluck('name'),
+                'has_driver_pin' => ! empty($user->driver_pin_hash),
                 'bookings_count' => $user->bookings_count,
                 'assigned_schedules_count' => $user->assigned_schedules_count,
                 'created_at' => $user->created_at?->toISOString(),
@@ -616,7 +618,7 @@ class AdminController extends Controller
             ->where('guard_name', config('auth.defaults.guard', 'web'))
             ->exists();
 
-        if (!$staffRoleExists) {
+        if (! $staffRoleExists) {
             $empty = User::query()
                 ->whereRaw('1 = 0')
                 ->paginate($request->get('per_page', 30));
@@ -640,8 +642,8 @@ class AdminController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('email', 'like', "%{$request->search}%")
-                  ->orWhere('phone', 'like', "%{$request->search}%");
+                    ->orWhere('email', 'like', "%{$request->search}%")
+                    ->orWhere('phone', 'like', "%{$request->search}%");
             });
         }
 
@@ -665,6 +667,7 @@ class AdminController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:6'],
+            'driver_pin' => ['nullable', 'string', 'regex:/^\d{4,8}$/'],
             'role' => ['required', 'in:admin,operator,staff,customer'],
         ]);
 
@@ -673,6 +676,9 @@ class AdminController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($validated['password']),
+            'driver_pin_hash' => ! empty($validated['driver_pin'])
+                ? Hash::make($validated['driver_pin'])
+                : null,
         ]);
 
         $user->assignRole($validated['role']);
@@ -683,6 +689,7 @@ class AdminController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'roles' => $user->roles->pluck('name'),
+            'has_driver_pin' => ! empty($user->driver_pin_hash),
         ], 'สร้างผู้ใช้สำเร็จ', 201);
     }
 
@@ -692,15 +699,19 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'unique:users,email,' . $id],
+            'email' => ['sometimes', 'email', 'unique:users,email,'.$id],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['nullable', 'string', 'min:6'],
+            'driver_pin' => ['nullable', 'string', 'regex:/^\d{4,8}$/'],
             'role' => ['sometimes', 'in:admin,operator,staff,customer'],
         ]);
 
-        $userData = collect($validated)->except(['password', 'role'])->toArray();
-        if (!empty($validated['password'])) {
+        $userData = collect($validated)->except(['password', 'driver_pin', 'role'])->toArray();
+        if (! empty($validated['password'])) {
             $userData['password'] = Hash::make($validated['password']);
+        }
+        if (isset($validated['driver_pin']) && $validated['driver_pin'] !== '') {
+            $userData['driver_pin_hash'] = Hash::make($validated['driver_pin']);
         }
 
         $user->update($userData);
@@ -715,6 +726,7 @@ class AdminController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'roles' => $user->fresh()->roles->pluck('name'),
+            'has_driver_pin' => ! empty($user->driver_pin_hash),
         ], 'อัปเดตผู้ใช้สำเร็จ');
     }
 
@@ -819,7 +831,7 @@ class AdminController extends Controller
         ]);
 
         $file = $request->file('file');
-        $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $filename = time().'_'.Str::random(8).'.'.$file->getClientOriginalExtension();
 
         $path = $file->storeAs('media', $filename, 'public');
         $url = Storage::disk('public')->url($path);
@@ -833,18 +845,22 @@ class AdminController extends Controller
     public function listMedia(): JsonResponse
     {
         $files = Storage::disk('public')->files('media');
-        
-        $extractFilename = function($url) {
-            return basename(parse_url((string)$url, PHP_URL_PATH));
+
+        $extractFilename = function ($url) {
+            return basename(parse_url((string) $url, PHP_URL_PATH));
         };
 
         // Collect all in-use filenames from Trips
         $trips = Trip::select('cover_image', 'gallery')->get();
         $inUseFilenames = collect();
         foreach ($trips as $trip) {
-            if ($trip->cover_image) $inUseFilenames->push($extractFilename($trip->cover_image));
+            if ($trip->cover_image) {
+                $inUseFilenames->push($extractFilename($trip->cover_image));
+            }
             if ($trip->gallery && is_array($trip->gallery)) {
-                foreach ($trip->gallery as $img) $inUseFilenames->push($extractFilename($img));
+                foreach ($trip->gallery as $img) {
+                    $inUseFilenames->push($extractFilename($img));
+                }
             }
         }
 
@@ -852,7 +868,9 @@ class AdminController extends Controller
         $reviews = Review::select('images')->get();
         foreach ($reviews as $review) {
             if ($review->images && is_array($review->images)) {
-                foreach ($review->images as $img) $inUseFilenames->push($extractFilename($img));
+                foreach ($review->images as $img) {
+                    $inUseFilenames->push($extractFilename($img));
+                }
             }
         }
 
@@ -862,6 +880,7 @@ class AdminController extends Controller
         $media = collect($files)->map(function ($path) use ($inUseFilenames) {
             $filename = basename($path);
             $url = Storage::disk('public')->url($path);
+
             return [
                 'filename' => $filename,
                 'url' => $url,
@@ -880,10 +899,11 @@ class AdminController extends Controller
             'filename' => ['required', 'string'],
         ]);
 
-        $path = 'media/' . $request->filename;
+        $path = 'media/'.$request->filename;
 
         if (Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
+
             return $this->success(null, 'ลบไฟล์สำเร็จ');
         }
 

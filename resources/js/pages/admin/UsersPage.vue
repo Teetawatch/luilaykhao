@@ -118,6 +118,11 @@
               <input v-model="form.password" type="password" :required="!editing" placeholder="••••••" />
             </div>
             <div class="form-group">
+              <label>{{ editing ? 'รหัสคนขับใหม่ (ว่าง = ไม่เปลี่ยน)' : 'รหัสคนขับ' }}</label>
+              <input v-model="form.driver_pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="เช่น 2486" />
+              <small class="form-hint">ใช้ 4-8 ตัวเลข สำหรับเข้าแอปคนขับแบบง่าย</small>
+            </div>
+            <div class="form-group">
               <label>บทบาท *</label>
               <select v-model="form.role" required>
                 <option value="customer">ลูกค้า</option>
@@ -169,7 +174,7 @@ const showDeleteConfirm = ref(false);
 const editing = ref(null);
 const deleting = ref(null);
 const submitting = ref(false);
-const form = reactive({ name: '', email: '', phone: '', password: '', role: 'customer' });
+const form = reactive({ name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer' });
 
 const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า' };
 const signupProviderLabels = { email: 'อีเมล', google: 'Gmail', facebook: 'Facebook', line: 'LINE' };
@@ -194,9 +199,9 @@ const goPage = (page) => fetchData(page);
 const openForm = (u = null) => {
   editing.value = u;
   if (u) {
-    Object.assign(form, { name: u.name, email: u.email, phone: u.phone || '', password: '', role: u.roles?.[0] || 'customer' });
+    Object.assign(form, { name: u.name, email: u.email, phone: u.phone || '', password: '', driver_pin: '', role: u.roles?.[0] || 'customer' });
   } else {
-    Object.assign(form, { name: '', email: '', phone: '', password: '', role: 'customer' });
+    Object.assign(form, { name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer' });
   }
   showForm.value = true;
 };
@@ -206,6 +211,7 @@ const submitForm = async () => {
   try {
     const data = { ...form };
     if (editing.value && !data.password) delete data.password;
+    if (!data.driver_pin) delete data.driver_pin;
     if (editing.value) {
       await admin.updateUser(editing.value.id, data);
     } else {
@@ -316,5 +322,12 @@ onMounted(() => fetchData());
 .provider-line {
   background: #ecfdf3;
   color: #047857;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 </style>

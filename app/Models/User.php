@@ -8,17 +8,19 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'avatar', 'title', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'social_provider', 'social_id'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'driver_pin_hash', 'avatar', 'title', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'social_provider', 'social_id'])]
+#[Hidden(['password', 'driver_pin_hash', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     protected function casts(): array
     {
@@ -41,7 +43,7 @@ class User extends Authenticatable
         return $this->hasMany(Review::class);
     }
 
-    public function loyaltyAccount(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function loyaltyAccount(): HasOne
     {
         return $this->hasOne(LoyaltyAccount::class);
     }
@@ -75,22 +77,22 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute(): string
     {
-        if (!$this->avatar) {
-            return "https://ui-avatars.com/api/?name=" . urlencode($this->name) . "&background=2D7A4F&color=fff";
+        if (! $this->avatar) {
+            return 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=2D7A4F&color=fff';
         }
-        
+
         if (str_starts_with($this->avatar, 'http')) {
             return $this->avatar;
         }
 
         // Clean leading slashes to prevent double slashes in URL
         $path = ltrim($this->avatar, '/');
-        
+
         // If it starts with avatars, it's stored in public/avatars directamente
         if (str_starts_with($path, 'avatars')) {
             return url($path);
         }
 
-        return \Illuminate\Support\Facades\Storage::url($path);
+        return Storage::url($path);
     }
 }

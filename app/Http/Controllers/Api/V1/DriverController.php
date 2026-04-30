@@ -6,14 +6,45 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\TripSchedule;
+use App\Models\User;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class DriverController extends Controller
 {
     use ApiResponse;
+
+    public function pinLogin(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'driver_pin' => ['required', 'string', 'regex:/^\d{4,8}$/'],
+        ]);
+
+        $user = User::role(['staff', 'operator', 'admin'])
+            ->whereNotNull('driver_pin_hash')
+            ->get()
+            ->first(fn (User $candidate) => Hash::check($validated['driver_pin'], $candidate->driver_pin_hash));
+
+        if (! $user) {
+            return $this->error('ไม่พบรหัสคนขับนี้ กรุณาตรวจสอบอีกครั้ง', 401);
+        }
+
+        $user->load('roles');
+        $token = $user->createToken('driver-app-token')->plainTextToken;
+
+        return $this->success([
+            'token' => $token,
+            'user' => $this->formatUser($user),
+            'schedules' => $this->driverSchedulesQueryForUser($user)
+                ->limit(10)
+                ->get()
+                ->map(fn (TripSchedule $schedule) => $this->formatSchedule($schedule))
+                ->values(),
+        ], 'เข้าสู่ระบบคนขับสำเร็จ');
+    }
 
     public function me(Request $request): JsonResponse
     {
@@ -25,13 +56,7 @@ class DriverController extends Controller
         $user->load('roles');
 
         return $this->success([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'roles' => $user->roles->pluck('name')->values(),
-            ],
+            'user' => $this->formatUser($user),
             'schedules' => $this->driverSchedulesQuery($request)
                 ->limit(10)
                 ->get()
@@ -125,8 +150,11 @@ class DriverController extends Controller
 
     private function driverSchedulesQuery(Request $request): Builder
     {
-        $user = $request->user();
+        return $this->driverSchedulesQueryForUser($request->user());
+    }
 
+    private function driverSchedulesQueryForUser(User $user): Builder
+    {
         $query = TripSchedule::with([
             'trip',
             'vehicle',
@@ -204,6 +232,17 @@ class DriverController extends Controller
     private function normalizePhone(?string $phone): string
     {
         return preg_replace('/\D+/', '', $phone ?? '') ?? '';
+    }
+
+    private function formatUser(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'roles' => $user->roles->pluck('name')->values(),
+        ];
     }
 
     private function formatSchedule(TripSchedule $schedule): array

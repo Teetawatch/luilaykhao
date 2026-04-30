@@ -47,6 +47,7 @@ Route::prefix('v1')->group(function () {
     // Vehicles (public for driver app)
     Route::get('vehicles', [VehicleTrackingController::class, 'vehicles']);
     Route::get('vehicles/{id}/schedules/today', [VehicleTrackingController::class, 'vehicleTodaySchedules']);
+    Route::post('driver/pin-login', [DriverController::class, 'pinLogin']);
 
     // Reviews (public read)
     Route::get('reviews', [ReviewController::class, 'index']);
