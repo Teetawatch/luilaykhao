@@ -15,6 +15,7 @@ use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\Review;
 use App\Models\SchedulePickupPoint;
+use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -418,6 +419,19 @@ class AdminController extends Controller
 
         // Send status change email notification to customer
         $this->mailService->sendBookingStatusChangedEmail($booking->fresh(), $request->status);
+        if ($request->status !== 'cancelled') {
+            SmartNotification::send(
+                $booking->user_id,
+                $request->status === 'refunded' ? 'booking_refunded' : 'booking_status_changed',
+                $request->status === 'refunded' ? 'ดำเนินการคืนเงินแล้ว' : 'อัปเดตสถานะการจอง',
+                "เลขการจอง {$booking->booking_ref} เปลี่ยนสถานะเป็น {$request->status}",
+                [
+                    'booking_ref' => $booking->booking_ref,
+                    'status' => $request->status,
+                    'route' => 'booking',
+                ],
+            );
+        }
 
         return $this->success(new BookingResource($booking->fresh()), 'อัปเดตสถานะสำเร็จ');
     }

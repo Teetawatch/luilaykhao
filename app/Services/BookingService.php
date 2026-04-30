@@ -7,6 +7,7 @@ use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
 use App\Models\Promotion;
 use App\Models\SchedulePickupPoint;
+use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use Illuminate\Support\Facades\DB;
 
@@ -147,6 +148,16 @@ class BookingService
 
         // Send emails outside of DB transaction
         $this->mailService->sendBookingCreatedEmail($booking);
+        SmartNotification::send(
+            $booking->user_id,
+            'booking_created',
+            'สร้างการจองสำเร็จ',
+            "เลขการจอง {$booking->booking_ref} ถูกสร้างแล้ว กรุณาชำระเงินเพื่อยืนยันที่นั่ง",
+            [
+                'booking_ref' => $booking->booking_ref,
+                'route' => 'booking',
+            ],
+        );
 
         return $booking;
     }
@@ -199,6 +210,16 @@ class BookingService
 
         // Send cancellation email outside of DB transaction
         $this->mailService->sendBookingCancelledEmail($cancelled, $reason);
+        SmartNotification::send(
+            $cancelled->user_id,
+            'booking_cancelled',
+            'การจองถูกยกเลิก',
+            "เลขการจอง {$cancelled->booking_ref} ถูกยกเลิกแล้ว",
+            [
+                'booking_ref' => $cancelled->booking_ref,
+                'route' => 'booking',
+            ],
+        );
 
         return $cancelled;
     }

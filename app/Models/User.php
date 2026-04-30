@@ -58,6 +58,11 @@ class User extends Authenticatable
         return $this->hasMany(SmartNotification::class);
     }
 
+    public function fcmTokens(): HasMany
+    {
+        return $this->hasMany(FcmToken::class);
+    }
+
     public function assignedSchedules(): BelongsToMany
     {
         return $this->belongsToMany(TripSchedule::class, 'schedule_staff_assignments', 'user_id', 'schedule_id')

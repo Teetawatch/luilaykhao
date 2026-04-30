@@ -101,6 +101,8 @@ Route::prefix('v1')->group(function () {
         // Smart notifications
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('notifications/push-token', [NotificationController::class, 'storePushToken']);
+        Route::delete('notifications/push-token', [NotificationController::class, 'destroyPushToken']);
         Route::put('notifications/{id}/read', [NotificationController::class, 'markRead']);
         Route::put('notifications/read-all', [NotificationController::class, 'markAllRead']);
         Route::delete('notifications/{id}', [NotificationController::class, 'destroy']);

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\FcmService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
 
 class SmartNotification extends Model
 {
@@ -27,12 +29,23 @@ class SmartNotification extends Model
 
     public static function send(int $userId, string $type, string $title, string $body, array $data = []): self
     {
-        return static::create([
+        $notification = static::create([
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
             'body' => $body,
             'data' => $data,
         ]);
+
+        try {
+            app(FcmService::class)->sendNotification($notification);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to send push notification', [
+                'notification_id' => $notification->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return $notification;
     }
 }

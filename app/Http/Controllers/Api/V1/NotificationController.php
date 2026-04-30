@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\FcmToken;
 use App\Models\SmartNotification;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -67,5 +68,40 @@ class NotificationController extends Controller
             ->delete();
 
         return $this->success(null, 'ลบการแจ้งเตือนสำเร็จ');
+    }
+
+    public function storePushToken(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string', 'max:512'],
+            'platform' => ['nullable', 'string', 'max:32'],
+            'device_id' => ['nullable', 'string', 'max:128'],
+        ]);
+
+        FcmToken::updateOrCreate(
+            ['token' => $validated['token']],
+            [
+                'user_id' => $request->user()->id,
+                'platform' => $validated['platform'] ?? null,
+                'device_id' => $validated['device_id'] ?? null,
+                'is_active' => true,
+                'last_used_at' => now(),
+            ],
+        );
+
+        return $this->success(null, 'บันทึกอุปกรณ์รับแจ้งเตือนสำเร็จ');
+    }
+
+    public function destroyPushToken(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string', 'max:512'],
+        ]);
+
+        FcmToken::where('user_id', $request->user()->id)
+            ->where('token', $validated['token'])
+            ->update(['is_active' => false]);
+
+        return $this->success(null, 'ยกเลิกอุปกรณ์รับแจ้งเตือนสำเร็จ');
     }
 }

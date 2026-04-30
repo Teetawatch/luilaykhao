@@ -40,6 +40,11 @@ return [
         'distance_matrix_url' => 'https://maps.googleapis.com/maps/api/distancematrix/json',
     ],
 
+    'fcm' => [
+        'project_id' => env('FCM_PROJECT_ID'),
+        'service_account_path' => env('FCM_SERVICE_ACCOUNT_PATH', 'storage/app/firebase-service-account.json'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

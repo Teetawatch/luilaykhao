@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\ChargeRequest;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
+use App\Models\SmartNotification;
 use App\Services\BookingService;
 use App\Services\MailService;
 use App\Traits\ApiResponse;
@@ -108,6 +109,16 @@ class PaymentController extends Controller
 
             // Send payment confirmation email (installment)
             $this->mailService->sendPaymentConfirmedEmail($booking, 'installment');
+            SmartNotification::send(
+                $booking->user_id,
+                'payment_confirmed',
+                'ยืนยันการชำระเงินแล้ว',
+                "รับชำระงวดแรกของเลขการจอง {$booking->booking_ref} แล้ว",
+                [
+                    'booking_ref' => $booking->booking_ref,
+                    'route' => 'booking',
+                ],
+            );
 
             return $this->success([
                 'status'  => 'confirmed',
@@ -147,6 +158,16 @@ class PaymentController extends Controller
 
         // Send payment confirmation email (full)
         $this->mailService->sendPaymentConfirmedEmail($booking, 'full');
+        SmartNotification::send(
+            $booking->user_id,
+            'payment_confirmed',
+            'ยืนยันการชำระเงินแล้ว',
+            "รับชำระเงินเลขการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
+            [
+                'booking_ref' => $booking->booking_ref,
+                'route' => 'booking',
+            ],
+        );
 
         return $this->success([
             'status'  => 'confirmed',
@@ -202,6 +223,17 @@ class PaymentController extends Controller
 
         // Send installment payment confirmation email
         $this->mailService->sendInstallmentPaidEmail($booking->fresh(), $installment);
+        SmartNotification::send(
+            $booking->user_id,
+            'installment_paid',
+            'รับชำระค่างวดแล้ว',
+            "รับชำระงวดที่ {$installment->installment_no} ของเลขการจอง {$booking->booking_ref} แล้ว",
+            [
+                'booking_ref' => $booking->booking_ref,
+                'installment_no' => $installment->installment_no,
+                'route' => 'booking',
+            ],
+        );
 
         return $this->success([
             'installment_no' => $installment->installment_no,

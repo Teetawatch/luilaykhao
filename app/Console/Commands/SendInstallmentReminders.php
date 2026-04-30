@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\InstallmentPayment;
+use App\Models\SmartNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -30,7 +31,19 @@ class SendInstallmentReminders extends Command
                 'due_date'       => $ip->due_date?->toDateString(),
             ]);
 
-            // TODO: send email/SMS to $ip->booking->user
+            if ($ip->booking?->user_id) {
+                SmartNotification::send(
+                    $ip->booking->user_id,
+                    'installment_overdue',
+                    'ค่างวดเลยกำหนดชำระ',
+                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} เลยกำหนดชำระแล้ว",
+                    [
+                        'booking_ref' => $ip->booking->booking_ref,
+                        'installment_no' => $ip->installment_no,
+                        'route' => 'booking',
+                    ],
+                );
+            }
         }
 
         // ── 2. Remind 3 days before due ──────────────────────────
@@ -48,7 +61,19 @@ class SendInstallmentReminders extends Command
                 'user_email'     => $ip->booking->user->email ?? null,
             ]);
 
-            // TODO: send email/SMS to $ip->booking->user
+            if ($ip->booking?->user_id) {
+                SmartNotification::send(
+                    $ip->booking->user_id,
+                    'installment_due_soon',
+                    'ใกล้ถึงกำหนดชำระค่างวด',
+                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} จะครบกำหนดในอีก 3 วัน",
+                    [
+                        'booking_ref' => $ip->booking->booking_ref,
+                        'installment_no' => $ip->installment_no,
+                        'route' => 'booking',
+                    ],
+                );
+            }
         }
 
         // ── 3. Remind on due date ────────────────────────────────
@@ -65,7 +90,19 @@ class SendInstallmentReminders extends Command
                 'user_email'     => $ip->booking->user->email ?? null,
             ]);
 
-            // TODO: send email/SMS to $ip->booking->user
+            if ($ip->booking?->user_id) {
+                SmartNotification::send(
+                    $ip->booking->user_id,
+                    'installment_due_today',
+                    'ถึงกำหนดชำระค่างวดวันนี้',
+                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} ครบกำหนดชำระวันนี้",
+                    [
+                        'booking_ref' => $ip->booking->booking_ref,
+                        'installment_no' => $ip->installment_no,
+                        'route' => 'booking',
+                    ],
+                );
+            }
         }
 
         $this->info("ตรวจสอบเสร็จ: overdue={$overdue->count()}, due_today={$dueToday->count()}, upcoming={$upcoming->count()}");
