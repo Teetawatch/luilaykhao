@@ -28,6 +28,7 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.phone' => ['nullable', 'string', 'max:20'],
             'passengers.*.blood_group' => ['nullable', 'string', 'max:10'],
             'passengers.*.allergies' => ['nullable', 'string', 'max:1000'],
+            'passengers.*.halal_food' => ['nullable', 'boolean'],
             'passengers.*.health_notes' => ['nullable', 'string'],
             'passengers.*.emergency_contact' => ['nullable', 'string', 'max:255'],
             'passengers.*.emergency_phone' => ['nullable', 'string', 'max:20'],
