@@ -68,4 +68,32 @@ class SeatController extends Controller
             'unlocked_count' => $unlocked,
         ], 'ปลดล็อคที่นั่งสำเร็จ');
     }
+
+    public function active(Request $request): JsonResponse
+    {
+        return $this->success(
+            $this->seatLockService->activeLocksForUser($request->user()->id),
+        );
+    }
+
+    public function cancelActive(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $seatIds = $request->input('seat_ids', []);
+        $result = $this->seatLockService->unlockActiveForUser(
+            $scheduleId,
+            $request->user()->id,
+            is_array($seatIds) ? $seatIds : [],
+        );
+
+        foreach ($result['seat_ids'] as $seatId) {
+            broadcast(new SeatReleased(
+                $scheduleId,
+                $seatId,
+                $schedule->available_seats,
+            ))->toOthers();
+        }
+
+        return $this->success($result, 'ยกเลิกที่นั่งที่กำลังจองแล้ว');
+    }
 }

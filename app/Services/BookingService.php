@@ -136,6 +136,9 @@ class BookingService
                         'passenger_name' => $passengers[$index]['name'] ?? null,
                     ]);
                 }
+                foreach ($seatIds as $seatId) {
+                    $this->seatLockService->forceUnlock($scheduleId, $seatId);
+                }
             }
 
             // Update booked seats count

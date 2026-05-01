@@ -2,12 +2,18 @@
 
 namespace App\Services;
 
+use App\Models\TripSchedule;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Log;
 
 class SeatLockService
 {
     private const LOCK_TTL = 600; // 10 minutes
+
+    public static function lockTtlSeconds(): int
+    {
+        return self::LOCK_TTL;
+    }
 
     private function redisAvailable(): bool
     {
@@ -107,6 +113,123 @@ class SeatLockService
         return $count;
     }
 
+    public function activeLocksForUser(int $userId): array
+    {
+        if (!$this->redisAvailable()) {
+            return [];
+        }
+
+        $groups = [];
+        foreach (Redis::keys('seat_lock:*') as $key) {
+            if (!preg_match('/seat_lock:(\d+):(.+)$/', (string) $key, $matches)) {
+                continue;
+            }
+
+            $scheduleId = (int) $matches[1];
+            $seatId = $matches[2];
+            $redisKey = $this->seatKey($scheduleId, $seatId);
+            $lockedBy = (int) Redis::get($redisKey);
+            if ($lockedBy !== $userId) {
+                continue;
+            }
+
+            $ttl = (int) Redis::ttl($redisKey);
+            if ($ttl <= 0) {
+                continue;
+            }
+
+            $groups[$scheduleId] ??= [
+                'schedule_id' => $scheduleId,
+                'seat_ids' => [],
+                'locked_ttl_seconds' => $ttl,
+            ];
+            $groups[$scheduleId]['seat_ids'][] = $seatId;
+            $groups[$scheduleId]['locked_ttl_seconds'] = min(
+                $groups[$scheduleId]['locked_ttl_seconds'],
+                $ttl,
+            );
+        }
+
+        if (empty($groups)) {
+            return [];
+        }
+
+        $schedules = TripSchedule::with('trip')
+            ->whereIn('id', array_keys($groups))
+            ->get()
+            ->keyBy('id');
+
+        return collect($groups)
+            ->map(function (array $lock) use ($schedules) {
+                $schedule = $schedules->get($lock['schedule_id']);
+                if (!$schedule) {
+                    return null;
+                }
+
+                sort($lock['seat_ids'], SORT_NATURAL);
+                $ttl = (int) $lock['locked_ttl_seconds'];
+
+                return [
+                    'schedule_id' => $schedule->id,
+                    'trip_id' => $schedule->trip_id,
+                    'trip_title' => $schedule->trip?->title,
+                    'trip' => [
+                        'id' => $schedule->trip?->id,
+                        'title' => $schedule->trip?->title,
+                        'slug' => $schedule->trip?->slug,
+                        'location' => $schedule->trip?->location,
+                        'thumbnail_image' => $schedule->trip?->thumbnail_image,
+                        'cover_image' => $schedule->trip?->cover_image,
+                    ],
+                    'schedule' => [
+                        'id' => $schedule->id,
+                        'departure_date' => $schedule->departure_date?->toDateString(),
+                        'return_date' => $schedule->return_date?->toDateString(),
+                        'status' => $schedule->status,
+                        'transport_type' => $schedule->transport_type,
+                    ],
+                    'seat_ids' => array_values($lock['seat_ids']),
+                    'seat_count' => count($lock['seat_ids']),
+                    'status' => 'locked',
+                    'locked_ttl_seconds' => $ttl,
+                    'locked_until' => now()->addSeconds($ttl)->toISOString(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    public function unlockActiveForUser(int $scheduleId, int $userId, array $seatIds = []): array
+    {
+        $activeLock = collect($this->activeLocksForUser($userId))
+            ->firstWhere('schedule_id', $scheduleId);
+
+        if (!$activeLock) {
+            return [
+                'unlocked_count' => 0,
+                'seat_ids' => [],
+            ];
+        }
+
+        $activeSeatIds = $activeLock['seat_ids'] ?? [];
+        $targetSeatIds = empty($seatIds)
+            ? $activeSeatIds
+            : array_values(array_intersect($seatIds, $activeSeatIds));
+
+        $unlockedSeatIds = [];
+        foreach ($targetSeatIds as $seatId) {
+            if ($this->unlock($scheduleId, $seatId, $userId)) {
+                $unlockedSeatIds[] = $seatId;
+            }
+        }
+
+        return [
+            'unlocked_count' => count($unlockedSeatIds),
+            'seat_ids' => $unlockedSeatIds,
+        ];
+    }
+
     public function forceUnlock(int $scheduleId, string $seatId): void
     {
         if (!$this->redisAvailable()) {
@@ -115,7 +238,7 @@ class SeatLockService
         Redis::del($this->seatKey($scheduleId, $seatId));
     }
 
-    public function getSeatStatus(int $scheduleId, array $allSeatIds): array
+    public function getSeatStatus(int $scheduleId, array $allSeatIds, ?int $userId = null): array
     {
         $statuses = [];
         $bookedSeats = \App\Models\BookingSeat::where('schedule_id', $scheduleId)
@@ -129,16 +252,39 @@ class SeatLockService
                 $statuses[$seatId] = [
                     'status' => 'booked',
                     'passenger_name' => $bookedSeats->get($seatId)->passenger_name,
+                    'locked_ttl_seconds' => null,
+                    'locked_until' => null,
+                    'locked_by_current_user' => false,
                 ];
             } elseif ($redisUp && Redis::exists($this->seatKey($scheduleId, $seatId))) {
+                $key = $this->seatKey($scheduleId, $seatId);
+                $ttl = (int) Redis::ttl($key);
+                if ($ttl <= 0) {
+                    $statuses[$seatId] = [
+                        'status' => 'available',
+                        'passenger_name' => null,
+                        'locked_ttl_seconds' => null,
+                        'locked_until' => null,
+                        'locked_by_current_user' => false,
+                    ];
+                    continue;
+                }
+
+                $lockedBy = (int) Redis::get($key);
                 $statuses[$seatId] = [
                     'status' => 'locked',
                     'passenger_name' => null,
+                    'locked_ttl_seconds' => $ttl,
+                    'locked_until' => now()->addSeconds($ttl)->toISOString(),
+                    'locked_by_current_user' => $userId !== null && $lockedBy === $userId,
                 ];
             } else {
                 $statuses[$seatId] = [
                     'status' => 'available',
                     'passenger_name' => null,
+                    'locked_ttl_seconds' => null,
+                    'locked_until' => null,
+                    'locked_by_current_user' => false,
                 ];
             }
         }

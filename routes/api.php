@@ -57,12 +57,14 @@ Route::prefix('v1')->group(function () {
 
     // Schedules (public)
     Route::get('schedules/{id}', [ScheduleController::class, 'show']);
-    Route::get('schedules/{id}/seats', [ScheduleController::class, 'seats']);
 
     // Authenticated routes
     Route::middleware('auth:sanctum')->group(function () {
 
         // Seat lock
+        Route::get('seat-locks/active', [SeatController::class, 'active']);
+        Route::delete('seat-locks/{scheduleId}', [SeatController::class, 'cancelActive']);
+        Route::get('schedules/{id}/seats', [ScheduleController::class, 'seats']);
         Route::post('schedules/{id}/seats/lock', [SeatController::class, 'lock']);
         Route::delete('schedules/{id}/seats/lock', [SeatController::class, 'unlock']);
 
