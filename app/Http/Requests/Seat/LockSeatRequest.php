@@ -16,6 +16,8 @@ class LockSeatRequest extends FormRequest
         return [
             'seat_ids' => ['required', 'array', 'min:1', 'max:10'],
             'seat_ids.*' => ['required', 'string', 'max:10'],
+            'pickup_point_id' => ['nullable', 'integer', 'exists:schedule_pickup_points,id'],
+            'pickup_region' => ['nullable', 'string', 'max:100'],
         ];
     }
 }

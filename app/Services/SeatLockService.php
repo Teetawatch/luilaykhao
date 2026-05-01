@@ -25,7 +25,7 @@ class SeatLockService
         }
     }
 
-    public function lock(int $scheduleId, string $seatId, int $userId): array
+    public function lock(int $scheduleId, string $seatId, int $userId, array $metadata = []): array
     {
         if (!$this->redisAvailable()) {
             return [
@@ -35,7 +35,8 @@ class SeatLockService
         }
 
         $key = $this->seatKey($scheduleId, $seatId);
-        $locked = Redis::set($key, $userId, 'EX', self::LOCK_TTL, 'NX');
+        $value = $this->lockValue($userId, $metadata);
+        $locked = Redis::set($key, $value, 'EX', self::LOCK_TTL, 'NX');
 
         if ($locked) {
             return [
@@ -44,9 +45,9 @@ class SeatLockService
             ];
         }
 
-        $lockedBy = Redis::get($key);
-        if ((int) $lockedBy === $userId) {
-            Redis::expire($key, self::LOCK_TTL);
+        $lockedBy = $this->lockUserId(Redis::get($key));
+        if ($lockedBy === $userId) {
+            Redis::setex($key, self::LOCK_TTL, $value);
             return [
                 'locked' => true,
                 'expires_at' => now()->addSeconds(self::LOCK_TTL)->toISOString(),
@@ -59,12 +60,12 @@ class SeatLockService
         ];
     }
 
-    public function lockMultiple(int $scheduleId, array $seatIds, int $userId): array
+    public function lockMultiple(int $scheduleId, array $seatIds, int $userId, array $metadata = []): array
     {
         $lockedSeats = [];
 
         foreach ($seatIds as $seatId) {
-            $result = $this->lock($scheduleId, $seatId, $userId);
+            $result = $this->lock($scheduleId, $seatId, $userId, $metadata);
             if (!$result['locked']) {
                 foreach ($lockedSeats as $lockedSeatId) {
                     $this->unlock($scheduleId, $lockedSeatId, $userId);
@@ -92,9 +93,9 @@ class SeatLockService
         }
 
         $key = $this->seatKey($scheduleId, $seatId);
-        $lockedBy = Redis::get($key);
+        $lockedBy = $this->lockUserId(Redis::get($key));
 
-        if ((int) $lockedBy === $userId) {
+        if ($lockedBy === $userId) {
             Redis::del($key);
             return true;
         }
@@ -128,7 +129,8 @@ class SeatLockService
             $scheduleId = (int) $matches[1];
             $seatId = $matches[2];
             $redisKey = $this->seatKey($scheduleId, $seatId);
-            $lockedBy = (int) Redis::get($redisKey);
+            $payload = $this->lockPayload(Redis::get($redisKey));
+            $lockedBy = $this->lockUserId($payload);
             if ($lockedBy !== $userId) {
                 continue;
             }
@@ -142,6 +144,8 @@ class SeatLockService
                 'schedule_id' => $scheduleId,
                 'seat_ids' => [],
                 'locked_ttl_seconds' => $ttl,
+                'pickup_point_id' => $payload['pickup_point_id'] ?? null,
+                'pickup_region' => $payload['pickup_region'] ?? null,
             ];
             $groups[$scheduleId]['seat_ids'][] = $seatId;
             $groups[$scheduleId]['locked_ttl_seconds'] = min(
@@ -190,6 +194,8 @@ class SeatLockService
                     ],
                     'seat_ids' => array_values($lock['seat_ids']),
                     'seat_count' => count($lock['seat_ids']),
+                    'pickup_point_id' => $lock['pickup_point_id'],
+                    'pickup_region' => $lock['pickup_region'],
                     'status' => 'locked',
                     'locked_ttl_seconds' => $ttl,
                     'locked_until' => now()->addSeconds($ttl)->toISOString(),
@@ -270,7 +276,7 @@ class SeatLockService
                     continue;
                 }
 
-                $lockedBy = (int) Redis::get($key);
+                $lockedBy = $this->lockUserId(Redis::get($key));
                 $statuses[$seatId] = [
                     'status' => 'locked',
                     'passenger_name' => null,
@@ -298,11 +304,44 @@ class SeatLockService
             return true;
         }
         $key = $this->seatKey($scheduleId, $seatId);
-        return (int) Redis::get($key) === $userId;
+        return $this->lockUserId(Redis::get($key)) === $userId;
     }
 
     private function seatKey(int $scheduleId, string $seatId): string
     {
         return "seat_lock:{$scheduleId}:{$seatId}";
+    }
+
+    private function lockValue(int $userId, array $metadata = []): string
+    {
+        return json_encode([
+            'user_id' => $userId,
+            'pickup_point_id' => $metadata['pickup_point_id'] ?? null,
+            'pickup_region' => $metadata['pickup_region'] ?? null,
+        ]);
+    }
+
+    private function lockPayload(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $raw = is_object($value) && method_exists($value, 'toString')
+            ? $value->toString()
+            : (string) $value;
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        return ['user_id' => is_numeric($raw) ? (int) $raw : null];
+    }
+
+    private function lockUserId(mixed $value): ?int
+    {
+        $payload = $this->lockPayload($value);
+        $userId = $payload['user_id'] ?? null;
+        return $userId === null ? null : (int) $userId;
     }
 }
