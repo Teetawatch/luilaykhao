@@ -379,7 +379,7 @@ class VehicleTrackingController extends Controller
      * ดึงข้อมูลการจอง + ข้อมูลรถ สำหรับ Customer Tracking App
      * GET /api/v1/bookings/{ref}/tracking  (ref = booking_ref เช่น LLK-20250409-0001)
      */
-    public function bookingTracking(string $ref): JsonResponse
+    public function bookingTracking(Request $request, string $ref): JsonResponse
     {
         $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle'])
             ->where('booking_ref', $ref)
@@ -387,6 +387,12 @@ class VehicleTrackingController extends Controller
 
         if (!$booking) {
             return $this->error('ไม่พบข้อมูลการจอง กรุณาตรวจสอบรหัสการจอง', 404);
+        }
+
+        $user = $request->user();
+        $canViewAnyBooking = $user?->hasAnyRole(['admin', 'operator', 'staff']) ?? false;
+        if (!$user || ($booking->user_id !== $user->id && !$canViewAnyBooking)) {
+            return $this->error('คุณไม่มีสิทธิ์ดูข้อมูลการจองนี้', 403);
         }
 
         $schedule = $booking->schedule;

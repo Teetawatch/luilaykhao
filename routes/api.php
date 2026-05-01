@@ -71,6 +71,7 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings', [BookingController::class, 'index']);
         Route::get('bookings/{ref}', [BookingController::class, 'show']);
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
+        Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode']);
@@ -118,8 +119,7 @@ Route::prefix('v1')->group(function () {
     // Payment webhook (no auth, verify signature)
     Route::post('payments/webhook', [PaymentController::class, 'webhook']);
 
-    // Customer Tracking (public - lookup by booking ID)
-    Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
+    // Customer Tracking is authenticated above; booking refs are not public lookup keys.
 
     // Distance Matrix (public)
     Route::post('distance', [DistanceController::class, 'calculate']);
