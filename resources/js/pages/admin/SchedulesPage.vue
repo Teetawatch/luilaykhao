@@ -580,7 +580,7 @@
                 </div>
               </div>
               <div v-else class="tpl-points-preview">
-                <div v-for="pt in tpl.points" :key="pt.pickup_location + pt.region" class="tpl-preview-item">
+                <div v-for="(pt, pi) in tpl.points" :key="pi" class="tpl-preview-item">
                   <span class="region-pill">{{ REGIONS.find(r=>r.value===pt.region)?.label || pt.region }}</span>
                   <span>{{ pt.pickup_location }}</span>
                   <span style="color:#6b7280;font-size:12px;">{{ pt.notes }}</span>
@@ -1108,7 +1108,10 @@ const showTemplateManager = ref(false);
 const editingTemplate = ref(null);
 
 const openTemplateManager = () => {
-  pickupTemplates.value = loadTemplates();
+  // Only reload from storage if currently empty to avoid wiping unsaved changes
+  if (pickupTemplates.value.length === 0) {
+    pickupTemplates.value = loadTemplates();
+  }
   editingTemplate.value = null;
   showTemplateManager.value = true;
 };
@@ -1245,7 +1248,7 @@ const openApplyTemplateModal = (tpl) => {
   applyTemplateIds.value = tpl ? [tpl.id] : [];
   applyMode.value = 'append';
   applySelectedScheduleIds.value = [];
-  showTemplateManager.value = false;
+  // showTemplateManager.value = false; // Don't close manager, let apply modal be on top
   showApplyTemplateModal.value = true;
 };
 

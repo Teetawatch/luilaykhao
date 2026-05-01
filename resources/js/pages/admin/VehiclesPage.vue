@@ -137,6 +137,18 @@
           </div>
           <div class="form-section-title"><span class="material-symbols-rounded" style="font-size:18px;">person</span> ข้อมูลคนขับ</div>
           <div class="form-grid">
+            <div class="form-group full-width">
+              <label>เลือกจากผู้ใช้งาน (ถ้ามี)</label>
+              <div class="select-with-icon">
+                <span class="material-symbols-rounded">person_search</span>
+                <select @change="onDriverSelect" class="form-input">
+                  <option value="">-- เลือกผู้ใช้งานเพื่อดึงข้อมูล --</option>
+                  <option v-for="u in staffUsers" :key="u.id" :value="u.id">
+                    {{ u.name }} {{ u.phone ? `(${u.phone})` : '' }}
+                  </option>
+                </select>
+              </div>
+            </div>
             <div class="form-group">
               <label>ชื่อคนขับ</label>
               <input v-model="form.driver_name" placeholder="ชื่อ-นามสกุลคนขับ" class="form-input" />
@@ -360,6 +372,7 @@ const editing = ref(null);
 const deleting = ref(null);
 const submitting = ref(false);
 const expandedPickups = ref(new Set());
+const staffUsers = ref([]);
 
 const form = reactive({
   name: '', type: 'van', capacity: 10,
@@ -434,7 +447,34 @@ const togglePickups = (id) => {
   expandedPickups.value = s;
 };
 
-const fetchData = () => admin.fetchVehicles({ ...filters });
+const fetchData = () => {
+  admin.fetchVehicles({ ...filters });
+  fetchStaff();
+};
+
+const fetchStaff = async () => {
+  try {
+    // Fetch both staff and operators as they can be drivers
+    const res = await api.get('/admin/users', { params: { per_page: 100 } });
+    staffUsers.value = res.data.data.filter(u => 
+      u.roles.includes('staff') || u.roles.includes('operator') || u.roles.includes('admin')
+    );
+  } catch (e) {
+    console.error('Failed to fetch staff:', e);
+  }
+};
+
+const onDriverSelect = (e) => {
+  const userId = e.target.value;
+  if (!userId) return;
+  const user = staffUsers.value.find(u => u.id == userId);
+  if (user) {
+    form.driver_name = user.name;
+    form.driver_phone = user.phone || '';
+    form.driver_photo = user.avatar_url || '';
+    e.target.value = ''; // Reset select to placeholder
+  }
+};
 
 const openForm = (v = null) => {
   editing.value = v;
@@ -794,6 +834,23 @@ onMounted(() => fetchData());
   font-size: 13px;
   color: var(--color-text-muted);
   margin-top: 6px;
+}
+
+.select-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.select-with-icon .material-symbols-rounded {
+  position: absolute;
+  left: 12px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.select-with-icon .form-input {
+  padding-left: 40px;
 }
 
 .driver-phone {
