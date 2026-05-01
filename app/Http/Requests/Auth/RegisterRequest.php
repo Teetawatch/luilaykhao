@@ -20,6 +20,11 @@ class RegisterRequest extends FormRequest
             'blood_group' => ['nullable', 'string', 'max:10'],
             'email' => ['required', 'email', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:20'],
+            'id_card' => ['nullable', 'string', 'digits:13'],
+            'emergency_contact' => ['nullable', 'string', 'max:255'],
+            'emergency_phone' => ['nullable', 'string', 'max:20'],
+            'allergies' => ['nullable', 'string'],
+            'health_notes' => ['nullable', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }

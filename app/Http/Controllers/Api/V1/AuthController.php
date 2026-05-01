@@ -31,6 +31,11 @@ class AuthController extends Controller
             'blood_group' => $request->blood_group,
             'email' => $request->email,
             'phone' => $request->phone,
+            'id_card' => $request->id_card,
+            'emergency_contact' => $request->emergency_contact,
+            'emergency_phone' => $request->emergency_phone,
+            'allergies' => $request->allergies,
+            'health_notes' => $request->health_notes,
             'password' => Hash::make($request->password),
         ]);
 
