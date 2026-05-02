@@ -28,92 +28,160 @@ class PaymentController extends Controller
 
     public function charge(ChargeRequest $request): JsonResponse
     {
-        $booking = Booking::where('booking_ref', $request->booking_ref)
-            ->where('status', 'pending')
-            ->with(['schedule', 'seats'])
-            ->firstOrFail();
+        try {
+            $booking = Booking::where('booking_ref', $request->booking_ref)
+                ->where('status', 'pending')
+                ->with(['schedule', 'seats'])
+                ->firstOrFail();
 
-        $paymentType    = $request->input('payment_type', 'full');
-        $paymentMethod  = $request->input('payment_method', 'promptpay');
-        $transferDt     = $this->resolveTransferDatetime($request);
+            $paymentType    = $request->input('payment_type', 'full');
+            $paymentMethod  = $request->input('payment_method', 'promptpay');
+            $transferDt     = $this->resolveTransferDatetime($request);
 
-        // Store slip image
-        $slipPath = null;
-        if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
-        }
-
-        // ── Installment payment ──────────────────────────────────
-        if ($paymentType === 'installment') {
-            $schedule = $booking->schedule;
-
-            if (!$schedule->installment_enabled) {
-                return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
+            // Store slip image
+            $slipPath = null;
+            if ($request->hasFile('slip_image')) {
+                $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
             }
 
-            $installmentCount        = (int) $schedule->installment_count;
-            $installmentIntervalDays = (int) $schedule->installment_interval_days;
-            $totalAmount             = (float) $booking->total_amount;
-            $perInstallment          = round($totalAmount / $installmentCount, 2);
+            // ── Installment payment ──────────────────────────────────
+            if ($paymentType === 'installment') {
+                $schedule = $booking->schedule;
 
-            DB::transaction(function () use (
-                $booking, $installmentCount, $installmentIntervalDays,
-                $perInstallment, $totalAmount, $paymentMethod, $slipPath, $transferDt
-            ) {
-                $paymentRef = 'PAY-INST-' . strtoupper(uniqid());
-                $now = now();
-
-                $booking->update([
-                    'payment_type'              => 'installment',
-                    'installment_count'         => $installmentCount,
-                    'installment_interval_days' => $installmentIntervalDays,
-                    'payment_method'            => $paymentMethod,
-                    'payment_ref'               => $paymentRef,
-                    'slip_path'                 => $slipPath,
-                    'transfer_datetime'         => $transferDt,
-                ]);
-
-                for ($i = 1; $i <= $installmentCount; $i++) {
-                    $dueDate = $now->copy()->addDays(($i - 1) * $installmentIntervalDays);
-                    $amount  = ($i === $installmentCount)
-                        ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
-                        : $perInstallment;
-
-                    InstallmentPayment::create([
-                        'booking_id'       => $booking->id,
-                        'installment_no'   => $i,
-                        'amount'           => $amount,
-                        'due_date'         => $dueDate->toDateString(),
-                        'status'           => $i === 1 ? 'paid'      : 'pending',
-                        'payment_method'   => $i === 1 ? $paymentMethod : null,
-                        'payment_ref'      => $i === 1 ? $paymentRef    : null,
-                        'paid_at'          => $i === 1 ? $now            : null,
-                        'slip_path'        => $i === 1 ? $slipPath       : null,
-                        'transfer_datetime'=> $i === 1 ? $transferDt     : null,
-                    ]);
+                if (!$schedule->installment_enabled) {
+                    return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
                 }
 
-                $booking->update(['paid_amount' => $perInstallment]);
+                $installmentCount        = (int) $schedule->installment_count;
+                if ($installmentCount <= 0) {
+                    return $this->error('จำนวนงวดผ่อนชำระไม่ถูกต้อง', 422);
+                }
+                $installmentIntervalDays = (int) $schedule->installment_interval_days;
+                $totalAmount             = (float) $booking->total_amount;
+                $perInstallment          = round($totalAmount / $installmentCount, 2);
 
-                $this->bookingService->confirmBooking($booking->fresh(), 'installment', $paymentRef);
-            });
+                DB::transaction(function () use (
+                    $booking, $installmentCount, $installmentIntervalDays,
+                    $perInstallment, $totalAmount, $paymentMethod, $slipPath, $transferDt
+                ) {
+                    $paymentRef = 'PAY-INST-' . strtoupper(uniqid());
+                    $now = now();
 
-            $booking = $booking->fresh()->load(['seats', 'installmentPayments']);
+                    $booking->update([
+                        'payment_type'              => 'installment',
+                        'installment_count'         => $installmentCount,
+                        'installment_interval_days' => $installmentIntervalDays,
+                        'payment_method'            => $paymentMethod,
+                        'payment_ref'               => $paymentRef,
+                        'slip_path'                 => $slipPath,
+                        'transfer_datetime'         => $transferDt,
+                    ]);
 
-            broadcast(new PaymentConfirmed(
-                $booking->user_id,
-                $booking->booking_ref,
-                'confirmed',
-                $booking->seats->pluck('seat_id')->toArray(),
-            ));
+                    for ($i = 1; $i <= $installmentCount; $i++) {
+                        $dueDate = $now->copy()->addDays(($i - 1) * $installmentIntervalDays);
+                        $amount  = ($i === $installmentCount)
+                            ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
+                            : $perInstallment;
 
-            // Send payment confirmation email (installment)
-            $this->mailService->sendPaymentConfirmedEmail($booking, 'installment');
+                        InstallmentPayment::create([
+                            'booking_id'       => $booking->id,
+                            'installment_no'   => $i,
+                            'amount'           => $amount,
+                            'due_date'         => $dueDate->toDateString(),
+                            'status'           => $i === 1 ? 'paid'      : 'pending',
+                            'payment_method'   => $i === 1 ? $paymentMethod : null,
+                            'payment_ref'      => $i === 1 ? $paymentRef    : null,
+                            'paid_at'          => $i === 1 ? $now            : null,
+                            'slip_path'        => $i === 1 ? $slipPath       : null,
+                            'transfer_datetime'=> $i === 1 ? $transferDt     : null,
+                        ]);
+                    }
+
+                    // For installment, paid_amount at this step is only the first installment
+                    $this->bookingService->confirmBooking($booking->fresh(), $paymentMethod, $paymentRef, $perInstallment);
+                });
+
+                $booking = $booking->fresh()->load(['seats', 'installmentPayments']);
+
+                try {
+                    foreach ($booking->seats as $seat) {
+                        broadcast(new SeatBooked(
+                            $booking->schedule_id,
+                            $seat->seat_id,
+                            $booking->schedule->available_seats,
+                        ));
+                    }
+
+                    broadcast(new PaymentConfirmed(
+                        $booking->user_id,
+                        $booking->booking_ref,
+                        'confirmed',
+                        $booking->seats->pluck('seat_id')->toArray(),
+                    ));
+                } catch (\Exception $e) {
+                    Log::warning('Broadcast failed: ' . $e->getMessage());
+                }
+
+                // Send payment confirmation email (installment)
+                $this->mailService->sendPaymentConfirmedEmail($booking, 'installment');
+                SmartNotification::send(
+                    $booking->user_id,
+                    'payment_confirmed',
+                    'ยืนยันการชำระเงินแล้ว',
+                    "รับชำระงวดแรกของเลขการจอง {$booking->booking_ref} แล้ว",
+                    [
+                        'booking_ref' => $booking->booking_ref,
+                        'route' => 'booking',
+                    ],
+                );
+
+                return $this->success([
+                    'status'  => 'confirmed',
+                    'booking' => new \App\Http\Resources\BookingResource($booking),
+                ], 'ชำระงวดแรกสำเร็จ กรุณาชำระงวดถัดไปตามกำหนด');
+            }
+
+            // ── Full payment ─────────────────────────────────────────
+            $paymentRef = 'PAY-' . strtoupper(uniqid());
+
+            $booking = $this->bookingService->confirmBooking(
+                $booking,
+                $paymentMethod,
+                $paymentRef,
+            );
+
+            $booking->update([
+                'payment_type'      => 'full',
+                'slip_path'         => $slipPath,
+                'transfer_datetime' => $transferDt,
+            ]);
+
+            try {
+                foreach ($booking->seats as $seat) {
+                    broadcast(new SeatBooked(
+                        $booking->schedule_id,
+                        $seat->seat_id,
+                        $booking->schedule->available_seats,
+                    ));
+                }
+
+                broadcast(new PaymentConfirmed(
+                    $booking->user_id,
+                    $booking->booking_ref,
+                    'confirmed',
+                    $booking->seats->pluck('seat_id')->toArray(),
+                ));
+            } catch (\Exception $e) {
+                Log::warning('Broadcast failed: ' . $e->getMessage());
+            }
+
+            // Send payment confirmation email (full)
+            $this->mailService->sendPaymentConfirmedEmail($booking, 'full');
             SmartNotification::send(
                 $booking->user_id,
                 'payment_confirmed',
                 'ยืนยันการชำระเงินแล้ว',
-                "รับชำระงวดแรกของเลขการจอง {$booking->booking_ref} แล้ว",
+                "รับชำระเงินเลขการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'route' => 'booking',
@@ -123,56 +191,16 @@ class PaymentController extends Controller
             return $this->success([
                 'status'  => 'confirmed',
                 'booking' => new \App\Http\Resources\BookingResource($booking),
-            ], 'ชำระงวดแรกสำเร็จ กรุณาชำระงวดถัดไปตามกำหนด');
+            ], 'ชำระเงินสำเร็จ');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->error('ไม่พบข้อมูลการจอง หรือสถานะการจองไม่ถูกต้อง', 404);
+        } catch (\Exception $e) {
+            Log::error('Payment processing error: ' . $e->getMessage(), [
+                'booking_ref' => $request->booking_ref,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->error('เกิดข้อผิดพลาดในการประมวลผลการชำระเงิน: ' . $e->getMessage(), 500);
         }
-
-        // ── Full payment ─────────────────────────────────────────
-        $paymentRef = 'PAY-' . strtoupper(uniqid());
-
-        $booking = $this->bookingService->confirmBooking(
-            $booking,
-            $paymentMethod,
-            $paymentRef,
-        );
-
-        $booking->update([
-            'payment_type'      => 'full',
-            'slip_path'         => $slipPath,
-            'transfer_datetime' => $transferDt,
-        ]);
-
-        foreach ($booking->seats as $seat) {
-            broadcast(new SeatBooked(
-                $booking->schedule_id,
-                $seat->seat_id,
-                $booking->schedule->available_seats,
-            ));
-        }
-
-        broadcast(new PaymentConfirmed(
-            $booking->user_id,
-            $booking->booking_ref,
-            'confirmed',
-            $booking->seats->pluck('seat_id')->toArray(),
-        ));
-
-        // Send payment confirmation email (full)
-        $this->mailService->sendPaymentConfirmedEmail($booking, 'full');
-        SmartNotification::send(
-            $booking->user_id,
-            'payment_confirmed',
-            'ยืนยันการชำระเงินแล้ว',
-            "รับชำระเงินเลขการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
-            [
-                'booking_ref' => $booking->booking_ref,
-                'route' => 'booking',
-            ],
-        );
-
-        return $this->success([
-            'status'  => 'confirmed',
-            'booking' => new \App\Http\Resources\BookingResource($booking),
-        ], 'ชำระเงินสำเร็จ');
     }
 
     public function chargeInstallment(Request $request): JsonResponse

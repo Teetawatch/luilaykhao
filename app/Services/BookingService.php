@@ -165,12 +165,12 @@ class BookingService
         return $booking;
     }
 
-    public function confirmBooking(Booking $booking, string $paymentMethod, string $paymentRef): Booking
+    public function confirmBooking(Booking $booking, string $paymentMethod, string $paymentRef, ?float $amount = null): Booking
     {
-        return DB::transaction(function () use ($booking, $paymentMethod, $paymentRef) {
+        return DB::transaction(function () use ($booking, $paymentMethod, $paymentRef, $amount) {
             $booking->update([
                 'status' => 'confirmed',
-                'paid_amount' => $booking->total_amount,
+                'paid_amount' => $amount ?? $booking->total_amount,
                 'payment_method' => $paymentMethod,
                 'payment_ref' => $paymentRef,
                 'paid_at' => now(),
