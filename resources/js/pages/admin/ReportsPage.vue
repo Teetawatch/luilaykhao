@@ -24,12 +24,26 @@
     <div v-if="activeTab === 'bookings'">
       <div class="report-filters">
         <div class="form-group">
+          <label>ประเภทวันที่</label>
+          <select v-model="bookingFilters.date_type">
+            <option value="booking">วันที่จอง (Booking Date)</option>
+            <option value="travel">วันที่เดินทาง (Travel Date)</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>จากวันที่</label>
           <input v-model="bookingFilters.from" type="date" />
         </div>
         <div class="form-group">
           <label>ถึงวันที่</label>
           <input v-model="bookingFilters.to" type="date" />
+        </div>
+        <div class="form-group">
+          <label>ทริป</label>
+          <select v-model="bookingFilters.trip_id">
+            <option value="">ทั้งหมด</option>
+            <option v-for="t in allTrips" :key="t.id" :value="t.id">{{ t.title }}</option>
+          </select>
         </div>
         <div class="form-group">
           <label>สถานะ</label>
@@ -261,12 +275,33 @@ onMounted(() => {
   loadBookingReport();
 });
 
-const bookingFilters = reactive({ from: '', to: '', status: '' });
-const revenueFilters = reactive({ from: '', to: '' });
+const bookingFilters = reactive({ 
+  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), 
+  to: new Date().toISOString().slice(0, 10), 
+  status: '',
+  trip_id: '',
+  date_type: 'booking'
+});
+const revenueFilters = reactive({ 
+  from: new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10), 
+  to: new Date().toISOString().slice(0, 10) 
+});
 
 const bookingReport = ref(null);
 const revenueReport = ref(null);
 const vehicleReport = ref(null);
+const allTrips = ref([]);
+
+onMounted(async () => {
+  // Load trips for filters
+  try {
+    const res = await admin.fetchTrips();
+    allTrips.value = res.data;
+  } catch (e) {}
+
+  // Initial load
+  loadBookingReport();
+});
 
 const statusLabels = { pending: 'รอดำเนินการ', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิก', refunded: 'คืนเงินแล้ว' };
 
@@ -276,7 +311,7 @@ function formatMoney(amount) {
 
 function formatShort(amount) {
   if (amount >= 1000000) return (amount / 1000000).toFixed(1) + 'M';
-  if (amount >= 1000) return (amount / 1000).toFixed(0) + 'K';
+  if (amount >= 1000) return (amount / 1000).toFixed(1) + 'K';
   return amount?.toString() || '0';
 }
 
@@ -293,6 +328,8 @@ async function loadBookingReport() {
       from: bookingFilters.from || undefined,
       to: bookingFilters.to || undefined,
       status: bookingFilters.status || undefined,
+      trip_id: bookingFilters.trip_id || undefined,
+      date_type: bookingFilters.date_type
     });
     bookingReport.value = res.data;
   } catch (e) {

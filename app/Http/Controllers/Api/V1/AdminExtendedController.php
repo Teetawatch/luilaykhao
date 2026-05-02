@@ -261,14 +261,21 @@ class AdminExtendedController extends Controller
     {
         $query = Booking::with(['schedule.trip', 'user', 'passengers', 'seats']);
 
+        $dateField = $request->get('date_type') === 'travel' ? 'trip_schedules.departure_date' : 'bookings.created_at';
+        
+        if ($request->get('date_type') === 'travel') {
+            $query->join('trip_schedules', 'bookings.schedule_id', '=', 'trip_schedules.id')
+                  ->select('bookings.*');
+        }
+
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
+            $query->whereDate($dateField, '>=', $request->from);
         }
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
+            $query->whereDate($dateField, '<=', $request->to);
         }
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('bookings.status', $request->status);
         }
         if ($request->filled('trip_id')) {
             $query->whereHas('schedule', fn($q) => $q->where('trip_id', $request->trip_id));
