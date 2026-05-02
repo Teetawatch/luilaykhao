@@ -242,12 +242,24 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 
 const admin = useAdminStore();
 const activeTab = ref('bookings');
 const loadingReport = ref(false);
+
+// Auto load on tab change
+watch(activeTab, (val) => {
+  if (val === 'bookings' && !bookingReport.value) loadBookingReport();
+  if (val === 'revenue' && !revenueReport.value) loadRevenueReport();
+  if (val === 'vehicles' && !vehicleReport.value) loadVehicleReport();
+});
+
+onMounted(() => {
+  // Initial load
+  loadBookingReport();
+});
 
 const bookingFilters = reactive({ from: '', to: '', status: '' });
 const revenueFilters = reactive({ from: '', to: '' });

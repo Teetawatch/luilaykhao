@@ -316,10 +316,11 @@ class AdminExtendedController extends Controller
         $from = $request->get('from', now()->startOfYear()->format('Y-m-d'));
         $to = $request->get('to', now()->format('Y-m-d'));
 
-        $bookings = Booking::where('status', 'confirmed')
-            ->whereDate('created_at', '>=', $from)
+        $bookings = Booking::whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to)
-            ->with('schedule.trip')
+            ->where('paid_amount', '>', 0)
+            ->with(['schedule.trip'])
+            ->withCount('passengers')
             ->get();
 
         // Group by month
