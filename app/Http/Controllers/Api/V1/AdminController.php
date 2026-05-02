@@ -552,6 +552,37 @@ class AdminController extends Controller
         return $this->success(new BookingResource($booking->load(['schedule.trip', 'user', 'passengers'])), 'บันทึกการจองสำเร็จ', 201);
     }
 
+    public function deleteBooking(string $ref): JsonResponse
+    {
+        $booking = Booking::with(['seats', 'schedule', 'installmentPayments'])->where('booking_ref', $ref)->firstOrFail();
+
+        // 1. Delete associated files
+        if ($booking->slip_path) {
+            Storage::disk('public')->delete($booking->slip_path);
+        }
+
+        // Also delete slip for installment payments
+        foreach ($booking->installmentPayments as $payment) {
+            if ($payment->slip_path) {
+                Storage::disk('public')->delete($payment->slip_path);
+            }
+        }
+
+        // 2. Restore seats if not join trip and booking was confirmed/pending
+        if (!$booking->is_join_trip && in_array($booking->status, ['pending', 'confirmed'])) {
+            $passengerCount = $booking->passengers()->count() ?: 1;
+            $booking->schedule?->decrement('booked_seats', $passengerCount);
+        }
+
+        // 3. Delete records
+        $booking->seats()->delete();
+        $booking->passengers()->delete();
+        $booking->installmentPayments()->delete();
+        $booking->delete();
+
+        return $this->success(null, 'ลบการจองสำเร็จ');
+    }
+
     public function manifest(int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::with('trip')->findOrFail($scheduleId);

@@ -124,6 +124,11 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    async deleteBooking(ref) {
+      const res = await api.delete(`/admin/bookings/${ref}`);
+      return res.data;
+    },
+
     async fetchManifest(scheduleId) {
       const res = await api.get(`/admin/schedules/${scheduleId}/manifest`);
       return res.data;

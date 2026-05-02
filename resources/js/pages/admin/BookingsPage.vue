@@ -121,6 +121,9 @@
                     :class="b.status === 'pending' ? 'text-accent hover:bg-accent/10 hover:border-accent/20' : 'text-red-500 hover:bg-red-50 hover:border-red-200'" title="เปลี่ยนสถานะ">
                     <span class="material-symbols-rounded text-[18px]">swap_horiz</span>
                   </button>
+                  <button @click="confirmDelete(b)" class="w-8 h-8 rounded-lg bg-sand/50 text-red-500 hover:bg-red-50 hover:border-red-200 border border-transparent flex items-center justify-center transition-all" title="ลบการจอง">
+                    <span class="material-symbols-rounded text-[18px]">delete</span>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -688,6 +691,20 @@ const doUpdateStatus = async () => {
     fetchData();
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+const confirmDelete = async (b) => {
+  if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบการจองเลขที่ ${b.booking_ref}?\nการกระทำนี้จะไม่สามารถย้อนกลับได้ และจะลบไฟล์รูปภาพที่เกี่ยวข้องทั้งหมด`)) return;
+  
+  submitting.value = true;
+  try {
+    await admin.deleteBooking(b.booking_ref);
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาดในการลบการจอง');
   } finally {
     submitting.value = false;
   }
