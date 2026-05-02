@@ -432,27 +432,30 @@
                 </div>
 
                 <!-- Join Trip Option -->
-                <div v-if="selectedSchedule?.join_trip_enabled" class="mb-8 p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-300"
-                  :class="isJoinTrip ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-gray-200 bg-white'">
+                <div v-if="selectedSchedule?.join_trip_enabled" class="mb-8 p-6 rounded-[1.5rem] border-2 transition-all duration-300"
+                  :class="isJoinTrip ? 'border-emerald-500 bg-emerald-50' : 'border-dashed border-gray-200 bg-white'">
                   <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                      :class="isJoinTrip ? 'bg-[var(--color-accent)] text-white' : 'bg-gray-100 text-gray-400'">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+                      :class="isJoinTrip ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'">
                       <span class="material-symbols-rounded text-2xl">confirmation_number</span>
                     </div>
                     <div class="flex-grow">
                       <div class="flex items-center justify-between">
-                        <h4 class="font-black text-[var(--color-text-dark)] text-lg">Enjoy Trip (Join Trip)</h4>
+                        <div class="flex items-center gap-2">
+                          <h4 class="font-black text-[var(--color-text-dark)] text-lg">Enjoy Trip (Join Trip)</h4>
+                          <span v-if="isJoinTrip" class="bg-emerald-200 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Active</span>
+                        </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" v-model="isJoinTrip" class="sr-only peer">
-                          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]"></div>
+                          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                       </div>
                       <p class="text-sm font-bold text-[var(--color-text-muted)] mt-1 leading-relaxed">
-                        เลือกเดินทางเอง ไม่ต้องระบุภูมิภาค และไม่ต้องจองที่นั่ง จ่ายเงินแล้วรอรับ QR Code เพื่อเช็คอินได้ทันที
+                        เลือกเดินทางเอง ไม่ต้องจองที่นั่ง และไม่จำกัดที่นั่ง จ่ายเงินแล้วรอรับ QR Code เพื่อเช็คอินได้ทันที
                       </p>
-                      <div v-if="selectedSchedule.join_trip_price" class="mt-3 flex items-center gap-2">
+                      <div class="mt-3 flex items-center gap-2">
                         <span class="text-[11px] font-black uppercase text-gray-400">ราคาพิเศษ:</span>
-                        <span class="text-xl font-black text-[var(--color-primary)]">฿{{ Number(selectedSchedule.join_trip_price).toLocaleString() }}</span>
+                        <span class="text-xl font-black text-emerald-600">฿{{ Number(selectedSchedule.join_trip_price || selectedSchedule.price || trip.price_per_person).toLocaleString() }}</span>
                       </div>
                     </div>
                   </div>
@@ -514,16 +517,20 @@
                             </p>
                           </div>
                         </div>
-                        <span
-                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
-                          :class="s.available_seats > 3
-                            ? 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20'
-                            : s.available_seats > 0
-                              ? 'bg-amber-50 text-amber-600 border-amber-200'
-                              : 'bg-red-50 text-red-600 border-red-200'"
-                        >
-                          {{ s.available_seats > 0 ? `ว่าง ${s.available_seats} ที่` : 'เต็มแล้ว' }}
-                        </span>
+                          <div v-if="s.join_trip_enabled" class="bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1">
+                            <span class="material-symbols-rounded text-[14px]">group_add</span>
+                            จอยทริป (ไม่จำกัด)
+                          </div>
+                          <div v-else
+                            class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
+                            :class="s.available_seats > 3
+                              ? 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20'
+                              : s.available_seats > 0
+                                ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                : 'bg-red-50 text-red-600 border-red-200'"
+                          >
+                            {{ s.available_seats > 0 ? `ว่าง ${s.available_seats} ที่` : 'เต็มแล้ว' }}
+                          </div>
                       </div>
                       <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1">
                         <div class="flex items-center gap-1.5">

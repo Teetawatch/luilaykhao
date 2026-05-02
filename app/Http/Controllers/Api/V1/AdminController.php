@@ -75,6 +75,9 @@ class AdminController extends Controller
         $totalCustomers = User::role('customer')->count();
         $totalVehicles = Vehicle::count();
 
+        $totalJoinTripBookings = Booking::where('is_join_trip', true)->count();
+        $confirmedJoinTripBookings = Booking::where('is_join_trip', true)->where('status', 'confirmed')->count();
+
         $upcomingSchedules = TripSchedule::where('departure_date', '>=', now())
             ->where('status', 'open')
             ->count();
@@ -114,17 +117,21 @@ class AdminController extends Controller
             ->pluck('count', 'type');
 
         return $this->success([
-            'total_trips' => $totalTrips,
-            'active_trips' => $activeTrips,
-            'total_bookings' => $totalBookings,
-            'pending_bookings' => $pendingBookings,
-            'confirmed_bookings' => $confirmedBookings,
-            'cancelled_bookings' => $cancelledBookings,
-            'total_revenue' => (float) $totalRevenue,
-            'monthly_revenue' => (float) $monthlyRevenue,
-            'total_customers' => $totalCustomers,
-            'total_vehicles' => $totalVehicles,
-            'upcoming_schedules' => $upcomingSchedules,
+            'stats' => [
+                'total_trips' => $totalTrips,
+                'active_trips' => $activeTrips,
+                'total_bookings' => $totalBookings,
+                'pending_bookings' => $pendingBookings,
+                'confirmed_bookings' => $confirmedBookings,
+                'cancelled_bookings' => $cancelledBookings,
+                'total_revenue' => (float) $totalRevenue,
+                'monthly_revenue' => (float) $monthlyRevenue,
+                'total_customers' => $totalCustomers,
+                'total_vehicles' => $totalVehicles,
+                'upcoming_schedules' => $upcomingSchedules,
+                'join_trip_bookings' => $totalJoinTripBookings,
+                'confirmed_join_trip_bookings' => $confirmedJoinTripBookings,
+            ],
             'recent_bookings' => $recentBookings,
             'revenue_chart' => $revenueChart,
             'bookings_by_type' => $bookingsByType,
@@ -284,6 +291,19 @@ class AdminController extends Controller
         );
     }
 
+    public function bulkUpdateSchedules(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:trip_schedules,id'],
+            'data' => ['required', 'array'],
+        ]);
+
+        TripSchedule::whereIn('id', $request->ids)->update($request->data);
+
+        return $this->success(null, 'อัปเดตรอบเดินทางสำเร็จ');
+    }
+
     public function deleteSchedule(int $id): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($id);
@@ -407,6 +427,15 @@ class AdminController extends Controller
                         ->orWhere('email', 'like', "%{$request->search}%"));
             });
         }
+        if ($request->filled('booking_type')) {
+            if ($request->booking_type === 'join_trip') {
+                $query->where('is_join_trip', true);
+            } elseif ($request->booking_type === 'regular') {
+                $query->where(function ($q) {
+                    $q->where('is_join_trip', false)->orWhereNull('is_join_trip');
+                });
+            }
+        }
 
         $bookings = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
 
@@ -466,12 +495,20 @@ class AdminController extends Controller
         $passengers = BookingPassenger::whereHas('booking', function ($q) use ($scheduleId) {
             $q->where('schedule_id', $scheduleId)
                 ->whereIn('status', ['confirmed', 'pending']);
-        })->with('booking.seats')->get();
+        })->with('booking.seats')->get()->map(function($p) {
+            $p->is_join_trip = $p->booking->is_join_trip ?? false;
+            return $p;
+        });
+
+        $regularPassengersCount = $passengers->where('is_join_trip', false)->count();
+        $joinTripPassengersCount = $passengers->where('is_join_trip', true)->count();
 
         return $this->success([
             'schedule' => new TripScheduleResource($schedule),
             'passengers' => $passengers,
             'total_passengers' => $passengers->count(),
+            'regular_passengers_count' => $regularPassengersCount,
+            'join_trip_passengers_count' => $joinTripPassengersCount,
         ]);
     }
 

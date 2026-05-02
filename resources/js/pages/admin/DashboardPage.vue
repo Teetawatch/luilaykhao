@@ -137,6 +137,16 @@
             <span class="qs-label">รอบเดินทางที่กำลังจะถึง</span>
           </div>
         </div>
+        <div class="quick-stat">
+          <span class="material-symbols-rounded qs-icon" style="background: #ecfdf5; color: #059669;">group_add</span>
+          <div>
+            <div class="flex items-baseline gap-2">
+              <span class="qs-value text-emerald-600">{{ stats.join_trip_bookings }}</span>
+              <span class="text-xs font-bold text-emerald-500">(ยืนยันแล้ว {{ stats.confirmed_join_trip_bookings }})</span>
+            </div>
+            <span class="qs-label">การจอง Enjoy Trip (จอยทริป)</span>
+          </div>
+        </div>
       </div>
 
       <!-- Recent Bookings -->

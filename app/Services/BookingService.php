@@ -40,7 +40,8 @@ class BookingService
 
             $participantCount = count($passengers);
 
-            if ($schedule->available_seats < $participantCount) {
+            // Join trip allows unlimited bookings — skip seat availability check
+            if (!$isJoinTrip && $schedule->available_seats < $participantCount) {
                 throw new \Exception('ที่นั่งไม่เพียงพอ');
             }
 

@@ -45,7 +45,12 @@
               </div>
               <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200">
                 <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
-                <span>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
+                <span v-if="isJoinTrip">ไม่จำกัด (จอยทริป)</span>
+                <span v-else>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
+              </div>
+              <div v-if="isJoinTrip" class="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl text-emerald-700 border border-emerald-200 font-bold">
+                <span class="material-symbols-rounded text-emerald-600 text-[20px]">confirmation_number</span>
+                <span>Enjoy Trip (Join Trip)</span>
               </div>
               <div v-if="schedule.trip?.is_women_only" class="flex items-center gap-2 bg-pink-50 px-4 py-2 rounded-xl text-pink-700 border border-pink-200 animate-pulse">
                 <span class="material-symbols-rounded text-pink-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">female</span>
@@ -1065,7 +1070,10 @@ const hasSeatMap = computed(() => {
 });
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value);
-const maxPassengers = computed(() => Math.min(schedule.value?.available_seats || 10, 10));
+const maxPassengers = computed(() => {
+  if (isJoinTrip.value) return 50; // Allow more for join trip
+  return Math.min(schedule.value?.available_seats || 10, 10);
+});
 
 const preselectedRegion = route.query.region || null;
 const pickupPoints = computed(() => {
@@ -1078,11 +1086,11 @@ const selectedPickup = ref(null);
 
 const steps = computed(() => {
   if (isTrekking.value) {
-    if (hasSeatMap.value) return ['เลือกภูมิภาค', 'เลือกที่นั่ง', 'ข้อมูลผู้จอง', 'สรุป'];
-    return ['เลือกภูมิภาค', 'ข้อมูลผู้จอง', 'สรุป'];
+    if (hasSeatMap.value) return ['เลือกจุดรับ', 'ผังที่นั่ง', 'ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
+    return ['เลือกจุดรับ', 'ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
   }
-  if (hasSeatMap.value) return ['เลือกที่นั่ง', 'ข้อมูลผู้จอง', 'สรุป'];
-  return ['ข้อมูลผู้จอง', 'สรุป'];
+  if (hasSeatMap.value) return ['ผังที่นั่ง', 'ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
+  return ['ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
 });
 
 const effectivePrice = computed(() => {

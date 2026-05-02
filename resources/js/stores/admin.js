@@ -83,6 +83,11 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    async bulkUpdateSchedules(ids, data) {
+      const res = await api.patch('/admin/schedules/bulk-update', { ids, data });
+      return res.data;
+    },
+
     async deleteSchedule(id) {
       const res = await api.delete(`/admin/schedules/${id}`);
       return res.data;

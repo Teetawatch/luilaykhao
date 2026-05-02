@@ -161,6 +161,7 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules', [AdminController::class, 'schedules']);
         Route::post('schedules', [AdminController::class, 'storeSchedule']);
         Route::put('schedules/{id}', [AdminController::class, 'updateSchedule']);
+        Route::patch('schedules/bulk-update', [AdminController::class, 'bulkUpdateSchedules']);
         Route::delete('schedules/{id}', [AdminController::class, 'deleteSchedule']);
         Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);
         Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);

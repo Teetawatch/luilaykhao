@@ -33,6 +33,12 @@
         </select>
         <input type="date" v-model="filters.date" @change="fetchData()"
           class="flex-1 sm:flex-none bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none" />
+        <select v-model="filters.booking_type" @change="fetchData()"
+          class="flex-1 sm:flex-none bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none min-w-[140px]">
+          <option value="">ทุกประเภท</option>
+          <option value="join_trip">จอยทริป</option>
+          <option value="regular">จองปกติ</option>
+        </select>
       </div>
     </div>
 
@@ -66,7 +72,13 @@
                 </div>
               </td>
               <td class="px-6 py-4 text-sm text-text-dark">
-                {{ b.schedule?.trip?.title || '-' }}
+                <div class="flex items-center gap-2">
+                  <span>{{ b.schedule?.trip?.title || '-' }}</span>
+                  <span v-if="b.is_join_trip" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 whitespace-nowrap">
+                    <span class="material-symbols-rounded text-[12px]">group_add</span>
+                    จอยทริป
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex flex-col items-end">
@@ -158,6 +170,10 @@
               <div>
                 <span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold" :class="statusClass(detailBooking.status)">
                   {{ statusLabels[detailBooking.status] }}
+                </span>
+                <span v-if="detailBooking.is_join_trip" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 mt-1">
+                  <span class="material-symbols-rounded text-[14px]">group_add</span>
+                  จอยทริป (Enjoy Trip)
                 </span>
               </div>
             </div>
@@ -496,7 +512,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 
 const admin = useAdminStore();
-const filters = reactive({ search: '', status: '', date: '' });
+const filters = reactive({ search: '', status: '', date: '', booking_type: '' });
 const showDetail = ref(false);
 const showStatusModal = ref(false);
 const detailBooking = ref(null);

@@ -123,8 +123,14 @@
                       <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จัดการจุดรับ">
                         <span class="material-symbols-rounded">location_on</span>
                       </button>
-                      <button class="btn-icon btn-copy" @click="copyPickupPoints(sch)" title="คัดลอกจุดรับไปรอบอื่น">
-                        <span class="material-symbols-rounded">content_copy</span>
+                      <button class="btn-icon btn-manifest" @click="openManifest(sch)" title="รายชื่อผู้โดยสาร">
+                        <span class="material-symbols-rounded">group</span>
+                      </button>
+                      <button class="btn-icon" 
+                        :class="sch.join_trip_enabled ? 'btn-active' : 'btn-inactive'"
+                        @click="toggleJoinTrip(sch)" 
+                        :title="sch.join_trip_enabled ? 'ปิดจอยทริป' : 'เปิดจอยทริป'">
+                        <span class="material-symbols-rounded">group_add</span>
                       </button>
                       <button class="btn-icon btn-clone" @click="openCopyScheduleModal(sch)" title="คัดลอกรอบเดินทาง">
                         <span class="material-symbols-rounded">file_copy</span>
@@ -382,7 +388,69 @@
       </div>
     </div>
 
-    <!-- Batch Create Modal -->
+    <!-- Manifest Modal -->
+    <div class="modal-overlay" v-if="showManifest">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">group</span>รายชื่อผู้โดยสาร</h2>
+            <p class="modal-subtitle" v-if="manifestData">
+              {{ manifestData.schedule.trip.title }} — {{ manifestData.schedule.departure_date }}
+            </p>
+          </div>
+          <button class="modal-close" @click="showManifest = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="manifestLoading" class="pickup-loading"><div class="spinner"></div></div>
+          <template v-else-if="manifestData">
+            <div class="manifest-summary">
+              <div class="ms-item">
+                <span class="ms-label">ผู้โดยสารปกติ</span>
+                <span class="ms-value">{{ manifestData.regular_passengers_count }}</span>
+              </div>
+              <div class="ms-item ms-join">
+                <span class="ms-label">ผู้โดยสารจอยทริป</span>
+                <span class="ms-value">{{ manifestData.join_trip_passengers_count }}</span>
+              </div>
+              <div class="ms-item ms-total">
+                <span class="ms-label">ทั้งหมด</span>
+                <span class="ms-value">{{ manifestData.total_passengers }}</span>
+              </div>
+            </div>
+
+            <div class="manifest-table-wrap">
+              <table class="data-table manifest-table">
+                <thead>
+                  <tr>
+                    <th>ชื่อ - นามสกุล</th>
+                    <th>ประเภท</th>
+                    <th>ที่นั่ง</th>
+                    <th>เบอร์โทร</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in manifestData.passengers" :key="p.id">
+                    <td>{{ p.first_name }} {{ p.last_name }}</td>
+                    <td>
+                      <span v-if="p.is_join_trip" class="status-badge" style="background:#ecfdf5;color:#059669;font-size:10px;">Enjoy Trip</span>
+                      <span v-else class="status-badge" style="background:#f3f4f6;color:#374151;font-size:10px;">ปกติ</span>
+                    </td>
+                    <td>
+                      <span v-if="p.is_join_trip" class="text-muted-sm">ไม่ระบุ</span>
+                      <span v-else>{{ p.booking?.seats?.map(s => s.seat_number).join(', ') || '—' }}</span>
+                    </td>
+                    <td>{{ p.phone || p.booking?.user?.phone || '—' }}</td>
+                  </tr>
+                  <tr v-if="!manifestData.passengers.length">
+                    <td colspan="4" class="empty-state">ยังไม่มีผู้โดยสาร</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
     <div class="modal-overlay" v-if="showBatchForm">
       <div class="modal-card modal-xl">
         <div class="modal-header">
@@ -858,6 +926,8 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
+import { useToast } from '../../lib/toast';
+const toast = useToast();
 
 const REGIONS = [
   { value: 'bangkok',   label: 'กรุงเทพมหานคร' },
@@ -1459,6 +1529,27 @@ const pickupSubmitting = ref(false);
 const editingPickup = ref(null);
 const addingInRegion = ref(null); // which region's inline-add form is open
 
+// ─── Manifest ──────────────────────────────────────────────
+const showManifest = ref(false);
+const manifestData = ref(null);
+const manifestLoading = ref(false);
+
+const openManifest = async (sch) => {
+  showManifest.value = true;
+  manifestLoading.value = true;
+  manifestData.value = null;
+  try {
+    const res = await admin.fetchManifest(sch.id);
+    manifestData.value = res.data;
+  } catch (e) {
+    toast.error('ไม่สามารถดึงข้อมูลรายชื่อผู้โดยสารได้');
+    showManifest.value = false;
+  } finally {
+    manifestLoading.value = false;
+  }
+};
+
+
 const pickupForm = reactive({
   region: '', region_label: '', pickup_location: '',
   price: '', map_url: '', latitude: null, longitude: null,
@@ -1634,19 +1725,30 @@ const doBulkJoinTrip = async () => {
   }
   bulkJoinTripSubmitting.value = true;
   try {
-    for (const scheduleId of bulkJoinTripSelectedIds.value) {
-      await admin.updateSchedule(scheduleId, {
-        join_trip_enabled: bulkJoinTripForm.enabled,
-        join_trip_price: bulkJoinTripForm.enabled ? bulkJoinTripForm.price : null,
-      });
-    }
+    await admin.bulkUpdateSchedules(bulkJoinTripSelectedIds.value, {
+      join_trip_enabled: bulkJoinTripForm.enabled,
+      join_trip_price: bulkJoinTripForm.enabled ? bulkJoinTripForm.price : null,
+    });
     showBulkJoinTrip.value = false;
     fetchData();
-    alert(`${bulkJoinTripForm.enabled ? 'เปิด' : 'ปิด'}จอยทริปใน ${bulkJoinTripSelectedIds.value.length} รอบสำเร็จ`);
+    toast.success(`${bulkJoinTripForm.enabled ? 'เปิด' : 'ปิด'}จอยทริปใน ${bulkJoinTripSelectedIds.value.length} รอบสำเร็จ`);
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
     bulkJoinTripSubmitting.value = false;
+  }
+};
+
+const toggleJoinTrip = async (sch) => {
+  try {
+    await admin.updateSchedule(sch.id, {
+      join_trip_enabled: !sch.join_trip_enabled,
+      join_trip_price: !sch.join_trip_enabled ? (sch.join_trip_price || sch.price || 0) : null
+    });
+    fetchData();
+    toast.success(`${!sch.join_trip_enabled ? 'เปิด' : 'ปิด'}จอยทริปสำเร็จ`);
+  } catch (e) {
+    toast.error('ไม่สามารถเปลี่ยนสถานะจอยทริปได้');
   }
 };
 
@@ -1658,6 +1760,58 @@ onMounted(() => {
 
 <style scoped>
 @import url('./admin-shared.css');
+
+.btn-active {
+  color: #059669 !important;
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+}
+.btn-inactive {
+  color: #9ca3af !important;
+  background: #f9fafb !important;
+  border-color: #e5e7eb !important;
+}
+
+.manifest-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.ms-item {
+  background: #f9fafb;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid #f3f4f6;
+}
+.ms-label {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.ms-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+.ms-join { background: #ecfdf5; border-color: #d1fae5; }
+.ms-join .ms-value { color: #059669; }
+.ms-total { background: #eff6ff; border-color: #dbeafe; }
+.ms-total .ms-value { color: #2563eb; }
+
+.manifest-table-wrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.manifest-table th { padding: 10px 16px; background: #f9fafb; }
+.manifest-table td { padding: 10px 16px; font-size: 13px; }
+
+.btn-manifest { color: #6366f1; }
+.btn-manifest:hover { background: #eef2ff; border-color: #c7d2fe; }
 
 /* ── Accordion loading / empty ── */
 .accordion-loading {
