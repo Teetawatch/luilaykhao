@@ -543,9 +543,7 @@
                   class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none disabled:opacity-50">
                   <option value="">เลือกรอบเดินทาง</option>
                   <option v-for="s in availableSchedules" :key="s.id" :value="s.id">
-                    {{ formatDate(s.departure_date) }} 
-                    <span v-if="s.join_trip_enabled">(จอยทริป)</span>
-                    <span v-else>({{ s.available_seats }} ที่ว่าง)</span>
+                    {{ formatDate(s.departure_date) }}
                   </option>
                 </select>
               </div>
