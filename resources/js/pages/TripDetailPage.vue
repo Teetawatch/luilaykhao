@@ -1341,6 +1341,37 @@ const allPickupPoints = computed(() => {
   return pts;
 });
 
+const getSortedPickupPoints = (points) => {
+  if (!points || !Array.isArray(points)) return [];
+  
+  const extractTimeValue = (pt) => {
+    // Try to find time in notes or location (HH:mm or HH.mm)
+    const text = `${pt.pickup_location || ''} ${pt.notes || ''}`;
+    const timeMatch = text.match(/([01]?[0-9]|2[0-3])[:.]([0-5][0-9])/);
+    if (timeMatch) {
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2], 10);
+      return hours * 60 + minutes;
+    }
+    return 9999; // Fallback for items without time
+  };
+
+  return [...points].sort((a, b) => {
+    // 1. Sort by time extracted from text
+    const timeA = extractTimeValue(a);
+    const timeB = extractTimeValue(b);
+    if (timeA !== timeB) return timeA - timeB;
+    
+    // 2. Sort by sort_order (if provided)
+    const orderA = a.sort_order ?? 999;
+    const orderB = b.sort_order ?? 999;
+    if (orderA !== orderB) return orderA - orderB;
+    
+    // 3. Sort by price
+    return Number(a.price || 0) - Number(b.price || 0);
+  });
+};
+
 const groupedPickupPointsByRegion = computed(() => {
   if (!allPickupPoints.value.length) return [];
 
@@ -1372,12 +1403,7 @@ const groupedPickupPointsByRegion = computed(() => {
   return [...grouped.values()]
     .map((group) => ({
       ...group,
-      points: [...group.points].sort((a, b) => {
-        const orderA = a.sort_order ?? 999;
-        const orderB = b.sort_order ?? 999;
-        if (orderA !== orderB) return orderA - orderB;
-        return Number(a.price || 0) - Number(b.price || 0);
-      }),
+      points: getSortedPickupPoints(group.points),
     }))
     .sort((a, b) => {
       const aOrder = regionOrderMap.has(a.region) ? regionOrderMap.get(a.region) : Number.MAX_SAFE_INTEGER;
@@ -1544,16 +1570,6 @@ function prevGalleryImage() {
   if (!trip.value?.gallery?.length) return;
   activeGalleryIndex.value = (activeGalleryIndex.value - 1 + trip.value.gallery.length) % trip.value.gallery.length;
 }
-
-const getSortedPickupPoints = (points) => {
-  if (!points) return [];
-  return [...points].sort((a, b) => {
-    const orderA = a.sort_order ?? 999;
-    const orderB = b.sort_order ?? 999;
-    if (orderA !== orderB) return orderA - orderB;
-    return Number(a.price || 0) - Number(b.price || 0);
-  });
-};
 
 const handleKeyDown = (e) => {
   if (!showGalleryModal.value) return;
