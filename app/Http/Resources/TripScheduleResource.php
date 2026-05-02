@@ -26,6 +26,8 @@ class TripScheduleResource extends JsonResource
             'installment_enabled' => (bool) $this->installment_enabled,
             'installment_count' => $this->installment_count,
             'installment_interval_days' => $this->installment_interval_days,
+            'join_trip_enabled' => (bool) $this->join_trip_enabled,
+            'join_trip_price' => $this->join_trip_price,
             'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
             'created_at' => $this->created_at?->toISOString(),
         ];

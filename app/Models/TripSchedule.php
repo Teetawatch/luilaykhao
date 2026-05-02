@@ -20,6 +20,7 @@ class TripSchedule extends Model
         'total_seats', 'booked_seats', 'transport_type',
         'vehicle_id', 'status', 'price_override',
         'installment_enabled', 'installment_count', 'installment_interval_days',
+        'join_trip_enabled', 'join_trip_price',
     ];
 
     protected function casts(): array
@@ -33,6 +34,8 @@ class TripSchedule extends Model
             'installment_enabled'       => 'boolean',
             'installment_count'         => 'integer',
             'installment_interval_days' => 'integer',
+            'join_trip_enabled'         => 'boolean',
+            'join_trip_price'           => 'decimal:2',
         ];
     }
 

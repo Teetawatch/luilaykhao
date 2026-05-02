@@ -642,7 +642,7 @@ const transferTime = ref('');
 
 // ── Installment helpers ──────────────────────────────────────
 const installmentAvailable = computed(() =>
-  !!booking.value?.schedule?.installment_enabled
+  !!booking.value?.schedule?.installment_enabled && !booking.value?.is_join_trip
 );
 const installmentCount = computed(() =>
   booking.value?.schedule?.installment_count ?? 2

@@ -189,6 +189,9 @@
             </div>
           </div>
 
+            </div>
+          </div>
+          
           <!-- Installment Settings -->
           <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:4px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -205,6 +208,28 @@
               <div class="form-group">
                 <label>ระยะห่างระหว่างงวด (วัน)</label>
                 <input v-model.number="form.installment_interval_days" type="number" min="1" required />
+              </div>
+            </div>
+          </div>
+          
+          <!-- Join Trip Settings -->
+          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+                <input type="checkbox" v-model="form.join_trip_enabled" style="width:16px;height:16px;accent-color:#0f766e;" />
+                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">เปิดใช้ระบบ "จอยทริป" (Join Trip)</span>
+              </label>
+            </div>
+            <div v-if="form.join_trip_enabled" class="form-grid">
+              <div class="form-group">
+                <label>ราคาจอยทริป (฿) *</label>
+                <input v-model.number="form.join_trip_price" type="number" min="0" placeholder="ระบุราคาต่อท่าน" required />
+              </div>
+              <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:12px;">
+                <p style="font-size:11px;color:#6b7280;line-height:1.4;">
+                  <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:2px;color:#0f766e;">info</span>
+                  ระบบจอยทริปจะข้ามการเลือกที่นั่งและไม่มีระบบผ่อนชำระ
+                </p>
               </div>
             </div>
           </div>
@@ -796,6 +821,7 @@ const form = reactive({
   total_seats: 10, transport_type: 'van', vehicle_id: null,
   price_override: null, status: 'open',
   installment_enabled: false, installment_count: 2, installment_interval_days: 30,
+  join_trip_enabled: false, join_trip_price: null,
 });
 
 const statusLabels = { open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก' };
@@ -846,6 +872,8 @@ const openForm = (item = null) => {
       installment_enabled: !!item.installment_enabled,
       installment_count: item.installment_count || 2,
       installment_interval_days: item.installment_interval_days || 30,
+      join_trip_enabled: !!item.join_trip_enabled,
+      join_trip_price: item.join_trip_price || null,
     });
   } else {
     Object.assign(form, {
@@ -854,6 +882,7 @@ const openForm = (item = null) => {
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
       installment_enabled: false, installment_count: 2, installment_interval_days: 30,
+      join_trip_enabled: false, join_trip_price: null,
     });
   }
   showForm.value = true;

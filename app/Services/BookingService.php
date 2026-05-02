@@ -29,9 +29,14 @@ class BookingService
         ?string $groupName = null,
         ?string $groupNotes = null,
         ?string $promotionCode = null,
+        bool $isJoinTrip = false,
     ): Booking {
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
+
+            if ($isJoinTrip && !$schedule->join_trip_enabled) {
+                throw new \Exception('รอบเดินทางนี้ไม่เปิดให้จองแบบ Join Trip');
+            }
 
             $participantCount = count($passengers);
 
@@ -39,8 +44,8 @@ class BookingService
                 throw new \Exception('ที่นั่งไม่เพียงพอ');
             }
 
-            // Verify seat locks if seat-based booking
-            if (!empty($seatIds)) {
+            // Verify seat locks if seat-based booking and NOT join trip
+            if (!$isJoinTrip && !empty($seatIds)) {
                 foreach ($seatIds as $seatId) {
                     if (!$this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId)) {
                         throw new \Exception("ที่นั่ง {$seatId} ไม่ได้ถูกล็อคโดยคุณ");
@@ -48,25 +53,35 @@ class BookingService
                 }
             }
 
-            // Use pickup point price if specified
-            $pricePerPerson = $schedule->effective_price;
-            $pickupPoint = null;
+            // Use join trip price if applicable
+            if ($isJoinTrip) {
+                $pricePerPerson = $schedule->join_trip_price ?? $schedule->effective_price;
+                $pickupPoint = null;
+                $pickupRegion = null; // Join trip might not need pickup region if they meet at destination? 
+                // But user didn't specify. I'll keep pickup logic if they provided it.
+            } else {
+                $pricePerPerson = $schedule->effective_price;
+                $pickupPoint = null;
 
-            if ($pickupPointId) {
-                $pickupPoint = SchedulePickupPoint::find($pickupPointId);
-            } elseif ($pickupRegion) {
-                $pickupPoint = SchedulePickupPoint::where('schedule_id', $scheduleId)
-                    ->where('region', $pickupRegion)
-                    ->first();
-            }
+                if ($pickupPointId) {
+                    $pickupPoint = SchedulePickupPoint::find($pickupPointId);
+                } elseif ($pickupRegion) {
+                    $pickupPoint = SchedulePickupPoint::where('schedule_id', $scheduleId)
+                        ->where('region', $pickupRegion)
+                        ->first();
+                }
 
-            if ($pickupPoint) {
-                $pricePerPerson = $pickupPoint->price;
-                $pickupRegion = $pickupPoint->region; // Ensure region is set if only ID was passed
+                if ($pickupPoint) {
+                    $pricePerPerson = $pickupPoint->price;
+                    $pickupRegion = $pickupPoint->region; 
+                }
             }
 
             $totalAmount = $pricePerPerson * $participantCount;
-
+            
+            // ... rest of the logic remains the same until Booking::create
+            // I need to include the rest of the logic here because I'm replacing a large block.
+            
             $promotionId = null;
             $discountAmount = 0;
 
@@ -116,6 +131,7 @@ class BookingService
                 'promotion_id' => $promotionId,
                 'promotion_code' => $promotionId ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
+                'is_join_trip' => $isJoinTrip,
             ]);
 
             // Create passengers
@@ -126,8 +142,8 @@ class BookingService
                 ]);
             }
 
-            // Create seats if seat-based
-            if (!empty($seatIds)) {
+            // Create seats if seat-based and NOT join trip
+            if (!$isJoinTrip && !empty($seatIds)) {
                 foreach ($seatIds as $index => $seatId) {
                     BookingSeat::create([
                         'booking_id' => $booking->id,

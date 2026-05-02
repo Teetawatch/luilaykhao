@@ -1031,6 +1031,7 @@ const bookingLoading = ref(false);
 const vehicleImageIndex = ref(0);
 const vehicleTouchStartX = ref(0);
 const bookingError = ref('');
+const isJoinTrip = ref(false);
 
 const vehicleTouchStart = (e) => {
   vehicleTouchStartX.value = e.touches[0].clientX;
@@ -1058,9 +1059,12 @@ const promotionData = ref(null);
 const promotionLoading = ref(false);
 const promotionError = ref('');
 
-const hasSeatMap = computed(() => seatsStore.seatMap?.has_seat_map ?? false);
+const hasSeatMap = computed(() => {
+  if (isJoinTrip.value) return false;
+  return seatsStore.seatMap?.has_seat_map ?? false;
+});
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
-const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking');
+const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value);
 const maxPassengers = computed(() => Math.min(schedule.value?.available_seats || 10, 10));
 
 const preselectedRegion = route.query.region || null;
@@ -1082,6 +1086,9 @@ const steps = computed(() => {
 });
 
 const effectivePrice = computed(() => {
+  if (isJoinTrip.value && schedule.value?.join_trip_enabled) {
+    return Number(schedule.value.join_trip_price || schedule.value.price || 0);
+  }
   if (selectedPickup.value) return Number(selectedPickup.value.price);
   return Number(schedule.value?.price || 0);
 });
@@ -1377,6 +1384,9 @@ async function createBooking() {
     if (promotionCode.value) {
       data.promotion_code = promotionCode.value;
     }
+    if (isJoinTrip.value) {
+      data.is_join_trip = true;
+    }
     if (hasSeatMap.value) data.seat_ids = seatsStore.selectedSeatIds;
 
     const res = await bookingStore.createBooking(data);
@@ -1409,6 +1419,11 @@ onMounted(async () => {
     const res = await api.get(`/schedules/${route.params.scheduleId}`);
     schedule.value = res.data.data;
     await seatsStore.fetchSeatMap(route.params.scheduleId);
+    
+    if (route.query.join_trip == 1 && schedule.value?.join_trip_enabled) {
+      isJoinTrip.value = true;
+    }
+
     if (preselectedRegion && pickupPoints.value.length === 1) {
       selectedPickup.value = pickupPoints.value[0];
     }
@@ -1438,12 +1453,15 @@ onMounted(async () => {
         passengerCount.value = seatsStore.selectedSeats.length;
       }
     } else if (!hasSeatMap.value && !isTrekking.value) {
-      // For non-seat-map, non-trekking trips: start countdown immediately on page load
+      // For non-seat-map, non-trekking trips (or Join Trip): start countdown immediately on page load
       seatsStore.startManualCountdown(
         schedule.value?.trip?.title || 'กิจกรรม',
         route.params.scheduleId,
-        preselectedRegion
+        isJoinTrip.value ? null : preselectedRegion
       );
+      if (isJoinTrip.value) {
+        step.value = 0; // Info Step
+      }
     }
   } catch (e) {
     console.error(e);

@@ -46,6 +46,7 @@ class BookingResource extends JsonResource
             'is_group' => $this->is_group,
             'group_name' => $this->group_name,
             'group_notes' => $this->group_notes,
+            'is_join_trip' => (bool) $this->is_join_trip,
             'qr_code' => $this->qr_code,
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),

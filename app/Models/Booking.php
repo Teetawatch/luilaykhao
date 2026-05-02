@@ -21,6 +21,7 @@ class Booking extends Model
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
         'cancellation_reason', 'cancelled_at',
         'promotion_id', 'promotion_code', 'discount_amount',
+        'is_join_trip',
     ];
 
     protected function casts(): array
@@ -34,6 +35,7 @@ class Booking extends Model
             'checked_in_at' => 'datetime',
             'is_group' => 'boolean',
             'checked_in' => 'boolean',
+            'is_join_trip' => 'boolean',
             'installment_count' => 'integer',
             'installment_interval_days' => 'integer',
             'transfer_datetime' => 'datetime',

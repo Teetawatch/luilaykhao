@@ -25,6 +25,8 @@ class StoreScheduleRequest extends FormRequest
             'installment_enabled' => ['nullable', 'boolean'],
             'installment_count' => ['nullable', 'integer', 'min:2', 'max:12'],
             'installment_interval_days' => ['nullable', 'integer', 'min:1'],
+            'join_trip_enabled' => ['nullable', 'boolean'],
+            'join_trip_price' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }
