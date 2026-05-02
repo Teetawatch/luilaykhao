@@ -189,8 +189,6 @@
             </div>
           </div>
 
-            </div>
-          </div>
           
           <!-- Installment Settings -->
           <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:4px;">
