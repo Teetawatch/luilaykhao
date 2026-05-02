@@ -135,6 +135,9 @@
                       <button class="btn-icon btn-clone" @click="openCopyScheduleModal(sch)" title="คัดลอกรอบเดินทาง">
                         <span class="material-symbols-rounded">file_copy</span>
                       </button>
+                      <button v-if="sch.booked_seats > 0" class="btn-icon btn-move" @click="openMoveBookingsModal(sch)" title="ย้ายการจองไปยังรอบอื่น">
+                        <span class="material-symbols-rounded">swap_horiz</span>
+                      </button>
                       <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
                       <button class="btn-icon btn-delete" @click="confirmDelete(sch)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
                     </div>
@@ -635,6 +638,52 @@
       </div>
     </div>
 
+    <!-- Move Bookings Modal -->
+    <div class="modal-overlay" v-if="showMoveBookingsModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">swap_horiz</span>ย้ายรายการจอง</h2>
+            <p class="modal-subtitle" v-if="moveSource">ต้นทาง: {{ moveSource.trip?.title }} — {{ moveSource.departure_date }} ({{ moveSource.booked_seats }} ที่นั่ง)</p>
+          </div>
+          <button class="modal-close" @click="showMoveBookingsModal = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="apply-section">
+            <div class="apply-section-title"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบเดินทางปลายทาง</div>
+            <div class="copy-target-list">
+              <div v-for="group in groupedByTrip" :key="group.trip_id" style="margin-bottom:8px;">
+                <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
+                <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item" :class="{ disabled: sch.id === moveSource.id || (!sch.join_trip_enabled && sch.available_seats < moveSource.booked_seats) }">
+                  <input type="radio" v-model="moveTargetId" :value="sch.id" :disabled="sch.id === moveSource.id || (!sch.join_trip_enabled && sch.available_seats < moveSource.booked_seats)" />
+                  <div style="flex:1;">
+                    <div style="display:flex;justify-content:space-between;">
+                       <span>{{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span></span>
+                       <span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span>
+                    </div>
+                    <div style="font-size:11px;color:#6b7280;margin-top:2px;">
+                      ว่าง {{ sch.available_seats }} ที่นั่ง · {{ sch.vehicle?.name || sch.transport_type }}
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div v-if="moveTargetId" style="margin-top:16px;padding:12px;background:#fffbeb;border:1px solid #fef3c7;border-radius:8px;font-size:13px;color:#92400e;">
+             <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:4px;">warning</span>
+             การย้ายจะเปลี่ยนรอบเดินทางของทุกใบจองในรอบนี้ และพยายามจับคู่จุดรับให้อัตโนมัติ
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showMoveBookingsModal = false">ยกเลิก</button>
+          <button class="btn-primary" @click="doMoveBookings" :disabled="moveSubmitting || !moveTargetId">
+            <span class="material-symbols-rounded" :class="{ 'animate-spin': moveSubmitting }" v-if="moveSubmitting">sync</span>
+            ยืนยันการย้าย
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Pickup Template Manager Modal -->
     <div class="modal-overlay" v-if="showTemplateManager">
       <div class="modal-card modal-xl">
@@ -1096,6 +1145,38 @@ const batchForm = reactive({
   installment_count: 2,
   installment_interval_days: 30,
 });
+
+// ─── Move Bookings ────────────────────────────────────────
+const showMoveBookingsModal = ref(false);
+const moveSubmitting = ref(false);
+const moveSource = ref(null);
+const moveTargetId = ref(null);
+
+const openMoveBookingsModal = (sch) => {
+  moveSource.value = sch;
+  moveTargetId.value = null;
+  showMoveBookingsModal.value = true;
+};
+
+const doMoveBookings = async () => {
+  if (!moveTargetId.value) return;
+  if (!confirm(`ยืนยันการย้ายการจองทั้งหมดจากวันที่ ${moveSource.value.departure_date} ใช่หรือไม่?\n\nการดำเนินการนี้จะเปลี่ยนข้อมูลถาวร`)) return;
+  
+  moveSubmitting.value = true;
+  try {
+    await api.post('/admin/schedules/move-bookings', {
+      source_schedule_id: moveSource.value.id,
+      target_schedule_id: moveTargetId.value,
+    });
+    toast.success('ย้ายการจองสำเร็จ');
+    showMoveBookingsModal.value = false;
+    fetchData();
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการย้ายการจอง');
+  } finally {
+    moveSubmitting.value = false;
+  }
+};
 
 const openBatchForm = (presetTripId = '') => {
   Object.assign(batchForm, {
@@ -1987,6 +2068,20 @@ onMounted(() => {
 .btn-clone:hover {
   background: #f5f3ff;
   border-color: #c4b5fd;
+}
+
+.btn-move {
+  color: #f59e0b;
+}
+.btn-move:hover {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.copy-target-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
 }
 
 .modal-xl {

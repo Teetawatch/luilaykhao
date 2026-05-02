@@ -21,11 +21,13 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
+use App\Models\BookingSeat;
 use App\Services\BookingService;
 use App\Services\MailService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -317,6 +319,64 @@ class AdminController extends Controller
         $schedule->delete();
 
         return $this->success(null, 'ลบรอบเดินทางสำเร็จ');
+    }
+
+    public function moveBookings(Request $request): JsonResponse
+    {
+        $request->validate([
+            'source_schedule_id' => ['required', 'exists:trip_schedules,id'],
+            'target_schedule_id' => ['required', 'exists:trip_schedules,id', 'different:source_schedule_id'],
+        ]);
+
+        $source = TripSchedule::with(['bookings.passengers', 'pickupPoints'])->findOrFail($request->source_schedule_id);
+        $target = TripSchedule::with('pickupPoints')->findOrFail($request->target_schedule_id);
+
+        $bookings = $source->bookings;
+        $bookingsCount = $bookings->count();
+
+        if ($bookingsCount === 0) {
+            return $this->error('ไม่พบรายการจองในรอบต้นทาง', 422);
+        }
+
+        // Calculate total passengers being moved
+        $totalPassengers = $bookings->sum(fn($b) => $b->passengers->count() ?: 1);
+
+        // Check capacity if not join trip
+        if (!$target->join_trip_enabled && $target->available_seats < $totalPassengers) {
+            return $this->error("ที่นั่งในรอบปลายทางไม่เพียงพอ (ต้องการ $totalPassengers, ว่าง {$target->available_seats})", 422);
+        }
+
+        // Prepare pickup point mapping
+        $pickupMap = [];
+        foreach ($source->pickupPoints as $sPoint) {
+            $tPoint = $target->pickupPoints->where('pickup_location', $sPoint->pickup_location)->first();
+            if ($tPoint) {
+                $pickupMap[$sPoint->id] = $tPoint->id;
+            }
+        }
+
+        DB::transaction(function () use ($source, $target, $bookings, $totalPassengers, $pickupMap) {
+            foreach ($bookings as $booking) {
+                $updateData = ['schedule_id' => $target->id];
+                
+                // Update pickup point if mapped
+                if ($booking->pickup_point_id && isset($pickupMap[$booking->pickup_point_id])) {
+                    $updateData['pickup_point_id'] = $pickupMap[$booking->pickup_point_id];
+                }
+
+                $booking->update($updateData);
+
+                // Update BookingSeats
+                BookingSeat::where('booking_id', $booking->id)
+                    ->update(['schedule_id' => $target->id]);
+            }
+
+            // Update booked_seats counts
+            $source->decrement('booked_seats', $totalPassengers);
+            $target->increment('booked_seats', $totalPassengers);
+        });
+
+        return $this->success(null, "ย้ายการจอง $bookingsCount รายการ ($totalPassengers ท่าน) ไปยังรอบเดินทางวันที่ " . $target->departure_date->format('d/m/Y') . " สำเร็จ");
     }
 
     public function scheduleStaff(int $id): JsonResponse
