@@ -512,7 +512,6 @@
         </div>
       </div>
     </div>
-    </div>
 
     <!-- Manual Booking Modal -->
     <div v-if="showManualModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity">
