@@ -35,6 +35,10 @@
                 <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
                 {{ Number(trip.rating || 0).toFixed(1) }} ({{ trip.review_count || 0 }} รีวิว)
               </span>
+              <span v-if="trip.confirmed_passengers_count > 0" class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
+                <span class="material-symbols-rounded text-[18px]">group</span>
+                {{ trip.confirmed_passengers_count }} คนร่วมเดินทางแล้ว
+              </span>
               <span v-if="trip.is_women_only" class="bg-pink-500/80 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-black shadow-lg flex items-center gap-1.5 border border-pink-400/30 animate-pulse">
                 <span class="material-symbols-rounded text-[18px]">female</span>
                 ทริปสำหรับผู้หญิงเท่านั้น

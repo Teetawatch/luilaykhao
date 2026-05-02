@@ -50,17 +50,23 @@
     <!-- Content -->
     <div class="p-5 flex-1 flex flex-col">
       <!-- Rating -->
-      <div class="flex items-center gap-1.5 mb-2">
-        <div class="flex text-[#FFB020] gap-0.5">
-          <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">star</span>
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-1.5">
+          <div class="flex text-[#FFB020] gap-0.5">
+            <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">star</span>
+          </div>
+          <template v-if="trip.review_count > 0">
+            <span class="text-[var(--color-text-dark)] font-bold text-sm">{{ Number(trip.rating).toFixed(1) }}</span>
+            <span class="text-gray-400 text-xs font-medium">({{ trip.review_count }} รีวิว)</span>
+          </template>
+          <template v-else>
+            <span class="text-gray-400 text-xs font-medium">ยังไม่มีรีวิว</span>
+          </template>
         </div>
-        <template v-if="trip.review_count > 0">
-          <span class="text-[var(--color-text-dark)] font-bold text-sm">{{ Number(trip.rating).toFixed(1) }}</span>
-          <span class="text-gray-400 text-xs font-medium">({{ trip.review_count }} รีวิว)</span>
-        </template>
-        <template v-else>
-          <span class="text-gray-400 text-xs font-medium">ยังไม่มีรีวิว</span>
-        </template>
+        <div v-if="trip.confirmed_passengers_count > 0" class="flex items-center gap-1 text-[var(--color-accent)] font-bold text-xs bg-[var(--color-accent-light)]/10 px-2 py-1 rounded-full">
+          <span class="material-symbols-rounded text-[16px]">group</span>
+          <span>{{ trip.confirmed_passengers_count }} คนร่วมทริป</span>
+        </div>
       </div>
 
       <h3 class="text-[1.1rem] font-extrabold text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">

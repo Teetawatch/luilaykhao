@@ -37,6 +37,7 @@ class TripResource extends JsonResource
             'preparations' => $this->preparations ?? [],
             'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
             'review_count' => $this->reviews()->where('is_approved', true)->count(),
+            'confirmed_passengers_count' => $this->confirmed_passengers_count,
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
             'created_at' => $this->created_at?->toISOString(),
         ];

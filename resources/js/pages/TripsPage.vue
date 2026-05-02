@@ -114,8 +114,12 @@
       <div class="flex-1 min-w-0">
         <!-- Sorting & Count -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 animate-fade-in" style="animation-delay: 0.15s">
-          <p class="text-[var(--color-text-muted)] text-base font-medium">
-            พบทริปทั้งหมด <span class="font-extrabold text-[var(--color-text-dark)] text-lg bg-white px-3 py-1 rounded-lg shadow-sm ml-1">{{ tripsStore.meta?.total || tripsStore.trips.length }}</span>
+          <p class="text-[var(--color-text-muted)] text-base font-medium flex flex-wrap items-center gap-4">
+            <span>พบทริปทั้งหมด <span class="font-extrabold text-[var(--color-text-dark)] text-lg bg-white px-3 py-1 rounded-lg shadow-sm ml-1">{{ tripsStore.meta?.total || tripsStore.trips.length }}</span></span>
+            <span v-if="totalConfirmedParticipants > 0" class="flex items-center gap-1.5 text-[var(--color-accent)] font-extrabold bg-white px-4 py-1.5 rounded-full shadow-sm border border-[var(--color-accent)]/10 animate-fade-in" style="animation-delay: 0.3s">
+              <span class="material-symbols-rounded text-[20px]">group</span>
+              {{ totalConfirmedParticipants.toLocaleString() }} คนร่วมเดินทางแล้ว
+            </span>
           </p>
           <div class="flex gap-3 items-center">
             <span class="text-sm font-bold text-[var(--color-text-muted)]">เรียงโดย:</span>
@@ -245,6 +249,10 @@ const sortedTrips = computed(() => {
     return list.sort((a, b) => Number(b.price_per_person) - Number(a.price_per_person));
   }
   return list;
+});
+
+const totalConfirmedParticipants = computed(() => {
+  return tripsStore.trips.reduce((sum, trip) => sum + (trip.confirmed_passengers_count || 0), 0);
 });
 
 const paginationPages = computed(() => {

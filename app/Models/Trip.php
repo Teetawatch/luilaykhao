@@ -48,6 +48,16 @@ class Trip extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function getConfirmedPassengersCountAttribute(): int
+    {
+        return \App\Models\BookingPassenger::whereHas('booking', function($q) {
+            $q->whereIn('status', ['confirmed', 'completed'])
+              ->whereHas('schedule', function($sq) {
+                  $sq->where('trip_id', $this->id);
+              });
+        })->count();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

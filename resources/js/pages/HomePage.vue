@@ -343,6 +343,10 @@
                   <span class="text-[var(--color-text-dark)] font-bold text-sm">{{ Number(trip.rating).toFixed(1) }}</span>
                   <span class="text-gray-400 text-xs font-medium">({{ trip.review_count }} รีวิว)</span>
                 </template>
+                <div v-if="trip.confirmed_passengers_count > 0" class="ml-auto flex items-center gap-1 text-[var(--color-accent)] font-bold text-xs bg-[var(--color-accent-light)]/10 px-2 py-0.5 rounded-full">
+                  <span class="material-symbols-rounded text-[14px]">group</span>
+                  <span>{{ trip.confirmed_passengers_count }} คน</span>
+                </div>
                 <span v-else class="text-gray-400 text-xs font-medium italic">ยังไม่มีรีวิว</span>
               </div>
               
