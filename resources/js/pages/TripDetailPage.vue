@@ -618,7 +618,7 @@
 
                       <!-- Pickup point and price for this region -->
                       <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9 space-y-1.5">
-                        <template v-for="pt in s.pickup_points" :key="pt.id">
+                        <template v-for="pt in getSortedPickupPoints(s.pickup_points)" :key="pt.id">
                           <div v-if="pt.region === selectedRegion" class="text-xs text-[var(--color-text-dark)] font-bold">
                             <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
                               class="flex items-start gap-1.5 hover:text-[var(--color-accent)] transition-colors group">
@@ -1372,7 +1372,12 @@ const groupedPickupPointsByRegion = computed(() => {
   return [...grouped.values()]
     .map((group) => ({
       ...group,
-      points: [...group.points].sort((a, b) => Number(a.price || 0) - Number(b.price || 0)),
+      points: [...group.points].sort((a, b) => {
+        const orderA = a.sort_order ?? 999;
+        const orderB = b.sort_order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return Number(a.price || 0) - Number(b.price || 0);
+      }),
     }))
     .sort((a, b) => {
       const aOrder = regionOrderMap.has(a.region) ? regionOrderMap.get(a.region) : Number.MAX_SAFE_INTEGER;
@@ -1539,6 +1544,16 @@ function prevGalleryImage() {
   if (!trip.value?.gallery?.length) return;
   activeGalleryIndex.value = (activeGalleryIndex.value - 1 + trip.value.gallery.length) % trip.value.gallery.length;
 }
+
+const getSortedPickupPoints = (points) => {
+  if (!points) return [];
+  return [...points].sort((a, b) => {
+    const orderA = a.sort_order ?? 999;
+    const orderB = b.sort_order ?? 999;
+    if (orderA !== orderB) return orderA - orderB;
+    return Number(a.price || 0) - Number(b.price || 0);
+  });
+};
 
 const handleKeyDown = (e) => {
   if (!showGalleryModal.value) return;
