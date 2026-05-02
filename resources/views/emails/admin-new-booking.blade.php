@@ -38,6 +38,23 @@
         <div class="info-item"><div class="info-label">สถานะ</div><div class="info-value" style="color:#d97706;">รอชำระเงิน</div></div>
         <div class="info-item"><div class="info-label">โทรศัพท์</div><div class="info-value">{{ $booking->user->phone ?? '-' }}</div></div>
         <div class="info-item"><div class="info-label">พื้นที่รับ</div><div class="info-value">{{ $booking->pickup_region ?? '-' }}</div></div>
+        <div class="info-item" style="grid-column: 1 / -1;">
+          <div class="info-label">รูปแบบการชำระ</div>
+          <div class="info-value">
+            @if($booking->payment_type === 'installment')
+              ผ่อนชำระ ({{ $booking->installment_count }} งวด)
+              @php
+                $paidCount = $booking->installmentPayments->where('status', 'paid')->count();
+                $remainingCount = max(0, $booking->installment_count - $paidCount);
+              @endphp
+              <span style="display:block; font-size:11px; color:#d97706;">
+                เหลือ {{ $remainingCount }} / {{ $booking->installment_count }} งวด
+              </span>
+            @else
+              ชำระเต็มจำนวน
+            @endif
+          </div>
+        </div>
       </div>
       @if($booking->passengers->count() > 0)
         <h3 style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin:0 0 12px 0;">รายชื่อผู้เดินทาง</h3>

@@ -90,6 +90,23 @@
           <div class="info-label">สถานะ</div>
           <div class="info-value success">✓ ยืนยันแล้ว</div>
         </div>
+        <div class="info-item">
+          <div class="info-label">รูปแบบการชำระ</div>
+          <div class="info-value">
+            @if($booking->payment_type === 'installment')
+              ผ่อนชำระ 
+              @php
+                $paidCount = $booking->installmentPayments->where('status', 'paid')->count();
+                $remainingCount = max(0, $booking->installment_count - $paidCount);
+              @endphp
+              <span style="display:block; font-size:11px; color:#d97706;">
+                เหลือ {{ $remainingCount }} / {{ $booking->installment_count }} งวด
+              </span>
+            @else
+              ชำระเต็มจำนวน
+            @endif
+          </div>
+        </div>
       </div>
 
       @if($paymentType === 'installment' && $booking->installmentPayments->count() > 0)

@@ -35,7 +35,21 @@
         <div class="info-item"><div class="info-label">ยอดชำระ</div><div class="info-value accent">฿{{ number_format($booking->paid_amount, 0) }}</div></div>
         <div class="info-item"><div class="info-label">ยอดรวม</div><div class="info-value">฿{{ number_format($booking->total_amount, 0) }}</div></div>
         <div class="info-item"><div class="info-label">วิธีชำระ</div><div class="info-value">{{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'Mobile Banking' : $booking->payment_method) }}</div></div>
-        <div class="info-item"><div class="info-label">ประเภท</div><div class="info-value">{{ $paymentType === 'installment' ? 'ผ่อนชำระ' : 'เต็มจำนวน' }}</div></div>
+        <div class="info-item">
+          <div class="info-label">ประเภท</div>
+          <div class="info-value">
+            {{ $paymentType === 'installment' ? 'ผ่อนชำระ' : 'เต็มจำนวน' }}
+            @if($paymentType === 'installment')
+              @php
+                $paidCount = $booking->installmentPayments->where('status', 'paid')->count();
+                $remainingCount = max(0, $booking->installment_count - $paidCount);
+              @endphp
+              <div style="font-size:11px; color:#d97706; margin-top:2px;">
+                เหลือ {{ $remainingCount }} / {{ $booking->installment_count }} งวด
+              </div>
+            @endif
+          </div>
+        </div>
         <div class="info-item"><div class="info-label">ลูกค้า</div><div class="info-value">{{ $booking->user->email ?? '-' }}</div></div>
         <div class="info-item"><div class="info-label">โทรศัพท์</div><div class="info-value">{{ $booking->user->phone ?? '-' }}</div></div>
       </div>

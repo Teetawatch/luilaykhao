@@ -68,6 +68,16 @@
           <div class="info-label">สถานะ</div>
           <div class="info-value" style="color:#d97706;">รอชำระเงิน</div>
         </div>
+        <div class="info-item" style="grid-column: 1 / -1;">
+          <div class="info-label">รูปแบบการชำระ</div>
+          <div class="info-value">
+            @if($booking->payment_type === 'installment')
+              ผ่อนชำระ ({{ $booking->installment_count }} งวด)
+            @else
+              ชำระเต็มจำนวน
+            @endif
+          </div>
+        </div>
       </div>
 
       <hr class="divider" />

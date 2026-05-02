@@ -44,6 +44,16 @@
         <div class="info-item" style="grid-column: 1 / -1;"><div class="info-label">กิจกรรม / ทริป</div><div class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</div></div>
         <div class="info-item"><div class="info-label">วันเดินทาง</div><div class="info-value">{{ $booking->schedule->departure_date?->format('d/m/Y') ?? '-' }}</div></div>
         <div class="info-item"><div class="info-label">ยอดรวม</div><div class="info-value">฿{{ number_format($booking->total_amount, 0) }}</div></div>
+        <div class="info-item">
+          <div class="info-label">รูปแบบการชำระ</div>
+          <div class="info-value">
+            @if($booking->payment_type === 'installment')
+              ผ่อนชำระ ({{ $booking->installment_count }} งวด)
+            @else
+              ชำระเต็มจำนวน
+            @endif
+          </div>
+        </div>
       </div>
       <p style="font-size:13px;color:#6b7280;text-align:center;">หากมีข้อสงสัย กรุณาติดต่อทีมงาน</p>
     </div>

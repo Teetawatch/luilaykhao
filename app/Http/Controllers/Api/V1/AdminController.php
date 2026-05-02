@@ -53,11 +53,24 @@ class AdminController extends Controller
         $confirmedBookings = Booking::where('status', 'confirmed')->count();
         $cancelledBookings = Booking::where('status', 'cancelled')->count();
 
-        $totalRevenue = Booking::where('status', 'confirmed')->sum('paid_amount');
-        $monthlyRevenue = Booking::where('status', 'confirmed')
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('paid_amount');
+        // Total Revenue: sum of paid_amount from all confirmed bookings
+        $totalRevenue = Booking::whereIn('status', ['confirmed', 'completed'])->sum('paid_amount');
+
+        // Monthly Revenue:
+        // 1. Full payments made this month
+        $monthlyFull = Booking::whereIn('status', ['confirmed', 'completed'])
+            ->where('payment_type', 'full')
+            ->whereMonth('transfer_datetime', now()->month)
+            ->whereYear('transfer_datetime', now()->year)
+            ->sum('total_amount');
+
+        // 2. Installment payments made this month
+        $monthlyInst = \App\Models\InstallmentPayment::where('status', 'paid')
+            ->whereMonth('transfer_datetime', now()->month)
+            ->whereYear('transfer_datetime', now()->year)
+            ->sum('amount');
+
+        $monthlyRevenue = $monthlyFull + $monthlyInst;
 
         $totalCustomers = User::role('customer')->count();
         $totalVehicles = Vehicle::count();
@@ -78,10 +91,18 @@ class AdminController extends Controller
             $date = now()->subMonths($i);
             $revenueChart[] = [
                 'month' => $date->format('M Y'),
-                'revenue' => (float) Booking::where('status', 'confirmed')
-                    ->whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
-                    ->sum('paid_amount'),
+                'revenue' => (float) (
+                    Booking::whereIn('status', ['confirmed', 'completed'])
+                        ->where('payment_type', 'full')
+                        ->whereMonth('transfer_datetime', $date->month)
+                        ->whereYear('transfer_datetime', $date->year)
+                        ->sum('total_amount')
+                    +
+                    \App\Models\InstallmentPayment::where('status', 'paid')
+                        ->whereMonth('transfer_datetime', $date->month)
+                        ->whereYear('transfer_datetime', $date->year)
+                        ->sum('amount')
+                ),
             ];
         }
 
