@@ -301,7 +301,7 @@
                     </div>
                     <div>
                       <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">เลขที่บัญชี</p>
-                      <p class="text-lg font-black text-gray-900 tracking-wider">062-6-12600-6</p>
+                      <p class="text-lg font-black text-gray-900 tracking-wider">230-1-39095-8</p>
                     </div>
                   </div>
                   <button @click="copyAccount" class="p-2.5 rounded-xl bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors shadow-sm active:scale-90">
@@ -477,7 +477,12 @@
                  </div>
                  <div>
                     <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">จุดรับเดินทาง</p>
-                    <p class="text-sm font-bold text-gray-900 truncate max-w-[180px]">{{ booking.pickup_region || 'ระบุก่อนเดินทาง' }}</p>
+                    <p class="text-sm font-black text-gray-900 leading-tight">
+                      {{ booking.pickup_point?.pickup_location || 'ยังไม่ได้ระบุจุดรับ' }}
+                    </p>
+                    <p v-if="booking.pickup_point?.region_label || booking.pickup_region" class="text-[11px] font-bold text-amber-600 mt-0.5">
+                      {{ booking.pickup_point?.region_label || formatRegion(booking.pickup_region) }}
+                    </p>
                  </div>
                </div>
             </div>
@@ -796,6 +801,20 @@ function removeSlip() {
 function formatDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function formatRegion(slug) {
+  if (!slug) return '';
+  const map = {
+    bangkok: 'กรุงเทพฯ',
+    central: 'ภาคกลาง',
+    north: 'ภาคเหนือ',
+    northeast: 'ภาคอีสาน',
+    east: 'ภาคตะวันออก',
+    west: 'ภาคตะวันตก',
+    south: 'ภาคใต้'
+  };
+  return map[slug] || slug;
 }
 
 function initPaymentCountdown() {
