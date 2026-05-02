@@ -6,6 +6,9 @@
         <p class="page-subtitle">จัดการรอบเดินทางและตารางวันเดินทาง</p>
       </div>
       <div style="display:flex;gap:10px;">
+        <button class="btn-secondary" @click="openBulkJoinTripModal()">
+          <span class="material-symbols-rounded">group_add</span> จัดการจอยทริป
+        </button>
         <button class="btn-secondary" @click="openTemplateManager()">
           <span class="material-symbols-rounded">bookmark</span> เทมเพลตจุดรับ
         </button>
@@ -107,7 +110,14 @@
                     </div>
                     <span v-else class="text-muted-sm">—</span>
                   </td>
-                  <td><span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+                      <span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span>
+                      <span v-if="sch.join_trip_enabled" class="status-badge" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-size:9px;">
+                        <span class="material-symbols-rounded" style="font-size:11px;">group_add</span> จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}
+                      </span>
+                    </div>
+                  </td>
                   <td>
                     <div class="action-btns">
                       <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จัดการจุดรับ">
@@ -417,6 +427,28 @@
               <div class="form-group">
                 <label>ราคาพิเศษ (฿)</label>
                 <input v-model.number="batchForm.price_override" type="number" min="0" placeholder="ไม่ระบุใช้ราคาทริป" />
+              </div>
+            </div>
+
+            <!-- Join Trip + Installment in batch -->
+            <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+                <input type="checkbox" v-model="batchForm.join_trip_enabled" style="width:16px;height:16px;accent-color:#0f766e;" />
+                <span style="font-weight:600;font-size:13px;color:#1a1c1c;">เปิดจอยทริป</span>
+              </label>
+              <div v-if="batchForm.join_trip_enabled" style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:12px;color:#6b7280;">ราคาจอยทริป ฿</span>
+                <input v-model.number="batchForm.join_trip_price" type="number" min="0" placeholder="ราคา" style="width:100px;" />
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+                <input type="checkbox" v-model="batchForm.installment_enabled" style="width:16px;height:16px;accent-color:#006565;" />
+                <span style="font-weight:600;font-size:13px;color:#1a1c1c;">เปิดผ่อนชำระ</span>
+              </label>
+              <div v-if="batchForm.installment_enabled" style="display:flex;align-items:center;gap:8px;">
+                <input v-model.number="batchForm.installment_count" type="number" min="2" max="12" placeholder="งวด" style="width:60px;" />
+                <span style="font-size:12px;color:#6b7280;">งวด ·</span>
+                <input v-model.number="batchForm.installment_interval_days" type="number" min="1" placeholder="วัน" style="width:60px;" />
+                <span style="font-size:12px;color:#6b7280;">วัน</span>
               </div>
             </div>
           </div>
@@ -733,6 +765,75 @@
       </div>
     </div>
 
+    <!-- Bulk Join Trip Modal -->
+    <div class="modal-overlay" v-if="showBulkJoinTrip">
+      <div class="modal-card modal-xl">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:#059669;margin-right:8px;">group_add</span>จัดการจอยทริปแบบกลุ่ม</h2>
+            <p class="modal-subtitle">เลือกรอบเดินทางที่ต้องการ แล้วเปิด/ปิดจอยทริปพร้อมกัน</p>
+          </div>
+          <button class="modal-close" @click="showBulkJoinTrip = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Settings -->
+          <div class="batch-section">
+            <h3 class="section-label"><span class="material-symbols-rounded">tune</span> ตั้งค่าจอยทริป</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>สถานะจอยทริป</label>
+                <select v-model="bulkJoinTripForm.enabled">
+                  <option :value="true">เปิดใช้งาน</option>
+                  <option :value="false">ปิดใช้งาน</option>
+                </select>
+              </div>
+              <div class="form-group" v-if="bulkJoinTripForm.enabled">
+                <label>ราคาจอยทริป (฿) *</label>
+                <input v-model.number="bulkJoinTripForm.price" type="number" min="0" placeholder="ราคาต่อท่าน" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Schedule Selection -->
+          <div class="batch-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <h3 class="section-label" style="margin:0;"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบเดินทาง ({{ bulkJoinTripSelectedIds.length }} รอบ)</h3>
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="btn-sm btn-secondary" @click="bulkJoinTripSelectAll()">เลือกทั้งหมด</button>
+                <button type="button" class="btn-sm btn-secondary" @click="bulkJoinTripSelectedIds = []">ยกเลิกทั้งหมด</button>
+              </div>
+            </div>
+            <div class="copy-target-list" style="max-height:340px;overflow-y:auto;">
+              <div v-for="group in groupedByTrip" :key="group.trip_id" style="margin-bottom:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                  <span style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;">{{ group.trip_title }}</span>
+                  <button type="button" style="font-size:10px;color:var(--color-accent);font-weight:700;cursor:pointer;background:none;border:none;text-decoration:underline;" @click="bulkJoinTripToggleGroup(group)">เลือกทั้งกลุ่ม</button>
+                </div>
+                <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item">
+                  <input type="checkbox" v-model="bulkJoinTripSelectedIds" :value="sch.id" />
+                  <span style="flex:1;">
+                    {{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span>
+                    <span v-if="sch.vehicle?.license_plate" style="margin-left:8px; color:var(--color-accent); font-weight:700;">({{ sch.vehicle.license_plate }})</span>
+                  </span>
+                  <span v-if="sch.join_trip_enabled" style="font-size:10px;font-weight:700;color:#059669;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 8px;border-radius:8px;">จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}</span>
+                  <span v-else style="font-size:10px;color:#9ca3af;">—</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showBulkJoinTrip = false">ยกเลิก</button>
+          <button class="btn-primary" @click="doBulkJoinTrip" :disabled="!bulkJoinTripSelectedIds.length || bulkJoinTripSubmitting">
+            <span class="material-symbols-rounded" :class="{ 'animate-spin': bulkJoinTripSubmitting }" v-if="bulkJoinTripSubmitting">sync</span>
+            {{ bulkJoinTripForm.enabled ? 'เปิดจอยทริป' : 'ปิดจอยทริป' }}ใน {{ bulkJoinTripSelectedIds.length }} รอบ
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Delete Confirm -->
     <div class="modal-overlay" v-if="showDeleteConfirm">
       <div class="modal-card modal-sm">
@@ -919,6 +1020,11 @@ const batchForm = reactive({
   price_override: null,
   dates: [{ departure_date: '', return_date: '' }],
   pickups: [],
+  join_trip_enabled: false,
+  join_trip_price: null,
+  installment_enabled: false,
+  installment_count: 2,
+  installment_interval_days: 30,
 });
 
 const openBatchForm = (presetTripId = '') => {
@@ -930,6 +1036,11 @@ const openBatchForm = (presetTripId = '') => {
     price_override: null,
     dates: [{ departure_date: '', return_date: '' }],
     pickups: [],
+    join_trip_enabled: false,
+    join_trip_price: null,
+    installment_enabled: false,
+    installment_count: 2,
+    installment_interval_days: 30,
   });
   showBatchForm.value = true;
 };
@@ -974,6 +1085,11 @@ const submitBatchForm = async () => {
         departure_date: d.departure_date,
         return_date: d.return_date,
         status: 'open',
+        join_trip_enabled: batchForm.join_trip_enabled || false,
+        join_trip_price: batchForm.join_trip_enabled ? batchForm.join_trip_price : null,
+        installment_enabled: batchForm.installment_enabled || false,
+        installment_count: batchForm.installment_count || 2,
+        installment_interval_days: batchForm.installment_interval_days || 30,
       });
       const scheduleId = scheduleRes.data.data.id;
       for (const pt of batchForm.pickups) {
@@ -1037,6 +1153,8 @@ const doCopySchedule = async () => {
       installment_enabled: src.installment_enabled || false,
       installment_count: src.installment_count || 2,
       installment_interval_days: src.installment_interval_days || 30,
+      join_trip_enabled: src.join_trip_enabled || false,
+      join_trip_price: src.join_trip_price || null,
     });
     const newId = newScheduleRes.data.data.id;
     if (copyScheduleForm.include_pickups) {
@@ -1475,6 +1593,60 @@ const doDelete = async () => {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
     submitting.value = false;
+  }
+};
+// ─── Bulk Join Trip ────────────────────────────────────────
+const showBulkJoinTrip = ref(false);
+const bulkJoinTripSubmitting = ref(false);
+const bulkJoinTripSelectedIds = ref([]);
+const bulkJoinTripForm = reactive({
+  enabled: true,
+  price: null,
+});
+
+const openBulkJoinTripModal = () => {
+  bulkJoinTripForm.enabled = true;
+  bulkJoinTripForm.price = null;
+  bulkJoinTripSelectedIds.value = [];
+  showBulkJoinTrip.value = true;
+};
+
+const bulkJoinTripSelectAll = () => {
+  bulkJoinTripSelectedIds.value = (admin.schedules.data || []).map(s => s.id);
+};
+
+const bulkJoinTripToggleGroup = (group) => {
+  const ids = group.schedules.map(s => s.id);
+  const allSelected = ids.every(id => bulkJoinTripSelectedIds.value.includes(id));
+  if (allSelected) {
+    bulkJoinTripSelectedIds.value = bulkJoinTripSelectedIds.value.filter(id => !ids.includes(id));
+  } else {
+    const set = new Set(bulkJoinTripSelectedIds.value);
+    ids.forEach(id => set.add(id));
+    bulkJoinTripSelectedIds.value = [...set];
+  }
+};
+
+const doBulkJoinTrip = async () => {
+  if (bulkJoinTripForm.enabled && !bulkJoinTripForm.price && bulkJoinTripForm.price !== 0) {
+    alert('กรุณาระบุราคาจอยทริป');
+    return;
+  }
+  bulkJoinTripSubmitting.value = true;
+  try {
+    for (const scheduleId of bulkJoinTripSelectedIds.value) {
+      await admin.updateSchedule(scheduleId, {
+        join_trip_enabled: bulkJoinTripForm.enabled,
+        join_trip_price: bulkJoinTripForm.enabled ? bulkJoinTripForm.price : null,
+      });
+    }
+    showBulkJoinTrip.value = false;
+    fetchData();
+    alert(`${bulkJoinTripForm.enabled ? 'เปิด' : 'ปิด'}จอยทริปใน ${bulkJoinTripSelectedIds.value.length} รอบสำเร็จ`);
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    bulkJoinTripSubmitting.value = false;
   }
 };
 
