@@ -486,6 +486,72 @@ class AdminController extends Controller
         return $this->success(new BookingResource($booking->fresh()), 'อัปเดตสถานะสำเร็จ');
     }
 
+    public function storeManualBooking(Request $request): JsonResponse
+    {
+        $request->validate([
+            'schedule_id' => ['required', 'exists:trip_schedules,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'surname' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:20'],
+            'passenger_count' => ['required', 'integer', 'min:1'],
+            'status' => ['required', 'in:pending,confirmed'],
+        ]);
+
+        $schedule = TripSchedule::with('trip')->findOrFail($request->schedule_id);
+        
+        // If regular booking (not join trip), check seats
+        if (!$schedule->join_trip_enabled && $schedule->available_seats < $request->passenger_count) {
+             return $this->error('ที่นั่งไม่เพียงพอสำหรับรอบเดินทางนี้', 422);
+        }
+
+        $fullName = $request->name . ' ' . $request->surname;
+        
+        // Find user by phone, or create a placeholder if not exists
+        $user = User::where('phone', $request->phone)->first();
+        if (!$user) {
+            $user = User::create([
+                'name' => $fullName,
+                'phone' => $request->phone,
+                'email' => 'manual_' . time() . '_' . Str::random(4) . '@luilaykhao.com',
+                'password' => Hash::make(Str::random(16)),
+            ]);
+            $user->assignRole('customer');
+        }
+
+        $totalAmount = ($schedule->join_trip_enabled ? ($schedule->join_trip_price ?? $schedule->effective_price) : $schedule->effective_price) * $request->passenger_count;
+
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => $user->id,
+            'schedule_id' => $request->schedule_id,
+            'status' => $request->status,
+            'total_amount' => $totalAmount,
+            'paid_amount' => $request->status === 'confirmed' ? $totalAmount : 0,
+            'payment_type' => 'full',
+            'payment_method' => 'manual',
+            'paid_at' => $request->status === 'confirmed' ? now() : null,
+            'qr_code' => Booking::generateQrCode(),
+            'is_join_trip' => (bool) $schedule->join_trip_enabled,
+        ]);
+
+        // Create passengers
+        for ($i = 0; $i < $request->passenger_count; $i++) {
+            BookingPassenger::create([
+                'booking_id' => $booking->id,
+                'title' => '',
+                'name' => $i === 0 ? $fullName : "ผู้ติดตามคนที่ " . ($i + 1),
+                'phone' => $i === 0 ? $request->phone : null,
+            ]);
+        }
+
+        // Update booked seats if not join trip
+        if (!$schedule->join_trip_enabled) {
+            $schedule->increment('booked_seats', $request->passenger_count);
+        }
+
+        return $this->success(new BookingResource($booking->load(['schedule.trip', 'user', 'passengers'])), 'บันทึกการจองสำเร็จ', 201);
+    }
+
     public function manifest(int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::with('trip')->findOrFail($scheduleId);

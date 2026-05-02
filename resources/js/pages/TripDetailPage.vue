@@ -443,7 +443,6 @@
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                           <h4 class="font-black text-[var(--color-text-dark)] text-lg">Enjoy Trip (Join Trip)</h4>
-                          <span v-if="isJoinTrip" class="bg-emerald-200 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Active</span>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" v-model="isJoinTrip" class="sr-only peer">

@@ -174,6 +174,7 @@ Route::prefix('v1')->group(function () {
 
         // Bookings
         Route::get('bookings', [AdminController::class, 'bookings']);
+        Route::post('bookings/manual', [AdminController::class, 'storeManualBooking']);
         Route::get('bookings/{ref}', [AdminController::class, 'showBooking']);
         Route::put('bookings/{ref}/status', [AdminController::class, 'updateBookingStatus']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);

@@ -11,6 +11,10 @@
         </h1>
         <p class="text-sm text-text-muted mt-1 ml-[52px]">ดูและจัดการการจองทั้งหมดในระบบ</p>
       </div>
+      <button @click="openManualBookingModal" class="inline-flex items-center gap-2 px-5 py-2.5 bg-accent text-white rounded-2xl font-bold shadow-lg shadow-accent/20 hover:bg-accent-mid transition-all">
+        <span class="material-symbols-rounded">add_circle</span>
+        เพิ่มการจองด้วยตนเอง
+      </button>
     </div>
 
     <!-- Filters -->
@@ -377,9 +381,13 @@
               <label class="text-xs font-bold text-text-muted uppercase tracking-wider">หมายเหตุกลุ่ม</label>
               <div class="text-sm font-medium text-text-dark bg-sand/30 p-3 rounded-xl">{{ detailBooking.group_notes }}</div>
             </div>
-            <div v-if="detailBooking.qr_code" class="space-y-1 col-span-1 md:col-span-2">
-              <label class="text-xs font-bold text-text-muted uppercase tracking-wider">QR Code</label>
-              <div class="font-mono text-xs bg-sand/30 p-2 rounded-lg break-all border border-sand-dark/30">{{ detailBooking.qr_code }}</div>
+            <div v-if="detailBooking.qr_code" class="space-y-1 col-span-1 md:col-span-2 flex flex-col items-center p-4 bg-sand/20 rounded-2xl border border-sand-dark/30">
+              <label class="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">QR Code สำหรับเช็คอิน</label>
+              <div class="bg-white p-3 rounded-xl shadow-sm border border-sand-dark/20">
+                <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${detailBooking.qr_code}`" 
+                  alt="Booking QR Code" class="w-40 h-40" />
+              </div>
+              <div class="mt-2 font-mono text-[10px] text-text-muted">{{ detailBooking.qr_code }}</div>
             </div>
           </div>
 
@@ -504,21 +512,130 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- Manual Booking Modal -->
+    <div v-if="showManualModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity">
+      <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-sand-dark/20 animate-in fade-in zoom-in-95 duration-200">
+        <div class="px-6 py-5 border-b border-sand-dark/50 flex items-center justify-between bg-sand/10">
+          <h2 class="font-anuphan text-xl font-bold text-text-dark flex items-center gap-2">
+            <span class="material-symbols-rounded text-accent">add_circle</span> เพิ่มการจองด้วยตนเอง
+          </h2>
+          <button @click="showManualModal = false" class="w-8 h-8 rounded-full bg-white border border-sand-dark/50 flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 hover:border-red-200 transition-all">
+            <span class="material-symbols-rounded text-[20px]">close</span>
+          </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto custom-scrollbar">
+          <form @submit.prevent="doCreateManualBooking" class="space-y-6">
+            <!-- Trip & Schedule Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-sm font-bold text-text-dark">ทริป</label>
+                <select v-model="manualForm.trip_id" @change="onTripChange" required
+                  class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none">
+                  <option value="">เลือกทริป</option>
+                  <option v-for="trip in allTrips" :key="trip.id" :value="trip.id">{{ trip.title }}</option>
+                </select>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-bold text-text-dark">วันที่เดินทาง</label>
+                <select v-model="manualForm.schedule_id" :disabled="!manualForm.trip_id" required
+                  class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none disabled:opacity-50">
+                  <option value="">เลือกรอบเดินทาง</option>
+                  <option v-for="s in availableSchedules" :key="s.id" :value="s.id">
+                    {{ formatDate(s.departure_date) }} 
+                    <span v-if="s.join_trip_enabled">(จอยทริป)</span>
+                    <span v-else>({{ s.available_seats }} ที่ว่าง)</span>
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Customer Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-sm font-bold text-text-dark">ชื่อ</label>
+                <input v-model="manualForm.name" type="text" placeholder="ระบุชื่อ" required
+                  class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-bold text-text-dark">นามสกุล</label>
+                <input v-model="manualForm.surname" type="text" placeholder="ระบุนามสกุล" required
+                  class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-bold text-text-dark">เบอร์โทรศัพท์</label>
+                <input v-model="manualForm.phone" type="tel" placeholder="0XXXXXXXXX" required
+                  class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-bold text-text-dark">จำนวนคน</label>
+                <input v-model.number="manualForm.passenger_count" type="number" min="1" required
+                  class="w-full bg-sand/30 border border-sand-dark/60 rounded-xl px-4 py-2.5 text-sm transition-all focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none" />
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-bold text-text-dark">สถานะเบื้องต้น</label>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-2 cursor-pointer p-3 border border-sand-dark/50 rounded-xl flex-1 bg-sand/10 transition-all hover:bg-sand/20" :class="manualForm.status === 'pending' ? 'border-accent ring-1 ring-accent' : ''">
+                  <input type="radio" v-model="manualForm.status" value="pending" class="w-4 h-4 text-accent focus:ring-accent" />
+                  <span class="text-sm font-medium">รอดำเนินการ (ยังไม่จ่ายเงิน)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer p-3 border border-sand-dark/50 rounded-xl flex-1 bg-sand/10 transition-all hover:bg-sand/20" :class="manualForm.status === 'confirmed' ? 'border-accent ring-1 ring-accent' : ''">
+                  <input type="radio" v-model="manualForm.status" value="confirmed" class="w-4 h-4 text-accent focus:ring-accent" />
+                  <span class="text-sm font-medium text-emerald-600">ยืนยันแล้ว (จ่ายเงินครบแล้ว)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-sand-dark/50 flex justify-end gap-3">
+              <button type="button" @click="showManualModal = false" 
+                class="px-5 py-2.5 rounded-xl border border-sand-dark/60 bg-white text-text-dark font-medium hover:bg-sand transition-all text-sm">
+                ยกเลิก
+              </button>
+              <button type="submit" :disabled="submitting"
+                class="px-8 py-2.5 rounded-xl bg-accent text-white font-bold hover:bg-accent-mid shadow-lg shadow-accent/20 hover:shadow-xl transition-all disabled:opacity-70 flex items-center gap-2 text-sm">
+                <span v-if="submitting" class="material-symbols-rounded animate-spin text-[20px]">sync</span>
+                <span v-else class="material-symbols-rounded text-[20px]">check_circle</span>
+                สร้างการจองและออก QR Code
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
+import api from '../../lib/axios';
 
 const admin = useAdminStore();
 const filters = reactive({ search: '', status: '', date: '', booking_type: '' });
 const showDetail = ref(false);
 const showStatusModal = ref(false);
+const showManualModal = ref(false);
 const detailBooking = ref(null);
 const statusBooking = ref(null);
 const submitting = ref(false);
 const statusForm = reactive({ status: '', reason: '' });
+
+const allTrips = ref([]);
+const availableSchedules = ref([]);
+const manualForm = reactive({
+  trip_id: '',
+  schedule_id: '',
+  name: '',
+  surname: '',
+  phone: '',
+  passenger_count: 1,
+  status: 'pending'
+});
 
 const statusLabels = { pending: 'รอดำเนินการ', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิก', refunded: 'คืนเงินแล้ว' };
 
@@ -548,7 +665,7 @@ const formatDateTime = (date) => {
   return new Date(date).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 const paymentMethodLabel = (method) => {
-  const labels = { promptpay: 'พร้อมเพย์', mobile_banking: 'Mobile Banking', credit_card: 'บัตรเครดิต' };
+  const labels = { promptpay: 'พร้อมเพย์', mobile_banking: 'Mobile Banking', credit_card: 'บัตรเครดิต', manual: 'แอดมินสร้างให้' };
   return labels[method] || method || '-';
 };
 
@@ -574,6 +691,55 @@ const doUpdateStatus = async () => {
     fetchData();
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+const openManualBookingModal = async () => {
+  showManualModal.value = true;
+  manualForm.trip_id = '';
+  manualForm.schedule_id = '';
+  manualForm.name = '';
+  manualForm.surname = '';
+  manualForm.phone = '';
+  manualForm.passenger_count = 1;
+  manualForm.status = 'pending';
+  
+  if (allTrips.value.length === 0) {
+    try {
+      const res = await api.get('/admin/trips', { params: { per_page: 100, status: 'active' } });
+      allTrips.value = res.data.data;
+    } catch (e) {
+      console.error('Failed to fetch trips', e);
+    }
+  }
+};
+
+const onTripChange = async () => {
+  manualForm.schedule_id = '';
+  availableSchedules.value = [];
+  if (!manualForm.trip_id) return;
+  
+  try {
+    const res = await api.get('/admin/schedules', { params: { trip_id: manualForm.trip_id, upcoming: 1, per_page: 100 } });
+    availableSchedules.value = res.data.data;
+  } catch (e) {
+    console.error('Failed to fetch schedules', e);
+  }
+};
+
+const doCreateManualBooking = async () => {
+  submitting.value = true;
+  try {
+    const res = await admin.createManualBooking(manualForm);
+    showManualModal.value = false;
+    // Open detail of the new booking to show QR code
+    detailBooking.value = res.data;
+    showDetail.value = true;
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาดในการสร้างการจอง');
   } finally {
     submitting.value = false;
   }

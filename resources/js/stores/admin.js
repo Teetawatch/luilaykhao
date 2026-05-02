@@ -129,6 +129,11 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    async createManualBooking(data) {
+      const res = await api.post('/admin/bookings/manual', data);
+      return res.data;
+    },
+
     // ─── Vehicles ───────────────────
     async fetchVehicles(params = {}) {
       this.loading = true;
