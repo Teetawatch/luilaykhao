@@ -520,7 +520,7 @@
                 :class="[
                   paymentType === 'installment'
                     ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-600/30'
-                    : 'bg-gray-900 text-white hover:bg-black shadow-gray-900/30'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
                 ]">
                 <!-- Loading State overlay -->
                 <div v-if="paying" class="absolute inset-0 bg-inherit flex items-center justify-center z-10">
@@ -566,7 +566,7 @@
           :class="!loading && booking ? 'translate-y-0' : 'translate-y-full'">
             <button @click="processPayment" 
               :disabled="paying || !slipFile"
-              class="w-full py-4 rounded-2xl bg-gray-900 text-white font-black shadow-lg shadow-gray-900/30 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
+              class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying">
                 <span>ยืนยันการชำระ ฿{{ (paymentType === 'installment' ? perInstallment : booking.total_amount).toLocaleString() }}</span>
                 <span class="material-symbols-rounded text-lg">arrow_forward</span>
