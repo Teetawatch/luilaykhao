@@ -68,8 +68,25 @@
               <td class="px-6 py-4 text-sm text-text-dark">
                 {{ b.schedule?.trip?.title || '-' }}
               </td>
-              <td class="px-6 py-4 text-sm font-semibold text-text-dark text-right">
-                {{ formatMoney(b.total_amount) }}
+              <td class="px-6 py-4 text-right">
+                <div class="flex flex-col items-end">
+                  <span class="text-sm font-semibold text-text-dark">{{ formatMoney(b.total_amount) }}</span>
+                  <div class="mt-1 flex flex-wrap justify-end gap-1">
+                    <span v-if="b.payment_type === 'installment'" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-tighter">
+                      <span class="material-symbols-rounded text-[12px] mr-0.5">payments</span>
+                      ผ่อนชำระ
+                    </span>
+                    <span v-else class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-tighter">
+                      <span class="material-symbols-rounded text-[12px] mr-0.5">check_circle</span>
+                      จ่ายเต็ม
+                    </span>
+                    
+                    <span v-if="b.payment_type === 'installment' && b.installment_payments" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold"
+                      :class="getRemainingInstallments(b) === 0 ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-orange-50 text-orange-700 border border-orange-100'">
+                      เหลือ {{ getRemainingInstallments(b) }} / {{ b.installment_count }} งวด
+                    </span>
+                  </div>
+                </div>
               </td>
               <td class="px-6 py-4 text-center">
                 <span class="inline-flex px-3 py-1 rounded-full text-xs font-semibold" :class="statusClass(b.status)">
@@ -497,6 +514,12 @@ const statusClass = (status) => {
     refunded: 'bg-purple-100 text-purple-800 border border-purple-200'
   };
   return classes[status] || 'bg-gray-100 text-gray-800 border border-gray-200';
+};
+
+const getRemainingInstallments = (booking) => {
+  if (!booking.installment_payments) return 0;
+  const paidCount = booking.installment_payments.filter(p => p.status === 'paid').length;
+  return Math.max(0, booking.installment_count - paidCount);
 };
 
 const formatMoney = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(amount || 0);

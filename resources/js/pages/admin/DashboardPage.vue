@@ -170,7 +170,23 @@
                     {{ statusLabels[booking.status] }}
                   </span>
                 </td>
-                <td class="money">{{ formatMoney(booking.total_amount) }}</td>
+                <td class="money">
+                  <div class="money-wrapper">
+                    <span class="money-text">{{ formatMoney(booking.total_amount) }}</span>
+                    <div class="payment-info">
+                      <span v-if="booking.payment_type === 'installment'" class="pay-badge installment">
+                        ผ่อนชำระ
+                      </span>
+                      <span v-else class="pay-badge full">
+                        จ่ายเต็ม
+                      </span>
+                      <span v-if="booking.payment_type === 'installment' && booking.installment_payments" class="pay-badge remaining"
+                        :class="{ 'all-paid': getRemainingInstallments(booking) === 0 }">
+                        เหลือ {{ getRemainingInstallments(booking) }} / {{ booking.installment_count }} งวด
+                      </span>
+                    </div>
+                  </div>
+                </td>
                 <td class="date">{{ formatDate(booking.created_at) }}</td>
               </tr>
               <tr v-if="!stats.recent_bookings?.length">
@@ -239,6 +255,12 @@ const getRevenuePercent = (revenue) => {
   if (!stats.value?.revenue_chart) return 0;
   const max = Math.max(...stats.value.revenue_chart.map((r) => r.revenue));
   return max > 0 ? (revenue / max) * 100 : 0;
+};
+
+const getRemainingInstallments = (booking) => {
+  if (!booking.installment_payments) return 0;
+  const paidCount = booking.installment_payments.filter(p => p.status === 'paid').length;
+  return Math.max(0, booking.installment_count - paidCount);
 };
 
 onMounted(() => {
@@ -715,8 +737,58 @@ onMounted(() => {
 .status-refunded { background: #EDE9FE; color: #6D28D9; }
 
 td.money {
-  font-weight: 700;
   color: var(--color-text-dark);
+}
+
+.money-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.money-text {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.payment-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.pay-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: -0.2px;
+}
+
+.pay-badge.full {
+  background: #EAF2EE;
+  color: var(--color-accent);
+  border: 1px solid #D5E5DD;
+}
+
+.pay-badge.installment {
+  background: #EBF5FF;
+  color: #3182CE;
+  border: 1px solid #BEE3F8;
+}
+
+.pay-badge.remaining {
+  background: #FFF5F5;
+  color: #E53E3E;
+  border: 1px solid #FED7D7;
+}
+
+.pay-badge.remaining.all-paid {
+  background: #F0FFF4;
+  color: #38A169;
+  border: 1px solid #C6F6D5;
 }
 
 td.date {

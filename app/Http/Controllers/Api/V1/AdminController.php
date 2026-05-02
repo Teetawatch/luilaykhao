@@ -66,7 +66,7 @@ class AdminController extends Controller
             ->where('status', 'open')
             ->count();
 
-        $recentBookings = Booking::with(['schedule.trip', 'user', 'pickupPoint'])
+        $recentBookings = Booking::with(['schedule.trip', 'user', 'pickupPoint', 'installmentPayments', 'seats'])
             ->orderByDesc('created_at')
             ->take(5)
             ->get()
