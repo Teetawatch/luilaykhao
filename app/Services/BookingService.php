@@ -65,10 +65,14 @@ class BookingService
                 $pickupPoint = null;
 
                 if ($pickupPointId) {
-                    $pickupPoint = SchedulePickupPoint::find($pickupPointId);
+                    $pickupPoint = SchedulePickupPoint::where('id', $pickupPointId)
+                        ->where('schedule_id', $scheduleId)
+                        ->first();
                 } elseif ($pickupRegion) {
                     $pickupPoint = SchedulePickupPoint::where('schedule_id', $scheduleId)
                         ->where('region', $pickupRegion)
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
                         ->first();
                 }
 

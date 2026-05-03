@@ -1272,7 +1272,8 @@ function confirmRegion() {
   if (!hasSeatMap.value) {
     seatsStore.startManualCountdown(
       schedule.value?.trip?.title || 'กิจกรรม',
-      route.params.scheduleId
+      route.params.scheduleId,
+      selectedPickup.value?.region || preselectedRegion
     );
   }
   step.value = 1;
@@ -1367,7 +1368,7 @@ async function createBooking() {
   try {
     const data = {
       schedule_id: parseInt(route.params.scheduleId),
-      pickup_region: selectedPickup.value?.region || null,
+      pickup_region: selectedPickup.value?.region || preselectedRegion || null,
       pickup_point_id: selectedPickup.value?.id || null,
       is_group: isGroup.value,
       group_name: isGroup.value ? groupName.value : null,
@@ -1432,8 +1433,10 @@ onMounted(async () => {
       isJoinTrip.value = true;
     }
 
-    if (preselectedRegion && pickupPoints.value.length === 1) {
-      selectedPickup.value = pickupPoints.value[0];
+    if (preselectedRegion && pickupPoints.value.length > 0) {
+      if (pickupPoints.value.length === 1 || (!isTrekking.value && !selectedPickup.value)) {
+        selectedPickup.value = pickupPoints.value[0];
+      }
     }
 
     // ── Session isolation: clear stale session from a different schedule/region ──
