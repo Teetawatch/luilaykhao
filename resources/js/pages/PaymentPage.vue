@@ -118,13 +118,34 @@
                 : 'border-gray-100 hover:border-amber-100 hover:bg-gray-50'">
               <div class="flex items-center gap-2">
                 <span class="material-symbols-rounded text-[24px] group-hover:scale-110 transition-transform" :class="paymentType === 'installment' ? 'text-amber-600' : 'text-gray-400'">calendar_month</span>
-                <span class="font-bold text-base" :class="paymentType === 'installment' ? 'text-amber-900' : 'text-gray-700'">ผ่อนชำระ {{ installmentCount }} งวด</span>
+                <span class="font-bold text-base" :class="paymentType === 'installment' ? 'text-amber-900' : 'text-gray-700'">ผ่อนชำระ</span>
                 <div v-if="paymentType === 'installment'" class="ml-auto w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shadow-md">
                   <span class="material-symbols-rounded text-white text-[16px]">check</span>
                 </div>
               </div>
-              <p class="text-sm text-gray-500">งวดละ <span class="font-bold text-amber-600">฿{{ perInstallment.toLocaleString() }}</span> · ทุก {{ installmentIntervalDays }} วัน</p>
+              <p class="text-sm text-gray-500">เลือกจำนวนงวดได้ <span class="font-bold text-amber-600">2–6 งวด</span> · ไม่มีดอกเบี้ย</p>
             </button>
+          </div>
+
+          <!-- Installment Count Selector -->
+          <div v-if="paymentType === 'installment'" class="mt-6 p-5 bg-amber-50/50 border border-amber-100 rounded-2xl">
+            <label class="block text-sm font-black text-amber-900 mb-3 flex items-center gap-2">
+              <span class="material-symbols-rounded text-amber-500 text-lg">tune</span>
+              เลือกจำนวนงวดที่ต้องการ
+            </label>
+            <div class="flex gap-2">
+              <button v-for="n in availableInstallmentOptions" :key="n" @click="selectedInstallmentCount = n"
+                class="flex-1 py-3 px-2 rounded-xl border-2 text-center transition-all font-black text-sm"
+                :class="selectedInstallmentCount === n
+                  ? 'border-amber-500 bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-amber-300'">
+                {{ n }} งวด
+              </button>
+            </div>
+            <div class="mt-3 flex justify-between items-center text-xs text-amber-700">
+              <span>งวดละ <strong class="text-amber-900">฿{{ perInstallment.toLocaleString() }}</strong></span>
+              <span>ทุก <strong>{{ installmentIntervalDays }}</strong> วัน</span>
+            </div>
           </div>
 
           <!-- Installment Schedule Table -->
@@ -649,21 +670,28 @@ const transferTime = ref('');
 const installmentAvailable = computed(() =>
   !!booking.value?.schedule?.installment_enabled && !booking.value?.is_join_trip
 );
-const installmentCount = computed(() =>
-  booking.value?.schedule?.installment_count ?? 2
+const maxInstallmentCount = computed(() =>
+  Math.min(booking.value?.schedule?.installment_count ?? 3, 6)
 );
 const installmentIntervalDays = computed(() =>
   booking.value?.schedule?.installment_interval_days ?? 30
 );
+const selectedInstallmentCount = ref(3);
+const availableInstallmentOptions = computed(() => {
+  const max = maxInstallmentCount.value;
+  const opts = [];
+  for (let i = 2; i <= max; i++) opts.push(i);
+  return opts;
+});
 const perInstallment = computed(() => {
   if (!booking.value) return 0;
   const total = parseFloat(booking.value.total_amount);
-  return Math.round((total / installmentCount.value) * 100) / 100;
+  return Math.round((total / selectedInstallmentCount.value) * 100) / 100;
 });
 const installmentSchedule = computed(() => {
   if (!booking.value) return [];
   const total = parseFloat(booking.value.total_amount);
-  const n = installmentCount.value;
+  const n = selectedInstallmentCount.value;
   const interval = installmentIntervalDays.value;
   const per = Math.round((total / n) * 100) / 100;
   const rows = [];
@@ -677,8 +705,8 @@ const installmentSchedule = computed(() => {
   return rows;
 });
 
-// ── QR regenerates when paymentType or paymentMethod changes ─
-watch([paymentType, paymentMethod], ([, method]) => {
+// ── QR regenerates when paymentType, paymentMethod, or installment count changes ─
+watch([paymentType, paymentMethod, selectedInstallmentCount], ([, method]) => {
   if (method === 'promptpay') nextTick(generateQR);
 });
 
@@ -895,6 +923,9 @@ async function processPayment() {
     fd.append('amount', paymentType.value === 'installment'
       ? perInstallment.value
       : parseFloat(booking.value.total_amount));
+    if (paymentType.value === 'installment') {
+      fd.append('installment_count', selectedInstallmentCount.value);
+    }
     fd.append('slip_image', slipFile.value);
     if (transferDate.value) fd.append('transfer_date', transferDate.value);
     if (transferTime.value) fd.append('transfer_time', transferTime.value);
@@ -915,6 +946,10 @@ onMounted(async () => {
 
   try {
     booking.value = await bookingStore.fetchBooking(route.params.bookingRef);
+    // Set default installment count from schedule
+    if (booking.value?.schedule?.installment_count) {
+      selectedInstallmentCount.value = Math.min(booking.value.schedule.installment_count, 6);
+    }
     initPaymentCountdown();
   } catch (e) {
     console.error(e);

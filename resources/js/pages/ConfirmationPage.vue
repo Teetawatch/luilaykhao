@@ -179,6 +179,71 @@
                     <span class="material-symbols-rounded text-base">check_circle</span>
                     <span class="text-xs font-bold uppercase tracking-wider">ชำระเงินเรียบร้อยแล้วเมื่อ {{ new Date(booking.paid_at).toLocaleString('th-TH') }}</span>
                   </div>
+
+                  <!-- ── Installment Tracker ── -->
+                  <div v-if="booking.payment_type === 'installment' && booking.installment_payments?.length" class="pt-6 border-t border-gray-100 space-y-5">
+                    <div class="flex items-center justify-between">
+                      <h3 class="font-black text-gray-900 flex items-center gap-2">
+                        <span class="material-symbols-rounded text-amber-500 text-xl">calendar_month</span>
+                        แผนผ่อนชำระ {{ booking.installment_count }} งวด
+                      </h3>
+                      <span class="text-[10px] font-black px-3 py-1 rounded-full"
+                        :class="allInstallmentsPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'">
+                        {{ paidInstallmentsCount }} / {{ booking.installment_count }} งวด
+                      </span>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-amber-400 to-green-500 rounded-full transition-all duration-700"
+                        :style="{ width: (paidInstallmentsCount / booking.installment_count * 100) + '%' }"></div>
+                    </div>
+
+                    <!-- Steps -->
+                    <div class="space-y-2">
+                      <div v-for="inst in booking.installment_payments" :key="inst.installment_no"
+                        class="flex items-center gap-4 p-3 rounded-xl transition-all"
+                        :class="{
+                          'bg-green-50 border border-green-100': inst.status === 'paid',
+                          'bg-amber-50 border border-amber-200': inst.status !== 'paid' && isNextInstallment(inst),
+                          'bg-gray-50 border border-gray-100': inst.status !== 'paid' && !isNextInstallment(inst),
+                        }">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0"
+                          :class="{
+                            'bg-green-500 text-white': inst.status === 'paid',
+                            'bg-amber-500 text-white': inst.status !== 'paid' && isNextInstallment(inst),
+                            'bg-gray-200 text-gray-400': inst.status !== 'paid' && !isNextInstallment(inst),
+                          }">
+                          <span v-if="inst.status === 'paid'" class="material-symbols-rounded text-sm">check</span>
+                          <span v-else>{{ inst.installment_no }}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm font-black" :class="inst.status === 'paid' ? 'text-green-800' : 'text-gray-700'">
+                            งวดที่ {{ inst.installment_no }} · ฿{{ Number(inst.amount).toLocaleString() }}
+                          </p>
+                          <p class="text-xs font-bold" :class="inst.status === 'paid' ? 'text-green-600' : 'text-gray-400'">
+                            {{ inst.status === 'paid'
+                              ? 'ชำระแล้ว ' + new Date(inst.paid_at).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' })
+                              : 'กำหนดชำระ ' + formatDate(inst.due_date) }}
+                          </p>
+                        </div>
+                        <span v-if="inst.status === 'paid'" class="text-xs font-black text-green-600 bg-green-100 px-2.5 py-1 rounded-lg">✓</span>
+                      </div>
+                    </div>
+
+                    <!-- Pay Next Button -->
+                    <router-link v-if="nextPendingInstallment" :to="`/installment-payment/${booking.booking_ref}`"
+                      class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-sm transition-all bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20 active:scale-[0.98]">
+                      <span class="material-symbols-rounded text-lg">payments</span>
+                      ชำระงวดที่ {{ nextPendingInstallment.installment_no }}
+                    </router-link>
+
+                    <!-- All Paid Badge -->
+                    <div v-else class="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
+                      <span class="material-symbols-rounded text-green-600 text-lg" style="font-variation-settings:'FILL' 1">verified</span>
+                      <span class="text-xs font-black text-green-700">ชำระครบทุกงวดเรียบร้อยแล้ว ✓</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
@@ -358,6 +423,20 @@ const pickupLabel = computed(() => {
   const pt = pts.find(p => p.region === region);
   return pt ? `${pt.region_label} — ${pt.pickup_location}` : region;
 });
+
+// ── Installment helpers ──
+const paidInstallmentsCount = computed(() =>
+  (booking.value?.installment_payments || []).filter(i => i.status === 'paid').length
+);
+const allInstallmentsPaid = computed(() =>
+  paidInstallmentsCount.value === booking.value?.installment_count
+);
+const nextPendingInstallment = computed(() =>
+  (booking.value?.installment_payments || []).find(i => i.status !== 'paid')
+);
+function isNextInstallment(inst) {
+  return nextPendingInstallment.value?.installment_no === inst.installment_no;
+}
 
 function formatDate(d) {
   if (!d) return '';

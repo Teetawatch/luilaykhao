@@ -219,8 +219,8 @@
             </div>
             <div v-if="form.installment_enabled" class="form-grid">
               <div class="form-group">
-                <label>จำนวนงวด (2–12)</label>
-                <input v-model.number="form.installment_count" type="number" min="2" max="12" required />
+                <label>จำนวนงวดสูงสุด (2–6)</label>
+                <input v-model.number="form.installment_count" type="number" min="2" max="6" required />
               </div>
               <div class="form-group">
                 <label>ระยะห่างระหว่างงวด (วัน)</label>
@@ -608,7 +608,7 @@
                 <span style="font-weight:600;font-size:13px;color:#1a1c1c;">เปิดผ่อนชำระ</span>
               </label>
               <div v-if="batchForm.installment_enabled" style="display:flex;align-items:center;gap:8px;">
-                <input v-model.number="batchForm.installment_count" type="number" min="2" max="12" placeholder="งวด" style="width:60px;" />
+                <input v-model.number="batchForm.installment_count" type="number" min="2" max="6" placeholder="งวด" style="width:60px;" />
                 <span style="font-size:12px;color:#6b7280;">งวด ·</span>
                 <input v-model.number="batchForm.installment_interval_days" type="number" min="1" placeholder="วัน" style="width:60px;" />
                 <span style="font-size:12px;color:#6b7280;">วัน</span>

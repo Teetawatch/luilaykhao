@@ -25,8 +25,7 @@ import SocialCallbackPage from '../pages/SocialCallbackPage.vue';
 import ReviewsPage from '../pages/ReviewsPage.vue';
 import BookingGuidePage from '../pages/BookingGuidePage.vue';
 import FAQPage from '../pages/FAQPage.vue';
-
-
+import InstallmentPaymentPage from '../pages/InstallmentPaymentPage.vue';
 
 // Admin
 import AdminLayout from '../components/AdminLayout.vue';
@@ -89,6 +88,7 @@ const routes = [
   { path: '/login', name: 'login', component: LoginPage, meta: { title: 'เข้าสู่ระบบ', description: 'เข้าสู่ระบบลุยเลเขา เพื่อจองทริปเดินป่า ดำน้ำตื้น และเช่ารถตู้นำเที่ยว', robots: 'noindex, follow' } },
   { path: '/register', name: 'register', component: RegisterPage, meta: { title: 'สมัครสมาชิก', description: 'สมัครสมาชิกลุยเลเขา เพื่อรับสิทธิพิเศษและจองทริปได้ง่ายขึ้น', robots: 'noindex, follow' } },
   { path: '/my-bookings', name: 'my-bookings', component: MyBookingsPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/installment-payment/:bookingRef', name: 'installment-payment', component: InstallmentPaymentPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/my-reviews', name: 'my-reviews', component: MyReviewsPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/my-staff-trips', name: 'my-staff-trips', component: MyStaffTripsPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/loyalty', name: 'loyalty', component: LoyaltyPage, meta: { requiresAuth: true, robots: 'noindex, nofollow' } },

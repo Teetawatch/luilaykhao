@@ -71,6 +71,7 @@ class BookingController extends Controller
                 'pickupPoint',
                 'seats',
                 'passengers',
+                'installmentPayments',
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
             ])
             ->orderByDesc('created_at')

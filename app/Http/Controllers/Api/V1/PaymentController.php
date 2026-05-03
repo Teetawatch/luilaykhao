@@ -52,9 +52,10 @@ class PaymentController extends Controller
                     return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
                 }
 
-                $installmentCount        = (int) $schedule->installment_count;
-                if ($installmentCount <= 0) {
-                    return $this->error('จำนวนงวดผ่อนชำระไม่ถูกต้อง', 422);
+                $installmentCount        = (int) ($request->input('installment_count') ?? $schedule->installment_count);
+                $maxAllowed              = (int) $schedule->installment_count;
+                if ($installmentCount < 2 || $installmentCount > min($maxAllowed, 6)) {
+                    return $this->error("จำนวนงวดต้องอยู่ระหว่าง 2-{$maxAllowed} งวด", 422);
                 }
                 $installmentIntervalDays = (int) $schedule->installment_interval_days;
                 $totalAmount             = (float) $booking->total_amount;

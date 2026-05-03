@@ -23,7 +23,7 @@ class StoreScheduleRequest extends FormRequest
             'status' => ['nullable', 'in:open,closed,full,cancelled'],
             'price_override' => ['nullable', 'numeric', 'min:0'],
             'installment_enabled' => ['nullable', 'boolean'],
-            'installment_count' => ['nullable', 'integer', 'min:2', 'max:12'],
+            'installment_count' => ['nullable', 'integer', 'min:2', 'max:6'],
             'installment_interval_days' => ['nullable', 'integer', 'min:1'],
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
