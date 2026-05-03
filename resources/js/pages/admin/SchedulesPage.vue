@@ -441,7 +441,7 @@
                   <tr v-for="p in manifestData.passengers" :key="p.id">
                     <td>
                       <div class="passenger-name-cell">
-                        <span class="p-name">{{ p.first_name }} {{ p.last_name }}</span>
+                        <span class="p-name">{{ p.name }}</span>
                         <span v-if="p.nickname" class="p-nickname">({{ p.nickname }})</span>
                       </div>
                     </td>
@@ -454,11 +454,11 @@
                         <div class="p-seats">
                           <span class="material-symbols-rounded" style="font-size:14px;color:#6b7280;">chair</span>
                           <span v-if="p.is_join_trip" class="text-muted-sm">ไม่ระบุ</span>
-                          <span v-else>{{ p.booking?.seats?.map(s => s.seat_number).join(', ') || '—' }}</span>
+                          <span v-else>{{ p.booking?.seats?.map(s => s.seat_id).join(', ') || '—' }}</span>
                         </div>
-                        <div class="p-pickup" v-if="p.booking?.pickup_point">
+                        <div class="p-pickup" v-if="p.booking?.pickupPoint">
                           <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-accent);">location_on</span>
-                          {{ p.booking.pickup_point.pickup_location }}
+                          {{ p.booking.pickupPoint.pickup_location }}
                         </div>
                       </div>
                     </td>
@@ -497,7 +497,7 @@
           <div class="pd-section">
             <h3 class="pd-title">ข้อมูลทั่วไป</h3>
             <div class="pd-grid">
-              <div class="pd-item"><span class="pd-label">ชื่อ-นามสกุล</span><span class="pd-value">{{ selectedPassenger.first_name }} {{ selectedPassenger.last_name }}</span></div>
+              <div class="pd-item"><span class="pd-label">ชื่อ-นามสกุล</span><span class="pd-value">{{ selectedPassenger.name }}</span></div>
               <div class="pd-item"><span class="pd-label">ชื่อเล่น</span><span class="pd-value">{{ selectedPassenger.nickname || '—' }}</span></div>
               <div class="pd-item"><span class="pd-label">เบอร์โทรศัพท์</span><span class="pd-value">{{ selectedPassenger.phone || selectedPassenger.booking?.user?.phone || '—' }}</span></div>
               <div class="pd-item"><span class="pd-label">เลขบัตรประชาชน/พาสปอร์ต</span><span class="pd-value">{{ selectedPassenger.id_card || '—' }}</span></div>
@@ -535,6 +535,8 @@
             <h3 class="pd-title">การจอง</h3>
             <div class="pd-grid">
               <div class="pd-item"><span class="pd-label">เลขที่การจอง</span><span class="pd-value">{{ selectedPassenger.booking?.booking_ref }}</span></div>
+              <div class="pd-item"><span class="pd-label">ที่นั่ง</span><span class="pd-value">{{ selectedPassenger.booking?.seats?.map(s => s.seat_id).join(', ') || '—' }}</span></div>
+              <div class="pd-item"><span class="pd-label">จุดรับ</span><span class="pd-value">{{ selectedPassenger.booking?.pickupPoint?.pickup_location || '—' }}</span></div>
               <div class="pd-item"><span class="pd-label">สถานะการจอง</span><span class="pd-value status-badge" :class="`status-${selectedPassenger.booking?.status}`">{{ statusLabels[selectedPassenger.booking?.status] }}</span></div>
             </div>
           </div>
