@@ -1522,6 +1522,13 @@ const displayPrice = computed(() => {
     return Number(selectedSchedule.value.join_trip_price || selectedSchedule.value.price || trip.value?.price_per_person || 0);
   }
   if (selectedPickup.value) return Number(selectedPickup.value.price);
+  
+  // หากมีการเลือกภูมิภาคแต่ยังไม่เลือกวันเดินทาง ให้แสดงราคาของภูมิภาคนั้น (สำหรับทริปเดินป่า)
+  if (selectedRegion.value && regionOptions.value.length) {
+    const region = regionOptions.value.find(r => r.region === selectedRegion.value);
+    if (region) return region.min_price;
+  }
+  
   if (selectedSchedule.value?.price) return Number(selectedSchedule.value.price);
   return Number(trip.value?.price_per_person || 0);
 });
