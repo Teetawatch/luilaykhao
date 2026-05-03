@@ -55,6 +55,9 @@ Route::prefix('v1')->group(function () {
     // Categories (public)
     Route::get('categories', [CategoryController::class, 'index']);
 
+    // Promotions (public active list)
+    Route::get('promotions/active', [PromotionController::class, 'publicActive']);
+
     // Schedules (public)
     Route::get('schedules/{id}', [ScheduleController::class, 'show']);
 

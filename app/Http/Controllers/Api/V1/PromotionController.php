@@ -15,6 +15,25 @@ class PromotionController extends Controller
         return response()->json($promotions);
     }
 
+    public function publicActive()
+    {
+        $promotions = Promotion::where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', now()->startOfDay());
+            })
+            ->where(function ($q) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->startOfDay());
+            })
+            ->where(function ($q) {
+                $q->whereNull('max_uses')->orWhereColumn('used_count', '<', 'max_uses');
+            })
+            ->select('id', 'code', 'name', 'type', 'value', 'start_date', 'end_date', 'max_uses', 'used_count')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json(['data' => $promotions]);
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
