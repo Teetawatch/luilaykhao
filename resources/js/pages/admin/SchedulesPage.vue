@@ -123,8 +123,8 @@
                       <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จัดการจุดรับ">
                         <span class="material-symbols-rounded">location_on</span>
                       </button>
-                      <button class="btn-icon btn-manifest" @click="openManifest(sch)" title="รายชื่อผู้โดยสาร">
-                        <span class="material-symbols-rounded">group</span>
+                      <button class="btn-sm btn-secondary btn-manifest-text" @click="openManifest(sch)" title="รายชื่อผู้โดยสาร">
+                        <span class="material-symbols-rounded" style="font-size:16px;">group</span> รายชื่อ
                       </button>
                       <button class="btn-icon" 
                         :class="sch.join_trip_enabled ? 'btn-active' : 'btn-inactive'"
@@ -391,9 +391,8 @@
       </div>
     </div>
 
-    <!-- Manifest Modal -->
     <div class="modal-overlay" v-if="showManifest">
-      <div class="modal-card">
+      <div class="modal-card modal-xl">
         <div class="modal-header">
           <div>
             <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">group</span>รายชื่อผู้โดยสาร</h2>
@@ -401,7 +400,12 @@
               {{ manifestData.schedule.trip.title }} — {{ manifestData.schedule.departure_date }}
             </p>
           </div>
-          <button class="modal-close" @click="showManifest = false"><span class="material-symbols-rounded">close</span></button>
+          <div style="display:flex;gap:8px;">
+            <button v-if="manifestData?.passengers?.length" class="btn-sm btn-secondary" @click="printManifest">
+              <span class="material-symbols-rounded">print</span> พิมพ์รายชื่อ
+            </button>
+            <button class="modal-close" @click="showManifest = false"><span class="material-symbols-rounded">close</span></button>
+          </div>
         </div>
         <div class="modal-body">
           <div v-if="manifestLoading" class="pickup-loading"><div class="spinner"></div></div>
@@ -427,30 +431,116 @@
                   <tr>
                     <th>ชื่อ - นามสกุล</th>
                     <th>ประเภท</th>
-                    <th>ที่นั่ง</th>
+                    <th>ที่นั่ง / จุดรับ</th>
                     <th>เบอร์โทร</th>
+                    <th>การชำระเงิน</th>
+                    <th style="text-align:right;">การจัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="p in manifestData.passengers" :key="p.id">
-                    <td>{{ p.first_name }} {{ p.last_name }}</td>
+                    <td>
+                      <div class="passenger-name-cell">
+                        <span class="p-name">{{ p.first_name }} {{ p.last_name }}</span>
+                        <span v-if="p.nickname" class="p-nickname">({{ p.nickname }})</span>
+                      </div>
+                    </td>
                     <td>
                       <span v-if="p.is_join_trip" class="status-badge" style="background:#ecfdf5;color:#059669;font-size:10px;">Enjoy Trip</span>
                       <span v-else class="status-badge" style="background:#f3f4f6;color:#374151;font-size:10px;">ปกติ</span>
                     </td>
                     <td>
-                      <span v-if="p.is_join_trip" class="text-muted-sm">ไม่ระบุ</span>
-                      <span v-else>{{ p.booking?.seats?.map(s => s.seat_number).join(', ') || '—' }}</span>
+                      <div class="p-seats-pickup">
+                        <div class="p-seats">
+                          <span class="material-symbols-rounded" style="font-size:14px;color:#6b7280;">chair</span>
+                          <span v-if="p.is_join_trip" class="text-muted-sm">ไม่ระบุ</span>
+                          <span v-else>{{ p.booking?.seats?.map(s => s.seat_number).join(', ') || '—' }}</span>
+                        </div>
+                        <div class="p-pickup" v-if="p.booking?.pickup_point">
+                          <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-accent);">location_on</span>
+                          {{ p.booking.pickup_point.pickup_location }}
+                        </div>
+                      </div>
                     </td>
                     <td>{{ p.phone || p.booking?.user?.phone || '—' }}</td>
+                    <td>
+                      <div class="p-payment-info" v-if="p.booking">
+                         <span class="status-badge" :class="`status-${p.booking.status}`">{{ statusLabels[p.booking.status] || p.booking.status }}</span>
+                         <span class="p-amount">฿{{ Number(p.booking.paid_amount).toLocaleString() }} / ฿{{ Number(p.booking.total_amount).toLocaleString() }}</span>
+                      </div>
+                    </td>
+                    <td style="text-align:right;">
+                      <button class="btn-icon btn-view-details" @click="viewPassengerDetails(p)" title="ดูรายละเอียดเพิ่มเติม">
+                        <span class="material-symbols-rounded">visibility</span>
+                      </button>
+                    </td>
                   </tr>
                   <tr v-if="!manifestData.passengers.length">
-                    <td colspan="4" class="empty-state">ยังไม่มีผู้โดยสาร</td>
+                    <td colspan="6" class="empty-state">ยังไม่มีผู้โดยสาร</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Passenger Details Modal -->
+    <div class="modal-overlay" v-if="selectedPassenger" style="z-index: 1001;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>รายละเอียดผู้โดยสาร</h2>
+          <button class="modal-close" @click="selectedPassenger = null"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body passenger-details-body">
+          <div class="pd-section">
+            <h3 class="pd-title">ข้อมูลทั่วไป</h3>
+            <div class="pd-grid">
+              <div class="pd-item"><span class="pd-label">ชื่อ-นามสกุล</span><span class="pd-value">{{ selectedPassenger.first_name }} {{ selectedPassenger.last_name }}</span></div>
+              <div class="pd-item"><span class="pd-label">ชื่อเล่น</span><span class="pd-value">{{ selectedPassenger.nickname || '—' }}</span></div>
+              <div class="pd-item"><span class="pd-label">เบอร์โทรศัพท์</span><span class="pd-value">{{ selectedPassenger.phone || selectedPassenger.booking?.user?.phone || '—' }}</span></div>
+              <div class="pd-item"><span class="pd-label">เลขบัตรประชาชน/พาสปอร์ต</span><span class="pd-value">{{ selectedPassenger.id_card || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="pd-section">
+            <h3 class="pd-title">ข้อมูลสุขภาพและอาหาร</h3>
+            <div class="pd-grid">
+              <div class="pd-item"><span class="pd-label">กรุ๊ปเลือด</span><span class="pd-value">{{ selectedPassenger.blood_group || '—' }}</span></div>
+              <div class="pd-item"><span class="pd-label">แพ้อาหาร/แพ้ยา</span><span class="pd-value">{{ selectedPassenger.allergies || 'ไม่มี' }}</span></div>
+              <div class="pd-item"><span class="pd-label">อาหารฮาลาล</span><span class="pd-value">{{ selectedPassenger.halal_food ? 'ต้องการ' : 'ไม่ต้องการ' }}</span></div>
+              <div class="pd-item full"><span class="pd-label">ประวัติสุขภาพ/โรคประจำตัว</span><span class="pd-value">{{ selectedPassenger.health_notes || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="pd-section" v-if="selectedPassenger.emergency_contact">
+            <h3 class="pd-title">ติดต่อฉุกเฉิน</h3>
+            <div class="pd-grid">
+              <div class="pd-item"><span class="pd-label">ชื่อผู้ติดต่อ</span><span class="pd-value">{{ selectedPassenger.emergency_contact }}</span></div>
+              <div class="pd-item"><span class="pd-label">เบอร์ติดต่อ</span><span class="pd-value">{{ selectedPassenger.emergency_phone }}</span></div>
+            </div>
+          </div>
+
+          <div class="pd-section" v-if="selectedPassenger.dive_cert_level">
+            <h3 class="pd-title">ข้อมูลดำน้ำ</h3>
+            <div class="pd-grid">
+              <div class="pd-item"><span class="pd-label">ระดับบัตรดำน้ำ</span><span class="pd-value">{{ selectedPassenger.dive_cert_level }}</span></div>
+              <div class="pd-item"><span class="pd-label">เลขบัตรดำน้ำ</span><span class="pd-value">{{ selectedPassenger.cert_number || '—' }}</span></div>
+              <div class="pd-item"><span class="pd-label">น้ำหนัก (kg)</span><span class="pd-value">{{ selectedPassenger.weight || '—' }}</span></div>
+            </div>
+          </div>
+
+          <div class="pd-section">
+            <h3 class="pd-title">การจอง</h3>
+            <div class="pd-grid">
+              <div class="pd-item"><span class="pd-label">เลขที่การจอง</span><span class="pd-value">{{ selectedPassenger.booking?.booking_ref }}</span></div>
+              <div class="pd-item"><span class="pd-label">สถานะการจอง</span><span class="pd-value status-badge" :class="`status-${selectedPassenger.booking?.status}`">{{ statusLabels[selectedPassenger.booking?.status] }}</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary" @click="selectedPassenger = null">ปิด</button>
         </div>
       </div>
     </div>
@@ -1042,7 +1132,10 @@ const form = reactive({
   join_trip_enabled: false, join_trip_price: null,
 });
 
-const statusLabels = { open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก' };
+const statusLabels = { 
+  open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก',
+  pending: 'รอยืนยัน', confirmed: 'ยืนยันแล้ว', refunded: 'คืนเงินแล้ว'
+};
 
 let debounceTimer = null;
 const debouncedFetch = () => {
@@ -1614,6 +1707,15 @@ const addingInRegion = ref(null); // which region's inline-add form is open
 const showManifest = ref(false);
 const manifestData = ref(null);
 const manifestLoading = ref(false);
+const selectedPassenger = ref(null);
+
+const viewPassengerDetails = (p) => {
+  selectedPassenger.value = p;
+};
+
+const printManifest = () => {
+  window.print();
+};
 
 const openManifest = async (sch) => {
   showManifest.value = true;
@@ -1891,8 +1993,93 @@ onMounted(() => {
 .manifest-table th { padding: 10px 16px; background: #f9fafb; }
 .manifest-table td { padding: 10px 16px; font-size: 13px; }
 
+.btn-manifest-text {
+  color: #6366f1 !important;
+  border-color: #c7d2fe !important;
+  background: #f5f3ff !important;
+  white-space: nowrap;
+}
+.btn-manifest-text:hover {
+  background: #eef2ff !important;
+  border-color: #a5b4fc !important;
+}
+
 .btn-manifest { color: #6366f1; }
 .btn-manifest:hover { background: #eef2ff; border-color: #c7d2fe; }
+
+.passenger-name-cell {
+  display: flex;
+  flex-direction: column;
+}
+.p-name { font-weight: 700; color: var(--color-text-dark); }
+.p-nickname { font-size: 11px; color: var(--color-text-muted); }
+
+.p-seats-pickup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.p-seats, .p-pickup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.p-pickup { color: var(--color-accent); font-weight: 600; }
+
+.p-payment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.p-amount { font-size: 11px; color: var(--color-text-muted); }
+
+.btn-view-details { color: var(--color-accent); }
+.btn-view-details:hover { background: #e8f5ec; }
+
+.passenger-details-body {
+  padding: 20px;
+}
+.pd-section {
+  margin-bottom: 24px;
+}
+.pd-section:last-child { margin-bottom: 0; }
+.pd-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.pd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.pd-item { display: flex; flex-direction: column; gap: 4px; }
+.pd-item.full { grid-column: span 2; }
+.pd-label { font-size: 11px; color: #6b7280; font-weight: 600; }
+.pd-value { font-size: 14px; color: var(--color-text-dark); font-weight: 600; }
+
+@media print {
+  .admin-page > *:not(.modal-overlay),
+  .modal-overlay:not(.show-manifest-overlay), /* We need a specific class for the open manifest modal during print */
+  .modal-header button,
+  .modal-footer,
+  .action-btns,
+  .btn-icon,
+  .btn-sm,
+  .page-header {
+    display: none !important;
+  }
+  .modal-overlay { position: static; background: none; }
+  .modal-card { width: 100% !important; max-width: none !important; box-shadow: none !important; border: none !important; }
+  .modal-body { padding: 0 !important; }
+  .data-table { border: 1px solid #000 !important; }
+  .data-table th, .data-table td { border: 1px solid #000 !important; color: #000 !important; }
+}
 
 /* ── Accordion loading / empty ── */
 .accordion-loading {

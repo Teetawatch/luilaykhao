@@ -650,7 +650,7 @@ class AdminController extends Controller
         $passengers = BookingPassenger::whereHas('booking', function ($q) use ($scheduleId) {
             $q->where('schedule_id', $scheduleId)
                 ->whereIn('status', ['confirmed', 'pending']);
-        })->with('booking.seats')->get()->map(function($p) {
+        })->with(['booking.seats', 'booking.pickupPoint', 'booking.user'])->get()->map(function($p) {
             $p->is_join_trip = $p->booking->is_join_trip ?? false;
             return $p;
         });
