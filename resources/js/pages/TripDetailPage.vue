@@ -1551,16 +1551,10 @@ function scheduleAvailabilityBadgeClass(schedule) {
 }
 
 function scheduleAvailabilityLabel(schedule) {
-  if (schedule?.join_trip_enabled) return `จองแล้ว ${scheduleOccupancyLabel(schedule)}`;
+  if (schedule?.join_trip_enabled) return 'จอยทริป (ไม่จำกัด)';
   return hasAvailableSeats(schedule)
     ? `ว่าง ${schedule.available_seats} ที่`
     : 'เต็มแล้ว';
-}
-
-function scheduleOccupancyLabel(schedule) {
-  const booked = Number(schedule?.booked_seats || 0);
-  const total = Number(schedule?.total_seats || 0);
-  return total > 0 ? `${booked}/${total} ที่นั่ง` : `${booked} ที่นั่ง`;
 }
 
 function formatDate(d) {
