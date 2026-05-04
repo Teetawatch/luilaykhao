@@ -38,11 +38,11 @@
           <!-- Front passenger seat (from config) -->
           <button
             v-if="frontPassengerSeat"
-            :disabled="frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked'"
+            :disabled="readonly || frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked'"
             @click="handleSeatClick(frontPassengerSeat)"
             class="group flex flex-col items-center transition-all duration-200 shrink-0"
-            :class="frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-            :title="frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : ''"
+            :class="readonly ? 'cursor-default' : frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
+            :title="readonly ? '' : frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : ''"
           >
             <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
               :class="seatBgClass(frontPassengerSeat)">
@@ -136,6 +136,7 @@ const props = defineProps({
   seatMap: { type: Object, default: null },
   isWomenOnly: { type: Boolean, default: false },
   showNames: { type: Boolean, default: false },
+  readonly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['seat-click']);
@@ -244,10 +245,12 @@ function getSeat(id) {
 }
 
 function isSelected(seat) {
+  if (props.readonly) return false;
   return seatsStore.selectedSeats.some(s => s.id === seat?.id);
 }
 
 function handleSeatClick(seat) {
+  if (props.readonly) return;
   if (!seat || seat.status === 'booked' || seat.status === 'locked') return;
   seatsStore.toggleSeat(seat);
   emit('seat-click', seat);
@@ -257,7 +260,7 @@ function handleSeatClick(seat) {
 const SeatButton = (btnProps, { emit: btnEmit }) => {
   const seat = btnProps.seat;
   const seatId = btnProps.seatId;
-  const disabled = seat?.status === 'booked' || seat?.status === 'locked';
+  const disabled = props.readonly || seat?.status === 'booked' || seat?.status === 'locked';
 
   return h('div', { class: 'relative group' }, [
     h('button', {
@@ -265,9 +268,9 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
       onClick: () => { if (!disabled) btnEmit('click'); },
       class: [
         'group flex flex-col items-center transition-all duration-200',
-        disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+        disabled ? (props.readonly ? 'cursor-default' : 'cursor-not-allowed') : 'cursor-pointer',
       ],
-      title: seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : '',
+      title: props.readonly ? '' : seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : '',
     }, [
       h('div', {
         class: ['w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200', seatBgClass(seat)],
