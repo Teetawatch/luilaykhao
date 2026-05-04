@@ -45,7 +45,7 @@
               </div>
               <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200">
                 <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
-                <span v-if="isJoinTrip">ไม่จำกัด (จอยทริป)</span>
+                <span v-if="isJoinTrip">ว่าง {{ schedule.available_seats }} ที่</span>
                 <span v-else>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
               </div>
               <div v-if="isJoinTrip" class="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl text-emerald-700 border border-emerald-200 font-bold">

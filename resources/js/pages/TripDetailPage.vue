@@ -1551,7 +1551,7 @@ function scheduleAvailabilityBadgeClass(schedule) {
 }
 
 function scheduleAvailabilityLabel(schedule) {
-  if (schedule?.join_trip_enabled) return 'จอยทริป (ไม่จำกัด)';
+  if (schedule?.join_trip_enabled) return `ว่าง ${schedule.available_seats} ที่`;
   return hasAvailableSeats(schedule)
     ? `ว่าง ${schedule.available_seats} ที่`
     : 'เต็มแล้ว';
