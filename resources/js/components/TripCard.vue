@@ -85,14 +85,14 @@
       <div class="mt-auto pt-4 flex justify-between items-end border-t border-gray-100">
         <div class="flex flex-col">
           <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">
-            {{ trip.min_price === trip.max_price ? 'เริ่มต้น' : 'ช่วงราคา' }}
+            {{ Number(trip.min_price) != Number(trip.max_price) ? 'ช่วงราคา' : 'เริ่มต้น' }}
           </span>
           <div class="flex items-baseline gap-1">
-            <template v-if="trip.min_price === trip.max_price">
-              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }}</span>
+            <template v-if="Number(trip.min_price) != Number(trip.max_price)">
+              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}</span>
             </template>
             <template v-else>
-              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}</span>
+              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }}</span>
             </template>
           </div>
         </div>
