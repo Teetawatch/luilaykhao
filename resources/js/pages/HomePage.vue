@@ -356,9 +356,16 @@
               
               <div class="mt-auto pt-4 flex justify-between items-end border-t border-gray-100">
                 <div class="flex flex-col">
-                  <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">เริ่มต้น</span>
+                  <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">
+                    {{ Number(trip.min_price) != Number(trip.max_price) ? 'ช่วงราคา' : 'เริ่มต้น' }}
+                  </span>
                   <div class="flex items-baseline gap-1">
-                    <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.price_per_person).toLocaleString() }}</span>
+                    <template v-if="Number(trip.min_price) != Number(trip.max_price)">
+                      <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }}</span>
+                    </template>
                   </div>
                 </div>
                 <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-colors duration-300">
@@ -447,8 +454,15 @@
               <div class="flex items-center justify-between flex-wrap gap-8 mt-auto border-t border-white/10 pt-10">
                 <div class="flex flex-col">
                   <div class="flex items-baseline gap-2">
-                    <span class="text-white/70 text-sm font-bold">เริ่มต้นเพียง</span>
-                    <span class="text-white text-4xl md:text-5xl font-black tracking-tighter">฿{{ Number(featuredTrips[0].price_per_person).toLocaleString('th-TH') }}</span>
+                    <span class="text-white/70 text-sm font-bold">
+                      {{ Number(featuredTrips[0].min_price) != Number(featuredTrips[0].max_price) ? 'ช่วงราคา' : 'เริ่มต้นเพียง' }}
+                    </span>
+                    <span v-if="Number(featuredTrips[0].min_price) != Number(featuredTrips[0].max_price)" class="text-white text-3xl md:text-5xl font-black tracking-tighter">
+                      ฿{{ Number(featuredTrips[0].min_price).toLocaleString('th-TH') }} - {{ Number(featuredTrips[0].max_price).toLocaleString('th-TH') }}
+                    </span>
+                    <span v-else class="text-white text-4xl md:text-5xl font-black tracking-tighter">
+                      ฿{{ Number(featuredTrips[0].min_price).toLocaleString('th-TH') }}
+                    </span>
                   </div>
                 </div>
                 
@@ -503,8 +517,15 @@
               
               <div class="relative z-10 pt-8 mt-4 border-t border-white/10 flex justify-between items-end">
                 <div class="flex flex-col">
-                  <span class="text-[10px] text-white/40 font-black uppercase tracking-[0.2em] mb-1">เริ่มต้นที่</span>
-                  <span class="text-2xl font-black text-white tracking-tight">฿{{ Number(trip.price_per_person).toLocaleString('th-TH') }}</span>
+                  <span class="text-[10px] text-white/40 font-black uppercase tracking-[0.2em] mb-1">
+                    {{ Number(trip.min_price) != Number(trip.max_price) ? 'ช่วงราคา' : 'เริ่มต้นที่' }}
+                  </span>
+                  <span v-if="Number(trip.min_price) != Number(trip.max_price)" class="text-xl font-black text-white tracking-tight">
+                    ฿{{ Number(trip.min_price).toLocaleString('th-TH') }} - {{ Number(trip.max_price).toLocaleString('th-TH') }}
+                  </span>
+                  <span v-else class="text-2xl font-black text-white tracking-tight">
+                    ฿{{ Number(trip.min_price).toLocaleString('th-TH') }}
+                  </span>
                 </div>
                 <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--color-primary)] transition-all duration-500 shadow-xl">
                   <span class="material-symbols-rounded text-[28px]">arrow_outward</span>
