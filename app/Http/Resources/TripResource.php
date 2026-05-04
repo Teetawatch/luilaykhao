@@ -9,6 +9,13 @@ class TripResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $prices = collect();
+        if ($this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
+            $prices = $this->schedules->map(fn($s) => (float) ($s->price_override ?? $this->price_per_person));
+        } else {
+            $prices->push((float) $this->price_per_person);
+        }
+
         return [
             'id' => $this->id,
             'title' => $this->title,
@@ -21,8 +28,8 @@ class TripResource extends JsonResource
             'duration_days' => $this->duration_days,
             'max_participants' => $this->max_participants,
             'price_per_person' => $this->price_per_person,
-            'min_price' => $this->min_price ?? $this->price_per_person,
-            'max_price' => $this->max_price ?? $this->price_per_person,
+            'min_price' => $prices->min(),
+            'max_price' => $prices->max(),
             'departure_point' => $this->departure_point,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,

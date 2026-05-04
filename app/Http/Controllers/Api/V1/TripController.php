@@ -41,16 +41,9 @@ class TripController extends Controller
             });
         }
 
-        $trips = $query->addSelect(['*', 
-            'min_price' => \App\Models\TripSchedule::selectRaw('MIN(COALESCE(price_override, trips.price_per_person))')
-                ->whereColumn('trip_id', 'trips.id')
-                ->where('status', 'open')
-                ->where('departure_date', '>=', now()->startOfDay()),
-            'max_price' => \App\Models\TripSchedule::selectRaw('MAX(COALESCE(price_override, trips.price_per_person))')
-                ->whereColumn('trip_id', 'trips.id')
-                ->where('status', 'open')
-                ->where('departure_date', '>=', now()->startOfDay()),
-        ])->withCount(['schedules' => function ($q) {
+        $trips = $query->with(['schedules' => function ($q) {
+            $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
+        }])->withCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
         }])->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
 
@@ -61,16 +54,9 @@ class TripController extends Controller
     {
         $trips = Trip::where('status', 'active')
             ->where('is_featured', true)
-            ->addSelect(['*', 
-                'min_price' => \App\Models\TripSchedule::selectRaw('MIN(COALESCE(price_override, trips.price_per_person))')
-                    ->whereColumn('trip_id', 'trips.id')
-                    ->where('status', 'open')
-                    ->where('departure_date', '>=', now()->startOfDay()),
-                'max_price' => \App\Models\TripSchedule::selectRaw('MAX(COALESCE(price_override, trips.price_per_person))')
-                    ->whereColumn('trip_id', 'trips.id')
-                    ->where('status', 'open')
-                    ->where('departure_date', '>=', now()->startOfDay()),
-            ])
+            ->with(['schedules' => function ($q) {
+                $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
+            }])
             ->orderByDesc('created_at')
             ->get();
 
@@ -80,16 +66,9 @@ class TripController extends Controller
     public function show(string $slug): JsonResponse
     {
         $trip = Trip::where('slug', $slug)
-            ->addSelect(['*', 
-                'min_price' => \App\Models\TripSchedule::selectRaw('MIN(COALESCE(price_override, trips.price_per_person))')
-                    ->whereColumn('trip_id', 'trips.id')
-                    ->where('status', 'open')
-                    ->where('departure_date', '>=', now()->startOfDay()),
-                'max_price' => \App\Models\TripSchedule::selectRaw('MAX(COALESCE(price_override, trips.price_per_person))')
-                    ->whereColumn('trip_id', 'trips.id')
-                    ->where('status', 'open')
-                    ->where('departure_date', '>=', now()->startOfDay()),
-            ])
+            ->with(['schedules' => function ($q) {
+                $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
+            }])
             ->firstOrFail();
 
         return $this->success(new TripResource($trip->loadCount(['schedules' => function ($q) {
