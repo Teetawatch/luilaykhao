@@ -42,7 +42,7 @@ class TripController extends Controller
         }
 
         $trips = $query->with(['schedules' => function ($q) {
-            $q->where('departure_date', '>=', now()->startOfDay());
+            $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
         }])->withCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
         }])->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
@@ -55,7 +55,7 @@ class TripController extends Controller
         $trips = Trip::where('status', 'active')
             ->where('is_featured', true)
             ->with(['schedules' => function ($q) {
-                $q->where('departure_date', '>=', now()->startOfDay());
+                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
             }])
             ->orderByDesc('created_at')
             ->get();
@@ -67,7 +67,7 @@ class TripController extends Controller
     {
         $trip = Trip::where('slug', $slug)
             ->with(['schedules' => function ($q) {
-                $q->where('departure_date', '>=', now()->startOfDay());
+                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
             }])
             ->firstOrFail();
 
