@@ -500,7 +500,7 @@
                         selectedSchedule?.id === s.id
                           ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                           : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50 border-gray-100' : ''
+                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
                       ]"
                     >
                       <div class="flex items-center justify-between gap-3">
@@ -591,7 +591,7 @@
                         selectedSchedule?.id === s.id
                           ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                           : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50 border-gray-100' : ''
+                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
                       ]"
                     >
                       <!-- Date + seats -->
@@ -702,7 +702,7 @@
                 <!-- ── Book Now ── -->
                 <div v-if="selectedSchedule">
                   <router-link
-                    v-if="(!isTrekking || (selectedSchedule && selectedPickup)) || (isJoinTrip && selectedSchedule?.join_trip_enabled)"
+                    v-if="((!isTrekking) || (isTrekking && selectedPickup) || (isJoinTrip && selectedSchedule?.join_trip_enabled)) && (Number(selectedSchedule.available_seats) > 0 || selectedSchedule.join_trip_enabled)"
                     :to="{ 
                       path: `/booking/${selectedSchedule.id}`, 
                       query: { 
@@ -716,7 +716,7 @@
                   </router-link>
                   <button v-else disabled
                     class="w-full py-4 rounded-full font-extrabold text-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center border border-gray-200">
-                    {{ !selectedRegion ? 'กรุณาเลือกภูมิภาค' : !selectedSchedule ? 'กรุณาเลือกวันเดินทาง' : 'กรุณาเลือกจุดขึ้นรถ' }}
+                    {{ (Number(selectedSchedule.available_seats) <= 0 && !selectedSchedule.join_trip_enabled) ? 'รอบเดินทางนี้เต็มแล้ว' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
