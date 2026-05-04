@@ -475,7 +475,17 @@ class AdminController extends Controller
 
     public function bookings(Request $request): JsonResponse
     {
-        $query = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats', 'installmentPayments', 'pickupPoint']);
+        $query = Booking::with([
+            'schedule.trip',
+            'schedule.vehicle',
+            'schedule.pickupPoints',
+            'schedule.staff',
+            'user',
+            'passengers',
+            'seats',
+            'installmentPayments',
+            'pickupPoint',
+        ]);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -483,11 +493,18 @@ class AdminController extends Controller
         if ($request->filled('date')) {
             $query->whereDate('created_at', $request->date);
         }
+        if ($request->filled('payment_type')) {
+            $query->where('payment_type', $request->payment_type);
+        }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('booking_ref', 'like', "%{$request->search}%")
                     ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%")
-                        ->orWhere('email', 'like', "%{$request->search}%"));
+                        ->orWhere('email', 'like', "%{$request->search}%")
+                        ->orWhere('phone', 'like', "%{$request->search}%"))
+                    ->orWhereHas('passengers', fn ($p) => $p->where('name', 'like', "%{$request->search}%")
+                        ->orWhere('phone', 'like', "%{$request->search}%"))
+                    ->orWhereHas('schedule.trip', fn ($trip) => $trip->where('title', 'like', "%{$request->search}%"));
             });
         }
         if ($request->filled('booking_type')) {
@@ -507,7 +524,17 @@ class AdminController extends Controller
 
     public function showBooking(string $ref): JsonResponse
     {
-        $booking = Booking::with(['schedule.trip', 'schedule.pickupPoints', 'user', 'passengers', 'seats', 'installmentPayments', 'pickupPoint'])
+        $booking = Booking::with([
+            'schedule.trip',
+            'schedule.vehicle',
+            'schedule.pickupPoints',
+            'schedule.staff',
+            'user',
+            'passengers',
+            'seats',
+            'installmentPayments',
+            'pickupPoint',
+        ])
             ->where('booking_ref', $ref)
             ->firstOrFail();
 
