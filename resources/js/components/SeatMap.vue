@@ -135,6 +135,7 @@ const seatsStore = useSeatsStore();
 const props = defineProps({
   seatMap: { type: Object, default: null },
   isWomenOnly: { type: Boolean, default: false },
+  showNames: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['seat-click']);
@@ -258,29 +259,34 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
   const seatId = btnProps.seatId;
   const disabled = seat?.status === 'booked' || seat?.status === 'locked';
 
-  return h('button', {
-    disabled,
-    onClick: () => { if (!disabled) btnEmit('click'); },
-    class: [
-      'group flex flex-col items-center transition-all duration-200',
-      disabled ? 'cursor-not-allowed' : 'cursor-pointer',
-    ],
-    title: seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : '',
-  }, [
-    h('div', {
-      class: ['w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200', seatBgClass(seat)],
+  return h('div', { class: 'relative group' }, [
+    h('button', {
+      disabled,
+      onClick: () => { if (!disabled) btnEmit('click'); },
+      class: [
+        'group flex flex-col items-center transition-all duration-200',
+        disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+      ],
+      title: seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : '',
     }, [
+      h('div', {
+        class: ['w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200', seatBgClass(seat)],
+      }, [
+        h('span', {
+          class: ['material-symbols-rounded text-xl transition-all duration-200', seatIconClass(seat)],
+          style: "font-variation-settings:'FILL' 1,'wght' 400",
+        }, 'airline_seat_recline_normal'),
+      ]),
       h('span', {
-        class: ['material-symbols-rounded text-xl transition-all duration-200', seatIconClass(seat)],
-        style: "font-variation-settings:'FILL' 1,'wght' 400",
-      }, 'airline_seat_recline_normal'),
+        class: ['text-[10px] mt-1 font-bold transition-colors', seatLabelClass(seat)],
+      }, seat?.label ?? seatId),
+      seat?.status === 'booked'
+        ? h('span', { class: 'text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium' }, 'จองแล้ว')
+        : null,
     ]),
-    h('span', {
-      class: ['text-[10px] mt-1 font-bold transition-colors', seatLabelClass(seat)],
-    }, seat?.label ?? seatId),
-    seat?.status === 'booked'
-      ? h('span', { class: 'text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium' }, 'จองแล้ว')
-      : null,
+    (props.showNames && seat?.passenger_name) ? h('div', {
+      class: 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg'
+    }, seat.passenger_name) : null
   ]);
 };
 SeatButton.props = { seat: Object, seatId: String, isWomenOnly: Boolean };

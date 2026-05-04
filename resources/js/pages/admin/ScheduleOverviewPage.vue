@@ -147,43 +147,9 @@
             </div>
             
             <div v-else class="seat-map-container">
-              <!-- Seat Map View (Simplified from BookingPage) -->
-              <div class="seat-map-wrapper">
-                <div class="bus-container">
-                  <div class="bus-front">
-                    <span class="material-symbols-rounded">{{ seatData.driver_icon || 'directions_car' }}</span>
-                    <span>{{ seatData.front_label || 'หน้ารถ' }}</span>
-                  </div>
-                  
-                  <div class="seats-grid-scroll">
-                    <div class="seats-grid" :style="{ gridTemplateRows: `repeat(${seatData.rows}, 1fr)` }">
-                      <div v-for="seat in seatData.seats" 
-                           :key="seat.id" 
-                           class="seat-item"
-                           :class="[seat.status, { 'selected': false }]"
-                           :style="{ gridRow: seat.row, gridColumn: seat.column }"
-                      >
-                        <div class="seat-box">
-                          <span class="seat-id">{{ seat.id }}</span>
-                          <span class="material-symbols-rounded seat-icon">
-                            {{ seat.status === 'available' ? 'event_seat' : (seat.status === 'locked' ? 'lock' : 'person') }}
-                          </span>
-                        </div>
-                        <div class="seat-popover" v-if="seat.passenger_name">
-                           {{ seat.passenger_name }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Legend -->
-              <div class="map-legend">
-                <div class="legend-item"><span class="l-dot available"></span> ว่าง</div>
-                <div class="legend-item"><span class="l-dot booked"></span> จองแล้ว</div>
-                <div class="legend-item"><span class="l-dot locked"></span> กำลังจอง (Lock)</div>
-              </div>
+              <SeatMap :seat-map="seatData" :show-names="true" />
+              
+              <!-- Legend from component is already included, but we can keep the local one if we want specific admin colors -->
             </div>
           </template>
         </div>
@@ -196,6 +162,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import axios from 'axios';
+import SeatMap from '../../components/SeatMap.vue';
 
 const admin = useAdminStore();
 const schedules = computed(() => admin.calendarEvents || []);
@@ -318,7 +285,7 @@ const viewSeatLayout = async (sch) => {
   
   try {
     const res = await axios.get(`/api/v1/schedules/${sch.id}/seats`);
-    if (res.data.success && res.data.data.has_seat_map) {
+    if (res.data.success) {
       seatData.value = res.data.data;
     }
   } catch (e) {
@@ -620,118 +587,7 @@ onMounted(fetchData);
 
 .text-accent { color: var(--color-accent); }
 
-.seat-map-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
 
-.bus-container {
-  max-width: 400px;
-  margin: 0 auto;
-  border: 2px solid #e2e8f0;
-  border-radius: 30px 30px 10px 10px;
-  padding: 20px;
-  background: #f8fafc;
-}
-
-.bus-front {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px dashed #cbd5e1;
-  color: #64748b;
-}
-
-.seats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  justify-items: center;
-}
-
-.seat-item {
-  width: 50px;
-  height: 50px;
-  position: relative;
-}
-
-.seat-box {
-  width: 100%;
-  height: 100%;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: default;
-}
-
-.seat-id {
-  font-size: 10px;
-  font-weight: 700;
-  color: #94a3b8;
-}
-
-.seat-icon {
-  font-size: 20px;
-}
-
-.available .seat-icon { color: #10b981; }
-.booked .seat-box { background: #fee2e2; border-color: #fca5a5; }
-.booked .seat-icon { color: #ef4444; }
-.locked .seat-box { background: #fef3c7; border-color: #fcd34d; }
-.locked .seat-icon { color: #f59e0b; }
-
-.seat-popover {
-  position: absolute;
-  bottom: 110%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #334155;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 10;
-}
-
-.seat-item:hover .seat-popover {
-  opacity: 1;
-}
-
-.map-legend {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 10px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.l-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
-
-.l-dot.available { background: #10b981; }
-.l-dot.booked { background: #ef4444; }
-.l-dot.locked { background: #f59e0b; }
 
 @media (max-width: 640px) {
   .schedule-grid {

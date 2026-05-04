@@ -28,25 +28,47 @@ class ScheduleController extends Controller
     public function seats(Request $request, int $id): JsonResponse
     {
         $schedule = TripSchedule::with('vehicle')->findOrFail($id);
-
-        if (!$schedule->vehicle || !$schedule->vehicle->seat_layout) {
-            return $this->success([
-                'has_seat_map' => false,
-                'total_seats' => $schedule->total_seats,
-                'available_seats' => $schedule->available_seats,
-                'lock_ttl_seconds' => SeatLockService::lockTtlSeconds(),
-            ]);
+        $layout = $schedule->vehicle?->seat_layout;
+        
+        // If no layout, generate a default grid layout
+        if (!$layout || !isset($layout['seats'])) {
+            $total = $schedule->total_seats ?: 10;
+            $cols = ['A', 'B', 'C', 'D'];
+            $numCols = 4;
+            $numRows = ceil($total / $numCols);
+            
+            $generatedSeats = [];
+            for ($i = 0; $i < $total; $i++) {
+                $row = floor($i / $numCols) + 1;
+                $colIdx = $i % $numCols;
+                $seatId = $cols[$colIdx] . $row;
+                $generatedSeats[] = [
+                    'id' => $seatId,
+                    'row' => $row,
+                    'column' => $colIdx + 1,
+                    'label' => $seatId,
+                ];
+            }
+            
+            $layout = [
+                'rows' => $numRows,
+                'columns' => array_slice($cols, 0, $numCols),
+                'seats' => $generatedSeats,
+                'front_label' => 'หน้ารถ',
+                'rear_label' => 'หลังรถ',
+                'show_driver' => true,
+                'driver_icon' => 'directions_car',
+            ];
         }
 
-        $layout = $schedule->vehicle->seat_layout;
-        $allSeatIds = collect($layout['seats'] ?? [])->pluck('id')->toArray();
+        $allSeatIds = collect($layout['seats'])->pluck('id')->toArray();
         $statuses = $this->seatLockService->getSeatStatus(
             $id,
             $allSeatIds,
             $request->user()?->id,
         );
 
-        $seats = collect($layout['seats'] ?? [])->map(function ($seat) use ($statuses) {
+        $seats = collect($layout['seats'])->map(function ($seat) use ($statuses) {
             $seatStatus = $statuses[$seat['id']] ?? [
                 'status' => 'available',
                 'passenger_name' => null,
@@ -61,7 +83,7 @@ class ScheduleController extends Controller
         });
 
         return $this->success([
-            'has_seat_map' => true,
+            'has_seat_map' => true, // Always true now since we have a fallback
             'rows' => $layout['rows'] ?? 0,
             'columns' => $layout['columns'] ?? [],
             'seats' => $seats,
