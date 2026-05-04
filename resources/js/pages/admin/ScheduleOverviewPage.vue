@@ -36,7 +36,8 @@
     <div v-else class="overview-container">
       <div v-if="!groupedSchedules.length" class="empty-card">
         <span class="material-symbols-rounded" style="font-size: 48px; color: #cbd5e1; margin-bottom: 12px;">event_busy</span>
-        <p>ไม่พบข้อมูลรอบเดินทางที่เปิดรับจองในขณะนี้</p>
+        <p v-if="searchQuery || filterStatus">ไม่พบข้อมูลรอบเดินทางที่ตรงกับเงื่อนไขการค้นหา</p>
+        <p v-else>ไม่พบข้อมูลรอบเดินทางในระบบขณะนี้</p>
       </div>
 
       <div v-for="group in filteredGroups" :key="group.trip_id" class="trip-section">
@@ -187,9 +188,9 @@ import { useAdminStore } from '../../stores/admin';
 import axios from 'axios';
 
 const admin = useAdminStore();
-const schedules = ref([]);
+const schedules = computed(() => admin.calendarEvents || []);
 const searchQuery = ref('');
-const filterStatus = ref('open');
+const filterStatus = ref('');
 const selectedSchedule = ref(null);
 const seatData = ref(null);
 const loadingSeats = ref(false);
@@ -205,23 +206,33 @@ const tripTypeLabels = {
 
 const formatDate = (d) => {
   if (!d) return '-';
-  return new Date(d).toLocaleDateString('th-TH', { 
-    day: 'numeric', 
-    month: 'short', 
-    year: 'numeric',
-    weekday: 'short'
-  });
+  try {
+    return new Date(d).toLocaleDateString('th-TH', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric',
+      weekday: 'short'
+    });
+  } catch (e) {
+    return d;
+  }
 };
 
 const fetchData = async () => {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    // Fetch future schedules
-    const res = await admin.fetchCalendarSchedules({ 
-      start: today, 
-      end: new Date(new Date().getFullYear(), new Date().getMonth() + 6, 1).toISOString().split('T')[0] 
+    // Use a wider range: from 1 month ago to 1 year in the future
+    const start = new Date();
+    start.setMonth(start.getMonth() - 1);
+    const startStr = start.toISOString().split('T')[0];
+    
+    const end = new Date();
+    end.setFullYear(end.getFullYear() + 1);
+    const endStr = end.toISOString().split('T')[0];
+    
+    await admin.fetchCalendarSchedules({ 
+      start: startStr, 
+      end: endStr 
     });
-    schedules.value = res || [];
   } catch (e) {
     console.error('Failed to fetch schedules', e);
   }
@@ -229,8 +240,11 @@ const fetchData = async () => {
 
 const groupedSchedules = computed(() => {
   const groups = {};
+  const data = schedules.value;
   
-  schedules.value.forEach(sch => {
+  if (!Array.isArray(data)) return [];
+  
+  data.forEach(sch => {
     // Filter by search
     if (searchQuery.value && !sch.trip_title.toLowerCase().includes(searchQuery.value.toLowerCase())) {
       return;
