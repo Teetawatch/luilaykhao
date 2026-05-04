@@ -494,10 +494,14 @@
                       v-for="s in showAllSchedules ? filteredSchedules : filteredSchedules.slice(0, 5)"
                       :key="s.id"
                       @click="selectSchedule(s)"
+                      :disabled="!s.join_trip_enabled && Number(s.available_seats) <= 0"
                       class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
-                      :class="selectedSchedule?.id === s.id
-                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                        : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm'"
+                      :class="[
+                        selectedSchedule?.id === s.id
+                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
+                          : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
+                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50 border-gray-100' : ''
+                      ]"
                     >
                       <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0 flex items-center gap-3">
@@ -581,10 +585,14 @@
                       v-for="s in showAllSchedules ? filteredSchedulesForRegion : filteredSchedulesForRegion.slice(0, 5)"
                       :key="s.id"
                       @click="selectSchedule(s)"
+                      :disabled="!s.join_trip_enabled && Number(s.available_seats) <= 0"
                       class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
-                      :class="selectedSchedule?.id === s.id
-                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                        : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm'"
+                      :class="[
+                        selectedSchedule?.id === s.id
+                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
+                          : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
+                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale-[0.5] cursor-not-allowed bg-gray-50 border-gray-100' : ''
+                      ]"
                     >
                       <!-- Date + seats -->
                       <div class="flex items-center justify-between gap-3">
@@ -1281,7 +1289,7 @@ const setupSectorObserver = () => {
 const selectedPickup = ref(null);
 const selectedRegion = ref(null);
 const isJoinTrip = ref(false);
-const onlyAvailableSchedules = ref(true);
+const onlyAvailableSchedules = ref(false);
 const loading = ref(true);
 const schedulesLoading = ref(false);
 const reviews = ref([]);
