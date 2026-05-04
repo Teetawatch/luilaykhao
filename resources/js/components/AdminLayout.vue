@@ -8,16 +8,50 @@
       </div>
 
       <nav class="sidebar-nav">
-        <router-link
-          v-for="item in menuItems"
-          :key="item.to"
-          :to="item.to"
-          class="nav-item"
-          :class="{ active: item.to === '/admin' ? $route.path === '/admin' : $route.path.startsWith(item.to) }"
-        >
-          <i :class="item.icon"></i>
-          <span v-if="!sidebarCollapsed">{{ item.label }}</span>
-        </router-link>
+        <div v-for="group in menuGroups" :key="group.id" class="nav-group">
+          <div 
+            class="group-header" 
+            :class="{ active: group.isOpen }"
+            @click="toggleGroup(group.id)"
+          >
+            <div class="group-title-wrapper">
+              <i :class="group.icon"></i>
+              <span v-if="!sidebarCollapsed">{{ group.label }}</span>
+            </div>
+            <i 
+              v-if="!sidebarCollapsed" 
+              class="fas fa-chevron-right chevron" 
+              :class="{ rotated: group.isOpen }"
+            ></i>
+          </div>
+          
+          <div v-show="group.isOpen && !sidebarCollapsed" class="group-items">
+            <router-link
+              v-for="item in group.items"
+              :key="item.to"
+              :to="item.to"
+              class="nav-item sub-item"
+              :class="{ active: item.to === '/admin' ? $route.path === '/admin' : $route.path.startsWith(item.to) }"
+            >
+              <i :class="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </router-link>
+          </div>
+
+          <!-- Mini menu for collapsed sidebar -->
+          <div v-if="sidebarCollapsed" class="collapsed-group-items">
+             <router-link
+              v-for="item in group.items"
+              :key="item.to"
+              :to="item.to"
+              class="nav-item collapsed-sub-item"
+              :title="item.label"
+              :class="{ active: item.to === '/admin' ? $route.path === '/admin' : $route.path.startsWith(item.to) }"
+            >
+              <i :class="item.icon"></i>
+            </router-link>
+          </div>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -61,37 +95,116 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
 const router = useRouter();
 const auth = useAuthStore();
 const sidebarCollapsed = ref(false);
 
-const menuItems = [
-  { to: '/admin', icon: 'fas fa-tachometer-alt', label: 'แดชบอร์ด' },
-  { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
-  { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },
-  { to: '/admin/trips', icon: 'fas fa-route', label: 'จัดการทริป' },
-  { to: '/admin/van-trips', icon: 'fas fa-shuttle-van', label: 'บริการรถตู้' },
-  { to: '/admin/promotions', icon: 'fas fa-percent', label: 'โปรโมชั่น/ส่วนลด' },
-  { to: '/admin/categories', icon: 'fas fa-tags', label: 'หมวดหมู่กิจกรรม' },
-  { to: '/admin/schedules', icon: 'fas fa-calendar-alt', label: 'รอบเดินทาง' },
-  { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
-  { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },
-  { to: '/admin/vehicles', icon: 'fas fa-shuttle-van', label: 'ยานพาหนะ' },
-  { to: '/admin/tracking', icon: 'fas fa-map-marked-alt', label: 'ติดตามรถ GPS' },
-  { to: '/admin/maintenance', icon: 'fas fa-tools', label: 'บำรุงรักษา' },
-  { to: '/admin/reviews', icon: 'fas fa-star', label: 'รีวิว' },
-  { to: '/admin/loyalty', icon: 'fas fa-coins', label: 'สะสมแต้ม' },
-  { to: '/admin/reports', icon: 'fas fa-chart-line', label: 'รายงาน' },
-  { to: '/admin/check-in', icon: 'fas fa-qrcode', label: 'เช็คอิน QR' },
-  { to: '/admin/inquiries', icon: 'fas fa-envelope', label: 'ข้อความจากลูกค้า' },
-  { to: '/admin/users', icon: 'fas fa-users', label: 'ผู้ใช้งาน' },
-  { to: '/admin/staff-assignments', icon: 'fas fa-user-check', label: 'มอบหมายสตาฟ' },
-];
+const menuGroups = ref([
+  {
+    id: 'main',
+    label: 'หน้าหลัก',
+    icon: 'fas fa-home',
+    items: [
+      { to: '/admin', icon: 'fas fa-tachometer-alt', label: 'แดชบอร์ด' },
+      { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
+      { to: '/admin/reports', icon: 'fas fa-chart-line', label: 'รายงาน' },
+    ],
+    isOpen: true
+  },
+  {
+    id: 'trips',
+    label: 'จัดการทริป',
+    icon: 'fas fa-map-marked-alt',
+    items: [
+      { to: '/admin/trips', icon: 'fas fa-route', label: 'ทริปทั้งหมด' },
+      { to: '/admin/schedules', icon: 'fas fa-calendar-alt', label: 'รอบเดินทาง' },
+      { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },
+      { to: '/admin/categories', icon: 'fas fa-tags', label: 'หมวดหมู่กิจกรรม' },
+    ],
+    isOpen: false
+  },
+  {
+    id: 'bookings',
+    label: 'การจองและลูกค้า',
+    icon: 'fas fa-ticket-alt',
+    items: [
+      { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
+      { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },
+      { to: '/admin/reviews', icon: 'fas fa-star', label: 'รีวิวจากลูกค้า' },
+      { to: '/admin/inquiries', icon: 'fas fa-envelope', label: 'ข้อความติดต่อ' },
+    ],
+    isOpen: false
+  },
+  {
+    id: 'transport',
+    label: 'ขนส่งและรถตู้',
+    icon: 'fas fa-shuttle-van',
+    items: [
+      { to: '/admin/van-trips', icon: 'fas fa-shuttle-van', label: 'บริการรถตู้' },
+      { to: '/admin/vehicles', icon: 'fas fa-car', label: 'จัดการยานพาหนะ' },
+      { to: '/admin/tracking', icon: 'fas fa-map-marker-alt', label: 'ติดตามรถ GPS' },
+      { to: '/admin/maintenance', icon: 'fas fa-tools', label: 'ประวัติบำรุงรักษา' },
+    ],
+    isOpen: false
+  },
+  {
+    id: 'marketing',
+    label: 'การตลาด',
+    icon: 'fas fa-bullhorn',
+    items: [
+      { to: '/admin/promotions', icon: 'fas fa-percent', label: 'โปรโมชั่น/ส่วนลด' },
+      { to: '/admin/loyalty', icon: 'fas fa-coins', label: 'ระบบสะสมแต้ม' },
+    ],
+    isOpen: false
+  },
+  {
+    id: 'operations',
+    label: 'ปฏิบัติงาน',
+    icon: 'fas fa-clipboard-check',
+    items: [
+      { to: '/admin/check-in', icon: 'fas fa-qrcode', label: 'เช็คอิน QR' },
+      { to: '/admin/staff-assignments', icon: 'fas fa-user-check', label: 'มอบหมายสตาฟ' },
+    ],
+    isOpen: false
+  },
+  {
+    id: 'system',
+    label: 'ตั้งค่าระบบ',
+    icon: 'fas fa-cog',
+    items: [
+      { to: '/admin/users', icon: 'fas fa-users-cog', label: 'ผู้ใช้งานระบบ' },
+    ],
+    isOpen: false
+  }
+]);
 
+const toggleGroup = (groupId) => {
+  if (sidebarCollapsed.value) {
+    sidebarCollapsed.value = false;
+  }
+  menuGroups.value = menuGroups.value.map(group => ({
+    ...group,
+    isOpen: group.id === groupId ? !group.isOpen : group.isOpen
+  }));
+};
+
+
+const route = useRoute();
+
+onMounted(() => {
+  menuGroups.value.forEach(group => {
+    const hasActiveItem = group.items.some(item => 
+      item.to === '/admin' ? route.path === '/admin' : route.path.startsWith(item.to)
+    );
+    if (hasActiveItem) {
+      group.isOpen = true;
+    }
+  });
+});
 
 const handleLogout = async () => {
   await auth.logout();
@@ -194,6 +307,12 @@ const handleLogout = async () => {
   white-space: nowrap;
 }
 
+.sub-item {
+  padding-left: 44px;
+  font-size: 13.5px;
+  margin-bottom: 2px;
+}
+
 .nav-item i {
   width: 20px;
   text-align: center;
@@ -210,6 +329,78 @@ const handleLogout = async () => {
   color: #2d7a4f;
   background: #EEEEEE;
   font-weight: 600;
+}
+
+/* ─── Group Styles ─────────────────────── */
+.nav-group {
+  margin-bottom: 4px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  color: #374151;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.group-header:hover {
+  background: #f3f4f6;
+}
+
+.group-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.group-title-wrapper i {
+  width: 20px;
+  text-align: center;
+  font-size: 16px;
+  color: #6b7280;
+}
+
+.group-header span {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.chevron {
+  font-size: 10px;
+  color: #9ca3af;
+  transition: transform 0.3s ease;
+}
+
+.chevron.rotated {
+  transform: rotate(90deg);
+}
+
+.group-items {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.collapsed-group-items {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  border-bottom: 1px solid #f3f4f6;
+  padding-bottom: 8px;
+}
+
+.collapsed-sub-item {
+  padding: 10px 0;
+  width: 100%;
+  justify-content: center;
 }
 
 .sidebar-footer {
