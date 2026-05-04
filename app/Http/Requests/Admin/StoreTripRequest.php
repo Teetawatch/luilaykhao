@@ -17,6 +17,7 @@ class StoreTripRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'type' => ['required', 'exists:categories,slug'],
             'location' => ['required', 'string', 'max:255'],
+            'region' => ['required', 'string', 'max:50'],
             'description' => ['nullable', 'string'],
             'difficulty' => ['required', 'in:easy,medium,hard'],
             'duration_days' => ['required', 'integer', 'min:1'],

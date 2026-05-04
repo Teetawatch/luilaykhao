@@ -52,6 +52,7 @@ class AdminExtendedController extends Controller
                 'trip_id' => $s->trip_id,
                 'trip_type' => $s->trip->type,
                 'trip_title' => $s->trip->title,
+                'trip_region' => $s->trip->region,
                 'vehicle' => $s->vehicle?->name,
                 'transport_type' => $s->transport_type,
                 'total_seats' => $s->total_seats,

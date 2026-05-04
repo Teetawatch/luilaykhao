@@ -11,7 +11,7 @@ class Trip extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title', 'slug', 'type', 'location', 'description',
+        'title', 'slug', 'type', 'location', 'region', 'description',
         'difficulty', 'duration_days', 'max_participants',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'inclusions', 'exclusions', 'is_featured',

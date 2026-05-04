@@ -47,6 +47,18 @@
               <input v-model="form.location" required placeholder="เช่น เชียงใหม่" />
             </div>
             <div class="form-group">
+              <label>ภูมิภาค (ภาค) *</label>
+              <select v-model="form.region" required>
+                <option value="" disabled>เลือกภาค</option>
+                <option value="north">ภาคเหนือ</option>
+                <option value="central">ภาคกลาง</option>
+                <option value="south">ภาคใต้</option>
+                <option value="east">ภาคตะวันออก</option>
+                <option value="northeast">ภาคอีสาน</option>
+                <option value="west">ภาคตะวันตก</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>จุดขึ้นรถ/เรือ</label>
               <input v-model="form.departure_point" placeholder="เช่น ประตูท่าแพ เชียงใหม่" />
             </div>
@@ -611,7 +623,7 @@ const handleMediaSelect = (data) => {
 };
 
 const form = reactive({
-  title: '', type: 'trekking', location: '', description: '',
+  title: '', type: 'trekking', location: '', region: '', description: '',
   difficulty: 'medium', duration_days: 1, max_participants: 10,
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
   latitude: null, longitude: null, is_featured: false, is_women_only: false,

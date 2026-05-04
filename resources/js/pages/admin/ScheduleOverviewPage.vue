@@ -40,70 +40,78 @@
         <p v-else>ไม่พบข้อมูลรอบเดินทางในระบบขณะนี้</p>
       </div>
 
-      <div v-for="group in filteredGroups" :key="group.trip_id" class="trip-section">
-        <div class="trip-section-header">
-          <div class="tsh-info">
-            <h2 class="tsh-title">{{ group.trip_title }}</h2>
-            <span class="tsh-badge" :class="`badge-${group.trip_type}`">{{ group.trip_type_label }}</span>
-          </div>
-          <span class="tsh-count">{{ group.schedules.length }} รอบเดินทาง</span>
+      <div v-for="region in filteredGroups" :key="region.region_key" class="region-block">
+        <div class="region-header">
+          <span class="material-symbols-rounded">map</span>
+          {{ region.region_label }}
+          <span class="region-count">({{ region.trips.length }} ทริป)</span>
         </div>
-        
-        <div class="schedule-grid">
-          <div v-for="sch in group.schedules" :key="sch.id" class="schedule-card" :class="{ 'card-full': sch.available_seats === 0 }">
-            <div class="card-header">
-              <div class="sch-status">
-                 <span class="status-dot" :class="`dot-${sch.status}`"></span>
-                 <span class="status-label">{{ statusLabels[sch.status] }}</span>
-              </div>
-              <span class="sch-price">฿{{ Number(sch.price).toLocaleString() }}</span>
-            </div>
 
-            <div class="sch-dates">
-              <div class="date-item">
-                <span class="material-symbols-rounded">calendar_today</span>
-                <div class="date-info">
-                  <span class="d-label">ไป</span>
-                  <span class="d-value">{{ formatDate(sch.start) }}</span>
+        <div v-for="trip in region.trips" :key="trip.trip_id" class="trip-section">
+          <div class="trip-section-header">
+            <div class="tsh-info">
+              <h2 class="tsh-title">{{ trip.trip_title }}</h2>
+              <span class="tsh-badge" :class="`badge-${trip.trip_type}`">{{ trip.trip_type_label }}</span>
+            </div>
+            <span class="tsh-count">{{ trip.schedules.length }} รอบเดินทาง</span>
+          </div>
+          
+          <div class="schedule-grid">
+            <div v-for="sch in trip.schedules" :key="sch.id" class="schedule-card" :class="{ 'card-full': sch.available_seats === 0 }">
+              <div class="card-header">
+                <div class="sch-status">
+                   <span class="status-dot" :class="`dot-${sch.status}`"></span>
+                   <span class="status-label">{{ statusLabels[sch.status] }}</span>
+                </div>
+                <span class="sch-price">฿{{ Number(sch.price).toLocaleString() }}</span>
+              </div>
+
+              <div class="sch-dates">
+                <div class="date-item">
+                  <span class="material-symbols-rounded">calendar_today</span>
+                  <div class="date-info">
+                    <span class="d-label">ไป</span>
+                    <span class="d-value">{{ formatDate(sch.start) }}</span>
+                  </div>
+                </div>
+                <div class="date-item" v-if="sch.end && sch.end !== sch.start">
+                  <span class="material-symbols-rounded">calendar_month</span>
+                  <div class="date-info">
+                    <span class="d-label">กลับ</span>
+                    <span class="d-value">{{ formatDate(sch.end) }}</span>
+                  </div>
                 </div>
               </div>
-              <div class="date-item" v-if="sch.end && sch.end !== sch.start">
-                <span class="material-symbols-rounded">calendar_month</span>
-                <div class="date-info">
-                  <span class="d-label">กลับ</span>
-                  <span class="d-value">{{ formatDate(sch.end) }}</span>
+
+              <div class="sch-vehicle" v-if="sch.vehicle || sch.transport_type">
+                  <span v-if="sch.transport_type === 'van'" class="material-symbols-rounded" style="color:var(--color-accent);">airport_shuttle</span>
+                  <span v-else-if="sch.transport_type === 'boat'" class="material-symbols-rounded" style="color:var(--color-accent);">directions_boat</span>
+                  <span v-else class="material-symbols-rounded" style="color:var(--color-accent);">directions_bus</span>
+                  <span class="v-name">{{ sch.vehicle || sch.transport_type }}</span>
+              </div>
+
+              <div class="sch-seats">
+                <div class="seats-header">
+                  <span class="sh-label">ที่นั่งว่าง</span>
+                  <div class="sh-stats">
+                    <span class="sh-avail" :class="{ 'text-full': sch.available_seats === 0, 'text-low': sch.available_seats > 0 && sch.available_seats <= 3 }">
+                      {{ sch.available_seats }}
+                    </span>
+                    <span class="sh-total">/ {{ sch.total_seats }}</span>
+                  </div>
+                </div>
+                <div class="seats-progress">
+                  <div class="progress-track">
+                    <div class="progress-fill" :style="{ width: (sch.booked_seats / sch.total_seats * 100) + '%' }"></div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="sch-vehicle" v-if="sch.vehicle || sch.transport_type">
-                <span v-if="sch.transport_type === 'van'" class="material-symbols-rounded" style="color:var(--color-accent);">airport_shuttle</span>
-                <span v-else-if="sch.transport_type === 'boat'" class="material-symbols-rounded" style="color:var(--color-accent);">directions_boat</span>
-                <span v-else class="material-symbols-rounded" style="color:var(--color-accent);">directions_bus</span>
-                <span class="v-name">{{ sch.vehicle || sch.transport_type }}</span>
-            </div>
-
-            <div class="sch-seats">
-              <div class="seats-header">
-                <span class="sh-label">ที่นั่งว่าง</span>
-                <div class="sh-stats">
-                  <span class="sh-avail" :class="{ 'text-full': sch.available_seats === 0, 'text-low': sch.available_seats > 0 && sch.available_seats <= 3 }">
-                    {{ sch.available_seats }}
-                  </span>
-                  <span class="sh-total">/ {{ sch.total_seats }}</span>
-                </div>
+              <div class="card-actions">
+                <button class="btn-view-seats" @click="viewSeatLayout(sch)" v-if="sch.status !== 'cancelled'">
+                  <span class="material-symbols-rounded">grid_view</span> แผงผังที่นั่ง
+                </button>
               </div>
-              <div class="seats-progress">
-                <div class="progress-track">
-                  <div class="progress-fill" :style="{ width: (sch.booked_seats / sch.total_seats * 100) + '%' }"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card-actions">
-              <button class="btn-view-seats" @click="viewSeatLayout(sch)" v-if="sch.status !== 'cancelled'">
-                <span class="material-symbols-rounded">grid_view</span> แผงผังที่นั่ง
-              </button>
             </div>
           </div>
         </div>
@@ -240,8 +248,18 @@ const fetchData = async () => {
   }
 };
 
+const regionLabels = {
+  north: 'ภาคเหนือ',
+  central: 'ภาคกลาง',
+  south: 'ภาคใต้',
+  east: 'ภาคตะวันออก',
+  northeast: 'ภาคอีสาน',
+  west: 'ภาคตะวันตก',
+  other: 'ไม่ระบุภาค'
+};
+
 const groupedSchedules = computed(() => {
-  const groups = {};
+  const regionMap = {};
   const data = schedules.value;
   
   if (!Array.isArray(data)) return [];
@@ -257,8 +275,17 @@ const groupedSchedules = computed(() => {
       return;
     }
 
-    if (!groups[sch.trip_id]) {
-      groups[sch.trip_id] = {
+    const regionKey = sch.trip_region || 'other';
+    if (!regionMap[regionKey]) {
+      regionMap[regionKey] = {
+        region_key: regionKey,
+        region_label: regionLabels[regionKey] || 'ไม่ระบุภาค',
+        trips: {}
+      };
+    }
+
+    if (!regionMap[regionKey].trips[sch.trip_id]) {
+      regionMap[regionKey].trips[sch.trip_id] = {
         trip_id: sch.trip_id,
         trip_title: sch.trip_title,
         trip_type: sch.trip_type,
@@ -266,10 +293,19 @@ const groupedSchedules = computed(() => {
         schedules: []
       };
     }
-    groups[sch.trip_id].schedules.push(sch);
+    regionMap[regionKey].trips[sch.trip_id].schedules.push(sch);
   });
-  
-  return Object.values(groups).sort((a, b) => a.trip_title.localeCompare(b.trip_title));
+
+  // Convert to sorted array
+  return Object.values(regionMap).map(r => ({
+    ...r,
+    trips: Object.values(r.trips).sort((a, b) => a.trip_title.localeCompare(b.trip_title))
+  })).sort((a, b) => {
+    const order = ['central', 'north', 'northeast', 'east', 'west', 'south', 'other'];
+    const idxA = order.indexOf(a.region_key);
+    const idxB = order.indexOf(b.region_key);
+    return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+  });
 });
 
 const filteredGroups = computed(() => groupedSchedules.value);
@@ -298,9 +334,35 @@ onMounted(fetchData);
 @import url('./admin-shared.css');
 
 .overview-container {
+  display: block;
+}
+
+.region-block {
+  margin-bottom: 40px;
+}
+
+.region-header {
   display: flex;
-  flex-direction: column;
-  gap: 32px;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--color-sand-dark);
+}
+
+.region-header .material-symbols-rounded {
+  font-size: 24px;
+  color: var(--color-accent);
+}
+
+.region-count {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-left: 8px;
 }
 
 .trip-section-header {
