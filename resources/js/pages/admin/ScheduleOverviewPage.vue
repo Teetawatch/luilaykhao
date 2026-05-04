@@ -249,6 +249,7 @@ const fetchData = async () => {
 };
 
 const regionLabels = {
+  bangkok: 'กรุงเทพมหานคร',
   north: 'ภาคเหนือ',
   central: 'ภาคกลาง',
   south: 'ภาคใต้',
@@ -301,7 +302,7 @@ const groupedSchedules = computed(() => {
     ...r,
     trips: Object.values(r.trips).sort((a, b) => a.trip_title.localeCompare(b.trip_title))
   })).sort((a, b) => {
-    const order = ['central', 'north', 'northeast', 'east', 'west', 'south', 'other'];
+    const order = ['bangkok', 'central', 'north', 'northeast', 'east', 'west', 'south', 'other'];
     const idxA = order.indexOf(a.region_key);
     const idxB = order.indexOf(b.region_key);
     return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);

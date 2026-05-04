@@ -50,6 +50,7 @@
               <label>ภูมิภาค (ภาค) *</label>
               <select v-model="form.region" required>
                 <option value="" disabled>เลือกภาค</option>
+                <option value="bangkok">กรุงเทพมหานคร</option>
                 <option value="north">ภาคเหนือ</option>
                 <option value="central">ภาคกลาง</option>
                 <option value="south">ภาคใต้</option>
