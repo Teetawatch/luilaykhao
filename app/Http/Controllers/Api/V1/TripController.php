@@ -46,6 +46,7 @@ class TripController extends Controller
         }])->withCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
         }])->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
+        $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->paginated($trips->through(fn($trip) => new TripResource($trip)));
     }
@@ -59,6 +60,7 @@ class TripController extends Controller
             }])
             ->orderByDesc('created_at')
             ->get();
+        $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->success(TripResource::collection($trips));
     }
@@ -70,6 +72,7 @@ class TripController extends Controller
                 $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
             }])
             ->firstOrFail();
+        $trip->schedules->each->syncBookedSeats();
 
         return $this->success(new TripResource($trip->loadCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
@@ -86,6 +89,7 @@ class TripController extends Controller
             ->with(['vehicle', 'pickupPoints'])
             ->orderBy('departure_date')
             ->get();
+        $schedules->each->syncBookedSeats();
 
         return $this->success(TripScheduleResource::collection($schedules));
     }

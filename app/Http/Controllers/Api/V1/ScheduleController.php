@@ -21,6 +21,7 @@ class ScheduleController extends Controller
     public function show(int $id): JsonResponse
     {
         $schedule = TripSchedule::with(['trip', 'vehicle', 'pickupPoints'])->findOrFail($id);
+        $schedule->syncBookedSeats();
 
         return $this->success(new TripScheduleResource($schedule));
     }

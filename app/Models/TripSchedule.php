@@ -13,6 +13,8 @@ class TripSchedule extends Model
 {
     use HasFactory;
 
+    public const ACTIVE_BOOKING_STATUSES = ['pending', 'confirmed'];
+
     protected $table = 'trip_schedules';
 
     protected $fillable = [
@@ -73,7 +75,7 @@ class TripSchedule extends Model
 
     public function getAvailableSeatsAttribute(): int
     {
-        return $this->total_seats - $this->booked_seats;
+        return max(0, (int) $this->total_seats - (int) $this->booked_seats);
     }
 
     public function getEffectivePriceAttribute(): float
@@ -88,10 +90,13 @@ class TripSchedule extends Model
     {
         $count = \App\Models\BookingPassenger::whereHas('booking', function($q) {
             $q->where('schedule_id', $this->id)
-              ->whereIn('status', ['pending', 'confirmed']);
+              ->whereIn('status', self::ACTIVE_BOOKING_STATUSES)
+              ->where('is_join_trip', false);
         })->count();
         
         $this->update(['booked_seats' => $count]);
+        $this->booked_seats = $count;
+
         return $count;
     }
 }

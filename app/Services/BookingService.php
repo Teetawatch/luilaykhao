@@ -33,6 +33,7 @@ class BookingService
     ): Booking {
         $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
+            $schedule->syncBookedSeats();
 
             if ($isJoinTrip && !$schedule->join_trip_enabled) {
                 throw new \Exception('รอบเดินทางนี้ไม่เปิดให้จองแบบ Join Trip');
@@ -162,8 +163,9 @@ class BookingService
                 }
             }
 
-            // Update booked seats count
-            $schedule->increment('booked_seats', $participantCount);
+            if (!$isJoinTrip) {
+                $schedule->increment('booked_seats', $participantCount);
+            }
 
             $booking->load(['passengers', 'seats', 'schedule.trip']);
 
@@ -211,17 +213,15 @@ class BookingService
     public function cancelBooking(Booking $booking, ?string $reason = null): Booking
     {
         $cancelled = DB::transaction(function () use ($booking, $reason) {
-            $passengerCount = $booking->passengers()->count();
-
             $booking->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,
                 'cancelled_at' => now(),
             ]);
 
-            // Release seats
+            // Keep the cached counter aligned with active, non-join-trip bookings.
             $schedule = $booking->schedule()->lockForUpdate()->first();
-            $schedule->decrement('booked_seats', $passengerCount);
+            $schedule?->syncBookedSeats();
 
             // Release seat locks & delete booking seats
             foreach ($booking->seats as $seat) {

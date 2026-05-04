@@ -248,6 +248,9 @@ class SeatLockService
     {
         $statuses = [];
         $bookedSeats = \App\Models\BookingSeat::where('schedule_id', $scheduleId)
+            ->whereHas('booking', fn ($query) => $query
+                ->whereIn('status', \App\Models\TripSchedule::ACTIVE_BOOKING_STATUSES)
+                ->where('is_join_trip', false))
             ->get(['seat_id', 'passenger_name'])
             ->keyBy('seat_id');
 

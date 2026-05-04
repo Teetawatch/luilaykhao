@@ -249,6 +249,7 @@ class AdminController extends Controller
         }
 
         $schedules = $query->orderByDesc('departure_date')->paginate($request->get('per_page', 15));
+        $schedules->getCollection()->each->syncBookedSeats();
 
         return $this->paginated($schedules->through(fn ($s) => new TripScheduleResource($s)));
     }
@@ -330,8 +331,10 @@ class AdminController extends Controller
 
         $source = TripSchedule::with(['bookings.passengers', 'pickupPoints'])->findOrFail($request->source_schedule_id);
         $target = TripSchedule::with('pickupPoints')->findOrFail($request->target_schedule_id);
+        $source->syncBookedSeats();
+        $target->syncBookedSeats();
 
-        $bookings = $source->bookings;
+        $bookings = $source->bookings->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES);
         $bookingsCount = $bookings->count();
 
         if ($bookingsCount === 0) {
@@ -340,10 +343,13 @@ class AdminController extends Controller
 
         // Calculate total passengers being moved
         $totalPassengers = $bookings->sum(fn($b) => $b->passengers->count() ?: 1);
+        $seatPassengers = $bookings
+            ->where('is_join_trip', false)
+            ->sum(fn($b) => $b->passengers->count() ?: 1);
 
         // Check capacity if not join trip
-        if (!$target->join_trip_enabled && $target->available_seats < $totalPassengers) {
-            return $this->error("ที่นั่งในรอบปลายทางไม่เพียงพอ (ต้องการ $totalPassengers, ว่าง {$target->available_seats})", 422);
+        if ($seatPassengers > 0 && $target->available_seats < $seatPassengers) {
+            return $this->error("ที่นั่งในรอบปลายทางไม่เพียงพอ (ต้องการ $seatPassengers, ว่าง {$target->available_seats})", 422);
         }
 
         // Prepare pickup point mapping
@@ -355,7 +361,7 @@ class AdminController extends Controller
             }
         }
 
-        DB::transaction(function () use ($source, $target, $bookings, $totalPassengers, $pickupMap) {
+        DB::transaction(function () use ($source, $target, $bookings, $pickupMap) {
             foreach ($bookings as $booking) {
                 $updateData = ['schedule_id' => $target->id];
                 
@@ -371,9 +377,8 @@ class AdminController extends Controller
                     ->update(['schedule_id' => $target->id]);
             }
 
-            // Update booked_seats counts
-            $source->decrement('booked_seats', $totalPassengers);
-            $target->increment('booked_seats', $totalPassengers);
+            $source->syncBookedSeats();
+            $target->syncBookedSeats();
         });
 
         return $this->success(null, "ย้ายการจอง $bookingsCount รายการ ($totalPassengers ท่าน) ไปยังรอบเดินทางวันที่ " . $target->departure_date->format('d/m/Y') . " สำเร็จ");
@@ -564,6 +569,7 @@ class AdminController extends Controller
         ]);
 
         $schedule = TripSchedule::with('trip')->findOrFail($request->schedule_id);
+        $schedule->syncBookedSeats();
         
         // If regular booking (not join trip), check seats
         if (!$schedule->join_trip_enabled && $schedule->available_seats < $request->passenger_count) {
@@ -584,7 +590,8 @@ class AdminController extends Controller
             $user->assignRole('customer');
         }
 
-        $totalAmount = ($schedule->join_trip_enabled ? ($schedule->join_trip_price ?? $schedule->effective_price) : $schedule->effective_price) * $request->passenger_count;
+        $isJoinTrip = (bool) $schedule->join_trip_enabled;
+        $totalAmount = ($isJoinTrip ? ($schedule->join_trip_price ?? $schedule->effective_price) : $schedule->effective_price) * $request->passenger_count;
 
         $booking = Booking::create([
             'booking_ref' => Booking::generateRef(),
@@ -597,7 +604,7 @@ class AdminController extends Controller
             'payment_method' => 'manual',
             'paid_at' => $request->status === 'confirmed' ? now() : null,
             'qr_code' => Booking::generateQrCode(),
-            'is_join_trip' => (bool) $schedule->join_trip_enabled,
+            'is_join_trip' => $isJoinTrip,
         ]);
 
         // Create passengers
@@ -611,7 +618,7 @@ class AdminController extends Controller
         }
 
         // Update booked seats if not join trip
-        if (!$schedule->join_trip_enabled) {
+        if (!$isJoinTrip) {
             $schedule->increment('booked_seats', $request->passenger_count);
         }
 
@@ -621,6 +628,7 @@ class AdminController extends Controller
     public function deleteBooking(string $ref): JsonResponse
     {
         $booking = Booking::with(['seats', 'schedule', 'installmentPayments'])->where('booking_ref', $ref)->firstOrFail();
+        $schedule = $booking->schedule;
 
         // 1. Delete associated files
         if ($booking->slip_path) {
@@ -634,16 +642,12 @@ class AdminController extends Controller
             }
         }
 
-        // 2. Restore seats if not join trip and booking was confirmed/pending
-        if (!$booking->is_join_trip && in_array($booking->status, ['pending', 'confirmed'])) {
-            $booking->schedule?->syncBookedSeats();
-        }
-
-        // 3. Delete records
+        // 2. Delete records
         $booking->seats()->delete();
         $booking->passengers()->delete();
         $booking->installmentPayments()->delete();
         $booking->delete();
+        $schedule?->syncBookedSeats();
 
         return $this->success(null, 'ลบการจองสำเร็จ');
     }

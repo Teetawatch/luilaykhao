@@ -494,13 +494,13 @@
                       v-for="s in showAllSchedules ? filteredSchedules : filteredSchedules.slice(0, 5)"
                       :key="s.id"
                       @click="selectSchedule(s)"
-                      :disabled="!s.join_trip_enabled && Number(s.available_seats) <= 0"
+                      :disabled="!isScheduleBookable(s)"
                       class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
                       :class="[
                         selectedSchedule?.id === s.id
                           ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                           : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
+                        !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
                       ]"
                     >
                       <div class="flex items-center justify-between gap-3">
@@ -526,13 +526,9 @@
                           </div>
                           <div v-else
                             class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
-                            :class="s.available_seats > 3
-                              ? 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20'
-                              : s.available_seats > 0
-                                ? 'bg-amber-50 text-amber-600 border-amber-200'
-                                : 'bg-red-50 text-red-600 border-red-200'"
+                            :class="scheduleAvailabilityBadgeClass(s)"
                           >
-                            {{ s.available_seats > 0 ? `ว่าง ${s.available_seats} ที่` : 'เต็มแล้ว' }}
+                            {{ scheduleAvailabilityLabel(s) }}
                           </div>
                       </div>
                       <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -585,13 +581,13 @@
                       v-for="s in showAllSchedules ? filteredSchedulesForRegion : filteredSchedulesForRegion.slice(0, 5)"
                       :key="s.id"
                       @click="selectSchedule(s)"
-                      :disabled="!s.join_trip_enabled && Number(s.available_seats) <= 0"
+                      :disabled="!isScheduleBookable(s)"
                       class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
                       :class="[
                         selectedSchedule?.id === s.id
                           ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                           : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                        (!s.join_trip_enabled && Number(s.available_seats) <= 0) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
+                        !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
                       ]"
                     >
                       <!-- Date + seats -->
@@ -613,14 +609,18 @@
                           </div>
                         </div>
                         <span
-                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
-                          :class="s.available_seats > 3
-                            ? 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20'
-                            : s.available_seats > 0
-                              ? 'bg-amber-50 text-amber-600 border-amber-200'
-                              : 'bg-red-50 text-red-600 border-red-200'"
+                          v-if="s.join_trip_enabled"
+                          class="bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
                         >
-                          {{ s.available_seats > 0 ? `ว่าง ${s.available_seats} ที่` : 'เต็มแล้ว' }}
+                          <span class="material-symbols-rounded text-[14px]">group_add</span>
+                          จอยทริป (ไม่จำกัด)
+                        </span>
+                        <span
+                          v-else
+                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
+                          :class="scheduleAvailabilityBadgeClass(s)"
+                        >
+                          {{ scheduleAvailabilityLabel(s) }}
                         </span>
                       </div>
 
@@ -702,7 +702,7 @@
                 <!-- ── Book Now ── -->
                 <div v-if="selectedSchedule">
                   <router-link
-                    v-if="((!isTrekking) || (isTrekking && selectedPickup) || (isJoinTrip && selectedSchedule?.join_trip_enabled)) && (Number(selectedSchedule.available_seats) > 0 || selectedSchedule.join_trip_enabled)"
+                    v-if="((!isTrekking) || (isTrekking && selectedPickup) || (isJoinTrip && selectedSchedule?.join_trip_enabled)) && canBookSelectedSchedule()"
                     :to="{ 
                       path: `/booking/${selectedSchedule.id}`, 
                       query: { 
@@ -716,7 +716,7 @@
                   </router-link>
                   <button v-else disabled
                     class="w-full py-4 rounded-full font-extrabold text-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center border border-gray-200">
-                    {{ (Number(selectedSchedule.available_seats) <= 0 && !selectedSchedule.join_trip_enabled) ? 'รอบเดินทางนี้เต็มแล้ว' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
+                    {{ (!isScheduleBookable(selectedSchedule)) ? 'รอบเดินทางนี้เต็มแล้ว' : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? 'กรุณาเปิด Enjoy Trip' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
@@ -1081,7 +1081,7 @@
               <div v-if="modalSchedules.length > 0" class="space-y-4">
                 <div v-for="s in modalSchedules" :key="s.id" 
                   class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-md"
-                  :class="{'opacity-60': Number(s.available_seats) === 0}">
+                  :class="{'opacity-60': !isScheduleBookable(s)}">
                   <div class="flex items-center gap-4">
                     <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[var(--color-sand)] flex flex-col items-center justify-center shrink-0 border border-gray-100">
                       <span class="text-[9px] font-black uppercase text-[var(--color-text-muted)] leading-none mb-1">{{ new Date(s.departure_date).toLocaleDateString('th-TH', {month: 'short'}) }}</span>
@@ -1095,9 +1095,12 @@
                       </p>
                       <div class="flex items-center gap-3 mt-1">
                         <div class="flex items-center gap-1">
-                          <span class="w-2 h-2 rounded-full" :class="Number(s.available_seats) > 0 ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
-                          <span class="text-xs md:text-sm font-bold" :class="Number(s.available_seats) > 0 ? 'text-[var(--color-accent)]' : 'text-red-500'">
-                            {{ Number(s.available_seats) > 0 ? `ว่าง ${s.available_seats} ที่นั่ง` : 'เต็มแล้ว' }}
+                          <span class="w-2 h-2 rounded-full" :class="isScheduleBookable(s) ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
+                          <span v-if="s.join_trip_enabled" class="text-xs md:text-sm font-bold text-[var(--color-accent)]">
+                            จอยทริป (ไม่จำกัด)
+                          </span>
+                          <span v-else class="text-xs md:text-sm font-bold" :class="isScheduleBookable(s) ? 'text-[var(--color-accent)]' : 'text-red-500'">
+                            {{ scheduleAvailabilityLabel(s) }}
                           </span>
                         </div>
                         <span class="w-1 h-1 rounded-full bg-gray-300"></span>
@@ -1114,8 +1117,8 @@
                   </div>
                   
                   <router-link 
-                    v-if="Number(s.available_seats) > 0"
-                    :to="`/booking/${s.id}`"
+                    v-if="isScheduleBookable(s)"
+                    :to="{ path: `/booking/${s.id}`, query: s.join_trip_enabled && !hasAvailableSeats(s) ? { join_trip: 1 } : {} }"
                     @click="showAvailabilityModal = false"
                     class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all shadow-md hover:-translate-y-0.5 text-center active:scale-95"
                   >
@@ -1307,7 +1310,7 @@ const selectedModalRegion = ref(null);
 const modalSchedules = computed(() => {
   let list = schedules.value;
   if (onlyAvailableSchedules.value) {
-    list = list.filter(s => Number(s.available_seats) > 0);
+    list = list.filter(isScheduleBookable);
   }
   
   if (isTrekking.value && selectedModalRegion.value) {
@@ -1452,12 +1455,12 @@ const schedulesForRegion = computed(() => {
 
 const filteredSchedules = computed(() => {
   if (!onlyAvailableSchedules.value) return schedules.value;
-  return schedules.value.filter(s => Number(s.available_seats) > 0);
+  return schedules.value.filter(isScheduleBookable);
 });
 
 const filteredSchedulesForRegion = computed(() => {
   if (!onlyAvailableSchedules.value) return schedulesForRegion.value;
-  return schedulesForRegion.value.filter(s => Number(s.available_seats) > 0);
+  return schedulesForRegion.value.filter(isScheduleBookable);
 });
 
 const pickupForSelection = computed(() => {
@@ -1515,11 +1518,47 @@ const highlights = computed(() => {
 
 const urgentSchedule = computed(() => {
   if (!schedules.value.length) return null;
-  const s = schedules.value.reduce((a, b) => a.available_seats < b.available_seats ? a : b);
-  return s.available_seats > 0 && s.available_seats <= 5 ? s : null;
+  const limitedSchedules = schedules.value.filter(s => !s.join_trip_enabled && hasAvailableSeats(s));
+  if (!limitedSchedules.length) return null;
+  const s = limitedSchedules.reduce((a, b) => a.available_seats < b.available_seats ? a : b);
+  return s.available_seats <= 5 ? s : null;
 });
 
 const urgentSeats = computed(() => urgentSchedule.value?.available_seats ?? 0);
+
+function hasAvailableSeats(schedule) {
+  return Number(schedule?.available_seats || 0) > 0;
+}
+
+function isScheduleBookable(schedule) {
+  return Boolean(schedule?.join_trip_enabled) || hasAvailableSeats(schedule);
+}
+
+function canBookSelectedSchedule() {
+  if (!selectedSchedule.value) return false;
+  return hasAvailableSeats(selectedSchedule.value)
+    || (isJoinTrip.value && Boolean(selectedSchedule.value.join_trip_enabled));
+}
+
+function scheduleAvailabilityBadgeClass(schedule) {
+  if (schedule?.join_trip_enabled) {
+    return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+  }
+  if (Number(schedule?.available_seats || 0) > 3) {
+    return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
+  }
+  if (hasAvailableSeats(schedule)) {
+    return 'bg-amber-50 text-amber-600 border-amber-200';
+  }
+  return 'bg-red-50 text-red-600 border-red-200';
+}
+
+function scheduleAvailabilityLabel(schedule) {
+  if (schedule?.join_trip_enabled) return 'จอยทริป (ไม่จำกัด)';
+  return hasAvailableSeats(schedule)
+    ? `ว่าง ${schedule.available_seats} ที่`
+    : 'เต็มแล้ว';
+}
 
 function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -1551,6 +1590,8 @@ function selectSchedule(s) {
   selectedSchedule.value = s;
   if (!s.join_trip_enabled) {
     isJoinTrip.value = false;
+  } else if (!hasAvailableSeats(s)) {
+    isJoinTrip.value = true;
   }
   if (selectedRegion.value) {
     selectedPickup.value = (s.pickup_points || []).find(
