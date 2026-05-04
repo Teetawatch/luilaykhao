@@ -76,9 +76,11 @@
               </div>
             </div>
 
-            <div class="sch-vehicle" v-if="sch.vehicle">
-              <span class="material-symbols-rounded">shuttle_van</span>
-              <span>{{ sch.vehicle }}</span>
+            <div class="sch-vehicle" v-if="sch.vehicle || sch.transport_type">
+                <span v-if="sch.transport_type === 'van'" class="material-symbols-rounded" style="color:var(--color-accent);">airport_shuttle</span>
+                <span v-else-if="sch.transport_type === 'boat'" class="material-symbols-rounded" style="color:var(--color-accent);">directions_boat</span>
+                <span v-else class="material-symbols-rounded" style="color:var(--color-accent);">directions_bus</span>
+                <span class="v-name">{{ sch.vehicle || sch.transport_type }}</span>
             </div>
 
             <div class="sch-seats">
