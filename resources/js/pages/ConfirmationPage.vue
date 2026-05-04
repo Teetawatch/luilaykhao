@@ -134,7 +134,7 @@
                       </div>
                     </div>
 
-                    <div v-if="booking.pickup_region" class="flex items-center gap-4 group sm:col-span-2">
+                    <div v-if="booking.pickup_point || booking.pickup_region" class="flex items-center gap-4 group sm:col-span-2">
                       <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
                         <span class="material-symbols-rounded text-teal-600 text-[24px]">location_on</span>
                       </div>
@@ -417,11 +417,15 @@ const statusMap = { pending: 'รอชำระเงิน', confirmed: 'ย�
 const statusLabel = computed(() => statusMap[booking.value?.status] || booking.value?.status);
 
 const pickupLabel = computed(() => {
+  const pt = booking.value?.pickup_point;
+  if (pt) {
+    return `${pt.region_label} — ${pt.pickup_location}`;
+  }
   const region = booking.value?.pickup_region;
   if (!region) return '';
   const pts = booking.value?.schedule?.pickup_points || [];
-  const pt = pts.find(p => p.region === region);
-  return pt ? `${pt.region_label} — ${pt.pickup_location}` : region;
+  const schedulePt = pts.find(p => p.region === region);
+  return schedulePt ? `${schedulePt.region_label} — ${schedulePt.pickup_location}` : region;
 });
 
 // ── Installment helpers ──
