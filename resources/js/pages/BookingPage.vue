@@ -108,7 +108,7 @@
             <div class="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-4">
               <span class="material-symbols-rounded text-6xl text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">map</span>
             </div>
-            <p class="text-lg font-bold text-gray-600">ยังไม่ได้กำหนดจุดรับผู้โดยสาร</p>
+            <p class="text-lg font-bold text-gray-600">ยังไม่ได้กำหนดจุดรับผู้เดินทาง</p>
             <p class="text-sm text-gray-400 mt-1">เจ้าหน้าที่จะติดต่อท่านเพื่อยืนยันจุดรับอีกครั้ง</p>
             <button @click="skipRegionStep" class="mt-6 px-6 py-2 rounded-xl bg-teal-50 text-teal-700 font-bold hover:bg-teal-100 transition-all">
               ดำเนินการต่อ
@@ -366,7 +366,7 @@
           <!-- Passenger Info step -->
           <div v-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)">
             <div class="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-              <h2 class="text-2xl font-bold text-gray-900 mb-2">ข้อมูลผู้โดยสาร</h2>
+              <h2 class="text-2xl font-bold text-gray-900 mb-2">ข้อมูลผู้เดินทาง</h2>
               <p class="text-gray-500">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการเดินทาง</p>
             </div>
 
@@ -387,7 +387,7 @@
                     <span class="material-symbols-rounded text-teal-600" style="font-variation-settings:'FILL' 0,'wght' 400">groups</span>
                     การจองกลุ่ม
                   </span>
-                  <span class="text-sm text-gray-500">จองสำหรับหลายผู้โดยสารในการจองเดียว</span>
+                  <span class="text-sm text-gray-500">จองสำหรับหลายผู้เดินทางในการจองเดียว</span>
                 </div>
               </label>
               
@@ -409,7 +409,7 @@
             <div class="mb-8 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
               <label class="flex items-center gap-2 text-base font-bold text-gray-900">
                 <span class="material-symbols-rounded text-teal-600" style="font-variation-settings:'FILL' 0,'wght' 400">group</span>
-                จำนวนผู้โดยสาร
+                จำนวนผู้เดินทาง
               </label>
               <!-- Locked to seat selection -->
               <div v-if="hasSeatMap" class="flex items-center gap-3">
@@ -438,7 +438,7 @@
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 class="flex items-center gap-3 font-bold text-gray-900 text-lg">
                   <span class="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center text-base font-bold shadow-sm border border-gray-200">{{ i + 1 }}</span>
-                  ผู้โดยสารคนที่ {{ i + 1 }}
+                  ผู้เดินทางคนที่ {{ i + 1 }}
                 </h3>
                 <div class="flex flex-wrap items-center gap-3">
                   <button v-if="i === 0 && authStore.isLoggedIn" type="button" @click="autoFillFromProfile(i)"
@@ -698,7 +698,7 @@
             <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 mb-8 shadow-sm">
               <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
                 <span class="material-symbols-rounded text-teal-600">group</span>
-                รายชื่อผู้โดยสาร ({{ passengers.length }})
+                รายชื่อผู้เดินทาง ({{ passengers.length }})
               </h3>
               
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
