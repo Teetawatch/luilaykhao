@@ -1,8 +1,15 @@
 import { defineStore } from 'pinia';
 import api from '../lib/axios';
 
-const MAX_BOOKING_SECONDS = 10 * 60; // 10 minutes hard limit
+const BASE_BOOKING_SECONDS = 10 * 60; // 10 minutes base
+const SECONDS_PER_ADDITIONAL_PASSENGER = 2 * 60; // 2 minutes per extra person
 const SESSION_KEY_PREFIX = 'booking_session';
+
+function calculateDuration(count) {
+  const pCount = Math.max(1, count || 1);
+  return BASE_BOOKING_SECONDS + (pCount - 1) * SECONDS_PER_ADDITIONAL_PASSENGER;
+}
+
 // Master index key tracks which scoped session is currently active
 const ACTIVE_SESSION_INDEX_KEY = 'booking_session_active';
 
@@ -109,7 +116,8 @@ export const useSeatsStore = defineStore('seats', {
         if (res.data.data?.locked) {
           // Enforce 10-minute hard limit regardless of server expiry
           const serverExpiry = res.data.data.expires_at ? new Date(res.data.data.expires_at) : null;
-          const maxExpiry = new Date(Date.now() + MAX_BOOKING_SECONDS * 1000);
+          const duration = calculateDuration(seatIds.length);
+          const maxExpiry = new Date(Date.now() + duration * 1000);
           this.lockExpiry = serverExpiry && serverExpiry < maxExpiry ? serverExpiry.toISOString() : maxExpiry.toISOString();
           saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
           this.startCountdown();
@@ -141,6 +149,21 @@ export const useSeatsStore = defineStore('seats', {
         saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
       }
     },
+
+    updateBookingDuration(count) {
+      if (!this.activeBookingInfo || !this.lockExpiry) return;
+      
+      const startedAt = this.activeBookingInfo.startedAt || (new Date(this.lockExpiry).getTime() - calculateDuration(this.activeBookingInfo.passengerCount || 1) * 1000);
+      const duration = calculateDuration(count);
+      const newExpiry = new Date(startedAt + duration * 1000);
+      
+      if (newExpiry > new Date(this.lockExpiry)) {
+        this.lockExpiry = newExpiry.toISOString();
+        this.activeBookingInfo.passengerCount = count;
+        saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
+      }
+    },
+
 
     restoreCountdown() {
       if (this.lockExpiry && this.activeBookingInfo) {
@@ -231,10 +254,11 @@ export const useSeatsStore = defineStore('seats', {
       this.countdownSeconds = 0;
     },
 
-    startManualCountdown(tripTitle, scheduleId, region = null) {
+    startManualCountdown(tripTitle, scheduleId, region = null, passengerCount = 1) {
       this.stopCountdown();
-      this.lockExpiry = new Date(Date.now() + MAX_BOOKING_SECONDS * 1000).toISOString();
-      this.activeBookingInfo = { tripTitle, scheduleId, region, startedAt: Date.now() };
+      const duration = calculateDuration(passengerCount);
+      this.lockExpiry = new Date(Date.now() + duration * 1000).toISOString();
+      this.activeBookingInfo = { tripTitle, scheduleId, region, startedAt: Date.now(), passengerCount };
       saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
       this.startCountdown();
     },

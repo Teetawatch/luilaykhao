@@ -1162,6 +1162,7 @@ watch(passengers, saveFormData, { deep: true });
 watch([isGroup, groupName, groupNotes, passengerCount, selectedPickup], saveFormData);
 
 watch(passengerCount, (n) => {
+  seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({ 
       title: '', name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
@@ -1273,7 +1274,8 @@ function confirmRegion() {
     seatsStore.startManualCountdown(
       schedule.value?.trip?.title || 'กิจกรรม',
       route.params.scheduleId,
-      selectedPickup.value?.region || preselectedRegion
+      selectedPickup.value?.region || preselectedRegion,
+      passengerCount.value
     );
   }
   step.value = 1;
@@ -1285,7 +1287,8 @@ function skipRegionStep() {
     seatsStore.startManualCountdown(
       schedule.value?.trip?.title || 'กิจกรรม',
       route.params.scheduleId,
-      preselectedRegion
+      preselectedRegion,
+      passengerCount.value
     );
   }
   step.value = 1;
@@ -1414,9 +1417,13 @@ async function createBooking() {
 function handleExpiry() {
   seatsStore.clearSelection();
   clearFormData();
+  const minutes = seatsStore.activeBookingInfo?.passengerCount 
+    ? Math.floor((10 * 60 + (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60) / 60)
+    : 10;
+    
   swal.error(
     'หมดเวลาการจองแล้ว!',
-    'เวลา 10 นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่'
+    `เวลา ${minutes} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
   ).then(() => {
     router.push('/trips');
   });
@@ -1468,7 +1475,8 @@ onMounted(async () => {
       seatsStore.startManualCountdown(
         schedule.value?.trip?.title || 'กิจกรรม',
         route.params.scheduleId,
-        isJoinTrip.value ? null : preselectedRegion
+        isJoinTrip.value ? null : preselectedRegion,
+        passengerCount.value
       );
       if (isJoinTrip.value) {
         step.value = 0; // Info Step

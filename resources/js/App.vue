@@ -61,7 +61,7 @@
           <div class="h-1 w-full bg-gray-100/50 relative overflow-hidden">
             <div class="h-full transition-all duration-1000 ease-linear shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
               :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-500' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-500' : 'bg-teal-500'"
-              :style="{ width: `${(seatsStore.countdownSeconds / 600) * 100}%` }">
+              :style="{ width: `${(seatsStore.countdownSeconds / (10 * 60 + (seatsStore.activeBookingInfo?.passengerCount ? (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60 : 0))) * 100}%` }">
             </div>
           </div>
         </div>
@@ -213,7 +213,7 @@ function handleGlobalExpiry() {
   seatsStore.clearSelection();
   swal.error(
     'หมดเวลาการจองแล้ว!',
-    'เวลา 10 นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่'
+    `เวลา ${Math.floor((10 * 60 + (seatsStore.activeBookingInfo?.passengerCount ? (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60) : 0) / 60)} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
   ).then(() => {
     router.push('/trips');
   });

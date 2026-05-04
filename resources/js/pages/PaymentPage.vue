@@ -44,7 +44,7 @@
           </div>
           <div>
             <h3 class="text-red-900 font-bold text-base md:text-lg">กรุณาชำระเงินเพื่อยืนยันสิทธิ์</h3>
-            <p class="text-red-700 text-sm">เราจะสำรองที่นั่งให้คุณเป็นเวลา 10 นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ</p>
+            <p class="text-red-700 text-sm">เราจะสำรองที่นั่งให้คุณเป็นเวลา {{ Math.floor(paymentTimeoutSeconds / 60) }} นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ</p>
           </div>
         </div>
         <div class="bg-white px-6 py-3 rounded-2xl border border-red-200 shadow-sm">
@@ -615,7 +615,13 @@ const bookingStore = useBookingStore();
 const seatsStore = useSeatsStore();
 const swal = useSwal();
 
-const PAYMENT_TIMEOUT_SECONDS = 10 * 60;
+const getPaymentTimeout = (passengerCount = 1) => {
+  return (10 * 60) + (Math.max(1, passengerCount) - 1) * (2 * 60);
+};
+
+const paymentTimeoutSeconds = computed(() => {
+  return getPaymentTimeout(booking.value?.passengers?.length || 1);
+});
 
 const booking = ref(null);
 const loading = ref(true);
@@ -854,7 +860,7 @@ function initPaymentCountdown() {
   const createdAtMs = booking.value.created_at ? new Date(booking.value.created_at).getTime() : Date.now();
   const baseTimeMs = Number.isFinite(createdAtMs) ? createdAtMs : Date.now();
 
-  seatsStore.lockExpiry = new Date(baseTimeMs + PAYMENT_TIMEOUT_SECONDS * 1000).toISOString();
+  seatsStore.lockExpiry = new Date(baseTimeMs + paymentTimeoutSeconds.value * 1000).toISOString();
   seatsStore.setActiveBookingInfo({
     tripTitle: booking.value.schedule?.trip?.title || 'กิจกรรม',
     scheduleId: booking.value.schedule_id ?? booking.value.schedule?.id,
@@ -873,7 +879,7 @@ async function handlePaymentExpiry() {
     if (booking.value?.booking_ref && booking.value?.status === 'pending') {
       await bookingStore.cancelBooking(
         booking.value.booking_ref,
-        'หมดเวลาชำระเงินเกิน 10 นาที ระบบยกเลิกการจองอัตโนมัติ'
+        `หมดเวลาชำระเงินเกิน ${Math.floor(paymentTimeoutSeconds.value / 60)} นาที ระบบยกเลิกการจองอัตโนมัติ`
       );
       booking.value.status = 'cancelled';
     }
@@ -885,7 +891,7 @@ async function handlePaymentExpiry() {
 
   await swal.error(
     'หมดเวลาชำระเงินแล้ว',
-    'ครบกำหนด 10 นาที ระบบได้ยกเลิกการจองและคืนที่นั่งเรียบร้อยแล้ว กรุณาทำรายการใหม่อีกครั้ง'
+    `ครบกำหนด ${Math.floor(paymentTimeoutSeconds.value / 60)} นาที ระบบได้ยกเลิกการจองและคืนที่นั่งเรียบร้อยแล้ว กรุณาทำรายการใหม่อีกครั้ง`
   );
   router.push('/trips');
 }
