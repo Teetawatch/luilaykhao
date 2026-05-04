@@ -524,7 +524,13 @@ class AdminController extends Controller
                 $booking->update(['status' => 'refunded']);
             }
         } else {
+            $oldStatus = $booking->status;
             $booking->update(['status' => $request->status]);
+
+            // If changed from cancelled back to active, sync seats
+            if (in_array($oldStatus, ['cancelled', 'refunded'])) {
+                $booking->schedule?->syncBookedSeats();
+            }
         }
 
         // Send status change email notification to customer
@@ -630,8 +636,7 @@ class AdminController extends Controller
 
         // 2. Restore seats if not join trip and booking was confirmed/pending
         if (!$booking->is_join_trip && in_array($booking->status, ['pending', 'confirmed'])) {
-            $passengerCount = $booking->passengers()->count() ?: 1;
-            $booking->schedule?->decrement('booked_seats', $passengerCount);
+            $booking->schedule?->syncBookedSeats();
         }
 
         // 3. Delete records
@@ -646,6 +651,7 @@ class AdminController extends Controller
     public function manifest(int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::with('trip')->findOrFail($scheduleId);
+        $schedule->syncBookedSeats(); // Auto-sync count when manifest is viewed
 
         $passengers = BookingPassenger::whereHas('booking', function ($q) use ($scheduleId) {
             $q->where('schedule_id', $scheduleId)

@@ -80,4 +80,18 @@ class TripSchedule extends Model
     {
         return $this->price_override ?? $this->trip->price_per_person;
     }
+
+    /**
+     * Recalculate and sync the booked_seats counter from actual bookings.
+     */
+    public function syncBookedSeats(): int
+    {
+        $count = \App\Models\BookingPassenger::whereHas('booking', function($q) {
+            $q->where('schedule_id', $this->id)
+              ->whereIn('status', ['pending', 'confirmed']);
+        })->count();
+        
+        $this->update(['booked_seats' => $count]);
+        return $count;
+    }
 }

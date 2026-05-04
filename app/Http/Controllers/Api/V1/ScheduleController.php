@@ -28,6 +28,7 @@ class ScheduleController extends Controller
     public function seats(Request $request, int $id): JsonResponse
     {
         $schedule = TripSchedule::with('vehicle')->findOrFail($id);
+        $schedule->syncBookedSeats(); // Sync real-time data to ensure accuracy
         $layout = $schedule->vehicle?->seat_layout;
         
         // If no layout, generate a default grid layout
