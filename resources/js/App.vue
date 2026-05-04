@@ -213,7 +213,7 @@ function handleGlobalExpiry() {
   seatsStore.clearSelection();
   swal.error(
     'หมดเวลาการจองแล้ว!',
-    `เวลา ${Math.floor((10 * 60 + (seatsStore.activeBookingInfo?.passengerCount ? (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60) : 0) / 60)} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
+    `เวลา ${Math.floor((10 * 60 + (seatsStore.activeBookingInfo?.passengerCount ? (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60 : 0)) / 60)} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
   ).then(() => {
     router.push('/trips');
   });
