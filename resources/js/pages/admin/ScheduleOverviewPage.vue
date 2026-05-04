@@ -48,6 +48,22 @@
           <strong class="summary-value">{{ visibleStats.attentionSchedules }}</strong>
         </div>
       </div>
+      <div class="summary-card">
+        <span class="summary-icon money material-symbols-rounded">payments</span>
+        <div>
+          <span class="summary-label">ทริปปกติ</span>
+          <strong class="summary-value">{{ visibleStats.regularPassengers }} คน</strong>
+          <span class="summary-subvalue">{{ formatCurrency(visibleStats.regularAmount) }}</span>
+        </div>
+      </div>
+      <div class="summary-card">
+        <span class="summary-icon join material-symbols-rounded">group_add</span>
+        <div>
+          <span class="summary-label">จอยทริป</span>
+          <strong class="summary-value">{{ visibleStats.joinTripPassengers }} คน</strong>
+          <span class="summary-subvalue">{{ formatCurrency(visibleStats.joinTripAmount) }}</span>
+        </div>
+      </div>
     </div>
 
     <div class="filters-panel">
@@ -125,8 +141,9 @@
             </div>
           </div>
           <div class="region-metrics">
+            <span>ไปทั้งหมด {{ region.total_passengers }} คน</span>
+            <span>{{ formatCurrency(region.total_amount) }}</span>
             <span>ว่าง {{ region.available_seats }} ที่</span>
-            <span>จองแล้ว {{ region.booked_seats }} ที่</span>
           </div>
         </div>
 
@@ -141,6 +158,7 @@
             <div class="tsh-count">
               {{ trip.schedules.length }} รอบ
               <span>ว่าง {{ trip.available_seats }}/{{ trip.total_seats }}</span>
+              <span>ไป {{ trip.total_passengers }} คน · {{ formatCurrency(trip.total_amount) }}</span>
             </div>
           </div>
 
@@ -194,6 +212,19 @@
                   <span>จองแล้ว {{ safeNumber(sch.booked_seats) }}</span>
                   <span>ยืนยัน {{ safeNumber(sch.confirmed_bookings) }}</span>
                   <span>รอดำเนินการ {{ safeNumber(sch.pending_bookings) }}</span>
+                </div>
+              </div>
+
+              <div class="booking-summary-grid">
+                <div class="booking-summary-card">
+                  <span class="booking-summary-label">ทริปปกติ</span>
+                  <strong>{{ getRegularPassengers(sch) }} คน</strong>
+                  <span>{{ formatCurrency(getRegularAmount(sch)) }}</span>
+                </div>
+                <div class="booking-summary-card join">
+                  <span class="booking-summary-label">จอยทริป</span>
+                  <strong>{{ getJoinTripPassengers(sch) }} คน</strong>
+                  <span>{{ formatCurrency(getJoinTripAmount(sch)) }}</span>
                 </div>
               </div>
 
@@ -291,6 +322,28 @@
               <span class="detail-label">รอดำเนินการ</span>
               <span class="detail-value">{{ safeNumber(selectedSchedule.pending_bookings) }}</span>
             </div>
+            <div class="detail-item">
+              <span class="detail-label">ทริปปกติ</span>
+              <span class="detail-value">{{ getRegularPassengers(selectedSchedule) }} คน</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">ยอดเงินทริปปกติ</span>
+              <span class="detail-value money-value">{{ formatCurrency(getRegularAmount(selectedSchedule)) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">จอยทริป</span>
+              <span class="detail-value">{{ getJoinTripPassengers(selectedSchedule) }} คน</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">ยอดเงินจอยทริป</span>
+              <span class="detail-value money-value">{{ formatCurrency(getJoinTripAmount(selectedSchedule)) }}</span>
+            </div>
+            <div class="detail-item full-span">
+              <span class="detail-label">รวมผู้เดินทาง / ยอดเงินรวม</span>
+              <span class="detail-value money-value">
+                {{ getTotalPassengers(selectedSchedule) }} คน · {{ formatCurrency(getTotalAmount(selectedSchedule)) }}
+              </span>
+            </div>
           </div>
 
           <div class="pickup-summary">
@@ -344,6 +397,7 @@
             <span>ทั้งหมด {{ safeNumber(selectedSchedule.total_seats) }}</span>
             <span>จองแล้ว {{ safeNumber(selectedSchedule.booked_seats) }}</span>
             <strong>ว่าง {{ safeNumber(selectedSchedule.available_seats) }}</strong>
+            <span>จอยทริป {{ getJoinTripPassengers(selectedSchedule) }} คน</span>
           </div>
 
           <div v-if="loadingSeats" class="loading-seats">
@@ -481,6 +535,8 @@ const groupedSchedules = computed(() => {
         schedule_count: 0,
         available_seats: 0,
         booked_seats: 0,
+        total_passengers: 0,
+        total_amount: 0,
       };
     }
 
@@ -494,18 +550,37 @@ const groupedSchedules = computed(() => {
         available_seats: 0,
         booked_seats: 0,
         total_seats: 0,
+        regular_passengers: 0,
+        regular_amount: 0,
+        join_trip_passengers: 0,
+        join_trip_amount: 0,
+        total_passengers: 0,
+        total_amount: 0,
       };
     }
 
     const trip = regionMap[regionKey].trips[tripId];
+    const regularPassengers = getRegularPassengers(sch);
+    const joinTripPassengers = getJoinTripPassengers(sch);
+    const regularAmount = getRegularAmount(sch);
+    const joinTripAmount = getJoinTripAmount(sch);
+
     trip.schedules.push(sch);
     trip.available_seats += safeNumber(sch.available_seats);
     trip.booked_seats += safeNumber(sch.booked_seats);
     trip.total_seats += safeNumber(sch.total_seats);
+    trip.regular_passengers += regularPassengers;
+    trip.regular_amount += regularAmount;
+    trip.join_trip_passengers += joinTripPassengers;
+    trip.join_trip_amount += joinTripAmount;
+    trip.total_passengers += regularPassengers + joinTripPassengers;
+    trip.total_amount += regularAmount + joinTripAmount;
 
     regionMap[regionKey].schedule_count += 1;
     regionMap[regionKey].available_seats += safeNumber(sch.available_seats);
     regionMap[regionKey].booked_seats += safeNumber(sch.booked_seats);
+    regionMap[regionKey].total_passengers = safeNumber(regionMap[regionKey].total_passengers) + regularPassengers + joinTripPassengers;
+    regionMap[regionKey].total_amount = safeNumber(regionMap[regionKey].total_amount) + regularAmount + joinTripAmount;
   });
 
   return Object.values(regionMap)
@@ -536,6 +611,12 @@ function buildStats(items) {
     stats.availableSeats += availableSeats;
     stats.bookedSeats += safeNumber(sch.booked_seats);
     stats.attentionSchedules += availableSeats <= 3 || sch.status === 'full' ? 1 : 0;
+    stats.regularPassengers += getRegularPassengers(sch);
+    stats.regularAmount += getRegularAmount(sch);
+    stats.joinTripPassengers += getJoinTripPassengers(sch);
+    stats.joinTripAmount += getJoinTripAmount(sch);
+    stats.totalPassengers += getTotalPassengers(sch);
+    stats.totalAmount += getTotalAmount(sch);
     stats.totalTrips = tripIds.size;
     stats.totalRegions = regionIds.size;
 
@@ -546,6 +627,12 @@ function buildStats(items) {
     availableSeats: 0,
     bookedSeats: 0,
     attentionSchedules: 0,
+    regularPassengers: 0,
+    regularAmount: 0,
+    joinTripPassengers: 0,
+    joinTripAmount: 0,
+    totalPassengers: 0,
+    totalAmount: 0,
     totalTrips: 0,
     totalRegions: 0,
   });
@@ -673,6 +760,46 @@ function seatFillWidth(sch) {
   return `${Math.min(100, (safeNumber(sch.booked_seats) / totalSeats) * 100)}%`;
 }
 
+function getRegularPassengers(sch) {
+  if (sch?.regular_passengers_count !== undefined && sch?.regular_passengers_count !== null) {
+    return safeNumber(sch.regular_passengers_count);
+  }
+
+  return safeNumber(sch?.booked_seats);
+}
+
+function getRegularAmount(sch) {
+  if (sch?.regular_total_amount !== undefined && sch?.regular_total_amount !== null) {
+    return safeNumber(sch.regular_total_amount);
+  }
+
+  return getRegularPassengers(sch) * safeNumber(sch?.price);
+}
+
+function getJoinTripPassengers(sch) {
+  return safeNumber(sch?.join_trip_passengers_count);
+}
+
+function getJoinTripAmount(sch) {
+  return safeNumber(sch?.join_trip_total_amount);
+}
+
+function getTotalPassengers(sch) {
+  if (sch?.total_passengers !== undefined && sch?.total_passengers !== null) {
+    return safeNumber(sch.total_passengers);
+  }
+
+  return getRegularPassengers(sch) + getJoinTripPassengers(sch);
+}
+
+function getTotalAmount(sch) {
+  if (sch?.total_amount !== undefined && sch?.total_amount !== null) {
+    return safeNumber(sch.total_amount);
+  }
+
+  return getRegularAmount(sch) + getJoinTripAmount(sch);
+}
+
 function transportIcon(type) {
   if (type === 'van') return 'airport_shuttle';
   if (type === 'boat') return 'directions_boat';
@@ -765,7 +892,7 @@ onMounted(fetchData);
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -807,6 +934,16 @@ onMounted(fetchData);
   color: #d97706;
 }
 
+.summary-icon.money {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.summary-icon.join {
+  background: #ecfdf5;
+  color: #059669;
+}
+
 .summary-label {
   display: block;
   color: var(--color-text-muted);
@@ -817,8 +954,16 @@ onMounted(fetchData);
 .summary-value {
   display: block;
   color: var(--color-text-dark);
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.2;
+}
+
+.summary-subvalue {
+  display: block;
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 2px;
 }
 
 .filters-panel {
@@ -1123,6 +1268,44 @@ onMounted(fetchData);
   flex-wrap: wrap;
 }
 
+.booking-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.booking-summary-card {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fafafa;
+}
+
+.booking-summary-card.join {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.booking-summary-label {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.booking-summary-card strong {
+  color: var(--color-text-dark);
+  font-size: 17px;
+  line-height: 1.1;
+}
+
+.booking-summary-card span:last-child {
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .text-accent { color: var(--color-accent); }
 .text-full { color: #dc2626; }
 .text-low { color: #d97706; }
@@ -1252,6 +1435,14 @@ onMounted(fetchData);
   font-weight: 700;
 }
 
+.detail-item.full-span {
+  grid-column: 1 / -1;
+}
+
+.money-value {
+  color: var(--color-accent);
+}
+
 .seats-avail {
   color: var(--color-accent);
 }
@@ -1368,14 +1559,17 @@ onMounted(fetchData);
 
 @media (max-width: 1024px) {
   .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 768px) {
-  .summary-grid,
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .region-header,
@@ -1398,7 +1592,8 @@ onMounted(fetchData);
 
 @media (max-width: 640px) {
   .schedule-grid,
-  .card-actions {
+  .card-actions,
+  .booking-summary-grid {
     grid-template-columns: 1fr;
   }
 }

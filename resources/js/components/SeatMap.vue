@@ -295,3 +295,20 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
 SeatButton.props = { seat: Object, seatId: String, isWomenOnly: Boolean };
 SeatButton.emits = ['click'];
 </script>
+
+<style scoped>
+:deep(.material-symbols-rounded) {
+  font-family: 'Material Symbols Rounded' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+}
+</style>

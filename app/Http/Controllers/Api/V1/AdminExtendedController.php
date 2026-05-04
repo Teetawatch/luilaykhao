@@ -26,7 +26,7 @@ class AdminExtendedController extends Controller
 
     public function calendarSchedules(Request $request): JsonResponse
     {
-        $query = TripSchedule::with(['trip', 'vehicle', 'bookings', 'pickupPoints']);
+        $query = TripSchedule::with(['trip', 'vehicle', 'bookings.passengers', 'pickupPoints']);
 
         if ($request->filled('start')) {
             $query->where('departure_date', '>=', $request->start);
@@ -41,8 +41,16 @@ class AdminExtendedController extends Controller
         $schedules = $query->orderBy('departure_date')->get();
 
         $events = $schedules->map(function ($s) {
-            $confirmedBookings = $s->bookings->where('status', 'confirmed')->count();
-            $pendingBookings = $s->bookings->where('status', 'pending')->count();
+            $activeBookings = $s->bookings->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES);
+            $regularBookings = $activeBookings->reject(fn ($booking) => (bool) $booking->is_join_trip);
+            $joinTripBookings = $activeBookings->filter(fn ($booking) => (bool) $booking->is_join_trip);
+
+            $confirmedBookings = $activeBookings->where('status', 'confirmed')->count();
+            $pendingBookings = $activeBookings->where('status', 'pending')->count();
+            $regularPassengersCount = $regularBookings->sum(fn ($booking) => $booking->passengers->count());
+            $joinTripPassengersCount = $joinTripBookings->sum(fn ($booking) => $booking->passengers->count());
+            $regularTotalAmount = $regularBookings->sum(fn ($booking) => (float) $booking->total_amount);
+            $joinTripTotalAmount = $joinTripBookings->sum(fn ($booking) => (float) $booking->total_amount);
 
             return [
                 'id' => $s->id,
@@ -60,6 +68,14 @@ class AdminExtendedController extends Controller
                 'available_seats' => $s->total_seats - $s->booked_seats,
                 'confirmed_bookings' => $confirmedBookings,
                 'pending_bookings' => $pendingBookings,
+                'regular_passengers_count' => $regularPassengersCount,
+                'regular_total_amount' => $regularTotalAmount,
+                'join_trip_enabled' => (bool) $s->join_trip_enabled,
+                'join_trip_price' => $s->join_trip_price ? (float) $s->join_trip_price : null,
+                'join_trip_passengers_count' => $joinTripPassengersCount,
+                'join_trip_total_amount' => $joinTripTotalAmount,
+                'total_passengers' => $regularPassengersCount + $joinTripPassengersCount,
+                'total_amount' => $regularTotalAmount + $joinTripTotalAmount,
                 'status' => $s->status,
                 'price' => $s->price_override ?? $s->trip->price_per_person,
                 'pickup_points' => $s->pickupPoints->map(fn($pt) => [
