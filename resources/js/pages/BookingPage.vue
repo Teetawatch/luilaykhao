@@ -43,8 +43,8 @@
                   <template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
                 </span>
               </div>
-              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200">
-                <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
+              <div class="flex items-center gap-2 px-4 py-2 rounded-xl border font-bold" :class="scheduleAvailabilityPillClass">
+                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
                 <span v-if="isJoinTrip">ว่าง {{ schedule.available_seats }} ที่</span>
                 <span v-else>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
               </div>
@@ -1070,6 +1070,12 @@ const hasSeatMap = computed(() => {
 });
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value);
+const scheduleAvailabilityPillClass = computed(() => {
+  if (Number(schedule.value?.available_seats || 0) < 3) {
+    return 'bg-red-50 text-red-600 border-red-200';
+  }
+  return 'bg-gray-50 text-gray-700 border-gray-200';
+});
 const maxPassengers = computed(() => {
   if (isJoinTrip.value) return 50; // Allow more for join trip
   return Math.min(schedule.value?.available_seats || 10, 10);

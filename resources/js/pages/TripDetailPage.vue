@@ -520,7 +520,10 @@
                             </p>
                           </div>
                         </div>
-                          <div v-if="s.join_trip_enabled" class="bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1">
+                          <div v-if="s.join_trip_enabled"
+                            class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
+                            :class="scheduleAvailabilityBadgeClass(s)"
+                          >
                             <span class="material-symbols-rounded text-[14px]">group_add</span>
                             {{ scheduleAvailabilityLabel(s) }}
                           </div>
@@ -610,7 +613,8 @@
                         </div>
                         <span
                           v-if="s.join_trip_enabled"
-                          class="bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
+                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
+                          :class="scheduleAvailabilityBadgeClass(s)"
                         >
                           <span class="material-symbols-rounded text-[14px]">group_add</span>
                           {{ scheduleAvailabilityLabel(s) }}
@@ -1095,11 +1099,11 @@
                       </p>
                       <div class="flex items-center gap-3 mt-1">
                         <div class="flex items-center gap-1">
-                          <span class="w-2 h-2 rounded-full" :class="isScheduleBookable(s) ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
-                          <span v-if="s.join_trip_enabled" class="text-xs md:text-sm font-bold text-[var(--color-accent)]">
+                          <span class="w-2 h-2 rounded-full" :class="scheduleAvailabilityDotClass(s)"></span>
+                          <span v-if="s.join_trip_enabled" class="text-xs md:text-sm font-bold" :class="scheduleAvailabilityTextClass(s)">
                             {{ scheduleAvailabilityLabel(s) }}
                           </span>
-                          <span v-else class="text-xs md:text-sm font-bold" :class="isScheduleBookable(s) ? 'text-[var(--color-accent)]' : 'text-red-500'">
+                          <span v-else class="text-xs md:text-sm font-bold" :class="scheduleAvailabilityTextClass(s)">
                             {{ scheduleAvailabilityLabel(s) }}
                           </span>
                         </div>
@@ -1541,6 +1545,9 @@ function canBookSelectedSchedule() {
 }
 
 function scheduleAvailabilityBadgeClass(schedule) {
+  if (Number(schedule?.available_seats || 0) < 3) {
+    return 'bg-red-50 text-red-600 border-red-200';
+  }
   if (Number(schedule?.available_seats || 0) > 3) {
     return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
   }
@@ -1548,6 +1555,16 @@ function scheduleAvailabilityBadgeClass(schedule) {
     return 'bg-amber-50 text-amber-600 border-amber-200';
   }
   return 'bg-red-50 text-red-600 border-red-200';
+}
+
+function scheduleAvailabilityTextClass(schedule) {
+  if (Number(schedule?.available_seats || 0) < 3) return 'text-red-500';
+  return isScheduleBookable(schedule) ? 'text-[var(--color-accent)]' : 'text-red-500';
+}
+
+function scheduleAvailabilityDotClass(schedule) {
+  if (Number(schedule?.available_seats || 0) < 3) return 'bg-red-500 animate-pulse';
+  return isScheduleBookable(schedule) ? 'bg-green-500 animate-pulse' : 'bg-red-500';
 }
 
 function scheduleAvailabilityLabel(schedule) {
