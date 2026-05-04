@@ -50,6 +50,7 @@ import AdminCategories from '../pages/admin/CategoriesPage.vue';
 import AdminInquiries from '../pages/admin/InquiriesPage.vue';
 import AdminVanTrips from '../pages/admin/VanTripsPage.vue';
 import AdminPromotions from '../pages/admin/PromotionsPage.vue';
+import AdminScheduleOverview from '../pages/admin/ScheduleOverviewPage.vue';
 
 
 const routes = [
@@ -216,6 +217,7 @@ const routes = [
       { path: 'categories', name: 'admin-categories', component: AdminCategories },
       { path: 'inquiries', name: 'admin-inquiries', component: AdminInquiries },
       { path: 'promotions', name: 'admin-promotions', component: AdminPromotions },
+      { path: 'schedule-overview', name: 'admin-schedule-overview', component: AdminScheduleOverview },
     ],
 
   },

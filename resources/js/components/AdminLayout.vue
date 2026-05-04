@@ -120,6 +120,7 @@ const menuGroups = ref([
     label: 'จัดการทริป',
     icon: 'fas fa-map-marked-alt',
     items: [
+      { to: '/admin/schedule-overview', icon: 'fas fa-th-list', label: 'ตารางที่นั่งว่าง' },
       { to: '/admin/trips', icon: 'fas fa-route', label: 'ทริปทั้งหมด' },
       { to: '/admin/schedules', icon: 'fas fa-calendar-alt', label: 'รอบเดินทาง' },
       { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },

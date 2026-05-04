@@ -1,0 +1,662 @@
+<template>
+  <div class="admin-page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title"><span class="material-symbols-rounded">event_seat</span> ตารางรอบและที่นั่งว่าง</h1>
+        <p class="page-subtitle">ดูภาพรวมรอบเดินทางเพื่อเช็คสถานะและแจ้งข้อมูลลูกค้า</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-secondary" @click="fetchData">
+          <span class="material-symbols-rounded">refresh</span> รีเฟรช
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <div class="search-box">
+        <span class="material-symbols-rounded">search</span>
+        <input v-model="searchQuery" placeholder="ค้นหาชื่อทริป..." />
+      </div>
+      <div class="filter-group">
+        <select v-model="filterStatus">
+          <option value="">ทุกสถานะ</option>
+          <option value="open">เปิดรับจอง</option>
+          <option value="full">เต็ม</option>
+          <option value="closed">ปิด</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div v-if="admin.loading && !schedules.length" class="loading-state">
+      <div class="spinner"></div>
+    </div>
+    
+    <div v-else class="overview-container">
+      <div v-if="!groupedSchedules.length" class="empty-card">
+        <span class="material-symbols-rounded" style="font-size: 48px; color: #cbd5e1; margin-bottom: 12px;">event_busy</span>
+        <p>ไม่พบข้อมูลรอบเดินทางที่เปิดรับจองในขณะนี้</p>
+      </div>
+
+      <div v-for="group in filteredGroups" :key="group.trip_id" class="trip-section">
+        <div class="trip-section-header">
+          <div class="tsh-info">
+            <h2 class="tsh-title">{{ group.trip_title }}</h2>
+            <span class="tsh-badge" :class="`badge-${group.trip_type}`">{{ group.trip_type_label }}</span>
+          </div>
+          <span class="tsh-count">{{ group.schedules.length }} รอบเดินทาง</span>
+        </div>
+        
+        <div class="schedule-grid">
+          <div v-for="sch in group.schedules" :key="sch.id" class="schedule-card" :class="{ 'card-full': sch.available_seats === 0 }">
+            <div class="card-header">
+              <div class="sch-status">
+                 <span class="status-dot" :class="`dot-${sch.status}`"></span>
+                 <span class="status-label">{{ statusLabels[sch.status] }}</span>
+              </div>
+              <span class="sch-price">฿{{ Number(sch.price).toLocaleString() }}</span>
+            </div>
+
+            <div class="sch-dates">
+              <div class="date-item">
+                <span class="material-symbols-rounded">calendar_today</span>
+                <div class="date-info">
+                  <span class="d-label">ไป</span>
+                  <span class="d-value">{{ formatDate(sch.start) }}</span>
+                </div>
+              </div>
+              <div class="date-item" v-if="sch.end && sch.end !== sch.start">
+                <span class="material-symbols-rounded">calendar_month</span>
+                <div class="date-info">
+                  <span class="d-label">กลับ</span>
+                  <span class="d-value">{{ formatDate(sch.end) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sch-vehicle" v-if="sch.vehicle">
+              <span class="material-symbols-rounded">shuttle_van</span>
+              <span>{{ sch.vehicle }}</span>
+            </div>
+
+            <div class="sch-seats">
+              <div class="seats-header">
+                <span class="sh-label">ที่นั่งว่าง</span>
+                <div class="sh-stats">
+                  <span class="sh-avail" :class="{ 'text-full': sch.available_seats === 0, 'text-low': sch.available_seats > 0 && sch.available_seats <= 3 }">
+                    {{ sch.available_seats }}
+                  </span>
+                  <span class="sh-total">/ {{ sch.total_seats }}</span>
+                </div>
+              </div>
+              <div class="seats-progress">
+                <div class="progress-track">
+                  <div class="progress-fill" :style="{ width: (sch.booked_seats / sch.total_seats * 100) + '%' }"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <button class="btn-view-seats" @click="viewSeatLayout(sch)" v-if="sch.status !== 'cancelled'">
+                <span class="material-symbols-rounded">grid_view</span> แผงผังที่นั่ง
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seat Layout Modal -->
+    <div class="modal-overlay" v-if="selectedSchedule" @click.self="selectedSchedule = null">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">ผังที่นั่ง: {{ selectedSchedule.trip_title }}</h2>
+            <p class="modal-subtitle">{{ formatDate(selectedSchedule.start) }} | {{ selectedSchedule.vehicle || 'ไม่ระบุพาหนะ' }}</p>
+          </div>
+          <button class="modal-close" @click="selectedSchedule = null">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="modal-body seat-map-body">
+          <div v-if="loadingSeats" class="loading-seats">
+            <div class="spinner"></div>
+            <span>กำลังโหลดผังที่นั่ง...</span>
+          </div>
+          <template v-else>
+            <div v-if="!seatData" class="no-seat-map">
+              <span class="material-symbols-rounded">info</span>
+              <p>รอบนี้ไม่มีข้อมูลผังที่นั่งแบบกราฟิก</p>
+              <div class="seat-stats-box">
+                <p>จำนวนที่นั่งทั้งหมด: {{ selectedSchedule.total_seats }}</p>
+                <p>จองแล้ว: {{ selectedSchedule.booked_seats }}</p>
+                <p class="text-accent">ว่าง: {{ selectedSchedule.available_seats }}</p>
+              </div>
+            </div>
+            
+            <div v-else class="seat-map-container">
+              <!-- Seat Map View (Simplified from BookingPage) -->
+              <div class="seat-map-wrapper">
+                <div class="bus-container">
+                  <div class="bus-front">
+                    <span class="material-symbols-rounded">{{ seatData.driver_icon || 'directions_car' }}</span>
+                    <span>{{ seatData.front_label || 'หน้ารถ' }}</span>
+                  </div>
+                  
+                  <div class="seats-grid-scroll">
+                    <div class="seats-grid" :style="{ gridTemplateRows: `repeat(${seatData.rows}, 1fr)` }">
+                      <div v-for="seat in seatData.seats" 
+                           :key="seat.id" 
+                           class="seat-item"
+                           :class="[seat.status, { 'selected': false }]"
+                           :style="{ gridRow: seat.row, gridColumn: seat.column }"
+                      >
+                        <div class="seat-box">
+                          <span class="seat-id">{{ seat.id }}</span>
+                          <span class="material-symbols-rounded seat-icon">
+                            {{ seat.status === 'available' ? 'event_seat' : (seat.status === 'locked' ? 'lock' : 'person') }}
+                          </span>
+                        </div>
+                        <div class="seat-popover" v-if="seat.passenger_name">
+                           {{ seat.passenger_name }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Legend -->
+              <div class="map-legend">
+                <div class="legend-item"><span class="l-dot available"></span> ว่าง</div>
+                <div class="legend-item"><span class="l-dot booked"></span> จองแล้ว</div>
+                <div class="legend-item"><span class="l-dot locked"></span> กำลังจอง (Lock)</div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useAdminStore } from '../../stores/admin';
+import axios from 'axios';
+
+const admin = useAdminStore();
+const schedules = ref([]);
+const searchQuery = ref('');
+const filterStatus = ref('open');
+const selectedSchedule = ref(null);
+const seatData = ref(null);
+const loadingSeats = ref(false);
+
+const statusLabels = { open: 'เปิดรับจอง', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก' };
+
+const tripTypeLabels = {
+  trekking: 'เดินป่า',
+  diving: 'ดำน้ำ',
+  snorkeling: 'ดำน้ำตื้น',
+  climbing: 'ปีนผา'
+};
+
+const formatDate = (d) => {
+  if (!d) return '-';
+  return new Date(d).toLocaleDateString('th-TH', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric',
+    weekday: 'short'
+  });
+};
+
+const fetchData = async () => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    // Fetch future schedules
+    const res = await admin.fetchCalendarSchedules({ 
+      start: today, 
+      end: new Date(new Date().getFullYear(), new Date().getMonth() + 6, 1).toISOString().split('T')[0] 
+    });
+    schedules.value = res || [];
+  } catch (e) {
+    console.error('Failed to fetch schedules', e);
+  }
+};
+
+const groupedSchedules = computed(() => {
+  const groups = {};
+  
+  schedules.value.forEach(sch => {
+    // Filter by search
+    if (searchQuery.value && !sch.trip_title.toLowerCase().includes(searchQuery.value.toLowerCase())) {
+      return;
+    }
+    
+    // Filter by status
+    if (filterStatus.value && sch.status !== filterStatus.value) {
+      return;
+    }
+
+    if (!groups[sch.trip_id]) {
+      groups[sch.trip_id] = {
+        trip_id: sch.trip_id,
+        trip_title: sch.trip_title,
+        trip_type: sch.trip_type,
+        trip_type_label: tripTypeLabels[sch.trip_type] || sch.trip_type,
+        schedules: []
+      };
+    }
+    groups[sch.trip_id].schedules.push(sch);
+  });
+  
+  return Object.values(groups).sort((a, b) => a.trip_title.localeCompare(b.trip_title));
+});
+
+const filteredGroups = computed(() => groupedSchedules.value);
+
+const viewSeatLayout = async (sch) => {
+  selectedSchedule.value = sch;
+  loadingSeats.value = true;
+  seatData.value = null;
+  
+  try {
+    const res = await axios.get(`/api/v1/schedules/${sch.id}/seats`);
+    if (res.data.success && res.data.data.has_seat_map) {
+      seatData.value = res.data.data;
+    }
+  } catch (e) {
+    console.error('Failed to fetch seat layout', e);
+  } finally {
+    loadingSeats.value = false;
+  }
+};
+
+onMounted(fetchData);
+</script>
+
+<style scoped>
+@import url('./admin-shared.css');
+
+.overview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.trip-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-sand-dark);
+}
+
+.tsh-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tsh-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  margin: 0;
+}
+
+.tsh-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-trekking { background: #dcfce7; color: #166534; }
+.badge-diving { background: #dbeafe; color: #1e40af; }
+.badge-snorkeling { background: #e0f2fe; color: #075985; }
+.badge-climbing { background: #fef3c7; color: #92400e; }
+
+.tsh-count {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.schedule-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.schedule-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.card-full {
+  border-left: 4px solid #f59e0b;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sch-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-open { background: #10b981; }
+.dot-full { background: #f59e0b; }
+.dot-closed { background: #94a3b8; }
+
+.status-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-mid);
+}
+
+.sch-price {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.sch-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--color-sand);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.date-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-item i, .date-item .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--color-text-muted);
+}
+
+.date-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.d-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.d-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.sch-vehicle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-mid);
+}
+
+.sch-seats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.seats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.sh-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.sh-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.sh-avail {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.sh-total {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.text-full { color: #ef4444; }
+.text-low { color: #f59e0b; }
+
+.progress-track {
+  height: 6px;
+  background: var(--color-sand-dark);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+.card-actions {
+  margin-top: 4px;
+}
+
+.btn-view-seats {
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  color: var(--color-text-mid);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-view-seats:hover {
+  background: var(--color-sand);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Modal / Seat Map */
+.seat-map-body {
+  min-height: 300px;
+}
+
+.no-seat-map {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.seat-stats-box {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--color-sand);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.seat-stats-box p {
+  margin: 4px 0;
+  font-weight: 600;
+}
+
+.text-accent { color: var(--color-accent); }
+
+.seat-map-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bus-container {
+  max-width: 400px;
+  margin: 0 auto;
+  border: 2px solid #e2e8f0;
+  border-radius: 30px 30px 10px 10px;
+  padding: 20px;
+  background: #f8fafc;
+}
+
+.bus-front {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px dashed #cbd5e1;
+  color: #64748b;
+}
+
+.seats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  justify-items: center;
+}
+
+.seat-item {
+  width: 50px;
+  height: 50px;
+  position: relative;
+}
+
+.seat-box {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+.seat-id {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.seat-icon {
+  font-size: 20px;
+}
+
+.available .seat-icon { color: #10b981; }
+.booked .seat-box { background: #fee2e2; border-color: #fca5a5; }
+.booked .seat-icon { color: #ef4444; }
+.locked .seat-box { background: #fef3c7; border-color: #fcd34d; }
+.locked .seat-icon { color: #f59e0b; }
+
+.seat-popover {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #334155;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+.seat-item:hover .seat-popover {
+  opacity: 1;
+}
+
+.map-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.l-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.l-dot.available { background: #10b981; }
+.l-dot.booked { background: #ef4444; }
+.l-dot.locked { background: #f59e0b; }
+
+@media (max-width: 640px) {
+  .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
