@@ -84,9 +84,16 @@
       <!-- Footer -->
       <div class="mt-auto pt-4 flex justify-between items-end border-t border-gray-100">
         <div class="flex flex-col">
-          <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">เริ่มต้น</span>
+          <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">
+            {{ trip.min_price === trip.max_price ? 'เริ่มต้น' : 'ช่วงราคา' }}
+          </span>
           <div class="flex items-baseline gap-1">
-            <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.price_per_person).toLocaleString() }}</span>
+            <template v-if="trip.min_price === trip.max_price">
+              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }}</span>
+            </template>
+            <template v-else>
+              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}</span>
+            </template>
           </div>
         </div>
         <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-colors duration-300">

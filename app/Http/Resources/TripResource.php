@@ -21,6 +21,8 @@ class TripResource extends JsonResource
             'duration_days' => $this->duration_days,
             'max_participants' => $this->max_participants,
             'price_per_person' => $this->price_per_person,
+            'min_price' => $this->min_price ?? $this->price_per_person,
+            'max_price' => $this->max_price ?? $this->price_per_person,
             'departure_point' => $this->departure_point,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
