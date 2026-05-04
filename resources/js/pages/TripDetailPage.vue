@@ -450,7 +450,7 @@
                         </label>
                       </div>
                       <p class="text-sm font-bold text-[var(--color-text-muted)] mt-1 leading-relaxed">
-                        เลือกเดินทางเอง ไม่ต้องจองที่นั่ง และไม่จำกัดที่นั่ง จ่ายเงินแล้วรอรับ QR Code เพื่อเช็คอินได้ทันที
+                        เลือกเดินทางเอง ไม่ต้องเลือกที่นั่งบนผัง จ่ายเงินแล้วรอรับ QR Code เพื่อเช็คอินได้ทันที
                       </p>
                       <div class="mt-3 flex items-center gap-2">
                         <span class="text-[11px] font-black uppercase text-gray-400">ราคาพิเศษ:</span>
@@ -522,7 +522,7 @@
                         </div>
                           <div v-if="s.join_trip_enabled" class="bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1">
                             <span class="material-symbols-rounded text-[14px]">group_add</span>
-                            จอยทริป (ไม่จำกัด)
+                            {{ scheduleAvailabilityLabel(s) }}
                           </div>
                           <div v-else
                             class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
@@ -613,7 +613,7 @@
                           class="bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
                         >
                           <span class="material-symbols-rounded text-[14px]">group_add</span>
-                          จอยทริป (ไม่จำกัด)
+                          {{ scheduleAvailabilityLabel(s) }}
                         </span>
                         <span
                           v-else
@@ -1097,7 +1097,7 @@
                         <div class="flex items-center gap-1">
                           <span class="w-2 h-2 rounded-full" :class="isScheduleBookable(s) ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
                           <span v-if="s.join_trip_enabled" class="text-xs md:text-sm font-bold text-[var(--color-accent)]">
-                            จอยทริป (ไม่จำกัด)
+                            {{ scheduleAvailabilityLabel(s) }}
                           </span>
                           <span v-else class="text-xs md:text-sm font-bold" :class="isScheduleBookable(s) ? 'text-[var(--color-accent)]' : 'text-red-500'">
                             {{ scheduleAvailabilityLabel(s) }}
@@ -1541,9 +1541,6 @@ function canBookSelectedSchedule() {
 }
 
 function scheduleAvailabilityBadgeClass(schedule) {
-  if (schedule?.join_trip_enabled) {
-    return 'bg-emerald-50 text-emerald-600 border-emerald-200';
-  }
   if (Number(schedule?.available_seats || 0) > 3) {
     return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
   }
@@ -1554,10 +1551,16 @@ function scheduleAvailabilityBadgeClass(schedule) {
 }
 
 function scheduleAvailabilityLabel(schedule) {
-  if (schedule?.join_trip_enabled) return 'จอยทริป (ไม่จำกัด)';
+  if (schedule?.join_trip_enabled) return `จองแล้ว ${scheduleOccupancyLabel(schedule)}`;
   return hasAvailableSeats(schedule)
     ? `ว่าง ${schedule.available_seats} ที่`
     : 'เต็มแล้ว';
+}
+
+function scheduleOccupancyLabel(schedule) {
+  const booked = Number(schedule?.booked_seats || 0);
+  const total = Number(schedule?.total_seats || 0);
+  return total > 0 ? `${booked}/${total} ที่นั่ง` : `${booked} ที่นั่ง`;
 }
 
 function formatDate(d) {
