@@ -282,38 +282,19 @@
               </div>
             </section>
 
-            <!-- Traveler Details Section -->
-            <section v-if="booking.passengers?.length" class="bg-white rounded-[2.5rem] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] border border-gray-100 p-8 md:p-10">
-              <h3 class="text-xl font-black text-gray-900 mb-8 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-600/20">
-                  <span class="material-symbols-rounded text-[22px]">people</span>
+            <!-- Support / Help Area -->
+            <section class="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm group">
+              <div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+                <div class="w-16 h-16 bg-gray-50 rounded-2.5rem flex items-center justify-center border border-gray-100 group-hover:scale-110 group-hover:bg-teal-50 group-hover:border-teal-100 transition-all duration-500">
+                  <span class="material-symbols-rounded text-teal-600 text-[32px]">support_agent</span>
                 </div>
-                ข้อมูลผู้เดินทาง
-              </h3>
-              
-              <div class="grid grid-cols-1 gap-4">
-                <div v-for="(p, i) in booking.passengers" :key="i"
-                  class="flex items-center gap-5 p-5 bg-gray-50 rounded-3xl border border-gray-100 transition-all hover:bg-white hover:border-teal-200 hover:shadow-md group">
-                  <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-teal-600 font-black text-lg border border-gray-200 shadow-sm transition-transform group-hover:scale-110">
-                    {{ i + 1 }}
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-black text-gray-900 text-lg leading-tight truncate">{{ passengerDisplayName(p) }}</p>
-                    <p class="text-xs font-bold text-gray-400 mt-1">
-                      {{ p.title || '-' }} · {{ passengerNameParts(p).firstName }} · {{ passengerNameParts(p).lastName }}
-                    </p>
-                    <p v-if="p.phone" class="text-sm font-bold text-gray-400 flex items-center gap-1.5 mt-1">
-                      <span class="material-symbols-rounded text-[16px]">call</span>
-                      {{ p.phone }}
-                    </p>
-                  </div>
-                  <div v-if="booking.seats?.[i]" class="shrink-0 flex flex-col items-end">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">ที่นั่ง</span>
-                    <span class="text-sm font-black text-teal-700 bg-teal-50 border border-teal-100 px-4 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
-                      <span class="material-symbols-rounded text-[18px]">airline_seat_recline_extra</span>
-                      {{ booking.seats[i].seat_id }}
-                    </span>
-                  </div>
+                <div class="flex-1">
+                  <h5 class="text-gray-900 font-black text-lg mb-1">มีปัญหาเกี่ยวกับการจอง?</h5>
+                  <p class="text-gray-400 font-bold text-xs mb-4">ฝ่ายบริการลูกค้าของเราพร้อมช่วยเหลือคุณตลอด 24 ชม.</p>
+                  <a href="#" class="inline-flex items-center gap-2 text-teal-600 font-black text-sm bg-teal-50 px-5 py-2.5 rounded-xl hover:bg-teal-600 hover:text-white transition-all duration-300 border border-teal-100 shadow-sm">
+                    ติดต่อฝ่ายบริการลูกค้า
+                    <span class="material-symbols-rounded text-sm">arrow_forward</span>
+                  </a>
                 </div>
               </div>
             </section>
@@ -382,23 +363,6 @@
                 <div class="flex items-start gap-4">
                   <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0 shadow-sm">3</div>
                   <p class="text-amber-900/80 font-bold text-sm leading-relaxed">แสดง QR Code ให้ทีมงานสแกนเพื่อยืนยันการเช็คอินขึ้นรถ</p>
-                </div>
-              </div>
-            </section>
-
-            <!-- Support / Help Area -->
-            <section class="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm group">
-              <div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
-                <div class="w-16 h-16 bg-gray-50 rounded-2.5rem flex items-center justify-center border border-gray-100 group-hover:scale-110 group-hover:bg-teal-50 group-hover:border-teal-100 transition-all duration-500">
-                  <span class="material-symbols-rounded text-teal-600 text-[32px]">support_agent</span>
-                </div>
-                <div class="flex-1">
-                  <h5 class="text-gray-900 font-black text-lg mb-1">มีปัญหาเกี่ยวกับการจอง?</h5>
-                  <p class="text-gray-400 font-bold text-xs mb-4">ฝ่ายบริการลูกค้าของเราพร้อมช่วยเหลือคุณตลอด 24 ชม.</p>
-                  <a href="#" class="inline-flex items-center gap-2 text-teal-600 font-black text-sm bg-teal-50 px-5 py-2.5 rounded-xl hover:bg-teal-600 hover:text-white transition-all duration-300 border border-teal-100 shadow-sm">
-                    ติดต่อฝ่ายบริการลูกค้า
-                    <span class="material-symbols-rounded text-sm">arrow_forward</span>
-                  </a>
                 </div>
               </div>
             </section>
