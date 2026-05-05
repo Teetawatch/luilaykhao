@@ -1568,6 +1568,7 @@ function scheduleAvailabilityDotClass(schedule) {
 }
 
 function scheduleAvailabilityLabel(schedule) {
+  if (!hasAvailableSeats(schedule)) return 'เต็มแล้ว';
   if (schedule?.join_trip_enabled) return `ว่าง ${schedule.available_seats} ที่`;
   return hasAvailableSeats(schedule)
     ? `ว่าง ${schedule.available_seats} ที่`
