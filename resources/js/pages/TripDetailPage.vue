@@ -1356,6 +1356,16 @@ const allPickupPoints = computed(() => {
   return pts;
 });
 
+const regionOrder = ['bangkok', 'central', 'north', 'northeast', 'east', 'west', 'south'];
+const regionOrderMap = new Map(regionOrder.map((name, index) => [name, index]));
+
+const compareRegions = (a, b) => {
+  const aOrder = regionOrderMap.has(a.region) ? regionOrderMap.get(a.region) : Number.MAX_SAFE_INTEGER;
+  const bOrder = regionOrderMap.has(b.region) ? regionOrderMap.get(b.region) : Number.MAX_SAFE_INTEGER;
+  if (aOrder !== bOrder) return aOrder - bOrder;
+  return (a.region_label || '').localeCompare(b.region_label || '', 'th');
+};
+
 const getSortedPickupPoints = (points) => {
   if (!points || !Array.isArray(points)) return [];
   
@@ -1390,8 +1400,6 @@ const getSortedPickupPoints = (points) => {
 const groupedPickupPointsByRegion = computed(() => {
   if (!allPickupPoints.value.length) return [];
 
-  const regionOrder = ['bangkok', 'central', 'north', 'northeast', 'east', 'west', 'south'];
-  const regionOrderMap = new Map(regionOrder.map((name, index) => [name, index]));
   const grouped = new Map();
 
   allPickupPoints.value.forEach((pt) => {
@@ -1420,34 +1428,39 @@ const groupedPickupPointsByRegion = computed(() => {
       ...group,
       points: getSortedPickupPoints(group.points),
     }))
-    .sort((a, b) => {
-      const aOrder = regionOrderMap.has(a.region) ? regionOrderMap.get(a.region) : Number.MAX_SAFE_INTEGER;
-      const bOrder = regionOrderMap.has(b.region) ? regionOrderMap.get(b.region) : Number.MAX_SAFE_INTEGER;
-      if (aOrder !== bOrder) return aOrder - bOrder;
-      return a.region_label.localeCompare(b.region_label, 'th');
-    });
+    .sort(compareRegions);
 });
 
 const regionOptions = computed(() => {
   if (!isTrekking.value) return [];
   const map = new Map();
   schedules.value.forEach(s => {
+    if (!hasAvailableSeats(s)) return;
+    const countedRegions = new Set();
     (s.pickup_points || []).forEach(pt => {
-      if (!map.has(pt.region)) {
-        map.set(pt.region, {
-          region: pt.region,
-          region_label: pt.region_label,
-          min_price: Number(pt.price),
+      const region = pt.region || 'other';
+      const regionLabel = pt.region_label || 'อื่นๆ';
+      const price = Number(pt.price || 0);
+
+      if (!map.has(region)) {
+        map.set(region, {
+          region,
+          region_label: regionLabel,
+          min_price: price,
           schedule_count: 0,
         });
       } else {
-        const existing = map.get(pt.region);
-        if (Number(pt.price) < existing.min_price) existing.min_price = Number(pt.price);
+        const existing = map.get(region);
+        if (price < existing.min_price) existing.min_price = price;
       }
-      map.get(pt.region).schedule_count++;
+
+      if (!countedRegions.has(region)) {
+        map.get(region).schedule_count++;
+        countedRegions.add(region);
+      }
     });
   });
-  return [...map.values()];
+  return [...map.values()].sort(compareRegions);
 });
 
 const schedulesForRegion = computed(() => {
