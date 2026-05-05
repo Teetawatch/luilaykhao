@@ -180,6 +180,7 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings', [AdminController::class, 'bookings']);
         Route::post('bookings/manual', [AdminController::class, 'storeManualBooking']);
         Route::get('bookings/{ref}', [AdminController::class, 'showBooking']);
+        Route::post('bookings/{ref}', [AdminController::class, 'updateBooking']);
         Route::put('bookings/{ref}/status', [AdminController::class, 'updateBookingStatus']);
         Route::delete('bookings/{ref}', [AdminController::class, 'deleteBooking']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);

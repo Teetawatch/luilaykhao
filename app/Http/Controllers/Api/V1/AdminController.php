@@ -13,6 +13,7 @@ use App\Http\Resources\TripScheduleResource;
 use App\Http\Resources\VehicleResource;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\InstallmentPayment;
 use App\Models\Review;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
@@ -582,6 +583,259 @@ class AdminController extends Controller
         }
 
         return $this->success(new BookingResource($booking->fresh()), 'อัปเดตสถานะสำเร็จ');
+    }
+
+    public function updateBooking(Request $request, string $ref): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'in:pending,confirmed,cancelled,refunded'],
+            'schedule_id' => ['nullable', 'exists:trip_schedules,id'],
+            'pickup_region' => ['nullable', 'string', 'max:100'],
+            'pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
+            'is_join_trip' => ['nullable', 'boolean'],
+            'is_group' => ['nullable', 'boolean'],
+            'group_name' => ['nullable', 'string', 'max:255'],
+            'group_notes' => ['nullable', 'string'],
+            'qr_code' => ['nullable', 'string', 'max:255'],
+            'checked_in' => ['nullable', 'boolean'],
+            'checked_in_at' => ['nullable', 'date'],
+            'cancellation_reason' => ['nullable', 'string'],
+            'cancelled_at' => ['nullable', 'date'],
+            'user.name' => ['nullable', 'string', 'max:255'],
+            'user.email' => ['nullable', 'email', 'max:255'],
+            'user.phone' => ['nullable', 'string', 'max:30'],
+            'total_amount' => ['nullable', 'numeric', 'min:0'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', 'string', 'max:100'],
+            'payment_type' => ['nullable', 'in:full,installment'],
+            'installment_count' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'installment_interval_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'payment_ref' => ['nullable', 'string', 'max:255'],
+            'paid_at' => ['nullable', 'date'],
+            'transfer_datetime' => ['nullable', 'date'],
+            'delete_slip' => ['nullable', 'boolean'],
+            'slip_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'seat_ids' => ['nullable', 'array'],
+            'seat_ids.*' => ['nullable', 'string', 'max:30'],
+            'passengers' => ['nullable', 'array'],
+            'passengers.*.id' => ['nullable', 'integer', 'exists:booking_passengers,id'],
+            'passengers.*.title' => ['nullable', 'string', 'max:50'],
+            'passengers.*.name' => ['required_with:passengers', 'string', 'max:255'],
+            'passengers.*.nickname' => ['nullable', 'string', 'max:100'],
+            'passengers.*.id_card' => ['nullable', 'string', 'max:50'],
+            'passengers.*.phone' => ['nullable', 'string', 'max:30'],
+            'passengers.*.blood_group' => ['nullable', 'string', 'max:20'],
+            'passengers.*.allergies' => ['nullable', 'string'],
+            'passengers.*.health_notes' => ['nullable', 'string'],
+            'passengers.*.emergency_contact' => ['nullable', 'string', 'max:255'],
+            'passengers.*.emergency_phone' => ['nullable', 'string', 'max:30'],
+            'passengers.*.dive_cert_level' => ['nullable', 'string', 'max:255'],
+            'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
+            'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],
+            'passengers.*.halal_food' => ['nullable', 'boolean'],
+            'installments' => ['nullable', 'array'],
+            'installments.*.id' => ['nullable', 'integer', 'exists:installment_payments,id'],
+            'installments.*.installment_no' => ['required_with:installments', 'integer', 'min:1', 'max:12'],
+            'installments.*.amount' => ['required_with:installments', 'numeric', 'min:0'],
+            'installments.*.due_date' => ['nullable', 'date'],
+            'installments.*.status' => ['nullable', 'in:pending,paid,failed,cancelled'],
+            'installments.*.payment_method' => ['nullable', 'string', 'max:100'],
+            'installments.*.payment_ref' => ['nullable', 'string', 'max:255'],
+            'installments.*.paid_at' => ['nullable', 'date'],
+            'installments.*.transfer_datetime' => ['nullable', 'date'],
+            'installments.*.delete_slip' => ['nullable', 'boolean'],
+            'installments.*.slip_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+        ]);
+
+        $booking = Booking::with(['user', 'passengers', 'seats', 'installmentPayments', 'schedule'])
+            ->where('booking_ref', $ref)
+            ->firstOrFail();
+
+        DB::transaction(function () use ($request, $data, $booking) {
+            $oldSchedule = $booking->schedule;
+
+            if ($booking->user && isset($data['user'])) {
+                $booking->user->update(array_filter([
+                    'name' => $data['user']['name'] ?? null,
+                    'email' => $data['user']['email'] ?? null,
+                    'phone' => $data['user']['phone'] ?? null,
+                ], fn ($value) => $value !== null));
+            }
+
+            $bookingUpdates = [];
+            foreach ([
+                'status', 'schedule_id', 'pickup_region', 'pickup_point_id', 'group_name', 'group_notes',
+                'qr_code', 'cancellation_reason', 'total_amount', 'paid_amount', 'payment_method',
+                'payment_type', 'installment_count', 'installment_interval_days', 'payment_ref',
+                'paid_at', 'transfer_datetime', 'cancelled_at', 'checked_in_at',
+            ] as $field) {
+                if (array_key_exists($field, $data)) {
+                    $bookingUpdates[$field] = $data[$field];
+                }
+            }
+
+            if (array_key_exists('is_join_trip', $data)) {
+                $bookingUpdates['is_join_trip'] = (bool) $data['is_join_trip'];
+            }
+            if (array_key_exists('is_group', $data)) {
+                $bookingUpdates['is_group'] = (bool) $data['is_group'];
+            }
+            if (array_key_exists('checked_in', $data)) {
+                $bookingUpdates['checked_in'] = (bool) $data['checked_in'];
+                if (! $bookingUpdates['checked_in']) {
+                    $bookingUpdates['checked_in_at'] = null;
+                } elseif (empty($bookingUpdates['checked_in_at']) && ! $booking->checked_in_at) {
+                    $bookingUpdates['checked_in_at'] = now();
+                }
+            }
+
+            if (($data['delete_slip'] ?? false) && $booking->slip_path) {
+                Storage::disk('public')->delete($booking->slip_path);
+                $bookingUpdates['slip_path'] = null;
+            }
+            if ($request->hasFile('slip_image')) {
+                if ($booking->slip_path) {
+                    Storage::disk('public')->delete($booking->slip_path);
+                }
+                $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+            }
+
+            if ($bookingUpdates) {
+                $booking->update($bookingUpdates);
+            }
+
+            if (array_key_exists('passengers', $data)) {
+                $keptIds = [];
+                foreach ($data['passengers'] ?? [] as $passengerData) {
+                    $passengerId = $passengerData['id'] ?? null;
+                    $payload = [
+                        'title' => $passengerData['title'] ?? '',
+                        'name' => $passengerData['name'],
+                        'nickname' => $passengerData['nickname'] ?? null,
+                        'id_card' => $passengerData['id_card'] ?? null,
+                        'phone' => $passengerData['phone'] ?? null,
+                        'blood_group' => $passengerData['blood_group'] ?? null,
+                        'allergies' => $passengerData['allergies'] ?? null,
+                        'health_notes' => $passengerData['health_notes'] ?? null,
+                        'emergency_contact' => $passengerData['emergency_contact'] ?? null,
+                        'emergency_phone' => $passengerData['emergency_phone'] ?? null,
+                        'dive_cert_level' => $passengerData['dive_cert_level'] ?? null,
+                        'cert_number' => $passengerData['cert_number'] ?? null,
+                        'weight' => $passengerData['weight'] ?? null,
+                        'halal_food' => array_key_exists('halal_food', $passengerData) ? (bool) $passengerData['halal_food'] : null,
+                    ];
+
+                    $passenger = $passengerId
+                        ? $booking->passengers()->whereKey($passengerId)->first()
+                        : null;
+
+                    if ($passenger) {
+                        $passenger->update($payload);
+                    } else {
+                        $passenger = $booking->passengers()->create($payload);
+                    }
+                    $keptIds[] = $passenger->id;
+                }
+
+                $booking->passengers()->whereNotIn('id', $keptIds ?: [0])->delete();
+            }
+
+            if (array_key_exists('seat_ids', $data)) {
+                $booking->seats()->delete();
+                if (! ($booking->fresh()->is_join_trip)) {
+                    foreach (array_values(array_filter($data['seat_ids'] ?? [])) as $index => $seatId) {
+                        $booking->seats()->create([
+                            'schedule_id' => $booking->schedule_id,
+                            'seat_id' => $seatId,
+                            'passenger_name' => $booking->passengers()->skip($index)->first()?->name,
+                        ]);
+                    }
+                }
+            }
+
+            if (($data['payment_type'] ?? $booking->payment_type) === 'full') {
+                if (array_key_exists('payment_type', $data)) {
+                    foreach ($booking->installmentPayments as $payment) {
+                        if ($payment->slip_path) {
+                            Storage::disk('public')->delete($payment->slip_path);
+                        }
+                    }
+                    $booking->installmentPayments()->delete();
+                    $booking->update([
+                        'installment_count' => null,
+                        'installment_interval_days' => null,
+                    ]);
+                }
+            } elseif (array_key_exists('installments', $data)) {
+                $keptInstallmentIds = [];
+                foreach ($data['installments'] ?? [] as $index => $installmentData) {
+                    $installment = isset($installmentData['id'])
+                        ? $booking->installmentPayments()->whereKey($installmentData['id'])->first()
+                        : null;
+
+                    $paymentPayload = [
+                        'installment_no' => $installmentData['installment_no'],
+                        'amount' => $installmentData['amount'],
+                        'due_date' => $installmentData['due_date'] ?? null,
+                        'status' => $installmentData['status'] ?? 'pending',
+                        'payment_method' => $installmentData['payment_method'] ?? null,
+                        'payment_ref' => $installmentData['payment_ref'] ?? null,
+                        'paid_at' => $installmentData['paid_at'] ?? null,
+                        'transfer_datetime' => $installmentData['transfer_datetime'] ?? null,
+                    ];
+
+                    if ($installment) {
+                        $installment->update($paymentPayload);
+                    } else {
+                        $installment = $booking->installmentPayments()->create($paymentPayload);
+                    }
+
+                    if (($installmentData['delete_slip'] ?? false) && $installment->slip_path) {
+                        Storage::disk('public')->delete($installment->slip_path);
+                        $installment->update(['slip_path' => null]);
+                    }
+
+                    $file = $request->file("installments.$index.slip_image");
+                    if ($file) {
+                        if ($installment->slip_path) {
+                            Storage::disk('public')->delete($installment->slip_path);
+                        }
+                        $installment->update([
+                            'slip_path' => $file->store('slips/' . date('Y/m'), 'public'),
+                        ]);
+                    }
+
+                    $keptInstallmentIds[] = $installment->id;
+                }
+
+                $removedPayments = $booking->installmentPayments()->whereNotIn('id', $keptInstallmentIds ?: [0])->get();
+                foreach ($removedPayments as $payment) {
+                    if ($payment->slip_path) {
+                        Storage::disk('public')->delete($payment->slip_path);
+                    }
+                    $payment->delete();
+                }
+            }
+
+            $booking->fresh(['schedule'])->schedule?->syncBookedSeats();
+            if ($oldSchedule && $oldSchedule->id !== $booking->schedule_id) {
+                $oldSchedule->syncBookedSeats();
+            }
+        });
+
+        $booking = Booking::with([
+            'schedule.trip',
+            'schedule.vehicle',
+            'schedule.pickupPoints',
+            'schedule.staff',
+            'user',
+            'passengers',
+            'seats',
+            'installmentPayments',
+            'pickupPoint',
+        ])->where('booking_ref', $ref)->firstOrFail();
+
+        return $this->success(new BookingResource($booking), 'อัปเดตข้อมูลการจองสำเร็จ');
     }
 
     public function storeManualBooking(Request $request): JsonResponse

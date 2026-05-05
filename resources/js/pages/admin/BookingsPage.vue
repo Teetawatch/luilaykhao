@@ -249,6 +249,9 @@
                   <button class="btn-icon btn-view" title="รายละเอียด" @click="openDetail(booking)">
                     <span class="material-symbols-rounded">visibility</span>
                   </button>
+                  <button class="btn-icon btn-edit" title="แก้ไขข้อมูล" @click="openEditModal(booking)">
+                    <span class="material-symbols-rounded">edit_note</span>
+                  </button>
                   <button class="btn-icon btn-edit" title="เปลี่ยนสถานะ" @click="openStatusModal(booking)">
                     <span class="material-symbols-rounded">swap_horiz</span>
                   </button>
@@ -289,9 +292,15 @@
               {{ detailBooking?.booking_ref || '-' }} · {{ detailBooking?.schedule?.trip?.title || '-' }}
             </p>
           </div>
-          <button class="modal-close" @click="closeDetail">
-            <span class="material-symbols-rounded">close</span>
-          </button>
+          <div class="modal-header-actions">
+            <button v-if="detailBooking" class="btn-secondary compact" @click="openEditModal(detailBooking)">
+              <span class="material-symbols-rounded">edit_note</span>
+              แก้ไข
+            </button>
+            <button class="modal-close" @click="closeDetail">
+              <span class="material-symbols-rounded">close</span>
+            </button>
+          </div>
         </div>
 
         <div v-if="loadingDetail" class="modal-body loading-state">
@@ -495,6 +504,345 @@
       </div>
     </div>
 
+    <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
+      <div class="modal-card modal-xl">
+        <div class="modal-header">
+          <div>
+            <h2>แก้ไขข้อมูลการจอง</h2>
+            <p class="modal-subtitle">{{ editBooking?.booking_ref || '-' }}</p>
+          </div>
+          <button class="modal-close" @click="closeEditModal">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <form class="modal-body edit-booking-form" @submit.prevent="doUpdateBooking">
+          <section class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">event_note</span>
+              ข้อมูลการจอง
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>สถานะ</label>
+                <select v-model="editForm.status">
+                  <option value="pending">รอดำเนินการ</option>
+                  <option value="confirmed">ยืนยันแล้ว</option>
+                  <option value="cancelled">ยกเลิก</option>
+                  <option value="refunded">คืนเงินแล้ว</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Schedule ID</label>
+                <input v-model.number="editForm.schedule_id" type="number" min="1" />
+              </div>
+              <div class="form-group">
+                <label>ประเภทการจอง</label>
+                <select v-model="editForm.is_join_trip">
+                  <option :value="false">จองปกติ</option>
+                  <option :value="true">จอยทริป</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>QR เช็คอิน</label>
+                <input v-model.trim="editForm.qr_code" type="text" />
+              </div>
+              <label class="check-row">
+                <input v-model="editForm.is_group" type="checkbox" />
+                <span>การจองแบบกลุ่ม</span>
+              </label>
+              <label class="check-row">
+                <input v-model="editForm.checked_in" type="checkbox" />
+                <span>เช็คอินแล้ว</span>
+              </label>
+              <div class="form-group">
+                <label>ชื่อกลุ่ม</label>
+                <input v-model.trim="editForm.group_name" type="text" />
+              </div>
+              <div class="form-group">
+                <label>เวลาเช็คอิน</label>
+                <input v-model="editForm.checked_in_at" type="datetime-local" />
+              </div>
+              <div class="form-group full-span">
+                <label>หมายเหตุกลุ่ม</label>
+                <textarea v-model="editForm.group_notes" rows="2"></textarea>
+              </div>
+              <div class="form-group full-span" v-if="editForm.status === 'cancelled' || editForm.status === 'refunded'">
+                <label>เหตุผลยกเลิก/คืนเงิน</label>
+                <textarea v-model="editForm.cancellation_reason" rows="2"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">person</span>
+              ผู้จอง
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>ชื่อผู้จอง</label>
+                <input v-model.trim="editForm.user.name" type="text" />
+              </div>
+              <div class="form-group">
+                <label>อีเมล</label>
+                <input v-model.trim="editForm.user.email" type="email" />
+              </div>
+              <div class="form-group">
+                <label>เบอร์โทร</label>
+                <input v-model.trim="editForm.user.phone" type="tel" />
+              </div>
+            </div>
+          </section>
+
+          <section class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">payments</span>
+              การชำระเงินและสลิปหลัก
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>ยอดรวม</label>
+                <input v-model.number="editForm.total_amount" type="number" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label>ชำระแล้ว</label>
+                <input v-model.number="editForm.paid_amount" type="number" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label>ประเภทชำระ</label>
+                <select v-model="editForm.payment_type">
+                  <option value="full">ชำระเต็มจำนวน</option>
+                  <option value="installment">ผ่อนชำระ</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>ช่องทางชำระ</label>
+                <input v-model.trim="editForm.payment_method" type="text" placeholder="promptpay / mobile_banking / manual" />
+              </div>
+              <div class="form-group">
+                <label>รหัสอ้างอิง</label>
+                <input v-model.trim="editForm.payment_ref" type="text" />
+              </div>
+              <div class="form-group">
+                <label>ชำระเมื่อ</label>
+                <input v-model="editForm.paid_at" type="datetime-local" />
+              </div>
+              <div class="form-group">
+                <label>วันเวลาโอน</label>
+                <input v-model="editForm.transfer_datetime" type="datetime-local" />
+              </div>
+              <div class="form-group">
+                <label>จำนวนงวด</label>
+                <input v-model.number="editForm.installment_count" type="number" min="1" max="12" />
+              </div>
+              <div class="form-group">
+                <label>ระยะห่างงวด (วัน)</label>
+                <input v-model.number="editForm.installment_interval_days" type="number" min="1" />
+              </div>
+              <div class="form-group full-span">
+                <label>แนบสลิปหลักใหม่</label>
+                <input type="file" accept="image/*,.pdf" @change="onMainSlipChange" />
+                <div class="slip-edit-row">
+                  <a v-if="editForm.current_slip_url" :href="editForm.current_slip_url" target="_blank">เปิดสลิปปัจจุบัน</a>
+                  <label v-if="editForm.current_slip_url" class="check-row inline">
+                    <input v-model="editForm.delete_slip" type="checkbox" />
+                    <span>ลบสลิปหลักเดิม</span>
+                  </label>
+                  <span v-if="editForm.slip_image">{{ editForm.slip_image.name }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">location_on</span>
+              จุดรับ / ที่นั่ง
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Pickup Point ID</label>
+                <input v-model.number="editForm.pickup_point_id" type="number" min="1" />
+              </div>
+              <div class="form-group">
+                <label>ภูมิภาคจุดรับ</label>
+                <input v-model.trim="editForm.pickup_region" type="text" />
+              </div>
+              <div class="form-group full-span">
+                <label>ที่นั่ง (คั่นด้วย comma)</label>
+                <input v-model.trim="editForm.seat_ids_text" type="text" placeholder="A1, A2, B1" :disabled="editForm.is_join_trip" />
+              </div>
+            </div>
+          </section>
+
+          <section class="edit-section">
+            <div class="section-heading with-action">
+              <span class="material-symbols-rounded">group</span>
+              ผู้โดยสาร
+              <button type="button" class="btn-secondary compact" @click="addPassenger">
+                <span class="material-symbols-rounded">person_add</span>
+                เพิ่มผู้โดยสาร
+              </button>
+            </div>
+            <div class="edit-list">
+              <div v-for="(passenger, index) in editForm.passengers" :key="passenger.local_key" class="edit-list-card">
+                <div class="edit-list-head">
+                  <strong>ผู้โดยสาร {{ index + 1 }}</strong>
+                  <button type="button" class="btn-icon btn-delete" @click="removePassenger(index)">
+                    <span class="material-symbols-rounded">delete</span>
+                  </button>
+                </div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>คำนำหน้า</label>
+                    <input v-model.trim="passenger.title" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>ชื่อ-นามสกุล *</label>
+                    <input v-model.trim="passenger.name" type="text" required />
+                  </div>
+                  <div class="form-group">
+                    <label>ชื่อเล่น</label>
+                    <input v-model.trim="passenger.nickname" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>เบอร์โทร</label>
+                    <input v-model.trim="passenger.phone" type="tel" />
+                  </div>
+                  <div class="form-group">
+                    <label>บัตรประชาชน/พาสปอร์ต</label>
+                    <input v-model.trim="passenger.id_card" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>กรุ๊ปเลือด</label>
+                    <input v-model.trim="passenger.blood_group" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>น้ำหนัก</label>
+                    <input v-model.number="passenger.weight" type="number" min="0" step="0.01" />
+                  </div>
+                  <div class="form-group">
+                    <label>อาหารฮาลาล</label>
+                    <select v-model="passenger.halal_food">
+                      <option :value="null">ไม่ระบุ</option>
+                      <option :value="true">ใช่</option>
+                      <option :value="false">ไม่ใช่</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>ผู้ติดต่อฉุกเฉิน</label>
+                    <input v-model.trim="passenger.emergency_contact" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>เบอร์ฉุกเฉิน</label>
+                    <input v-model.trim="passenger.emergency_phone" type="tel" />
+                  </div>
+                  <div class="form-group">
+                    <label>ระดับใบดำน้ำ</label>
+                    <input v-model.trim="passenger.dive_cert_level" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>เลขใบรับรอง</label>
+                    <input v-model.trim="passenger.cert_number" type="text" />
+                  </div>
+                  <div class="form-group full-span">
+                    <label>การแพ้ / อาหาร</label>
+                    <textarea v-model="passenger.allergies" rows="2"></textarea>
+                  </div>
+                  <div class="form-group full-span">
+                    <label>หมายเหตุสุขภาพ</label>
+                    <textarea v-model="passenger.health_notes" rows="2"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="editForm.payment_type === 'installment'" class="edit-section">
+            <div class="section-heading with-action">
+              <span class="material-symbols-rounded">pending_actions</span>
+              งวดผ่อนชำระ
+              <button type="button" class="btn-secondary compact" @click="addInstallment">
+                <span class="material-symbols-rounded">add</span>
+                เพิ่มงวด
+              </button>
+            </div>
+            <div class="edit-list">
+              <div v-for="(payment, index) in editForm.installments" :key="payment.local_key" class="edit-list-card">
+                <div class="edit-list-head">
+                  <strong>งวดที่ {{ payment.installment_no || index + 1 }}</strong>
+                  <button type="button" class="btn-icon btn-delete" @click="removeInstallment(index)">
+                    <span class="material-symbols-rounded">delete</span>
+                  </button>
+                </div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>เลขงวด</label>
+                    <input v-model.number="payment.installment_no" type="number" min="1" max="12" />
+                  </div>
+                  <div class="form-group">
+                    <label>ยอดงวด</label>
+                    <input v-model.number="payment.amount" type="number" min="0" step="0.01" />
+                  </div>
+                  <div class="form-group">
+                    <label>ครบกำหนด</label>
+                    <input v-model="payment.due_date" type="date" />
+                  </div>
+                  <div class="form-group">
+                    <label>สถานะ</label>
+                    <select v-model="payment.status">
+                      <option value="pending">รอชำระ</option>
+                      <option value="paid">ชำระแล้ว</option>
+                      <option value="failed">ไม่สำเร็จ</option>
+                      <option value="cancelled">ยกเลิก</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>ช่องทาง</label>
+                    <input v-model.trim="payment.payment_method" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>รหัสอ้างอิง</label>
+                    <input v-model.trim="payment.payment_ref" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>ชำระเมื่อ</label>
+                    <input v-model="payment.paid_at" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label>วันเวลาโอน</label>
+                    <input v-model="payment.transfer_datetime" type="datetime-local" />
+                  </div>
+                  <div class="form-group full-span">
+                    <label>สลิปงวดนี้</label>
+                    <input type="file" accept="image/*,.pdf" @change="onInstallmentSlipChange(index, $event)" />
+                    <div class="slip-edit-row">
+                      <a v-if="payment.current_slip_url" :href="payment.current_slip_url" target="_blank">เปิดสลิปปัจจุบัน</a>
+                      <label v-if="payment.current_slip_url" class="check-row inline">
+                        <input v-model="payment.delete_slip" type="checkbox" />
+                        <span>ลบสลิปเดิม</span>
+                      </label>
+                      <span v-if="payment.slip_image">{{ payment.slip_image.name }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" @click="closeEditModal">ยกเลิก</button>
+            <button type="submit" class="btn-primary" :disabled="submitting">
+              <span v-if="submitting" class="material-symbols-rounded animate-spin">sync</span>
+              <span v-else class="material-symbols-rounded">save</span>
+              บันทึกข้อมูลการจอง
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div v-if="showStatusModal" class="modal-overlay" @click.self="showStatusModal = false">
       <div class="modal-card modal-sm">
         <div class="modal-header">
@@ -631,12 +979,44 @@ const filters = reactive({
 const showDetail = ref(false);
 const showStatusModal = ref(false);
 const showManualModal = ref(false);
+const showEditModal = ref(false);
 const detailBooking = ref(null);
 const statusBooking = ref(null);
+const editBooking = ref(null);
 const submitting = ref(false);
 const loadingDetail = ref(false);
 const currentPage = ref(1);
 const statusForm = reactive({ status: '', reason: '' });
+const editForm = reactive({
+  status: 'pending',
+  schedule_id: '',
+  is_join_trip: false,
+  is_group: false,
+  group_name: '',
+  group_notes: '',
+  qr_code: '',
+  checked_in: false,
+  checked_in_at: '',
+  cancellation_reason: '',
+  pickup_point_id: '',
+  pickup_region: '',
+  seat_ids_text: '',
+  user: { name: '', email: '', phone: '' },
+  total_amount: 0,
+  paid_amount: 0,
+  payment_type: 'full',
+  payment_method: '',
+  payment_ref: '',
+  paid_at: '',
+  transfer_datetime: '',
+  installment_count: '',
+  installment_interval_days: '',
+  current_slip_url: '',
+  delete_slip: false,
+  slip_image: null,
+  passengers: [],
+  installments: [],
+});
 
 const allTrips = ref([]);
 const availableSchedules = ref([]);
@@ -762,6 +1142,263 @@ async function openDetail(booking) {
 function closeDetail() {
   showDetail.value = false;
   detailBooking.value = null;
+}
+
+async function openEditModal(booking) {
+  editBooking.value = booking;
+  showEditModal.value = true;
+
+  try {
+    const res = await api.get(`/admin/bookings/${booking.booking_ref}`);
+    const fullBooking = res.data?.data || booking;
+    editBooking.value = fullBooking;
+    fillEditForm(fullBooking);
+  } catch (e) {
+    fillEditForm(booking);
+    alert(e.response?.data?.message || 'โหลดข้อมูลล่าสุดไม่ได้ จะแสดงข้อมูลเท่าที่มีอยู่');
+  }
+}
+
+function closeEditModal() {
+  showEditModal.value = false;
+  editBooking.value = null;
+  resetEditForm();
+}
+
+function resetEditForm() {
+  Object.assign(editForm, {
+    status: 'pending',
+    schedule_id: '',
+    is_join_trip: false,
+    is_group: false,
+    group_name: '',
+    group_notes: '',
+    qr_code: '',
+    checked_in: false,
+    checked_in_at: '',
+    cancellation_reason: '',
+    pickup_point_id: '',
+    pickup_region: '',
+    seat_ids_text: '',
+    user: { name: '', email: '', phone: '' },
+    total_amount: 0,
+    paid_amount: 0,
+    payment_type: 'full',
+    payment_method: '',
+    payment_ref: '',
+    paid_at: '',
+    transfer_datetime: '',
+    installment_count: '',
+    installment_interval_days: '',
+    current_slip_url: '',
+    delete_slip: false,
+    slip_image: null,
+    passengers: [],
+    installments: [],
+  });
+}
+
+function fillEditForm(booking) {
+  resetEditForm();
+  Object.assign(editForm, {
+    status: booking.status || 'pending',
+    schedule_id: booking.schedule?.id || '',
+    is_join_trip: Boolean(booking.is_join_trip),
+    is_group: Boolean(booking.is_group),
+    group_name: booking.group_name || '',
+    group_notes: booking.group_notes || '',
+    qr_code: booking.qr_code || '',
+    checked_in: Boolean(booking.checked_in),
+    checked_in_at: toDatetimeInput(booking.checked_in_at),
+    cancellation_reason: booking.cancellation_reason || '',
+    pickup_point_id: booking.pickup_point?.id || '',
+    pickup_region: booking.pickup_region || booking.pickup_point?.region || '',
+    seat_ids_text: seatLabels(booking),
+    user: {
+      name: booking.user?.name || '',
+      email: booking.user?.email || '',
+      phone: booking.user?.phone || '',
+    },
+    total_amount: moneyNumber(booking.total_amount),
+    paid_amount: moneyNumber(booking.paid_amount),
+    payment_type: booking.payment_type || 'full',
+    payment_method: booking.payment_method || '',
+    payment_ref: booking.payment_ref || '',
+    paid_at: toDatetimeInput(booking.paid_at),
+    transfer_datetime: toDatetimeInput(booking.transfer_datetime),
+    installment_count: booking.installment_count || '',
+    installment_interval_days: booking.installment_interval_days || '',
+    current_slip_url: booking.slip_url || '',
+    delete_slip: false,
+    slip_image: null,
+    passengers: (booking.passengers || []).map(mapPassengerToForm),
+    installments: (booking.installment_payments || []).map(mapInstallmentToForm),
+  });
+}
+
+function mapPassengerToForm(passenger = {}) {
+  return {
+    local_key: passenger.id || `new-${Date.now()}-${Math.random()}`,
+    id: passenger.id || '',
+    title: passenger.title || '',
+    name: passenger.name || '',
+    nickname: passenger.nickname || '',
+    id_card: passenger.id_card || '',
+    phone: passenger.phone || '',
+    blood_group: passenger.blood_group || '',
+    allergies: passenger.allergies || '',
+    health_notes: passenger.health_notes || '',
+    emergency_contact: passenger.emergency_contact || '',
+    emergency_phone: passenger.emergency_phone || '',
+    dive_cert_level: passenger.dive_cert_level || '',
+    cert_number: passenger.cert_number || '',
+    weight: passenger.weight || '',
+    halal_food: passenger.halal_food === true ? true : passenger.halal_food === false ? false : null,
+  };
+}
+
+function mapInstallmentToForm(payment = {}) {
+  return {
+    local_key: payment.id || `new-${Date.now()}-${Math.random()}`,
+    id: payment.id || '',
+    installment_no: payment.installment_no || '',
+    amount: moneyNumber(payment.amount),
+    due_date: toDateInput(payment.due_date),
+    status: payment.status || 'pending',
+    payment_method: payment.payment_method || '',
+    payment_ref: payment.payment_ref || '',
+    paid_at: toDatetimeInput(payment.paid_at),
+    transfer_datetime: toDatetimeInput(payment.transfer_datetime),
+    current_slip_url: payment.slip_url || '',
+    delete_slip: false,
+    slip_image: null,
+  };
+}
+
+function addPassenger() {
+  editForm.passengers.push(mapPassengerToForm());
+}
+
+function removePassenger(index) {
+  editForm.passengers.splice(index, 1);
+}
+
+function addInstallment() {
+  editForm.installments.push(mapInstallmentToForm({
+    installment_no: editForm.installments.length + 1,
+    amount: editForm.installments.length ? 0 : editForm.total_amount,
+    status: 'pending',
+  }));
+  editForm.installment_count = editForm.installments.length;
+}
+
+function removeInstallment(index) {
+  editForm.installments.splice(index, 1);
+  editForm.installment_count = editForm.installments.length || '';
+}
+
+function onMainSlipChange(event) {
+  editForm.slip_image = event.target.files?.[0] || null;
+  if (editForm.slip_image) editForm.delete_slip = false;
+}
+
+function onInstallmentSlipChange(index, event) {
+  const file = event.target.files?.[0] || null;
+  editForm.installments[index].slip_image = file;
+  if (file) editForm.installments[index].delete_slip = false;
+}
+
+async function doUpdateBooking() {
+  if (!editBooking.value) return;
+
+  submitting.value = true;
+  try {
+    const formData = buildEditFormData();
+    const res = await admin.updateBooking(editBooking.value.booking_ref, formData);
+    const updated = res.data || res;
+    editBooking.value = updated;
+    if (detailBooking.value?.booking_ref === updated.booking_ref) {
+      detailBooking.value = updated;
+    }
+    showEditModal.value = false;
+    await fetchData(currentPage.value);
+    if (detailBooking.value?.booking_ref === updated.booking_ref) {
+      await openDetail(updated);
+    }
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลการจอง');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function buildEditFormData() {
+  const fd = new FormData();
+  appendForm(fd, 'status', editForm.status);
+  appendForm(fd, 'schedule_id', editForm.schedule_id);
+  appendForm(fd, 'is_join_trip', editForm.is_join_trip ? 1 : 0);
+  appendForm(fd, 'is_group', editForm.is_group ? 1 : 0);
+  appendForm(fd, 'group_name', editForm.group_name);
+  appendForm(fd, 'group_notes', editForm.group_notes);
+  appendForm(fd, 'qr_code', editForm.qr_code);
+  appendForm(fd, 'checked_in', editForm.checked_in ? 1 : 0);
+  appendForm(fd, 'checked_in_at', editForm.checked_in_at);
+  appendForm(fd, 'cancellation_reason', editForm.cancellation_reason);
+  appendForm(fd, 'pickup_point_id', editForm.pickup_point_id);
+  appendForm(fd, 'pickup_region', editForm.pickup_region);
+  appendForm(fd, 'user[name]', editForm.user.name);
+  appendForm(fd, 'user[email]', editForm.user.email);
+  appendForm(fd, 'user[phone]', editForm.user.phone);
+  appendForm(fd, 'total_amount', editForm.total_amount);
+  appendForm(fd, 'paid_amount', editForm.paid_amount);
+  appendForm(fd, 'payment_type', editForm.payment_type);
+  appendForm(fd, 'payment_method', editForm.payment_method);
+  appendForm(fd, 'payment_ref', editForm.payment_ref);
+  appendForm(fd, 'paid_at', editForm.paid_at);
+  appendForm(fd, 'transfer_datetime', editForm.transfer_datetime);
+  appendForm(fd, 'installment_count', editForm.installment_count);
+  appendForm(fd, 'installment_interval_days', editForm.installment_interval_days);
+  appendForm(fd, 'delete_slip', editForm.delete_slip ? 1 : 0);
+  if (editForm.slip_image) fd.append('slip_image', editForm.slip_image);
+
+  const seatIds = editForm.seat_ids_text
+    .split(',')
+    .map((seat) => seat.trim())
+    .filter(Boolean);
+  if (seatIds.length) {
+    seatIds.forEach((seat) => fd.append('seat_ids[]', seat));
+  } else {
+    fd.append('seat_ids[]', '');
+  }
+
+  editForm.passengers.forEach((passenger, index) => {
+    Object.entries(passenger).forEach(([key, value]) => {
+      if (key === 'local_key') return;
+      appendForm(fd, `passengers[${index}][${key}]`, value);
+    });
+  });
+
+  if (editForm.payment_type === 'installment') {
+    editForm.installments.forEach((payment, index) => {
+      Object.entries(payment).forEach(([key, value]) => {
+        if (['local_key', 'current_slip_url', 'slip_image'].includes(key)) return;
+        appendForm(fd, `installments[${index}][${key}]`, value);
+      });
+      if (payment.slip_image) {
+        fd.append(`installments[${index}][slip_image]`, payment.slip_image);
+      }
+    });
+  }
+
+  return fd;
+}
+
+function appendForm(fd, key, value) {
+  if (typeof value === 'boolean') {
+    fd.append(key, value ? 1 : 0);
+    return;
+  }
+  fd.append(key, value === null || value === undefined ? '' : value);
 }
 
 function openStatusModal(booking) {
@@ -985,6 +1622,21 @@ function formatDateTime(date) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function toDateInput(date) {
+  if (!date) return '';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+}
+
+function toDatetimeInput(date) {
+  if (!date) return '';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return '';
+  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 function qrCodeUrl(value) {
@@ -1469,6 +2121,12 @@ onMounted(() => fetchData());
   margin: 4px 0 0;
 }
 
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .detail-body {
   display: flex;
   flex-direction: column;
@@ -1828,6 +2486,92 @@ onMounted(() => fetchData());
   border: 1px dashed var(--color-sand-dark);
   border-radius: 8px;
   padding: 12px;
+}
+
+.edit-booking-form {
+  display: grid;
+  gap: 18px;
+}
+
+.edit-section {
+  border-top: 1px solid #eeeeee;
+  padding-top: 16px;
+}
+
+.edit-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-mid);
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 38px;
+}
+
+.check-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
+.check-row.inline {
+  min-height: auto;
+}
+
+.section-heading.with-action {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.edit-list {
+  display: grid;
+  gap: 12px;
+}
+
+.edit-list-card {
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-white);
+}
+
+.edit-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.edit-list-head strong {
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.slip-edit-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.slip-edit-row a {
+  color: #2563eb;
+  font-weight: 900;
 }
 
 .manual-status-options {
