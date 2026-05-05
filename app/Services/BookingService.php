@@ -16,6 +16,7 @@ class BookingService
     public function __construct(
         private SeatLockService $seatLockService,
         private MailService $mailService,
+        private SmsService $smsService,
     ) {}
 
     public function createBooking(
@@ -174,6 +175,7 @@ class BookingService
 
         // Send emails outside of DB transaction
         $this->mailService->sendBookingCreatedEmail($booking);
+        $this->smsService->sendBookingCreated($booking);
         SmartNotification::send(
             $booking->user_id,
             'booking_created',
@@ -234,6 +236,7 @@ class BookingService
 
         // Send cancellation email outside of DB transaction
         $this->mailService->sendBookingCancelledEmail($cancelled, $reason);
+        $this->smsService->sendBookingCancelled($cancelled, $reason);
         SmartNotification::send(
             $cancelled->user_id,
             'booking_cancelled',

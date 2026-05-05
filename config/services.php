@@ -64,4 +64,16 @@ return [
         'bot_prompt' => env('LINE_BOT_PROMPT', 'normal'),
     ],
 
+    'thaibulksms' => [
+        'enabled' => env('SMS_PROVIDER') === 'thaibulksms' && env('THAIBULKSMS_ENABLED', false),
+        'api_key' => env('THAIBULKSMS_API_KEY'),
+        'api_secret' => env('THAIBULKSMS_API_SECRET'),
+        'sender' => env('THAIBULKSMS_SENDER', 'LUILAYKHAO'),
+        'credit_type' => env('THAIBULKSMS_CREDIT_TYPE', 'standard'),
+        'endpoint' => env('THAIBULKSMS_ENDPOINT', 'https://api-v2.thaibulksms.com/sms'),
+        'shorten_url' => env('THAIBULKSMS_SHORTEN_URL'),
+        'expire' => env('THAIBULKSMS_EXPIRE'),
+        'timeout' => env('THAIBULKSMS_TIMEOUT', 10),
+    ],
+
 ];

@@ -77,6 +77,11 @@ class Booking extends Model
         return $this->hasMany(InstallmentPayment::class)->orderBy('installment_no');
     }
 
+    public function smsLogs(): HasMany
+    {
+        return $this->hasMany(SmsLog::class);
+    }
+
     public function staffReviews(): HasMany
     {
         return $this->hasMany(StaffReview::class);

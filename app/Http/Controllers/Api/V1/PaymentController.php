@@ -11,6 +11,7 @@ use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
 use App\Services\BookingService;
 use App\Services\MailService;
+use App\Services\SmsService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ class PaymentController extends Controller
     public function __construct(
         private BookingService $bookingService,
         private MailService $mailService,
+        private SmsService $smsService,
     ) {}
 
     public function charge(ChargeRequest $request): JsonResponse
@@ -127,6 +129,7 @@ class PaymentController extends Controller
 
                 // Send payment confirmation email (installment)
                 $this->mailService->sendPaymentConfirmedEmail($booking, 'installment');
+                $this->smsService->sendPaymentConfirmed($booking, 'installment');
                 SmartNotification::send(
                     $booking->user_id,
                     'payment_confirmed',
@@ -180,6 +183,7 @@ class PaymentController extends Controller
 
             // Send payment confirmation email (full)
             $this->mailService->sendPaymentConfirmedEmail($booking, 'full');
+            $this->smsService->sendPaymentConfirmed($booking, 'full');
             SmartNotification::send(
                 $booking->user_id,
                 'payment_confirmed',
@@ -256,6 +260,7 @@ class PaymentController extends Controller
 
         // Send installment payment confirmation email
         $this->mailService->sendInstallmentPaidEmail($booking->fresh(), $installment);
+        $this->smsService->sendInstallmentPaid($booking->fresh(), $installment);
         SmartNotification::send(
             $booking->user_id,
             'installment_paid',

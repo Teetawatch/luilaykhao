@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
+use App\Services\SmsService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +13,7 @@ class SendInstallmentReminders extends Command
     protected $signature   = 'installment:remind';
     protected $description = 'แจ้งเตือนผ่อนชำระที่ใกล้ครบกำหนด และทำเครื่องหมาย overdue';
 
-    public function handle(): void
+    public function handle(SmsService $smsService): void
     {
         $today = now()->toDateString();
 
@@ -32,6 +33,7 @@ class SendInstallmentReminders extends Command
             ]);
 
             if ($ip->booking?->user_id) {
+                $smsService->sendInstallmentReminder($ip, 'overdue');
                 SmartNotification::send(
                     $ip->booking->user_id,
                     'installment_overdue',
@@ -62,6 +64,7 @@ class SendInstallmentReminders extends Command
             ]);
 
             if ($ip->booking?->user_id) {
+                $smsService->sendInstallmentReminder($ip, 'due_soon');
                 SmartNotification::send(
                     $ip->booking->user_id,
                     'installment_due_soon',
@@ -91,6 +94,7 @@ class SendInstallmentReminders extends Command
             ]);
 
             if ($ip->booking?->user_id) {
+                $smsService->sendInstallmentReminder($ip, 'due_today');
                 SmartNotification::send(
                     $ip->booking->user_id,
                     'installment_due_today',
