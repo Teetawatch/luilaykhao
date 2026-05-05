@@ -114,6 +114,39 @@
 
                   <!-- Details Grid -->
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
+                    <div v-if="booking.passengers?.length" class="sm:col-span-2 rounded-3xl bg-gray-50 border border-gray-100 p-5">
+                      <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                          <span class="material-symbols-rounded text-teal-600 text-[22px]">badge</span>
+                        </div>
+                        <div>
+                          <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">รายชื่อผู้ร่วมทริป</p>
+                          <p class="text-sm font-bold text-gray-500">คำนำหน้า / ชื่อ / นามสกุล</p>
+                        </div>
+                      </div>
+                      <div class="grid grid-cols-1 gap-3">
+                        <div
+                          v-for="(p, i) in booking.passengers"
+                          :key="p.id || i"
+                          class="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_0.8fr_1fr_1fr] gap-3 items-center bg-white rounded-2xl border border-gray-100 px-4 py-3"
+                        >
+                          <span class="w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-black flex items-center justify-center">{{ i + 1 }}</span>
+                          <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">คำนำหน้า</p>
+                            <p class="font-black text-gray-900">{{ p.title || '-' }}</p>
+                          </div>
+                          <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">ชื่อ</p>
+                            <p class="font-black text-gray-900">{{ passengerNameParts(p).firstName }}</p>
+                          </div>
+                          <div class="col-span-2 sm:col-span-1">
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">นามสกุล</p>
+                            <p class="font-black text-gray-900">{{ passengerNameParts(p).lastName }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div class="flex items-center gap-4 group">
                       <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
                         <span class="material-symbols-rounded text-teal-600 text-[24px]">calendar_today</span>
@@ -164,38 +197,6 @@
                       </div>
                     </div>
 
-                    <div v-if="booking.passengers?.length" class="sm:col-span-2 rounded-3xl bg-gray-50 border border-gray-100 p-5">
-                      <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
-                          <span class="material-symbols-rounded text-teal-600 text-[22px]">badge</span>
-                        </div>
-                        <div>
-                          <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">รายชื่อผู้ร่วมทริป</p>
-                          <p class="text-sm font-bold text-gray-500">คำนำหน้า / ชื่อ / นามสกุล</p>
-                        </div>
-                      </div>
-                      <div class="grid grid-cols-1 gap-3">
-                        <div
-                          v-for="(p, i) in booking.passengers"
-                          :key="p.id || i"
-                          class="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_0.8fr_1fr_1fr] gap-3 items-center bg-white rounded-2xl border border-gray-100 px-4 py-3"
-                        >
-                          <span class="w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-black flex items-center justify-center">{{ i + 1 }}</span>
-                          <div>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">คำนำหน้า</p>
-                            <p class="font-black text-gray-900">{{ p.title || '-' }}</p>
-                          </div>
-                          <div>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">ชื่อ</p>
-                            <p class="font-black text-gray-900">{{ passengerNameParts(p).firstName }}</p>
-                          </div>
-                          <div class="col-span-2 sm:col-span-1">
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">นามสกุล</p>
-                            <p class="font-black text-gray-900">{{ passengerNameParts(p).lastName }}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
                   <!-- Group Info if exists -->
