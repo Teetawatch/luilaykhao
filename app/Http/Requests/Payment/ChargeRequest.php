@@ -21,7 +21,7 @@ class ChargeRequest extends FormRequest
             'installment_count'  => ['nullable', 'integer', 'min:2', 'max:6'],
             'slip_image'         => ['nullable', 'image', 'max:5120'],
             'transfer_date'      => ['nullable', 'date'],
-            'transfer_time'      => ['nullable', 'string', 'regex:/^\d{2}:\d{2}$/'],
+            'transfer_time'      => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
         ];
     }
 }

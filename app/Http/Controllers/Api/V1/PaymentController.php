@@ -12,10 +12,12 @@ use App\Models\SmartNotification;
 use App\Services\BookingService;
 use App\Services\MailService;
 use App\Traits\ApiResponse;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
@@ -193,6 +195,8 @@ class PaymentController extends Controller
                 'status'  => 'confirmed',
                 'booking' => new \App\Http\Resources\BookingResource($booking),
             ], 'ชำระเงินสำเร็จ');
+        } catch (ValidationException $e) {
+            return $this->error($e->validator->errors()->first(), 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->error('ไม่พบข้อมูลการจอง หรือสถานะการจองไม่ถูกต้อง', 404);
         } catch (\Exception $e) {
@@ -212,7 +216,7 @@ class PaymentController extends Controller
             'payment_method' => ['nullable', 'in:promptpay,mobile_banking'],
             'slip_image'     => ['nullable', 'image', 'max:5120'],
             'transfer_date'  => ['nullable', 'date'],
-            'transfer_time'  => ['nullable', 'string'],
+            'transfer_time'  => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
         ]);
 
         $booking = Booking::where('booking_ref', $request->booking_ref)
@@ -302,10 +306,53 @@ class PaymentController extends Controller
 
     private function resolveTransferDatetime(Request $request): ?string
     {
-        $date = $request->input('transfer_date');
-        $time = $request->input('transfer_time');
-        if ($date && $time) return "{$date} {$time}:00";
-        if ($date)           return "{$date} 00:00:00";
-        return null;
+        $date = trim((string) $request->input('transfer_date', ''));
+        $time = trim((string) $request->input('transfer_time', ''));
+
+        if ($date === '') {
+            return null;
+        }
+
+        if (!preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $date, $dateParts)) {
+            throw ValidationException::withMessages([
+                'transfer_date' => 'รูปแบบวันที่โอนเงินไม่ถูกต้อง',
+            ]);
+        }
+
+        $year = (int) $dateParts[1];
+        if ($year > 2400) {
+            $year -= 543;
+        }
+
+        $month = (int) $dateParts[2];
+        $day = (int) $dateParts[3];
+
+        if ($time === '') {
+            $hour = 0;
+            $minute = 0;
+            $second = 0;
+        } elseif (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $time, $timeParts)) {
+            $hour = (int) $timeParts[1];
+            $minute = (int) $timeParts[2];
+            $second = isset($timeParts[3]) ? (int) $timeParts[3] : 0;
+        } else {
+            throw ValidationException::withMessages([
+                'transfer_time' => 'รูปแบบเวลาโอนเงินไม่ถูกต้อง',
+            ]);
+        }
+
+        if (
+            !checkdate($month, $day, $year)
+            || $hour > 23
+            || $minute > 59
+            || $second > 59
+        ) {
+            throw ValidationException::withMessages([
+                'transfer_datetime' => 'วันที่หรือเวลาโอนเงินไม่ถูกต้อง',
+            ]);
+        }
+
+        return CarbonImmutable::create($year, $month, $day, $hour, $minute, $second)
+            ->format('Y-m-d H:i:s');
     }
 }
