@@ -12,6 +12,10 @@
       </div>
       <div class="header-actions">
         <span v-if="lastUpdated" class="last-updated">อัปเดตล่าสุด {{ lastUpdated }}</span>
+        <button class="btn-secondary" :disabled="!visibleStats.totalPassengers" @click="exportVisibleInsurancePdf">
+          <span class="material-symbols-rounded">picture_as_pdf</span>
+          ส่งออก PDF ประกัน
+        </button>
         <button class="btn-secondary" :disabled="admin.loading" @click="fetchData">
           <span class="material-symbols-rounded" :class="{ 'animate-spin': admin.loading }">refresh</span>
           {{ admin.loading ? 'กำลังโหลด' : 'รีเฟรช' }}
@@ -125,29 +129,30 @@
         <span>{{ admin.error }}</span>
       </div>
 
-      <div v-if="!groupedSchedules.length" class="empty-card overview-empty">
+      <div v-if="!groupedDaySchedules.length" class="empty-card overview-empty">
         <span class="material-symbols-rounded">event_busy</span>
         <p v-if="hasActiveFilters">ไม่พบรอบเดินทางที่ตรงกับเงื่อนไข</p>
         <p v-else>ไม่พบข้อมูลรอบเดินทางในระบบขณะนี้</p>
       </div>
 
-      <section v-for="region in groupedSchedules" :key="region.region_key" class="region-block">
-        <div class="region-header">
-          <div class="region-title">
-            <span class="material-symbols-rounded">map</span>
+      <section v-for="day in groupedDaySchedules" :key="day.date_key" class="day-block">
+        <div class="day-header">
+          <div class="day-title">
+            <span class="material-symbols-rounded">calendar_month</span>
             <div>
-              <h2>{{ region.region_label }}</h2>
-              <p>{{ region.trips.length }} ทริป, {{ region.schedule_count }} รอบ</p>
+              <h2>{{ day.date_label }}</h2>
+              <p>{{ day.trips.length }} ทริป, {{ day.schedule_count }} รอบ, {{ day.region_count }} ภูมิภาค</p>
             </div>
           </div>
-          <div class="region-metrics">
-            <span>ไปทั้งหมด {{ region.total_passengers }} คน</span>
-            <span>{{ formatCurrency(region.total_amount) }}</span>
-            <span>ว่าง {{ region.available_seats }} ที่</span>
+          <div class="day-metrics">
+            <span>รวม {{ day.total_passengers }} คน</span>
+            <span>ปกติ {{ day.regular_passengers }} คน</span>
+            <span>จอยทริป {{ day.join_trip_passengers }} คน</span>
+            <span>ว่าง {{ day.available_seats }} ที่</span>
           </div>
         </div>
 
-        <div v-for="trip in region.trips" :key="trip.trip_id" class="trip-section">
+        <div v-for="trip in day.trips" :key="`${day.date_key}-${trip.trip_id}`" class="trip-section">
           <div class="trip-section-header">
             <div class="tsh-info">
               <h3 class="tsh-title">{{ trip.trip_title }}</h3>
@@ -225,6 +230,40 @@
                   <span class="booking-summary-label">จอยทริป</span>
                   <strong>{{ getJoinTripPassengers(sch) }} คน</strong>
                   <span>{{ formatCurrency(getJoinTripAmount(sch)) }}</span>
+                </div>
+              </div>
+
+              <div class="manifest-preview">
+                <div class="manifest-preview-head">
+                  <div>
+                    <span class="manifest-kicker">รายชื่อวันที่นี้</span>
+                    <strong>{{ schedulePassengerCount(sch) }} คน</strong>
+                  </div>
+                  <button
+                    class="btn-export-mini"
+                    :disabled="!schedulePassengerCount(sch)"
+                    @click="exportScheduleInsurancePdf(sch)"
+                  >
+                    <span class="material-symbols-rounded">picture_as_pdf</span>
+                    PDF ประกัน
+                  </button>
+                </div>
+
+                <div v-if="schedulePassengers(sch).length" class="manifest-name-list">
+                  <div v-for="person in schedulePassengers(sch).slice(0, 6)" :key="person.id" class="manifest-name-row">
+                    <span class="manifest-type-dot" :class="{ join: person.booking_type === 'join_trip' }"></span>
+                    <span class="manifest-person-name">{{ fullPassengerName(person) }}</span>
+                    <span class="manifest-person-meta">
+                      {{ person.booking_type_label }}
+                      <template v-if="person.seat_labels?.length"> · ที่นั่ง {{ person.seat_labels.join(', ') }}</template>
+                    </span>
+                  </div>
+                  <div v-if="schedulePassengerCount(sch) > 6" class="manifest-more">
+                    และอีก {{ schedulePassengerCount(sch) - 6 }} คน
+                  </div>
+                </div>
+                <div v-else class="manifest-empty">
+                  ยังไม่มีรายชื่อผู้เดินทางในรอบนี้
                 </div>
               </div>
 
@@ -362,6 +401,53 @@
               </div>
             </div>
             <div v-else class="pickup-summary-empty">ยังไม่มีข้อมูลจุดรับสำหรับรอบนี้</div>
+          </div>
+
+          <div class="insurance-manifest">
+            <div class="insurance-manifest-title">
+              <div>
+                <span class="manifest-kicker">รายชื่อสำหรับส่งประกัน</span>
+                <strong>{{ schedulePassengerCount(selectedSchedule) }} คน</strong>
+              </div>
+              <button
+                class="btn-secondary compact"
+                :disabled="!schedulePassengerCount(selectedSchedule)"
+                @click="exportScheduleInsurancePdf(selectedSchedule)"
+              >
+                <span class="material-symbols-rounded">picture_as_pdf</span>
+                ส่งออก PDF
+              </button>
+            </div>
+            <div v-if="schedulePassengers(selectedSchedule).length" class="insurance-table-wrap">
+              <table class="insurance-table">
+                <thead>
+                  <tr>
+                    <th>ชื่อ</th>
+                    <th>ประเภท</th>
+                    <th>เลขบัตร/พาสปอร์ต</th>
+                    <th>โทรศัพท์</th>
+                    <th>เลือด</th>
+                    <th>แพ้อาหาร/โรคประจำตัว</th>
+                    <th>ติดต่อฉุกเฉิน</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="person in schedulePassengers(selectedSchedule)" :key="person.id">
+                    <td>
+                      <strong>{{ fullPassengerName(person) }}</strong>
+                      <span>{{ person.booking_ref }}</span>
+                    </td>
+                    <td>{{ person.booking_type_label }}</td>
+                    <td>{{ person.id_card || '-' }}</td>
+                    <td>{{ person.phone || '-' }}</td>
+                    <td>{{ person.blood_group || '-' }}</td>
+                    <td>{{ healthSummary(person) }}</td>
+                    <td>{{ emergencySummary(person) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="pickup-summary-empty">ยังไม่มีรายชื่อผู้เดินทางสำหรับรอบนี้</div>
           </div>
 
           <div class="modal-footer">
@@ -520,28 +606,32 @@ const filteredSchedules = computed(() => {
 
 const visibleStats = computed(() => buildStats(filteredSchedules.value));
 
-const groupedSchedules = computed(() => {
-  const regionMap = {};
+const groupedDaySchedules = computed(() => {
+  const dayMap = {};
 
   filteredSchedules.value.forEach((sch) => {
-    const regionKey = sch.trip_region || 'other';
+    const dayKey = sch.start || 'unknown';
     const tripId = sch.trip_id || `trip-${sch.trip_title || 'unknown'}`;
+    const regionKey = sch.trip_region || 'other';
 
-    if (!regionMap[regionKey]) {
-      regionMap[regionKey] = {
-        region_key: regionKey,
-        region_label: regionLabels[regionKey] || regionLabels.other,
+    if (!dayMap[dayKey]) {
+      dayMap[dayKey] = {
+        date_key: dayKey,
+        date_label: formatDate(dayKey, 'long'),
         trips: {},
+        regions: new Set(),
         schedule_count: 0,
         available_seats: 0,
         booked_seats: 0,
+        regular_passengers: 0,
+        join_trip_passengers: 0,
         total_passengers: 0,
         total_amount: 0,
       };
     }
 
-    if (!regionMap[regionKey].trips[tripId]) {
-      regionMap[regionKey].trips[tripId] = {
+    if (!dayMap[dayKey].trips[tripId]) {
+      dayMap[dayKey].trips[tripId] = {
         trip_id: tripId,
         trip_title: sch.trip_title || 'ไม่ระบุชื่อทริป',
         trip_type: sch.trip_type || 'other',
@@ -559,12 +649,12 @@ const groupedSchedules = computed(() => {
       };
     }
 
-    const trip = regionMap[regionKey].trips[tripId];
     const regularPassengers = getRegularPassengers(sch);
     const joinTripPassengers = getJoinTripPassengers(sch);
     const regularAmount = getRegularAmount(sch);
     const joinTripAmount = getJoinTripAmount(sch);
 
+    const trip = dayMap[dayKey].trips[tripId];
     trip.schedules.push(sch);
     trip.available_seats += safeNumber(sch.available_seats);
     trip.booked_seats += safeNumber(sch.booked_seats);
@@ -576,24 +666,29 @@ const groupedSchedules = computed(() => {
     trip.total_passengers += regularPassengers + joinTripPassengers;
     trip.total_amount += regularAmount + joinTripAmount;
 
-    regionMap[regionKey].schedule_count += 1;
-    regionMap[regionKey].available_seats += safeNumber(sch.available_seats);
-    regionMap[regionKey].booked_seats += safeNumber(sch.booked_seats);
-    regionMap[regionKey].total_passengers = safeNumber(regionMap[regionKey].total_passengers) + regularPassengers + joinTripPassengers;
-    regionMap[regionKey].total_amount = safeNumber(regionMap[regionKey].total_amount) + regularAmount + joinTripAmount;
+    dayMap[dayKey].regions.add(regionKey);
+    dayMap[dayKey].schedule_count += 1;
+    dayMap[dayKey].available_seats += safeNumber(sch.available_seats);
+    dayMap[dayKey].booked_seats += safeNumber(sch.booked_seats);
+    dayMap[dayKey].regular_passengers += regularPassengers;
+    dayMap[dayKey].join_trip_passengers += joinTripPassengers;
+    dayMap[dayKey].total_passengers += regularPassengers + joinTripPassengers;
+    dayMap[dayKey].total_amount += regularAmount + joinTripAmount;
   });
 
-  return Object.values(regionMap)
-    .map((region) => ({
-      ...region,
-      trips: Object.values(region.trips)
+  return Object.values(dayMap)
+    .map((day) => ({
+      ...day,
+      region_count: day.regions.size,
+      regions: [...day.regions],
+      trips: Object.values(day.trips)
         .map((trip) => ({
           ...trip,
           schedules: [...trip.schedules].sort(sortSchedules),
         }))
         .sort((a, b) => a.trip_title.localeCompare(b.trip_title, 'th')),
     }))
-    .sort((a, b) => regionSortValue(a.region_key) - regionSortValue(b.region_key));
+    .sort((a, b) => dateValue(a.date_key) - dateValue(b.date_key));
 });
 
 function buildStats(items) {
@@ -798,6 +893,162 @@ function getTotalAmount(sch) {
   }
 
   return getRegularAmount(sch) + getJoinTripAmount(sch);
+}
+
+function schedulePassengers(sch) {
+  return Array.isArray(sch?.passenger_manifest) ? sch.passenger_manifest : [];
+}
+
+function schedulePassengerCount(sch) {
+  return schedulePassengers(sch).length;
+}
+
+function fullPassengerName(person) {
+  return [person?.title, person?.name].filter(Boolean).join(' ') || '-';
+}
+
+function healthSummary(person) {
+  return [
+    person?.allergies ? `แพ้: ${person.allergies}` : '',
+    person?.health_notes ? `สุขภาพ: ${person.health_notes}` : '',
+    person?.halal_food ? 'อาหารฮาลาล' : '',
+  ].filter(Boolean).join(' / ') || '-';
+}
+
+function emergencySummary(person) {
+  return [person?.emergency_contact, person?.emergency_phone].filter(Boolean).join(' / ') || '-';
+}
+
+function exportScheduleInsurancePdf(sch) {
+  if (!sch || !schedulePassengerCount(sch)) return;
+  exportInsurancePdf([sch], `รายชื่อส่งประกัน - ${sch.trip_title || 'ทริป'} - ${formatDate(sch.start)}`);
+}
+
+function exportVisibleInsurancePdf() {
+  const schedulesWithPassengers = filteredSchedules.value.filter((sch) => schedulePassengerCount(sch));
+  if (!schedulesWithPassengers.length) return;
+  exportInsurancePdf(schedulesWithPassengers, 'รายชื่อส่งประกันตามรอบที่แสดง');
+}
+
+function exportInsurancePdf(scheduleItems, title) {
+  const generatedAt = new Date().toLocaleString('th-TH');
+  const totalPassengers = scheduleItems.reduce((total, sch) => total + schedulePassengerCount(sch), 0);
+  const scheduleSections = scheduleItems.map((sch) => {
+    const passengers = schedulePassengers(sch);
+    const rows = passengers.map((person, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>
+          <strong>${escapeHtml(fullPassengerName(person))}</strong>
+          <span>${escapeHtml(person.nickname || '')}</span>
+        </td>
+        <td>${escapeHtml(person.booking_type_label || '-')}</td>
+        <td>${escapeHtml(person.booking_ref || '-')}</td>
+        <td>${escapeHtml(person.id_card || '-')}</td>
+        <td>${escapeHtml(person.phone || '-')}</td>
+        <td>${escapeHtml(person.blood_group || '-')}</td>
+        <td>${escapeHtml(person.weight || '-')}</td>
+        <td>${escapeHtml(healthSummary(person))}</td>
+        <td>${escapeHtml(emergencySummary(person))}</td>
+        <td>${escapeHtml((person.seat_labels || []).join(', ') || (person.booking_type === 'join_trip' ? 'จอยทริป' : '-'))}</td>
+        <td>${escapeHtml([person.pickup_region, person.pickup_location].filter(Boolean).join(' / ') || '-')}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <section class="schedule-section">
+        <div class="schedule-head">
+          <div>
+            <h2>${escapeHtml(sch.trip_title || '-')}</h2>
+            <p>${escapeHtml(formatDate(sch.start, 'long'))}${sch.end && sch.end !== sch.start ? ` - ${escapeHtml(formatDate(sch.end, 'long'))}` : ''}</p>
+          </div>
+          <div class="schedule-meta">
+            <span>${escapeHtml(sch.vehicle || transportLabels[sch.transport_type] || '-')}</span>
+            <span>ทั้งหมด ${passengers.length} คน</span>
+            <span>ปกติ ${getRegularPassengers(sch)} / จอยทริป ${getJoinTripPassengers(sch)}</span>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ชื่อผู้เดินทาง</th>
+              <th>ประเภท</th>
+              <th>เลขจอง</th>
+              <th>เลขบัตร/พาสปอร์ต</th>
+              <th>โทรศัพท์</th>
+              <th>เลือด</th>
+              <th>น้ำหนัก</th>
+              <th>แพ้/สุขภาพ/อาหาร</th>
+              <th>ติดต่อฉุกเฉิน</th>
+              <th>ที่นั่ง</th>
+              <th>จุดรับ</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </section>
+    `;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${escapeHtml(title)}</title>
+        <style>
+          @page { size: A4 landscape; margin: 10mm; }
+          * { box-sizing: border-box; }
+          body { font-family: Arial, "Tahoma", sans-serif; color: #111827; margin: 0; }
+          h1 { color: #166534; font-size: 22px; margin: 0 0 6px; }
+          h2 { color: #111827; font-size: 15px; margin: 0 0 4px; }
+          p { margin: 0; }
+          .doc-head { border-bottom: 2px solid #166534; padding-bottom: 10px; margin-bottom: 14px; }
+          .doc-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #4b5563; font-size: 11px; font-weight: 700; }
+          .doc-meta span { border: 1px solid #d1d5db; border-radius: 999px; padding: 4px 8px; }
+          .schedule-section { break-inside: avoid; margin-top: 16px; }
+          .schedule-head { display: flex; justify-content: space-between; gap: 16px; background: #f8fafc; border: 1px solid #d1d5db; padding: 8px; }
+          .schedule-head p { color: #4b5563; font-size: 11px; font-weight: 700; }
+          .schedule-meta { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-content: flex-start; }
+          .schedule-meta span { background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; border-radius: 999px; padding: 3px 7px; font-size: 10px; font-weight: 700; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 8px; }
+          th { background: #166534; color: #fff; padding: 5px; text-align: left; font-size: 9px; }
+          td { border: 1px solid #d1d5db; padding: 5px; vertical-align: top; font-size: 9px; overflow-wrap: anywhere; }
+          td strong, td span { display: block; }
+          td span { color: #6b7280; margin-top: 2px; }
+          tr:nth-child(even) td { background: #f9fafb; }
+          .footer { color: #9ca3af; font-size: 9px; margin-top: 18px; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="doc-head">
+          <h1>${escapeHtml(title)}</h1>
+          <div class="doc-meta">
+            <span>สร้างเมื่อ ${escapeHtml(generatedAt)}</span>
+            <span>จำนวนรอบ ${scheduleItems.length}</span>
+            <span>ผู้เดินทางทั้งหมด ${totalPassengers} คน</span>
+            <span>รวมทั้งจองปกติและจอยทริป</span>
+          </div>
+        </div>
+        ${scheduleSections}
+        <div class="footer">Luilaykhao Admin - รายชื่อสำหรับส่งประกัน</div>
+      </body>
+    </html>`;
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.onload = () => printWindow.print();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 function transportIcon(type) {
@@ -1024,6 +1275,73 @@ onMounted(fetchData);
   font-size: 48px;
   color: #cbd5e1;
   margin-bottom: 12px;
+}
+
+.day-block {
+  margin-bottom: 30px;
+}
+
+.day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+}
+
+.day-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.day-title .material-symbols-rounded {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f5ec;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.day-title h2 {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.day-title p {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.day-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.day-metrics span {
+  background: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 999px;
+  padding: 4px 10px;
 }
 
 .region-block {
@@ -1306,6 +1624,120 @@ onMounted(fetchData);
   font-weight: 800;
 }
 
+.manifest-preview {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.manifest-preview-head,
+.insurance-manifest-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.manifest-preview-head > div,
+.insurance-manifest-title > div {
+  display: grid;
+  gap: 2px;
+}
+
+.manifest-kicker {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.manifest-preview-head strong,
+.insurance-manifest-title strong {
+  color: var(--color-text-dark);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.btn-export-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+
+.btn-export-mini:hover {
+  background: #fee2e2;
+}
+
+.btn-export-mini:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.btn-export-mini .material-symbols-rounded {
+  font-size: 16px;
+}
+
+.manifest-name-list {
+  display: grid;
+  gap: 5px;
+}
+
+.manifest-name-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--color-text-mid);
+  font-size: 12px;
+}
+
+.manifest-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+.manifest-type-dot.join {
+  background: #059669;
+}
+
+.manifest-person-name {
+  color: var(--color-text-dark);
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manifest-person-meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.manifest-more,
+.manifest-empty {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .text-accent { color: var(--color-accent); }
 .text-full { color: #dc2626; }
 .text-low { color: #d97706; }
@@ -1508,6 +1940,62 @@ onMounted(fetchData);
   font-size: 13px;
 }
 
+.insurance-manifest {
+  margin-top: 18px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--color-white);
+}
+
+.insurance-manifest-title {
+  margin-bottom: 12px;
+}
+
+.insurance-table-wrap {
+  overflow-x: auto;
+}
+
+.insurance-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+}
+
+.insurance-table th {
+  background: #f8fafc;
+  color: var(--color-text-dark);
+  font-size: 11px;
+  font-weight: 900;
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-sand-dark);
+}
+
+.insurance-table td {
+  color: var(--color-text-mid);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px;
+  border-bottom: 1px solid #eeeeee;
+  vertical-align: top;
+}
+
+.insurance-table td strong,
+.insurance-table td span {
+  display: block;
+}
+
+.insurance-table td strong {
+  color: var(--color-text-dark);
+}
+
+.insurance-table td span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
 .seat-map-body {
   min-height: 320px;
 }
@@ -1572,16 +2060,27 @@ onMounted(fetchData);
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .day-header,
   .region-header,
   .trip-section-header {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .day-metrics,
   .region-metrics,
   .tsh-count {
     align-items: flex-start;
     justify-content: flex-start;
+  }
+
+  .manifest-name-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .manifest-person-meta {
+    grid-column: 2;
+    text-align: left;
   }
 
   .pickup-summary-item {

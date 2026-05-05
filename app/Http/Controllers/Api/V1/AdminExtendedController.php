@@ -26,7 +26,15 @@ class AdminExtendedController extends Controller
 
     public function calendarSchedules(Request $request): JsonResponse
     {
-        $query = TripSchedule::with(['trip', 'vehicle', 'bookings.passengers', 'pickupPoints']);
+        $query = TripSchedule::with([
+            'trip',
+            'vehicle',
+            'bookings.passengers',
+            'bookings.seats',
+            'bookings.pickupPoint',
+            'bookings.user',
+            'pickupPoints',
+        ]);
 
         if ($request->filled('start')) {
             $query->where('departure_date', '>=', $request->start);
@@ -51,6 +59,47 @@ class AdminExtendedController extends Controller
             $joinTripPassengersCount = $joinTripBookings->sum(fn ($booking) => $booking->passengers->count());
             $regularTotalAmount = $regularBookings->sum(fn ($booking) => (float) $booking->total_amount);
             $joinTripTotalAmount = $joinTripBookings->sum(fn ($booking) => (float) $booking->total_amount);
+            $passengerManifest = $activeBookings
+                ->flatMap(function ($booking) {
+                    $seatLabels = $booking->seats->pluck('seat_id')->filter()->values()->all();
+
+                    return $booking->passengers->map(function ($passenger) use ($booking, $seatLabels) {
+                        return [
+                            'id' => $passenger->id,
+                            'booking_id' => $booking->id,
+                            'booking_ref' => $booking->booking_ref,
+                            'booking_status' => $booking->status,
+                            'booking_type' => $booking->is_join_trip ? 'join_trip' : 'regular',
+                            'booking_type_label' => $booking->is_join_trip ? 'จอยทริป' : 'จองปกติ',
+                            'checked_in' => (bool) $booking->checked_in,
+                            'title' => $passenger->title,
+                            'name' => $passenger->name,
+                            'nickname' => $passenger->nickname,
+                            'id_card' => $passenger->id_card,
+                            'phone' => $passenger->phone ?: $booking->user?->phone,
+                            'blood_group' => $passenger->blood_group,
+                            'allergies' => $passenger->allergies,
+                            'health_notes' => $passenger->health_notes,
+                            'emergency_contact' => $passenger->emergency_contact,
+                            'emergency_phone' => $passenger->emergency_phone,
+                            'dive_cert_level' => $passenger->dive_cert_level,
+                            'cert_number' => $passenger->cert_number,
+                            'weight' => $passenger->weight,
+                            'halal_food' => (bool) $passenger->halal_food,
+                            'seat_labels' => $booking->is_join_trip ? [] : $seatLabels,
+                            'pickup_region' => $booking->pickupPoint?->region_label ?: $booking->pickup_region,
+                            'pickup_location' => $booking->pickupPoint?->pickup_location,
+                            'customer_name' => $booking->user?->name,
+                            'customer_phone' => $booking->user?->phone,
+                            'payment_type' => $booking->payment_type,
+                            'payment_method' => $booking->payment_method,
+                            'total_amount' => (float) $booking->total_amount,
+                            'paid_amount' => (float) $booking->paid_amount,
+                        ];
+                    });
+                })
+                ->values()
+                ->all();
 
             return [
                 'id' => $s->id,
@@ -76,6 +125,7 @@ class AdminExtendedController extends Controller
                 'join_trip_total_amount' => $joinTripTotalAmount,
                 'total_passengers' => $regularPassengersCount + $joinTripPassengersCount,
                 'total_amount' => $regularTotalAmount + $joinTripTotalAmount,
+                'passenger_manifest' => $passengerManifest,
                 'status' => $s->status,
                 'price' => $s->price_override ?? $s->trip->price_per_person,
                 'pickup_points' => $s->pickupPoints->map(fn($pt) => [

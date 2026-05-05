@@ -117,94 +117,134 @@
         <div class="spinner"></div>
       </div>
 
-      <div v-else class="table-container">
-        <table class="data-table booking-table">
-          <thead>
-            <tr>
-              <th>การจอง</th>
-              <th>ผู้จอง</th>
-              <th>ทริป / รอบ</th>
-              <th>ผู้โดยสาร</th>
-              <th>ชำระเงิน</th>
-              <th>สถานะ</th>
-              <th>เช็คอิน</th>
-              <th>การจัดการ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="booking in bookings" :key="booking.id">
-              <td>
+      <div v-else-if="groupedBookings.length" class="booking-groups">
+        <section v-for="group in groupedBookings" :key="group.key" class="trip-booking-group">
+          <div class="trip-group-header">
+            <div class="trip-group-title-block">
+              <span class="trip-group-icon material-symbols-rounded">map</span>
+              <div>
+                <h2>{{ group.tripTitle }}</h2>
+                <p>{{ group.scheduleRanges.join(' • ') }}</p>
+              </div>
+            </div>
+            <div class="trip-group-stats">
+              <div>
+                <span>รายการ</span>
+                <strong>{{ group.bookings.length }}</strong>
+              </div>
+              <div>
+                <span>ผู้โดยสาร</span>
+                <strong>{{ group.passengers }}</strong>
+              </div>
+              <div>
+                <span>ยอดจอง</span>
+                <strong>{{ formatMoney(group.totalAmount) }}</strong>
+              </div>
+              <div>
+                <span>ชำระแล้ว</span>
+                <strong class="text-green">{{ formatMoney(group.paidAmount) }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="trip-booking-list">
+            <article v-for="booking in group.bookings" :key="booking.id" class="booking-detail-card">
+              <div class="booking-card-head">
                 <div class="booking-ref-cell">
                   <button class="booking-ref-link" @click="openDetail(booking)">
                     {{ booking.booking_ref }}
                   </button>
-                  <span class="table-subtext">{{ formatDateTime(booking.created_at) }}</span>
+                  <span class="table-subtext">จองเมื่อ {{ formatDateTime(booking.created_at) }}</span>
                   <div class="mini-badges">
-                    <span v-if="booking.is_join_trip" class="mini-badge join">จอยทริป</span>
+                    <span class="mini-badge">{{ booking.is_join_trip ? 'จอยทริป' : 'จองปกติ' }}</span>
                     <span v-if="booking.is_group" class="mini-badge group">กรุ๊ป</span>
+                    <span v-if="booking.payment_type === 'installment'" class="mini-badge installment">ผ่อนชำระ</span>
                   </div>
                 </div>
-              </td>
-
-              <td>
-                <div class="customer-cell">
-                  <strong>{{ booking.user?.name || '-' }}</strong>
-                  <span>{{ booking.user?.phone || booking.passengers?.[0]?.phone || '-' }}</span>
-                  <span>{{ booking.user?.email || '-' }}</span>
-                </div>
-              </td>
-
-              <td>
-                <div class="trip-cell-text">
-                  <strong>{{ booking.schedule?.trip?.title || '-' }}</strong>
-                  <span>
-                    {{ formatDate(booking.schedule?.departure_date) }}
-                    <template v-if="booking.schedule?.return_date">- {{ formatDate(booking.schedule.return_date) }}</template>
+                <div class="booking-card-status">
+                  <span class="status-badge" :class="`status-${booking.status}`">
+                    {{ statusLabels[booking.status] || booking.status || '-' }}
                   </span>
-                  <span>{{ vehicleName(booking) }}</span>
+                  <span v-if="booking.checked_in" class="checkin-badge checked">
+                    <span class="material-symbols-rounded">task_alt</span>
+                    {{ formatDate(booking.checked_in_at) }}
+                  </span>
+                  <span v-else class="checkin-badge">
+                    <span class="material-symbols-rounded">qr_code_scanner</span>
+                    ยังไม่เช็คอิน
+                  </span>
                 </div>
-              </td>
+              </div>
 
-              <td>
-                <div class="passenger-cell">
-                  <strong>{{ passengerCount(booking) }} คน</strong>
-                  <span v-if="seatLabels(booking)">ที่นั่ง {{ seatLabels(booking) }}</span>
-                  <span v-else-if="booking.is_join_trip">ไม่ระบุที่นั่ง</span>
-                  <span v-else>ยังไม่มีที่นั่ง</span>
-                </div>
-              </td>
-
-              <td>
-                <div class="payment-cell">
-                  <strong>{{ formatMoney(booking.total_amount) }}</strong>
-                  <span>จ่ายแล้ว {{ formatMoney(booking.paid_amount) }}</span>
-                  <div class="payment-progress">
-                    <div :style="{ width: paymentProgress(booking) + '%' }"></div>
+              <div class="booking-info-grid">
+                <div class="booking-info-panel">
+                  <div class="booking-panel-title">
+                    <span class="material-symbols-rounded">person</span>
+                    ผู้จอง
                   </div>
-                  <span class="payment-type" :class="booking.payment_type === 'installment' ? 'installment' : 'full'">
-                    {{ paymentTypeLabel(booking) }}
-                  </span>
+                  <div class="info-lines">
+                    <strong>{{ booking.user?.name || '-' }}</strong>
+                    <span>{{ booking.user?.phone || booking.passengers?.[0]?.phone || '-' }}</span>
+                    <span>{{ booking.user?.email || '-' }}</span>
+                    <span v-if="booking.is_group">กลุ่ม: {{ booking.group_name || '-' }}</span>
+                    <span v-if="booking.group_notes">หมายเหตุกรุ๊ป: {{ booking.group_notes }}</span>
+                  </div>
                 </div>
-              </td>
 
-              <td>
-                <span class="status-badge" :class="`status-${booking.status}`">
-                  {{ statusLabels[booking.status] || booking.status || '-' }}
-                </span>
-              </td>
+                <div class="booking-info-panel">
+                  <div class="booking-panel-title">
+                    <span class="material-symbols-rounded">event</span>
+                    รอบเดินทาง
+                  </div>
+                  <div class="info-lines">
+                    <strong>{{ formatScheduleRange(booking.schedule) }}</strong>
+                    <span>{{ vehicleName(booking) }}</span>
+                    <span v-if="booking.schedule?.transport_type">ประเภทเดินทาง: {{ booking.schedule.transport_type }}</span>
+                    <span v-if="pickupInfo(booking)">จุดรับ: {{ pickupInfo(booking).regionLabel }} • {{ pickupInfo(booking).location }}</span>
+                  </div>
+                </div>
 
-              <td>
-                <span v-if="booking.checked_in" class="checkin-badge checked">
-                  <span class="material-symbols-rounded">task_alt</span>
-                  {{ formatDate(booking.checked_in_at) }}
-                </span>
-                <span v-else class="checkin-badge">
-                  <span class="material-symbols-rounded">qr_code_scanner</span>
-                  ยังไม่เช็คอิน
-                </span>
-              </td>
+                <div class="booking-info-panel">
+                  <div class="booking-panel-title">
+                    <span class="material-symbols-rounded">groups</span>
+                    ผู้โดยสาร / ที่นั่ง
+                  </div>
+                  <div class="info-lines">
+                    <strong>{{ passengerCount(booking) }} คน</strong>
+                    <span v-if="seatLabels(booking)">ที่นั่ง {{ seatLabels(booking) }}</span>
+                    <span v-else-if="booking.is_join_trip">ไม่ระบุที่นั่ง</span>
+                    <span v-else>ยังไม่มีที่นั่ง</span>
+                    <span v-if="passengerNames(booking)">{{ passengerNames(booking) }}</span>
+                  </div>
+                </div>
 
-              <td>
+                <div class="booking-info-panel payment-panel">
+                  <div class="booking-panel-title">
+                    <span class="material-symbols-rounded">payments</span>
+                    การชำระเงิน
+                  </div>
+                  <div class="payment-cell">
+                    <strong>{{ formatMoney(booking.total_amount) }}</strong>
+                    <span>จ่ายแล้ว {{ formatMoney(booking.paid_amount) }}</span>
+                    <span>คงเหลือ {{ formatMoney(paymentBalance(booking)) }}</span>
+                    <div class="payment-progress">
+                      <div :style="{ width: paymentProgress(booking) + '%' }"></div>
+                    </div>
+                    <span class="payment-type" :class="booking.payment_type === 'installment' ? 'installment' : 'full'">
+                      {{ paymentTypeLabel(booking) }}
+                    </span>
+                    <span v-if="booking.payment_method">ช่องทาง: {{ paymentMethodLabel(booking.payment_method) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="booking-card-foot">
+                <div class="booking-extra-list">
+                  <span v-if="booking.qr_code">QR: {{ booking.qr_code }}</span>
+                  <span v-if="booking.cancelled_at">ยกเลิกเมื่อ {{ formatDateTime(booking.cancelled_at) }}</span>
+                  <span v-if="booking.cancellation_reason">เหตุผลยกเลิก: {{ booking.cancellation_reason }}</span>
+                  <span v-if="booking.installment_payments?.length">งวดชำระ {{ paidInstallmentCount(booking) }} / {{ booking.installment_payments.length }}</span>
+                </div>
                 <div class="action-btns">
                   <button class="btn-icon btn-view" title="รายละเอียด" @click="openDetail(booking)">
                     <span class="material-symbols-rounded">visibility</span>
@@ -216,17 +256,15 @@
                     <span class="material-symbols-rounded">delete</span>
                   </button>
                 </div>
-              </td>
-            </tr>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
 
-            <tr v-if="!bookings.length">
-              <td colspan="8" class="empty-state">
-                <span class="material-symbols-rounded empty-icon">inbox</span>
-                ไม่พบข้อมูลการจอง
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else class="empty-state grouped-empty">
+        <span class="material-symbols-rounded empty-icon">inbox</span>
+        ไม่พบข้อมูลการจอง
       </div>
 
       <div v-if="admin.bookings.meta?.last_page > 1" class="pagination">
@@ -615,6 +653,45 @@ const manualForm = reactive({
 const bookings = computed(() => Array.isArray(admin.bookings.data) ? admin.bookings.data : []);
 const hasActiveFilters = computed(() => Boolean(filters.search || filters.status || filters.date || filters.booking_type || filters.payment_type));
 
+const groupedBookings = computed(() => {
+  const groups = new Map();
+
+  bookings.value.forEach((booking) => {
+    const tripId = booking.schedule?.trip?.id || booking.schedule?.trip_id || booking.schedule_id || 'unknown';
+    const tripTitle = booking.schedule?.trip?.title || 'ไม่ระบุทริป';
+    const key = `trip-${tripId}-${tripTitle}`;
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        tripTitle,
+        bookings: [],
+        passengers: 0,
+        totalAmount: 0,
+        paidAmount: 0,
+        scheduleRanges: [],
+      });
+    }
+
+    const group = groups.get(key);
+    const scheduleRange = formatScheduleRange(booking.schedule);
+
+    group.bookings.push(booking);
+    group.passengers += passengerCount(booking);
+    group.totalAmount += moneyNumber(booking.total_amount);
+    group.paidAmount += moneyNumber(booking.paid_amount);
+
+    if (scheduleRange && scheduleRange !== '-' && !group.scheduleRanges.includes(scheduleRange)) {
+      group.scheduleRanges.push(scheduleRange);
+    }
+  });
+
+  return [...groups.values()].map((group) => ({
+    ...group,
+    scheduleRanges: group.scheduleRanges.length ? group.scheduleRanges : ['ไม่ระบุรอบเดินทาง'],
+  }));
+});
+
 const pageStats = computed(() => bookings.value.reduce((stats, booking) => {
   stats.bookings += 1;
   stats.passengers += passengerCount(booking);
@@ -791,6 +868,13 @@ function passengerCount(booking) {
 function seatLabels(booking) {
   const labels = (booking?.seats || []).map((seat) => seat.seat_id).filter(Boolean);
   return labels.join(', ');
+}
+
+function passengerNames(booking) {
+  return (booking?.passengers || [])
+    .map((passenger) => [passenger.name, passenger.surname].filter(Boolean).join(' ').trim())
+    .filter(Boolean)
+    .join(', ');
 }
 
 function vehicleName(booking) {
@@ -1022,6 +1106,203 @@ onMounted(() => fetchData());
   font-size: 12px;
 }
 
+.booking-groups {
+  display: grid;
+  gap: 16px;
+}
+
+.trip-booking-group {
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+  overflow: hidden;
+}
+
+.trip-group-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--color-sand-dark);
+}
+
+.trip-group-title-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.trip-group-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #e8f5ec;
+  color: var(--color-accent);
+}
+
+.trip-group-title-block h2 {
+  color: var(--color-text-dark);
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.35;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.trip-group-title-block p {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin: 2px 0 0;
+}
+
+.trip-group-stats {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  gap: 8px;
+}
+
+.trip-group-stats div {
+  min-width: 82px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+  padding: 8px 10px;
+}
+
+.trip-group-stats span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.trip-group-stats strong {
+  display: block;
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.trip-booking-list {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.booking-detail-card {
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+  padding: 12px;
+}
+
+.booking-card-head,
+.booking-card-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.booking-card-status {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.booking-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eeeeee;
+}
+
+.booking-info-panel {
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 3px solid #e5e7eb;
+}
+
+.payment-panel {
+  border-left-color: #a7f3d0;
+}
+
+.booking-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-dark);
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.booking-panel-title .material-symbols-rounded {
+  color: var(--color-accent);
+  font-size: 17px;
+}
+
+.info-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.info-lines strong {
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.info-lines span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.booking-extra-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.booking-extra-list span {
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.booking-card-foot {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eeeeee;
+}
+
+.grouped-empty {
+  padding: 42px 16px;
+}
+
 .booking-table {
   min-width: 1120px;
 }
@@ -1103,6 +1384,12 @@ onMounted(() => fetchData());
   background: #eff6ff;
   color: #2563eb;
   border: 1px solid #bfdbfe;
+}
+
+.mini-badge.installment {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
 }
 
 .payment-progress {
@@ -1588,6 +1875,15 @@ onMounted(() => fetchData());
   .summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .trip-group-header,
+  .booking-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-group-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
@@ -1606,6 +1902,23 @@ onMounted(() => fetchData());
 
   .detail-hero-badges {
     justify-content: flex-start;
+  }
+
+  .trip-group-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trip-group-stats div {
+    min-width: 0;
+  }
+
+  .booking-card-head,
+  .booking-card-foot {
+    flex-direction: column;
+  }
+
+  .booking-card-status {
+    align-items: flex-start;
   }
 
   .installment-row {
