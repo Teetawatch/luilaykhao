@@ -163,6 +163,39 @@
                         <p class="font-black text-base text-gray-900 leading-tight">{{ booking.passengers?.length || 0 }} ท่าน</p>
                       </div>
                     </div>
+
+                    <div v-if="booking.passengers?.length" class="sm:col-span-2 rounded-3xl bg-gray-50 border border-gray-100 p-5">
+                      <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100">
+                          <span class="material-symbols-rounded text-teal-600 text-[22px]">badge</span>
+                        </div>
+                        <div>
+                          <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">รายชื่อผู้ร่วมทริป</p>
+                          <p class="text-sm font-bold text-gray-500">คำนำหน้า / ชื่อ / นามสกุล</p>
+                        </div>
+                      </div>
+                      <div class="grid grid-cols-1 gap-3">
+                        <div
+                          v-for="(p, i) in booking.passengers"
+                          :key="p.id || i"
+                          class="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_0.8fr_1fr_1fr] gap-3 items-center bg-white rounded-2xl border border-gray-100 px-4 py-3"
+                        >
+                          <span class="w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-black flex items-center justify-center">{{ i + 1 }}</span>
+                          <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">คำนำหน้า</p>
+                            <p class="font-black text-gray-900">{{ p.title || '-' }}</p>
+                          </div>
+                          <div>
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">ชื่อ</p>
+                            <p class="font-black text-gray-900">{{ passengerNameParts(p).firstName }}</p>
+                          </div>
+                          <div class="col-span-2 sm:col-span-1">
+                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">นามสกุล</p>
+                            <p class="font-black text-gray-900">{{ passengerNameParts(p).lastName }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Group Info if exists -->
@@ -264,7 +297,10 @@
                     {{ i + 1 }}
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="font-black text-gray-900 text-lg leading-tight truncate">{{ p.name }}</p>
+                    <p class="font-black text-gray-900 text-lg leading-tight truncate">{{ passengerDisplayName(p) }}</p>
+                    <p class="text-xs font-bold text-gray-400 mt-1">
+                      {{ p.title || '-' }} · {{ passengerNameParts(p).firstName }} · {{ passengerNameParts(p).lastName }}
+                    </p>
                     <p v-if="p.phone" class="text-sm font-bold text-gray-400 flex items-center gap-1.5 mt-1">
                       <span class="material-symbols-rounded text-[16px]">call</span>
                       {{ p.phone }}
@@ -310,7 +346,7 @@
               </div>
 
               <!-- QR Code Text Ref -->
-              <div class="relative z-10 bg-gray-50 px-6 py-2.5 rounded-2xl border border-gray-100 mb-8 font-mono font-black text-teal-800 text-lg tracking-widest shadow-inner group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
+              <div class="relative z-10 max-w-full overflow-x-auto whitespace-nowrap bg-gray-50 px-6 py-2.5 rounded-2xl border border-gray-100 mb-8 font-mono font-black text-teal-800 text-lg tracking-widest shadow-inner group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
                 {{ booking.qr_code }}
               </div>
 
@@ -445,6 +481,21 @@ function isNextInstallment(inst) {
 function formatDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function passengerNameParts(passenger) {
+  const name = String(passenger?.name || '').trim();
+  if (!name) return { firstName: '-', lastName: '-' };
+
+  const parts = name.split(/\s+/);
+  return {
+    firstName: parts[0] || '-',
+    lastName: parts.slice(1).join(' ') || '-',
+  };
+}
+
+function passengerDisplayName(passenger) {
+  return [passenger?.title, passenger?.name].filter(Boolean).join(' ') || '-';
 }
 
 async function renderQrCode() {
