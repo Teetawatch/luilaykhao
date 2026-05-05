@@ -52,28 +52,29 @@
         </router-link>
 
         <!-- Desktop Menu (Right-aligned) -->
-        <div class="hidden md:flex items-center justify-end flex-1 px-4 lg:px-8">
+        <div ref="navDropdownRef" class="hidden md:flex items-center justify-end flex-1 px-4 lg:px-8">
           <div class="flex items-center gap-1 lg:gap-2">
             <template v-for="link in navLinks" :key="link.label">
               <!-- Dropdown Menu -->
-              <div v-if="link.children" ref="navDropdownRef" class="relative group/nav">
-                <div 
+              <div v-if="link.children" class="relative group/nav">
+                <button
+                  type="button"
                   class="nav-link flex items-center gap-1.5 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300 cursor-pointer"
-                  :class="{ 'active-state': isAboutActive }"
-                  @click="navDropdownOpen = !navDropdownOpen"
+                  :class="{ 'active-state': isDropdownActive(link) }"
+                  @click.stop="toggleNavDropdown(link.label)"
                 >
                   <span>{{ link.label }}</span>
-                  <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover/nav:translate-y-0.5" :class="{ 'rotate-180': navDropdownOpen }">expand_more</span>
-                </div>
+                  <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover/nav:translate-y-0.5" :class="{ 'rotate-180': openNavDropdown === link.label }">expand_more</span>
+                </button>
 
                 <!-- Dropdown List -->
-                <div v-if="navDropdownOpen" class="absolute top-full left-1/2 -translate-x-1/2 w-64 pt-3 transition-all duration-300 transform z-[60] animation-fade-slide">
+                <div v-if="openNavDropdown === link.label" class="absolute top-full left-1/2 -translate-x-1/2 w-64 pt-3 transition-all duration-300 transform z-[60] animation-fade-slide">
                   <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
                     <router-link 
                       v-for="child in link.children" 
                       :key="child.to" 
                       :to="child.to"
-                      @click="navDropdownOpen = false"
+                      @click="openNavDropdown = null"
                       class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-200"
                       active-class="bg-primary/5 text-primary"
                     >
@@ -136,7 +137,7 @@
             <!-- Wishlist (Only for logged in) -->
             <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative flex items-center">
               <button
-                @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen"
+                @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen; notificationDropdownOpen = false; userDropdownOpen = false"
                 class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
               >
                 <span class="material-symbols-rounded text-[20px]" :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
@@ -182,24 +183,144 @@
             </div>
 
             <!-- Notifications (Desktop) -->
-            <div v-if="auth.isLoggedIn" class="relative flex items-center">
-              <router-link
-                to="/notifications"
+            <div v-if="auth.isLoggedIn" ref="notificationDropdownRef" class="relative flex items-center">
+              <button
+                type="button"
+                @click.stop="toggleNotificationDropdown"
                 class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
+                :class="{ 'text-primary bg-primary/5': notificationDropdownOpen }"
                 title="การแจ้งเตือน"
               >
                 <span class="material-symbols-rounded text-[20px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
                 <span v-if="unreadNotifications > 0" class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                   {{ unreadNotifications }}
                 </span>
-              </router-link>
+              </button>
+
+              <!-- Notifications Dropdown -->
+              <div v-if="notificationDropdownOpen" class="absolute top-full right-0 w-[420px] pt-3 z-[60] animation-fade-slide">
+                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden">
+                  <div class="px-5 py-4 bg-sand/30 border-b border-sand-dark/30">
+                    <div class="flex items-start gap-3">
+                      <div class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-[14px] font-black text-text-dark leading-tight">การแจ้งเตือน</p>
+                        <p class="text-[11px] font-bold text-text-muted mt-1">
+                          {{ unreadNotifications > 0 ? `ยังไม่ได้อ่าน ${unreadNotifications} รายการ` : 'อ่านครบทุกข้อความแล้ว' }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mt-4">
+                      <button
+                        type="button"
+                        @click="markAllNotificationsRead"
+                        :disabled="unreadNotifications === 0 || notificationBusy"
+                        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-45 disabled:cursor-not-allowed transition-all"
+                      >
+                        <span class="material-symbols-rounded text-[17px]">done_all</span>
+                        อ่านทั้งหมด
+                      </button>
+                      <button
+                        type="button"
+                        @click="clearNotifications"
+                        :disabled="notifications.length === 0 || notificationBusy"
+                        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-45 disabled:cursor-not-allowed transition-all"
+                      >
+                        <span class="material-symbols-rounded text-[17px]">delete_sweep</span>
+                        เคลียร์ข้อความ
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="notificationsLoading" class="py-10 px-5 text-center">
+                    <div class="w-8 h-8 mx-auto border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                    <p class="mt-3 text-[12px] font-bold text-text-muted">กำลังโหลดการแจ้งเตือน...</p>
+                  </div>
+
+                  <div v-else-if="notificationError" class="py-10 px-5 text-center">
+                    <span class="material-symbols-rounded text-[36px] text-red-300">error</span>
+                    <p class="mt-2 text-[12px] font-bold text-text-muted">{{ notificationError }}</p>
+                    <button type="button" @click="loadNotifications" class="mt-3 px-4 py-2 rounded-xl text-[11px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all">ลองใหม่</button>
+                  </div>
+
+                  <div v-else-if="notifications.length === 0" class="py-10 px-5 text-center">
+                    <span class="material-symbols-rounded text-[42px] text-sand-dark/50">notifications_off</span>
+                    <p class="mt-2 text-[13px] font-black text-text-dark">ยังไม่มีการแจ้งเตือน</p>
+                    <p class="mt-1 text-[11px] font-bold text-text-muted">ข้อความใหม่จะแสดงในส่วนนี้</p>
+                  </div>
+
+                  <div v-else class="max-h-[440px] overflow-y-auto divide-y divide-sand-dark/20">
+                    <div
+                      v-for="n in notifications"
+                      :key="n.id"
+                      class="relative px-4 py-3.5 hover:bg-sand/35 transition-colors"
+                      :class="{ 'bg-primary/[0.035]': !n.is_read }"
+                    >
+                      <div v-if="!n.is_read" class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                      <div class="flex gap-3">
+                        <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" :class="notifStyle(n.type).bg">
+                          <span class="material-symbols-rounded text-[22px]" :class="notifStyle(n.type).text">{{ notifIcon(n.type) }}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-start gap-3">
+                            <div class="flex-1 min-w-0">
+                              <p class="text-[13px] font-black text-text-dark leading-snug" :class="{ 'text-primary': !n.is_read }">{{ n.title }}</p>
+                              <p class="mt-1 text-[12px] font-medium text-text-mid leading-relaxed whitespace-normal break-words">{{ n.body }}</p>
+                            </div>
+                            <button
+                              type="button"
+                              @click="deleteNotification(n.id)"
+                              class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
+                              title="ลบข้อความนี้"
+                            >
+                              <span class="material-symbols-rounded text-[18px]">close</span>
+                            </button>
+                          </div>
+
+                          <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                            <span class="px-2 py-1 rounded-full text-[10px] font-black bg-sand text-text-muted">{{ notificationTypeLabel(n.type) }}</span>
+                            <span class="px-2 py-1 rounded-full text-[10px] font-black" :class="n.is_read ? 'bg-sand text-text-muted' : 'bg-primary/10 text-primary'">
+                              {{ n.is_read ? 'อ่านแล้ว' : 'ยังไม่ได้อ่าน' }}
+                            </span>
+                            <span class="px-2 py-1 rounded-full text-[10px] font-black bg-sand text-text-muted">{{ timeAgo(n.created_at) }}</span>
+                          </div>
+
+                          <div v-if="notificationDataEntries(n.data).length" class="mt-2 flex flex-wrap gap-1.5">
+                            <span
+                              v-for="item in notificationDataEntries(n.data)"
+                              :key="`${n.id}-${item.key}`"
+                              class="max-w-full px-2 py-1 rounded-lg bg-white border border-sand-dark/40 text-[10px] font-bold text-text-mid break-all"
+                            >
+                              {{ item.key }}: {{ item.value }}
+                            </span>
+                          </div>
+
+                          <div v-if="!n.is_read" class="mt-3">
+                            <button
+                              type="button"
+                              @click="markNotificationRead(n)"
+                              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
+                            >
+                              <span class="material-symbols-rounded text-[15px]">done</span>
+                              ทำเครื่องหมายว่าอ่านแล้ว
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- User / Login -->
             <template v-if="auth.isLoggedIn">
               <div ref="userDropdownRef" class="relative flex items-center">
                 <button 
-                  @click.stop="userDropdownOpen = !userDropdownOpen"
+                  @click.stop="userDropdownOpen = !userDropdownOpen; notificationDropdownOpen = false; wishlistDropdownOpen = false"
                   class="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-sand/50 transition-all border border-transparent hover:border-sand-dark/20"
                 >
                   <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-sm">
@@ -328,7 +449,7 @@
 
           <!-- Hamburger -->
           <button
-            @click="mobileOpen = !mobileOpen; mobileAccountOpen = false"
+            @click="mobileOpen = !mobileOpen; mobileAccountOpen = false; mobileNavDropdownOpen = null"
             class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors duration-200 cursor-pointer focus:outline-none"
             aria-label="Toggle menu"
           >
@@ -445,26 +566,38 @@
           <div class="space-y-1">
             <template v-for="link in navLinks" :key="link.label">
               <div v-if="link.children" class="flex flex-col gap-1">
-                <div class="px-5 py-2 text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
-                  <span class="material-symbols-rounded text-[16px]">{{ link.icon }}</span>
-                  {{ link.label }}
-                </div>
-                <router-link
-                  v-for="child in link.children"
-                  :key="child.to"
-                  :to="child.to"
-                  @click="mobileOpen = false"
-                  class="flex items-center gap-3.5 px-8 py-2.5 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+                <button
+                  type="button"
+                  class="mobile-nav-link flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+                  :class="{ 'active-state': isDropdownActive(link) }"
+                  @click.stop="toggleMobileNavDropdown(link.label)"
                 >
-                  <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
-                  {{ child.label }}
-                </router-link>
+                  <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
+                  {{ link.label }}
+                  <span class="material-symbols-rounded ml-auto text-[20px] transition-transform duration-300" :class="{ 'rotate-180': mobileNavDropdownOpen === link.label }">expand_more</span>
+                </button>
+
+                <Transition name="mobile-submenu">
+                  <div v-if="mobileNavDropdownOpen === link.label" class="pl-4 space-y-1">
+                    <router-link
+                      v-for="child in link.children"
+                      :key="child.to"
+                      :to="child.to"
+                      @click="mobileOpen = false; mobileNavDropdownOpen = null"
+                      class="flex items-center gap-3.5 px-6 py-2.5 rounded-2xl text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+                      active-class="bg-primary/5 text-primary"
+                    >
+                      <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
+                      {{ child.label }}
+                    </router-link>
+                  </div>
+                </Transition>
               </div>
               
               <router-link
                 v-else
                 :to="link.to"
-                @click="mobileOpen = false"
+                @click="mobileOpen = false; mobileNavDropdownOpen = null"
                 class="mobile-nav-link flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
                 :exact="link.to === '/'"
               >
@@ -478,7 +611,7 @@
           <div class="pt-2">
             <router-link
               to="/trips"
-              @click="mobileOpen = false"
+              @click="mobileOpen = false; mobileNavDropdownOpen = null"
               class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary-dark transition-all duration-200 active:scale-[0.98] shadow-md shadow-primary/20"
             >
               <span class="material-symbols-rounded text-[20px]">explore</span>
@@ -529,12 +662,19 @@ const mobileAccountOpen = ref(false);
 const searchQuery = ref('');
 const unreadNotifications = ref(0);
 const isScrolled = ref(false);
-const navDropdownOpen = ref(false);
+const openNavDropdown = ref(null);
+const mobileNavDropdownOpen = ref(null);
 const userDropdownOpen = ref(false);
 const wishlistDropdownOpen = ref(false);
+const notificationDropdownOpen = ref(false);
+const notifications = ref([]);
+const notificationsLoading = ref(false);
+const notificationBusy = ref(false);
+const notificationError = ref('');
 const navDropdownRef = ref(null);
 const userDropdownRef = ref(null);
 const wishlistDropdownRef = ref(null);
+const notificationDropdownRef = ref(null);
 const desktopSearchInput = ref(null);
 const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
@@ -548,6 +688,24 @@ function toggleDesktopSearch() {
   }
 }
 
+function toggleNavDropdown(label) {
+  openNavDropdown.value = openNavDropdown.value === label ? null : label;
+}
+
+function toggleMobileNavDropdown(label) {
+  mobileNavDropdownOpen.value = mobileNavDropdownOpen.value === label ? null : label;
+}
+
+async function toggleNotificationDropdown() {
+  notificationDropdownOpen.value = !notificationDropdownOpen.value;
+  wishlistDropdownOpen.value = false;
+  userDropdownOpen.value = false;
+
+  if (notificationDropdownOpen.value) {
+    await loadNotifications();
+  }
+}
+
 function handleClickOutside(e) {
   const navEl = Array.isArray(navDropdownRef.value)
     ? navDropdownRef.value[0]
@@ -558,8 +716,11 @@ function handleClickOutside(e) {
   const wishlistEl = Array.isArray(wishlistDropdownRef.value)
     ? wishlistDropdownRef.value[0]
     : wishlistDropdownRef.value;
+  const notificationEl = Array.isArray(notificationDropdownRef.value)
+    ? notificationDropdownRef.value[0]
+    : notificationDropdownRef.value;
   if (!navEl || !navEl.contains(e.target)) {
-    navDropdownOpen.value = false;
+    openNavDropdown.value = null;
   }
   if (!userEl || !userEl.contains(e.target)) {
     userDropdownOpen.value = false;
@@ -567,21 +728,163 @@ function handleClickOutside(e) {
   if (!wishlistEl || !wishlistEl.contains(e.target)) {
     wishlistDropdownOpen.value = false;
   }
+  if (!notificationEl || !notificationEl.contains(e.target)) {
+    notificationDropdownOpen.value = false;
+  }
 }
 
 function doSearch() {
   if (!searchQuery.value.trim()) return;
   router.push(`/trips?search=${encodeURIComponent(searchQuery.value.trim())}`);
   mobileOpen.value = false;
+  mobileNavDropdownOpen.value = null;
   searchQuery.value = '';
 }
 
 async function fetchUnreadCount() {
-  if (!auth.isLoggedIn) return;
+  if (!auth.isLoggedIn) {
+    unreadNotifications.value = 0;
+    return;
+  }
   try {
     const res = await api.get('/notifications/unread-count');
     unreadNotifications.value = res.data.data.count;
   } catch {}
+}
+
+async function loadNotifications() {
+  if (!auth.isLoggedIn || notificationsLoading.value) return;
+  notificationsLoading.value = true;
+  notificationError.value = '';
+
+  try {
+    const res = await api.get('/notifications', { params: { per_page: 20 } });
+    notifications.value = res.data.data || [];
+    await fetchUnreadCount();
+  } catch {
+    notificationError.value = 'โหลดการแจ้งเตือนไม่สำเร็จ';
+  } finally {
+    notificationsLoading.value = false;
+  }
+}
+
+async function markNotificationRead(notification) {
+  if (!notification || notification.is_read || notificationBusy.value) return;
+  notificationBusy.value = true;
+
+  try {
+    await api.put(`/notifications/${notification.id}/read`);
+    notification.is_read = true;
+    notification.read_at = new Date().toISOString();
+    unreadNotifications.value = Math.max(0, unreadNotifications.value - 1);
+  } finally {
+    notificationBusy.value = false;
+  }
+}
+
+async function markAllNotificationsRead() {
+  if (unreadNotifications.value === 0 || notificationBusy.value) return;
+  notificationBusy.value = true;
+
+  try {
+    await api.put('/notifications/read-all');
+    notifications.value.forEach(n => {
+      n.is_read = true;
+      n.read_at = n.read_at || new Date().toISOString();
+    });
+    unreadNotifications.value = 0;
+  } finally {
+    notificationBusy.value = false;
+  }
+}
+
+async function deleteNotification(id) {
+  if (notificationBusy.value) return;
+  notificationBusy.value = true;
+
+  try {
+    const target = notifications.value.find(n => n.id === id);
+    await api.delete(`/notifications/${id}`);
+    notifications.value = notifications.value.filter(n => n.id !== id);
+    if (target && !target.is_read) {
+      unreadNotifications.value = Math.max(0, unreadNotifications.value - 1);
+    }
+  } finally {
+    notificationBusy.value = false;
+  }
+}
+
+async function clearNotifications() {
+  if (notifications.value.length === 0 || notificationBusy.value) return;
+  if (!window.confirm('ต้องการเคลียร์ข้อความแจ้งเตือนทั้งหมดใช่ไหม?')) return;
+
+  notificationBusy.value = true;
+  try {
+    await api.delete('/notifications');
+    notifications.value = [];
+    unreadNotifications.value = 0;
+  } finally {
+    notificationBusy.value = false;
+  }
+}
+
+function notificationDataEntries(data) {
+  if (!data || typeof data !== 'object') return [];
+
+  return Object.entries(data).map(([key, value]) => ({
+    key,
+    value: typeof value === 'object' ? JSON.stringify(value) : String(value),
+  }));
+}
+
+function notifIcon(type) {
+  const map = {
+    seat_alert: 'local_fire_department',
+    booking_reminder: 'calendar_month',
+    promo: 'featured_seasonal_and_gifts',
+    system: 'info',
+    loyalty: 'star',
+  };
+  return map[type] || 'notifications';
+}
+
+function notifStyle(type) {
+  const map = {
+    seat_alert: { bg: 'bg-red-50', text: 'text-red-500' },
+    booking_reminder: { bg: 'bg-blue-50', text: 'text-blue-600' },
+    promo: { bg: 'bg-amber-50', text: 'text-amber-600' },
+    system: { bg: 'bg-sand', text: 'text-text-muted' },
+    loyalty: { bg: 'bg-orange-50', text: 'text-orange-600' },
+  };
+  return map[type] || { bg: 'bg-primary/10', text: 'text-primary' };
+}
+
+function notificationTypeLabel(type) {
+  const map = {
+    seat_alert: 'ที่นั่ง',
+    booking_reminder: 'เตือนการจอง',
+    promo: 'โปรโมชั่น',
+    system: 'ระบบ',
+    loyalty: 'แต้มสะสม',
+  };
+  return map[type] || type || 'ทั่วไป';
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'เมื่อกี้';
+  if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} วันที่แล้ว`;
+
+  return new Date(dateStr).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 let pollInterval = null;
@@ -630,11 +933,9 @@ const navLinks = [
   { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
 ];
 
-const isAboutActive = computed(() => {
-  const aboutLink = navLinks.find(l => l.label === 'เกี่ยวกับเรา');
-  if (!aboutLink || !aboutLink.children) return false;
-  return aboutLink.children.some(child => router.currentRoute.value.path === child.to);
-});
+function isDropdownActive(link) {
+  return Boolean(link?.children?.some(child => router.currentRoute.value.path === child.to));
+}
 
 const isAdmin = computed(() => {
   const roles = auth.user?.roles?.map(r => typeof r === 'string' ? r : r.name) || [];
@@ -650,6 +951,10 @@ async function handleLogout() {
   await auth.logout();
   mobileOpen.value = false;
   mobileAccountOpen.value = false;
+  mobileNavDropdownOpen.value = null;
+  notificationDropdownOpen.value = false;
+  notifications.value = [];
+  unreadNotifications.value = 0;
   router.push('/');
 }
 </script>
@@ -674,12 +979,32 @@ async function handleLogout() {
   transform: translateY(0);
 }
 
+/* Mobile nested dropdown transition */
+.mobile-submenu-enter-active,
+.mobile-submenu-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.mobile-submenu-enter-from,
+.mobile-submenu-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-4px);
+}
+.mobile-submenu-enter-to,
+.mobile-submenu-leave-from {
+  opacity: 1;
+  max-height: 360px;
+  transform: translateY(0);
+}
+
 /* Active route highlight */
 .nav-link.router-link-active,
 .nav-link.router-link-exact-active,
 .nav-link.active-state,
 .mobile-nav-link.router-link-active,
-.mobile-nav-link.router-link-exact-active {
+.mobile-nav-link.router-link-exact-active,
+.mobile-nav-link.active-state {
   color: var(--color-primary) !important;
   background-color: rgba(var(--color-primary-rgb), 0.08) !important;
 }
@@ -738,6 +1063,8 @@ async function handleLogout() {
 @media (prefers-reduced-motion: reduce) {
   .mobile-menu-enter-active,
   .mobile-menu-leave-active,
+  .mobile-submenu-enter-active,
+  .mobile-submenu-leave-active,
   .animate-trust-bar {
     transition: none;
     animation: none;

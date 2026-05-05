@@ -70,6 +70,13 @@ class NotificationController extends Controller
         return $this->success(null, 'ลบการแจ้งเตือนสำเร็จ');
     }
 
+    public function destroyAll(Request $request): JsonResponse
+    {
+        SmartNotification::where('user_id', $request->user()->id)->delete();
+
+        return $this->success(null, 'ลบการแจ้งเตือนทั้งหมดสำเร็จ');
+    }
+
     public function storePushToken(Request $request): JsonResponse
     {
         $validated = $request->validate([
