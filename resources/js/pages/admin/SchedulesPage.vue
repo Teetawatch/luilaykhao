@@ -824,25 +824,63 @@
               <span>{{ moveSeatMapError }}</span>
             </div>
 
-            <div v-else class="move-seat-list">
-              <div v-for="row in moveSeatAssignmentRows" :key="row.passenger.id" class="move-seat-row">
-                <div class="move-seat-person">
-                  <strong>{{ row.passenger.name }}</strong>
-                  <span>
-                    ที่นั่งเดิม {{ row.originalSeatId || '—' }}
-                    <template v-if="row.originalSeatId && !row.originalSeatAvailable"> · ที่นั่งเดิมไม่ว่างในรอบปลายทาง</template>
+            <div v-else class="move-seat-layout">
+              <div class="move-seat-passengers">
+                <button
+                  v-for="row in moveSeatAssignmentRows"
+                  :key="row.passenger.id"
+                  type="button"
+                  class="move-seat-person-card"
+                  :class="{ active: activeMoveSeatPassengerId === row.passenger.id, assigned: row.assignedSeatId }"
+                  @click="activeMoveSeatPassengerId = row.passenger.id"
+                >
+                  <span class="move-seat-person-name">{{ row.passenger.name }}</span>
+                  <span class="move-seat-person-meta">
+                    เดิม {{ row.originalSeatId || '—' }}
+                    <template v-if="row.originalSeatId && !row.originalSeatAvailable"> · เดิมไม่ว่าง</template>
                   </span>
+                  <strong>{{ row.assignedSeatId || 'ยังไม่เลือก' }}</strong>
+                </button>
+              </div>
+
+              <div class="move-seat-map-panel">
+                <div class="move-seat-map-legend">
+                  <span><i class="legend-box available"></i>ว่าง</span>
+                  <span><i class="legend-box selected"></i>เลือกอยู่</span>
+                  <span><i class="legend-box booked"></i>จองแล้ว/ล็อก</span>
                 </div>
-                <select v-model="moveSeatAssignments[row.passenger.id]" :disabled="moveSeatMapLoading">
-                  <option value="">เลือกที่นั่ง</option>
-                  <option
-                    v-for="seat in moveSeatOptionsFor(row.passenger.id)"
-                    :key="seat.id"
-                    :value="seat.id"
-                  >
-                    {{ seat.label || seat.id }}
-                  </option>
-                </select>
+
+                <div class="move-seat-vehicle">
+                  <div class="move-seat-front">
+                    <span>{{ moveTargetSeatMap?.front_label || 'หน้ารถ' }}</span>
+                    <span v-if="moveTargetSeatMap?.show_driver !== false" class="move-driver">
+                      <span class="material-symbols-rounded">{{ moveTargetSeatMap?.driver_icon || 'directions_car' }}</span>
+                      คนขับ
+                    </span>
+                  </div>
+
+                  <div class="move-seat-grid" :style="moveSeatGridStyle">
+                    <template v-for="cell in moveSeatCells" :key="cell.key">
+                      <div v-if="cell.type === 'aisle'" class="move-seat-aisle"></div>
+                      <button
+                        v-else-if="cell.seat"
+                        type="button"
+                        class="move-seat-button"
+                        :class="moveSeatButtonClass(cell.seat)"
+                        :disabled="!canSelectMoveSeat(cell.seat)"
+                        :title="moveSeatTitle(cell.seat)"
+                        @click="assignMoveSeat(cell.seat)"
+                      >
+                        <span class="material-symbols-rounded">airline_seat_recline_normal</span>
+                        <strong>{{ cell.seat.label || cell.seat.id }}</strong>
+                        <small v-if="moveSeatAssignedPassengerName(cell.seat.id)">{{ moveSeatAssignedPassengerName(cell.seat.id) }}</small>
+                      </button>
+                      <div v-else class="move-seat-empty"></div>
+                    </template>
+                  </div>
+
+                  <div class="move-seat-rear">{{ moveTargetSeatMap?.rear_label || 'ท้ายรถ' }}</div>
+                </div>
               </div>
             </div>
 
@@ -1340,6 +1378,7 @@ const moveTargetSeatMap = ref(null);
 const moveSeatMapLoading = ref(false);
 const moveSeatMapError = ref('');
 const moveSeatAssignments = reactive({});
+const activeMoveSeatPassengerId = ref(null);
 
 const selectedMovePassengerCount = computed(() => moveSelectedPassengerIds.value.length);
 const selectedMovePassengers = computed(() => {
@@ -1381,6 +1420,32 @@ const moveSeatAssignmentRows = computed(() => selectedMoveSeatPassengers.value.m
     assignedSeatId: moveSeatAssignments[passenger.id] || '',
   };
 }));
+const moveSeatGridColumns = computed(() => moveTargetSeatMap.value?.columns || []);
+const moveSeatGridStyle = computed(() => ({
+  gridTemplateColumns: moveSeatGridColumns.value.map((column) => column === '' ? '34px' : '58px').join(' '),
+}));
+const moveSeatCells = computed(() => {
+  if (!moveTargetSeatMap.value) return [];
+
+  const rows = moveTargetSeatMap.value.rows || 0;
+  const columns = moveSeatGridColumns.value;
+  const seatsById = new Map(moveTargetSeats.value.map((seat) => [seat.id, seat]));
+  const cells = [];
+
+  for (let row = 1; row <= rows; row += 1) {
+    columns.forEach((column, columnIndex) => {
+      if (column === '') {
+        cells.push({ key: `aisle-${row}-${columnIndex}`, type: 'aisle' });
+        return;
+      }
+
+      const seatId = `${column}${row}`;
+      cells.push({ key: seatId, type: 'seat', seat: seatsById.get(seatId) || null });
+    });
+  }
+
+  return cells;
+});
 const moveSeatAssignmentError = computed(() => {
   if (!moveTargetId.value || !selectedMoveSeatPassengers.value.length) return '';
   if (moveSeatMapLoading.value) return 'กำลังโหลดข้อมูลที่นั่งปลายทาง';
@@ -1497,6 +1562,7 @@ const resetMoveSeatSelection = () => {
   moveTargetSeatMap.value = null;
   moveSeatMapError.value = '';
   moveSeatMapLoading.value = false;
+  activeMoveSeatPassengerId.value = null;
   Object.keys(moveSeatAssignments).forEach((key) => delete moveSeatAssignments[key]);
 };
 
@@ -1529,16 +1595,12 @@ const initializeMoveSeatAssignments = () => {
       delete moveSeatAssignments[passengerId];
     }
   });
-};
 
-const moveSeatOptionsFor = (passengerId) => {
-  const selectedByOthers = new Set(
-    Object.entries(moveSeatAssignments)
-      .filter(([id, seatId]) => String(id) !== String(passengerId) && seatId)
-      .map(([, seatId]) => seatId)
-  );
-
-  return availableMoveTargetSeats.value.filter((seat) => !selectedByOthers.has(seat.id));
+  if (!selectedMoveSeatPassengers.value.some((passenger) => passenger.id === activeMoveSeatPassengerId.value)) {
+    activeMoveSeatPassengerId.value = selectedMoveSeatPassengers.value.find((passenger) => !moveSeatAssignments[passenger.id])?.id
+      || selectedMoveSeatPassengers.value[0]?.id
+      || null;
+  }
 };
 
 const buildMoveSeatAssignmentsPayload = () => {
@@ -1549,6 +1611,50 @@ const buildMoveSeatAssignmentsPayload = () => {
     }
   });
   return payload;
+};
+
+const activeMoveSeatPassenger = computed(() => selectedMoveSeatPassengers.value.find((passenger) => passenger.id === activeMoveSeatPassengerId.value) || null);
+
+const moveSeatAssignedPassengerName = (seatId) => {
+  const passengerId = Object.entries(moveSeatAssignments).find(([, assignedSeatId]) => assignedSeatId === seatId)?.[0];
+  if (!passengerId) return '';
+  return selectedMoveSeatPassengers.value.find((passenger) => String(passenger.id) === String(passengerId))?.name || '';
+};
+
+const canSelectMoveSeat = (seat) => {
+  if (!seat || seat.status !== 'available' || !activeMoveSeatPassenger.value) return false;
+  const assignedPassengerName = moveSeatAssignedPassengerName(seat.id);
+  return !assignedPassengerName || moveSeatAssignments[activeMoveSeatPassenger.value.id] === seat.id;
+};
+
+const moveSeatButtonClass = (seat) => {
+  const assignedPassengerName = moveSeatAssignedPassengerName(seat.id);
+
+  return {
+    available: seat.status === 'available' && !assignedPassengerName,
+    booked: seat.status !== 'available',
+    selected: Boolean(assignedPassengerName),
+    active: activeMoveSeatPassenger.value && moveSeatAssignments[activeMoveSeatPassenger.value.id] === seat.id,
+  };
+};
+
+const moveSeatTitle = (seat) => {
+  if (seat.status !== 'available') {
+    return seat.passenger_name ? `จองแล้วโดย ${seat.passenger_name}` : 'ที่นั่งไม่ว่าง';
+  }
+
+  const assignedPassengerName = moveSeatAssignedPassengerName(seat.id);
+  if (assignedPassengerName) return `เลือกให้ ${assignedPassengerName}`;
+  if (activeMoveSeatPassenger.value) return `เลือกที่นั่ง ${seat.label || seat.id} ให้ ${activeMoveSeatPassenger.value.name}`;
+  return 'เลือกผู้โดยสารก่อน';
+};
+
+const assignMoveSeat = (seat) => {
+  if (!canSelectMoveSeat(seat)) return;
+
+  moveSeatAssignments[activeMoveSeatPassenger.value.id] = seat.id;
+  activeMoveSeatPassengerId.value = selectedMoveSeatPassengers.value.find((passenger) => !moveSeatAssignments[passenger.id])?.id
+    || activeMoveSeatPassenger.value.id;
 };
 
 const fetchMoveTargetSeatMap = async () => {
@@ -2661,6 +2767,226 @@ onMounted(() => {
   gap: 8px;
 }
 
+.move-seat-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.move-seat-passengers {
+  display: grid;
+  gap: 8px;
+}
+
+.move-seat-person-card {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  padding: 10px 12px;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.move-seat-person-card:hover,
+.move-seat-person-card.active {
+  background: #f0faf4;
+  border-color: #b7dfc5;
+  box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.06);
+}
+
+.move-seat-person-card.assigned:not(.active) {
+  background: #f8fafc;
+}
+
+.move-seat-person-name {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.move-seat-person-meta {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.move-seat-person-card strong {
+  color: var(--color-accent);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.move-seat-map-panel {
+  min-width: 0;
+}
+
+.move-seat-map-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.move-seat-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+}
+
+.legend-box.available {
+  background: #ffffff;
+}
+
+.legend-box.selected {
+  background: #2d7a4f;
+  border-color: #2d7a4f;
+}
+
+.legend-box.booked {
+  background: #d1d5db;
+}
+
+.move-seat-vehicle {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.move-seat-front,
+.move-seat-rear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.move-seat-front {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #d1d5db;
+}
+
+.move-seat-rear {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #d1d5db;
+}
+
+.move-driver {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.move-driver .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.move-seat-grid {
+  display: grid;
+  gap: 8px;
+  justify-content: center;
+  min-width: max-content;
+}
+
+.move-seat-button {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  width: 58px;
+  min-height: 62px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.move-seat-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.move-seat-button .material-symbols-rounded {
+  font-size: 20px;
+}
+
+.move-seat-button strong {
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.move-seat-button small {
+  max-width: 48px;
+  overflow: hidden;
+  color: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.move-seat-button.selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #ffffff;
+}
+
+.move-seat-button.active {
+  box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.18);
+}
+
+.move-seat-button.booked,
+.move-seat-button:disabled {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.move-seat-aisle {
+  width: 34px;
+  min-height: 62px;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, transparent, #e5e7eb, transparent);
+  opacity: 0.7;
+}
+
+.move-seat-empty {
+  width: 58px;
+  min-height: 62px;
+}
+
 .move-seat-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 180px;
@@ -2723,6 +3049,16 @@ onMounted(() => {
 .move-seat-error .material-symbols-rounded,
 .alert-card .material-symbols-rounded {
   font-size: 17px;
+}
+
+@media (max-width: 768px) {
+  .move-seat-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .move-seat-passengers {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 }
 
 .copy-target-item.disabled {
