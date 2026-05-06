@@ -489,70 +489,95 @@
                       <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง “เฉพาะรอบที่ยังว่าง”</p>
                     </div>
 
-                    <div v-else class="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
-                    <button
-                      v-for="s in showAllSchedules ? filteredSchedules : filteredSchedules.slice(0, 5)"
-                      :key="s.id"
-                      @click="selectSchedule(s)"
-                      :disabled="!isScheduleBookable(s)"
-                      class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
-                      :class="[
-                        selectedSchedule?.id === s.id
-                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                          : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                        !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
-                      ]"
-                    >
-                      <div class="flex items-center justify-between gap-3">
-                        <div class="min-w-0 flex items-center gap-3">
-                          <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
-                          <div>
-                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight flex items-center flex-wrap">
-                              {{ formatDate(s.departure_date) }}
-                              <template v-if="s.return_date !== s.departure_date">
-                                <span class="mx-1 text-gray-400 font-medium">-</span>
-                                {{ formatDate(s.return_date) }}
-                                <span class="inline-flex items-center gap-0.5 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)] ml-2">
-                                  <span class="material-symbols-rounded text-[11px]">schedule</span>
-                                  {{ s.duration_days || trip.duration_days }} วัน
-                                </span>
-                              </template>
-                            </p>
-                          </div>
-                        </div>
-                          <div v-if="s.join_trip_enabled"
-                            class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
-                            :class="scheduleAvailabilityBadgeClass(s)"
+                    <div v-else class="space-y-2 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
+                      <div
+                        v-for="monthGroup in monthlyFilteredSchedules"
+                        :key="monthGroup.key"
+                        class="rounded-[1.25rem] border border-gray-100 bg-white overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          @click="toggleScheduleMonth(monthGroup.key)"
+                          class="w-full px-4 py-3 flex items-center justify-between gap-3 text-left transition-colors hover:bg-[var(--color-sand)]"
+                        >
+                          <span class="font-black text-sm text-[var(--color-text-dark)]">{{ monthGroup.label }}</span>
+                          <span class="ml-auto text-[11px] font-black px-2 py-1 rounded-full border"
+                            :class="monthGroup.schedules.length ? 'bg-[var(--color-accent)]/5 text-[var(--color-accent)] border-[var(--color-accent)]/20' : 'bg-gray-50 text-gray-400 border-gray-100'"
                           >
-                            <span class="material-symbols-rounded text-[14px]">group_add</span>
-                            {{ scheduleAvailabilityLabel(s) }}
-                          </div>
-                          <div v-else
-                            class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
-                            :class="scheduleAvailabilityBadgeClass(s)"
-                          >
-                            {{ scheduleAvailabilityLabel(s) }}
-                          </div>
-                      </div>
-                      <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1">
-                        <div class="flex items-center gap-1.5">
-                          <span class="material-symbols-rounded text-[14px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-                          <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}</span>
-                        </div>
-                        <div v-if="s.license_plate" class="flex items-center gap-1.5">
-                          <span class="material-symbols-rounded text-[14px] text-gray-400">tag</span>
-                          <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-1.5 py-0.5 rounded">{{ s.license_plate }}</span>
-                        </div>
-                      </div>
-                    </button>
-                    </div>
+                            {{ monthGroup.schedules.length }} รอบ
+                          </span>
+                          <span
+                            class="material-symbols-rounded text-[20px] text-gray-400 transition-transform"
+                            :class="{ 'rotate-180 text-[var(--color-accent)]': openScheduleMonths.includes(monthGroup.key) }"
+                          >expand_more</span>
+                        </button>
 
-                    <button v-if="filteredSchedules.length > 5"
-                      @click="showAllSchedules = !showAllSchedules"
-                      class="w-full py-2.5 rounded-[1.25rem] border-2 border-dashed border-gray-200 text-sm font-bold text-gray-500 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2">
-                      <span class="material-symbols-rounded text-[18px]">{{ showAllSchedules ? 'expand_less' : 'expand_more' }}</span>
-                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${filteredSchedules.length} รอบ` }}
-                    </button>
+                        <div
+                          v-show="openScheduleMonths.includes(monthGroup.key)"
+                          class="p-2 border-t border-gray-100 space-y-2 bg-gray-50/40"
+                        >
+                          <div v-if="monthGroup.schedules.length === 0" class="py-4 text-center text-xs font-bold text-gray-400">
+                            ยังไม่มีรอบในเดือนนี้
+                          </div>
+
+                          <button
+                            v-for="s in monthGroup.schedules"
+                            :key="s.id"
+                            @click="selectSchedule(s)"
+                            :disabled="!isScheduleBookable(s)"
+                            class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
+                            :class="[
+                              selectedSchedule?.id === s.id
+                                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
+                                : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
+                              !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
+                            ]"
+                          >
+                            <div class="flex items-center justify-between gap-3">
+                              <div class="min-w-0 flex items-center gap-3">
+                                <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
+                                <div>
+                                  <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight flex items-center flex-wrap">
+                                    {{ formatDate(s.departure_date) }}
+                                    <template v-if="s.return_date !== s.departure_date">
+                                      <span class="mx-1 text-gray-400 font-medium">-</span>
+                                      {{ formatDate(s.return_date) }}
+                                      <span class="inline-flex items-center gap-0.5 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)] ml-2">
+                                        <span class="material-symbols-rounded text-[11px]">schedule</span>
+                                        {{ s.duration_days || trip.duration_days }} วัน
+                                      </span>
+                                    </template>
+                                  </p>
+                                </div>
+                              </div>
+                                <div v-if="s.join_trip_enabled"
+                                  class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
+                                  :class="scheduleAvailabilityBadgeClass(s)"
+                                >
+                                  <span class="material-symbols-rounded text-[14px]">group_add</span>
+                                  {{ scheduleAvailabilityLabel(s) }}
+                                </div>
+                                <div v-else
+                                  class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
+                                  :class="scheduleAvailabilityBadgeClass(s)"
+                                >
+                                  {{ scheduleAvailabilityLabel(s) }}
+                                </div>
+                            </div>
+                            <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1">
+                              <div class="flex items-center gap-1.5">
+                                <span class="material-symbols-rounded text-[14px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                                <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}</span>
+                              </div>
+                              <div v-if="s.license_plate" class="flex items-center gap-1.5">
+                                <span class="material-symbols-rounded text-[14px] text-gray-400">tag</span>
+                                <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-1.5 py-0.5 rounded">{{ s.license_plate }}</span>
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -579,103 +604,128 @@
                       <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง “เฉพาะรอบที่ยังว่าง”</p>
                     </div>
 
-                    <div v-else class="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
-                    <button
-                      v-for="s in showAllSchedules ? filteredSchedulesForRegion : filteredSchedulesForRegion.slice(0, 5)"
-                      :key="s.id"
-                      @click="selectSchedule(s)"
-                      :disabled="!isScheduleBookable(s)"
-                      class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
-                      :class="[
-                        selectedSchedule?.id === s.id
-                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                          : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                        !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
-                      ]"
-                    >
-                      <!-- Date + seats -->
-                      <div class="flex items-center justify-between gap-3">
-                        <div class="min-w-0 flex items-center gap-3">
-                          <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
-                          <div>
-                            <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight flex items-center flex-wrap">
-                              {{ formatDate(s.departure_date) }}
-                              <template v-if="s.return_date !== s.departure_date">
-                                <span class="mx-1 text-gray-400 font-medium">-</span>
-                                {{ formatDate(s.return_date) }}
-                                <span class="inline-flex items-center gap-0.5 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)] ml-2">
-                                  <span class="material-symbols-rounded text-[11px]">schedule</span>
-                                  {{ s.duration_days || trip.duration_days }} วัน
-                                </span>
-                              </template>
-                            </p>
-                          </div>
-                        </div>
-                        <span
-                          v-if="s.join_trip_enabled"
-                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
-                          :class="scheduleAvailabilityBadgeClass(s)"
+                    <div v-else class="space-y-2 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
+                      <div
+                        v-for="monthGroup in monthlyFilteredSchedulesForRegion"
+                        :key="monthGroup.key"
+                        class="rounded-[1.25rem] border border-gray-100 bg-white overflow-hidden"
+                      >
+                        <button
+                          type="button"
+                          @click="toggleScheduleMonth(monthGroup.key)"
+                          class="w-full px-4 py-3 flex items-center justify-between gap-3 text-left transition-colors hover:bg-[var(--color-sand)]"
                         >
-                          <span class="material-symbols-rounded text-[14px]">group_add</span>
-                          {{ scheduleAvailabilityLabel(s) }}
-                        </span>
-                        <span
-                          v-else
-                          class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
-                          :class="scheduleAvailabilityBadgeClass(s)"
-                        >
-                          {{ scheduleAvailabilityLabel(s) }}
-                        </span>
-                      </div>
-
-                      <!-- Pickup point and price for this region -->
-                      <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9 space-y-1.5">
-                        <template v-for="pt in getSortedPickupPoints(s.pickup_points)" :key="pt.id">
-                          <div v-if="pt.region === selectedRegion" class="text-xs text-[var(--color-text-dark)] font-bold">
-                            <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
-                              class="flex items-start gap-1.5 hover:text-[var(--color-accent)] transition-colors group">
-                              <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5 group-hover:text-[var(--color-accent)]">map</span>
-                              <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
-                            </a>
-                            <div v-else class="flex items-start gap-1.5">
-                              <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5">pin_drop</span>
-                              <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
-                            </div>
-                          </div>
-                        </template>
-
-                        <!-- Price for this region (Show only one price) -->
-                        <div class="flex items-center justify-between">
-                          <span class="text-[11px] font-black text-[var(--color-accent)]">
-                            ฿{{ Number(s.pickup_points.find(pt => pt.region === selectedRegion).price).toLocaleString() }} / ท่าน
+                          <span class="font-black text-sm text-[var(--color-text-dark)]">{{ monthGroup.label }}</span>
+                          <span class="ml-auto text-[11px] font-black px-2 py-1 rounded-full border"
+                            :class="monthGroup.schedules.length ? 'bg-[var(--color-accent)]/5 text-[var(--color-accent)] border-[var(--color-accent)]/20' : 'bg-gray-50 text-gray-400 border-gray-100'"
+                          >
+                            {{ monthGroup.schedules.length }} รอบ
                           </span>
-                        </div>
-                      </div>
+                          <span
+                            class="material-symbols-rounded text-[20px] text-gray-400 transition-transform"
+                            :class="{ 'rotate-180 text-[var(--color-accent)]': openScheduleMonths.includes(monthGroup.key) }"
+                          >expand_more</span>
+                        </button>
 
-                      <!-- Transport info when selected -->
-                      <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1 pl-9">
-                        <div class="flex items-center gap-1.5">
-                          <span class="material-symbols-rounded text-[14px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-                          <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}</span>
-                        </div>
-                        <div v-if="s.license_plate" class="flex items-center gap-1.5">
-                          <span class="material-symbols-rounded text-[14px] text-gray-400">tag</span>
-                          <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-1.5 py-0.5 rounded">{{ s.license_plate }}</span>
-                        </div>
-                        <div v-if="s.vehicle_color" class="flex items-center gap-1.5">
-                          <div class="w-3 h-3 rounded-full border border-gray-200 shadow-sm shrink-0" :style="{ backgroundColor: s.vehicle_color }"></div>
-                          <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
+                        <div
+                          v-show="openScheduleMonths.includes(monthGroup.key)"
+                          class="p-2 border-t border-gray-100 space-y-2 bg-gray-50/40"
+                        >
+                          <div v-if="monthGroup.schedules.length === 0" class="py-4 text-center text-xs font-bold text-gray-400">
+                            ยังไม่มีรอบในเดือนนี้
+                          </div>
+
+                          <button
+                            v-for="s in monthGroup.schedules"
+                            :key="s.id"
+                            @click="selectSchedule(s)"
+                            :disabled="!isScheduleBookable(s)"
+                            class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
+                            :class="[
+                              selectedSchedule?.id === s.id
+                                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
+                                : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
+                              !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
+                            ]"
+                          >
+                            <!-- Date + seats -->
+                            <div class="flex items-center justify-between gap-3">
+                              <div class="min-w-0 flex items-center gap-3">
+                                <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px] shrink-0">calendar_today</span>
+                                <div>
+                                  <p class="font-extrabold text-[var(--color-text-dark)] text-sm leading-tight flex items-center flex-wrap">
+                                    {{ formatDate(s.departure_date) }}
+                                    <template v-if="s.return_date !== s.departure_date">
+                                      <span class="mx-1 text-gray-400 font-medium">-</span>
+                                      {{ formatDate(s.return_date) }}
+                                      <span class="inline-flex items-center gap-0.5 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)] ml-2">
+                                        <span class="material-symbols-rounded text-[11px]">schedule</span>
+                                        {{ s.duration_days || trip.duration_days }} วัน
+                                      </span>
+                                    </template>
+                                  </p>
+                                </div>
+                              </div>
+                              <span
+                                v-if="s.join_trip_enabled"
+                                class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
+                                :class="scheduleAvailabilityBadgeClass(s)"
+                              >
+                                <span class="material-symbols-rounded text-[14px]">group_add</span>
+                                {{ scheduleAvailabilityLabel(s) }}
+                              </span>
+                              <span
+                                v-else
+                                class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
+                                :class="scheduleAvailabilityBadgeClass(s)"
+                              >
+                                {{ scheduleAvailabilityLabel(s) }}
+                              </span>
+                            </div>
+
+                            <!-- Pickup point and price for this region -->
+                            <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).find(pt => pt.region === selectedRegion)" class="mt-2 pl-9 space-y-1.5">
+                              <template v-for="pt in getSortedPickupPoints(s.pickup_points)" :key="pt.id">
+                                <div v-if="pt.region === selectedRegion" class="text-xs text-[var(--color-text-dark)] font-bold">
+                                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
+                                    class="flex items-start gap-1.5 hover:text-[var(--color-accent)] transition-colors group">
+                                    <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5 group-hover:text-[var(--color-accent)]">map</span>
+                                    <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
+                                  </a>
+                                  <div v-else class="flex items-start gap-1.5">
+                                    <span class="material-symbols-rounded text-red-400 text-[14px] shrink-0 mt-0.5">pin_drop</span>
+                                    <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
+                                  </div>
+                                </div>
+                              </template>
+
+                              <!-- Price for this region (Show only one price) -->
+                              <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-black text-[var(--color-accent)]">
+                                  ฿{{ Number(s.pickup_points.find(pt => pt.region === selectedRegion).price).toLocaleString() }} / ท่าน
+                                </span>
+                              </div>
+                            </div>
+
+                            <!-- Transport info when selected -->
+                            <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1 pl-9">
+                              <div class="flex items-center gap-1.5">
+                                <span class="material-symbols-rounded text-[14px] text-gray-400">{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                                <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}</span>
+                              </div>
+                              <div v-if="s.license_plate" class="flex items-center gap-1.5">
+                                <span class="material-symbols-rounded text-[14px] text-gray-400">tag</span>
+                                <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-1.5 py-0.5 rounded">{{ s.license_plate }}</span>
+                              </div>
+                              <div v-if="s.vehicle_color" class="flex items-center gap-1.5">
+                                <div class="w-3 h-3 rounded-full border border-gray-200 shadow-sm shrink-0" :style="{ backgroundColor: s.vehicle_color }"></div>
+                                <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
+                              </div>
+                            </div>
+                          </button>
                         </div>
                       </div>
-                    </button>
                     </div>
-
-                    <button v-if="filteredSchedulesForRegion.length > 5"
-                      @click="showAllSchedules = !showAllSchedules"
-                      class="w-full py-2.5 rounded-[1.25rem] border-2 border-dashed border-gray-200 text-sm font-bold text-gray-500 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2">
-                      <span class="material-symbols-rounded text-[18px]">{{ showAllSchedules ? 'expand_less' : 'expand_more' }}</span>
-                      {{ showAllSchedules ? 'แสดงน้อยลง' : `ดูทั้งหมด ${filteredSchedulesForRegion.length} รอบ` }}
-                    </button>
                   </div>
                 </div>
 
@@ -1252,11 +1302,11 @@ useHead({
 });
 
 const schedules = ref([]);
-const showAllSchedules = ref(false);
 const selectedSchedule = ref(null);
 const activeIconPicker = ref(null);
 const openDays = ref(['0-0']); // Default open first item of first sector
 const activeSector = ref(0);
+const openScheduleMonths = ref([new Date().getMonth()]);
 let sectorObserver = null;
 
 const toggleDay = (key) => {
@@ -1480,6 +1530,71 @@ const filteredSchedulesForRegion = computed(() => {
   return schedulesForRegion.value.filter(isScheduleBookable);
 });
 
+const scheduleMonths = [
+  { key: 0, label: 'มกราคม' },
+  { key: 1, label: 'กุมภาพันธ์' },
+  { key: 2, label: 'มีนาคม' },
+  { key: 3, label: 'เมษายน' },
+  { key: 4, label: 'พฤษภาคม' },
+  { key: 5, label: 'มิถุนายน' },
+  { key: 6, label: 'กรกฎาคม' },
+  { key: 7, label: 'สิงหาคม' },
+  { key: 8, label: 'กันยายน' },
+  { key: 9, label: 'ตุลาคม' },
+  { key: 10, label: 'พฤศจิกายน' },
+  { key: 11, label: 'ธันวาคม' },
+];
+
+const getScheduleMonthIndex = (schedule) => {
+  const rawDate = schedule?.departure_date;
+  if (!rawDate) return -1;
+
+  const dateText = String(rawDate);
+  const isoDateMatch = dateText.match(/^\d{4}-(\d{2})-\d{2}/);
+  if (isoDateMatch) {
+    return Number(isoDateMatch[1]) - 1;
+  }
+
+  const date = new Date(rawDate);
+  return Number.isNaN(date.getTime()) ? -1 : date.getMonth();
+};
+
+const getScheduleSortValue = (schedule) => {
+  const rawDate = schedule?.departure_date;
+  if (!rawDate) return '';
+  return String(rawDate);
+};
+
+const groupSchedulesByMonth = (list) => {
+  const sortedSchedules = [...list].sort((a, b) => {
+    const dateCompare = getScheduleSortValue(a).localeCompare(getScheduleSortValue(b));
+    if (dateCompare !== 0) return dateCompare;
+    return Number(a?.id || 0) - Number(b?.id || 0);
+  });
+
+  return scheduleMonths.map((month) => ({
+    ...month,
+    schedules: sortedSchedules.filter((schedule) => getScheduleMonthIndex(schedule) === month.key),
+  }));
+};
+
+const monthlyFilteredSchedules = computed(() => groupSchedulesByMonth(filteredSchedules.value));
+const monthlyFilteredSchedulesForRegion = computed(() => groupSchedulesByMonth(filteredSchedulesForRegion.value));
+
+function toggleScheduleMonth(monthKey) {
+  if (openScheduleMonths.value.includes(monthKey)) {
+    openScheduleMonths.value = openScheduleMonths.value.filter((key) => key !== monthKey);
+  } else {
+    openScheduleMonths.value = [...openScheduleMonths.value, monthKey];
+  }
+}
+
+function openScheduleMonthForSchedule(schedule) {
+  const monthKey = getScheduleMonthIndex(schedule);
+  if (monthKey < 0 || openScheduleMonths.value.includes(monthKey)) return;
+  openScheduleMonths.value = [...openScheduleMonths.value, monthKey];
+}
+
 const pickupForSelection = computed(() => {
   if (!selectedSchedule.value || !selectedRegion.value) return null;
   return (selectedSchedule.value.pickup_points || []).find(
@@ -1615,6 +1730,7 @@ function selectRegion(region) {
 }
 
 function selectSchedule(s) {
+  openScheduleMonthForSchedule(s);
   selectedSchedule.value = s;
   if (!s.join_trip_enabled) {
     isJoinTrip.value = false;
