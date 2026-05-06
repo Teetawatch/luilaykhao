@@ -1207,7 +1207,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
@@ -1572,14 +1572,30 @@ const groupSchedulesByMonth = (list) => {
     return Number(a?.id || 0) - Number(b?.id || 0);
   });
 
-  return scheduleMonths.map((month) => ({
-    ...month,
-    schedules: sortedSchedules.filter((schedule) => getScheduleMonthIndex(schedule) === month.key),
-  }));
+  return scheduleMonths
+    .map((month) => ({
+      ...month,
+      schedules: sortedSchedules.filter((schedule) => getScheduleMonthIndex(schedule) === month.key),
+    }))
+    .filter((month) => month.schedules.length > 0);
 };
 
 const monthlyFilteredSchedules = computed(() => groupSchedulesByMonth(filteredSchedules.value));
 const monthlyFilteredSchedulesForRegion = computed(() => groupSchedulesByMonth(filteredSchedulesForRegion.value));
+
+function ensureOpenScheduleMonth(monthGroups) {
+  if (!monthGroups.length) return;
+
+  const hasOpenVisibleMonth = monthGroups.some((month) => openScheduleMonths.value.includes(month.key));
+  if (hasOpenVisibleMonth) return;
+
+  const currentMonth = new Date().getMonth();
+  const defaultMonth = monthGroups.find((month) => month.key === currentMonth) || monthGroups[0];
+  openScheduleMonths.value = [...openScheduleMonths.value, defaultMonth.key];
+}
+
+watch(monthlyFilteredSchedules, ensureOpenScheduleMonth, { immediate: true });
+watch(monthlyFilteredSchedulesForRegion, ensureOpenScheduleMonth, { immediate: true });
 
 function toggleScheduleMonth(monthKey) {
   if (openScheduleMonths.value.includes(monthKey)) {
