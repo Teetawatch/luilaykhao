@@ -25,6 +25,7 @@ use App\Models\VehiclePickupPoint;
 use App\Models\BookingSeat;
 use App\Services\BookingService;
 use App\Services\MailService;
+use App\Services\SmsService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -1235,6 +1236,10 @@ class AdminController extends Controller
             if ($booking->status === 'confirmed') {
                 app(MailService::class)->sendPaymentConfirmedEmail($booking, $paymentType);
             }
+        }
+
+        if ($booking->status === 'confirmed') {
+            app(SmsService::class)->sendPaymentConfirmed($booking, $paymentType);
         }
 
         return $this->success(new BookingResource($booking), 'บันทึกการจองและส่งอีเมลสำเร็จ', 201);

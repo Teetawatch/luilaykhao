@@ -33,37 +33,43 @@ class SmsService
 
     public function sendPaymentConfirmed(Booking $booking, string $paymentType = 'full'): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip', 'installmentPayments']);
 
         $label = $paymentType === 'installment' ? 'รับชำระงวดแรกแล้ว' : 'รับชำระเงินแล้ว';
+        $nextInstallmentText = $paymentType === 'installment'
+            ? $this->nextInstallmentText($booking)
+            : '';
 
         return $this->queueOrSend(
             booking: $booking,
             type: 'payment_confirmed',
             dedupeKey: $paymentType,
             message: sprintf(
-                'Luilaykhao: %s สำหรับ booking %s ทริป %s วันที่ %s',
+                'Luilaykhao: %s สำหรับ booking %s ทริป %s วันที่ %s%s',
                 $label,
                 $booking->booking_ref,
                 $this->tripTitle($booking),
                 $this->departureDate($booking),
+                $nextInstallmentText,
             ),
         );
     }
 
     public function sendInstallmentPaid(Booking $booking, InstallmentPayment $installment): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers']);
+        $booking->loadMissing(['user', 'passengers', 'installmentPayments']);
+        $nextInstallmentText = $this->nextInstallmentText($booking, $installment);
 
         return $this->queueOrSend(
             booking: $booking,
             type: 'installment_paid',
             dedupeKey: 'installment:' . $installment->installment_no,
             message: sprintf(
-                'Luilaykhao: รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว',
+                'Luilaykhao: รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว%s',
                 $installment->installment_no,
                 $this->money($installment->amount),
                 $booking->booking_ref,
+                $nextInstallmentText,
             ),
         );
     }
@@ -97,7 +103,7 @@ class SmsService
         }
 
         $prefix = match ($reminderType) {
-            'due_soon' => 'ใกล้ครบกำหนดชำระ',
+            'due_soon' => 'ใกล้ครบกำหนดชำระในอีก 2 วัน',
             'due_today' => 'ครบกำหนดชำระวันนี้',
             'overdue' => 'เลยกำหนดชำระแล้ว',
             default => 'แจ้งเตือนชำระเงิน',
@@ -270,7 +276,7 @@ class SmsService
 
     private function recipientFor(Booking $booking): ?string
     {
-        $phone = $booking->user?->phone ?: $booking->passengers->first()?->phone;
+        $phone = $booking->passengers->first()?->phone ?: $booking->user?->phone;
         $digits = preg_replace('/\D+/', '', (string) $phone);
 
         if ($digits === '') {
@@ -307,11 +313,49 @@ class SmsService
 
     private function bookingUrl(Booking $booking): string
     {
-        return rtrim((string) config('app.frontend_url', config('app.url')), '/') . '/bookings/' . $booking->booking_ref;
+        return rtrim((string) config('app.frontend_url', config('app.url')), '/') . '/confirmation/' . $booking->booking_ref;
+    }
+
+    private function installmentPaymentUrl(Booking $booking): string
+    {
+        return rtrim((string) config('app.frontend_url', config('app.url')), '/') . '/installment-payment/' . $booking->booking_ref;
     }
 
     private function money(mixed $amount): string
     {
         return number_format((float) $amount, 2);
+    }
+
+    private function nextInstallmentText(Booking $booking, ?InstallmentPayment $currentInstallment = null): string
+    {
+        $installments = $booking->installmentPayments;
+
+        if ($installments->isEmpty()) {
+            return '';
+        }
+
+        $nextInstallment = $installments
+            ->filter(function (InstallmentPayment $installment) use ($currentInstallment) {
+                if ($installment->status === 'paid') {
+                    return false;
+                }
+
+                return ! $currentInstallment
+                    || $installment->installment_no > $currentInstallment->installment_no;
+            })
+            ->sortBy('installment_no')
+            ->first();
+
+        if (! $nextInstallment) {
+            return ' ชำระครบทุกงวดแล้ว';
+        }
+
+        return sprintf(
+            ' งวดถัดไปงวดที่ %d จำนวน %s บาท กำหนด %s ชำระที่ %s',
+            $nextInstallment->installment_no,
+            $this->money($nextInstallment->amount),
+            $nextInstallment->due_date?->format('d/m/Y') ?? '-',
+            $this->installmentPaymentUrl($booking),
+        );
     }
 }

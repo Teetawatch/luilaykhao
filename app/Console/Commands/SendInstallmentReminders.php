@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class SendInstallmentReminders extends Command
 {
+    private const DUE_SOON_DAYS = 2;
+
     protected $signature   = 'installment:remind';
     protected $description = 'แจ้งเตือนผ่อนชำระที่ใกล้ครบกำหนด และทำเครื่องหมาย overdue';
 
@@ -20,6 +22,7 @@ class SendInstallmentReminders extends Command
         // ── 1. Mark overdue ─────────────────────────────────────
         $overdue = InstallmentPayment::where('status', 'pending')
             ->whereDate('due_date', '<', $today)
+            ->whereHas('booking', fn ($query) => $query->where('payment_type', 'installment'))
             ->with('booking.user')
             ->get();
 
@@ -48,18 +51,20 @@ class SendInstallmentReminders extends Command
             }
         }
 
-        // ── 2. Remind 3 days before due ──────────────────────────
+        // ── 2. Remind before due ─────────────────────────────────
         $upcoming = InstallmentPayment::where('status', 'pending')
-            ->whereDate('due_date', now()->addDays(3)->toDateString())
+            ->whereDate('due_date', now()->addDays(self::DUE_SOON_DAYS)->toDateString())
+            ->whereHas('booking', fn ($query) => $query->where('payment_type', 'installment'))
             ->with('booking.user')
             ->get();
 
         foreach ($upcoming as $ip) {
-            Log::info('Installment due in 3 days', [
+            Log::info('Installment due soon', [
                 'booking_ref'    => $ip->booking->booking_ref ?? null,
                 'installment_no' => $ip->installment_no,
                 'amount'         => $ip->amount,
                 'due_date'       => $ip->due_date?->toDateString(),
+                'days_before'    => self::DUE_SOON_DAYS,
                 'user_email'     => $ip->booking->user->email ?? null,
             ]);
 
@@ -69,10 +74,11 @@ class SendInstallmentReminders extends Command
                     $ip->booking->user_id,
                     'installment_due_soon',
                     'ใกล้ถึงกำหนดชำระค่างวด',
-                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} จะครบกำหนดในอีก 3 วัน",
+                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} จะครบกำหนดในอีก " . self::DUE_SOON_DAYS . " วัน",
                     [
                         'booking_ref' => $ip->booking->booking_ref,
                         'installment_no' => $ip->installment_no,
+                        'days_before' => self::DUE_SOON_DAYS,
                         'route' => 'booking',
                     ],
                 );
@@ -82,6 +88,7 @@ class SendInstallmentReminders extends Command
         // ── 3. Remind on due date ────────────────────────────────
         $dueToday = InstallmentPayment::where('status', 'pending')
             ->whereDate('due_date', $today)
+            ->whereHas('booking', fn ($query) => $query->where('payment_type', 'installment'))
             ->with('booking.user')
             ->get();
 
