@@ -12,9 +12,9 @@
       </div>
       <div class="header-actions">
         <span v-if="lastUpdated" class="last-updated">อัปเดตล่าสุด {{ lastUpdated }}</span>
-        <button class="btn-secondary" :disabled="!visibleStats.totalPassengers" @click="exportVisibleInsurancePdf">
+        <button class="btn-secondary" :disabled="!visibleManifestCount" @click="exportVisibleInsurancePdf">
           <span class="material-symbols-rounded">picture_as_pdf</span>
-          ส่งออก PDF ประกัน
+          PDF รายชื่อประกัน
         </button>
         <button class="btn-secondary" :disabled="admin.loading" @click="fetchData">
           <span class="material-symbols-rounded" :class="{ 'animate-spin': admin.loading }">refresh</span>
@@ -32,10 +32,11 @@
         </div>
       </div>
       <div class="summary-card">
-        <span class="summary-icon open material-symbols-rounded">event_available</span>
+        <span class="summary-icon people material-symbols-rounded">groups</span>
         <div>
-          <span class="summary-label">เปิดรับจอง</span>
-          <strong class="summary-value">{{ visibleStats.openSchedules }}</strong>
+          <span class="summary-label">ผู้เดินทางรวม</span>
+          <strong class="summary-value">{{ visibleStats.totalPassengers }} คน</strong>
+          <span class="summary-subvalue">{{ formatCurrency(visibleStats.totalAmount) }}</span>
         </div>
       </div>
       <div class="summary-card">
@@ -48,8 +49,9 @@
       <div class="summary-card">
         <span class="summary-icon warning material-symbols-rounded">priority_high</span>
         <div>
-          <span class="summary-label">ใกล้เต็มหรือเต็ม</span>
+          <span class="summary-label">ต้องติดตาม</span>
           <strong class="summary-value">{{ visibleStats.attentionSchedules }}</strong>
+          <span class="summary-subvalue">ใกล้เต็มหรือเต็ม</span>
         </div>
       </div>
       <div class="summary-card">
@@ -72,40 +74,67 @@
 
     <div class="filters-panel">
       <div class="filters-bar overview-filters">
-        <div class="search-box wide">
+        <div class="filter-field search-field">
+          <span class="filter-label">ค้นหา</span>
+          <div class="search-box wide">
           <span class="material-symbols-rounded">search</span>
           <input v-model.trim="filters.search" placeholder="ค้นหาชื่อทริป ยานพาหนะ หรือจุดรับ..." />
+          </div>
         </div>
 
-        <select v-model="filters.status" aria-label="สถานะรอบเดินทาง">
-          <option value="">ทุกสถานะ</option>
-          <option value="open">เปิดรับจอง</option>
-          <option value="full">เต็ม</option>
-          <option value="closed">ปิด</option>
-          <option value="cancelled">ยกเลิก</option>
-        </select>
+        <label class="filter-field">
+          <span class="filter-label">สถานะ</span>
+          <select v-model="filters.status" aria-label="สถานะรอบเดินทาง">
+            <option value="">ทุกสถานะ</option>
+            <option value="open">เปิดรับจอง</option>
+            <option value="full">เต็ม</option>
+            <option value="closed">ปิด</option>
+            <option value="cancelled">ยกเลิก</option>
+          </select>
+        </label>
 
-        <select v-model="filters.region" aria-label="ภูมิภาค">
-          <option value="">ทุกภูมิภาค</option>
-          <option v-for="region in regionOptions" :key="region.value" :value="region.value">
-            {{ region.label }}
-          </option>
-        </select>
+        <label class="filter-field">
+          <span class="filter-label">ภูมิภาค</span>
+          <select v-model="filters.region" aria-label="ภูมิภาค">
+            <option value="">ทุกภูมิภาค</option>
+            <option v-for="region in regionOptions" :key="region.value" :value="region.value">
+              {{ region.label }}
+            </option>
+          </select>
+        </label>
 
-        <select v-model="filters.dateRange" aria-label="ช่วงวันที่">
-          <option value="upcoming">รอบที่กำลังจะถึง</option>
-          <option value="today">วันนี้</option>
-          <option value="week">7 วันข้างหน้า</option>
-          <option value="month">30 วันข้างหน้า</option>
-          <option value="all">ทั้งหมดที่โหลดมา</option>
-        </select>
+        <label class="filter-field">
+          <span class="filter-label">ช่วงวันที่</span>
+          <select v-model="filters.dateRange" aria-label="ช่วงวันที่">
+            <option value="upcoming">กำลังจะถึง</option>
+            <option value="today">วันนี้</option>
+            <option value="week">7 วันข้างหน้า</option>
+            <option value="month">30 วันข้างหน้า</option>
+            <option value="all">ทั้งหมดที่โหลดมา</option>
+          </select>
+        </label>
 
-        <select v-model="filters.sortBy" aria-label="เรียงลำดับ">
-          <option value="date">วันเดินทางเร็วสุด</option>
-          <option value="available">ที่นั่งว่างน้อยสุด</option>
-          <option value="booked">จองมากสุด</option>
-          <option value="price">ราคาต่ำสุด</option>
-        </select>
+        <label class="filter-field">
+          <span class="filter-label">เรียงตาม</span>
+          <select v-model="filters.sortBy" aria-label="เรียงลำดับ">
+            <option value="date">วันเดินทางเร็วสุด</option>
+            <option value="available">ที่นั่งว่างน้อยสุด</option>
+            <option value="booked">จองมากสุด</option>
+            <option value="price">ราคาต่ำสุด</option>
+          </select>
+        </label>
+
+        <label class="toggle-filter" :class="{ active: filters.attentionOnly }">
+          <input v-model="filters.attentionOnly" type="checkbox" />
+          <span class="material-symbols-rounded">priority_high</span>
+          ต้องติดตาม
+        </label>
+
+        <label class="toggle-filter" :class="{ active: filters.withPassengersOnly }">
+          <input v-model="filters.withPassengersOnly" type="checkbox" />
+          <span class="material-symbols-rounded">shield_person</span>
+          มีรายชื่อ
+        </label>
 
         <button class="btn-secondary compact" :disabled="!hasActiveFilters" @click="resetFilters">
           <span class="material-symbols-rounded">filter_alt_off</span>
@@ -115,7 +144,22 @@
 
       <div class="filter-footnote">
         แสดง {{ visibleStats.totalSchedules }} จาก {{ allStats.totalSchedules }} รอบ
-        <span v-if="visibleStats.totalSchedules">รวม {{ visibleStats.totalTrips }} ทริปใน {{ visibleStats.totalRegions }} ภูมิภาค</span>
+        <span v-if="visibleStats.totalSchedules">
+          รวม {{ visibleStats.totalTrips }} ทริปใน {{ visibleStats.totalRegions }} ภูมิภาค · เปิดรับจอง {{ visibleStats.openSchedules }} รอบ
+        </span>
+      </div>
+
+      <div v-if="activeFilterChips.length" class="active-filter-list" aria-label="ตัวกรองที่ใช้งานอยู่">
+        <button
+          v-for="chip in activeFilterChips"
+          :key="chip.key"
+          class="filter-chip"
+          type="button"
+          @click="removeFilter(chip.key)"
+        >
+          <span>{{ chip.label }}</span>
+          <span class="material-symbols-rounded">close</span>
+        </button>
       </div>
     </div>
 
@@ -133,6 +177,10 @@
         <span class="material-symbols-rounded">event_busy</span>
         <p v-if="hasActiveFilters">ไม่พบรอบเดินทางที่ตรงกับเงื่อนไข</p>
         <p v-else>ไม่พบข้อมูลรอบเดินทางในระบบขณะนี้</p>
+        <button v-if="hasActiveFilters" class="btn-secondary compact" type="button" @click="resetFilters">
+          <span class="material-symbols-rounded">filter_alt_off</span>
+          ล้างตัวกรอง
+        </button>
       </div>
 
       <section v-for="day in groupedDaySchedules" :key="day.date_key" class="day-block">
@@ -175,9 +223,14 @@
               :class="cardClasses(sch)"
             >
               <div class="card-header">
-                <span class="status-badge" :class="`status-${sch.status}`">
-                  {{ statusLabels[sch.status] || sch.status || '-' }}
-                </span>
+                <div class="card-badges">
+                  <span class="status-badge" :class="`status-${sch.status}`">
+                    {{ statusLabels[sch.status] || sch.status || '-' }}
+                  </span>
+                  <span class="availability-badge" :class="availabilityClass(sch)">
+                    {{ availabilityLabel(sch) }}
+                  </span>
+                </div>
                 <span class="sch-price">{{ formatCurrency(sch.price) }}</span>
               </div>
 
@@ -211,7 +264,7 @@
                   </strong>
                 </div>
                 <div class="progress-track" :aria-label="`จองแล้ว ${safeNumber(sch.booked_seats)} จาก ${safeNumber(sch.total_seats)} ที่นั่ง`">
-                  <div class="progress-fill" :style="{ width: seatFillWidth(sch) }"></div>
+                  <div class="progress-fill" :class="progressClass(sch)" :style="{ width: seatFillWidth(sch) }"></div>
                 </div>
                 <div class="seat-breakdown">
                   <span>จองแล้ว {{ safeNumber(sch.booked_seats) }}</span>
@@ -236,7 +289,7 @@
               <div class="manifest-preview">
                 <div class="manifest-preview-head">
                   <div>
-                    <span class="manifest-kicker">รายชื่อวันที่นี้</span>
+                    <span class="manifest-kicker">รายชื่อผู้เดินทาง</span>
                     <strong>{{ schedulePassengerCount(sch) }} คน</strong>
                   </div>
                   <button
@@ -290,11 +343,11 @@
               <div class="card-actions">
                 <button class="btn-view-details" @click="openDetails(sch)">
                   <span class="material-symbols-rounded">info</span>
-                  รายละเอียด
+                  ดูรายละเอียด
                 </button>
                 <button class="btn-view-seats" :disabled="sch.status === 'cancelled'" @click="viewSeatLayout(sch)">
                   <span class="material-symbols-rounded">grid_view</span>
-                  ผังที่นั่ง
+                  ดูผัง
                 </button>
               </div>
             </article>
@@ -513,7 +566,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
 import SeatMap from '../../components/SeatMap.vue';
@@ -527,6 +580,8 @@ const filters = reactive({
   region: '',
   dateRange: 'upcoming',
   sortBy: 'date',
+  attentionOnly: false,
+  withPassengersOnly: false,
 });
 
 const selectedSchedule = ref(null);
@@ -577,10 +632,32 @@ const regionOptions = computed(() => {
 });
 
 const hasActiveFilters = computed(() => {
-  return Boolean(filters.search || filters.status || filters.region || filters.dateRange !== 'upcoming' || filters.sortBy !== 'date');
+  return Boolean(
+    filters.search ||
+    filters.status ||
+    filters.region ||
+    filters.dateRange !== 'upcoming' ||
+    filters.sortBy !== 'date' ||
+    filters.attentionOnly ||
+    filters.withPassengersOnly
+  );
 });
 
 const allStats = computed(() => buildStats(schedules.value));
+const visibleManifestCount = computed(() => filteredSchedules.value.reduce((total, sch) => total + schedulePassengerCount(sch), 0));
+const activeFilterChips = computed(() => {
+  const chips = [];
+
+  if (filters.search) chips.push({ key: 'search', label: `ค้นหา: ${filters.search}` });
+  if (filters.status) chips.push({ key: 'status', label: `สถานะ: ${statusLabels[filters.status] || filters.status}` });
+  if (filters.region) chips.push({ key: 'region', label: `ภูมิภาค: ${regionLabels[filters.region] || filters.region}` });
+  if (filters.dateRange !== 'upcoming') chips.push({ key: 'dateRange', label: `ช่วงวันที่: ${dateRangeLabels[filters.dateRange] || filters.dateRange}` });
+  if (filters.sortBy !== 'date') chips.push({ key: 'sortBy', label: `เรียงตาม: ${sortLabels[filters.sortBy] || filters.sortBy}` });
+  if (filters.attentionOnly) chips.push({ key: 'attentionOnly', label: 'ต้องติดตาม' });
+  if (filters.withPassengersOnly) chips.push({ key: 'withPassengersOnly', label: 'มีรายชื่อผู้เดินทาง' });
+
+  return chips;
+});
 
 const filteredSchedules = computed(() => {
   const query = normalizeText(filters.search);
@@ -590,6 +667,8 @@ const filteredSchedules = computed(() => {
     .filter((sch) => {
       if (filters.status && sch.status !== filters.status) return false;
       if (filters.region && (sch.trip_region || 'other') !== filters.region) return false;
+      if (filters.attentionOnly && !needsAttention(sch)) return false;
+      if (filters.withPassengersOnly && !schedulePassengerCount(sch)) return false;
 
       if (query) {
         const pickupText = (sch.pickup_points || [])
@@ -705,7 +784,7 @@ function buildStats(items) {
     stats.openSchedules += sch.status === 'open' ? 1 : 0;
     stats.availableSeats += availableSeats;
     stats.bookedSeats += safeNumber(sch.booked_seats);
-    stats.attentionSchedules += availableSeats <= 3 || sch.status === 'full' ? 1 : 0;
+    stats.attentionSchedules += needsAttention(sch) ? 1 : 0;
     stats.regularPassengers += getRegularPassengers(sch);
     stats.regularAmount += getRegularAmount(sch);
     stats.joinTripPassengers += getJoinTripPassengers(sch);
@@ -776,10 +855,13 @@ function resetFilters() {
   filters.region = '';
   filters.dateRange = 'upcoming';
   filters.sortBy = 'date';
+  filters.attentionOnly = false;
+  filters.withPassengersOnly = false;
 }
 
 async function fetchData() {
   try {
+    admin.error = null;
     const start = new Date();
     start.setMonth(start.getMonth() - 1);
 
@@ -798,6 +880,16 @@ async function fetchData() {
   } catch (e) {
     console.error('Failed to fetch schedules', e);
   }
+}
+
+function removeFilter(key) {
+  if (key === 'search') filters.search = '';
+  if (key === 'status') filters.status = '';
+  if (key === 'region') filters.region = '';
+  if (key === 'dateRange') filters.dateRange = 'upcoming';
+  if (key === 'sortBy') filters.sortBy = 'date';
+  if (key === 'attentionOnly') filters.attentionOnly = false;
+  if (key === 'withPassengersOnly') filters.withPassengersOnly = false;
 }
 
 function openDetails(sch) {
@@ -837,6 +929,38 @@ function cardClasses(sch) {
     'card-full': safeNumber(sch.available_seats) === 0 || sch.status === 'full',
     'card-low': safeNumber(sch.available_seats) > 0 && safeNumber(sch.available_seats) <= 3,
     'card-closed': ['closed', 'cancelled'].includes(sch.status),
+  };
+}
+
+function needsAttention(sch) {
+  const availableSeats = safeNumber(sch.available_seats);
+  const totalSeats = safeNumber(sch.total_seats);
+  const activeStatus = ['open', 'full'].includes(sch?.status);
+
+  return activeStatus && totalSeats > 0 && (availableSeats <= 3 || sch.status === 'full');
+}
+
+function availabilityLabel(sch) {
+  if (sch?.status === 'cancelled') return 'ยกเลิกแล้ว';
+  if (sch?.status === 'closed') return 'ปิดรับจอง';
+  if (sch?.status === 'full' || safeNumber(sch.available_seats) === 0) return 'เต็มแล้ว';
+  if (safeNumber(sch.available_seats) <= 3) return 'ใกล้เต็ม';
+  return 'พร้อมขาย';
+}
+
+function availabilityClass(sch) {
+  return {
+    'availability-full': sch?.status === 'full' || safeNumber(sch.available_seats) === 0,
+    'availability-low': sch?.status === 'open' && safeNumber(sch.available_seats) > 0 && safeNumber(sch.available_seats) <= 3,
+    'availability-open': sch?.status === 'open' && safeNumber(sch.available_seats) > 3,
+    'availability-muted': ['closed', 'cancelled'].includes(sch?.status),
+  };
+}
+
+function progressClass(sch) {
+  return {
+    'progress-full': sch?.status === 'full' || safeNumber(sch.available_seats) === 0,
+    'progress-low': sch?.status === 'open' && safeNumber(sch.available_seats) > 0 && safeNumber(sch.available_seats) <= 3,
   };
 }
 
@@ -1107,7 +1231,7 @@ function addDays(value, days) {
 }
 
 function dateValue(value) {
-  return scheduleDate(value)?.getTime() || 0;
+  return scheduleDate(value)?.getTime() || Number.MAX_SAFE_INTEGER;
 }
 
 function toDateKey(date) {
@@ -1122,7 +1246,35 @@ function regionSortValue(key) {
   return index === -1 ? 99 : index;
 }
 
+const dateRangeLabels = {
+  upcoming: 'กำลังจะถึง',
+  today: 'วันนี้',
+  week: '7 วันข้างหน้า',
+  month: '30 วันข้างหน้า',
+  all: 'ทั้งหมดที่โหลดมา',
+};
+
+const sortLabels = {
+  date: 'วันเดินทางเร็วสุด',
+  available: 'ที่นั่งว่างน้อยสุด',
+  booked: 'จองมากสุด',
+  price: 'ราคาต่ำสุด',
+};
+
+function handleKeyDown(event) {
+  if (event.key === 'Escape' && activeModal.value) closeModal();
+}
+
+watch(activeModal, (modal) => {
+  document.body.style.overflow = modal ? 'hidden' : '';
+});
+
 onMounted(fetchData);
+onMounted(() => window.addEventListener('keydown', handleKeyDown));
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+  document.body.style.overflow = '';
+});
 </script>
 
 <style scoped>
@@ -1173,6 +1325,11 @@ onMounted(fetchData);
 .summary-icon.open {
   background: #ecfdf5;
   color: #059669;
+}
+
+.summary-icon.people {
+  background: #eef2ff;
+  color: #4f46e5;
 }
 
 .summary-icon.seats {
@@ -1226,11 +1383,33 @@ onMounted(fetchData);
 }
 
 .overview-filters {
+  align-items: flex-end;
   margin-bottom: 8px;
 }
 
-.search-box.wide {
+.filter-field {
+  display: grid;
+  gap: 5px;
+  min-width: 132px;
+}
+
+.filter-field select {
+  width: 100%;
+}
+
+.filter-label {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.search-field {
+  flex: 1 1 280px;
   min-width: 260px;
+}
+
+.search-box.wide {
+  min-width: 0;
 }
 
 .compact {
@@ -1241,6 +1420,74 @@ onMounted(fetchData);
 .filter-footnote {
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.toggle-filter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-text-mid);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.toggle-filter input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-filter .material-symbols-rounded {
+  color: var(--color-text-muted);
+  font-size: 18px;
+}
+
+.toggle-filter.active {
+  background: #e8f5ec;
+  border-color: #b7dfc5;
+  color: var(--color-accent);
+}
+
+.toggle-filter.active .material-symbols-rounded {
+  color: var(--color-accent);
+}
+
+.active-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #b7dfc5;
+  border-radius: 999px;
+  background: #f0faf4;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px 4px 10px;
+}
+
+.filter-chip .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.filter-chip:hover {
+  background: #e8f5ec;
 }
 
 .overview-container {
@@ -1268,6 +1515,10 @@ onMounted(fetchData);
   background: var(--color-white);
   border: 1px solid var(--color-sand-dark);
   border-radius: 8px;
+}
+
+.overview-empty .btn-secondary {
+  margin-top: 12px;
 }
 
 .overview-empty .material-symbols-rounded {
@@ -1493,6 +1744,45 @@ onMounted(fetchData);
   gap: 10px;
 }
 
+.card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.availability-open {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.availability-low {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.availability-full {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.availability-muted {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 .sch-price {
   color: var(--color-accent);
   font-weight: 800;
@@ -1574,6 +1864,14 @@ onMounted(fetchData);
   background: var(--color-accent);
   border-radius: inherit;
   transition: width 0.25s;
+}
+
+.progress-fill.progress-low {
+  background: #f59e0b;
+}
+
+.progress-fill.progress-full {
+  background: #ef4444;
 }
 
 .seat-breakdown {
@@ -2052,6 +2350,21 @@ onMounted(fetchData);
 }
 
 @media (max-width: 768px) {
+  .header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .filter-field,
+  .toggle-filter,
+  .filters-panel .btn-secondary {
+    width: 100%;
+  }
+
+  .card-header {
+    align-items: flex-start;
+  }
+
   .detail-grid {
     grid-template-columns: 1fr;
   }
