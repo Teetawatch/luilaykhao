@@ -811,11 +811,51 @@
              <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:4px;">warning</span>
              ย้ายเฉพาะผู้โดยสารที่เลือก หากเลือกไม่ครบทั้งใบจอง ระบบจะแยกรายการจองใหม่ให้อัตโนมัติ และพยายามจับคู่จุดรับให้ตรงกับรอบปลายทาง
           </div>
+
+          <div v-if="moveTargetId && selectedMoveSeatPassengers.length" class="apply-section move-seat-section">
+            <div class="move-selection-head">
+              <div class="apply-section-title"><span class="material-symbols-rounded">airline_seat_recline_normal</span> เลือกที่นั่งปลายทาง</div>
+              <div v-if="moveSeatMapLoading" class="text-muted-sm">กำลังโหลดที่นั่ง...</div>
+              <div v-else class="text-muted-sm">ว่าง {{ availableMoveTargetSeats.length }} ที่นั่ง</div>
+            </div>
+
+            <div v-if="moveSeatMapError" class="alert-card" style="margin:0;">
+              <span class="material-symbols-rounded">error</span>
+              <span>{{ moveSeatMapError }}</span>
+            </div>
+
+            <div v-else class="move-seat-list">
+              <div v-for="row in moveSeatAssignmentRows" :key="row.passenger.id" class="move-seat-row">
+                <div class="move-seat-person">
+                  <strong>{{ row.passenger.name }}</strong>
+                  <span>
+                    ที่นั่งเดิม {{ row.originalSeatId || '—' }}
+                    <template v-if="row.originalSeatId && !row.originalSeatAvailable"> · ที่นั่งเดิมไม่ว่างในรอบปลายทาง</template>
+                  </span>
+                </div>
+                <select v-model="moveSeatAssignments[row.passenger.id]" :disabled="moveSeatMapLoading">
+                  <option value="">เลือกที่นั่ง</option>
+                  <option
+                    v-for="seat in moveSeatOptionsFor(row.passenger.id)"
+                    :key="seat.id"
+                    :value="seat.id"
+                  >
+                    {{ seat.label || seat.id }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <p v-if="moveSeatAssignmentError" class="move-seat-error">
+              <span class="material-symbols-rounded">warning</span>
+              {{ moveSeatAssignmentError }}
+            </p>
+          </div>
           </template>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="closeMoveBookingsModal">ยกเลิก</button>
-          <button class="btn-primary" @click="doMoveBookings" :disabled="moveSubmitting || moveLoading || !moveTargetId || !selectedMovePassengerCount">
+          <button class="btn-primary" @click="doMoveBookings" :disabled="moveSubmitting || moveLoading || moveSeatMapLoading || !moveTargetId || !selectedMovePassengerCount || Boolean(moveSeatAssignmentError)">
             <span class="material-symbols-rounded" :class="{ 'animate-spin': moveSubmitting }" v-if="moveSubmitting">sync</span>
             ย้าย {{ selectedMovePassengerCount }} คน
           </button>
@@ -1111,7 +1151,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
@@ -1296,6 +1336,10 @@ const moveSource = ref(null);
 const moveTargetId = ref(null);
 const movePassengers = ref([]);
 const moveSelectedPassengerIds = ref([]);
+const moveTargetSeatMap = ref(null);
+const moveSeatMapLoading = ref(false);
+const moveSeatMapError = ref('');
+const moveSeatAssignments = reactive({});
 
 const selectedMovePassengerCount = computed(() => moveSelectedPassengerIds.value.length);
 const selectedMovePassengers = computed(() => {
@@ -1303,6 +1347,7 @@ const selectedMovePassengers = computed(() => {
   return movePassengers.value.filter((p) => selected.has(p.id));
 });
 const selectedMoveSeatCount = computed(() => selectedMovePassengers.value.filter((p) => !p.is_join_trip).length);
+const selectedMoveSeatPassengers = computed(() => selectedMovePassengers.value.filter((p) => !p.is_join_trip && passengerSeatLabels(p).length));
 const movePassengerGroups = computed(() => {
   const map = new Map();
 
@@ -1325,12 +1370,46 @@ const movePassengerGroups = computed(() => {
 
   return [...map.values()];
 });
+const moveTargetSeats = computed(() => moveTargetSeatMap.value?.seats || []);
+const availableMoveTargetSeats = computed(() => moveTargetSeats.value.filter((seat) => seat.status === 'available'));
+const moveSeatAssignmentRows = computed(() => selectedMoveSeatPassengers.value.map((passenger) => {
+  const originalSeatId = passengerSeatLabels(passenger)[0] || '';
+  return {
+    passenger,
+    originalSeatId,
+    originalSeatAvailable: originalSeatId ? isMoveTargetSeatAvailable(originalSeatId) : false,
+    assignedSeatId: moveSeatAssignments[passenger.id] || '',
+  };
+}));
+const moveSeatAssignmentError = computed(() => {
+  if (!moveTargetId.value || !selectedMoveSeatPassengers.value.length) return '';
+  if (moveSeatMapLoading.value) return 'กำลังโหลดข้อมูลที่นั่งปลายทาง';
+  if (moveSeatMapError.value) return moveSeatMapError.value;
+
+  const assignedSeats = selectedMoveSeatPassengers.value.map((p) => moveSeatAssignments[p.id]).filter(Boolean);
+  if (assignedSeats.length < selectedMoveSeatPassengers.value.length) {
+    return 'กรุณาเลือกที่นั่งปลายทางให้ครบทุกคนที่มีที่นั่งเดิม';
+  }
+
+  const duplicateSeats = assignedSeats.filter((seatId, index) => assignedSeats.indexOf(seatId) !== index);
+  if (duplicateSeats.length) {
+    return `มีการเลือกที่นั่งซ้ำ: ${[...new Set(duplicateSeats)].join(', ')}`;
+  }
+
+  const unavailableSeats = assignedSeats.filter((seatId) => !isMoveTargetSeatAvailable(seatId));
+  if (unavailableSeats.length) {
+    return `ที่นั่ง ${[...new Set(unavailableSeats)].join(', ')} ไม่ว่างในรอบปลายทาง`;
+  }
+
+  return '';
+});
 
 const openMoveBookingsModal = async (sch) => {
   moveSource.value = sch;
   moveTargetId.value = null;
   movePassengers.value = [];
   moveSelectedPassengerIds.value = [];
+  resetMoveSeatSelection();
   showMoveBookingsModal.value = true;
   moveLoading.value = true;
 
@@ -1356,6 +1435,7 @@ const doMoveBookings = async () => {
       source_schedule_id: moveSource.value.id,
       target_schedule_id: moveTargetId.value,
       passenger_ids: moveSelectedPassengerIds.value,
+      seat_assignments: buildMoveSeatAssignmentsPayload(),
     });
     toast.success(res.data?.message || 'ย้ายการจองสำเร็จ');
     closeMoveBookingsModal();
@@ -1373,6 +1453,7 @@ const closeMoveBookingsModal = () => {
   moveTargetId.value = null;
   movePassengers.value = [];
   moveSelectedPassengerIds.value = [];
+  resetMoveSeatSelection();
   moveLoading.value = false;
 };
 
@@ -1412,11 +1493,98 @@ const passengerSeatLabels = (passenger) => {
   return seats[passengerIndex]?.seat_id ? [seats[passengerIndex].seat_id] : [];
 };
 
+const resetMoveSeatSelection = () => {
+  moveTargetSeatMap.value = null;
+  moveSeatMapError.value = '';
+  moveSeatMapLoading.value = false;
+  Object.keys(moveSeatAssignments).forEach((key) => delete moveSeatAssignments[key]);
+};
+
+const isMoveTargetSeatAvailable = (seatId) => {
+  const seat = moveTargetSeats.value.find((item) => item.id === seatId);
+  return Boolean(seat && seat.status === 'available');
+};
+
+const initializeMoveSeatAssignments = () => {
+  const usedSeats = new Set();
+
+  selectedMoveSeatPassengers.value.forEach((passenger) => {
+    const current = moveSeatAssignments[passenger.id];
+    if (current && isMoveTargetSeatAvailable(current) && !usedSeats.has(current)) {
+      usedSeats.add(current);
+      return;
+    }
+
+    const originalSeatId = passengerSeatLabels(passenger)[0] || '';
+    if (originalSeatId && isMoveTargetSeatAvailable(originalSeatId) && !usedSeats.has(originalSeatId)) {
+      moveSeatAssignments[passenger.id] = originalSeatId;
+      usedSeats.add(originalSeatId);
+    } else {
+      moveSeatAssignments[passenger.id] = '';
+    }
+  });
+
+  Object.keys(moveSeatAssignments).forEach((passengerId) => {
+    if (!selectedMoveSeatPassengers.value.some((passenger) => String(passenger.id) === String(passengerId))) {
+      delete moveSeatAssignments[passengerId];
+    }
+  });
+};
+
+const moveSeatOptionsFor = (passengerId) => {
+  const selectedByOthers = new Set(
+    Object.entries(moveSeatAssignments)
+      .filter(([id, seatId]) => String(id) !== String(passengerId) && seatId)
+      .map(([, seatId]) => seatId)
+  );
+
+  return availableMoveTargetSeats.value.filter((seat) => !selectedByOthers.has(seat.id));
+};
+
+const buildMoveSeatAssignmentsPayload = () => {
+  const payload = {};
+  selectedMoveSeatPassengers.value.forEach((passenger) => {
+    if (moveSeatAssignments[passenger.id]) {
+      payload[passenger.id] = moveSeatAssignments[passenger.id];
+    }
+  });
+  return payload;
+};
+
+const fetchMoveTargetSeatMap = async () => {
+  if (!moveTargetId.value) {
+    resetMoveSeatSelection();
+    return;
+  }
+
+  moveSeatMapLoading.value = true;
+  moveSeatMapError.value = '';
+
+  try {
+    const res = await api.get(`/schedules/${moveTargetId.value}/seats`);
+    moveTargetSeatMap.value = res.data?.data || null;
+    initializeMoveSeatAssignments();
+  } catch (e) {
+    moveTargetSeatMap.value = null;
+    moveSeatMapError.value = e.response?.data?.message || 'ไม่สามารถโหลดที่นั่งปลายทางได้';
+  } finally {
+    moveSeatMapLoading.value = false;
+  }
+};
+
 const isMoveTargetDisabled = (sch) => {
   if (!moveSource.value || sch.id === moveSource.value.id) return true;
   if (!selectedMovePassengerCount.value) return true;
   return Number(sch.available_seats || 0) < selectedMoveSeatCount.value;
 };
+
+watch(moveTargetId, () => {
+  fetchMoveTargetSeatMap();
+});
+
+watch(moveSelectedPassengerIds, () => {
+  initializeMoveSeatAssignments();
+}, { deep: true });
 
 const openBatchForm = (presetTripId = '') => {
   Object.assign(batchForm, {
@@ -2482,6 +2650,79 @@ onMounted(() => {
 
 .move-passenger-item:hover {
   background: #fafafa;
+}
+
+.move-seat-section {
+  margin-top: 16px;
+}
+
+.move-seat-list {
+  display: grid;
+  gap: 8px;
+}
+
+.move-seat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.move-seat-person {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.move-seat-person strong {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.move-seat-person span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.move-seat-row select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #111827;
+  font-size: 13px;
+  outline: none;
+}
+
+.move-seat-row select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
+}
+
+.move-seat-error,
+.alert-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+}
+
+.move-seat-error .material-symbols-rounded,
+.alert-card .material-symbols-rounded {
+  font-size: 17px;
 }
 
 .copy-target-item.disabled {

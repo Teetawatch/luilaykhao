@@ -330,6 +330,8 @@ class AdminController extends Controller
             'target_schedule_id' => ['required', 'exists:trip_schedules,id', 'different:source_schedule_id'],
             'passenger_ids' => ['nullable', 'array'],
             'passenger_ids.*' => ['integer', 'exists:booking_passengers,id'],
+            'seat_assignments' => ['nullable', 'array'],
+            'seat_assignments.*' => ['nullable', 'string', 'max:30'],
         ]);
 
         $source = TripSchedule::with(['bookings.passengers', 'bookings.seats', 'bookings.installmentPayments', 'pickupPoints'])->findOrFail($request->source_schedule_id);
@@ -349,6 +351,10 @@ class AdminController extends Controller
                 ->flatMap(fn ($booking) => $booking->passengers->pluck('id'))
                 ->values();
         }
+
+        $seatAssignments = collect($request->input('seat_assignments', []))
+            ->mapWithKeys(fn ($seatId, $passengerId) => [(int) $passengerId => trim((string) $seatId)])
+            ->filter(fn ($seatId, $passengerId) => $seatId !== '' && $selectedPassengerIds->contains((int) $passengerId));
 
         $bookings = $bookings
             ->filter(fn ($booking) => $booking->passengers->pluck('id')->intersect($selectedPassengerIds)->isNotEmpty())
@@ -382,11 +388,25 @@ class AdminController extends Controller
             }
         }
 
-        $seatIdsToMove = $bookings
-            ->flatMap(fn ($booking) => $this->seatsForMovePassengers($booking, $selectedPassengerIds)->pluck('seat_id'))
+        $seatMoves = $bookings
+            ->flatMap(fn ($booking) => $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments))
+            ->values();
+
+        $seatIdsToMove = $seatMoves
+            ->pluck('target_seat_id')
             ->filter()
+            ->values();
+
+        $duplicateSeatIds = $seatIdsToMove
+            ->duplicates()
             ->unique()
             ->values();
+
+        if ($duplicateSeatIds->isNotEmpty()) {
+            return $this->error('เลือกที่นั่งปลายทางซ้ำ: ' . $duplicateSeatIds->join(', '), 422);
+        }
+
+        $seatIdsToMove = $seatIdsToMove->unique()->values();
 
         if ($seatIdsToMove->isNotEmpty()) {
             $occupiedSeatIds = BookingSeat::where('schedule_id', $target->id)
@@ -399,11 +419,12 @@ class AdminController extends Controller
             }
         }
 
-        DB::transaction(function () use ($source, $target, $bookings, $pickupMap, $selectedPassengerIds) {
+        DB::transaction(function () use ($source, $target, $bookings, $pickupMap, $selectedPassengerIds, $seatAssignments) {
             foreach ($bookings as $booking) {
                 $selectedInBooking = $booking->passengers
                     ->whereIn('id', $selectedPassengerIds->all())
                     ->values();
+                $seatMoves = $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments);
 
                 if ($selectedInBooking->count() === $booking->passengers->count()) {
                     $updateData = ['schedule_id' => $target->id];
@@ -415,19 +436,21 @@ class AdminController extends Controller
 
                     $booking->update($updateData);
 
-                    // Update BookingSeats
-                    BookingSeat::where('booking_id', $booking->id)
-                        ->update(['schedule_id' => $target->id]);
+                    $seatMoves->each(fn ($move) => $move['seat']->update([
+                        'schedule_id' => $target->id,
+                        'seat_id' => $move['target_seat_id'],
+                    ]));
                 } else {
                     $newBooking = $this->splitBookingForMove($booking, $selectedInBooking, $target, $pickupMap);
 
                     $selectedInBooking
                         ->each(fn ($passenger) => $passenger->update(['booking_id' => $newBooking->id]));
 
-                    $this->seatsForMovePassengers($booking, $selectedPassengerIds)
-                        ->each(fn ($seat) => $seat->update([
+                    $seatMoves
+                        ->each(fn ($move) => $move['seat']->update([
                             'booking_id' => $newBooking->id,
                             'schedule_id' => $target->id,
+                            'seat_id' => $move['target_seat_id'],
                         ]));
                 }
             }
@@ -439,9 +462,10 @@ class AdminController extends Controller
         return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ " . $target->departure_date->format('d/m/Y') . " สำเร็จ");
     }
 
-    private function seatsForMovePassengers(Booking $booking, $selectedPassengerIds)
+    private function seatMovesForBooking(Booking $booking, $selectedPassengerIds, $seatAssignments)
     {
         $selectedIds = collect($selectedPassengerIds)->map(fn ($id) => (int) $id);
+        $assignments = collect($seatAssignments)->mapWithKeys(fn ($seatId, $passengerId) => [(int) $passengerId => $seatId]);
         $orderedPassengers = $booking->passengers->sortBy('id')->values();
         $orderedSeats = $booking->seats->sortBy('id')->values();
 
@@ -453,10 +477,24 @@ class AdminController extends Controller
 
                 $seatByName = $orderedSeats->firstWhere('passenger_name', $passenger->name);
 
-                return $seatByName ?: $orderedSeats->get($index);
+                $seat = $seatByName ?: $orderedSeats->get($index);
+
+                if (! $seat) {
+                    return null;
+                }
+
+                return [
+                    'passenger_id' => (int) $passenger->id,
+                    'seat' => $seat,
+                ];
             })
             ->filter()
-            ->unique('id')
+            ->unique(fn ($move) => $move['seat']->id)
+            ->map(function ($move) use ($assignments) {
+                $move['target_seat_id'] = $assignments->get($move['passenger_id'], $move['seat']->seat_id);
+
+                return $move;
+            })
             ->values();
     }
 
