@@ -1025,6 +1025,9 @@ class AdminController extends Controller
             'passengers.*.health_notes' => ['nullable', 'string'],
             'passengers.*.emergency_contact' => ['nullable', 'string', 'max:255'],
             'passengers.*.emergency_phone' => ['nullable', 'string', 'max:20'],
+            'passengers.*.dive_cert_level' => ['nullable', 'string', 'max:255'],
+            'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
+            'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],
             'passengers.*.halal_food' => ['nullable', 'boolean'],
             'seat_ids' => ['nullable', 'array'],
             'seat_ids.*' => ['nullable', 'string', 'max:30'],
@@ -1144,6 +1147,9 @@ class AdminController extends Controller
                 'health_notes' => $passenger['health_notes'] ?? null,
                 'emergency_contact' => $passenger['emergency_contact'] ?? null,
                 'emergency_phone' => $passenger['emergency_phone'] ?? null,
+                'dive_cert_level' => $passenger['dive_cert_level'] ?? null,
+                'cert_number' => $passenger['cert_number'] ?? null,
+                'weight' => $passenger['weight'] ?? null,
                 'halal_food' => (bool) ($passenger['halal_food'] ?? false),
             ]);
         });

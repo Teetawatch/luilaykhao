@@ -39,7 +39,7 @@
               <select v-model.number="form.schedule_id" :disabled="!form.trip_id || schedulesLoading" required @change="onScheduleChange">
                 <option value="">เลือกรอบเดินทาง</option>
                 <option v-for="schedule in schedules" :key="schedule.id" :value="schedule.id">
-                  {{ formatDate(schedule.departure_date) }}
+                  {{ scheduleRegionLabel(schedule) }} · {{ formatDate(schedule.departure_date) }}
                   <template v-if="schedule.return_date"> - {{ formatDate(schedule.return_date) }}</template>
                   · ว่าง {{ schedule.available_seats }} ที่
                 </option>
@@ -130,6 +130,13 @@
               </div>
               <div class="form-grid">
                 <label class="form-field">
+                  <span>คำนำหน้า *</span>
+                  <select v-model="passenger.title" required>
+                    <option value="" disabled>เลือก...</option>
+                    <option v-for="title in titleOptions" :key="title" :value="title">{{ title }}</option>
+                  </select>
+                </label>
+                <label class="form-field">
                   <span>ชื่อ-นามสกุล *</span>
                   <input v-model.trim="passenger.name" required placeholder="ชื่อผู้เดินทาง" />
                 </label>
@@ -138,33 +145,76 @@
                   <input v-model.trim="passenger.nickname" placeholder="ชื่อเล่น" />
                 </label>
                 <label class="form-field">
-                  <span>โทรศัพท์</span>
-                  <input v-model.trim="passenger.phone" type="tel" placeholder="ถ้ามี" />
+                  <span>โทรศัพท์ *</span>
+                  <input v-model.trim="passenger.phone" required type="tel" placeholder="0XX-XXX-XXXX" />
                 </label>
                 <label class="form-field">
-                  <span>เลขบัตร/พาสปอร์ต</span>
-                  <input v-model.trim="passenger.id_card" placeholder="สำหรับประกัน" />
+                  <span>เลขบัตรประชาชน *</span>
+                  <input
+                    v-model.trim="passenger.id_card"
+                    required
+                    maxlength="13"
+                    inputmode="numeric"
+                    placeholder="เลขบัตรประชาชน 13 หลัก"
+                    @input="passenger.id_card = passenger.id_card.replace(/\D/g, '')"
+                  />
                 </label>
                 <label class="form-field">
                   <span>กรุ๊ปเลือด</span>
-                  <input v-model.trim="passenger.blood_group" placeholder="เช่น O, A" />
+                  <select v-model="passenger.blood_group">
+                    <option value="">ไม่ระบุ</option>
+                    <option v-for="group in bloodGroupOptions" :key="group" :value="group">{{ group }}</option>
+                  </select>
                 </label>
-                <label class="checkbox-inline">
-                  <input v-model="passenger.halal_food" type="checkbox" />
-                  อาหารฮาลาล
+                <label class="form-field">
+                  <span>ผู้ติดต่อฉุกเฉิน *</span>
+                  <input v-model.trim="passenger.emergency_contact" required placeholder="ชื่อผู้ติดต่อ" />
+                </label>
+                <label class="form-field">
+                  <span>เบอร์ฉุกเฉิน *</span>
+                  <input v-model.trim="passenger.emergency_phone" required type="tel" placeholder="0XX-XXX-XXXX" />
+                </label>
+                <div class="form-field full">
+                  <span>ต้องการอาหารฮาลาล *</span>
+                  <div class="radio-choice-group">
+                    <label class="radio-card" :class="{ active: passenger.halal_food === true }">
+                      <input :name="`halal_food_${passenger.key}`" v-model="passenger.halal_food" type="radio" :value="true" />
+                      <span class="radio-dot"></span>
+                      ต้องการ
+                    </label>
+                    <label class="radio-card" :class="{ active: passenger.halal_food === false }">
+                      <input :name="`halal_food_${passenger.key}`" v-model="passenger.halal_food" type="radio" :value="false" />
+                      <span class="radio-dot"></span>
+                      ไม่จำเป็น
+                    </label>
+                  </div>
+                </div>
+                <label class="form-field full">
+                  <span>การแพ้อาหาร / อื่นๆ</span>
+                  <input v-model.trim="passenger.allergies" placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ" />
                 </label>
                 <label class="form-field full">
-                  <span>แพ้อาหาร/โรคประจำตัว</span>
-                  <textarea v-model.trim="passenger.health_notes" rows="2" placeholder="ระบุถ้ามี"></textarea>
+                  <span>หมายเหตุสุขภาพ</span>
+                  <textarea v-model.trim="passenger.health_notes" rows="2" placeholder="แพ้ยา, โรคประจำตัว ฯลฯ"></textarea>
                 </label>
-                <label class="form-field">
-                  <span>ผู้ติดต่อฉุกเฉิน</span>
-                  <input v-model.trim="passenger.emergency_contact" placeholder="ชื่อผู้ติดต่อ" />
-                </label>
-                <label class="form-field">
-                  <span>เบอร์ฉุกเฉิน</span>
-                  <input v-model.trim="passenger.emergency_phone" type="tel" placeholder="เบอร์ติดต่อ" />
-                </label>
+                <div v-if="requiresDiveInfo" class="dive-fields full">
+                  <div class="dive-fields-title">
+                    <span class="material-symbols-rounded">scuba_diving</span>
+                    ข้อมูลดำน้ำ
+                  </div>
+                  <label class="form-field">
+                    <span>ระดับใบรับรอง</span>
+                    <input v-model.trim="passenger.dive_cert_level" placeholder="เช่น Open Water" />
+                  </label>
+                  <label class="form-field">
+                    <span>เลขบัตรดำน้ำ</span>
+                    <input v-model.trim="passenger.cert_number" placeholder="ถ้ามี" />
+                  </label>
+                  <label class="form-field">
+                    <span>น้ำหนัก (กก.)</span>
+                    <input v-model.number="passenger.weight" type="number" min="0" step="0.1" placeholder="สำหรับเตรียมอุปกรณ์" />
+                  </label>
+                </div>
               </div>
             </article>
           </div>
@@ -251,6 +301,10 @@
             <strong>{{ selectedSchedule ? formatDate(selectedSchedule.departure_date) : '-' }}</strong>
           </div>
           <div class="summary-row">
+            <span>ภาค</span>
+            <strong>{{ selectedSchedule ? scheduleRegionLabel(selectedSchedule) : '-' }}</strong>
+          </div>
+          <div class="summary-row">
             <span>ประเภท</span>
             <strong>{{ form.is_join_trip ? 'จอยทริป' : 'จองปกติ' }}</strong>
           </div>
@@ -296,6 +350,17 @@ const submitting = ref(false);
 const seatError = ref('');
 const createdBooking = ref(null);
 
+const bloodGroupOptions = ['A', 'B', 'O', 'AB'];
+const regionLabels = {
+  north: 'ภาคเหนือ',
+  northeast: 'ภาคอีสาน',
+  central: 'ภาคกลาง',
+  east: 'ภาคตะวันออก',
+  west: 'ภาคตะวันตก',
+  south: 'ภาคใต้',
+  bangkok: 'กรุงเทพฯ',
+};
+
 const form = reactive({
   trip_id: '',
   schedule_id: '',
@@ -313,8 +378,13 @@ const passengers = ref([newPassenger()]);
 
 const selectedTrip = computed(() => trips.value.find((trip) => trip.id === Number(form.trip_id)) || null);
 const selectedSchedule = computed(() => schedules.value.find((schedule) => schedule.id === Number(form.schedule_id)) || null);
+const isWomenOnlyTrip = computed(() => Boolean(selectedTrip.value?.is_women_only || selectedSchedule.value?.trip?.is_women_only));
+const titleOptions = computed(() => isWomenOnlyTrip.value
+  ? ['นาง', 'นางสาว']
+  : ['นาย', 'นาง', 'นางสาว']);
 const pickupPoints = computed(() => selectedSchedule.value?.pickup_points || []);
 const selectedPickup = computed(() => pickupPoints.value.find((point) => point.id === Number(form.pickup_point_id)) || null);
+const requiresDiveInfo = computed(() => ['diving', 'snorkeling'].includes(selectedTrip.value?.type || selectedSchedule.value?.trip?.type));
 const pricePerPerson = computed(() => {
   if (!selectedSchedule.value) return 0;
   if (form.is_join_trip) return Number(selectedSchedule.value.join_trip_price || selectedSchedule.value.price || 0);
@@ -345,14 +415,14 @@ const seatCells = computed(() => {
 });
 const canSubmit = computed(() => {
   if (!form.schedule_id || !form.customer_name || !form.email || !form.phone) return false;
-  if (passengers.value.some((passenger) => !passenger.name)) return false;
+  if (passengers.value.some((passenger) => !isPassengerComplete(passenger))) return false;
   if (!form.is_join_trip && seatMap.value && selectedSeatIds.value.length !== passengers.value.length) return false;
   return true;
 });
 const submitHint = computed(() => {
   if (!selectedSchedule.value) return 'เลือกรอบเดินทางก่อน';
   if (!form.customer_name || !form.email || !form.phone) return 'กรอกข้อมูลลูกค้าให้ครบ';
-  if (passengers.value.some((passenger) => !passenger.name)) return 'กรอกชื่อผู้เดินทางให้ครบ';
+  if (passengers.value.some((passenger) => !isPassengerComplete(passenger))) return 'กรอกข้อมูลผู้เดินทางที่มี * ให้ครบ';
   if (!form.is_join_trip && seatMap.value && selectedSeatIds.value.length !== passengers.value.length) {
     return `เลือกที่นั่ง ${selectedSeatIds.value.length}/${passengers.value.length}`;
   }
@@ -378,7 +448,10 @@ function newPassenger() {
     health_notes: '',
     emergency_contact: '',
     emergency_phone: '',
-    halal_food: false,
+    dive_cert_level: '',
+    cert_number: '',
+    weight: null,
+    halal_food: null,
   };
 }
 
@@ -425,8 +498,27 @@ async function fetchSeatMap() {
   }
 }
 
+function isPassengerComplete(passenger) {
+  const hasRequiredFields = passenger.title
+    && passenger.name?.trim()
+    && passenger.phone?.trim()
+    && passenger.id_card?.length === 13
+    && passenger.emergency_contact?.trim()
+    && passenger.emergency_phone?.trim()
+    && passenger.halal_food !== null;
+
+  const matchesWomenOnly = !isWomenOnlyTrip.value
+    || ['นาง', 'นางสาว'].includes(passenger.title);
+
+  return Boolean(hasRequiredFields && matchesWomenOnly);
+}
+
 function addPassenger() {
-  passengers.value.push(newPassenger());
+  const passenger = newPassenger();
+  if (passengers.value.length === 0) {
+    passenger.phone = form.phone;
+  }
+  passengers.value.push(passenger);
 }
 
 function removePassenger(index) {
@@ -464,6 +556,11 @@ function seatButtonClass(seat) {
 function seatTitle(seat) {
   if (seat.status !== 'available') return seat.passenger_name ? `จองแล้วโดย ${seat.passenger_name}` : 'ที่นั่งไม่ว่าง';
   return selectedSeatIds.value.includes(seat.id) ? 'คลิกเพื่อยกเลิก' : 'คลิกเพื่อเลือก';
+}
+
+function scheduleRegionLabel(schedule) {
+  const region = schedule?.trip?.region || selectedTrip.value?.region || schedule?.region || '';
+  return regionLabels[region] || region || 'ไม่ระบุภาค';
 }
 
 async function submitBooking() {
@@ -648,6 +745,54 @@ function formatCurrency(value) {
   margin-left: auto;
 }
 
+.radio-choice-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.radio-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 12px;
+}
+
+.radio-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.radio-card.active {
+  border-color: var(--color-accent);
+  background: #eef8f1;
+  color: var(--color-accent);
+}
+
+.radio-dot {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 3px #ffffff;
+}
+
+.radio-card.active .radio-dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
 .passenger-list {
   display: grid;
   gap: 12px;
@@ -669,6 +814,34 @@ function formatCurrency(value) {
 .passenger-card-head strong {
   color: #111827;
   font-size: 14px;
+}
+
+.dive-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 12px;
+}
+
+.dive-fields.full {
+  grid-column: 1 / -1;
+}
+
+.dive-fields-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  grid-column: 1 / -1;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.dive-fields-title .material-symbols-rounded {
+  font-size: 18px;
 }
 
 .add-passenger-btn {
@@ -935,6 +1108,11 @@ function formatCurrency(value) {
 
 @media (max-width: 640px) {
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .radio-choice-group,
+  .dive-fields {
     grid-template-columns: 1fr;
   }
 
