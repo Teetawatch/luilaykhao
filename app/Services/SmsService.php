@@ -23,7 +23,7 @@ class SmsService
             type: 'booking_created',
             dedupeKey: 'default',
             message: sprintf(
-                'Luilaykhao: จองทริป %s สำเร็จ รหัส %s กรุณาชำระเงินเพื่อยืนยันที่นั่ง รายละเอียด %s',
+                'จองทริป %s สำเร็จ รหัส %s กรุณาชำระเงินเพื่อยืนยันที่นั่ง รายละเอียด %s',
                 $this->tripTitle($booking),
                 $booking->booking_ref,
                 $this->bookingUrl($booking),
@@ -45,7 +45,7 @@ class SmsService
             type: 'payment_confirmed',
             dedupeKey: $paymentType,
             message: sprintf(
-                'Luilaykhao: %s สำหรับ booking %s ทริป %s วันที่ %s%s',
+                '%s สำหรับ booking %s ทริป %s วันที่ %s%s',
                 $label,
                 $booking->booking_ref,
                 $this->tripTitle($booking),
@@ -65,7 +65,7 @@ class SmsService
             type: 'installment_paid',
             dedupeKey: 'installment:' . $installment->installment_no,
             message: sprintf(
-                'Luilaykhao: รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว%s',
+                'รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว%s',
                 $installment->installment_no,
                 $this->money($installment->amount),
                 $booking->booking_ref,
@@ -85,7 +85,7 @@ class SmsService
             type: 'booking_cancelled',
             dedupeKey: 'default',
             message: sprintf(
-                'Luilaykhao: booking %s ทริป %s ถูกยกเลิกแล้ว%s ติดต่อทีมงานหากต้องการความช่วยเหลือ',
+                'booking %s ทริป %s ถูกยกเลิกแล้ว%s ติดต่อทีมงานหากต้องการความช่วยเหลือ',
                 $booking->booking_ref,
                 $this->tripTitle($booking),
                 $reasonText,
@@ -114,7 +114,7 @@ class SmsService
             type: 'installment_' . $reminderType,
             dedupeKey: 'installment:' . $installment->installment_no . ':' . $installment->due_date?->toDateString(),
             message: sprintf(
-                'Luilaykhao: %s งวดที่ %d จำนวน %s บาท booking %s กำหนด %s ชำระที่ %s',
+                '%s งวดที่ %d จำนวน %s บาท booking %s กำหนด %s ชำระที่ %s',
                 $prefix,
                 $installment->installment_no,
                 $this->money($installment->amount),
@@ -134,7 +134,7 @@ class SmsService
             type: 'departure_reminder',
             dedupeKey: $daysBefore . '_days_before',
             message: sprintf(
-                'Luilaykhao: อีก %d วันถึงทริป %s วันที่ %s จุดนัดพบ %s รายละเอียด %s',
+                'อีก %d วันถึงทริป %s วันที่ %s จุดนัดพบ %s รายละเอียด %s',
                 $daysBefore,
                 $this->tripTitle($booking),
                 $this->departureDate($booking),
@@ -154,6 +154,7 @@ class SmsService
         $sent = 0;
 
         SmsLog::whereIn('status', ['pending', 'failed'])
+            ->whereIn('sms_type', $this->sendableSmsTypes())
             ->where('attempts', '<', 3)
             ->where(function ($query) {
                 $query->whereNull('scheduled_at')
@@ -174,6 +175,24 @@ class SmsService
     private function queueOrSend(Booking $booking, string $type, string $dedupeKey, string $message): ?SmsLog
     {
         try {
+            if (! in_array($type, $this->sendableSmsTypes(), true)) {
+                return SmsLog::firstOrCreate(
+                    [
+                        'booking_id' => $booking->id,
+                        'provider' => 'thaibulksms',
+                        'sms_type' => $type,
+                        'dedupe_key' => $dedupeKey,
+                    ],
+                    [
+                        'recipient' => null,
+                        'message' => $message,
+                        'status' => 'skipped',
+                        'error_message' => 'SMS type is disabled.',
+                        'scheduled_at' => now(),
+                    ],
+                );
+            }
+
             $recipient = $this->recipientFor($booking);
 
             if (! $recipient) {
@@ -272,6 +291,19 @@ class SmsService
             && filled($config['api_key'])
             && filled($config['api_secret'])
             && filled($config['sender']);
+    }
+
+    private function sendableSmsTypes(): array
+    {
+        return [
+            'payment_confirmed',
+            'installment_paid',
+            'installment_due_soon',
+            'installment_due_today',
+            'installment_overdue',
+            'booking_cancelled',
+            'departure_reminder',
+        ];
     }
 
     private function recipientFor(Booking $booking): ?string

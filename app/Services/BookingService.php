@@ -175,7 +175,6 @@ class BookingService
 
         // Send emails outside of DB transaction
         $this->mailService->sendBookingCreatedEmail($booking);
-        $this->smsService->sendBookingCreated($booking);
         SmartNotification::send(
             $booking->user_id,
             'booking_created',
