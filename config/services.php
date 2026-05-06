@@ -71,6 +71,7 @@ return [
         'sender' => env('THAIBULKSMS_SENDER', 'LUILAYKHAO'),
         'credit_type' => env('THAIBULKSMS_CREDIT_TYPE', 'standard'),
         'endpoint' => env('THAIBULKSMS_ENDPOINT', 'https://api-v2.thaibulksms.com/sms'),
+        'credit_endpoint' => env('THAIBULKSMS_CREDIT_ENDPOINT', 'https://api-v2.thaibulksms.com/credit'),
         'shorten_url' => env('THAIBULKSMS_SHORTEN_URL'),
         'expire' => env('THAIBULKSMS_EXPIRE'),
         'timeout' => env('THAIBULKSMS_TIMEOUT', 10),
