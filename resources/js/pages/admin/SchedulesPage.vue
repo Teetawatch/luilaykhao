@@ -732,22 +732,65 @@
 
     <!-- Move Bookings Modal -->
     <div class="modal-overlay" v-if="showMoveBookingsModal">
-      <div class="modal-card">
+      <div class="modal-card modal-xl">
         <div class="modal-header">
           <div>
             <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">swap_horiz</span>ย้ายรายการจอง</h2>
-            <p class="modal-subtitle" v-if="moveSource">ต้นทาง: {{ moveSource.trip?.title }} — {{ moveSource.departure_date }} ({{ moveSource.booked_seats }} ที่นั่ง)</p>
+            <p class="modal-subtitle" v-if="moveSource">
+              ต้นทาง: {{ moveSource.trip?.title }} — {{ moveSource.departure_date }}
+              <span v-if="movePassengers.length">· เลือกแล้ว {{ selectedMovePassengerCount }} / {{ movePassengers.length }} คน</span>
+            </p>
           </div>
-          <button class="modal-close" @click="showMoveBookingsModal = false"><span class="material-symbols-rounded">close</span></button>
+          <button class="modal-close" @click="closeMoveBookingsModal"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
+          <div v-if="moveLoading" class="pickup-loading"><div class="spinner"></div></div>
+          <template v-else>
+          <div class="apply-section">
+            <div class="move-selection-head">
+              <div class="apply-section-title"><span class="material-symbols-rounded">groups</span> เลือกผู้โดยสารที่ต้องการย้าย</div>
+              <div class="move-selection-actions">
+                <button type="button" class="btn-sm btn-secondary" @click="selectAllMovePassengers">เลือกทั้งหมด</button>
+                <button type="button" class="btn-sm btn-secondary" @click="moveSelectedPassengerIds = []">ยกเลิกทั้งหมด</button>
+              </div>
+            </div>
+
+            <div v-if="movePassengerGroups.length" class="move-passenger-list">
+              <div v-for="group in movePassengerGroups" :key="group.booking_id" class="move-booking-group">
+                <label class="move-booking-head">
+                  <input
+                    type="checkbox"
+                    :checked="isMoveBookingGroupSelected(group)"
+                    :indeterminate.prop="isMoveBookingGroupPartial(group)"
+                    @change="toggleMoveBookingGroup(group)"
+                  />
+                  <div>
+                    <strong>{{ group.booking_ref }}</strong>
+                    <span>{{ group.passengers.length }} คน · {{ group.is_join_trip ? 'จอยทริป' : 'จองปกติ' }}</span>
+                  </div>
+                  <span class="status-badge" :class="`status-${group.status}`">{{ statusLabels[group.status] || group.status }}</span>
+                </label>
+
+                <label v-for="p in group.passengers" :key="p.id" class="move-passenger-item">
+                  <input type="checkbox" v-model="moveSelectedPassengerIds" :value="p.id" />
+                  <span class="move-passenger-name">{{ p.name }}</span>
+                  <span class="move-passenger-meta">
+                    {{ p.phone || p.booking?.user?.phone || 'ไม่มีเบอร์' }}
+                    <template v-if="!p.is_join_trip"> · ที่นั่ง {{ passengerSeatLabels(p).join(', ') || '—' }}</template>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div v-else class="empty-state">ไม่พบผู้โดยสารที่สามารถย้ายได้</div>
+          </div>
+
           <div class="apply-section">
             <div class="apply-section-title"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบเดินทางปลายทาง</div>
             <div class="copy-target-list">
               <div v-for="group in groupedByTrip" :key="group.trip_id" style="margin-bottom:8px;">
                 <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
-                <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item" :class="{ disabled: sch.id === moveSource.id || (!sch.join_trip_enabled && sch.available_seats < moveSource.booked_seats) }">
-                  <input type="radio" v-model="moveTargetId" :value="sch.id" :disabled="sch.id === moveSource.id || (!sch.join_trip_enabled && sch.available_seats < moveSource.booked_seats)" />
+                <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item" :class="{ disabled: isMoveTargetDisabled(sch) }">
+                  <input type="radio" v-model="moveTargetId" :value="sch.id" :disabled="isMoveTargetDisabled(sch)" />
                   <div style="flex:1;">
                     <div style="display:flex;justify-content:space-between;">
                        <span>{{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span></span>
@@ -755,6 +798,9 @@
                     </div>
                     <div style="font-size:11px;color:#6b7280;margin-top:2px;">
                       ว่าง {{ sch.available_seats }} ที่นั่ง · {{ sch.vehicle?.name || sch.transport_type }}
+                      <span v-if="sch.id !== moveSource.id && sch.available_seats < selectedMoveSeatCount" style="color:#dc2626;font-weight:700;">
+                        · ที่นั่งไม่พอสำหรับ {{ selectedMoveSeatCount }} คน
+                      </span>
                     </div>
                   </div>
                 </label>
@@ -763,14 +809,15 @@
           </div>
           <div v-if="moveTargetId" style="margin-top:16px;padding:12px;background:#fffbeb;border:1px solid #fef3c7;border-radius:8px;font-size:13px;color:#92400e;">
              <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:4px;">warning</span>
-             การย้ายจะเปลี่ยนรอบเดินทางของทุกใบจองในรอบนี้ และพยายามจับคู่จุดรับให้อัตโนมัติ
+             ย้ายเฉพาะผู้โดยสารที่เลือก หากเลือกไม่ครบทั้งใบจอง ระบบจะแยกรายการจองใหม่ให้อัตโนมัติ และพยายามจับคู่จุดรับให้ตรงกับรอบปลายทาง
           </div>
+          </template>
         </div>
         <div class="modal-footer">
-          <button class="btn-secondary" @click="showMoveBookingsModal = false">ยกเลิก</button>
-          <button class="btn-primary" @click="doMoveBookings" :disabled="moveSubmitting || !moveTargetId">
+          <button class="btn-secondary" @click="closeMoveBookingsModal">ยกเลิก</button>
+          <button class="btn-primary" @click="doMoveBookings" :disabled="moveSubmitting || moveLoading || !moveTargetId || !selectedMovePassengerCount">
             <span class="material-symbols-rounded" :class="{ 'animate-spin': moveSubmitting }" v-if="moveSubmitting">sync</span>
-            ยืนยันการย้าย
+            ย้าย {{ selectedMovePassengerCount }} คน
           </button>
         </div>
       </div>
@@ -1244,33 +1291,131 @@ const batchForm = reactive({
 // ─── Move Bookings ────────────────────────────────────────
 const showMoveBookingsModal = ref(false);
 const moveSubmitting = ref(false);
+const moveLoading = ref(false);
 const moveSource = ref(null);
 const moveTargetId = ref(null);
+const movePassengers = ref([]);
+const moveSelectedPassengerIds = ref([]);
 
-const openMoveBookingsModal = (sch) => {
+const selectedMovePassengerCount = computed(() => moveSelectedPassengerIds.value.length);
+const selectedMovePassengers = computed(() => {
+  const selected = new Set(moveSelectedPassengerIds.value);
+  return movePassengers.value.filter((p) => selected.has(p.id));
+});
+const selectedMoveSeatCount = computed(() => selectedMovePassengers.value.filter((p) => !p.is_join_trip).length);
+const movePassengerGroups = computed(() => {
+  const map = new Map();
+
+  for (const passenger of movePassengers.value) {
+    const booking = passenger.booking || {};
+    const key = booking.id || passenger.booking_id || passenger.id;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        booking_id: key,
+        booking_ref: booking.booking_ref || '-',
+        status: booking.status || passenger.status || '',
+        is_join_trip: Boolean(passenger.is_join_trip || booking.is_join_trip),
+        passengers: [],
+      });
+    }
+
+    map.get(key).passengers.push(passenger);
+  }
+
+  return [...map.values()];
+});
+
+const openMoveBookingsModal = async (sch) => {
   moveSource.value = sch;
   moveTargetId.value = null;
+  movePassengers.value = [];
+  moveSelectedPassengerIds.value = [];
   showMoveBookingsModal.value = true;
+  moveLoading.value = true;
+
+  try {
+    const res = await admin.fetchManifest(sch.id);
+    movePassengers.value = res.data?.passengers || [];
+    selectAllMovePassengers();
+  } catch (e) {
+    toast.error('ไม่สามารถดึงรายชื่อผู้โดยสารสำหรับย้ายรอบได้');
+    closeMoveBookingsModal();
+  } finally {
+    moveLoading.value = false;
+  }
 };
 
 const doMoveBookings = async () => {
-  if (!moveTargetId.value) return;
-  if (!confirm(`ยืนยันการย้ายการจองทั้งหมดจากวันที่ ${moveSource.value.departure_date} ใช่หรือไม่?\n\nการดำเนินการนี้จะเปลี่ยนข้อมูลถาวร`)) return;
+  if (!moveTargetId.value || !selectedMovePassengerCount.value) return;
+  if (!confirm(`ยืนยันการย้ายผู้โดยสาร ${selectedMovePassengerCount.value} คนจากวันที่ ${moveSource.value.departure_date} ใช่หรือไม่?\n\nการดำเนินการนี้จะเปลี่ยนข้อมูลถาวร`)) return;
   
   moveSubmitting.value = true;
   try {
-    await api.post('/admin/schedules/move-bookings', {
+    const res = await api.post('/admin/schedules/move-bookings', {
       source_schedule_id: moveSource.value.id,
       target_schedule_id: moveTargetId.value,
+      passenger_ids: moveSelectedPassengerIds.value,
     });
-    toast.success('ย้ายการจองสำเร็จ');
-    showMoveBookingsModal.value = false;
+    toast.success(res.data?.message || 'ย้ายการจองสำเร็จ');
+    closeMoveBookingsModal();
     fetchData();
   } catch (e) {
     toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการย้ายการจอง');
   } finally {
     moveSubmitting.value = false;
   }
+};
+
+const closeMoveBookingsModal = () => {
+  showMoveBookingsModal.value = false;
+  moveSource.value = null;
+  moveTargetId.value = null;
+  movePassengers.value = [];
+  moveSelectedPassengerIds.value = [];
+  moveLoading.value = false;
+};
+
+const selectAllMovePassengers = () => {
+  moveSelectedPassengerIds.value = movePassengers.value.map((p) => p.id);
+};
+
+const isMoveBookingGroupSelected = (group) => {
+  if (!group.passengers.length) return false;
+  return group.passengers.every((p) => moveSelectedPassengerIds.value.includes(p.id));
+};
+
+const isMoveBookingGroupPartial = (group) => {
+  const selectedCount = group.passengers.filter((p) => moveSelectedPassengerIds.value.includes(p.id)).length;
+  return selectedCount > 0 && selectedCount < group.passengers.length;
+};
+
+const toggleMoveBookingGroup = (group) => {
+  const selected = new Set(moveSelectedPassengerIds.value);
+  const allSelected = group.passengers.every((p) => selected.has(p.id));
+
+  group.passengers.forEach((p) => {
+    if (allSelected) selected.delete(p.id);
+    else selected.add(p.id);
+  });
+
+  moveSelectedPassengerIds.value = [...selected];
+};
+
+const passengerSeatLabels = (passenger) => {
+  const passengers = movePassengers.value.filter((p) => p.booking?.id === passenger.booking?.id);
+  const passengerIndex = passengers.findIndex((p) => p.id === passenger.id);
+  const seats = passenger.booking?.seats || [];
+  const byName = seats.filter((seat) => seat.passenger_name && seat.passenger_name === passenger.name);
+
+  if (byName.length) return byName.map((seat) => seat.seat_id);
+  return seats[passengerIndex]?.seat_id ? [seats[passengerIndex].seat_id] : [];
+};
+
+const isMoveTargetDisabled = (sch) => {
+  if (!moveSource.value || sch.id === moveSource.value.id) return true;
+  if (!selectedMovePassengerCount.value) return true;
+  return Number(sch.available_seats || 0) < selectedMoveSeatCount.value;
 };
 
 const openBatchForm = (presetTripId = '') => {
@@ -2265,6 +2410,78 @@ onMounted(() => {
 .btn-move:hover {
   background: #fffbeb;
   border-color: #fcd34d;
+}
+
+.move-selection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.move-selection-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.move-passenger-list {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.move-booking-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.move-booking-head,
+.move-passenger-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.move-booking-head {
+  background: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+
+.move-booking-head strong,
+.move-passenger-name {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.move-booking-head span,
+.move-passenger-meta {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.move-passenger-item {
+  grid-template-columns: auto minmax(120px, 0.8fr) minmax(0, 1fr);
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+}
+
+.move-passenger-item:last-child {
+  border-bottom: none;
+}
+
+.move-passenger-item:hover {
+  background: #fafafa;
 }
 
 .copy-target-item.disabled {

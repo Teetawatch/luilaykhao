@@ -328,25 +328,45 @@ class AdminController extends Controller
         $request->validate([
             'source_schedule_id' => ['required', 'exists:trip_schedules,id'],
             'target_schedule_id' => ['required', 'exists:trip_schedules,id', 'different:source_schedule_id'],
+            'passenger_ids' => ['nullable', 'array'],
+            'passenger_ids.*' => ['integer', 'exists:booking_passengers,id'],
         ]);
 
-        $source = TripSchedule::with(['bookings.passengers', 'pickupPoints'])->findOrFail($request->source_schedule_id);
+        $source = TripSchedule::with(['bookings.passengers', 'bookings.seats', 'bookings.installmentPayments', 'pickupPoints'])->findOrFail($request->source_schedule_id);
         $target = TripSchedule::with('pickupPoints')->findOrFail($request->target_schedule_id);
         $source->syncBookedSeats();
         $target->syncBookedSeats();
 
         $bookings = $source->bookings->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES);
+        $selectedPassengerIds = collect($request->input('passenger_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($selectedPassengerIds->isEmpty()) {
+            $selectedPassengerIds = $bookings
+                ->flatMap(fn ($booking) => $booking->passengers->pluck('id'))
+                ->values();
+        }
+
+        $bookings = $bookings
+            ->filter(fn ($booking) => $booking->passengers->pluck('id')->intersect($selectedPassengerIds)->isNotEmpty())
+            ->values();
         $bookingsCount = $bookings->count();
 
         if ($bookingsCount === 0) {
-            return $this->error('ไม่พบรายการจองในรอบต้นทาง', 422);
+            return $this->error('ไม่พบผู้โดยสารที่เลือกในรอบต้นทาง', 422);
         }
 
-        // Calculate total passengers being moved
-        $totalPassengers = $bookings->sum(fn($b) => $b->passengers->count() ?: 1);
-        $seatPassengers = $bookings
-            ->where('is_join_trip', false)
-            ->sum(fn($b) => $b->passengers->count() ?: 1);
+        $totalPassengers = $bookings->sum(fn ($booking) => $booking->passengers->pluck('id')->intersect($selectedPassengerIds)->count());
+        $seatPassengers = $bookings->sum(function ($booking) use ($selectedPassengerIds) {
+            if ($booking->is_join_trip) {
+                return 0;
+            }
+
+            return $booking->passengers->pluck('id')->intersect($selectedPassengerIds)->count();
+        });
 
         // Check capacity if not join trip
         if ($seatPassengers > 0 && $target->available_seats < $seatPassengers) {
@@ -362,27 +382,135 @@ class AdminController extends Controller
             }
         }
 
-        DB::transaction(function () use ($source, $target, $bookings, $pickupMap) {
+        $seatIdsToMove = $bookings
+            ->flatMap(fn ($booking) => $this->seatsForMovePassengers($booking, $selectedPassengerIds)->pluck('seat_id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($seatIdsToMove->isNotEmpty()) {
+            $occupiedSeatIds = BookingSeat::where('schedule_id', $target->id)
+                ->whereIn('seat_id', $seatIdsToMove)
+                ->pluck('seat_id')
+                ->values();
+
+            if ($occupiedSeatIds->isNotEmpty()) {
+                return $this->error('ที่นั่ง ' . $occupiedSeatIds->join(', ') . ' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกปลายทางอื่นหรือแก้ผังที่นั่งก่อน', 422);
+            }
+        }
+
+        DB::transaction(function () use ($source, $target, $bookings, $pickupMap, $selectedPassengerIds) {
             foreach ($bookings as $booking) {
-                $updateData = ['schedule_id' => $target->id];
-                
-                // Update pickup point if mapped
-                if ($booking->pickup_point_id && isset($pickupMap[$booking->pickup_point_id])) {
-                    $updateData['pickup_point_id'] = $pickupMap[$booking->pickup_point_id];
+                $selectedInBooking = $booking->passengers
+                    ->whereIn('id', $selectedPassengerIds->all())
+                    ->values();
+
+                if ($selectedInBooking->count() === $booking->passengers->count()) {
+                    $updateData = ['schedule_id' => $target->id];
+
+                    // Update pickup point if mapped
+                    if ($booking->pickup_point_id && isset($pickupMap[$booking->pickup_point_id])) {
+                        $updateData['pickup_point_id'] = $pickupMap[$booking->pickup_point_id];
+                    }
+
+                    $booking->update($updateData);
+
+                    // Update BookingSeats
+                    BookingSeat::where('booking_id', $booking->id)
+                        ->update(['schedule_id' => $target->id]);
+                } else {
+                    $newBooking = $this->splitBookingForMove($booking, $selectedInBooking, $target, $pickupMap);
+
+                    $selectedInBooking
+                        ->each(fn ($passenger) => $passenger->update(['booking_id' => $newBooking->id]));
+
+                    $this->seatsForMovePassengers($booking, $selectedPassengerIds)
+                        ->each(fn ($seat) => $seat->update([
+                            'booking_id' => $newBooking->id,
+                            'schedule_id' => $target->id,
+                        ]));
                 }
-
-                $booking->update($updateData);
-
-                // Update BookingSeats
-                BookingSeat::where('booking_id', $booking->id)
-                    ->update(['schedule_id' => $target->id]);
             }
 
             $source->syncBookedSeats();
             $target->syncBookedSeats();
         });
 
-        return $this->success(null, "ย้ายการจอง $bookingsCount รายการ ($totalPassengers ท่าน) ไปยังรอบเดินทางวันที่ " . $target->departure_date->format('d/m/Y') . " สำเร็จ");
+        return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ " . $target->departure_date->format('d/m/Y') . " สำเร็จ");
+    }
+
+    private function seatsForMovePassengers(Booking $booking, $selectedPassengerIds)
+    {
+        $selectedIds = collect($selectedPassengerIds)->map(fn ($id) => (int) $id);
+        $orderedPassengers = $booking->passengers->sortBy('id')->values();
+        $orderedSeats = $booking->seats->sortBy('id')->values();
+
+        return $orderedPassengers
+            ->map(function ($passenger, $index) use ($selectedIds, $orderedSeats) {
+                if (! $selectedIds->contains((int) $passenger->id)) {
+                    return null;
+                }
+
+                $seatByName = $orderedSeats->firstWhere('passenger_name', $passenger->name);
+
+                return $seatByName ?: $orderedSeats->get($index);
+            })
+            ->filter()
+            ->unique('id')
+            ->values();
+    }
+
+    private function splitBookingForMove(Booking $booking, $selectedPassengers, TripSchedule $target, array $pickupMap): Booking
+    {
+        $originalPassengerCount = max(1, $booking->passengers->count());
+        $selectedCount = max(1, $selectedPassengers->count());
+        $ratio = $selectedCount / $originalPassengerCount;
+
+        $targetPickupPointId = $booking->pickup_point_id && isset($pickupMap[$booking->pickup_point_id])
+            ? $pickupMap[$booking->pickup_point_id]
+            : $booking->pickup_point_id;
+
+        $newBooking = $booking->replicate([
+            'booking_ref',
+            'qr_code',
+            'created_at',
+            'updated_at',
+            'checked_in',
+            'checked_in_at',
+        ]);
+
+        $newBooking->fill([
+            'booking_ref' => Booking::generateRef(),
+            'qr_code' => Booking::generateQrCode(),
+            'schedule_id' => $target->id,
+            'pickup_point_id' => $targetPickupPointId,
+            'is_group' => $selectedCount > 1,
+            'total_amount' => round(((float) $booking->total_amount) * $ratio, 2),
+            'paid_amount' => round(((float) $booking->paid_amount) * $ratio, 2),
+            'discount_amount' => round(((float) $booking->discount_amount) * $ratio, 2),
+        ]);
+        $newBooking->save();
+
+        $booking->update([
+            'is_group' => ($originalPassengerCount - $selectedCount) > 1,
+            'total_amount' => max(0, round(((float) $booking->total_amount) - ((float) $newBooking->total_amount), 2)),
+            'paid_amount' => max(0, round(((float) $booking->paid_amount) - ((float) $newBooking->paid_amount), 2)),
+            'discount_amount' => max(0, round(((float) $booking->discount_amount) - ((float) $newBooking->discount_amount), 2)),
+        ]);
+
+        foreach ($booking->installmentPayments as $payment) {
+            $newAmount = round(((float) $payment->amount) * $ratio, 2);
+            $payment->replicate(['created_at', 'updated_at'])->fill([
+                'booking_id' => $newBooking->id,
+                'amount' => $newAmount,
+            ])->save();
+
+            $payment->update([
+                'amount' => max(0, round(((float) $payment->amount) - $newAmount, 2)),
+            ]);
+        }
+
+        return $newBooking;
     }
 
     public function scheduleStaff(int $id): JsonResponse
