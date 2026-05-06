@@ -1008,68 +1008,169 @@ class AdminController extends Controller
     {
         $request->validate([
             'schedule_id' => ['required', 'exists:trip_schedules,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'surname' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'required_without:customer_name', 'string', 'max:255'],
+            'surname' => ['nullable', 'required_without:customer_name', 'string', 'max:255'],
+            'customer_name' => ['nullable', 'required_without:name', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:20'],
-            'passenger_count' => ['required', 'integer', 'min:1'],
+            'passenger_count' => ['nullable', 'integer', 'min:1'],
+            'passengers' => ['nullable', 'array', 'min:1'],
+            'passengers.*.title' => ['nullable', 'string', 'max:50'],
+            'passengers.*.name' => ['required_with:passengers', 'string', 'max:255'],
+            'passengers.*.nickname' => ['nullable', 'string', 'max:100'],
+            'passengers.*.phone' => ['nullable', 'string', 'max:20'],
+            'passengers.*.id_card' => ['nullable', 'string', 'max:100'],
+            'passengers.*.blood_group' => ['nullable', 'string', 'max:10'],
+            'passengers.*.allergies' => ['nullable', 'string'],
+            'passengers.*.health_notes' => ['nullable', 'string'],
+            'passengers.*.emergency_contact' => ['nullable', 'string', 'max:255'],
+            'passengers.*.emergency_phone' => ['nullable', 'string', 'max:20'],
+            'passengers.*.halal_food' => ['nullable', 'boolean'],
+            'seat_ids' => ['nullable', 'array'],
+            'seat_ids.*' => ['nullable', 'string', 'max:30'],
+            'pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
+            'pickup_region' => ['nullable', 'string', 'max:80'],
+            'is_join_trip' => ['nullable', 'boolean'],
             'status' => ['required', 'in:pending,confirmed'],
+            'payment_method' => ['nullable', 'string', 'max:100'],
+            'payment_type' => ['nullable', 'in:full,installment'],
+            'send_email' => ['nullable', 'boolean'],
         ]);
 
-        $schedule = TripSchedule::with('trip')->findOrFail($request->schedule_id);
+        $schedule = TripSchedule::with(['trip', 'pickupPoints'])->findOrFail($request->schedule_id);
         $schedule->syncBookedSeats();
-        
-        // If regular booking (not join trip), check seats
-        if (!$schedule->join_trip_enabled && $schedule->available_seats < $request->passenger_count) {
-             return $this->error('ที่นั่งไม่เพียงพอสำหรับรอบเดินทางนี้', 422);
+
+        $fullName = trim($request->input('customer_name') ?: trim(($request->input('name') ?? '') . ' ' . ($request->input('surname') ?? '')));
+        $passengers = collect($request->input('passengers', []))
+            ->filter(fn ($passenger) => filled($passenger['name'] ?? null))
+            ->values();
+
+        if ($passengers->isEmpty()) {
+            $count = (int) ($request->input('passenger_count') ?: 1);
+            $passengers = collect(range(1, $count))->map(fn ($number) => [
+                'title' => '',
+                'name' => $number === 1 ? $fullName : "ผู้ติดตามคนที่ {$number}",
+                'phone' => $number === 1 ? $request->phone : null,
+            ]);
         }
 
-        $fullName = $request->name . ' ' . $request->surname;
-        
-        // Find user by phone, or create a placeholder if not exists
-        $user = User::where('phone', $request->phone)->first();
+        $participantCount = $passengers->count();
+        $isJoinTrip = (bool) $request->boolean('is_join_trip');
+
+        if ($isJoinTrip && ! $schedule->join_trip_enabled) {
+            return $this->error('รอบเดินทางนี้ยังไม่ได้เปิดจอยทริป', 422);
+        }
+
+        if (! $isJoinTrip && $schedule->available_seats < $participantCount) {
+            return $this->error('ที่นั่งไม่เพียงพอสำหรับรอบเดินทางนี้', 422);
+        }
+
+        $seatIds = collect($request->input('seat_ids', []))->filter()->values();
+        if (! $isJoinTrip && $seatIds->isNotEmpty()) {
+            if ($seatIds->count() !== $participantCount) {
+                return $this->error('จำนวนที่นั่งต้องเท่ากับจำนวนผู้เดินทาง', 422);
+            }
+
+            $occupiedSeatIds = BookingSeat::where('schedule_id', $schedule->id)
+                ->whereIn('seat_id', $seatIds)
+                ->pluck('seat_id');
+
+            if ($occupiedSeatIds->isNotEmpty()) {
+                return $this->error('ที่นั่ง ' . $occupiedSeatIds->join(', ') . ' ถูกจองแล้ว', 422);
+            }
+        }
+
+        $pickupPoint = null;
+        if (! $isJoinTrip && $request->filled('pickup_point_id')) {
+            $pickupPoint = $schedule->pickupPoints->firstWhere('id', (int) $request->pickup_point_id);
+            if (! $pickupPoint) {
+                return $this->error('จุดรับไม่อยู่ในรอบเดินทางนี้', 422);
+            }
+        }
+
+        $email = $request->input('email');
+        $user = User::when($email, fn ($query) => $query->where('email', $email))
+            ->when(! $email, fn ($query) => $query->where('phone', $request->phone))
+            ->first();
+
         if (!$user) {
             $user = User::create([
                 'name' => $fullName,
                 'phone' => $request->phone,
-                'email' => 'manual_' . time() . '_' . Str::random(4) . '@luilaykhao.com',
+                'email' => $email ?: 'manual_' . time() . '_' . Str::random(4) . '@luilaykhao.com',
                 'password' => Hash::make(Str::random(16)),
             ]);
             $user->assignRole('customer');
+        } else {
+            $user->update(array_filter([
+                'name' => $fullName ?: null,
+                'phone' => $request->phone ?: null,
+                'email' => $email ?: null,
+            ], fn ($value) => filled($value)));
         }
 
-        $isJoinTrip = (bool) $schedule->join_trip_enabled;
-        $totalAmount = ($isJoinTrip ? ($schedule->join_trip_price ?? $schedule->effective_price) : $schedule->effective_price) * $request->passenger_count;
+        $pricePerPerson = $isJoinTrip
+            ? ($schedule->join_trip_price ?? $schedule->effective_price)
+            : ($pickupPoint?->price ?? $schedule->effective_price);
+        $totalAmount = $pricePerPerson * $participantCount;
 
         $booking = Booking::create([
             'booking_ref' => Booking::generateRef(),
             'user_id' => $user->id,
             'schedule_id' => $request->schedule_id,
+            'pickup_region' => $pickupPoint?->region ?: $request->input('pickup_region'),
+            'pickup_point_id' => $pickupPoint?->id,
+            'is_group' => $participantCount > 1,
             'status' => $request->status,
             'total_amount' => $totalAmount,
             'paid_amount' => $request->status === 'confirmed' ? $totalAmount : 0,
-            'payment_type' => 'full',
-            'payment_method' => 'manual',
+            'payment_type' => $request->input('payment_type', 'full'),
+            'payment_method' => $request->input('payment_method', 'admin_manual'),
             'paid_at' => $request->status === 'confirmed' ? now() : null,
             'qr_code' => Booking::generateQrCode(),
             'is_join_trip' => $isJoinTrip,
         ]);
 
-        // Create passengers
-        for ($i = 0; $i < $request->passenger_count; $i++) {
-            BookingPassenger::create([
+        $passengerModels = $passengers->map(function ($passenger) use ($booking) {
+            return BookingPassenger::create([
                 'booking_id' => $booking->id,
-                'title' => '',
-                'name' => $i === 0 ? $fullName : "ผู้ติดตามคนที่ " . ($i + 1),
-                'phone' => $i === 0 ? $request->phone : null,
+                'title' => $passenger['title'] ?? '',
+                'name' => $passenger['name'],
+                'nickname' => $passenger['nickname'] ?? null,
+                'phone' => $passenger['phone'] ?? null,
+                'id_card' => $passenger['id_card'] ?? null,
+                'blood_group' => $passenger['blood_group'] ?? null,
+                'allergies' => $passenger['allergies'] ?? null,
+                'health_notes' => $passenger['health_notes'] ?? null,
+                'emergency_contact' => $passenger['emergency_contact'] ?? null,
+                'emergency_phone' => $passenger['emergency_phone'] ?? null,
+                'halal_food' => (bool) ($passenger['halal_food'] ?? false),
             ]);
+        });
+
+        if (! $isJoinTrip && $seatIds->isNotEmpty()) {
+            foreach ($seatIds as $index => $seatId) {
+                BookingSeat::create([
+                    'booking_id' => $booking->id,
+                    'schedule_id' => $schedule->id,
+                    'seat_id' => $seatId,
+                    'passenger_name' => $passengerModels->get($index)?->name,
+                ]);
+            }
         }
 
-        // Update booked seats if not join trip
-        if (!$isJoinTrip) {
-            $schedule->increment('booked_seats', $request->passenger_count);
+        $schedule->syncBookedSeats();
+
+        $booking->load(['schedule.trip', 'schedule.vehicle', 'pickupPoint', 'user', 'passengers', 'seats']);
+
+        if ($request->boolean('send_email', true) && $user->email && ! str_starts_with($user->email, 'manual_')) {
+            app(MailService::class)->sendBookingCreatedEmail($booking);
+            if ($booking->status === 'confirmed') {
+                app(MailService::class)->sendPaymentConfirmedEmail($booking);
+            }
         }
 
-        return $this->success(new BookingResource($booking->load(['schedule.trip', 'user', 'passengers'])), 'บันทึกการจองสำเร็จ', 201);
+        return $this->success(new BookingResource($booking), 'บันทึกการจองและส่งอีเมลสำเร็จ', 201);
     }
 
     public function deleteBooking(string $ref): JsonResponse

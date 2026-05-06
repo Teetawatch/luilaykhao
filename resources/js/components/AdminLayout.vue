@@ -133,6 +133,7 @@ const menuGroups = ref([
     label: 'การจองและลูกค้า',
     icon: 'fas fa-ticket-alt',
     items: [
+      { to: '/admin/manual-booking', icon: 'fas fa-headset', label: 'จองแทนลูกค้า' },
       { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
       { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },
       { to: '/admin/reviews', icon: 'fas fa-star', label: 'รีวิวจากลูกค้า' },

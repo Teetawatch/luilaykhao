@@ -51,6 +51,7 @@ import AdminInquiries from '../pages/admin/InquiriesPage.vue';
 import AdminVanTrips from '../pages/admin/VanTripsPage.vue';
 import AdminPromotions from '../pages/admin/PromotionsPage.vue';
 import AdminScheduleOverview from '../pages/admin/ScheduleOverviewPage.vue';
+import AdminManualBooking from '../pages/admin/ManualBookingPage.vue';
 
 
 const routes = [
@@ -201,6 +202,7 @@ const routes = [
       { path: 'van-trips/create', name: 'admin-van-trip-create', component: AdminTripEdit },
       { path: 'van-trips/:id/edit', name: 'admin-van-trip-edit', component: AdminTripEdit },
       { path: 'schedules', name: 'admin-schedules', component: AdminSchedules },
+      { path: 'manual-booking', name: 'admin-manual-booking', component: AdminManualBooking },
       { path: 'bookings', name: 'admin-bookings', component: AdminBookings },
       { path: 'vehicles', name: 'admin-vehicles', component: AdminVehicles },
       { path: 'users', name: 'admin-users', component: AdminUsers },
