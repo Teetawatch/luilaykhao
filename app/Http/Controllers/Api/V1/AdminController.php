@@ -26,6 +26,7 @@ use App\Models\BookingSeat;
 use App\Services\BookingService;
 use App\Services\MailService;
 use App\Traits\ApiResponse;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1037,6 +1038,10 @@ class AdminController extends Controller
             'status' => ['required', 'in:pending,confirmed'],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'payment_type' => ['nullable', 'in:full,installment'],
+            'installment_count' => ['nullable', 'integer', 'min:2', 'max:6'],
+            'slip_image' => ['nullable', 'image', 'max:5120'],
+            'transfer_date' => ['nullable', 'date'],
+            'transfer_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
             'send_email' => ['nullable', 'boolean'],
         ]);
 
@@ -1059,9 +1064,15 @@ class AdminController extends Controller
 
         $participantCount = $passengers->count();
         $isJoinTrip = (bool) $request->boolean('is_join_trip');
+        $paymentType = $request->input('payment_type', 'full');
+        $isPaid = $request->status === 'confirmed';
 
         if ($isJoinTrip && ! $schedule->join_trip_enabled) {
             return $this->error('รอบเดินทางนี้ยังไม่ได้เปิดจอยทริป', 422);
+        }
+
+        if ($paymentType === 'installment' && ($isJoinTrip || ! $schedule->installment_enabled)) {
+            return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
         }
 
         if (! $isJoinTrip && $schedule->available_seats < $participantCount) {
@@ -1116,6 +1127,29 @@ class AdminController extends Controller
             ? ($schedule->join_trip_price ?? $schedule->effective_price)
             : ($pickupPoint?->price ?? $schedule->effective_price);
         $totalAmount = $pricePerPerson * $participantCount;
+        $installmentCount = null;
+        $installmentIntervalDays = null;
+        $paidAmount = $isPaid ? $totalAmount : 0;
+
+        if ($paymentType === 'installment') {
+            $maxAllowed = min((int) $schedule->installment_count, 6);
+            $installmentCount = (int) ($request->input('installment_count') ?: $schedule->installment_count);
+            if ($installmentCount < 2 || $installmentCount > $maxAllowed) {
+                return $this->error("จำนวนงวดต้องอยู่ระหว่าง 2-{$maxAllowed} งวด", 422);
+            }
+            $installmentIntervalDays = (int) $schedule->installment_interval_days;
+            $paidAmount = $isPaid ? round($totalAmount / $installmentCount, 2) : 0;
+        }
+
+        $transferDt = $this->resolveManualTransferDatetime($request);
+        if ($isPaid && (! $request->hasFile('slip_image') || ! $transferDt)) {
+            return $this->error('กรุณาแนบสลิปและระบุวันเวลาที่โอนเงิน', 422);
+        }
+        $slipPath = null;
+        if ($request->hasFile('slip_image')) {
+            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+        }
+        $paymentRef = $isPaid ? 'PAY-MANUAL-' . strtoupper(uniqid()) : null;
 
         $booking = Booking::create([
             'booking_ref' => Booking::generateRef(),
@@ -1126,10 +1160,15 @@ class AdminController extends Controller
             'is_group' => $participantCount > 1,
             'status' => $request->status,
             'total_amount' => $totalAmount,
-            'paid_amount' => $request->status === 'confirmed' ? $totalAmount : 0,
-            'payment_type' => $request->input('payment_type', 'full'),
-            'payment_method' => $request->input('payment_method', 'admin_manual'),
-            'paid_at' => $request->status === 'confirmed' ? now() : null,
+            'paid_amount' => $paidAmount,
+            'payment_type' => $paymentType,
+            'installment_count' => $installmentCount,
+            'installment_interval_days' => $installmentIntervalDays,
+            'payment_method' => $request->input('payment_method', 'promptpay'),
+            'payment_ref' => $paymentRef,
+            'paid_at' => $isPaid ? now() : null,
+            'slip_path' => $slipPath,
+            'transfer_datetime' => $transferDt,
             'qr_code' => Booking::generateQrCode(),
             'is_join_trip' => $isJoinTrip,
         ]);
@@ -1165,18 +1204,59 @@ class AdminController extends Controller
             }
         }
 
+        if ($paymentType === 'installment' && $isPaid) {
+            $perInstallment = round($totalAmount / $installmentCount, 2);
+            for ($i = 1; $i <= $installmentCount; $i++) {
+                $amount = $i === $installmentCount
+                    ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
+                    : $perInstallment;
+
+                InstallmentPayment::create([
+                    'booking_id' => $booking->id,
+                    'installment_no' => $i,
+                    'amount' => $amount,
+                    'due_date' => now()->copy()->addDays(($i - 1) * $installmentIntervalDays)->toDateString(),
+                    'status' => $i === 1 ? 'paid' : 'pending',
+                    'payment_method' => $i === 1 ? $booking->payment_method : null,
+                    'payment_ref' => $i === 1 ? $paymentRef : null,
+                    'paid_at' => $i === 1 ? $booking->paid_at : null,
+                    'slip_path' => $i === 1 ? $slipPath : null,
+                    'transfer_datetime' => $i === 1 ? $transferDt : null,
+                ]);
+            }
+        }
+
         $schedule->syncBookedSeats();
 
-        $booking->load(['schedule.trip', 'schedule.vehicle', 'pickupPoint', 'user', 'passengers', 'seats']);
+        $booking->load(['schedule.trip', 'schedule.vehicle', 'pickupPoint', 'user', 'passengers', 'seats', 'installmentPayments']);
 
         if ($request->boolean('send_email', true) && $user->email && ! str_starts_with($user->email, 'manual_')) {
             app(MailService::class)->sendBookingCreatedEmail($booking);
             if ($booking->status === 'confirmed') {
-                app(MailService::class)->sendPaymentConfirmedEmail($booking);
+                app(MailService::class)->sendPaymentConfirmedEmail($booking, $paymentType);
             }
         }
 
         return $this->success(new BookingResource($booking), 'บันทึกการจองและส่งอีเมลสำเร็จ', 201);
+    }
+
+    private function resolveManualTransferDatetime(Request $request): ?string
+    {
+        $date = trim((string) $request->input('transfer_date', ''));
+        $time = trim((string) $request->input('transfer_time', ''));
+
+        if ($date === '') {
+            return null;
+        }
+
+        if ($time === '') {
+            $time = '00:00';
+        }
+
+        $format = substr_count($time, ':') === 2 ? 'Y-m-d H:i:s' : 'Y-m-d H:i';
+        $parsed = CarbonImmutable::createFromFormat($format, "{$date} {$time}");
+
+        return $parsed ? $parsed->format('Y-m-d H:i:s') : null;
     }
 
     public function deleteBooking(string $ref): JsonResponse

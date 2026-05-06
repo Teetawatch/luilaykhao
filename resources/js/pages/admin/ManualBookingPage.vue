@@ -47,7 +47,7 @@
             </label>
 
             <label v-if="selectedSchedule?.join_trip_enabled" class="booking-type-toggle full">
-              <input v-model="form.is_join_trip" type="checkbox" @change="resetSeats" />
+              <input v-model="form.is_join_trip" type="checkbox" @change="onBookingTypeChange" />
               <span class="material-symbols-rounded">group_add</span>
               <strong>จองแบบจอยทริป</strong>
               <small>ไม่ต้องเลือกที่นั่ง ใช้ราคาจอยทริป {{ formatCurrency(selectedSchedule.join_trip_price || selectedSchedule.price) }}</small>
@@ -86,22 +86,6 @@
             <label class="form-field">
               <span>อีเมล *</span>
               <input v-model.trim="form.email" required type="email" placeholder="customer@email.com" />
-            </label>
-            <label class="form-field">
-              <span>สถานะการชำระเงิน</span>
-              <select v-model="form.status">
-                <option value="pending">รอชำระเงิน</option>
-                <option value="confirmed">ชำระแล้ว / ยืนยันเลย</option>
-              </select>
-            </label>
-            <label class="form-field">
-              <span>วิธีชำระเงิน</span>
-              <select v-model="form.payment_method">
-                <option value="admin_manual">แอดมินรับจอง</option>
-                <option value="promptpay">PromptPay</option>
-                <option value="bank_transfer">โอนบัญชี</option>
-                <option value="cash">เงินสด</option>
-              </select>
             </label>
             <label class="email-toggle">
               <input v-model="form.send_email" type="checkbox" />
@@ -238,12 +222,14 @@
           <div v-else-if="seatError" class="alert-card">
             <span class="material-symbols-rounded">error</span>
             <span>{{ seatError }}</span>
+            <button class="btn-secondary btn-small" type="button" @click="fetchSeatMap">โหลดผังที่นั่งอีกครั้ง</button>
           </div>
           <div v-else-if="seatMap" class="seat-picker">
             <div class="seat-legend">
               <span><i class="legend-box available"></i>ว่าง</span>
               <span><i class="legend-box selected"></i>เลือกแล้ว</span>
               <span><i class="legend-box booked"></i>จองแล้ว/ล็อก</span>
+              <strong class="seat-count-pill">เลือก {{ selectedSeatIds.length }}/{{ passengers.length }}</strong>
             </div>
 
             <div class="seat-vehicle">
@@ -277,6 +263,126 @@
 
               <div class="seat-rear">{{ seatMap.rear_label || 'ท้ายรถ' }}</div>
             </div>
+          </div>
+          <div v-else class="seat-empty-state">
+            <span class="material-symbols-rounded">airline_seat_recline_normal</span>
+            <strong>ยังไม่ได้โหลดผังที่นั่ง</strong>
+            <p>การจองปกติต้องเลือกที่นั่งให้ครบก่อนสร้างการจอง</p>
+            <button class="btn-secondary" type="button" @click="fetchSeatMap">โหลดผังที่นั่ง</button>
+          </div>
+        </section>
+
+        <section class="booking-section">
+          <div class="section-head">
+            <span class="section-step">{{ form.is_join_trip ? 4 : 5 }}</span>
+            <div>
+              <h2>การชำระเงิน</h2>
+              <p>เลือกเงื่อนไขจ่ายเงิน ช่องทางชำระ แนบสลิป และระบุวันเวลาที่โอนจริง</p>
+            </div>
+          </div>
+
+          <div class="payment-grid">
+            <div class="payment-block">
+              <div class="block-label">สถานะการชำระเงิน</div>
+              <div class="radio-choice-group">
+                <label class="radio-card" :class="{ active: form.status === 'pending' }">
+                  <input v-model="form.status" type="radio" value="pending" />
+                  <span class="radio-dot"></span>
+                  รอชำระเงิน
+                </label>
+                <label class="radio-card" :class="{ active: form.status === 'confirmed' }">
+                  <input v-model="form.status" type="radio" value="confirmed" />
+                  <span class="radio-dot"></span>
+                  รับชำระแล้ว
+                </label>
+              </div>
+            </div>
+
+            <div class="payment-block">
+              <div class="block-label">รูปแบบการจ่าย</div>
+              <div class="radio-choice-group">
+                <label class="radio-card" :class="{ active: form.payment_type === 'full' }">
+                  <input v-model="form.payment_type" type="radio" value="full" />
+                  <span class="radio-dot"></span>
+                  จ่ายเต็ม
+                </label>
+                <label class="radio-card" :class="{ active: form.payment_type === 'installment', disabled: !installmentAllowed }">
+                  <input v-model="form.payment_type" type="radio" value="installment" :disabled="!installmentAllowed" />
+                  <span class="radio-dot"></span>
+                  ผ่อนชำระ
+                </label>
+              </div>
+              <p v-if="!installmentAllowed" class="field-note">รอบนี้ยังไม่เปิดผ่อนชำระ หรือเป็นจอยทริป</p>
+            </div>
+
+            <label v-if="form.payment_type === 'installment'" class="form-field">
+              <span>จำนวนงวด</span>
+              <select v-model.number="form.installment_count">
+                <option v-for="count in installmentCountOptions" :key="count" :value="count">{{ count }} งวด</option>
+              </select>
+            </label>
+
+            <div class="payment-block">
+              <div class="block-label">ช่องทางชำระ</div>
+              <div class="payment-method-grid">
+                <label
+                  v-for="method in paymentMethodOptions"
+                  :key="method.value"
+                  class="payment-method-card"
+                  :class="{ active: form.payment_method === method.value }"
+                >
+                  <input v-model="form.payment_method" type="radio" :value="method.value" />
+                  <span class="material-symbols-rounded">{{ method.icon }}</span>
+                  <strong>{{ method.label }}</strong>
+                  <small>{{ method.description }}</small>
+                </label>
+              </div>
+            </div>
+
+            <div class="payment-preview">
+              <div v-if="form.payment_method === 'promptpay'" class="pay-visual">
+                <img src="/images/qr_promptpay.webp" alt="QR PromptPay" />
+                <span>QR พร้อมเพย์</span>
+              </div>
+              <div v-else class="pay-visual">
+                <img src="/images/pay_bank.webp" alt="โอนผ่านบัญชีธนาคาร" />
+                <span>โอนผ่านบัญชีธนาคาร</span>
+              </div>
+              <div class="pay-amount">
+                <span>{{ form.payment_type === 'installment' ? 'ยอดรับงวดแรก' : 'ยอดที่ต้องชำระ' }}</span>
+                <strong>{{ formatCurrency(payableNow) }}</strong>
+              </div>
+            </div>
+
+            <div v-if="form.payment_type === 'installment'" class="installment-plan full">
+              <div v-for="item in installmentPlan" :key="item.no" class="installment-row">
+                <span>งวดที่ {{ item.no }}</span>
+                <strong>{{ formatCurrency(item.amount) }}</strong>
+                <small>{{ formatDate(item.due_date) }}</small>
+              </div>
+            </div>
+
+            <div class="slip-uploader full" :class="{ hasFile: slipPreview }" @click="slipInputRef?.click()">
+              <input ref="slipInputRef" type="file" accept="image/*" class="hidden-input" @change="onSlipChange" />
+              <template v-if="slipPreview">
+                <img :src="slipPreview" alt="สลิปโอนเงิน" />
+                <button class="btn-secondary btn-small" type="button" @click.stop="clearSlip">ลบสลิป</button>
+              </template>
+              <template v-else>
+                <span class="material-symbols-rounded">upload_file</span>
+                <strong>แนบไฟล์สลิป</strong>
+                <small>{{ paymentEvidenceRequired ? 'ต้องแนบสลิปเมื่อรับชำระแล้ว' : 'แนบไว้ก่อนได้ ถ้าลูกค้าโอนมาแล้ว' }}</small>
+              </template>
+            </div>
+
+            <label class="form-field">
+              <span>วันที่โอน{{ paymentEvidenceRequired ? ' *' : '' }}</span>
+              <input v-model="form.transfer_date" :required="paymentEvidenceRequired" type="date" />
+            </label>
+            <label class="form-field">
+              <span>เวลาที่โอน{{ paymentEvidenceRequired ? ' *' : '' }}</span>
+              <input v-model="form.transfer_time" :required="paymentEvidenceRequired" type="time" />
+            </label>
           </div>
         </section>
 
@@ -316,6 +422,14 @@
             <span>ที่นั่ง</span>
             <strong>{{ form.is_join_trip ? 'ไม่ต้องเลือก' : selectedSeatIds.join(', ') || '-' }}</strong>
           </div>
+          <div class="summary-row">
+            <span>การจ่าย</span>
+            <strong>{{ form.payment_type === 'installment' ? `ผ่อน ${form.installment_count} งวด` : 'จ่ายเต็ม' }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>รับตอนนี้</span>
+            <strong>{{ form.status === 'confirmed' ? formatCurrency(payableNow) : 'ยังไม่รับชำระ' }}</strong>
+          </div>
           <div class="summary-total">
             <span>ยอดรวม</span>
             <strong>{{ formatCurrency(totalAmount) }}</strong>
@@ -349,8 +463,25 @@ const seatsLoading = ref(false);
 const submitting = ref(false);
 const seatError = ref('');
 const createdBooking = ref(null);
+const slipFile = ref(null);
+const slipPreview = ref('');
+const slipInputRef = ref(null);
 
 const bloodGroupOptions = ['A', 'B', 'O', 'AB'];
+const paymentMethodOptions = [
+  {
+    value: 'promptpay',
+    label: 'QR PromptPay',
+    description: 'ลูกค้าสแกนจ่ายผ่านพร้อมเพย์',
+    icon: 'qr_code_2',
+  },
+  {
+    value: 'mobile_banking',
+    label: 'โอนผ่านบัญชีธนาคาร',
+    description: 'บันทึกสลิปจาก Mobile Banking',
+    icon: 'account_balance',
+  },
+];
 const regionLabels = {
   north: 'ภาคเหนือ',
   northeast: 'ภาคอีสาน',
@@ -368,7 +499,11 @@ const form = reactive({
   email: '',
   phone: '',
   status: 'pending',
-  payment_method: 'admin_manual',
+  payment_type: 'full',
+  payment_method: 'promptpay',
+  installment_count: 2,
+  transfer_date: '',
+  transfer_time: '',
   is_join_trip: false,
   pickup_point_id: '',
   send_email: true,
@@ -385,6 +520,9 @@ const titleOptions = computed(() => isWomenOnlyTrip.value
 const pickupPoints = computed(() => selectedSchedule.value?.pickup_points || []);
 const selectedPickup = computed(() => pickupPoints.value.find((point) => point.id === Number(form.pickup_point_id)) || null);
 const requiresDiveInfo = computed(() => ['diving', 'snorkeling'].includes(selectedTrip.value?.type || selectedSchedule.value?.trip?.type));
+const installmentAllowed = computed(() => Boolean(selectedSchedule.value?.installment_enabled && !form.is_join_trip));
+const maxInstallmentCount = computed(() => Math.min(Math.max(Number(selectedSchedule.value?.installment_count || 2), 2), 6));
+const installmentCountOptions = computed(() => Array.from({ length: maxInstallmentCount.value - 1 }, (_, index) => index + 2));
 const pricePerPerson = computed(() => {
   if (!selectedSchedule.value) return 0;
   if (form.is_join_trip) return Number(selectedSchedule.value.join_trip_price || selectedSchedule.value.price || 0);
@@ -392,6 +530,30 @@ const pricePerPerson = computed(() => {
   return Number(selectedSchedule.value.price || 0);
 });
 const totalAmount = computed(() => pricePerPerson.value * passengers.value.length);
+const installmentIntervalDays = computed(() => Number(selectedSchedule.value?.installment_interval_days || 30));
+const installmentPlan = computed(() => {
+  const count = Number(form.installment_count || 2);
+  const perInstallment = Math.round((totalAmount.value / count) * 100) / 100;
+  const today = new Date();
+
+  return Array.from({ length: count }, (_, index) => {
+    const dueDate = new Date(today);
+    dueDate.setDate(today.getDate() + (index * installmentIntervalDays.value));
+    const amount = index === count - 1
+      ? Math.round((totalAmount.value - (perInstallment * (count - 1))) * 100) / 100
+      : perInstallment;
+
+    return {
+      no: index + 1,
+      amount,
+      due_date: formatInputDate(dueDate),
+    };
+  });
+});
+const payableNow = computed(() => (form.payment_type === 'installment'
+  ? installmentPlan.value[0]?.amount || 0
+  : totalAmount.value));
+const paymentEvidenceRequired = computed(() => form.status === 'confirmed');
 const seatColumns = computed(() => seatMap.value?.columns || []);
 const seatGridStyle = computed(() => ({
   gridTemplateColumns: seatColumns.value.map((column) => column === '' ? '34px' : '58px').join(' '),
@@ -416,16 +578,23 @@ const seatCells = computed(() => {
 const canSubmit = computed(() => {
   if (!form.schedule_id || !form.customer_name || !form.email || !form.phone) return false;
   if (passengers.value.some((passenger) => !isPassengerComplete(passenger))) return false;
-  if (!form.is_join_trip && seatMap.value && selectedSeatIds.value.length !== passengers.value.length) return false;
+  if (!form.is_join_trip && selectedSeatIds.value.length !== passengers.value.length) return false;
+  if (form.payment_type === 'installment' && !installmentAllowed.value) return false;
+  if (paymentEvidenceRequired.value && (!slipFile.value || !form.transfer_date || !form.transfer_time)) return false;
   return true;
 });
 const submitHint = computed(() => {
   if (!selectedSchedule.value) return 'เลือกรอบเดินทางก่อน';
   if (!form.customer_name || !form.email || !form.phone) return 'กรอกข้อมูลลูกค้าให้ครบ';
   if (passengers.value.some((passenger) => !isPassengerComplete(passenger))) return 'กรอกข้อมูลผู้เดินทางที่มี * ให้ครบ';
-  if (!form.is_join_trip && seatMap.value && selectedSeatIds.value.length !== passengers.value.length) {
+  if (!form.is_join_trip && seatsLoading.value) return 'กำลังโหลดผังที่นั่ง';
+  if (!form.is_join_trip && !seatMap.value) return 'โหลดผังที่นั่งก่อน';
+  if (!form.is_join_trip && selectedSeatIds.value.length !== passengers.value.length) {
     return `เลือกที่นั่ง ${selectedSeatIds.value.length}/${passengers.value.length}`;
   }
+  if (form.payment_type === 'installment' && !installmentAllowed.value) return 'รอบนี้ยังไม่เปิดผ่อนชำระ';
+  if (paymentEvidenceRequired.value && !slipFile.value) return 'แนบไฟล์สลิปก่อน';
+  if (paymentEvidenceRequired.value && (!form.transfer_date || !form.transfer_time)) return 'ระบุวันที่และเวลาที่โอน';
   return '';
 });
 
@@ -433,6 +602,19 @@ onMounted(fetchTrips);
 
 watch(() => passengers.value.length, () => {
   selectedSeatIds.value = selectedSeatIds.value.slice(0, passengers.value.length);
+});
+
+watch([selectedSchedule, () => form.is_join_trip], () => {
+  if (!installmentAllowed.value) {
+    form.payment_type = 'full';
+  }
+  form.installment_count = Math.min(Number(form.installment_count || 2), maxInstallmentCount.value);
+});
+
+watch(() => form.status, (status) => {
+  if (status === 'confirmed') {
+    fillTransferNow();
+  }
 });
 
 function newPassenger() {
@@ -485,6 +667,7 @@ async function onScheduleChange() {
 }
 
 async function fetchSeatMap() {
+  if (!form.schedule_id) return;
   seatsLoading.value = true;
   seatError.value = '';
   try {
@@ -495,6 +678,14 @@ async function fetchSeatMap() {
     seatMap.value = null;
   } finally {
     seatsLoading.value = false;
+  }
+}
+
+async function onBookingTypeChange() {
+  selectedSeatIds.value = [];
+  seatError.value = '';
+  if (!form.is_join_trip && form.schedule_id && !seatMap.value) {
+    await fetchSeatMap();
   }
 }
 
@@ -563,28 +754,89 @@ function scheduleRegionLabel(schedule) {
   return regionLabels[region] || region || 'ไม่ระบุภาค';
 }
 
+function fillTransferNow() {
+  const now = new Date();
+  if (!form.transfer_date) {
+    form.transfer_date = formatInputDate(now);
+  }
+  if (!form.transfer_time) {
+    form.transfer_time = now.toTimeString().slice(0, 5);
+  }
+}
+
+function formatInputDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function onSlipChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  slipFile.value = file;
+
+  const reader = new FileReader();
+  reader.onload = (readerEvent) => {
+    slipPreview.value = readerEvent.target?.result || '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearSlip() {
+  slipFile.value = null;
+  slipPreview.value = '';
+  if (slipInputRef.value) {
+    slipInputRef.value.value = '';
+  }
+}
+
+function appendFormValue(fd, key, value) {
+  if (value === undefined || value === null || value === '') return;
+  fd.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : value);
+}
+
+function buildBookingPayload() {
+  const fd = new FormData();
+  appendFormValue(fd, 'schedule_id', form.schedule_id);
+  appendFormValue(fd, 'customer_name', form.customer_name);
+  appendFormValue(fd, 'email', form.email);
+  appendFormValue(fd, 'phone', form.phone);
+  appendFormValue(fd, 'status', form.status);
+  appendFormValue(fd, 'payment_type', form.payment_type);
+  appendFormValue(fd, 'payment_method', form.payment_method);
+  appendFormValue(fd, 'installment_count', form.installment_count);
+  appendFormValue(fd, 'transfer_date', form.transfer_date);
+  appendFormValue(fd, 'transfer_time', form.transfer_time);
+  appendFormValue(fd, 'is_join_trip', form.is_join_trip);
+  appendFormValue(fd, 'pickup_point_id', form.pickup_point_id || null);
+  appendFormValue(fd, 'passenger_count', passengers.value.length);
+  appendFormValue(fd, 'send_email', form.send_email);
+
+  passengers.value.forEach(({ key, ...passenger }, index) => {
+    Object.entries(passenger).forEach(([field, value]) => {
+      appendFormValue(fd, `passengers[${index}][${field}]`, value);
+    });
+  });
+
+  if (!form.is_join_trip) {
+    selectedSeatIds.value.forEach((seatId) => appendFormValue(fd, 'seat_ids[]', seatId));
+  }
+
+  if (slipFile.value) {
+    fd.append('slip_image', slipFile.value);
+  }
+
+  return fd;
+}
+
 async function submitBooking() {
   if (!canSubmit.value) return;
 
   submitting.value = true;
   createdBooking.value = null;
   try {
-    const payload = {
-      schedule_id: form.schedule_id,
-      customer_name: form.customer_name,
-      email: form.email,
-      phone: form.phone,
-      status: form.status,
-      payment_method: form.payment_method,
-      is_join_trip: form.is_join_trip,
-      pickup_point_id: form.pickup_point_id || null,
-      passengers: passengers.value.map(({ key, ...passenger }) => passenger),
-      passenger_count: passengers.value.length,
-      seat_ids: form.is_join_trip ? [] : selectedSeatIds.value,
-      send_email: form.send_email,
-    };
-
-    const res = await api.post('/admin/bookings/manual', payload);
+    const res = await api.post('/admin/bookings/manual', buildBookingPayload());
     createdBooking.value = res.data?.data || null;
     toast.success(form.send_email ? 'สร้างการจองและส่งอีเมลแล้ว' : 'สร้างการจองแล้ว');
   } catch (error) {
@@ -715,6 +967,13 @@ function formatCurrency(value) {
   box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
 }
 
+.field-note {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .booking-type-toggle,
 .email-toggle,
 .checkbox-inline {
@@ -743,6 +1002,200 @@ function formatCurrency(value) {
 .booking-type-toggle small {
   color: #6b7280;
   margin-left: auto;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.payment-grid .full,
+.payment-block {
+  grid-column: 1 / -1;
+}
+
+.block-label {
+  color: #374151;
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 7px;
+}
+
+.radio-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.payment-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.payment-method-card {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-height: 86px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  padding: 12px;
+}
+
+.payment-method-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.payment-method-card .material-symbols-rounded {
+  color: var(--color-accent);
+  font-size: 22px;
+}
+
+.payment-method-card strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.payment-method-card small {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.payment-method-card.active {
+  border-color: var(--color-accent);
+  background: #eef8f1;
+}
+
+.payment-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  grid-column: 1 / -1;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 12px;
+}
+
+.pay-visual {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.pay-visual img {
+  width: 58px;
+  height: 58px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.pay-amount {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.pay-amount span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pay-amount strong {
+  color: var(--color-accent);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.installment-plan {
+  display: grid;
+  gap: 8px;
+}
+
+.installment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  background: #fffbeb;
+  padding: 9px 10px;
+}
+
+.installment-row span,
+.installment-row small {
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.installment-row strong {
+  color: #78350f;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.slip-uploader {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-height: 150px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  padding: 16px;
+  text-align: center;
+}
+
+.slip-uploader.hasFile {
+  border-style: solid;
+  background: #ffffff;
+}
+
+.slip-uploader img {
+  max-height: 220px;
+  max-width: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.slip-uploader .material-symbols-rounded {
+  color: #94a3b8;
+  font-size: 38px;
+}
+
+.slip-uploader strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.slip-uploader small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hidden-input {
+  display: none;
 }
 
 .radio-choice-group {
@@ -859,6 +1312,7 @@ function formatCurrency(value) {
 }
 
 .alert-card {
+  flex-wrap: wrap;
   color: #b91c1c;
   border: 1px solid #fecaca;
   border-radius: 8px;
@@ -866,8 +1320,15 @@ function formatCurrency(value) {
   padding: 10px 12px;
 }
 
+.btn-small {
+  min-height: 34px;
+  margin-left: auto;
+  padding: 7px 10px;
+}
+
 .seat-legend {
   display: flex;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 10px;
@@ -892,6 +1353,45 @@ function formatCurrency(value) {
 .legend-box.available { background: #ffffff; }
 .legend-box.selected { background: var(--color-accent); border-color: var(--color-accent); }
 .legend-box.booked { background: #d1d5db; }
+
+.seat-count-pill {
+  margin-left: auto;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: var(--color-accent);
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+.seat-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  padding: 22px;
+  text-align: center;
+}
+
+.seat-empty-state .material-symbols-rounded {
+  color: #94a3b8;
+  font-size: 38px;
+}
+
+.seat-empty-state strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.seat-empty-state p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
 
 .seat-vehicle {
   overflow-x: auto;
@@ -1111,9 +1611,21 @@ function formatCurrency(value) {
     grid-template-columns: 1fr;
   }
 
+  .payment-grid,
+  .payment-method-grid,
   .radio-choice-group,
   .dive-fields {
     grid-template-columns: 1fr;
+  }
+
+  .payment-preview,
+  .installment-row {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .pay-amount {
+    text-align: left;
   }
 
   .submit-bar {
