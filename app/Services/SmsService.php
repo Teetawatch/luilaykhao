@@ -308,7 +308,8 @@ class SmsService
 
     private function recipientFor(Booking $booking): ?string
     {
-        $phone = $booking->passengers->first()?->phone ?: $booking->user?->phone;
+        $firstPassenger = $booking->passengers->first();
+        $phone = $firstPassenger ? $firstPassenger->phone : $booking->user?->phone;
         $digits = preg_replace('/\D+/', '', (string) $phone);
 
         if ($digits === '') {

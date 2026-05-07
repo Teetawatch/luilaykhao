@@ -33,8 +33,19 @@ class MailService
     {
         $booking->loadMissing(['user', 'passengers']);
 
+        $passengerEmails = $booking->passengers
+            ->pluck('email')
+            ->filter(fn ($email) => filled($email))
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (!empty($passengerEmails)) {
+            return $passengerEmails;
+        }
+
         return collect([$booking->user?->email])
-            ->merge($booking->passengers->pluck('email'))
             ->filter(fn ($email) => filled($email))
             ->map(fn ($email) => strtolower(trim((string) $email)))
             ->unique()
