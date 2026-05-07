@@ -463,6 +463,7 @@
                 </div>
                 <div class="passenger-info-grid">
                   <InfoItem label="โทร" :value="passenger.phone || '-'" />
+                  <InfoItem label="อีเมล" :value="passenger.email || '-'" />
                   <InfoItem label="บัตรประชาชน" :value="passenger.id_card || '-'" />
                   <InfoItem label="กรุ๊ปเลือด" :value="passenger.blood_group || '-'" />
                   <InfoItem label="น้ำหนัก" :value="passenger.weight ? `${passenger.weight} กก.` : '-'" />
@@ -709,6 +710,10 @@
                   <div class="form-group">
                     <label>เบอร์โทร</label>
                     <input v-model.trim="passenger.phone" type="tel" />
+                  </div>
+                  <div class="form-group">
+                    <label>อีเมล</label>
+                    <input v-model.trim="passenger.email" type="email" />
                   </div>
                   <div class="form-group">
                     <label>บัตรประชาชน/พาสปอร์ต</label>
@@ -1245,6 +1250,7 @@ function mapPassengerToForm(passenger = {}) {
     nickname: passenger.nickname || '',
     id_card: passenger.id_card || '',
     phone: passenger.phone || '',
+    email: passenger.email || '',
     blood_group: passenger.blood_group || '',
     allergies: passenger.allergies || '',
     health_notes: passenger.health_notes || '',

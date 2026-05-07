@@ -29,6 +29,26 @@ class MailService
             ->toArray();
     }
 
+    private function customerEmails(Booking $booking): array
+    {
+        $booking->loadMissing(['user', 'passengers']);
+
+        return collect([$booking->user?->email])
+            ->merge($booking->passengers->pluck('email'))
+            ->filter(fn ($email) => filled($email))
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function sendToCustomerEmails(Booking $booking, callable $mailableFactory): void
+    {
+        foreach ($this->customerEmails($booking) as $email) {
+            Mail::to($email)->send($mailableFactory());
+        }
+    }
+
     /**
      * Send welcome email to newly registered user.
      */
@@ -53,7 +73,7 @@ class MailService
 
         try {
             // Customer email
-            Mail::to($booking->user->email)->send(new BookingCreatedMail($booking));
+            $this->sendToCustomerEmails($booking, fn () => new BookingCreatedMail($booking));
         } catch (\Throwable $e) {
             Log::error('Failed to send booking created email', [
                 'booking_ref' => $booking->booking_ref,
@@ -84,7 +104,7 @@ class MailService
 
         try {
             // Customer email
-            Mail::to($booking->user->email)->send(new PaymentConfirmedMail($booking, $paymentType));
+            $this->sendToCustomerEmails($booking, fn () => new PaymentConfirmedMail($booking, $paymentType));
         } catch (\Throwable $e) {
             Log::error('Failed to send payment confirmed email', [
                 'booking_ref' => $booking->booking_ref,
@@ -114,7 +134,7 @@ class MailService
         $booking->load(['user', 'schedule.trip', 'passengers']);
 
         try {
-            Mail::to($booking->user->email)->send(new BookingCancelledMail($booking, $reason));
+            $this->sendToCustomerEmails($booking, fn () => new BookingCancelledMail($booking, $reason));
         } catch (\Throwable $e) {
             Log::error('Failed to send booking cancelled email', [
                 'booking_ref' => $booking->booking_ref,
@@ -128,10 +148,10 @@ class MailService
      */
     public function sendBookingStatusChangedEmail(Booking $booking, string $newStatus): void
     {
-        $booking->load(['user', 'schedule.trip']);
+        $booking->load(['user', 'schedule.trip', 'passengers']);
 
         try {
-            Mail::to($booking->user->email)->send(new BookingStatusChangedMail($booking, $newStatus));
+            $this->sendToCustomerEmails($booking, fn () => new BookingStatusChangedMail($booking, $newStatus));
         } catch (\Throwable $e) {
             Log::error('Failed to send booking status changed email', [
                 'booking_ref' => $booking->booking_ref,
@@ -146,10 +166,10 @@ class MailService
      */
     public function sendInstallmentPaidEmail(Booking $booking, InstallmentPayment $installment): void
     {
-        $booking->load(['user', 'schedule.trip', 'installmentPayments']);
+        $booking->load(['user', 'schedule.trip', 'passengers', 'installmentPayments']);
 
         try {
-            Mail::to($booking->user->email)->send(new InstallmentPaidMail($booking, $installment));
+            $this->sendToCustomerEmails($booking, fn () => new InstallmentPaidMail($booking, $installment));
         } catch (\Throwable $e) {
             Log::error('Failed to send installment paid email', [
                 'booking_ref' => $booking->booking_ref,

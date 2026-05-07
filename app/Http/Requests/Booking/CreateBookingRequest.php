@@ -26,6 +26,8 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.nickname' => ['nullable', 'string', 'max:100'],
             'passengers.*.id_card' => ['nullable', 'string', 'max:20'],
             'passengers.*.phone' => ['nullable', 'string', 'max:20'],
+            'passengers.*.email' => ['nullable', 'email', 'max:255'],
+            'passengers.0.email' => ['required_if:booking_for,friend', 'nullable', 'email', 'max:255'],
             'passengers.*.blood_group' => ['nullable', 'string', 'max:10'],
             'passengers.*.allergies' => ['nullable', 'string', 'max:1000'],
             'passengers.*.halal_food' => ['nullable', 'boolean'],
@@ -40,6 +42,7 @@ class CreateBookingRequest extends FormRequest
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
             'is_join_trip' => ['nullable', 'boolean'],
+            'booking_for' => ['nullable', 'in:self,friend'],
         ];
     }
 

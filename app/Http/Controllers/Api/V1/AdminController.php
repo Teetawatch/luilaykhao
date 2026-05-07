@@ -810,6 +810,7 @@ class AdminController extends Controller
             'passengers.*.nickname' => ['nullable', 'string', 'max:100'],
             'passengers.*.id_card' => ['nullable', 'string', 'max:50'],
             'passengers.*.phone' => ['nullable', 'string', 'max:30'],
+            'passengers.*.email' => ['nullable', 'email', 'max:255'],
             'passengers.*.blood_group' => ['nullable', 'string', 'max:20'],
             'passengers.*.allergies' => ['nullable', 'string'],
             'passengers.*.health_notes' => ['nullable', 'string'],
@@ -900,6 +901,7 @@ class AdminController extends Controller
                         'nickname' => $passengerData['nickname'] ?? null,
                         'id_card' => $passengerData['id_card'] ?? null,
                         'phone' => $passengerData['phone'] ?? null,
+                        'email' => $passengerData['email'] ?? null,
                         'blood_group' => $passengerData['blood_group'] ?? null,
                         'allergies' => $passengerData['allergies'] ?? null,
                         'health_notes' => $passengerData['health_notes'] ?? null,
@@ -1039,6 +1041,7 @@ class AdminController extends Controller
             'passengers.*.name' => ['required_with:passengers', 'string', 'max:255'],
             'passengers.*.nickname' => ['nullable', 'string', 'max:100'],
             'passengers.*.phone' => ['nullable', 'string', 'max:20'],
+            'passengers.*.email' => ['nullable', 'email', 'max:255'],
             'passengers.*.id_card' => ['nullable', 'string', 'max:100'],
             'passengers.*.blood_group' => ['nullable', 'string', 'max:10'],
             'passengers.*.allergies' => ['nullable', 'string'],
@@ -1078,6 +1081,7 @@ class AdminController extends Controller
                 'title' => '',
                 'name' => $number === 1 ? $fullName : "ผู้ติดตามคนที่ {$number}",
                 'phone' => $number === 1 ? $request->phone : null,
+                'email' => $number === 1 ? $request->input('email') : null,
             ]);
         }
 
@@ -1199,6 +1203,7 @@ class AdminController extends Controller
                 'name' => $passenger['name'],
                 'nickname' => $passenger['nickname'] ?? null,
                 'phone' => $passenger['phone'] ?? null,
+                'email' => $passenger['email'] ?? null,
                 'id_card' => $passenger['id_card'] ?? null,
                 'blood_group' => $passenger['blood_group'] ?? null,
                 'allergies' => $passenger['allergies'] ?? null,

@@ -16,6 +16,7 @@ class BookingPassengerResource extends JsonResource
             'nickname' => $this->nickname,
             'id_card' => $this->id_card,
             'phone' => $this->phone,
+            'email' => $this->email,
             'blood_group' => $this->blood_group,
             'allergies' => $this->allergies,
             'health_notes' => $this->health_notes,

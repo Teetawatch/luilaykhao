@@ -374,6 +374,37 @@
             <CountdownTimer v-if="seatsStore.countdownSeconds > 0"
               :seconds="seatsStore.countdownSeconds" class="mb-6" />
 
+            <!-- Booking owner mode -->
+            <div class="mb-6 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div>
+                  <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-teal-600">assignment_ind</span>
+                    ผู้เดินทางหลัก
+                  </h3>
+                  <p class="text-sm text-gray-500 mt-1">เลือกว่ากำลังกรอกข้อมูลของตนเอง หรือจองแทนเพื่อนที่ฝากจอง</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
+                  <button type="button" @click="bookingFor = 'self'"
+                    class="px-5 py-3 rounded-2xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    :class="bookingFor === 'self' ? 'border-teal-600 bg-teal-50 text-teal-700' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                    <span class="material-symbols-rounded text-[18px]">person</span>
+                    กรอกข้อมูลตนเอง
+                  </button>
+                  <button type="button" @click="bookingFor = 'friend'"
+                    class="px-5 py-3 rounded-2xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    :class="bookingFor === 'friend' ? 'border-teal-600 bg-teal-50 text-teal-700' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
+                    <span class="material-symbols-rounded text-[18px]">group_add</span>
+                    กรอกข้อมูลให้เพื่อน
+                  </button>
+                </div>
+              </div>
+              <div v-if="bookingFor === 'friend'" class="mt-5 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-sm text-amber-800 font-medium flex gap-3">
+                <span class="material-symbols-rounded text-[20px] shrink-0">mail</span>
+                <span>กรุณาระบุอีเมลของเพื่อนในผู้เดินทางคนแรก เพื่อส่งสถานะการจองและการชำระเงินให้เพื่อนโดยตรง</span>
+              </div>
+            </div>
+
             <!-- Group Booking Toggle -->
             <div class="mb-6 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm transition-all">
               <label class="flex items-center gap-4 cursor-pointer group">
@@ -441,7 +472,7 @@
                   ผู้เดินทางคนที่ {{ i + 1 }}
                 </h3>
                 <div class="flex flex-wrap items-center gap-3">
-                  <button v-if="i === 0 && authStore.isLoggedIn" type="button" @click="autoFillFromProfile(i)"
+                  <button v-if="i === 0 && authStore.isLoggedIn && bookingFor === 'self'" type="button" @click="autoFillFromProfile(i)"
                     class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 text-teal-700 text-sm font-bold border border-gray-200 hover:bg-teal-50 hover:border-teal-100 transition-all active:scale-95 shadow-sm">
                     <span class="material-symbols-rounded text-[18px]">account_circle</span>
                     ดึงข้อมูลจากโปรไฟล์
@@ -494,6 +525,13 @@
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
                   <input v-model="p.phone" type="tel" placeholder="0XX-XXX-XXXX"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                </div>
+                <div v-if="bookingFor === 'friend' && i === 0">
+                  <label class="block text-sm font-bold text-gray-700 mb-2">อีเมลสำหรับแจ้งสถานะการจอง <span class="text-red-500">*</span></label>
+                  <input v-model.trim="p.email" type="email" required placeholder="friend@example.com"
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="p.email && !isValidEmail(p.email) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="p.email && !isValidEmail(p.email)" class="text-xs text-red-500 font-bold mt-2">รูปแบบอีเมลไม่ถูกต้อง</p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">กรุ๊ปเลือด</label>
@@ -709,7 +747,7 @@
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="font-bold text-gray-900 text-sm truncate">{{ p.title }}{{ p.name }} <span v-if="p.nickname" class="text-teal-600 ml-1">({{ p.nickname }})</span></p>
-                    <div class="flex gap-2 mt-1">
+                    <div class="flex flex-wrap gap-2 mt-1">
                       <span v-if="hasSeatMap && seatsStore.selectedSeats[i]" class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">ที่นั่ง {{ seatsStore.selectedSeats[i].id }}</span>
                       <span class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">กรุ๊ปเลือด {{ p.blood_group || '-' }}</span>
                     </div>
@@ -1053,6 +1091,7 @@ const vehicleTouchEnd = (e) => {
   }
 };
 const passengerCount = ref(1);
+const bookingFor = ref('self');
 const isGroup = ref(false);
 const groupName = ref('');
 const groupNotes = ref('');
@@ -1108,7 +1147,7 @@ const effectivePrice = computed(() => {
 });
 
 const passengers = ref([{ 
-  title: '', name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
+  title: '', name: '', nickname: '', id_card: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '', 
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null
 }]);
@@ -1124,6 +1163,7 @@ function saveFormData() {
   const data = {
     passengers: passengers.value,
     passengerCount: passengerCount.value,
+    bookingFor: bookingFor.value,
     isGroup: isGroup.value,
     groupName: groupName.value,
     groupNotes: groupNotes.value,
@@ -1143,6 +1183,7 @@ function restoreFormData() {
       passengers.value = data.passengers;
       passengerCount.value = data.passengerCount ?? data.passengers.length;
     }
+    bookingFor.value = data.bookingFor || 'self';
     isGroup.value = data.isGroup ?? false;
     groupName.value = data.groupName ?? '';
     groupNotes.value = data.groupNotes ?? '';
@@ -1165,13 +1206,13 @@ watch(step, (newStep) => {
 });
 
 watch(passengers, saveFormData, { deep: true });
-watch([isGroup, groupName, groupNotes, passengerCount, selectedPickup], saveFormData);
+watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup], saveFormData);
 
 watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({ 
-      title: '', name: '', nickname: '', id_card: '', phone: '', blood_group: '', allergies: '',
+      title: '', name: '', nickname: '', id_card: '', phone: '', email: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_phone: '', 
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null
     });
@@ -1200,6 +1241,7 @@ function autoFillFromProfile(index) {
     nickname: user.nickname || '',
     id_card: user.id_card || '',
     phone: user.phone || '',
+    email: user.email || '',
     blood_group: user.blood_group || '',
     emergency_contact: user.emergency_contact || '',
     emergency_phone: user.emergency_phone || '',
@@ -1212,7 +1254,10 @@ function autoFillFromProfile(index) {
   }
 }
 
-const isPassengerValid = computed(() => passengers.value.every(p => 
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+const isFriendEmailValid = computed(() => bookingFor.value !== 'friend' || isValidEmail(passengers.value[0]?.email));
+
+const isPassengerValid = computed(() => isFriendEmailValid.value && passengers.value.every(p => 
   p.title &&
   p.name?.trim() && 
   p.id_card && 
@@ -1382,12 +1427,14 @@ async function createBooking() {
       is_group: isGroup.value,
       group_name: isGroup.value ? groupName.value : null,
       group_notes: isGroup.value ? groupNotes.value : null,
+      booking_for: bookingFor.value,
       passengers: passengers.value.map(p => ({
         title: p.title || null,
         name: p.name,
         nickname: p.nickname || null,
         id_card: p.id_card || null,
         phone: p.phone || null,
+        email: p.email || null,
         blood_group: p.blood_group || null,
         allergies: p.allergies || null,
         halal_food: p.halal_food,
