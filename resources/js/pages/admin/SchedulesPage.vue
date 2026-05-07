@@ -1387,6 +1387,11 @@ const selectedMovePassengers = computed(() => {
 });
 const selectedMoveSeatCount = computed(() => selectedMovePassengers.value.filter((p) => !p.is_join_trip).length);
 const selectedMoveSeatPassengers = computed(() => selectedMovePassengers.value.filter((p) => !p.is_join_trip && passengerSeatLabels(p).length));
+const isSameScheduleMove = computed(() => moveSource.value && moveTargetId.value && Number(moveTargetId.value) === Number(moveSource.value.id));
+const selectedOriginalMoveSeatIds = computed(() => {
+  const seatIds = selectedMoveSeatPassengers.value.flatMap((passenger) => passengerSeatLabels(passenger));
+  return new Set(seatIds.filter(Boolean));
+});
 const movePassengerGroups = computed(() => {
   const map = new Map();
 
@@ -1410,7 +1415,7 @@ const movePassengerGroups = computed(() => {
   return [...map.values()];
 });
 const moveTargetSeats = computed(() => moveTargetSeatMap.value?.seats || []);
-const availableMoveTargetSeats = computed(() => moveTargetSeats.value.filter((seat) => seat.status === 'available'));
+const availableMoveTargetSeats = computed(() => moveTargetSeats.value.filter((seat) => isMoveTargetSeatAvailable(seat.id)));
 const moveSeatAssignmentRows = computed(() => selectedMoveSeatPassengers.value.map((passenger) => {
   const originalSeatId = passengerSeatLabels(passenger)[0] || '';
   return {
@@ -1568,7 +1573,7 @@ const resetMoveSeatSelection = () => {
 
 const isMoveTargetSeatAvailable = (seatId) => {
   const seat = moveTargetSeats.value.find((item) => item.id === seatId);
-  return Boolean(seat && seat.status === 'available');
+  return Boolean(seat && (seat.status === 'available' || (isSameScheduleMove.value && selectedOriginalMoveSeatIds.value.has(seatId))));
 };
 
 const initializeMoveSeatAssignments = () => {
@@ -1576,13 +1581,13 @@ const initializeMoveSeatAssignments = () => {
 
   selectedMoveSeatPassengers.value.forEach((passenger) => {
     const current = moveSeatAssignments[passenger.id];
-    if (current && isMoveTargetSeatAvailable(current) && !usedSeats.has(current)) {
+    const originalSeatId = passengerSeatLabels(passenger)[0] || '';
+    if (current && isMoveTargetSeatAvailable(current) && !usedSeats.has(current) && !(isSameScheduleMove.value && current === originalSeatId)) {
       usedSeats.add(current);
       return;
     }
 
-    const originalSeatId = passengerSeatLabels(passenger)[0] || '';
-    if (originalSeatId && isMoveTargetSeatAvailable(originalSeatId) && !usedSeats.has(originalSeatId)) {
+    if (!isSameScheduleMove.value && originalSeatId && isMoveTargetSeatAvailable(originalSeatId) && !usedSeats.has(originalSeatId)) {
       moveSeatAssignments[passenger.id] = originalSeatId;
       usedSeats.add(originalSeatId);
     } else {
@@ -1622,24 +1627,25 @@ const moveSeatAssignedPassengerName = (seatId) => {
 };
 
 const canSelectMoveSeat = (seat) => {
-  if (!seat || seat.status !== 'available' || !activeMoveSeatPassenger.value) return false;
+  if (!seat || !isMoveTargetSeatAvailable(seat.id) || !activeMoveSeatPassenger.value) return false;
   const assignedPassengerName = moveSeatAssignedPassengerName(seat.id);
   return !assignedPassengerName || moveSeatAssignments[activeMoveSeatPassenger.value.id] === seat.id;
 };
 
 const moveSeatButtonClass = (seat) => {
   const assignedPassengerName = moveSeatAssignedPassengerName(seat.id);
+  const available = isMoveTargetSeatAvailable(seat.id);
 
   return {
-    available: seat.status === 'available' && !assignedPassengerName,
-    booked: seat.status !== 'available',
+    available: available && !assignedPassengerName,
+    booked: !available,
     selected: Boolean(assignedPassengerName),
     active: activeMoveSeatPassenger.value && moveSeatAssignments[activeMoveSeatPassenger.value.id] === seat.id,
   };
 };
 
 const moveSeatTitle = (seat) => {
-  if (seat.status !== 'available') {
+  if (!isMoveTargetSeatAvailable(seat.id)) {
     return seat.passenger_name ? `จองแล้วโดย ${seat.passenger_name}` : 'ที่นั่งไม่ว่าง';
   }
 
@@ -1679,8 +1685,9 @@ const fetchMoveTargetSeatMap = async () => {
 };
 
 const isMoveTargetDisabled = (sch) => {
-  if (!moveSource.value || sch.id === moveSource.value.id) return true;
+  if (!moveSource.value) return true;
   if (!selectedMovePassengerCount.value) return true;
+  if (Number(sch.id) === Number(moveSource.value.id)) return !selectedMoveSeatPassengers.value.length;
   return Number(sch.available_seats || 0) < selectedMoveSeatCount.value;
 };
 

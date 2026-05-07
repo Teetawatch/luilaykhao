@@ -329,7 +329,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'source_schedule_id' => ['required', 'exists:trip_schedules,id'],
-            'target_schedule_id' => ['required', 'exists:trip_schedules,id', 'different:source_schedule_id'],
+            'target_schedule_id' => ['required', 'exists:trip_schedules,id'],
             'passenger_ids' => ['nullable', 'array'],
             'passenger_ids.*' => ['integer', 'exists:booking_passengers,id'],
             'seat_assignments' => ['nullable', 'array'],
@@ -338,6 +338,7 @@ class AdminController extends Controller
 
         $source = TripSchedule::with(['bookings.passengers', 'bookings.seats', 'bookings.installmentPayments', 'pickupPoints'])->findOrFail($request->source_schedule_id);
         $target = TripSchedule::with('pickupPoints')->findOrFail($request->target_schedule_id);
+        $sameSchedule = (int) $source->id === (int) $target->id;
         $source->syncBookedSeats();
         $target->syncBookedSeats();
 
@@ -377,7 +378,7 @@ class AdminController extends Controller
         });
 
         // Check capacity if not join trip
-        if ($seatPassengers > 0 && $target->available_seats < $seatPassengers) {
+        if (! $sameSchedule && $seatPassengers > 0 && $target->available_seats < $seatPassengers) {
             return $this->error("ที่นั่งในรอบปลายทางไม่เพียงพอ (ต้องการ $seatPassengers, ว่าง {$target->available_seats})", 422);
         }
 
@@ -411,22 +412,39 @@ class AdminController extends Controller
         $seatIdsToMove = $seatIdsToMove->unique()->values();
 
         if ($seatIdsToMove->isNotEmpty()) {
-            $occupiedSeatIds = BookingSeat::where('schedule_id', $target->id)
-                ->whereIn('seat_id', $seatIdsToMove)
-                ->pluck('seat_id')
+            $movingSeatRowIds = $seatMoves
+                ->map(fn ($move) => $move['seat']->id)
+                ->unique()
                 ->values();
+
+            $occupiedSeatQuery = BookingSeat::where('schedule_id', $target->id)
+                ->whereIn('seat_id', $seatIdsToMove);
+
+            if ($sameSchedule) {
+                $occupiedSeatQuery->whereNotIn('id', $movingSeatRowIds);
+            }
+
+            $occupiedSeatIds = $occupiedSeatQuery->pluck('seat_id')->values();
 
             if ($occupiedSeatIds->isNotEmpty()) {
                 return $this->error('ที่นั่ง ' . $occupiedSeatIds->join(', ') . ' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกปลายทางอื่นหรือแก้ผังที่นั่งก่อน', 422);
             }
         }
 
-        DB::transaction(function () use ($source, $target, $bookings, $pickupMap, $selectedPassengerIds, $seatAssignments) {
+        DB::transaction(function () use ($source, $target, $sameSchedule, $bookings, $pickupMap, $selectedPassengerIds, $seatAssignments) {
             foreach ($bookings as $booking) {
                 $selectedInBooking = $booking->passengers
                     ->whereIn('id', $selectedPassengerIds->all())
                     ->values();
                 $seatMoves = $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments);
+
+                if ($sameSchedule) {
+                    $seatMoves->each(fn ($move) => $move['seat']->update([
+                        'seat_id' => $move['target_seat_id'],
+                    ]));
+
+                    continue;
+                }
 
                 if ($selectedInBooking->count() === $booking->passengers->count()) {
                     $updateData = ['schedule_id' => $target->id];
