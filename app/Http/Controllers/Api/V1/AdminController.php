@@ -238,6 +238,14 @@ class AdminController extends Controller
     {
         $query = TripSchedule::with(['trip', 'vehicle', 'pickupPoints']);
 
+        $query->withCount([
+            'bookings as active_bookings_count' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
+        ]);
+
+        if (Schema::hasTable('schedule_staff_assignments')) {
+            $query->withCount('staff as assigned_staff_count');
+        }
+
         if ($request->filled('trip_id')) {
             $query->where('trip_id', $request->trip_id);
         }
@@ -573,40 +581,27 @@ class AdminController extends Controller
 
     public function scheduleStaff(int $id): JsonResponse
     {
-        $schedule = TripSchedule::with('trip')->findOrFail($id);
+        $schedule = TripSchedule::with(['trip', 'vehicle'])
+            ->withCount([
+                'bookings as active_bookings_count' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
+            ])
+            ->findOrFail($id);
 
         if (! Schema::hasTable('schedule_staff_assignments')) {
-            return $this->success([
-                'schedule' => [
-                    'id' => $schedule->id,
-                    'trip_title' => $schedule->trip?->title,
-                    'departure_date' => $schedule->departure_date?->toDateString(),
-                    'return_date' => $schedule->return_date?->toDateString(),
-                    'status' => $schedule->status,
-                ],
-                'staff' => [],
-            ]);
+            return $this->success($this->formatScheduleStaffPayload($schedule));
         }
 
-        $schedule->load('staff');
+        $schedule->loadCount('staff as assigned_staff_count');
+        $schedule->load(['staff' => function ($query) {
+            $query->withCount('assignedSchedules');
 
-        return $this->success([
-            'schedule' => [
-                'id' => $schedule->id,
-                'trip_title' => $schedule->trip?->title,
-                'departure_date' => $schedule->departure_date?->toDateString(),
-                'return_date' => $schedule->return_date?->toDateString(),
-                'status' => $schedule->status,
-            ],
-            'staff' => $schedule->staff->map(fn ($user) => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'avatar_url' => $user->avatar_url,
-                'assigned_at' => $user->pivot?->created_at,
-            ])->values(),
-        ]);
+            if (Schema::hasTable('staff_reviews')) {
+                $query->withCount('staffReviewsReceived')
+                    ->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
+            }
+        }]);
+
+        return $this->success($this->formatScheduleStaffPayload($schedule));
     }
 
     public function syncScheduleStaff(Request $request, int $id): JsonResponse
@@ -646,16 +641,62 @@ class AdminController extends Controller
             ->all();
 
         $schedule->staff()->sync($syncPayload);
-        $schedule->load('staff');
+        $schedule->load(['trip', 'vehicle']);
+        $schedule->loadCount([
+            'staff as assigned_staff_count',
+            'bookings as active_bookings_count' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
+        ]);
+        $schedule->load(['staff' => function ($query) {
+            $query->withCount('assignedSchedules');
 
-        return $this->success($schedule->staff->map(fn ($user) => [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'avatar_url' => $user->avatar_url,
-            'assigned_at' => $user->pivot?->created_at,
-        ])->values(), 'อัปเดตรายชื่อสตาฟประจำรอบสำเร็จ');
+            if (Schema::hasTable('staff_reviews')) {
+                $query->withCount('staffReviewsReceived')
+                    ->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
+            }
+        }]);
+
+        return $this->success($this->formatScheduleStaffPayload($schedule), 'อัปเดตรายชื่อสตาฟประจำรอบสำเร็จ');
+    }
+
+    private function formatScheduleStaffPayload(TripSchedule $schedule): array
+    {
+        return [
+            'schedule' => [
+                'id' => $schedule->id,
+                'trip_id' => $schedule->trip_id,
+                'trip_title' => $schedule->trip?->title,
+                'trip_location' => $schedule->trip?->location,
+                'departure_date' => $schedule->departure_date?->toDateString(),
+                'return_date' => $schedule->return_date?->toDateString(),
+                'status' => $schedule->status,
+                'transport_type' => $schedule->transport_type,
+                'vehicle' => $schedule->vehicle ? [
+                    'id' => $schedule->vehicle->id,
+                    'name' => $schedule->vehicle->name,
+                    'type' => $schedule->vehicle->type,
+                    'license_plate' => $schedule->vehicle->license_plate,
+                ] : null,
+                'total_seats' => (int) $schedule->total_seats,
+                'booked_seats' => (int) $schedule->booked_seats,
+                'available_seats' => (int) $schedule->available_seats,
+                'active_bookings_count' => (int) ($schedule->active_bookings_count ?? 0),
+                'assigned_staff_count' => (int) ($schedule->assigned_staff_count
+                    ?? ($schedule->relationLoaded('staff') ? $schedule->staff->count() : 0)),
+            ],
+            'staff' => $schedule->relationLoaded('staff')
+                ? $schedule->staff->map(fn ($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'avatar_url' => $user->avatar_url,
+                    'assigned_schedules_count' => (int) ($user->assigned_schedules_count ?? 0),
+                    'total_staff_reviews' => (int) ($user->staff_reviews_received_count ?? 0),
+                    'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
+                    'assigned_at' => $user->pivot?->created_at?->toISOString(),
+                ])->values()
+                : [],
+        ];
     }
 
     // ─── Bookings ─────────────────────────────────────────────
@@ -1537,7 +1578,8 @@ class AdminController extends Controller
         }
 
         if ($hasReviewsTable) {
-            $query->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
+            $query->withCount('staffReviewsReceived')
+                ->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
         }
 
         if ($request->filled('search')) {
@@ -1557,6 +1599,7 @@ class AdminController extends Controller
             'phone' => $user->phone,
             'avatar_url' => $user->avatar_url,
             'assigned_schedules_count' => $user->assigned_schedules_count ?? 0,
+            'total_staff_reviews' => $user->staff_reviews_received_count ?? 0,
             'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
         ]));
     }

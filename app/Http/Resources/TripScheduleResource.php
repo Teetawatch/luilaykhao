@@ -22,6 +22,14 @@ class TripScheduleResource extends JsonResource
             'total_seats' => $this->total_seats,
             'booked_seats' => $this->booked_seats,
             'available_seats' => $this->available_seats,
+            'active_bookings_count' => $this->when(
+                isset($this->active_bookings_count),
+                fn () => (int) $this->active_bookings_count
+            ),
+            'assigned_staff_count' => $this->when(
+                isset($this->assigned_staff_count),
+                fn () => (int) $this->assigned_staff_count
+            ),
             'transport_type' => $this->transport_type,
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,
