@@ -334,14 +334,14 @@ function crc16(str) {
 
 async function generateQR() {
   await nextTick();
-  if (!qrCanvas.value || !nextInstallment.value) return;
+  if (loading.value || paymentMethod.value !== 'promptpay' || !qrCanvas.value || !nextInstallment.value) return;
   const amount = parseFloat(nextInstallment.value.amount);
   const payload = buildPromptPayPayload('004999239362071', amount);
 
   const ctx = qrCanvas.value.getContext('2d');
   const bgImg = new Image();
-  bgImg.src = '/images/IMG_7195.JPG';
   bgImg.onload = async () => {
+    if (!qrCanvas.value) return;
     qrCanvas.value.width = bgImg.width;
     qrCanvas.value.height = bgImg.height;
     ctx.drawImage(bgImg, 0, 0);
@@ -356,6 +356,7 @@ async function generateQR() {
     const y = bgImg.height * 0.245;
     ctx.drawImage(tempCanvas, x, y);
   };
+  bgImg.src = '/images/IMG_7195.JPG';
 }
 
 async function processPayment() {
@@ -398,18 +399,16 @@ async function processPayment() {
   }
 }
 
-watch(paymentMethod, (m) => {
-  if (m === 'promptpay' && nextInstallment.value) nextTick(generateQR);
-});
+watch([paymentMethod, nextInstallment, loading], ([method, installment, isLoading]) => {
+  if (!isLoading && method === 'promptpay' && installment) {
+    generateQR();
+  }
+}, { flush: 'post' });
 
 onMounted(async () => {
   try {
     const res = await api.get(`/bookings/${route.params.bookingRef}`);
     booking.value = res.data.data;
-    if (paymentMethod.value === 'promptpay' && nextInstallment.value) {
-      await nextTick();
-      generateQR();
-    }
   } catch (e) {
     console.error(e);
   } finally {
