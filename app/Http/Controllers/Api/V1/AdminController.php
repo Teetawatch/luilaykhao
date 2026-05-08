@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class AdminController extends Controller
 {
@@ -619,17 +620,12 @@ class AdminController extends Controller
 
         $staffIds = collect($validated['staff_ids'] ?? [])->values();
 
-        $staffRoleExists = Role::query()
-            ->where('name', 'staff')
-            ->where('guard_name', config('auth.defaults.guard', 'web'))
-            ->exists();
-
-        if (! $staffRoleExists && $staffIds->isNotEmpty()) {
-            return $this->error('ยังไม่ได้ตั้งค่า role staff ในระบบ', 422);
-        }
-
         if ($staffIds->isNotEmpty()) {
-            $validStaffIds = User::role('staff')->whereIn('id', $staffIds)->pluck('id');
+            $this->ensureRoleNameExists('staff');
+
+            $validStaffIds = $this->usersWithRoleName('staff')
+                ->whereIn('id', $staffIds)
+                ->pluck('id');
 
             if ($validStaffIds->count() !== $staffIds->count()) {
                 return $this->error('พบผู้ใช้ที่ไม่ได้เป็นสิทธิ์ staff', 422);
@@ -697,6 +693,34 @@ class AdminController extends Controller
                 ])->values()
                 : [],
         ];
+    }
+
+    private function usersWithRoleName(string $roleName)
+    {
+        return User::whereHas('roles', fn ($query) => $query->where('name', $roleName));
+    }
+
+    private function ensureRoleNameExists(string $roleName): void
+    {
+        if (Role::where('name', $roleName)->exists()) {
+            return;
+        }
+
+        $this->ensureAssignableRole($roleName);
+    }
+
+    private function ensureAssignableRole(string $roleName): Role
+    {
+        $role = Role::firstOrCreate([
+            'name' => $roleName,
+            'guard_name' => config('auth.defaults.guard', 'web'),
+        ]);
+
+        if ($role->wasRecentlyCreated) {
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+        }
+
+        return $role;
     }
 
     // ─── Bookings ─────────────────────────────────────────────
@@ -1555,23 +1579,12 @@ class AdminController extends Controller
 
     public function staffUsers(Request $request): JsonResponse
     {
-        $staffRoleExists = Role::query()
-            ->where('name', 'staff')
-            ->where('guard_name', config('auth.defaults.guard', 'web'))
-            ->exists();
-
-        if (! $staffRoleExists) {
-            $empty = User::query()
-                ->whereRaw('1 = 0')
-                ->paginate($request->get('per_page', 30));
-
-            return $this->paginated($empty);
-        }
+        $this->ensureRoleNameExists('staff');
 
         $hasAssignmentsTable = Schema::hasTable('schedule_staff_assignments');
         $hasReviewsTable = Schema::hasTable('staff_reviews');
 
-        $query = User::role('staff');
+        $query = $this->usersWithRoleName('staff');
 
         if ($hasAssignmentsTable) {
             $query->withCount('assignedSchedules');
@@ -1625,7 +1638,7 @@ class AdminController extends Controller
                 : null,
         ]);
 
-        $user->assignRole($validated['role']);
+        $user->assignRole($this->ensureAssignableRole($validated['role']));
 
         return $this->success([
             'id' => $user->id,
@@ -1661,7 +1674,7 @@ class AdminController extends Controller
         $user->update($userData);
 
         if (isset($validated['role'])) {
-            $user->syncRoles([$validated['role']]);
+            $user->syncRoles([$this->ensureAssignableRole($validated['role'])]);
         }
 
         return $this->success([
