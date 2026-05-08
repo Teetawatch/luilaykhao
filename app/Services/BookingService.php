@@ -31,7 +31,6 @@ class BookingService
         ?string $groupNotes = null,
         ?string $promotionCode = null,
         bool $isJoinTrip = false,
-        bool $sendBookingCreatedSms = true,
     ): Booking {
         $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
@@ -176,9 +175,6 @@ class BookingService
 
         // Send emails outside of DB transaction
         $this->mailService->sendBookingCreatedEmail($booking);
-        if ($sendBookingCreatedSms) {
-            $this->smsService->sendBookingCreated($booking);
-        }
         SmartNotification::send(
             $booking->user_id,
             'booking_created',

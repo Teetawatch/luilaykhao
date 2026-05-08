@@ -33,24 +33,15 @@ class SmsService
 
     public function sendPaymentConfirmed(Booking $booking, string $paymentType = 'full'): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip', 'installmentPayments']);
-
-        $label = $paymentType === 'installment' ? 'รับชำระงวดแรกแล้ว' : 'รับชำระเงินแล้ว';
-        $nextInstallmentText = $paymentType === 'installment'
-            ? $this->nextInstallmentText($booking)
-            : '';
+        $booking->loadMissing(['user', 'passengers']);
 
         return $this->queueOrSend(
             booking: $booking,
             type: 'payment_confirmed',
             dedupeKey: $paymentType,
             message: sprintf(
-                '%s สำหรับ booking %s ทริป %s วันที่ %s%s',
-                $label,
+                'รับชำระเงินแล้ว สำหรับ booking %s',
                 $booking->booking_ref,
-                $this->tripTitle($booking),
-                $this->departureDate($booking),
-                $nextInstallmentText,
             ),
         );
     }
@@ -296,7 +287,6 @@ class SmsService
     private function sendableSmsTypes(): array
     {
         return [
-            'booking_created',
             'payment_confirmed',
             'installment_paid',
             'installment_due_soon',

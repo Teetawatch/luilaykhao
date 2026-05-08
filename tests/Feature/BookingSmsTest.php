@@ -15,7 +15,7 @@ class BookingSmsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_friend_booking_skips_created_sms_and_sends_after_payment_confirmation(): void
+    public function test_booking_creation_skips_sms_and_payment_confirmation_sends_simple_message(): void
     {
         Mail::fake();
         config()->set('services.thaibulksms.enabled', false);
@@ -55,7 +55,6 @@ class BookingSmsTest extends TestCase
                 'phone' => '081-234-5678',
                 'email' => 'friend@example.test',
             ]],
-            sendBookingCreatedSms: false,
         );
 
         $this->assertDatabaseMissing('sms_logs', [
@@ -71,6 +70,7 @@ class BookingSmsTest extends TestCase
             'sms_type' => 'payment_confirmed',
             'dedupe_key' => 'full',
             'recipient' => '66812345678',
+            'message' => "รับชำระเงินแล้ว สำหรับ booking {$booking->booking_ref}",
             'status' => 'pending',
         ]);
     }
