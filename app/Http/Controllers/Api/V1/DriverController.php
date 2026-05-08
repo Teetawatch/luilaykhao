@@ -80,6 +80,35 @@ class DriverController extends Controller
         return $this->success($schedules, 'รอบเดินทางของคนขับ');
     }
 
+    public function lookupCheckIn(Request $request): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์ staff', 403);
+        }
+
+        $validated = $request->validate([
+            'qr_code' => ['required', 'string'],
+            'schedule_id' => ['nullable', 'integer', 'exists:trip_schedules,id'],
+        ]);
+
+        $booking = $this->resolveCheckInBooking(
+            $request,
+            $validated['qr_code'],
+            $validated['schedule_id'] ?? null
+        );
+
+        if ($booking instanceof JsonResponse) {
+            return $booking;
+        }
+
+        return $this->success(
+            new BookingResource($booking),
+            'พบข้อมูลการจอง',
+            200,
+            $this->checkInMeta($booking)
+        );
+    }
+
     public function checkIn(Request $request): JsonResponse
     {
         if (! $this->hasDriverAccess($request)) {
@@ -91,17 +120,39 @@ class DriverController extends Controller
             'schedule_id' => ['nullable', 'integer', 'exists:trip_schedules,id'],
         ]);
 
-        $code = $this->extractCode($validated['qr_code']);
-        $booking = Booking::with([
-            'schedule.trip',
-            'schedule.vehicle',
-            'schedule.staff',
-            'schedule.pickupPoints',
-            'pickupPoint',
-            'user',
-            'passengers',
-            'seats',
-        ])
+        $booking = $this->resolveCheckInBooking(
+            $request,
+            $validated['qr_code'],
+            $validated['schedule_id'] ?? null
+        );
+
+        if ($booking instanceof JsonResponse) {
+            return $booking;
+        }
+
+        if ($booking->status !== 'confirmed') {
+            return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน (สถานะ: '.$booking->status.')', 422);
+        }
+
+        if ($booking->checked_in) {
+            return $this->error('เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i'), 422);
+        }
+
+        $booking->update([
+            'checked_in' => true,
+            'checked_in_at' => now(),
+        ]);
+
+        return $this->success(
+            new BookingResource($booking->fresh($this->checkInRelations())),
+            'เช็คอินสำเร็จ'
+        );
+    }
+
+    private function resolveCheckInBooking(Request $request, string $rawCode, ?int $scheduleId = null): Booking|JsonResponse
+    {
+        $code = $this->extractCode($rawCode);
+        $booking = Booking::with($this->checkInRelations())
             ->where(function (Builder $query) use ($code) {
                 $query->where('qr_code', $code)
                     ->orWhere('booking_ref', $code);
@@ -112,40 +163,52 @@ class DriverController extends Controller
             return $this->error('ไม่พบการจองสำหรับ QR Code นี้', 404);
         }
 
-        if (! empty($validated['schedule_id']) && (int) $booking->schedule_id !== (int) $validated['schedule_id']) {
+        if ($scheduleId && (int) $booking->schedule_id !== (int) $scheduleId) {
             return $this->error('QR Code นี้ไม่ใช่ผู้เดินทางของรอบที่เลือก', 422);
         }
 
         if (! $this->canAccessSchedule($request, $booking->schedule)) {
-            return $this->error('คุณไม่มีสิทธิ์เช็กอินรายการนี้', 403);
+            return $this->error('คุณไม่มีสิทธิ์เช็คอินรายการนี้', 403);
+        }
+
+        return $booking;
+    }
+
+    private function checkInRelations(): array
+    {
+        return [
+            'schedule.trip',
+            'schedule.vehicle',
+            'schedule.staff',
+            'schedule.pickupPoints',
+            'pickupPoint',
+            'user',
+            'passengers',
+            'seats',
+            'installmentPayments',
+        ];
+    }
+
+    private function checkInMeta(Booking $booking): array
+    {
+        if ($booking->checked_in) {
+            return [
+                'can_check_in' => false,
+                'block_reason' => 'เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i'),
+            ];
         }
 
         if ($booking->status !== 'confirmed') {
-            return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน (สถานะ: '.$booking->status.')', 422);
+            return [
+                'can_check_in' => false,
+                'block_reason' => 'การจองยังไม่ได้รับการยืนยัน',
+            ];
         }
 
-        if ($booking->checked_in) {
-            return $this->error('เช็กอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i'), 422);
-        }
-
-        $booking->update([
-            'checked_in' => true,
-            'checked_in_at' => now(),
-        ]);
-
-        return $this->success(
-            new BookingResource($booking->fresh([
-                'schedule.trip',
-                'schedule.vehicle',
-                'schedule.staff',
-                'schedule.pickupPoints',
-                'pickupPoint',
-                'user',
-                'passengers',
-                'seats',
-            ])),
-            'เช็กอินสำเร็จ'
-        );
+        return [
+            'can_check_in' => true,
+            'block_reason' => null,
+        ];
     }
 
     private function driverSchedulesQuery(Request $request): Builder

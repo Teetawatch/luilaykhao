@@ -97,6 +97,8 @@ Route::prefix('v1')->group(function () {
         Route::get('staff/schedules/my', [StaffController::class, 'mySchedules']);
         Route::get('staff/reviews/my', [StaffController::class, 'myReviews']);
         Route::post('staff/reviews', [StaffController::class, 'storeReview']);
+        Route::post('staff/check-in/lookup', [DriverController::class, 'lookupCheckIn']);
+        Route::post('staff/check-in/confirm', [DriverController::class, 'checkIn']);
 
         // Loyalty program
         Route::get('loyalty/account', [LoyaltyController::class, 'account']);
@@ -118,6 +120,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('driver')->group(function () {
             Route::get('me', [DriverController::class, 'me']);
             Route::get('schedules', [DriverController::class, 'schedules']);
+            Route::post('check-in/lookup', [DriverController::class, 'lookupCheckIn']);
             Route::post('check-in', [DriverController::class, 'checkIn']);
         });
     });
