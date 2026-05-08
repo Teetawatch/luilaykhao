@@ -12,9 +12,10 @@ return new class extends Migration
             return; // Table doesn't exist, skip
         }
         
-        // Check if the unique index exists before trying to drop it
-        $indexes = \Illuminate\Support\Facades\DB::select("SHOW INDEX FROM schedule_pickup_points WHERE Key_name = 'schedule_pickup_points_schedule_id_region_unique'");
-        if (!empty($indexes)) {
+        $indexExists = collect(Schema::getIndexes('schedule_pickup_points'))
+            ->contains(fn (array $index) => $index['name'] === 'schedule_pickup_points_schedule_id_region_unique');
+
+        if ($indexExists) {
             Schema::table('schedule_pickup_points', function (Blueprint $table) {
                 $table->dropUnique('schedule_pickup_points_schedule_id_region_unique');
             });

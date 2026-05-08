@@ -296,6 +296,7 @@ class SmsService
     private function sendableSmsTypes(): array
     {
         return [
+            'booking_created',
             'payment_confirmed',
             'installment_paid',
             'installment_due_soon',
