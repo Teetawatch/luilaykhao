@@ -655,7 +655,7 @@
     <!-- ══════════════════════════════════════════
          FINAL CTA
     ══════════════════════════════════════════ -->
-    <section class="relative py-32 md:py-48 w-full overflow-hidden bg-[#0D2B1E]">
+    <section class="relative py-20 md:py-32 w-full overflow-hidden bg-[#0D2B1E]">
       <!-- Full-Width Background Wrapper -->
       <div class="absolute inset-0 z-0">
         <img
@@ -667,50 +667,50 @@
       </div>
       
       <!-- Premium UI Decorations -->
-      <div class="absolute top-0 right-0 w-[60rem] h-[60rem] bg-[var(--color-accent)]/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-white/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
+      <div class="absolute top-0 right-0 w-[42rem] h-[42rem] bg-[var(--color-accent)]/16 rounded-full blur-[110px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
+      <div class="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-white/5 rounded-full blur-[90px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="reveal-section max-w-4xl">
-          <div class="inline-flex items-center gap-3 text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-10">
-            <span class="w-12 h-[2px] bg-[var(--color-gold)]"></span>
+        <div class="reveal-section max-w-3xl">
+          <div class="inline-flex items-center gap-3 text-[var(--color-gold)] font-bold tracking-wider uppercase text-xs md:text-sm mb-6">
+            <span class="w-10 h-[2px] bg-[var(--color-gold)]"></span>
             พร้อมจะออกไปลุยหรือยัง?
           </div>
           
-          <h2 class="text-5xl md:text-6xl lg:text-8xl font-black text-white leading-[1.05] mb-10 tracking-tight">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.08] mb-7 tracking-tight">
             ให้เราช่วยสร้าง<br/>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 underline decoration-[var(--color-gold)] decoration-8">ความทรงจำ</span> ที่สวยงามของคุณ
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 underline decoration-[var(--color-gold)] decoration-4 md:decoration-6">ความทรงจำ</span> ที่สวยงามของคุณ
           </h2>
           
-          <p class="text-xl md:text-2xl text-white/80 leading-relaxed font-medium mb-16 max-w-2xl border-l-4 border-[var(--color-gold)] pl-8">
+          <p class="text-base md:text-lg text-white/80 leading-relaxed font-medium mb-10 max-w-xl border-l-4 border-[var(--color-gold)] pl-5 md:pl-6">
             เราดูแลทุกรายละเอียด เพื่อให้คุณได้ใช้เวลาที่มีค่าไปกับการ "ซึมซับบรรยากาศ" และ "สนุกกับการเดินทาง" อย่างเต็มที่
           </p>
           
-          <div class="flex flex-col sm:flex-row gap-6">
+          <div class="flex flex-col sm:flex-row gap-4">
             <router-link
               to="/trips"
-              class="inline-flex items-center justify-center gap-4 bg-[var(--color-accent)] text-white px-12 py-6 rounded-[2rem] text-2xl font-black hover:bg-[#3D8F66] hover:shadow-[0_20px_50px_rgba(76,175,125,0.4)] transition-all duration-500 group/btn"
+              class="inline-flex items-center justify-center gap-3 bg-[var(--color-accent)] text-white px-7 md:px-9 py-4 rounded-[1.5rem] text-base md:text-lg font-black hover:bg-[#3D8F66] hover:shadow-[0_16px_40px_rgba(76,175,125,0.35)] transition-all duration-500 group/btn"
             >
               <span>เริ่มผจญภัยกับเราวันนี้</span>
-              <span class="material-symbols-rounded text-3xl group-hover/btn:translate-x-2 transition-transform">explore</span>
+              <span class="material-symbols-rounded text-2xl group-hover/btn:translate-x-1.5 transition-transform">explore</span>
             </router-link>
             <router-link
               to="/about"
-              class="inline-flex items-center justify-center gap-4 bg-white/10 backdrop-blur-md border border-white/20 text-white px-12 py-6 rounded-[2rem] text-2xl font-black hover:bg-white/20 transition-all duration-500"
+              class="inline-flex items-center justify-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 text-white px-7 md:px-9 py-4 rounded-[1.5rem] text-base md:text-lg font-black hover:bg-white/20 transition-all duration-500"
             >
               รู้จักเรามากขึ้น
             </router-link>
           </div>
           
           <!-- Quick Status -->
-          <div class="mt-20 flex items-center gap-10 opacity-70">
-            <div class="flex items-center gap-3">
-              <span class="material-symbols-rounded text-white">verified_user</span>
-              <span class="font-bold text-white">จองปลอดภัย 100%</span>
+          <div class="mt-12 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 opacity-70">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-rounded text-white text-[20px]">verified_user</span>
+              <span class="font-bold text-white text-sm md:text-base">จองปลอดภัย 100%</span>
             </div>
-            <div class="flex items-center gap-3">
-              <span class="material-symbols-rounded text-white">thumb_up</span>
-              <span class="font-bold text-white">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-rounded text-white text-[20px]">thumb_up</span>
+              <span class="font-bold text-white text-sm md:text-base">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
             </div>
           </div>
         </div>

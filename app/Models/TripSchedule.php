@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ class TripSchedule extends Model
     use HasFactory;
 
     public const ACTIVE_BOOKING_STATUSES = ['pending', 'confirmed'];
+    public const REVIEW_AVAILABLE_TIMEZONE = 'Asia/Bangkok';
 
     protected $table = 'trip_schedules';
 
@@ -81,6 +83,19 @@ class TripSchedule extends Model
     public function getEffectivePriceAttribute(): float
     {
         return $this->price_override ?? $this->trip->price_per_person;
+    }
+
+    public function reviewAvailableAt(): CarbonImmutable
+    {
+        $reviewDate = $this->return_date ?? $this->departure_date;
+
+        return CarbonImmutable::parse($reviewDate->toDateString(), self::REVIEW_AVAILABLE_TIMEZONE)
+            ->setTime(20, 0);
+    }
+
+    public function isReviewAvailable(): bool
+    {
+        return now(self::REVIEW_AVAILABLE_TIMEZONE)->greaterThanOrEqualTo($this->reviewAvailableAt());
     }
 
     /**

@@ -16,6 +16,9 @@ class TripScheduleResource extends JsonResource
             'trip' => new TripResource($this->whenLoaded('trip')),
             'departure_date' => $this->departure_date?->toDateString(),
             'return_date' => $this->return_date?->toDateString(),
+            'review_available_at' => ($this->return_date || $this->departure_date)
+                ? $this->reviewAvailableAt()->toISOString()
+                : null,
             'total_seats' => $this->total_seats,
             'booked_seats' => $this->booked_seats,
             'available_seats' => $this->available_seats,

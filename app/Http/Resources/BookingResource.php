@@ -51,6 +51,10 @@ class BookingResource extends JsonResource
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),
             'status' => $this->status,
+            'can_review' => $this->status === 'confirmed'
+                && $this->relationLoaded('schedule')
+                && $this->schedule
+                && $this->schedule->isReviewAvailable(),
             'total_amount' => $this->total_amount,
             'paid_amount' => $this->paid_amount,
             'payment_method' => $this->payment_method,

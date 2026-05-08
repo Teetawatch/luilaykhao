@@ -504,8 +504,8 @@
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อเล่น</label>
-                  <input v-model="p.nickname" type="text" placeholder="กรอกชื่อเล่น"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อเล่น <span class="text-red-500">*</span></label>
+                  <input v-model="p.nickname" type="text" required placeholder="กรอกชื่อเล่น"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div>
@@ -517,14 +517,21 @@
                     </button>
                   </label>
                   <input v-model="p.id_card" type="text" required placeholder="เลขบัตรประชาชน 13 หลัก"
+                    inputmode="numeric" pattern="[0-9]{13}"
                     maxlength="13"
-                    @input="p.id_card = p.id_card.replace(/\D/g, '')"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                    @input="limitDigits(p, 'id_card', 13)"
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="p.id_card && !hasExactDigits(p.id_card, 13) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="p.id_card && !hasExactDigits(p.id_card, 13)" class="text-xs text-red-500 font-bold mt-2">กรุณากรอกเลขบัตรประชาชน 13 หลัก</p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
-                  <input v-model="p.phone" type="tel" placeholder="0XX-XXX-XXXX"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                  <input v-model="p.phone" type="tel" required placeholder="0XXXXXXXXX"
+                    inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
+                    @input="limitDigits(p, 'phone', 10)"
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="p.phone && !hasExactDigits(p.phone, 10) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="p.phone && !hasExactDigits(p.phone, 10)" class="text-xs text-red-500 font-bold mt-2">กรุณากรอกเบอร์โทรศัพท์ 10 หลัก</p>
                 </div>
                 <div v-if="bookingFor === 'friend' && i === 0">
                   <label class="block text-sm font-bold text-gray-700 mb-2">อีเมลสำหรับแจ้งสถานะการจอง <span class="text-red-500">*</span></label>
@@ -534,10 +541,10 @@
                   <p v-if="p.email && !isValidEmail(p.email)" class="text-xs text-red-500 font-bold mt-2">รูปแบบอีเมลไม่ถูกต้อง</p>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">กรุ๊ปเลือด</label>
-                  <select v-model="p.blood_group"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">กรุ๊ปเลือด <span class="text-red-500">*</span></label>
+                  <select v-model="p.blood_group" required
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white">
-                    <option value="">ไม่ระบุ</option>
+                    <option value="" disabled>เลือกกรุ๊ปเลือด</option>
                     <option value="A">A</option>
                     <option value="B">B</option>
                     <option value="O">O</option>
@@ -546,13 +553,17 @@
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อฉุกเฉิน <span class="text-red-500">*</span></label>
-                  <input v-model="p.emergency_contact" type="text" placeholder="ชื่อผู้ติดต่อ"
+                  <input v-model="p.emergency_contact" type="text" required placeholder="ชื่อผู้ติดต่อ"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์ฉุกเฉิน <span class="text-red-500">*</span></label>
-                  <input v-model="p.emergency_phone" type="tel" placeholder="0XX-XXX-XXXX"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                  <input v-model="p.emergency_phone" type="tel" required placeholder="0XXXXXXXXX"
+                    inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
+                    @input="limitDigits(p, 'emergency_phone', 10)"
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="p.emergency_phone && !hasExactDigits(p.emergency_phone, 10) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="p.emergency_phone && !hasExactDigits(p.emergency_phone, 10)" class="text-xs text-red-500 font-bold mt-2">กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก</p>
                 </div>
                 <div class="md:col-span-2">
                   <label class="block text-sm font-bold text-gray-700 mb-2">ต้องการอาหารฮาลาล <span class="text-red-500">*</span></label>
@@ -560,7 +571,7 @@
                   <div class="flex gap-3">
                     <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
                       :class="p.halal_food === true ? 'border-teal-600 bg-teal-50' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
-                      <input type="radio" :name="`halal_food_${i}`" :value="true" v-model="p.halal_food" class="hidden" />
+                      <input type="radio" :name="`halal_food_${i}`" :value="true" v-model="p.halal_food" required class="hidden" />
                       <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
                         :class="p.halal_food === true ? 'border-teal-600' : 'border-gray-300'">
                         <span v-if="p.halal_food === true" class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
@@ -569,7 +580,7 @@
                     </label>
                     <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
                       :class="p.halal_food === false ? 'border-gray-400 bg-gray-100' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
-                      <input type="radio" :name="`halal_food_${i}`" :value="false" v-model="p.halal_food" class="hidden" />
+                      <input type="radio" :name="`halal_food_${i}`" :value="false" v-model="p.halal_food" required class="hidden" />
                       <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
                         :class="p.halal_food === false ? 'border-gray-500' : 'border-gray-300'">
                         <span v-if="p.halal_food === false" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
@@ -580,14 +591,14 @@
                 </div>
 
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">การแพ้อาหาร / อื่นๆ</label>
-                  <input v-model="p.allergies" type="text" placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">การแพ้อาหาร / อื่นๆ <span class="text-red-500">*</span></label>
+                  <input v-model="p.allergies" type="text" required placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ หรือ ไม่มี"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
 
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุสุขภาพ (ถ้ามี)</label>
-                  <textarea v-model="p.health_notes" rows="2" placeholder="แพ้ยา, โรคประจำตัว ฯลฯ"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุสุขภาพ <span class="text-red-500">*</span></label>
+                  <textarea v-model="p.health_notes" rows="2" required placeholder="แพ้ยา, โรคประจำตัว หรือ ไม่มี"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white resize-none"></textarea>
                 </div>
               </div>
@@ -1256,13 +1267,26 @@ function autoFillFromProfile(index) {
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 const isFriendEmailValid = computed(() => bookingFor.value !== 'friend' || isValidEmail(passengers.value[0]?.email));
+const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
+const hasText = (value) => String(value || '').trim().length > 0;
+const hasExactDigits = (value, length) => digitsOnly(value).length === length;
+
+function limitDigits(passenger, field, length) {
+  passenger[field] = digitsOnly(passenger[field]).slice(0, length);
+}
 
 const isPassengerValid = computed(() => isFriendEmailValid.value && passengers.value.every(p => 
   p.title &&
-  p.name?.trim() && 
-  p.id_card && 
-  p.id_card.length === 13 &&
+  hasText(p.name) &&
+  hasText(p.nickname) &&
+  hasExactDigits(p.id_card, 13) &&
+  hasExactDigits(p.phone, 10) &&
+  p.blood_group &&
   p.halal_food !== null &&
+  hasText(p.emergency_contact) &&
+  hasExactDigits(p.emergency_phone, 10) &&
+  hasText(p.allergies) &&
+  hasText(p.health_notes) &&
   (!schedule.value?.trip?.is_women_only || ['นาง', 'นางสาว'].includes(p.title))
 ));
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
@@ -1430,17 +1454,17 @@ async function createBooking() {
       booking_for: bookingFor.value,
       passengers: passengers.value.map(p => ({
         title: p.title || null,
-        name: p.name,
-        nickname: p.nickname || null,
-        id_card: p.id_card || null,
-        phone: p.phone || null,
-        email: p.email || null,
+        name: String(p.name || '').trim(),
+        nickname: String(p.nickname || '').trim(),
+        id_card: digitsOnly(p.id_card),
+        phone: digitsOnly(p.phone),
+        email: p.email ? String(p.email).trim() : null,
         blood_group: p.blood_group || null,
-        allergies: p.allergies || null,
+        allergies: String(p.allergies || '').trim(),
         halal_food: p.halal_food,
-        health_notes: p.health_notes || null,
-        emergency_contact: p.emergency_contact || null,
-        emergency_phone: p.emergency_phone || null,
+        health_notes: String(p.health_notes || '').trim(),
+        emergency_contact: String(p.emergency_contact || '').trim(),
+        emergency_phone: digitsOnly(p.emergency_phone),
         dive_cert_level: p.dive_cert_level || null,
         cert_number: p.cert_number || null,
         weight: p.weight || null,

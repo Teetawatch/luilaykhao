@@ -266,14 +266,35 @@ async function loadData() {
 
     const reviewedBookingIds = new Set(myReviews.value.map(r => r.booking_id));
     pendingBookings.value = bookingStore.bookings.filter(
-      b => b.status === 'confirmed' && !reviewedBookingIds.has(b.id)
+      b => b.status === 'confirmed' && !reviewedBookingIds.has(b.id) && isBookingReviewAvailable(b)
     );
   } finally {
     loading.value = false;
   }
 }
 
+function isBookingReviewAvailable(booking) {
+  if (typeof booking.can_review === 'boolean') {
+    return booking.can_review;
+  }
+
+  const availableAt = booking.schedule?.review_available_at || getReviewAvailableAt(booking.schedule);
+  return availableAt ? Date.now() >= new Date(availableAt).getTime() : false;
+}
+
+function getReviewAvailableAt(schedule) {
+  const date = schedule?.return_date || schedule?.departure_date;
+  if (!date) return null;
+
+  return `${date}T20:00:00+07:00`;
+}
+
 function openWriteReview(booking) {
+  if (!isBookingReviewAvailable(booking)) {
+    alert('สามารถรีวิวได้หลังจบทริปวันสุดท้าย เวลา 20:00 น. เป็นต้นไป');
+    return;
+  }
+
   editingReview.value = null;
   pendingBooking.value = booking;
   form.value = { rating: 0, comment: '', images: [] };

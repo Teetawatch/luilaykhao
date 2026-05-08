@@ -56,11 +56,16 @@ class ReviewController extends Controller
         $booking = Booking::where('id', $validated['booking_id'])
             ->where('user_id', $request->user()->id)
             ->where('status', 'confirmed')
+            ->with('schedule')
             ->firstOrFail();
 
         $existing = Review::where('booking_id', $booking->id)->first();
         if ($existing) {
             return $this->error('คุณรีวิวการจองนี้ไปแล้ว', 422);
+        }
+
+        if (! $booking->schedule?->isReviewAvailable()) {
+            return $this->error('สามารถรีวิวได้หลังจบทริปวันสุดท้าย เวลา 20:00 น. เป็นต้นไป', 422);
         }
 
         $review = Review::create([
