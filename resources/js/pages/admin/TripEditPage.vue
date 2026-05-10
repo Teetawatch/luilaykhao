@@ -23,6 +23,11 @@
       </div>
     </div>
 
+    <div v-if="submitError" class="form-error-banner">
+      <span class="material-symbols-rounded">error</span>
+      <span>{{ submitError }}</span>
+    </div>
+
     <div class="edit-grid" v-if="!loading">
       <!-- Main Content -->
       <div class="edit-main">
@@ -30,7 +35,7 @@
         <div class="card section-card">
           <div class="form-group full-width">
             <label>ชื่อทริป *</label>
-            <input v-model="form.title" required placeholder="เช่น เดินป่าดอยอินทนนท์ 2 วัน 1 คืน" class="title-input" />
+            <input v-model.trim="form.title" required placeholder="เช่น เดินป่าดอยอินทนนท์ 2 วัน 1 คืน" class="title-input" data-required-field="title" />
           </div>
           <div class="form-group full-width mt-4">
             <label>รายละเอียด</label>
@@ -44,11 +49,11 @@
           <div class="form-grid pt-2">
             <div class="form-group">
               <label>สถานที่ *</label>
-              <input v-model="form.location" required placeholder="เช่น เชียงใหม่" />
+              <input v-model.trim="form.location" required placeholder="เช่น เชียงใหม่" data-required-field="location" />
             </div>
             <div class="form-group">
               <label>ภูมิภาค (ภาค) *</label>
-              <select v-model="form.region" required>
+              <select v-model="form.region" required data-required-field="region">
                 <option value="" disabled>เลือกภาค</option>
                 <option value="bangkok">กรุงเทพมหานคร</option>
                 <option value="north">ภาคเหนือ</option>
@@ -402,7 +407,7 @@
           <div class="sidebar-body space-y-4">
             <div class="form-group">
               <label>ประเภท *</label>
-              <select v-model="form.type" required>
+              <select v-model="form.type" required data-required-field="type">
                 <option v-for="cat in categoriesStore.categories" :key="cat.id" :value="cat.slug">
                   {{ cat.name }}
                 </option>
@@ -410,7 +415,7 @@
             </div>
             <div class="form-group">
               <label>ระดับความยาก *</label>
-              <select v-model="form.difficulty" required>
+              <select v-model="form.difficulty" required data-required-field="difficulty">
                 <option value="easy">ง่าย</option>
                 <option value="medium">ปานกลาง</option>
                 <option value="hard">ยาก</option>
@@ -419,11 +424,11 @@
             <div class="grid grid-cols-2 gap-3">
               <div class="form-group">
                 <label>จำนวนวัน *</label>
-                <input v-model.number="form.duration_days" type="number" min="1" required />
+                <input v-model.number="form.duration_days" type="number" min="1" required data-required-field="duration_days" />
               </div>
               <div class="form-group">
                 <label>จำนวนคนสูงสุด *</label>
-                <input v-model.number="form.max_participants" type="number" min="1" required />
+                <input v-model.number="form.max_participants" type="number" min="1" required data-required-field="max_participants" />
               </div>
             </div>
           </div>
@@ -437,7 +442,7 @@
               <label>ราคาต่อคน (฿) *</label>
               <div class="price-input-wrapper">
                 <span class="currency-symbol">฿</span>
-                <input v-model.number="form.price_per_person" type="number" min="0" required class="price-input" />
+                <input v-model.number="form.price_per_person" type="number" min="0" required class="price-input" data-required-field="price_per_person" />
               </div>
             </div>
           </div>
@@ -597,6 +602,7 @@ const isVanMode = computed(() => route.name?.startsWith('admin-van-trip'));
 const backRouteName = computed(() => isVanMode.value ? 'admin-van-trips' : 'admin-trips');
 const loading = ref(false);
 const submitting = ref(false);
+const submitError = ref('');
 
 // Media Library State
 const showMediaLibrary = ref(false);
@@ -649,6 +655,105 @@ const normalizeArray = (value) => {
   }
 
   return [];
+};
+
+const requiredFieldLabels = {
+  title: 'ชื่อทริป',
+  type: 'ประเภท',
+  location: 'สถานที่',
+  region: 'ภูมิภาค',
+  difficulty: 'ระดับความยาก',
+  duration_days: 'จำนวนวัน',
+  max_participants: 'จำนวนคนสูงสุด',
+  price_per_person: 'ราคาต่อคน',
+};
+
+const hasRequiredValue = (value) => {
+  if (value === 0) return true;
+  return value !== null && value !== undefined && String(value).trim() !== '';
+};
+
+const getClientValidationErrors = (payload) => {
+  return Object.keys(requiredFieldLabels)
+    .filter((field) => !hasRequiredValue(payload[field]))
+    .map((field) => requiredFieldLabels[field]);
+};
+
+const focusFirstMissingField = (payload) => {
+  const field = Object.keys(requiredFieldLabels).find((key) => !hasRequiredValue(payload[key]));
+  if (!field) return;
+
+  const el = document.querySelector(`[data-required-field="${field}"]`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => el.focus?.(), 250);
+  }
+};
+
+const compactStringArray = (value) => normalizeArray(value)
+  .map((item) => String(item || '').trim())
+  .filter(Boolean);
+
+const buildTripPayload = () => {
+  const payload = {
+    ...form,
+    title: String(form.title || '').trim(),
+    location: String(form.location || '').trim(),
+    region: String(form.region || '').trim(),
+    description: form.description ?? '',
+    departure_point: String(form.departure_point || '').trim(),
+    cover_image: form.cover_image || '',
+    thumbnail_image: form.thumbnail_image || '',
+    gallery: compactStringArray(form.gallery),
+    inclusions: compactStringArray(form.inclusions),
+    exclusions: compactStringArray(form.exclusions),
+    preparations: compactStringArray(form.preparations),
+    highlights: normalizeArray(form.highlights)
+      .map((hi) => ({
+        title: String(hi?.title || '').trim(),
+        desc: String(hi?.desc || '').trim(),
+        icon: String(hi?.icon || 'star').trim(),
+      }))
+      .filter((hi) => hi.title && hi.desc),
+    must_know: {
+      items: normalizeArray(form.must_know?.items)
+        .map((item) => ({
+          name: String(item?.name || '').trim(),
+          price: Number(item?.price || 0),
+        }))
+        .filter((item) => item.name),
+      remarks: String(form.must_know?.remarks || '').trim(),
+    },
+    itinerary: normalizeArray(form.itinerary)
+      .map((sector) => ({
+        sector: String(sector?.sector || '').trim(),
+        items: normalizeArray(sector?.items)
+          .map((item) => ({
+            day: Number(item?.day || 0),
+            title: String(item?.title || '').trim(),
+            description: String(item?.description || '').trim(),
+          }))
+          .filter((item) => item.title && item.description),
+      }))
+      .filter((sector) => sector.sector || sector.items.length),
+  };
+
+  if (payload.latitude === '') payload.latitude = null;
+  if (payload.longitude === '') payload.longitude = null;
+
+  return payload;
+};
+
+const formatApiValidationErrors = (error) => {
+  const errors = error.response?.data?.errors;
+  if (!errors) return error.response?.data?.message || 'เกิดข้อผิดพลาด';
+
+  return Object.entries(errors)
+    .map(([field, messages]) => {
+      const label = requiredFieldLabels[field] || field;
+      return `${label}: ${Array.isArray(messages) ? messages[0] : messages}`;
+    })
+    .join('\n');
 };
 
 // Image upload state
@@ -832,16 +937,26 @@ const handleGallerySelect = async (event) => {
 };
 
 const submitForm = async () => {
+  const payload = buildTripPayload();
+  const missingFields = getClientValidationErrors(payload);
+  if (missingFields.length) {
+    submitError.value = `กรุณากรอกข้อมูลให้ครบ: ${missingFields.join(', ')}`;
+    focusFirstMissingField(payload);
+    return;
+  }
+
   submitting.value = true;
+  submitError.value = '';
   try {
     if (isEdit.value) {
-      await admin.updateTrip(route.params.id, form);
+      await admin.updateTrip(route.params.id, payload);
     } else {
-      await admin.createTrip(form);
+      await admin.createTrip(payload);
     }
     router.push({ name: backRouteName.value });
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+    submitError.value = formatApiValidationErrors(e);
+    alert(submitError.value);
   } finally {
     submitting.value = false;
   }
@@ -997,6 +1112,26 @@ onMounted(() => {
 .header-actions {
   display: flex;
   gap: 12px;
+}
+
+.form-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: pre-line;
+}
+
+.form-error-banner .material-symbols-rounded {
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
 .edit-grid {
