@@ -868,6 +868,41 @@
               </div>
             </div>
 
+            <!-- Promo Code -->
+            <div v-if="step !== (isTrekking ? 3 : 2)" class="mb-8 rounded-3xl border border-teal-100 bg-teal-50/60 p-5">
+              <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-teal-800">
+                <span class="material-symbols-rounded text-[18px]">local_offer</span>
+                โค้ดส่วนลด / โปรโมชั่น
+              </h3>
+
+              <div v-if="!promotionData" class="space-y-2">
+                <div class="flex gap-2">
+                  <input v-model="promotionInput" type="text" placeholder="กรอกโค้ดส่วนลด"
+                    class="min-w-0 flex-1 rounded-xl border-2 border-white bg-white px-4 py-3 text-sm font-bold uppercase text-gray-900 outline-none transition-all placeholder:font-medium placeholder:text-gray-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10"
+                    @keyup.enter="applyPromotion" />
+                  <button @click="applyPromotion" :disabled="promotionLoading || !promotionInput.trim()"
+                    class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-black text-white transition-all hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50">
+                    <span v-if="promotionLoading" class="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                    <span>ใช้</span>
+                  </button>
+                </div>
+                <p v-if="promotionError" class="text-xs font-bold text-red-500">{{ promotionError }}</p>
+              </div>
+
+              <div v-else class="flex items-center justify-between gap-3 rounded-2xl border border-teal-200 bg-white p-4">
+                <div class="min-w-0">
+                  <div class="mb-1 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-[18px] text-teal-600">check_circle</span>
+                    <span class="truncate text-sm font-black text-teal-800">ใช้โค้ด {{ promotionCode }} แล้ว</span>
+                  </div>
+                  <p class="text-xs font-bold text-teal-600">ส่วนลด ฿{{ discountAmount.toLocaleString() }}</p>
+                </div>
+                <button @click="removePromotion" class="shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
+                  <span class="material-symbols-rounded text-xl">close</span>
+                </button>
+              </div>
+            </div>
+
             <!-- CTA Button Section -->
             <div class="space-y-4">
               <!-- Seat selection confirmed, go to passenger info -->
@@ -1217,7 +1252,7 @@ watch(step, (newStep) => {
 });
 
 watch(passengers, saveFormData, { deep: true });
-watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup], saveFormData);
+watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData], saveFormData);
 
 watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
