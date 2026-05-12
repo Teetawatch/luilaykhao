@@ -208,6 +208,19 @@
                     </div>
                   </div>
 
+                  <div v-if="booking.selected_addons?.length" class="p-5 bg-amber-50/70 rounded-3xl border border-amber-100">
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="material-symbols-rounded text-amber-600">add_task</span>
+                      <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest">ตัวเลือกเสริม</p>
+                    </div>
+                    <div class="space-y-2">
+                      <div v-for="(addon, idx) in booking.selected_addons" :key="idx" class="flex justify-between gap-3 text-sm">
+                        <span class="font-bold text-gray-800">{{ addon.name }}</span>
+                        <span class="font-black text-amber-700">+฿{{ Number(addon.total_price || 0).toLocaleString() }}</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Footer: Paid Timestamp -->
                   <div v-if="booking.paid_at" class="pt-6 border-t border-gray-100 flex items-center gap-2 text-gray-400">
                     <span class="material-symbols-rounded text-base">check_circle</span>

@@ -312,10 +312,14 @@
           </div>
           <div class="must-know-editor bg-amber-50 p-6 rounded-[2rem] border border-amber-100 space-y-6">
             <div class="space-y-4">
-              <label class="text-sm font-black text-amber-700 uppercase tracking-widest pl-1 mb-1 block">รายการเพิ่มเติม / ราคาพิเศษ</label>
+              <label class="text-sm font-black text-amber-700 uppercase tracking-widest pl-1 mb-1 block">ตัวเลือกเสริมให้ลูกค้าติ๊กเลือก / ราคาพิเศษ</label>
               <div class="space-y-3">
                 <div v-for="(item, idx) in form.must_know.items" :key="idx" class="flex gap-3 items-center">
                   <input v-model="item.name" placeholder="ชื่อรายการ (เช่น ข้าวไข่เจียว)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
+                  <select v-model="item.price_type" class="w-32 px-3 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20 text-sm font-bold">
+                    <option value="per_booking">คิดครั้งเดียว</option>
+                    <option value="per_person">คิดต่อคน</option>
+                  </select>
                   <div class="flex items-center gap-2">
                     <span class="text-gray-400 font-bold">฿</span>
                     <input v-model.number="item.price" type="number" placeholder="ราคา" class="w-24 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
@@ -720,6 +724,7 @@ const buildTripPayload = () => {
         .map((item) => ({
           name: String(item?.name || '').trim(),
           price: Number(item?.price || 0),
+          price_type: item?.price_type === 'per_person' ? 'per_person' : 'per_booking',
         }))
         .filter((item) => item.name),
       remarks: String(form.must_know?.remarks || '').trim(),
@@ -816,7 +821,7 @@ const addItem = (field, extra = null) => {
     form.preparations.push('');
   } else if (field === 'must_know_items') {
     if (!form.must_know.items) form.must_know.items = [];
-    form.must_know.items.push({ name: '', price: 0 });
+    form.must_know.items.push({ name: '', price: 0, price_type: 'per_booking' });
   } else {
     if (!form[field]) form[field] = [];
     form[field].push('');
@@ -1043,6 +1048,10 @@ const initData = async () => {
       form.exclusions = normalizeArray(trip.exclusions);
       form.highlights = normalizeArray(trip.highlights);
       form.must_know = trip.must_know || { items: [], remarks: '' };
+      form.must_know.items = normalizeArray(form.must_know.items).map((item) => ({
+        ...item,
+        price_type: item?.price_type === 'per_person' ? 'per_person' : 'per_booking',
+      }));
       
       // Transform old itinerary format to new sector-based format
       const rawItinerary = normalizeArray(trip.itinerary);

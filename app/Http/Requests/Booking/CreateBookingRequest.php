@@ -43,6 +43,8 @@ class CreateBookingRequest extends FormRequest
             'promotion_code' => ['nullable', 'string', 'max:50'],
             'is_join_trip' => ['nullable', 'boolean'],
             'booking_for' => ['nullable', 'in:self,friend'],
+            'selected_addons' => ['nullable', 'array'],
+            'selected_addons.*' => ['integer', 'min:0'],
         ];
     }
 

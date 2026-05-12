@@ -56,6 +56,8 @@ class BookingResource extends JsonResource
                 && $this->schedule
                 && $this->schedule->isReviewAvailable(),
             'total_amount' => $this->total_amount,
+            'selected_addons' => $this->selected_addons ?? [],
+            'addons_total' => $this->addons_total,
             'paid_amount' => $this->paid_amount,
             'payment_method' => $this->payment_method,
             'payment_type' => $this->payment_type ?? 'full',

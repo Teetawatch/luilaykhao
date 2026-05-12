@@ -16,7 +16,7 @@ class Booking extends Model
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'is_group', 'group_name', 'group_notes',
         'qr_code', 'checked_in', 'checked_in_at',
-        'total_amount', 'paid_amount', 'payment_method',
+        'total_amount', 'selected_addons', 'addons_total', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
         'cancellation_reason', 'cancelled_at',
@@ -28,6 +28,7 @@ class Booking extends Model
     {
         return [
             'total_amount' => 'decimal:2',
+            'addons_total' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'paid_at' => 'datetime',
@@ -39,6 +40,7 @@ class Booking extends Model
             'installment_count' => 'integer',
             'installment_interval_days' => 'integer',
             'transfer_datetime' => 'datetime',
+            'selected_addons' => 'array',
         ];
     }
 

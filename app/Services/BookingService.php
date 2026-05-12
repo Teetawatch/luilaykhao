@@ -31,8 +31,9 @@ class BookingService
         ?string $groupNotes = null,
         ?string $promotionCode = null,
         bool $isJoinTrip = false,
+        array $selectedAddons = [],
     ): Booking {
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -84,7 +85,38 @@ class BookingService
                 }
             }
 
-            $totalAmount = $pricePerPerson * $participantCount;
+            $addonIndexes = collect($selectedAddons)
+                ->map(fn ($index) => (int) $index)
+                ->unique()
+                ->values();
+            $addonOptions = collect($schedule->trip?->must_know['items'] ?? [])->values();
+            $selectedAddonSnapshots = [];
+            $addonsTotal = 0;
+
+            foreach ($addonIndexes as $addonIndex) {
+                $option = $addonOptions->get($addonIndex);
+                if (! $option || ! is_array($option) || empty($option['name'])) {
+                    throw new \Exception('รายการเสริมที่เลือกไม่ถูกต้อง');
+                }
+
+                $unitPrice = (float) ($option['price'] ?? 0);
+                $priceType = ($option['price_type'] ?? 'per_booking') === 'per_person'
+                    ? 'per_person'
+                    : 'per_booking';
+                $quantity = $priceType === 'per_person' ? $participantCount : 1;
+                $totalPrice = $unitPrice * $quantity;
+                $addonsTotal += $totalPrice;
+
+                $selectedAddonSnapshots[] = [
+                    'name' => (string) $option['name'],
+                    'unit_price' => $unitPrice,
+                    'price_type' => $priceType,
+                    'quantity' => $quantity,
+                    'total_price' => $totalPrice,
+                ];
+            }
+
+            $totalAmount = ($pricePerPerson * $participantCount) + $addonsTotal;
             
             // ... rest of the logic remains the same until Booking::create
             // I need to include the rest of the logic here because I'm replacing a large block.
@@ -135,6 +167,8 @@ class BookingService
                 'qr_code' => Booking::generateQrCode(),
                 'status' => 'pending',
                 'total_amount' => $totalAmount,
+                'selected_addons' => $selectedAddonSnapshots,
+                'addons_total' => $addonsTotal,
                 'promotion_id' => $promotionId,
                 'promotion_code' => $promotionId ? $promotionCode : null,
                 'discount_amount' => $discountAmount,

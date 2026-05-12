@@ -45,6 +45,7 @@ class StoreTripRequest extends FormRequest
             'must_know.items' => ['nullable', 'array'],
             'must_know.items.*.name' => ['required_with:must_know.items', 'string', 'max:255'],
             'must_know.items.*.price' => ['required_with:must_know.items', 'numeric', 'min:0'],
+            'must_know.items.*.price_type' => ['nullable', 'in:per_booking,per_person'],
             'must_know.remarks' => ['nullable', 'string', 'max:1000'],
             'itinerary' => ['nullable', 'array'],
             'itinerary.*.sector' => ['nullable', 'string', 'max:255'],

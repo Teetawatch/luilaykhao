@@ -460,6 +460,35 @@
               </div>
             </div>
 
+            <div v-if="optionalAddons.length" class="mb-8 bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div class="flex items-center justify-between gap-4 mb-5">
+                <label class="flex items-center gap-2 text-base font-bold text-gray-900">
+                  <span class="material-symbols-rounded text-amber-500">add_task</span>
+                  ตัวเลือกเสริม
+                </label>
+                <span v-if="addonsTotal > 0" class="text-sm font-black text-amber-700 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
+                  +฿{{ addonsTotal.toLocaleString() }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label
+                  v-for="addon in optionalAddons"
+                  :key="addon.index"
+                  class="flex items-center gap-3 rounded-2xl border-2 p-4 cursor-pointer transition-all"
+                  :class="selectedAddons.includes(addon.index) ? 'border-amber-500 bg-amber-50/60' : 'border-gray-100 bg-gray-50/70 hover:bg-white hover:border-amber-200'"
+                >
+                  <input v-model="selectedAddons" type="checkbox" :value="addon.index" class="w-5 h-5 accent-amber-500 shrink-0" />
+                  <div class="min-w-0 flex-1">
+                    <p class="font-black text-gray-900 text-sm leading-tight truncate">{{ addon.name }}</p>
+                    <p class="text-[11px] font-bold text-gray-500 mt-1">
+                      ฿{{ addon.price.toLocaleString() }} {{ addonPriceTypeLabel(addon) }}
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <!-- Passenger forms -->
             <div v-for="(p, i) in passengers" :key="i"
               class="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 mb-6 shadow-sm relative overflow-hidden transition-all hover:shadow-md hover:border-gray-200">
@@ -723,6 +752,13 @@
                       <span class="text-white/70">จำนวนผู้เดินทาง</span>
                       <span class="font-bold">{{ passengers.length }} คน</span>
                     </div>
+                    <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between text-sm text-amber-100">
+                      <span class="flex items-center gap-1">
+                        <span class="material-symbols-rounded text-[16px]">add_circle</span>
+                        {{ addon.name }}
+                      </span>
+                      <span class="font-bold">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
+                    </div>
                     <div v-if="promotionData" class="flex justify-between text-sm text-teal-200 pt-2 border-t border-white/20">
                       <span class="flex items-center gap-1">
                         <span class="material-symbols-rounded text-[16px]">local_offer</span>
@@ -845,6 +881,13 @@
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500 font-medium">จำนวนผู้ร่วมเดินทาง</span>
                 <span class="text-gray-900 font-bold">{{ seatCount }} คน</span>
+              </div>
+              <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
+                <span class="font-bold flex items-center gap-1 min-w-0">
+                  <span class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
+                  <span class="truncate">{{ addon.name }}</span>
+                </span>
+                <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
               </div>
               
               <div v-if="promotionData" class="flex justify-between items-center text-sm text-teal-600">
@@ -1142,6 +1185,7 @@ const isGroup = ref(false);
 const groupName = ref('');
 const groupNotes = ref('');
 const showInsuranceModal = ref(false);
+const selectedAddons = ref([]);
 
 const promotionCode = ref('');
 const promotionInput = ref('');
@@ -1192,6 +1236,18 @@ const effectivePrice = computed(() => {
   return Number(schedule.value?.price || 0);
 });
 
+const optionalAddons = computed(() => {
+  const items = schedule.value?.trip?.must_know?.items || [];
+  return items
+    .map((item, index) => ({
+      index,
+      name: String(item?.name || '').trim(),
+      price: Number(item?.price || 0),
+      price_type: item?.price_type === 'per_person' ? 'per_person' : 'per_booking',
+    }))
+    .filter((item) => item.name);
+});
+
 const passengers = ref([{ 
   title: '', name: '', nickname: '', id_card: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '', 
@@ -1216,6 +1272,7 @@ function saveFormData() {
     selectedPickupId: selectedPickup.value?.id ?? null,
     promotionCode: promotionCode.value,
     promotionData: promotionData.value,
+    selectedAddons: selectedAddons.value,
   };
   sessionStorage.setItem(FORM_SESSION_KEY.value, JSON.stringify(data));
 }
@@ -1236,6 +1293,7 @@ function restoreFormData() {
     promotionCode.value = data.promotionCode ?? '';
     promotionInput.value = data.promotionCode ?? '';
     promotionData.value = data.promotionData ?? null;
+    selectedAddons.value = Array.isArray(data.selectedAddons) ? data.selectedAddons : [];
     if (data.selectedPickupId != null && pickupPoints.value.length > 0) {
       const pt = pickupPoints.value.find(p => p.id === data.selectedPickupId);
       if (pt) selectedPickup.value = pt;
@@ -1252,7 +1310,8 @@ watch(step, (newStep) => {
 });
 
 watch(passengers, saveFormData, { deep: true });
-watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData], saveFormData);
+watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData, selectedAddons], saveFormData);
+watch(selectedAddons, saveFormData, { deep: true });
 
 watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
@@ -1326,7 +1385,15 @@ const isPassengerValid = computed(() => isFriendEmailValid.value && passengers.v
 ));
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
 
-const subtotalAmount = computed(() => effectivePrice.value * seatCount.value);
+const selectedAddonItems = computed(() => optionalAddons.value.filter((item) => selectedAddons.value.includes(item.index)));
+
+const addonLineTotal = (item) => item.price * (item.price_type === 'per_person' ? seatCount.value : 1);
+
+const addonsTotal = computed(() => selectedAddonItems.value.reduce((sum, item) => sum + addonLineTotal(item), 0));
+
+const addonPriceTypeLabel = (item) => item.price_type === 'per_person' ? 'ต่อคน' : 'ครั้งเดียว';
+
+const subtotalAmount = computed(() => (effectivePrice.value * seatCount.value) + addonsTotal.value);
 
 const discountAmount = computed(() => {
   if (!promotionData.value) return 0;
@@ -1510,6 +1577,9 @@ async function createBooking() {
     }
     if (isJoinTrip.value) {
       data.is_join_trip = true;
+    }
+    if (selectedAddons.value.length) {
+      data.selected_addons = selectedAddons.value;
     }
     if (hasSeatMap.value) data.seat_ids = seatsStore.selectedSeatIds;
 

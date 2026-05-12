@@ -506,6 +506,19 @@
                     </p>
                  </div>
                </div>
+
+               <div v-if="booking.selected_addons?.length" class="p-4 bg-amber-50/70 rounded-2xl border border-amber-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                 <div class="flex items-center gap-2 mb-3">
+                   <span class="material-symbols-rounded text-amber-600 text-xl">add_task</span>
+                   <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest leading-none">ตัวเลือกเสริม</p>
+                 </div>
+                 <div class="space-y-2">
+                   <div v-for="(addon, idx) in booking.selected_addons" :key="idx" class="flex justify-between gap-3 text-sm">
+                     <span class="font-bold text-gray-800">{{ addon.name }}</span>
+                     <span class="font-black text-amber-700">+฿{{ Number(addon.total_price || 0).toLocaleString() }}</span>
+                   </div>
+                 </div>
+               </div>
             </div>
 
             <!-- Price Summary -->
