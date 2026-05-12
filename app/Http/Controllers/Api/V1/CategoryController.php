@@ -19,6 +19,10 @@ class CategoryController extends Controller
     public function index(): JsonResponse
     {
         $categories = Category::where('is_active', true)
+            ->whereHas('trips', fn ($query) => $query->where('status', 'active'))
+            ->withCount([
+                'trips as trips_count' => fn ($query) => $query->where('status', 'active'),
+            ])
             ->orderBy('order')
             ->orderBy('name')
             ->get();
