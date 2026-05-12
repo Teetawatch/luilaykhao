@@ -941,54 +941,79 @@
 
     <!-- Must Know Modal Popup -->
     <Teleport to="body">
-      <div v-if="showMustKnowModal && trip?.must_know" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div v-if="showMustKnowModal && hasMustKnowContent" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
         <!-- Backdrop -->
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" @click="showMustKnowModal = false"></div>
+        <div class="fixed inset-0 bg-black/65 backdrop-blur-md transition-opacity" @click="showMustKnowModal = false"></div>
         
         <!-- Modal Content -->
-        <div class="bg-white rounded-[1.5rem] sm:rounded-[2rem] w-full max-w-md relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+        <div class="bg-white rounded-[1.5rem] sm:rounded-[2rem] w-full max-w-3xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col">
           <!-- Close Button -->
-          <button @click="showMustKnowModal = false" class="absolute top-3 right-3 sm:top-5 sm:right-5 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all active:scale-95 z-20">
-            <span class="material-symbols-rounded text-gray-400 text-[20px] sm:text-2xl">close</span>
+          <button @click="showMustKnowModal = false" class="absolute top-3 right-3 sm:top-5 sm:right-5 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white flex items-center justify-center transition-all active:scale-95 z-20 shadow-lg border border-white/60" aria-label="ปิดหน้าต่างข้อควรรู้">
+            <span class="material-symbols-rounded text-gray-600 text-[21px] sm:text-2xl">close</span>
           </button>
 
           <!-- Top Banner -->
-          <div class="bg-amber-500 p-5 sm:p-7 text-white relative">
-            <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
-            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/20 flex items-center justify-center mb-3 sm:mb-4 border border-white/20">
-              <span class="material-symbols-rounded text-2xl sm:text-3xl" style="font-variation-settings:'FILL' 1">campaign</span>
-            </div>
-            <h3 class="text-xl sm:text-2xl font-black tracking-tight">ข้อควรรู้สำหรับทริปนี้</h3>
-          </div>
-
-          <div class="p-5 sm:p-7 space-y-4 sm:space-y-5">
-            <!-- Items Selection / Info -->
-            <div v-if="trip.must_know.items && trip.must_know.items.length" class="space-y-3">
-              <p class="text-[10px] sm:text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">รายการเพิ่มเติม / ราคาพิเศษ</p>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div v-for="(item, idx) in trip.must_know.items" :key="idx" 
-                  class="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 group transition-all hover:bg-white hover:shadow-md hover:border-amber-200">
-                  <div class="flex items-center gap-2.5 overflow-hidden">
-                    <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-gray-100 shrink-0 group-hover:scale-110 transition-transform">
-                      <span class="material-symbols-rounded text-lg text-amber-600">tips_and_updates</span>
-                    </div>
-                    <span class="font-extrabold text-gray-800 text-xs sm:text-sm truncate">{{ item.name }}</span>
-                  </div>
-                  <span class="font-black text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100 text-[10px] sm:text-xs shrink-0 ml-2">฿{{ item.price }}</span>
-                </div>
+          <div class="bg-gradient-to-br from-amber-500 to-[#D78A16] px-5 py-6 sm:p-8 text-white relative overflow-hidden shrink-0">
+            <div class="absolute -right-10 -bottom-12 w-36 h-36 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="flex items-start gap-4 pr-10 sm:pr-12 relative z-10">
+              <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/20 flex items-center justify-center border border-white/20 shadow-lg shrink-0">
+                <span class="material-symbols-rounded text-3xl sm:text-4xl" style="font-variation-settings:'FILL' 1">campaign</span>
+              </div>
+              <div>
+                <p class="text-[11px] sm:text-xs font-black uppercase tracking-[0.18em] text-white/75 mb-1">Important trip details</p>
+                <h3 class="text-2xl sm:text-3xl font-black tracking-tight leading-tight">ข้อควรรู้สำหรับทริปนี้</h3>
+                <p class="mt-2 text-sm sm:text-base font-bold text-white/90 leading-relaxed">ตรวจสอบรายการเสริมและหมายเหตุก่อนเริ่มจอง เพื่อให้เตรียมตัวได้ครบถ้วน</p>
               </div>
             </div>
+          </div>
+
+          <div class="p-5 sm:p-7 space-y-5 sm:space-y-6 overflow-y-auto custom-scrollbar">
+            <!-- Items Selection / Info -->
+            <section v-if="mustKnowItems.length" class="space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
+                <div>
+                  <p class="text-[11px] font-black text-amber-600 uppercase tracking-[0.16em]">ตัวเลือกเพิ่มเติม</p>
+                  <h4 class="text-lg sm:text-xl font-black text-[var(--color-text-dark)] leading-tight">รายการที่สามารถเลือกเพิ่มได้</h4>
+                </div>
+                <span class="text-xs font-extrabold text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-full w-fit">
+                  {{ mustKnowItems.length }} รายการ
+                </span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div v-for="(item, idx) in mustKnowItems" :key="idx" 
+                  class="rounded-2xl bg-white border border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-4 sm:p-5 transition-all hover:border-amber-200 hover:shadow-[0_12px_32px_rgba(0,0,0,0.07)]">
+                  <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-100 shrink-0">
+                      <span class="material-symbols-rounded text-xl text-amber-600">tips_and_updates</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-black text-gray-900 text-sm sm:text-base leading-snug break-words">{{ item.name }}</p>
+                      <p class="mt-1 text-xs sm:text-sm font-bold text-gray-500">คิดราคา{{ item.priceTypeLabel }}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                      <div class="font-black text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-100 text-sm sm:text-base">
+                        {{ item.priceLabel }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             <!-- Notes / Remarks -->
-            <div v-if="trip.must_know.remarks" class="p-4 rounded-xl bg-amber-50/50 border border-amber-100 relative overflow-hidden">
-               <div class="flex items-start gap-2.5 relative z-10">
-                 <span class="material-symbols-rounded text-amber-500 mt-0.5 text-lg sm:text-xl" style="font-variation-settings:'FILL' 1">info</span>
-                 <div class="flex-1">
-                   <p class="text-[10px] sm:text-[11px] font-black text-amber-700 mb-1 uppercase tracking-wide">หมายเหตุเพิ่มเติม</p>
-                   <p class="text-[11px] sm:text-xs text-gray-700 leading-relaxed font-bold">{{ trip.must_know.remarks }}</p>
-                 </div>
-               </div>
-            </div>
+            <section v-if="mustKnowRemarks" class="rounded-2xl bg-amber-50 border border-amber-100 p-4 sm:p-5 relative overflow-hidden">
+              <div class="absolute -right-10 -bottom-10 w-24 h-24 bg-amber-200/30 rounded-full blur-2xl"></div>
+              <div class="flex items-start gap-3 relative z-10">
+                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-amber-100 shrink-0">
+                  <span class="material-symbols-rounded text-amber-600 text-xl" style="font-variation-settings:'FILL' 1">info</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-black text-amber-700 uppercase tracking-[0.16em] mb-1">หมายเหตุเพิ่มเติม</p>
+                  <p class="text-sm sm:text-base text-gray-800 leading-relaxed font-bold whitespace-pre-line break-words">{{ mustKnowRemarks }}</p>
+                </div>
+              </div>
+            </section>
 
             <button @click="showMustKnowModal = false" class="w-full bg-[var(--color-primary)] text-white font-extrabold py-3.5 sm:py-4 rounded-xl hover:bg-[var(--color-accent)] active:scale-[0.98] transition-all shadow-lg shadow-[var(--color-primary)]/20 text-sm sm:text-base">
               เข้าใจแล้ว เริ่มจองทริปกันเลยครับ
@@ -1373,6 +1398,28 @@ const modalSchedules = computed(() => {
   
   return list;
 });
+
+const mustKnowItems = computed(() => {
+  const items = trip.value?.must_know?.items || [];
+  return items
+    .map((item) => {
+      const name = String(item?.name || '').trim();
+      const price = Number(item?.price || 0);
+      const priceType = item?.price_type === 'per_person' ? 'per_person' : 'per_booking';
+
+      return {
+        name,
+        price,
+        priceType,
+        priceTypeLabel: priceType === 'per_person' ? 'ต่อคน' : 'ครั้งเดียว',
+        priceLabel: `฿${price.toLocaleString('th-TH')}`,
+      };
+    })
+    .filter((item) => item.name);
+});
+
+const mustKnowRemarks = computed(() => String(trip.value?.must_know?.remarks || '').trim());
+const hasMustKnowContent = computed(() => mustKnowItems.value.length > 0 || Boolean(mustKnowRemarks.value));
 
 const itinerarySectors = computed(() => {
   const raw = trip.value?.itinerary || [];
@@ -1830,7 +1877,7 @@ onMounted(async () => {
     }
 
     // Show must know modal if exists
-    if (trip.value?.must_know && (trip.value.must_know.items?.length || trip.value.must_know.remarks)) {
+    if (hasMustKnowContent.value) {
       setTimeout(() => {
         showMustKnowModal.value = true;
       }, 500);
