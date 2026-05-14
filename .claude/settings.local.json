@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dart analyze *)",
+      "Bash(powershell -Command \"Get-ChildItem -Path 'c:\\\\Project\\\\luilaykhao\\\\luilaykhao-app\\\\lib' -Directory | Select-Object Name\")",
+      "Bash(flutter analyze *)",
+      "Bash(git push *)",
+      "Bash(grep -E \"\\\\.dart$\")"
+    ]
+  }
+}
