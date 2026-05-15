@@ -24,6 +24,7 @@ class TripSchedule extends Model
         'total_seats', 'booked_seats', 'transport_type',
         'vehicle_id', 'status', 'price_override',
         'installment_enabled', 'installment_count', 'installment_interval_days',
+        'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',
     ];
 
@@ -38,9 +39,35 @@ class TripSchedule extends Model
             'installment_enabled'       => 'boolean',
             'installment_count'         => 'integer',
             'installment_interval_days' => 'integer',
+            'deposit_enabled'           => 'boolean',
+            'deposit_amount'            => 'decimal:2',
+            'deposit_percent'           => 'integer',
             'join_trip_enabled'         => 'boolean',
             'join_trip_price'           => 'decimal:2',
         ];
+    }
+
+    /**
+     * Resolve the deposit amount for a given booking total.
+     * Returns null when deposit is not enabled or amount cannot be determined.
+     */
+    public function resolveDepositAmount(float $totalAmount): ?float
+    {
+        if (!$this->deposit_enabled) {
+            return null;
+        }
+
+        if ($this->deposit_type === 'percent' && $this->deposit_percent) {
+            $deposit = round($totalAmount * ((int) $this->deposit_percent) / 100, 2);
+        } elseif ($this->deposit_type === 'amount' && $this->deposit_amount) {
+            $deposit = round((float) $this->deposit_amount, 2);
+        } else {
+            return null;
+        }
+
+        // Cap deposit at total amount, ensure positive
+        $deposit = max(0.0, min($deposit, $totalAmount));
+        return $deposit > 0 ? $deposit : null;
     }
 
     public function trip(): BelongsTo

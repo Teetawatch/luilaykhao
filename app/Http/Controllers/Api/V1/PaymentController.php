@@ -147,6 +147,96 @@ class PaymentController extends Controller
                 ], 'ชำระงวดแรกสำเร็จ กรุณาชำระงวดถัดไปตามกำหนด');
             }
 
+            // ── Deposit payment ──────────────────────────────────────
+            if ($paymentType === 'deposit') {
+                $schedule = $booking->schedule;
+
+                if ($booking->is_join_trip || ! $schedule->deposit_enabled) {
+                    return $this->error('รอบเดินทางนี้ไม่รองรับการจ่ายมัดจำ', 422);
+                }
+
+                $totalAmount = (float) $booking->total_amount;
+                $depositAmount = $schedule->resolveDepositAmount($totalAmount);
+                if ($depositAmount === null) {
+                    return $this->error('ผู้ดูแลระบบยังไม่ได้กำหนดยอดมัดจำสำหรับรอบเดินทางนี้', 422);
+                }
+                if ($depositAmount >= $totalAmount) {
+                    return $this->error('ยอดมัดจำต้องน้อยกว่ายอดรวม กรุณาเลือกชำระเต็มจำนวน', 422);
+                }
+
+                $balanceAmount = round($totalAmount - $depositAmount, 2);
+                $departureDate = $schedule->departure_date;
+                $balanceDueAt = $departureDate
+                    ? CarbonImmutable::parse($departureDate)->subDays(15)->startOfDay()
+                    : null;
+
+                $paymentRef = 'PAY-DEP-' . strtoupper(uniqid());
+
+                DB::transaction(function () use (
+                    $booking, $depositAmount, $balanceAmount, $balanceDueAt,
+                    $paymentMethod, $paymentRef, $slipPath, $transferDt
+                ) {
+                    $booking->update([
+                        'payment_type'       => 'deposit',
+                        'deposit_amount'     => $depositAmount,
+                        'balance_amount'     => $balanceAmount,
+                        'balance_due_at'     => $balanceDueAt,
+                        'payment_method'     => $paymentMethod,
+                        'payment_ref'        => $paymentRef,
+                        'slip_path'          => $slipPath,
+                        'transfer_datetime'  => $transferDt,
+                    ]);
+
+                    $this->bookingService->confirmBooking(
+                        $booking->fresh(),
+                        $paymentMethod,
+                        $paymentRef,
+                        $depositAmount,
+                    );
+                });
+
+                $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);
+
+                try {
+                    foreach ($booking->seats as $seat) {
+                        broadcast(new SeatBooked(
+                            $booking->schedule_id,
+                            $seat->seat_id,
+                            $booking->schedule->available_seats,
+                        ));
+                    }
+
+                    broadcast(new PaymentConfirmed(
+                        $booking->user_id,
+                        $booking->booking_ref,
+                        'confirmed',
+                        $booking->seats->pluck('seat_id')->toArray(),
+                    ));
+                } catch (\Exception $e) {
+                    Log::warning('Broadcast failed: ' . $e->getMessage());
+                }
+
+                $this->mailService->sendDepositPaidEmail($booking);
+                $this->smsService->sendDepositPaid($booking);
+
+                $balanceDueText = $balanceDueAt ? $balanceDueAt->format('d/m/Y') : '-';
+                SmartNotification::send(
+                    $booking->user_id,
+                    'deposit_paid',
+                    'รับชำระเงินมัดจำแล้ว',
+                    "รับชำระมัดจำเลขการจอง {$booking->booking_ref} แล้ว กรุณาชำระยอดส่วนที่เหลือภายในวันที่ {$balanceDueText}",
+                    [
+                        'booking_ref' => $booking->booking_ref,
+                        'route' => 'booking',
+                    ],
+                );
+
+                return $this->success([
+                    'status'  => 'confirmed',
+                    'booking' => new \App\Http\Resources\BookingResource($booking),
+                ], 'ชำระเงินมัดจำสำเร็จ กรุณาชำระยอดส่วนที่เหลือก่อนเดินทาง 15 วัน');
+            }
+
             // ── Full payment ─────────────────────────────────────────
             $paymentRef = 'PAY-' . strtoupper(uniqid());
 
@@ -277,6 +367,69 @@ class PaymentController extends Controller
             'installment_no' => $installment->installment_no,
             'amount'         => $installment->amount,
         ], "ชำระงวดที่ {$installment->installment_no} สำเร็จ");
+    }
+
+    public function chargeBalance(Request $request): JsonResponse
+    {
+        $request->validate([
+            'booking_ref'    => ['required', 'string'],
+            'payment_method' => ['nullable', 'in:promptpay,mobile_banking'],
+            'slip_image'     => ['nullable', 'image', 'max:5120'],
+            'transfer_date'  => ['nullable', 'date'],
+            'transfer_time'  => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $request->booking_ref)
+            ->where('payment_type', 'deposit')
+            ->whereNull('balance_paid_at')
+            ->firstOrFail();
+
+        if ((float) $booking->balance_amount <= 0) {
+            return $this->error('การจองนี้ไม่มียอดส่วนที่เหลือที่ต้องชำระ', 422);
+        }
+
+        $slipPath = null;
+        if ($request->hasFile('slip_image')) {
+            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+        }
+
+        $paymentMethod = $request->input('payment_method', 'promptpay');
+        $paymentRef = 'PAY-BAL-' . strtoupper(uniqid());
+        $transferDt = $this->resolveTransferDatetime($request);
+        $balanceAmount = (float) $booking->balance_amount;
+
+        DB::transaction(function () use ($booking, $paymentRef, $paymentMethod, $slipPath, $transferDt, $balanceAmount) {
+            $totalPaid = (float) $booking->paid_amount + $balanceAmount;
+
+            $booking->update([
+                'paid_amount'                => $totalPaid,
+                'balance_paid_at'            => now(),
+                'balance_payment_ref'        => $paymentRef,
+                'balance_slip_path'          => $slipPath,
+                'balance_transfer_datetime'  => $transferDt,
+            ]);
+        });
+
+        $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);
+
+        $this->mailService->sendBalancePaidEmail($booking);
+        $this->smsService->sendBalancePaid($booking);
+
+        SmartNotification::send(
+            $booking->user_id,
+            'balance_paid',
+            'รับชำระเงินส่วนที่เหลือแล้ว',
+            "รับชำระยอดส่วนที่เหลือของเลขการจอง {$booking->booking_ref} ครบถ้วนแล้ว",
+            [
+                'booking_ref' => $booking->booking_ref,
+                'route' => 'booking',
+            ],
+        );
+
+        return $this->success([
+            'status'  => 'confirmed',
+            'booking' => new \App\Http\Resources\BookingResource($booking),
+        ], 'ชำระยอดส่วนที่เหลือสำเร็จ');
     }
 
     public function webhook(Request $request): JsonResponse

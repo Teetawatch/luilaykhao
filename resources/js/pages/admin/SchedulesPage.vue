@@ -228,7 +228,38 @@
               </div>
             </div>
           </div>
-          
+
+          <!-- Deposit Settings -->
+          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+                <input type="checkbox" v-model="form.deposit_enabled" style="width:16px;height:16px;accent-color:#0d9488;" />
+                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">เปิดใช้ระบบจ่ายมัดจำ</span>
+              </label>
+            </div>
+            <p style="font-size:11px;color:#6b7280;margin:0 0 12px 0;line-height:1.5;">
+              <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;color:#0d9488;">info</span>
+              ลูกค้าจะจ่ายมัดจำในการจอง และต้องชำระยอดส่วนที่เหลือก่อนเดินทาง 15 วัน ระบบจะส่งอีเมล/SMS แจ้งเตือนอัตโนมัติ
+            </p>
+            <div v-if="form.deposit_enabled" class="form-grid">
+              <div class="form-group">
+                <label>รูปแบบมัดจำ</label>
+                <select v-model="form.deposit_type">
+                  <option value="amount">จำนวนเงิน (บาท)</option>
+                  <option value="percent">เปอร์เซ็นต์ (%)</option>
+                </select>
+              </div>
+              <div v-if="form.deposit_type === 'amount'" class="form-group">
+                <label>ยอดมัดจำ (฿)</label>
+                <input v-model.number="form.deposit_amount" type="number" min="0" step="1" placeholder="เช่น 2000" required />
+              </div>
+              <div v-else class="form-group">
+                <label>เปอร์เซ็นต์มัดจำ (%)</label>
+                <input v-model.number="form.deposit_percent" type="number" min="1" max="99" placeholder="เช่น 30" required />
+              </div>
+            </div>
+          </div>
+
           <!-- Join Trip Settings -->
           <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px;">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -612,6 +643,18 @@
                 <span style="font-size:12px;color:#6b7280;">งวด ·</span>
                 <input v-model.number="batchForm.installment_interval_days" type="number" min="1" placeholder="วัน" style="width:60px;" />
                 <span style="font-size:12px;color:#6b7280;">วัน</span>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+                <input type="checkbox" v-model="batchForm.deposit_enabled" style="width:16px;height:16px;accent-color:#0d9488;" />
+                <span style="font-weight:600;font-size:13px;color:#1a1c1c;">เปิดจ่ายมัดจำ</span>
+              </label>
+              <div v-if="batchForm.deposit_enabled" style="display:flex;align-items:center;gap:6px;">
+                <select v-model="batchForm.deposit_type" style="font-size:12px;">
+                  <option value="amount">บาท</option>
+                  <option value="percent">%</option>
+                </select>
+                <input v-if="batchForm.deposit_type === 'amount'" v-model.number="batchForm.deposit_amount" type="number" min="0" placeholder="ยอด" style="width:80px;" />
+                <input v-else v-model.number="batchForm.deposit_percent" type="number" min="1" max="99" placeholder="%" style="width:60px;" />
               </div>
             </div>
           </div>
@@ -1256,6 +1299,7 @@ const form = reactive({
   total_seats: 10, transport_type: 'van', vehicle_id: null,
   price_override: null, status: 'open',
   installment_enabled: false, installment_count: 2, installment_interval_days: 30,
+  deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
   join_trip_enabled: false, join_trip_price: null,
 });
 
@@ -1310,6 +1354,10 @@ const openForm = (item = null) => {
       installment_enabled: !!item.installment_enabled,
       installment_count: item.installment_count || 2,
       installment_interval_days: item.installment_interval_days || 30,
+      deposit_enabled: !!item.deposit_enabled,
+      deposit_type: item.deposit_type || 'amount',
+      deposit_amount: item.deposit_amount ? Number(item.deposit_amount) : null,
+      deposit_percent: item.deposit_percent || null,
       join_trip_enabled: !!item.join_trip_enabled,
       join_trip_price: item.join_trip_price || null,
     });
@@ -1320,6 +1368,7 @@ const openForm = (item = null) => {
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
       installment_enabled: false, installment_count: 2, installment_interval_days: 30,
+      deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
       join_trip_enabled: false, join_trip_price: null,
     });
   }
@@ -1331,6 +1380,15 @@ const submitForm = async () => {
   try {
     const data = { ...form };
     if (!data.price_override) data.price_override = null;
+    if (!data.deposit_enabled) {
+      data.deposit_type = null;
+      data.deposit_amount = null;
+      data.deposit_percent = null;
+    } else if (data.deposit_type === 'amount') {
+      data.deposit_percent = null;
+    } else if (data.deposit_type === 'percent') {
+      data.deposit_amount = null;
+    }
     if (editing.value) {
       await admin.updateSchedule(editing.value.id, data);
     } else {
@@ -1364,6 +1422,10 @@ const batchForm = reactive({
   installment_enabled: false,
   installment_count: 2,
   installment_interval_days: 30,
+  deposit_enabled: false,
+  deposit_type: 'amount',
+  deposit_amount: null,
+  deposit_percent: null,
 });
 
 // ─── Move Bookings ────────────────────────────────────────
@@ -1713,6 +1775,10 @@ const openBatchForm = (presetTripId = '') => {
     installment_enabled: false,
     installment_count: 2,
     installment_interval_days: 30,
+    deposit_enabled: false,
+    deposit_type: 'amount',
+    deposit_amount: null,
+    deposit_percent: null,
   });
   showBatchForm.value = true;
 };
@@ -1762,6 +1828,10 @@ const submitBatchForm = async () => {
         installment_enabled: batchForm.installment_enabled || false,
         installment_count: batchForm.installment_count || 2,
         installment_interval_days: batchForm.installment_interval_days || 30,
+        deposit_enabled: batchForm.deposit_enabled || false,
+        deposit_type: batchForm.deposit_enabled ? batchForm.deposit_type : null,
+        deposit_amount: batchForm.deposit_enabled && batchForm.deposit_type === 'amount' ? batchForm.deposit_amount : null,
+        deposit_percent: batchForm.deposit_enabled && batchForm.deposit_type === 'percent' ? batchForm.deposit_percent : null,
       });
       const scheduleId = scheduleRes.data.data.id;
       for (const pt of batchForm.pickups) {
@@ -1825,6 +1895,10 @@ const doCopySchedule = async () => {
       installment_enabled: src.installment_enabled || false,
       installment_count: src.installment_count || 2,
       installment_interval_days: src.installment_interval_days || 30,
+      deposit_enabled: src.deposit_enabled || false,
+      deposit_type: src.deposit_type || 'amount',
+      deposit_amount: src.deposit_amount ? Number(src.deposit_amount) : null,
+      deposit_percent: src.deposit_percent || null,
       join_trip_enabled: src.join_trip_enabled || false,
       join_trip_price: src.join_trip_price || null,
     });

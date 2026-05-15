@@ -25,6 +25,10 @@ class StoreScheduleRequest extends FormRequest
             'installment_enabled' => ['nullable', 'boolean'],
             'installment_count' => ['nullable', 'integer', 'min:2', 'max:6'],
             'installment_interval_days' => ['nullable', 'integer', 'min:1'],
+            'deposit_enabled' => ['nullable', 'boolean'],
+            'deposit_type' => ['nullable', 'in:amount,percent', 'required_if:deposit_enabled,true'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0', 'required_if:deposit_type,amount'],
+            'deposit_percent' => ['nullable', 'integer', 'min:1', 'max:99', 'required_if:deposit_type,percent'],
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
         ];

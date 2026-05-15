@@ -40,7 +40,7 @@ class SmsService
             type: 'payment_confirmed',
             dedupeKey: $paymentType,
             message: sprintf(
-                'รับชำระเงินแล้ว สำหรับ booking %s',
+                'ชำระเงินเรียบร้อยแล้ว ขอบพระคุณที่ไว้วางใจเรา หมายเลขการจอง %s',
                 $booking->booking_ref,
             ),
         );
@@ -76,7 +76,7 @@ class SmsService
             type: 'booking_cancelled',
             dedupeKey: 'default',
             message: sprintf(
-                'booking %s ทริป %s ถูกยกเลิกแล้ว%s ติดต่อทีมงานหากต้องการความช่วยเหลือ',
+                'หมายเลขการจอง %s ทริป %s ถูกยกเลิก%s ติดต่อทีมงานหากต้องการความช่วยเหลือ',
                 $booking->booking_ref,
                 $this->tripTitle($booking),
                 $reasonText,
@@ -112,6 +112,64 @@ class SmsService
                 $booking->booking_ref,
                 $installment->due_date?->format('d/m/Y'),
                 $this->bookingUrl($booking),
+            ),
+        );
+    }
+
+    public function sendDepositPaid(Booking $booking): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        $balance = (float) ($booking->balance_amount ?? 0);
+        $due = $booking->balance_due_at?->format('d/m/Y') ?? '-';
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'deposit_paid',
+            dedupeKey: 'default',
+            message: sprintf(
+                'รับชำระมัดจำ %s บาท สำหรับ booking %s แล้ว ยอดส่วนที่เหลือ %s บาท ครบกำหนด %s รายละเอียด %s',
+                $this->money($booking->deposit_amount),
+                $booking->booking_ref,
+                $this->money($balance),
+                $due,
+                $this->bookingUrl($booking),
+            ),
+        );
+    }
+
+    public function sendBalanceDueReminder(Booking $booking): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        $due = $booking->balance_due_at?->format('d/m/Y') ?? '-';
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'balance_due_reminder',
+            dedupeKey: $booking->balance_due_at?->toDateString() ?? 'default',
+            message: sprintf(
+                'แจ้งเตือนชำระยอดส่วนที่เหลือ %s บาท สำหรับ booking %s ภายในวันที่ %s ชำระที่ %s',
+                $this->money($booking->balance_amount),
+                $booking->booking_ref,
+                $due,
+                $this->bookingUrl($booking),
+            ),
+        );
+    }
+
+    public function sendBalancePaid(Booking $booking): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'balance_paid',
+            dedupeKey: 'default',
+            message: sprintf(
+                'รับชำระยอดส่วนที่เหลือ %s บาท สำหรับ booking %s ครบถ้วนแล้ว ขอบคุณค่ะ',
+                $this->money($booking->balance_amount),
+                $booking->booking_ref,
             ),
         );
     }
@@ -294,6 +352,9 @@ class SmsService
             'installment_overdue',
             'booking_cancelled',
             'departure_reminder',
+            'deposit_paid',
+            'balance_due_reminder',
+            'balance_paid',
         ];
     }
 

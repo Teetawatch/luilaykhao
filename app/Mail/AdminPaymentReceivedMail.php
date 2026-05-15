@@ -20,7 +20,12 @@ class AdminPaymentReceivedMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $typeLabel = $this->paymentType === 'installment' ? '(ผ่อนชำระ)' : '(เต็มจำนวน)';
+        $typeLabel = match ($this->paymentType) {
+            'installment' => '(ผ่อนชำระ)',
+            'deposit'     => '(มัดจำ)',
+            'balance'     => '(ส่วนที่เหลือ)',
+            default       => '(เต็มจำนวน)',
+        };
         return new Envelope(
             subject: "💰 ได้รับชำระเงิน {$typeLabel} #{$this->booking->booking_ref} - ฿" . number_format($this->booking->paid_amount, 0),
         );

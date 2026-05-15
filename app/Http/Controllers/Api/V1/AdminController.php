@@ -292,6 +292,10 @@ class AdminController extends Controller
             'installment_enabled' => ['nullable', 'boolean'],
             'installment_count' => ['nullable', 'integer', 'min:2', 'max:12'],
             'installment_interval_days' => ['nullable', 'integer', 'min:1'],
+            'deposit_enabled' => ['nullable', 'boolean'],
+            'deposit_type' => ['nullable', 'in:amount,percent'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'deposit_percent' => ['nullable', 'integer', 'min:1', 'max:99'],
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
         ]);

@@ -87,13 +87,13 @@
           </div>
         </div>
 
-        <!-- ── Payment Type Selection (show only if installment available) ── -->
-        <section v-if="installmentAvailable" class="bg-white rounded-3xl shadow-sm p-8 border border-gray-100">
+        <!-- ── Payment Type Selection (show only if installment or deposit available) ── -->
+        <section v-if="installmentAvailable || depositAvailable" class="bg-white rounded-3xl shadow-sm p-8 border border-gray-100">
           <h2 class="text-lg font-bold mb-5 text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-amber-500">credit_card</span>
             เลือกรูปแบบการชำระเงิน
           </h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <!-- Full Payment -->
             <button @click="paymentType = 'full'"
               class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
@@ -110,8 +110,24 @@
               <p class="text-sm text-gray-500">ชำระทั้งหมด <span class="font-bold text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</span> ในครั้งเดียว</p>
             </button>
 
+            <!-- Deposit Payment -->
+            <button v-if="depositAvailable" @click="paymentType = 'deposit'"
+              class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
+              :class="paymentType === 'deposit'
+                ? 'border-teal-600 bg-teal-50/30'
+                : 'border-gray-100 hover:border-teal-100 hover:bg-gray-50'">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-rounded text-[24px] group-hover:scale-110 transition-transform" :class="paymentType === 'deposit' ? 'text-teal-600' : 'text-gray-400'">savings</span>
+                <span class="font-bold text-base" :class="paymentType === 'deposit' ? 'text-teal-900' : 'text-gray-700'">จ่ายมัดจำ</span>
+                <div v-if="paymentType === 'deposit'" class="ml-auto w-6 h-6 rounded-full bg-teal-600 flex items-center justify-center shadow-md">
+                  <span class="material-symbols-rounded text-white text-[16px]">check</span>
+                </div>
+              </div>
+              <p class="text-sm text-gray-500">มัดจำ <span class="font-bold text-teal-700">฿{{ depositAmount.toLocaleString() }}</span> · ที่เหลือชำระก่อนเดินทาง 15 วัน</p>
+            </button>
+
             <!-- Installment Payment -->
-            <button @click="paymentType = 'installment'"
+            <button v-if="installmentAvailable" @click="paymentType = 'installment'"
               class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
               :class="paymentType === 'installment'
                 ? 'border-amber-500 bg-amber-50/30'
@@ -125,6 +141,39 @@
               </div>
               <p class="text-sm text-gray-500">เลือกจำนวนงวดได้ <span class="font-bold text-amber-600">2–6 งวด</span> · ไม่มีดอกเบี้ย</p>
             </button>
+          </div>
+
+          <!-- Deposit details + cancellation clause -->
+          <div v-if="paymentType === 'deposit'" class="mt-6 p-5 bg-teal-50/50 border border-teal-100 rounded-2xl space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="bg-white rounded-xl p-3 border border-teal-100">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">ยอดรวมทั้งหมด</p>
+                <p class="text-base font-bold text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</p>
+              </div>
+              <div class="bg-white rounded-xl p-3 border-2 border-teal-300">
+                <p class="text-[10px] font-black text-teal-600 uppercase tracking-widest leading-none mb-1">ชำระมัดจำตอนนี้</p>
+                <p class="text-base font-black text-teal-700">฿{{ depositAmount.toLocaleString() }}</p>
+              </div>
+              <div class="bg-white rounded-xl p-3 border border-amber-200">
+                <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">ส่วนที่เหลือ · ภายใน {{ balanceDueDateText }}</p>
+                <p class="text-base font-bold text-amber-700">฿{{ balanceAmount.toLocaleString() }}</p>
+              </div>
+            </div>
+
+            <!-- No-refund Cancellation Clause -->
+            <div class="flex gap-4 p-5 bg-red-50/50 border border-red-100 rounded-2xl">
+              <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <span class="material-symbols-rounded text-red-600 text-[24px]">priority_high</span>
+              </div>
+              <div class="text-[13px] text-red-700 leading-relaxed">
+                <p class="font-black mb-1 text-sm uppercase tracking-tight">เงื่อนไขการมัดจำ</p>
+                <p>
+                  กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ <strong>ไม่คืนเงินมัดจำทุกกรณี</strong>
+                  เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า ·
+                  ต้องชำระยอดส่วนที่เหลือก่อนเดินทาง <strong>15 วัน</strong> ระบบจะส่งอีเมลและ SMS แจ้งเตือนให้ท่านโดยอัตโนมัติ
+                </p>
+              </div>
+            </div>
           </div>
 
           <!-- Installment Count Selector -->
@@ -271,7 +320,7 @@
                 <div class="flex items-center justify-between w-full max-w-xs bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
                    <div class="flex flex-col">
                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ยอดเงินที่ต้องชำระ</span>
-                      <span class="text-lg font-black text-teal-600">฿{{ (paymentType === 'installment' ? perInstallment : booking.total_amount).toLocaleString() }}</span>
+                      <span class="text-lg font-black text-teal-600">฿{{ currentPayAmount.toLocaleString() }}</span>
                    </div>
                     <button @click="copyAmount" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl transition-colors active:scale-95">
                       <span class="material-symbols-rounded text-base">content_copy</span>
@@ -334,7 +383,7 @@
             <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
                <span class="material-symbols-rounded text-amber-500 text-xl font-bold">info</span>
                <p class="text-xs text-amber-800 font-medium leading-relaxed">
-                  กรุณาโอนยอด <strong class="text-amber-900">฿{{ (paymentType === 'installment' ? perInstallment : booking.total_amount).toLocaleString() }}</strong> ให้ครบถ้วน แล้วระบุวันและเวลาโอนตามจริงในสลิป
+                  กรุณาโอนยอด <strong class="text-amber-900">฿{{ currentPayAmount.toLocaleString() }}</strong> ให้ครบถ้วน แล้วระบุวันและเวลาโอนตามจริงในสลิป
                </p>
             </div>
           </div>
@@ -533,11 +582,21 @@
                     <span class="text-xs font-bold text-amber-700">ชำระงวดแรกตอนนี้</span>
                     <div class="text-right">
                        <span class="text-2xl font-black text-amber-600 leading-none">฿{{ perInstallment.toLocaleString() }}</span>
-                       <p class="text-[10px] font-bold text-amber-500 leading-none mt-1">จากทั้งหมด {{ installmentCount }} งวด</p>
+                       <p class="text-[10px] font-bold text-amber-500 leading-none mt-1">จากทั้งหมด {{ selectedInstallmentCount }} งวด</p>
                     </div>
                  </div>
                </template>
-               
+
+               <template v-else-if="paymentType === 'deposit'">
+                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-4 border border-teal-200 shadow-inner">
+                    <span class="text-xs font-bold text-teal-700">ชำระมัดจำตอนนี้</span>
+                    <div class="text-right">
+                       <span class="text-2xl font-black text-teal-700 leading-none">฿{{ depositAmount.toLocaleString() }}</span>
+                       <p class="text-[10px] font-bold text-teal-600 leading-none mt-1">ส่วนที่เหลือ ฿{{ balanceAmount.toLocaleString() }}</p>
+                    </div>
+                 </div>
+               </template>
+
                <template v-else>
                  <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-5 border border-teal-100 shadow-inner">
                     <span class="text-sm font-black text-teal-900 uppercase tracking-tight">ยอดชำระสุทธิ</span>
@@ -548,13 +607,15 @@
 
             <!-- Main CTA Button -->
             <div class="space-y-4">
-              <button @click="processPayment" 
+              <button @click="processPayment"
                 :disabled="paying || !slipFile"
                 class="group w-full py-5 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden relative shadow-xl disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 :class="[
                   paymentType === 'installment'
                     ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-600/30'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
+                    : paymentType === 'deposit'
+                      ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-teal-600/30'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
                 ]">
                 <!-- Loading State overlay -->
                 <div v-if="paying" class="absolute inset-0 bg-inherit flex items-center justify-center z-10">
@@ -602,7 +663,7 @@
               :disabled="paying || !slipFile"
               class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying">
-                <span>ยืนยันการชำระ ฿{{ (paymentType === 'installment' ? perInstallment : booking.total_amount).toLocaleString() }}</span>
+                <span>ยืนยันการชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
                 <span class="material-symbols-rounded text-lg">arrow_forward</span>
               </template>
               <div v-else class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
@@ -671,7 +732,7 @@ function setFile(file) {
 }
 
 function copyAmount() {
-  const amount = paymentType.value === 'installment' ? perInstallment.value : booking.value.total_amount;
+  const amount = currentPayAmount.value;
   navigator.clipboard.writeText(amount.toString());
   swal.success('คัดลอกยอดเงินแล้ว', `฿${amount.toLocaleString()}`);
 }
@@ -684,6 +745,34 @@ function copyAccount() {
 // Transfer datetime
 const transferDate = ref('');
 const transferTime = ref('');
+
+// ── Deposit helpers ──────────────────────────────────────────
+const depositAvailable = computed(() =>
+  !!booking.value?.schedule?.deposit_enabled && !booking.value?.is_join_trip
+);
+const depositAmount = computed(() => {
+  if (!booking.value?.schedule) return 0;
+  const schedule = booking.value.schedule;
+  const total = parseFloat(booking.value.total_amount);
+  if (schedule.deposit_type === 'percent' && schedule.deposit_percent) {
+    return Math.round(total * (schedule.deposit_percent / 100));
+  }
+  if (schedule.deposit_type === 'amount' && schedule.deposit_amount) {
+    return Math.min(Math.round(parseFloat(schedule.deposit_amount)), total);
+  }
+  return 0;
+});
+const balanceAmount = computed(() => {
+  if (!booking.value) return 0;
+  const total = parseFloat(booking.value.total_amount);
+  return Math.max(0, total - depositAmount.value);
+});
+const balanceDueDateText = computed(() => {
+  if (!booking.value?.schedule?.departure_date) return '-';
+  const dep = new Date(booking.value.schedule.departure_date);
+  dep.setDate(dep.getDate() - 15);
+  return dep.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+});
 
 // ── Installment helpers ──────────────────────────────────────
 const installmentAvailable = computed(() =>
@@ -707,6 +796,13 @@ const perInstallment = computed(() => {
   const total = parseFloat(booking.value.total_amount);
   return Math.round((total / selectedInstallmentCount.value) * 100) / 100;
 });
+const currentPayAmount = computed(() => {
+  if (!booking.value) return 0;
+  if (paymentType.value === 'installment') return perInstallment.value;
+  if (paymentType.value === 'deposit') return depositAmount.value;
+  return parseFloat(booking.value.total_amount);
+});
+
 const installmentSchedule = computed(() => {
   if (!booking.value) return [];
   const total = parseFloat(booking.value.total_amount);
@@ -778,10 +874,8 @@ async function generateQR() {
   await nextTick();
   if (!qrCanvas.value || !booking.value) return;
   
-  const amount = paymentType.value === 'installment'
-    ? perInstallment.value
-    : parseFloat(booking.value.total_amount);
-    
+  const amount = currentPayAmount.value;
+
   qrGenerated.value = false;
   const payload = buildPromptPayPayload('004999239362071', amount);
   
@@ -939,9 +1033,7 @@ async function processPayment() {
     fd.append('booking_ref', booking.value.booking_ref);
     fd.append('payment_type', paymentType.value);
     fd.append('payment_method', paymentMethod.value);
-    fd.append('amount', paymentType.value === 'installment'
-      ? perInstallment.value
-      : parseFloat(booking.value.total_amount));
+    fd.append('amount', currentPayAmount.value);
     if (paymentType.value === 'installment') {
       fd.append('installment_count', selectedInstallmentCount.value);
     }

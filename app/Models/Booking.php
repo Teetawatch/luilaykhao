@@ -18,6 +18,8 @@ class Booking extends Model
         'qr_code', 'checked_in', 'checked_in_at',
         'total_amount', 'selected_addons', 'addons_total', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
+        'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_paid_at',
+        'balance_payment_ref', 'balance_slip_path', 'balance_transfer_datetime',
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
         'cancellation_reason', 'cancelled_at',
         'refund_status', 'refund_amount', 'refunded_at',
@@ -44,6 +46,11 @@ class Booking extends Model
             'installment_interval_days' => 'integer',
             'transfer_datetime' => 'datetime',
             'selected_addons' => 'array',
+            'deposit_amount' => 'decimal:2',
+            'balance_amount' => 'decimal:2',
+            'balance_due_at' => 'datetime',
+            'balance_paid_at' => 'datetime',
+            'balance_transfer_datetime' => 'datetime',
         ];
     }
 

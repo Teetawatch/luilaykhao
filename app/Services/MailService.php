@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Mail\AdminNewBookingMail;
 use App\Mail\AdminPaymentReceivedMail;
+use App\Mail\BalanceDueReminderMail;
+use App\Mail\BalancePaidMail;
 use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCreatedMail;
 use App\Mail\BookingStatusChangedMail;
+use App\Mail\DepositPaidMail;
 use App\Mail\InstallmentPaidMail;
 use App\Mail\PaymentConfirmedMail;
 use App\Mail\WelcomeRegistrationMail;
@@ -185,6 +188,81 @@ class MailService
             Log::error('Failed to send installment paid email', [
                 'booking_ref' => $booking->booking_ref,
                 'installment_no' => $installment->installment_no,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send deposit-paid confirmation email after the customer pays the deposit.
+     */
+    public function sendDepositPaidEmail(Booking $booking): void
+    {
+        $booking->load(['user', 'schedule.trip', 'passengers']);
+
+        try {
+            $this->sendToCustomerEmails($booking, fn () => new DepositPaidMail($booking));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send deposit paid email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            $adminEmails = $this->getAdminEmails();
+            if (!empty($adminEmails)) {
+                Mail::to($adminEmails)->send(new AdminPaymentReceivedMail($booking, 'deposit'));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send admin deposit received email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send balance-due reminder email (called by scheduled command).
+     */
+    public function sendBalanceDueReminderEmail(Booking $booking): void
+    {
+        $booking->load(['user', 'schedule.trip', 'passengers']);
+
+        try {
+            $this->sendToCustomerEmails($booking, fn () => new BalanceDueReminderMail($booking));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send balance due reminder email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send balance-paid confirmation email after the customer settles the remaining balance.
+     */
+    public function sendBalancePaidEmail(Booking $booking): void
+    {
+        $booking->load(['user', 'schedule.trip', 'passengers']);
+
+        try {
+            $this->sendToCustomerEmails($booking, fn () => new BalancePaidMail($booking));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send balance paid email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            $adminEmails = $this->getAdminEmails();
+            if (!empty($adminEmails)) {
+                Mail::to($adminEmails)->send(new AdminPaymentReceivedMail($booking, 'balance'));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send admin balance received email', [
+                'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
             ]);
         }

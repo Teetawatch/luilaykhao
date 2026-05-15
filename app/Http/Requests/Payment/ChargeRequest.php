@@ -15,7 +15,7 @@ class ChargeRequest extends FormRequest
     {
         return [
             'booking_ref'        => ['required', 'string', 'exists:bookings,booking_ref'],
-            'payment_type'       => ['nullable', 'in:full,installment'],
+            'payment_type'       => ['nullable', 'in:full,installment,deposit'],
             'payment_method'     => ['nullable', 'in:promptpay,mobile_banking'],
             'amount'             => ['required', 'numeric', 'min:1'],
             'installment_count'  => ['nullable', 'integer', 'min:2', 'max:6'],
