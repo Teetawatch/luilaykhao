@@ -17,6 +17,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mobile App Version Gate
+    |--------------------------------------------------------------------------
+    | These keys feed /api/v1/app/version so the Flutter customer app can
+    | force users onto the store when an older build is still installed.
+    */
+
+    'min_mobile_version' => env('MIN_MOBILE_VERSION', '0.1.0'),
+    'latest_mobile_version' => env('LATEST_MOBILE_VERSION', '0.1.0'),
+    'mobile_store_url' => env(
+        'MOBILE_STORE_URL',
+        'https://play.google.com/store/apps/details?id=com.luilaykhao.app',
+    ),
+    'mobile_update_message' => env(
+        'MOBILE_UPDATE_MESSAGE',
+        'อัปเดตเพื่อใช้ฟีเจอร์ใหม่และแก้ไขบั๊กล่าสุด',
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support Contact (consumed by /api/v1/stats)
+    |--------------------------------------------------------------------------
+    */
+
+    'support_phone' => env('SUPPORT_PHONE', '0900000000'),
+    'support_line_id' => env('SUPPORT_LINE_ID', '@luilaykhao'),
+    'support_line_url' => env('SUPPORT_LINE_URL', 'https://line.me/R/ti/p/@luilaykhao'),
+    'support_email' => env('SUPPORT_EMAIL', 'support@luilaykhao.com'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

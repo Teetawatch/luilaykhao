@@ -95,6 +95,9 @@ class BookingResource extends JsonResource
             ),
             'cancellation_reason' => $this->cancellation_reason,
             'cancelled_at' => $this->cancelled_at?->toISOString(),
+            'refund_status' => $this->refund_status,
+            'refund_amount' => $this->refund_amount,
+            'refunded_at' => $this->refunded_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

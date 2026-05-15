@@ -20,6 +20,7 @@ class Booking extends Model
         'payment_type', 'installment_count', 'installment_interval_days',
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
         'cancellation_reason', 'cancelled_at',
+        'refund_status', 'refund_amount', 'refunded_at',
         'promotion_id', 'promotion_code', 'discount_amount',
         'is_join_trip',
     ];
@@ -33,6 +34,8 @@ class Booking extends Model
             'discount_amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'refund_amount' => 'decimal:2',
+            'refunded_at' => 'datetime',
             'checked_in_at' => 'datetime',
             'is_group' => 'boolean',
             'checked_in' => 'boolean',

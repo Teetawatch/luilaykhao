@@ -161,6 +161,12 @@ class AnalyticsController extends Controller
             'avg_rating' => round((float) $avgRating, 1),
             'total_reviews' => $totalReviews,
             'total_customers' => $totalCustomers,
+            'contact' => [
+                'phone' => config('app.support_phone'),
+                'line' => config('app.support_line_id'),
+                'line_url' => config('app.support_line_url'),
+                'email' => config('app.support_email'),
+            ],
         ]);
     }
 }

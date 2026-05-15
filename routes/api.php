@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
+use App\Http\Controllers\Api\V1\AppVersionController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -36,6 +38,12 @@ Route::prefix('v1')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
             Route::post('profile', [AuthController::class, 'updateProfile']);
         });
+    });
+
+    // Reverb / Pusher channel authentication for the mobile app's WebSocket
+    // client. Sanctum-authenticated; channel rules live in routes/channels.php.
+    Route::middleware('auth:sanctum')->post('broadcasting/auth', function () {
+        return Broadcast::auth(request());
     });
 
     // Trips (public)
@@ -150,6 +158,7 @@ Route::prefix('v1')->group(function () {
 
     // Analytics (public)
     Route::get('stats', [AnalyticsController::class, 'publicStats']);
+    Route::get('app/version', [AppVersionController::class, 'show']);
 
     // Admin routes
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {
