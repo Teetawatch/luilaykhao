@@ -88,93 +88,251 @@
         </div>
 
         <!-- ── Payment Type Selection (show only if installment or deposit available) ── -->
-        <section v-if="installmentAvailable || depositAvailable" class="bg-white rounded-3xl shadow-sm p-8 border border-gray-100">
-          <h2 class="text-lg font-bold mb-5 text-gray-900 flex items-center gap-2">
-            <span class="material-symbols-rounded text-amber-500">credit_card</span>
-            เลือกรูปแบบการชำระเงิน
-          </h2>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <section v-if="installmentAvailable || depositAvailable" class="bg-white rounded-3xl shadow-sm p-5 sm:p-8 border border-gray-100">
+          <!-- Section Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-md shadow-teal-500/30 shrink-0">
+                <span class="material-symbols-rounded text-white text-[22px]">credit_card</span>
+              </div>
+              <div>
+                <h2 class="text-lg sm:text-xl font-black text-gray-900 leading-tight">เลือกรูปแบบการชำระเงิน</h2>
+                <p class="text-xs text-gray-500 font-medium">เลือกแบบที่สะดวกที่สุดสำหรับท่าน</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-black text-teal-700 bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-full uppercase tracking-widest self-start sm:self-auto">
+              {{ payOptionsCount }} ตัวเลือก
+            </span>
+          </div>
+
+          <!-- Payment Type Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+
             <!-- Full Payment -->
             <button @click="paymentType = 'full'"
-              class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
+              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
               :class="paymentType === 'full'
-                ? 'border-teal-600 bg-teal-50/30'
-                : 'border-gray-100 hover:border-teal-100 hover:bg-gray-50'">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-rounded text-[24px] group-hover:scale-110 transition-transform" :class="paymentType === 'full' ? 'text-teal-600' : 'text-gray-400'">payments</span>
-                <span class="font-bold text-base" :class="paymentType === 'full' ? 'text-teal-900' : 'text-gray-700'">ชำระเต็มจำนวน</span>
-                <div v-if="paymentType === 'full'" class="ml-auto w-6 h-6 rounded-full bg-teal-600 flex items-center justify-center shadow-md">
-                  <span class="material-symbols-rounded text-white text-[16px]">check</span>
+                ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50/50 shadow-lg shadow-emerald-500/15 scale-[1.01]'
+                : 'border-gray-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/30 hover:-translate-y-0.5'">
+
+              <!-- Recommended Ribbon -->
+              <div v-if="paymentType !== 'full'" class="absolute top-0 right-0 bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
+                ⭐ แนะนำ
+              </div>
+              <!-- Selected check -->
+              <div v-if="paymentType === 'full'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-md shadow-emerald-500/40 ring-4 ring-emerald-100">
+                <span class="material-symbols-rounded text-white text-[18px]">check</span>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
+                  :class="paymentType === 'full' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-100 group-hover:text-emerald-600'">
+                  <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">payments</span>
+                </div>
+                <div>
+                  <p class="font-black text-base" :class="paymentType === 'full' ? 'text-emerald-900' : 'text-gray-900'">ชำระเต็มจำนวน</p>
+                  <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest">ครั้งเดียวจบ</p>
                 </div>
               </div>
-              <p class="text-sm text-gray-500">ชำระทั้งหมด <span class="font-bold text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</span> ในครั้งเดียว</p>
+
+              <div class="border-t border-dashed pt-3 mt-1" :class="paymentType === 'full' ? 'border-emerald-200' : 'border-gray-100'">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">ยอดที่ต้องชำระ</p>
+                <p class="text-2xl font-black leading-none" :class="paymentType === 'full' ? 'text-emerald-700' : 'text-gray-900'">
+                  ฿{{ Number(booking.total_amount).toLocaleString() }}
+                </p>
+              </div>
+
+              <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
+                <li class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-emerald-500 text-[14px]">check_circle</span>
+                  จบในครั้งเดียว ไม่ต้องจำกำหนด
+                </li>
+                <li class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-emerald-500 text-[14px]">check_circle</span>
+                  ยืนยันที่นั่งทันที
+                </li>
+              </ul>
             </button>
 
             <!-- Deposit Payment -->
             <button v-if="depositAvailable" @click="paymentType = 'deposit'"
-              class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
+              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
               :class="paymentType === 'deposit'
-                ? 'border-teal-600 bg-teal-50/30'
-                : 'border-gray-100 hover:border-teal-100 hover:bg-gray-50'">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-rounded text-[24px] group-hover:scale-110 transition-transform" :class="paymentType === 'deposit' ? 'text-teal-600' : 'text-gray-400'">savings</span>
-                <span class="font-bold text-base" :class="paymentType === 'deposit' ? 'text-teal-900' : 'text-gray-700'">จ่ายมัดจำ</span>
-                <div v-if="paymentType === 'deposit'" class="ml-auto w-6 h-6 rounded-full bg-teal-600 flex items-center justify-center shadow-md">
-                  <span class="material-symbols-rounded text-white text-[16px]">check</span>
+                ? 'border-teal-600 bg-gradient-to-br from-teal-50 to-cyan-50/50 shadow-lg shadow-teal-600/15 scale-[1.01]'
+                : 'border-gray-100 bg-white hover:border-teal-200 hover:bg-teal-50/30 hover:-translate-y-0.5'">
+
+              <div v-if="paymentType !== 'deposit'" class="absolute top-0 right-0 bg-teal-600 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
+                🔥 ยอดนิยม
+              </div>
+              <div v-if="paymentType === 'deposit'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center shadow-md shadow-teal-600/40 ring-4 ring-teal-100">
+                <span class="material-symbols-rounded text-white text-[18px]">check</span>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
+                  :class="paymentType === 'deposit' ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30' : 'bg-gray-100 text-gray-400 group-hover:bg-teal-100 group-hover:text-teal-700'">
+                  <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">savings</span>
+                </div>
+                <div>
+                  <p class="font-black text-base" :class="paymentType === 'deposit' ? 'text-teal-900' : 'text-gray-900'">จ่ายมัดจำ</p>
+                  <p class="text-[11px] font-bold text-teal-600 uppercase tracking-widest">จ่าย 2 ครั้ง</p>
                 </div>
               </div>
-              <p class="text-sm text-gray-500">มัดจำ <span class="font-bold text-teal-700">฿{{ depositAmount.toLocaleString() }}</span> · ที่เหลือชำระก่อนเดินทาง 15 วัน</p>
+
+              <div class="border-t border-dashed pt-3 mt-1" :class="paymentType === 'deposit' ? 'border-teal-200' : 'border-gray-100'">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">มัดจำตอนนี้</p>
+                <p class="text-2xl font-black leading-none" :class="paymentType === 'deposit' ? 'text-teal-700' : 'text-gray-900'">
+                  ฿{{ depositAmount.toLocaleString() }}
+                </p>
+                <p class="text-[11px] font-bold text-amber-700 mt-1.5">
+                  + ส่วนที่เหลือ ฿{{ balanceAmount.toLocaleString() }}
+                </p>
+              </div>
+
+              <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
+                <li class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-teal-500 text-[14px]">check_circle</span>
+                  จ่ายส่วนที่เหลือก่อนเดินทาง 15 วัน
+                </li>
+                <li class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-teal-500 text-[14px]">check_circle</span>
+                  มี SMS/อีเมล แจ้งเตือนอัตโนมัติ
+                </li>
+              </ul>
             </button>
 
             <!-- Installment Payment -->
             <button v-if="installmentAvailable" @click="paymentType = 'installment'"
-              class="group flex flex-col gap-2 p-5 border-2 rounded-2xl transition-all text-left relative overflow-hidden"
+              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
               :class="paymentType === 'installment'
-                ? 'border-amber-500 bg-amber-50/30'
-                : 'border-gray-100 hover:border-amber-100 hover:bg-gray-50'">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-rounded text-[24px] group-hover:scale-110 transition-transform" :class="paymentType === 'installment' ? 'text-amber-600' : 'text-gray-400'">calendar_month</span>
-                <span class="font-bold text-base" :class="paymentType === 'installment' ? 'text-amber-900' : 'text-gray-700'">ผ่อนชำระ</span>
-                <div v-if="paymentType === 'installment'" class="ml-auto w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shadow-md">
-                  <span class="material-symbols-rounded text-white text-[16px]">check</span>
+                ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50/50 shadow-lg shadow-amber-500/15 scale-[1.01]'
+                : 'border-gray-100 bg-white hover:border-amber-200 hover:bg-amber-50/30 hover:-translate-y-0.5'">
+
+              <div v-if="paymentType !== 'installment'" class="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
+                💳 ผ่อน 0%
+              </div>
+              <div v-if="paymentType === 'installment'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/40 ring-4 ring-amber-100">
+                <span class="material-symbols-rounded text-white text-[18px]">check</span>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
+                  :class="paymentType === 'installment' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-gray-100 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-600'">
+                  <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">calendar_month</span>
+                </div>
+                <div>
+                  <p class="font-black text-base" :class="paymentType === 'installment' ? 'text-amber-900' : 'text-gray-900'">ผ่อนชำระ</p>
+                  <p class="text-[11px] font-bold text-amber-600 uppercase tracking-widest">{{ availableInstallmentOptions[0] }}–{{ availableInstallmentOptions[availableInstallmentOptions.length - 1] || 6 }} งวด</p>
                 </div>
               </div>
-              <p class="text-sm text-gray-500">เลือกจำนวนงวดได้ <span class="font-bold text-amber-600">2–6 งวด</span> · ไม่มีดอกเบี้ย</p>
+
+              <div class="border-t border-dashed pt-3 mt-1" :class="paymentType === 'installment' ? 'border-amber-200' : 'border-gray-100'">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">งวดละประมาณ</p>
+                <p class="text-2xl font-black leading-none" :class="paymentType === 'installment' ? 'text-amber-700' : 'text-gray-900'">
+                  ฿{{ minPerInstallmentPreview.toLocaleString() }}
+                </p>
+                <p class="text-[11px] font-bold text-gray-500 mt-1.5">
+                  ทุก {{ installmentIntervalDays }} วัน · ไม่มีดอกเบี้ย
+                </p>
+              </div>
+
+              <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
+                <li class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-amber-500 text-[14px]">check_circle</span>
+                  เลือกจำนวนงวดเองได้
+                </li>
+                <li class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-amber-500 text-[14px]">check_circle</span>
+                  ยอดรวมคงเดิม ไม่มีดอกเบี้ย
+                </li>
+              </ul>
             </button>
           </div>
 
           <!-- Deposit details + cancellation clause -->
-          <div v-if="paymentType === 'deposit'" class="mt-6 p-5 bg-teal-50/50 border border-teal-100 rounded-2xl space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div class="bg-white rounded-xl p-3 border border-teal-100">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">ยอดรวมทั้งหมด</p>
-                <p class="text-base font-bold text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</p>
+          <Transition name="fade">
+          <div v-if="paymentType === 'deposit'" class="mt-6 space-y-4">
+            <!-- Summary breakdown -->
+            <div class="bg-gradient-to-br from-teal-50 via-white to-cyan-50/50 border-2 border-teal-100 rounded-3xl p-5 sm:p-6">
+              <div class="flex items-center gap-2 mb-4">
+                <span class="material-symbols-rounded text-teal-600 text-xl" style="font-variation-settings:'FILL' 1">savings</span>
+                <h3 class="font-black text-teal-900 text-sm uppercase tracking-tight">สรุปยอดมัดจำ</h3>
               </div>
-              <div class="bg-white rounded-xl p-3 border-2 border-teal-300">
-                <p class="text-[10px] font-black text-teal-600 uppercase tracking-widest leading-none mb-1">ชำระมัดจำตอนนี้</p>
-                <p class="text-base font-black text-teal-700">฿{{ depositAmount.toLocaleString() }}</p>
+
+              <!-- Three Steps Visual -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 relative">
+                <!-- Step 1: Total -->
+                <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[11px] font-black">1</div>
+                    <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest">ยอดรวมทั้งหมด</p>
+                  </div>
+                  <p class="text-xl font-black text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</p>
+                  <p class="text-[11px] text-gray-500 mt-1">ราคารวมทั้งหมดของทริปนี้</p>
+                </div>
+
+                <!-- Step 2: Deposit (highlight) -->
+                <div class="bg-white rounded-2xl p-4 border-2 border-teal-500 shadow-md shadow-teal-500/15 relative">
+                  <div class="absolute -top-2.5 left-4 bg-teal-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">ชำระตอนนี้</div>
+                  <div class="flex items-center gap-2 mb-2 mt-1">
+                    <div class="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-[11px] font-black">2</div>
+                    <p class="text-[10px] font-black text-teal-700 uppercase tracking-widest">มัดจำ</p>
+                  </div>
+                  <p class="text-2xl font-black text-teal-700">฿{{ depositAmount.toLocaleString() }}</p>
+                  <p class="text-[11px] text-teal-600 mt-1 font-bold">
+                    {{ depositPercentText }}
+                  </p>
+                </div>
+
+                <!-- Step 3: Balance -->
+                <div class="bg-white rounded-2xl p-4 border border-amber-200 shadow-sm">
+                  <div class="flex items-center gap-2 mb-2">
+                    <div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[11px] font-black">3</div>
+                    <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest">ส่วนที่เหลือ</p>
+                  </div>
+                  <p class="text-xl font-black text-amber-700">฿{{ balanceAmount.toLocaleString() }}</p>
+                  <p class="text-[11px] text-amber-600 mt-1 font-bold">
+                    <span class="material-symbols-rounded text-[12px] align-middle">event</span>
+                    ภายใน {{ balanceDueDateText }}
+                  </p>
+                </div>
               </div>
-              <div class="bg-white rounded-xl p-3 border border-amber-200">
-                <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">ส่วนที่เหลือ · ภายใน {{ balanceDueDateText }}</p>
-                <p class="text-base font-bold text-amber-700">฿{{ balanceAmount.toLocaleString() }}</p>
+
+              <!-- Timeline note -->
+              <div class="mt-4 flex items-center gap-2 bg-white/70 rounded-xl p-3 border border-teal-100">
+                <span class="material-symbols-rounded text-teal-600 text-[18px]" style="font-variation-settings:'FILL' 1">notifications_active</span>
+                <p class="text-[12px] text-teal-800 font-medium leading-snug">
+                  เราจะส่ง <strong>SMS + อีเมล</strong> แจ้งเตือนล่วงหน้า <strong>5 วัน, 2 วัน และวันครบกำหนด</strong> เพื่อให้ท่านไม่พลาดการชำระ
+                </p>
               </div>
             </div>
 
             <!-- No-refund Cancellation Clause -->
-            <div class="flex gap-4 p-5 bg-red-50/50 border border-red-100 rounded-2xl">
-              <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                <span class="material-symbols-rounded text-red-600 text-[24px]">priority_high</span>
-              </div>
-              <div class="text-[13px] text-red-700 leading-relaxed">
-                <p class="font-black mb-1 text-sm uppercase tracking-tight">เงื่อนไขการมัดจำ</p>
-                <p>
-                  กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ <strong>ไม่คืนเงินมัดจำทุกกรณี</strong>
-                  เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า ·
-                  ต้องชำระยอดส่วนที่เหลือก่อนเดินทาง <strong>15 วัน</strong> ระบบจะส่งอีเมลและ SMS แจ้งเตือนให้ท่านโดยอัตโนมัติ
-                </p>
+            <div class="bg-gradient-to-br from-red-50 to-rose-50/50 border-2 border-red-200 rounded-3xl p-5 sm:p-6">
+              <div class="flex flex-col sm:flex-row gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center shrink-0 shadow-md shadow-red-600/30 self-start">
+                  <span class="material-symbols-rounded text-white text-[26px]" style="font-variation-settings:'FILL' 1">gavel</span>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-2">
+                    <p class="font-black text-base text-red-900 uppercase tracking-tight">เงื่อนไขสำคัญ</p>
+                    <span class="text-[10px] font-black text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-widest">กรุณาอ่าน</span>
+                  </div>
+                  <p class="text-[13px] sm:text-sm text-red-800 leading-relaxed">
+                    กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ <strong class="text-red-900 underline decoration-wavy decoration-red-400 underline-offset-4">ไม่คืนเงินมัดจำทุกกรณี</strong>
+                    เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า
+                  </p>
+                  <div class="mt-3 flex items-start gap-2 bg-white/70 rounded-xl p-3 border border-red-100">
+                    <span class="material-symbols-rounded text-red-500 text-[18px] shrink-0 mt-0.5">schedule</span>
+                    <p class="text-[12px] text-red-800 font-medium leading-snug">
+                      ต้องชำระยอดส่วนที่เหลือ <strong class="text-red-900">ก่อนเดินทาง 15 วัน</strong> (ภายในวันที่ <strong>{{ balanceDueDateText }}</strong>) มิฉะนั้นถือว่าสละสิทธิ์การเดินทาง
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          </Transition>
 
           <!-- Installment Count Selector -->
           <div v-if="paymentType === 'installment'" class="mt-6 p-5 bg-amber-50/50 border border-amber-100 rounded-2xl">
@@ -773,6 +931,13 @@ const balanceDueDateText = computed(() => {
   dep.setDate(dep.getDate() - 15);
   return dep.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 });
+const depositPercentText = computed(() => {
+  if (!booking.value) return '';
+  const total = parseFloat(booking.value.total_amount);
+  if (!total) return '';
+  const pct = Math.round((depositAmount.value / total) * 100);
+  return `ประมาณ ${pct}% ของยอดรวม`;
+});
 
 // ── Installment helpers ──────────────────────────────────────
 const installmentAvailable = computed(() =>
@@ -801,6 +966,20 @@ const currentPayAmount = computed(() => {
   if (paymentType.value === 'installment') return perInstallment.value;
   if (paymentType.value === 'deposit') return depositAmount.value;
   return parseFloat(booking.value.total_amount);
+});
+
+const payOptionsCount = computed(() => {
+  let n = 1;
+  if (depositAvailable.value) n++;
+  if (installmentAvailable.value) n++;
+  return n;
+});
+
+const minPerInstallmentPreview = computed(() => {
+  if (!booking.value) return 0;
+  const total = parseFloat(booking.value.total_amount);
+  const maxN = maxInstallmentCount.value || 2;
+  return Math.round(total / maxN);
 });
 
 const installmentSchedule = computed(() => {
@@ -1077,3 +1256,15 @@ onBeforeUnmount(() => {
   seatsStore.offExpire(handlePaymentExpiry);
 });
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+</style>
