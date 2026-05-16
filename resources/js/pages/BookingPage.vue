@@ -262,100 +262,158 @@
         <div class="lg:col-span-7 xl:col-span-8" v-if="!isTrekking || step > 0">
 
           <!-- Step 0: Seat Map -->
-          <div v-if="step === (isTrekking ? 1 : 0) && hasSeatMap">
-            <div class="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-              <h2 class="text-2xl font-bold text-gray-900 mb-2">เลือกที่นั่งของคุณ</h2>
-              <p class="text-gray-500">สัมผัสความสบายระดับพรีเมียมในทุกการเดินทาง</p>
+          <div v-if="step === (isTrekking ? 1 : 0) && hasSeatMap" class="space-y-6">
+
+            <!-- Header card -->
+            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <div class="px-6 py-5 flex items-center justify-between gap-4">
+                <div>
+                  <h2 class="text-xl font-black text-gray-900 mb-1 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-teal-600 text-[22px]" style="font-variation-settings:'FILL' 1">airline_seat_recline_extra</span>
+                    เลือกที่นั่งของคุณ
+                  </h2>
+                  <p class="text-sm text-gray-400 font-medium">แตะที่นั่งสีขาวเพื่อเลือก · แตะซ้ำเพื่อยกเลิก</p>
+                </div>
+                <!-- Live seat counter -->
+                <div v-if="seatsStore.seatMap" class="shrink-0 text-right">
+                  <p class="text-2xl font-black leading-none"
+                    :class="seatsStore.seatMap.available_seats === 0 ? 'text-red-500' : seatsStore.seatMap.available_seats <= 3 ? 'text-amber-500' : 'text-teal-600'">
+                    {{ seatsStore.seatMap.available_seats }}
+                  </p>
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ที่ว่าง</p>
+                </div>
+              </div>
+              <!-- Seat progress bar -->
+              <div v-if="seatsStore.seatMap" class="px-6 pb-5">
+                <div class="flex items-center gap-3">
+                  <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all duration-700"
+                      :class="seatsStore.seatMap.available_seats === 0 ? 'bg-red-400' : seatsStore.seatMap.available_seats <= 3 ? 'bg-amber-400' : 'bg-teal-500'"
+                      :style="{ width: `${Math.round((seatsStore.seatMap.booked_seats / seatsStore.seatMap.total_seats) * 100)}%` }"
+                    ></div>
+                  </div>
+                  <span class="text-[11px] font-bold text-gray-400 shrink-0">จองแล้ว {{ seatsStore.seatMap.booked_seats }}/{{ seatsStore.seatMap.total_seats }}</span>
+                </div>
+                <p v-if="seatsStore.seatMap.available_seats > 0 && seatsStore.seatMap.available_seats <= 3"
+                  class="mt-2 text-[11px] font-black text-amber-600 flex items-center gap-1">
+                  <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">warning</span>
+                  เหลือเพียง {{ seatsStore.seatMap.available_seats }} ที่นั่ง — จองด่วน!
+                </p>
+              </div>
             </div>
 
+            <!-- Seat Map -->
             <SeatMap :seat-map="seatsStore.seatMap" :is-women-only="schedule.trip?.is_women_only" />
 
-            <p v-if="seatError" class="flex items-center gap-2 text-red-600 text-sm mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+            <!-- Error -->
+            <p v-if="seatError" class="flex items-center gap-2 text-red-600 text-sm p-4 bg-red-50 border border-red-100 rounded-2xl">
               <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">error</span>
               {{ seatError }}
             </p>
 
-            <!-- Vehicle Info (below seat map) -->
-            <div v-if="schedule.vehicle" class="mt-8 bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+            <!-- Vehicle Info -->
+            <div v-if="schedule.vehicle" class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
+
+              <!-- Section label -->
+              <div class="px-5 pt-5 pb-3 flex items-center gap-2 border-b border-gray-50">
+                <span class="material-symbols-rounded text-teal-600 text-[18px]" style="font-variation-settings:'FILL' 1">airport_shuttle</span>
+                <span class="text-xs font-black text-gray-500 uppercase tracking-wider">รายละเอียดรถ</span>
+              </div>
 
               <!-- Image Carousel -->
-              <div v-if="schedule.vehicle.images && schedule.vehicle.images.length" class="relative group touch-pan-y overflow-hidden rounded-3xl"
+              <div v-if="schedule.vehicle.images && schedule.vehicle.images.length"
+                class="relative group touch-pan-y overflow-hidden"
                 @touchstart="vehicleTouchStart"
                 @touchend="vehicleTouchEnd">
-                <div class="overflow-hidden relative bg-gray-200 z-0" style="aspect-ratio:16/9; touch-action: pan-y;">
-                  <!-- Preload & Render Images -->
+                <div class="overflow-hidden relative bg-gray-100 z-0" style="aspect-ratio:16/9; touch-action: pan-y;">
                   <img
                     v-for="(img, i) in schedule.vehicle.images"
                     :key="i"
                     :src="img"
                     :alt="schedule.vehicle.name"
                     class="absolute inset-0 w-full h-full object-cover transition-all duration-500 transform-gpu"
-                    :class="[
-                      vehicleImageIndex === i ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-110 z-0 pointer-events-none'
-                    ]"
+                    :class="vehicleImageIndex === i ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-110 z-0 pointer-events-none'"
                     :loading="i === 0 ? 'eager' : 'lazy'"
                     style="will-change: opacity, transform;"
                   />
+                  <!-- Gradient overlay -->
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10 pointer-events-none"></div>
                 </div>
 
-                <!-- Navigation Buttons -->
+                <!-- Nav buttons -->
                 <button v-if="schedule.vehicle.images.length > 1"
                   @click.stop="vehicleImageIndex = (vehicleImageIndex - 1 + schedule.vehicle.images.length) % schedule.vehicle.images.length"
-                  class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:-translate-x-2 md:group-hover:translate-x-0 active:scale-90">
-                  <span class="material-symbols-rounded text-[24px]">chevron_left</span>
+                  class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90">
+                  <span class="material-symbols-rounded text-[22px]">chevron_left</span>
                 </button>
                 <button v-if="schedule.vehicle.images.length > 1"
                   @click.stop="vehicleImageIndex = (vehicleImageIndex + 1) % schedule.vehicle.images.length"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0 active:scale-90">
-                  <span class="material-symbols-rounded text-[24px]">chevron_right</span>
+                  class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md flex items-center justify-center transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 active:scale-90">
+                  <span class="material-symbols-rounded text-[22px]">chevron_right</span>
                 </button>
 
-                <!-- Indicators -->
-                <div v-if="schedule.vehicle.images.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/20 backdrop-blur-md px-3 py-2 rounded-full z-20">
+                <!-- Dot indicators -->
+                <div v-if="schedule.vehicle.images.length > 1"
+                  class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
                   <button v-for="(_, i) in schedule.vehicle.images" :key="i"
                     @click.stop="vehicleImageIndex = i"
                     class="rounded-full transition-all touch-manipulation"
-                    :class="vehicleImageIndex === i ? 'bg-white w-5 h-1.5' : 'bg-white/40 hover:bg-white/70 w-1.5 h-1.5'">
+                    :class="vehicleImageIndex === i ? 'bg-white w-4 h-1.5' : 'bg-white/50 hover:bg-white/80 w-1.5 h-1.5'">
                   </button>
                 </div>
 
-                <!-- Counter -->
-                <div class="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md text-white text-[10px] font-black shadow-lg z-20 tracking-wider">
-                  {{ vehicleImageIndex + 1 }} / {{ schedule.vehicle.images.length }}
+                <div class="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md text-white text-[10px] font-black z-20">
+                  {{ vehicleImageIndex + 1 }}/{{ schedule.vehicle.images.length }}
                 </div>
               </div>
 
               <!-- Interior video -->
-              <div v-if="schedule.vehicle.interior_video" class="px-5 pt-5">
-                <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-[16px]">videocam</span>วิดีโอภายในรถ
+              <div v-if="schedule.vehicle.interior_video" class="px-5 pt-4">
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-[15px]">videocam</span>วิดีโอภายในรถ
                 </p>
                 <video :src="schedule.vehicle.interior_video" controls class="w-full rounded-2xl border border-gray-100"></video>
               </div>
 
-              <!-- Info row -->
-              <div class="p-5 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200 shadow-sm shrink-0">
-                  <span class="material-symbols-rounded text-teal-600 text-[24px]" style="font-variation-settings:'FILL' 1,'wght' 400">directions_bus</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="font-bold text-gray-900 text-base truncate mb-1">{{ schedule.vehicle.name }}</p>
-                  <div class="flex flex-wrap gap-2 text-xs font-medium text-gray-500">
-                    <span class="bg-gray-100 px-2 py-0.5 rounded-md">{{ schedule.vehicle.capacity }} ที่นั่ง</span>
-                    <span v-if="schedule.vehicle.color" class="bg-gray-100 px-2 py-0.5 rounded-md">{{ schedule.vehicle.color }}</span>
-                    <span v-if="schedule.vehicle.license_plate" class="bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 text-gray-700">{{ schedule.vehicle.license_plate }}</span>
+              <!-- Vehicle info -->
+              <div class="p-5">
+                <div class="flex items-center gap-3">
+                  <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-rounded text-teal-600 text-[22px]" style="font-variation-settings:'FILL' 1,'wght' 400">airport_shuttle</span>
                   </div>
-                  <div v-if="schedule.vehicle.driver_name" class="mt-3 flex items-center gap-3">
-                    <img v-if="schedule.vehicle.driver_photo" :src="schedule.vehicle.driver_photo"
-                      class="w-9 h-9 rounded-full object-cover border-2 border-gray-200 shrink-0" />
-                    <span v-else class="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
-                      <span class="material-symbols-rounded text-[18px] text-gray-400">person</span>
-                    </span>
-                    <div class="min-w-0">
-                      <p class="text-xs text-gray-500 font-medium">คนขับ</p>
-                      <p class="text-sm font-bold text-gray-900 truncate">{{ schedule.vehicle.driver_name }}</p>
-                      <p v-if="schedule.vehicle.driver_phone" class="text-xs text-teal-600 font-medium">{{ schedule.vehicle.driver_phone }}</p>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-black text-gray-900 text-sm truncate">{{ schedule.vehicle.name }}</p>
+                    <div class="flex flex-wrap gap-1.5 mt-1.5">
+                      <span class="text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-100 px-2 py-0.5 rounded-full">
+                        {{ schedule.vehicle.capacity }} ที่นั่ง
+                      </span>
+                      <span v-if="schedule.vehicle.color" class="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                        {{ schedule.vehicle.color }}
+                      </span>
+                      <span v-if="schedule.vehicle.license_plate" class="text-[10px] font-black bg-gray-900 text-white px-2.5 py-0.5 rounded-full tracking-wide">
+                        {{ schedule.vehicle.license_plate }}
+                      </span>
                     </div>
+                  </div>
+                </div>
+
+                <!-- Driver info -->
+                <div v-if="schedule.vehicle.driver_name" class="mt-4 pt-4 border-t border-gray-50 flex items-center gap-3">
+                  <div class="shrink-0">
+                    <img v-if="schedule.vehicle.driver_photo" :src="schedule.vehicle.driver_photo"
+                      class="w-10 h-10 rounded-2xl object-cover border-2 border-gray-100" />
+                    <div v-else class="w-10 h-10 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center">
+                      <span class="material-symbols-rounded text-[18px] text-gray-400">person</span>
+                    </div>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">พนักงานขับรถ</p>
+                    <p class="text-sm font-black text-gray-900 truncate mt-0.5">{{ schedule.vehicle.driver_name }}</p>
+                    <p v-if="schedule.vehicle.driver_phone" class="text-xs font-bold text-teal-600 mt-0.5 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[13px]">call</span>
+                      {{ schedule.vehicle.driver_phone }}
+                    </p>
                   </div>
                 </div>
               </div>

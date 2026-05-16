@@ -1,95 +1,100 @@
 <template>
-  <div v-if="!seatMap || !seatMap.has_seat_map" class="text-center py-10 text-[#6e7979]">
-    <span class="material-symbols-rounded text-5xl text-[#bdc9c8] mb-3 block" style="font-variation-settings:'FILL' 0,'wght' 300">airline_seat_recline_normal</span>
-    <p class="font-medium">ทริปนี้ไม่มีผังที่นั่ง</p>
-    <p class="text-sm mt-1">ที่นั่งว่าง: {{ seatMap?.available_seats ?? 0 }} / {{ seatMap?.total_seats ?? 0 }}</p>
+  <div v-if="!seatMap || !seatMap.has_seat_map" class="text-center py-12">
+    <span class="material-symbols-rounded text-5xl text-gray-200 mb-3 block" style="font-variation-settings:'FILL' 0,'wght' 200">airline_seat_recline_normal</span>
+    <p class="font-bold text-gray-400">ทริปนี้ไม่มีผังที่นั่ง</p>
+    <p class="text-sm text-gray-400 mt-1">ที่นั่งว่าง: {{ seatMap?.available_seats ?? 0 }} / {{ seatMap?.total_seats ?? 0 }}</p>
   </div>
 
-  <div v-else class="space-y-6">
+  <div v-else class="space-y-5">
     <!-- Legend -->
-    <div class="flex flex-wrap gap-4 px-4 py-3 bg-[#f3f3f3] rounded-2xl text-xs font-bold text-[#3e4949]">
-      <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-lg bg-[#e2e2e2]"></div>
-        ว่าง
+    <div class="flex flex-wrap gap-x-5 gap-y-2 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
+      <div class="flex items-center gap-1.5">
+        <div class="w-5 h-5 rounded-lg bg-white border-2 border-gray-200 shadow-sm"></div>
+        <span class="text-[11px] font-bold text-gray-500">ว่าง</span>
       </div>
-      <div v-if="!readonly" class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-lg transition-colors duration-300" :class="isWomenOnly ? 'bg-[#db2777]' : 'bg-[#006565]'"></div>
-        กำลังเลือก
+      <div v-if="!readonly" class="flex items-center gap-1.5">
+        <div class="w-5 h-5 rounded-lg border-2 shadow-sm" :class="isWomenOnly ? 'bg-[#db2777] border-[#db2777]' : 'bg-[#006565] border-[#006565]'"></div>
+        <span class="text-[11px] font-bold text-gray-500">กำลังเลือก</span>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-lg bg-[#bdc9c8] opacity-60"></div>
-        ล็อคอยู่
+      <div class="flex items-center gap-1.5">
+        <div class="w-5 h-5 rounded-lg bg-amber-50 border-2 border-amber-300"></div>
+        <span class="text-[11px] font-bold text-gray-500">ล็อคชั่วคราว</span>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="w-5 h-5 rounded-lg bg-[#6e7979]"></div>
-        จองแล้ว
+      <div class="flex items-center gap-1.5">
+        <div class="w-5 h-5 rounded-lg bg-red-100 border-2 border-red-300"></div>
+        <span class="text-[11px] font-bold text-gray-500">จองแล้ว</span>
       </div>
     </div>
 
-    <!-- Vehicle layout container -->
-    <div class="relative bg-white rounded-3xl p-6 md:p-10 shadow-xl border border-[#bdc9c8]/20 overflow-hidden">
-      <div class="absolute -top-20 -right-20 w-56 h-56 bg-opacity-10 rounded-full blur-3xl pointer-events-none" :class="isWomenOnly ? 'bg-[#db2777]/5' : 'bg-[#006565]/5'"></div>
-      <div class="absolute -bottom-20 -left-20 w-56 h-56 bg-[#9e380d]/5 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- Vehicle layout -->
+    <div class="relative bg-white rounded-3xl py-7 px-5 md:px-8 border border-gray-100 overflow-hidden shadow-sm">
+      <!-- Subtle ambient glows -->
+      <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-3xl pointer-events-none opacity-50"
+        :class="isWomenOnly ? 'bg-pink-100' : 'bg-teal-50'"></div>
+      <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div class="relative max-w-sm mx-auto">
+      <div class="relative max-w-xs mx-auto">
 
-        <!-- Front section: Front passenger seat + Driver -->
-        <div class="flex items-end justify-between mb-8 pb-6 border-b-2 border-dashed border-[#bdc9c8]/50">
-          <!-- Front passenger seat (from config) -->
+        <!-- Front: passenger + front label + driver -->
+        <div class="flex items-end justify-between mb-7 pb-6 border-b-2 border-dashed border-gray-100">
+          <!-- Front passenger seat -->
           <button
             v-if="frontPassengerSeat"
             :disabled="readonly || frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked'"
             @click="handleSeatClick(frontPassengerSeat)"
-            class="group flex flex-col items-center transition-all duration-200 shrink-0"
+            class="group flex flex-col items-center gap-1 transition-all duration-200 shrink-0"
             :class="readonly ? 'cursor-default' : frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-            :title="readonly ? '' : frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : ''"
+            :title="readonly ? '' : frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : 'คลิกเพื่อเลือก'"
           >
-            <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2"
               :class="seatBgClass(frontPassengerSeat)">
-              <span class="material-symbols-rounded text-xl transition-all duration-200"
+              <span class="material-symbols-rounded text-[20px] transition-all duration-200"
                 :class="seatIconClass(frontPassengerSeat)"
                 style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_normal</span>
             </div>
-            <span class="text-[10px] mt-1 font-bold transition-colors" :class="seatLabelClass(frontPassengerSeat)">
+            <span class="text-[10px] font-extrabold leading-none transition-colors" :class="seatLabelClass(frontPassengerSeat)">
               {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
             </span>
-            <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium">จองแล้ว</span>
+            <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-red-400 font-bold -mt-0.5">จองแล้ว</span>
+            <span v-else-if="frontPassengerSeat.status === 'locked'" class="text-[9px] text-amber-500 font-bold -mt-0.5">ล็อค</span>
           </button>
-          <div v-else class="w-12 md:w-14 shrink-0"></div>
+          <div v-else class="w-12 shrink-0"></div>
 
           <!-- Front label -->
           <div class="flex-1 flex justify-center">
-            <span class="px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase transition-colors duration-300"
-              :class="isWomenOnly ? 'bg-[#db2777]/10 text-[#db2777]' : 'bg-[#006565]/10 text-[#006565]'">{{ layoutConfig.front_label }}</span>
+            <span class="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase transition-colors duration-300"
+              :class="isWomenOnly ? 'bg-pink-50 text-[#db2777] border border-pink-100' : 'bg-teal-50 text-[#006565] border border-teal-100'">
+              {{ layoutConfig.front_label }}
+            </span>
           </div>
 
           <!-- Driver -->
-          <div v-if="layoutConfig.show_driver" class="flex flex-col items-center opacity-50 shrink-0">
-            <div class="w-12 h-12 rounded-xl bg-[#e8e8e8] flex items-center justify-center">
-              <span class="material-symbols-rounded text-2xl text-[#3e4949]" style="font-variation-settings:'FILL' 0,'wght' 400">{{ layoutConfig.driver_icon }}</span>
+          <div v-if="layoutConfig.show_driver" class="flex flex-col items-center gap-1 opacity-40 shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+              <span class="material-symbols-rounded text-xl text-gray-500" style="font-variation-settings:'FILL' 0,'wght' 300">{{ layoutConfig.driver_icon }}</span>
             </div>
-            <span class="text-xs mt-1.5 font-medium text-[#6e7979]">คนขับ</span>
+            <span class="text-[10px] font-bold text-gray-400">คนขับ</span>
           </div>
           <div v-else class="w-12 shrink-0"></div>
         </div>
 
         <!-- Seat rows -->
-        <div class="space-y-4">
+        <div class="space-y-3.5">
           <div
             v-for="(rowDef, rowIdx) in bodyRows"
             :key="rowIdx"
-            class="flex items-center justify-center gap-1 pl-18"
+            class="flex items-center justify-center gap-1"
           >
             <!-- Left group -->
-            <div class="flex gap-2">
+            <div class="flex gap-2.5">
               <template v-for="seatId in rowDef.left" :key="seatId">
                 <SeatButton :seat="getSeat(seatId)" :seat-id="seatId" :is-women-only="isWomenOnly"
                   @click="handleSeatClick(getSeat(seatId))" />
               </template>
             </div>
 
-            <!-- Center group (from config last_row_center) -->
-            <div v-if="rowDef.center && rowDef.center.length > 0" class="flex gap-3 ml-2">
+            <!-- Center group -->
+            <div v-if="rowDef.center && rowDef.center.length > 0" class="flex gap-2.5 ml-2">
               <template v-for="seatId in rowDef.center" :key="seatId">
                 <SeatButton :seat="getSeat(seatId)" :seat-id="seatId" :is-women-only="isWomenOnly"
                   @click="handleSeatClick(getSeat(seatId))" />
@@ -97,13 +102,13 @@
             </div>
 
             <!-- Aisle -->
-            <div v-if="rowDef.hasAisle" class="w-12 flex items-center justify-center px-1">
-              <div class="w-0.5 h-12 bg-[#bdc9c8]/30 rounded-full mx-auto"></div>
+            <div v-if="rowDef.hasAisle" class="w-10 flex items-center justify-center">
+              <div class="w-px h-10 bg-gray-100 rounded-full"></div>
             </div>
-            <div v-else class="w-12"></div>
+            <div v-else class="w-10"></div>
 
             <!-- Right group -->
-            <div class="flex gap-2">
+            <div class="flex gap-2.5">
               <template v-for="seatId in rowDef.right" :key="seatId">
                 <SeatButton :seat="getSeat(seatId)" :seat-id="seatId" :is-women-only="isWomenOnly"
                   @click="handleSeatClick(getSeat(seatId))" />
@@ -113,15 +118,32 @@
         </div>
 
         <!-- Rear label -->
-        <div class="mt-8 pt-5 border-t-2 border-dashed border-[#bdc9c8]/50 flex justify-center">
-          <span class="px-3 py-1 rounded-full bg-[#f3f3f3] text-[#6e7979] text-xs font-bold tracking-widest uppercase">{{ layoutConfig.rear_label }}</span>
+        <div class="mt-7 pt-5 border-t-2 border-dashed border-gray-100 flex justify-center">
+          <span class="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-gray-400 text-[10px] font-black tracking-widest uppercase">
+            {{ layoutConfig.rear_label }}
+          </span>
         </div>
       </div>
     </div>
 
-    <!-- Seat availability info -->
-    <div class="text-center text-sm text-[#6e7979]">
-      ที่นั่งว่าง: <span class="font-bold transition-colors duration-300" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'">{{ seatMap.available_seats }}</span> / {{ seatMap.total_seats }}
+    <!-- Availability summary -->
+    <div v-if="!readonly" class="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full"
+          :class="seatMap.available_seats === 0 ? 'bg-red-400' : seatMap.available_seats <= 3 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400 animate-pulse'"></div>
+        <span class="text-xs font-bold text-gray-500">
+          ว่าง <span class="text-gray-800"
+            :class="seatMap.available_seats === 0 ? 'text-red-500' : seatMap.available_seats <= 3 ? 'text-amber-600' : 'text-emerald-600'">
+            {{ seatMap.available_seats }}
+          </span> / {{ seatMap.total_seats }} ที่นั่ง
+        </span>
+      </div>
+      <span v-if="seatMap.available_seats === 0" class="text-[11px] font-black text-red-500">เต็มแล้ว</span>
+      <span v-else-if="seatMap.available_seats <= 3" class="text-[11px] font-black text-amber-600 animate-pulse">ใกล้เต็ม!</span>
+      <span v-else class="text-[11px] font-bold text-gray-400">เลือกที่นั่งได้เลย</span>
+    </div>
+    <div v-else class="text-center text-sm text-gray-400">
+      ว่าง <span class="font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'">{{ seatMap.available_seats }}</span> / {{ seatMap.total_seats }} ที่นั่ง
     </div>
   </div>
 </template>
@@ -141,14 +163,14 @@ const props = defineProps({
 
 const emit = defineEmits(['seat-click']);
 
-// ─── Layout config from seat_layout (all admin-configurable) ──────
+// ─── Layout config ────────────────────────────────────────────────
 const layoutConfig = computed(() => {
   const sm = props.seatMap;
   return {
     front_seat: sm?.front_seat ?? null,
     last_row_center: sm?.last_row_center ?? [],
     front_label: sm?.front_label || 'หน้ารถ',
-    rear_label: sm?.rear_label || 'ท้ายรถ (สำหรับเก็บสัมภาระ)',
+    rear_label: sm?.rear_label || 'ท้ายรถ (เก็บสัมภาระ)',
     driver_icon: sm?.driver_icon || 'directions_car',
     show_driver: sm?.show_driver !== false,
   };
@@ -156,91 +178,77 @@ const layoutConfig = computed(() => {
 
 // ─── Seat style helpers ───────────────────────────────────────────
 function seatBgClass(seat) {
-  if (!seat) return 'bg-[#e2e2e2]';
-  if (seat.status === 'booked') return 'bg-[#6e7979]';
+  if (!seat) return 'bg-gray-50 border-gray-200';
+  if (seat.status === 'booked') return 'bg-red-100 border-red-300';
   if (isSelected(seat)) {
-    return (props.isWomenOnly ? 'bg-[#db2777] shadow-[#db2777]/25' : 'bg-[#006565] shadow-[#006565]/25') + ' shadow-lg scale-105';
+    return props.isWomenOnly
+      ? 'bg-[#db2777] border-[#db2777] shadow-lg shadow-pink-200 scale-105'
+      : 'bg-[#006565] border-[#006565] shadow-lg shadow-teal-200 scale-105';
   }
-  if (seat.status === 'locked') return 'bg-[#bdc9c8] opacity-60';
-  if (props.readonly) return 'bg-[#e2e2e2]';
-  return 'bg-[#e2e2e2] ' + (props.isWomenOnly ? 'group-hover:bg-[#db2777]/10' : 'group-hover:bg-[#006565]/10') + ' group-hover:scale-105';
+  if (seat.status === 'locked') return 'bg-amber-50 border-amber-300';
+  if (props.readonly) return 'bg-white border-gray-200';
+  return props.isWomenOnly
+    ? 'bg-white border-gray-200 group-hover:border-[#db2777]/50 group-hover:bg-pink-50 group-hover:scale-105'
+    : 'bg-white border-gray-200 group-hover:border-[#006565]/50 group-hover:bg-teal-50 group-hover:scale-105';
 }
 
 function seatIconClass(seat) {
-  if (!seat) return 'text-[#6e7979]';
-  if (seat.status === 'booked') return 'text-white';
+  if (!seat) return 'text-gray-300';
+  if (seat.status === 'booked') return 'text-red-400';
   if (isSelected(seat)) return 'text-white';
-  if (seat.status === 'locked') return 'text-[#6e7979]';
-  if (props.readonly) return 'text-[#6e7979]';
-  return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
+  if (seat.status === 'locked') return 'text-amber-400';
+  if (props.readonly) return 'text-gray-300';
+  return props.isWomenOnly
+    ? 'text-gray-300 group-hover:text-[#db2777]'
+    : 'text-gray-300 group-hover:text-[#006565]';
 }
 
 function seatLabelClass(seat) {
-  if (!seat) return 'text-[#6e7979]';
-  if (seat.status === 'booked') return 'text-[#6e7979] opacity-40';
-  if (isSelected(seat)) return (props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]');
-  if (seat.status === 'locked') return 'text-[#6e7979] opacity-40';
-  if (props.readonly) return 'text-[#6e7979]';
-  return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
+  if (!seat) return 'text-gray-400';
+  if (seat.status === 'booked') return 'text-red-400';
+  if (isSelected(seat)) return props.isWomenOnly ? 'text-[#db2777] font-black' : 'text-[#006565] font-black';
+  if (seat.status === 'locked') return 'text-amber-500';
+  if (props.readonly) return 'text-gray-400';
+  return props.isWomenOnly
+    ? 'text-gray-400 group-hover:text-[#db2777]'
+    : 'text-gray-400 group-hover:text-[#006565]';
 }
 
-// ─── Front passenger seat (data-driven from config) ───────────────
+// ─── Front passenger seat ─────────────────────────────────────────
 const frontPassengerSeat = computed(() => {
   const frontId = layoutConfig.value.front_seat;
   if (!frontId || !props.seatMap?.seats) return null;
   return props.seatMap.seats.find(s => s.id === frontId) ?? null;
 });
 
-// ─── Build seat rows from layout data (fully dynamic) ─────────────
+// ─── Build rows ───────────────────────────────────────────────────
 const centerSeatIds = computed(() => new Set(layoutConfig.value.last_row_center || []));
 
 const allRows = computed(() => {
   if (!props.seatMap?.seats) return [];
-
   const rows = props.seatMap.rows ?? 0;
   const columns = props.seatMap.columns ?? [];
   const result = [];
-
   for (let r = 1; r <= rows; r++) {
-    const left = [];
-    const right = [];
-    const center = [];
-    let hasAisle = false;
-    let inRight = false;
-
+    const left = [], right = [], center = [];
+    let hasAisle = false, inRight = false;
     for (const col of columns) {
-      if (col === '') {
-        hasAisle = true;
-        inRight = true;
-        continue;
-      }
+      if (col === '') { hasAisle = true; inRight = true; continue; }
       const seatId = col + r;
-      const exists = props.seatMap.seats.some(s => s.id === seatId);
-      if (!exists) continue;
-
-      if (centerSeatIds.value.has(seatId)) {
-        center.push(seatId);
-      } else if (inRight) {
-        right.push(seatId);
-      } else {
-        left.push(seatId);
-      }
+      if (!props.seatMap.seats.some(s => s.id === seatId)) continue;
+      if (centerSeatIds.value.has(seatId)) center.push(seatId);
+      else if (inRight) right.push(seatId);
+      else left.push(seatId);
     }
-
     result.push({ left, right, center, hasAisle: hasAisle && right.length > 0 });
   }
-
   return result;
 });
 
-// Body rows = all rows minus the front passenger seat row (if configured)
 const bodyRows = computed(() => {
   const frontId = layoutConfig.value.front_seat;
   if (!frontId) return allRows.value;
-  return allRows.value.filter(row => {
-    const allIds = [...row.left, ...row.right, ...row.center];
-    return !allIds.includes(frontId);
-  });
+  return allRows.value.filter(row => ![...row.left, ...row.right, ...row.center].includes(frontId));
 });
 
 function getSeat(id) {
@@ -259,39 +267,43 @@ function handleSeatClick(seat) {
   emit('seat-click', seat);
 }
 
-// ─── Inline SeatButton component ──────────────────────────────────
+// ─── Inline SeatButton ────────────────────────────────────────────
 const SeatButton = (btnProps, { emit: btnEmit }) => {
   const seat = btnProps.seat;
   const seatId = btnProps.seatId;
   const disabled = props.readonly || seat?.status === 'booked' || seat?.status === 'locked';
+
+  const statusText = () => {
+    if (seat?.status === 'booked') return h('span', { class: 'text-[9px] text-red-400 font-bold leading-none' }, 'จองแล้ว');
+    if (seat?.status === 'locked') return h('span', { class: 'text-[9px] text-amber-500 font-bold leading-none' }, 'ล็อค');
+    return null;
+  };
 
   return h('div', { class: 'relative group' }, [
     h('button', {
       disabled,
       onClick: () => { if (!disabled) btnEmit('click'); },
       class: [
-        'group flex flex-col items-center transition-all duration-200',
+        'group flex flex-col items-center gap-1 transition-all duration-200',
         props.readonly ? 'cursor-default' : disabled ? 'cursor-not-allowed' : 'cursor-pointer',
       ],
-      title: props.readonly ? '' : seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : '',
+      title: props.readonly ? '' : seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : 'คลิกเพื่อเลือก',
     }, [
       h('div', {
-        class: ['w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200', seatBgClass(seat)],
+        class: ['w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2', seatBgClass(seat)],
       }, [
         h('span', {
-          class: ['material-symbols-rounded text-xl transition-all duration-200', seatIconClass(seat)],
+          class: ['material-symbols-rounded text-[20px] transition-all duration-200', seatIconClass(seat)],
           style: "font-variation-settings:'FILL' 1,'wght' 400",
         }, 'airline_seat_recline_normal'),
       ]),
       h('span', {
-        class: ['text-[10px] mt-1 font-bold transition-colors', seatLabelClass(seat)],
+        class: ['text-[10px] font-extrabold leading-none transition-colors', seatLabelClass(seat)],
       }, seat?.label ?? seatId),
-      seat?.status === 'booked'
-        ? h('span', { class: 'text-[9px] text-gray-400 truncate w-14 text-center -mt-0.5 font-medium' }, 'จองแล้ว')
-        : null,
+      statusText(),
     ]),
     (props.showNames && seat?.passenger_name) ? h('div', {
-      class: 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg'
+      class: 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl font-bold'
     }, seat.passenger_name) : null
   ]);
 };
