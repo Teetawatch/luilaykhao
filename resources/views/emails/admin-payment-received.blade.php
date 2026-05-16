@@ -1,61 +1,191 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ได้รับชำระเงิน</title>
-  <style>
-    body { margin: 0; padding: 0; background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; color: #374151; }
-    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-    .header { background: linear-gradient(135deg, #b45309, #f59e0b); padding: 36px 32px; text-align: center; }
-    .header h1 { margin: 0 0 6px 0; color: #fff; font-size: 24px; font-weight: 800; }
-    .header p { margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; }
-    .badge { display: inline-block; background: rgba(255,255,255,0.2); color: #fff; font-size: 18px; font-weight: 800; padding: 8px 20px; border-radius: 30px; margin-top: 14px; border: 1px solid rgba(255,255,255,0.35); }
-    .body { padding: 32px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-    .info-item { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; }
-    .info-label { font-size: 11px; color: #9ca3af; margin-bottom: 2px; }
-    .info-value { font-size: 14px; font-weight: 700; color: #111827; }
-    .info-value.accent { color: #b45309; font-size: 16px; }
-    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px 32px; text-align: center; font-size: 12px; color: #9ca3af; }
-    @media (max-width: 480px) { .body { padding: 20px; } .info-grid { grid-template-columns: 1fr; } }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>💰 ได้รับชำระเงิน</h1>
-      <p>{{ $paymentType === 'installment' ? 'การผ่อนชำระ' : 'ชำระเต็มจำนวน' }}</p>
-      <div class="badge">{{ $booking->booking_ref }}</div>
+@php
+  $paymentLabels = [
+    'installment' => ['label' => 'ผ่อนชำระ', 'icon' => '📊', 'color' => '#2563eb'],
+    'deposit'     => ['label' => 'มัดจำ',    'icon' => '🔒', 'color' => '#0d9488'],
+    'balance'     => ['label' => 'ส่วนที่เหลือ', 'icon' => '✅', 'color' => '#059669'],
+    'full'        => ['label' => 'เต็มจำนวน', 'icon' => '💯', 'color' => '#059669'],
+  ];
+  $pt = $paymentLabels[$paymentType] ?? $paymentLabels['full'];
+
+  if ($paymentType === 'deposit') {
+    $paidAmount = $booking->deposit_amount;
+  } elseif ($paymentType === 'balance') {
+    $paidAmount = $booking->balance_amount;
+  } else {
+    $paidAmount = $booking->paid_amount;
+  }
+@endphp
+
+<x-emails.partials.base subject="[Admin] ได้รับชำระเงิน ({{ $pt['label'] }}) — {{ $booking->booking_ref }}">
+
+  {{-- Accent bar --}}
+  <div class="accent-bar" style="background: linear-gradient(90deg, #b45309, #d97706, #f59e0b);"></div>
+
+  {{-- Header --}}
+  <div class="email-header" style="background: linear-gradient(160deg, #92400e 0%, #b45309 50%, #d97706 100%);">
+    <div class="logo-mark">
+      <div class="logo-icon" style="background: rgba(255,255,255,0.2);">🌿</div>
+      <span class="logo-text" style="color:#ffffff;">Luilaykhao Admin</span>
     </div>
-    <div class="body">
-      <p style="margin:0 0 20px 0;font-size:15px;">ได้รับชำระเงินจาก <strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong></p>
-      <div class="info-grid">
-        <div class="info-item" style="grid-column: 1 / -1;"><div class="info-label">กิจกรรม / ทริป</div><div class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</div></div>
-        <div class="info-item"><div class="info-label">ยอดชำระ</div><div class="info-value accent">฿{{ number_format($booking->paid_amount, 0) }}</div></div>
-        <div class="info-item"><div class="info-label">ยอดรวม</div><div class="info-value">฿{{ number_format($booking->total_amount, 0) }}</div></div>
-        <div class="info-item"><div class="info-label">วิธีชำระ</div><div class="info-value">{{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'Mobile Banking' : $booking->payment_method) }}</div></div>
-        <div class="info-item">
-          <div class="info-label">ประเภท</div>
-          <div class="info-value">
-            {{ $paymentType === 'installment' ? 'ผ่อนชำระ' : 'เต็มจำนวน' }}
-            @if($paymentType === 'installment')
-              @php
-                $paidCount = $booking->installmentPayments->where('status', 'paid')->count();
-                $remainingCount = max(0, $booking->installment_count - $paidCount);
-              @endphp
-              <div style="font-size:11px; color:#d97706; margin-top:2px;">
-                เหลือ {{ $remainingCount }} / {{ $booking->installment_count }} งวด
-              </div>
-            @endif
-          </div>
-        </div>
-        <div class="info-item"><div class="info-label">ลูกค้า</div><div class="info-value">{{ $booking->user->email ?? '-' }}</div></div>
-        <div class="info-item"><div class="info-label">โทรศัพท์</div><div class="info-value">{{ $booking->user->phone ?? '-' }}</div></div>
-      </div>
-      <p style="font-size:13px;color:#6b7280;text-align:center;">เข้าสู่ระบบ Admin เพื่อตรวจสอบ</p>
+    <div class="header-icon-wrap" style="background: rgba(255,255,255,0.2);">💰</div>
+    <h1 class="header-title" style="color:#ffffff;">ได้รับชำระเงิน</h1>
+    <p class="header-subtitle" style="color:rgba(255,255,255,0.9);">{{ $pt['icon'] }} {{ $pt['label'] }} — {{ $booking->user->name ?? 'ลูกค้า' }}</p>
+    <div class="ref-badge" style="background: rgba(255,255,255,0.2); color:#ffffff; border:1px solid rgba(255,255,255,0.4);">
+      {{ $booking->booking_ref }}
     </div>
-    <div class="footer"><p style="margin:0 0 4px 0;"><strong style="color:#374151;">Luilaykhao Admin</strong></p><p style="margin:0;">แจ้งเตือนอัตโนมัติจากระบบ</p></div>
   </div>
-</body>
-</html>
+
+  <div class="divider"></div>
+
+  {{-- Body --}}
+  <div class="email-body">
+    <p class="greeting">
+      ได้รับชำระเงินจาก <strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong>
+      ({{ $booking->user->email ?? '-' }})
+      @if($booking->user->phone) · โทร {{ $booking->user->phone }} @endif
+    </p>
+
+    {{-- Amount highlight --}}
+    <div class="highlight-box" style="background:#fffbeb; border:2px solid #fcd34d;">
+      <div class="amount-label" style="color:#92400e;">{{ $pt['icon'] }} ยอดที่ได้รับ ({{ $pt['label'] }})</div>
+      <div class="amount" style="color:#b45309;">฿{{ number_format($paidAmount, 0) }}</div>
+      <div class="amount-note" style="color:#92400e;">
+        {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'Mobile Banking' : ($booking->payment_method ?? '-')) }}
+        · {{ now()->format('d/m/Y H:i') }} น.
+      </div>
+    </div>
+
+    <p class="section-label">รายละเอียดการจอง</p>
+    <div class="info-card">
+      <div class="info-card-header">
+        <div class="info-card-icon" style="background:#fef3c7;">🏔️</div>
+        <span class="info-card-title">ข้อมูลทริป</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ทริป / กิจกรรม</span>
+        <span class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">วันเดินทาง</span>
+        <span class="info-value">{{ $booking->schedule->departure_date?->format('d/m/Y') ?? '-' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">จำนวนผู้เดินทาง</span>
+        <span class="info-value">{{ $booking->passengers->count() }} ท่าน</span>
+      </div>
+      @if($booking->pickup_region)
+      <div class="info-row">
+        <span class="info-label">จุดรับ</span>
+        <span class="info-value">{{ $booking->pickup_region }}</span>
+      </div>
+      @endif
+    </div>
+
+    <p class="section-label">สรุปการเงิน</p>
+    <div class="info-card">
+      <div class="info-card-header">
+        <div class="info-card-icon" style="background:#fef3c7;">💳</div>
+        <span class="info-card-title">ข้อมูลการชำระเงิน</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ยอดที่ได้รับครั้งนี้</span>
+        <span class="info-value" style="color:#b45309; font-size:18px;">฿{{ number_format($paidAmount, 0) }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ประเภทการชำระ</span>
+        <span class="info-value">{{ $pt['icon'] }} {{ $pt['label'] }}</span>
+      </div>
+      @if($paymentType === 'installment')
+      @php
+        $paidCount = $booking->installmentPayments->where('status', 'paid')->count();
+        $remainingCount = max(0, $booking->installment_count - $paidCount);
+      @endphp
+      <div class="info-row">
+        <span class="info-label">ชำระแล้ว / ทั้งหมด</span>
+        <span class="info-value">{{ $paidCount }} / {{ $booking->installment_count }} งวด
+          @if($remainingCount > 0) <span style="color:#d97706; font-size:12px;">(เหลือ {{ $remainingCount }} งวด)</span> @endif
+        </span>
+      </div>
+      @endif
+      <div class="info-row">
+        <span class="info-label">วิธีชำระ</span>
+        <span class="info-value">
+          {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'Mobile Banking' : ($booking->payment_method ?? '-')) }}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ชำระแล้วรวม</span>
+        <span class="info-value accent-teal">฿{{ number_format($booking->paid_amount, 0) }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ยอดรวมทั้งหมด</span>
+        <span class="info-value">฿{{ number_format($booking->total_amount, 0) }}</span>
+      </div>
+      @php $remaining = $booking->total_amount - $booking->paid_amount; @endphp
+      @if($remaining > 0)
+      <div class="info-row">
+        <span class="info-label">ยังค้างชำระ</span>
+        <span class="info-value accent-amber">฿{{ number_format($remaining, 0) }}</span>
+      </div>
+      @else
+      <div class="info-row">
+        <span class="info-label">สถานะการชำระ</span>
+        <span class="info-value accent-teal">✓ ครบถ้วนสมบูรณ์</span>
+      </div>
+      @endif
+    </div>
+
+    @if($paymentType === 'installment' && $booking->installmentPayments->count() > 0)
+    <p class="section-label">ตารางผ่อนชำระ</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>งวดที่</th>
+            <th>จำนวนเงิน</th>
+            <th>กำหนดชำระ</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($booking->installmentPayments as $inst)
+          <tr>
+            <td>{{ $inst->installment_no }}</td>
+            <td>฿{{ number_format($inst->amount, 0) }}</td>
+            <td>{{ $inst->due_date ? \Carbon\Carbon::parse($inst->due_date)->format('d/m/Y') : '-' }}</td>
+            <td>
+              @if($inst->status === 'paid')
+                <span class="badge-paid">ชำระแล้ว</span>
+              @elseif($inst->status === 'overdue')
+                <span class="badge-overdue">เลยกำหนด</span>
+              @else
+                <span class="badge-pending">รอชำระ</span>
+              @endif
+            </td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+    @endif
+
+    <div class="cta-wrap">
+      <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
+         class="cta-btn" style="background: linear-gradient(135deg, #b45309, #d97706); color:#ffffff;">
+        ดูรายละเอียดใน Admin →
+      </a>
+    </div>
+  </div>
+
+  {{-- Footer --}}
+  <div class="email-footer">
+    <div class="footer-logo">Luilaykhao Admin</div>
+    <div class="footer-tagline">แจ้งเตือนอัตโนมัติจากระบบ</div>
+    <div class="footer-divider"></div>
+    <div class="footer-disclaimer">
+      อีเมลนี้ถูกส่งอัตโนมัติเฉพาะ Admin เท่านั้น<br />
+      © {{ date('Y') }} Luilaykhao · ระบบจัดการภายใน
+    </div>
+  </div>
+
+</x-emails.partials.base>

@@ -840,6 +840,80 @@ class AdminController extends Controller
         return $this->success(new BookingResource($booking->fresh()), 'อัปเดตสถานะสำเร็จ');
     }
 
+    /**
+     * GET /admin/bookings/{ref}/refund-preview
+     * คำนวณยอดคืนเงินตาม policy โดยไม่บันทึกจริง
+     */
+    public function refundPreview(string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)
+            ->with('schedule', 'passengers')
+            ->firstOrFail();
+
+        if (!in_array($booking->status, ['confirmed', 'cancelled'])) {
+            return $this->error('สามารถดูตัวอย่างการคืนเงินได้เฉพาะการจองที่ยืนยันแล้วหรือยกเลิกแล้ว', 422);
+        }
+
+        $preview = $this->bookingService->calculateRefundAmount($booking);
+
+        return $this->success([
+            'booking_ref'    => $booking->booking_ref,
+            'payment_type'   => $booking->payment_type ?? 'full',
+            'paid_amount'    => (float) $booking->paid_amount,
+            'refund_percent' => $preview['refund_percent'],
+            'refund_amount'  => $preview['refund_amount'],
+            'policy_note'    => $preview['policy_note'],
+        ]);
+    }
+
+    /**
+     * POST /admin/bookings/{ref}/refund
+     * Admin บันทึกการคืนเงิน — ยืนยันยอดและเหตุผล
+     */
+    public function processRefund(Request $request, string $ref): JsonResponse
+    {
+        $request->validate([
+            'refund_amount' => ['required', 'numeric', 'min:0'],
+            'note'          => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $ref)
+            ->with('schedule', 'passengers')
+            ->firstOrFail();
+
+        if ($booking->status === 'refunded') {
+            return $this->error('การจองนี้ถูกคืนเงินไปแล้ว', 422);
+        }
+
+        if (!in_array($booking->status, ['confirmed', 'cancelled'])) {
+            return $this->error('ไม่สามารถคืนเงินการจองที่มีสถานะนี้ได้', 422);
+        }
+
+        $refundAmount = (float) $request->refund_amount;
+        if ($refundAmount > (float) $booking->paid_amount) {
+            return $this->error('ยอดคืนเงินต้องไม่เกิน ฿' . number_format($booking->paid_amount, 2), 422);
+        }
+
+        $booking = $this->bookingService->processRefund($booking, $refundAmount, $request->note);
+
+        $this->mailService->sendBookingStatusChangedEmail($booking, 'refunded');
+
+        SmartNotification::send(
+            $booking->user_id,
+            'booking_refunded',
+            'ดำเนินการคืนเงินแล้ว',
+            "เลขการจอง {$booking->booking_ref} ได้รับการคืนเงิน ฿" . number_format($refundAmount, 0) . " แล้ว",
+            ['booking_ref' => $booking->booking_ref, 'refund_amount' => $refundAmount, 'route' => 'booking'],
+        );
+
+        return $this->success([
+            'booking_ref'   => $booking->booking_ref,
+            'status'        => $booking->status,
+            'refund_amount' => (float) $booking->refund_amount,
+            'refunded_at'   => $booking->refunded_at?->toISOString(),
+        ], 'คืนเงิน ฿' . number_format($refundAmount, 0) . ' สำเร็จ');
+    }
+
     public function updateBooking(Request $request, string $ref): JsonResponse
     {
         $data = $request->validate([

@@ -912,11 +912,12 @@ const depositAmount = computed(() => {
   if (!booking.value?.schedule) return 0;
   const schedule = booking.value.schedule;
   const total = parseFloat(booking.value.total_amount);
+  const passengerCount = Math.max(1, booking.value.passengers?.length || 1);
   if (schedule.deposit_type === 'percent' && schedule.deposit_percent) {
     return Math.round(total * (schedule.deposit_percent / 100));
   }
   if (schedule.deposit_type === 'amount' && schedule.deposit_amount) {
-    return Math.min(Math.round(parseFloat(schedule.deposit_amount)), total);
+    return Math.min(Math.round(parseFloat(schedule.deposit_amount) * passengerCount), total);
   }
   return 0;
 });

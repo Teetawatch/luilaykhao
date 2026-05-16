@@ -49,9 +49,10 @@ class TripSchedule extends Model
 
     /**
      * Resolve the deposit amount for a given booking total.
+     * For 'amount' type, the configured value is per-person and is multiplied by passengerCount.
      * Returns null when deposit is not enabled or amount cannot be determined.
      */
-    public function resolveDepositAmount(float $totalAmount): ?float
+    public function resolveDepositAmount(float $totalAmount, int $passengerCount = 1): ?float
     {
         if (!$this->deposit_enabled) {
             return null;
@@ -60,7 +61,7 @@ class TripSchedule extends Model
         if ($this->deposit_type === 'percent' && $this->deposit_percent) {
             $deposit = round($totalAmount * ((int) $this->deposit_percent) / 100, 2);
         } elseif ($this->deposit_type === 'amount' && $this->deposit_amount) {
-            $deposit = round((float) $this->deposit_amount, 2);
+            $deposit = round((float) $this->deposit_amount * max(1, $passengerCount), 2);
         } else {
             return null;
         }

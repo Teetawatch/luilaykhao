@@ -10,6 +10,7 @@ use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCreatedMail;
 use App\Mail\BookingStatusChangedMail;
 use App\Mail\DepositPaidMail;
+use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
 use App\Mail\PaymentConfirmedMail;
 use App\Mail\WelcomeRegistrationMail;
@@ -198,7 +199,7 @@ class MailService
      */
     public function sendDepositPaidEmail(Booking $booking): void
     {
-        $booking->load(['user', 'schedule.trip', 'passengers']);
+        $booking->load(['user', 'schedule.trip', 'passengers', 'seats']);
 
         try {
             $this->sendToCustomerEmails($booking, fn () => new DepositPaidMail($booking));
@@ -218,6 +219,25 @@ class MailService
             Log::error('Failed to send admin deposit received email', [
                 'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send installment due reminder email (due_soon | due_today | overdue).
+     */
+    public function sendInstallmentDueReminderEmail(Booking $booking, InstallmentPayment $installment, string $reminderType): void
+    {
+        $booking->loadMissing(['user', 'schedule.trip', 'passengers']);
+
+        try {
+            $this->sendToCustomerEmails($booking, fn () => new InstallmentDueReminderMail($booking, $installment, $reminderType));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send installment due reminder email', [
+                'booking_ref'    => $booking->booking_ref,
+                'installment_no' => $installment->installment_no,
+                'reminder_type'  => $reminderType,
+                'error'          => $e->getMessage(),
             ]);
         }
     }

@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // Auth
-    Route::prefix('auth')->group(function () {
+    Route::prefix('auth')->middleware('throttle:auth')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
 
@@ -47,10 +47,12 @@ Route::prefix('v1')->group(function () {
     });
 
     // Trips (public)
-    Route::get('trips', [TripController::class, 'index']);
-    Route::get('trips/featured', [TripController::class, 'featured']);
-    Route::get('trips/{slug}', [TripController::class, 'show']);
-    Route::get('trips/{slug}/schedules', [TripController::class, 'schedules']);
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('trips', [TripController::class, 'index']);
+        Route::get('trips/featured', [TripController::class, 'featured']);
+        Route::get('trips/{slug}', [TripController::class, 'show']);
+        Route::get('trips/{slug}/schedules', [TripController::class, 'schedules']);
+    });
 
     // Vehicles (public for driver app)
     Route::get('vehicles', [VehicleTrackingController::class, 'vehicles']);
@@ -76,7 +78,7 @@ Route::prefix('v1')->group(function () {
         Route::get('seat-locks/active', [SeatController::class, 'active']);
         Route::delete('seat-locks/{scheduleId}', [SeatController::class, 'cancelActive']);
         Route::get('schedules/{id}/seats', [ScheduleController::class, 'seats']);
-        Route::post('schedules/{id}/seats/lock', [SeatController::class, 'lock']);
+        Route::post('schedules/{id}/seats/lock', [SeatController::class, 'lock'])->middleware('throttle:seat-lock');
         Route::delete('schedules/{id}/seats/lock', [SeatController::class, 'unlock']);
 
         // Bookings
@@ -87,12 +89,12 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
 
         // Promotions validation
-        Route::post('promotions/validate', [PromotionController::class, 'validateCode']);
+        Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');
 
         // Payments
-        Route::post('payments/charge', [PaymentController::class, 'charge']);
-        Route::post('payments/charge-installment', [PaymentController::class, 'chargeInstallment']);
-        Route::post('payments/charge-balance', [PaymentController::class, 'chargeBalance']);
+        Route::post('payments/charge', [PaymentController::class, 'charge'])->middleware('throttle:payment');
+        Route::post('payments/charge-installment', [PaymentController::class, 'chargeInstallment'])->middleware('throttle:payment');
+        Route::post('payments/charge-balance', [PaymentController::class, 'chargeBalance'])->middleware('throttle:payment');
         Route::get('payments/{booking_ref}', [PaymentController::class, 'status']);
 
         // Reviews (authenticated)
@@ -155,7 +157,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Contacts
-    Route::post('contacts', [ContactController::class, 'store']);
+    Route::post('contacts', [ContactController::class, 'store'])->middleware('throttle:contact');
 
     // Analytics (public)
     Route::get('stats', [AnalyticsController::class, 'publicStats']);
@@ -197,6 +199,8 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}', [AdminController::class, 'updateBooking']);
         Route::put('bookings/{ref}/status', [AdminController::class, 'updateBookingStatus']);
         Route::delete('bookings/{ref}', [AdminController::class, 'deleteBooking']);
+        Route::get('bookings/{ref}/refund-preview', [AdminController::class, 'refundPreview']);
+        Route::post('bookings/{ref}/refund', [AdminController::class, 'processRefund']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);
 
         // Vehicles CRUD

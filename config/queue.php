@@ -65,11 +65,31 @@ return [
         ],
 
         'redis' => [
-            'driver' => 'redis',
-            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
-            'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
-            'block_for' => null,
+            'driver'       => 'redis',
+            'connection'   => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue'        => env('REDIS_QUEUE', 'default'),
+            'retry_after'  => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            'block_for'    => null,
+            'after_commit' => false,
+        ],
+
+        // Dedicated queue for daily reminders (balance due, installment, booking SMS)
+        'redis-reminders' => [
+            'driver'       => 'redis',
+            'connection'   => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue'        => 'reminders',
+            'retry_after'  => 300,
+            'block_for'    => null,
+            'after_commit' => false,
+        ],
+
+        // Dedicated queue for outbound SMS processing
+        'redis-sms' => [
+            'driver'       => 'redis',
+            'connection'   => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue'        => 'sms',
+            'retry_after'  => 60,
+            'block_for'    => null,
             'after_commit' => false,
         ],
 

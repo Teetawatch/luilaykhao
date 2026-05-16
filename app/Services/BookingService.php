@@ -293,4 +293,63 @@ class BookingService
         if ($daysUntilDeparture >= 3) return 50;
         return 0;
     }
+
+    /**
+     * คำนวณยอดคืนเงินจริงตาม payment_type และวันที่ยกเลิก
+     * - full/installment: คำนวณ % จาก paid_amount
+     * - deposit: คืนแค่ balance ถ้ายังไม่ได้ชำระ (มัดจำไม่คืน)
+     */
+    public function calculateRefundAmount(Booking $booking): array
+    {
+        $paidAmount = (float) $booking->paid_amount;
+        $paymentType = $booking->payment_type ?? 'full';
+
+        if ($paymentType === 'deposit') {
+            // มัดจำไม่คืนทุกกรณี — คืนแค่ส่วนที่เหลือ ถ้าชำระแล้ว
+            $balancePaid = (float) ($booking->balance_amount ?? 0);
+            $refundable = $booking->balance_paid_at ? $balancePaid : 0.0;
+            return [
+                'refund_percent'  => $refundable > 0 ? 100 : 0,
+                'refund_amount'   => $refundable,
+                'deposit_amount'  => (float) ($booking->deposit_amount ?? 0),
+                'policy_note'     => 'มัดจำไม่คืนทุกกรณี คืนเฉพาะยอดส่วนที่เหลือที่ชำระแล้ว',
+            ];
+        }
+
+        $percent = $this->calculateRefundPercent($booking);
+        $refundAmount = round($paidAmount * $percent / 100, 2);
+
+        return [
+            'refund_percent' => $percent,
+            'refund_amount'  => $refundAmount,
+            'paid_amount'    => $paidAmount,
+            'policy_note'    => match (true) {
+                $percent === 80 => 'ยกเลิกก่อนเดินทาง 7+ วัน คืน 80%',
+                $percent === 50 => 'ยกเลิกก่อนเดินทาง 3–6 วัน คืน 50%',
+                default         => 'ยกเลิกก่อนเดินทางน้อยกว่า 3 วัน ไม่คืนเงิน',
+            },
+        ];
+    }
+
+    /**
+     * Admin: บันทึกการคืนเงิน — อัปเดต refund fields และเปลี่ยนสถานะเป็น 'refunded'
+     */
+    public function processRefund(Booking $booking, float $refundAmount, ?string $note = null): Booking
+    {
+        return DB::transaction(function () use ($booking, $refundAmount, $note) {
+            $booking->update([
+                'status'        => 'refunded',
+                'refund_status' => 'refunded',
+                'refund_amount' => $refundAmount,
+                'refunded_at'   => now(),
+                'cancellation_reason' => $note ?? $booking->cancellation_reason,
+                'cancelled_at'  => $booking->cancelled_at ?? now(),
+            ]);
+
+            // Sync seats back
+            $booking->schedule()?->syncBookedSeats();
+
+            return $booking->fresh(['passengers', 'schedule.trip']);
+        });
+    }
 }

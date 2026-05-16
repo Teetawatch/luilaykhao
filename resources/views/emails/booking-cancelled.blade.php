@@ -1,50 +1,113 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ยกเลิกการจอง</title>
-  <style>
-    body { margin: 0; padding: 0; background: #f3f4f6; font-family: 'Helvetica Neue', Arial, sans-serif; color: #374151; }
-    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-    .header { background: linear-gradient(135deg, #dc2626, #ef4444); padding: 36px 32px; text-align: center; }
-    .header h1 { margin: 0 0 6px 0; color: #fff; font-size: 24px; font-weight: 800; }
-    .header p { margin: 0; color: rgba(255,255,255,0.85); font-size: 14px; }
-    .badge { display: inline-block; background: rgba(255,255,255,0.2); color: #fff; font-size: 18px; font-weight: 800; padding: 8px 20px; border-radius: 30px; margin-top: 14px; border: 1px solid rgba(255,255,255,0.35); }
-    .body { padding: 32px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-    .info-item { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; }
-    .info-label { font-size: 11px; color: #9ca3af; margin-bottom: 2px; }
-    .info-value { font-size: 14px; font-weight: 700; color: #111827; }
-    .reason-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; }
-    .reason-box h3 { margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #92400e; }
-    .reason-box p { margin: 0; font-size: 13px; color: #78350f; }
-    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px 32px; text-align: center; font-size: 12px; color: #9ca3af; }
-    @media (max-width: 480px) { .body { padding: 20px; } .info-grid { grid-template-columns: 1fr; } }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>❌ ยกเลิกการจอง</h1>
-      <p>การจองของท่านถูกยกเลิกแล้ว</p>
-      <div class="badge">{{ $booking->booking_ref }}</div>
+<x-emails.partials.base subject="ยกเลิกการจอง {{ $booking->booking_ref }}">
+
+  {{-- Accent bar --}}
+  <div class="accent-bar" style="background: linear-gradient(90deg, #dc2626, #ef4444, #f87171);"></div>
+
+  {{-- Header --}}
+  <div class="email-header" style="background: linear-gradient(160deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%);">
+    <div class="logo-mark">
+      <div class="logo-icon" style="background: rgba(255,255,255,0.2);">🌿</div>
+      <span class="logo-text" style="color:#ffffff;">Luilaykhao</span>
     </div>
-    <div class="body">
-      <p style="margin:0 0 20px 0;font-size:15px;">สวัสดี <strong>{{ $booking->user->name }}</strong>,<br/>เราขอแจ้งให้ทราบว่าการจองของท่านได้ถูกยกเลิกแล้ว</p>
-      <div class="info-grid">
-        <div class="info-item" style="grid-column: 1 / -1;"><div class="info-label">กิจกรรม / ทริป</div><div class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</div></div>
-        <div class="info-item"><div class="info-label">วันเดินทาง</div><div class="info-value">{{ $booking->schedule->departure_date?->format('d/m/Y') ?? '-' }}</div></div>
-        <div class="info-item"><div class="info-label">ยอดรวม</div><div class="info-value">฿{{ number_format($booking->total_amount, 0) }}</div></div>
-        <div class="info-item"><div class="info-label">สถานะ</div><div class="info-value" style="color:#dc2626;">ยกเลิกแล้ว</div></div>
-        <div class="info-item"><div class="info-label">วันที่ยกเลิก</div><div class="info-value">{{ $booking->cancelled_at?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i') }}</div></div>
-      </div>
-      @if($reason)
-        <div class="reason-box"><h3>📝 เหตุผล</h3><p>{{ $reason }}</p></div>
-      @endif
-      <p style="font-size:13px;color:#6b7280;text-align:center;">หากต้องการจองใหม่ สามารถเข้าสู่ระบบได้ทันที<br/>หากมีข้อสงสัย กรุณาติดต่อทีมงาน</p>
+    <div class="header-icon-wrap" style="background: rgba(255,255,255,0.2);">❌</div>
+    <h1 class="header-title" style="color:#ffffff;">ยกเลิกการจองแล้ว</h1>
+    <p class="header-subtitle" style="color:rgba(255,255,255,0.9);">การจองของท่านถูกยกเลิกเรียบร้อยแล้ว</p>
+    <div class="ref-badge" style="background: rgba(255,255,255,0.2); color:#ffffff; border:1px solid rgba(255,255,255,0.4);">
+      {{ $booking->booking_ref }}
     </div>
-    <div class="footer"><p style="margin:0 0 4px 0;"><strong style="color:#374151;">Luilaykhao</strong></p><p style="margin:0;">อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง</p></div>
   </div>
-</body>
-</html>
+
+  <div class="divider"></div>
+
+  {{-- Body --}}
+  <div class="email-body">
+    <p class="greeting">
+      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong>,<br />
+      เราขอแจ้งให้ทราบว่าการจองของท่านได้ถูกยกเลิกแล้ว
+    </p>
+
+    <p class="section-label">รายละเอียดการจองที่ยกเลิก</p>
+    <div class="info-card">
+      <div class="info-card-header">
+        <div class="info-card-icon" style="background:#fee2e2;">❌</div>
+        <span class="info-card-title">ข้อมูลการจอง</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ทริป / กิจกรรม</span>
+        <span class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">วันเดินทาง</span>
+        <span class="info-value">{{ $booking->schedule->departure_date?->format('d/m/Y') ?? '-' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">จำนวนผู้เดินทาง</span>
+        <span class="info-value">{{ $booking->passengers->count() }} ท่าน</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ยอดรวม</span>
+        <span class="info-value">฿{{ number_format($booking->total_amount, 0) }}</span>
+      </div>
+      @if($booking->paid_amount > 0)
+      <div class="info-row">
+        <span class="info-label">ยอดที่ชำระแล้ว</span>
+        <span class="info-value">฿{{ number_format($booking->paid_amount, 0) }}</span>
+      </div>
+      @endif
+      <div class="info-row">
+        <span class="info-label">วันที่ยกเลิก</span>
+        <span class="info-value accent-red">{{ $booking->cancelled_at?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i') }} น.</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">สถานะ</span>
+        <span class="info-value accent-red">ยกเลิกแล้ว</span>
+      </div>
+    </div>
+
+    @if($reason)
+    <div class="alert-box" style="background:#fef3c7; border:1px solid #fcd34d;">
+      <span class="alert-icon">📝</span>
+      <div>
+        <p class="alert-title" style="color:#92400e;">เหตุผลการยกเลิก</p>
+        <p class="alert-text" style="color:#78350f;">{{ $reason }}</p>
+      </div>
+    </div>
+    @endif
+
+    @if($booking->refund_amount > 0)
+    <div class="highlight-box" style="background:#f0fdf4; border:2px solid #86efac;">
+      <div class="amount-label" style="color:#166534;">ยอดคืนเงิน</div>
+      <div class="amount" style="color:#15803d;">฿{{ number_format($booking->refund_amount, 0) }}</div>
+      <div class="amount-note" style="color:#166534;">จะดำเนินการคืนเงินภายใน 3-7 วันทำการ</div>
+    </div>
+    @endif
+
+    <div class="alert-box" style="background:#fef2f2; border:1px solid #fecaca;">
+      <span class="alert-icon">⚠️</span>
+      <div>
+        <p class="alert-title" style="color:#991b1b;">นโยบายการคืนเงิน</p>
+        <p class="alert-text" style="color:#7f1d1d;">
+          ยกเลิกก่อนเดินทาง 7+ วัน: คืน 80% · ยกเลิก 3–6 วัน: คืน 50% · น้อยกว่า 3 วัน: ไม่คืนเงิน<br />
+          มัดจำ: ไม่คืนทุกกรณี
+        </p>
+      </div>
+    </div>
+
+    <p style="font-size:14px; color:#64748b; text-align:center; margin:24px 0 0;">
+      หากต้องการจองใหม่ สามารถเข้าสู่ระบบได้ทันที<br />
+      หากมีข้อสงสัย กรุณาติดต่อทีมงาน 062-612-6006
+    </p>
+  </div>
+
+  {{-- Footer --}}
+  <div class="email-footer">
+    <div class="footer-logo">Luilaykhao</div>
+    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
+    <div class="footer-divider"></div>
+    <div class="footer-disclaimer">
+      อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
+      © {{ date('Y') }} Luilaykhao · สงวนสิทธิ์ทุกประการ
+    </div>
+  </div>
+
+</x-emails.partials.base>

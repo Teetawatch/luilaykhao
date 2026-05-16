@@ -156,7 +156,8 @@ class PaymentController extends Controller
                 }
 
                 $totalAmount = (float) $booking->total_amount;
-                $depositAmount = $schedule->resolveDepositAmount($totalAmount);
+                $passengerCount = $booking->passengers()->count() ?: 1;
+                $depositAmount = $schedule->resolveDepositAmount($totalAmount, $passengerCount);
                 if ($depositAmount === null) {
                     return $this->error('ผู้ดูแลระบบยังไม่ได้กำหนดยอดมัดจำสำหรับรอบเดินทางนี้', 422);
                 }
