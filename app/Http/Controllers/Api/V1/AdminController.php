@@ -1944,4 +1944,79 @@ class AdminController extends Controller
 
         return $this->error('ไม่พบไฟล์ที่ต้องการลบ', 404);
     }
+
+    // ─── Hero Slides ──────────────────────────────────────────
+
+    public function publicHeroSlides(): JsonResponse
+    {
+        $slides = \App\Models\HeroSlide::where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'image_url', 'alt_text']);
+
+        return $this->success($slides);
+    }
+
+    public function heroSlides(): JsonResponse
+    {
+        $slides = \App\Models\HeroSlide::orderBy('sort_order')->get();
+
+        return $this->success($slides);
+    }
+
+    public function storeHeroSlide(Request $request): JsonResponse
+    {
+        $request->validate([
+            'image_url' => ['required', 'string', 'url'],
+            'alt_text'  => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $maxOrder = \App\Models\HeroSlide::max('sort_order') ?? -1;
+
+        $slide = \App\Models\HeroSlide::create([
+            'image_url'  => $request->image_url,
+            'alt_text'   => $request->alt_text ?? 'ลุยเลเขา',
+            'sort_order' => $maxOrder + 1,
+            'is_active'  => $request->boolean('is_active', true),
+        ]);
+
+        return $this->success($slide, 'เพิ่มภาพสไลด์สำเร็จ');
+    }
+
+    public function updateHeroSlide(Request $request, int $id): JsonResponse
+    {
+        $slide = \App\Models\HeroSlide::findOrFail($id);
+
+        $request->validate([
+            'image_url' => ['sometimes', 'string', 'url'],
+            'alt_text'  => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $slide->update($request->only(['image_url', 'alt_text', 'is_active']));
+
+        return $this->success($slide, 'อัปเดตภาพสไลด์สำเร็จ');
+    }
+
+    public function deleteHeroSlide(int $id): JsonResponse
+    {
+        $slide = \App\Models\HeroSlide::findOrFail($id);
+        $slide->delete();
+
+        return $this->success(null, 'ลบภาพสไลด์สำเร็จ');
+    }
+
+    public function reorderHeroSlides(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids'   => ['required', 'array'],
+            'ids.*' => ['integer'],
+        ]);
+
+        foreach ($request->ids as $order => $id) {
+            \App\Models\HeroSlide::where('id', $id)->update(['sort_order' => $order]);
+        }
+
+        return $this->success(null, 'จัดเรียงสไลด์สำเร็จ');
+    }
 }

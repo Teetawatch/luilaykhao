@@ -34,7 +34,7 @@
       <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-16 md:pt-24 pb-12">
         
         <!-- Headline -->
-        <h1 class="font-anuphan text-white text-[2.2rem] md:text-5xl lg:text-[4rem] font-extrabold mb-6 leading-[1.2] md:leading-[1.3] tracking-tight drop-shadow-2xl">
+        <h1 class="font-anuphan text-white text-[1.6rem] sm:text-[2rem] md:text-4xl lg:text-[3.2rem] font-extrabold mb-6 leading-[1.25] md:leading-[1.35] tracking-tight drop-shadow-2xl">
           การเที่ยวที่ดี เริ่มจาก<br />
           <span class="text-[var(--color-accent-light)] font-black">ความรู้สึกที่ดี</span>
           ตั้งแต่การจอง
@@ -730,14 +730,14 @@ import { useWishlistStore } from '../stores/wishlist';
 const wishlistStore = useWishlistStore();
 const router = useRouter();
 
-const heroImages = [
+const heroImages = ref([
   '/images/phusoidao.webp',
   '/images/snorkel.webp',
   '/images/phukradueng.webp',
   '/images/landscape.webp',
   '/images/khaochangphueak.webp',
   '/images/hiking.webp',
-];
+]);
 const HERO_SLIDE_INTERVAL_MS = 6500;
 const currentSlide = ref(0);
 const prefersReducedMotion = ref(false);
@@ -973,9 +973,20 @@ onMounted(async () => {
     prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  if (!prefersReducedMotion.value && heroImages.length > 1) {
+  // Fetch hero slides from API; keep static fallback if API returns empty
+  try {
+    const heroRes = await api.get('/hero-slides');
+    const apiSlides = (heroRes.data.data ?? heroRes.data) || [];
+    if (apiSlides.length) {
+      heroImages.value = apiSlides.map((s) => s.image_url);
+    }
+  } catch {
+    // keep static fallback
+  }
+
+  if (!prefersReducedMotion.value && heroImages.value.length > 1) {
     sliderInterval = setInterval(() => {
-      currentSlide.value = (currentSlide.value + 1) % heroImages.length;
+      currentSlide.value = (currentSlide.value + 1) % heroImages.value.length;
     }, HERO_SLIDE_INTERVAL_MS);
   }
 

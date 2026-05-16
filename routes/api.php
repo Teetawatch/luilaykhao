@@ -163,6 +163,9 @@ Route::prefix('v1')->group(function () {
     Route::get('stats', [AnalyticsController::class, 'publicStats']);
     Route::get('app/version', [AppVersionController::class, 'show']);
 
+    // Hero Slides (public)
+    Route::get('hero-slides', [AdminController::class, 'publicHeroSlides']);
+
     // Admin routes
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {
         // Dashboard
@@ -292,5 +295,12 @@ Route::prefix('v1')->group(function () {
         Route::get('promotions/{id}', [PromotionController::class, 'show']);
         Route::put('promotions/{id}', [PromotionController::class, 'update']);
         Route::delete('promotions/{id}', [PromotionController::class, 'destroy']);
+
+        // Hero Slides CRUD
+        Route::get('hero-slides', [AdminController::class, 'heroSlides']);
+        Route::post('hero-slides', [AdminController::class, 'storeHeroSlide']);
+        Route::put('hero-slides/{id}', [AdminController::class, 'updateHeroSlide']);
+        Route::delete('hero-slides/{id}', [AdminController::class, 'deleteHeroSlide']);
+        Route::post('hero-slides/reorder', [AdminController::class, 'reorderHeroSlides']);
     });
 });
