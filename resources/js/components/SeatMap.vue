@@ -7,22 +7,22 @@
 
   <div v-else class="space-y-6">
     <!-- Legend -->
-    <div class="flex flex-wrap gap-5 p-5 bg-[#f3f3f3] rounded-2xl text-sm">
+    <div class="flex flex-wrap gap-4 px-4 py-3 bg-[#f3f3f3] rounded-2xl text-xs font-bold text-[#3e4949]">
       <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-lg bg-[#e2e2e2]"></div>
-        <span class="text-[#3e4949]">ว่าง</span>
+        <div class="w-5 h-5 rounded-lg bg-[#e2e2e2]"></div>
+        ว่าง
+      </div>
+      <div v-if="!readonly" class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-lg transition-colors duration-300" :class="isWomenOnly ? 'bg-[#db2777]' : 'bg-[#006565]'"></div>
+        กำลังเลือก
       </div>
       <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-lg transition-colors duration-300" :class="isWomenOnly ? 'bg-[#db2777] shadow-lg shadow-[#db2777]/20 border border-white/20' : 'bg-[#006565]'"></div>
-        <span class="text-[#3e4949]">กำลังเลือก</span>
+        <div class="w-5 h-5 rounded-lg bg-[#bdc9c8] opacity-60"></div>
+        ล็อคอยู่
       </div>
       <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-lg bg-[#bdc9c8] opacity-60"></div>
-        <span class="text-[#3e4949]">ล็อคอยู่</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-lg bg-[#6e7979]"></div>
-        <span class="text-[#3e4949]">จองแล้ว</span>
+        <div class="w-5 h-5 rounded-lg bg-[#6e7979]"></div>
+        จองแล้ว
       </div>
     </div>
 
@@ -162,6 +162,7 @@ function seatBgClass(seat) {
     return (props.isWomenOnly ? 'bg-[#db2777] shadow-[#db2777]/25' : 'bg-[#006565] shadow-[#006565]/25') + ' shadow-lg scale-105';
   }
   if (seat.status === 'locked') return 'bg-[#bdc9c8] opacity-60';
+  if (props.readonly) return 'bg-[#e2e2e2]';
   return 'bg-[#e2e2e2] ' + (props.isWomenOnly ? 'group-hover:bg-[#db2777]/10' : 'group-hover:bg-[#006565]/10') + ' group-hover:scale-105';
 }
 
@@ -170,6 +171,7 @@ function seatIconClass(seat) {
   if (seat.status === 'booked') return 'text-white';
   if (isSelected(seat)) return 'text-white';
   if (seat.status === 'locked') return 'text-[#6e7979]';
+  if (props.readonly) return 'text-[#6e7979]';
   return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
 }
 
@@ -178,6 +180,7 @@ function seatLabelClass(seat) {
   if (seat.status === 'booked') return 'text-[#6e7979] opacity-40';
   if (isSelected(seat)) return (props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]');
   if (seat.status === 'locked') return 'text-[#6e7979] opacity-40';
+  if (props.readonly) return 'text-[#6e7979]';
   return 'text-[#6e7979] ' + (props.isWomenOnly ? 'group-hover:text-[#db2777]' : 'group-hover:text-[#006565]');
 }
 
@@ -268,7 +271,7 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
       onClick: () => { if (!disabled) btnEmit('click'); },
       class: [
         'group flex flex-col items-center transition-all duration-200',
-        disabled ? (props.readonly ? 'cursor-default' : 'cursor-not-allowed') : 'cursor-pointer',
+        props.readonly ? 'cursor-default' : disabled ? 'cursor-not-allowed' : 'cursor-pointer',
       ],
       title: props.readonly ? '' : seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : '',
     }, [

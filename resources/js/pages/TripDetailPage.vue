@@ -520,17 +520,16 @@
                             ยังไม่มีรอบในเดือนนี้
                           </div>
 
-                          <button
+                          <div
                             v-for="s in monthGroup.schedules"
                             :key="s.id"
-                            @click="selectSchedule(s)"
-                            :disabled="!isScheduleBookable(s)"
+                            @click="isScheduleBookable(s) && selectSchedule(s)"
                             class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
                             :class="[
                               selectedSchedule?.id === s.id
                                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                                 : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                              !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
+                              !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100' : 'cursor-pointer'
                             ]"
                           >
                             <div class="flex items-center justify-between gap-3">
@@ -550,6 +549,15 @@
                                   </p>
                                 </div>
                               </div>
+                              <div class="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  v-if="s.total_seats > 0"
+                                  @click.stop="openSeatMapPreview(s)"
+                                  class="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-50 border border-gray-200 hover:bg-[var(--color-accent)]/8 hover:border-[var(--color-accent)]/30 text-gray-400 hover:text-[var(--color-accent)] transition-all shrink-0"
+                                  title="ดูผังที่นั่ง"
+                                >
+                                  <span class="material-symbols-rounded text-[15px]" style="font-variation-settings:'FILL' 1">airline_seat_recline_normal</span>
+                                </button>
                                 <div v-if="s.join_trip_enabled"
                                   class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
                                   :class="scheduleAvailabilityBadgeClass(s)"
@@ -563,6 +571,7 @@
                                 >
                                   {{ scheduleAvailabilityLabel(s) }}
                                 </div>
+                              </div>
                             </div>
                             <div v-if="selectedSchedule?.id === s.id" class="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-1">
                               <div class="flex items-center gap-1.5">
@@ -574,7 +583,7 @@
                                 <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-gray-100 px-1.5 py-0.5 rounded">{{ s.license_plate }}</span>
                               </div>
                             </div>
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -635,17 +644,16 @@
                             ยังไม่มีรอบในเดือนนี้
                           </div>
 
-                          <button
+                          <div
                             v-for="s in monthGroup.schedules"
                             :key="s.id"
-                            @click="selectSchedule(s)"
-                            :disabled="!isScheduleBookable(s)"
+                            @click="isScheduleBookable(s) && selectSchedule(s)"
                             class="schedule-btn w-full text-left border-2 rounded-[1.25rem] px-4 py-3 transition-all duration-300"
                             :class="[
                               selectedSchedule?.id === s.id
                                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
                                 : 'border-gray-100 hover:border-[var(--color-accent)]/50 bg-white hover:bg-[var(--color-sand)] hover:shadow-sm',
-                              !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100 pointer-events-none' : ''
+                              !isScheduleBookable(s) ? 'opacity-60 grayscale cursor-not-allowed bg-gray-50 border-gray-100' : 'cursor-pointer'
                             ]"
                           >
                             <!-- Date + seats -->
@@ -666,21 +674,31 @@
                                   </p>
                                 </div>
                               </div>
-                              <span
-                                v-if="s.join_trip_enabled"
-                                class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
-                                :class="scheduleAvailabilityBadgeClass(s)"
-                              >
-                                <span class="material-symbols-rounded text-[14px]">group_add</span>
-                                {{ scheduleAvailabilityLabel(s) }}
-                              </span>
-                              <span
-                                v-else
-                                class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
-                                :class="scheduleAvailabilityBadgeClass(s)"
-                              >
-                                {{ scheduleAvailabilityLabel(s) }}
-                              </span>
+                              <div class="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  v-if="s.total_seats > 0"
+                                  @click.stop="openSeatMapPreview(s)"
+                                  class="w-7 h-7 rounded-lg flex items-center justify-center bg-gray-50 border border-gray-200 hover:bg-[var(--color-accent)]/8 hover:border-[var(--color-accent)]/30 text-gray-400 hover:text-[var(--color-accent)] transition-all shrink-0"
+                                  title="ดูผังที่นั่ง"
+                                >
+                                  <span class="material-symbols-rounded text-[15px]" style="font-variation-settings:'FILL' 1">airline_seat_recline_normal</span>
+                                </button>
+                                <span
+                                  v-if="s.join_trip_enabled"
+                                  class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border flex items-center gap-1"
+                                  :class="scheduleAvailabilityBadgeClass(s)"
+                                >
+                                  <span class="material-symbols-rounded text-[14px]">group_add</span>
+                                  {{ scheduleAvailabilityLabel(s) }}
+                                </span>
+                                <span
+                                  v-else
+                                  class="text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 border"
+                                  :class="scheduleAvailabilityBadgeClass(s)"
+                                >
+                                  {{ scheduleAvailabilityLabel(s) }}
+                                </span>
+                              </div>
                             </div>
 
                             <!-- Pickup point and price for this region -->
@@ -722,7 +740,7 @@
                                 <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
                               </div>
                             </div>
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1228,6 +1246,140 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- ── Seat Map Preview Modal ── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showSeatMapModal"
+          class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          <!-- Backdrop -->
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showSeatMapModal = false"></div>
+
+          <!-- Modal panel with slide-up animation -->
+          <Transition
+            appear
+            enter-active-class="transition duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            enter-from-class="translate-y-full sm:translate-y-4 sm:opacity-0 sm:scale-95"
+            enter-to-class="translate-y-0 sm:opacity-100 sm:scale-100"
+            leave-active-class="transition duration-250 ease-in"
+            leave-from-class="translate-y-0 sm:opacity-100"
+            leave-to-class="translate-y-full sm:translate-y-4 sm:opacity-0"
+          >
+            <div
+              v-if="showSeatMapModal"
+              class="relative w-full sm:max-w-md bg-white rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl flex flex-col"
+              style="max-height: min(90vh, 720px)"
+            >
+              <!-- Drag handle (mobile) -->
+              <div class="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+                <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+              </div>
+
+              <!-- Header -->
+              <div class="px-6 pt-4 pb-5 shrink-0">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px]" style="font-variation-settings:'FILL' 1">airline_seat_recline_normal</span>
+                      <h3 class="font-black text-[var(--color-text-dark)] text-base">ผังที่นั่งรถ</h3>
+                    </div>
+                    <p v-if="seatMapPreviewSchedule" class="text-xs font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
+                      <span class="material-symbols-rounded text-[13px]">calendar_today</span>
+                      {{ formatDate(seatMapPreviewSchedule.departure_date) }}
+                      <template v-if="seatMapPreviewSchedule.return_date !== seatMapPreviewSchedule.departure_date">
+                        <span class="text-gray-300">–</span>
+                        {{ formatDate(seatMapPreviewSchedule.return_date) }}
+                      </template>
+                    </p>
+                  </div>
+                  <button
+                    @click="showSeatMapModal = false"
+                    class="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <span class="material-symbols-rounded text-[18px]">close</span>
+                  </button>
+                </div>
+
+                <!-- Available seats bar -->
+                <div v-if="seatMapPreviewData && !seatMapPreviewLoading" class="mt-4 p-3.5 rounded-2xl bg-[var(--color-sand)] border border-gray-100">
+                  <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-xs font-bold text-[var(--color-text-muted)]">ที่นั่งว่าง</span>
+                    <span class="text-sm font-black" :class="seatMapPreviewData.available_seats === 0 ? 'text-red-500' : seatMapPreviewData.available_seats <= 3 ? 'text-amber-500' : 'text-[var(--color-accent)]'">
+                      {{ seatMapPreviewData.available_seats }}
+                      <span class="text-xs font-bold text-[var(--color-text-muted)]"> / {{ seatMapPreviewData.total_seats }} ที่นั่ง</span>
+                    </span>
+                  </div>
+                  <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all duration-700"
+                      :class="seatMapPreviewData.available_seats === 0 ? 'bg-red-400' : seatMapPreviewData.available_seats <= 3 ? 'bg-amber-400' : 'bg-[var(--color-accent)]'"
+                      :style="{ width: `${Math.round((seatMapPreviewData.booked_seats / seatMapPreviewData.total_seats) * 100)}%` }"
+                    ></div>
+                  </div>
+                  <div class="flex justify-between mt-1.5">
+                    <span class="text-[10px] font-bold text-gray-400">จองแล้ว {{ seatMapPreviewData.booked_seats }} ที่</span>
+                    <span v-if="seatMapPreviewData.available_seats === 0" class="text-[10px] font-black text-red-500">เต็มแล้ว</span>
+                    <span v-else-if="seatMapPreviewData.available_seats <= 3" class="text-[10px] font-black text-amber-500">ใกล้เต็มแล้ว!</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Divider -->
+              <div class="h-px bg-gray-100 shrink-0 mx-6"></div>
+
+              <!-- Body -->
+              <div class="overflow-y-auto px-6 py-5 custom-scrollbar flex-1">
+                <!-- Loading -->
+                <div v-if="seatMapPreviewLoading" class="py-16 flex flex-col items-center gap-4">
+                  <div class="w-10 h-10 border-4 border-gray-100 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
+                  <p class="text-sm font-bold text-[var(--color-text-muted)]">กำลังโหลดผังที่นั่ง...</p>
+                </div>
+
+                <!-- Seat map -->
+                <SeatMap
+                  v-else-if="seatMapPreviewData"
+                  :seat-map="seatMapPreviewData"
+                  :is-women-only="trip?.is_women_only"
+                  :readonly="true"
+                />
+
+                <!-- Error / no seat map -->
+                <div v-else class="py-16 flex flex-col items-center gap-3 text-center">
+                  <span class="material-symbols-rounded text-5xl text-gray-200" style="font-variation-settings:'FILL' 0,'wght' 200">airline_seat_recline_normal</span>
+                  <p class="text-sm font-bold text-gray-400">ไม่มีข้อมูลผังที่นั่ง</p>
+                </div>
+              </div>
+
+              <!-- Footer CTA -->
+              <div class="px-6 py-4 bg-white border-t border-gray-100 shrink-0">
+                <router-link
+                  v-if="seatMapPreviewSchedule && isScheduleBookable(seatMapPreviewSchedule)"
+                  :to="{ path: `/booking/${seatMapPreviewSchedule.id}`, query: seatMapPreviewSchedule.join_trip_enabled && !hasAvailableSeats(seatMapPreviewSchedule) ? { join_trip: 1 } : {} }"
+                  @click="showSeatMapModal = false"
+                  class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white font-black text-sm transition-all shadow-lg shadow-[var(--color-primary)]/20 active:scale-95"
+                >
+                  <span class="material-symbols-rounded text-[18px]">shopping_bag</span>
+                  จองรอบนี้
+                </router-link>
+                <div v-else-if="seatMapPreviewSchedule" class="text-center py-2">
+                  <span class="text-sm font-black text-gray-400">รอบนี้เต็มแล้ว</span>
+                </div>
+                <p class="text-[10px] font-bold text-gray-400 text-center mt-2">ผังแสดงสถานะแบบเรียลไทม์ · การเลือกที่นั่งจะทำได้ตอนจอง</p>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1236,6 +1388,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
+import SeatMap from '../components/SeatMap.vue';
 
 const route = useRoute();
 const trip = ref(null);
@@ -1382,6 +1535,10 @@ const distanceData = ref([]);
 const showGalleryModal = ref(false);
 const activeGalleryIndex = ref(0);
 const showAvailabilityModal = ref(false);
+const showSeatMapModal = ref(false);
+const seatMapPreviewSchedule = ref(null);
+const seatMapPreviewData = ref(null);
+const seatMapPreviewLoading = ref(false);
 
 const isTrekking = computed(() => trip.value?.type === 'trekking');
 const selectedModalRegion = ref(null);
@@ -1727,6 +1884,21 @@ function hasAvailableSeats(schedule) {
 
 function isScheduleBookable(schedule) {
   return Boolean(schedule?.join_trip_enabled) || hasAvailableSeats(schedule);
+}
+
+async function openSeatMapPreview(schedule) {
+  seatMapPreviewSchedule.value = schedule;
+  seatMapPreviewData.value = null;
+  showSeatMapModal.value = true;
+  seatMapPreviewLoading.value = true;
+  try {
+    const res = await api.get(`/schedules/${schedule.id}/seats`);
+    seatMapPreviewData.value = res.data.data;
+  } catch {
+    // silent fail
+  } finally {
+    seatMapPreviewLoading.value = false;
+  }
 }
 
 function canBookSelectedSchedule() {
