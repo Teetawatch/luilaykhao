@@ -180,7 +180,10 @@ class FcmService
     {
         $encoded = json_encode($body);
 
-        return is_string($encoded) && str_contains($encoded, 'UNREGISTERED');
+        return is_string($encoded) && (
+            str_contains($encoded, 'UNREGISTERED') ||
+            str_contains($encoded, 'BadEnvironmentKeyInToken')
+        );
     }
 
     private function base64UrlEncode(string $value): string
