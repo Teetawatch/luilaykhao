@@ -202,16 +202,21 @@
             </button>
 
             <!-- Installment Payment -->
-            <button v-if="installmentAvailable" @click="paymentType = 'installment'"
+            <button v-if="installmentAvailable" @click="!installmentNotAvailable && (paymentType = 'installment')"
               class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
-              :class="paymentType === 'installment'
-                ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50/50 shadow-lg shadow-amber-500/15 scale-[1.01]'
-                : 'border-gray-100 bg-white hover:border-amber-200 hover:bg-amber-50/30 hover:-translate-y-0.5'">
+              :class="installmentNotAvailable
+                ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                : paymentType === 'installment'
+                  ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50/50 shadow-lg shadow-amber-500/15 scale-[1.01]'
+                  : 'border-gray-100 bg-white hover:border-amber-200 hover:bg-amber-50/30 hover:-translate-y-0.5'">
 
-              <div v-if="paymentType !== 'installment'" class="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
+              <div v-if="installmentNotAvailable" class="absolute top-0 right-0 bg-gray-400 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
+                ไม่พร้อมใช้
+              </div>
+              <div v-else-if="paymentType !== 'installment'" class="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
                 💳 ผ่อน 0%
               </div>
-              <div v-if="paymentType === 'installment'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/40 ring-4 ring-amber-100">
+              <div v-if="paymentType === 'installment' && !installmentNotAvailable" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/40 ring-4 ring-amber-100">
                 <span class="material-symbols-rounded text-white text-[18px]">check</span>
               </div>
 
@@ -221,8 +226,11 @@
                   <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">calendar_month</span>
                 </div>
                 <div>
-                  <p class="font-black text-base" :class="paymentType === 'installment' ? 'text-amber-900' : 'text-gray-900'">ผ่อนชำระ</p>
-                  <p class="text-[11px] font-bold text-amber-600 uppercase tracking-widest">{{ availableInstallmentOptions[0] }}–{{ availableInstallmentOptions[availableInstallmentOptions.length - 1] || 6 }} งวด</p>
+                  <p class="font-black text-base" :class="installmentNotAvailable ? 'text-gray-400' : paymentType === 'installment' ? 'text-amber-900' : 'text-gray-900'">ผ่อนชำระ</p>
+                  <p class="text-[11px] font-bold uppercase tracking-widest" :class="installmentNotAvailable ? 'text-gray-400' : 'text-amber-600'">
+                    <template v-if="installmentNotAvailable">ทริปใกล้เกินไป</template>
+                    <template v-else>{{ availableInstallmentOptions[0] }}–{{ availableInstallmentOptions[availableInstallmentOptions.length - 1] || 6 }} งวด</template>
+                  </p>
                 </div>
               </div>
 
@@ -248,6 +256,14 @@
               </ul>
             </button>
           </div>
+
+          <!-- Installment not available warning -->
+          <Transition name="fade">
+            <div v-if="installmentWarningMessage" class="mt-4 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+              <span class="material-symbols-rounded text-amber-500 text-xl shrink-0">warning</span>
+              <p class="text-sm font-medium text-amber-800 leading-relaxed">{{ installmentWarningMessage }}</p>
+            </div>
+          </Transition>
 
           <!-- Deposit details + cancellation clause -->
           <Transition name="fade">
@@ -951,11 +967,55 @@ const installmentIntervalDays = computed(() =>
   booking.value?.schedule?.installment_interval_days ?? 30
 );
 const selectedInstallmentCount = ref(3);
+
+// Days from today to trip departure
+const daysUntilTrip = computed(() => {
+  if (!booking.value?.schedule?.departure_date) return Infinity;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dep = new Date(booking.value.schedule.departure_date);
+  dep.setHours(0, 0, 0, 0);
+  return Math.floor((dep - today) / (1000 * 60 * 60 * 24));
+});
+
+// Max installment count allowed given days remaining before trip
+// Need (n-1) * interval days to complete all installments before departure
+const maxAllowedInstallmentCount = computed(() => {
+  const days = daysUntilTrip.value;
+  const interval = installmentIntervalDays.value;
+  if (!isFinite(days) || days <= 0) return 1;
+  // งวดที่ 1 ชำระวันนี้ งวดที่ n ต้องครบก่อนวันเดินทาง
+  // (n-1) * interval <= days  →  n <= days/interval + 1
+  return Math.floor(days / interval) + 1;
+});
+
+// Installment options filtered by what's actually feasible
 const availableInstallmentOptions = computed(() => {
-  const max = maxInstallmentCount.value;
+  const max = Math.min(maxInstallmentCount.value, maxAllowedInstallmentCount.value);
   const opts = [];
   for (let i = 2; i <= max; i++) opts.push(i);
   return opts;
+});
+
+// Warning when selected installment count exceeds allowed
+const installmentNotAvailable = computed(() => {
+  if (!installmentAvailable.value) return false;
+  return availableInstallmentOptions.value.length === 0;
+});
+
+const installmentWarningMessage = computed(() => {
+  const days = daysUntilTrip.value;
+  const interval = installmentIntervalDays.value;
+  if (!installmentAvailable.value) return '';
+  if (installmentNotAvailable.value) {
+    return `ไม่สามารถเลือกผ่อนชำระได้ เนื่องจากทริปจะเริ่มในอีก ${days} วัน (ต้องมีอย่างน้อย ${interval + 1} วันขึ้นไปจึงจะผ่อนได้ขั้นต่ำ 2 งวด)`;
+  }
+  const maxFull = maxInstallmentCount.value;
+  const maxAllowed = maxAllowedInstallmentCount.value;
+  if (maxAllowed < maxFull) {
+    return `ทริปเริ่มในอีก ${days} วัน สามารถผ่อนได้สูงสุด ${Math.min(maxAllowed, maxFull)} งวดเท่านั้น (ทุก ${interval} วัน)`;
+  }
+  return '';
 });
 const perInstallment = computed(() => {
   if (!booking.value) return 0;
@@ -998,6 +1058,20 @@ const installmentSchedule = computed(() => {
     rows.push({ no: i, dueDate: dueDate.toISOString().split('T')[0], amount });
   }
   return rows;
+});
+
+// Reset to 'full' if installment is selected but becomes unavailable
+watch(installmentNotAvailable, (notAvailable) => {
+  if (notAvailable && paymentType.value === 'installment') {
+    paymentType.value = 'full';
+  }
+});
+
+// Auto-cap selectedInstallmentCount when available options shrink
+watch(availableInstallmentOptions, (opts) => {
+  if (opts.length > 0 && !opts.includes(selectedInstallmentCount.value)) {
+    selectedInstallmentCount.value = opts[opts.length - 1];
+  }
 });
 
 // ── QR regenerates when paymentType, paymentMethod, or installment count changes ─
