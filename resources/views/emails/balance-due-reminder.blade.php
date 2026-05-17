@@ -1,69 +1,79 @@
 @php
-  $daysLeft = $booking->balance_due_at ? now()->diffInDays($booking->balance_due_at, false) : null;
-  $isOverdue = $daysLeft !== null && $daysLeft < 0;
-  $isDueToday = $daysLeft === 0;
+  $daysLeft   = $booking->balance_due_at ? now()->diffInDays($booking->balance_due_at, false) : null;
+  $isOverdue  = $daysLeft !== null && $daysLeft < 0;
+  $isDueToday = $daysLeft !== null && $daysLeft === 0;
 
   if ($isOverdue) {
-    $headerGrad = 'linear-gradient(160deg, #b91c1c 0%, #dc2626 50%, #ef4444 100%)';
-    $accentBar  = 'linear-gradient(90deg, #dc2626, #ef4444, #f87171)';
-    $alertBg    = '#fef2f2'; $alertBorder = '#fca5a5'; $alertTitle = '#991b1b'; $alertText = '#7f1d1d';
-    $icon = '🚨'; $bannerTitle = 'ค่าส่วนที่เหลือเลยกำหนดชำระแล้ว!';
+    $headerStyle     = 'background:linear-gradient(150deg,#b91c1c 0%,#dc2626 55%,#ef4444 100%)';
+    $icon            = '&#128680;';
+    $bannerTitle     = 'ค่าส่วนที่เหลือเลยกำหนดชำระแล้ว!';
+    $boxStyle        = 'background:#fef2f2;border:1.5px solid #fca5a5;text-align:center';
+    $labelStyle      = 'color:#991b1b';
+    $amountStyle     = 'color:#dc2626';
+    $noteStyle       = 'color:#7f1d1d';
   } elseif ($isDueToday) {
-    $headerGrad = 'linear-gradient(160deg, #b45309 0%, #d97706 50%, #f59e0b 100%)';
-    $accentBar  = 'linear-gradient(90deg, #d97706, #f59e0b, #fbbf24)';
-    $alertBg    = '#fffbeb'; $alertBorder = '#fcd34d'; $alertTitle = '#92400e'; $alertText = '#78350f';
-    $icon = '⏰'; $bannerTitle = 'ถึงกำหนดชำระเงินส่วนที่เหลือวันนี้!';
+    $headerStyle     = 'background:linear-gradient(150deg,#b45309 0%,#d97706 55%,#f59e0b 100%)';
+    $icon            = '&#9200;';
+    $bannerTitle     = 'ถึงกำหนดชำระเงินส่วนที่เหลือวันนี้!';
+    $boxStyle        = 'background:#fffbeb;border:1.5px solid #fde68a;text-align:center';
+    $labelStyle      = 'color:#92400e';
+    $amountStyle     = 'color:#d97706';
+    $noteStyle       = 'color:#78350f';
   } else {
-    $headerGrad = 'linear-gradient(160deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)';
-    $accentBar  = 'linear-gradient(90deg, #2563eb, #3b82f6, #60a5fa)';
-    $alertBg    = '#eff6ff'; $alertBorder = '#93c5fd'; $alertTitle = '#1e40af'; $alertText = '#1e3a5f';
-    $icon = '📅'; $bannerTitle = 'แจ้งเตือนชำระเงินส่วนที่เหลือ';
+    $headerStyle     = 'background:linear-gradient(150deg,#1e40af 0%,#2563eb 55%,#3b82f6 100%)';
+    $icon            = '&#128197;';
+    $bannerTitle     = 'แจ้งเตือนชำระเงินส่วนที่เหลือ';
+    $boxStyle        = 'background:#eff6ff;border:1.5px solid #93c5fd;text-align:center';
+    $labelStyle      = 'color:#1e40af';
+    $amountStyle     = 'color:#2563eb';
+    $noteStyle       = 'color:#1e3a5f';
   }
+
+  $dueDateFormatted = $booking->balance_due_at?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
+  $depDateFormatted = $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
 @endphp
 
 <x-emails.partials.base subject="{{ $bannerTitle }} — {{ $booking->booking_ref }}">
 
-  {{-- Accent bar --}}
-  <div class="accent-bar" style="background: {{ $accentBar }};"></div>
-
   {{-- Header --}}
-  <div class="email-header" style="background: {{ $headerGrad }};">
-    <div class="logo-mark">
-      <div class="logo-icon" style="background: rgba(255,255,255,0.2);">🌿</div>
-      <span class="logo-text" style="color:#ffffff;">Luilaykhao</span>
+  <div class="email-header" style="{!! $headerStyle !!}">
+    <div class="logo-row">
+      <span class="logo-leaf">&#127807;</span>
+      <span class="logo-name">Luilaykhao</span>
     </div>
-    <div class="header-icon-wrap" style="background: rgba(255,255,255,0.2);">{{ $icon }}</div>
-    <h1 class="header-title" style="color:#ffffff;">{{ $bannerTitle }}</h1>
-    <p class="header-subtitle" style="color:rgba(255,255,255,0.9);">กรุณาชำระเงินส่วนที่เหลือเพื่อยืนยันสิทธิ์การเดินทาง</p>
-    <div class="ref-badge" style="background: rgba(255,255,255,0.2); color:#ffffff; border:1px solid rgba(255,255,255,0.4);">
-      {{ $booking->booking_ref }}
-    </div>
+    <div class="header-icon-wrap">{!! $icon !!}</div>
+    <h1 class="header-title">{{ $bannerTitle }}</h1>
+    <p class="header-subtitle">กรุณาชำระเงินส่วนที่เหลือเพื่อยืนยันสิทธิ์การเดินทาง</p>
+    <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
-
-  <div class="divider"></div>
 
   {{-- Body --}}
   <div class="email-body">
-    <p class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong>,
+
+    <div class="greeting">
+      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong><br />
       @if($isOverdue)
-        <br />ยอดชำระส่วนที่เหลือของท่านเลยกำหนดแล้ว กรุณาชำระโดยด่วนเพื่อรักษาสิทธิ์การเดินทาง
+        ยอดชำระส่วนที่เหลือของท่าน <strong style="color:#dc2626;">เลยกำหนดแล้ว</strong>
+        กรุณาชำระโดยด่วนเพื่อรักษาสิทธิ์การเดินทาง
       @elseif($isDueToday)
-        <br />วันนี้เป็นวันสุดท้ายสำหรับการชำระเงินส่วนที่เหลือของทริปท่าน
+        วันนี้เป็น <strong>วันสุดท้าย</strong> สำหรับการชำระเงินส่วนที่เหลือของทริปท่าน
       @else
-        <br />ใกล้ครบกำหนดชำระเงินส่วนที่เหลือแล้ว เหลืออีก <strong>{{ $daysLeft }} วัน</strong>
+        ใกล้ครบกำหนดชำระเงินส่วนที่เหลือแล้ว เหลืออีก <strong>{{ $daysLeft }} วัน</strong>
       @endif
-    </p>
+    </div>
 
     {{-- Balance amount highlight --}}
-    <div class="highlight-box" style="background:{{ $alertBg }}; border:2px solid {{ $alertBorder }}; text-align:center;">
-      <div class="amount-label" style="color:{{ $alertTitle }};">ยอดส่วนที่เหลือที่ต้องชำระ</div>
-      <div class="amount" style="color:{{ $alertTitle }};">฿{{ number_format($booking->balance_amount, 0) }}</div>
-      <div class="amount-note" style="color:{{ $alertText }};">
-        ภายในวันที่ <strong>{{ $booking->balance_due_at?->format('d/m/Y') ?? '-' }}</strong>
-        @if($isOverdue) · <span style="color:#dc2626; font-weight:800;">เลยกำหนดแล้ว!</span>
-        @elseif($isDueToday) · <span style="font-weight:800;">วันนี้!</span>
-        @else · เหลือ {{ $daysLeft }} วัน
+    <div class="highlight-box" style="{!! $boxStyle !!}">
+      <div class="amount-label" style="{!! $labelStyle !!}">ยอดส่วนที่เหลือที่ต้องชำระ</div>
+      <div class="amount" style="{!! $amountStyle !!}">฿{{ number_format($booking->balance_amount, 0) }}</div>
+      <div class="amount-note" style="{!! $noteStyle !!}">
+        ภายในวันที่ <strong>{{ $dueDateFormatted }}</strong>
+        @if($isOverdue)
+          &nbsp;&middot;&nbsp;<strong style="color:#dc2626;">เลยกำหนดแล้ว!</strong>
+        @elseif($isDueToday)
+          &nbsp;&middot;&nbsp;<strong>วันนี้!</strong>
+        @else
+          &nbsp;&middot;&nbsp;เหลือ {{ $daysLeft }} วัน
         @endif
       </div>
     </div>
@@ -71,7 +81,7 @@
     <p class="section-label">รายละเอียดการจอง</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#f1f5f9;">🏔️</div>
+        <div class="info-card-icon" style="background:#f1f5f9;font-size:20px">&#127956;</div>
         <span class="info-card-title">ข้อมูลทริป</span>
       </div>
       <div class="info-row">
@@ -80,8 +90,21 @@
       </div>
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $booking->schedule->departure_date?->format('d/m/Y') ?? '-' }}</span>
+        <span class="info-value">{{ $depDateFormatted }}</span>
       </div>
+      @if($booking->pickupPoint || $booking->pickup_region)
+      <div class="pickup-block">
+        <div class="pickup-label">จุดรับ</div>
+        @if($booking->pickupPoint)
+          <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
+          @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
+          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          @endif
+        @else
+          <div class="pickup-location">{{ $booking->pickup_region }}</div>
+        @endif
+      </div>
+      @endif
       <div class="info-row">
         <span class="info-label">จำนวนผู้เดินทาง</span>
         <span class="info-value">{{ $booking->passengers->count() }} ท่าน</span>
@@ -101,11 +124,11 @@
     </div>
 
     @if($isOverdue)
-    <div class="alert-box" style="background:#fef2f2; border:2px solid #fca5a5;">
-      <span class="alert-icon">⚠️</span>
+    <div class="alert-box" style="background:#fef2f2;border:1.5px solid #fca5a5">
+      <div class="alert-icon-wrap" style="background:#fee2e2;font-size:18px">&#9888;</div>
       <div>
-        <p class="alert-title" style="color:#991b1b;">เงื่อนไขสำคัญ</p>
-        <p class="alert-text" style="color:#7f1d1d;">
+        <p class="alert-title" style="color:#991b1b">เงื่อนไขสำคัญ</p>
+        <p class="alert-text" style="color:#7f1d1d">
           หากไม่ชำระเงินส่วนที่เหลือ ทางทริปขอสงวนสิทธิ์ยกเลิกการจองโดยไม่คืนเงินมัดจำ
           กรุณาติดต่อทีมงานหากต้องการขอยืดเวลาชำระ
         </p>
@@ -115,14 +138,15 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: linear-gradient(135deg, #0f766e, #14b8a6); color:#ffffff;">
-        ชำระเงินส่วนที่เหลือตอนนี้ →
+         class="cta-btn" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">
+        ชำระเงินส่วนที่เหลือตอนนี้ &rarr;
       </a>
     </div>
 
-    <p style="font-size:14px; color:#64748b; text-align:center; margin:0;">
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน 062-612-6006
-    </p>
+    <div class="contact-bar">
+      &#128222;&nbsp; หากมีข้อสงสัย กรุณาติดต่อทีมงาน&nbsp;<strong>062-612-6006</strong>&nbsp;(08:00&ndash;20:00)
+    </div>
+
   </div>
 
   {{-- Footer --}}
@@ -132,7 +156,7 @@
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
       อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
-      © {{ date('Y') }} Luilaykhao · สงวนสิทธิ์ทุกประการ
+      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>
 

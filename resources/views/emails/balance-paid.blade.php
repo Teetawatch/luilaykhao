@@ -1,43 +1,36 @@
 <x-emails.partials.base subject="ชำระเงินครบถ้วนแล้ว — {{ $booking->booking_ref }}">
 
-  {{-- Accent bar --}}
-  <div class="accent-bar" style="background: linear-gradient(90deg, #059669, #10b981, #34d399);"></div>
-
   {{-- Header --}}
-  <div class="email-header" style="background: linear-gradient(160deg, #065f46 0%, #059669 50%, #10b981 100%);">
-    <div class="logo-mark">
-      <div class="logo-icon" style="background: rgba(255,255,255,0.2);">🌿</div>
-      <span class="logo-text" style="color:#ffffff;">Luilaykhao</span>
+  <div class="email-header" style="background: linear-gradient(150deg, #065f46 0%, #059669 55%, #10b981 100%);">
+    <div class="logo-row">
+      <span class="logo-leaf">&#127807;</span>
+      <span class="logo-name">Luilaykhao</span>
     </div>
-    <div class="header-icon-wrap" style="background: rgba(255,255,255,0.2);">🎉</div>
-    <h1 class="header-title" style="color:#ffffff;">ชำระเงินครบถ้วนแล้ว!</h1>
-    <p class="header-subtitle" style="color:rgba(255,255,255,0.9);">ท่านพร้อมออกเดินทางแล้ว ขอบคุณค่ะ</p>
-    <div class="ref-badge" style="background: rgba(255,255,255,0.2); color:#ffffff; border:1px solid rgba(255,255,255,0.4);">
-      {{ $booking->booking_ref }}
-    </div>
+    <div class="header-icon-wrap">&#127881;</div>
+    <h1 class="header-title">ชำระเงินครบถ้วนแล้ว!</h1>
+    <p class="header-subtitle">ท่านพร้อมออกเดินทางแล้ว ขอบคุณค่ะ</p>
+    <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
-
-  <div class="divider"></div>
 
   {{-- Body --}}
   <div class="email-body">
-    <p class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong>,<br />
-      ขอบคุณที่ชำระเงินส่วนที่เหลือเรียบร้อยแล้ว การชำระเงินของท่านครบถ้วนสมบูรณ์แล้ว!
-    </p>
+
+    <div class="greeting">
+      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong><br />
+      ขอบคุณที่ชำระเงินส่วนที่เหลือเรียบร้อยแล้ว การชำระเงินของท่านครบถ้วนสมบูรณ์!
+    </div>
 
     {{-- Total paid highlight --}}
     <div class="highlight-box" style="background:#f0fdf4; border:2px solid #86efac; text-align:center;">
-      <div style="font-size:40px; margin-bottom:8px;">✅</div>
       <div class="amount-label" style="color:#166534;">ยอดรวมที่ชำระทั้งหมด</div>
       <div class="amount" style="color:#15803d;">฿{{ number_format($booking->paid_amount, 0) }}</div>
-      <div class="amount-note" style="color:#166534;">ชำระครบถ้วนสมบูรณ์</div>
+      <div class="amount-note" style="color:#166534;">&#10003;&nbsp; ชำระครบถ้วนสมบูรณ์</div>
     </div>
 
     <p class="section-label">สรุปการชำระเงิน</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#dcfce7;">💰</div>
+        <div class="info-card-icon" style="background:#dcfce7; font-size:20px;">&#128176;</div>
         <span class="info-card-title">รายละเอียดการเงิน</span>
       </div>
       <div class="info-row">
@@ -46,8 +39,22 @@
       </div>
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $booking->schedule->departure_date?->format('d/m/Y') ?? '-' }}</span>
+        <span class="info-value">{{ $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-' }}</span>
       </div>
+      {{-- Pickup --}}
+      @if($booking->pickupPoint || $booking->pickup_region)
+      <div class="pickup-block">
+        <div class="pickup-label">จุดรับ</div>
+        @if($booking->pickupPoint)
+          <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
+          @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
+          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          @endif
+        @else
+          <div class="pickup-location">{{ $booking->pickup_region }}</div>
+        @endif
+      </div>
+      @endif
       <div class="info-row">
         <span class="info-label">จำนวนผู้เดินทาง</span>
         <span class="info-value">{{ $booking->passengers->count() }} ท่าน</span>
@@ -66,12 +73,12 @@
       </div>
       <div class="info-row">
         <span class="info-label">สถานะ</span>
-        <span class="info-value accent-teal">✓ ครบถ้วนสมบูรณ์</span>
+        <span class="info-value accent-teal">&#10003; ครบถ้วนสมบูรณ์</span>
       </div>
     </div>
 
-    <div class="alert-box" style="background:#f0fdfa; border:1px solid #99f6e4;">
-      <span class="alert-icon">📌</span>
+    <div class="alert-box" style="background:#f0fdfa; border:1.5px solid #99f6e4;">
+      <div class="alert-icon-wrap" style="background:#ccfbf1; font-size:18px;">&#128204;</div>
       <div>
         <p class="alert-title" style="color:#0f766e;">ขั้นตอนถัดไป</p>
         <p class="alert-text" style="color:#134e4a;">
@@ -83,14 +90,15 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: linear-gradient(135deg, #0f766e, #14b8a6); color:#ffffff;">
-        ดูรายละเอียดการจอง →
+         class="cta-btn" style="background: linear-gradient(135deg, #0f766e, #14b8a6);">
+        ดูรายละเอียดการจอง &rarr;
       </a>
     </div>
 
-    <p style="font-size:14px; color:#64748b; text-align:center; margin:0;">
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน 062-612-6006
-    </p>
+    <div class="contact-bar">
+      &#128222;&nbsp; หากมีข้อสงสัย กรุณาติดต่อทีมงาน&nbsp;<strong>062-612-6006</strong>&nbsp;(08:00&ndash;20:00)
+    </div>
+
   </div>
 
   {{-- Footer --}}
@@ -100,7 +108,7 @@
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
       อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
-      © {{ date('Y') }} Luilaykhao · สงวนสิทธิ์ทุกประการ
+      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>
 

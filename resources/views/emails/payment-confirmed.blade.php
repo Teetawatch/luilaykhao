@@ -1,51 +1,45 @@
 <x-emails.partials.base subject="ชำระเงินสำเร็จ — {{ $booking->booking_ref }}">
 
-  {{-- Accent bar --}}
-  <div class="accent-bar" style="background: linear-gradient(90deg, #059669, #10b981, #34d399);"></div>
-
   {{-- Header --}}
-  <div class="email-header" style="background: linear-gradient(160deg, #065f46 0%, #059669 50%, #10b981 100%);">
-    <div class="logo-mark">
-      <div class="logo-icon" style="background: rgba(255,255,255,0.2);">🌿</div>
-      <span class="logo-text" style="color:#ffffff;">Luilaykhao</span>
+  <div class="email-header" style="background: linear-gradient(150deg, #065f46 0%, #059669 55%, #10b981 100%);">
+    <div class="logo-row">
+      <span class="logo-leaf">&#127807;</span>
+      <span class="logo-name">Luilaykhao</span>
     </div>
-    <div class="header-icon-wrap" style="background: rgba(255,255,255,0.2);">✅</div>
-    <h1 class="header-title" style="color:#ffffff;">ชำระเงินสำเร็จแล้ว!</h1>
-    <p class="header-subtitle" style="color:rgba(255,255,255,0.9);">
+    <div class="header-icon-wrap">&#9989;</div>
+    <h1 class="header-title">ชำระเงินสำเร็จแล้ว!</h1>
+    <p class="header-subtitle">
       @if($paymentType === 'installment')
         งวดแรกได้รับการบันทึกเรียบร้อย
       @else
-        การชำระเงินเสร็จสมบูรณ์ ท่านพร้อมออกเดินทาง!
+        การชำระเงินเสร็จสมบูรณ์ &mdash; ท่านพร้อมออกเดินทาง!
       @endif
     </p>
-    <div class="ref-badge" style="background: rgba(255,255,255,0.2); color:#ffffff; border:1px solid rgba(255,255,255,0.4);">
-      {{ $booking->booking_ref }}
-    </div>
+    <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
-
-  <div class="divider"></div>
 
   {{-- Body --}}
   <div class="email-body">
-    <p class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong>,<br />
+
+    <div class="greeting">
+      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
       ขอบคุณสำหรับการชำระเงิน การจองของท่านได้รับการยืนยันแล้ว
-    </p>
+    </div>
 
     {{-- Amount highlight --}}
     <div class="highlight-box" style="background:#f0fdf4; border:2px solid #86efac;">
       <div class="amount-label" style="color:#166534;">ยอดที่ชำระ</div>
       <div class="amount" style="color:#15803d;">฿{{ number_format($booking->paid_amount, 0) }}</div>
       <div class="amount-note" style="color:#166534;">
-        {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'Mobile Banking' : ($booking->payment_method ?? '-')) }}
-        · {{ now()->format('d/m/Y H:i') }} น.
+        {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'โอนผ่านธนาคาร' : ($booking->payment_method ?? '-')) }}
+        &nbsp;&middot;&nbsp;{{ now()->locale('th')->isoFormat('D MMM YYYY HH:mm') }} น.
       </div>
     </div>
 
     <p class="section-label">รายละเอียดการเดินทาง</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#dcfce7;">🏔️</div>
+        <div class="info-card-icon" style="background:#dcfce7; font-size:20px;">&#127956;</div>
         <span class="info-card-title">ข้อมูลทริป</span>
       </div>
       <div class="info-row">
@@ -54,12 +48,20 @@
       </div>
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $booking->schedule->departure_date?->format('d/m/Y') ?? '-' }}</span>
+        <span class="info-value">{{ $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-' }}</span>
       </div>
-      @if($booking->pickup_region)
-      <div class="info-row">
-        <span class="info-label">จุดรับ</span>
-        <span class="info-value">{{ $booking->pickup_region }}</span>
+      {{-- Pickup --}}
+      @if($booking->pickupPoint || $booking->pickup_region)
+      <div class="pickup-block">
+        <div class="pickup-label">จุดรับ</div>
+        @if($booking->pickupPoint)
+          <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
+          @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
+          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          @endif
+        @else
+          <div class="pickup-location">{{ $booking->pickup_region }}</div>
+        @endif
       </div>
       @endif
       <div class="info-row">
@@ -71,7 +73,7 @@
     <p class="section-label">สรุปการชำระเงิน</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#dcfce7;">💳</div>
+        <div class="info-card-icon" style="background:#dcfce7; font-size:20px;">&#128179;</div>
         <span class="info-card-title">ข้อมูลการเงิน</span>
       </div>
       <div class="info-row">
@@ -102,7 +104,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">สถานะ</span>
-        <span class="info-value accent-teal">✓ ยืนยันแล้ว</span>
+        <span class="info-value accent-teal">&#10003; ยืนยันแล้ว</span>
       </div>
     </div>
 
@@ -115,7 +117,7 @@
             <th>งวดที่</th>
             <th>จำนวนเงิน</th>
             <th>กำหนดชำระ</th>
-            <th>สถานะ</th>
+            <th style="text-align:right;">สถานะ</th>
           </tr>
         </thead>
         <tbody>
@@ -123,8 +125,8 @@
           <tr>
             <td>{{ $inst->installment_no }}</td>
             <td>฿{{ number_format($inst->amount, 0) }}</td>
-            <td>{{ $inst->due_date ? \Carbon\Carbon::parse($inst->due_date)->format('d/m/Y') : '-' }}</td>
-            <td>
+            <td>{{ $inst->due_date ? \Carbon\Carbon::parse($inst->due_date)->locale('th')->isoFormat('D MMM YYYY') : '-' }}</td>
+            <td style="text-align:right;">
               @if($inst->status === 'paid')
                 <span class="badge-paid">ชำระแล้ว</span>
               @elseif($inst->status === 'overdue')
@@ -173,6 +175,11 @@
       </div>
       @endif
     </div>
+
+    <div class="contact-bar">
+      &#128222;&nbsp; หากมีข้อสงสัย กรุณาติดต่อทีมงาน&nbsp;<strong>062-612-6006</strong>&nbsp;(08:00&ndash;20:00)
+    </div>
+
   </div>
 
   {{-- Footer --}}
@@ -182,7 +189,7 @@
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
       อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
-      © {{ date('Y') }} Luilaykhao · สงวนสิทธิ์ทุกประการ
+      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>
 
