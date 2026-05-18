@@ -1658,7 +1658,7 @@ function handleExpiry() {
   seatsStore.clearSelection();
   clearFormData();
   const minutes = seatsStore.activeBookingInfo?.passengerCount 
-    ? Math.floor((10 * 60 + (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60) / 60)
+    ? Math.floor((10 * 60 + (seatsStore.activeBookingInfo.passengerCount - 1) * 5 * 60) / 60)
     : 10;
     
   swal.error(

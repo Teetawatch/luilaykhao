@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import api from '../lib/axios';
 
 const BASE_BOOKING_SECONDS = 10 * 60; // 10 minutes base
-const SECONDS_PER_ADDITIONAL_PASSENGER = 2 * 60; // 2 minutes per extra person
+const SECONDS_PER_ADDITIONAL_PASSENGER = 5 * 60; // 5 minutes per extra person
 const SESSION_KEY_PREFIX = 'booking_session';
 
 function calculateDuration(count) {
