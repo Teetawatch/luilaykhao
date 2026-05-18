@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\Log;
 
 class SeatLockService
 {
-    private const LOCK_TTL = 600; // 10 minutes
+    private const LOCK_TTL = 600;          // 10 minutes base
+    private const LOCK_TTL_PER_SEAT = 300; // +5 minutes per additional seat
 
-    public static function lockTtlSeconds(): int
+    public static function lockTtlSeconds(int $seatCount = 1): int
     {
-        return self::LOCK_TTL;
+        return self::LOCK_TTL + (max(1, $seatCount) - 1) * self::LOCK_TTL_PER_SEAT;
     }
 
     private function redisAvailable(): bool
@@ -25,32 +26,32 @@ class SeatLockService
         }
     }
 
-    public function lock(int $scheduleId, string $seatId, int $userId, array $metadata = []): array
+    public function lock(int $scheduleId, string $seatId, int $userId, array $metadata = [], int $ttlSeconds = self::LOCK_TTL): array
     {
         if (!$this->redisAvailable()) {
             return [
                 'locked' => true,
-                'expires_at' => now()->addSeconds(self::LOCK_TTL)->toISOString(),
+                'expires_at' => now()->addSeconds($ttlSeconds)->toISOString(),
             ];
         }
 
         $key = $this->seatKey($scheduleId, $seatId);
         $value = $this->lockValue($userId, $metadata);
-        $locked = Redis::set($key, $value, 'EX', self::LOCK_TTL, 'NX');
+        $locked = Redis::set($key, $value, 'EX', $ttlSeconds, 'NX');
 
         if ($locked) {
             return [
                 'locked' => true,
-                'expires_at' => now()->addSeconds(self::LOCK_TTL)->toISOString(),
+                'expires_at' => now()->addSeconds($ttlSeconds)->toISOString(),
             ];
         }
 
         $lockedBy = $this->lockUserId(Redis::get($key));
         if ($lockedBy === $userId) {
-            Redis::setex($key, self::LOCK_TTL, $value);
+            Redis::setex($key, $ttlSeconds, $value);
             return [
                 'locked' => true,
-                'expires_at' => now()->addSeconds(self::LOCK_TTL)->toISOString(),
+                'expires_at' => now()->addSeconds($ttlSeconds)->toISOString(),
             ];
         }
 
@@ -60,12 +61,12 @@ class SeatLockService
         ];
     }
 
-    public function lockMultiple(int $scheduleId, array $seatIds, int $userId, array $metadata = []): array
+    public function lockMultiple(int $scheduleId, array $seatIds, int $userId, array $metadata = [], int $ttlSeconds = self::LOCK_TTL): array
     {
         $lockedSeats = [];
 
         foreach ($seatIds as $seatId) {
-            $result = $this->lock($scheduleId, $seatId, $userId, $metadata);
+            $result = $this->lock($scheduleId, $seatId, $userId, $metadata, $ttlSeconds);
             if (!$result['locked']) {
                 foreach ($lockedSeats as $lockedSeatId) {
                     $this->unlock($scheduleId, $lockedSeatId, $userId);
@@ -82,7 +83,7 @@ class SeatLockService
         return [
             'locked' => true,
             'seats' => $lockedSeats,
-            'expires_at' => now()->addSeconds(self::LOCK_TTL)->toISOString(),
+            'expires_at' => now()->addSeconds($ttlSeconds)->toISOString(),
         ];
     }
 

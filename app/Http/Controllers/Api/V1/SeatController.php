@@ -26,10 +26,11 @@ class SeatController extends Controller
         $userId = $request->user()->id;
         $seatIds = $request->seat_ids;
 
+        $ttlSeconds = SeatLockService::lockTtlSeconds(count($seatIds));
         $result = $this->seatLockService->lockMultiple($scheduleId, $seatIds, $userId, [
             'pickup_point_id' => $request->input('pickup_point_id'),
             'pickup_region' => $request->input('pickup_region'),
-        ]);
+        ], $ttlSeconds);
 
         if ($result['locked']) {
             foreach ($seatIds as $seatId) {
