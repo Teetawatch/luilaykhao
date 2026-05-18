@@ -214,6 +214,7 @@ const openForm = (slide = null) => {
       alt_text: slide.alt_text,
       is_active: !!slide.is_active,
     });
+    uploadPreview.value = slide.image_url;
   } else {
     Object.assign(form, { image_url: '', alt_text: 'ลุยเลเขา', is_active: true });
   }
@@ -233,6 +234,7 @@ const handleFileSelect = (e) => {
 const clearUpload = () => {
   uploadPreview.value = '';
   uploadProgress.value = 0;
+  form.image_url = '';
   if (fileInput.value) fileInput.value.value = '';
 };
 
@@ -418,7 +420,16 @@ const moveSlide = async (index, direction) => {
   font-size: 15px;
 }
 
-/* reuse toggle & status styles from global admin CSS */
+.status-pill {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pill-active { background: #dbf4e5; color: #10b981; }
+.pill-inactive { background: #fef2f2; color: #ef4444; }
+
 .toggle-group { display: flex; align-items: center; }
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
