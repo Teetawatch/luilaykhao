@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SeatController;
+use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
@@ -110,6 +111,11 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/reviews', [StaffController::class, 'storeReview']);
         Route::post('staff/check-in/lookup', [DriverController::class, 'lookupCheckIn']);
         Route::post('staff/check-in/confirm', [DriverController::class, 'checkIn']);
+
+        // SOS emergency alerts
+        Route::post('sos', [SosController::class, 'trigger']);
+        Route::get('sos/active', [SosController::class, 'active']);
+        Route::post('sos/{id}/resolve', [SosController::class, 'resolve']);
 
         // Loyalty program
         Route::get('loyalty/account', [LoyaltyController::class, 'account']);
