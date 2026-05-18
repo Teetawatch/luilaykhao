@@ -15,7 +15,7 @@ class Booking extends Model
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'is_group', 'group_name', 'group_notes',
-        'qr_code', 'checked_in', 'checked_in_at',
+        'qr_code', 'share_token', 'checked_in', 'checked_in_at',
         'total_amount', 'selected_addons', 'addons_total', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
         'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_paid_at',
@@ -114,5 +114,26 @@ class Booking extends Model
     public static function generateQrCode(): string
     {
         return 'QR-' . strtoupper(\Illuminate\Support\Str::random(16));
+    }
+
+    /**
+     * คืนค่า share token สำหรับลิงก์ติดตามรถแบบสาธารณะ สร้างใหม่ถ้ายังไม่มี
+     */
+    public function ensureShareToken(): string
+    {
+        if (empty($this->share_token)) {
+            do {
+                $token = \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(12));
+            } while (static::where('share_token', $token)->exists());
+
+            $this->forceFill(['share_token' => $token])->save();
+        }
+
+        return $this->share_token;
+    }
+
+    public function shareUrl(): string
+    {
+        return url('/track/' . $this->ensureShareToken());
     }
 }

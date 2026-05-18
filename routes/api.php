@@ -145,6 +145,12 @@ Route::prefix('v1')->group(function () {
     // Payment webhook (no auth, verify signature)
     Route::post('payments/webhook', [PaymentController::class, 'webhook']);
 
+    // Guest booking lookup: ยืนยันตัวตนด้วย booking_ref + เบอร์โทร (ไม่ต้องล็อกอิน)
+    Route::post('bookings/guest-lookup', [VehicleTrackingController::class, 'guestLookup'])->middleware('throttle:20,1');
+
+    // Live Share Link: ติดตามรถแบบสาธารณะผ่าน share token (ไม่ต้องล็อกอิน)
+    Route::get('track/{token}', [VehicleTrackingController::class, 'sharedTracking'])->middleware('throttle:120,1');
+
     // Customer Tracking is authenticated above; booking refs are not public lookup keys.
 
     // Distance Matrix (public)

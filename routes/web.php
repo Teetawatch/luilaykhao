@@ -18,6 +18,11 @@ Route::get('/sitemap.xml', function () {
     ])->header('Content-Type', 'text/xml');
 });
 
+// Live Share Link — standalone tracking page (must be before the SPA catch-all)
+Route::get('/track/{token}', function (string $token) {
+    return response()->view('track', ['token' => $token]);
+})->where('token', '[A-Za-z0-9]+');
+
 // SPA catch-all (must be last!)
 Route::get('/{any?}', function () {
     return view('app');

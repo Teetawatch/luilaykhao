@@ -376,12 +376,70 @@ class VehicleTrackingController extends Controller
     // ─── Customer App Endpoints ───────────────────────────────
 
     /**
+     * Guest lookup: ค้นหาการจองโดยไม่ต้องล็อกอิน ใช้ booking_ref + เบอร์โทร 4 หลักท้าย
+     * POST /api/v1/bookings/guest-lookup  (public, no auth required)
+     */
+    public function guestLookup(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'booking_ref' => 'required|string',
+            'phone'       => 'required|string|min:4',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error('กรุณากรอกรหัสการจองและเบอร์โทร', 422, $validator->errors());
+        }
+
+        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle', 'passengers', 'pickupPoint'])
+            ->where('booking_ref', strtoupper(trim($request->booking_ref)))
+            ->first();
+
+        if (! $booking) {
+            return $this->error('ไม่พบข้อมูลการจอง กรุณาตรวจสอบรหัสอีกครั้ง', 404);
+        }
+
+        // ตรวจสอบเบอร์โทรด้วย 4 หลักท้าย
+        $inputDigits = preg_replace('/\D/', '', $request->phone);
+        $last4       = substr($inputDigits, -4);
+
+        $matched = $booking->passengers->first(function ($p) use ($last4) {
+            $digits = preg_replace('/\D/', '', $p->phone ?? '');
+            return str_ends_with($digits, $last4);
+        });
+
+        if (! $matched) {
+            return $this->error('เบอร์โทรไม่ตรงกับข้อมูลการจอง กรุณาตรวจสอบอีกครั้ง', 403);
+        }
+
+        $schedule = $booking->schedule;
+        $trip     = $schedule?->trip;
+        $vehicle  = $schedule?->vehicle;
+
+        [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
+
+        return $this->success([
+            'booking_ref'    => $booking->booking_ref,
+            'status'         => $booking->status,
+            'qr_code'        => $booking->qr_code,
+            'trip_title'     => $trip?->title ?? '',
+            'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+            'vehicle_id'     => $schedule?->vehicle_id,
+            'driver_name'    => $vehicle?->driver_name,
+            'driver_phone'   => $vehicle?->driver_phone,
+            'license_plate'  => $vehicle?->license_plate,
+            'pickup_lat'     => $pickupLat,
+            'pickup_lng'     => $pickupLng,
+            'share_url'      => $booking->shareUrl(),
+        ], 'พบข้อมูลการจอง');
+    }
+
+    /**
      * ดึงข้อมูลการจอง + ข้อมูลรถ สำหรับ Customer Tracking App
      * GET /api/v1/bookings/{ref}/tracking  (ref = booking_ref เช่น LLK-20250409-0001)
      */
     public function bookingTracking(Request $request, string $ref): JsonResponse
     {
-        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle'])
+        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
             ->where('booking_ref', $ref)
             ->first();
 
@@ -399,6 +457,8 @@ class VehicleTrackingController extends Controller
         $trip     = $schedule?->trip;
         $vehicle  = $schedule?->vehicle;
 
+        [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
+
         $data = [
             'id'              => $booking->id,
             'booking_ref'     => $booking->booking_ref,
@@ -406,17 +466,175 @@ class VehicleTrackingController extends Controller
             'vehicle_id'      => $schedule?->vehicle_id,
             'trip_title'      => $trip?->title ?? '',
             'departure_point' => $trip?->departure_point ?? '',
-            'pickup_lat'      => $trip?->latitude,
-            'pickup_lng'      => $trip?->longitude,
+            'pickup_lat'      => $pickupLat,
+            'pickup_lng'      => $pickupLng,
             'departure_date'  => $schedule?->departure_date?->toDateString() ?? '',
             'status'          => $booking->status,
             // Vehicle info for driver call button
             'driver_name'     => $vehicle?->driver_name,
             'driver_phone'    => $vehicle?->driver_phone,
             'license_plate'   => $vehicle?->license_plate,
+            'share_url'       => $booking->shareUrl(),
         ];
 
         return $this->success($data, 'ข้อมูลการจองสำหรับติดตาม');
+    }
+
+    /**
+     * Live Share Link: ติดตามรถแบบสาธารณะผ่าน share token (ไม่ต้องล็อกอิน)
+     * GET /api/v1/track/{token}
+     */
+    public function sharedTracking(string $token): JsonResponse
+    {
+        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
+            ->where('share_token', strtolower(trim($token)))
+            ->first();
+
+        if (! $booking) {
+            return $this->error('ไม่พบลิงก์ติดตามรถนี้ อาจหมดอายุหรือถูกยกเลิก', 404);
+        }
+
+        $schedule = $booking->schedule;
+        $trip     = $schedule?->trip;
+        $vehicle  = $schedule?->vehicle;
+
+        [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
+        $pickupName = $booking->pickupPoint?->pickup_location
+            ?? $trip?->departure_point
+            ?? '';
+
+        $status = $booking->status;
+        $payload = [
+            'trip_title'     => $trip?->title ?? 'ทริปของคุณ',
+            'status'         => $status,
+            'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+            'pickup'         => [
+                'name' => $pickupName,
+                'lat'  => $pickupLat,
+                'lng'  => $pickupLng,
+            ],
+            'vehicle'        => null,
+            'eta'            => null,
+            'trackable'      => false,
+            'message'        => '',
+        ];
+
+        if (in_array($status, ['cancelled', 'refunded'], true)) {
+            $payload['message'] = 'การจองนี้ถูกยกเลิกแล้ว';
+            return $this->success($payload, 'ข้อมูลการติดตาม');
+        }
+
+        $tripDate = $schedule?->departure_date;
+        if ($tripDate && ! $tripDate->isToday()) {
+            $payload['message'] = $tripDate->isFuture()
+                ? 'จะติดตามรถได้ในวันเดินทาง'
+                : 'ทริปนี้สิ้นสุดแล้ว';
+            return $this->success($payload, 'ข้อมูลการติดตาม');
+        }
+
+        $vehicleId = $schedule?->vehicle_id;
+        $location  = $vehicleId ? $this->resolveVehicleLocation($vehicleId) : null;
+
+        if (! $vehicleId || ! $location) {
+            $payload['message'] = 'รถยังไม่เริ่มส่งตำแหน่ง โปรดติดตามอีกครั้ง';
+            return $this->success($payload, 'ข้อมูลการติดตาม');
+        }
+
+        $payload['vehicle'] = [
+            'lat'           => (float) $location['latitude'],
+            'lng'           => (float) $location['longitude'],
+            'speed'         => isset($location['speed']) ? (float) $location['speed'] : null,
+            'heading'       => isset($location['heading']) ? (float) $location['heading'] : null,
+            'license_plate' => $vehicle?->license_plate,
+            'driver_name'   => $vehicle?->driver_name,
+            'updated_at'    => $location['recorded_at'] ?? null,
+        ];
+
+        if ($pickupLat !== null && $pickupLng !== null) {
+            $eta = $this->haversineEta(
+                (float) $location['latitude'],
+                (float) $location['longitude'],
+                (float) $pickupLat,
+                (float) $pickupLng,
+                isset($location['speed']) ? (float) $location['speed'] : null,
+            );
+            $payload['eta'] = $eta;
+        }
+
+        $payload['trackable'] = true;
+        return $this->success($payload, 'ข้อมูลการติดตาม');
+    }
+
+    /**
+     * ดึงตำแหน่งล่าสุดของรถ — อ่านจาก Redis ก่อน ถ้าไม่มี fallback ไป DB
+     */
+    private function resolveVehicleLocation(int $vehicleId): ?array
+    {
+        $cached = $this->getCachedLocation($vehicleId);
+        if ($cached && isset($cached['latitude'], $cached['longitude'])) {
+            return $cached;
+        }
+
+        $latest = VehicleLocation::where('vehicle_id', $vehicleId)
+            ->orderByDesc('recorded_at')
+            ->first();
+
+        if (! $latest) {
+            return null;
+        }
+
+        return [
+            'latitude'    => $latest->latitude,
+            'longitude'   => $latest->longitude,
+            'speed'       => $latest->speed,
+            'heading'     => $latest->heading,
+            'recorded_at' => $latest->recorded_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * คืนพิกัดจุดรับของการจอง — ใช้ pickup point ของการจองก่อน ถ้าไม่มีค่อย fallback เป็นพิกัดทริป
+     *
+     * @return array{0: ?float, 1: ?float}
+     */
+    private function resolvePickupCoords(\App\Models\Booking $booking): array
+    {
+        $point = $booking->pickupPoint;
+        if ($point && $point->latitude !== null && $point->longitude !== null) {
+            return [(float) $point->latitude, (float) $point->longitude];
+        }
+
+        $trip = $booking->schedule?->trip;
+        return [$trip?->latitude, $trip?->longitude];
+    }
+
+    /**
+     * ประมาณ ETA จากระยะ haversine — เร็ว ฟรี ไม่เรียก Google API
+     *
+     * @return array{minutes: int, distance_km: float}
+     */
+    private function haversineEta(
+        float $fromLat,
+        float $fromLng,
+        float $toLat,
+        float $toLng,
+        ?float $speedKmh,
+    ): array {
+        $earthRadius = 6371.0; // km
+        $dLat = deg2rad($toLat - $fromLat);
+        $dLng = deg2rad($toLng - $fromLng);
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($fromLat)) * cos(deg2rad($toLat)) * sin($dLng / 2) ** 2;
+        $distanceKm = $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        // ใช้ความเร็วจริงถ้าเชื่อถือได้ ไม่งั้นสมมติ 35 km/h (รถวิ่งในเมือง/ต่างจังหวัด)
+        $effectiveSpeed = ($speedKmh !== null && $speedKmh >= 8.0) ? $speedKmh : 35.0;
+        $minutes = (int) round(($distanceKm / $effectiveSpeed) * 60);
+
+        return [
+            'minutes'     => max($minutes, 0),
+            'distance_km' => round($distanceKm, 2),
+        ];
     }
 
     // ─── Public Driver App Endpoints ─────────────────────────
