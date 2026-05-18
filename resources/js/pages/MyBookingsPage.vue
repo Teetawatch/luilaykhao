@@ -299,6 +299,15 @@
                 style="font-family:'Anuphan',sans-serif;">
                 ยกเลิก
               </button>
+
+              <button
+                v-if="isOngoingTrip(b)"
+                @click="openSosModal(b)"
+                class="flex-1 sm:flex-none bg-red-600 text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-red-600/20"
+                style="font-family:'Anuphan',sans-serif;">
+                <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">sos</span>
+                SOS
+              </button>
             </div>
           </div>
         </article>
@@ -391,6 +400,79 @@
       </div>
 
     </div>
+
+    <!-- SOS Modal -->
+    <Teleport to="body">
+      <div v-if="showSosModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" @click.self="showSosModal = false">
+        <div class="bg-white w-full max-w-md rounded-[24px] shadow-2xl overflow-hidden">
+          <!-- Header -->
+          <div class="bg-red-600 px-5 py-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <span class="material-symbols-rounded text-white text-[22px]" style="font-variation-settings:'FILL' 1">sos</span>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-white font-black text-base" style="font-family:'Anuphan',sans-serif;">ขอความช่วยเหลือ SOS</h3>
+              <p class="text-red-100 text-xs" style="font-family:'Anuphan',sans-serif;">{{ sosBooking?.schedule?.trip?.title }}</p>
+            </div>
+            <button @click="showSosModal = false" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
+              <span class="material-symbols-rounded text-white text-[18px]">close</span>
+            </button>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <p class="text-sm text-[#505E5E]" style="font-family:'Anuphan',sans-serif;">เลือกข้อความที่ต้องการส่งให้สตาฟและผู้ร่วมทริป</p>
+
+            <!-- Predefined options -->
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                v-for="opt in sosOptions"
+                :key="opt.value"
+                @click="selectSosOption(opt)"
+                class="py-3 px-4 rounded-[14px] text-sm font-bold border-2 transition-all active:scale-95 text-left"
+                :class="sosSelectedOption === opt.value
+                  ? 'bg-red-50 border-red-500 text-red-700'
+                  : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#1a1c1c] hover:border-red-300 hover:bg-red-50/50'"
+                style="font-family:'Anuphan',sans-serif;">
+                <span class="block text-lg mb-0.5">{{ opt.emoji }}</span>
+                {{ opt.label }}
+              </button>
+            </div>
+
+            <!-- Custom message (shown when "อื่น ๆ" selected) -->
+            <div v-if="sosSelectedOption === 'other'" class="space-y-1.5">
+              <label class="text-xs font-bold text-[#505E5E] uppercase tracking-wide" style="font-family:'Anuphan',sans-serif;">ระบุเพิ่มเติม</label>
+              <textarea
+                v-model="sosCustomMessage"
+                rows="3"
+                maxlength="255"
+                placeholder="อธิบายสถานการณ์โดยย่อ..."
+                class="w-full rounded-[14px] border-2 border-[#E8EEEF] focus:border-red-400 focus:outline-none px-3.5 py-2.5 text-sm resize-none"
+                style="font-family:'Anuphan',sans-serif;"
+              ></textarea>
+            </div>
+
+            <p class="text-xs text-[#889696] bg-[#F4F7F6] p-3 rounded-[12px]" style="font-family:'Anuphan',sans-serif;">
+              <span class="material-symbols-rounded text-[14px] align-middle mr-1" style="font-variation-settings:'FILL' 1">info</span>
+              สตาฟและผู้โดยสารในทริปจะได้รับการแจ้งเตือนทันที
+            </p>
+          </div>
+
+          <div class="px-5 pb-5 flex gap-2">
+            <button @click="showSosModal = false" class="flex-1 py-3 rounded-[14px] border-2 border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6] transition-all" style="font-family:'Anuphan',sans-serif;">ยกเลิก</button>
+            <button
+              @click="submitSos"
+              :disabled="!sosSelectedOption || sosSubmitting || (sosSelectedOption === 'other' && !sosCustomMessage.trim())"
+              class="flex-1 py-3 rounded-[14px] bg-red-600 text-white font-black text-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+              style="font-family:'Anuphan',sans-serif;">
+              <span v-if="sosSubmitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+              <span class="material-symbols-rounded text-[18px]" v-else style="font-variation-settings:'FILL' 1">sos</span>
+              {{ sosSubmitting ? 'กำลังส่ง...' : 'ส่งสัญญาณ SOS' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -410,6 +492,28 @@ const activeTab = ref('upcoming');
 const showStaffReviewModal = ref(false);
 const reviewSubmitting = ref(false);
 const reviewingBooking = ref(null);
+
+// SOS
+const showSosModal = ref(false);
+const sosBooking = ref(null);
+const sosSelectedOption = ref('');
+const sosCustomMessage = ref('');
+const sosSubmitting = ref(false);
+
+const sosOptions = [
+  { value: 'help', label: 'ช่วยด้วย', emoji: '🆘' },
+  { value: 'lost', label: 'ฉันหลงทาง', emoji: '🗺️' },
+  { value: 'worried', label: 'ฉันกังวล', emoji: '😟' },
+  { value: 'unsafe', label: 'ฉันรู้สึกไม่ปลอดภัย', emoji: '⚠️' },
+  { value: 'other', label: 'อื่น ๆ', emoji: '💬' },
+];
+
+const sosMessageMap = {
+  help: 'ช่วยด้วย',
+  lost: 'ฉันหลงทาง',
+  worried: 'ฉันกังวล',
+  unsafe: 'ฉันรู้สึกไม่ปลอดภัย',
+};
 const staffReviewForm = ref({
   staff_user_id: 0,
   rating: 5,
@@ -588,6 +692,50 @@ async function submitStaffReview() {
     alert(e?.response?.data?.message || 'ส่งรีวิวสตาฟไม่สำเร็จ');
   } finally {
     reviewSubmitting.value = false;
+  }
+}
+
+function isOngoingTrip(b) {
+  if (b.status !== 'confirmed') return false;
+  const departure = b.schedule?.departure_date;
+  const returnDate = b.schedule?.return_date;
+  if (!departure) return false;
+  const today = new Date().toISOString().split('T')[0];
+  const end = returnDate || departure;
+  return today >= departure && today <= end;
+}
+
+function openSosModal(b) {
+  sosBooking.value = b;
+  sosSelectedOption.value = '';
+  sosCustomMessage.value = '';
+  showSosModal.value = true;
+}
+
+function selectSosOption(opt) {
+  sosSelectedOption.value = opt.value;
+  if (opt.value !== 'other') sosCustomMessage.value = '';
+}
+
+async function submitSos() {
+  if (!sosBooking.value || !sosSelectedOption.value) return;
+
+  const message = sosSelectedOption.value === 'other'
+    ? sosCustomMessage.value.trim()
+    : sosMessageMap[sosSelectedOption.value];
+
+  sosSubmitting.value = true;
+  try {
+    await api.post('/sos', {
+      schedule_id: sosBooking.value.schedule.id,
+      message,
+    });
+    showSosModal.value = false;
+    alert('ส่งสัญญาณ SOS เรียบร้อยแล้ว สตาฟและผู้ร่วมทริปได้รับแจ้งเตือนแล้ว');
+  } catch (e) {
+    alert(e?.response?.data?.message || 'ส่ง SOS ไม่สำเร็จ กรุณาลองใหม่');
+  } finally {
+    sosSubmitting.value = false;
   }
 }
 
