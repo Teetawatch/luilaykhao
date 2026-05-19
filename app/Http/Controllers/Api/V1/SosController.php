@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\SosTriggered;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\SmartNotification;
@@ -148,6 +149,16 @@ class SosController extends Controller
 
         foreach ($recipientIds as $recipientId) {
             SmartNotification::send($recipientId, 'sos_alert', $title, $body, $data);
+            broadcast(new SosTriggered(
+                recipientUserId: (int) $recipientId,
+                sosId: $alert->id,
+                scheduleId: $schedule->id,
+                userName: $sender->name,
+                message: $alert->message,
+                contactPhone: $alert->contact_phone,
+                latitude: $alert->latitude,
+                longitude: $alert->longitude,
+            ));
         }
     }
 
