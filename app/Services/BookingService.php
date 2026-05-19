@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessWaitlistJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
@@ -17,6 +18,7 @@ class BookingService
         private SeatLockService $seatLockService,
         private MailService $mailService,
         private SmsService $smsService,
+        private WaitlistService $waitlistService,
     ) {}
 
     public function createBooking(
@@ -220,6 +222,9 @@ class BookingService
             ],
         );
 
+        // Mark user's waitlist entry as booked (if they came from the waitlist)
+        $this->waitlistService->markBooked($userId, $scheduleId);
+
         return $booking;
     }
 
@@ -281,6 +286,9 @@ class BookingService
             ],
         );
 
+        // Notify next users in the waitlist now that seats are freed
+        ProcessWaitlistJob::dispatch($cancelled->schedule_id);
+
         return $cancelled;
     }
 
@@ -336,7 +344,7 @@ class BookingService
      */
     public function processRefund(Booking $booking, float $refundAmount, ?string $note = null): Booking
     {
-        return DB::transaction(function () use ($booking, $refundAmount, $note) {
+        $refunded = DB::transaction(function () use ($booking, $refundAmount, $note) {
             $booking->update([
                 'status'        => 'refunded',
                 'refund_status' => 'refunded',
@@ -351,5 +359,10 @@ class BookingService
 
             return $booking->fresh(['passengers', 'schedule.trip']);
         });
+
+        // Notify next users in the waitlist now that seats are freed
+        ProcessWaitlistJob::dispatch($booking->schedule_id);
+
+        return $refunded;
     }
 }

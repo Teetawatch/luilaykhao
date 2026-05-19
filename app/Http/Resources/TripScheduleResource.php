@@ -44,6 +44,10 @@ class TripScheduleResource extends JsonResource
             'join_trip_enabled' => (bool) $this->join_trip_enabled,
             'join_trip_price' => $this->join_trip_price,
             'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
+            'waitlist_count' => $this->when(
+                isset($this->waitlist_count),
+                fn () => (int) $this->waitlist_count
+            ),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

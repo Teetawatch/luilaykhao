@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\SchedulePickupPoint;
+use App\Models\WaitlistEntry;
 
 class TripSchedule extends Model
 {
@@ -101,6 +102,11 @@ class TripSchedule extends Model
         return $this->belongsToMany(User::class, 'schedule_staff_assignments', 'schedule_id', 'user_id')
             ->withPivot(['assigned_by', 'created_at'])
             ->withTimestamps();
+    }
+
+    public function waitlistEntries(): HasMany
+    {
+        return $this->hasMany(WaitlistEntry::class, 'schedule_id');
     }
 
     public function getAvailableSeatsAttribute(): int

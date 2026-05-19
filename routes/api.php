@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
+use App\Http\Controllers\Api\V1\WaitlistController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
@@ -116,6 +117,12 @@ Route::prefix('v1')->group(function () {
         Route::post('sos', [SosController::class, 'trigger']);
         Route::get('sos/active', [SosController::class, 'active']);
         Route::post('sos/{id}/resolve', [SosController::class, 'resolve']);
+
+        // Waitlist
+        Route::get('waitlist', [WaitlistController::class, 'myEntries']);
+        Route::get('schedules/{id}/waitlist/status', [WaitlistController::class, 'scheduleStatus']);
+        Route::post('schedules/{id}/waitlist', [WaitlistController::class, 'join']);
+        Route::delete('schedules/{id}/waitlist', [WaitlistController::class, 'leave']);
 
         // Loyalty program
         Route::get('loyalty/account', [LoyaltyController::class, 'account']);
@@ -310,6 +317,9 @@ Route::prefix('v1')->group(function () {
         Route::get('promotions/{id}', [PromotionController::class, 'show']);
         Route::put('promotions/{id}', [PromotionController::class, 'update']);
         Route::delete('promotions/{id}', [PromotionController::class, 'destroy']);
+
+        // Waitlist management
+        Route::get('schedules/{id}/waitlist', [WaitlistController::class, 'adminScheduleWaitlist']);
 
         // Hero Slides CRUD
         Route::get('hero-slides', [AdminController::class, 'heroSlides']);

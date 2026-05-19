@@ -13,3 +13,4 @@ Schedule::command('deposit:remind-balance')->dailyAt('08:10')->timezone('Asia/Ba
 Schedule::command('sms:booking-reminders')->dailyAt('08:15')->timezone('Asia/Bangkok');
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
+Schedule::job(new \App\Jobs\ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
