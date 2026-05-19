@@ -53,8 +53,8 @@ class StaffController extends Controller
                         $count = $bookings->where('pickup_point_id', $point->id)->count();
                         return [
                             'id' => $point->id,
-                            'label' => $point->region_label ?: $point->pickup_location,
-                            'region' => $point->region,
+                            'label' => $point->pickup_location ?: $point->region_label,
+                            'region_label' => $point->region_label,
                             'passenger_count' => $count,
                         ];
                     })
