@@ -20,6 +20,9 @@ class NotifyPickupEtaCommand extends Command
     private const APPROACHING_MINUTES = 20;
     private const ARRIVING_MINUTES = 5;
 
+    /** ถือว่ารถถึงจุดรับแล้วเมื่ออยู่ใกล้กว่าระยะนี้ (กม.) */
+    private const ARRIVED_KM = 0.2;
+
     /** ถือว่าตำแหน่งรถใช้ไม่ได้ถ้าเก่ากว่านี้ (นาที) */
     private const STALE_AFTER_MINUTES = 20;
 
@@ -56,15 +59,19 @@ class NotifyPickupEtaCommand extends Command
                     continue;
                 }
 
-                $minutes = $this->etaMinutes(
+                $distanceKm = $this->distanceKm(
                     (float) $location['latitude'],
                     (float) $location['longitude'],
                     (float) $point->latitude,
                     (float) $point->longitude,
+                );
+
+                $minutes = $this->etaMinutes(
+                    $distanceKm,
                     isset($location['speed']) ? (float) $location['speed'] : null,
                 );
 
-                $stage = $this->stageFor($minutes);
+                $stage = $this->stageFor($distanceKm, $minutes);
                 if ($stage === null) {
                     continue;
                 }
@@ -113,8 +120,11 @@ class NotifyPickupEtaCommand extends Command
     /**
      * คืน stage ที่ควรเตือน หรือ null ถ้ายังไม่ถึงเกณฑ์
      */
-    private function stageFor(int $minutes): ?string
+    private function stageFor(float $distanceKm, int $minutes): ?string
     {
+        if ($distanceKm <= self::ARRIVED_KM) {
+            return 'arrived';
+        }
         if ($minutes <= self::ARRIVING_MINUTES) {
             return 'arriving';
         }
@@ -142,7 +152,10 @@ class NotifyPickupEtaCommand extends Command
         $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
         $place = $pickupName ? "จุดรับ $pickupName" : 'จุดรับของคุณ';
 
-        if ($stage === 'arriving') {
+        if ($stage === 'arrived') {
+            $title = 'รถถึงจุดรับแล้ว! 🚐';
+            $body = "รถของทริป \"$tripTitle\" ถึง$place แล้ว กรุณาขึ้นรถได้เลย";
+        } elseif ($stage === 'arriving') {
             $title = 'รถกำลังจะถึงแล้ว! 🚐';
             $body = "รถของทริป \"$tripTitle\" จะถึง$place ในอีกประมาณ $minutes นาที กรุณาไปยังจุดรับ";
         } else {
@@ -165,8 +178,11 @@ class NotifyPickupEtaCommand extends Command
 
         $expiresAt = now()->endOfDay();
         Cache::put($cacheKey, true, $expiresAt);
-        // เมื่อแจ้งเตือน "ใกล้ถึง" แล้ว ไม่ต้องเตือน "กำลังมา" ตามหลังอีก
-        if ($stage === 'arriving') {
+        // เมื่อแจ้งเตือน stage ที่ใกล้กว่าแล้ว ไม่ต้องเตือน stage ที่ไกลกว่าตามหลังอีก
+        if ($stage === 'arrived') {
+            Cache::put("eta_notified:{$booking->id}:arriving", true, $expiresAt);
+            Cache::put("eta_notified:{$booking->id}:approaching", true, $expiresAt);
+        } elseif ($stage === 'arriving') {
             Cache::put("eta_notified:{$booking->id}:approaching", true, $expiresAt);
         }
 
@@ -174,22 +190,24 @@ class NotifyPickupEtaCommand extends Command
     }
 
     /**
-     * ประมาณ ETA จากระยะ haversine — เร็ว ฟรี ไม่เรียก Google API
+     * ระยะ haversine ระหว่างสองพิกัด (กม.) — เร็ว ฟรี ไม่เรียก Google API
      */
-    private function etaMinutes(
-        float $fromLat,
-        float $fromLng,
-        float $toLat,
-        float $toLng,
-        ?float $speedKmh,
-    ): int {
+    private function distanceKm(float $fromLat, float $fromLng, float $toLat, float $toLng): float
+    {
         $earthRadius = 6371.0; // km
         $dLat = deg2rad($toLat - $fromLat);
         $dLng = deg2rad($toLng - $fromLng);
         $a = sin($dLat / 2) ** 2
             + cos(deg2rad($fromLat)) * cos(deg2rad($toLat)) * sin($dLng / 2) ** 2;
-        $distanceKm = $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
 
+        return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
+    /**
+     * ประมาณ ETA จากระยะทางและความเร็ว
+     */
+    private function etaMinutes(float $distanceKm, ?float $speedKmh): int
+    {
         $effectiveSpeed = ($speedKmh !== null && $speedKmh >= 8.0) ? $speedKmh : 35.0;
 
         return max((int) round(($distanceKm / $effectiveSpeed) * 60), 0);

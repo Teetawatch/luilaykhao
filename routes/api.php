@@ -137,6 +137,8 @@ Route::prefix('v1')->group(function () {
         Route::prefix('driver')->group(function () {
             Route::get('me', [DriverController::class, 'me']);
             Route::get('schedules', [DriverController::class, 'schedules']);
+            Route::get('schedules/{id}/manifest', [DriverController::class, 'scheduleManifest']);
+            Route::post('schedules/{id}/depart', [DriverController::class, 'markDeparted']);
             Route::post('check-in/lookup', [DriverController::class, 'lookupCheckIn']);
             Route::post('check-in', [DriverController::class, 'checkIn']);
         });

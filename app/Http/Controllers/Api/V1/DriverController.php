@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
+use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
 class DriverController extends Controller
@@ -332,6 +334,137 @@ class DriverController extends Controller
                 'driver_name' => $schedule->vehicle->driver_name,
                 'driver_phone' => $schedule->vehicle->driver_phone,
             ] : null,
+            'pickup_points' => $schedule->relationLoaded('pickupPoints')
+                ? $schedule->pickupPoints
+                    ->sortBy('sort_order')
+                    ->map(fn ($point) => [
+                        'id' => $point->id,
+                        'location' => $point->pickup_location,
+                        'region_label' => $point->region_label,
+                        'latitude' => $point->latitude,
+                        'longitude' => $point->longitude,
+                        'notes' => $point->notes,
+                    ])
+                    ->values()
+                : [],
         ];
+    }
+
+    public function scheduleManifest(Request $request, int $id): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
+        $schedule = TripSchedule::with(['trip', 'vehicle', 'staff', 'pickupPoints'])->find($id);
+
+        if (! $schedule) {
+            return $this->error('ไม่พบรอบเดินทางนี้', 404);
+        }
+
+        if (! $this->canAccessSchedule($request, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์ดูรอบเดินทางนี้', 403);
+        }
+
+        $bookings = Booking::with(['user', 'pickupPoint', 'passengers'])
+            ->where('schedule_id', $schedule->id)
+            ->where('status', 'confirmed')
+            ->orderBy('checked_in')
+            ->orderBy('booking_ref')
+            ->get();
+
+        $manifest = $bookings->map(function (Booking $booking) {
+            $passengers = $booking->passengers
+                ->map(fn ($passenger) => [
+                    'name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
+                    'nickname' => $passenger->nickname,
+                    'phone' => $passenger->phone,
+                ])
+                ->values();
+
+            return [
+                'booking_ref' => $booking->booking_ref,
+                'status' => $booking->status,
+                'checked_in' => (bool) $booking->checked_in,
+                'checked_in_at' => $booking->checked_in_at?->toIso8601String(),
+                'contact_name' => $booking->user?->name,
+                'contact_phone' => $booking->user?->phone,
+                'is_group' => (bool) $booking->is_group,
+                'group_name' => $booking->group_name,
+                'pickup_region' => $booking->pickup_region,
+                'pickup_location' => $booking->pickupPoint?->pickup_location,
+                'pickup_region_label' => $booking->pickupPoint?->region_label,
+                'pickup_map_url' => $booking->pickupPoint?->map_url,
+                'pickup_notes' => $booking->pickupPoint?->notes,
+                'passenger_count' => $passengers->count(),
+                'passengers' => $passengers,
+            ];
+        })->values();
+
+        return $this->success([
+            'schedule' => $this->formatSchedule($schedule),
+            'summary' => [
+                'bookings' => $bookings->count(),
+                'checked_in' => $bookings->where('checked_in', true)->count(),
+                'passengers' => $bookings->sum(fn (Booking $booking) => $booking->passengers->count()),
+            ],
+            'bookings' => $manifest,
+        ], 'รายชื่อผู้โดยสาร');
+    }
+
+    /**
+     * แจ้งเตือนผู้โดยสารว่าคนขับเริ่มออกเดินทางแล้ว เรียกตอนคนขับกด "เริ่มติดตาม".
+     * ส่งครั้งเดียวต่อรอบเดินทางต่อวัน (idempotent ด้วย cache).
+     */
+    public function markDeparted(Request $request, int $id): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
+        $schedule = TripSchedule::with(['trip', 'vehicle', 'staff'])->find($id);
+
+        if (! $schedule) {
+            return $this->error('ไม่พบรอบเดินทางนี้', 404);
+        }
+
+        if (! $this->canAccessSchedule($request, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์อัปเดตรอบเดินทางนี้', 403);
+        }
+
+        $cacheKey = "trip_departed_notified:{$schedule->id}";
+        if (Cache::has($cacheKey)) {
+            return $this->success(
+                ['notified' => 0, 'already_sent' => true],
+                'แจ้งเตือนออกเดินทางถูกส่งไปแล้วก่อนหน้านี้'
+            );
+        }
+
+        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+        $bookings = Booking::where('schedule_id', $schedule->id)
+            ->where('status', 'confirmed')
+            ->whereNotNull('user_id')
+            ->get(['id', 'booking_ref', 'user_id']);
+
+        foreach ($bookings as $booking) {
+            SmartNotification::send(
+                $booking->user_id,
+                'vehicle_departed',
+                'รถออกเดินทางแล้ว 🚐',
+                "คนขับทริป \"{$tripTitle}\" เริ่มออกเดินทางแล้ว ติดตามตำแหน่งรถแบบเรียลไทม์ได้เลย",
+                [
+                    'booking_ref' => $booking->booking_ref,
+                    'vehicle_id' => $schedule->vehicle_id,
+                    'schedule_id' => $schedule->id,
+                ],
+            );
+        }
+
+        Cache::put($cacheKey, true, now()->endOfDay());
+
+        return $this->success(
+            ['notified' => $bookings->count(), 'already_sent' => false],
+            'ส่งแจ้งเตือนออกเดินทางให้ผู้โดยสารแล้ว'
+        );
     }
 }
