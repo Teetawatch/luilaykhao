@@ -687,6 +687,7 @@ class AdminController extends Controller
                 ? $schedule->staff->map(fn ($user) => [
                     'id' => $user->id,
                     'name' => $user->name,
+                    'nickname' => $user->nickname,
                     'email' => $user->email,
                     'phone' => $user->phone,
                     'avatar_url' => $user->avatar_url,
@@ -1686,6 +1687,7 @@ class AdminController extends Controller
         return $this->paginated($staff->through(fn ($user) => [
             'id' => $user->id,
             'name' => $user->name,
+            'nickname' => $user->nickname,
             'email' => $user->email,
             'phone' => $user->phone,
             'avatar_url' => $user->avatar_url,
@@ -1693,6 +1695,57 @@ class AdminController extends Controller
             'total_staff_reviews' => $user->staff_reviews_received_count ?? 0,
             'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
         ]));
+    }
+
+    public function staffRoster(Request $request): JsonResponse
+    {
+        $from = $request->filled('from')
+            ? \Carbon\Carbon::parse($request->from)->startOfDay()
+            : now()->startOfDay();
+
+        $to = $request->filled('to')
+            ? \Carbon\Carbon::parse($request->to)->endOfDay()
+            : $from->copy()->addDays(29)->endOfDay();
+
+        if (! Schema::hasTable('schedule_staff_assignments')) {
+            return $this->success(['staff' => [], 'schedules' => [], 'assignments' => []]);
+        }
+
+        $schedules = TripSchedule::with(['trip', 'vehicle'])
+            ->whereBetween('departure_date', [$from->toDateString(), $to->toDateString()])
+            ->orderBy('departure_date')
+            ->get();
+
+        $scheduleIds = $schedules->pluck('id');
+
+        $assignments = \App\Models\ScheduleStaffAssignment::with('user')
+            ->whereIn('schedule_id', $scheduleIds)
+            ->get()
+            ->groupBy('schedule_id');
+
+        $staffIds = $assignments->flatten()->pluck('user_id')->unique();
+        $staffUsers = User::whereIn('id', $staffIds)->orderBy('name')->get();
+
+        return $this->success([
+            'staff' => $staffUsers->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'nickname' => $u->nickname,
+                'phone' => $u->phone,
+                'avatar_url' => $u->avatar_url,
+            ])->values(),
+            'schedules' => $schedules->map(fn ($s) => [
+                'id' => $s->id,
+                'trip_title' => $s->trip?->title ?? 'ไม่ระบุทริป',
+                'trip_location' => $s->trip?->location,
+                'departure_date' => $s->departure_date?->toDateString(),
+                'return_date' => $s->return_date?->toDateString(),
+                'status' => $s->status,
+                'transport_type' => $s->transport_type,
+                'vehicle_name' => $s->vehicle?->name,
+            ])->values(),
+            'assignments' => $assignments->map(fn ($rows) => $rows->pluck('user_id')->values())->toArray(),
+        ]);
     }
 
     public function storeUser(Request $request): JsonResponse

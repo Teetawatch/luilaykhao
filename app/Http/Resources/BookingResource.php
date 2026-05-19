@@ -27,6 +27,7 @@ class BookingResource extends JsonResource
                 fn () => $this->schedule->staff->map(fn ($staff) => [
                     'id' => $staff->id,
                     'name' => $staff->name,
+                    'nickname' => $staff->nickname,
                     'email' => $staff->email,
                     'phone' => $staff->phone,
                     'avatar_url' => $staff->avatar_url,

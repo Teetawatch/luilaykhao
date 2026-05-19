@@ -230,6 +230,11 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
+    async fetchStaffRoster(params = {}) {
+      const res = await api.get('/admin/staff/roster', { params });
+      return res.data.data;
+    },
+
     // ─── Calendar ────────────────────
     async fetchCalendarSchedules(params = {}) {
       this.loading = true;

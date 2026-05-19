@@ -235,6 +235,7 @@ Route::prefix('v1')->group(function () {
         // Users management
         Route::get('users', [AdminController::class, 'users']);
         Route::get('staff/users', [AdminController::class, 'staffUsers']);
+        Route::get('staff/roster', [AdminController::class, 'staffRoster']);
         Route::post('users', [AdminController::class, 'storeUser']);
         Route::put('users/{id}', [AdminController::class, 'updateUser']);
         Route::delete('users/{id}', [AdminController::class, 'deleteUser']);
