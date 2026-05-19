@@ -40,10 +40,10 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'support_phone' => env('SUPPORT_PHONE', '0900000000'),
+    'support_phone' => env('SUPPORT_PHONE', '0626126006'),
     'support_line_id' => env('SUPPORT_LINE_ID', '@luilaykhao'),
     'support_line_url' => env('SUPPORT_LINE_URL', 'https://line.me/R/ti/p/@luilaykhao'),
-    'support_email' => env('SUPPORT_EMAIL', 'support@luilaykhao.com'),
+    'support_email' => env('SUPPORT_EMAIL', 'luilaykhao.info@gmail.com'),
 
     /*
     |--------------------------------------------------------------------------

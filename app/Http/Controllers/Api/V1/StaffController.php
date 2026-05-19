@@ -20,38 +20,74 @@ class StaffController extends Controller
             return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
         }
 
-        $schedules = TripSchedule::with(['trip', 'vehicle'])
-            ->whereHas('staff', fn ($q) => $q->where('users.id', $request->user()->id))
+        $userId = $request->user()->id;
+
+        $schedules = TripSchedule::with(['trip', 'vehicle', 'pickupPoints'])
+            ->whereHas('staff', fn ($q) => $q->where('users.id', $userId))
             ->orderBy('departure_date')
             ->get();
 
-        $summary = StaffReview::where('staff_user_id', $request->user()->id)
+        $summary = StaffReview::where('staff_user_id', $userId)
             ->selectRaw('COUNT(*) as total_reviews, AVG(rating) as avg_rating')
             ->first();
+
+        $today = now()->toDateString();
 
         return $this->success([
             'summary' => [
                 'total_reviews' => (int) ($summary?->total_reviews ?? 0),
                 'avg_rating' => $summary?->avg_rating ? round((float) $summary->avg_rating, 2) : null,
+                'total_schedules' => $schedules->count(),
+                'upcoming_count' => $schedules->filter(fn ($s) => $s->departure_date?->toDateString() >= $today)->count(),
             ],
-            'schedules' => $schedules->map(fn ($s) => [
-                'id' => $s->id,
-                'trip' => [
-                    'id' => $s->trip?->id,
-                    'title' => $s->trip?->title,
-                    'location' => $s->trip?->location,
-                    'cover_image' => $s->trip?->cover_image,
-                ],
-                'vehicle' => $s->vehicle ? [
-                    'id' => $s->vehicle->id,
-                    'name' => $s->vehicle->name,
-                    'type' => $s->vehicle->type,
-                ] : null,
-                'departure_date' => $s->departure_date?->toDateString(),
-                'return_date' => $s->return_date?->toDateString(),
-                'status' => $s->status,
-                'transport_type' => $s->transport_type,
-            ])->values(),
+            'schedules' => $schedules->map(function ($s) {
+                $bookings = Booking::where('schedule_id', $s->id)
+                    ->whereIn('status', ['confirmed', 'completed'])
+                    ->get(['id', 'pickup_point_id', 'checked_in']);
+
+                $totalConfirmed = $bookings->count();
+                $checkedInCount = $bookings->where('checked_in', true)->count();
+
+                $pickupBreakdown = $s->pickupPoints
+                    ->map(function ($point) use ($bookings) {
+                        $count = $bookings->where('pickup_point_id', $point->id)->count();
+                        return [
+                            'id' => $point->id,
+                            'label' => $point->region_label ?: $point->pickup_location,
+                            'region' => $point->region,
+                            'passenger_count' => $count,
+                        ];
+                    })
+                    ->filter(fn ($p) => $p['passenger_count'] > 0)
+                    ->values();
+
+                $noPickupCount = $bookings->whereNull('pickup_point_id')->count();
+
+                return [
+                    'id' => $s->id,
+                    'trip' => [
+                        'id' => $s->trip?->id,
+                        'title' => $s->trip?->title,
+                        'location' => $s->trip?->location,
+                        'cover_image' => $s->trip?->cover_image,
+                    ],
+                    'vehicle' => $s->vehicle ? [
+                        'id' => $s->vehicle->id,
+                        'name' => $s->vehicle->name,
+                        'type' => $s->vehicle->type,
+                    ] : null,
+                    'departure_date' => $s->departure_date?->toDateString(),
+                    'return_date' => $s->return_date?->toDateString(),
+                    'status' => $s->status,
+                    'transport_type' => $s->transport_type,
+                    'total_seats' => $s->total_seats,
+                    'booked_seats' => $s->booked_seats,
+                    'total_confirmed' => $totalConfirmed,
+                    'checked_in_count' => $checkedInCount,
+                    'pickup_breakdown' => $pickupBreakdown,
+                    'no_pickup_count' => $noPickupCount,
+                ];
+            })->values(),
         ]);
     }
 
