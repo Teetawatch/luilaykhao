@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Events\SosTriggered;
 use App\Http\Controllers\Controller;
+use App\Jobs\BroadcastSosAlert;
 use App\Models\Booking;
-use App\Models\SmartNotification;
 use App\Models\SosAlert;
 use App\Models\TripSchedule;
 use App\Traits\ApiResponse;
@@ -42,6 +41,19 @@ class SosController extends Controller
             return $this->error('ใช้ SOS ได้เฉพาะช่วงเวลาทริปเท่านั้น', 422);
         }
 
+        // Treat a repeated trigger within a short window as the same alert so a
+        // client retrying over a flaky connection doesn't create duplicates.
+        $recentAlert = SosAlert::where('user_id', $user->id)
+            ->where('schedule_id', $schedule->id)
+            ->where('status', 'active')
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->latest()
+            ->first();
+
+        if ($recentAlert) {
+            return $this->success($this->presentAlert($recentAlert->fresh('user')), 'ส่งสัญญาณ SOS แล้ว');
+        }
+
         $alert = SosAlert::create([
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
@@ -52,7 +64,9 @@ class SosController extends Controller
             'status' => 'active',
         ]);
 
-        $this->notifyRecipients($alert, $user, $schedule);
+        // Notify recipients after the response is sent so a slow FCM round-trip
+        // never holds up the sender — critical on weak (3G) connections.
+        BroadcastSosAlert::dispatchAfterResponse($alert->id);
 
         return $this->success($this->presentAlert($alert->fresh('user')), 'ส่งสัญญาณ SOS แล้ว');
     }
@@ -115,51 +129,6 @@ class SosController extends Controller
         }
 
         return $today >= $start && $today <= $end;
-    }
-
-    private function notifyRecipients(SosAlert $alert, $sender, TripSchedule $schedule): void
-    {
-        $staffIds = $schedule->staff()->pluck('users.id');
-
-        $travelerIds = Booking::where('schedule_id', $schedule->id)
-            ->where('status', 'confirmed')
-            ->pluck('user_id');
-
-        $recipientIds = $staffIds->merge($travelerIds)
-            ->unique()
-            ->reject(fn ($id) => (int) $id === (int) $sender->id)
-            ->values();
-
-        $tripTitle = $schedule->trip?->title ?? 'ทริป';
-        $title = '🆘 ขอความช่วยเหลือ SOS';
-        $body = $sender->name.' ขอความช่วยเหลือในทริป '.$tripTitle;
-        if ($alert->message) {
-            $body .= ' — '.$alert->message;
-        }
-
-        $data = [
-            'sos_id' => (string) $alert->id,
-            'schedule_id' => (string) $schedule->id,
-            'sos_user_name' => (string) $sender->name,
-            'contact_phone' => (string) ($alert->contact_phone ?? ''),
-            'latitude' => $alert->latitude !== null ? (string) $alert->latitude : '',
-            'longitude' => $alert->longitude !== null ? (string) $alert->longitude : '',
-            'sos_message' => (string) ($alert->message ?? ''),
-        ];
-
-        foreach ($recipientIds as $recipientId) {
-            SmartNotification::send($recipientId, 'sos_alert', $title, $body, $data);
-            broadcast(new SosTriggered(
-                recipientUserId: (int) $recipientId,
-                sosId: $alert->id,
-                scheduleId: $schedule->id,
-                userName: $sender->name,
-                message: $alert->message,
-                contactPhone: $alert->contact_phone,
-                latitude: $alert->latitude,
-                longitude: $alert->longitude,
-            ));
-        }
     }
 
     private function presentAlert(SosAlert $alert): array

@@ -13,6 +13,8 @@ class FcmService
 {
     private const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 
+    private const SOS_TYPE = 'sos_alert';
+
     public function sendNotification(SmartNotification $notification): void
     {
         $tokens = FcmToken::where('user_id', $notification->user_id)
@@ -29,6 +31,7 @@ class FcmService
                     'type' => $notification->type,
                     ...$this->stringData($notification->data ?? []),
                 ],
+                $notification->type,
             );
         }
     }
@@ -40,16 +43,18 @@ class FcmService
             ->pluck('token');
 
         foreach ($tokens as $token) {
-            $this->sendToToken($token, $title, $body, $data);
+            $this->sendToToken($token, $title, $body, $data, $data['type'] ?? null);
         }
     }
 
-    private function sendToToken(string $token, string $title, string $body, array $data = []): void
+    private function sendToToken(string $token, string $title, string $body, array $data = [], ?string $type = null): void
     {
         $projectId = config('services.fcm.project_id');
         if (! $projectId) {
             return;
         }
+
+        $isSos = $type === self::SOS_TYPE;
 
         try {
             $response = Http::withToken($this->accessToken())
@@ -65,8 +70,11 @@ class FcmService
                         'android' => [
                             'priority' => 'HIGH',
                             'notification' => [
-                                'channel_id' => 'important_updates',
-                                'sound' => 'default',
+                                'channel_id' => $isSos ? 'sos_emergency_v2' : 'important_updates',
+                                'sound' => $isSos ? 'sos_siren' : 'default',
+                                'notification_priority' => $isSos ? 'PRIORITY_MAX' : 'PRIORITY_HIGH',
+                                'default_vibrate_timings' => true,
+                                'visibility' => 'PUBLIC',
                             ],
                         ],
                         'apns' => [
@@ -80,9 +88,10 @@ class FcmService
                                         'title' => $title,
                                         'body' => $body,
                                     ],
-                                    'sound' => 'default',
+                                    'sound' => $isSos ? 'sos_siren.wav' : 'default',
                                     'badge' => 1,
                                     'content-available' => 1,
+                                    'interruption-level' => $isSos ? 'time-sensitive' : 'active',
                                 ],
                             ],
                         ],
