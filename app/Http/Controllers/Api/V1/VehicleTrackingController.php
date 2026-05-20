@@ -434,6 +434,65 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * Guest lookup by name: ค้นหาการจองด้วยชื่อผู้เดินทาง + เบอร์โทรเต็ม
+     * ไม่เปิดเผย booking_ref / qr_code / share_url เพื่อความปลอดภัย
+     * POST /api/v1/bookings/guest-lookup-by-name  (public, no auth required)
+     */
+    public function guestLookupByName(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name'  => 'required|string|min:2',
+            'phone' => 'required|string|min:8',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error('กรุณากรอกชื่อและเบอร์โทรให้ครบถ้วน', 422, $validator->errors());
+        }
+
+        $inputName   = trim($request->name);
+        $inputDigits = preg_replace('/\D/', '', $request->phone);
+
+        $passengers = \App\Models\BookingPassenger::with([
+            'booking.schedule.trip',
+            'booking.schedule.vehicle',
+            'booking.pickupPoint',
+        ])
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($inputName)])
+            ->get()
+            ->filter(function ($p) use ($inputDigits) {
+                $stored = preg_replace('/\D/', '', $p->phone ?? '');
+                return $stored !== '' && str_ends_with($stored, substr($inputDigits, -8));
+            });
+
+        if ($passengers->isEmpty()) {
+            return $this->error('ไม่พบข้อมูลการจองที่ตรงกับชื่อและเบอร์โทรนี้', 404);
+        }
+
+        $results = $passengers->map(function ($p) {
+            $booking  = $p->booking;
+            $schedule = $booking?->schedule;
+            $trip     = $schedule?->trip;
+            $vehicle  = $schedule?->vehicle;
+
+            [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
+
+            return [
+                'status'         => $booking?->status,
+                'trip_title'     => $trip?->title ?? '',
+                'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+                'schedule_id'    => $booking?->schedule_id,
+                'vehicle_id'     => $schedule?->vehicle_id,
+                'driver_name'    => $vehicle?->driver_name,
+                'license_plate'  => $vehicle?->license_plate,
+                'pickup_lat'     => $pickupLat,
+                'pickup_lng'     => $pickupLng,
+            ];
+        })->values()->all();
+
+        return $this->success($results, 'พบข้อมูลการจอง');
+    }
+
+    /**
      * ดึงข้อมูลการจอง + ข้อมูลรถ สำหรับ Customer Tracking App
      * GET /api/v1/bookings/{ref}/tracking  (ref = booking_ref เช่น LLK-20250409-0001)
      */

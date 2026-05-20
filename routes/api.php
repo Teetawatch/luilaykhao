@@ -156,6 +156,8 @@ Route::prefix('v1')->group(function () {
 
     // Guest booking lookup: ยืนยันตัวตนด้วย booking_ref + เบอร์โทร (ไม่ต้องล็อกอิน)
     Route::post('bookings/guest-lookup', [VehicleTrackingController::class, 'guestLookup'])->middleware('throttle:20,1');
+    // Guest booking lookup by name: ค้นด้วยชื่อ + เบอร์โทรเต็ม (ไม่เปิดเผย booking_ref)
+    Route::post('bookings/guest-lookup-by-name', [VehicleTrackingController::class, 'guestLookupByName'])->middleware('throttle:10,1');
 
     // Live Share Link: ติดตามรถแบบสาธารณะผ่าน share token (ไม่ต้องล็อกอิน)
     Route::get('track/{token}', [VehicleTrackingController::class, 'sharedTracking'])->middleware('throttle:120,1');
