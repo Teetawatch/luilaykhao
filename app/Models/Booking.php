@@ -6,11 +6,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\InstallmentPayment;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class Booking extends Model
 {
     use HasFactory;
+
+    // สถานะที่ลูกค้าแก้ไขการจอง (ย้ายวัน/เปลี่ยนจุดรับ) ได้
+    public const MODIFIABLE_STATUSES = ['pending', 'confirmed'];
 
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
@@ -113,7 +117,7 @@ class Booking extends Model
 
     public static function generateQrCode(): string
     {
-        return 'QR-' . strtoupper(\Illuminate\Support\Str::random(16));
+        return 'QR-'.strtoupper(Str::random(16));
     }
 
     /**
@@ -123,7 +127,7 @@ class Booking extends Model
     {
         if (empty($this->share_token)) {
             do {
-                $token = \Illuminate\Support\Str::lower(\Illuminate\Support\Str::random(12));
+                $token = Str::lower(Str::random(12));
             } while (static::where('share_token', $token)->exists());
 
             $this->forceFill(['share_token' => $token])->save();
@@ -134,6 +138,30 @@ class Booking extends Model
 
     public function shareUrl(): string
     {
-        return url('/track/' . $this->ensureShareToken());
+        return url('/track/'.$this->ensureShareToken());
+    }
+
+    /**
+     * กำหนดเส้นตายสำหรับการแก้ไขการจอง — ก่อนวันเดินทาง 1 วัน (สิ้นสุดปลายวัน)
+     */
+    public function modificationDeadline(): ?Carbon
+    {
+        $schedule = $this->relationLoaded('schedule') ? $this->schedule : $this->schedule()->first();
+
+        return $schedule?->departure_date?->copy()->subDay()->endOfDay();
+    }
+
+    /**
+     * ลูกค้าแก้ไขการจองได้หรือไม่ — สถานะต้อง active และยังไม่เลยเส้นตาย
+     */
+    public function canBeModified(): bool
+    {
+        if (! in_array($this->status, self::MODIFIABLE_STATUSES, true)) {
+            return false;
+        }
+
+        $deadline = $this->modificationDeadline();
+
+        return $deadline !== null && now()->lte($deadline);
     }
 }

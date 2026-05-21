@@ -39,21 +39,21 @@ class BookingService
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
-            if ($isJoinTrip && !$schedule->join_trip_enabled) {
+            if ($isJoinTrip && ! $schedule->join_trip_enabled) {
                 throw new \Exception('รอบเดินทางนี้ไม่เปิดให้จองแบบ Join Trip');
             }
 
             $participantCount = count($passengers);
 
             // Join trip allows unlimited bookings — skip seat availability check
-            if (!$isJoinTrip && $schedule->available_seats < $participantCount) {
+            if (! $isJoinTrip && $schedule->available_seats < $participantCount) {
                 throw new \Exception('ที่นั่งไม่เพียงพอ');
             }
 
             // Verify seat locks if seat-based booking and NOT join trip
-            if (!$isJoinTrip && !empty($seatIds)) {
+            if (! $isJoinTrip && ! empty($seatIds)) {
                 foreach ($seatIds as $seatId) {
-                    if (!$this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId)) {
+                    if (! $this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId)) {
                         throw new \Exception("ที่นั่ง {$seatId} ไม่ได้ถูกล็อคโดยคุณ");
                     }
                 }
@@ -63,7 +63,7 @@ class BookingService
             if ($isJoinTrip) {
                 $pricePerPerson = $schedule->join_trip_price ?? $schedule->effective_price;
                 $pickupPoint = null;
-                $pickupRegion = null; // Join trip might not need pickup region if they meet at destination? 
+                $pickupRegion = null; // Join trip might not need pickup region if they meet at destination?
                 // But user didn't specify. I'll keep pickup logic if they provided it.
             } else {
                 $pricePerPerson = $schedule->effective_price;
@@ -83,7 +83,7 @@ class BookingService
 
                 if ($pickupPoint) {
                     $pricePerPerson = $pickupPoint->price;
-                    $pickupRegion = $pickupPoint->region; 
+                    $pickupRegion = $pickupPoint->region;
                 }
             }
 
@@ -119,10 +119,10 @@ class BookingService
             }
 
             $totalAmount = ($pricePerPerson * $participantCount) + $addonsTotal;
-            
+
             // ... rest of the logic remains the same until Booking::create
             // I need to include the rest of the logic here because I'm replacing a large block.
-            
+
             $promotionId = null;
             $discountAmount = 0;
 
@@ -130,10 +130,18 @@ class BookingService
                 $promotion = Promotion::where('code', $promotionCode)->where('is_active', true)->lockForUpdate()->first();
                 if ($promotion) {
                     $isValid = true;
-                    if ($promotion->start_date && now()->startOfDay()->lt($promotion->start_date)) $isValid = false;
-                    if ($promotion->end_date && now()->startOfDay()->gt($promotion->end_date)) $isValid = false;
-                    if ($promotion->max_uses && $promotion->used_count >= $promotion->max_uses) $isValid = false;
-                    if ($promotion->trip_ids && is_array($promotion->trip_ids) && !in_array($schedule->trip_id, $promotion->trip_ids)) $isValid = false;
+                    if ($promotion->start_date && now()->startOfDay()->lt($promotion->start_date)) {
+                        $isValid = false;
+                    }
+                    if ($promotion->end_date && now()->startOfDay()->gt($promotion->end_date)) {
+                        $isValid = false;
+                    }
+                    if ($promotion->max_uses && $promotion->used_count >= $promotion->max_uses) {
+                        $isValid = false;
+                    }
+                    if ($promotion->trip_ids && is_array($promotion->trip_ids) && ! in_array($schedule->trip_id, $promotion->trip_ids)) {
+                        $isValid = false;
+                    }
 
                     if ($isValid) {
                         $promotionId = $promotion->id;
@@ -186,7 +194,7 @@ class BookingService
             }
 
             // Create seats if seat-based and NOT join trip
-            if (!$isJoinTrip && !empty($seatIds)) {
+            if (! $isJoinTrip && ! empty($seatIds)) {
                 foreach ($seatIds as $index => $seatId) {
                     BookingSeat::create([
                         'booking_id' => $booking->id,
@@ -200,7 +208,7 @@ class BookingService
                 }
             }
 
-            if (!$isJoinTrip) {
+            if (! $isJoinTrip) {
                 $schedule->increment('booked_seats', $participantCount);
             }
 
@@ -292,13 +300,184 @@ class BookingService
         return $cancelled;
     }
 
+    /**
+     * ลูกค้าเปลี่ยนวันเดินทาง (ย้ายไปอีกรอบของทริปเดียวกัน) — คงราคาเดิม เลือกที่นั่งใหม่
+     * ใช้ได้กับสถานะ pending/confirmed และก่อนเดินทาง 1 วันเท่านั้น
+     *
+     * @param  string[]  $seatIds  ที่นั่งใหม่บนรอบปลายทาง (จำเป็นถ้าการจองเดิมเป็นแบบเลือกที่นั่ง)
+     */
+    public function rescheduleBooking(Booking $booking, int $targetScheduleId, array $seatIds = [], ?int $pickupPointId = null): Booking
+    {
+        $originalScheduleId = $booking->schedule_id;
+
+        $rescheduled = DB::transaction(function () use ($booking, $targetScheduleId, $seatIds, $pickupPointId) {
+            $booking->loadMissing(['schedule.trip', 'passengers', 'seats']);
+
+            if (! $booking->canBeModified()) {
+                throw new \Exception('การจองนี้ไม่สามารถเปลี่ยนวันเดินทางได้ (เปลี่ยนได้ถึงก่อนเดินทาง 1 วัน)');
+            }
+
+            $source = TripSchedule::lockForUpdate()->findOrFail($booking->schedule_id);
+            $target = TripSchedule::lockForUpdate()->findOrFail($targetScheduleId);
+
+            if ($target->id === $source->id) {
+                throw new \Exception('กรุณาเลือกรอบเดินทางอื่น');
+            }
+
+            if ((int) $target->trip_id !== (int) $source->trip_id) {
+                throw new \Exception('เปลี่ยนได้เฉพาะรอบเดินทางของทริปเดียวกัน');
+            }
+
+            if ($target->status !== 'open') {
+                throw new \Exception('รอบเดินทางปลายทางไม่เปิดรับจอง');
+            }
+
+            if ($target->departure_date->lt(now()->startOfDay())) {
+                throw new \Exception('ไม่สามารถเปลี่ยนไปยังรอบเดินทางที่ผ่านมาแล้ว');
+            }
+
+            $source->syncBookedSeats();
+            $target->syncBookedSeats();
+
+            $passengerCount = $booking->passengers->count();
+            $usesSeats = ! $booking->is_join_trip && $booking->seats->isNotEmpty();
+
+            if ($booking->is_join_trip && ! $target->join_trip_enabled) {
+                throw new \Exception('รอบเดินทางปลายทางไม่เปิดให้จองแบบ Join Trip');
+            }
+
+            // ตรวจที่นั่งสำหรับการจองแบบเลือกที่นั่ง
+            $newSeatIds = [];
+            if ($usesSeats) {
+                $newSeatIds = collect($seatIds)
+                    ->map(fn ($id) => trim((string) $id))
+                    ->filter()
+                    ->values();
+
+                if ($newSeatIds->count() !== $passengerCount) {
+                    throw new \Exception("กรุณาเลือกที่นั่งใหม่ให้ครบ {$passengerCount} ที่นั่ง");
+                }
+
+                if ($newSeatIds->duplicates()->isNotEmpty()) {
+                    throw new \Exception('เลือกที่นั่งซ้ำกัน กรุณาเลือกใหม่');
+                }
+
+                if ($target->available_seats < $passengerCount) {
+                    throw new \Exception("ที่นั่งในรอบปลายทางไม่เพียงพอ (ต้องการ {$passengerCount}, ว่าง {$target->available_seats})");
+                }
+
+                $occupied = BookingSeat::where('schedule_id', $target->id)
+                    ->whereIn('seat_id', $newSeatIds->all())
+                    ->pluck('seat_id')
+                    ->unique()
+                    ->values();
+
+                if ($occupied->isNotEmpty()) {
+                    throw new \Exception('ที่นั่ง '.$occupied->join(', ').' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกที่นั่งอื่น');
+                }
+            } elseif (! $booking->is_join_trip && $target->available_seats < $passengerCount) {
+                throw new \Exception("ที่นั่งในรอบปลายทางไม่เพียงพอ (ต้องการ {$passengerCount}, ว่าง {$target->available_seats})");
+            }
+
+            // กำหนดจุดรับใหม่ (ถ้าระบุ) — ต้องอยู่ในรอบปลายทาง; คงราคาเดิมเสมอ
+            $pickupPoint = null;
+            if ($pickupPointId) {
+                $pickupPoint = SchedulePickupPoint::where('id', $pickupPointId)
+                    ->where('schedule_id', $target->id)
+                    ->first();
+
+                if (! $pickupPoint) {
+                    throw new \Exception('จุดรับที่เลือกไม่อยู่ในรอบเดินทางปลายทาง');
+                }
+            }
+
+            // ย้ายที่นั่งไปรอบปลายทาง
+            if ($usesSeats) {
+                $passengerNames = $booking->passengers->pluck('name')->values();
+                $booking->seats()->delete();
+
+                foreach ($newSeatIds as $index => $seatId) {
+                    $this->seatLockService->forceUnlock($target->id, $seatId);
+                    BookingSeat::create([
+                        'booking_id' => $booking->id,
+                        'schedule_id' => $target->id,
+                        'seat_id' => $seatId,
+                        'passenger_name' => $passengerNames->get($index),
+                    ]);
+                }
+            }
+
+            $booking->update([
+                'schedule_id' => $target->id,
+                'pickup_point_id' => $pickupPoint?->id,
+                'pickup_region' => $pickupPoint?->region,
+            ]);
+
+            $source->syncBookedSeats();
+            $target->syncBookedSeats();
+
+            return $booking->fresh(['passengers', 'seats', 'schedule.trip', 'pickupPoint']);
+        });
+
+        // แจ้งเตือนนอก transaction
+        SmartNotification::send(
+            $rescheduled->user_id,
+            'booking_rescheduled',
+            'เปลี่ยนวันเดินทางสำเร็จ',
+            "การจอง {$rescheduled->booking_ref} ย้ายไปวันที่ ".$rescheduled->schedule->departure_date->format('d/m/Y').' แล้ว',
+            [
+                'booking_ref' => $rescheduled->booking_ref,
+                'route' => 'booking',
+            ],
+        );
+
+        // ปล่อยที่นั่งคืนรอบเดิม — แจ้ง waitlist
+        ProcessWaitlistJob::dispatch($originalScheduleId);
+
+        return $rescheduled;
+    }
+
+    /**
+     * ลูกค้าเปลี่ยนจุดรับ — คงราคาเดิม ใช้ได้ก่อนเดินทาง 1 วัน
+     */
+    public function changePickupPoint(Booking $booking, int $pickupPointId): Booking
+    {
+        return DB::transaction(function () use ($booking, $pickupPointId) {
+            $booking->loadMissing('schedule');
+
+            if (! $booking->canBeModified()) {
+                throw new \Exception('การจองนี้ไม่สามารถเปลี่ยนจุดรับได้ (เปลี่ยนได้ถึงก่อนเดินทาง 1 วัน)');
+            }
+
+            $pickupPoint = SchedulePickupPoint::where('id', $pickupPointId)
+                ->where('schedule_id', $booking->schedule_id)
+                ->first();
+
+            if (! $pickupPoint) {
+                throw new \Exception('จุดรับที่เลือกไม่อยู่ในรอบเดินทางนี้');
+            }
+
+            $booking->update([
+                'pickup_point_id' => $pickupPoint->id,
+                'pickup_region' => $pickupPoint->region,
+            ]);
+
+            return $booking->fresh(['passengers', 'seats', 'schedule.trip', 'pickupPoint']);
+        });
+    }
+
     public function calculateRefundPercent(Booking $booking): int
     {
         $schedule = $booking->schedule;
         $daysUntilDeparture = now()->diffInDays($schedule->departure_date, false);
 
-        if ($daysUntilDeparture >= 7) return 80;
-        if ($daysUntilDeparture >= 3) return 50;
+        if ($daysUntilDeparture >= 7) {
+            return 80;
+        }
+        if ($daysUntilDeparture >= 3) {
+            return 50;
+        }
+
         return 0;
     }
 
@@ -316,11 +495,12 @@ class BookingService
             // มัดจำไม่คืนทุกกรณี — คืนแค่ส่วนที่เหลือ ถ้าชำระแล้ว
             $balancePaid = (float) ($booking->balance_amount ?? 0);
             $refundable = $booking->balance_paid_at ? $balancePaid : 0.0;
+
             return [
-                'refund_percent'  => $refundable > 0 ? 100 : 0,
-                'refund_amount'   => $refundable,
-                'deposit_amount'  => (float) ($booking->deposit_amount ?? 0),
-                'policy_note'     => 'มัดจำไม่คืนทุกกรณี คืนเฉพาะยอดส่วนที่เหลือที่ชำระแล้ว',
+                'refund_percent' => $refundable > 0 ? 100 : 0,
+                'refund_amount' => $refundable,
+                'deposit_amount' => (float) ($booking->deposit_amount ?? 0),
+                'policy_note' => 'มัดจำไม่คืนทุกกรณี คืนเฉพาะยอดส่วนที่เหลือที่ชำระแล้ว',
             ];
         }
 
@@ -329,12 +509,12 @@ class BookingService
 
         return [
             'refund_percent' => $percent,
-            'refund_amount'  => $refundAmount,
-            'paid_amount'    => $paidAmount,
-            'policy_note'    => match (true) {
+            'refund_amount' => $refundAmount,
+            'paid_amount' => $paidAmount,
+            'policy_note' => match (true) {
                 $percent === 80 => 'ยกเลิกก่อนเดินทาง 7+ วัน คืน 80%',
                 $percent === 50 => 'ยกเลิกก่อนเดินทาง 3–6 วัน คืน 50%',
-                default         => 'ยกเลิกก่อนเดินทางน้อยกว่า 3 วัน ไม่คืนเงิน',
+                default => 'ยกเลิกก่อนเดินทางน้อยกว่า 3 วัน ไม่คืนเงิน',
             },
         ];
     }
@@ -346,12 +526,12 @@ class BookingService
     {
         $refunded = DB::transaction(function () use ($booking, $refundAmount, $note) {
             $booking->update([
-                'status'        => 'refunded',
+                'status' => 'refunded',
                 'refund_status' => 'refunded',
                 'refund_amount' => $refundAmount,
-                'refunded_at'   => now(),
+                'refunded_at' => now(),
                 'cancellation_reason' => $note ?? $booking->cancellation_reason,
-                'cancelled_at'  => $booking->cancelled_at ?? now(),
+                'cancelled_at' => $booking->cancelled_at ?? now(),
             ]);
 
             // Sync seats back

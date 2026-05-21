@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class BookingResource extends JsonResource
 {
@@ -34,7 +35,7 @@ class BookingResource extends JsonResource
                 ])->values(),
             ),
             'pickup_region' => $this->pickup_region,
-            'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function() {
+            'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function () {
                 return [
                     'id' => $this->pickupPoint->id,
                     'region' => $this->pickupPoint->region,
@@ -56,6 +57,12 @@ class BookingResource extends JsonResource
                 && $this->relationLoaded('schedule')
                 && $this->schedule
                 && $this->schedule->isReviewAvailable(),
+            'can_modify' => $this->relationLoaded('schedule') && $this->schedule
+                ? $this->canBeModified()
+                : false,
+            'modification_deadline' => $this->relationLoaded('schedule') && $this->schedule
+                ? $this->modificationDeadline()?->toISOString()
+                : null,
             'total_amount' => $this->total_amount,
             'selected_addons' => $this->selected_addons ?? [],
             'addons_total' => $this->addons_total,
@@ -69,24 +76,24 @@ class BookingResource extends JsonResource
             'balance_due_at' => $this->balance_due_at?->toISOString(),
             'balance_paid_at' => $this->balance_paid_at?->toISOString(),
             'balance_payment_ref' => $this->balance_payment_ref,
-            'balance_slip_url' => $this->balance_slip_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->balance_slip_path) : null,
+            'balance_slip_url' => $this->balance_slip_path ? Storage::disk('public')->url($this->balance_slip_path) : null,
             'balance_transfer_datetime' => $this->balance_transfer_datetime?->toISOString(),
             'payment_ref' => $this->payment_ref,
-            'slip_url' => $this->slip_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->slip_path) : null,
+            'slip_url' => $this->slip_path ? Storage::disk('public')->url($this->slip_path) : null,
             'transfer_datetime' => $this->transfer_datetime?->toISOString(),
             'paid_at' => $this->paid_at?->toISOString(),
             'installment_payments' => $this->when(
                 $this->relationLoaded('installmentPayments'),
                 fn () => $this->installmentPayments->map(fn ($ip) => [
-                    'id'              => $ip->id,
-                    'installment_no'  => $ip->installment_no,
-                    'amount'          => $ip->amount,
-                    'due_date'        => $ip->due_date?->toDateString(),
-                    'status'          => $ip->status,
-                    'payment_method'  => $ip->payment_method,
-                    'slip_url'        => $ip->slip_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($ip->slip_path) : null,
+                    'id' => $ip->id,
+                    'installment_no' => $ip->installment_no,
+                    'amount' => $ip->amount,
+                    'due_date' => $ip->due_date?->toDateString(),
+                    'status' => $ip->status,
+                    'payment_method' => $ip->payment_method,
+                    'slip_url' => $ip->slip_path ? Storage::disk('public')->url($ip->slip_path) : null,
                     'transfer_datetime' => $ip->transfer_datetime?->toISOString(),
-                    'paid_at'         => $ip->paid_at?->toISOString(),
+                    'paid_at' => $ip->paid_at?->toISOString(),
                 ])
             ),
             'seats' => BookingSeatResource::collection($this->whenLoaded('seats')),

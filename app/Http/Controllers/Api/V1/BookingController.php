@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\CancelBookingRequest;
+use App\Http\Requests\Booking\ChangePickupRequest;
 use App\Http\Requests\Booking\CreateBookingRequest;
+use App\Http\Requests\Booking\RescheduleBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\BookingService;
@@ -90,7 +92,45 @@ class BookingController extends Controller
 
         try {
             $booking = $this->bookingService->cancelBooking($booking, $request->reason);
+
             return $this->success(new BookingResource($booking), 'ยกเลิกการจองสำเร็จ');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
+
+    public function reschedule(RescheduleBookingRequest $request, string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', Booking::MODIFIABLE_STATUSES)
+            ->firstOrFail();
+
+        try {
+            $booking = $this->bookingService->rescheduleBooking(
+                $booking,
+                (int) $request->target_schedule_id,
+                $request->seat_ids ?? [],
+                $request->pickup_point_id,
+            );
+
+            return $this->success(new BookingResource($booking), 'เปลี่ยนวันเดินทางสำเร็จ');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
+
+    public function changePickup(ChangePickupRequest $request, string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', Booking::MODIFIABLE_STATUSES)
+            ->firstOrFail();
+
+        try {
+            $booking = $this->bookingService->changePickupPoint($booking, (int) $request->pickup_point_id);
+
+            return $this->success(new BookingResource($booking), 'เปลี่ยนจุดรับสำเร็จ');
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }

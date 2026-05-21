@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\AppVersionController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
@@ -88,7 +89,15 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings', [BookingController::class, 'index']);
         Route::get('bookings/{ref}', [BookingController::class, 'show']);
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
+        Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
+        Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
+
+        // Group chat per trip schedule (customers + assigned staff + admins)
+        Route::get('schedules/{id}/chat/messages', [ChatController::class, 'index']);
+        Route::post('schedules/{id}/chat/messages', [ChatController::class, 'store'])->middleware('throttle:chat');
+        Route::post('schedules/{id}/chat/read', [ChatController::class, 'markRead']);
+        Route::get('schedules/{id}/chat/unread-count', [ChatController::class, 'unreadCount']);
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');
@@ -193,6 +202,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {
         // Dashboard
         Route::get('dashboard', [AdminController::class, 'dashboard']);
+
+        // Group chat — list active conversations
+        Route::get('chat/conversations', [ChatController::class, 'adminConversations']);
 
         // Trips CRUD
         Route::get('trips', [AdminController::class, 'trips']);

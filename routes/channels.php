@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\TripSchedule;
+use App\Services\ChatService;
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
@@ -12,4 +14,11 @@ Broadcast::channel('schedule.{scheduleId}', function ($user, $scheduleId) {
 
 Broadcast::channel('user.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId;
+});
+
+Broadcast::channel('chat.schedule.{scheduleId}', function ($user, $scheduleId) {
+    $schedule = TripSchedule::find($scheduleId);
+
+    return $schedule
+        && app(ChatService::class)->canAccess($user, $schedule);
 });
