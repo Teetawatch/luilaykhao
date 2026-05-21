@@ -13,6 +13,7 @@ class SosAlert extends Model
         'latitude',
         'longitude',
         'message',
+        'photo_path',
         'contact_phone',
         'status',
         'resolved_by',

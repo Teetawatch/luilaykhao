@@ -9,12 +9,14 @@ use App\Models\SosAlert;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class BroadcastSosAlert implements ShouldQueue
 {
     use Queueable;
 
     public int $tries = 3;
+
     public int $backoff = 10;
 
     public function __construct(private int $sosAlertId) {}
@@ -40,6 +42,8 @@ class BroadcastSosAlert implements ShouldQueue
             ->reject(fn ($id) => (int) $id === (int) $sender->id)
             ->values();
 
+        $photoUrl = $alert->photo_path ? Storage::disk('public')->url($alert->photo_path) : null;
+
         $tripTitle = $schedule->trip?->title ?? 'ทริป';
         $title = '🆘 ขอความช่วยเหลือ SOS';
         $body = $sender->name.' ขอความช่วยเหลือในทริป '.$tripTitle;
@@ -55,6 +59,7 @@ class BroadcastSosAlert implements ShouldQueue
             'latitude' => $alert->latitude !== null ? (string) $alert->latitude : '',
             'longitude' => $alert->longitude !== null ? (string) $alert->longitude : '',
             'sos_message' => (string) ($alert->message ?? ''),
+            'photo_url' => (string) ($photoUrl ?? ''),
         ];
 
         foreach ($recipientIds as $recipientId) {
@@ -68,6 +73,7 @@ class BroadcastSosAlert implements ShouldQueue
                 contactPhone: $alert->contact_phone,
                 latitude: $alert->latitude,
                 longitude: $alert->longitude,
+                photoUrl: $photoUrl,
             ));
         }
     }

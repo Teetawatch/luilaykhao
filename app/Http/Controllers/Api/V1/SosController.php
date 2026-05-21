@@ -10,6 +10,7 @@ use App\Models\TripSchedule;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SosController extends Controller
 {
@@ -22,6 +23,7 @@ class SosController extends Controller
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'message' => ['nullable', 'string', 'max:255'],
+            'photo' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $user = $request->user();
@@ -50,7 +52,19 @@ class SosController extends Controller
             ->latest()
             ->first();
 
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('sos/'.date('Y/m'), 'public');
+        }
+
         if ($recentAlert) {
+            // A retry may carry the photo that an earlier attempt failed to upload —
+            // attach it to the existing alert rather than creating a duplicate.
+            if ($photoPath && ! $recentAlert->photo_path) {
+                $recentAlert->update(['photo_path' => $photoPath]);
+                BroadcastSosAlert::dispatchAfterResponse($recentAlert->id);
+            }
+
             return $this->success($this->presentAlert($recentAlert->fresh('user')), 'ส่งสัญญาณ SOS แล้ว');
         }
 
@@ -60,6 +74,7 @@ class SosController extends Controller
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
             'message' => $validated['message'] ?? null,
+            'photo_path' => $photoPath,
             'contact_phone' => $user->phone,
             'status' => 'active',
         ]);
@@ -138,6 +153,7 @@ class SosController extends Controller
             'schedule_id' => $alert->schedule_id,
             'user_name' => $alert->user?->name,
             'message' => $alert->message,
+            'photo_url' => $alert->photo_path ? Storage::disk('public')->url($alert->photo_path) : null,
             'contact_phone' => $alert->contact_phone,
             'latitude' => $alert->latitude,
             'longitude' => $alert->longitude,

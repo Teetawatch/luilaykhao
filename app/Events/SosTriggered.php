@@ -21,6 +21,7 @@ class SosTriggered implements ShouldBroadcast
         public ?string $contactPhone,
         public ?float $latitude,
         public ?float $longitude,
+        public ?string $photoUrl = null,
     ) {}
 
     public function broadcastOn(): array
@@ -40,6 +41,7 @@ class SosTriggered implements ShouldBroadcast
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'sos_message' => $this->message ?? '',
+            'photo_url' => $this->photoUrl ?? '',
         ];
     }
 }
