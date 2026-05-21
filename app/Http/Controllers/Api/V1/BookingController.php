@@ -76,9 +76,9 @@ class BookingController extends Controller
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
             ])
             ->orderByDesc('created_at')
-            ->paginate(10);
+            ->get();
 
-        return $this->paginated($bookings->through(fn($b) => new BookingResource($b)));
+        return $this->success($bookings->map(fn ($b) => new BookingResource($b))->values());
     }
 
     public function cancel(CancelBookingRequest $request, string $ref): JsonResponse
