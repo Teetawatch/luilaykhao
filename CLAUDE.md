@@ -1,0 +1,124 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**Luilaykhao** is a Thai outdoor trip booking platform. The monorepo contains:
+- **Laravel backend** (root) — REST API at `/api/v1/`, the source of truth for all business logic
+- **`luilaykhao-app/`** — Flutter customer mobile app (iOS/Android)
+- **`luilaykhao-driver-app/`** — Flutter driver/staff app (PIN-based login, GPS tracking)
+
+## Commands
+
+### Backend (Laravel)
+
+```bash
+# Start all services in parallel (server + queue + logs + vite)
+composer run dev
+
+# First-time setup
+composer run setup
+
+# Run all tests
+composer run test
+
+# Run a single test class or file
+php artisan test --filter BookingServiceTest
+php artisan test tests/Feature/BookingController.php
+
+# Code formatting
+./vendor/bin/pint
+
+# Check SMS credits
+php artisan sms:credit
+```
+
+### Flutter apps
+
+```bash
+# Customer app — run with API pointing to local backend
+cd luilaykhao-app
+flutter run --dart-define=API_BASE_URL=http://localhost:8000/api/v1 \
+            --dart-define=REVERB_APP_KEY=traildive-key \
+            --dart-define=REVERB_HOST=localhost \
+            --dart-define=REVERB_PORT=8080 \
+            --dart-define=REVERB_SCHEME=ws
+
+# Driver app
+cd luilaykhao-driver-app
+flutter run --dart-define=API_BASE_URL=http://localhost:8000/api/v1
+```
+
+## Architecture
+
+### Data model hierarchy
+
+```
+Trip (slug-routed)
+  └── TripSchedule  (departure_date, seats, price_override, vehicle)
+        ├── Booking (booking_ref LLK-YYYYMMDD-XXXX, payment_type: full|deposit|installment)
+        │     ├── BookingPassenger
+        │     ├── BookingSeat
+        │     └── InstallmentPayment
+        ├── SchedulePickupPoint (pickup locations with per-point pricing)
+        ├── WaitlistEntry
+        └── ScheduleStaffAssignment (pivot to User)
+```
+
+`TripSchedule.effective_price` falls back to `Trip.price_per_person` unless `price_override` is set. `SchedulePickupPoint.price` overrides effective_price when a passenger selects a pickup point.
+
+### Backend structure
+
+- **Controllers** — `app/Http/Controllers/Api/V1/` — thin: validate, call service, return response. All use the `ApiResponse` trait (`success()`, `error()`, `paginated()`).
+- **Services** — contain all business logic and throw `\Exception` with Thai-language messages on failure:
+  - `BookingService` — creates bookings inside a DB transaction, verifies seat locks, calculates pricing (addons, promotions, deposit), fires post-booking notifications
+  - `SeatLockService` — Redis-backed soft locks (10 min base + 5 min/extra seat). Falls back to allowing the booking when Redis is unavailable.
+  - `WaitlistService` — manages queue; `ProcessWaitlistJob` offers seats when a cancellation frees them; offers expire after 15 minutes (`OFFER_TTL_MINUTES`)
+  - `FcmService` — Firebase Cloud Messaging via service account JWT (cached 55 min); SOS alerts sent as high-priority FCM data messages
+  - `SmsService` — ThaiBulkSMS integration; messages are queued via `SendPendingSmsJob` and deduplicated per booking/type
+  - `MailService` — Brevo SMTP; triggered from `BookingService` and queue jobs
+  - `GoogleDistanceService` — Distance Matrix API for pickup ETA calculations
+- **Events / Jobs** — real-time broadcast via Laravel Reverb: `SeatLocked`, `SeatReleased`, `SeatBooked`, `VehicleLocationUpdated`, `SosTriggered`
+- **Rate limiters** — defined by name in `bootstrap/app.php` booted(): `auth`, `payment`, `seat-lock`, `promotion`, `contact`, `api`
+
+### Auth & roles
+
+- Laravel Sanctum (Bearer token for both mobile and future web)
+- Three user classes via Spatie Permission: `admin`, `operator`, `driver`
+- Drivers also authenticate via PIN (`driver_pin_hash` on User); the PIN login endpoint is unauthenticated (`/api/v1/driver/pin-login`)
+- Admin/operator routes live under `/api/v1/admin/` with `role:admin|operator` middleware
+- `User.id_card`, `.allergies`, `.health_notes` are Eloquent-encrypted at rest
+
+### Payments
+
+Omise is the payment gateway. `payment_type` on Booking can be:
+- `full` — full amount charged at booking
+- `deposit` — deposit charged now, balance due later (date in `balance_due_at`)
+- `installment` — schedule driven by `InstallmentPayment` records
+
+Deposit can be configured per-schedule as either `percent` or `amount` (per-person). `TripSchedule.resolveDepositAmount()` handles both cases.
+
+### Real-time tracking
+
+Vehicle GPS is pushed to `/api/v1/tracking/update` (no auth, intended for device SDK) and stored in `vehicle_locations`. The `VehicleLocationUpdated` event broadcasts to `vehicle.{vehicleId}` channel. The Flutter customer app connects via `web_socket_channel` to Reverb using `--dart-define` config. The share-tracking feature gives unauthenticated public access via a 12-char random token stored on the Booking (`share_token`).
+
+### Flutter apps
+
+Both apps follow the same structure: `lib/{models,providers,screens,services,theme,widgets}`.  
+- State management: Provider (`ChangeNotifier`)
+- HTTP: `package:http` via `ApiClient` (thin wrapper with Bearer token injection and 401 handling)
+- Reverb WebSocket: `web_socket_channel` in `realtime_service.dart`
+- API base URL and Reverb coordinates are injected at build time via `--dart-define`; `lib/config/api_config.dart` reads them with `String.fromEnvironment`
+
+### Testing
+
+Tests use SQLite in-memory (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`). Queue is `sync`, cache is `array`, mail is `array`. Feature tests in `tests/Feature/`, unit in `tests/Unit/`.
+
+### Scheduled jobs
+
+Background jobs that run on a schedule (configured via `routes/console.php` or Horizon):
+- `SendBookingRemindersJob` — pre-departure reminders
+- `SendBalanceDueRemindersJob` / `SendInstallmentRemindersJob` — payment reminders
+- `ExpireWaitlistOffersJob` — expires stale waitlist offers
+- `eta:notify-pickups` artisan command — ETA push notifications for today's schedules (run every few minutes)

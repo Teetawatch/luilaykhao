@@ -25,6 +25,13 @@
       </select>
     </div>
 
+    <!-- Fetch Error Banner -->
+    <div v-if="admin.error" class="fetch-error-bar">
+      <span class="material-symbols-rounded">error</span>
+      <span>{{ admin.error }}</span>
+      <button @click="admin.error = ''" class="fetch-error-close">✕</button>
+    </div>
+
     <!-- Table -->
     <div class="table-card">
       <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
@@ -98,6 +105,10 @@
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้ใหม่' }}</h2>
           <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div v-if="formError" class="form-error-bar">
+          <span class="material-symbols-rounded">error</span>
+          {{ formError }}
         </div>
         <form @submit.prevent="submitForm" class="modal-body">
           <div class="form-grid">
@@ -174,6 +185,7 @@ const showDeleteConfirm = ref(false);
 const editing = ref(null);
 const deleting = ref(null);
 const submitting = ref(false);
+const formError = ref('');
 const form = reactive({ name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer' });
 
 const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า' };
@@ -198,6 +210,7 @@ const goPage = (page) => fetchData(page);
 
 const openForm = (u = null) => {
   editing.value = u;
+  formError.value = '';
   if (u) {
     Object.assign(form, { name: u.name, email: u.email, phone: u.phone || '', password: '', driver_pin: '', role: u.roles?.[0] || 'customer' });
   } else {
@@ -208,6 +221,7 @@ const openForm = (u = null) => {
 
 const submitForm = async () => {
   submitting.value = true;
+  formError.value = '';
   try {
     const data = { ...form };
     if (editing.value && !data.password) delete data.password;
@@ -220,7 +234,13 @@ const submitForm = async () => {
     showForm.value = false;
     fetchData();
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+    const errData = e.response?.data;
+    if (errData?.errors) {
+      const firstKey = Object.keys(errData.errors)[0];
+      formError.value = errData.errors[firstKey][0];
+    } else {
+      formError.value = errData?.message || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง';
+    }
   } finally {
     submitting.value = false;
   }
@@ -329,5 +349,41 @@ onMounted(() => fetchData());
   margin-top: 6px;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.fetch-error-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fetch-error-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #b91c1c;
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+.form-error-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
 }
 </style>

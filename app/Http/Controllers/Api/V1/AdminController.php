@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\Guard as SpatieGuard;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -719,7 +720,7 @@ class AdminController extends Controller
     {
         $role = Role::firstOrCreate([
             'name' => $roleName,
-            'guard_name' => config('auth.defaults.guard', 'web'),
+            'guard_name' => SpatieGuard::getDefaultName(User::class),
         ]);
 
         if ($role->wasRecentlyCreated) {
@@ -1628,7 +1629,21 @@ class AdminController extends Controller
         $query = User::withCount(['bookings', 'assignedSchedules'])->with('roles');
 
         if ($request->filled('role')) {
-            $query->role($request->role);
+            $requestedRole = $request->role;
+            if ($requestedRole === 'customer') {
+                // Customers = users with no Spatie role, or explicitly assigned 'customer' role
+                $query->where(function ($q) {
+                    $q->whereDoesntHave('roles')
+                        ->orWhereHas('roles', fn ($r) => $r->where('name', 'customer'));
+                });
+            } else {
+                try {
+                    $query->role($requestedRole);
+                } catch (\Spatie\Permission\Exceptions\RoleDoesNotExist $e) {
+                    // Role not created yet — return empty set without throwing
+                    $query->whereRaw('0 = 1');
+                }
+            }
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
