@@ -50,7 +50,8 @@ class ChatController extends Controller
     public function store(Request $request, int $scheduleId): JsonResponse
     {
         $validated = $request->validate([
-            'body' => ['required', 'string', 'max:2000'],
+            'body' => ['nullable', 'string', 'max:2000', 'required_without:image'],
+            'image' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -60,11 +61,18 @@ class ChatController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ส่งข้อความในห้องนี้', 403);
         }
 
+        $imagePath = $request->hasFile('image')
+            ? $request->file('image')->store('chat/'.date('Y/m'), 'public')
+            : null;
+
+        $body = isset($validated['body']) ? trim($validated['body']) : null;
+
         $message = ChatMessage::create([
             'schedule_id' => $scheduleId,
             'user_id' => $user->id,
             'sender_role' => $this->chatService->senderRole($user, $schedule),
-            'body' => trim($validated['body']),
+            'body' => $body !== '' ? $body : null,
+            'image_path' => $imagePath,
         ]);
         $message->load('user:id,name,nickname,avatar');
 
@@ -153,6 +161,7 @@ class ChatController extends Controller
             'id' => $message->id,
             'schedule_id' => $message->schedule_id,
             'body' => $message->body,
+            'image_url' => $message->image_url,
             'sender_role' => $message->sender_role,
             'is_mine' => $message->user_id === $currentUserId,
             'user' => $user ? [

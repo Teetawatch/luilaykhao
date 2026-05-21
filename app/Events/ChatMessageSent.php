@@ -37,6 +37,7 @@ class ChatMessageSent implements ShouldBroadcast
             'id' => $this->message->id,
             'schedule_id' => $this->message->schedule_id,
             'body' => $this->message->body,
+            'image_url' => $this->message->image_url,
             'sender_role' => $this->message->sender_role,
             'user' => $user ? [
                 'id' => $user->id,

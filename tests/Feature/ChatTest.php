@@ -10,7 +10,9 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -84,6 +86,40 @@ class ChatTest extends TestCase
             ->assertJsonPath('data.messages.0.body', 'สวัสดีครับ ทริปนี้เจอกันกี่โมง');
 
         Bus::assertDispatched(SendChatPushJob::class);
+    }
+
+    public function test_customer_can_send_image_message(): void
+    {
+        Bus::fake();
+        Storage::fake('public');
+        $schedule = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $schedule);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", [
+                'image' => UploadedFile::fake()->image('photo.jpg', 800, 600),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.body', null);
+
+        $imageUrl = $response->json('data.image_url');
+        $this->assertNotEmpty($imageUrl);
+
+        $message = ChatMessage::firstOrFail();
+        Storage::disk('public')->assertExists($message->image_path);
+    }
+
+    public function test_message_requires_body_or_image(): void
+    {
+        $schedule = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $schedule);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrorFor('body');
     }
 
     public function test_non_member_cannot_access_chat(): void

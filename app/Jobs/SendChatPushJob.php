@@ -33,7 +33,9 @@ class SendChatPushJob implements ShouldQueue
         $tripTitle = $message->schedule->trip?->title ?? 'ทริปของคุณ';
         $senderName = $message->user?->nickname
             ?: ($message->user?->name ?? 'ทีมงาน');
-        $preview = Str::limit($message->body, 120);
+        $preview = filled($message->body)
+            ? Str::limit($message->body, 120)
+            : ($message->image_path ? '📷 ส่งรูปภาพ' : '');
 
         $recipientIds = $chatService->pushRecipientIds($message->schedule)
             ->reject(fn ($id) => (int) $id === $this->senderUserId);
