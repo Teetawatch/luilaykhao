@@ -1,6 +1,8 @@
 <?php
 
+use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpireWaitlistOffersJob;
+use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -17,3 +19,5 @@ Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone(
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
+Schedule::job(new ProcessTripAlertsJob)->everyThirtyMinutes()->withoutOverlapping();
+Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping();

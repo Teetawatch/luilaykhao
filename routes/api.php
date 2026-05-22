@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
+use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\WaitlistController;
@@ -132,6 +134,22 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/waitlist/status', [WaitlistController::class, 'scheduleStatus']);
         Route::post('schedules/{id}/waitlist', [WaitlistController::class, 'join']);
         Route::delete('schedules/{id}/waitlist', [WaitlistController::class, 'leave']);
+
+        // Group trip invite (host-pays-all) — "ชวนเพื่อนมาเป็นกลุ่ม"
+        Route::get('group-plans/mine', [GroupPlanController::class, 'mine']);
+        Route::post('schedules/{id}/group-plans', [GroupPlanController::class, 'store'])->middleware('throttle:seat-lock');
+        Route::get('group-plans/{code}', [GroupPlanController::class, 'show']);
+        Route::post('group-plans/{code}/join', [GroupPlanController::class, 'join']);
+        Route::post('group-plans/{code}/claim-seat', [GroupPlanController::class, 'claimSeat'])->middleware('throttle:seat-lock');
+        Route::post('group-plans/{code}/release-seat', [GroupPlanController::class, 'releaseSeat']);
+        Route::post('group-plans/{code}/leave', [GroupPlanController::class, 'leave']);
+        Route::post('group-plans/{code}/checkout', [GroupPlanController::class, 'checkout']);
+        Route::delete('group-plans/{code}', [GroupPlanController::class, 'cancel']);
+
+        // Trip price & availability alerts (per-trip bell)
+        Route::get('trip-alerts', [TripAlertController::class, 'index']);
+        Route::post('trips/{slug}/alerts', [TripAlertController::class, 'store']);
+        Route::delete('trips/{slug}/alerts', [TripAlertController::class, 'destroy']);
 
         // Loyalty program
         Route::get('loyalty/account', [LoyaltyController::class, 'account']);

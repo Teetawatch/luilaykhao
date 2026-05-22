@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\GroupPlan;
 use App\Models\TripSchedule;
 use App\Services\ChatService;
 use Illuminate\Support\Facades\Broadcast;
@@ -21,4 +22,17 @@ Broadcast::channel('chat.schedule.{scheduleId}', function ($user, $scheduleId) {
 
     return $schedule
         && app(ChatService::class)->canAccess($user, $schedule);
+});
+
+Broadcast::channel('group.{code}', function ($user, $code) {
+    $plan = GroupPlan::where('invite_code', strtoupper($code))->first();
+    if (! $plan) {
+        return false;
+    }
+
+    return (int) $plan->host_user_id === (int) $user->id
+        || $plan->members()
+            ->where('user_id', $user->id)
+            ->where('status', '!=', 'left')
+            ->exists();
 });
