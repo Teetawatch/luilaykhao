@@ -56,46 +56,53 @@ class FcmService
 
         $isSos = $type === self::SOS_TYPE;
 
+        // SOS on Android is sent as data-only (no notification key) so the Flutter
+        // background handler can show a local notification on the SOS alarm channel
+        // with fullScreenIntent — giving immediate siren sound without a user tap.
+        // iOS still receives a normal notification via the apns payload.
+        $androidPayload = $isSos
+            ? ['priority' => 'HIGH']
+            : [
+                'priority' => 'HIGH',
+                'notification' => [
+                    'channel_id' => 'important_updates',
+                    'sound' => 'default',
+                    'notification_priority' => 'PRIORITY_HIGH',
+                    'default_vibrate_timings' => true,
+                    'visibility' => 'PUBLIC',
+                ],
+            ];
+
+        $messagePayload = array_filter([
+            'token' => $token,
+            'notification' => $isSos ? null : ['title' => $title, 'body' => $body],
+            'data' => $this->stringData($data),
+            'android' => $androidPayload,
+            'apns' => [
+                'headers' => [
+                    'apns-priority' => '10',
+                    'apns-push-type' => 'alert',
+                ],
+                'payload' => [
+                    'aps' => [
+                        'alert' => [
+                            'title' => $title,
+                            'body' => $body,
+                        ],
+                        'sound' => $isSos ? 'sos_siren.wav' : 'default',
+                        'badge' => 1,
+                        'content-available' => 1,
+                        'interruption-level' => $isSos ? 'time-sensitive' : 'active',
+                    ],
+                ],
+            ],
+        ]);
+
         try {
             $response = Http::withToken($this->accessToken())
                 ->acceptJson()
                 ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                    'message' => [
-                        'token' => $token,
-                        'notification' => [
-                            'title' => $title,
-                            'body' => $body,
-                        ],
-                        'data' => $this->stringData($data),
-                        'android' => [
-                            'priority' => 'HIGH',
-                            'notification' => [
-                                'channel_id' => $isSos ? 'sos_emergency_v2' : 'important_updates',
-                                'sound' => $isSos ? 'sos_siren' : 'default',
-                                'notification_priority' => $isSos ? 'PRIORITY_MAX' : 'PRIORITY_HIGH',
-                                'default_vibrate_timings' => true,
-                                'visibility' => 'PUBLIC',
-                            ],
-                        ],
-                        'apns' => [
-                            'headers' => [
-                                'apns-priority' => '10',
-                                'apns-push-type' => 'alert',
-                            ],
-                            'payload' => [
-                                'aps' => [
-                                    'alert' => [
-                                        'title' => $title,
-                                        'body' => $body,
-                                    ],
-                                    'sound' => $isSos ? 'sos_siren.wav' : 'default',
-                                    'badge' => 1,
-                                    'content-available' => 1,
-                                    'interruption-level' => $isSos ? 'time-sensitive' : 'active',
-                                ],
-                            ],
-                        ],
-                    ],
+                    'message' => $messagePayload,
                 ]);
 
             if ($response->successful()) {
