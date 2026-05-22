@@ -392,40 +392,71 @@ class AdminExtendedController extends Controller
 
         $bookings = Booking::whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to)
-            ->where('paid_amount', '>', 0)
+            ->whereIn('status', ['confirmed', 'pending'])
             ->with(['schedule.trip'])
             ->withCount('passengers')
             ->get();
 
-        // Group by month
-        $monthly = $bookings->groupBy(fn($b) => $b->created_at->format('Y-m'))->map(function ($group, $month) {
+        $totalAmount    = (float) $bookings->sum('total_amount');
+        $paidAmount     = (float) $bookings->sum('paid_amount');
+        $remainingAmount = round($totalAmount - $paidAmount, 2);
+
+        // Per payment_type breakdown
+        $byPaymentType = $bookings->groupBy('payment_type')->map(function ($group, $type) {
+            $groupTotal  = (float) $group->sum('total_amount');
+            $groupPaid   = (float) $group->sum('paid_amount');
             return [
-                'month' => $month,
-                'bookings_count' => $group->count(),
-                'revenue' => (float) $group->sum('paid_amount'),
-                'passengers' => $group->sum(fn($b) => $b->passengers_count ?? 0),
+                'payment_type'     => $type,
+                'bookings_count'   => $group->count(),
+                'passengers_count' => $group->sum(fn($b) => $b->passengers_count ?? 0),
+                'total_amount'     => $groupTotal,
+                'paid_amount'      => $groupPaid,
+                'remaining_amount' => round($groupTotal - $groupPaid, 2),
             ];
         })->values();
+
+        // Group by month
+        $monthly = $bookings->groupBy(fn($b) => $b->created_at->format('Y-m'))->map(function ($group, $month) {
+            $mTotal = (float) $group->sum('total_amount');
+            $mPaid  = (float) $group->sum('paid_amount');
+            return [
+                'month'            => $month,
+                'bookings_count'   => $group->count(),
+                'passengers_count' => $group->sum(fn($b) => $b->passengers_count ?? 0),
+                'total_amount'     => $mTotal,
+                'paid_amount'      => $mPaid,
+                'remaining_amount' => round($mTotal - $mPaid, 2),
+            ];
+        })->sortKeys()->values();
 
         // Group by trip
         $byTrip = $bookings->groupBy(fn($b) => $b->schedule?->trip?->title ?? 'ไม่ทราบ')->map(function ($group, $trip) {
+            $tTotal = (float) $group->sum('total_amount');
+            $tPaid  = (float) $group->sum('paid_amount');
             return [
-                'trip' => $trip,
-                'bookings_count' => $group->count(),
-                'revenue' => (float) $group->sum('paid_amount'),
+                'trip'             => $trip,
+                'bookings_count'   => $group->count(),
+                'passengers_count' => $group->sum(fn($b) => $b->passengers_count ?? 0),
+                'total_amount'     => $tTotal,
+                'paid_amount'      => $tPaid,
+                'remaining_amount' => round($tTotal - $tPaid, 2),
             ];
-        })->values();
+        })->sortByDesc('total_amount')->values();
 
         $summary = [
-            'period' => "$from ถึง $to",
-            'total_revenue' => (float) $bookings->sum('paid_amount'),
-            'total_bookings' => $bookings->count(),
+            'period'           => "$from ถึง $to",
+            'total_bookings'   => $bookings->count(),
+            'total_passengers' => $bookings->sum(fn($b) => $b->passengers_count ?? 0),
+            'total_amount'     => $totalAmount,
+            'paid_amount'      => $paidAmount,
+            'remaining_amount' => $remainingAmount,
         ];
 
         return $this->success([
-            'summary' => $summary,
-            'monthly' => $monthly,
-            'by_trip' => $byTrip,
+            'summary'          => $summary,
+            'by_payment_type'  => $byPaymentType,
+            'monthly'          => $monthly,
+            'by_trip'          => $byTrip,
         ]);
     }
 

@@ -143,10 +143,55 @@
       <div class="loading-state" v-if="loadingReport"><div class="spinner"></div></div>
 
       <template v-if="revenueReport">
+        <!-- Primary Summary -->
         <div class="report-summary">
-          <div class="rs-item rs-blue"><span class="rs-val">{{ formatMoney(revenueReport.summary.total_revenue) }}</span><span class="rs-label">รายได้รวม</span></div>
-          <div class="rs-item"><span class="rs-val">{{ revenueReport.summary.total_bookings }}</span><span class="rs-label">จองยืนยัน</span></div>
-          <div class="rs-item"><span class="rs-val">{{ revenueReport.summary.period }}</span><span class="rs-label">ช่วงเวลา</span></div>
+          <div class="rs-item rs-blue">
+            <span class="rs-val">{{ formatMoney(revenueReport.summary.total_amount) }}</span>
+            <span class="rs-label">ยอดรวมทั้งหมด</span>
+          </div>
+          <div class="rs-item rs-green">
+            <span class="rs-val">{{ formatMoney(revenueReport.summary.paid_amount) }}</span>
+            <span class="rs-label">ชำระแล้ว</span>
+          </div>
+          <div class="rs-item rs-orange">
+            <span class="rs-val">{{ formatMoney(revenueReport.summary.remaining_amount) }}</span>
+            <span class="rs-label">ยังไม่ชำระ</span>
+          </div>
+          <div class="rs-item">
+            <span class="rs-val">{{ revenueReport.summary.total_bookings }}</span>
+            <span class="rs-label">จองทั้งหมด</span>
+          </div>
+          <div class="rs-item">
+            <span class="rs-val">{{ revenueReport.summary.total_passengers }}</span>
+            <span class="rs-label">ผู้โดยสารรวม</span>
+          </div>
+        </div>
+
+        <!-- Payment Type Breakdown -->
+        <div class="payment-type-section">
+          <h3 class="section-title"><span class="material-symbols-rounded">account_balance_wallet</span> แยกตามประเภทการชำระ</h3>
+          <div class="payment-type-cards">
+            <div v-for="pt in revenueReport.by_payment_type" :key="pt.payment_type" class="pt-card">
+              <div class="pt-header">
+                <span class="pt-badge" :class="`pt-${pt.payment_type}`">{{ paymentTypeLabels[pt.payment_type] || pt.payment_type }}</span>
+                <span class="pt-count">{{ pt.bookings_count }} จอง · {{ pt.passengers_count }} คน</span>
+              </div>
+              <div class="pt-amounts">
+                <div class="pt-row">
+                  <span class="pt-key">ยอดรวม</span>
+                  <span class="pt-val">{{ formatMoney(pt.total_amount) }}</span>
+                </div>
+                <div class="pt-row">
+                  <span class="pt-key">ชำระแล้ว</span>
+                  <span class="pt-val pt-paid">{{ formatMoney(pt.paid_amount) }}</span>
+                </div>
+                <div class="pt-row pt-row-remaining" v-if="pt.remaining_amount > 0">
+                  <span class="pt-key">ยังไม่ชำระ</span>
+                  <span class="pt-val pt-remaining">{{ formatMoney(pt.remaining_amount) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="export-actions">
@@ -163,13 +208,58 @@
           <h3><span class="material-symbols-rounded">bar_chart</span> รายได้รายเดือน</h3>
           <div class="bar-chart">
             <div v-for="m in revenueReport.monthly" :key="m.month" class="bar-col">
-              <div class="bar-value">{{ formatShort(m.revenue) }}</div>
+              <div class="bar-value">{{ formatShort(m.total_amount) }}</div>
               <div class="bar-track-v">
-                <div class="bar-fill-v" :style="{ height: getRevPercent(m.revenue) + '%' }"></div>
+                <div class="bar-fill-v" :style="{ height: getRevPercent(m.total_amount) + '%' }">
+                  <div class="bar-paid-overlay" :style="{ height: getPaidPercent(m) + '%' }"></div>
+                </div>
               </div>
               <div class="bar-label">{{ m.month }}</div>
               <div class="bar-sub">{{ m.bookings_count }} จอง</div>
             </div>
+          </div>
+          <div class="bar-legend">
+            <span class="legend-item"><span class="legend-dot legend-total"></span>ยอดรวม</span>
+            <span class="legend-item"><span class="legend-dot legend-paid"></span>ชำระแล้ว</span>
+          </div>
+        </div>
+
+        <!-- Monthly Table -->
+        <div class="table-card" style="margin-bottom: 20px;">
+          <div class="card-header"><h3><span class="material-symbols-rounded">calendar_month</span> รายละเอียดรายเดือน</h3></div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>เดือน</th>
+                  <th>จอง</th>
+                  <th>คน</th>
+                  <th class="money">ยอดรวม</th>
+                  <th class="money">ชำระแล้ว</th>
+                  <th class="money">ยังไม่ชำระ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in revenueReport.monthly" :key="m.month">
+                  <td><strong>{{ m.month }}</strong></td>
+                  <td>{{ m.bookings_count }}</td>
+                  <td>{{ m.passengers_count }}</td>
+                  <td class="money">{{ formatMoney(m.total_amount) }}</td>
+                  <td class="money money-green">{{ formatMoney(m.paid_amount) }}</td>
+                  <td class="money" :class="m.remaining_amount > 0 ? 'money-orange' : ''">{{ formatMoney(m.remaining_amount) }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="tfoot-total">
+                  <td><strong>รวม</strong></td>
+                  <td><strong>{{ revenueReport.summary.total_bookings }}</strong></td>
+                  <td><strong>{{ revenueReport.summary.total_passengers }}</strong></td>
+                  <td class="money"><strong>{{ formatMoney(revenueReport.summary.total_amount) }}</strong></td>
+                  <td class="money money-green"><strong>{{ formatMoney(revenueReport.summary.paid_amount) }}</strong></td>
+                  <td class="money money-orange"><strong>{{ formatMoney(revenueReport.summary.remaining_amount) }}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
 
@@ -181,15 +271,21 @@
               <thead>
                 <tr>
                   <th>ทริป</th>
-                  <th>จำนวนจอง</th>
-                  <th>รายได้</th>
+                  <th>จอง</th>
+                  <th>คน</th>
+                  <th class="money">ยอดรวม</th>
+                  <th class="money">ชำระแล้ว</th>
+                  <th class="money">ยังไม่ชำระ</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="t in revenueReport.by_trip" :key="t.trip">
                   <td>{{ t.trip }}</td>
                   <td>{{ t.bookings_count }}</td>
-                  <td class="money">{{ formatMoney(t.revenue) }}</td>
+                  <td>{{ t.passengers_count }}</td>
+                  <td class="money">{{ formatMoney(t.total_amount) }}</td>
+                  <td class="money money-green">{{ formatMoney(t.paid_amount) }}</td>
+                  <td class="money" :class="t.remaining_amount > 0 ? 'money-orange' : ''">{{ formatMoney(t.remaining_amount) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -304,6 +400,7 @@ onMounted(async () => {
 });
 
 const statusLabels = { pending: 'รอดำเนินการ', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิก', refunded: 'คืนเงินแล้ว' };
+const paymentTypeLabels = { full: 'ชำระเต็ม', deposit: 'มัดจำ', installment: 'ผ่อนชำระ' };
 
 function formatMoney(amount) {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(amount || 0);
@@ -315,10 +412,15 @@ function formatShort(amount) {
   return amount?.toString() || '0';
 }
 
-function getRevPercent(revenue) {
+function getRevPercent(totalAmount) {
   if (!revenueReport.value?.monthly?.length) return 0;
-  const max = Math.max(...revenueReport.value.monthly.map(m => m.revenue));
-  return max > 0 ? (revenue / max) * 100 : 0;
+  const max = Math.max(...revenueReport.value.monthly.map(m => m.total_amount));
+  return max > 0 ? (totalAmount / max) * 100 : 0;
+}
+
+function getPaidPercent(m) {
+  if (!m.total_amount) return 0;
+  return (m.paid_amount / m.total_amount) * 100;
 }
 
 async function loadBookingReport() {
@@ -374,8 +476,8 @@ function exportExcel(type) {
     data = bookingReport.value.rows.map(r => [r.booking_ref, r.customer_name, r.customer_email, r.customer_phone, r.trip_title, r.departure_date, r.passengers_count, r.status, r.total_amount, r.paid_amount, r.payment_method, r.is_group, r.group_name, r.created_at]);
     filename = `booking-report-${new Date().toISOString().slice(0,10)}`;
   } else if (type === 'revenue' && revenueReport.value) {
-    headers = ['เดือน', 'จำนวนจอง', 'รายได้'];
-    data = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, m.revenue]);
+    headers = ['เดือน', 'จำนวนจอง', 'ผู้โดยสาร', 'ยอดรวม', 'ชำระแล้ว', 'ยังไม่ชำระ'];
+    data = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, m.passengers_count, m.total_amount, m.paid_amount, m.remaining_amount]);
     filename = `revenue-report-${new Date().toISOString().slice(0,10)}`;
   } else if (type === 'vehicles' && vehicleReport.value) {
     headers = ['ยานพาหนะ', 'ประเภท', 'ความจุ', 'ทริปที่ผ่านมา', 'ทริปที่จะมา', 'บำรุงรักษา', 'ค่าบำรุงรักษารวม', 'บำรุงรักษาถัดไป'];
@@ -403,13 +505,21 @@ function exportPdf(type) {
     tableRows = bookingReport.value.rows.map(r => [r.booking_ref, r.customer_name, r.trip_title, r.status, formatMoney(r.total_amount)]);
   } else if (type === 'revenue' && revenueReport.value) {
     title = 'รายงานรายได้';
+    const s = revenueReport.value.summary;
+    const ptLines = revenueReport.value.by_payment_type.map(pt =>
+      `${paymentTypeLabels[pt.payment_type] || pt.payment_type}: ${pt.bookings_count} จอง (${pt.passengers_count} คน) ยอดรวม ${formatMoney(pt.total_amount)} ชำระแล้ว ${formatMoney(pt.paid_amount)} เหลือ ${formatMoney(pt.remaining_amount)}`
+    );
     summaryLines = [
-      `ช่วงเวลา: ${revenueReport.value.summary.period}`,
-      `รายได้รวม: ${formatMoney(revenueReport.value.summary.total_revenue)}`,
-      `จองยืนยัน: ${revenueReport.value.summary.total_bookings}`,
+      `ช่วงเวลา: ${s.period}`,
+      `จองทั้งหมด: ${s.total_bookings} จอง (${s.total_passengers} คน)`,
+      `ยอดรวมทั้งหมด: ${formatMoney(s.total_amount)}`,
+      `ชำระแล้ว: ${formatMoney(s.paid_amount)}`,
+      `ยังไม่ชำระ: ${formatMoney(s.remaining_amount)}`,
+      '--- แยกตามประเภทการชำระ ---',
+      ...ptLines,
     ];
-    tableHeaders = ['เดือน', 'จำนวนจอง', 'รายได้'];
-    tableRows = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, formatMoney(m.revenue)]);
+    tableHeaders = ['เดือน', 'จอง', 'คน', 'ยอดรวม', 'ชำระแล้ว', 'ยังไม่ชำระ'];
+    tableRows = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, m.passengers_count, formatMoney(m.total_amount), formatMoney(m.paid_amount), formatMoney(m.remaining_amount)]);
   } else if (type === 'vehicles' && vehicleReport.value) {
     title = 'รายงานยานพาหนะ';
     summaryLines = [`จำนวนยานพาหนะ: ${vehicleReport.value.length}`];
@@ -562,6 +672,7 @@ function downloadFile(content, filename, contentType) {
 .rs-yellow .rs-val { color: #ca8a04; }
 .rs-red .rs-val { color: #dc2626; }
 .rs-blue .rs-val { color: var(--color-ocean); font-size: 18px; }
+.rs-orange .rs-val { color: #ea580c; font-size: 18px; }
 
 .rs-label {
   font-size: 11px;
@@ -699,6 +810,148 @@ function downloadFile(content, filename, contentType) {
 
 .card-header h3 .material-symbols-rounded {
   color: var(--color-accent);
+}
+
+/* Payment type breakdown */
+.payment-type-section {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title .material-symbols-rounded {
+  color: var(--color-accent);
+}
+
+.payment-type-cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pt-card {
+  flex: 1;
+  min-width: 200px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.pt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pt-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+
+.pt-full   { background: #dbeafe; color: #1d4ed8; }
+.pt-deposit { background: #fef9c3; color: #854d0e; }
+.pt-installment { background: #fce7f3; color: #9d174d; }
+
+.pt-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pt-amounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pt-key {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pt-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-dark);
+}
+
+.pt-paid { color: #16a34a; }
+.pt-remaining { color: #ea580c; }
+
+.pt-row-remaining {
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-sand-dark);
+  margin-top: 2px;
+}
+
+/* Money color classes */
+.money-green { color: #16a34a !important; }
+.money-orange { color: #ea580c !important; }
+
+/* Bar chart paid overlay */
+.bar-fill-v {
+  position: relative;
+  overflow: hidden;
+}
+
+.bar-paid-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 5px 5px 0 0;
+  pointer-events: none;
+}
+
+.bar-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-total { background: var(--color-accent); }
+.legend-paid  { background: rgba(255,255,255,0.35); border: 1px solid var(--color-accent); }
+
+/* Table footer total row */
+.tfoot-total td {
+  background: var(--color-sand);
+  border-top: 2px solid var(--color-sand-dark);
+  font-size: 13px;
 }
 
 @media (max-width: 768px) {
