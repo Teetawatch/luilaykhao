@@ -29,7 +29,7 @@ class ReviewController extends Controller
 
         $reviews = $query->orderByDesc('created_at')->paginate($request->get('per_page', 10));
 
-        return $this->paginated($reviews->through(fn($r) => $this->formatReview($r)));
+        return $this->paginated($reviews->through(fn ($r) => $this->formatReview($r)));
     }
 
     public function myReviews(Request $request): JsonResponse
@@ -38,7 +38,7 @@ class ReviewController extends Controller
             ->where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn($r) => $this->formatReview($r));
+            ->map(fn ($r) => $this->formatReview($r));
 
         return $this->success($reviews);
     }
@@ -47,10 +47,14 @@ class ReviewController extends Controller
     {
         $validated = $request->validate([
             'booking_id' => ['required', 'exists:bookings,id'],
-            'rating'     => ['required', 'integer', 'min:1', 'max:5'],
-            'comment'    => ['nullable', 'string', 'max:2000'],
-            'images'     => ['nullable', 'array', 'max:5'],
-            'images.*'   => ['string'],
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'rating_guide' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rating_vehicle' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rating_food' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rating_value' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:2000'],
+            'images' => ['nullable', 'array', 'max:5'],
+            'images.*' => ['string'],
         ]);
 
         $booking = Booking::where('id', $validated['booking_id'])
@@ -69,12 +73,16 @@ class ReviewController extends Controller
         }
 
         $review = Review::create([
-            'user_id'    => $request->user()->id,
+            'user_id' => $request->user()->id,
             'booking_id' => $booking->id,
-            'trip_id'    => $booking->schedule->trip_id,
-            'rating'     => $validated['rating'],
-            'comment'    => $validated['comment'] ?? null,
-            'images'     => $validated['images'] ?? [],
+            'trip_id' => $booking->schedule->trip_id,
+            'rating' => $validated['rating'],
+            'rating_guide' => $validated['rating_guide'] ?? null,
+            'rating_vehicle' => $validated['rating_vehicle'] ?? null,
+            'rating_food' => $validated['rating_food'] ?? null,
+            'rating_value' => $validated['rating_value'] ?? null,
+            'comment' => $validated['comment'] ?? null,
+            'images' => $validated['images'] ?? [],
         ]);
 
         return $this->success($this->formatReview($review->load(['user', 'trip'])), 'รีวิวสำเร็จแล้ว', 201);
@@ -87,9 +95,13 @@ class ReviewController extends Controller
             ->firstOrFail();
 
         $validated = $request->validate([
-            'rating'  => ['sometimes', 'integer', 'min:1', 'max:5'],
+            'rating' => ['sometimes', 'integer', 'min:1', 'max:5'],
+            'rating_guide' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rating_vehicle' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rating_food' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'rating_value' => ['nullable', 'integer', 'min:1', 'max:5'],
             'comment' => ['nullable', 'string', 'max:2000'],
-            'images'  => ['nullable', 'array', 'max:5'],
+            'images' => ['nullable', 'array', 'max:5'],
             'images.*' => ['string'],
         ]);
 
@@ -124,25 +136,29 @@ class ReviewController extends Controller
     private function formatReview(Review $r): array
     {
         return [
-            'id'               => $r->id,
-            'user_name'        => $r->user?->name ?? 'ไม่ระบุชื่อ',
-            'user_avatar'      => $r->user?->avatar_url,
-            'user'             => [
-                'name'       => $r->user?->name,
+            'id' => $r->id,
+            'user_name' => $r->user?->name ?? 'ไม่ระบุชื่อ',
+            'user_avatar' => $r->user?->avatar_url,
+            'user' => [
+                'name' => $r->user?->name,
                 'avatar_url' => $r->user?->avatar_url,
             ],
-            'user_id'          => $r->user_id,
-            'trip_id'          => $r->trip_id,
-            'trip_title'       => $r->trip?->title ?? '-',
-            'booking_id'       => $r->booking_id,
-            'rating'           => $r->rating,
-            'comment'          => $r->comment,
-            'images'           => $r->images ?? [],
-            'admin_reply'      => $r->admin_reply,
+            'user_id' => $r->user_id,
+            'trip_id' => $r->trip_id,
+            'trip_title' => $r->trip?->title ?? '-',
+            'booking_id' => $r->booking_id,
+            'rating' => $r->rating,
+            'rating_guide' => $r->rating_guide,
+            'rating_vehicle' => $r->rating_vehicle,
+            'rating_food' => $r->rating_food,
+            'rating_value' => $r->rating_value,
+            'comment' => $r->comment,
+            'images' => $r->images ?? [],
+            'admin_reply' => $r->admin_reply,
             'admin_replied_by' => $r->repliedBy?->name,
             'admin_replied_at' => $r->admin_replied_at?->toISOString(),
-            'is_approved'      => $r->is_approved,
-            'created_at'       => $r->created_at?->toISOString(),
+            'is_approved' => $r->is_approved,
+            'created_at' => $r->created_at?->toISOString(),
         ];
     }
 }

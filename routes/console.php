@@ -1,5 +1,7 @@
 <?php
 
+use App\Jobs\ExpireWaitlistOffersJob;
+use App\Jobs\SendTripReminderNotificationsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -11,6 +13,7 @@ Artisan::command('inspire', function () {
 Schedule::command('installment:remind')->dailyAt('08:00')->timezone('Asia/Bangkok');
 Schedule::command('deposit:remind-balance')->dailyAt('08:10')->timezone('Asia/Bangkok');
 Schedule::command('sms:booking-reminders')->dailyAt('08:15')->timezone('Asia/Bangkok');
+Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone('Asia/Bangkok');
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
-Schedule::job(new \App\Jobs\ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
+Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();

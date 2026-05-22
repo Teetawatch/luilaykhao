@@ -57,9 +57,31 @@ class TripResource extends JsonResource
             'preparations' => $this->preparations ?? [],
             'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
             'review_count' => $this->reviews()->where('is_approved', true)->count(),
+            'rating_breakdown' => $this->ratingBreakdown(),
             'confirmed_passengers_count' => $this->confirmed_passengers_count,
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
             'created_at' => $this->created_at?->toISOString(),
+        ];
+    }
+
+    /**
+     * Average sub-ratings (guide/vehicle/food/value) from approved reviews.
+     * Returns null per category when no review has rated it.
+     */
+    private function ratingBreakdown(): array
+    {
+        $avg = $this->reviews()
+            ->where('is_approved', true)
+            ->selectRaw('AVG(rating_guide) as guide, AVG(rating_vehicle) as vehicle, AVG(rating_food) as food, AVG(rating_value) as value')
+            ->first();
+
+        $round = fn ($v) => $v === null ? null : round((float) $v, 1);
+
+        return [
+            'guide' => $round($avg?->guide),
+            'vehicle' => $round($avg?->vehicle),
+            'food' => $round($avg?->food),
+            'value' => $round($avg?->value),
         ];
     }
 }

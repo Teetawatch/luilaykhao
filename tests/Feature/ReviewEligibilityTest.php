@@ -57,6 +57,49 @@ class ReviewEligibilityTest extends TestCase
         ]);
     }
 
+    public function test_review_accepts_optional_breakdown_ratings_and_trip_resource_averages_them(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-08 20:00:00', 'Asia/Bangkok'));
+
+        $userA = User::factory()->create();
+        $bookingA = $this->createConfirmedBooking($userA, '2026-05-08');
+        $tripId = $bookingA->schedule->trip_id;
+
+        // Full breakdown
+        $this->actingAs($userA, 'sanctum')
+            ->postJson('/api/v1/reviews', [
+                'booking_id' => $bookingA->id,
+                'rating' => 5,
+                'rating_guide' => 5,
+                'rating_vehicle' => 4,
+                'rating_food' => 5,
+                'rating_value' => 4,
+                'comment' => 'breakdown ครบ',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.rating_guide', 5)
+            ->assertJsonPath('data.rating_value', 4);
+
+        // Same trip, no breakdown (optional)
+        $userB = User::factory()->create();
+        $bookingB = $this->createConfirmedBookingForTrip($userB, $bookingA->schedule->trip, '2026-05-08');
+        $this->actingAs($userB, 'sanctum')
+            ->postJson('/api/v1/reviews', [
+                'booking_id' => $bookingB->id,
+                'rating' => 3,
+                'comment' => 'ไม่กรอก breakdown',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.rating_guide', null);
+
+        // Trip resource averages only the reviews that rated each category
+        $this->getJson("/api/v1/trips/{$bookingA->schedule->trip->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.rating_breakdown.guide', 5)
+            ->assertJsonPath('data.rating_breakdown.vehicle', 4)
+            ->assertJsonPath('data.rating_breakdown.value', 4);
+    }
+
     public function test_booking_resource_marks_review_available_after_return_date_8pm(): void
     {
         $user = User::factory()->create();
@@ -86,6 +129,28 @@ class ReviewEligibilityTest extends TestCase
             'status' => 'active',
         ]);
 
+        $schedule = TripSchedule::create([
+            'trip_id' => $trip->id,
+            'departure_date' => '2026-05-07',
+            'return_date' => $returnDate,
+            'total_seats' => 10,
+            'booked_seats' => 1,
+            'transport_type' => 'van',
+            'status' => 'open',
+        ]);
+
+        return Booking::create([
+            'booking_ref' => Booking::generateRef() . '-' . uniqid(),
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+    }
+
+    private function createConfirmedBookingForTrip(User $user, Trip $trip, string $returnDate): Booking
+    {
         $schedule = TripSchedule::create([
             'trip_id' => $trip->id,
             'departure_date' => '2026-05-07',
