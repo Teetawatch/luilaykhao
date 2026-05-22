@@ -31,6 +31,22 @@ class ChatController extends Controller
 
         $perPage = min(50, max(10, (int) $request->get('per_page', 30)));
         $beforeId = (int) $request->get('before_id', 0);
+        $afterId = (int) $request->get('after_id', 0);
+
+        // Polling for live updates: return messages newer than $afterId, oldest-first.
+        if ($afterId > 0) {
+            $messages = ChatMessage::where('schedule_id', $scheduleId)
+                ->with('user:id,name,nickname,avatar')
+                ->where('id', '>', $afterId)
+                ->orderBy('id')
+                ->limit($perPage)
+                ->get();
+
+            return $this->success([
+                'messages' => $messages->map(fn ($m) => $this->present($m, $user->id))->all(),
+                'has_more' => false,
+            ]);
+        }
 
         $messages = ChatMessage::where('schedule_id', $scheduleId)
             ->with('user:id,name,nickname,avatar')

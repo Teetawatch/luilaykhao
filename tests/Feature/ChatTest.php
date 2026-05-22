@@ -171,6 +171,25 @@ class ChatTest extends TestCase
             ->assertJsonPath('data.sender_role', 'admin');
     }
 
+    public function test_after_id_returns_only_newer_messages_oldest_first(): void
+    {
+        $schedule = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $schedule);
+
+        $first = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $user->id, 'sender_role' => 'customer', 'body' => 'หนึ่ง']);
+        ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $user->id, 'sender_role' => 'customer', 'body' => 'สอง']);
+        ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $user->id, 'sender_role' => 'customer', 'body' => 'สาม']);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/messages?after_id={$first->id}")
+            ->assertOk()
+            ->assertJsonCount(2, 'data.messages')
+            ->assertJsonPath('data.messages.0.body', 'สอง')
+            ->assertJsonPath('data.messages.1.body', 'สาม')
+            ->assertJsonPath('data.has_more', false);
+    }
+
     public function test_unread_count_and_mark_read(): void
     {
         Bus::fake();
