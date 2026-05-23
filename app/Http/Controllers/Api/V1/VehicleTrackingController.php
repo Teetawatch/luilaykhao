@@ -422,13 +422,17 @@ class VehicleTrackingController extends Controller
             'status'         => $booking->status,
             'qr_code'        => $booking->qr_code,
             'trip_title'     => $trip?->title ?? '',
+            'departure_point' => $trip?->departure_point ?? '',
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+            'schedule_id'    => $booking->schedule_id,
             'vehicle_id'     => $schedule?->vehicle_id,
             'driver_name'    => $vehicle?->driver_name,
             'driver_phone'   => $vehicle?->driver_phone,
             'license_plate'  => $vehicle?->license_plate,
             'pickup_lat'     => $pickupLat,
             'pickup_lng'     => $pickupLng,
+            'destination_lat' => $trip?->latitude,
+            'destination_lng' => $trip?->longitude,
             'share_url'      => $booking->shareUrl(),
         ], 'พบข้อมูลการจอง');
     }
@@ -477,15 +481,19 @@ class VehicleTrackingController extends Controller
             [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
 
             return [
-                'status'         => $booking?->status,
-                'trip_title'     => $trip?->title ?? '',
-                'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
-                'schedule_id'    => $booking?->schedule_id,
-                'vehicle_id'     => $schedule?->vehicle_id,
-                'driver_name'    => $vehicle?->driver_name,
-                'license_plate'  => $vehicle?->license_plate,
-                'pickup_lat'     => $pickupLat,
-                'pickup_lng'     => $pickupLng,
+                'status'          => $booking?->status,
+                'trip_title'      => $trip?->title ?? '',
+                'departure_point' => $trip?->departure_point ?? '',
+                'departure_date'  => $schedule?->departure_date?->toDateString() ?? '',
+                'schedule_id'     => $booking?->schedule_id,
+                'vehicle_id'      => $schedule?->vehicle_id,
+                'driver_name'     => $vehicle?->driver_name,
+                'driver_phone'    => $vehicle?->driver_phone,
+                'license_plate'   => $vehicle?->license_plate,
+                'pickup_lat'      => $pickupLat,
+                'pickup_lng'      => $pickupLng,
+                'destination_lat' => $trip?->latitude,
+                'destination_lng' => $trip?->longitude,
             ];
         })->values()->all();
 
@@ -527,6 +535,8 @@ class VehicleTrackingController extends Controller
             'departure_point' => $trip?->departure_point ?? '',
             'pickup_lat'      => $pickupLat,
             'pickup_lng'      => $pickupLng,
+            'destination_lat' => $trip?->latitude,
+            'destination_lng' => $trip?->longitude,
             'departure_date'  => $schedule?->departure_date?->toDateString() ?? '',
             'status'          => $booking->status,
             // Vehicle info for driver call button
