@@ -54,21 +54,35 @@
                   <span class="material-symbols-rounded text-[var(--color-accent)]">payments</span>
                   ข้อมูลการทำรายการ
                 </h3>
-                <p class="text-[var(--color-text-mid)]">ประวัติการจองทริป, รายละเอียดการชำระเงิน (เราไม่เก็บข้อมูลบัตรเครดิตโดยตรง)</p>
+                <p class="text-[var(--color-text-mid)]">ประวัติการจองทริป, รายละเอียดการชำระเงิน (เราไม่เก็บข้อมูลบัตรเครดิตโดยตรง ข้อมูลบัตรจัดการโดยผู้ให้บริการระบบชำระเงิน)</p>
               </div>
               <div class="bg-[var(--color-sand)] p-6 rounded-2xl border border-[var(--color-sand-dark)]/50">
                 <h3 class="font-bold text-[var(--color-text-dark)] mb-3 flex items-center gap-2">
-                  <span class="material-symbols-rounded text-[var(--color-accent)]">devices</span>
-                  ข้อมูลทางเทคนิค
+                  <span class="material-symbols-rounded text-[var(--color-accent)]">my_location</span>
+                  ข้อมูลตำแหน่ง (GPS)
                 </h3>
-                <p class="text-[var(--color-text-mid)]">ที่อยู่ IP, ประเภทเบราว์เซอร์, คุกกี้ และพฤติกรรมการใช้งานในระบบ</p>
+                <p class="text-[var(--color-text-mid)]">ตำแหน่ง GPS ของท่านขณะใช้งานฟีเจอร์ติดตามรถรับส่งหรือค้นหาจุดรับ-ส่ง เราไม่บันทึกประวัติตำแหน่งของท่านไว้บนเซิร์ฟเวอร์</p>
               </div>
               <div class="bg-[var(--color-sand)] p-6 rounded-2xl border border-[var(--color-sand-dark)]/50">
                 <h3 class="font-bold text-[var(--color-text-dark)] mb-3 flex items-center gap-2">
                   <span class="material-symbols-rounded text-[var(--color-accent)]">directions_run</span>
                   ข้อมูลทริป
                 </h3>
-                <p class="text-[var(--color-text-mid)]">ความต้องการพิเศษ (เช่น การแพ้อาหาร) เพื่อให้แน่ใจว่าท่านจะได้รับบริการที่ปลอดภัย</p>
+                <p class="text-[var(--color-text-mid)]">ความต้องการพิเศษ (เช่น การแพ้อาหาร หรือสุขภาพ) เพื่อให้แน่ใจว่าท่านจะได้รับบริการที่ปลอดภัย</p>
+              </div>
+              <div class="bg-[var(--color-sand)] p-6 rounded-2xl border border-[var(--color-sand-dark)]/50">
+                <h3 class="font-bold text-[var(--color-text-dark)] mb-3 flex items-center gap-2">
+                  <span class="material-symbols-rounded text-[var(--color-accent)]">devices</span>
+                  ข้อมูลทางเทคนิค
+                </h3>
+                <p class="text-[var(--color-text-mid)]">ที่อยู่ IP, ประเภทอุปกรณ์, คุกกี้ และพฤติกรรมการใช้งานในระบบ</p>
+              </div>
+              <div class="bg-[var(--color-sand)] p-6 rounded-2xl border border-[var(--color-sand-dark)]/50">
+                <h3 class="font-bold text-[var(--color-text-dark)] mb-3 flex items-center gap-2">
+                  <span class="material-symbols-rounded text-[var(--color-accent)]">bug_report</span>
+                  ข้อมูล Crash & Analytics
+                </h3>
+                <p class="text-[var(--color-text-mid)]">ข้อมูลการขัดข้องของแอปและสถิติการใช้งาน เพื่อปรับปรุงความเสถียรและประสิทธิภาพ จัดการโดย Google Firebase</p>
               </div>
             </div>
           </div>
@@ -109,17 +123,40 @@
             <div class="p-6 bg-white border-l-4 border-[var(--color-gold)] shadow-sm italic text-[var(--color-text-mid)]">
               "เราจะส่งเฉพาะข้อมูลที่จำเป็นให้กับผู้ให้บริการทริป เพื่อให้เขารองรับการเดินทางของคุณได้อย่างราบรื่นที่สุด"
             </div>
-            <ul class="list-disc pl-6 space-y-2 text-[var(--color-text-mid)]">
-              <li>ผู้ให้บริการทริปหรือทัวร์ที่ท่านได้ทำการจอง</li>
-              <li>ผู้ให้บริการระบบชำระเงินที่ปลอดภัย</li>
-              <li>หน่วยงานภาครัฐตามที่กฎหมายกำหนด</li>
+            <ul class="space-y-3 text-[var(--color-text-mid)]">
+              <li class="flex gap-3 items-start">
+                <span class="material-symbols-rounded text-[var(--color-accent)] shrink-0 mt-0.5">hiking</span>
+                <span><strong class="text-[var(--color-text-dark)]">ผู้ให้บริการทริป</strong> — ชื่อ เบอร์ และข้อมูลที่จำเป็นสำหรับการจัดทริปที่ท่านจอง</span>
+              </li>
+              <li class="flex gap-3 items-start">
+                <span class="material-symbols-rounded text-[var(--color-accent)] shrink-0 mt-0.5">brand_awareness</span>
+                <span><strong class="text-[var(--color-text-dark)]">Google Firebase</strong> — ระบบแจ้งเตือน (FCM), วิเคราะห์การใช้งาน (Analytics) และรายงาน crash (Crashlytics)</span>
+              </li>
+              <li class="flex gap-3 items-start">
+                <span class="material-symbols-rounded text-[var(--color-accent)] shrink-0 mt-0.5">map</span>
+                <span><strong class="text-[var(--color-text-dark)]">Google Maps Platform</strong> — คำนวณเวลาเดินทางโดยประมาณจากจุดรับ-ส่ง</span>
+              </li>
+              <li class="flex gap-3 items-start">
+                <span class="material-symbols-rounded text-[var(--color-accent)] shrink-0 mt-0.5">account_balance</span>
+                <span><strong class="text-[var(--color-text-dark)]">หน่วยงานภาครัฐ</strong> — เฉพาะกรณีที่กฎหมายกำหนดให้เปิดเผย</span>
+              </li>
             </ul>
           </div>
 
           <div class="space-y-6">
             <h2 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] flex items-center gap-3">
+              <span class="w-2 h-8 bg-[var(--color-gold)] rounded-full"></span>
+              4. ระยะเวลาการเก็บรักษาข้อมูล
+            </h2>
+            <p class="text-[var(--color-text-mid)] leading-relaxed">
+              เราเก็บรักษาข้อมูลของท่านตราบเท่าที่จำเป็นสำหรับการให้บริการ หรือตามที่กฎหมายกำหนด ข้อมูลการจองและประวัติการชำระเงินจะถูกเก็บไว้ตามข้อกำหนดทางบัญชีและภาษีของประเทศไทย ท่านสามารถขอให้ลบข้อมูลส่วนบุคคลของท่านได้ทุกเมื่อผ่านช่องทางติดต่อด้านล่าง
+            </p>
+          </div>
+
+          <div class="space-y-6">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] flex items-center gap-3">
               <span class="w-2 h-8 bg-[var(--color-primary)] rounded-full"></span>
-              4. สิทธิของท่านในฐานะเจ้าของข้อมูล
+              5. สิทธิของท่านในฐานะเจ้าของข้อมูล
             </h2>
             <p class="text-[var(--color-text-mid)] leading-relaxed">
               ท่านมีสิทธิ์ภายใต้ พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA) ดังนี้:
@@ -132,10 +169,31 @@
             </div>
           </div>
 
-          <div class="pt-8 border-t border-[var(--color-sand-dark)]">
-            <p class="text-[var(--color-text-muted)] text-sm text-center">
-              ปรับปรุงล่าสุดเมื่อ: 4 เมษายน 2569<br>
-              หากมีคำถามเพิ่มเติม โปรดติดต่อเราผ่านหน้าติดต่อเราหรืออีเมล support@luilaykhao.com
+          <div class="pt-8 border-t border-[var(--color-sand-dark)] space-y-4">
+            <h2 class="text-xl font-extrabold text-[var(--color-text-dark)] flex items-center gap-3">
+              <span class="w-2 h-6 bg-[var(--color-accent)] rounded-full"></span>
+              ติดต่อเราเรื่องข้อมูลส่วนบุคคล
+            </h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+              <a
+                href="mailto:luilaykhao.info@gmail.com"
+                class="flex items-center gap-3 px-5 py-3 bg-[var(--color-sand)] rounded-xl border border-[var(--color-sand-dark)]/50 text-[var(--color-text-mid)] hover:border-[var(--color-accent)] transition-colors"
+              >
+                <span class="material-symbols-rounded text-[var(--color-accent)]">mail</span>
+                <span>luilaykhao.info@gmail.com</span>
+              </a>
+              <a
+                href="https://line.me/R/ti/p/@luilaykhao"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center gap-3 px-5 py-3 bg-[var(--color-sand)] rounded-xl border border-[var(--color-sand-dark)]/50 text-[var(--color-text-mid)] hover:border-[var(--color-accent)] transition-colors"
+              >
+                <span class="material-symbols-rounded text-[var(--color-accent)]">chat</span>
+                <span>LINE OA: @luilaykhao</span>
+              </a>
+            </div>
+            <p class="text-[var(--color-text-muted)] text-sm">
+              ปรับปรุงล่าสุดเมื่อ: 23 พฤษภาคม 2569
             </p>
           </div>
         </div>
