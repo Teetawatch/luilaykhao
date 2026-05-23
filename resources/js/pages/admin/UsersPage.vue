@@ -80,6 +80,17 @@
               <td class="date">{{ formatDate(u.created_at) }}</td>
               <td>
                 <div class="action-btns">
+                  <button
+                    v-if="u.has_driver_pin && u.roles?.[0] !== 'customer'"
+                    class="btn-icon btn-copy-link"
+                    :class="{ copied: copiedUserId === u.id }"
+                    @click="copyDriverLink(u)"
+                    :title="copiedUserId === u.id ? 'คัดลอกแล้ว!' : 'คัดลอกลิ้งค์คนขับ'"
+                  >
+                    <span class="material-symbols-rounded" style="font-size:16px;">
+                      {{ copiedUserId === u.id ? 'check' : 'link' }}
+                    </span>
+                  </button>
                   <button class="btn-icon btn-edit" @click="openForm(u)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
                   <button class="btn-icon btn-delete" @click="confirmDelete(u)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
                 </div>
@@ -186,6 +197,7 @@ const editing = ref(null);
 const deleting = ref(null);
 const submitting = ref(false);
 const formError = ref('');
+const copiedUserId = ref(null);
 const form = reactive({ name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer' });
 
 const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า' };
@@ -244,6 +256,24 @@ const submitForm = async () => {
   } finally {
     submitting.value = false;
   }
+};
+
+const copyDriverLink = async (u) => {
+  const url = `${window.location.origin}/driver/track`;
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch {
+    const el = document.createElement('textarea');
+    el.value = url;
+    el.style.position = 'fixed';
+    el.style.opacity = '0';
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+  }
+  copiedUserId.value = u.id;
+  setTimeout(() => { copiedUserId.value = null; }, 2000);
 };
 
 const confirmDelete = (u) => { deleting.value = u; showDeleteConfirm.value = true; };
@@ -386,4 +416,8 @@ onMounted(() => fetchData());
   font-size: 13px;
   font-weight: 600;
 }
+
+.btn-copy-link { color: #6b7280; }
+.btn-copy-link:hover { color: #087C68; background: #eaf4ef; border-color: #a7d4b8; }
+.btn-copy-link.copied { color: #16a34a; background: #dcfce7; border-color: #86efac; }
 </style>
