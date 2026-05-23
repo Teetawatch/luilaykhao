@@ -523,14 +523,13 @@ function goToSelectScreen() {
         card.className = 'schedule-card';
         card.dataset.idx = i;
 
-        const plate = s.vehicle_license_plate ?? s.license_plate ?? '';
         const date  = s.departure_date ? new Date(s.departure_date).toLocaleDateString('th-TH', { day:'numeric', month:'short' }) : '';
 
         card.innerHTML = `
             <div class="schedule-icon">🚌</div>
             <div class="schedule-meta">
                 <div class="trip">${s.trip_title ?? 'ทริปไม่ระบุ'}</div>
-                <div class="sub">${[plate, date].filter(Boolean).join(' · ')}</div>
+                <div class="sub">${[s.vehicle?.license_plate, date].filter(Boolean).join(' · ')}</div>
             </div>
         `;
         card.addEventListener('click', () => {
@@ -555,7 +554,7 @@ function goToTracking() {
 
     const s = state.selectedSchedule;
     document.getElementById('tracking-trip-name').textContent = s.trip_title ?? 'ทริปไม่ระบุ';
-    document.getElementById('tracking-plate').textContent    = s.vehicle_license_plate ?? s.license_plate ?? 'ไม่ระบุทะเบียน';
+    document.getElementById('tracking-plate').textContent    = s.vehicle?.license_plate ?? 'ไม่ระบุทะเบียน';
     document.getElementById('header-sub').textContent        = s.trip_title ?? 'กำลังส่ง GPS';
 
     setStatusPill('loading', 'หา GPS...');
@@ -615,7 +614,7 @@ async function sendLocation() {
     if (!state.lastPosition) return;
 
     const p   = state.lastPosition.coords;
-    const vid = state.selectedSchedule?.vehicle_id;
+    const vid = state.selectedSchedule?.vehicle?.id;
     if (!vid) return;
 
     const body = {
