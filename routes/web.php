@@ -23,6 +23,11 @@ Route::get('/track/{token}', function (string $token) {
     return response()->view('track', ['token' => $token]);
 })->where('token', '[A-Za-z0-9]+');
 
+// Driver Web Tracking — no-install GPS sender for drivers
+Route::get('/driver/track', function () {
+    return view('driver-track');
+});
+
 // SPA catch-all (must be last!)
 Route::get('/{any?}', function () {
     return view('app');
