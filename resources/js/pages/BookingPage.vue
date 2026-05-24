@@ -572,6 +572,28 @@
                 </div>
               </div>
 
+              <!-- Per-passenger pickup point selector -->
+              <div v-if="pickupPoints.length" class="mb-6 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                <label class="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <span class="material-symbols-rounded text-teal-600 text-[18px]">location_on</span>
+                  จุดขึ้นรถ <span class="text-red-500">*</span>
+                </label>
+                <div class="flex flex-wrap gap-2">
+                  <button v-for="pt in pickupPoints" :key="pt.id" type="button"
+                    @click="p.pickup_point_id = pt.id"
+                    class="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all"
+                    :class="p.pickup_point_id === pt.id
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-teal-400 hover:text-teal-700'">
+                    <span class="material-symbols-rounded text-[16px]" v-if="p.pickup_point_id === pt.id">check_circle</span>
+                    <span class="material-symbols-rounded text-[16px]" v-else>radio_button_unchecked</span>
+                    <span>{{ pt.pickup_location }}</span>
+                    <span class="text-[11px] font-normal opacity-70">฿{{ Number(pt.price).toLocaleString() }}</span>
+                  </button>
+                </div>
+                <p v-if="!p.pickup_point_id" class="text-xs text-red-500 font-bold mt-2">* กรุณาเลือกจุดขึ้นรถ</p>
+              </div>
+
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="md:col-span-2 grid grid-cols-12 gap-5">
                   <div class="col-span-12 md:col-span-3">
@@ -802,14 +824,22 @@
                   </h3>
                   
                   <div class="space-y-3 mb-8">
-                    <div class="flex justify-between text-sm">
-                      <span class="text-white/70">ราคาต่อที่นั่ง</span>
-                      <span class="font-bold">฿{{ Number(effectivePrice).toLocaleString() }}</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                      <span class="text-white/70">จำนวนผู้เดินทาง</span>
-                      <span class="font-bold">{{ passengers.length }} คน</span>
-                    </div>
+                    <template v-if="!hasVariedPickupPrices">
+                      <div class="flex justify-between text-sm">
+                        <span class="text-white/70">ราคาต่อที่นั่ง</span>
+                        <span class="font-bold">฿{{ Number(effectivePrice).toLocaleString() }}</span>
+                      </div>
+                      <div class="flex justify-between text-sm">
+                        <span class="text-white/70">จำนวนผู้เดินทาง</span>
+                        <span class="font-bold">{{ passengers.length }} คน</span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div v-for="(p, i) in passengers" :key="i" class="flex justify-between text-sm">
+                        <span class="text-white/70">คนที่ {{ i + 1 }}{{ p.nickname ? ` (${p.nickname})` : '' }}</span>
+                        <span class="font-bold">฿{{ passengerTicketPrice(p).toLocaleString() }}</span>
+                      </div>
+                    </template>
                     <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between text-sm text-amber-100">
                       <span class="flex items-center gap-1">
                         <span class="material-symbols-rounded text-[16px]">add_circle</span>
@@ -855,6 +885,10 @@
                     <div class="flex flex-wrap gap-2 mt-1">
                       <span v-if="hasSeatMap && seatsStore.selectedSeats[i]" class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">ที่นั่ง {{ seatsStore.selectedSeats[i].id }}</span>
                       <span class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">กรุ๊ปเลือด {{ p.blood_group || '-' }}</span>
+                      <span v-if="pickupPoints.length && p.pickup_point_id" class="text-[10px] bg-teal-50 border border-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <span class="material-symbols-rounded text-[11px]">location_on</span>
+                        {{ pickupPoints.find(pt => pt.id === p.pickup_point_id)?.pickup_location || '-' }}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1306,10 +1340,10 @@ const optionalAddons = computed(() => {
     .filter((item) => item.name);
 });
 
-const passengers = ref([{ 
+const passengers = ref([{
   title: '', name: '', nickname: '', id_card: '', phone: '', email: '', blood_group: '', allergies: '',
-  health_notes: '', emergency_contact: '', emergency_phone: '', 
-  dive_cert_level: '', cert_number: '', weight: null, halal_food: null
+  health_notes: '', emergency_contact: '', emergency_phone: '',
+  dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
 
 const FORM_SESSION_KEY = computed(() => {
@@ -1371,13 +1405,22 @@ watch(passengers, saveFormData, { deep: true });
 watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData, selectedAddons], saveFormData);
 watch(selectedAddons, saveFormData, { deep: true });
 
+// When global pickup is auto-set (e.g. single-point trip on load), propagate to passengers that have no pickup chosen yet
+watch(selectedPickup, (newPickup) => {
+  if (!newPickup) return;
+  passengers.value.forEach(p => {
+    if (!p.pickup_point_id) p.pickup_point_id = newPickup.id;
+  });
+});
+
 watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
-    passengers.value.push({ 
+    passengers.value.push({
       title: '', name: '', nickname: '', id_card: '', phone: '', email: '', blood_group: '', allergies: '',
-      health_notes: '', emergency_contact: '', emergency_phone: '', 
-      dive_cert_level: '', cert_number: '', weight: null, halal_food: null
+      health_notes: '', emergency_contact: '', emergency_phone: '',
+      dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
+      pickup_point_id: selectedPickup.value?.id ?? null
     });
   }
   if (passengers.value.length > n) passengers.value.length = n;
@@ -1427,7 +1470,7 @@ function limitDigits(passenger, field, length) {
   passenger[field] = digitsOnly(passenger[field]).slice(0, length);
 }
 
-const isPassengerValid = computed(() => isFriendEmailValid.value && passengers.value.every(p => 
+const isPassengerValid = computed(() => isFriendEmailValid.value && passengers.value.every(p =>
   p.title &&
   hasText(p.name) &&
   hasText(p.nickname) &&
@@ -1439,6 +1482,7 @@ const isPassengerValid = computed(() => isFriendEmailValid.value && passengers.v
   hasExactDigits(p.emergency_phone, 10) &&
   hasText(p.allergies) &&
   hasText(p.health_notes) &&
+  (!pickupPoints.value.length || p.pickup_point_id) &&
   (!schedule.value?.trip?.is_women_only || ['นาง', 'นางสาว'].includes(p.title))
 ));
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
@@ -1451,7 +1495,26 @@ const addonsTotal = computed(() => selectedAddonItems.value.reduce((sum, item) =
 
 const addonPriceTypeLabel = (item) => item.price_type === 'per_person' ? 'ต่อคน' : 'ครั้งเดียว';
 
-const subtotalAmount = computed(() => (effectivePrice.value * seatCount.value) + addonsTotal.value);
+const passengerTicketPrice = (p) => {
+  if (pickupPoints.value.length && p.pickup_point_id) {
+    const pt = pickupPoints.value.find(pp => pp.id === p.pickup_point_id);
+    if (pt) return Number(pt.price);
+  }
+  return effectivePrice.value;
+};
+
+const passengersSubtotal = computed(() => {
+  if (!pickupPoints.value.length) return effectivePrice.value * seatCount.value;
+  return passengers.value.reduce((sum, p) => sum + passengerTicketPrice(p), 0);
+});
+
+const hasVariedPickupPrices = computed(() => {
+  if (!pickupPoints.value.length || passengers.value.length <= 1) return false;
+  const prices = passengers.value.map(p => passengerTicketPrice(p));
+  return prices.some(price => price !== prices[0]);
+});
+
+const subtotalAmount = computed(() => passengersSubtotal.value + addonsTotal.value);
 
 const discountAmount = computed(() => {
   if (!promotionData.value) return 0;
@@ -1504,6 +1567,10 @@ function selectRegion(pt) {
 }
 
 function confirmRegion() {
+  // Pre-fill all passengers' pickup_point_id with the global selection
+  if (selectedPickup.value) {
+    passengers.value.forEach(p => { p.pickup_point_id = selectedPickup.value.id; });
+  }
   // Move to seat map step (step 1) or passenger step (step 1) — step 0 is region
   if (!hasSeatMap.value) {
     seatsStore.startManualCountdown(
@@ -1628,6 +1695,7 @@ async function createBooking() {
         dive_cert_level: p.dive_cert_level || null,
         cert_number: p.cert_number || null,
         weight: p.weight || null,
+        pickup_point_id: p.pickup_point_id || null,
       })),
     };
     if (promotionCode.value) {

@@ -26,6 +26,18 @@ class BookingPassengerResource extends JsonResource
             'cert_number' => $this->cert_number,
             'weight' => $this->weight,
             'halal_food' => $this->halal_food,
+            'pickup_point_id' => $this->pickup_point_id,
+            'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function () {
+                return [
+                    'id' => $this->pickupPoint->id,
+                    'region' => $this->pickupPoint->region,
+                    'region_label' => $this->pickupPoint->region_label,
+                    'pickup_location' => $this->pickupPoint->pickup_location,
+                    'map_url' => $this->pickupPoint->map_url,
+                    'notes' => $this->pickupPoint->notes,
+                    'price' => $this->pickupPoint->price,
+                ];
+            }),
         ];
     }
 }

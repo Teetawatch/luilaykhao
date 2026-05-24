@@ -34,6 +34,7 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.health_notes' => ['nullable', 'string'],
             'passengers.*.emergency_contact' => ['required', 'string', 'max:255'],
             'passengers.*.emergency_phone' => ['required', 'digits:10'],
+            'passengers.*.pickup_point_id' => ['nullable', 'integer', 'exists:schedule_pickup_points,id'],
             'passengers.*.dive_cert_level' => ['nullable', 'string'],
             'passengers.*.cert_number' => ['nullable', 'string'],
             'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],

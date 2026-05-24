@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\SchedulePickupPoint;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,7 +14,7 @@ class BookingPassenger extends Model
         'booking_id', 'title', 'name', 'nickname', 'id_card', 'phone', 'email', 'health_notes',
         'emergency_contact', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
-        'blood_group', 'allergies', 'halal_food',
+        'blood_group', 'allergies', 'halal_food', 'pickup_point_id',
     ];
 
     protected function casts(): array
@@ -30,5 +31,10 @@ class BookingPassenger extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function pickupPoint(): BelongsTo
+    {
+        return $this->belongsTo(SchedulePickupPoint::class, 'pickup_point_id');
     }
 }

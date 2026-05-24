@@ -10,8 +10,10 @@ use App\Services\MailService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
@@ -350,6 +352,185 @@ class AuthController extends Controller
         $separator = str_contains($baseUrl, '?') ? '&' : '?';
 
         return redirect($baseUrl . $separator . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
+    }
+
+    public function appleNativeLogin(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'identity_token' => ['required', 'string'],
+            'given_name'     => ['nullable', 'string', 'max:255'],
+            'family_name'    => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $payload = $this->verifyAppleIdentityToken($validated['identity_token']);
+
+        if (!$payload) {
+            return $this->error('ไม่สามารถยืนยันตัวตนกับ Apple ได้', 401);
+        }
+
+        $appleUserId = (string) ($payload['sub'] ?? '');
+        $email       = $payload['email'] ?? null;
+
+        if (!$appleUserId) {
+            return $this->error('ไม่พบข้อมูลผู้ใช้จาก Apple', 401);
+        }
+
+        if (!$email) {
+            $sanitized = preg_replace('/[^a-zA-Z0-9]/', '', $appleUserId) ?: Str::random(12);
+            $email = 'apple_' . $sanitized . '@privaterelay.appleid.com';
+        }
+
+        $user = User::where('social_provider', 'apple')
+            ->where('social_id', $appleUserId)
+            ->first();
+
+        if (!$user) {
+            $user = User::where('email', $email)->first();
+
+            if ($user) {
+                $user->update(['social_provider' => 'apple', 'social_id' => $appleUserId]);
+            } else {
+                $givenName  = $validated['given_name'] ?? '';
+                $familyName = $validated['family_name'] ?? '';
+                $name = trim($givenName . ' ' . $familyName) ?: 'Apple User';
+
+                $user = User::create([
+                    'name'            => $name,
+                    'email'           => $email,
+                    'social_provider' => 'apple',
+                    'social_id'       => $appleUserId,
+                    'password'        => null,
+                ]);
+                $user->assignRole('customer');
+                $this->mailService->sendWelcomeEmail($user);
+            }
+        }
+
+        $user->load('roles');
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return $this->success([
+            'user'  => $this->formatUser($user),
+            'token' => $token,
+        ], 'เข้าสู่ระบบสำเร็จ');
+    }
+
+    private function verifyAppleIdentityToken(string $identityToken): ?array
+    {
+        $parts = explode('.', $identityToken);
+        if (count($parts) !== 3) {
+            return null;
+        }
+
+        $header  = json_decode($this->base64urlDecode($parts[0]), true);
+        $payload = json_decode($this->base64urlDecode($parts[1]), true);
+
+        if (!is_array($header) || !is_array($payload)) {
+            return null;
+        }
+
+        if (($payload['iss'] ?? '') !== 'https://appleid.apple.com') {
+            return null;
+        }
+
+        $bundleId = config('services.apple.bundle_id');
+        if ($bundleId && ($payload['aud'] ?? '') !== $bundleId) {
+            return null;
+        }
+
+        if (($payload['exp'] ?? 0) < time()) {
+            return null;
+        }
+
+        // Fetch and cache Apple's public keys (1 hour)
+        $keys = Cache::remember('apple_public_keys', 3600, function () {
+            $response = Http::timeout(10)->get('https://appleid.apple.com/auth/keys');
+            return $response->successful() ? ($response->json('keys') ?? []) : [];
+        });
+
+        $kid = $header['kid'] ?? '';
+        $jwk = collect($keys)->firstWhere('kid', $kid);
+
+        if (!$jwk) {
+            return null;
+        }
+
+        $pem = $this->jwkToPem($jwk);
+        if (!$pem) {
+            return null;
+        }
+
+        $publicKey = openssl_pkey_get_public($pem);
+        if (!$publicKey) {
+            return null;
+        }
+
+        $dataToVerify = $parts[0] . '.' . $parts[1];
+        $signature    = $this->base64urlDecode($parts[2]);
+        $valid        = openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+
+        return $valid === 1 ? $payload : null;
+    }
+
+    private function jwkToPem(array $jwk): ?string
+    {
+        if (($jwk['kty'] ?? '') !== 'RSA') {
+            return null;
+        }
+
+        $n = $this->base64urlDecode($jwk['n'] ?? '');
+        $e = $this->base64urlDecode($jwk['e'] ?? '');
+
+        if ($n === '' || $e === '') {
+            return null;
+        }
+
+        // Prepend 0x00 if high bit is set so the integer stays positive
+        if (ord($n[0]) > 0x7F) {
+            $n = "\x00" . $n;
+        }
+        if (ord($e[0]) > 0x7F) {
+            $e = "\x00" . $e;
+        }
+
+        $encLen = static function (int $len): string {
+            if ($len < 128) {
+                return chr($len);
+            }
+            $out = '';
+            while ($len > 0) {
+                $out = chr($len & 0xFF) . $out;
+                $len >>= 8;
+            }
+            return chr(0x80 | strlen($out)) . $out;
+        };
+
+        $encInt = static fn (string $bytes): string =>
+            "\x02" . $encLen(strlen($bytes)) . $bytes;
+
+        $encSeq = static fn (string $content): string =>
+            "\x30" . $encLen(strlen($content)) . $content;
+
+        $keySeq = $encSeq($encInt($n) . $encInt($e));
+
+        // RSA OID: 1.2.840.113549.1.1.1 + NULL
+        $oid       = "\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00";
+        $bitString = "\x03" . $encLen(strlen($keySeq) + 1) . "\x00" . $keySeq;
+        $spki      = $encSeq($oid . $bitString);
+
+        return "-----BEGIN PUBLIC KEY-----\n"
+            . chunk_split(base64_encode($spki), 64, "\n")
+            . "-----END PUBLIC KEY-----\n";
+    }
+
+    private function base64urlDecode(string $str): string
+    {
+        $padded = strtr($str, '-_', '+/');
+        $rem    = strlen($padded) % 4;
+        if ($rem > 0) {
+            $padded .= str_repeat('=', 4 - $rem);
+        }
+        return base64_decode($padded, true) ?: '';
     }
 
     private function validateProvider(string $provider): void

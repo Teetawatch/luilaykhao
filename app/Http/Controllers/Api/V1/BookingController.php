@@ -55,7 +55,7 @@ class BookingController extends Controller
                 'schedule.staff',
                 'pickupPoint',
                 'seats',
-                'passengers',
+                'passengers.pickupPoint',
                 'installmentPayments',
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', auth()->id()),
             ])
@@ -73,7 +73,7 @@ class BookingController extends Controller
                 'schedule.staff',
                 'pickupPoint',
                 'seats',
-                'passengers',
+                'passengers.pickupPoint',
                 'installmentPayments',
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
             ])

@@ -66,7 +66,7 @@ class BookingService
                 $pickupRegion = null; // Join trip might not need pickup region if they meet at destination?
                 // But user didn't specify. I'll keep pickup logic if they provided it.
             } else {
-                $pricePerPerson = $schedule->effective_price;
+                $defaultPrice = $schedule->effective_price;
                 $pickupPoint = null;
 
                 if ($pickupPointId) {
@@ -82,9 +82,25 @@ class BookingService
                 }
 
                 if ($pickupPoint) {
-                    $pricePerPerson = $pickupPoint->price;
+                    $defaultPrice = $pickupPoint->price;
                     $pickupRegion = $pickupPoint->region;
                 }
+
+                // Resolve per-passenger pickup points; fall back to booking-level pickup
+                $passengerPickupPoints = [];
+                foreach ($passengers as $passengerData) {
+                    $pPickupId = $passengerData['pickup_point_id'] ?? null;
+                    if ($pPickupId && $pPickupId !== $pickupPointId) {
+                        $pp = SchedulePickupPoint::where('id', $pPickupId)
+                            ->where('schedule_id', $scheduleId)
+                            ->first();
+                        $passengerPickupPoints[] = $pp ?? $pickupPoint;
+                    } else {
+                        $passengerPickupPoints[] = $pickupPoint;
+                    }
+                }
+
+                $pricePerPerson = $defaultPrice; // kept for join-trip path compatibility
             }
 
             $addonIndexes = collect($selectedAddons)
@@ -118,7 +134,16 @@ class BookingService
                 ];
             }
 
-            $totalAmount = ($pricePerPerson * $participantCount) + $addonsTotal;
+            if ($isJoinTrip) {
+                $passengersSubtotal = $pricePerPerson * $participantCount;
+            } else {
+                $passengersSubtotal = array_sum(array_map(
+                    fn ($pp) => (float) ($pp?->price ?? $defaultPrice),
+                    $passengerPickupPoints
+                ));
+            }
+
+            $totalAmount = $passengersSubtotal + $addonsTotal;
 
             // ... rest of the logic remains the same until Booking::create
             // I need to include the rest of the logic here because I'm replacing a large block.
@@ -186,10 +211,12 @@ class BookingService
             ]);
 
             // Create passengers
-            foreach ($passengers as $passengerData) {
+            foreach ($passengers as $index => $passengerData) {
+                $resolvedPickupPoint = $isJoinTrip ? null : ($passengerPickupPoints[$index] ?? null);
                 BookingPassenger::create([
                     'booking_id' => $booking->id,
-                    ...$passengerData,
+                    'pickup_point_id' => $resolvedPickupPoint?->id,
+                    ...array_diff_key($passengerData, ['pickup_point_id' => null]),
                 ]);
             }
 
@@ -212,7 +239,7 @@ class BookingService
                 $schedule->increment('booked_seats', $participantCount);
             }
 
-            $booking->load(['passengers', 'seats', 'schedule.trip']);
+            $booking->load(['passengers.pickupPoint', 'seats', 'schedule.trip']);
 
             return $booking;
         });

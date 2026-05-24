@@ -37,6 +37,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('{provider}/redirect', [AuthController::class, 'socialRedirect']);
         Route::get('{provider}/callback', [AuthController::class, 'socialCallback']);
+        Route::post('apple/native', [AuthController::class, 'appleNativeLogin']);
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
