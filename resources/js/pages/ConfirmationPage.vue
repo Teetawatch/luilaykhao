@@ -128,20 +128,26 @@
                         <div
                           v-for="(p, i) in booking.passengers"
                           :key="p.id || i"
-                          class="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_0.8fr_1fr_1fr] gap-3 items-center bg-white rounded-2xl border border-gray-100 px-4 py-3"
+                          class="bg-white rounded-2xl border border-gray-100 px-4 py-3"
                         >
-                          <span class="w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-black flex items-center justify-center">{{ i + 1 }}</span>
-                          <div>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">คำนำหน้า</p>
-                            <p class="font-black text-gray-900">{{ p.title || '-' }}</p>
+                          <div class="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_0.8fr_1fr_1fr] gap-3 items-center">
+                            <span class="w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-black flex items-center justify-center">{{ i + 1 }}</span>
+                            <div>
+                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">คำนำหน้า</p>
+                              <p class="font-black text-gray-900">{{ p.title || '-' }}</p>
+                            </div>
+                            <div>
+                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">ชื่อ</p>
+                              <p class="font-black text-gray-900">{{ passengerNameParts(p).firstName }}</p>
+                            </div>
+                            <div class="col-span-2 sm:col-span-1">
+                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">นามสกุล</p>
+                              <p class="font-black text-gray-900">{{ passengerNameParts(p).lastName }}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">ชื่อ</p>
-                            <p class="font-black text-gray-900">{{ passengerNameParts(p).firstName }}</p>
-                          </div>
-                          <div class="col-span-2 sm:col-span-1">
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">นามสกุล</p>
-                            <p class="font-black text-gray-900">{{ passengerNameParts(p).lastName }}</p>
+                          <div v-if="passengerPickupLabel(p)" class="mt-2 pt-2 border-t border-gray-50 flex items-center gap-1.5">
+                            <span class="material-symbols-rounded text-teal-500 text-[14px]">location_on</span>
+                            <p class="text-xs font-bold text-teal-700">{{ passengerPickupLabel(p) }}</p>
                           </div>
                         </div>
                       </div>
@@ -173,7 +179,8 @@
                       </div>
                       <div class="min-w-0">
                         <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">จุดขึ้นรถ / จุดนัดพบ</p>
-                        <p class="font-black text-base text-gray-900 truncate">{{ pickupLabel }}</p>
+                        <p v-if="!hasVariedPassengerPickups" class="font-black text-base text-gray-900 truncate">{{ pickupLabel }}</p>
+                        <p v-else class="font-black text-base text-gray-900">หลายจุด (ดูรายชื่อด้านบน)</p>
                       </div>
                     </div>
 
@@ -440,6 +447,20 @@ const pickupLabel = computed(() => {
   const pts = booking.value?.schedule?.pickup_points || [];
   const schedulePt = pts.find(p => p.region === region);
   return schedulePt ? `${schedulePt.region_label} — ${schedulePt.pickup_location}` : region;
+});
+
+const passengerPickupLabel = (p) => {
+  const pt = p?.pickup_point;
+  if (pt) return `${pt.region_label} — ${pt.pickup_location}`;
+  return null;
+};
+
+const hasVariedPassengerPickups = computed(() => {
+  const passengers = booking.value?.passengers || [];
+  if (passengers.length <= 1) return false;
+  const ids = passengers.map(p => p.pickup_point_id).filter(Boolean);
+  if (!ids.length) return false;
+  return new Set(ids).size > 1;
 });
 
 // ── Installment helpers ──
