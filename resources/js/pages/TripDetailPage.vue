@@ -579,15 +579,16 @@
 
                               <!-- Row 2: seat progress (fixed-seat schedules) -->
                               <div v-if="s.total_seats > 0" class="mt-2.5">
-                                <div class="flex items-center justify-between mb-1">
-                                  <div class="flex items-center gap-1.5">
-                                    <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                                      :class="!hasAvailableSeats(s) ? 'bg-red-400' : s.available_seats <= 3 ? 'bg-red-400 animate-pulse' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
-                                    ></div>
-                                    <span class="text-[11px] font-black"
-                                      :class="!hasAvailableSeats(s) ? 'text-red-500' : s.available_seats <= 3 ? 'text-red-500' : s.available_seats <= 5 ? 'text-amber-600' : 'text-[var(--color-text-muted)]'"
-                                    >{{ scheduleAvailabilityLabel(s) }}</span>
-                                  </div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                  <span
+                                    class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
+                                    :class="scheduleAvailabilityBadgeClass(s)"
+                                  >
+                                    <span class="material-symbols-rounded text-[12px]"
+                                      :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
+                                    >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
+                                    {{ scheduleAvailabilityLabel(s) }}
+                                  </span>
                                   <button @click.stop="openSeatMapPreview(s)"
                                     class="flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors"
                                   >
@@ -595,9 +596,9 @@
                                     ดูผัง
                                   </button>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
+                                <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                                   <div class="h-full rounded-full transition-all duration-500"
-                                    :class="!hasAvailableSeats(s) ? 'bg-red-400' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
+                                    :class="!hasAvailableSeats(s) ? 'bg-red-500' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
                                     :style="{ width: `${Math.min(100, ((s.total_seats - s.available_seats) / s.total_seats) * 100)}%` }"
                                   ></div>
                                 </div>
@@ -741,12 +742,16 @@
                                 </div>
                               </div>
 
-                              <!-- Pickup location (compact, always shown) -->
-                              <div v-if="getPickupForRegion(s, selectedRegion)" class="mt-1.5 flex items-center gap-1.5">
-                                <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
-                                <span class="text-[11px] font-bold text-[var(--color-text-dark)] truncate">
-                                  {{ getPickupForRegion(s, selectedRegion)?.pickup_location }}
-                                </span>
+                              <!-- Pickup locations (compact, always shown) -->
+                              <div v-if="(s.pickup_points || []).filter(pt => pt.region === selectedRegion).length" class="mt-1.5 space-y-0.5">
+                                <div
+                                  v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)"
+                                  :key="pt.id"
+                                  class="flex items-center gap-1.5"
+                                >
+                                  <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
+                                  <span class="text-[11px] font-bold text-[var(--color-text-dark)] truncate">{{ pt.pickup_location }}</span>
+                                </div>
                               </div>
 
                               <!-- Row 2: seat progress -->
@@ -784,10 +789,10 @@
                               </div>
 
                               <!-- Expanded: full pickup detail + transport -->
-                              <div v-if="selectedSchedule?.id === s.id && getPickupForRegion(s, selectedRegion)"
+                              <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).filter(pt => pt.region === selectedRegion).length"
                                 class="mt-2.5 pt-2.5 border-t border-[var(--color-accent)]/10 space-y-1.5"
                               >
-                                <template v-for="pt in [(getPickupForRegion(s, selectedRegion))]" :key="pt.id">
+                                <template v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)" :key="pt.id">
                                   <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
                                     class="flex items-start gap-1.5 text-[11px] font-bold text-[var(--color-text-dark)] hover:text-[var(--color-accent)] transition-colors group"
                                   >
@@ -1980,16 +1985,16 @@ function canBookSelectedSchedule() {
 }
 
 function scheduleAvailabilityBadgeClass(schedule) {
-  if (Number(schedule?.available_seats || 0) < 3) {
+  if (!hasAvailableSeats(schedule)) {
+    return 'bg-red-500 text-white border-red-600';
+  }
+  if (Number(schedule?.available_seats || 0) <= 3) {
     return 'bg-red-50 text-red-600 border-red-200';
   }
-  if (Number(schedule?.available_seats || 0) > 3) {
-    return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
-  }
-  if (hasAvailableSeats(schedule)) {
+  if (Number(schedule?.available_seats || 0) <= 5) {
     return 'bg-amber-50 text-amber-600 border-amber-200';
   }
-  return 'bg-red-50 text-red-600 border-red-200';
+  return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
 }
 
 function scheduleAvailabilityTextClass(schedule) {
