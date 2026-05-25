@@ -113,6 +113,9 @@
                   <td>
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                       <span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span>
+                      <span v-if="sch.is_charter" class="status-badge" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-size:9px;">
+                        <span class="material-symbols-rounded" style="font-size:11px;">lock</span> รอบเหมา
+                      </span>
                       <span v-if="sch.join_trip_enabled" class="status-badge" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-size:9px;">
                         <span class="material-symbols-rounded" style="font-size:11px;">group_add</span> จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}
                       </span>
@@ -126,11 +129,17 @@
                       <button class="btn-sm btn-secondary btn-manifest-text" @click="openManifest(sch)" title="รายชื่อผู้โดยสาร">
                         <span class="material-symbols-rounded" style="font-size:16px;">group</span> รายชื่อ
                       </button>
-                      <button class="btn-icon" 
+                      <button class="btn-icon"
                         :class="sch.join_trip_enabled ? 'btn-active' : 'btn-inactive'"
-                        @click="toggleJoinTrip(sch)" 
+                        @click="toggleJoinTrip(sch)"
                         :title="sch.join_trip_enabled ? 'ปิดจอยทริป' : 'เปิดจอยทริป'">
                         <span class="material-symbols-rounded">group_add</span>
+                      </button>
+                      <button class="btn-icon"
+                        :class="sch.is_charter ? 'btn-charter-active' : 'btn-inactive'"
+                        @click="toggleCharter(sch)"
+                        :title="sch.is_charter ? 'ยกเลิกรอบเหมา' : 'ตั้งเป็นรอบเหมา'">
+                        <span class="material-symbols-rounded">lock</span>
                       </button>
                       <button class="btn-icon btn-clone" @click="openCopyScheduleModal(sch)" title="คัดลอกรอบเดินทาง">
                         <span class="material-symbols-rounded">file_copy</span>
@@ -280,6 +289,20 @@
                 </p>
               </div>
             </div>
+          </div>
+
+          <!-- Charter Settings -->
+          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
+                <input type="checkbox" v-model="form.is_charter" style="width:16px;height:16px;accent-color:#7c3aed;" />
+                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">กำหนดเป็น "รอบเหมา"</span>
+              </label>
+            </div>
+            <p style="font-size:11px;color:#6b7280;margin:0;line-height:1.5;">
+              <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;color:#7c3aed;">info</span>
+              รอบเหมาจะแสดงในแอปลูกค้าพร้อมป้าย "รอบเหมา" แต่ลูกค้าทั่วไปจะไม่สามารถกดจองได้
+            </p>
           </div>
 
           <div class="modal-footer">
@@ -1301,6 +1324,7 @@ const form = reactive({
   installment_enabled: false, installment_count: 2, installment_interval_days: 30,
   deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
   join_trip_enabled: false, join_trip_price: null,
+  is_charter: false,
 });
 
 const statusLabels = { 
@@ -1360,6 +1384,7 @@ const openForm = (item = null) => {
       deposit_percent: item.deposit_percent || null,
       join_trip_enabled: !!item.join_trip_enabled,
       join_trip_price: item.join_trip_price || null,
+      is_charter: !!item.is_charter,
     });
   } else {
     Object.assign(form, {
@@ -1370,6 +1395,7 @@ const openForm = (item = null) => {
       installment_enabled: false, installment_count: 2, installment_interval_days: 30,
       deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
       join_trip_enabled: false, join_trip_price: null,
+      is_charter: false,
     });
   }
   showForm.value = true;
@@ -2437,6 +2463,16 @@ const toggleJoinTrip = async (sch) => {
   }
 };
 
+const toggleCharter = async (sch) => {
+  try {
+    await admin.updateSchedule(sch.id, { is_charter: !sch.is_charter });
+    fetchData();
+    toast.success(`${!sch.is_charter ? 'ตั้งเป็น' : 'ยกเลิก'}รอบเหมาสำเร็จ`);
+  } catch (e) {
+    toast.error('ไม่สามารถเปลี่ยนสถานะรอบเหมาได้');
+  }
+};
+
 onMounted(() => {
   fetchData();
   loadOptions();
@@ -2450,6 +2486,11 @@ onMounted(() => {
   color: #059669 !important;
   background: #ecfdf5 !important;
   border-color: #a7f3d0 !important;
+}
+.btn-charter-active {
+  color: #7c3aed !important;
+  background: #f5f3ff !important;
+  border-color: #ddd6fe !important;
 }
 .btn-inactive {
   color: #9ca3af !important;
