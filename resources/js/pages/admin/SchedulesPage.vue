@@ -5,16 +5,18 @@
         <h1 class="page-title"><span class="material-symbols-rounded">calendar_month</span> รอบเดินทาง</h1>
         <p class="page-subtitle">จัดการรอบเดินทางและตารางวันเดินทาง</p>
       </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn-secondary" @click="openBulkJoinTripModal()">
-          <span class="material-symbols-rounded">group_add</span> จัดการจอยทริป
-        </button>
-        <button class="btn-secondary" @click="openTemplateManager()">
-          <span class="material-symbols-rounded">bookmark</span> เทมเพลตจุดรับ
-        </button>
-        <button class="btn-secondary" @click="openBatchForm()">
-          <span class="material-symbols-rounded">layers</span> สร้างหลายรอบพร้อมกัน
-        </button>
+      <div class="page-actions">
+        <div class="page-actions-secondary">
+          <button class="btn-secondary" @click="openBulkJoinTripModal()">
+            <span class="material-symbols-rounded">group_add</span> จัดการจอยทริป
+          </button>
+          <button class="btn-secondary" @click="openTemplateManager()">
+            <span class="material-symbols-rounded">bookmark</span> เทมเพลตจุดรับ
+          </button>
+          <button class="btn-secondary" @click="openBatchForm()">
+            <span class="material-symbols-rounded">layers</span> สร้างหลายรอบพร้อมกัน
+          </button>
+        </div>
         <button class="btn-primary" @click="openForm()">
           <span class="material-symbols-rounded">add</span> เพิ่มรอบใหม่
         </button>
@@ -113,11 +115,11 @@
                   <td>
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                       <span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span>
-                      <span v-if="sch.is_charter" class="status-badge" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-size:9px;">
-                        <span class="material-symbols-rounded" style="font-size:11px;">lock</span> รอบเหมา
+                      <span v-if="sch.is_charter" class="status-badge badge-charter">
+                        <span class="material-symbols-rounded icon-xs">lock</span> รอบเหมา
                       </span>
-                      <span v-if="sch.join_trip_enabled" class="status-badge" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-size:9px;">
-                        <span class="material-symbols-rounded" style="font-size:11px;">group_add</span> จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}
+                      <span v-if="sch.join_trip_enabled" class="status-badge badge-join-trip">
+                        <span class="material-symbols-rounded icon-xs">group_add</span> จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}
                       </span>
                     </div>
                   </td>
@@ -127,8 +129,9 @@
                         <span class="material-symbols-rounded">location_on</span>
                       </button>
                       <button class="btn-sm btn-secondary btn-manifest-text" @click="openManifest(sch)" title="รายชื่อผู้โดยสาร">
-                        <span class="material-symbols-rounded" style="font-size:16px;">group</span> รายชื่อ
+                        <span class="material-symbols-rounded">group</span> รายชื่อ
                       </button>
+                      <span class="action-divider"></span>
                       <button class="btn-icon"
                         :class="sch.join_trip_enabled ? 'btn-active' : 'btn-inactive'"
                         @click="toggleJoinTrip(sch)"
@@ -141,12 +144,14 @@
                         :title="sch.is_charter ? 'ยกเลิกรอบเหมา' : 'ตั้งเป็นรอบเหมา'">
                         <span class="material-symbols-rounded">lock</span>
                       </button>
+                      <span class="action-divider"></span>
                       <button class="btn-icon btn-clone" @click="openCopyScheduleModal(sch)" title="คัดลอกรอบเดินทาง">
                         <span class="material-symbols-rounded">file_copy</span>
                       </button>
                       <button v-if="sch.booked_seats > 0" class="btn-icon btn-move" @click="openMoveBookingsModal(sch)" title="ย้ายการจองไปยังรอบอื่น">
                         <span class="material-symbols-rounded">swap_horiz</span>
                       </button>
+                      <span class="action-divider"></span>
                       <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
                       <button class="btn-icon btn-delete" @click="confirmDelete(sch)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
                     </div>
@@ -219,11 +224,11 @@
 
           
           <!-- Installment Settings -->
-          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:4px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
-                <input type="checkbox" v-model="form.installment_enabled" style="width:16px;height:16px;accent-color:#006565;" />
-                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">เปิดใช้ระบบผ่อนชำระ</span>
+          <div class="form-toggle-section">
+            <div class="form-toggle-header">
+              <label class="form-toggle-label">
+                <input type="checkbox" v-model="form.installment_enabled" class="check-installment" />
+                <span>เปิดใช้ระบบผ่อนชำระ</span>
               </label>
             </div>
             <div v-if="form.installment_enabled" class="form-grid">
@@ -239,15 +244,15 @@
           </div>
 
           <!-- Deposit Settings -->
-          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
-                <input type="checkbox" v-model="form.deposit_enabled" style="width:16px;height:16px;accent-color:#0d9488;" />
-                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">เปิดใช้ระบบจ่ายมัดจำ</span>
+          <div class="form-toggle-section">
+            <div class="form-toggle-header">
+              <label class="form-toggle-label">
+                <input type="checkbox" v-model="form.deposit_enabled" class="check-deposit" />
+                <span>เปิดใช้ระบบจ่ายมัดจำ</span>
               </label>
             </div>
-            <p style="font-size:11px;color:#6b7280;margin:0 0 12px 0;line-height:1.5;">
-              <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;color:#0d9488;">info</span>
+            <p class="form-toggle-hint">
+              <span class="material-symbols-rounded hint-icon hint-deposit">info</span>
               ลูกค้าจะจ่ายมัดจำในการจอง และต้องชำระยอดส่วนที่เหลือก่อนเดินทาง 15 วัน ระบบจะส่งอีเมล/SMS แจ้งเตือนอัตโนมัติ
             </p>
             <div v-if="form.deposit_enabled" class="form-grid">
@@ -270,11 +275,11 @@
           </div>
 
           <!-- Join Trip Settings -->
-          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
-                <input type="checkbox" v-model="form.join_trip_enabled" style="width:16px;height:16px;accent-color:#0f766e;" />
-                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">เปิดใช้ระบบ "จอยทริป" (Join Trip)</span>
+          <div class="form-toggle-section">
+            <div class="form-toggle-header">
+              <label class="form-toggle-label">
+                <input type="checkbox" v-model="form.join_trip_enabled" class="check-join-trip" />
+                <span>เปิดใช้ระบบ "จอยทริป" (Join Trip)</span>
               </label>
             </div>
             <div v-if="form.join_trip_enabled" class="form-grid">
@@ -282,9 +287,9 @@
                 <label>ราคาจอยทริป (฿) *</label>
                 <input v-model.number="form.join_trip_price" type="number" min="0" placeholder="ระบุราคาต่อท่าน" required />
               </div>
-              <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:12px;">
-                <p style="font-size:11px;color:#6b7280;line-height:1.4;">
-                  <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;margin-right:2px;color:#0f766e;">info</span>
+              <div class="form-group form-group-hint-cell">
+                <p class="form-toggle-hint">
+                  <span class="material-symbols-rounded hint-icon hint-join-trip">info</span>
                   ระบบจอยทริปจะข้ามการเลือกที่นั่งและไม่มีระบบผ่อนชำระ
                 </p>
               </div>
@@ -292,15 +297,15 @@
           </div>
 
           <!-- Charter Settings -->
-          <div style="border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
-                <input type="checkbox" v-model="form.is_charter" style="width:16px;height:16px;accent-color:#7c3aed;" />
-                <span style="font-weight:600;font-size:14px;color:#1a1c1c;">กำหนดเป็น "รอบเหมา"</span>
+          <div class="form-toggle-section">
+            <div class="form-toggle-header">
+              <label class="form-toggle-label">
+                <input type="checkbox" v-model="form.is_charter" class="check-charter" />
+                <span>กำหนดเป็น "รอบเหมา"</span>
               </label>
             </div>
-            <p style="font-size:11px;color:#6b7280;margin:0;line-height:1.5;">
-              <span class="material-symbols-rounded" style="font-size:14px;vertical-align:middle;color:#7c3aed;">info</span>
+            <p class="form-toggle-hint">
+              <span class="material-symbols-rounded hint-icon hint-charter">info</span>
               รอบเหมาจะแสดงในแอปลูกค้าพร้อมป้าย "รอบเหมา" แต่ลูกค้าทั่วไปจะไม่สามารถกดจองได้
             </p>
           </div>
@@ -500,8 +505,8 @@
                       </div>
                     </td>
                     <td>
-                      <span v-if="p.is_join_trip" class="status-badge" style="background:#ecfdf5;color:#059669;font-size:10px;">Enjoy Trip</span>
-                      <span v-else class="status-badge" style="background:#f3f4f6;color:#374151;font-size:10px;">ปกติ</span>
+                      <span v-if="p.is_join_trip" class="status-badge badge-join-trip">จอยทริป</span>
+                      <span v-else class="status-badge badge-normal">ปกติ</span>
                     </td>
                     <td>
                       <div class="p-seats-pickup">
@@ -648,36 +653,42 @@
             </div>
 
             <!-- Join Trip + Installment in batch -->
-            <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:8px;">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
-                <input type="checkbox" v-model="batchForm.join_trip_enabled" style="width:16px;height:16px;accent-color:#0f766e;" />
-                <span style="font-weight:600;font-size:13px;color:#1a1c1c;">เปิดจอยทริป</span>
-              </label>
-              <div v-if="batchForm.join_trip_enabled" style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:12px;color:#6b7280;">ราคาจอยทริป ฿</span>
-                <input v-model.number="batchForm.join_trip_price" type="number" min="0" placeholder="ราคา" style="width:100px;" />
+            <div class="batch-features-row">
+              <div class="batch-feature-item">
+                <label class="form-toggle-label form-toggle-label--sm">
+                  <input type="checkbox" v-model="batchForm.join_trip_enabled" class="check-join-trip" />
+                  <span>เปิดจอยทริป</span>
+                </label>
+                <div v-if="batchForm.join_trip_enabled" class="batch-feature-input">
+                  <span class="input-label-inline">ราคา ฿</span>
+                  <input v-model.number="batchForm.join_trip_price" type="number" min="0" placeholder="ราคา" class="input-sm-100" />
+                </div>
               </div>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
-                <input type="checkbox" v-model="batchForm.installment_enabled" style="width:16px;height:16px;accent-color:#006565;" />
-                <span style="font-weight:600;font-size:13px;color:#1a1c1c;">เปิดผ่อนชำระ</span>
-              </label>
-              <div v-if="batchForm.installment_enabled" style="display:flex;align-items:center;gap:8px;">
-                <input v-model.number="batchForm.installment_count" type="number" min="2" max="6" placeholder="งวด" style="width:60px;" />
-                <span style="font-size:12px;color:#6b7280;">งวด ·</span>
-                <input v-model.number="batchForm.installment_interval_days" type="number" min="1" placeholder="วัน" style="width:60px;" />
-                <span style="font-size:12px;color:#6b7280;">วัน</span>
+              <div class="batch-feature-item">
+                <label class="form-toggle-label form-toggle-label--sm">
+                  <input type="checkbox" v-model="batchForm.installment_enabled" class="check-installment" />
+                  <span>เปิดผ่อนชำระ</span>
+                </label>
+                <div v-if="batchForm.installment_enabled" class="batch-feature-input">
+                  <input v-model.number="batchForm.installment_count" type="number" min="2" max="6" placeholder="งวด" class="input-sm-60" />
+                  <span class="input-label-inline">งวด ·</span>
+                  <input v-model.number="batchForm.installment_interval_days" type="number" min="1" placeholder="วัน" class="input-sm-60" />
+                  <span class="input-label-inline">วัน</span>
+                </div>
               </div>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;">
-                <input type="checkbox" v-model="batchForm.deposit_enabled" style="width:16px;height:16px;accent-color:#0d9488;" />
-                <span style="font-weight:600;font-size:13px;color:#1a1c1c;">เปิดจ่ายมัดจำ</span>
-              </label>
-              <div v-if="batchForm.deposit_enabled" style="display:flex;align-items:center;gap:6px;">
-                <select v-model="batchForm.deposit_type" style="font-size:12px;">
-                  <option value="amount">บาท</option>
-                  <option value="percent">%</option>
-                </select>
-                <input v-if="batchForm.deposit_type === 'amount'" v-model.number="batchForm.deposit_amount" type="number" min="0" placeholder="ยอด" style="width:80px;" />
-                <input v-else v-model.number="batchForm.deposit_percent" type="number" min="1" max="99" placeholder="%" style="width:60px;" />
+              <div class="batch-feature-item">
+                <label class="form-toggle-label form-toggle-label--sm">
+                  <input type="checkbox" v-model="batchForm.deposit_enabled" class="check-deposit" />
+                  <span>เปิดจ่ายมัดจำ</span>
+                </label>
+                <div v-if="batchForm.deposit_enabled" class="batch-feature-input">
+                  <select v-model="batchForm.deposit_type" class="select-sm">
+                    <option value="amount">บาท</option>
+                    <option value="percent">%</option>
+                  </select>
+                  <input v-if="batchForm.deposit_type === 'amount'" v-model.number="batchForm.deposit_amount" type="number" min="0" placeholder="ยอด" class="input-sm-80" />
+                  <input v-else v-model.number="batchForm.deposit_percent" type="number" min="1" max="99" placeholder="%" class="input-sm-60" />
+                </div>
               </div>
             </div>
           </div>
@@ -3784,5 +3795,176 @@ onMounted(() => {
 .apply-mode-option .material-symbols-rounded {
   font-size: 20px;
   color: var(--color-accent);
+}
+
+/* ── Page header action groups ── */
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-actions-secondary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-right: 12px;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* ── Named status badges ── */
+.badge-charter {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+  font-size: 9px;
+}
+
+.badge-join-trip {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  font-size: 9px;
+}
+
+.icon-xs {
+  font-size: 11px !important;
+}
+
+/* ── Action column dividers ── */
+.action-divider {
+  width: 1px;
+  height: 18px;
+  background: #e5e7eb;
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 1px;
+}
+
+/* ── Form toggle sections ── */
+.form-toggle-section {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 18px;
+  margin-top: 18px;
+}
+
+.form-toggle-header {
+  margin-bottom: 12px;
+}
+
+.form-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-toggle-label span {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1c1c;
+}
+
+.form-toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.form-toggle-label--sm span {
+  font-size: 13px;
+}
+
+.check-installment { accent-color: #006565; }
+.check-deposit     { accent-color: #0d9488; }
+.check-join-trip   { accent-color: #0f766e; }
+.check-charter     { accent-color: #7c3aed; }
+
+.form-toggle-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  color: #6b7280;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.hint-icon { font-size: 14px !important; flex-shrink: 0; margin-top: 1px; }
+.hint-deposit  { color: #0d9488; }
+.hint-join-trip { color: #0f766e; }
+.hint-charter  { color: #7c3aed; }
+
+.form-group-hint-cell {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 12px;
+}
+
+.form-group-hint-cell .form-toggle-hint {
+  margin: 0;
+}
+
+/* ── Batch feature toggle cards ── */
+.batch-features-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.batch-feature-item {
+  flex: 1;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-right: 1px solid var(--color-sand-dark);
+  background: #fafafa;
+}
+
+.batch-feature-item:last-child {
+  border-right: none;
+}
+
+.batch-feature-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.input-label-inline {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.input-sm-100 { width: 100px; }
+.input-sm-80  { width: 80px; }
+.input-sm-60  { width: 60px; }
+
+.select-sm {
+  font-size: 12px;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  background: #fff;
+  outline: none;
+}
+
+.select-sm:focus {
+  border-color: var(--color-accent);
+}
+
+.badge-normal {
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 10px;
 }
 </style>

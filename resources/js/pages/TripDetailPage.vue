@@ -551,8 +551,8 @@
                                 :class="scheduleAvailabilityBadgeClass(s)"
                               >
                                 <span class="material-symbols-rounded text-[12px]"
-                                  :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
-                                >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
+                                  :class="{ 'animate-pulse': !s.is_charter && (!hasAvailableSeats(s) || s.available_seats <= 3) }"
+                                >{{ s.is_charter ? 'lock' : !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                 {{ scheduleAvailabilityLabel(s) }}
                               </span>
                               <div class="flex items-center gap-2 shrink-0">
@@ -678,8 +678,8 @@
                                 :class="scheduleAvailabilityBadgeClass(s)"
                               >
                                 <span class="material-symbols-rounded text-[12px]"
-                                  :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
-                                >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
+                                  :class="{ 'animate-pulse': !s.is_charter && (!hasAvailableSeats(s) || s.available_seats <= 3) }"
+                                >{{ s.is_charter ? 'lock' : !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                 {{ scheduleAvailabilityLabel(s) }}
                               </span>
                               <div class="flex items-center gap-2 shrink-0">
@@ -761,7 +761,7 @@
                   </router-link>
                   <button v-else disabled
                     class="w-full py-4 rounded-full font-extrabold text-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center border border-gray-200">
-                    {{ (!isScheduleBookable(selectedSchedule)) ? 'รอบเดินทางนี้เต็มแล้ว' : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? 'กรุณาเปิด Enjoy Trip' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
+                    {{ selectedSchedule?.is_charter ? 'รอบเดินทางนี้เป็นรอบเหมา' : (!isScheduleBookable(selectedSchedule)) ? 'รอบเดินทางนี้เต็มแล้ว' : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? 'กรุณาเปิด Enjoy Trip' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
@@ -1965,6 +1965,7 @@ function hasAvailableSeats(schedule) {
 }
 
 function isScheduleBookable(schedule) {
+  if (schedule?.is_charter) return false;
   return Boolean(schedule?.join_trip_enabled) || hasAvailableSeats(schedule);
 }
 
@@ -1985,11 +1986,13 @@ async function openSeatMapPreview(schedule) {
 
 function canBookSelectedSchedule() {
   if (!selectedSchedule.value) return false;
+  if (selectedSchedule.value.is_charter) return false;
   return hasAvailableSeats(selectedSchedule.value)
     || (isJoinTrip.value && Boolean(selectedSchedule.value.join_trip_enabled));
 }
 
 function scheduleAvailabilityBadgeClass(schedule) {
+  if (schedule?.is_charter) return 'bg-violet-50 text-violet-700 border-violet-200';
   if (!hasAvailableSeats(schedule)) {
     return 'bg-red-500 text-white border-red-600';
   }
@@ -2013,6 +2016,7 @@ function scheduleAvailabilityDotClass(schedule) {
 }
 
 function scheduleAvailabilityLabel(schedule) {
+  if (schedule?.is_charter) return 'รอบเหมา';
   if (!hasAvailableSeats(schedule)) return 'เต็มแล้ว';
   if (schedule?.join_trip_enabled) return `ว่าง ${schedule.available_seats} ที่`;
   return hasAvailableSeats(schedule)
