@@ -39,6 +39,10 @@ class BookingService
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
+            if ($schedule->is_charter) {
+                throw new \Exception('รอบเดินทางนี้เป็นรอบเหมา ไม่สามารถจองได้');
+            }
+
             if ($isJoinTrip && ! $schedule->join_trip_enabled) {
                 throw new \Exception('รอบเดินทางนี้ไม่เปิดให้จองแบบ Join Trip');
             }

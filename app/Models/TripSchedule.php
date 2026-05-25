@@ -27,6 +27,7 @@ class TripSchedule extends Model
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',
+        'is_charter',
     ];
 
     protected function casts(): array
@@ -45,6 +46,7 @@ class TripSchedule extends Model
             'deposit_percent'           => 'integer',
             'join_trip_enabled'         => 'boolean',
             'join_trip_price'           => 'decimal:2',
+            'is_charter'                => 'boolean',
         ];
     }
 

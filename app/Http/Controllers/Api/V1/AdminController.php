@@ -300,6 +300,7 @@ class AdminController extends Controller
             'deposit_percent' => ['nullable', 'integer', 'min:1', 'max:99'],
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
+            'is_charter' => ['nullable', 'boolean'],
         ]);
 
         $schedule->update($validated);
