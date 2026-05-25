@@ -535,7 +535,7 @@
                             v-for="s in dateGroup.schedules"
                             :key="s.id"
                             @click="isScheduleBookable(s) && selectSchedule(s)"
-                            class="border-2 rounded-2xl p-4 transition-all duration-200"
+                            class="border-2 rounded-2xl p-3.5 transition-all duration-200"
                             :class="[
                               selectedSchedule?.id === s.id
                                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md shadow-[var(--color-accent)]/10'
@@ -544,72 +544,39 @@
                                   : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
                             ]"
                           >
-                            <!-- Transport + Price row -->
+                            <!-- Seat status + expand indicator -->
                             <div class="flex items-center justify-between gap-3">
-                              <div class="flex items-center gap-2.5 min-w-0">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                                  :class="selectedSchedule?.id === s.id ? 'bg-[var(--color-accent)]/15' : 'bg-gray-100'">
-                                  <span class="material-symbols-rounded text-[18px] transition-colors"
-                                    :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)]' : 'text-gray-400'">
-                                    {{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}
-                                  </span>
-                                </div>
-                                <div class="min-w-0">
-                                  <p class="font-black text-sm text-[var(--color-text-dark)] truncate leading-tight">
-                                    {{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}
-                                  </p>
-                                  <p class="text-[10px] text-gray-400 font-bold">{{ s.duration_days || trip.duration_days }} วัน</p>
-                                </div>
-                              </div>
-                              <div class="text-right shrink-0">
-                                <p class="text-[var(--color-primary)] font-black text-base leading-tight">฿{{ Number(s.price ?? trip.price_per_person).toLocaleString() }}</p>
-                                <p class="text-[10px] text-gray-400 font-medium">/ท่าน</p>
-                              </div>
-                            </div>
-
-                            <!-- Seat status (fixed-seat) -->
-                            <div v-if="s.total_seats > 0" class="mt-3 pt-3 border-t border-gray-100/70">
-                              <div class="flex items-center justify-between mb-2">
-                                <span
-                                  class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
-                                  :class="scheduleAvailabilityBadgeClass(s)"
-                                >
-                                  <span class="material-symbols-rounded text-[11px]"
-                                    :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
-                                  >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
-                                  {{ scheduleAvailabilityLabel(s) }}
-                                </span>
-                                <button @click.stop="openSeatMapPreview(s)"
-                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors"
-                                >
-                                  <span class="material-symbols-rounded text-[12px]">grid_view</span>
-                                  ดูผัง
-                                </button>
-                              </div>
-                              <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500"
-                                  :class="!hasAvailableSeats(s) ? 'bg-red-500' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
-                                  :style="{ width: `${Math.min(100, ((s.total_seats - s.available_seats) / s.total_seats) * 100)}%` }"
-                                ></div>
-                              </div>
-                            </div>
-
-                            <!-- Join trip badge (no fixed seats) -->
-                            <div v-else-if="s.join_trip_enabled" class="mt-3 pt-3 border-t border-gray-100/70">
-                              <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
+                              <span
+                                class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full border"
                                 :class="scheduleAvailabilityBadgeClass(s)"
                               >
-                                <span class="material-symbols-rounded text-[11px]">group_add</span>
+                                <span class="material-symbols-rounded text-[12px]"
+                                  :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
+                                >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                 {{ scheduleAvailabilityLabel(s) }}
                               </span>
+                              <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
+                                :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
+                              >expand_more</span>
                             </div>
 
-                            <!-- Expanded: license plate -->
-                            <div v-if="selectedSchedule?.id === s.id && s.license_plate"
-                              class="mt-3 pt-3 border-t border-[var(--color-accent)]/15 flex items-center gap-1.5"
-                            >
-                              <span class="material-symbols-rounded text-[13px] text-gray-400">tag</span>
-                              <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-white border border-gray-200 px-2 py-0.5 rounded tracking-widest">{{ s.license_plate }}</span>
+                            <!-- Expanded: pickup points -->
+                            <div v-if="selectedSchedule?.id === s.id" class="mt-3 pt-3 border-t border-[var(--color-accent)]/15">
+                              <div v-if="s.pickup_points?.length" class="space-y-2">
+                                <div v-for="pt in s.pickup_points" :key="pt.id" class="space-y-1">
+                                  <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
+                                    <span class="text-[11px] font-bold text-[var(--color-text-dark)]">{{ pt.pickup_location }}</span>
+                                    <span v-if="pt.notes" class="text-[10px] text-gray-400 truncate">· {{ pt.notes }}</span>
+                                  </div>
+                                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
+                                    class="ml-5 flex items-center gap-1 text-[10px] font-bold text-[var(--color-accent)] hover:underline"
+                                  >
+                                    <span class="material-symbols-rounded text-[12px]">map</span>ดูแผนที่
+                                  </a>
+                                </div>
+                              </div>
+                              <p v-else class="text-[11px] text-gray-400 font-medium">ไม่มีข้อมูลจุดรับ</p>
                             </div>
                           </div>
                         </template>
@@ -687,7 +654,7 @@
                             v-for="s in dateGroup.schedules"
                             :key="s.id"
                             @click="isScheduleBookable(s) && selectSchedule(s)"
-                            class="border-2 rounded-2xl p-4 transition-all duration-200"
+                            class="border-2 rounded-2xl p-3.5 transition-all duration-200"
                             :class="[
                               selectedSchedule?.id === s.id
                                 ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md shadow-[var(--color-accent)]/10'
@@ -696,101 +663,39 @@
                                   : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
                             ]"
                           >
-                            <!-- Transport + Price -->
+                            <!-- Seat status + expand indicator -->
                             <div class="flex items-center justify-between gap-3">
-                              <div class="flex items-center gap-2.5 min-w-0">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                                  :class="selectedSchedule?.id === s.id ? 'bg-[var(--color-accent)]/15' : 'bg-gray-100'">
-                                  <span class="material-symbols-rounded text-[18px] transition-colors"
-                                    :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)]' : 'text-gray-400'">
-                                    {{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}
-                                  </span>
-                                </div>
-                                <div class="min-w-0">
-                                  <p class="font-black text-sm text-[var(--color-text-dark)] truncate leading-tight">
-                                    {{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}
-                                  </p>
-                                  <p class="text-[10px] text-gray-400 font-bold">{{ s.duration_days || trip.duration_days }} วัน</p>
-                                </div>
-                              </div>
-                              <div class="text-right shrink-0">
-                                <p class="text-[var(--color-primary)] font-black text-base leading-tight">
-                                  ฿{{ Number(getPickupForRegion(s, selectedRegion)?.price ?? s.price ?? trip.price_per_person).toLocaleString() }}
-                                </p>
-                                <p class="text-[10px] text-gray-400 font-medium">/ท่าน</p>
-                              </div>
-                            </div>
-
-                            <!-- Pickup points for this region (always visible, compact) -->
-                            <div v-if="(s.pickup_points || []).filter(pt => pt.region === selectedRegion).length"
-                              class="mt-2.5 pt-2.5 border-t border-gray-100/70 space-y-1"
-                            >
-                              <div
-                                v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)"
-                                :key="pt.id"
-                                class="flex items-center gap-1.5"
-                              >
-                                <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
-                                <span class="text-[11px] font-bold text-[var(--color-text-dark)] truncate">{{ pt.pickup_location }}</span>
-                                <span v-if="pt.notes" class="text-[10px] text-gray-400 font-medium truncate">· {{ pt.notes }}</span>
-                              </div>
-                            </div>
-
-                            <!-- Seat status -->
-                            <div v-if="s.total_seats > 0" class="mt-3 pt-3 border-t border-gray-100/70">
-                              <div class="flex items-center justify-between mb-2">
-                                <span
-                                  class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
-                                  :class="scheduleAvailabilityBadgeClass(s)"
-                                >
-                                  <span class="material-symbols-rounded text-[11px]"
-                                    :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
-                                  >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
-                                  {{ scheduleAvailabilityLabel(s) }}
-                                </span>
-                                <button @click.stop="openSeatMapPreview(s)"
-                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors"
-                                >
-                                  <span class="material-symbols-rounded text-[12px]">grid_view</span>
-                                  ดูผัง
-                                </button>
-                              </div>
-                              <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500"
-                                  :class="!hasAvailableSeats(s) ? 'bg-red-400' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
-                                  :style="{ width: `${Math.min(100, ((s.total_seats - s.available_seats) / s.total_seats) * 100)}%` }"
-                                ></div>
-                              </div>
-                            </div>
-                            <div v-else-if="s.join_trip_enabled" class="mt-3 pt-3 border-t border-gray-100/70">
-                              <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
+                              <span
+                                class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full border"
                                 :class="scheduleAvailabilityBadgeClass(s)"
                               >
-                                <span class="material-symbols-rounded text-[11px]">group_add</span>
+                                <span class="material-symbols-rounded text-[12px]"
+                                  :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
+                                >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                 {{ scheduleAvailabilityLabel(s) }}
                               </span>
+                              <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
+                                :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
+                              >expand_more</span>
                             </div>
 
-                            <!-- Expanded: map link + license plate + vehicle color -->
-                            <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).filter(pt => pt.region === selectedRegion).length"
-                              class="mt-3 pt-3 border-t border-[var(--color-accent)]/15 space-y-2"
-                            >
-                              <template v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)" :key="pt.id">
-                                <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
-                                  class="flex items-center gap-1.5 text-[11px] font-bold text-[var(--color-accent)] hover:underline"
-                                >
-                                  <span class="material-symbols-rounded text-[13px] shrink-0">map</span>
-                                  ดูแผนที่จุดรับ
-                                </a>
-                              </template>
-                              <div v-if="s.license_plate" class="flex items-center gap-1.5">
-                                <span class="material-symbols-rounded text-[13px] text-gray-400">tag</span>
-                                <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-white border border-gray-200 px-2 py-0.5 rounded tracking-widest">{{ s.license_plate }}</span>
+                            <!-- Expanded: pickup points for selected region -->
+                            <div v-if="selectedSchedule?.id === s.id" class="mt-3 pt-3 border-t border-[var(--color-accent)]/15">
+                              <div v-if="(s.pickup_points || []).filter(pt => pt.region === selectedRegion).length" class="space-y-2">
+                                <div v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)" :key="pt.id" class="space-y-1">
+                                  <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
+                                    <span class="text-[11px] font-bold text-[var(--color-text-dark)]">{{ pt.pickup_location }}</span>
+                                    <span v-if="pt.notes" class="text-[10px] text-gray-400 truncate">· {{ pt.notes }}</span>
+                                  </div>
+                                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
+                                    class="ml-5 flex items-center gap-1 text-[10px] font-bold text-[var(--color-accent)] hover:underline"
+                                  >
+                                    <span class="material-symbols-rounded text-[12px]">map</span>ดูแผนที่
+                                  </a>
+                                </div>
                               </div>
-                              <div v-if="s.vehicle_color" class="flex items-center gap-1.5">
-                                <div class="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0" :style="{ backgroundColor: s.vehicle_color }"></div>
-                                <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
-                              </div>
+                              <p v-else class="text-[11px] text-gray-400 font-medium">ไม่มีข้อมูลจุดรับสำหรับภูมิภาคนี้</p>
                             </div>
                           </div>
                         </template>
