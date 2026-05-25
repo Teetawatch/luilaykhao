@@ -544,7 +544,7 @@
                                   : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
                             ]"
                           >
-                            <!-- Seat status + expand indicator -->
+                            <!-- Seat status + seat map button + expand indicator -->
                             <div class="flex items-center justify-between gap-3">
                               <span
                                 class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full border"
@@ -555,9 +555,17 @@
                                 >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                 {{ scheduleAvailabilityLabel(s) }}
                               </span>
-                              <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
-                                :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
-                              >expand_more</span>
+                              <div class="flex items-center gap-2 shrink-0">
+                                <button v-if="s.total_seats > 0" @click.stop="openSeatMapPreview(s)"
+                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors px-1.5 py-1 rounded-lg hover:bg-[var(--color-accent)]/8"
+                                >
+                                  <span class="material-symbols-rounded text-[15px]">grid_view</span>
+                                  ดูผัง
+                                </button>
+                                <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
+                                  :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
+                                >expand_more</span>
+                              </div>
                             </div>
 
                             <!-- Expanded: pickup points -->
@@ -663,7 +671,7 @@
                                   : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
                             ]"
                           >
-                            <!-- Seat status + expand indicator -->
+                            <!-- Seat status + seat map button + expand indicator -->
                             <div class="flex items-center justify-between gap-3">
                               <span
                                 class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full border"
@@ -674,9 +682,17 @@
                                 >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                 {{ scheduleAvailabilityLabel(s) }}
                               </span>
-                              <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
-                                :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
-                              >expand_more</span>
+                              <div class="flex items-center gap-2 shrink-0">
+                                <button v-if="s.total_seats > 0" @click.stop="openSeatMapPreview(s)"
+                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors px-1.5 py-1 rounded-lg hover:bg-[var(--color-accent)]/8"
+                                >
+                                  <span class="material-symbols-rounded text-[15px]">grid_view</span>
+                                  ดูผัง
+                                </button>
+                                <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
+                                  :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
+                                >expand_more</span>
+                              </div>
                             </div>
 
                             <!-- Expanded: pickup points for selected region -->
