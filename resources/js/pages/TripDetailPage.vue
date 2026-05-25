@@ -534,7 +534,7 @@
                           <div
                             v-for="s in dateGroup.schedules"
                             :key="s.id"
-                            @click="isScheduleBookable(s) && selectSchedule(s)"
+                            @click="isScheduleBookable(s) && toggleSchedule(s)"
                             class="border-2 rounded-2xl p-3.5 transition-all duration-200"
                             :class="[
                               selectedSchedule?.id === s.id
@@ -571,7 +571,7 @@
                             <!-- Expanded: pickup points -->
                             <div v-if="selectedSchedule?.id === s.id" class="mt-3 pt-3 border-t border-[var(--color-accent)]/15">
                               <div v-if="s.pickup_points?.length" class="space-y-2">
-                                <div v-for="pt in s.pickup_points" :key="pt.id" class="space-y-1">
+                                <div v-for="pt in getSortedPickupPoints(s.pickup_points)" :key="pt.id" class="space-y-1">
                                   <div class="flex items-center gap-1.5">
                                     <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
                                     <span class="text-[11px] font-bold text-[var(--color-text-dark)]">{{ pt.pickup_location }}</span>
@@ -661,7 +661,7 @@
                           <div
                             v-for="s in dateGroup.schedules"
                             :key="s.id"
-                            @click="isScheduleBookable(s) && selectSchedule(s)"
+                            @click="isScheduleBookable(s) && toggleSchedule(s)"
                             class="border-2 rounded-2xl p-3.5 transition-all duration-200"
                             :class="[
                               selectedSchedule?.id === s.id
@@ -697,8 +697,8 @@
 
                             <!-- Expanded: pickup points for selected region -->
                             <div v-if="selectedSchedule?.id === s.id" class="mt-3 pt-3 border-t border-[var(--color-accent)]/15">
-                              <div v-if="(s.pickup_points || []).filter(pt => pt.region === selectedRegion).length" class="space-y-2">
-                                <div v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)" :key="pt.id" class="space-y-1">
+                              <div v-if="getSortedPickupPoints((s.pickup_points || []).filter(pt => pt.region === selectedRegion)).length" class="space-y-2">
+                                <div v-for="pt in getSortedPickupPoints((s.pickup_points || []).filter(pt => pt.region === selectedRegion))" :key="pt.id" class="space-y-1">
                                   <div class="flex items-center gap-1.5">
                                     <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
                                     <span class="text-[11px] font-bold text-[var(--color-text-dark)]">{{ pt.pickup_location }}</span>
@@ -2086,6 +2086,15 @@ function selectSchedule(s) {
     ) || null;
   } else {
     selectedPickup.value = null;
+  }
+}
+
+function toggleSchedule(s) {
+  if (selectedSchedule.value?.id === s.id) {
+    selectedSchedule.value = null;
+    selectedPickup.value = null;
+  } else {
+    selectSchedule(s);
   }
 }
 

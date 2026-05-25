@@ -13,14 +13,15 @@
       </button>
     </div>
 
-    <!-- Slides Grid -->
+    <!-- Slides list -->
     <div class="table-card">
       <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
       <div v-else>
-        <!-- Empty -->
-        <div v-if="!slides.length" class="empty-state">ยังไม่มีภาพสไลด์ กด "เพิ่มภาพใหม่" เพื่อเริ่มต้น</div>
+        <div v-if="!slides.length" class="empty-state">
+          <span class="material-symbols-rounded" style="font-size:48px;color:#d1d5db;display:block;margin-bottom:12px;">slideshow</span>
+          ยังไม่มีภาพสไลด์ กด "เพิ่มภาพใหม่" เพื่อเริ่มต้น
+        </div>
 
-        <!-- Slides list -->
         <div v-else class="slides-list">
           <div
             v-for="(slide, index) in slides"
@@ -28,34 +29,44 @@
             class="slide-row"
             :class="{ 'slide-inactive': !slide.is_active }"
           >
-            <!-- Drag handle + order -->
+            <!-- Order indicator -->
             <div class="slide-order">
               <span class="material-symbols-rounded drag-handle">drag_indicator</span>
               <span class="order-num">{{ index + 1 }}</span>
             </div>
 
-            <!-- Preview -->
+            <!-- Thumbnail -->
             <div class="slide-preview">
-              <img :src="slide.image_url" :alt="slide.alt_text" class="slide-thumb" />
+              <img :src="slide.image_url" :alt="slide.alt_text" class="slide-thumb" @error="(e) => e.target.style.opacity = '0.3'" />
             </div>
 
             <!-- Info -->
             <div class="slide-info">
-              <p class="slide-alt">{{ slide.alt_text }}</p>
-              <p class="slide-url">{{ slide.image_url }}</p>
+              <p class="slide-alt">{{ slide.alt_text || '(ไม่มีคำอธิบาย)' }}</p>
+              <p class="slide-url" :title="slide.image_url">{{ slide.image_url }}</p>
             </div>
 
-            <!-- Status -->
-            <span :class="['status-pill', slide.is_active ? 'pill-active' : 'pill-inactive']">
+            <!-- Status badge -->
+            <span class="status-pill" :class="slide.is_active ? 'pill-active' : 'pill-inactive'">
               {{ slide.is_active ? 'แสดงผล' : 'ซ่อนอยู่' }}
             </span>
 
             <!-- Actions -->
             <div class="action-btns">
-              <button class="btn-icon" :disabled="index === 0" @click="moveSlide(index, -1)" title="เลื่อนขึ้น">
+              <button
+                class="btn-icon"
+                :disabled="index === 0"
+                @click="moveSlide(index, -1)"
+                title="เลื่อนขึ้น"
+              >
                 <span class="material-symbols-rounded" style="font-size:16px;">arrow_upward</span>
               </button>
-              <button class="btn-icon" :disabled="index === slides.length - 1" @click="moveSlide(index, 1)" title="เลื่อนลง">
+              <button
+                class="btn-icon"
+                :disabled="index === slides.length - 1"
+                @click="moveSlide(index, 1)"
+                title="เลื่อนลง"
+              >
                 <span class="material-symbols-rounded" style="font-size:16px;">arrow_downward</span>
               </button>
               <button class="btn-icon btn-edit" @click="openForm(slide)" title="แก้ไข">
@@ -71,72 +82,107 @@
     </div>
 
     <!-- Form Modal -->
-    <div class="modal-overlay" v-if="showForm">
-      <div class="modal-card">
+    <div class="modal-overlay" v-if="showForm" @click.self="showForm = false">
+      <div class="modal-card" style="max-width:560px">
         <div class="modal-header">
           <h2>{{ editing ? 'แก้ไขภาพสไลด์' : 'เพิ่มภาพสไลด์ใหม่' }}</h2>
           <button class="modal-close" @click="showForm = false">
             <span class="material-symbols-rounded">close</span>
           </button>
         </div>
-        <form @submit.prevent="submitForm" class="modal-body">
-          <div class="form-grid">
 
-            <!-- Upload or URL -->
-            <div class="form-group full-width">
-              <label>อัปโหลดภาพ</label>
-              <div class="upload-zone" @click="$refs.fileInput.click()" @dragover.prevent @drop.prevent="handleDrop">
-                <input ref="fileInput" type="file" accept="image/jpeg,image/jpg,image/png,image/webp" class="hidden" @change="handleFileSelect" />
-                <div v-if="uploadPreview" class="upload-preview-wrap">
-                  <img :src="uploadPreview" class="upload-preview-img" />
-                  <button type="button" class="upload-clear" @click.stop="clearUpload">
-                    <span class="material-symbols-rounded">close</span>
-                  </button>
+        <form @submit.prevent="submitForm">
+          <div class="modal-body">
+            <div class="form-grid">
+
+              <!-- Upload zone -->
+              <div class="form-group full-width">
+                <label>อัปโหลดภาพ</label>
+                <div
+                  class="upload-zone"
+                  @click="fileInput.click()"
+                  @dragover.prevent
+                  @drop.prevent="handleDrop"
+                >
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    style="display:none"
+                    @change="handleFileSelect"
+                  />
+                  <div v-if="uploadPreview" class="upload-preview-wrap">
+                    <img :src="uploadPreview" class="upload-preview-img" />
+                    <button type="button" class="upload-clear" @click.stop="clearUpload" title="ลบภาพ">
+                      <span class="material-symbols-rounded">close</span>
+                    </button>
+                  </div>
+                  <div v-else class="upload-placeholder">
+                    <span class="material-symbols-rounded">cloud_upload</span>
+                    <p style="font-size:14px;font-weight:600;color:#6b7280">คลิกหรือลากไฟล์มาวางที่นี่</p>
+                    <p style="font-size:12px;color:#9ca3af">รองรับ JPG, PNG, WebP (สูงสุด 50 MB)</p>
+                  </div>
                 </div>
-                <div v-else class="upload-placeholder">
-                  <span class="material-symbols-rounded">cloud_upload</span>
-                  <p>คลิกหรือลากไฟล์มาวางที่นี่</p>
-                  <p class="text-xs text-gray-400">รองรับ JPG, PNG, WebP</p>
+                <div class="upload-progress" v-if="uploading">
+                  <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
+                </div>
+                <p v-if="uploading" style="font-size:12px;color:#6b7280;margin-top:4px">กำลังอัปโหลด {{ uploadProgress }}%...</p>
+              </div>
+
+              <!-- URL input -->
+              <div class="form-group full-width">
+                <label>หรือใส่ URL ภาพโดยตรง</label>
+                <input
+                  v-model="form.image_url"
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  @input="urlPreviewError = false"
+                />
+              </div>
+
+              <!-- URL preview -->
+              <div class="form-group full-width" v-if="form.image_url && !uploadPreview">
+                <label>ตัวอย่างภาพจาก URL</label>
+                <img
+                  v-if="!urlPreviewError"
+                  :src="form.image_url"
+                  class="url-preview"
+                  @error="urlPreviewError = true"
+                />
+                <p v-else style="font-size:13px;color:#dc2626">⚠ ไม่สามารถโหลดภาพจาก URL นี้ได้</p>
+              </div>
+
+              <!-- Alt text -->
+              <div class="form-group full-width">
+                <label>Alt Text <span style="font-weight:400;color:#9ca3af">(คำอธิบายภาพ)</span></label>
+                <input v-model="form.alt_text" placeholder="เช่น ภูสอยดาว ยอดดอยสวยงาม" />
+              </div>
+
+              <!-- Status toggle -->
+              <div class="form-group">
+                <label>สถานะการแสดงผล</label>
+                <div class="toggle-group" style="margin-top:8px">
+                  <label class="switch">
+                    <input type="checkbox" v-model="form.is_active" />
+                    <span class="slider round"></span>
+                  </label>
+                  <span style="font-size:14px;font-weight:600;" :style="{ color: form.is_active ? '#059669' : '#6b7280' }">
+                    {{ form.is_active ? 'แสดงผล' : 'ซ่อนอยู่' }}
+                  </span>
                 </div>
               </div>
-              <div class="upload-progress" v-if="uploading">
-                <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
-              </div>
-            </div>
 
-            <div class="form-group full-width">
-              <label>หรือใส่ URL ภาพโดยตรง</label>
-              <input v-model="form.image_url" type="url" placeholder="https://example.com/image.jpg" />
-            </div>
-
-            <!-- Preview when URL entered -->
-            <div class="form-group full-width" v-if="form.image_url && !uploadPreview">
-              <label>ตัวอย่างภาพ</label>
-              <img :src="form.image_url" class="url-preview" @error="urlPreviewError = true" v-if="!urlPreviewError" />
-              <p class="text-red-500 text-sm" v-else>ไม่สามารถโหลดภาพจาก URL นี้ได้</p>
-            </div>
-
-            <div class="form-group full-width">
-              <label>Alt Text (คำอธิบายภาพ)</label>
-              <input v-model="form.alt_text" placeholder="เช่น ภูสอยดาว ยอดดอยสวยงาม" />
-            </div>
-
-            <div class="form-group">
-              <label>สถานะ</label>
-              <div class="toggle-group mt-2">
-                <label class="switch">
-                  <input type="checkbox" v-model="form.is_active" />
-                  <span class="slider round"></span>
-                </label>
-                <span class="ml-2">{{ form.is_active ? 'แสดงผล' : 'ซ่อนอยู่' }}</span>
-              </div>
             </div>
           </div>
 
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
-            <button type="submit" class="btn-primary" :disabled="submitting || uploading || (!form.image_url && !uploadPreview)">
-              <span class="material-symbols-rounded animate-spin" v-if="submitting">sync</span>
+            <button
+              type="submit"
+              class="btn-primary"
+              :disabled="submitting || uploading || (!form.image_url)"
+            >
+              <span class="material-symbols-rounded animate-spin" style="font-size:16px" v-if="submitting">sync</span>
               {{ editing ? 'บันทึกการเปลี่ยนแปลง' : 'เพิ่มสไลด์' }}
             </button>
           </div>
@@ -144,8 +190,8 @@
       </div>
     </div>
 
-    <!-- Delete Confirm -->
-    <div class="modal-overlay" v-if="showDeleteConfirm">
+    <!-- Delete Confirm Modal -->
+    <div class="modal-overlay" v-if="showDeleteConfirm" @click.self="showDeleteConfirm = false">
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>ยืนยันการลบ</h2>
@@ -154,14 +200,22 @@
           </button>
         </div>
         <div class="modal-body">
-          <p class="confirm-text">คุณต้องการลบภาพสไลด์นี้ใช่หรือไม่?</p>
-          <div class="mt-3" v-if="deleting">
-            <img :src="deleting.image_url" class="rounded-lg w-full max-h-40 object-cover" />
+          <p class="confirm-text">คุณต้องการลบภาพสไลด์นี้ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <div v-if="deleting" style="margin-top:12px">
+            <img
+              :src="deleting.image_url"
+              :alt="deleting.alt_text"
+              style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb"
+            />
+            <p style="font-size:13px;color:#6b7280;margin-top:6px;text-align:center">{{ deleting.alt_text }}</p>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
-          <button class="btn-danger" @click="doDelete" :disabled="submitting">ยืนยันการลบ</button>
+          <button class="btn-danger" @click="doDelete" :disabled="submitting">
+            <span class="material-symbols-rounded animate-spin" style="font-size:16px" v-if="submitting">sync</span>
+            ยืนยันการลบ
+          </button>
         </div>
       </div>
     </div>
@@ -304,23 +358,31 @@ const moveSlide = async (index, direction) => {
 </script>
 
 <style scoped>
+@import url('./admin-shared.css');
+
+/* ─── Heading icon ─────────────────────── */
+.heading-icon {
+  color: var(--color-accent);
+  font-size: 28px;
+}
+
+/* ─── Slides list ──────────────────────── */
 .slides-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .slide-row {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid #f0f0f0;
   transition: background 0.15s;
 }
 .slide-row:last-child { border-bottom: none; }
 .slide-row:hover { background: #fafafa; }
-.slide-inactive { opacity: 0.5; }
+.slide-inactive { opacity: 0.45; }
 
 .slide-order {
   display: flex;
@@ -328,34 +390,53 @@ const moveSlide = async (index, direction) => {
   align-items: center;
   gap: 2px;
   width: 32px;
+  flex-shrink: 0;
   color: #aaa;
 }
-.drag-handle { cursor: grab; font-size: 20px; }
-.order-num { font-size: 11px; font-weight: 600; color: #999; }
+.drag-handle { cursor: grab; font-size: 20px; color: #cbd5e1; }
+.order-num { font-size: 11px; font-weight: 700; color: #9ca3af; }
 
 .slide-preview { flex-shrink: 0; }
 .slide-thumb {
-  width: 120px;
-  height: 68px;
+  width: 128px;
+  height: 72px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  display: block;
 }
 
 .slide-info {
   flex: 1;
   min-width: 0;
 }
-.slide-alt { font-weight: 600; font-size: 14px; color: #374151; }
+.slide-alt {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 2px;
+}
 .slide-url {
   font-size: 12px;
   color: #9ca3af;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 300px;
 }
 
-/* Upload zone */
+.status-pill {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pill-active  { background: #d1fae5; color: #059669; }
+.pill-inactive { background: #fee2e2; color: #dc2626; }
+
+/* ─── Upload zone ──────────────────────── */
 .upload-zone {
   border: 2px dashed #d1d5db;
   border-radius: 12px;
@@ -364,23 +445,36 @@ const moveSlide = async (index, direction) => {
   text-align: center;
   transition: border-color 0.2s, background 0.2s;
   position: relative;
-  min-height: 140px;
+  min-height: 148px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.upload-zone:hover { border-color: var(--color-accent, #4f46e5); background: #f9f9ff; }
+.upload-zone:hover { border-color: var(--color-accent); background: #f0faf4; }
 
-.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #9ca3af; }
-.upload-placeholder .material-symbols-rounded { font-size: 40px; }
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+.upload-placeholder .material-symbols-rounded { font-size: 44px; color: #d1d5db; }
 
 .upload-preview-wrap { position: relative; width: 100%; }
-.upload-preview-img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; }
+.upload-preview-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
 .upload-clear {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.55);
   color: white;
   border: none;
   border-radius: 50%;
@@ -390,7 +484,10 @@ const moveSlide = async (index, direction) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background 0.15s;
 }
+.upload-clear:hover { background: rgba(0,0,0,0.75); }
+.upload-clear .material-symbols-rounded { font-size: 16px; }
 
 .upload-progress {
   height: 4px;
@@ -401,8 +498,8 @@ const moveSlide = async (index, direction) => {
 }
 .progress-bar {
   height: 100%;
-  background: var(--color-accent, #4f46e5);
-  transition: width 0.3s;
+  background: var(--color-accent);
+  transition: width 0.25s;
 }
 
 .url-preview {
@@ -411,38 +508,23 @@ const moveSlide = async (index, direction) => {
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
+  display: block;
 }
 
-.empty-state {
-  padding: 60px 20px;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 15px;
-}
-
-.status-pill {
-  flex-shrink: 0;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.pill-active { background: #dbf4e5; color: #10b981; }
-.pill-inactive { background: #fef2f2; color: #ef4444; }
-
-.toggle-group { display: flex; align-items: center; }
-.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+/* ─── Toggle switch ────────────────────── */
+.toggle-group { display: flex; align-items: center; gap: 8px; }
+.switch { position: relative; display: inline-block; width: 40px; height: 22px; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider {
   position: absolute; cursor: pointer; inset: 0;
-  background: #d1d5db; border-radius: 24px; transition: .3s;
+  background: #d1d5db; border-radius: 22px; transition: .3s;
 }
 .slider:before {
   content: ''; position: absolute;
-  height: 18px; width: 18px;
+  height: 16px; width: 16px;
   left: 3px; bottom: 3px;
   background: white; border-radius: 50%; transition: .3s;
 }
-input:checked + .slider { background: var(--color-accent, #4f46e5); }
-input:checked + .slider:before { transform: translateX(20px); }
+input:checked + .slider { background: var(--color-accent); }
+input:checked + .slider:before { transform: translateX(18px); }
 </style>
