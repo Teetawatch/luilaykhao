@@ -479,6 +479,7 @@
                   </div>
 
                   <div v-else class="space-y-3">
+                    <!-- Filter checkbox -->
                     <label class="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] cursor-pointer select-none">
                       <input v-model="onlyAvailableSchedules" type="checkbox" class="rounded border-gray-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]" />
                       แสดงเฉพาะรอบที่ยังว่าง
@@ -486,146 +487,134 @@
 
                     <div v-if="filteredSchedules.length === 0" class="bg-[var(--color-sand)] rounded-[1.25rem] p-4 text-center border border-gray-100">
                       <p class="text-[var(--color-text-dark)] font-bold text-sm">ไม่พบรอบที่ตรงเงื่อนไข</p>
-                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง “เฉพาะรอบที่ยังว่าง”</p>
+                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง "เฉพาะรอบที่ยังว่าง"</p>
                     </div>
 
-                    <div v-else class="space-y-2.5 max-h-[560px] overflow-y-auto custom-scrollbar pr-0.5">
-                      <div
-                        v-for="monthGroup in monthlyFilteredSchedules"
-                        :key="monthGroup.key"
-                        class="rounded-[1.25rem] border border-gray-100 bg-white overflow-hidden shadow-sm"
-                      >
-                        <!-- Month header -->
+                    <template v-else>
+                      <!-- Month Tabs -->
+                      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                         <button
+                          v-for="monthGroup in monthlyFilteredSchedules"
+                          :key="monthGroup.key"
                           type="button"
-                          @click="toggleScheduleMonth(monthGroup.key)"
-                          class="w-full px-4 py-3.5 flex items-center gap-3 text-left transition-all"
-                          :class="openScheduleMonths.includes(monthGroup.key) ? 'bg-gradient-to-r from-[var(--color-accent)]/6 to-transparent' : 'hover:bg-gray-50'"
+                          @click="selectedScheduleMonthTab = monthGroup.key"
+                          class="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black whitespace-nowrap transition-all border"
+                          :class="selectedScheduleMonthTab === monthGroup.key
+                            ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)] shadow-md'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-[var(--color-accent)]/40 hover:text-[var(--color-text-dark)]'"
                         >
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                              <span class="font-black text-[15px] text-[var(--color-text-dark)]">{{ monthGroup.label }}</span>
-                              <span class="text-[10px] font-black px-2 py-0.5 rounded-full border"
-                                :class="monthGroup.schedules.filter(s => hasAvailableSeats(s)).length
-                                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                  : 'bg-gray-50 text-gray-400 border-gray-100'"
-                              >{{ monthGroup.schedules.filter(s => hasAvailableSeats(s)).length }}/{{ monthGroup.schedules.length }} ว่าง</span>
-                            </div>
-                            <p class="text-[11px] text-gray-400 font-medium mt-0.5">
-                              {{ [...new Set(monthGroup.schedules.map(s => s.departure_date))].length }} วันเดินทาง · {{ monthGroup.schedules.length }} รอบออกเดินทาง
-                            </p>
-                          </div>
+                          {{ monthGroup.shortLabel }}
                           <span
-                            class="material-symbols-rounded text-[22px] transition-transform shrink-0"
-                            :class="openScheduleMonths.includes(monthGroup.key) ? 'rotate-180 text-[var(--color-accent)]' : 'text-gray-300'"
-                          >expand_more</span>
+                            class="text-[11px] font-black px-1.5 py-0.5 rounded-full leading-none"
+                            :class="selectedScheduleMonthTab === monthGroup.key
+                              ? 'bg-white/20 text-white'
+                              : (monthGroup.schedules.filter(s => hasAvailableSeats(s)).length ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400')"
+                          >{{ monthGroup.schedules.filter(s => hasAvailableSeats(s)).length }}/{{ monthGroup.schedules.length }}</span>
                         </button>
+                      </div>
 
-                        <!-- Month content: grouped by date -->
-                        <div
-                          v-show="openScheduleMonths.includes(monthGroup.key)"
-                          class="border-t border-gray-100 divide-y divide-gray-50"
-                        >
-                          <div v-if="monthGroup.schedules.length === 0" class="py-5 text-center text-xs font-bold text-gray-400">
-                            ยังไม่มีรอบในเดือนนี้
+                      <!-- Schedules for selected month -->
+                      <div class="space-y-1.5 max-h-[520px] overflow-y-auto custom-scrollbar pr-0.5">
+                        <template v-for="dateGroup in groupSchedulesByDate(currentMonthSchedules)" :key="dateGroup.dateKey">
+                          <!-- Date header -->
+                          <div class="flex items-center gap-3 px-0.5 pt-3 first:pt-1">
+                            <div class="w-10 h-10 rounded-xl bg-[var(--color-primary)] flex flex-col items-center justify-center shrink-0 text-white shadow-sm">
+                              <span class="text-[15px] font-black leading-none">{{ new Date(dateGroup.dateKey + 'T00:00:00').getDate() }}</span>
+                            </div>
+                            <div class="min-w-0">
+                              <p class="font-black text-sm text-[var(--color-text-dark)] leading-tight">{{ dateGroup.dayLabel }}</p>
+                              <p class="text-[11px] text-gray-400 font-medium">{{ dateGroup.weekdayLabel }}</p>
+                            </div>
+                            <span v-if="dateGroup.schedules.length > 1"
+                              class="ml-auto shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15"
+                            >{{ dateGroup.schedules.length }} รอบ</span>
                           </div>
 
-                          <div v-for="dateGroup in groupSchedulesByDate(monthGroup.schedules)" :key="dateGroup.dateKey" class="px-3 py-3 space-y-2">
-                            <!-- Date sub-header -->
-                            <div class="flex items-center gap-2">
-                              <div class="flex items-baseline gap-1.5">
-                                <span class="text-sm font-black text-[var(--color-text-dark)]">{{ dateGroup.dayLabel }}</span>
-                                <span class="text-xs font-medium text-[var(--color-text-muted)]">{{ dateGroup.weekdayLabel }}</span>
+                          <!-- Schedule card -->
+                          <div
+                            v-for="s in dateGroup.schedules"
+                            :key="s.id"
+                            @click="isScheduleBookable(s) && selectSchedule(s)"
+                            class="border-2 rounded-2xl p-4 transition-all duration-200"
+                            :class="[
+                              selectedSchedule?.id === s.id
+                                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md shadow-[var(--color-accent)]/10'
+                                : isScheduleBookable(s)
+                                  ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] hover:shadow-sm cursor-pointer'
+                                  : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
+                            ]"
+                          >
+                            <!-- Transport + Price row -->
+                            <div class="flex items-center justify-between gap-3">
+                              <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                                  :class="selectedSchedule?.id === s.id ? 'bg-[var(--color-accent)]/15' : 'bg-gray-100'">
+                                  <span class="material-symbols-rounded text-[18px] transition-colors"
+                                    :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)]' : 'text-gray-400'">
+                                    {{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}
+                                  </span>
+                                </div>
+                                <div class="min-w-0">
+                                  <p class="font-black text-sm text-[var(--color-text-dark)] truncate leading-tight">
+                                    {{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}
+                                  </p>
+                                  <p class="text-[10px] text-gray-400 font-bold">{{ s.duration_days || trip.duration_days }} วัน</p>
+                                </div>
                               </div>
-                              <span v-if="dateGroup.schedules.length > 1"
-                                class="ml-auto text-[10px] font-black px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15"
-                              >{{ dateGroup.schedules.length }} รอบ</span>
+                              <div class="text-right shrink-0">
+                                <p class="text-[var(--color-primary)] font-black text-base leading-tight">฿{{ Number(s.price ?? trip.price_per_person).toLocaleString() }}</p>
+                                <p class="text-[10px] text-gray-400 font-medium">/ท่าน</p>
+                              </div>
                             </div>
 
-                            <!-- Schedule cards for this date -->
-                            <div
-                              v-for="s in dateGroup.schedules"
-                              :key="s.id"
-                              @click="isScheduleBookable(s) && selectSchedule(s)"
-                              class="border-2 rounded-[1rem] p-3.5 transition-all duration-200"
-                              :class="[
-                                selectedSchedule?.id === s.id
-                                  ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                                  : isScheduleBookable(s)
-                                    ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] hover:shadow-sm cursor-pointer'
-                                    : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
-                              ]"
-                            >
-                              <!-- Row 1: transport + price -->
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="flex items-center gap-2 min-w-0">
-                                  <span class="material-symbols-rounded text-[17px] shrink-0 transition-colors"
-                                    :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)]' : 'text-gray-400'"
-                                  >{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-                                  <span class="text-[13px] font-extrabold text-[var(--color-text-dark)] truncate">
-                                    {{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}
-                                  </span>
-                                  <span v-if="s.duration_days || trip.duration_days"
-                                    class="hidden sm:inline-flex items-center gap-0.5 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)] shrink-0">
-                                    <span class="material-symbols-rounded text-[10px]">schedule</span>
-                                    {{ s.duration_days || trip.duration_days }} วัน
-                                  </span>
-                                </div>
-                                <div class="text-right shrink-0">
-                                  <span class="text-[var(--color-primary)] font-black text-[15px]">฿{{ Number(s.price ?? trip.price_per_person).toLocaleString() }}</span>
-                                  <span class="text-[10px] text-gray-400 font-medium"> /ท่าน</span>
-                                </div>
-                              </div>
-
-                              <!-- Row 2: seat progress (fixed-seat schedules) -->
-                              <div v-if="s.total_seats > 0" class="mt-2.5">
-                                <div class="flex items-center justify-between mb-1.5">
-                                  <span
-                                    class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
-                                    :class="scheduleAvailabilityBadgeClass(s)"
-                                  >
-                                    <span class="material-symbols-rounded text-[12px]"
-                                      :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
-                                    >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
-                                    {{ scheduleAvailabilityLabel(s) }}
-                                  </span>
-                                  <button @click.stop="openSeatMapPreview(s)"
-                                    class="flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors"
-                                  >
-                                    <span class="material-symbols-rounded text-[13px]">grid_view</span>
-                                    ดูผัง
-                                  </button>
-                                </div>
-                                <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                  <div class="h-full rounded-full transition-all duration-500"
-                                    :class="!hasAvailableSeats(s) ? 'bg-red-500' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
-                                    :style="{ width: `${Math.min(100, ((s.total_seats - s.available_seats) / s.total_seats) * 100)}%` }"
-                                  ></div>
-                                </div>
-                              </div>
-
-                              <!-- Join trip badge when no fixed seats -->
-                              <div v-else-if="s.join_trip_enabled" class="mt-2">
-                                <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
+                            <!-- Seat status (fixed-seat) -->
+                            <div v-if="s.total_seats > 0" class="mt-3 pt-3 border-t border-gray-100/70">
+                              <div class="flex items-center justify-between mb-2">
+                                <span
+                                  class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
                                   :class="scheduleAvailabilityBadgeClass(s)"
                                 >
-                                  <span class="material-symbols-rounded text-[12px]">group_add</span>
+                                  <span class="material-symbols-rounded text-[11px]"
+                                    :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
+                                  >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                   {{ scheduleAvailabilityLabel(s) }}
                                 </span>
+                                <button @click.stop="openSeatMapPreview(s)"
+                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors"
+                                >
+                                  <span class="material-symbols-rounded text-[12px]">grid_view</span>
+                                  ดูผัง
+                                </button>
                               </div>
-
-                              <!-- Expanded: license plate -->
-                              <div v-if="selectedSchedule?.id === s.id && s.license_plate"
-                                class="mt-2.5 pt-2.5 border-t border-[var(--color-accent)]/10 flex items-center gap-1.5"
-                              >
-                                <span class="material-symbols-rounded text-[13px] text-gray-400">tag</span>
-                                <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-white border border-gray-200 px-2 py-0.5 rounded tracking-widest">{{ s.license_plate }}</span>
+                              <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500"
+                                  :class="!hasAvailableSeats(s) ? 'bg-red-500' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
+                                  :style="{ width: `${Math.min(100, ((s.total_seats - s.available_seats) / s.total_seats) * 100)}%` }"
+                                ></div>
                               </div>
                             </div>
+
+                            <!-- Join trip badge (no fixed seats) -->
+                            <div v-else-if="s.join_trip_enabled" class="mt-3 pt-3 border-t border-gray-100/70">
+                              <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
+                                :class="scheduleAvailabilityBadgeClass(s)"
+                              >
+                                <span class="material-symbols-rounded text-[11px]">group_add</span>
+                                {{ scheduleAvailabilityLabel(s) }}
+                              </span>
+                            </div>
+
+                            <!-- Expanded: license plate -->
+                            <div v-if="selectedSchedule?.id === s.id && s.license_plate"
+                              class="mt-3 pt-3 border-t border-[var(--color-accent)]/15 flex items-center gap-1.5"
+                            >
+                              <span class="material-symbols-rounded text-[13px] text-gray-400">tag</span>
+                              <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-white border border-gray-200 px-2 py-0.5 rounded tracking-widest">{{ s.license_plate }}</span>
+                            </div>
                           </div>
-                        </div>
+                        </template>
                       </div>
-                    </div>
+                    </template>
                   </div>
                 </div>
 
@@ -642,6 +631,7 @@
                   </div>
 
                   <div v-else class="space-y-3">
+                    <!-- Filter checkbox -->
                     <label class="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] cursor-pointer select-none">
                       <input v-model="onlyAvailableSchedules" type="checkbox" class="rounded border-gray-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]" />
                       แสดงเฉพาะรอบที่ยังว่าง
@@ -649,175 +639,163 @@
 
                     <div v-if="filteredSchedulesForRegion.length === 0" class="bg-[var(--color-sand)] rounded-[1.25rem] p-4 text-center border border-gray-100">
                       <p class="text-[var(--color-text-dark)] font-bold text-sm">ไม่พบรอบที่ตรงเงื่อนไขในภูมิภาคนี้</p>
-                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง “เฉพาะรอบที่ยังว่าง”</p>
+                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง "เฉพาะรอบที่ยังว่าง"</p>
                     </div>
 
-                    <div v-else class="space-y-2.5 max-h-[560px] overflow-y-auto custom-scrollbar pr-0.5">
-                      <div
-                        v-for="monthGroup in monthlyFilteredSchedulesForRegion"
-                        :key="monthGroup.key"
-                        class="rounded-[1.25rem] border border-gray-100 bg-white overflow-hidden shadow-sm"
-                      >
-                        <!-- Month header -->
+                    <template v-else>
+                      <!-- Month Tabs -->
+                      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                         <button
+                          v-for="monthGroup in monthlyFilteredSchedulesForRegion"
+                          :key="monthGroup.key"
                           type="button"
-                          @click="toggleScheduleMonth(monthGroup.key)"
-                          class="w-full px-4 py-3.5 flex items-center gap-3 text-left transition-all"
-                          :class="openScheduleMonths.includes(monthGroup.key) ? 'bg-gradient-to-r from-[var(--color-accent)]/6 to-transparent' : 'hover:bg-gray-50'"
+                          @click="selectedScheduleMonthTab = monthGroup.key"
+                          class="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black whitespace-nowrap transition-all border"
+                          :class="selectedScheduleMonthTab === monthGroup.key
+                            ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)] shadow-md'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-[var(--color-accent)]/40 hover:text-[var(--color-text-dark)]'"
                         >
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                              <span class="font-black text-[15px] text-[var(--color-text-dark)]">{{ monthGroup.label }}</span>
-                              <span class="text-[10px] font-black px-2 py-0.5 rounded-full border"
-                                :class="monthGroup.schedules.filter(s => hasAvailableSeats(s)).length
-                                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                  : 'bg-gray-50 text-gray-400 border-gray-100'"
-                              >{{ monthGroup.schedules.filter(s => hasAvailableSeats(s)).length }}/{{ monthGroup.schedules.length }} ว่าง</span>
-                            </div>
-                            <p class="text-[11px] text-gray-400 font-medium mt-0.5">
-                              {{ [...new Set(monthGroup.schedules.map(s => s.departure_date))].length }} วันเดินทาง · {{ monthGroup.schedules.length }} รอบออกเดินทาง
-                            </p>
-                          </div>
+                          {{ monthGroup.shortLabel }}
                           <span
-                            class="material-symbols-rounded text-[22px] transition-transform shrink-0"
-                            :class="openScheduleMonths.includes(monthGroup.key) ? 'rotate-180 text-[var(--color-accent)]' : 'text-gray-300'"
-                          >expand_more</span>
+                            class="text-[11px] font-black px-1.5 py-0.5 rounded-full leading-none"
+                            :class="selectedScheduleMonthTab === monthGroup.key
+                              ? 'bg-white/20 text-white'
+                              : (monthGroup.schedules.filter(s => hasAvailableSeats(s)).length ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400')"
+                          >{{ monthGroup.schedules.filter(s => hasAvailableSeats(s)).length }}/{{ monthGroup.schedules.length }}</span>
                         </button>
+                      </div>
 
-                        <!-- Month content: grouped by date -->
-                        <div
-                          v-show="openScheduleMonths.includes(monthGroup.key)"
-                          class="border-t border-gray-100 divide-y divide-gray-50"
-                        >
-                          <div v-if="monthGroup.schedules.length === 0" class="py-5 text-center text-xs font-bold text-gray-400">
-                            ยังไม่มีรอบในเดือนนี้
+                      <!-- Schedules for selected month -->
+                      <div class="space-y-1.5 max-h-[520px] overflow-y-auto custom-scrollbar pr-0.5">
+                        <template v-for="dateGroup in groupSchedulesByDate(currentMonthSchedulesForRegion)" :key="dateGroup.dateKey">
+                          <!-- Date header -->
+                          <div class="flex items-center gap-3 px-0.5 pt-3 first:pt-1">
+                            <div class="w-10 h-10 rounded-xl bg-[var(--color-primary)] flex flex-col items-center justify-center shrink-0 text-white shadow-sm">
+                              <span class="text-[15px] font-black leading-none">{{ new Date(dateGroup.dateKey + 'T00:00:00').getDate() }}</span>
+                            </div>
+                            <div class="min-w-0">
+                              <p class="font-black text-sm text-[var(--color-text-dark)] leading-tight">{{ dateGroup.dayLabel }}</p>
+                              <p class="text-[11px] text-gray-400 font-medium">{{ dateGroup.weekdayLabel }}</p>
+                            </div>
+                            <span v-if="dateGroup.schedules.length > 1"
+                              class="ml-auto shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15"
+                            >{{ dateGroup.schedules.length }} รอบ</span>
                           </div>
 
-                          <div v-for="dateGroup in groupSchedulesByDate(monthGroup.schedules)" :key="dateGroup.dateKey" class="px-3 py-3 space-y-2">
-                            <!-- Date sub-header -->
-                            <div class="flex items-center gap-2">
-                              <div class="flex items-baseline gap-1.5">
-                                <span class="text-sm font-black text-[var(--color-text-dark)]">{{ dateGroup.dayLabel }}</span>
-                                <span class="text-xs font-medium text-[var(--color-text-muted)]">{{ dateGroup.weekdayLabel }}</span>
+                          <!-- Schedule card -->
+                          <div
+                            v-for="s in dateGroup.schedules"
+                            :key="s.id"
+                            @click="isScheduleBookable(s) && selectSchedule(s)"
+                            class="border-2 rounded-2xl p-4 transition-all duration-200"
+                            :class="[
+                              selectedSchedule?.id === s.id
+                                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md shadow-[var(--color-accent)]/10'
+                                : isScheduleBookable(s)
+                                  ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] hover:shadow-sm cursor-pointer'
+                                  : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
+                            ]"
+                          >
+                            <!-- Transport + Price -->
+                            <div class="flex items-center justify-between gap-3">
+                              <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                                  :class="selectedSchedule?.id === s.id ? 'bg-[var(--color-accent)]/15' : 'bg-gray-100'">
+                                  <span class="material-symbols-rounded text-[18px] transition-colors"
+                                    :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)]' : 'text-gray-400'">
+                                    {{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}
+                                  </span>
+                                </div>
+                                <div class="min-w-0">
+                                  <p class="font-black text-sm text-[var(--color-text-dark)] truncate leading-tight">
+                                    {{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}
+                                  </p>
+                                  <p class="text-[10px] text-gray-400 font-bold">{{ s.duration_days || trip.duration_days }} วัน</p>
+                                </div>
                               </div>
-                              <span v-if="dateGroup.schedules.length > 1"
-                                class="ml-auto text-[10px] font-black px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15"
-                              >{{ dateGroup.schedules.length }} รอบ</span>
+                              <div class="text-right shrink-0">
+                                <p class="text-[var(--color-primary)] font-black text-base leading-tight">
+                                  ฿{{ Number(getPickupForRegion(s, selectedRegion)?.price ?? s.price ?? trip.price_per_person).toLocaleString() }}
+                                </p>
+                                <p class="text-[10px] text-gray-400 font-medium">/ท่าน</p>
+                              </div>
                             </div>
 
-                            <!-- Schedule cards for this date -->
-                            <div
-                              v-for="s in dateGroup.schedules"
-                              :key="s.id"
-                              @click="isScheduleBookable(s) && selectSchedule(s)"
-                              class="border-2 rounded-[1rem] p-3.5 transition-all duration-200"
-                              :class="[
-                                selectedSchedule?.id === s.id
-                                  ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                                  : isScheduleBookable(s)
-                                    ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] hover:shadow-sm cursor-pointer'
-                                    : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
-                              ]"
+                            <!-- Pickup points for this region (always visible, compact) -->
+                            <div v-if="(s.pickup_points || []).filter(pt => pt.region === selectedRegion).length"
+                              class="mt-2.5 pt-2.5 border-t border-gray-100/70 space-y-1"
                             >
-                              <!-- Row 1: transport + price for this region -->
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="flex items-center gap-2 min-w-0">
-                                  <span class="material-symbols-rounded text-[17px] shrink-0 transition-colors"
-                                    :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)]' : 'text-gray-400'"
-                                  >{{ s.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-                                  <span class="text-[13px] font-extrabold text-[var(--color-text-dark)] truncate">
-                                    {{ s.transport_type === 'van' ? 'รถตู้ VIP' : 'เรือสปีดโบ๊ท' }}
-                                  </span>
-                                  <span v-if="s.duration_days || trip.duration_days"
-                                    class="hidden sm:inline-flex items-center gap-0.5 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-[var(--color-text-muted)] shrink-0">
-                                    <span class="material-symbols-rounded text-[10px]">schedule</span>
-                                    {{ s.duration_days || trip.duration_days }} วัน
-                                  </span>
-                                </div>
-                                <div class="text-right shrink-0">
-                                  <span class="text-[var(--color-primary)] font-black text-[15px]">
-                                    ฿{{ Number(getPickupForRegion(s, selectedRegion)?.price ?? s.price ?? trip.price_per_person).toLocaleString() }}
-                                  </span>
-                                  <span class="text-[10px] text-gray-400 font-medium"> /ท่าน</span>
-                                </div>
+                              <div
+                                v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)"
+                                :key="pt.id"
+                                class="flex items-center gap-1.5"
+                              >
+                                <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
+                                <span class="text-[11px] font-bold text-[var(--color-text-dark)] truncate">{{ pt.pickup_location }}</span>
+                                <span v-if="pt.notes" class="text-[10px] text-gray-400 font-medium truncate">· {{ pt.notes }}</span>
                               </div>
+                            </div>
 
-                              <!-- Pickup locations (compact, always shown) -->
-                              <div v-if="(s.pickup_points || []).filter(pt => pt.region === selectedRegion).length" class="mt-1.5 space-y-0.5">
-                                <div
-                                  v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)"
-                                  :key="pt.id"
-                                  class="flex items-center gap-1.5"
-                                >
-                                  <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
-                                  <span class="text-[11px] font-bold text-[var(--color-text-dark)] truncate">{{ pt.pickup_location }}</span>
-                                </div>
-                              </div>
-
-                              <!-- Row 2: seat progress -->
-                              <div v-if="s.total_seats > 0" class="mt-2.5">
-                                <div class="flex items-center justify-between mb-1">
-                                  <div class="flex items-center gap-1.5">
-                                    <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                                      :class="!hasAvailableSeats(s) ? 'bg-red-400' : s.available_seats <= 3 ? 'bg-red-400 animate-pulse' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
-                                    ></div>
-                                    <span class="text-[11px] font-black"
-                                      :class="!hasAvailableSeats(s) ? 'text-red-500' : s.available_seats <= 3 ? 'text-red-500' : s.available_seats <= 5 ? 'text-amber-600' : 'text-[var(--color-text-muted)]'"
-                                    >{{ scheduleAvailabilityLabel(s) }}</span>
-                                  </div>
-                                  <button @click.stop="openSeatMapPreview(s)"
-                                    class="flex items-center gap-0.5 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors"
-                                  >
-                                    <span class="material-symbols-rounded text-[13px]">grid_view</span>
-                                    ดูผัง
-                                  </button>
-                                </div>
-                                <div class="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
-                                  <div class="h-full rounded-full transition-all duration-500"
-                                    :class="!hasAvailableSeats(s) ? 'bg-red-400' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
-                                    :style="{ width: `${Math.min(100, ((s.total_seats - s.available_seats) / s.total_seats) * 100)}%` }"
-                                  ></div>
-                                </div>
-                              </div>
-                              <div v-else-if="s.join_trip_enabled" class="mt-2">
-                                <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
+                            <!-- Seat status -->
+                            <div v-if="s.total_seats > 0" class="mt-3 pt-3 border-t border-gray-100/70">
+                              <div class="flex items-center justify-between mb-2">
+                                <span
+                                  class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
                                   :class="scheduleAvailabilityBadgeClass(s)"
                                 >
-                                  <span class="material-symbols-rounded text-[12px]">group_add</span>
+                                  <span class="material-symbols-rounded text-[11px]"
+                                    :class="{ 'animate-pulse': !hasAvailableSeats(s) || s.available_seats <= 3 }"
+                                  >{{ !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
                                   {{ scheduleAvailabilityLabel(s) }}
                                 </span>
+                                <button @click.stop="openSeatMapPreview(s)"
+                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors"
+                                >
+                                  <span class="material-symbols-rounded text-[12px]">grid_view</span>
+                                  ดูผัง
+                                </button>
                               </div>
-
-                              <!-- Expanded: full pickup detail + transport -->
-                              <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).filter(pt => pt.region === selectedRegion).length"
-                                class="mt-2.5 pt-2.5 border-t border-[var(--color-accent)]/10 space-y-1.5"
+                              <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500"
+                                  :class="!hasAvailableSeats(s) ? 'bg-red-400' : s.available_seats <= 3 ? 'bg-red-400' : s.available_seats <= 5 ? 'bg-amber-400' : 'bg-emerald-400'"
+                                  :style="{ width: `${Math.min(100, ((s.total_seats - s.available_seats) / s.total_seats) * 100)}%` }"
+                                ></div>
+                              </div>
+                            </div>
+                            <div v-else-if="s.join_trip_enabled" class="mt-3 pt-3 border-t border-gray-100/70">
+                              <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full border"
+                                :class="scheduleAvailabilityBadgeClass(s)"
                               >
-                                <template v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)" :key="pt.id">
-                                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
-                                    class="flex items-start gap-1.5 text-[11px] font-bold text-[var(--color-text-dark)] hover:text-[var(--color-accent)] transition-colors group"
-                                  >
-                                    <span class="material-symbols-rounded text-red-400 text-[13px] shrink-0 mt-0.5 group-hover:text-[var(--color-accent)]">map</span>
-                                    <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
-                                  </a>
-                                  <div v-else class="flex items-start gap-1.5 text-[11px] font-bold text-[var(--color-text-dark)]">
-                                    <span class="material-symbols-rounded text-red-400 text-[13px] shrink-0 mt-0.5">pin_drop</span>
-                                    <span>{{ pt.pickup_location }}<span v-if="pt.notes" class="text-[var(--color-text-muted)] font-medium"> · {{ pt.notes }}</span></span>
-                                  </div>
-                                </template>
-                                <div v-if="s.license_plate" class="flex items-center gap-1.5">
-                                  <span class="material-symbols-rounded text-[13px] text-gray-400">tag</span>
-                                  <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-white border border-gray-200 px-2 py-0.5 rounded tracking-widest">{{ s.license_plate }}</span>
-                                </div>
-                                <div v-if="s.vehicle_color" class="flex items-center gap-1.5">
-                                  <div class="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0" :style="{ backgroundColor: s.vehicle_color }"></div>
-                                  <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
-                                </div>
+                                <span class="material-symbols-rounded text-[11px]">group_add</span>
+                                {{ scheduleAvailabilityLabel(s) }}
+                              </span>
+                            </div>
+
+                            <!-- Expanded: map link + license plate + vehicle color -->
+                            <div v-if="selectedSchedule?.id === s.id && (s.pickup_points || []).filter(pt => pt.region === selectedRegion).length"
+                              class="mt-3 pt-3 border-t border-[var(--color-accent)]/15 space-y-2"
+                            >
+                              <template v-for="pt in (s.pickup_points || []).filter(pt => pt.region === selectedRegion)" :key="pt.id">
+                                <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
+                                  class="flex items-center gap-1.5 text-[11px] font-bold text-[var(--color-accent)] hover:underline"
+                                >
+                                  <span class="material-symbols-rounded text-[13px] shrink-0">map</span>
+                                  ดูแผนที่จุดรับ
+                                </a>
+                              </template>
+                              <div v-if="s.license_plate" class="flex items-center gap-1.5">
+                                <span class="material-symbols-rounded text-[13px] text-gray-400">tag</span>
+                                <span class="text-[11px] font-extrabold text-[var(--color-text-dark)] bg-white border border-gray-200 px-2 py-0.5 rounded tracking-widest">{{ s.license_plate }}</span>
+                              </div>
+                              <div v-if="s.vehicle_color" class="flex items-center gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0" :style="{ backgroundColor: s.vehicle_color }"></div>
+                                <span class="text-[11px] font-bold text-[var(--color-text-muted)]">{{ s.vehicle_color }}</span>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        </template>
                       </div>
-                    </div>
+                    </template>
                   </div>
                 </div>
 
@@ -957,59 +935,85 @@
             <div class="w-12 h-12 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
           
-          <div v-else-if="reviews.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div v-for="review in reviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)] h-full flex flex-col">
-              <div class="flex justify-between items-start mb-6">
-                <div class="flex items-center gap-4">
-                  <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
-                    <img 
-                      v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
-                      :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
-                      class="w-full h-full object-cover" 
-                    />
-                    <span v-else>{{ review.user_name?.charAt(0) }}</span>
+          <div v-else-if="reviews.length > 0">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div v-for="review in displayedReviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)] h-full flex flex-col">
+                <div class="flex justify-between items-start mb-6">
+                  <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
+                      <img
+                        v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
+                        :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
+                        class="w-full h-full object-cover"
+                      />
+                      <span v-else>{{ review.user_name?.charAt(0) }}</span>
+                    </div>
+                    <div>
+                      <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1">{{ review.user_name }}</p>
+                      <div class="flex gap-0.5">
+                        <span v-for="s in 5" :key="s" class="material-symbols-rounded text-[18px]"
+                          :class="s <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
+                          :style="s <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
+                          star
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1">{{ review.user_name }}</p>
-                    <div class="flex gap-0.5">
-                      <span v-for="s in 5" :key="s" class="material-symbols-rounded text-[18px]"
-                        :class="s <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
-                        :style="s <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
-                        star
-                      </span>
+                  <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full">
+                    {{ formatDate(review.created_at) }}
+                  </span>
+                </div>
+
+                <p class="text-[var(--color-text-mid)] leading-relaxed text-base font-medium mb-5 whitespace-pre-line flex-grow">
+                  {{ review.comment }}
+                </p>
+
+                <!-- Review Images -->
+                <div v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-3 mb-5">
+                  <div
+                    v-for="(img, idx) in review.images"
+                    :key="idx"
+                    @click="openReviewImage(review.images, idx)"
+                    class="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 cursor-pointer group"
+                  >
+                    <img :src="img" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+                      <span class="material-symbols-rounded text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg">zoom_in</span>
                     </div>
                   </div>
                 </div>
-                <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full">
-                  {{ formatDate(review.created_at) }}
+
+                <!-- Admin Reply -->
+                <div v-if="review.admin_reply" class="mt-auto bg-[var(--color-sand)]/50 rounded-2xl p-5 border-l-4 border-[var(--color-accent)] relative overflow-hidden">
+                  <div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
+                    <span class="material-symbols-rounded text-7xl text-[var(--color-accent)]">forum</span>
+                  </div>
+                  <p class="text-xs font-black text-[var(--color-accent)] uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">verified</span>
+                    การตอบกลับจากผู้ดูแล
+                  </p>
+                  <p class="text-sm font-bold text-[var(--color-text-dark)] leading-relaxed">
+                    {{ review.admin_reply }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Load More -->
+            <div v-if="displayedReviews.length < reviews.length || reviewsHasMore" class="mt-10 text-center">
+              <button
+                @click="loadMoreReviews"
+                :disabled="reviewsLoadingMore"
+                class="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full border-2 border-[var(--color-accent)]/25 text-[var(--color-accent)] font-extrabold text-base hover:bg-[var(--color-accent)] hover:text-white hover:border-[var(--color-accent)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+              >
+                <span v-if="reviewsLoadingMore" class="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                <span v-else class="material-symbols-rounded text-[20px]">expand_more</span>
+                <span v-if="reviewsLoadingMore">กำลังโหลด...</span>
+                <span v-else-if="trip.review_count > displayedReviews.length">
+                  ดูรีวิวเพิ่มเติม ({{ trip.review_count - displayedReviews.length }} รายการ)
                 </span>
-              </div>
-
-              <p class="text-[var(--color-text-mid)] leading-relaxed text-base font-medium mb-5 whitespace-pre-line flex-grow">
-                {{ review.comment }}
-              </p>
-
-              <!-- Review Images -->
-              <div v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-3 mb-5">
-                <div v-for="(img, idx) in review.images" :key="idx" 
-                  class="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 cursor-pointer group relative">
-                  <img :src="img" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                </div>
-              </div>
-
-              <!-- Admin Reply -->
-              <div v-if="review.admin_reply" class="mt-auto bg-[var(--color-sand)]/50 rounded-2xl p-5 border-l-4 border-[var(--color-accent)] relative overflow-hidden">
-                <div class="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
-                  <span class="material-symbols-rounded text-7xl text-[var(--color-accent)]">forum</span>
-                </div>
-                <p class="text-xs font-black text-[var(--color-accent)] uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">verified</span>
-                  การตอบกลับจากผู้ดูแล
-                </p>
-                <p class="text-sm font-bold text-[var(--color-text-dark)] leading-relaxed">
-                  {{ review.admin_reply }}
-                </p>
-              </div>
+                <span v-else>ดูรีวิวเพิ่มเติม</span>
+              </button>
             </div>
           </div>
 
@@ -1460,6 +1464,78 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Review Image Lightbox Modal -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="showReviewImageModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-2xl" @click.self="closeReviewImage">
+          <!-- Close Button -->
+          <button @click="closeReviewImage" class="absolute top-6 right-6 z-[210] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl border border-white/10">
+            <span class="material-symbols-rounded text-3xl">close</span>
+          </button>
+
+          <!-- Navigation Buttons -->
+          <button v-if="reviewImageModalImages.length > 1" @click="prevReviewImage" class="absolute left-4 md:left-6 z-[210] w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 border border-white/10">
+            <span class="material-symbols-rounded text-3xl md:text-4xl">chevron_left</span>
+          </button>
+          <button v-if="reviewImageModalImages.length > 1" @click="nextReviewImage" class="absolute right-4 md:right-6 z-[210] w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 border border-white/10">
+            <span class="material-symbols-rounded text-3xl md:text-4xl">chevron_right</span>
+          </button>
+
+          <!-- Main Image Container -->
+          <div class="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-16 lg:p-20 overflow-hidden">
+            <div class="relative max-w-5xl w-full flex items-center justify-center" style="max-height: calc(100vh - 160px)">
+              <Transition
+                mode="out-in"
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-200 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-105"
+              >
+                <img
+                  :key="reviewImageModalIndex"
+                  :src="reviewImageModalImages[reviewImageModalIndex]"
+                  class="max-w-full max-h-full object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-2xl"
+                  style="max-height: calc(100vh - 160px)"
+                />
+              </Transition>
+            </div>
+
+            <!-- Counter and Thumbnails -->
+            <div class="mt-6 w-full max-w-4xl shrink-0">
+              <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4">
+                <p class="text-white/50 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs flex items-center gap-2">
+                  <span class="material-symbols-rounded text-sm">photo_camera</span>
+                  ภาพที่ {{ reviewImageModalIndex + 1 }} จาก {{ reviewImageModalImages.length }}
+                </p>
+
+                <!-- Thumbnails (only if multiple images) -->
+                <div v-if="reviewImageModalImages.length > 1" class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                  <div
+                    v-for="(img, idx) in reviewImageModalImages"
+                    :key="idx"
+                    @click="reviewImageModalIndex = idx"
+                    class="w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shrink-0"
+                    :class="reviewImageModalIndex === idx ? 'border-[var(--color-accent)] scale-110 opacity-100' : 'border-white/10 opacity-40 hover:opacity-80 hover:border-white/30'"
+                  >
+                    <img :src="img" class="w-full h-full object-cover" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1564,7 +1640,7 @@ const selectedSchedule = ref(null);
 const activeIconPicker = ref(null);
 const openDays = ref(['0-0']); // Default open first item of first sector
 const activeSector = ref(0);
-const openScheduleMonths = ref([new Date().getMonth()]);
+const selectedScheduleMonthTab = ref(null);
 let sectorObserver = null;
 
 const toggleDay = (key) => {
@@ -1609,6 +1685,14 @@ const loading = ref(true);
 const schedulesLoading = ref(false);
 const reviews = ref([]);
 const reviewsLoading = ref(false);
+const reviewsPage = ref(1);
+const reviewsHasMore = ref(false);
+const reviewsLoadingMore = ref(false);
+const REVIEWS_PER_PAGE = 6;
+const visibleReviewsCount = ref(REVIEWS_PER_PAGE);
+const showReviewImageModal = ref(false);
+const reviewImageModalImages = ref([]);
+const reviewImageModalIndex = ref(0);
 const showMustKnowModal = ref(false);
 const distanceLoading = ref(false);
 const distanceData = ref([]);
@@ -1815,18 +1899,18 @@ const filteredSchedulesForRegion = computed(() => {
 });
 
 const scheduleMonths = [
-  { key: 0, label: 'มกราคม' },
-  { key: 1, label: 'กุมภาพันธ์' },
-  { key: 2, label: 'มีนาคม' },
-  { key: 3, label: 'เมษายน' },
-  { key: 4, label: 'พฤษภาคม' },
-  { key: 5, label: 'มิถุนายน' },
-  { key: 6, label: 'กรกฎาคม' },
-  { key: 7, label: 'สิงหาคม' },
-  { key: 8, label: 'กันยายน' },
-  { key: 9, label: 'ตุลาคม' },
-  { key: 10, label: 'พฤศจิกายน' },
-  { key: 11, label: 'ธันวาคม' },
+  { key: 0,  label: 'มกราคม',    shortLabel: 'ม.ค.' },
+  { key: 1,  label: 'กุมภาพันธ์', shortLabel: 'ก.พ.' },
+  { key: 2,  label: 'มีนาคม',    shortLabel: 'มี.ค.' },
+  { key: 3,  label: 'เมษายน',    shortLabel: 'เม.ย.' },
+  { key: 4,  label: 'พฤษภาคม',   shortLabel: 'พ.ค.' },
+  { key: 5,  label: 'มิถุนายน',  shortLabel: 'มิ.ย.' },
+  { key: 6,  label: 'กรกฎาคม',   shortLabel: 'ก.ค.' },
+  { key: 7,  label: 'สิงหาคม',   shortLabel: 'ส.ค.' },
+  { key: 8,  label: 'กันยายน',   shortLabel: 'ก.ย.' },
+  { key: 9,  label: 'ตุลาคม',    shortLabel: 'ต.ค.' },
+  { key: 10, label: 'พฤศจิกายน', shortLabel: 'พ.ย.' },
+  { key: 11, label: 'ธันวาคม',   shortLabel: 'ธ.ค.' },
 ];
 
 const getScheduleMonthIndex = (schedule) => {
@@ -1869,31 +1953,31 @@ const monthlyFilteredSchedulesForRegion = computed(() => groupSchedulesByMonth(f
 
 function ensureOpenScheduleMonth(monthGroups) {
   if (!monthGroups.length) return;
-
-  const hasOpenVisibleMonth = monthGroups.some((month) => openScheduleMonths.value.includes(month.key));
-  if (hasOpenVisibleMonth) return;
-
+  if (selectedScheduleMonthTab.value !== null && monthGroups.some(m => m.key === selectedScheduleMonthTab.value)) return;
   const currentMonth = new Date().getMonth();
-  const defaultMonth = monthGroups.find((month) => month.key === currentMonth) || monthGroups[0];
-  openScheduleMonths.value = [...openScheduleMonths.value, defaultMonth.key];
+  const defaultMonth = monthGroups.find(m => m.key === currentMonth) || monthGroups[0];
+  selectedScheduleMonthTab.value = defaultMonth.key;
 }
 
 watch(monthlyFilteredSchedules, ensureOpenScheduleMonth, { immediate: true });
 watch(monthlyFilteredSchedulesForRegion, ensureOpenScheduleMonth, { immediate: true });
 
-function toggleScheduleMonth(monthKey) {
-  if (openScheduleMonths.value.includes(monthKey)) {
-    openScheduleMonths.value = openScheduleMonths.value.filter((key) => key !== monthKey);
-  } else {
-    openScheduleMonths.value = [...openScheduleMonths.value, monthKey];
-  }
-}
-
 function openScheduleMonthForSchedule(schedule) {
   const monthKey = getScheduleMonthIndex(schedule);
-  if (monthKey < 0 || openScheduleMonths.value.includes(monthKey)) return;
-  openScheduleMonths.value = [...openScheduleMonths.value, monthKey];
+  if (monthKey >= 0) selectedScheduleMonthTab.value = monthKey;
 }
+
+const currentMonthSchedules = computed(() => {
+  if (selectedScheduleMonthTab.value === null) return [];
+  const monthGroup = monthlyFilteredSchedules.value.find(m => m.key === selectedScheduleMonthTab.value);
+  return monthGroup?.schedules || [];
+});
+
+const currentMonthSchedulesForRegion = computed(() => {
+  if (selectedScheduleMonthTab.value === null) return [];
+  const monthGroup = monthlyFilteredSchedulesForRegion.value.find(m => m.key === selectedScheduleMonthTab.value);
+  return monthGroup?.schedules || [];
+});
 
 const pickupForSelection = computed(() => {
   if (!selectedSchedule.value || !selectedRegion.value) return null;
@@ -2209,12 +2293,62 @@ async function calculateDistances() {
   }
 }
 
+const displayedReviews = computed(() => reviews.value.slice(0, visibleReviewsCount.value));
+
+function openReviewImage(images, index) {
+  reviewImageModalImages.value = images;
+  reviewImageModalIndex.value = index;
+  showReviewImageModal.value = true;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeReviewImage() {
+  showReviewImageModal.value = false;
+  document.body.style.overflow = '';
+}
+
+function prevReviewImage() {
+  const len = reviewImageModalImages.value.length;
+  reviewImageModalIndex.value = (reviewImageModalIndex.value - 1 + len) % len;
+}
+
+function nextReviewImage() {
+  const len = reviewImageModalImages.value.length;
+  reviewImageModalIndex.value = (reviewImageModalIndex.value + 1) % len;
+}
+
+async function loadMoreReviews() {
+  if (reviewsLoadingMore.value) return;
+  if (visibleReviewsCount.value < reviews.value.length) {
+    visibleReviewsCount.value = Math.min(visibleReviewsCount.value + REVIEWS_PER_PAGE, reviews.value.length);
+    return;
+  }
+  if (!reviewsHasMore.value) return;
+  reviewsLoadingMore.value = true;
+  try {
+    const nextPage = reviewsPage.value + 1;
+    const res = await api.get('/reviews', { params: { trip_id: trip.value.id, per_page: REVIEWS_PER_PAGE, page: nextPage } });
+    const newReviews = res.data.data || [];
+    reviews.value = [...reviews.value, ...newReviews];
+    reviewsPage.value = nextPage;
+    reviewsHasMore.value = newReviews.length === REVIEWS_PER_PAGE;
+    visibleReviewsCount.value += newReviews.length;
+  } catch (error) {
+    console.error('Failed to load more reviews:', error);
+  } finally {
+    reviewsLoadingMore.value = false;
+  }
+}
+
 async function fetchReviews() {
   if (!trip.value?.id) return;
   reviewsLoading.value = true;
+  reviewsPage.value = 1;
+  visibleReviewsCount.value = REVIEWS_PER_PAGE;
   try {
-    const res = await api.get('/reviews', { params: { trip_id: trip.value.id, per_page: 10 } });
-    reviews.value = res.data.data;
+    const res = await api.get('/reviews', { params: { trip_id: trip.value.id, per_page: REVIEWS_PER_PAGE, page: 1 } });
+    reviews.value = res.data.data || [];
+    reviewsHasMore.value = reviews.value.length === REVIEWS_PER_PAGE;
   } catch (error) {
     console.error('Failed to fetch reviews:', error);
   } finally {
