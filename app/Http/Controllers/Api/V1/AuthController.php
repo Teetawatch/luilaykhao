@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\MailService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -59,7 +60,7 @@ class AuthController extends Controller
     {
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return $this->error('อีเมลหรือรหัสผ่านไม่ถูกต้อง', 401);
         }
 
@@ -77,6 +78,36 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return $this->success(null, 'ออกจากระบบสำเร็จ');
+    }
+
+    public function deleteAccount(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // Re-authenticate password-based accounts before destroying data.
+        // Social-only accounts (no password) are already proven by the bearer token.
+        if (! is_null($user->password)) {
+            $validated = $request->validate([
+                'password' => ['required', 'string'],
+            ]);
+
+            if (! Hash::check($validated['password'], $user->password)) {
+                return $this->error('รหัสผ่านไม่ถูกต้อง', 422);
+            }
+        }
+
+        // Remove locally stored avatar so no personal media is left behind.
+        if ($user->avatar && ! str_starts_with($user->avatar, 'http') && file_exists(public_path(ltrim($user->avatar, '/')))) {
+            @unlink(public_path(ltrim($user->avatar, '/')));
+        }
+
+        // Revoke all access tokens, then delete the user. Related records
+        // (bookings, reviews, loyalty, notifications, fcm tokens, …) are removed
+        // via cascading foreign keys.
+        $user->tokens()->delete();
+        $user->delete();
+
+        return $this->success(null, 'ลบบัญชีเรียบร้อยแล้ว');
     }
 
     public function me(Request $request): JsonResponse
@@ -112,7 +143,7 @@ class AuthController extends Controller
         if (isset($validated['phone'])) {
             $user->phone = $validated['phone'];
         }
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
 
@@ -130,15 +161,15 @@ class AuthController extends Controller
             }
 
             $file = $request->file('avatar');
-            $filename = time() . '_avatar_' . $user->id . '.' . $file->getClientOriginalExtension();
-            
+            $filename = time().'_avatar_'.$user->id.'.'.$file->getClientOriginalExtension();
+
             // Ensure avatars directory exists
-            if (!file_exists(public_path('avatars'))) {
+            if (! file_exists(public_path('avatars'))) {
                 mkdir(public_path('avatars'), 0755, true);
             }
-            
+
             $file->move(public_path('avatars'), $filename);
-            $user->avatar = '/avatars/' . $filename;
+            $user->avatar = '/avatars/'.$filename;
         }
 
         $user->save();
@@ -147,8 +178,7 @@ class AuthController extends Controller
         return $this->success($this->formatUser($user->fresh()), 'อัปเดตโปรไฟล์สำเร็จ');
     }
 
-
-    public function socialRedirect(Request $request, string $provider): \Illuminate\Http\RedirectResponse
+    public function socialRedirect(Request $request, string $provider): RedirectResponse
     {
         $this->validateProvider($provider);
 
@@ -171,7 +201,7 @@ class AuthController extends Controller
         return $redirectResponse;
     }
 
-    public function socialCallback(Request $request, string $provider): \Illuminate\Http\RedirectResponse
+    public function socialCallback(Request $request, string $provider): RedirectResponse
     {
         $this->validateProvider($provider);
 
@@ -195,24 +225,24 @@ class AuthController extends Controller
         }
 
         // Check if code is present
-        if (!$request->has('code')) {
+        if (! $request->has('code')) {
             return $this->redirectSocialError($frontendUrl, $mobileReturnTo, 'social_auth_failed', 'ไม่พบรหัสยืนยันตัวตน กรุณาลองใหม่อีกครั้ง');
         }
 
         try {
             $socialUser = Socialite::driver($provider)->stateless()->user();
         } catch (\Exception $e) {
-            \Log::error('Social Login Error: ' . $e->getMessage(), [
+            \Log::error('Social Login Error: '.$e->getMessage(), [
                 'provider' => $provider,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             $message = $e->getMessage();
             // Simplify Guzzle error messages for the user if they contain JSON strings
             if (str_contains($message, '{')) {
                 $message = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับผู้ให้บริการภายนอก';
             }
-            
+
             return $this->redirectSocialError($frontendUrl, $mobileReturnTo, 'social_auth_failed', $message);
         }
 
@@ -220,16 +250,16 @@ class AuthController extends Controller
             $socialId = (string) $socialUser->getId();
             $email = $socialUser->getEmail();
 
-            if (!$email) {
+            if (! $email) {
                 $sanitizedSocialId = preg_replace('/[^a-zA-Z0-9]/', '', $socialId) ?: Str::random(12);
-                $email = $provider . '_' . $sanitizedSocialId . '@social.local';
+                $email = $provider.'_'.$sanitizedSocialId.'@social.local';
             }
 
             $user = User::where('social_provider', $provider)
                 ->where('social_id', $socialId)
                 ->first();
 
-            if (!$user) {
+            if (! $user) {
                 if ($socialUser->getEmail()) {
                     $user = User::where('email', $socialUser->getEmail())->first();
                 }
@@ -261,7 +291,7 @@ class AuthController extends Controller
 
             return $this->redirectSocialSuccess($frontendUrl, $mobileReturnTo, $token, $this->formatUser($user));
         } catch (\Throwable $e) {
-            \Log::error('Social user processing error: ' . $e->getMessage(), [
+            \Log::error('Social user processing error: '.$e->getMessage(), [
                 'provider' => $provider,
                 'social_id' => $socialUser->getId(),
                 'email' => $socialUser->getEmail(),
@@ -287,7 +317,7 @@ class AuthController extends Controller
 
     private function mobileReturnToFromState(mixed $state): ?string
     {
-        if (!is_string($state) || $state === '') {
+        if (! is_string($state) || $state === '') {
             return null;
         }
 
@@ -324,8 +354,8 @@ class AuthController extends Controller
         ?string $mobileReturnTo,
         string $token,
         array $user,
-    ): \Illuminate\Http\RedirectResponse {
-        $baseUrl = $mobileReturnTo ?: rtrim($frontendUrl, '/') . '/auth/social/callback';
+    ): RedirectResponse {
+        $baseUrl = $mobileReturnTo ?: rtrim($frontendUrl, '/').'/auth/social/callback';
 
         return $this->redirectWithQuery($baseUrl, [
             'token' => $token,
@@ -338,8 +368,8 @@ class AuthController extends Controller
         ?string $mobileReturnTo,
         string $error,
         mixed $message,
-    ): \Illuminate\Http\RedirectResponse {
-        $baseUrl = $mobileReturnTo ?: rtrim($frontendUrl, '/') . '/login';
+    ): RedirectResponse {
+        $baseUrl = $mobileReturnTo ?: rtrim($frontendUrl, '/').'/login';
 
         return $this->redirectWithQuery($baseUrl, [
             'error' => $error,
@@ -347,59 +377,59 @@ class AuthController extends Controller
         ]);
     }
 
-    private function redirectWithQuery(string $baseUrl, array $params): \Illuminate\Http\RedirectResponse
+    private function redirectWithQuery(string $baseUrl, array $params): RedirectResponse
     {
         $separator = str_contains($baseUrl, '?') ? '&' : '?';
 
-        return redirect($baseUrl . $separator . http_build_query($params, '', '&', PHP_QUERY_RFC3986));
+        return redirect($baseUrl.$separator.http_build_query($params, '', '&', PHP_QUERY_RFC3986));
     }
 
     public function appleNativeLogin(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'identity_token' => ['required', 'string'],
-            'given_name'     => ['nullable', 'string', 'max:255'],
-            'family_name'    => ['nullable', 'string', 'max:255'],
+            'given_name' => ['nullable', 'string', 'max:255'],
+            'family_name' => ['nullable', 'string', 'max:255'],
         ]);
 
         $payload = $this->verifyAppleIdentityToken($validated['identity_token']);
 
-        if (!$payload) {
+        if (! $payload) {
             return $this->error('ไม่สามารถยืนยันตัวตนกับ Apple ได้', 401);
         }
 
         $appleUserId = (string) ($payload['sub'] ?? '');
-        $email       = $payload['email'] ?? null;
+        $email = $payload['email'] ?? null;
 
-        if (!$appleUserId) {
+        if (! $appleUserId) {
             return $this->error('ไม่พบข้อมูลผู้ใช้จาก Apple', 401);
         }
 
-        if (!$email) {
+        if (! $email) {
             $sanitized = preg_replace('/[^a-zA-Z0-9]/', '', $appleUserId) ?: Str::random(12);
-            $email = 'apple_' . $sanitized . '@privaterelay.appleid.com';
+            $email = 'apple_'.$sanitized.'@privaterelay.appleid.com';
         }
 
         $user = User::where('social_provider', 'apple')
             ->where('social_id', $appleUserId)
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             $user = User::where('email', $email)->first();
 
             if ($user) {
                 $user->update(['social_provider' => 'apple', 'social_id' => $appleUserId]);
             } else {
-                $givenName  = $validated['given_name'] ?? '';
+                $givenName = $validated['given_name'] ?? '';
                 $familyName = $validated['family_name'] ?? '';
-                $name = trim($givenName . ' ' . $familyName) ?: 'Apple User';
+                $name = trim($givenName.' '.$familyName) ?: 'Apple User';
 
                 $user = User::create([
-                    'name'            => $name,
-                    'email'           => $email,
+                    'name' => $name,
+                    'email' => $email,
                     'social_provider' => 'apple',
-                    'social_id'       => $appleUserId,
-                    'password'        => null,
+                    'social_id' => $appleUserId,
+                    'password' => null,
                 ]);
                 $user->assignRole('customer');
                 $this->mailService->sendWelcomeEmail($user);
@@ -410,7 +440,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return $this->success([
-            'user'  => $this->formatUser($user),
+            'user' => $this->formatUser($user),
             'token' => $token,
         ], 'เข้าสู่ระบบสำเร็จ');
     }
@@ -422,10 +452,10 @@ class AuthController extends Controller
             return null;
         }
 
-        $header  = json_decode($this->base64urlDecode($parts[0]), true);
+        $header = json_decode($this->base64urlDecode($parts[0]), true);
         $payload = json_decode($this->base64urlDecode($parts[1]), true);
 
-        if (!is_array($header) || !is_array($payload)) {
+        if (! is_array($header) || ! is_array($payload)) {
             return null;
         }
 
@@ -445,29 +475,30 @@ class AuthController extends Controller
         // Fetch and cache Apple's public keys (1 hour)
         $keys = Cache::remember('apple_public_keys', 3600, function () {
             $response = Http::timeout(10)->get('https://appleid.apple.com/auth/keys');
+
             return $response->successful() ? ($response->json('keys') ?? []) : [];
         });
 
         $kid = $header['kid'] ?? '';
         $jwk = collect($keys)->firstWhere('kid', $kid);
 
-        if (!$jwk) {
+        if (! $jwk) {
             return null;
         }
 
         $pem = $this->jwkToPem($jwk);
-        if (!$pem) {
+        if (! $pem) {
             return null;
         }
 
         $publicKey = openssl_pkey_get_public($pem);
-        if (!$publicKey) {
+        if (! $publicKey) {
             return null;
         }
 
-        $dataToVerify = $parts[0] . '.' . $parts[1];
-        $signature    = $this->base64urlDecode($parts[2]);
-        $valid        = openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+        $dataToVerify = $parts[0].'.'.$parts[1];
+        $signature = $this->base64urlDecode($parts[2]);
+        $valid = openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
 
         return $valid === 1 ? $payload : null;
     }
@@ -487,10 +518,10 @@ class AuthController extends Controller
 
         // Prepend 0x00 if high bit is set so the integer stays positive
         if (ord($n[0]) > 0x7F) {
-            $n = "\x00" . $n;
+            $n = "\x00".$n;
         }
         if (ord($e[0]) > 0x7F) {
-            $e = "\x00" . $e;
+            $e = "\x00".$e;
         }
 
         $encLen = static function (int $len): string {
@@ -499,43 +530,43 @@ class AuthController extends Controller
             }
             $out = '';
             while ($len > 0) {
-                $out = chr($len & 0xFF) . $out;
+                $out = chr($len & 0xFF).$out;
                 $len >>= 8;
             }
-            return chr(0x80 | strlen($out)) . $out;
+
+            return chr(0x80 | strlen($out)).$out;
         };
 
-        $encInt = static fn (string $bytes): string =>
-            "\x02" . $encLen(strlen($bytes)) . $bytes;
+        $encInt = static fn (string $bytes): string => "\x02".$encLen(strlen($bytes)).$bytes;
 
-        $encSeq = static fn (string $content): string =>
-            "\x30" . $encLen(strlen($content)) . $content;
+        $encSeq = static fn (string $content): string => "\x30".$encLen(strlen($content)).$content;
 
-        $keySeq = $encSeq($encInt($n) . $encInt($e));
+        $keySeq = $encSeq($encInt($n).$encInt($e));
 
         // RSA OID: 1.2.840.113549.1.1.1 + NULL
-        $oid       = "\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00";
-        $bitString = "\x03" . $encLen(strlen($keySeq) + 1) . "\x00" . $keySeq;
-        $spki      = $encSeq($oid . $bitString);
+        $oid = "\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00";
+        $bitString = "\x03".$encLen(strlen($keySeq) + 1)."\x00".$keySeq;
+        $spki = $encSeq($oid.$bitString);
 
         return "-----BEGIN PUBLIC KEY-----\n"
-            . chunk_split(base64_encode($spki), 64, "\n")
-            . "-----END PUBLIC KEY-----\n";
+            .chunk_split(base64_encode($spki), 64, "\n")
+            ."-----END PUBLIC KEY-----\n";
     }
 
     private function base64urlDecode(string $str): string
     {
         $padded = strtr($str, '-_', '+/');
-        $rem    = strlen($padded) % 4;
+        $rem = strlen($padded) % 4;
         if ($rem > 0) {
             $padded .= str_repeat('=', 4 - $rem);
         }
+
         return base64_decode($padded, true) ?: '';
     }
 
     private function validateProvider(string $provider): void
     {
-        if (!in_array($provider, ['google', 'facebook', 'line'])) {
+        if (! in_array($provider, ['google', 'facebook', 'line'])) {
             abort(422, 'ผู้ให้บริการ OAuth ไม่รองรับ');
         }
     }
@@ -558,8 +589,8 @@ class AuthController extends Controller
             'health_notes' => $user->health_notes,
             'roles' => $user->roles->pluck('name'),
             'social_provider' => $user->social_provider,
+            'has_password' => ! is_null($user->password),
             'created_at' => $user->created_at?->toISOString(),
         ];
     }
-
 }
