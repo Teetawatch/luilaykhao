@@ -63,9 +63,12 @@
             :class="m.is_mine ? 'flex-row-reverse' : 'flex-row'"
           >
             <!-- Avatar -->
-            <div v-if="!m.is_mine" class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[11px] font-black text-white shadow-sm mt-auto"
-              :class="roleAvatarClass(m.sender_role)">
-              {{ roleInitial(m) }}
+            <div v-if="!m.is_mine" class="w-8 h-8 rounded-full shrink-0 overflow-hidden shadow-sm mt-auto">
+              <img v-if="m.user?.avatar_url" :src="m.user.avatar_url" :alt="m.user?.name" class="w-full h-full object-cover" />
+              <div v-else class="w-full h-full flex items-center justify-center text-[11px] font-black text-white"
+                :class="roleAvatarClass(m.sender_role)">
+                {{ roleInitial(m) }}
+              </div>
             </div>
 
             <div class="flex flex-col gap-0.5" :class="m.is_mine ? 'items-end' : 'items-start'" style="max-width: 72%;">
