@@ -283,6 +283,15 @@
                 เขียนรีวิว
               </router-link>
 
+              <router-link
+                v-if="b.status === 'confirmed'"
+                :to="{ name: 'trip-chat', params: { scheduleId: b.schedule.id }, query: { title: b.schedule?.trip?.title, date: b.schedule?.departure_date } }"
+                class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5"
+                style="font-family:'Anuphan',sans-serif;">
+                <span class="material-symbols-rounded text-[18px]">chat</span>
+                แชท
+              </router-link>
+
               <button
                 v-if="canReviewStaff(b)"
                 @click="openStaffReviewModal(b)"
@@ -643,7 +652,7 @@ function getMonthShort(d) {
 }
 
 function canReviewStaff(booking) {
-  return ['confirmed', 'completed'].includes(booking.status) && (booking.assigned_staff?.length || 0) > 0;
+  return booking.status === 'completed' && (booking.assigned_staff?.length || 0) > 0;
 }
 
 function openStaffReviewModal(booking) {
