@@ -918,6 +918,71 @@ class AdminController extends Controller
         ], 'คืนเงิน ฿' . number_format($refundAmount, 0) . ' สำเร็จ');
     }
 
+    /**
+     * POST /admin/bookings/{ref}/transfer
+     * ย้ายการจองไปยังบัญชีผู้ใช้อื่น
+     */
+    public function transferBooking(Request $request, string $ref): JsonResponse
+    {
+        $request->validate([
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'email'   => ['nullable', 'email'],
+            'phone'   => ['nullable', 'string'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+
+        if (in_array($booking->status, ['cancelled', 'refunded'])) {
+            return $this->error('ไม่สามารถย้ายการจองที่ยกเลิกแล้วหรือคืนเงินแล้วได้', 422);
+        }
+
+        $targetUser = null;
+        if ($request->filled('user_id')) {
+            $targetUser = User::find($request->user_id);
+        } elseif ($request->filled('email')) {
+            $targetUser = User::where('email', $request->email)->first();
+        } elseif ($request->filled('phone')) {
+            $targetUser = User::where('phone', $request->phone)->first();
+        }
+
+        if (! $targetUser) {
+            return $this->error('ไม่พบบัญชีผู้ใช้ที่ต้องการ', 404);
+        }
+
+        if ($targetUser->id === $booking->user_id) {
+            return $this->error('การจองนี้อยู่ในบัญชีนี้อยู่แล้ว', 422);
+        }
+
+        $previousUserId = $booking->user_id;
+        $booking->update(['user_id' => $targetUser->id]);
+
+        SmartNotification::send(
+            $targetUser->id,
+            'booking_transferred',
+            'ได้รับการจองใหม่',
+            "เลขการจอง {$booking->booking_ref} ถูกโอนมาที่บัญชีของคุณแล้ว",
+            ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+        );
+
+        \Log::info('Booking transferred', [
+            'booking_ref'      => $booking->booking_ref,
+            'from_user_id'     => $previousUserId,
+            'to_user_id'       => $targetUser->id,
+            'transferred_by'   => $request->user()->id,
+        ]);
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'new_user'    => [
+                'id'    => $targetUser->id,
+                'name'  => $targetUser->name,
+                'email' => $targetUser->email,
+                'phone' => $targetUser->phone,
+            ],
+        ], "ย้ายการจองไปยัง {$targetUser->name} สำเร็จ");
+    }
+
+
     public function updateBooking(Request $request, string $ref): JsonResponse
     {
         $data = $request->validate([

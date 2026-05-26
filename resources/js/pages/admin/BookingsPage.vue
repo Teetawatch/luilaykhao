@@ -255,6 +255,14 @@
                   <button class="btn-icon btn-edit" title="เปลี่ยนสถานะ" @click="openStatusModal(booking)">
                     <span class="material-symbols-rounded">swap_horiz</span>
                   </button>
+                  <button
+                    class="btn-icon btn-transfer"
+                    title="ย้ายเจ้าของการจอง"
+                    :disabled="['cancelled','refunded'].includes(booking.status)"
+                    @click="openTransferModal(booking)"
+                  >
+                    <span class="material-symbols-rounded">move_item</span>
+                  </button>
                   <button class="btn-icon btn-delete" title="ลบการจอง" @click="confirmDelete(booking)">
                     <span class="material-symbols-rounded">delete</span>
                   </button>
@@ -296,6 +304,14 @@
             <button v-if="detailBooking" class="btn-secondary compact" @click="openEditModal(detailBooking)">
               <span class="material-symbols-rounded">edit_note</span>
               แก้ไข
+            </button>
+            <button
+              v-if="detailBooking && !['cancelled','refunded'].includes(detailBooking.status)"
+              class="btn-secondary compact"
+              @click="openTransferModal(detailBooking)"
+            >
+              <span class="material-symbols-rounded">move_item</span>
+              ย้ายเจ้าของ
             </button>
             <button class="modal-close" @click="closeDetail">
               <span class="material-symbols-rounded">close</span>
@@ -963,6 +979,73 @@
         </form>
       </div>
     </div>
+
+    <div v-if="showTransferModal" class="modal-overlay" @click.self="closeTransferModal">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <div>
+            <h2>ย้ายเจ้าของการจอง</h2>
+            <p class="modal-subtitle">{{ transferBookingRef }}</p>
+          </div>
+          <button class="modal-close" @click="closeTransferModal">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="transfer-desc">
+            ค้นหาบัญชีที่ต้องการย้ายการจองไปให้ด้วยอีเมลหรือเบอร์โทรศัพท์
+          </p>
+          <div class="transfer-search-row">
+            <input
+              v-model.trim="transferQuery"
+              type="text"
+              placeholder="อีเมล หรือ เบอร์โทร..."
+              @keydown.enter="searchTransferUser"
+            />
+            <button class="btn-secondary compact" :disabled="!transferQuery || transferSearching" @click="searchTransferUser">
+              <span v-if="transferSearching" class="material-symbols-rounded animate-spin">sync</span>
+              <span v-else class="material-symbols-rounded">search</span>
+              ค้นหา
+            </button>
+          </div>
+
+          <div v-if="transferError" class="transfer-error">
+            <span class="material-symbols-rounded">error</span>
+            {{ transferError }}
+          </div>
+
+          <div v-if="transferTargetUser" class="transfer-user-card">
+            <div class="transfer-user-avatar">
+              <span class="material-symbols-rounded">account_circle</span>
+            </div>
+            <div class="transfer-user-info">
+              <strong>{{ transferTargetUser.name }}</strong>
+              <span>{{ transferTargetUser.email || '-' }}</span>
+              <span>{{ transferTargetUser.phone || '-' }}</span>
+            </div>
+            <span class="transfer-user-check material-symbols-rounded">check_circle</span>
+          </div>
+
+          <p v-if="transferTargetUser" class="confirm-warning">
+            <span class="material-symbols-rounded">warning</span>
+            การจองจะถูกย้ายไปยังบัญชีด้านบน และผู้ใช้นี้จะได้รับการแจ้งเตือน
+          </p>
+
+          <div class="modal-footer">
+            <button class="btn-secondary" @click="closeTransferModal">ยกเลิก</button>
+            <button
+              class="btn-primary"
+              :disabled="!transferTargetUser || submitting"
+              @click="doTransferBooking"
+            >
+              <span v-if="submitting" class="material-symbols-rounded animate-spin">sync</span>
+              <span v-else class="material-symbols-rounded">move_item</span>
+              ยืนยันการย้าย
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -985,9 +1068,15 @@ const showDetail = ref(false);
 const showStatusModal = ref(false);
 const showManualModal = ref(false);
 const showEditModal = ref(false);
+const showTransferModal = ref(false);
 const detailBooking = ref(null);
 const statusBooking = ref(null);
 const editBooking = ref(null);
+const transferBookingRef = ref('');
+const transferQuery = ref('');
+const transferTargetUser = ref(null);
+const transferSearching = ref(false);
+const transferError = ref('');
 const submitting = ref(false);
 const loadingDetail = ref(false);
 const currentPage = ref(1);
@@ -1660,6 +1749,60 @@ InfoItem.props = {
   value: [String, Number],
   wide: Boolean,
 };
+
+function openTransferModal(booking) {
+  transferBookingRef.value = booking.booking_ref;
+  transferQuery.value = '';
+  transferTargetUser.value = null;
+  transferError.value = '';
+  showTransferModal.value = true;
+}
+
+function closeTransferModal() {
+  showTransferModal.value = false;
+}
+
+async function searchTransferUser() {
+  if (!transferQuery.value) return;
+
+  transferSearching.value = true;
+  transferTargetUser.value = null;
+  transferError.value = '';
+
+  try {
+    const res = await api.get('/admin/users', { params: { search: transferQuery.value, per_page: 5 } });
+    const users = res.data?.data || [];
+    if (!users.length) {
+      transferError.value = 'ไม่พบบัญชีผู้ใช้ที่ตรงกัน';
+    } else {
+      transferTargetUser.value = users[0];
+    }
+  } catch (e) {
+    transferError.value = e.response?.data?.message || 'เกิดข้อผิดพลาดในการค้นหา';
+  } finally {
+    transferSearching.value = false;
+  }
+}
+
+async function doTransferBooking() {
+  if (!transferTargetUser.value || !transferBookingRef.value) return;
+
+  submitting.value = true;
+  try {
+    await api.post(`/admin/bookings/${transferBookingRef.value}/transfer`, {
+      user_id: transferTargetUser.value.id,
+    });
+    showTransferModal.value = false;
+    if (detailBooking.value?.booking_ref === transferBookingRef.value) {
+      await openDetail({ booking_ref: transferBookingRef.value });
+    }
+    await fetchData(currentPage.value);
+  } catch (e) {
+    transferError.value = e.response?.data?.message || 'เกิดข้อผิดพลาดในการย้ายการจอง';
+  } finally {
+    submitting.value = false;
+  }
+}
 
 onMounted(() => fetchData());
 </script>
@@ -2679,5 +2822,93 @@ onMounted(() => fetchData());
     grid-column: 1 / -1;
     text-align: left;
   }
+}
+
+.btn-transfer {
+  color: #7c3aed;
+}
+
+.btn-transfer:hover:not(:disabled) {
+  background: #f5f3ff;
+}
+
+.btn-transfer:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.transfer-desc {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.transfer-search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.transfer-search-row input {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.transfer-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.transfer-user-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.transfer-user-avatar .material-symbols-rounded {
+  font-size: 36px;
+  color: var(--color-accent);
+}
+
+.transfer-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transfer-user-info strong {
+  color: var(--color-text-dark);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.transfer-user-info span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.transfer-user-check {
+  color: #059669;
+  font-size: 22px;
 }
 </style>

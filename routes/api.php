@@ -259,6 +259,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('bookings/{ref}', [AdminController::class, 'deleteBooking']);
         Route::get('bookings/{ref}/refund-preview', [AdminController::class, 'refundPreview']);
         Route::post('bookings/{ref}/refund', [AdminController::class, 'processRefund']);
+        Route::post('bookings/{ref}/transfer', [AdminController::class, 'transferBooking']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);
 
         // Vehicles CRUD
