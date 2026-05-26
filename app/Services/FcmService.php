@@ -56,12 +56,23 @@ class FcmService
 
         $isSos = $type === self::SOS_TYPE;
 
-        // SOS on Android is sent as data-only (no notification key) so the Flutter
-        // background handler can show a local notification on the SOS alarm channel
-        // with fullScreenIntent — giving immediate siren sound without a user tap.
-        // iOS still receives a normal notification via the apns payload.
+        // SOS is sent as a notification message (not data-only) pointing at the
+        // loud `sos_emergency_v2` channel. The Android system then displays the
+        // alert and plays the siren + vibration even when the app is killed or
+        // backgrounded — data-only messages are throttled/dropped by Doze and
+        // OEM battery managers, which left killed apps silent.
         $androidPayload = $isSos
-            ? ['priority' => 'HIGH']
+            ? [
+                'priority' => 'HIGH',
+                'notification' => [
+                    'channel_id' => 'sos_emergency_v2',
+                    'sound' => 'sos_siren',
+                    'notification_priority' => 'PRIORITY_MAX',
+                    'default_vibrate_timings' => true,
+                    'visibility' => 'PUBLIC',
+                    'tag' => 'sos_alert',
+                ],
+            ]
             : [
                 'priority' => 'HIGH',
                 'notification' => [
@@ -75,7 +86,7 @@ class FcmService
 
         $messagePayload = array_filter([
             'token' => $token,
-            'notification' => $isSos ? null : ['title' => $title, 'body' => $body],
+            'notification' => ['title' => $title, 'body' => $body],
             'data' => $this->stringData($data),
             'android' => $androidPayload,
             'apns' => [
@@ -84,16 +95,19 @@ class FcmService
                     'apns-push-type' => 'alert',
                 ],
                 'payload' => [
-                    'aps' => [
+                    // SOS drops `content-available` so iOS treats it purely as a
+                    // high-priority alert delivered immediately, instead of a
+                    // background push that the system may coalesce or delay.
+                    'aps' => array_filter([
                         'alert' => [
                             'title' => $title,
                             'body' => $body,
                         ],
                         'sound' => $isSos ? 'sos_siren.wav' : 'default',
                         'badge' => 1,
-                        'content-available' => 1,
+                        'content-available' => $isSos ? null : 1,
                         'interruption-level' => $isSos ? 'time-sensitive' : 'active',
-                    ],
+                    ], fn ($value) => $value !== null),
                 ],
             ],
         ]);
