@@ -478,119 +478,13 @@
                     <p class="text-gray-500 font-medium text-sm mt-1">กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
                   </div>
 
-                  <div v-else class="space-y-3">
-                    <!-- Filter checkbox -->
-                    <label class="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] cursor-pointer select-none">
-                      <input v-model="onlyAvailableSchedules" type="checkbox" class="rounded border-gray-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]" />
-                      แสดงเฉพาะรอบที่ยังว่าง
-                    </label>
-
-                    <div v-if="filteredSchedules.length === 0" class="bg-[var(--color-sand)] rounded-[1.25rem] p-4 text-center border border-gray-100">
-                      <p class="text-[var(--color-text-dark)] font-bold text-sm">ไม่พบรอบที่ตรงเงื่อนไข</p>
-                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง "เฉพาะรอบที่ยังว่าง"</p>
-                    </div>
-
-                    <template v-else>
-                      <!-- Month Tabs -->
-                      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                        <button
-                          v-for="monthGroup in monthlyFilteredSchedules"
-                          :key="monthGroup.key"
-                          type="button"
-                          @click="selectedScheduleMonthTab = monthGroup.key"
-                          class="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black whitespace-nowrap transition-all border"
-                          :class="selectedScheduleMonthTab === monthGroup.key
-                            ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)] shadow-md'
-                            : 'bg-white text-gray-500 border-gray-200 hover:border-[var(--color-accent)]/40 hover:text-[var(--color-text-dark)]'"
-                        >
-                          {{ monthGroup.shortLabel }}
-                          <span
-                            class="text-[11px] font-black px-1.5 py-0.5 rounded-full leading-none"
-                            :class="selectedScheduleMonthTab === monthGroup.key
-                              ? 'bg-white/20 text-white'
-                              : (monthGroup.schedules.filter(s => hasAvailableSeats(s)).length ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400')"
-                          >{{ monthGroup.schedules.filter(s => hasAvailableSeats(s)).length }}/{{ monthGroup.schedules.length }}</span>
-                        </button>
-                      </div>
-
-                      <!-- Schedules for selected month -->
-                      <div class="space-y-1.5 max-h-[520px] overflow-y-auto custom-scrollbar pr-0.5">
-                        <template v-for="dateGroup in groupSchedulesByDate(currentMonthSchedules)" :key="dateGroup.dateKey">
-                          <!-- Date header -->
-                          <div class="flex items-center gap-3 px-0.5 pt-3 first:pt-1">
-                            <div class="w-10 h-10 rounded-xl bg-[var(--color-primary)] flex flex-col items-center justify-center shrink-0 text-white shadow-sm">
-                              <span class="text-[15px] font-black leading-none">{{ new Date(dateGroup.dateKey + 'T00:00:00').getDate() }}</span>
-                            </div>
-                            <div class="min-w-0">
-                              <p class="font-black text-sm text-[var(--color-text-dark)] leading-tight">{{ dateGroup.dayLabel }}</p>
-                              <p class="text-[11px] text-gray-400 font-medium">{{ dateGroup.weekdayLabel }}</p>
-                            </div>
-                            <span v-if="dateGroup.schedules.length > 1"
-                              class="ml-auto shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15"
-                            >{{ dateGroup.schedules.length }} รอบ</span>
-                          </div>
-
-                          <!-- Schedule card -->
-                          <div
-                            v-for="s in dateGroup.schedules"
-                            :key="s.id"
-                            @click="isScheduleBookable(s) && toggleSchedule(s)"
-                            class="border-2 rounded-2xl p-3.5 transition-all duration-200"
-                            :class="[
-                              selectedSchedule?.id === s.id
-                                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md shadow-[var(--color-accent)]/10'
-                                : isScheduleBookable(s)
-                                  ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] hover:shadow-sm cursor-pointer'
-                                  : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
-                            ]"
-                          >
-                            <!-- Seat status + seat map button + expand indicator -->
-                            <div class="flex items-center justify-between gap-3">
-                              <span
-                                class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full border"
-                                :class="scheduleAvailabilityBadgeClass(s)"
-                              >
-                                <span class="material-symbols-rounded text-[12px]"
-                                  :class="{ 'animate-pulse': !s.is_charter && (!hasAvailableSeats(s) || s.available_seats <= 3) }"
-                                >{{ s.is_charter ? 'lock' : !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
-                                {{ scheduleAvailabilityLabel(s) }}
-                              </span>
-                              <div class="flex items-center gap-2 shrink-0">
-                                <button v-if="s.total_seats > 0" @click.stop="openSeatMapPreview(s)"
-                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors px-1.5 py-1 rounded-lg hover:bg-[var(--color-accent)]/8"
-                                >
-                                  <span class="material-symbols-rounded text-[15px]">grid_view</span>
-                                  ดูผัง
-                                </button>
-                                <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
-                                  :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
-                                >expand_more</span>
-                              </div>
-                            </div>
-
-                            <!-- Expanded: pickup points -->
-                            <div v-if="selectedSchedule?.id === s.id" class="mt-3 pt-3 border-t border-[var(--color-accent)]/15">
-                              <div v-if="s.pickup_points?.length" class="space-y-2">
-                                <div v-for="pt in getSortedPickupPoints(s.pickup_points)" :key="pt.id" class="space-y-1">
-                                  <div class="flex items-center gap-1.5">
-                                    <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
-                                    <span class="text-[11px] font-bold text-[var(--color-text-dark)]">{{ pt.pickup_location }}</span>
-                                    <span v-if="pt.notes" class="text-[10px] text-gray-400 truncate">· {{ pt.notes }}</span>
-                                  </div>
-                                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
-                                    class="ml-5 flex items-center gap-1 text-[10px] font-bold text-[var(--color-accent)] hover:underline"
-                                  >
-                                    <span class="material-symbols-rounded text-[12px]">map</span>ดูแผนที่
-                                  </a>
-                                </div>
-                              </div>
-                              <p v-else class="text-[11px] text-gray-400 font-medium">ไม่มีข้อมูลจุดรับ</p>
-                            </div>
-                          </div>
-                        </template>
-                      </div>
-                    </template>
-                  </div>
+                  <ScheduleCalendar
+                    v-else
+                    :schedules="schedules"
+                    :selected-schedule="selectedSchedule"
+                    @select="selectSchedule"
+                    @preview-seats="openSeatMapPreview"
+                  />
                 </div>
 
                 <!-- ── Step 2 (Trekking): Date + Pickup for selected region ── -->
@@ -605,119 +499,15 @@
                     <p class="text-[var(--color-text-dark)] font-bold text-sm">ยังไม่มีรอบสำหรับภูมิภาคนี้</p>
                   </div>
 
-                  <div v-else class="space-y-3">
-                    <!-- Filter checkbox -->
-                    <label class="inline-flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] cursor-pointer select-none">
-                      <input v-model="onlyAvailableSchedules" type="checkbox" class="rounded border-gray-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]" />
-                      แสดงเฉพาะรอบที่ยังว่าง
-                    </label>
-
-                    <div v-if="filteredSchedulesForRegion.length === 0" class="bg-[var(--color-sand)] rounded-[1.25rem] p-4 text-center border border-gray-100">
-                      <p class="text-[var(--color-text-dark)] font-bold text-sm">ไม่พบรอบที่ตรงเงื่อนไขในภูมิภาคนี้</p>
-                      <p class="text-gray-500 font-medium text-xs mt-1">ลองปิดตัวกรอง "เฉพาะรอบที่ยังว่าง"</p>
-                    </div>
-
-                    <template v-else>
-                      <!-- Month Tabs -->
-                      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                        <button
-                          v-for="monthGroup in monthlyFilteredSchedulesForRegion"
-                          :key="monthGroup.key"
-                          type="button"
-                          @click="selectedScheduleMonthTab = monthGroup.key"
-                          class="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black whitespace-nowrap transition-all border"
-                          :class="selectedScheduleMonthTab === monthGroup.key
-                            ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)] shadow-md'
-                            : 'bg-white text-gray-500 border-gray-200 hover:border-[var(--color-accent)]/40 hover:text-[var(--color-text-dark)]'"
-                        >
-                          {{ monthGroup.shortLabel }}
-                          <span
-                            class="text-[11px] font-black px-1.5 py-0.5 rounded-full leading-none"
-                            :class="selectedScheduleMonthTab === monthGroup.key
-                              ? 'bg-white/20 text-white'
-                              : (monthGroup.schedules.filter(s => hasAvailableSeats(s)).length ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400')"
-                          >{{ monthGroup.schedules.filter(s => hasAvailableSeats(s)).length }}/{{ monthGroup.schedules.length }}</span>
-                        </button>
-                      </div>
-
-                      <!-- Schedules for selected month -->
-                      <div class="space-y-1.5 max-h-[520px] overflow-y-auto custom-scrollbar pr-0.5">
-                        <template v-for="dateGroup in groupSchedulesByDate(currentMonthSchedulesForRegion)" :key="dateGroup.dateKey">
-                          <!-- Date header -->
-                          <div class="flex items-center gap-3 px-0.5 pt-3 first:pt-1">
-                            <div class="w-10 h-10 rounded-xl bg-[var(--color-primary)] flex flex-col items-center justify-center shrink-0 text-white shadow-sm">
-                              <span class="text-[15px] font-black leading-none">{{ new Date(dateGroup.dateKey + 'T00:00:00').getDate() }}</span>
-                            </div>
-                            <div class="min-w-0">
-                              <p class="font-black text-sm text-[var(--color-text-dark)] leading-tight">{{ dateGroup.dayLabel }}</p>
-                              <p class="text-[11px] text-gray-400 font-medium">{{ dateGroup.weekdayLabel }}</p>
-                            </div>
-                            <span v-if="dateGroup.schedules.length > 1"
-                              class="ml-auto shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15"
-                            >{{ dateGroup.schedules.length }} รอบ</span>
-                          </div>
-
-                          <!-- Schedule card -->
-                          <div
-                            v-for="s in dateGroup.schedules"
-                            :key="s.id"
-                            @click="isScheduleBookable(s) && toggleSchedule(s)"
-                            class="border-2 rounded-2xl p-3.5 transition-all duration-200"
-                            :class="[
-                              selectedSchedule?.id === s.id
-                                ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md shadow-[var(--color-accent)]/10'
-                                : isScheduleBookable(s)
-                                  ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] hover:shadow-sm cursor-pointer'
-                                  : 'border-gray-100 bg-gray-50 opacity-55 cursor-not-allowed'
-                            ]"
-                          >
-                            <!-- Seat status + seat map button + expand indicator -->
-                            <div class="flex items-center justify-between gap-3">
-                              <span
-                                class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full border"
-                                :class="scheduleAvailabilityBadgeClass(s)"
-                              >
-                                <span class="material-symbols-rounded text-[12px]"
-                                  :class="{ 'animate-pulse': !s.is_charter && (!hasAvailableSeats(s) || s.available_seats <= 3) }"
-                                >{{ s.is_charter ? 'lock' : !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
-                                {{ scheduleAvailabilityLabel(s) }}
-                              </span>
-                              <div class="flex items-center gap-2 shrink-0">
-                                <button v-if="s.total_seats > 0" @click.stop="openSeatMapPreview(s)"
-                                  class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors px-1.5 py-1 rounded-lg hover:bg-[var(--color-accent)]/8"
-                                >
-                                  <span class="material-symbols-rounded text-[15px]">grid_view</span>
-                                  ดูผัง
-                                </button>
-                                <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
-                                  :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
-                                >expand_more</span>
-                              </div>
-                            </div>
-
-                            <!-- Expanded: pickup points for selected region -->
-                            <div v-if="selectedSchedule?.id === s.id" class="mt-3 pt-3 border-t border-[var(--color-accent)]/15">
-                              <div v-if="getSortedPickupPoints((s.pickup_points || []).filter(pt => pt.region === selectedRegion)).length" class="space-y-2">
-                                <div v-for="pt in getSortedPickupPoints((s.pickup_points || []).filter(pt => pt.region === selectedRegion))" :key="pt.id" class="space-y-1">
-                                  <div class="flex items-center gap-1.5">
-                                    <span class="material-symbols-rounded text-[13px] text-red-400 shrink-0">pin_drop</span>
-                                    <span class="text-[11px] font-bold text-[var(--color-text-dark)]">{{ pt.pickup_location }}</span>
-                                    <span v-if="pt.notes" class="text-[10px] text-gray-400 truncate">· {{ pt.notes }}</span>
-                                  </div>
-                                  <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
-                                    class="ml-5 flex items-center gap-1 text-[10px] font-bold text-[var(--color-accent)] hover:underline"
-                                  >
-                                    <span class="material-symbols-rounded text-[12px]">map</span>ดูแผนที่
-                                  </a>
-                                </div>
-                              </div>
-                              <p v-else class="text-[11px] text-gray-400 font-medium">ไม่มีข้อมูลจุดรับสำหรับภูมิภาคนี้</p>
-                            </div>
-                          </div>
-                        </template>
-                      </div>
-                    </template>
-                  </div>
+                  <ScheduleCalendar
+                    v-else
+                    :schedules="schedulesForRegion"
+                    :selected-schedule="selectedSchedule"
+                    :is-trekking="true"
+                    :selected-region="selectedRegion"
+                    @select="selectSchedule"
+                    @preview-seats="openSeatMapPreview"
+                  />
                 </div>
 
 
@@ -1461,11 +1251,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
 import SeatMap from '../components/SeatMap.vue';
+import ScheduleCalendar from '../components/ScheduleCalendar.vue';
+import {
+  hasAvailableSeats,
+  isScheduleBookable,
+  scheduleAvailabilityBadgeClass,
+  scheduleAvailabilityTextClass,
+  scheduleAvailabilityDotClass,
+  scheduleAvailabilityLabel,
+  formatDate,
+  getSortedPickupPoints,
+} from '../lib/scheduleHelpers';
 
 const route = useRoute();
 const trip = ref(null);
@@ -1561,7 +1362,6 @@ const selectedSchedule = ref(null);
 const activeIconPicker = ref(null);
 const openDays = ref(['0-0']); // Default open first item of first sector
 const activeSector = ref(0);
-const selectedScheduleMonthTab = ref(null);
 let sectorObserver = null;
 
 const toggleDay = (key) => {
@@ -1705,37 +1505,6 @@ const compareRegions = (a, b) => {
   return (a.region_label || '').localeCompare(b.region_label || '', 'th');
 };
 
-const getSortedPickupPoints = (points) => {
-  if (!points || !Array.isArray(points)) return [];
-  
-  const extractTimeValue = (pt) => {
-    // Try to find time in notes or location (HH:mm or HH.mm)
-    const text = `${pt.pickup_location || ''} ${pt.notes || ''}`;
-    const timeMatch = text.match(/([01]?[0-9]|2[0-3])[:.]([0-5][0-9])/);
-    if (timeMatch) {
-      const hours = parseInt(timeMatch[1], 10);
-      const minutes = parseInt(timeMatch[2], 10);
-      return hours * 60 + minutes;
-    }
-    return 9999; // Fallback for items without time
-  };
-
-  return [...points].sort((a, b) => {
-    // 1. Sort by time extracted from text
-    const timeA = extractTimeValue(a);
-    const timeB = extractTimeValue(b);
-    if (timeA !== timeB) return timeA - timeB;
-    
-    // 2. Sort by sort_order (if provided)
-    const orderA = a.sort_order ?? 999;
-    const orderB = b.sort_order ?? 999;
-    if (orderA !== orderB) return orderA - orderB;
-    
-    // 3. Sort by price
-    return Number(a.price || 0) - Number(b.price || 0);
-  });
-};
-
 const groupedPickupPointsByRegion = computed(() => {
   if (!allPickupPoints.value.length) return [];
 
@@ -1809,97 +1578,6 @@ const schedulesForRegion = computed(() => {
   );
 });
 
-const filteredSchedules = computed(() => {
-  if (!onlyAvailableSchedules.value) return schedules.value;
-  return schedules.value.filter(isScheduleBookable);
-});
-
-const filteredSchedulesForRegion = computed(() => {
-  if (!onlyAvailableSchedules.value) return schedulesForRegion.value;
-  return schedulesForRegion.value.filter(isScheduleBookable);
-});
-
-const scheduleMonths = [
-  { key: 0,  label: 'มกราคม',    shortLabel: 'ม.ค.' },
-  { key: 1,  label: 'กุมภาพันธ์', shortLabel: 'ก.พ.' },
-  { key: 2,  label: 'มีนาคม',    shortLabel: 'มี.ค.' },
-  { key: 3,  label: 'เมษายน',    shortLabel: 'เม.ย.' },
-  { key: 4,  label: 'พฤษภาคม',   shortLabel: 'พ.ค.' },
-  { key: 5,  label: 'มิถุนายน',  shortLabel: 'มิ.ย.' },
-  { key: 6,  label: 'กรกฎาคม',   shortLabel: 'ก.ค.' },
-  { key: 7,  label: 'สิงหาคม',   shortLabel: 'ส.ค.' },
-  { key: 8,  label: 'กันยายน',   shortLabel: 'ก.ย.' },
-  { key: 9,  label: 'ตุลาคม',    shortLabel: 'ต.ค.' },
-  { key: 10, label: 'พฤศจิกายน', shortLabel: 'พ.ย.' },
-  { key: 11, label: 'ธันวาคม',   shortLabel: 'ธ.ค.' },
-];
-
-const getScheduleMonthIndex = (schedule) => {
-  const rawDate = schedule?.departure_date;
-  if (!rawDate) return -1;
-
-  const dateText = String(rawDate);
-  const isoDateMatch = dateText.match(/^\d{4}-(\d{2})-\d{2}/);
-  if (isoDateMatch) {
-    return Number(isoDateMatch[1]) - 1;
-  }
-
-  const date = new Date(rawDate);
-  return Number.isNaN(date.getTime()) ? -1 : date.getMonth();
-};
-
-const getScheduleSortValue = (schedule) => {
-  const rawDate = schedule?.departure_date;
-  if (!rawDate) return '';
-  return String(rawDate);
-};
-
-const groupSchedulesByMonth = (list) => {
-  const sortedSchedules = [...list].sort((a, b) => {
-    const dateCompare = getScheduleSortValue(a).localeCompare(getScheduleSortValue(b));
-    if (dateCompare !== 0) return dateCompare;
-    return Number(a?.id || 0) - Number(b?.id || 0);
-  });
-
-  return scheduleMonths
-    .map((month) => ({
-      ...month,
-      schedules: sortedSchedules.filter((schedule) => getScheduleMonthIndex(schedule) === month.key),
-    }))
-    .filter((month) => month.schedules.length > 0);
-};
-
-const monthlyFilteredSchedules = computed(() => groupSchedulesByMonth(filteredSchedules.value));
-const monthlyFilteredSchedulesForRegion = computed(() => groupSchedulesByMonth(filteredSchedulesForRegion.value));
-
-function ensureOpenScheduleMonth(monthGroups) {
-  if (!monthGroups.length) return;
-  if (selectedScheduleMonthTab.value !== null && monthGroups.some(m => m.key === selectedScheduleMonthTab.value)) return;
-  const currentMonth = new Date().getMonth();
-  const defaultMonth = monthGroups.find(m => m.key === currentMonth) || monthGroups[0];
-  selectedScheduleMonthTab.value = defaultMonth.key;
-}
-
-watch(monthlyFilteredSchedules, ensureOpenScheduleMonth, { immediate: true });
-watch(monthlyFilteredSchedulesForRegion, ensureOpenScheduleMonth, { immediate: true });
-
-function openScheduleMonthForSchedule(schedule) {
-  const monthKey = getScheduleMonthIndex(schedule);
-  if (monthKey >= 0) selectedScheduleMonthTab.value = monthKey;
-}
-
-const currentMonthSchedules = computed(() => {
-  if (selectedScheduleMonthTab.value === null) return [];
-  const monthGroup = monthlyFilteredSchedules.value.find(m => m.key === selectedScheduleMonthTab.value);
-  return monthGroup?.schedules || [];
-});
-
-const currentMonthSchedulesForRegion = computed(() => {
-  if (selectedScheduleMonthTab.value === null) return [];
-  const monthGroup = monthlyFilteredSchedulesForRegion.value.find(m => m.key === selectedScheduleMonthTab.value);
-  return monthGroup?.schedules || [];
-});
-
 const pickupForSelection = computed(() => {
   if (!selectedSchedule.value || !selectedRegion.value) return null;
   return (selectedSchedule.value.pickup_points || []).find(
@@ -1960,15 +1638,6 @@ const urgentSchedules = computed(() => {
     .sort((a, b) => a.available_seats - b.available_seats);
 });
 
-function hasAvailableSeats(schedule) {
-  return Number(schedule?.available_seats || 0) > 0;
-}
-
-function isScheduleBookable(schedule) {
-  if (schedule?.is_charter) return false;
-  return Boolean(schedule?.join_trip_enabled) || hasAvailableSeats(schedule);
-}
-
 async function openSeatMapPreview(schedule) {
   seatMapPreviewSchedule.value = schedule;
   seatMapPreviewData.value = null;
@@ -1989,61 +1658,6 @@ function canBookSelectedSchedule() {
   if (selectedSchedule.value.is_charter) return false;
   return hasAvailableSeats(selectedSchedule.value)
     || (isJoinTrip.value && Boolean(selectedSchedule.value.join_trip_enabled));
-}
-
-function scheduleAvailabilityBadgeClass(schedule) {
-  if (schedule?.is_charter) return 'bg-violet-50 text-violet-700 border-violet-200';
-  if (!hasAvailableSeats(schedule)) {
-    return 'bg-red-500 text-white border-red-600';
-  }
-  if (Number(schedule?.available_seats || 0) <= 3) {
-    return 'bg-red-50 text-red-600 border-red-200';
-  }
-  if (Number(schedule?.available_seats || 0) <= 5) {
-    return 'bg-amber-50 text-amber-600 border-amber-200';
-  }
-  return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
-}
-
-function scheduleAvailabilityTextClass(schedule) {
-  if (Number(schedule?.available_seats || 0) < 3) return 'text-red-500';
-  return isScheduleBookable(schedule) ? 'text-[var(--color-accent)]' : 'text-red-500';
-}
-
-function scheduleAvailabilityDotClass(schedule) {
-  if (Number(schedule?.available_seats || 0) < 3) return 'bg-red-500 animate-pulse';
-  return isScheduleBookable(schedule) ? 'bg-green-500 animate-pulse' : 'bg-red-500';
-}
-
-function scheduleAvailabilityLabel(schedule) {
-  if (schedule?.is_charter) return 'รอบเหมา';
-  if (!hasAvailableSeats(schedule)) return 'เต็มแล้ว';
-  if (schedule?.join_trip_enabled) return `ว่าง ${schedule.available_seats} ที่`;
-  return hasAvailableSeats(schedule)
-    ? `ว่าง ${schedule.available_seats} ที่`
-    : 'เต็มแล้ว';
-}
-
-function formatDate(d) {
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function groupSchedulesByDate(schedules) {
-  const dateMap = new Map();
-  for (const s of schedules) {
-    const key = s.departure_date;
-    if (!dateMap.has(key)) dateMap.set(key, []);
-    dateMap.get(key).push(s);
-  }
-  return [...dateMap.entries()].map(([dateKey, items]) => {
-    const d = new Date(dateKey + 'T00:00:00');
-    return {
-      dateKey,
-      dayLabel: d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }),
-      weekdayLabel: d.toLocaleDateString('th-TH', { weekday: 'long' }),
-      schedules: items,
-    };
-  });
 }
 
 function getPickupForRegion(schedule, region) {
@@ -2073,7 +1687,6 @@ function selectRegion(region) {
 }
 
 function selectSchedule(s) {
-  openScheduleMonthForSchedule(s);
   selectedSchedule.value = s;
   if (!s.join_trip_enabled) {
     isJoinTrip.value = false;
@@ -2086,15 +1699,6 @@ function selectSchedule(s) {
     ) || null;
   } else {
     selectedPickup.value = null;
-  }
-}
-
-function toggleSchedule(s) {
-  if (selectedSchedule.value?.id === s.id) {
-    selectedSchedule.value = null;
-    selectedPickup.value = null;
-  } else {
-    selectSchedule(s);
   }
 }
 
