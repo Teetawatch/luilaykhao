@@ -1687,6 +1687,12 @@ function selectRegion(region) {
 }
 
 function selectSchedule(s) {
+  if (!s) {
+    selectedSchedule.value = null;
+    selectedPickup.value = null;
+    isJoinTrip.value = false;
+    return;
+  }
   selectedSchedule.value = s;
   if (!s.join_trip_enabled) {
     isJoinTrip.value = false;

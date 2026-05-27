@@ -53,17 +53,9 @@
         <!-- Padding cell -->
         <div v-if="!cell.inMonth" class="aspect-square sm:aspect-auto sm:min-h-[58px]"></div>
 
-        <!-- Day with no schedules -->
-        <div
-          v-else-if="!cell.hasSchedules"
-          class="aspect-square sm:aspect-auto sm:min-h-[58px] rounded-xl flex items-center justify-center"
-        >
-          <span class="text-sm font-bold" :class="cell.isPast ? 'text-gray-200' : 'text-gray-300'">{{ cell.day }}</span>
-        </div>
-
-        <!-- Day with schedules -->
+        <!-- Selectable day (has departure rounds) -->
         <button
-          v-else
+          v-else-if="cell.hasSchedules"
           type="button"
           :disabled="!cell.bookable"
           @click="selectDate(cell)"
@@ -90,9 +82,29 @@
           <!-- Multi-round badge -->
           <span
             v-if="cell.roundCount > 1"
-            class="absolute top-0.5 right-0.5 text-[8px] sm:text-[9px] font-black px-1 rounded-full leading-tight bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
+            class="absolute top-0.5 right-0.5 text-[8px] sm:text-[9px] font-black px-1 rounded-full leading-tight"
+            :class="cellRangeRole(cell) === 'start' || cellRangeRole(cell) === 'single'
+              ? 'bg-white/25 text-white'
+              : 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'"
           >{{ cell.roundCount }}</span>
         </button>
+
+        <!-- Covered day inside the selected multi-day trip (no own departure) -->
+        <div
+          v-else-if="cellInRange(cell)"
+          class="aspect-square sm:aspect-auto sm:min-h-[58px] rounded-xl border-2 border-[var(--color-accent)]/25 bg-[var(--color-accent)]/12 flex flex-col items-center justify-center gap-0.5"
+        >
+          <span class="text-sm sm:text-base font-black leading-none text-[var(--color-accent)]">{{ cell.day }}</span>
+          <span class="text-[8px] sm:text-[9px] font-black leading-none text-[var(--color-accent)]/70 flex items-center gap-0.5">
+            <span class="material-symbols-rounded text-[10px] sm:text-[11px]">{{ cellRangeRole(cell) === 'end' ? 'flag' : 'more_horiz' }}</span>
+            <span class="hidden sm:inline">{{ cellRangeRole(cell) === 'end' ? 'กลับ' : 'ระหว่างทริป' }}</span>
+          </span>
+        </div>
+
+        <!-- Empty day -->
+        <div v-else class="aspect-square sm:aspect-auto sm:min-h-[58px] rounded-xl flex items-center justify-center">
+          <span class="text-sm font-bold" :class="cell.isPast ? 'text-gray-200' : 'text-gray-300'">{{ cell.day }}</span>
+        </div>
       </template>
     </div>
 
@@ -101,6 +113,7 @@
       <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>ว่าง</span>
       <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>ใกล้เต็ม</span>
       <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>เต็ม</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-2 rounded-sm bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30"></span>ช่วงทริปหลายวัน</span>
       <span class="flex items-center gap-1"><span class="text-[var(--color-accent)] font-black">2</span>= จำนวนรอบ</span>
     </div>
 
@@ -336,29 +349,74 @@ const currentMonthAvailableDays = computed(() =>
   calendarCells.value.filter((c) => c.inMonth && c.bookable).length
 );
 
-function isCellSelected(cell) {
-  return props.selectedSchedule && dateKeyOf(props.selectedSchedule) === cell.dateKey;
+// ── Selection / highlight ──
+// Exactly one day-range is ever highlighted: the active (tapped) day wins, and
+// when its chosen round spans several days the whole departure→return is covered.
+const activeDateKey = ref(null);
+
+const selectedRange = computed(() => {
+  const s = props.selectedSchedule;
+  const selectedKey = s && s.departure_date ? dateKeyOf(s) : null;
+
+  // The tapped day is the anchor. Cover the full trip span only when the
+  // selected round actually belongs to that same day.
+  if (activeDateKey.value) {
+    if (selectedKey === activeDateKey.value) return spanOf(s);
+    return { start: activeDateKey.value, end: activeDateKey.value };
+  }
+
+  // No tap yet but something is selected externally (e.g. a query param).
+  if (selectedKey) return spanOf(s);
+  return null;
+});
+
+function spanOf(schedule) {
+  const start = dateKeyOf(schedule);
+  const end = schedule?.return_date ? String(schedule.return_date).slice(0, 10) : start;
+  return { start, end: end > start ? end : start };
+}
+
+function cellInRange(cell) {
+  const r = selectedRange.value;
+  return !!r && cell.dateKey >= r.start && cell.dateKey <= r.end;
+}
+
+function cellRangeRole(cell) {
+  const r = selectedRange.value;
+  if (!r || cell.dateKey < r.start || cell.dateKey > r.end) return null;
+  if (r.start === r.end) return 'single';
+  if (cell.dateKey === r.start) return 'start';
+  if (cell.dateKey === r.end) return 'end';
+  return 'middle';
+}
+
+function isAnchorCell(cell) {
+  const role = cellRangeRole(cell);
+  return role === 'start' || role === 'single';
 }
 
 function cellClass(cell) {
   if (!cell.bookable) {
     return 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed';
   }
-  if (isCellSelected(cell) || activeDateKey.value === cell.dateKey) {
+  if (isAnchorCell(cell)) {
     return 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-md shadow-[var(--color-accent)]/20';
+  }
+  if (cellInRange(cell)) {
+    return 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/12 text-[var(--color-accent)]';
   }
   return 'border-gray-100 bg-white text-[var(--color-text-dark)] hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-sand)] active:scale-95 cursor-pointer';
 }
 
 function availabilityDotClass(cell) {
-  if (isCellSelected(cell) || activeDateKey.value === cell.dateKey) return 'bg-white';
+  if (isAnchorCell(cell)) return 'bg-white';
   if (cell.joinOnly) return 'bg-[var(--color-accent)]';
   if (cell.totalAvailable <= 3) return 'bg-amber-400';
   return 'bg-[var(--color-accent)]';
 }
 
 function availabilityTextClass(cell) {
-  if (isCellSelected(cell) || activeDateKey.value === cell.dateKey) return 'text-white';
+  if (isAnchorCell(cell)) return 'text-white';
   if (cell.totalAvailable <= 3 && !cell.joinOnly) return 'text-amber-600';
   return 'text-[var(--color-accent)]';
 }
@@ -368,15 +426,18 @@ function cellSeatLabel(cell) {
   return `ว่าง ${cell.totalAvailable}`;
 }
 
-// ── Selected date / round picker ──
-const activeDateKey = ref(null);
-
 function selectDate(cell) {
   if (!cell.bookable) return;
   activeDateKey.value = cell.dateKey;
   const bookables = cell.schedules.filter(isScheduleBookable);
-  // Auto-select when the day offers exactly one bookable round
-  if (bookables.length === 1) emit('select', bookables[0]);
+  if (bookables.length === 1) {
+    // Single round: select it outright.
+    emit('select', bookables[0]);
+  } else if (props.selectedSchedule && dateKeyOf(props.selectedSchedule) !== cell.dateKey) {
+    // Moved to a different multi-round day — clear the stale selection so the
+    // booking panel and the green highlight stay on this one day only.
+    emit('select', null);
+  }
 }
 
 const activeDateSchedules = computed(() => {
