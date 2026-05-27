@@ -260,6 +260,9 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/refund-preview', [AdminController::class, 'refundPreview']);
         Route::post('bookings/{ref}/refund', [AdminController::class, 'processRefund']);
         Route::post('bookings/{ref}/transfer', [AdminController::class, 'transferBooking']);
+        Route::post('bookings/{ref}/slip/approve', [AdminController::class, 'approveSlip']);
+        Route::post('bookings/{ref}/slip/reject', [AdminController::class, 'rejectSlip']);
+        Route::post('bookings/{ref}/slip/reverify', [AdminController::class, 'reverifySlip']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);
 
         // Vehicles CRUD

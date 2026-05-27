@@ -23,8 +23,10 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
 use App\Models\BookingSeat;
+use App\Jobs\VerifySlipJob;
 use App\Services\BookingService;
 use App\Services\MailService;
+use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
@@ -2153,5 +2155,145 @@ class AdminController extends Controller
         }
 
         return $this->success(null, 'จัดเรียงสไลด์สำเร็จ');
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Slip OCR Review
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * POST /admin/bookings/{ref}/slip/approve
+     * อนุมัติสลิปด้วยตนเอง (main slip หรือ balance slip)
+     */
+    public function approveSlip(Request $request, string $ref): JsonResponse
+    {
+        $data = $request->validate([
+            'slip_type' => ['nullable', 'in:main,balance,installment'],
+            'installment_no' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $type = $data['slip_type'] ?? 'main';
+        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+
+        if ($type === 'installment') {
+            $no = $data['installment_no'] ?? null;
+            if (! $no) return $this->error('ระบุหมายเลขงวด', 422);
+
+            $installment = InstallmentPayment::where('booking_id', $booking->id)
+                ->where('installment_no', $no)
+                ->firstOrFail();
+
+            $installment->update(['slip_ocr_status' => SlipOcrService::STATUS_APPROVED]);
+
+            return $this->success(null, "อนุมัติสลิปงวดที่ {$no} สำเร็จ");
+        }
+
+        $col = $type === 'balance' ? 'balance_slip_ocr_status' : 'slip_ocr_status';
+        $booking->update([$col => SlipOcrService::STATUS_APPROVED]);
+
+        SmartNotification::send(
+            $booking->user_id,
+            'slip_approved',
+            'สลิปได้รับการอนุมัติแล้ว',
+            "ทีมงานตรวจสอบและอนุมัติการชำระเงินของเลขการจอง {$booking->booking_ref} แล้ว",
+            ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+        );
+
+        return $this->success(null, 'อนุมัติสลิปสำเร็จ');
+    }
+
+    /**
+     * POST /admin/bookings/{ref}/slip/reject
+     * ปฏิเสธสลิป — แจ้งลูกค้าให้อัพโหลดใหม่
+     */
+    public function rejectSlip(Request $request, string $ref): JsonResponse
+    {
+        $data = $request->validate([
+            'slip_type'      => ['nullable', 'in:main,balance,installment'],
+            'installment_no' => ['nullable', 'integer', 'min:1'],
+            'reason'         => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $type    = $data['slip_type'] ?? 'main';
+        $reason  = $data['reason'] ?? 'สลิปไม่ถูกต้อง';
+        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+
+        if ($type === 'installment') {
+            $no = $data['installment_no'] ?? null;
+            if (! $no) return $this->error('ระบุหมายเลขงวด', 422);
+
+            $installment = InstallmentPayment::where('booking_id', $booking->id)
+                ->where('installment_no', $no)
+                ->firstOrFail();
+
+            $installment->update(['slip_ocr_status' => SlipOcrService::STATUS_REJECTED]);
+
+            SmartNotification::send(
+                $booking->user_id,
+                'slip_rejected',
+                'กรุณาตรวจสอบสลิปการชำระเงิน',
+                "สลิปงวดที่ {$no} ของเลขการจอง {$booking->booking_ref}: {$reason} กรุณาอัพโหลดสลิปใหม่",
+                ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+            );
+
+            return $this->success(null, "ปฏิเสธสลิปงวดที่ {$no} สำเร็จ");
+        }
+
+        $col = $type === 'balance' ? 'balance_slip_ocr_status' : 'slip_ocr_status';
+        $booking->update([$col => SlipOcrService::STATUS_REJECTED]);
+
+        SmartNotification::send(
+            $booking->user_id,
+            'slip_rejected',
+            'กรุณาตรวจสอบสลิปการชำระเงิน',
+            "สลิปของเลขการจอง {$booking->booking_ref}: {$reason} กรุณาอัพโหลดสลิปใหม่",
+            ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+        );
+
+        return $this->success(null, 'ปฏิเสธสลิปสำเร็จ');
+    }
+
+    /**
+     * POST /admin/bookings/{ref}/slip/reverify
+     * Re-run OCR ใหม่ (กรณีอัพโหลดสลิปใหม่แล้ว)
+     */
+    public function reverifySlip(Request $request, string $ref): JsonResponse
+    {
+        $data = $request->validate([
+            'slip_type'      => ['nullable', 'in:main,balance,installment'],
+            'installment_no' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $type    = $data['slip_type'] ?? 'main';
+        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+
+        if ($type === 'installment') {
+            $no = $data['installment_no'] ?? null;
+            if (! $no) return $this->error('ระบุหมายเลขงวด', 422);
+
+            $installment = InstallmentPayment::where('booking_id', $booking->id)
+                ->where('installment_no', $no)
+                ->firstOrFail();
+
+            if (! $installment->slip_path) return $this->error('ไม่มีสลิปในระบบ', 422);
+
+            $installment->update(['slip_ocr_status' => SlipOcrService::STATUS_PENDING]);
+            VerifySlipJob::dispatch('installment', $installment->id, $installment->slip_path, (float) $installment->amount);
+
+            return $this->success(null, 'ส่งคำขอตรวจสอบสลิปใหม่แล้ว');
+        }
+
+        if ($type === 'balance') {
+            if (! $booking->balance_slip_path) return $this->error('ไม่มีสลิปในระบบ', 422);
+            $booking->update(['balance_slip_ocr_status' => SlipOcrService::STATUS_PENDING]);
+            VerifySlipJob::dispatch('balance', $booking->id, $booking->balance_slip_path, (float) $booking->balance_amount);
+        } else {
+            if (! $booking->slip_path) return $this->error('ไม่มีสลิปในระบบ', 422);
+            $booking->update(['slip_ocr_status' => SlipOcrService::STATUS_PENDING]);
+            $amount = $booking->payment_type === 'deposit' ? (float) $booking->deposit_amount : (float) $booking->total_amount;
+            VerifySlipJob::dispatch('booking', $booking->id, $booking->slip_path, $amount);
+        }
+
+        return $this->success(null, 'ส่งคำขอตรวจสอบสลิปใหม่แล้ว');
     }
 }

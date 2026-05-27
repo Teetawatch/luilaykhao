@@ -10,7 +10,7 @@ class InstallmentPayment extends Model
     protected $fillable = [
         'booking_id', 'installment_no', 'amount', 'due_date',
         'status', 'payment_method', 'payment_ref', 'paid_at',
-        'slip_path', 'transfer_datetime',
+        'slip_path', 'transfer_datetime', 'slip_ocr_status', 'slip_ocr_result',
     ];
 
     protected function casts(): array
@@ -20,6 +20,7 @@ class InstallmentPayment extends Model
             'due_date'   => 'date',
             'paid_at'             => 'datetime',
             'transfer_datetime'   => 'datetime',
+            'slip_ocr_result'     => 'array',
         ];
     }
 

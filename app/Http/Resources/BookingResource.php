@@ -80,8 +80,10 @@ class BookingResource extends JsonResource
             'balance_transfer_datetime' => $this->balance_transfer_datetime?->toISOString(),
             'payment_ref' => $this->payment_ref,
             'slip_url' => $this->slip_path ? Storage::disk('public')->url($this->slip_path) : null,
+            'slip_ocr_status' => $this->slip_ocr_status,
             'transfer_datetime' => $this->transfer_datetime?->toISOString(),
             'paid_at' => $this->paid_at?->toISOString(),
+            'balance_slip_ocr_status' => $this->balance_slip_ocr_status,
             'installment_payments' => $this->when(
                 $this->relationLoaded('installmentPayments'),
                 fn () => $this->installmentPayments->map(fn ($ip) => [
@@ -92,6 +94,7 @@ class BookingResource extends JsonResource
                     'status' => $ip->status,
                     'payment_method' => $ip->payment_method,
                     'slip_url' => $ip->slip_path ? Storage::disk('public')->url($ip->slip_path) : null,
+                    'slip_ocr_status' => $ip->slip_ocr_status,
                     'transfer_datetime' => $ip->transfer_datetime?->toISOString(),
                     'paid_at' => $ip->paid_at?->toISOString(),
                 ])

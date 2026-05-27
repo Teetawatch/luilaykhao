@@ -24,7 +24,9 @@ class Booking extends Model
         'payment_type', 'installment_count', 'installment_interval_days',
         'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_paid_at',
         'balance_payment_ref', 'balance_slip_path', 'balance_transfer_datetime',
+        'balance_slip_ocr_status', 'balance_slip_ocr_result',
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
+        'slip_ocr_status', 'slip_ocr_result',
         'cancellation_reason', 'cancelled_at',
         'refund_status', 'refund_amount', 'refunded_at',
         'promotion_id', 'promotion_code', 'discount_amount',
@@ -55,6 +57,8 @@ class Booking extends Model
             'balance_due_at' => 'datetime',
             'balance_paid_at' => 'datetime',
             'balance_transfer_datetime' => 'datetime',
+            'balance_slip_ocr_result' => 'array',
+            'slip_ocr_result' => 'array',
         ];
     }
 

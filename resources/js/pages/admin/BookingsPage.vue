@@ -411,10 +411,56 @@
               <a :href="detailBooking.slip_url" target="_blank">
                 <img :src="detailBooking.slip_url" alt="สลิปโอนเงิน" />
               </a>
-              <a :href="detailBooking.slip_url" target="_blank" class="btn-secondary compact">
-                <span class="material-symbols-rounded">open_in_new</span>
-                เปิดสลิป
+              <div class="slip-actions">
+                <a :href="detailBooking.slip_url" target="_blank" class="btn-secondary compact">
+                  <span class="material-symbols-rounded">open_in_new</span>
+                  เปิดสลิป
+                </a>
+                <span class="ocr-badge" :class="`ocr-${detailBooking.slip_ocr_status || 'none'}`">
+                  {{ ocrLabel(detailBooking.slip_ocr_status) }}
+                </span>
+                <button
+                  v-if="['failed','pending',null,undefined].includes(detailBooking.slip_ocr_status)"
+                  class="btn-success compact"
+                  @click="approveSlip(detailBooking.booking_ref, 'main')"
+                >อนุมัติ</button>
+                <button
+                  v-if="['failed','pending'].includes(detailBooking.slip_ocr_status)"
+                  class="btn-danger compact"
+                  @click="rejectSlip(detailBooking.booking_ref, 'main')"
+                >ปฏิเสธ</button>
+                <button
+                  v-if="['failed','rejected'].includes(detailBooking.slip_ocr_status)"
+                  class="btn-secondary compact"
+                  @click="reverifySlip(detailBooking.booking_ref, 'main')"
+                >ตรวจสอบใหม่</button>
+              </div>
+            </div>
+
+            <div v-if="detailBooking.balance_slip_url" class="slip-box">
+              <p class="slip-label">สลิปยอดส่วนที่เหลือ</p>
+              <a :href="detailBooking.balance_slip_url" target="_blank">
+                <img :src="detailBooking.balance_slip_url" alt="สลิปยอดส่วนที่เหลือ" />
               </a>
+              <div class="slip-actions">
+                <a :href="detailBooking.balance_slip_url" target="_blank" class="btn-secondary compact">
+                  <span class="material-symbols-rounded">open_in_new</span>
+                  เปิดสลิป
+                </a>
+                <span class="ocr-badge" :class="`ocr-${detailBooking.balance_slip_ocr_status || 'none'}`">
+                  {{ ocrLabel(detailBooking.balance_slip_ocr_status) }}
+                </span>
+                <button
+                  v-if="['failed','pending',null,undefined].includes(detailBooking.balance_slip_ocr_status)"
+                  class="btn-success compact"
+                  @click="approveSlip(detailBooking.booking_ref, 'balance')"
+                >อนุมัติ</button>
+                <button
+                  v-if="['failed','pending'].includes(detailBooking.balance_slip_ocr_status)"
+                  class="btn-danger compact"
+                  @click="rejectSlip(detailBooking.booking_ref, 'balance')"
+                >ปฏิเสธ</button>
+              </div>
             </div>
 
             <div v-if="detailBooking.payment_type === 'installment' && detailBooking.installment_payments?.length" class="installment-list">
@@ -433,6 +479,19 @@
                   <span>{{ payment.status === 'paid' ? 'ชำระแล้ว' : 'รอชำระ' }}</span>
                   <span v-if="payment.paid_at">{{ formatDateTime(payment.paid_at) }}</span>
                   <a v-if="payment.slip_url" :href="payment.slip_url" target="_blank">สลิป</a>
+                  <span v-if="payment.slip_url" class="ocr-badge" :class="`ocr-${payment.slip_ocr_status || 'none'}`">
+                    {{ ocrLabel(payment.slip_ocr_status) }}
+                  </span>
+                  <button
+                    v-if="payment.slip_url && ['failed','pending',null,undefined].includes(payment.slip_ocr_status)"
+                    class="btn-success compact xs"
+                    @click="approveSlip(detailBooking.booking_ref, 'installment', payment.installment_no)"
+                  >อนุมัติ</button>
+                  <button
+                    v-if="payment.slip_url && ['failed','pending'].includes(payment.slip_ocr_status)"
+                    class="btn-danger compact xs"
+                    @click="rejectSlip(detailBooking.booking_ref, 'installment', payment.installment_no)"
+                  >ปฏิเสธ</button>
                 </div>
               </div>
             </div>
@@ -1805,6 +1864,50 @@ async function doTransferBooking() {
 }
 
 onMounted(() => fetchData());
+
+// ── Slip OCR ──────────────────────────────────────────────────────
+function ocrLabel(status) {
+  const labels = {
+    pending: '⏳ กำลังตรวจสอบ',
+    verified: '✅ ผ่านอัตโนมัติ',
+    failed: '❌ ต้องตรวจสอบ',
+    manually_approved: '✅ อนุมัติแล้ว',
+    rejected: '🚫 ปฏิเสธแล้ว',
+  };
+  return labels[status] || '— ยังไม่ตรวจ';
+}
+
+async function approveSlip(bookingRef, slipType, installmentNo = null) {
+  const payload = { slip_type: slipType };
+  if (installmentNo) payload.installment_no = installmentNo;
+  try {
+    await api.post(`/admin/bookings/${bookingRef}/slip/approve`, payload);
+    await openDetail({ booking_ref: bookingRef });
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  }
+}
+
+async function rejectSlip(bookingRef, slipType, installmentNo = null) {
+  const reason = prompt('ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ):') ?? '';
+  const payload = { slip_type: slipType, reason };
+  if (installmentNo) payload.installment_no = installmentNo;
+  try {
+    await api.post(`/admin/bookings/${bookingRef}/slip/reject`, payload);
+    await openDetail({ booking_ref: bookingRef });
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  }
+}
+
+async function reverifySlip(bookingRef, slipType) {
+  try {
+    await api.post(`/admin/bookings/${bookingRef}/slip/reverify`, { slip_type: slipType });
+    await openDetail({ booking_ref: bookingRef });
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  }
+}
 </script>
 
 <style scoped>
@@ -2415,6 +2518,73 @@ onMounted(() => fetchData());
   margin-top: 14px;
   flex-wrap: wrap;
 }
+
+.slip-label {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-bottom: -4px;
+}
+
+.slip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ocr-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ocr-pending    { background: #fef3c7; color: #92400e; }
+.ocr-verified   { background: #d1fae5; color: #065f46; }
+.ocr-failed     { background: #fee2e2; color: #991b1b; }
+.ocr-manually_approved { background: #d1fae5; color: #065f46; }
+.ocr-rejected   { background: #f3f4f6; color: #6b7280; }
+.ocr-none       { background: #f3f4f6; color: #6b7280; }
+
+.btn-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #059669;
+  color: white;
+  border: none;
+  transition: background 0.15s;
+}
+.btn-success:hover { background: #047857; }
+.btn-success.compact { padding: 4px 10px; }
+.btn-success.xs { padding: 2px 8px; font-size: 11px; }
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #dc2626;
+  color: white;
+  border: none;
+  transition: background 0.15s;
+}
+.btn-danger:hover { background: #b91c1c; }
+.btn-danger.compact { padding: 4px 10px; }
+.btn-danger.xs { padding: 2px 8px; font-size: 11px; }
 
 .slip-box img {
   max-height: 220px;

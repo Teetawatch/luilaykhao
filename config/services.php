@@ -68,6 +68,10 @@ return [
         'bundle_id' => env('APPLE_BUNDLE_ID'),
     ],
 
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
     'thaibulksms' => [
         'enabled' => env('SMS_PROVIDER') === 'thaibulksms' && env('THAIBULKSMS_ENABLED', false),
         'api_key' => env('THAIBULKSMS_API_KEY'),

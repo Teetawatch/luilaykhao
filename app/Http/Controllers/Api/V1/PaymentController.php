@@ -6,11 +6,13 @@ use App\Events\PaymentConfirmed;
 use App\Events\SeatBooked;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\ChargeRequest;
+use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
 use App\Services\BookingService;
 use App\Services\MailService;
+use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
@@ -80,6 +82,7 @@ class PaymentController extends Controller
                         'payment_ref'               => $paymentRef,
                         'slip_path'                 => $slipPath,
                         'transfer_datetime'         => $transferDt,
+                        'slip_ocr_status'           => $slipPath ? SlipOcrService::STATUS_PENDING : null,
                     ]);
 
                     for ($i = 1; $i <= $installmentCount; $i++) {
@@ -105,6 +108,13 @@ class PaymentController extends Controller
                     // For installment, paid_amount at this step is only the first installment
                     $this->bookingService->confirmBooking($booking->fresh(), $paymentMethod, $paymentRef, $perInstallment);
                 });
+
+                if ($slipPath) {
+                    $firstInstallment = $booking->fresh()->installmentPayments()->where('installment_no', 1)->first();
+                    if ($firstInstallment) {
+                        VerifySlipJob::dispatch('installment', $firstInstallment->id, $slipPath, $perInstallment);
+                    }
+                }
 
                 $booking = $booking->fresh()->load(['seats', 'installmentPayments']);
 
@@ -186,6 +196,7 @@ class PaymentController extends Controller
                         'payment_ref'        => $paymentRef,
                         'slip_path'          => $slipPath,
                         'transfer_datetime'  => $transferDt,
+                        'slip_ocr_status'    => $slipPath ? SlipOcrService::STATUS_PENDING : null,
                     ]);
 
                     $this->bookingService->confirmBooking(
@@ -195,6 +206,10 @@ class PaymentController extends Controller
                         $depositAmount,
                     );
                 });
+
+                if ($slipPath) {
+                    VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $depositAmount);
+                }
 
                 $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);
 
@@ -251,7 +266,12 @@ class PaymentController extends Controller
                 'payment_type'      => 'full',
                 'slip_path'         => $slipPath,
                 'transfer_datetime' => $transferDt,
+                'slip_ocr_status'   => $slipPath ? SlipOcrService::STATUS_PENDING : null,
             ]);
+
+            if ($slipPath) {
+                VerifySlipJob::dispatch('booking', $booking->id, $slipPath, (float) $booking->total_amount);
+            }
 
             try {
                 foreach ($booking->seats as $seat) {
@@ -344,7 +364,12 @@ class PaymentController extends Controller
             'paid_at'           => now(),
             'slip_path'         => $slipPath,
             'transfer_datetime' => $transferDt,
+            'slip_ocr_status'   => $slipPath ? SlipOcrService::STATUS_PENDING : null,
         ]);
+
+        if ($slipPath) {
+            VerifySlipJob::dispatch('installment', $installment->id, $slipPath, (float) $installment->amount);
+        }
 
         $totalPaid = (float) $booking->paid_amount + (float) $installment->amount;
         $booking->update(['paid_amount' => $totalPaid]);
@@ -403,13 +428,18 @@ class PaymentController extends Controller
             $totalPaid = (float) $booking->paid_amount + $balanceAmount;
 
             $booking->update([
-                'paid_amount'                => $totalPaid,
-                'balance_paid_at'            => now(),
-                'balance_payment_ref'        => $paymentRef,
-                'balance_slip_path'          => $slipPath,
-                'balance_transfer_datetime'  => $transferDt,
+                'paid_amount'                  => $totalPaid,
+                'balance_paid_at'              => now(),
+                'balance_payment_ref'          => $paymentRef,
+                'balance_slip_path'            => $slipPath,
+                'balance_transfer_datetime'    => $transferDt,
+                'balance_slip_ocr_status'      => $slipPath ? SlipOcrService::STATUS_PENDING : null,
             ]);
         });
+
+        if ($slipPath) {
+            VerifySlipJob::dispatch('balance', $booking->id, $slipPath, $balanceAmount);
+        }
 
         $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);
 
