@@ -20,6 +20,7 @@ class BookingResource extends JsonResource
                     'name' => $this->user->name,
                     'email' => $this->user->email,
                     'phone' => $this->user->phone,
+                    'avatar_url' => $this->user->avatar_url,
                 ];
             }),
             'schedule' => new TripScheduleResource($this->whenLoaded('schedule')),
