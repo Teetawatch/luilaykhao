@@ -393,6 +393,33 @@
             </div>
           </section>
 
+          <section v-if="detailBooking.selected_addons?.length" class="detail-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">add_shopping_cart</span>
+              รายการเสริมที่ลูกค้าเลือก ({{ detailBooking.selected_addons.length }})
+            </div>
+            <div class="addon-list">
+              <div v-for="(addon, idx) in detailBooking.selected_addons" :key="idx" class="addon-row">
+                <span class="addon-icon">
+                  <span class="material-symbols-rounded">check_circle</span>
+                </span>
+                <div class="addon-info">
+                  <strong>{{ addon.name }}</strong>
+                  <span class="addon-meta">
+                    {{ formatMoney(addon.unit_price) }}
+                    {{ addon.price_type === 'per_person' ? '/ คน' : '/ การจอง' }}
+                    <span v-if="addon.quantity > 1"> × {{ addon.quantity }}</span>
+                  </span>
+                </div>
+                <strong class="addon-total">{{ formatMoney(addon.total_price) }}</strong>
+              </div>
+              <div class="addon-summary">
+                <span>รวมรายการเสริม</span>
+                <strong>{{ formatMoney(detailBooking.addons_total) }}</strong>
+              </div>
+            </div>
+          </section>
+
           <section class="detail-section">
             <div class="section-heading">
               <span class="material-symbols-rounded">payments</span>
@@ -2650,6 +2677,77 @@ async function reverifySlip(bookingRef, slipType) {
 .installment-meta {
   text-align: right;
   color: var(--color-text-muted);
+}
+
+.addon-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.addon-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f0fdf4;
+}
+
+.addon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: white;
+}
+
+.addon-icon .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.addon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.addon-info strong {
+  font-size: 13px;
+  color: #14532d;
+}
+
+.addon-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.addon-total {
+  font-size: 13px;
+  color: #166534;
+  white-space: nowrap;
+}
+
+.addon-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-sand);
+  font-size: 13px;
+  color: var(--color-text-mid);
+}
+
+.addon-summary strong {
+  font-size: 14px;
+  color: var(--color-text-strong);
 }
 
 .pickup-card {

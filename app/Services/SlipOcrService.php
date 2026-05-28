@@ -9,11 +9,15 @@ use Illuminate\Support\Facades\Storage;
 class SlipOcrService
 {
     // OCR status constants
-    public const STATUS_PENDING   = 'pending';
-    public const STATUS_VERIFIED  = 'verified';
-    public const STATUS_FAILED    = 'failed';
-    public const STATUS_APPROVED  = 'manually_approved';
-    public const STATUS_REJECTED  = 'rejected';
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_VERIFIED = 'verified';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_APPROVED = 'manually_approved';
+
+    public const STATUS_REJECTED = 'rejected';
 
     // Amount tolerance: ±2 baht (to handle rounding)
     private const AMOUNT_TOLERANCE = 2.0;
@@ -24,6 +28,7 @@ class SlipOcrService
 
         if (empty($apiKey)) {
             Log::warning('SlipOcrService: ANTHROPIC_API_KEY not set, skipping OCR');
+
             return ['status' => self::STATUS_FAILED, 'reason' => 'api_key_missing', 'raw' => null];
         }
 
@@ -31,13 +36,14 @@ class SlipOcrService
 
         if (! file_exists($absolutePath)) {
             Log::warning("SlipOcrService: slip file not found at {$absolutePath}");
+
             return ['status' => self::STATUS_FAILED, 'reason' => 'file_not_found', 'raw' => null];
         }
 
         $imageData = base64_encode(file_get_contents($absolutePath));
-        $mimeType  = $this->detectMimeType($absolutePath);
+        $mimeType = $this->detectMimeType($absolutePath);
 
-        $prompt = <<<PROMPT
+        $prompt = <<<'PROMPT'
         คุณคือระบบตรวจสอบสลิปโอนเงินไทย
 
         จากรูปสลิปโอนเงินนี้ กรุณาดึงข้อมูลต่อไปนี้และตอบกลับเป็น JSON เท่านั้น (ไม่มีข้อความอื่น):
@@ -59,23 +65,23 @@ class SlipOcrService
         try {
             $response = Http::timeout(30)
                 ->withHeaders([
-                    'x-api-key'         => $apiKey,
+                    'x-api-key' => $apiKey,
                     'anthropic-version' => '2023-06-01',
-                    'content-type'      => 'application/json',
+                    'content-type' => 'application/json',
                 ])
                 ->post('https://api.anthropic.com/v1/messages', [
-                    'model'      => 'claude-haiku-4-5-20251001',
+                    'model' => 'claude-haiku-4-5-20251001',
                     'max_tokens' => 256,
-                    'messages'   => [
+                    'messages' => [
                         [
-                            'role'    => 'user',
+                            'role' => 'user',
                             'content' => [
                                 [
-                                    'type'   => 'image',
+                                    'type' => 'image',
                                     'source' => [
-                                        'type'       => 'base64',
+                                        'type' => 'base64',
                                         'media_type' => $mimeType,
-                                        'data'       => $imageData,
+                                        'data' => $imageData,
                                     ],
                                 ],
                                 [
@@ -84,19 +90,29 @@ class SlipOcrService
                                 ],
                             ],
                         ],
+                        // Prefill the assistant turn with "{" so the response
+                        // is guaranteed to continue as a raw JSON object
+                        // (no markdown fences, no prose preamble).
+                        [
+                            'role' => 'assistant',
+                            'content' => '{',
+                        ],
                     ],
                 ]);
 
             if (! $response->successful()) {
                 Log::error('SlipOcrService: API error', ['status' => $response->status(), 'body' => $response->body()]);
+
                 return ['status' => self::STATUS_FAILED, 'reason' => 'api_error', 'raw' => null];
             }
 
-            $content = $response->json('content.0.text', '');
-            $parsed  = json_decode(trim($content), true);
+            // Re-attach the prefill "{" so the response is a complete JSON object.
+            $content = '{'.$response->json('content.0.text', '');
+            $parsed = self::extractJson($content);
 
             if (! is_array($parsed)) {
                 Log::warning('SlipOcrService: could not parse JSON response', ['content' => $content]);
+
                 return ['status' => self::STATUS_FAILED, 'reason' => 'parse_error', 'raw' => $content];
             }
 
@@ -111,6 +127,7 @@ class SlipOcrService
                 }
 
                 Log::info("SlipOcrService: amount mismatch — expected {$expectedAmount}, got {$ocrAmount}");
+
                 return ['status' => self::STATUS_FAILED, 'reason' => 'amount_mismatch', 'raw' => $parsed];
             }
 
@@ -118,19 +135,65 @@ class SlipOcrService
 
         } catch (\Exception $e) {
             Log::error('SlipOcrService: exception', ['message' => $e->getMessage()]);
+
             return ['status' => self::STATUS_FAILED, 'reason' => 'exception', 'raw' => null];
         }
+    }
+
+    /**
+     * Extract a JSON object from a model response that may be wrapped in
+     * markdown fences, prefixed/suffixed with prose, or contain trailing
+     * commas. Returns the decoded array or null when nothing parses.
+     */
+    public static function extractJson(string $content): ?array
+    {
+        $text = trim($content);
+
+        if ($text === '') {
+            return null;
+        }
+
+        // Strip ```json … ``` or ``` … ``` fences.
+        if (preg_match('/^```(?:json)?\s*(.+?)\s*```$/is', $text, $m)) {
+            $text = trim($m[1]);
+        }
+
+        $decoded = json_decode($text, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        // Fall back to the first balanced {...} block in the response.
+        $start = strpos($text, '{');
+        $end = strrpos($text, '}');
+        if ($start === false || $end === false || $end <= $start) {
+            return null;
+        }
+
+        $candidate = substr($text, $start, $end - $start + 1);
+
+        $decoded = json_decode($candidate, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        // Last resort: drop trailing commas before } or ] (a common LLM slip).
+        $cleaned = preg_replace('/,\s*([}\]])/', '$1', $candidate);
+        $decoded = json_decode($cleaned, true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     private function detectMimeType(string $path): string
     {
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
         return match ($ext) {
             'jpg', 'jpeg' => 'image/jpeg',
-            'png'         => 'image/png',
-            'gif'         => 'image/gif',
-            'webp'        => 'image/webp',
-            default       => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => 'image/jpeg',
         };
     }
 }
