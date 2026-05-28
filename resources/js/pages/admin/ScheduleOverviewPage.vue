@@ -465,16 +465,29 @@
               </div>
             </div>
             <div class="addons-summary-list">
-              <div v-for="addon in selectedSchedule.addons_summary" :key="addon.name" class="addons-summary-row">
-                <div class="addons-summary-info">
-                  <strong>{{ addon.name }}</strong>
-                  <span class="addons-summary-meta">
-                    {{ formatCurrency(addon.unit_price) }}
-                    {{ addon.price_type === 'per_person' ? '/ คน' : '/ การจอง' }}
+              <div v-for="addon in selectedSchedule.addons_summary" :key="addon.name" class="addons-summary-item">
+                <div class="addons-summary-row">
+                  <div class="addons-summary-info">
+                    <strong>{{ addon.name }}</strong>
+                    <span class="addons-summary-meta">
+                      {{ formatCurrency(addon.unit_price) }}
+                      {{ addon.price_type === 'per_person' ? '/ คน' : '/ การจอง' }}
+                    </span>
+                  </div>
+                  <span class="addons-summary-qty">× {{ addon.total_quantity }}</span>
+                  <strong class="addons-summary-price">{{ formatCurrency(addon.total_price) }}</strong>
+                </div>
+                <div v-if="addon.customers?.length" class="addons-summary-customers">
+                  <span
+                    v-for="c in addon.customers"
+                    :key="`${addon.name}-${c.booking_ref}`"
+                    class="addons-customer-chip"
+                  >
+                    <span class="addons-customer-name">{{ c.name || '-' }}</span>
+                    <span class="addons-customer-ref">{{ c.booking_ref }}</span>
+                    <span v-if="c.quantity > 1" class="addons-customer-qty">× {{ c.quantity }}</span>
                   </span>
                 </div>
-                <span class="addons-summary-qty">× {{ addon.total_quantity }}</span>
-                <strong class="addons-summary-price">{{ formatCurrency(addon.total_price) }}</strong>
               </div>
             </div>
           </div>
@@ -2310,18 +2323,53 @@ onUnmounted(() => {
   display: grid;
 }
 
+.addons-summary-item {
+  border-bottom: 1px solid #eeeeee;
+}
+
+.addons-summary-item:last-child {
+  border-bottom: none;
+}
+
 .addons-summary-row {
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  border-bottom: 1px solid #eeeeee;
   font-size: 13px;
 }
 
-.addons-summary-row:last-child {
-  border-bottom: none;
+.addons-summary-customers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.addons-customer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.addons-customer-ref {
+  color: #15803d;
+  font-weight: 600;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.addons-customer-qty {
+  color: #14532d;
+  font-weight: 900;
 }
 
 .addons-summary-info {

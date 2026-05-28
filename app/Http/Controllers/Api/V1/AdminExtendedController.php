@@ -62,9 +62,15 @@ class AdminExtendedController extends Controller
             $joinTripTotalAmount = $joinTripBookings->sum(fn ($booking) => (float) $booking->total_amount);
             // Aggregate add-ons across active bookings so admin can see at a
             // glance what to prepare for this departure (e.g. 8 t-shirts, 3
-            // halal meals). Keyed by name, summing quantity and total_price.
+            // halal meals) and exactly which customer ticked each one. Each
+            // add-on carries a `customers` list of {booking_ref, name, qty}.
             $addonsSummary = $activeBookings
-                ->flatMap(fn ($booking) => $booking->selected_addons ?? [])
+                ->flatMap(function ($booking) {
+                    return collect($booking->selected_addons ?? [])->map(fn ($addon) => array_merge($addon, [
+                        '__booking_ref' => $booking->booking_ref,
+                        '__customer_name' => $booking->user?->name,
+                    ]));
+                })
                 ->groupBy('name')
                 ->map(fn ($items, $name) => [
                     'name' => (string) $name,
@@ -72,6 +78,11 @@ class AdminExtendedController extends Controller
                     'unit_price' => (float) ($items->first()['unit_price'] ?? 0),
                     'total_quantity' => (int) $items->sum(fn ($i) => (int) ($i['quantity'] ?? 0)),
                     'total_price' => (float) $items->sum(fn ($i) => (float) ($i['total_price'] ?? 0)),
+                    'customers' => $items->map(fn ($i) => [
+                        'booking_ref' => $i['__booking_ref'],
+                        'name' => $i['__customer_name'],
+                        'quantity' => (int) ($i['quantity'] ?? 0),
+                    ])->values()->all(),
                 ])
                 ->values()
                 ->all();
