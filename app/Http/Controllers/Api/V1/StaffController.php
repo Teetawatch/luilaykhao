@@ -41,16 +41,31 @@ class StaffController extends Controller
                 'upcoming_count' => $schedules->filter(fn ($s) => $s->departure_date?->toDateString() >= $today)->count(),
             ],
             'schedules' => $schedules->map(function ($s) {
+                // Count individual *passengers*, not bookings — a single group
+                // booking can carry multiple travelers and the staff manifest
+                // needs the headcount, matching the admin manifest endpoint.
                 $bookings = Booking::where('schedule_id', $s->id)
                     ->whereIn('status', ['confirmed', 'completed'])
+                    ->with(['passengers:id,booking_id,pickup_point_id'])
                     ->get(['id', 'pickup_point_id', 'checked_in']);
 
-                $totalConfirmed = $bookings->count();
-                $checkedInCount = $bookings->where('checked_in', true)->count();
+                // Flatten each booking into per-passenger rows so headcount
+                // and per-pickup tallies are accurate.
+                $passengerRows = $bookings->flatMap(function ($b) {
+                    return $b->passengers->map(fn ($p) => [
+                        // Passengers can override the booking-level pickup
+                        // (added 2026-05); fall back to the booking when null.
+                        'pickup_point_id' => $p->pickup_point_id ?? $b->pickup_point_id,
+                        'checked_in' => (bool) $b->checked_in,
+                    ]);
+                });
+
+                $totalConfirmed = $passengerRows->count();
+                $checkedInCount = $passengerRows->where('checked_in', true)->count();
 
                 $pickupBreakdown = $s->pickupPoints
-                    ->map(function ($point) use ($bookings) {
-                        $count = $bookings->where('pickup_point_id', $point->id)->count();
+                    ->map(function ($point) use ($passengerRows) {
+                        $count = $passengerRows->where('pickup_point_id', $point->id)->count();
                         return [
                             'id' => $point->id,
                             'label' => $point->pickup_location ?: $point->region_label,
@@ -61,7 +76,7 @@ class StaffController extends Controller
                     ->filter(fn ($p) => $p['passenger_count'] > 0)
                     ->values();
 
-                $noPickupCount = $bookings->whereNull('pickup_point_id')->count();
+                $noPickupCount = $passengerRows->whereNull('pickup_point_id')->count();
 
                 return [
                     'id' => $s->id,
