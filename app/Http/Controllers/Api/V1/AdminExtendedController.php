@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyReward;
+use App\Models\LoyaltyTransaction;
 use App\Models\Review;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -59,6 +60,22 @@ class AdminExtendedController extends Controller
             $joinTripPassengersCount = $joinTripBookings->sum(fn ($booking) => $booking->passengers->count());
             $regularTotalAmount = $regularBookings->sum(fn ($booking) => (float) $booking->total_amount);
             $joinTripTotalAmount = $joinTripBookings->sum(fn ($booking) => (float) $booking->total_amount);
+            // Aggregate add-ons across active bookings so admin can see at a
+            // glance what to prepare for this departure (e.g. 8 t-shirts, 3
+            // halal meals). Keyed by name, summing quantity and total_price.
+            $addonsSummary = $activeBookings
+                ->flatMap(fn ($booking) => $booking->selected_addons ?? [])
+                ->groupBy('name')
+                ->map(fn ($items, $name) => [
+                    'name' => (string) $name,
+                    'price_type' => $items->first()['price_type'] ?? 'per_booking',
+                    'unit_price' => (float) ($items->first()['unit_price'] ?? 0),
+                    'total_quantity' => (int) $items->sum(fn ($i) => (int) ($i['quantity'] ?? 0)),
+                    'total_price' => (float) $items->sum(fn ($i) => (float) ($i['total_price'] ?? 0)),
+                ])
+                ->values()
+                ->all();
+
             $passengerManifest = $activeBookings
                 ->flatMap(function ($booking) {
                     $seatLabels = $booking->seats->pluck('seat_id')->filter()->values()->all();
@@ -126,9 +143,10 @@ class AdminExtendedController extends Controller
                 'total_passengers' => $regularPassengersCount + $joinTripPassengersCount,
                 'total_amount' => $regularTotalAmount + $joinTripTotalAmount,
                 'passenger_manifest' => $passengerManifest,
+                'addons_summary' => $addonsSummary,
                 'status' => $s->status,
                 'price' => $s->price_override ?? $s->trip->price_per_person,
-                'pickup_points' => $s->pickupPoints->map(fn($pt) => [
+                'pickup_points' => $s->pickupPoints->map(fn ($pt) => [
                     'id' => $pt->id,
                     'region' => $pt->region,
                     'region_label' => $pt->region_label,
@@ -154,8 +172,8 @@ class AdminExtendedController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('email', 'like', "%{$request->search}%")
-                  ->orWhere('phone', 'like', "%{$request->search}%");
+                    ->orWhere('email', 'like', "%{$request->search}%")
+                    ->orWhere('phone', 'like', "%{$request->search}%");
             });
         }
 
@@ -203,7 +221,7 @@ class AdminExtendedController extends Controller
             ->with(['schedule.trip', 'passengers', 'seats'])
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn($b) => new BookingResource($b));
+            ->map(fn ($b) => new BookingResource($b));
 
         $totalSpent = Booking::where('user_id', $id)
             ->where('status', 'confirmed')
@@ -214,7 +232,7 @@ class AdminExtendedController extends Controller
             'confirmed' => Booking::where('user_id', $id)->where('status', 'confirmed')->count(),
             'cancelled' => Booking::where('user_id', $id)->where('status', 'cancelled')->count(),
             'total_spent' => (float) $totalSpent,
-            'total_passengers' => BookingPassenger::whereHas('booking', fn($q) => $q->where('user_id', $id))->count(),
+            'total_passengers' => BookingPassenger::whereHas('booking', fn ($q) => $q->where('user_id', $id))->count(),
         ];
 
         return $this->success([
@@ -329,10 +347,10 @@ class AdminExtendedController extends Controller
         $query = Booking::with(['schedule.trip', 'user', 'passengers', 'seats']);
 
         $dateField = $request->get('date_type') === 'travel' ? 'trip_schedules.departure_date' : 'bookings.created_at';
-        
+
         if ($request->get('date_type') === 'travel') {
             $query->join('trip_schedules', 'bookings.schedule_id', '=', 'trip_schedules.id')
-                  ->select('bookings.*');
+                ->select('bookings.*');
         }
 
         if ($request->filled('from')) {
@@ -345,7 +363,7 @@ class AdminExtendedController extends Controller
             $query->where('bookings.status', $request->status);
         }
         if ($request->filled('trip_id')) {
-            $query->whereHas('schedule', fn($q) => $q->where('trip_id', $request->trip_id));
+            $query->whereHas('schedule', fn ($q) => $q->where('trip_id', $request->trip_id));
         }
 
         $bookings = $query->orderByDesc('created_at')->get();
@@ -356,7 +374,7 @@ class AdminExtendedController extends Controller
             'pending' => $bookings->where('status', 'pending')->count(),
             'cancelled' => $bookings->where('status', 'cancelled')->count(),
             'total_revenue' => (float) $bookings->where('status', 'confirmed')->sum('paid_amount'),
-            'total_passengers' => $bookings->sum(fn($b) => $b->passengers->count()),
+            'total_passengers' => $bookings->sum(fn ($b) => $b->passengers->count()),
         ];
 
         $rows = $bookings->map(function ($b) {
@@ -397,66 +415,69 @@ class AdminExtendedController extends Controller
             ->withCount('passengers')
             ->get();
 
-        $totalAmount    = (float) $bookings->sum('total_amount');
-        $paidAmount     = (float) $bookings->sum('paid_amount');
+        $totalAmount = (float) $bookings->sum('total_amount');
+        $paidAmount = (float) $bookings->sum('paid_amount');
         $remainingAmount = round($totalAmount - $paidAmount, 2);
 
         // Per payment_type breakdown
         $byPaymentType = $bookings->groupBy('payment_type')->map(function ($group, $type) {
-            $groupTotal  = (float) $group->sum('total_amount');
-            $groupPaid   = (float) $group->sum('paid_amount');
+            $groupTotal = (float) $group->sum('total_amount');
+            $groupPaid = (float) $group->sum('paid_amount');
+
             return [
-                'payment_type'     => $type,
-                'bookings_count'   => $group->count(),
-                'passengers_count' => $group->sum(fn($b) => $b->passengers_count ?? 0),
-                'total_amount'     => $groupTotal,
-                'paid_amount'      => $groupPaid,
+                'payment_type' => $type,
+                'bookings_count' => $group->count(),
+                'passengers_count' => $group->sum(fn ($b) => $b->passengers_count ?? 0),
+                'total_amount' => $groupTotal,
+                'paid_amount' => $groupPaid,
                 'remaining_amount' => round($groupTotal - $groupPaid, 2),
             ];
         })->values();
 
         // Group by month
-        $monthly = $bookings->groupBy(fn($b) => $b->created_at->format('Y-m'))->map(function ($group, $month) {
+        $monthly = $bookings->groupBy(fn ($b) => $b->created_at->format('Y-m'))->map(function ($group, $month) {
             $mTotal = (float) $group->sum('total_amount');
-            $mPaid  = (float) $group->sum('paid_amount');
+            $mPaid = (float) $group->sum('paid_amount');
+
             return [
-                'month'            => $month,
-                'bookings_count'   => $group->count(),
-                'passengers_count' => $group->sum(fn($b) => $b->passengers_count ?? 0),
-                'total_amount'     => $mTotal,
-                'paid_amount'      => $mPaid,
+                'month' => $month,
+                'bookings_count' => $group->count(),
+                'passengers_count' => $group->sum(fn ($b) => $b->passengers_count ?? 0),
+                'total_amount' => $mTotal,
+                'paid_amount' => $mPaid,
                 'remaining_amount' => round($mTotal - $mPaid, 2),
             ];
         })->sortKeys()->values();
 
         // Group by trip
-        $byTrip = $bookings->groupBy(fn($b) => $b->schedule?->trip?->title ?? 'ไม่ทราบ')->map(function ($group, $trip) {
+        $byTrip = $bookings->groupBy(fn ($b) => $b->schedule?->trip?->title ?? 'ไม่ทราบ')->map(function ($group, $trip) {
             $tTotal = (float) $group->sum('total_amount');
-            $tPaid  = (float) $group->sum('paid_amount');
+            $tPaid = (float) $group->sum('paid_amount');
+
             return [
-                'trip'             => $trip,
-                'bookings_count'   => $group->count(),
-                'passengers_count' => $group->sum(fn($b) => $b->passengers_count ?? 0),
-                'total_amount'     => $tTotal,
-                'paid_amount'      => $tPaid,
+                'trip' => $trip,
+                'bookings_count' => $group->count(),
+                'passengers_count' => $group->sum(fn ($b) => $b->passengers_count ?? 0),
+                'total_amount' => $tTotal,
+                'paid_amount' => $tPaid,
                 'remaining_amount' => round($tTotal - $tPaid, 2),
             ];
         })->sortByDesc('total_amount')->values();
 
         $summary = [
-            'period'           => "$from ถึง $to",
-            'total_bookings'   => $bookings->count(),
-            'total_passengers' => $bookings->sum(fn($b) => $b->passengers_count ?? 0),
-            'total_amount'     => $totalAmount,
-            'paid_amount'      => $paidAmount,
+            'period' => "$from ถึง $to",
+            'total_bookings' => $bookings->count(),
+            'total_passengers' => $bookings->sum(fn ($b) => $b->passengers_count ?? 0),
+            'total_amount' => $totalAmount,
+            'paid_amount' => $paidAmount,
             'remaining_amount' => $remainingAmount,
         ];
 
         return $this->success([
-            'summary'          => $summary,
-            'by_payment_type'  => $byPaymentType,
-            'monthly'          => $monthly,
-            'by_trip'          => $byTrip,
+            'summary' => $summary,
+            'by_payment_type' => $byPaymentType,
+            'monthly' => $monthly,
+            'by_trip' => $byTrip,
         ]);
     }
 
@@ -504,16 +525,16 @@ class AdminExtendedController extends Controller
             ->with(['schedule.trip', 'user', 'passengers', 'seats'])
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return $this->error('ไม่พบการจองสำหรับ QR Code นี้', 404);
         }
 
         if ($booking->status !== 'confirmed') {
-            return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน (สถานะ: ' . $booking->status . ')', 422);
+            return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน (สถานะ: '.$booking->status.')', 422);
         }
 
         if ($booking->checked_in) {
-            return $this->error('เช็คอินแล้วเมื่อ ' . $booking->checked_in_at->format('d/m/Y H:i'), 422);
+            return $this->error('เช็คอินแล้วเมื่อ '.$booking->checked_in_at->format('d/m/Y H:i'), 422);
         }
 
         $booking->update([
@@ -535,7 +556,7 @@ class AdminExtendedController extends Controller
         }
 
         if ($booking->checked_in) {
-            return $this->error('เช็คอินแล้วเมื่อ ' . $booking->checked_in_at->format('d/m/Y H:i'), 422);
+            return $this->error('เช็คอินแล้วเมื่อ '.$booking->checked_in_at->format('d/m/Y H:i'), 422);
         }
 
         $booking->update([
@@ -562,26 +583,26 @@ class AdminExtendedController extends Controller
             $query->where('is_approved', $request->boolean('is_approved'));
         }
         if ($request->filled('search')) {
-            $query->whereHas('user', fn($q) => $q->where('name', 'like', "%{$request->search}%"))
-                  ->orWhere('comment', 'like', "%{$request->search}%");
+            $query->whereHas('user', fn ($q) => $q->where('name', 'like', "%{$request->search}%"))
+                ->orWhere('comment', 'like', "%{$request->search}%");
         }
 
         $reviews = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
 
-        return $this->paginated($reviews->through(fn($r) => [
-            'id'               => $r->id,
-            'user_name'        => $r->user?->name ?? '-',
-            'user_email'       => $r->user?->email ?? '-',
-            'trip_title'       => $r->trip?->title ?? '-',
-            'booking_ref'      => $r->booking?->booking_ref ?? '-',
-            'rating'           => $r->rating,
-            'comment'          => $r->comment,
-            'images'           => $r->images ?? [],
-            'admin_reply'      => $r->admin_reply,
+        return $this->paginated($reviews->through(fn ($r) => [
+            'id' => $r->id,
+            'user_name' => $r->user?->name ?? '-',
+            'user_email' => $r->user?->email ?? '-',
+            'trip_title' => $r->trip?->title ?? '-',
+            'booking_ref' => $r->booking?->booking_ref ?? '-',
+            'rating' => $r->rating,
+            'comment' => $r->comment,
+            'images' => $r->images ?? [],
+            'admin_reply' => $r->admin_reply,
             'admin_replied_by' => $r->repliedBy?->name,
             'admin_replied_at' => $r->admin_replied_at?->toISOString(),
-            'is_approved'      => $r->is_approved,
-            'created_at'       => $r->created_at?->toISOString(),
+            'is_approved' => $r->is_approved,
+            'created_at' => $r->created_at?->toISOString(),
         ]));
     }
 
@@ -594,7 +615,7 @@ class AdminExtendedController extends Controller
         ]);
 
         $review->update([
-            'admin_reply'      => $validated['reply'],
+            'admin_reply' => $validated['reply'],
             'admin_replied_by' => $request->user()->id,
             'admin_replied_at' => now(),
         ]);
@@ -605,7 +626,7 @@ class AdminExtendedController extends Controller
     public function adminToggleReviewApproval(int $id): JsonResponse
     {
         $review = Review::findOrFail($id);
-        $review->update(['is_approved' => !$review->is_approved]);
+        $review->update(['is_approved' => ! $review->is_approved]);
 
         $msg = $review->is_approved ? 'อนุมัติรีวิวแล้ว' : 'ซ่อนรีวิวแล้ว';
 
@@ -627,30 +648,30 @@ class AdminExtendedController extends Controller
             ->orderByDesc('created_at')
             ->paginate($request->get('per_page', 15));
 
-        return $this->paginated($rewards->through(fn($r) => [
-            'id'               => $r->id,
-            'name'             => $r->name,
-            'description'      => $r->description,
-            'type'             => $r->type,
-            'points_required'  => $r->points_required,
-            'discount_value'   => $r->discount_value,
-            'is_active'        => $r->is_active,
-            'stock'            => $r->stock,
+        return $this->paginated($rewards->through(fn ($r) => [
+            'id' => $r->id,
+            'name' => $r->name,
+            'description' => $r->description,
+            'type' => $r->type,
+            'points_required' => $r->points_required,
+            'discount_value' => $r->discount_value,
+            'is_active' => $r->is_active,
+            'stock' => $r->stock,
             'redemptions_count' => $r->redemptions_count,
-            'created_at'       => $r->created_at?->toISOString(),
+            'created_at' => $r->created_at?->toISOString(),
         ]));
     }
 
     public function adminStoreReward(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
-            'description'     => ['nullable', 'string'],
-            'type'            => ['required', 'in:discount_percent,discount_fixed,free_item'],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'type' => ['required', 'in:discount_percent,discount_fixed,free_item'],
             'points_required' => ['required', 'integer', 'min:1'],
-            'discount_value'  => ['nullable', 'numeric', 'min:0'],
-            'is_active'       => ['sometimes', 'boolean'],
-            'stock'           => ['nullable', 'integer', 'min:0'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'is_active' => ['sometimes', 'boolean'],
+            'stock' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $reward = LoyaltyReward::create($validated);
@@ -663,13 +684,13 @@ class AdminExtendedController extends Controller
         $reward = LoyaltyReward::findOrFail($id);
 
         $validated = $request->validate([
-            'name'            => ['sometimes', 'string', 'max:255'],
-            'description'     => ['nullable', 'string'],
-            'type'            => ['sometimes', 'in:discount_percent,discount_fixed,free_item'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'type' => ['sometimes', 'in:discount_percent,discount_fixed,free_item'],
             'points_required' => ['sometimes', 'integer', 'min:1'],
-            'discount_value'  => ['nullable', 'numeric', 'min:0'],
-            'is_active'       => ['sometimes', 'boolean'],
-            'stock'           => ['nullable', 'integer', 'min:0'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'is_active' => ['sometimes', 'boolean'],
+            'stock' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $reward->update($validated);
@@ -692,17 +713,17 @@ class AdminExtendedController extends Controller
             ->pluck('count', 'tier')
             ->toArray();
 
-        $totalPointsIssued = \App\Models\LoyaltyTransaction::where('type', 'earn')->sum('points');
-        $totalPointsRedeemed = abs(\App\Models\LoyaltyTransaction::where('type', 'redeem')->sum('points'));
+        $totalPointsIssued = LoyaltyTransaction::where('type', 'earn')->sum('points');
+        $totalPointsRedeemed = abs(LoyaltyTransaction::where('type', 'redeem')->sum('points'));
 
         return $this->success([
-            'total_accounts'       => $totalAccounts,
-            'tier_counts'          => [
+            'total_accounts' => $totalAccounts,
+            'tier_counts' => [
                 'regular' => (int) ($tierCounts['regular'] ?? 0),
-                'silver'  => (int) ($tierCounts['silver'] ?? 0),
-                'gold'    => (int) ($tierCounts['gold'] ?? 0),
+                'silver' => (int) ($tierCounts['silver'] ?? 0),
+                'gold' => (int) ($tierCounts['gold'] ?? 0),
             ],
-            'total_points_issued'  => (int) $totalPointsIssued,
+            'total_points_issued' => (int) $totalPointsIssued,
             'total_points_redeemed' => (int) $totalPointsRedeemed,
         ]);
     }

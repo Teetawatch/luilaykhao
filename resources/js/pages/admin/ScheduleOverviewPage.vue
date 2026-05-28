@@ -456,6 +456,29 @@
             <div v-else class="pickup-summary-empty">ยังไม่มีข้อมูลจุดรับสำหรับรอบนี้</div>
           </div>
 
+          <div v-if="selectedSchedule.addons_summary?.length" class="addons-summary-block">
+            <div class="addons-summary-head">
+              <span class="material-symbols-rounded">add_shopping_cart</span>
+              <div>
+                <span class="manifest-kicker">รายการเสริมที่ลูกค้าเลือก</span>
+                <strong>{{ scheduleAddonsItemCount(selectedSchedule) }} รายการ · รวม {{ formatCurrency(scheduleAddonsTotal(selectedSchedule)) }}</strong>
+              </div>
+            </div>
+            <div class="addons-summary-list">
+              <div v-for="addon in selectedSchedule.addons_summary" :key="addon.name" class="addons-summary-row">
+                <div class="addons-summary-info">
+                  <strong>{{ addon.name }}</strong>
+                  <span class="addons-summary-meta">
+                    {{ formatCurrency(addon.unit_price) }}
+                    {{ addon.price_type === 'per_person' ? '/ คน' : '/ การจอง' }}
+                  </span>
+                </div>
+                <span class="addons-summary-qty">× {{ addon.total_quantity }}</span>
+                <strong class="addons-summary-price">{{ formatCurrency(addon.total_price) }}</strong>
+              </div>
+            </div>
+          </div>
+
           <div class="insurance-manifest">
             <div class="insurance-manifest-title">
               <div>
@@ -1025,6 +1048,18 @@ function schedulePassengers(sch) {
 
 function schedulePassengerCount(sch) {
   return schedulePassengers(sch).length;
+}
+
+function scheduleAddons(sch) {
+  return Array.isArray(sch?.addons_summary) ? sch.addons_summary : [];
+}
+
+function scheduleAddonsItemCount(sch) {
+  return scheduleAddons(sch).reduce((sum, addon) => sum + (Number(addon?.total_quantity) || 0), 0);
+}
+
+function scheduleAddonsTotal(sch) {
+  return scheduleAddons(sch).reduce((sum, addon) => sum + (Number(addon?.total_price) || 0), 0);
 }
 
 function fullPassengerName(person) {
@@ -2236,6 +2271,86 @@ onUnmounted(() => {
   padding: 16px;
   color: var(--color-text-muted);
   font-size: 13px;
+}
+
+.addons-summary-block {
+  margin-top: 18px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--color-white);
+}
+
+.addons-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border-bottom: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.addons-summary-head .material-symbols-rounded {
+  font-size: 20px;
+}
+
+.addons-summary-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.addons-summary-head strong {
+  font-size: 13px;
+  color: #14532d;
+}
+
+.addons-summary-list {
+  display: grid;
+}
+
+.addons-summary-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eeeeee;
+  font-size: 13px;
+}
+
+.addons-summary-row:last-child {
+  border-bottom: none;
+}
+
+.addons-summary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.addons-summary-info strong {
+  color: var(--color-text-dark);
+  font-weight: 800;
+}
+
+.addons-summary-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.addons-summary-qty {
+  font-size: 12px;
+  color: var(--color-text-mid);
+  font-weight: 800;
+}
+
+.addons-summary-price {
+  color: #166534;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .insurance-manifest {
