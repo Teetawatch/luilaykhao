@@ -16,6 +16,9 @@ class Booking extends Model
     // สถานะที่ลูกค้าแก้ไขการจอง (ย้ายวัน/เปลี่ยนจุดรับ) ได้
     public const MODIFIABLE_STATUSES = ['pending', 'confirmed'];
 
+    // เปลี่ยนวันเดินทางได้ก่อนเดินทางอย่างน้อยกี่วัน
+    public const RESCHEDULE_LEAD_DAYS = 20;
+
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'is_group', 'group_name', 'group_notes',
@@ -27,7 +30,7 @@ class Booking extends Model
         'balance_slip_ocr_status', 'balance_slip_ocr_result',
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
         'slip_ocr_status', 'slip_ocr_result',
-        'cancellation_reason', 'cancelled_at',
+        'cancellation_reason', 'cancelled_at', 'rescheduled_at',
         'refund_status', 'refund_amount', 'refunded_at',
         'promotion_id', 'promotion_code', 'discount_amount',
         'is_join_trip',
@@ -42,6 +45,7 @@ class Booking extends Model
             'discount_amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'rescheduled_at' => 'datetime',
             'refund_amount' => 'decimal:2',
             'refunded_at' => 'datetime',
             'checked_in_at' => 'datetime',
@@ -165,6 +169,35 @@ class Booking extends Model
         }
 
         $deadline = $this->modificationDeadline();
+
+        return $deadline !== null && now()->lte($deadline);
+    }
+
+    /**
+     * เส้นตายการเปลี่ยนวันเดินทาง — ก่อนวันเดินทางอย่างน้อย RESCHEDULE_LEAD_DAYS วัน
+     */
+    public function rescheduleDeadline(): ?Carbon
+    {
+        $schedule = $this->relationLoaded('schedule') ? $this->schedule : $this->schedule()->first();
+
+        return $schedule?->departure_date?->copy()->subDays(self::RESCHEDULE_LEAD_DAYS)->endOfDay();
+    }
+
+    /**
+     * เปลี่ยนวันเดินทางได้หรือไม่ — สถานะ active, ยังไม่เคยเปลี่ยน (ครั้งเดียว),
+     * และยังไม่เลยเส้นตาย 20 วันก่อนเดินทาง
+     */
+    public function canBeRescheduled(): bool
+    {
+        if (! in_array($this->status, self::MODIFIABLE_STATUSES, true)) {
+            return false;
+        }
+
+        if ($this->rescheduled_at !== null) {
+            return false;
+        }
+
+        $deadline = $this->rescheduleDeadline();
 
         return $deadline !== null && now()->lte($deadline);
     }

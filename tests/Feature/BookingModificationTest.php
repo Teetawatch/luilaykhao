@@ -94,6 +94,7 @@ class BookingModificationTest extends TestCase
 
         $booking->refresh();
         $this->assertSame($target->id, $booking->schedule_id);
+        $this->assertNotNull($booking->rescheduled_at); // ใช้สิทธิ์เปลี่ยนวันแล้ว
         $this->assertEquals($originalTotal, $booking->total_amount); // คงราคาเดิม
         $this->assertDatabaseHas('booking_seats', [
             'booking_id' => $booking->id,
@@ -218,5 +219,78 @@ class BookingModificationTest extends TestCase
                 'pickup_point_id' => $foreignPickup->id,
             ])
             ->assertStatus(422);
+    }
+
+    public function test_reschedule_blocked_within_20_days_of_departure(): void
+    {
+        $user = User::factory()->create();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip, now()->addDays(10)->toDateString()); // < 20 วัน
+        $target = $this->makeSchedule($trip, now()->addMonths(2)->toDateString());
+
+        $booking = $this->makeSeatBooking($user, $source, ['A1']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
+                'target_schedule_id' => $target->id,
+                'seat_ids' => ['B2'],
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame($source->id, $booking->fresh()->schedule_id);
+        $this->assertNull($booking->fresh()->rescheduled_at);
+    }
+
+    public function test_reschedule_allowed_only_once(): void
+    {
+        $user = User::factory()->create();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip, now()->addMonth()->toDateString());
+        $target = $this->makeSchedule($trip, now()->addMonths(2)->toDateString());
+        $target2 = $this->makeSchedule($trip, now()->addMonths(3)->toDateString());
+
+        $booking = $this->makeSeatBooking($user, $source, ['A1']);
+
+        // ครั้งแรก — สำเร็จ
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
+                'target_schedule_id' => $target->id,
+                'seat_ids' => ['B2'],
+            ])
+            ->assertOk();
+
+        // ครั้งที่สอง — ถูกปฏิเสธ (เปลี่ยนได้ครั้งเดียว)
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
+                'target_schedule_id' => $target2->id,
+                'seat_ids' => ['C3'],
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame($target->id, $booking->fresh()->schedule_id);
+    }
+
+    public function test_change_pickup_still_allowed_within_20_days(): void
+    {
+        // กฎ 20 วันบังคับเฉพาะการเปลี่ยนวันเดินทาง ไม่กระทบการเปลี่ยนจุดรับ
+        $user = User::factory()->create();
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, now()->addDays(10)->toDateString()); // < 20 วัน
+        $pickup = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'price' => 1800,
+            'sort_order' => 1,
+        ]);
+
+        $booking = $this->makeSeatBooking($user, $schedule, ['A1']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/bookings/{$booking->booking_ref}/change-pickup", [
+                'pickup_point_id' => $pickup->id,
+            ])
+            ->assertOk();
     }
 }

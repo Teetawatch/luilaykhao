@@ -344,8 +344,12 @@ class BookingService
         $rescheduled = DB::transaction(function () use ($booking, $targetScheduleId, $seatIds, $pickupPointId) {
             $booking->loadMissing(['schedule.trip', 'passengers', 'seats']);
 
-            if (! $booking->canBeModified()) {
-                throw new \Exception('การจองนี้ไม่สามารถเปลี่ยนวันเดินทางได้ (เปลี่ยนได้ถึงก่อนเดินทาง 1 วัน)');
+            if ($booking->rescheduled_at !== null) {
+                throw new \Exception('การจองนี้เปลี่ยนวันเดินทางได้เพียงครั้งเดียว (ใช้สิทธิ์ไปแล้ว)');
+            }
+
+            if (! $booking->canBeRescheduled()) {
+                throw new \Exception('เปลี่ยนวันเดินทางได้ก่อนเดินทางอย่างน้อย '.Booking::RESCHEDULE_LEAD_DAYS.' วันเท่านั้น');
             }
 
             $source = TripSchedule::lockForUpdate()->findOrFail($booking->schedule_id);
@@ -442,6 +446,7 @@ class BookingService
                 'schedule_id' => $target->id,
                 'pickup_point_id' => $pickupPoint?->id,
                 'pickup_region' => $pickupPoint?->region,
+                'rescheduled_at' => now(),
             ]);
 
             $source->syncBookedSeats();

@@ -64,6 +64,13 @@ class BookingResource extends JsonResource
             'modification_deadline' => $this->relationLoaded('schedule') && $this->schedule
                 ? $this->modificationDeadline()?->toISOString()
                 : null,
+            'can_reschedule' => $this->relationLoaded('schedule') && $this->schedule
+                ? $this->canBeRescheduled()
+                : false,
+            'reschedule_deadline' => $this->relationLoaded('schedule') && $this->schedule
+                ? $this->rescheduleDeadline()?->toISOString()
+                : null,
+            'rescheduled_at' => $this->rescheduled_at?->toISOString(),
             'total_amount' => $this->total_amount,
             'selected_addons' => $this->selected_addons ?? [],
             'addons_total' => $this->addons_total,
