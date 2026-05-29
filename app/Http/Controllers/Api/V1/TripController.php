@@ -55,7 +55,7 @@ class TripController extends Controller
     {
         $trips = Trip::where('status', 'active')
             ->where('is_featured', true)
-            ->with(['schedules' => function ($q) {
+            ->with(['photos', 'schedules' => function ($q) {
                 $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
             }])
             ->orderByDesc('created_at')
@@ -68,7 +68,7 @@ class TripController extends Controller
     public function show(string $slug): JsonResponse
     {
         $trip = Trip::where('slug', $slug)
-            ->with(['schedules' => function ($q) {
+            ->with(['photos', 'schedules' => function ($q) {
                 $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
             }])
             ->firstOrFail();

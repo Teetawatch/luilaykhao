@@ -171,6 +171,7 @@ const menuGroups = ref([
       { to: '/admin/check-in', icon: 'fas fa-qrcode', label: 'เช็คอิน QR' },
       { to: '/admin/staff-assignments', icon: 'fas fa-user-check', label: 'มอบหมายสตาฟ' },
       { to: '/admin/chat', icon: 'fas fa-comments', label: 'แชทกลุ่มทริป' },
+      { to: '/admin/schedule-photos', icon: 'fas fa-camera-retro', label: 'ภาพให้ลูกค้า' },
     ],
     isOpen: false
   },

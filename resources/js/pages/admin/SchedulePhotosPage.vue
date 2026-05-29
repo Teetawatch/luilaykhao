@@ -1,0 +1,583 @@
+<template>
+  <div class="admin-page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">
+          <span class="material-symbols-rounded heading-icon">photo_camera</span>
+          ภาพให้ลูกค้าโหลด
+        </h1>
+        <p class="page-subtitle">
+          อัปโหลดรูปกิจกรรมที่ถ่ายให้ลูกค้าในแต่ละรอบเดินทาง — ลูกค้าที่จองรอบนั้นจะเปิดดู/ดาวน์โหลดได้ในแอป
+        </p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+      <div class="filter-field">
+        <label>ทริป</label>
+        <select v-model="filters.tripId" @change="fetchSchedules">
+          <option value="">— ทั้งหมด —</option>
+          <option v-for="t in trips" :key="t.id" :value="t.id">{{ t.title }}</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <label>ตั้งแต่วันที่</label>
+        <input v-model="filters.from" type="date" @change="fetchSchedules" />
+      </div>
+      <div class="filter-field">
+        <label>ถึงวันที่</label>
+        <input v-model="filters.to" type="date" @change="fetchSchedules" />
+      </div>
+      <div class="filter-field" style="flex: 1; min-width: 200px;">
+        <label>ค้นหา</label>
+        <input
+          v-model="filters.search"
+          type="text"
+          placeholder="ชื่อทริป / รอบเดินทาง"
+          @input="onSearchInput"
+        />
+      </div>
+    </div>
+
+    <!-- Schedules list -->
+    <div class="table-card">
+      <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
+      <div v-else>
+        <div v-if="!filteredSchedules.length" class="empty-state">
+          <span class="material-symbols-rounded" style="font-size:48px;color:#d1d5db;display:block;margin-bottom:12px;">
+            event_busy
+          </span>
+          ไม่พบรอบเดินทางที่ตรงเงื่อนไข
+        </div>
+
+        <div v-else class="schedule-list">
+          <div
+            v-for="sch in filteredSchedules"
+            :key="sch.id"
+            class="schedule-row"
+          >
+            <div class="schedule-info">
+              <div class="schedule-trip">{{ sch.trip?.title || '—' }}</div>
+              <div class="schedule-meta">
+                <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-2px;">event</span>
+                {{ formatDate(sch.departure_date) }}
+                <template v-if="sch.return_date && sch.return_date !== sch.departure_date">
+                  → {{ formatDate(sch.return_date) }}
+                </template>
+                <span class="dot">·</span>
+                <span :class="['status-pill', `pill-${sch.status}`]">{{ statusLabel(sch.status) }}</span>
+                <span class="dot">·</span>
+                ที่นั่ง {{ sch.booked_seats }}/{{ sch.total_seats }}
+              </div>
+            </div>
+
+            <div class="schedule-photos-count">
+              <span class="material-symbols-rounded">image</span>
+              <span>{{ photoCounts[sch.id] ?? '—' }} รูป</span>
+            </div>
+
+            <div class="action-btns">
+              <button class="btn-primary btn-sm" @click="openManager(sch)">
+                <span class="material-symbols-rounded" style="font-size:16px">add_a_photo</span>
+                จัดการรูป
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo Manager Modal -->
+    <div class="modal-overlay" v-if="manager.open" @click.self="closeManager">
+      <div class="modal-card" style="max-width: 960px">
+        <div class="modal-header">
+          <div>
+            <h2>
+              <span class="material-symbols-rounded heading-icon" style="font-size:22px;vertical-align:-4px;">
+                photo_library
+              </span>
+              {{ manager.schedule?.trip?.title }}
+            </h2>
+            <p class="modal-subtitle">
+              {{ formatDate(manager.schedule?.departure_date) }}
+              <template v-if="manager.schedule?.return_date && manager.schedule.return_date !== manager.schedule.departure_date">
+                → {{ formatDate(manager.schedule.return_date) }}
+              </template>
+            </p>
+          </div>
+          <button class="modal-close" @click="closeManager">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Drop zone -->
+          <div
+            class="upload-zone large"
+            @click="filePicker.click()"
+            @dragover.prevent
+            @drop.prevent="onDrop"
+          >
+            <input
+              ref="filePicker"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+              multiple
+              style="display:none"
+              @change="onFileSelect"
+            />
+            <div class="upload-placeholder">
+              <span class="material-symbols-rounded" style="font-size:36px">cloud_upload</span>
+              <p style="font-size:14px;font-weight:700;color:#374151;margin-top:4px">
+                คลิกหรือลากรูปมาวางที่นี่ (เลือกได้หลายไฟล์)
+              </p>
+              <p style="font-size:12px;color:#9ca3af">
+                JPG, PNG, WebP, HEIC — ครั้งละสูงสุด 20 ไฟล์ · ไฟล์ละไม่เกิน 15 MB
+              </p>
+            </div>
+          </div>
+
+          <!-- Upload progress -->
+          <div v-if="uploading" class="upload-status">
+            <div class="upload-progress">
+              <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
+            </div>
+            <p style="font-size:12px;color:#6b7280;margin-top:6px">
+              กำลังอัปโหลด {{ uploadProgress }}%
+            </p>
+          </div>
+
+          <!-- Photo grid -->
+          <div v-if="manager.loadingPhotos" class="loading-state"><div class="spinner"></div></div>
+          <div v-else-if="!manager.photos.length" class="empty-state" style="padding:32px 0">
+            ยังไม่มีรูปในรอบนี้ — อัปโหลดรูปแรกได้เลย
+          </div>
+          <div v-else class="photo-grid">
+            <div
+              v-for="photo in manager.photos"
+              :key="photo.id"
+              class="photo-tile"
+            >
+              <img :src="photo.url" :alt="`photo-${photo.id}`" loading="lazy" />
+              <button
+                class="photo-delete"
+                :disabled="deletingId === photo.id"
+                @click="confirmDeletePhoto(photo)"
+                :title="'ลบรูปนี้'"
+              >
+                <span class="material-symbols-rounded" style="font-size:16px">
+                  {{ deletingId === photo.id ? 'sync' : 'delete' }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <span style="font-size:13px;color:#6b7280">
+            ทั้งหมด {{ manager.photos.length }} รูป
+          </span>
+          <button class="btn-secondary" @click="closeManager">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue';
+import api from '../../../js/lib/axios';
+
+const loading = ref(true);
+const schedules = ref([]);
+const trips = ref([]);
+const photoCounts = reactive({});
+let searchDebounce = null;
+
+const filters = reactive({
+  tripId: '',
+  from: '',
+  to: '',
+  search: '',
+});
+
+const filePicker = ref(null);
+const uploading = ref(false);
+const uploadProgress = ref(0);
+const deletingId = ref(null);
+
+const manager = reactive({
+  open: false,
+  schedule: null,
+  photos: [],
+  loadingPhotos: false,
+});
+
+const filteredSchedules = computed(() => {
+  const q = filters.search.trim().toLowerCase();
+  if (!q) return schedules.value;
+  return schedules.value.filter((s) =>
+    (s.trip?.title || '').toLowerCase().includes(q) ||
+    String(s.id).includes(q)
+  );
+});
+
+const fetchTrips = async () => {
+  try {
+    const res = await api.get('/admin/trips', { params: { per_page: 200 } });
+    trips.value = res.data.data ?? res.data;
+  } catch {
+    trips.value = [];
+  }
+};
+
+const fetchSchedules = async () => {
+  loading.value = true;
+  try {
+    const params = {};
+    if (filters.tripId) params.trip_id = filters.tripId;
+    if (filters.from) params.from = filters.from;
+    if (filters.to) params.to = filters.to;
+    const res = await api.get('/admin/schedules', { params });
+    schedules.value = res.data.data ?? res.data ?? [];
+    // Fetch photo counts in parallel — cap at 30 at a time to avoid bursting.
+    await Promise.all(
+      schedules.value.slice(0, 30).map((s) => loadPhotoCount(s.id))
+    );
+  } catch (e) {
+    schedules.value = [];
+    alert(e.response?.data?.message ?? 'โหลดรอบเดินทางไม่สำเร็จ');
+  } finally {
+    loading.value = false;
+  }
+};
+
+const loadPhotoCount = async (scheduleId) => {
+  try {
+    const res = await api.get(`/admin/schedules/${scheduleId}/photos`);
+    const list = res.data.data ?? res.data ?? [];
+    photoCounts[scheduleId] = list.length;
+  } catch {
+    photoCounts[scheduleId] = 0;
+  }
+};
+
+const onSearchInput = () => {
+  if (searchDebounce) clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    // Local filter only — no need to refetch on search.
+  }, 200);
+};
+
+const openManager = async (schedule) => {
+  manager.schedule = schedule;
+  manager.open = true;
+  manager.photos = [];
+  await loadManagerPhotos();
+};
+
+const closeManager = () => {
+  manager.open = false;
+  manager.schedule = null;
+  manager.photos = [];
+};
+
+const loadManagerPhotos = async () => {
+  if (!manager.schedule) return;
+  manager.loadingPhotos = true;
+  try {
+    const res = await api.get(`/admin/schedules/${manager.schedule.id}/photos`);
+    manager.photos = res.data.data ?? res.data ?? [];
+    photoCounts[manager.schedule.id] = manager.photos.length;
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'โหลดรูปไม่สำเร็จ');
+  } finally {
+    manager.loadingPhotos = false;
+  }
+};
+
+const onFileSelect = (e) => uploadFiles(Array.from(e.target.files || []));
+const onDrop = (e) => uploadFiles(Array.from(e.dataTransfer.files || []));
+
+const uploadFiles = async (files) => {
+  if (!manager.schedule || !files.length) return;
+  // Chunk into batches of 10 so the backend's max:20-per-request stays comfortable
+  // and progress feedback stays responsive on slow links.
+  const chunks = [];
+  for (let i = 0; i < files.length; i += 10) chunks.push(files.slice(i, i + 10));
+
+  uploading.value = true;
+  uploadProgress.value = 0;
+  try {
+    for (let i = 0; i < chunks.length; i++) {
+      const fd = new FormData();
+      for (const f of chunks[i]) fd.append('files[]', f);
+      await api.post(
+        `/admin/schedules/${manager.schedule.id}/photos`,
+        fd,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (ev) => {
+            const chunkPct = Math.round((ev.loaded / (ev.total || 1)) * 100);
+            uploadProgress.value = Math.round(
+              ((i + chunkPct / 100) / chunks.length) * 100
+            );
+          },
+        }
+      );
+    }
+    await loadManagerPhotos();
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'อัปโหลดไม่สำเร็จ');
+  } finally {
+    uploading.value = false;
+    uploadProgress.value = 0;
+    if (filePicker.value) filePicker.value.value = '';
+  }
+};
+
+const confirmDeletePhoto = async (photo) => {
+  if (!confirm('ลบรูปนี้ใช่หรือไม่? การลบจะลบไฟล์จาก Cloudflare R2 ด้วย')) return;
+  deletingId.value = photo.id;
+  try {
+    await api.delete(`/admin/schedules/${manager.schedule.id}/photos/${photo.id}`);
+    manager.photos = manager.photos.filter((p) => p.id !== photo.id);
+    photoCounts[manager.schedule.id] = manager.photos.length;
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'ลบรูปไม่สำเร็จ');
+  } finally {
+    deletingId.value = null;
+  }
+};
+
+const formatDate = (d) => {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return d;
+  }
+};
+
+const statusLabel = (s) => ({
+  open: 'เปิดจอง',
+  closed: 'ปิดจอง',
+  cancelled: 'ยกเลิก',
+  completed: 'จบทริป',
+})[s] || s;
+
+onMounted(async () => {
+  await Promise.all([fetchTrips(), fetchSchedules()]);
+});
+</script>
+
+<style scoped>
+@import url('./admin-shared.css');
+
+.heading-icon {
+  color: var(--color-accent);
+  font-size: 28px;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.filter-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.filter-field input,
+.filter-field select {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s;
+}
+
+.schedule-row:last-child { border-bottom: none; }
+.schedule-row:hover { background: #fafafa; }
+
+.schedule-info { flex: 1; min-width: 0; }
+
+.schedule-trip {
+  font-weight: 800;
+  font-size: 15px;
+  color: #111827;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schedule-meta {
+  font-size: 13px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.schedule-meta .dot { color: #d1d5db; }
+
+.schedule-photos-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-accent, #2d7a4f);
+  background: rgba(45, 122, 79, 0.08);
+  padding: 6px 12px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.schedule-photos-count .material-symbols-rounded { font-size: 16px; }
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pill-open { background: #d1fae5; color: #065f46; }
+.pill-closed { background: #fee2e2; color: #991b1b; }
+.pill-cancelled { background: #f3f4f6; color: #6b7280; }
+.pill-completed { background: #dbeafe; color: #1e40af; }
+
+.btn-sm {
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
+.upload-zone.large {
+  min-height: 140px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 16px;
+}
+
+.upload-zone.large:hover {
+  border-color: var(--color-accent, #2d7a4f);
+  background: #f0fdf4;
+}
+
+.upload-placeholder {
+  text-align: center;
+  color: #6b7280;
+}
+
+.upload-placeholder .material-symbols-rounded {
+  color: var(--color-accent, #2d7a4f);
+}
+
+.upload-status { margin-bottom: 16px; }
+
+.upload-progress {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--color-accent, #2d7a4f);
+  transition: width 0.2s;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.photo-tile {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.photo-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.photo-delete:hover { background: rgba(220, 38, 38, 0.85); }
+.photo-delete:disabled { opacity: 0.6; cursor: progress; }
+
+.modal-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+</style>

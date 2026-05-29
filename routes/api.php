@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
@@ -95,6 +96,7 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
         Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
+        Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
 
         // Group chat per trip schedule (customers + assigned staff + admins)
@@ -284,6 +286,17 @@ Route::prefix('v1')->group(function () {
         Route::post('users', [AdminController::class, 'storeUser']);
         Route::put('users/{id}', [AdminController::class, 'updateUser']);
         Route::delete('users/{id}', [AdminController::class, 'deleteUser']);
+
+        // Trip & schedule photos (Cloudflare R2)
+        Route::get('trips/{id}/photos', [PhotoController::class, 'tripIndex']);
+        Route::post('trips/{id}/photos', [PhotoController::class, 'tripUpload']);
+        Route::post('trips/{id}/photos/reorder', [PhotoController::class, 'tripReorder']);
+        Route::delete('trips/{id}/photos/{photoId}', [PhotoController::class, 'tripDestroy']);
+
+        Route::get('schedules/{id}/photos', [PhotoController::class, 'scheduleIndex']);
+        Route::post('schedules/{id}/photos', [PhotoController::class, 'scheduleUpload']);
+        Route::post('schedules/{id}/photos/reorder', [PhotoController::class, 'scheduleReorder']);
+        Route::delete('schedules/{id}/photos/{photoId}', [PhotoController::class, 'scheduleDestroy']);
 
         // Upload
         Route::post('upload-image', [AdminController::class, 'uploadMedia']);

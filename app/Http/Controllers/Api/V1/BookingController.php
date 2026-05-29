@@ -8,6 +8,7 @@ use App\Http\Requests\Booking\ChangePickupRequest;
 use App\Http\Requests\Booking\CreateBookingRequest;
 use App\Http\Requests\Booking\RescheduleBookingRequest;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\SchedulePhotoResource;
 use App\Models\Booking;
 use App\Services\BookingService;
 use App\Traits\ApiResponse;
@@ -134,5 +135,23 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
+    }
+
+    /**
+     * Photos taken by staff during the customer's trip, downloadable from
+     * the customer app. Restricted to the booking owner; cancelled bookings
+     * are excluded.
+     */
+    public function photos(Request $request, string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)
+            ->where('user_id', $request->user()->id)
+            ->whereNotIn('status', ['cancelled'])
+            ->with('schedule.photos')
+            ->firstOrFail();
+
+        $photos = $booking->schedule?->photos ?? collect();
+
+        return $this->success(SchedulePhotoResource::collection($photos));
     }
 }

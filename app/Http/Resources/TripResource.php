@@ -47,6 +47,7 @@ class TripResource extends JsonResource
             'cover_image' => $this->cover_image,
             'thumbnail_image' => $this->thumbnail_image,
             'gallery' => $this->gallery ?? [],
+            'photos' => TripPhotoResource::collection($this->whenLoaded('photos')),
             'inclusions' => $this->inclusions ?? [],
             'exclusions' => $this->exclusions ?? [],
             'highlights' => $this->highlights ?? [],

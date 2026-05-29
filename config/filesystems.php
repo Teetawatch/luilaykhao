@@ -60,6 +60,24 @@ return [
             'report' => false,
         ],
 
+        // Cloudflare R2 — S3-compatible.
+        // Set R2_PUBLIC_URL to your custom domain (e.g. https://media.luilaykhao.com)
+        // or the bucket's r2.dev URL. Without it, getUrl() returns the API endpoint
+        // (which isn't browser-accessible).
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => env('R2_REGION', 'auto'),
+            'bucket' => env('R2_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'url' => env('R2_PUBLIC_URL'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

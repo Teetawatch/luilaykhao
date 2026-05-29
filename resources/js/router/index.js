@@ -55,6 +55,7 @@ import AdminScheduleOverview from '../pages/admin/ScheduleOverviewPage.vue';
 import AdminManualBooking from '../pages/admin/ManualBookingPage.vue';
 import AdminHeroSlides from '../pages/admin/HeroSlidesPage.vue';
 import AdminChat from '../pages/admin/ChatPage.vue';
+import AdminSchedulePhotos from '../pages/admin/SchedulePhotosPage.vue';
 
 
 const routes = [
@@ -226,6 +227,7 @@ const routes = [
       { path: 'promotions', name: 'admin-promotions', component: AdminPromotions },
       { path: 'schedule-overview', name: 'admin-schedule-overview', component: AdminScheduleOverview },
       { path: 'hero-slides', name: 'admin-hero-slides', component: AdminHeroSlides },
+      { path: 'schedule-photos', name: 'admin-schedule-photos', component: AdminSchedulePhotos },
     ],
 
   },

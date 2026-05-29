@@ -111,6 +111,13 @@ class TripSchedule extends Model
         return $this->hasMany(WaitlistEntry::class, 'schedule_id');
     }
 
+    public function photos(): HasMany
+    {
+        return $this->hasMany(SchedulePhoto::class, 'schedule_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function getAvailableSeatsAttribute(): int
     {
         return max(0, (int) $this->total_seats - (int) $this->booked_seats);

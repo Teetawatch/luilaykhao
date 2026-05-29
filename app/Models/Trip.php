@@ -48,6 +48,11 @@ class Trip extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function photos(): HasMany
+    {
+        return $this->hasMany(TripPhoto::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function getConfirmedPassengersCountAttribute(): int
     {
         return \App\Models\BookingPassenger::whereHas('booking', function($q) {
