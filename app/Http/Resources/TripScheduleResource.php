@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Http\Resources\SchedulePickupPointResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -44,6 +43,10 @@ class TripScheduleResource extends JsonResource
             'join_trip_enabled' => (bool) $this->join_trip_enabled,
             'join_trip_price' => $this->join_trip_price,
             'is_charter' => (bool) $this->is_charter,
+            'weather' => $this->when(
+                isset($this->weather_forecast),
+                fn () => $this->weather_forecast
+            ),
             'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
             'waitlist_count' => $this->when(
                 isset($this->waitlist_count),

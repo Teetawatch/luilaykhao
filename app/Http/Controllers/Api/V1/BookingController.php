@@ -11,9 +11,11 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\SchedulePhotoResource;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Services\WeatherService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
 {
@@ -21,6 +23,7 @@ class BookingController extends Controller
 
     public function __construct(
         private BookingService $bookingService,
+        private WeatherService $weatherService,
     ) {}
 
     public function store(CreateBookingRequest $request): JsonResponse
@@ -62,7 +65,46 @@ class BookingController extends Controller
             ])
             ->firstOrFail();
 
+        $this->attachWeather($booking);
+
         return $this->success(new BookingResource($booking));
+    }
+
+    /**
+     * Best-effort: attach the departure-day forecast to the booking's schedule
+     * so the booking detail screen can surface it. Never let a weather lookup
+     * failure break the booking response.
+     */
+    private function attachWeather(Booking $booking): void
+    {
+        $schedule = $booking->schedule;
+        $trip = $schedule?->trip;
+
+        if (! $schedule || ! $trip || $trip->latitude === null || $trip->longitude === null) {
+            return;
+        }
+
+        $date = $schedule->departure_date?->toDateString();
+        if (! $date) {
+            return;
+        }
+
+        try {
+            $forecast = $this->weatherService->forecastFor(
+                (float) $trip->latitude,
+                (float) $trip->longitude,
+                $date,
+            );
+
+            if ($forecast) {
+                $schedule->weather_forecast = $forecast->toPayload();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Unable to attach weather to booking', [
+                'booking_ref' => $booking->booking_ref,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function index(Request $request): JsonResponse

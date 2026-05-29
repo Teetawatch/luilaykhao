@@ -40,6 +40,16 @@ return [
         'distance_matrix_url' => 'https://maps.googleapis.com/maps/api/distancematrix/json',
     ],
 
+    'weather' => [
+        'provider' => env('WEATHER_PROVIDER', 'openweather'),
+        'api_key' => env('OPENWEATHER_API_KEY'),
+        'base_url' => env('OPENWEATHER_BASE_URL', 'https://api.openweathermap.org'),
+        'units' => env('WEATHER_UNITS', 'metric'),
+        'lang' => env('WEATHER_LANG', 'th'),
+        // How long a cached daily forecast stays fresh before we re-fetch (minutes).
+        'cache_ttl_minutes' => (int) env('WEATHER_CACHE_TTL_MINUTES', 180),
+    ],
+
     'fcm' => [
         'project_id' => env('FCM_PROJECT_ID'),
         'service_account_path' => env('FCM_SERVICE_ACCOUNT_PATH', 'storage/app/firebase-service-account.json'),
