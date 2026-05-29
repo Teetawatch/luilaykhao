@@ -2,12 +2,46 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">airport_shuttle</span> ยานพาหนะ</h1>
-        <p class="page-subtitle">จัดการรถตู้และเรือ</p>
+        <h1 class="page-title">
+          <span class="material-symbols-rounded heading-icon">airport_shuttle</span> ยานพาหนะ
+        </h1>
+        <p class="page-subtitle">จัดการรถตู้และเรือ พร้อมรอบทริปที่ได้รับมอบหมาย</p>
       </div>
       <button class="btn-primary" @click="openForm()">
         <span class="material-symbols-rounded">add</span> เพิ่มยานพาหนะ
       </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="vehicle-stats">
+      <div class="stat-card">
+        <div class="stat-icon stat-all"><span class="material-symbols-rounded">directions_car</span></div>
+        <div class="stat-info">
+          <span class="stat-value">{{ allVehicles.length }}</span>
+          <span class="stat-label">ยานพาหนะทั้งหมด</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-van"><span class="material-symbols-rounded">airport_shuttle</span></div>
+        <div class="stat-info">
+          <span class="stat-value">{{ allVehicles.filter(v => v.type === 'van').length }}</span>
+          <span class="stat-label">รถตู้</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-boat"><span class="material-symbols-rounded">directions_boat</span></div>
+        <div class="stat-info">
+          <span class="stat-value">{{ allVehicles.filter(v => v.type === 'boat').length }}</span>
+          <span class="stat-label">เรือ</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-schedule"><span class="material-symbols-rounded">event</span></div>
+        <div class="stat-info">
+          <span class="stat-value">{{ upcomingSchedules.length }}</span>
+          <span class="stat-label">รอบที่กำลังจะมาถึง</span>
+        </div>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -16,92 +50,222 @@
         <span class="material-symbols-rounded">search</span>
         <input v-model="searchQuery" placeholder="ค้นหาชื่อ, ทะเบียน, คนขับ..." />
       </div>
-      <select v-model="filters.type" @change="fetchData()">
-        <option value="">ทุกประเภท</option>
-        <option value="van">รถตู้</option>
-        <option value="boat">เรือ</option>
-      </select>
+      <div class="type-tabs">
+        <button
+          v-for="tab in typeTabs"
+          :key="tab.value"
+          class="type-tab"
+          :class="{ active: filters.type === tab.value }"
+          @click="filters.type = tab.value"
+        >
+          <span class="material-symbols-rounded">{{ tab.icon }}</span>
+          {{ tab.label }}
+          <span class="tab-count">{{ tab.count }}</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Grid Cards -->
-    <div class="table-card" style="background: transparent; border: none; padding: 0;">
-      <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
-      <div class="vehicles-grid" v-else>
-        <div class="vehicle-card" v-for="v in filteredVehicles" :key="v.id">
-          <div class="vehicle-icon" :class="`vtype-${v.type}`">
-            <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-          </div>
-          <div class="vehicle-info">
-            <h3>{{ v.name }}</h3>
-            <div class="vehicle-meta">
-              <span class="type-tag" :class="`type-${v.type === 'van' ? 'trekking' : 'diving'}`">
-                {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
-              </span>
-              <span class="capacity-badge">
-                <span class="material-symbols-rounded" style="font-size:14px;">groups</span> {{ v.capacity }} ที่นั่ง
-              </span>
-              <span class="plate-badge" v-if="v.license_plate">
-                <span class="material-symbols-rounded" style="font-size:14px;">badge</span> {{ v.license_plate }}
-              </span>
+    <!-- Content -->
+    <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
+    <template v-else>
+      <!-- Grouped by type when showing all -->
+      <template v-if="!filters.type">
+        <template v-for="group in vehicleGroups" :key="group.type">
+          <div class="type-section" v-if="group.vehicles.length">
+            <div class="type-section-header">
+              <span class="material-symbols-rounded">{{ group.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+              <span>{{ group.label }}</span>
+              <span class="section-count">{{ group.vehicles.length }} คัน</span>
             </div>
-            <div class="vehicle-detail-row" v-if="v.color">
-              <span class="material-symbols-rounded" :style="{ color: colorHex(v.color), fontSize: '14px' }">circle</span>
-              <span>{{ v.color }}</span>
-            </div>
-            <div class="vehicle-detail-row" v-if="v.driver_name">
-              <div class="driver-photo-avatar" v-if="v.driver_photo">
-                <img :src="v.driver_photo" />
-              </div>
-              <span class="material-symbols-rounded" style="font-size:14px;" v-else>person</span>
-              <span>{{ v.driver_name }}</span>
-              <span v-if="v.driver_phone" class="driver-phone">
-                <span class="material-symbols-rounded" style="font-size:14px;">phone</span> {{ v.driver_phone }}
-              </span>
-            </div>
-            <div class="pickup-summary" v-if="v.pickup_points?.length">
-              <div class="pickup-summary-header" @click="togglePickups(v.id)">
-                <span class="material-symbols-rounded" style="font-size:14px;">location_on</span>
-                <span>{{ v.pickup_points.length }} จุดรับผู้โดยสาร</span>
-                <span class="material-symbols-rounded toggle-icon">{{ expandedPickups.has(v.id) ? 'expand_less' : 'expand_more' }}</span>
-              </div>
-              <div class="pickup-list" v-if="expandedPickups.has(v.id)">
-                <div
-                  class="pickup-item"
-                  v-for="pt in groupedPickups(v.pickup_points)"
-                  :key="pt.region"
-                >
-                  <span class="region-chip">{{ pt.region_label }}</span>
-                  <div class="pickup-locations">
-                    <div v-for="loc in pt.locations" :key="loc.id" class="pickup-loc-row">
-                      <span class="material-symbols-rounded" style="font-size:12px;">radio_button_checked</span>
-                      <span>{{ loc.pickup_location }}</span>
-                      <span v-if="loc.notes" class="pickup-notes">{{ loc.notes }}</span>
+            <div class="vehicles-grid">
+              <div class="vehicle-card" v-for="v in group.vehicles" :key="v.id">
+                <div class="vc-top" :class="'vtype-bg-' + v.type">
+                  <div class="vc-type-icon">
+                    <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                  </div>
+                  <div class="vc-header-info">
+                    <h3>{{ v.name }}</h3>
+                    <div class="vc-badges">
+                      <span class="type-tag" :class="'type-' + (v.type === 'van' ? 'trekking' : 'diving')">
+                        {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
+                      </span>
+                      <span class="capacity-chip">
+                        <span class="material-symbols-rounded">groups</span> {{ v.capacity }} ที่นั่ง
+                      </span>
+                      <span class="plate-chip" v-if="v.license_plate">{{ v.license_plate }}</span>
+                    </div>
+                  </div>
+                  <div class="vc-actions">
+                    <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
+                    <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded">grid_view</span></button>
+                    <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded">location_on</span></button>
+                    <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
+                  </div>
+                </div>
+                <div class="vc-body">
+                  <div class="driver-row" v-if="v.driver_name">
+                    <div class="driver-avatar" v-if="v.driver_photo"><img :src="v.driver_photo" /></div>
+                    <div class="driver-placeholder" v-else><span class="material-symbols-rounded">person</span></div>
+                    <div class="driver-info">
+                      <span class="driver-name">{{ v.driver_name }}</span>
+                      <span class="driver-phone" v-if="v.driver_phone">
+                        <span class="material-symbols-rounded">phone</span> {{ v.driver_phone }}
+                      </span>
+                    </div>
+                    <div class="color-dot" v-if="v.color"
+                      :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
+                      :title="v.color"
+                    ></div>
+                  </div>
+                  <div class="schedule-section" v-if="vehicleSchedules(v.id).length">
+                    <div class="schedule-section-title">
+                      <span class="material-symbols-rounded">event</span>
+                      รอบที่กำลังจะมาถึง
+                      <span class="schedule-count-badge">{{ vehicleSchedules(v.id).length }}</span>
+                    </div>
+                    <div class="schedule-list">
+                      <div class="schedule-item" v-for="s in vehicleSchedules(v.id).slice(0, 3)" :key="s.id">
+                        <div class="s-date-box">
+                          <span class="s-month">{{ formatMonth(s.departure_date) }}</span>
+                          <span class="s-day">{{ formatDay(s.departure_date) }}</span>
+                        </div>
+                        <div class="s-detail">
+                          <span class="s-trip-name">{{ s.trip?.title || '—' }}</span>
+                          <div class="s-meta">
+                            <span class="s-seats" :class="seatClass(s)">
+                              <span class="material-symbols-rounded">chair</span>
+                              {{ s.booked_seats }}/{{ s.total_seats }}
+                            </span>
+                            <span class="s-status-badge" :class="'s-status-' + s.status">
+                              {{ statusLabels[s.status] || s.status }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="schedule-more" v-if="vehicleSchedules(v.id).length > 3">
+                        <span class="material-symbols-rounded">more_horiz</span>
+                        อีก {{ vehicleSchedules(v.id).length - 3 }} รอบ
+                      </div>
+                    </div>
+                  </div>
+                  <div class="no-schedule" v-else>
+                    <span class="material-symbols-rounded">event_available</span>
+                    ยังไม่มีรอบที่กำลังจะมาถึง
+                  </div>
+                  <div class="vc-footer">
+                    <div class="footer-chip" v-if="v.pickup_points?.length" @click="openPickupManager(v)">
+                      <span class="material-symbols-rounded">location_on</span>
+                      {{ v.pickup_points.length }} จุดรับ
+                    </div>
+                    <div class="footer-chip" v-if="v.seat_layout" @click="openLayoutEditor(v)">
+                      <span class="material-symbols-rounded">grid_view</span>
+                      {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="seat-layout-info" v-if="v.seat_layout">
-              <span class="layout-badge">
-                <span class="material-symbols-rounded" style="font-size:14px;">grid_view</span> {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่นั่ง
-              </span>
+          </div>
+        </template>
+      </template>
+
+      <!-- Flat grid when type is filtered -->
+      <div class="vehicles-grid" v-else>
+        <div class="vehicle-card" v-for="v in filteredVehicles" :key="v.id">
+          <div class="vc-top" :class="'vtype-bg-' + v.type">
+            <div class="vc-type-icon">
+              <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+            </div>
+            <div class="vc-header-info">
+              <h3>{{ v.name }}</h3>
+              <div class="vc-badges">
+                <span class="type-tag" :class="'type-' + (v.type === 'van' ? 'trekking' : 'diving')">
+                  {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
+                </span>
+                <span class="capacity-chip">
+                  <span class="material-symbols-rounded">groups</span> {{ v.capacity }} ที่นั่ง
+                </span>
+                <span class="plate-chip" v-if="v.license_plate">{{ v.license_plate }}</span>
+              </div>
+            </div>
+            <div class="vc-actions">
+              <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
+              <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded">grid_view</span></button>
+              <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded">location_on</span></button>
+              <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
             </div>
           </div>
-          <div class="vehicle-actions">
-            <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
-            <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded" style="font-size:16px;">grid_view</span></button>
-            <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded" style="font-size:16px;">location_on</span></button>
-            <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
+          <div class="vc-body">
+            <div class="driver-row" v-if="v.driver_name">
+              <div class="driver-avatar" v-if="v.driver_photo"><img :src="v.driver_photo" /></div>
+              <div class="driver-placeholder" v-else><span class="material-symbols-rounded">person</span></div>
+              <div class="driver-info">
+                <span class="driver-name">{{ v.driver_name }}</span>
+                <span class="driver-phone" v-if="v.driver_phone">
+                  <span class="material-symbols-rounded">phone</span> {{ v.driver_phone }}
+                </span>
+              </div>
+              <div class="color-dot" v-if="v.color"
+                :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
+                :title="v.color"
+              ></div>
+            </div>
+            <div class="schedule-section" v-if="vehicleSchedules(v.id).length">
+              <div class="schedule-section-title">
+                <span class="material-symbols-rounded">event</span>
+                รอบที่กำลังจะมาถึง
+                <span class="schedule-count-badge">{{ vehicleSchedules(v.id).length }}</span>
+              </div>
+              <div class="schedule-list">
+                <div class="schedule-item" v-for="s in vehicleSchedules(v.id).slice(0, 3)" :key="s.id">
+                  <div class="s-date-box">
+                    <span class="s-month">{{ formatMonth(s.departure_date) }}</span>
+                    <span class="s-day">{{ formatDay(s.departure_date) }}</span>
+                  </div>
+                  <div class="s-detail">
+                    <span class="s-trip-name">{{ s.trip?.title || '—' }}</span>
+                    <div class="s-meta">
+                      <span class="s-seats" :class="seatClass(s)">
+                        <span class="material-symbols-rounded">chair</span>
+                        {{ s.booked_seats }}/{{ s.total_seats }}
+                      </span>
+                      <span class="s-status-badge" :class="'s-status-' + s.status">
+                        {{ statusLabels[s.status] || s.status }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="schedule-more" v-if="vehicleSchedules(v.id).length > 3">
+                  <span class="material-symbols-rounded">more_horiz</span>
+                  อีก {{ vehicleSchedules(v.id).length - 3 }} รอบ
+                </div>
+              </div>
+            </div>
+            <div class="no-schedule" v-else>
+              <span class="material-symbols-rounded">event_available</span>
+              ยังไม่มีรอบที่กำลังจะมาถึง
+            </div>
+            <div class="vc-footer">
+              <div class="footer-chip" v-if="v.pickup_points?.length" @click="openPickupManager(v)">
+                <span class="material-symbols-rounded">location_on</span>
+                {{ v.pickup_points.length }} จุดรับ
+              </div>
+              <div class="footer-chip" v-if="v.seat_layout" @click="openLayoutEditor(v)">
+                <span class="material-symbols-rounded">grid_view</span>
+                {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่
+              </div>
+            </div>
           </div>
         </div>
-        <div class="empty-state-card" v-if="!filteredVehicles.length">
-          <span class="material-symbols-rounded" style="font-size:48px;">directions_car</span>
-          <p>ไม่พบยานพาหนะ</p>
-        </div>
       </div>
-    </div>
 
-    <!-- Vehicle Form Modal -->
+      <div class="empty-state-card" v-if="filteredVehicles.length === 0">
+        <span class="material-symbols-rounded">directions_car</span>
+        <p>ไม่พบยานพาหนะ</p>
+      </div>
+    </template>
+
+    <!-- ─── Vehicle Form Modal ─────────────────────── -->
     <div class="modal-overlay" v-if="showForm">
       <div class="modal-card modal-lg">
         <div class="modal-header">
@@ -109,7 +273,9 @@
           <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <form @submit.prevent="submitForm" class="modal-body">
-          <div class="form-section-title"><span class="material-symbols-rounded" style="font-size:18px;">directions_car</span> ข้อมูลยานพาหนะ</div>
+          <div class="form-section-title">
+            <span class="material-symbols-rounded">directions_car</span> ข้อมูลยานพาหนะ
+          </div>
           <div class="form-grid">
             <div class="form-group full-width">
               <label>ชื่อ *</label>
@@ -135,7 +301,9 @@
               <input v-model="form.color" placeholder="เช่น ขาว, เทา, น้ำเงิน" class="form-input" />
             </div>
           </div>
-          <div class="form-section-title"><span class="material-symbols-rounded" style="font-size:18px;">person</span> ข้อมูลคนขับ</div>
+          <div class="form-section-title">
+            <span class="material-symbols-rounded">person</span> ข้อมูลคนขับ
+          </div>
           <div class="form-grid">
             <div class="form-group full-width">
               <label>เลือกจากผู้ใช้งาน (ถ้ามี)</label>
@@ -162,7 +330,9 @@
               <div class="media-upload-row">
                 <div class="media-preview-sm" v-if="form.driver_photo">
                   <img :src="form.driver_photo" />
-                  <button type="button" class="remove-btn" @click="form.driver_photo = ''"><span class="material-symbols-rounded" style="font-size:12px;">close</span></button>
+                  <button type="button" class="remove-btn" @click="form.driver_photo = ''">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
                 </div>
                 <div class="upload-placeholder" v-else @click="triggerUpload(driverPhotoInput)">
                   <span class="material-symbols-rounded animate-spin" v-if="uploadState.driver">sync</span>
@@ -173,15 +343,18 @@
               </div>
             </div>
           </div>
-
-          <div class="form-section-title"><span class="material-symbols-rounded" style="font-size:18px;">photo_library</span> รูปภาพและวิดีโอ (สำหรับลูปพาเหรด)</div>
+          <div class="form-section-title">
+            <span class="material-symbols-rounded">photo_library</span> รูปภาพและวิดีโอ
+          </div>
           <div class="form-grid">
             <div class="form-group full-width">
               <label>รูปภาพภายในรถ (สูงสุด 10 รูป)</label>
               <div class="gallery-grid-editor">
                 <div v-for="(img, idx) in form.images" :key="idx" class="gallery-item-preview">
                   <img :src="img" />
-                  <button type="button" class="remove-btn" @click="removeItem('images', idx)"><span class="material-symbols-rounded" style="font-size:12px;">close</span></button>
+                  <button type="button" class="remove-btn" @click="removeItem('images', idx)">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
                 </div>
                 <div class="gallery-add-btn" v-if="form.images.length < 10" @click="triggerUpload(galleryInput)">
                   <span class="material-symbols-rounded animate-spin" v-if="uploadState.gallery">sync</span>
@@ -196,7 +369,9 @@
               <div class="media-upload-row">
                 <div class="video-preview" v-if="form.interior_video">
                   <video :src="form.interior_video" controls></video>
-                  <button type="button" class="remove-btn" @click="form.interior_video = ''"><span class="material-symbols-rounded" style="font-size:12px;">close</span></button>
+                  <button type="button" class="remove-btn" @click="form.interior_video = ''">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
                 </div>
                 <div class="upload-placeholder" v-else @click="triggerUpload(videoInput)">
                   <span class="material-symbols-rounded animate-spin" v-if="uploadState.video">sync</span>
@@ -218,15 +393,17 @@
       </div>
     </div>
 
-    <!-- Pickup Points Manager Modal -->
+    <!-- ─── Pickup Points Manager Modal ─────────────── -->
     <div class="modal-overlay" v-if="showPickupManager">
       <div class="modal-card modal-xl">
         <div class="modal-header">
-          <h2><span class="material-symbols-rounded heading-icon">location_on</span> จุดรับผู้โดยสาร — {{ pickupVehicle?.name }}</h2>
+          <h2>
+            <span class="material-symbols-rounded heading-icon">location_on</span>
+            จุดรับผู้โดยสาร — {{ pickupVehicle?.name }}
+          </h2>
           <button class="modal-close" @click="closePickupManager"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
-          <!-- Pickup list grouped by region -->
           <div class="pickup-manager-list" v-if="pickupPoints.length">
             <div v-for="group in groupedPickups(pickupPoints)" :key="group.region" class="pickup-region-group">
               <div class="pickup-region-header">
@@ -236,31 +413,40 @@
               <div class="pickup-manager-items">
                 <div v-for="pt in group.locations" :key="pt.id" class="pickup-manager-item">
                   <div class="pickup-manager-item-info">
-                    <span class="pickup-loc-name"><span class="material-symbols-rounded" style="font-size:14px;">location_on</span> {{ pt.pickup_location }}</span>
-                    <span v-if="pt.notes" class="pickup-notes-text"><span class="material-symbols-rounded" style="font-size:14px;">notes</span> {{ pt.notes }}</span>
-                    <a v-if="pt.map_url" :href="pt.map_url" target="_blank" class="map-link"><span class="material-symbols-rounded" style="font-size:14px;">open_in_new</span> แผนที่</a>
+                    <span class="pickup-loc-name">
+                      <span class="material-symbols-rounded">location_on</span> {{ pt.pickup_location }}
+                    </span>
+                    <span v-if="pt.notes" class="pickup-notes-text">
+                      <span class="material-symbols-rounded">notes</span> {{ pt.notes }}
+                    </span>
+                    <a v-if="pt.map_url" :href="pt.map_url" target="_blank" class="map-link">
+                      <span class="material-symbols-rounded">open_in_new</span> แผนที่
+                    </a>
                   </div>
                   <div class="pickup-manager-item-actions">
-                    <button class="btn-icon btn-edit btn-sm" @click="openPickupForm(pt)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:14px;">edit</span></button>
-                    <button class="btn-icon btn-delete btn-sm" @click="confirmDeletePickup(pt)" title="ลบ"><span class="material-symbols-rounded" style="font-size:14px;">delete</span></button>
+                    <button class="btn-icon btn-edit btn-sm" @click="openPickupForm(pt)" title="แก้ไข">
+                      <span class="material-symbols-rounded">edit</span>
+                    </button>
+                    <button class="btn-icon btn-delete btn-sm" @click="confirmDeletePickup(pt)" title="ลบ">
+                      <span class="material-symbols-rounded">delete</span>
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           <div class="pickup-empty" v-else>
-            <span class="material-symbols-rounded" style="font-size:48px;">map</span>
+            <span class="material-symbols-rounded">map</span>
             <p>ยังไม่มีจุดรับผู้โดยสาร</p>
           </div>
 
-          <!-- Add / Edit Pickup Form -->
           <div class="pickup-add-section">
             <div class="form-section-title">
               {{ editingPickup ? 'แก้ไขจุดรับผู้โดยสาร' : 'เพิ่มจุดรับผู้โดยสาร' }}
             </div>
             <div class="form-grid">
               <div class="form-group">
-                <label>ภูมิภาค (region key) *</label>
+                <label>ภูมิภาค *</label>
                 <select v-model="pickupForm.region" @change="onRegionChange" class="form-input">
                   <option value="">-- เลือกภูมิภาค --</option>
                   <option value="north">north — ภาคเหนือ</option>
@@ -300,7 +486,7 @@
       </div>
     </div>
 
-    <!-- Delete Pickup Confirm -->
+    <!-- ─── Delete Pickup Confirm ─────────────────── -->
     <div class="modal-overlay" v-if="showDeletePickupConfirm">
       <div class="modal-card modal-sm">
         <div class="modal-header">
@@ -317,7 +503,7 @@
       </div>
     </div>
 
-    <!-- Delete Vehicle Confirm -->
+    <!-- ─── Delete Vehicle Confirm ────────────────── -->
     <div class="modal-overlay" v-if="showDeleteConfirm">
       <div class="modal-card modal-sm">
         <div class="modal-header">
@@ -326,7 +512,10 @@
         </div>
         <div class="modal-body">
           <p class="confirm-text">คุณต้องการลบ <strong>{{ deleting?.name }}</strong> ใช่หรือไม่?</p>
-          <p class="confirm-warning"><span class="material-symbols-rounded" style="color:var(--color-gold);">warning</span> การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <p class="confirm-warning">
+            <span class="material-symbols-rounded" style="color:var(--color-gold);">warning</span>
+            การดำเนินการนี้ไม่สามารถย้อนกลับได้
+          </p>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
@@ -335,7 +524,7 @@
       </div>
     </div>
 
-    <!-- Seat Layout Editor Modal -->
+    <!-- ─── Seat Layout Editor Modal ──────────────── -->
     <div class="modal-overlay" v-if="showLayoutEditor">
       <div class="modal-card modal-lg">
         <div class="modal-header">
@@ -373,6 +562,7 @@ const deleting = ref(null);
 const submitting = ref(false);
 const expandedPickups = ref(new Set());
 const staffUsers = ref([]);
+const upcomingSchedules = ref([]);
 
 const form = reactive({
   name: '', type: 'van', capacity: 10,
@@ -385,7 +575,6 @@ const galleryInput = ref(null);
 const videoInput = ref(null);
 const uploadState = reactive({ driver: false, gallery: false, video: false });
 
-// Pickup manager state
 const showPickupManager = ref(false);
 const pickupVehicle = ref(null);
 const pickupPoints = ref([]);
@@ -397,10 +586,9 @@ const pickupForm = reactive({
   region: '', region_label: '', pickup_location: '', notes: '', map_url: '',
 });
 
-// Layout editor state
 const showLayoutEditor = ref(false);
 const layoutVehicle = ref(null);
-const layoutForm = ref({ rows: 4, columns: ['A','B','C','','D','E',], seats: [] });
+const layoutForm = ref({ rows: 4, columns: ['A','B','C','','D','E'], seats: [] });
 const submittingLayout = ref(false);
 
 const REGION_LABELS = {
@@ -408,8 +596,15 @@ const REGION_LABELS = {
   east: 'ภาคตะวันออก', west: 'ภาคตะวันตก', south: 'ภาคใต้',
 };
 
+const statusLabels = {
+  open: 'รับสมัคร', full: 'เต็ม', closed: 'ปิด', cancelled: 'ยกเลิก', completed: 'จบแล้ว',
+};
+
+const allVehicles = computed(() => admin.vehicles.data || []);
+
 const filteredVehicles = computed(() => {
-  let data = admin.vehicles.data || [];
+  let data = allVehicles.value;
+  if (filters.type) data = data.filter(v => v.type === filters.type);
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     data = data.filter(v =>
@@ -420,6 +615,30 @@ const filteredVehicles = computed(() => {
   }
   return data;
 });
+
+const vehicleGroups = computed(() => [
+  { type: 'van', label: 'รถตู้', vehicles: filteredVehicles.value.filter(v => v.type === 'van') },
+  { type: 'boat', label: 'เรือ', vehicles: filteredVehicles.value.filter(v => v.type === 'boat') },
+]);
+
+const typeTabs = computed(() => [
+  { value: '', icon: 'directions_car', label: 'ทั้งหมด', count: allVehicles.value.length },
+  { value: 'van', icon: 'airport_shuttle', label: 'รถตู้', count: allVehicles.value.filter(v => v.type === 'van').length },
+  { value: 'boat', icon: 'directions_boat', label: 'เรือ', count: allVehicles.value.filter(v => v.type === 'boat').length },
+]);
+
+const vehicleSchedulesMap = computed(() => {
+  const map = {};
+  for (const s of upcomingSchedules.value) {
+    const vid = s.vehicle?.id;
+    if (!vid) continue;
+    if (!map[vid]) map[vid] = [];
+    map[vid].push(s);
+  }
+  return map;
+});
+
+const vehicleSchedules = (vehicleId) => vehicleSchedulesMap.value[vehicleId] || [];
 
 const groupedPickups = (points) => {
   const map = {};
@@ -438,29 +657,48 @@ const colorHex = (colorName) => {
     'น้ำเงิน': '#3b82f6', 'เขียว': '#22c55e', 'เหลือง': '#eab308',
     'ส้ม': '#f97316', 'ม่วง': '#a855f7', 'ชมพู': '#ec4899',
   };
-  return map[colorName] || 'var(--color-text-muted)';
+  return map[colorName] || '#9ca3af';
 };
 
-const togglePickups = (id) => {
-  const s = new Set(expandedPickups.value);
-  s.has(id) ? s.delete(id) : s.add(id);
-  expandedPickups.value = s;
+const MONTHS_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const formatMonth = (d) => MONTHS_TH[new Date(d).getMonth()];
+const formatDay = (d) => new Date(d).getDate();
+
+const seatClass = (s) => {
+  const ratio = s.booked_seats / (s.total_seats || 1);
+  if (ratio >= 1) return 'seats-full';
+  if (ratio >= 0.8) return 'seats-almost';
+  return 'seats-ok';
 };
 
 const fetchData = () => {
   admin.fetchVehicles({ ...filters });
   fetchStaff();
+  fetchUpcomingSchedules();
 };
 
 const fetchStaff = async () => {
   try {
-    // Fetch both staff and operators as they can be drivers
     const res = await api.get('/admin/users', { params: { per_page: 100 } });
-    staffUsers.value = res.data.data.filter(u => 
+    staffUsers.value = res.data.data.filter(u =>
       u.roles.includes('staff') || u.roles.includes('operator') || u.roles.includes('admin')
     );
   } catch (e) {
     console.error('Failed to fetch staff:', e);
+  }
+};
+
+const fetchUpcomingSchedules = async () => {
+  try {
+    const res = await api.get('/admin/schedules', {
+      params: { per_page: 200, upcoming: 1 },
+    });
+    const data = res.data.data || [];
+    upcomingSchedules.value = data.sort((a, b) =>
+      new Date(a.departure_date) - new Date(b.departure_date)
+    );
+  } catch (e) {
+    console.error('Failed to fetch schedules:', e);
   }
 };
 
@@ -472,7 +710,7 @@ const onDriverSelect = (e) => {
     form.driver_name = user.name;
     form.driver_phone = user.phone || '';
     form.driver_photo = user.avatar_url || '';
-    e.target.value = ''; // Reset select to placeholder
+    e.target.value = '';
   }
 };
 
@@ -514,33 +752,19 @@ const submitForm = async () => {
   }
 };
 
-// ─── Media Upload Methods ──────────────────
-
 const triggerUpload = (input) => input?.click();
 
 const handleMediaUpload = async (event, type) => {
   const file = event.target.files?.[0];
   if (!file) return;
-
-  if (type === 'gallery') {
-    handleGalleryUpload(Array.from(event.target.files));
-    return;
-  }
-
-  // Validate size
+  if (type === 'gallery') { handleGalleryUpload(Array.from(event.target.files)); return; }
   const maxSize = type === 'video' ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
-  if (file.size > maxSize) {
-    alert(`ไฟล์มีขนาดเกินกำหนด (${type === 'video' ? '50MB' : '10MB'})`);
-    return;
-  }
-
+  if (file.size > maxSize) { alert(`ไฟล์มีขนาดเกินกำหนด (${type === 'video' ? '50MB' : '10MB'})`); return; }
   uploadState[type] = true;
   try {
     const formData = new FormData();
     formData.append('file', file);
-
     const res = await api.post('/admin/upload-image', formData);
-
     if (type === 'driver') form.driver_photo = res.data.data.url;
     else if (type === 'video') form.interior_video = res.data.data.url;
   } catch (e) {
@@ -552,48 +776,22 @@ const handleMediaUpload = async (event, type) => {
 };
 
 const handleGalleryUpload = async (files) => {
-  const currentCount = form.images.length;
-  const remainingCount = 10 - currentCount;
-  
-  if (remainingCount <= 0) {
-    alert('ครบโควตารูปภาพแล้ว (สูงสุด 10 รูป)');
-    return;
-  }
-
-  const filesToUpload = files.slice(0, remainingCount);
-  if (files.length > remainingCount) {
-    console.warn(`Allowed only ${remainingCount} more files, others ignored.`);
-  }
-
+  const remaining = 10 - form.images.length;
+  if (remaining <= 0) { alert('ครบโควตารูปภาพแล้ว (สูงสุด 10 รูป)'); return; }
+  const filesToUpload = files.slice(0, remaining);
   uploadState.gallery = true;
-  let successCount = 0;
   let errorCount = 0;
-
   try {
     for (const file of filesToUpload) {
-      if (file.size > 10 * 1024 * 1024) {
-        errorCount++;
-        continue;
-      }
-
+      if (file.size > 10 * 1024 * 1024) { errorCount++; continue; }
       const formData = new FormData();
       formData.append('file', file);
-
       try {
         const res = await api.post('/admin/upload-image', formData);
         form.images.push(res.data.data.url);
-        successCount++;
-      } catch (innerError) {
-        console.error('Individual upload failed:', innerError);
-        errorCount++;
-      }
+      } catch { errorCount++; }
     }
-
-    if (errorCount > 0) {
-      alert(`อัปโหลดสำเร็จ ${successCount} รูป และล้มเหลว ${errorCount} รูป`);
-    }
-  } catch (e) {
-    alert('เกิดข้อผิดพลาดในการอัปโหลด');
+    if (errorCount > 0) alert(`อัปโหลดล้มเหลว ${errorCount} รูป`);
   } finally {
     uploadState.gallery = false;
     if (galleryInput.value) galleryInput.value.value = '';
@@ -618,8 +816,6 @@ const doDelete = async () => {
     submitting.value = false;
   }
 };
-
-// ─── Pickup Manager ─────────────────────────────────────────
 
 const openPickupManager = async (v) => {
   pickupVehicle.value = v;
@@ -680,10 +876,7 @@ const submitPickupForm = async () => {
   }
 };
 
-const confirmDeletePickup = (pt) => {
-  deletingPickup.value = pt;
-  showDeletePickupConfirm.value = true;
-};
+const confirmDeletePickup = (pt) => { deletingPickup.value = pt; showDeletePickupConfirm.value = true; };
 
 const doDeletePickup = async () => {
   pickupSubmitting.value = true;
@@ -699,28 +892,18 @@ const doDeletePickup = async () => {
   }
 };
 
-// ─── Layout Editor ──────────────────────────────────────────
-
 const openLayoutEditor = (v) => {
   layoutVehicle.value = v;
-  // Deep copy the existing layout or use default
-  if (v.seat_layout && v.seat_layout.seats) {
-    layoutForm.value = JSON.parse(JSON.stringify(v.seat_layout));
-  } else {
-    layoutForm.value = { 
-      rows: 4, 
-      columns: ['A','B','C','','D','E'], 
-      seats: [] 
-    };
-  }
+  layoutForm.value = v.seat_layout?.seats
+    ? JSON.parse(JSON.stringify(v.seat_layout))
+    : { rows: 4, columns: ['A','B','C','','D','E'], seats: [] };
   showLayoutEditor.value = true;
 };
 
 const saveLayout = async () => {
   submittingLayout.value = true;
   try {
-    // Prepare the update data for the whole vehicle
-    const vehicleData = {
+    await admin.updateVehicle(layoutVehicle.value.id, {
       name: layoutVehicle.value.name,
       type: layoutVehicle.value.type,
       capacity: layoutVehicle.value.capacity,
@@ -729,9 +912,7 @@ const saveLayout = async () => {
       color: layoutVehicle.value.color,
       driver_name: layoutVehicle.value.driver_name,
       driver_phone: layoutVehicle.value.driver_phone,
-    };
-
-    await admin.updateVehicle(layoutVehicle.value.id, vehicleData);
+    });
     showLayoutEditor.value = false;
     fetchData();
     alert('บันทึกผังที่นั่งสำเร็จ');
@@ -748,345 +929,406 @@ onMounted(() => fetchData());
 <style scoped>
 @import url('./admin-shared.css');
 
-.vehicles-grid {
+/* ─── Stats ───────────────────────────────────────── */
+.vehicle-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 16px;
-  padding: 0 0 20px 0;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+@media (max-width: 768px) { .vehicle-stats { grid-template-columns: repeat(2, 1fr); } }
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--color-white);
+  border-radius: 14px;
+  border: 1px solid var(--color-sand-dark);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+
+.stat-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.stat-icon .material-symbols-rounded { font-size: 22px; }
+.stat-all  { background: linear-gradient(135deg, #f0f9ff, #e0f2fe); color: #0369a1; }
+.stat-van  { background: linear-gradient(135deg, #fef9ee, #fef3c7); color: #b45309; }
+.stat-boat { background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1d4ed8; }
+.stat-schedule { background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #15803d; }
+
+.stat-info { display: flex; flex-direction: column; }
+.stat-value { font-size: 26px; font-weight: 800; color: #111827; line-height: 1; }
+.stat-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+/* ─── Filters & Type Tabs ─────────────────────────── */
+.filters-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+
+.type-tabs { display: flex; gap: 6px; }
+
+.type-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-mid);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Anuphan', sans-serif;
+}
+.type-tab .material-symbols-rounded { font-size: 16px; }
+.type-tab:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.type-tab.active { background: var(--color-accent); color: white; border-color: var(--color-accent); }
+
+.tab-count {
+  background: rgba(255,255,255,0.25);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+.type-tab:not(.active) .tab-count { background: var(--color-sand); color: var(--color-text-mid); }
+
+/* ─── Type Section Headers ────────────────────────── */
+.type-section { margin-bottom: 28px; }
+
+.type-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+}
+.type-section-header .material-symbols-rounded { font-size: 20px; color: var(--color-accent); }
+.section-count {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-sand);
+  padding: 2px 10px;
+  border-radius: 10px;
 }
 
+/* ─── Vehicles Grid ───────────────────────────────── */
+.vehicles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+/* ─── Vehicle Card ────────────────────────────────── */
 .vehicle-card {
   background: var(--color-white);
   border-radius: 16px;
   border: 1px solid var(--color-sand-dark);
-  padding: 20px;
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  transition: all 0.2s;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-}
-
-.vehicle-card:hover {
-  box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-  transform: translateY(-2px);
-}
-
-.vehicle-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.vehicle-icon .material-symbols-rounded { font-size: 28px; }
-
-.vtype-van { background: var(--color-sand); color: var(--color-accent); }
-.vtype-boat { background: #eff6ff; color: #2563eb; }
-
-.vehicle-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.vehicle-info h3 {
-  margin: 0 0 8px;
-  font-size: 16px;
-  color: var(--color-text-dark);
-  font-weight: 700;
-}
-
-.vehicle-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-
-.capacity-badge {
-  font-size: 12px;
-  color: var(--color-text-mid);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.plate-badge {
-  font-size: 12px;
-  background: var(--color-sand);
-  color: var(--color-text-mid);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid var(--color-sand-dark);
-}
-
-.vehicle-detail-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-text-muted);
-  margin-top: 6px;
-}
-
-.select-with-icon {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.select-with-icon .material-symbols-rounded {
-  position: absolute;
-  left: 12px;
-  color: var(--color-text-muted);
-  pointer-events: none;
-}
-
-.select-with-icon .form-input {
-  padding-left: 40px;
-}
-
-.driver-phone {
-  margin-left: 8px;
-  color: var(--color-ocean);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.seat-layout-info {
-  margin-top: 8px;
-}
-
-.layout-badge {
-  font-size: 12px;
-  color: var(--color-text-mid);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.pickup-summary {
-  margin-top: 12px;
-  border: 1px solid var(--color-sand-dark);
-  border-radius: 10px;
   overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
 }
+.vehicle-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.07); transform: translateY(-2px); }
 
-.pickup-summary-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-text-muted);
-  padding: 8px 12px;
-  background: var(--color-sand);
-  cursor: pointer;
-  user-select: none;
-  font-weight: 500;
-}
-
-.pickup-summary-header:hover { background: var(--color-sand-dark); color: var(--color-text-dark); }
-
-.toggle-icon { margin-left: auto; font-size: 18px; }
-
-.pickup-list { padding: 8px 12px; background: var(--color-white); }
-
-.pickup-item { margin-bottom: 10px; }
-.pickup-item:last-child { margin-bottom: 0; }
-
-.region-chip {
-  display: inline-block;
-  font-size: 11px;
-  background: #f3e8ff;
-  color: #7e22ce;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.pickup-locations { padding-left: 6px; }
-
-.pickup-loc-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-text-dark);
-  margin-top: 4px;
-}
-
-.pickup-notes {
-  font-size: 12px;
-  color: var(--color-text-mid);
-  margin-left: 4px;
-}
-
-.vehicle-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.btn-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  transition: all 0.15s;
-}
-
-.btn-pickup {
-  background: #f3e8ff;
-  color: #7e22ce;
-  border: none;
-}
-.btn-pickup:hover { background: #e9d5ff; }
-
-.btn-layout {
-  background: #fce7f3;
-  color: #be185d;
-  border: none;
-}
-.btn-layout:hover { background: #fbcfe8; }
-
-.empty-state-card {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--color-text-muted);
-  background: var(--color-white);
-  border-radius: 16px;
-  border: 1px dashed var(--color-sand-dark);
-}
-.empty-state-card p {
-  margin-top: 12px;
-  font-size: 15px;
-}
-
-/* Modal sizes */
-.modal-lg { max-width: 620px; }
-.modal-xl { max-width: 760px; }
-
-/* Form sections */
-.form-section-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text-dark);
-  margin: 20px 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Pickup manager */
-.pickup-manager-list { margin-bottom: 20px; }
-
-.pickup-region-group { margin-bottom: 20px; }
-
-.pickup-region-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.region-chip-lg {
-  display: inline-block;
-  background: #f3e8ff;
-  color: #7e22ce;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 4px 14px;
-  border-radius: 16px;
-}
-
-.region-code { font-size: 12px; color: var(--color-text-mid); }
-
-.pickup-manager-items { display: flex; flex-direction: column; gap: 8px; }
-
-.pickup-manager-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--color-white);
-  border: 1px solid var(--color-sand-dark);
-  border-radius: 10px;
-  padding: 12px 14px;
-}
-
-.pickup-manager-item-info {
+/* Card top strip */
+.vc-top {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
-  flex: 1;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-sand-dark);
+}
+.vtype-bg-van  { background: linear-gradient(135deg, #fffbeb, #fef9ee); }
+.vtype-bg-boat { background: linear-gradient(135deg, #eff6ff, #f0f9ff); }
+
+.vc-type-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.vtype-bg-van  .vc-type-icon { background: #fef3c7; color: #b45309; }
+.vtype-bg-boat .vc-type-icon { background: #dbeafe; color: #1d4ed8; }
+.vc-type-icon .material-symbols-rounded { font-size: 24px; }
+
+.vc-header-info { flex: 1; min-width: 0; }
+.vc-header-info h3 {
+  margin: 0 0 5px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vc-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+.capacity-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 12px; color: var(--color-text-mid); font-weight: 500;
+}
+.capacity-chip .material-symbols-rounded { font-size: 14px; }
+
+.plate-chip {
+  font-size: 11px; font-weight: 700;
+  background: rgba(255,255,255,0.7); color: var(--color-text-mid);
+  padding: 2px 8px; border-radius: 6px;
+  border: 1px solid var(--color-sand-dark);
+  letter-spacing: 0.3px;
 }
 
-.pickup-loc-name { display:flex; align-items:center; gap:4px; font-size: 14px; color: var(--color-text-dark); font-weight: 600; }
-.pickup-notes-text { display:flex; align-items:center; gap:4px; font-size: 13px; color: var(--color-text-muted); }
-.map-link { display:flex; align-items:center; gap:4px; font-size: 13px; color: var(--color-ocean); text-decoration: none; }
-.map-link:hover { text-decoration: underline; }
+.vc-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
-.pickup-manager-item-actions { display: flex; gap: 6px; }
+/* Card body */
+.vc-body { padding: 14px 16px; }
 
-.btn-sm { padding: 6px 12px !important; font-size: 13px !important; height: auto; border-radius: 8px;}
-
-.pickup-empty {
-  text-align: center;
-  padding: 40px;
-  color: var(--color-text-muted);
+/* Driver row */
+.driver-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--color-sand);
+  border-radius: 10px;
+  margin-bottom: 14px;
 }
-.pickup-empty p { margin-top: 12px; font-size: 15px;}
+.driver-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%; overflow: hidden;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+}
+.driver-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.driver-placeholder {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: white; display: flex; align-items: center; justify-content: center;
+  color: var(--color-text-mid); flex-shrink: 0;
+}
+.driver-placeholder .material-symbols-rounded { font-size: 18px; }
+.driver-info { flex: 1; min-width: 0; }
+.driver-name { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-dark); }
+.driver-phone {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 12px; color: var(--color-ocean); margin-top: 2px;
+}
+.driver-phone .material-symbols-rounded { font-size: 13px; }
+.color-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
 
-.pickup-add-section {
+/* Schedule section */
+.schedule-section { margin-bottom: 12px; }
+
+.schedule-section-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; color: var(--color-text-mid);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.schedule-section-title .material-symbols-rounded { font-size: 15px; color: var(--color-accent); }
+
+.schedule-count-badge {
+  margin-left: auto;
+  background: var(--color-accent); color: white;
+  font-size: 11px; font-weight: 700;
+  padding: 1px 8px; border-radius: 10px;
+  text-transform: none; letter-spacing: 0;
+}
+
+.schedule-list { display: flex; flex-direction: column; gap: 6px; }
+
+.schedule-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: var(--color-sand);
+  border-radius: 8px;
+  border: 1px solid var(--color-sand-dark);
+  transition: background 0.15s;
+}
+.schedule-item:hover { background: #f0fdf4; border-color: #bbf7d0; }
+
+.s-date-box {
+  display: flex; flex-direction: column; align-items: center;
+  width: 34px; flex-shrink: 0;
+}
+.s-month { font-size: 10px; font-weight: 700; color: var(--color-accent); text-transform: uppercase; }
+.s-day { font-size: 18px; font-weight: 800; color: var(--color-text-dark); line-height: 1.1; }
+
+.s-detail { flex: 1; min-width: 0; }
+.s-trip-name {
+  display: block; font-size: 13px; font-weight: 600; color: var(--color-text-dark);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.s-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+
+.s-seats {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 6px;
+}
+.s-seats .material-symbols-rounded { font-size: 12px; }
+.seats-ok     { background: #dcfce7; color: #15803d; }
+.seats-almost { background: #fef3c7; color: #b45309; }
+.seats-full   { background: #fee2e2; color: #dc2626; }
+
+.s-status-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 1px 7px; border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+.s-status-open      { background: #dcfce7; color: #15803d; }
+.s-status-full      { background: #fee2e2; color: #dc2626; }
+.s-status-closed    { background: #f3f4f6; color: #6b7280; }
+.s-status-cancelled { background: #fef2f2; color: #991b1b; }
+.s-status-completed { background: #f3f4f6; color: #6b7280; }
+
+.schedule-more {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--color-text-muted);
+  padding: 4px 10px; font-style: italic;
+}
+.schedule-more .material-symbols-rounded { font-size: 16px; }
+
+.no-schedule {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--color-text-muted);
+  padding: 10px; background: var(--color-sand);
+  border-radius: 8px; border: 1px dashed var(--color-sand-dark);
+  margin-bottom: 12px;
+}
+.no-schedule .material-symbols-rounded { font-size: 16px; }
+
+/* Footer chips */
+.vc-footer {
+  display: flex; gap: 8px;
+  margin-top: 10px; padding-top: 10px;
   border-top: 1px solid var(--color-sand-dark);
-  padding-top: 20px;
+  flex-wrap: wrap;
 }
+.footer-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--color-text-mid);
+  background: var(--color-sand); border: 1px solid var(--color-sand-dark);
+  padding: 3px 10px; border-radius: 8px;
+  cursor: pointer; transition: all 0.15s; font-weight: 500;
+  font-family: 'Anuphan', sans-serif;
+}
+.footer-chip:hover { border-color: var(--color-accent); color: var(--color-accent); background: #f0fdf4; }
+.footer-chip .material-symbols-rounded { font-size: 14px; }
 
-.pickup-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
+/* ─── Action Buttons ─────────────────────────────── */
+.btn-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
 }
-.driver-photo-avatar { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; border: 1px solid var(--color-sand-dark); }
-.driver-photo-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.btn-icon .material-symbols-rounded { font-size: 15px; }
+
+.btn-pickup { background: #f3e8ff; color: #7e22ce; border: none; }
+.btn-pickup:hover { background: #e9d5ff; }
+.btn-layout { background: #fce7f3; color: #be185d; border: none; }
+.btn-layout:hover { background: #fbcfe8; }
+
+/* ─── Empty state ─────────────────────────────────── */
+.empty-state-card {
+  text-align: center; padding: 80px 20px;
+  color: var(--color-text-muted);
+  background: var(--color-white);
+  border-radius: 16px; border: 1px dashed var(--color-sand-dark);
+}
+.empty-state-card .material-symbols-rounded { font-size: 48px; }
+.empty-state-card p { margin-top: 12px; font-size: 15px; }
+
+/* ─── Modals ──────────────────────────────────────── */
+.modal-lg { max-width: 620px; }
+.modal-xl { max-width: 760px; }
+
+.form-section-title {
+  font-size: 14px; font-weight: 700; color: var(--color-text-dark);
+  margin: 20px 0 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.form-section-title .material-symbols-rounded { font-size: 16px; color: var(--color-accent); }
+
+/* ─── Pickup Manager ─────────────────────────────── */
+.pickup-manager-list { margin-bottom: 20px; }
+.pickup-region-group { margin-bottom: 20px; }
+.pickup-region-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.region-chip-lg {
+  display: inline-block; background: #f3e8ff; color: #7e22ce;
+  font-size: 13px; font-weight: 700; padding: 4px 14px; border-radius: 16px;
+}
+.region-code { font-size: 12px; color: var(--color-text-mid); }
+.pickup-manager-items { display: flex; flex-direction: column; gap: 8px; }
+.pickup-manager-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--color-white); border: 1px solid var(--color-sand-dark);
+  border-radius: 10px; padding: 12px 14px;
+}
+.pickup-manager-item-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1; }
+.pickup-loc-name { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--color-text-dark); font-weight: 600; }
+.pickup-loc-name .material-symbols-rounded { font-size: 14px; }
+.pickup-notes-text { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--color-text-muted); }
+.pickup-notes-text .material-symbols-rounded { font-size: 14px; }
+.map-link { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--color-ocean); text-decoration: none; }
+.map-link:hover { text-decoration: underline; }
+.map-link .material-symbols-rounded { font-size: 14px; }
+.pickup-manager-item-actions { display: flex; gap: 6px; }
+.btn-sm { padding: 6px 12px !important; font-size: 13px !important; height: auto !important; border-radius: 8px; width: auto !important; }
+.pickup-empty { text-align: center; padding: 40px; color: var(--color-text-muted); }
+.pickup-empty .material-symbols-rounded { font-size: 40px; }
+.pickup-empty p { margin-top: 12px; font-size: 15px; }
+.pickup-add-section { border-top: 1px solid var(--color-sand-dark); padding-top: 20px; }
+.pickup-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+/* ─── Select with icon ───────────────────────────── */
+.select-with-icon { position: relative; display: flex; align-items: center; }
+.select-with-icon .material-symbols-rounded { position: absolute; left: 12px; color: var(--color-text-muted); pointer-events: none; font-size: 20px; }
+.select-with-icon .form-input { padding-left: 40px; }
+
+/* ─── Media Upload ───────────────────────────────── */
 .media-upload-row { display: flex; gap: 12px; margin-top: 8px; }
 .media-preview-sm { position: relative; width: 120px; height: 120px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .media-preview-sm img { width: 100%; height: 100%; object-fit: cover; }
 .video-preview { position: relative; width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .video-preview video { width: 100%; display: block; }
-.upload-placeholder { 
-  width: 140px; height: 120px; border: 2px dashed var(--color-sand-dark); border-radius: 12px; 
-  display: flex; flex-direction: column; align-items: center; justify-content: center; 
-  cursor: pointer; color: var(--color-text-mid); font-size: 13px; transition: all 0.2s; background: var(--color-white);
+.upload-placeholder {
+  width: 140px; height: 120px;
+  border: 2px dashed var(--color-sand-dark); border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--color-text-mid); font-size: 13px;
+  transition: all 0.2s; background: var(--color-white);
 }
 .upload-placeholder:hover { border-color: var(--color-ocean); color: var(--color-ocean); background: #eff6ff; }
 .upload-placeholder .material-symbols-rounded { font-size: 28px; margin-bottom: 6px; }
-
 .gallery-grid-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; margin-top: 8px; }
 .gallery-item-preview { position: relative; height: 110px; border-radius: 10px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .gallery-item-preview img { width: 100%; height: 100%; object-fit: cover; }
-.gallery-add-btn { 
-  height: 110px; border: 2px dashed var(--color-sand-dark); border-radius: 10px; 
-  display: flex; flex-direction: column; align-items: center; justify-content: center; 
+.gallery-add-btn {
+  height: 110px; border: 2px dashed var(--color-sand-dark); border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   cursor: pointer; color: var(--color-text-mid); font-size: 12px; background: var(--color-white);
 }
 .gallery-add-btn:hover { border-color: var(--color-ocean); color: var(--color-ocean); background: #eff6ff; }
 .gallery-add-btn .material-symbols-rounded { font-size: 24px; margin-bottom: 4px; }
-.remove-btn { 
-  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; 
-  border-radius: 50%; background: rgba(255, 255, 255, 0.95); color: #ef4444; 
-  border: 1px solid #fee2e2; display: flex; align-items: center; justify-content: center; 
-  cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.15s;
+.remove-btn {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px;
+  border-radius: 50%; background: rgba(255,255,255,0.95); color: #ef4444;
+  border: 1px solid #fee2e2; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.1); transition: transform 0.15s;
 }
 .remove-btn:hover { transform: scale(1.1); }
+.remove-btn .material-symbols-rounded { font-size: 12px; }
 </style>
