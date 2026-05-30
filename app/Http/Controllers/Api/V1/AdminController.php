@@ -2038,6 +2038,30 @@ class AdminController extends Controller
         ], 'อัปโหลดรูปจุดรับผู้โดยสารสำเร็จ', 201);
     }
 
+    // Distinct pickup point images already in use (schedules + vehicles),
+    // so admins can reuse a previously uploaded image instead of re-uploading.
+    public function pickupPointImages(): JsonResponse
+    {
+        $rows = SchedulePickupPoint::whereNotNull('image_url')->where('image_url', '!=', '')
+            ->orderByDesc('id')
+            ->get(['image_url', 'pickup_location'])
+            ->concat(
+                VehiclePickupPoint::whereNotNull('image_url')->where('image_url', '!=', '')
+                    ->orderByDesc('id')
+                    ->get(['image_url', 'pickup_location'])
+            );
+
+        $images = $rows
+            ->unique('image_url')
+            ->values()
+            ->map(fn ($r) => [
+                'url' => $r->image_url,
+                'label' => $r->pickup_location,
+            ]);
+
+        return $this->success($images);
+    }
+
     // ─── Media Upload ─────────────────────────────────────────
     public function uploadMedia(Request $request): JsonResponse
     {

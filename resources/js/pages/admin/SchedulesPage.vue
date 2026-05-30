@@ -1092,6 +1092,9 @@
                       <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupImageUploading }">{{ pickupImageUploading ? 'sync' : 'add_photo_alternate' }}</span>
                       {{ pt.image_url ? 'เปลี่ยนรูป' : 'รูป' }}
                     </label>
+                    <button type="button" class="pif-image-pick" @click="openImagePicker(pt)" title="เลือกจากรูปที่มีอยู่">
+                      <span class="material-symbols-rounded">photo_library</span>
+                    </button>
                     <button type="button" class="btn-icon btn-delete" @click="removeTplPoint(r.value, pi)"><span class="material-symbols-rounded">close</span></button>
                   </div>
                   <div v-if="!editingTemplate.points.filter(p => p.region === r.value).length" class="tpl-region-empty">ไม่มีจุดรับในภาคนี้</div>
@@ -1269,6 +1272,37 @@
             <span class="material-symbols-rounded" :class="{ 'animate-spin': copySubmitting }" v-if="copySubmitting">sync</span>
             {{ copyMode === 'replace' ? 'เขียนทับ' : 'คัดลอก' }}ไป {{ copySelectedIds.length }} รอบ
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Existing Pickup Image Picker Modal -->
+    <div class="modal-overlay" v-if="showImagePicker" @click.self="showImagePicker = false">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">photo_library</span>เลือกรูปที่มีอยู่</h2>
+            <p class="modal-subtitle">รูปจุดรับที่เคยอัปโหลดไว้ · กดเพื่อใช้รูปนั้น</p>
+          </div>
+          <button class="modal-close" @click="showImagePicker = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="imagePickerLoading" class="pickup-loading"><div class="spinner"></div></div>
+          <div v-else-if="!existingImages.length" class="pickup-inline-empty">
+            <span class="material-symbols-rounded">image_not_supported</span> ยังไม่มีรูปที่เคยอัปโหลด
+          </div>
+          <div v-else class="img-picker-grid">
+            <button
+              v-for="(img, i) in existingImages" :key="i"
+              type="button"
+              class="img-picker-item"
+              :class="{ active: imagePickerTarget?.image_url === img.url }"
+              @click="pickExistingImage(img.url)"
+            >
+              <img :src="img.url" :alt="img.label" loading="lazy" />
+              <span class="img-picker-label">{{ img.label }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -2441,6 +2475,34 @@ const uploadPickupImage = async (event, target = pickupForm) => {
     pickupImageUploading.value = false;
     event.target.value = '';
   }
+};
+
+// ─── Existing image picker (reuse previously uploaded pickup images) ───
+const showImagePicker = ref(false);
+const imagePickerTarget = ref(null);
+const existingImages = ref([]);
+const imagePickerLoading = ref(false);
+const imagePickerLoaded = ref(false);
+
+const openImagePicker = async (target) => {
+  imagePickerTarget.value = target;
+  showImagePicker.value = true;
+  if (imagePickerLoaded.value) return;
+  imagePickerLoading.value = true;
+  try {
+    const res = await api.get('/admin/pickup-points/images');
+    existingImages.value = res.data.data || [];
+    imagePickerLoaded.value = true;
+  } catch (e) {
+    alert(e.response?.data?.message || 'โหลดรูปไม่สำเร็จ');
+  } finally {
+    imagePickerLoading.value = false;
+  }
+};
+
+const pickExistingImage = (url) => {
+  if (imagePickerTarget.value) imagePickerTarget.value.image_url = url;
+  showImagePicker.value = false;
 };
 
 // Group pickup points by region value
@@ -3716,6 +3778,16 @@ onMounted(() => {
   background: rgba(37, 99, 235, 0.04);
 }
 .pif-image-upload .material-symbols-rounded { font-size: 18px; }
+.pif-image-pick { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px; border: 1px dashed var(--color-accent, #2563eb); color: var(--color-accent, #2563eb); background: rgba(37, 99, 235, 0.04); cursor: pointer; padding: 0; }
+.pif-image-pick .material-symbols-rounded { font-size: 18px; }
+
+/* Existing image picker grid */
+.img-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.img-picker-item { position: relative; display: flex; flex-direction: column; padding: 0; border: 2px solid var(--color-sand-dark, #e5e7eb); border-radius: 12px; overflow: hidden; cursor: pointer; background: #fff; transition: border-color 0.15s, transform 0.15s; }
+.img-picker-item:hover { transform: translateY(-2px); border-color: var(--color-accent, #2563eb); }
+.img-picker-item.active { border-color: var(--color-accent, #2563eb); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+.img-picker-item img { width: 100%; height: 100px; object-fit: cover; display: block; }
+.img-picker-label { font-size: 12px; font-weight: 600; color: var(--color-text-dark, #374151); padding: 6px 8px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .pid-location {
   font-size: 13px;

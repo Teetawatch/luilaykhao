@@ -161,6 +161,48 @@ class PickupPointImageTest extends TestCase
         ]);
     }
 
+    public function test_pickup_point_images_endpoint_returns_distinct_used_images(): void
+    {
+        $admin = $this->makeAdmin();
+        $schedule = $this->makeSchedule($this->makeTrip());
+
+        // Two schedule points share the same image (should dedupe to one)
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id, 'region' => 'north', 'region_label' => 'ภาคเหนือ',
+            'pickup_location' => 'จุด A', 'price' => 100,
+            'image_url' => 'https://cdn.example.com/pickup-points/shared.jpg',
+        ]);
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id, 'region' => 'north', 'region_label' => 'ภาคเหนือ',
+            'pickup_location' => 'จุด B', 'price' => 100,
+            'image_url' => 'https://cdn.example.com/pickup-points/shared.jpg',
+        ]);
+        // A point without an image should be excluded
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id, 'region' => 'south', 'region_label' => 'ภาคใต้',
+            'pickup_location' => 'จุด C', 'price' => 100, 'image_url' => null,
+        ]);
+
+        $vehicle = Vehicle::create([
+            'name' => 'รถตู้ 1', 'type' => 'van', 'capacity' => 10, 'license_plate' => 'กข-1234',
+        ]);
+        $vehicle->pickupPoints()->create([
+            'region' => 'central', 'region_label' => 'ภาคกลาง',
+            'pickup_location' => 'BTS หมอชิต',
+            'image_url' => 'https://cdn.example.com/pickup-points/mochit.jpg',
+        ]);
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/pickup-points/images')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [['url', 'label']]]);
+
+        $urls = collect($response->json('data'))->pluck('url');
+        $this->assertCount(2, $urls); // shared.jpg deduped + mochit.jpg
+        $this->assertTrue($urls->contains('https://cdn.example.com/pickup-points/shared.jpg'));
+        $this->assertTrue($urls->contains('https://cdn.example.com/pickup-points/mochit.jpg'));
+    }
+
     public function test_invalid_image_url_is_rejected(): void
     {
         $admin = $this->makeAdmin();
