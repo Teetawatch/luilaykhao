@@ -4,29 +4,38 @@
   $isDueToday = $daysLeft !== null && $daysLeft === 0;
 
   if ($isOverdue) {
-    $headerStyle     = 'background:linear-gradient(150deg,#b91c1c 0%,#dc2626 55%,#ef4444 100%)';
-    $icon            = '&#128680;';
-    $bannerTitle     = 'ค่าส่วนที่เหลือเลยกำหนดชำระแล้ว!';
-    $boxStyle        = 'background:#fef2f2;border:1.5px solid #fca5a5;text-align:center';
-    $labelStyle      = 'color:#991b1b';
-    $amountStyle     = 'color:#dc2626';
-    $noteStyle       = 'color:#7f1d1d';
+    $headerBg    = '#dc2626';
+    $bannerTitle = 'ค่าส่วนที่เหลือเลยกำหนดชำระแล้ว';
+    $boxStyle    = 'background:#fef2f2; border-color:#fca5a5; text-align:center;';
+    $labelColor  = '#991b1b';
+    $amountColor = '#dc2626';
+    $noteColor   = '#7f1d1d';
+    $alertBorder = '#dc2626';
+    $alertBg     = '#fef2f2';
+    $alertTitle  = '#991b1b';
+    $alertText   = '#7f1d1d';
   } elseif ($isDueToday) {
-    $headerStyle     = 'background:linear-gradient(150deg,#b45309 0%,#d97706 55%,#f59e0b 100%)';
-    $icon            = '&#9200;';
-    $bannerTitle     = 'ถึงกำหนดชำระเงินส่วนที่เหลือวันนี้!';
-    $boxStyle        = 'background:#fffbeb;border:1.5px solid #fde68a;text-align:center';
-    $labelStyle      = 'color:#92400e';
-    $amountStyle     = 'color:#d97706';
-    $noteStyle       = 'color:#78350f';
+    $headerBg    = '#d97706';
+    $bannerTitle = 'ถึงกำหนดชำระเงินส่วนที่เหลือวันนี้';
+    $boxStyle    = 'background:#fffbeb; border-color:#fde68a; text-align:center;';
+    $labelColor  = '#92400e';
+    $amountColor = '#d97706';
+    $noteColor   = '#78350f';
+    $alertBorder = '#d97706';
+    $alertBg     = '#fffbeb';
+    $alertTitle  = '#92400e';
+    $alertText   = '#78350f';
   } else {
-    $headerStyle     = 'background:linear-gradient(150deg,#1e40af 0%,#2563eb 55%,#3b82f6 100%)';
-    $icon            = '&#128197;';
-    $bannerTitle     = 'แจ้งเตือนชำระเงินส่วนที่เหลือ';
-    $boxStyle        = 'background:#eff6ff;border:1.5px solid #93c5fd;text-align:center';
-    $labelStyle      = 'color:#1e40af';
-    $amountStyle     = 'color:#2563eb';
-    $noteStyle       = 'color:#1e3a5f';
+    $headerBg    = '#2563eb';
+    $bannerTitle = 'แจ้งเตือนชำระเงินส่วนที่เหลือ';
+    $boxStyle    = 'background:#eff6ff; border-color:#93c5fd; text-align:center;';
+    $labelColor  = '#1e40af';
+    $amountColor = '#2563eb';
+    $noteColor   = '#1e3a5f';
+    $alertBorder = '#2563eb';
+    $alertBg     = '#eff6ff';
+    $alertTitle  = '#1e40af';
+    $alertText   = '#1e3a5f';
   }
 
   $dueDateFormatted = $booking->balance_due_at?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
@@ -36,12 +45,8 @@
 <x-emails.partials.base subject="{{ $bannerTitle }} — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="{!! $headerStyle !!}">
-    <div class="logo-row">
-      <span class="logo-leaf">&#127807;</span>
-      <span class="logo-name">Luilaykhao</span>
-    </div>
-    <div class="header-icon-wrap">{!! $icon !!}</div>
+  <div class="email-header" style="background: {{ $headerBg }};">
+    <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">{{ $bannerTitle }}</h1>
     <p class="header-subtitle">กรุณาชำระเงินส่วนที่เหลือเพื่อยืนยันสิทธิ์การเดินทาง</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -62,16 +67,15 @@
       @endif
     </div>
 
-    {{-- Balance amount highlight --}}
-    <div class="highlight-box" style="{!! $boxStyle !!}">
-      <div class="amount-label" style="{!! $labelStyle !!}">ยอดส่วนที่เหลือที่ต้องชำระ</div>
-      <div class="amount" style="{!! $amountStyle !!}">฿{{ number_format($booking->balance_amount, 0) }}</div>
-      <div class="amount-note" style="{!! $noteStyle !!}">
+    <div class="highlight-box" style="{{ $boxStyle }}">
+      <div class="amount-label" style="color: {{ $labelColor }};">ยอดส่วนที่เหลือที่ต้องชำระ</div>
+      <div class="amount" style="color: {{ $amountColor }};">฿{{ number_format($booking->balance_amount, 0) }}</div>
+      <div class="amount-note" style="color: {{ $noteColor }};">
         ภายในวันที่ <strong>{{ $dueDateFormatted }}</strong>
         @if($isOverdue)
-          &nbsp;&middot;&nbsp;<strong style="color:#dc2626;">เลยกำหนดแล้ว!</strong>
+          &nbsp;&middot;&nbsp;<strong style="color:#dc2626;">เลยกำหนดแล้ว</strong>
         @elseif($isDueToday)
-          &nbsp;&middot;&nbsp;<strong>วันนี้!</strong>
+          &nbsp;&middot;&nbsp;<strong>วันนี้</strong>
         @else
           &nbsp;&middot;&nbsp;เหลือ {{ $daysLeft }} วัน
         @endif
@@ -81,7 +85,6 @@
     <p class="section-label">รายละเอียดการจอง</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#f1f5f9;font-size:20px">&#127956;</div>
         <span class="info-card-title">ข้อมูลทริป</span>
       </div>
       <div class="info-row">
@@ -98,7 +101,7 @@
         @if($booking->pickupPoint)
           <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
           @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>
@@ -124,27 +127,24 @@
     </div>
 
     @if($isOverdue)
-    <div class="alert-box" style="background:#fef2f2;border:1.5px solid #fca5a5">
-      <div class="alert-icon-wrap" style="background:#fee2e2;font-size:18px">&#9888;</div>
-      <div>
-        <p class="alert-title" style="color:#991b1b">เงื่อนไขสำคัญ</p>
-        <p class="alert-text" style="color:#7f1d1d">
-          หากไม่ชำระเงินส่วนที่เหลือ ทางทริปขอสงวนสิทธิ์ยกเลิกการจองโดยไม่คืนเงินมัดจำ
-          กรุณาติดต่อทีมงานหากต้องการขอยืดเวลาชำระ
-        </p>
-      </div>
+    <div class="alert-box" style="background:#fef2f2; border-left-color:#dc2626;">
+      <p class="alert-title" style="color:#991b1b;">เงื่อนไขสำคัญ</p>
+      <p class="alert-text" style="color:#7f1d1d;">
+        หากไม่ชำระเงินส่วนที่เหลือ ทางทริปขอสงวนสิทธิ์ยกเลิกการจองโดยไม่คืนเงินมัดจำ
+        กรุณาติดต่อทีมงานหากต้องการขอยืดเวลาชำระ
+      </p>
     </div>
     @endif
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background:linear-gradient(135deg,#0f766e,#14b8a6)">
+         class="cta-btn" style="background: {{ $headerBg }};">
         ชำระเงินส่วนที่เหลือตอนนี้ &rarr;
       </a>
     </div>
 
     <div class="contact-bar">
-      &#128222;&nbsp; หากมีข้อสงสัย กรุณาติดต่อทีมงาน&nbsp;<strong>062-612-6006</strong>&nbsp;(08:00&ndash;20:00)
+      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>

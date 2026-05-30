@@ -8,14 +8,10 @@
 <x-emails.partials.base subject="ชำระงวดที่ {{ $installment->installment_no }} สำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: linear-gradient(150deg, #065f46 0%, #059669 55%, #10b981 100%);">
-    <div class="logo-row">
-      <span class="logo-leaf">&#127807;</span>
-      <span class="logo-name">Luilaykhao</span>
-    </div>
-    <div class="header-icon-wrap">{{ $isFullyPaid ? '&#127881;' : '&#9989;' }}</div>
+  <div class="email-header" style="background: #059669;">
+    <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">
-      {{ $isFullyPaid ? 'ชำระครบทุกงวดแล้ว!' : "ชำระงวดที่ {$installment->installment_no} สำเร็จ" }}
+      {{ $isFullyPaid ? 'ชำระครบทุกงวดแล้ว' : "ชำระงวดที่ {$installment->installment_no} สำเร็จ" }}
     </h1>
     <p class="header-subtitle">
       งวด {{ $installment->installment_no }} / {{ $booking->installment_count }}
@@ -30,11 +26,10 @@
     <div class="greeting">
       สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
       งวดที่ {{ $installment->installment_no }} จำนวน ฿{{ number_format($installment->amount, 0) }} ได้รับการบันทึกเรียบร้อยแล้ว
-      @if($isFullyPaid) <br />การชำระเงินทุกงวดครบสมบูรณ์แล้ว! @endif
+      @if($isFullyPaid) <br />การชำระเงินทุกงวดครบสมบูรณ์แล้ว @endif
     </div>
 
-    {{-- This installment amount --}}
-    <div class="highlight-box" style="background:#f0fdf4; border:2px solid #86efac; text-align:center;">
+    <div class="highlight-box" style="background:#f0fdf4; border-color:#86efac; text-align:center;">
       <div class="amount-label" style="color:#166534;">งวดที่ {{ $installment->installment_no }} &mdash; ชำระแล้ว</div>
       <div class="amount" style="color:#15803d;">฿{{ number_format($installment->amount, 0) }}</div>
       <div class="amount-note" style="color:#166534;">{{ now()->locale('th')->isoFormat('D MMM YYYY HH:mm') }} น.</div>
@@ -43,7 +38,6 @@
     <p class="section-label">รายละเอียดทริป</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#dcfce7; font-size:20px;">&#127956;</div>
         <span class="info-card-title">ข้อมูลการเดินทาง</span>
       </div>
       <div class="info-row">
@@ -54,14 +48,13 @@
         <span class="info-label">วันเดินทาง</span>
         <span class="info-value">{{ $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-' }}</span>
       </div>
-      {{-- Pickup --}}
       @if($booking->pickupPoint || $booking->pickup_region)
       <div class="pickup-block">
         <div class="pickup-label">จุดรับ</div>
         @if($booking->pickupPoint)
           <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
           @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>
@@ -77,7 +70,6 @@
     <p class="section-label">สถานะการผ่อนชำระ</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#dcfce7; font-size:20px;">&#128179;</div>
         <span class="info-card-title">สรุปการชำระทั้งหมด</span>
       </div>
       <div class="info-row">
@@ -90,7 +82,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">ชำระแล้วรวม</span>
-        <span class="info-value accent-teal">฿{{ number_format($booking->paid_amount, 0) }}</span>
+        <span class="info-value accent-green">฿{{ number_format($booking->paid_amount, 0) }}</span>
       </div>
       @if(!$isFullyPaid)
       <div class="info-row">
@@ -135,20 +127,17 @@
     @endif
 
     @if($nextInstallment && !$isFullyPaid)
-    <div class="alert-box" style="background:#eff6ff; border:1.5px solid #93c5fd;">
-      <div class="alert-icon-wrap" style="background:#dbeafe; font-size:18px;">&#128197;</div>
-      <div>
-        <p class="alert-title" style="color:#1e40af;">งวดถัดไป</p>
-        <p class="alert-text" style="color:#1e3a5f;">
-          งวดที่ {{ $nextInstallment->installment_no }} จำนวน <strong>฿{{ number_format($nextInstallment->amount, 0) }}</strong>
-          &nbsp;&mdash;&nbsp;กำหนดชำระ <strong>{{ $nextInstallment->due_date ? \Carbon\Carbon::parse($nextInstallment->due_date)->locale('th')->isoFormat('D MMMM YYYY') : '-' }}</strong>
-        </p>
-      </div>
+    <div class="alert-box" style="background:#eff6ff; border-left-color:#2563eb;">
+      <p class="alert-title" style="color:#1e40af;">งวดถัดไป</p>
+      <p class="alert-text" style="color:#1e3a5f;">
+        งวดที่ {{ $nextInstallment->installment_no }} จำนวน <strong>฿{{ number_format($nextInstallment->amount, 0) }}</strong>
+        &nbsp;&mdash;&nbsp;กำหนดชำระ <strong>{{ $nextInstallment->due_date ? \Carbon\Carbon::parse($nextInstallment->due_date)->locale('th')->isoFormat('D MMMM YYYY') : '-' }}</strong>
+      </p>
     </div>
     @endif
 
     <div class="contact-bar">
-      &#128222;&nbsp; หากมีข้อสงสัย กรุณาติดต่อทีมงาน&nbsp;<strong>062-612-6006</strong>&nbsp;(08:00&ndash;20:00)
+      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>

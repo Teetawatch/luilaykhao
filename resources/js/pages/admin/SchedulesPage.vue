@@ -388,6 +388,19 @@
                           <input v-model="pickupForm.map_url" placeholder="Google Maps URL (ไม่บังคับ)" class="pif-map" />
                           <input v-model.number="pickupForm.sort_order" type="number" min="0" placeholder="ลำดับ" class="pif-order" />
                         </div>
+                        <div class="pif-row pif-image-row">
+                          <div class="pif-image-preview" v-if="pickupForm.image_url">
+                            <img :src="pickupForm.image_url" alt="รูปจุดรับ" />
+                            <button type="button" class="pif-image-remove" @click="pickupForm.image_url = ''" title="ลบรูป">
+                              <span class="material-symbols-rounded">close</span>
+                            </button>
+                          </div>
+                          <label class="pif-image-upload">
+                            <input type="file" accept="image/*" @change="uploadPickupImage" hidden :disabled="pickupImageUploading" />
+                            <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupImageUploading }">{{ pickupImageUploading ? 'sync' : 'add_photo_alternate' }}</span>
+                            {{ pickupForm.image_url ? 'เปลี่ยนรูป' : 'อัปโหลดรูปจุดรับ' }}
+                          </label>
+                        </div>
                         <div class="pif-actions">
                           <button type="button" class="btn-sm btn-secondary" @click="cancelEditPickup">ยกเลิก</button>
                           <button type="button" class="btn-sm btn-primary" @click="submitPickupForm" :disabled="pickupSubmitting">
@@ -399,6 +412,7 @@
                     <template v-else>
                       <!-- Display row -->
                       <div class="pickup-item-display">
+                        <img v-if="pt.image_url" :src="pt.image_url" class="pid-thumb" alt="รูปจุดรับ" />
                         <div class="pid-left">
                           <span class="pid-location"><span class="material-symbols-rounded" style="font-size:16px;">push_pin</span> {{ pt.pickup_location }}</span>
                           <span class="pid-notes" v-if="pt.notes"><span class="material-symbols-rounded" style="font-size:16px;">schedule</span> {{ pt.notes }}</span>
@@ -429,6 +443,19 @@
                   <div class="pif-row">
                     <input v-model="pickupForm.map_url" placeholder="Google Maps URL (ไม่บังคับ)" class="pif-map" />
                     <input v-model.number="pickupForm.sort_order" type="number" min="0" placeholder="ลำดับ" class="pif-order" />
+                  </div>
+                  <div class="pif-row pif-image-row">
+                    <div class="pif-image-preview" v-if="pickupForm.image_url">
+                      <img :src="pickupForm.image_url" alt="รูปจุดรับ" />
+                      <button type="button" class="pif-image-remove" @click="pickupForm.image_url = ''" title="ลบรูป">
+                        <span class="material-symbols-rounded">close</span>
+                      </button>
+                    </div>
+                    <label class="pif-image-upload">
+                      <input type="file" accept="image/*" @change="uploadPickupImage" hidden :disabled="pickupImageUploading" />
+                      <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupImageUploading }">{{ pickupImageUploading ? 'sync' : 'add_photo_alternate' }}</span>
+                      {{ pickupForm.image_url ? 'เปลี่ยนรูป' : 'อัปโหลดรูปจุดรับ' }}
+                    </label>
                   </div>
                   <div class="pif-actions">
                     <button type="button" class="btn-sm btn-secondary" @click="addingInRegion = null">ยกเลิก</button>
@@ -1880,6 +1907,7 @@ const submitBatchForm = async () => {
           price: pt.price,
           notes: pt.notes || null,
           map_url: pt.map_url || null,
+          image_url: pt.image_url || null,
         });
       }
       results.push(scheduleId);
@@ -1950,6 +1978,7 @@ const doCopySchedule = async () => {
           price: pt.price,
           notes: pt.notes || null,
           map_url: pt.map_url || null,
+          image_url: pt.image_url || null,
           latitude: pt.latitude || null,
           longitude: pt.longitude || null,
           sort_order: pt.sort_order || 0,
@@ -2007,6 +2036,7 @@ const doCopyPickups = async () => {
           price: pt.price,
           notes: pt.notes || null,
           map_url: pt.map_url || null,
+          image_url: pt.image_url || null,
           latitude: pt.latitude || null,
           longitude: pt.longitude || null,
           sort_order: pt.sort_order || 0,
@@ -2111,6 +2141,7 @@ const saveCurrentAsTemplate = async () => {
     notes: pt.notes || '',
     price: pt.price,
     map_url: pt.map_url || '',
+    image_url: pt.image_url || '',
   }));
   const newTpl = { id: Date.now().toString(), name, points };
   pickupTemplates.value = loadTemplates();
@@ -2146,6 +2177,7 @@ const applyTemplateToSchedule = async (tpl) => {
         price: pt.price,
         notes: pt.notes || null,
         map_url: pt.map_url || null,
+        image_url: pt.image_url || null,
       });
       existingKeys.add(key); // track newly added
     }
@@ -2218,6 +2250,7 @@ const doApplyTemplate = async () => {
           price: pt.price,
           notes: pt.notes || null,
           map_url: pt.map_url || null,
+          image_url: pt.image_url || null,
         });
         existingKeys.add(key); // track newly added
       }
@@ -2274,9 +2307,29 @@ const openManifest = async (sch) => {
 
 const pickupForm = reactive({
   region: '', region_label: '', pickup_location: '',
-  price: '', map_url: '', latitude: null, longitude: null,
+  price: '', map_url: '', image_url: '', latitude: null, longitude: null,
   notes: '', sort_order: 0,
 });
+const pickupImageUploading = ref(false);
+
+const uploadPickupImage = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  pickupImageUploading.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await api.post('/admin/pickup-points/image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    pickupForm.image_url = res.data.data.url;
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    pickupImageUploading.value = false;
+    event.target.value = '';
+  }
+};
 
 // Group pickup points by region value
 const pickupPointsByRegion = computed(() => {
@@ -2291,7 +2344,7 @@ const pickupPointsByRegion = computed(() => {
 const resetPickupForm = () => {
   Object.assign(pickupForm, {
     region: '', region_label: '', pickup_location: '',
-    price: '', map_url: '', latitude: null, longitude: null,
+    price: '', map_url: '', image_url: '', latitude: null, longitude: null,
     notes: '', sort_order: 0,
   });
   editingPickup.value = null;
@@ -2331,7 +2384,7 @@ const startAddInRegion = (regionValue) => {
   Object.assign(pickupForm, {
     region: regionValue,
     region_label: found?.label || regionValue,
-    pickup_location: '', price: '', map_url: '',
+    pickup_location: '', price: '', map_url: '', image_url: '',
     latitude: null, longitude: null, notes: '', sort_order: 0,
   });
   addingInRegion.value = regionValue;
@@ -2347,6 +2400,7 @@ const submitPickupForm = async () => {
     const scheduleId = pickupSchedule.value.id;
     const payload = { ...pickupForm };
     if (!payload.map_url) payload.map_url = null;
+    if (!payload.image_url) payload.image_url = null;
     if (!payload.latitude) payload.latitude = null;
     if (!payload.longitude) payload.longitude = null;
 
@@ -2374,6 +2428,7 @@ const editPickupPoint = (pt) => {
     pickup_location: pt.pickup_location,
     price: pt.price,
     map_url: pt.map_url || '',
+    image_url: pt.image_url || '',
     latitude: pt.latitude || null,
     longitude: pt.longitude || null,
     notes: pt.notes || '',
@@ -3483,6 +3538,15 @@ onMounted(() => {
   gap: 12px;
 }
 
+.pid-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
 .pid-left {
   flex: 1;
   display: flex;
@@ -3490,6 +3554,56 @@ onMounted(() => {
   gap: 3px;
   min-width: 0;
 }
+
+/* Pickup point image upload */
+.pif-image-row {
+  align-items: center;
+  gap: 10px;
+}
+.pif-image-preview {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+.pif-image-preview img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+.pif-image-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.pif-image-remove .material-symbols-rounded { font-size: 14px; }
+.pif-image-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-accent, #2563eb);
+  color: var(--color-accent, #2563eb);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(37, 99, 235, 0.04);
+}
+.pif-image-upload .material-symbols-rounded { font-size: 18px; }
 
 .pid-location {
   font-size: 13px;

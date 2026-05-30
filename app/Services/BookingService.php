@@ -267,6 +267,80 @@ class BookingService
         return $booking;
     }
 
+    /**
+     * ยกเลิกการจองที่ค้างสถานะ pending เกินกำหนด (ลูกค้าไม่ชำระเงินต่อ) เพื่อคืนที่นั่งให้คนอื่นจองได้
+     * เรียกเป็นระยะจาก ExpirePendingBookingsJob — คืนค่าจำนวนการจองที่ถูกยกเลิก
+     */
+    public function expireStalePendingBookings(): int
+    {
+        $threshold = now()->subMinutes(Booking::PENDING_TTL_MINUTES);
+
+        $candidateIds = Booking::where('status', 'pending')
+            ->where('created_at', '<=', $threshold)
+            ->pluck('id');
+
+        $expiredBookings = [];
+
+        foreach ($candidateIds as $bookingId) {
+            $expired = DB::transaction(function () use ($bookingId, $threshold) {
+                $booking = Booking::with('seats')->lockForUpdate()->find($bookingId);
+
+                // ตรวจซ้ำใต้ lock — ลูกค้าอาจเพิ่งชำระเงินไประหว่างนี้ (สถานะเปลี่ยนเป็น confirmed)
+                if (! $booking || $booking->status !== 'pending' || $booking->created_at->gt($threshold)) {
+                    return null;
+                }
+
+                $booking->update([
+                    'status' => 'cancelled',
+                    'cancellation_reason' => 'หมดเวลาชำระเงิน — ระบบยกเลิกอัตโนมัติเพื่อคืนที่นั่งภายใน '.Booking::PENDING_TTL_MINUTES.' นาที',
+                    'cancelled_at' => now(),
+                ]);
+
+                $schedule = $booking->schedule()->lockForUpdate()->first();
+
+                // ปล่อย soft lock ที่นั่งและลบ booking seats แล้วปรับตัวนับที่นั่งให้ตรง
+                foreach ($booking->seats as $seat) {
+                    $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
+                }
+                $booking->seats()->delete();
+
+                $schedule?->syncBookedSeats();
+
+                return $booking;
+            });
+
+            if ($expired) {
+                $expiredBookings[] = $expired;
+            }
+        }
+
+        $scheduleIds = [];
+        foreach ($expiredBookings as $expired) {
+            $scheduleIds[$expired->schedule_id] = true;
+
+            // แจ้งทางอีเมล (ไม่มีค่าส่ง) — งดส่ง SMS เพื่อประหยัดค่าส่งสำหรับการจองที่ถูกทิ้ง
+            $this->mailService->sendBookingCancelledEmail($expired, $expired->cancellation_reason);
+
+            SmartNotification::send(
+                $expired->user_id,
+                'booking_expired',
+                'การจองหมดเวลา',
+                "เลขการจอง {$expired->booking_ref} ถูกยกเลิกอัตโนมัติ เนื่องจากไม่ได้ชำระเงินภายใน ".Booking::PENDING_TTL_MINUTES.' นาที ที่นั่งถูกปล่อยคืนแล้ว',
+                [
+                    'booking_ref' => $expired->booking_ref,
+                    'route' => 'booking',
+                ],
+            );
+        }
+
+        // ปล่อยที่นั่งคืน — เสนอให้คนใน waitlist ของรอบที่ได้ที่นั่งคืน
+        foreach (array_keys($scheduleIds) as $scheduleId) {
+            ProcessWaitlistJob::dispatch($scheduleId);
+        }
+
+        return count($expiredBookings);
+    }
+
     public function confirmBooking(Booking $booking, string $paymentMethod, string $paymentRef, ?float $amount = null): Booking
     {
         return DB::transaction(function () use ($booking, $paymentMethod, $paymentRef, $amount) {

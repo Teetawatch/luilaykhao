@@ -17,6 +17,7 @@ class SchedulePickupPointResource extends JsonResource
             'pickup_location' => $this->pickup_location,
             'price' => (float) $this->price,
             'map_url' => $this->map_url,
+            'image_url' => $this->image_url,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'notes' => $this->notes,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\ExpireGroupPlansJob;
+use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\SendTripReminderNotificationsJob;
@@ -21,5 +22,6 @@ Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangko
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
+Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 Schedule::job(new ProcessTripAlertsJob)->everyThirtyMinutes()->withoutOverlapping();
 Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping();

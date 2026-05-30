@@ -43,6 +43,7 @@ class BookingResource extends JsonResource
                     'pickup_location' => $this->pickupPoint->pickup_location,
                     'region_label' => $this->pickupPoint->region_label,
                     'map_url' => $this->pickupPoint->map_url,
+                    'image_url' => $this->pickupPoint->image_url,
                     'notes' => $this->pickupPoint->notes,
                 ];
             }),

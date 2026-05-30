@@ -123,7 +123,12 @@
               :class="selectedPickup?.id === pt.id
                 ? 'border-emerald-500 bg-emerald-50/30 ring-4 ring-emerald-500/10'
                 : 'border-gray-100 bg-white hover:border-teal-500/30 hover:shadow-xl hover:shadow-teal-900/5 hover:-translate-y-1'">
-              
+
+              <div v-if="pt.image_url" class="relative z-10 -mx-6 -mt-6 mb-4 h-36 overflow-hidden rounded-t-[2rem]">
+                <img :src="pt.image_url" :alt="pt.pickup_location" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+              </div>
+
               <div class="relative z-10">
                 <div class="flex items-start justify-between mb-4">
                   <div class="flex flex-wrap gap-2">
@@ -220,6 +225,7 @@
                     <p class="text-xs text-gray-500 font-medium">จุดขึ้นรถ</p>
                     <p class="text-sm font-bold text-gray-900 leading-tight">{{ selectedPickup.pickup_location }}</p>
                     <p class="text-[11px] text-emerald-700 font-bold mt-1 bg-emerald-100 px-2 py-0.5 rounded-full w-fit">{{ selectedPickup.region_label }}</p>
+                    <img v-if="selectedPickup.image_url" :src="selectedPickup.image_url" :alt="selectedPickup.pickup_location" class="mt-2 w-full max-w-[220px] h-28 object-cover rounded-xl border border-gray-100" loading="lazy" />
                   </div>
                 </div>
               </div>

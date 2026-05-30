@@ -412,6 +412,7 @@
               </div>
               <div class="pickup-manager-items">
                 <div v-for="pt in group.locations" :key="pt.id" class="pickup-manager-item">
+                  <img v-if="pt.image_url" :src="pt.image_url" class="pickup-item-thumb" alt="รูปจุดรับ" />
                   <div class="pickup-manager-item-info">
                     <span class="pickup-loc-name">
                       <span class="material-symbols-rounded">location_on</span> {{ pt.pickup_location }}
@@ -472,6 +473,22 @@
               <div class="form-group full-width">
                 <label>ลิงก์ Google Maps</label>
                 <input v-model="pickupForm.map_url" placeholder="https://maps.google.com/..." class="form-input" />
+              </div>
+              <div class="form-group full-width">
+                <label>รูปภาพประจำจุดรับ</label>
+                <div class="pickup-image-field">
+                  <div class="pickup-image-preview" v-if="pickupForm.image_url">
+                    <img :src="pickupForm.image_url" alt="รูปจุดรับ" />
+                    <button type="button" class="pickup-image-remove" @click="pickupForm.image_url = ''" title="ลบรูป">
+                      <span class="material-symbols-rounded">close</span>
+                    </button>
+                  </div>
+                  <label class="pickup-image-upload">
+                    <input type="file" accept="image/*" @change="uploadPickupImage" hidden :disabled="pickupImageUploading" />
+                    <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupImageUploading }">{{ pickupImageUploading ? 'sync' : 'add_photo_alternate' }}</span>
+                    {{ pickupForm.image_url ? 'เปลี่ยนรูป' : 'อัปโหลดรูป' }}
+                  </label>
+                </div>
               </div>
             </div>
             <div class="pickup-form-actions">
@@ -583,8 +600,28 @@ const deletingPickup = ref(null);
 const showDeletePickupConfirm = ref(false);
 const pickupSubmitting = ref(false);
 const pickupForm = reactive({
-  region: '', region_label: '', pickup_location: '', notes: '', map_url: '',
+  region: '', region_label: '', pickup_location: '', notes: '', map_url: '', image_url: '',
 });
+const pickupImageUploading = ref(false);
+
+const uploadPickupImage = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  pickupImageUploading.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await api.post('/admin/pickup-points/image', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    pickupForm.image_url = res.data.data.url;
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    pickupImageUploading.value = false;
+    event.target.value = '';
+  }
+};
 
 const showLayoutEditor = ref(false);
 const layoutVehicle = ref(null);
@@ -834,7 +871,7 @@ const closePickupManager = () => {
 
 const resetPickupForm = () => {
   editingPickup.value = null;
-  Object.assign(pickupForm, { region: '', region_label: '', pickup_location: '', notes: '', map_url: '' });
+  Object.assign(pickupForm, { region: '', region_label: '', pickup_location: '', notes: '', map_url: '', image_url: '' });
 };
 
 const onRegionChange = () => {
@@ -848,6 +885,7 @@ const openPickupForm = (pt) => {
   Object.assign(pickupForm, {
     region: pt.region, region_label: pt.region_label,
     pickup_location: pt.pickup_location, notes: pt.notes || '', map_url: pt.map_url || '',
+    image_url: pt.image_url || '',
   });
 };
 
@@ -1276,7 +1314,15 @@ onMounted(() => fetchData());
   background: var(--color-white); border: 1px solid var(--color-sand-dark);
   border-radius: 10px; padding: 12px 14px;
 }
+.pickup-item-thumb { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--color-sand-dark); margin-right: 10px; }
 .pickup-manager-item-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1; }
+.pickup-image-field { display: flex; align-items: center; gap: 12px; }
+.pickup-image-preview { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+.pickup-image-preview img { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--color-sand-dark); }
+.pickup-image-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: none; background: #dc2626; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.pickup-image-remove .material-symbols-rounded { font-size: 15px; }
+.pickup-image-upload { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px dashed var(--color-accent, #2563eb); color: var(--color-accent, #2563eb); font-size: 13px; font-weight: 600; cursor: pointer; background: rgba(37, 99, 235, 0.04); }
+.pickup-image-upload .material-symbols-rounded { font-size: 18px; }
 .pickup-loc-name { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--color-text-dark); font-weight: 600; }
 .pickup-loc-name .material-symbols-rounded { font-size: 14px; }
 .pickup-notes-text { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--color-text-muted); }

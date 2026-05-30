@@ -22,18 +22,18 @@ class VehicleResource extends JsonResource
             'driver_photo' => $this->driver_photo,
             'interior_video' => $this->interior_video,
             'images' => $this->images ?? [],
-            'pickup_points' => $this->whenLoaded('pickupPoints', fn() =>
-                $this->pickupPoints->map(fn($p) => [
-                    'id' => $p->id,
-                    'region' => $p->region,
-                    'region_label' => $p->region_label,
-                    'pickup_location' => $p->pickup_location,
-                    'map_url' => $p->map_url,
-                    'latitude' => $p->latitude,
-                    'longitude' => $p->longitude,
-                    'notes' => $p->notes,
-                    'sort_order' => $p->sort_order,
-                ])
+            'pickup_points' => $this->whenLoaded('pickupPoints', fn () => $this->pickupPoints->map(fn ($p) => [
+                'id' => $p->id,
+                'region' => $p->region,
+                'region_label' => $p->region_label,
+                'pickup_location' => $p->pickup_location,
+                'map_url' => $p->map_url,
+                'image_url' => $p->image_url,
+                'latitude' => $p->latitude,
+                'longitude' => $p->longitude,
+                'notes' => $p->notes,
+                'sort_order' => $p->sort_order,
+            ])
             ),
             'schedules_count' => $this->whenCounted('schedules'),
         ];

@@ -1,18 +1,14 @@
 <x-emails.partials.base subject="ชำระเงินสำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: linear-gradient(150deg, #065f46 0%, #059669 55%, #10b981 100%);">
-    <div class="logo-row">
-      <span class="logo-leaf">&#127807;</span>
-      <span class="logo-name">Luilaykhao</span>
-    </div>
-    <div class="header-icon-wrap">&#9989;</div>
-    <h1 class="header-title">ชำระเงินสำเร็จแล้ว!</h1>
+  <div class="email-header" style="background: #059669;">
+    <span class="email-brand">Luilaykhao</span>
+    <h1 class="header-title">ชำระเงินสำเร็จแล้ว</h1>
     <p class="header-subtitle">
       @if($paymentType === 'installment')
         งวดแรกได้รับการบันทึกเรียบร้อย
       @else
-        การชำระเงินเสร็จสมบูรณ์ &mdash; ท่านพร้อมออกเดินทาง!
+        การชำระเงินเสร็จสมบูรณ์ &mdash; ท่านพร้อมออกเดินทาง
       @endif
     </p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -26,8 +22,7 @@
       ขอบคุณสำหรับการชำระเงิน การจองของท่านได้รับการยืนยันแล้ว
     </div>
 
-    {{-- Amount highlight --}}
-    <div class="highlight-box" style="background:#f0fdf4; border:2px solid #86efac;">
+    <div class="highlight-box" style="background:#f0fdf4; border-color:#86efac;">
       <div class="amount-label" style="color:#166534;">ยอดที่ชำระ</div>
       <div class="amount" style="color:#15803d;">฿{{ number_format($booking->paid_amount, 0) }}</div>
       <div class="amount-note" style="color:#166534;">
@@ -39,7 +34,6 @@
     <p class="section-label">รายละเอียดการเดินทาง</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#dcfce7; font-size:20px;">&#127956;</div>
         <span class="info-card-title">ข้อมูลทริป</span>
       </div>
       <div class="info-row">
@@ -50,14 +44,13 @@
         <span class="info-label">วันเดินทาง</span>
         <span class="info-value">{{ $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-' }}</span>
       </div>
-      {{-- Pickup --}}
       @if($booking->pickupPoint || $booking->pickup_region)
       <div class="pickup-block">
         <div class="pickup-label">จุดรับ</div>
         @if($booking->pickupPoint)
           <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
           @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>
@@ -73,7 +66,6 @@
     <p class="section-label">สรุปการชำระเงิน</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#dcfce7; font-size:20px;">&#128179;</div>
         <span class="info-card-title">ข้อมูลการเงิน</span>
       </div>
       <div class="info-row">
@@ -82,7 +74,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">ยอดชำระแล้ว</span>
-        <span class="info-value accent-teal">฿{{ number_format($booking->paid_amount, 0) }}</span>
+        <span class="info-value accent-green">฿{{ number_format($booking->paid_amount, 0) }}</span>
       </div>
       @if($booking->total_amount - $booking->paid_amount > 0)
       <div class="info-row">
@@ -104,7 +96,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">สถานะ</span>
-        <span class="info-value accent-teal">&#10003; ยืนยันแล้ว</span>
+        <span class="info-value accent-green">ยืนยันแล้ว</span>
       </div>
     </div>
 
@@ -177,7 +169,7 @@
     </div>
 
     <div class="contact-bar">
-      &#128222;&nbsp; หากมีข้อสงสัย กรุณาติดต่อทีมงาน&nbsp;<strong>062-612-6006</strong>&nbsp;(08:00&ndash;20:00)
+      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>

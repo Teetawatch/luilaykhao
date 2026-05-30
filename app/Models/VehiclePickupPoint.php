@@ -12,7 +12,7 @@ class VehiclePickupPoint extends Model
 
     protected $fillable = [
         'vehicle_id', 'region', 'region_label', 'pickup_location',
-        'map_url', 'latitude', 'longitude', 'notes', 'sort_order',
+        'map_url', 'image_url', 'latitude', 'longitude', 'notes', 'sort_order',
     ];
 
     protected function casts(): array

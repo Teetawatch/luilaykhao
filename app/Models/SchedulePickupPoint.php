@@ -11,7 +11,7 @@ class SchedulePickupPoint extends Model
 
     protected $fillable = [
         'schedule_id', 'region', 'region_label', 'pickup_location',
-        'price', 'map_url', 'latitude', 'longitude', 'notes', 'sort_order',
+        'price', 'map_url', 'image_url', 'latitude', 'longitude', 'notes', 'sort_order',
     ];
 
     protected function casts(): array

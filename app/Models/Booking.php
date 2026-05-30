@@ -19,6 +19,9 @@ class Booking extends Model
     // เปลี่ยนวันเดินทางได้ก่อนเดินทางอย่างน้อยกี่วัน
     public const RESCHEDULE_LEAD_DAYS = 20;
 
+    // การจองสถานะ pending ที่ยังไม่ชำระเงินจะถูกยกเลิกอัตโนมัติหลังกี่นาที เพื่อคืนที่นั่ง
+    public const PENDING_TTL_MINUTES = 10;
+
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'is_group', 'group_name', 'group_notes',

@@ -1,11 +1,11 @@
 @php
   $paymentLabels = [
-    'installment' => ['label' => 'ผ่อนชำระ',     'color' => '#2563eb'],
-    'deposit'     => ['label' => 'มัดจำ',         'color' => '#0d9488'],
-    'balance'     => ['label' => 'ส่วนที่เหลือ',  'color' => '#059669'],
-    'full'        => ['label' => 'เต็มจำนวน',     'color' => '#059669'],
+    'installment' => 'ผ่อนชำระ',
+    'deposit'     => 'มัดจำ',
+    'balance'     => 'ส่วนที่เหลือ',
+    'full'        => 'เต็มจำนวน',
   ];
-  $pt = $paymentLabels[$paymentType] ?? $paymentLabels['full'];
+  $ptLabel = $paymentLabels[$paymentType] ?? $paymentLabels['full'];
 
   if ($paymentType === 'deposit') {
     $paidAmount = $booking->deposit_amount;
@@ -24,17 +24,13 @@
   $remaining = $booking->total_amount - $booking->paid_amount;
 @endphp
 
-<x-emails.partials.base subject="[Admin] ได้รับชำระเงิน ({{ $pt['label'] }}) — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="[Admin] ได้รับชำระเงิน ({{ $ptLabel }}) — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background:linear-gradient(150deg,#92400e 0%,#b45309 55%,#d97706 100%)">
-    <div class="logo-row">
-      <span class="logo-leaf">&#127807;</span>
-      <span class="logo-name">Luilaykhao Admin</span>
-    </div>
-    <div class="header-icon-wrap">&#128176;</div>
+  <div class="email-header" style="background: #1e293b;">
+    <span class="email-brand">Luilaykhao Admin</span>
     <h1 class="header-title">ได้รับชำระเงิน</h1>
-    <p class="header-subtitle">{{ $pt['label'] }} &mdash; {{ $booking->user->name ?? 'ลูกค้า' }}</p>
+    <p class="header-subtitle">{{ $ptLabel }} &mdash; {{ $booking->user->name ?? 'ลูกค้า' }}</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -44,14 +40,13 @@
     <div class="greeting">
       ได้รับชำระเงินจาก <strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong>
       ({{ $booking->user->email ?? '-' }})
-      @if($booking->user->phone) &nbsp;&middot;&nbsp; &#128222; {{ $booking->user->phone }} @endif
+      @if($booking->user->phone) &nbsp;&middot;&nbsp; {{ $booking->user->phone }} @endif
     </div>
 
-    {{-- Amount highlight --}}
-    <div class="highlight-box" style="background:#fffbeb;border:2px solid #fcd34d">
-      <div class="amount-label" style="color:#92400e">ยอดที่ได้รับ &mdash; {{ $pt['label'] }}</div>
-      <div class="amount" style="color:#b45309">฿{{ number_format($paidAmount, 0) }}</div>
-      <div class="amount-note" style="color:#92400e">
+    <div class="highlight-box" style="background:#f8fafc; border-color:#cbd5e1;">
+      <div class="amount-label" style="color:#475569;">ยอดที่ได้รับ &mdash; {{ $ptLabel }}</div>
+      <div class="amount" style="color:#1e293b;">฿{{ number_format($paidAmount, 0) }}</div>
+      <div class="amount-note" style="color:#64748b;">
         {{ $methodLabel }} &nbsp;&middot;&nbsp; {{ now()->locale('th')->isoFormat('D MMM YYYY HH:mm') }} น.
       </div>
     </div>
@@ -59,7 +54,6 @@
     <p class="section-label">รายละเอียดการจอง</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#fef3c7;font-size:20px">&#127956;</div>
         <span class="info-card-title">ข้อมูลทริป</span>
       </div>
       <div class="info-row">
@@ -76,7 +70,7 @@
         @if($booking->pickupPoint)
           <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
           @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>
@@ -92,16 +86,15 @@
     <p class="section-label">สรุปการเงิน</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#fef3c7;font-size:20px">&#128179;</div>
         <span class="info-card-title">ข้อมูลการชำระเงิน</span>
       </div>
       <div class="info-row">
         <span class="info-label">ยอดที่ได้รับครั้งนี้</span>
-        <span class="info-value" style="color:#b45309;font-size:18px">฿{{ number_format($paidAmount, 0) }}</span>
+        <span class="info-value lg">฿{{ number_format($paidAmount, 0) }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">ประเภทการชำระ</span>
-        <span class="info-value">{{ $pt['label'] }}</span>
+        <span class="info-value">{{ $ptLabel }}</span>
       </div>
       @if($paymentType === 'installment')
       @php
@@ -113,7 +106,7 @@
         <span class="info-value">
           {{ $paidCount }} / {{ $booking->installment_count }} งวด
           @if($remainingCount > 0)
-            &nbsp;<span style="color:#d97706;font-size:12px">(เหลือ {{ $remainingCount }} งวด)</span>
+            &nbsp;<span style="color:#d97706; font-size:12px;">(เหลือ {{ $remainingCount }} งวด)</span>
           @endif
         </span>
       </div>
@@ -138,7 +131,7 @@
       @else
       <div class="info-row">
         <span class="info-label">สถานะการชำระ</span>
-        <span class="info-value accent-teal">&#10003; ครบถ้วนสมบูรณ์</span>
+        <span class="info-value accent-green">ครบถ้วนสมบูรณ์</span>
       </div>
       @endif
     </div>
@@ -152,7 +145,7 @@
             <th>งวดที่</th>
             <th>จำนวนเงิน</th>
             <th>กำหนดชำระ</th>
-            <th style="text-align:right">สถานะ</th>
+            <th style="text-align:right;">สถานะ</th>
           </tr>
         </thead>
         <tbody>
@@ -161,7 +154,7 @@
             <td>{{ $inst->installment_no }}</td>
             <td>฿{{ number_format($inst->amount, 0) }}</td>
             <td>{{ $inst->due_date ? \Carbon\Carbon::parse($inst->due_date)->locale('th')->isoFormat('D MMM YYYY') : '-' }}</td>
-            <td style="text-align:right">
+            <td style="text-align:right;">
               @if($inst->status === 'paid')
                 <span class="badge-paid">ชำระแล้ว</span>
               @elseif($inst->status === 'overdue')
@@ -179,7 +172,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background:linear-gradient(135deg,#b45309,#d97706)">
+         class="cta-btn" style="background: #1e293b;">
         ดูรายละเอียดใน Admin &rarr;
       </a>
     </div>

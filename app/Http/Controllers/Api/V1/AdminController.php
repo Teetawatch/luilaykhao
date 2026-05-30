@@ -11,24 +11,27 @@ use App\Http\Resources\SchedulePickupPointResource;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Http\Resources\VehicleResource;
+use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\BookingSeat;
+use App\Models\HeroSlide;
 use App\Models\InstallmentPayment;
 use App\Models\Review;
 use App\Models\SchedulePickupPoint;
+use App\Models\ScheduleStaffAssignment;
 use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
-use App\Models\BookingSeat;
-use App\Jobs\VerifySlipJob;
 use App\Services\BookingService;
 use App\Services\MailService;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Traits\ApiResponse;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +40,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use Spatie\Permission\Guard as SpatieGuard;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -74,7 +78,7 @@ class AdminController extends Controller
             ->sum('total_amount');
 
         // 2. Installment payments made this month
-        $monthlyInst = \App\Models\InstallmentPayment::where('status', 'paid')
+        $monthlyInst = InstallmentPayment::where('status', 'paid')
             ->whereMonth('transfer_datetime', now()->month)
             ->whereYear('transfer_datetime', now()->year)
             ->sum('amount');
@@ -110,7 +114,7 @@ class AdminController extends Controller
                         ->whereYear('transfer_datetime', $date->year)
                         ->sum('total_amount')
                     +
-                    \App\Models\InstallmentPayment::where('status', 'paid')
+                    InstallmentPayment::where('status', 'paid')
                         ->whereMonth('transfer_datetime', $date->month)
                         ->whereYear('transfer_datetime', $date->year)
                         ->sum('amount')
@@ -424,7 +428,7 @@ class AdminController extends Controller
             ->values();
 
         if ($duplicateSeatIds->isNotEmpty()) {
-            return $this->error('เลือกที่นั่งปลายทางซ้ำ: ' . $duplicateSeatIds->join(', '), 422);
+            return $this->error('เลือกที่นั่งปลายทางซ้ำ: '.$duplicateSeatIds->join(', '), 422);
         }
 
         $seatIdsToMove = $seatIdsToMove->unique()->values();
@@ -445,7 +449,7 @@ class AdminController extends Controller
             $occupiedSeatIds = $occupiedSeatQuery->pluck('seat_id')->values();
 
             if ($occupiedSeatIds->isNotEmpty()) {
-                return $this->error('ที่นั่ง ' . $occupiedSeatIds->join(', ') . ' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกปลายทางอื่นหรือแก้ผังที่นั่งก่อน', 422);
+                return $this->error('ที่นั่ง '.$occupiedSeatIds->join(', ').' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกปลายทางอื่นหรือแก้ผังที่นั่งก่อน', 422);
             }
         }
 
@@ -497,7 +501,7 @@ class AdminController extends Controller
             $target->syncBookedSeats();
         });
 
-        return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ " . $target->departure_date->format('d/m/Y') . " สำเร็จ");
+        return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ ".$target->departure_date->format('d/m/Y').' สำเร็จ');
     }
 
     private function seatMovesForBooking(Booking $booking, $selectedPassengerIds, $seatAssignments)
@@ -856,19 +860,19 @@ class AdminController extends Controller
             ->with('schedule', 'passengers')
             ->firstOrFail();
 
-        if (!in_array($booking->status, ['confirmed', 'cancelled'])) {
+        if (! in_array($booking->status, ['confirmed', 'cancelled'])) {
             return $this->error('สามารถดูตัวอย่างการคืนเงินได้เฉพาะการจองที่ยืนยันแล้วหรือยกเลิกแล้ว', 422);
         }
 
         $preview = $this->bookingService->calculateRefundAmount($booking);
 
         return $this->success([
-            'booking_ref'    => $booking->booking_ref,
-            'payment_type'   => $booking->payment_type ?? 'full',
-            'paid_amount'    => (float) $booking->paid_amount,
+            'booking_ref' => $booking->booking_ref,
+            'payment_type' => $booking->payment_type ?? 'full',
+            'paid_amount' => (float) $booking->paid_amount,
             'refund_percent' => $preview['refund_percent'],
-            'refund_amount'  => $preview['refund_amount'],
-            'policy_note'    => $preview['policy_note'],
+            'refund_amount' => $preview['refund_amount'],
+            'policy_note' => $preview['policy_note'],
         ]);
     }
 
@@ -880,7 +884,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'refund_amount' => ['required', 'numeric', 'min:0'],
-            'note'          => ['nullable', 'string', 'max:500'],
+            'note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $booking = Booking::where('booking_ref', $ref)
@@ -891,13 +895,13 @@ class AdminController extends Controller
             return $this->error('การจองนี้ถูกคืนเงินไปแล้ว', 422);
         }
 
-        if (!in_array($booking->status, ['confirmed', 'cancelled'])) {
+        if (! in_array($booking->status, ['confirmed', 'cancelled'])) {
             return $this->error('ไม่สามารถคืนเงินการจองที่มีสถานะนี้ได้', 422);
         }
 
         $refundAmount = (float) $request->refund_amount;
         if ($refundAmount > (float) $booking->paid_amount) {
-            return $this->error('ยอดคืนเงินต้องไม่เกิน ฿' . number_format($booking->paid_amount, 2), 422);
+            return $this->error('ยอดคืนเงินต้องไม่เกิน ฿'.number_format($booking->paid_amount, 2), 422);
         }
 
         $booking = $this->bookingService->processRefund($booking, $refundAmount, $request->note);
@@ -908,16 +912,16 @@ class AdminController extends Controller
             $booking->user_id,
             'booking_refunded',
             'ดำเนินการคืนเงินแล้ว',
-            "เลขการจอง {$booking->booking_ref} ได้รับการคืนเงิน ฿" . number_format($refundAmount, 0) . " แล้ว",
+            "เลขการจอง {$booking->booking_ref} ได้รับการคืนเงิน ฿".number_format($refundAmount, 0).' แล้ว',
             ['booking_ref' => $booking->booking_ref, 'refund_amount' => $refundAmount, 'route' => 'booking'],
         );
 
         return $this->success([
-            'booking_ref'   => $booking->booking_ref,
-            'status'        => $booking->status,
+            'booking_ref' => $booking->booking_ref,
+            'status' => $booking->status,
             'refund_amount' => (float) $booking->refund_amount,
-            'refunded_at'   => $booking->refunded_at?->toISOString(),
-        ], 'คืนเงิน ฿' . number_format($refundAmount, 0) . ' สำเร็จ');
+            'refunded_at' => $booking->refunded_at?->toISOString(),
+        ], 'คืนเงิน ฿'.number_format($refundAmount, 0).' สำเร็จ');
     }
 
     /**
@@ -928,8 +932,8 @@ class AdminController extends Controller
     {
         $request->validate([
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'email'   => ['nullable', 'email'],
-            'phone'   => ['nullable', 'string'],
+            'email' => ['nullable', 'email'],
+            'phone' => ['nullable', 'string'],
         ]);
 
         $booking = Booking::where('booking_ref', $ref)->firstOrFail();
@@ -967,23 +971,22 @@ class AdminController extends Controller
         );
 
         \Log::info('Booking transferred', [
-            'booking_ref'      => $booking->booking_ref,
-            'from_user_id'     => $previousUserId,
-            'to_user_id'       => $targetUser->id,
-            'transferred_by'   => $request->user()->id,
+            'booking_ref' => $booking->booking_ref,
+            'from_user_id' => $previousUserId,
+            'to_user_id' => $targetUser->id,
+            'transferred_by' => $request->user()->id,
         ]);
 
         return $this->success([
             'booking_ref' => $booking->booking_ref,
-            'new_user'    => [
-                'id'    => $targetUser->id,
-                'name'  => $targetUser->name,
+            'new_user' => [
+                'id' => $targetUser->id,
+                'name' => $targetUser->name,
                 'email' => $targetUser->email,
                 'phone' => $targetUser->phone,
             ],
         ], "ย้ายการจองไปยัง {$targetUser->name} สำเร็จ");
     }
-
 
     public function updateBooking(Request $request, string $ref): JsonResponse
     {
@@ -1098,7 +1101,7 @@ class AdminController extends Controller
                 if ($booking->slip_path) {
                     Storage::disk('public')->delete($booking->slip_path);
                 }
-                $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+                $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
             }
 
             if ($bookingUpdates) {
@@ -1203,7 +1206,7 @@ class AdminController extends Controller
                             Storage::disk('public')->delete($installment->slip_path);
                         }
                         $installment->update([
-                            'slip_path' => $file->store('slips/' . date('Y/m'), 'public'),
+                            'slip_path' => $file->store('slips/'.date('Y/m'), 'public'),
                         ]);
                     }
 
@@ -1284,7 +1287,7 @@ class AdminController extends Controller
         $schedule = TripSchedule::with(['trip', 'pickupPoints'])->findOrFail($request->schedule_id);
         $schedule->syncBookedSeats();
 
-        $fullName = trim($request->input('customer_name') ?: trim(($request->input('name') ?? '') . ' ' . ($request->input('surname') ?? '')));
+        $fullName = trim($request->input('customer_name') ?: trim(($request->input('name') ?? '').' '.($request->input('surname') ?? '')));
         $passengers = collect($request->input('passengers', []))
             ->filter(fn ($passenger) => filled($passenger['name'] ?? null))
             ->values();
@@ -1327,7 +1330,7 @@ class AdminController extends Controller
                 ->pluck('seat_id');
 
             if ($occupiedSeatIds->isNotEmpty()) {
-                return $this->error('ที่นั่ง ' . $occupiedSeatIds->join(', ') . ' ถูกจองแล้ว', 422);
+                return $this->error('ที่นั่ง '.$occupiedSeatIds->join(', ').' ถูกจองแล้ว', 422);
             }
         }
 
@@ -1344,11 +1347,11 @@ class AdminController extends Controller
             ->when(! $email, fn ($query) => $query->where('phone', $request->phone))
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             $user = User::create([
                 'name' => $fullName,
                 'phone' => $request->phone,
-                'email' => $email ?: 'manual_' . time() . '_' . Str::random(4) . '@luilaykhao.com',
+                'email' => $email ?: 'manual_'.time().'_'.Str::random(4).'@luilaykhao.com',
                 'password' => Hash::make(Str::random(16)),
             ]);
             $user->assignRole('customer');
@@ -1384,9 +1387,9 @@ class AdminController extends Controller
         }
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
         }
-        $paymentRef = $isPaid ? 'PAY-MANUAL-' . strtoupper(uniqid()) : null;
+        $paymentRef = $isPaid ? 'PAY-MANUAL-'.strtoupper(uniqid()) : null;
 
         $booking = Booking::create([
             'booking_ref' => Booking::generateRef(),
@@ -1536,8 +1539,9 @@ class AdminController extends Controller
         $passengers = BookingPassenger::whereHas('booking', function ($q) use ($scheduleId) {
             $q->where('schedule_id', $scheduleId)
                 ->whereIn('status', ['confirmed', 'pending']);
-        })->with(['booking.seats', 'booking.pickupPoint', 'booking.user'])->get()->map(function($p) {
+        })->with(['booking.seats', 'booking.pickupPoint', 'booking.user'])->get()->map(function ($p) {
             $p->is_join_trip = $p->booking->is_join_trip ?? false;
+
             return $p;
         });
 
@@ -1613,6 +1617,7 @@ class AdminController extends Controller
             'region_label' => $p->region_label,
             'pickup_location' => $p->pickup_location,
             'map_url' => $p->map_url,
+            'image_url' => $p->image_url,
             'latitude' => $p->latitude,
             'longitude' => $p->longitude,
             'notes' => $p->notes,
@@ -1629,6 +1634,7 @@ class AdminController extends Controller
             'region_label' => ['required', 'string', 'max:100'],
             'pickup_location' => ['required', 'string', 'max:255'],
             'map_url' => ['nullable', 'url', 'max:500'],
+            'image_url' => ['nullable', 'url', 'max:500'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -1645,6 +1651,7 @@ class AdminController extends Controller
             'region_label' => $point->region_label,
             'pickup_location' => $point->pickup_location,
             'map_url' => $point->map_url,
+            'image_url' => $point->image_url,
             'latitude' => $point->latitude,
             'longitude' => $point->longitude,
             'notes' => $point->notes,
@@ -1661,6 +1668,7 @@ class AdminController extends Controller
             'region_label' => ['sometimes', 'string', 'max:100'],
             'pickup_location' => ['sometimes', 'string', 'max:255'],
             'map_url' => ['nullable', 'url', 'max:500'],
+            'image_url' => ['nullable', 'url', 'max:500'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -1675,6 +1683,7 @@ class AdminController extends Controller
             'region_label' => $point->region_label,
             'pickup_location' => $point->pickup_location,
             'map_url' => $point->map_url,
+            'image_url' => $point->image_url,
             'latitude' => $point->latitude,
             'longitude' => $point->longitude,
             'notes' => $point->notes,
@@ -1707,7 +1716,7 @@ class AdminController extends Controller
             } else {
                 try {
                     $query->role($requestedRole);
-                } catch (\Spatie\Permission\Exceptions\RoleDoesNotExist $e) {
+                } catch (RoleDoesNotExist $e) {
                     // Role not created yet — return empty set without throwing
                     $query->whereRaw('0 = 1');
                 }
@@ -1784,11 +1793,11 @@ class AdminController extends Controller
     public function staffRoster(Request $request): JsonResponse
     {
         $from = $request->filled('from')
-            ? \Carbon\Carbon::parse($request->from)->startOfDay()
+            ? Carbon::parse($request->from)->startOfDay()
             : now()->startOfDay();
 
         $to = $request->filled('to')
-            ? \Carbon\Carbon::parse($request->to)->endOfDay()
+            ? Carbon::parse($request->to)->endOfDay()
             : $from->copy()->addDays(29)->endOfDay();
 
         if (! Schema::hasTable('schedule_staff_assignments')) {
@@ -1802,7 +1811,7 @@ class AdminController extends Controller
 
         $scheduleIds = $schedules->pluck('id');
 
-        $assignments = \App\Models\ScheduleStaffAssignment::with('user')
+        $assignments = ScheduleStaffAssignment::with('user')
             ->whereIn('schedule_id', $scheduleIds)
             ->get()
             ->groupBy('schedule_id');
@@ -1943,6 +1952,7 @@ class AdminController extends Controller
             'pickup_location' => ['required', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
             'map_url' => ['nullable', 'url', 'max:500'],
+            'image_url' => ['nullable', 'url', 'max:500'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -1976,6 +1986,7 @@ class AdminController extends Controller
             'pickup_location' => ['sometimes', 'string', 'max:255'],
             'price' => ['sometimes', 'numeric', 'min:0'],
             'map_url' => ['nullable', 'url', 'max:500'],
+            'image_url' => ['nullable', 'url', 'max:500'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -1993,6 +2004,38 @@ class AdminController extends Controller
         $point->delete();
 
         return $this->success(null, 'ลบจุดรับผู้โดยสารสำเร็จ');
+    }
+
+    // ─── Pickup Point Image Upload ────────────────────────────
+    public function uploadPickupPointImage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,heic,heif', 'max:15360'], // max 15MB
+        ]);
+
+        $file = $request->file('file');
+
+        // Prefer R2 when configured, otherwise fall back to the public disk.
+        $disk = config('filesystems.default') === 'r2' || config('filesystems.disks.r2.bucket')
+            ? 'r2'
+            : 'public';
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'jpg');
+        $filename = date('YmdHis').'_'.Str::random(10).'.'.$ext;
+        $path = 'pickup-points/'.$filename;
+
+        $stream = fopen($file->getRealPath(), 'r');
+        Storage::disk($disk)->put($path, $stream, [
+            'visibility' => 'public',
+            'ContentType' => $file->getMimeType(),
+        ]);
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+
+        return $this->success([
+            'url' => Storage::disk($disk)->url($path),
+        ], 'อัปโหลดรูปจุดรับผู้โดยสารสำเร็จ', 201);
     }
 
     // ─── Media Upload ─────────────────────────────────────────
@@ -2086,7 +2129,7 @@ class AdminController extends Controller
 
     public function publicHeroSlides(): JsonResponse
     {
-        $slides = \App\Models\HeroSlide::where('is_active', true)
+        $slides = HeroSlide::where('is_active', true)
             ->orderBy('sort_order')
             ->get(['id', 'image_url', 'alt_text']);
 
@@ -2095,7 +2138,7 @@ class AdminController extends Controller
 
     public function heroSlides(): JsonResponse
     {
-        $slides = \App\Models\HeroSlide::orderBy('sort_order')->get();
+        $slides = HeroSlide::orderBy('sort_order')->get();
 
         return $this->success($slides);
     }
@@ -2104,17 +2147,17 @@ class AdminController extends Controller
     {
         $request->validate([
             'image_url' => ['required', 'string', 'url'],
-            'alt_text'  => ['nullable', 'string', 'max:255'],
+            'alt_text' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
         ]);
 
-        $maxOrder = \App\Models\HeroSlide::max('sort_order') ?? -1;
+        $maxOrder = HeroSlide::max('sort_order') ?? -1;
 
-        $slide = \App\Models\HeroSlide::create([
-            'image_url'  => $request->image_url,
-            'alt_text'   => $request->alt_text ?? 'ลุยเลเขา',
+        $slide = HeroSlide::create([
+            'image_url' => $request->image_url,
+            'alt_text' => $request->alt_text ?? 'ลุยเลเขา',
             'sort_order' => $maxOrder + 1,
-            'is_active'  => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active', true),
         ]);
 
         return $this->success($slide, 'เพิ่มภาพสไลด์สำเร็จ');
@@ -2122,11 +2165,11 @@ class AdminController extends Controller
 
     public function updateHeroSlide(Request $request, int $id): JsonResponse
     {
-        $slide = \App\Models\HeroSlide::findOrFail($id);
+        $slide = HeroSlide::findOrFail($id);
 
         $request->validate([
             'image_url' => ['sometimes', 'string', 'url'],
-            'alt_text'  => ['nullable', 'string', 'max:255'],
+            'alt_text' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
         ]);
 
@@ -2137,7 +2180,7 @@ class AdminController extends Controller
 
     public function deleteHeroSlide(int $id): JsonResponse
     {
-        $slide = \App\Models\HeroSlide::findOrFail($id);
+        $slide = HeroSlide::findOrFail($id);
         $slide->delete();
 
         return $this->success(null, 'ลบภาพสไลด์สำเร็จ');
@@ -2146,12 +2189,12 @@ class AdminController extends Controller
     public function reorderHeroSlides(Request $request): JsonResponse
     {
         $request->validate([
-            'ids'   => ['required', 'array'],
+            'ids' => ['required', 'array'],
             'ids.*' => ['integer'],
         ]);
 
         foreach ($request->ids as $order => $id) {
-            \App\Models\HeroSlide::where('id', $id)->update(['sort_order' => $order]);
+            HeroSlide::where('id', $id)->update(['sort_order' => $order]);
         }
 
         return $this->success(null, 'จัดเรียงสไลด์สำเร็จ');
@@ -2177,7 +2220,9 @@ class AdminController extends Controller
 
         if ($type === 'installment') {
             $no = $data['installment_no'] ?? null;
-            if (! $no) return $this->error('ระบุหมายเลขงวด', 422);
+            if (! $no) {
+                return $this->error('ระบุหมายเลขงวด', 422);
+            }
 
             $installment = InstallmentPayment::where('booking_id', $booking->id)
                 ->where('installment_no', $no)
@@ -2209,18 +2254,20 @@ class AdminController extends Controller
     public function rejectSlip(Request $request, string $ref): JsonResponse
     {
         $data = $request->validate([
-            'slip_type'      => ['nullable', 'in:main,balance,installment'],
+            'slip_type' => ['nullable', 'in:main,balance,installment'],
             'installment_no' => ['nullable', 'integer', 'min:1'],
-            'reason'         => ['nullable', 'string', 'max:255'],
+            'reason' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $type    = $data['slip_type'] ?? 'main';
-        $reason  = $data['reason'] ?? 'สลิปไม่ถูกต้อง';
+        $type = $data['slip_type'] ?? 'main';
+        $reason = $data['reason'] ?? 'สลิปไม่ถูกต้อง';
         $booking = Booking::where('booking_ref', $ref)->firstOrFail();
 
         if ($type === 'installment') {
             $no = $data['installment_no'] ?? null;
-            if (! $no) return $this->error('ระบุหมายเลขงวด', 422);
+            if (! $no) {
+                return $this->error('ระบุหมายเลขงวด', 422);
+            }
 
             $installment = InstallmentPayment::where('booking_id', $booking->id)
                 ->where('installment_no', $no)
@@ -2260,22 +2307,26 @@ class AdminController extends Controller
     public function reverifySlip(Request $request, string $ref): JsonResponse
     {
         $data = $request->validate([
-            'slip_type'      => ['nullable', 'in:main,balance,installment'],
+            'slip_type' => ['nullable', 'in:main,balance,installment'],
             'installment_no' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $type    = $data['slip_type'] ?? 'main';
+        $type = $data['slip_type'] ?? 'main';
         $booking = Booking::where('booking_ref', $ref)->firstOrFail();
 
         if ($type === 'installment') {
             $no = $data['installment_no'] ?? null;
-            if (! $no) return $this->error('ระบุหมายเลขงวด', 422);
+            if (! $no) {
+                return $this->error('ระบุหมายเลขงวด', 422);
+            }
 
             $installment = InstallmentPayment::where('booking_id', $booking->id)
                 ->where('installment_no', $no)
                 ->firstOrFail();
 
-            if (! $installment->slip_path) return $this->error('ไม่มีสลิปในระบบ', 422);
+            if (! $installment->slip_path) {
+                return $this->error('ไม่มีสลิปในระบบ', 422);
+            }
 
             $installment->update(['slip_ocr_status' => SlipOcrService::STATUS_PENDING]);
             VerifySlipJob::dispatch('installment', $installment->id, $installment->slip_path, (float) $installment->amount);
@@ -2284,11 +2335,15 @@ class AdminController extends Controller
         }
 
         if ($type === 'balance') {
-            if (! $booking->balance_slip_path) return $this->error('ไม่มีสลิปในระบบ', 422);
+            if (! $booking->balance_slip_path) {
+                return $this->error('ไม่มีสลิปในระบบ', 422);
+            }
             $booking->update(['balance_slip_ocr_status' => SlipOcrService::STATUS_PENDING]);
             VerifySlipJob::dispatch('balance', $booking->id, $booking->balance_slip_path, (float) $booking->balance_amount);
         } else {
-            if (! $booking->slip_path) return $this->error('ไม่มีสลิปในระบบ', 422);
+            if (! $booking->slip_path) {
+                return $this->error('ไม่มีสลิปในระบบ', 422);
+            }
             $booking->update(['slip_ocr_status' => SlipOcrService::STATUS_PENDING]);
             $amount = $booking->payment_type === 'deposit' ? (float) $booking->deposit_amount : (float) $booking->total_amount;
             VerifySlipJob::dispatch('booking', $booking->id, $booking->slip_path, $amount);

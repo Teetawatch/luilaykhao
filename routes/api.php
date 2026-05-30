@@ -300,6 +300,7 @@ Route::prefix('v1')->group(function () {
 
         // Upload
         Route::post('upload-image', [AdminController::class, 'uploadMedia']);
+        Route::post('pickup-points/image', [AdminController::class, 'uploadPickupPointImage']);
         Route::get('media', [AdminController::class, 'listMedia']);
         Route::delete('media', [AdminController::class, 'deleteMedia']);
 

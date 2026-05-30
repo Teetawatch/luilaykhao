@@ -1,13 +1,9 @@
 <x-emails.partials.base subject="[Admin] การจองใหม่ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background:linear-gradient(150deg,#5b21b6 0%,#7c3aed 55%,#a855f7 100%)">
-    <div class="logo-row">
-      <span class="logo-leaf">&#127807;</span>
-      <span class="logo-name">Luilaykhao Admin</span>
-    </div>
-    <div class="header-icon-wrap">&#128276;</div>
-    <h1 class="header-title">การจองใหม่เข้ามา!</h1>
+  <div class="email-header" style="background: #1e293b;">
+    <span class="email-brand">Luilaykhao Admin</span>
+    <h1 class="header-title">การจองใหม่เข้ามา</h1>
     <p class="header-subtitle">มีการจองใหม่จากระบบที่ต้องดำเนินการ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
@@ -18,20 +14,18 @@
     <div class="greeting">
       มีการจองใหม่จาก <strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong>
       ({{ $booking->user->email ?? '-' }})
-      @if($booking->user->phone) &nbsp;&middot;&nbsp; &#128222; {{ $booking->user->phone }} @endif
+      @if($booking->user->phone) &nbsp;&middot;&nbsp; {{ $booking->user->phone }} @endif
     </div>
 
-    {{-- Amount highlight --}}
-    <div class="highlight-box" style="background:#faf5ff;border:2px solid #e9d5ff">
-      <div class="amount-label" style="color:#7c3aed">ยอดรวมการจอง</div>
-      <div class="amount" style="color:#6d28d9">฿{{ number_format($booking->total_amount, 0) }}</div>
-      <div class="amount-note" style="color:#7c3aed">สถานะ: รอชำระเงิน</div>
+    <div class="highlight-box" style="background:#f8fafc; border-color:#cbd5e1;">
+      <div class="amount-label" style="color:#475569;">ยอดรวมการจอง</div>
+      <div class="amount" style="color:#1e293b;">฿{{ number_format($booking->total_amount, 0) }}</div>
+      <div class="amount-note" style="color:#64748b;">สถานะ: รอชำระเงิน</div>
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#f3e8ff;font-size:20px">&#127956;</div>
         <span class="info-card-title">ข้อมูลการเดินทาง</span>
       </div>
       <div class="info-row">
@@ -48,7 +42,7 @@
         @if($booking->pickupPoint)
           <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
           @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">&#128205; {{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>
@@ -62,7 +56,7 @@
       @if($booking->is_join_trip)
       <div class="info-row">
         <span class="info-label">ประเภท</span>
-        <span class="info-value" style="color:#7c3aed">Join Trip</span>
+        <span class="info-value">Join Trip</span>
       </div>
       @endif
       @if($booking->is_group && $booking->group_name)
@@ -76,12 +70,11 @@
     <p class="section-label">ข้อมูลการชำระเงิน</p>
     <div class="info-card">
       <div class="info-card-header">
-        <div class="info-card-icon" style="background:#f3e8ff;font-size:20px">&#128179;</div>
         <span class="info-card-title">สรุปการเงิน</span>
       </div>
       <div class="info-row">
         <span class="info-label">ยอดรวม</span>
-        <span class="info-value" style="color:#6d28d9;font-size:18px">฿{{ number_format($booking->total_amount, 0) }}</span>
+        <span class="info-value lg">฿{{ number_format($booking->total_amount, 0) }}</span>
       </div>
       @if($booking->discount_amount > 0)
       <div class="info-row">
@@ -113,17 +106,17 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width:40px">#</th>
+            <th style="width:40px;">#</th>
             <th>ชื่อ-นามสกุล</th>
-            <th style="text-align:right">โทรศัพท์</th>
+            <th style="text-align:right;">โทรศัพท์</th>
           </tr>
         </thead>
         <tbody>
           @foreach($booking->passengers as $i => $p)
           <tr>
-            <td style="color:#94a3b8;font-size:12px">{{ $i + 1 }}</td>
-            <td style="font-weight:700">{{ $p->name }}</td>
-            <td style="text-align:right;color:#64748b">{{ $p->phone ?? '-' }}</td>
+            <td style="color:#94a3b8; font-size:12px;">{{ $i + 1 }}</td>
+            <td style="font-weight:600;">{{ $p->name }}</td>
+            <td style="text-align:right; color:#64748b;">{{ $p->phone ?? '-' }}</td>
           </tr>
           @endforeach
         </tbody>
@@ -132,18 +125,15 @@
     @endif
 
     @if($booking->group_notes)
-    <div class="alert-box" style="background:#faf5ff;border:1.5px solid #e9d5ff">
-      <div class="alert-icon-wrap" style="background:#f3e8ff;font-size:18px">&#128221;</div>
-      <div>
-        <p class="alert-title" style="color:#6d28d9">หมายเหตุจากลูกค้า</p>
-        <p class="alert-text" style="color:#4c1d95">{{ $booking->group_notes }}</p>
-      </div>
+    <div class="alert-box" style="background:#f8fafc; border-left-color:#64748b;">
+      <p class="alert-title" style="color:#374151;">หมายเหตุจากลูกค้า</p>
+      <p class="alert-text" style="color:#64748b;">{{ $booking->group_notes }}</p>
     </div>
     @endif
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">
+         class="cta-btn" style="background: #1e293b;">
         ดูรายละเอียดใน Admin &rarr;
       </a>
     </div>
