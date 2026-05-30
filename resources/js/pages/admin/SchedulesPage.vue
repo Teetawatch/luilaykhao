@@ -1219,6 +1219,14 @@
           <div class="apply-section">
             <div class="apply-section-title"><span class="material-symbols-rounded">tune</span> วิธีใช้งาน</div>
             <div class="apply-mode-wrap">
+              <label class="apply-mode-option" :class="{ active: copyMode === 'images' }">
+                <input type="radio" v-model="copyMode" value="images" />
+                <span class="material-symbols-rounded">image</span>
+                <div>
+                  <div style="font-weight:700;">เฉพาะรูป <span style="font-size:10px;color:#059669;font-weight:700;">· ปลอดภัยกับใบจอง</span></div>
+                  <div style="font-size:11px;color:#6b7280;">อัปเดตเฉพาะรูปให้จุดที่ชื่อตรงกัน ไม่ลบ/ไม่เพิ่มจุด</div>
+                </div>
+              </label>
               <label class="apply-mode-option" :class="{ active: copyMode === 'append' }">
                 <input type="radio" v-model="copyMode" value="append" />
                 <span class="material-symbols-rounded">add_circle</span>
@@ -1232,7 +1240,7 @@
                 <span class="material-symbols-rounded">sync</span>
                 <div>
                   <div style="font-weight:700;">เขียนทับทั้งหมด</div>
-                  <div style="font-size:11px;color:#ef4444;">ลบจุดรับเดิมทั้งหมดแล้วเขียนใหม่</div>
+                  <div style="font-size:11px;color:#ef4444;">ลบจุดรับเดิมทั้งหมดแล้วเขียนใหม่ (ใบจองอาจเสียจุดรับ)</div>
                 </div>
               </label>
             </div>
@@ -1270,7 +1278,7 @@
           <button class="btn-secondary" @click="showCopyModal = false">ยกเลิก</button>
           <button class="btn-primary" @click="doCopyPickups" :disabled="!copySelectedIds.length || copySubmitting">
             <span class="material-symbols-rounded" :class="{ 'animate-spin': copySubmitting }" v-if="copySubmitting">sync</span>
-            {{ copyMode === 'replace' ? 'เขียนทับ' : 'คัดลอก' }}ไป {{ copySelectedIds.length }} รอบ
+            {{ copyMode === 'images' ? 'ซิงค์รูป' : copyMode === 'replace' ? 'เขียนทับ' : 'คัดลอก' }}ไป {{ copySelectedIds.length }} รอบ
           </button>
         </div>
       </div>
@@ -2140,7 +2148,7 @@ const copyPickupPoints = async (sch) => {
   if (!sch) return;
   copySource.value = sch;
   copySelectedIds.value = [];
-  copyMode.value = 'append';
+  copyMode.value = 'images';
   // Prefer already-loaded points when copying from the open pickup manager
   copySourceCount.value = (sch.id === pickupSchedule.value?.id ? pickupPoints.value.length : (sch.pickup_points?.length || 0));
   showCopyModal.value = true;
@@ -2149,6 +2157,18 @@ const copyPickupPoints = async (sch) => {
 const doCopyPickups = async () => {
   copySubmitting.value = true;
   try {
+    // Image-only sync: update image_url on matching points in target rounds.
+    // Booking-safe — no points are created or deleted.
+    if (copyMode.value === 'images') {
+      const syncRes = await api.post(`/admin/schedules/${copySource.value.id}/pickup-points/sync-images`, {
+        schedule_ids: copySelectedIds.value,
+      });
+      showCopyModal.value = false;
+      fetchData();
+      const d = syncRes.data.data || {};
+      alert(`ซิงค์รูปไป ${d.updated_schedules ?? 0} รอบ (${d.updated_points ?? 0} จุด)\nจุดที่ชื่อไม่ตรงกันจะถูกข้าม`);
+      return;
+    }
     const res = await api.get(`/admin/schedules/${copySource.value.id}/pickup-points`);
     const points = res.data.data;
     let skippedCount = 0;

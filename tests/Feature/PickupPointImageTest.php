@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -201,6 +202,78 @@ class PickupPointImageTest extends TestCase
         $this->assertCount(2, $urls); // shared.jpg deduped + mochit.jpg
         $this->assertTrue($urls->contains('https://cdn.example.com/pickup-points/shared.jpg'));
         $this->assertTrue($urls->contains('https://cdn.example.com/pickup-points/mochit.jpg'));
+    }
+
+    public function test_sync_pickup_images_updates_matching_points_without_touching_bookings(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $target = $this->makeSchedule($trip);
+
+        // Source point with an image
+        SchedulePickupPoint::create([
+            'schedule_id' => $source->id, 'region' => 'north', 'region_label' => 'ภาคเหนือ',
+            'pickup_location' => 'ปั๊ม ปตท.', 'price' => 500,
+            'image_url' => 'https://cdn.example.com/pickup-points/ptt.jpg',
+        ]);
+
+        // Target has a matching point (no image yet) + a non-matching point
+        $targetPoint = SchedulePickupPoint::create([
+            'schedule_id' => $target->id, 'region' => 'north', 'region_label' => 'ภาคเหนือ',
+            'pickup_location' => 'ปั๊ม ปตท.', 'price' => 500, 'image_url' => null,
+        ]);
+        $otherPoint = SchedulePickupPoint::create([
+            'schedule_id' => $target->id, 'region' => 'south', 'region_label' => 'ภาคใต้',
+            'pickup_location' => 'จุดอื่น', 'price' => 500, 'image_url' => null,
+        ]);
+
+        // A booking that points at the target's matching pickup point
+        $booking = Booking::create([
+            'booking_ref' => 'LLK-TEST-0001',
+            'user_id' => $admin->id,
+            'schedule_id' => $target->id,
+            'total_amount' => 500,
+            'pickup_point_id' => $targetPoint->id,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/pickup-points/sync-images", [
+                'schedule_ids' => [$target->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.updated_schedules', 1)
+            ->assertJsonPath('data.updated_points', 1);
+
+        // Matching point got the image; its id is unchanged so the booking FK survives
+        $this->assertDatabaseHas('schedule_pickup_points', [
+            'id' => $targetPoint->id,
+            'image_url' => 'https://cdn.example.com/pickup-points/ptt.jpg',
+        ]);
+        // Non-matching point untouched
+        $this->assertDatabaseHas('schedule_pickup_points', [
+            'id' => $otherPoint->id, 'image_url' => null,
+        ]);
+        // Booking still linked to the same pickup point
+        $this->assertEquals($targetPoint->id, $booking->fresh()->pickup_point_id);
+    }
+
+    public function test_sync_pickup_images_requires_source_to_have_images(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $target = $this->makeSchedule($trip);
+
+        SchedulePickupPoint::create([
+            'schedule_id' => $source->id, 'region' => 'north', 'region_label' => 'ภาคเหนือ',
+            'pickup_location' => 'จุดไม่มีรูป', 'price' => 500, 'image_url' => null,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/pickup-points/sync-images", [
+                'schedule_ids' => [$target->id],
+            ])->assertStatus(422);
     }
 
     public function test_invalid_image_url_is_rejected(): void

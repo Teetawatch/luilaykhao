@@ -1976,6 +1976,57 @@ class AdminController extends Controller
         return $this->success(new SchedulePickupPointResource($point), 'บันทึกจุดรับผู้โดยสารสำเร็จ', 201);
     }
 
+    // Copy only the images from this schedule's pickup points onto matching
+    // points (same region + location) in other rounds. This is an UPDATE-only
+    // operation — it never creates or deletes points, so bookings that reference
+    // a pickup_point_id are never affected.
+    public function syncPickupImages(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'schedule_ids' => ['required', 'array', 'min:1'],
+            'schedule_ids.*' => ['integer'],
+        ]);
+
+        $source = TripSchedule::with('pickupPoints')->findOrFail($scheduleId);
+
+        // Map of "region::location" => image_url for source points that have an image
+        $imageMap = [];
+        foreach ($source->pickupPoints as $p) {
+            if (filled($p->image_url)) {
+                $imageMap[$p->region.'::'.$p->pickup_location] = $p->image_url;
+            }
+        }
+
+        if (empty($imageMap)) {
+            return $this->error('รอบต้นทางยังไม่มีรูปจุดรับให้ซิงค์', 422);
+        }
+
+        $updatedPoints = 0;
+        $updatedSchedules = 0;
+        $targetIds = array_values(array_diff($validated['schedule_ids'], [$scheduleId]));
+
+        foreach ($targetIds as $targetId) {
+            $changed = 0;
+            $points = SchedulePickupPoint::where('schedule_id', $targetId)->get();
+            foreach ($points as $point) {
+                $key = $point->region.'::'.$point->pickup_location;
+                if (isset($imageMap[$key]) && $point->image_url !== $imageMap[$key]) {
+                    $point->update(['image_url' => $imageMap[$key]]);
+                    $changed++;
+                }
+            }
+            if ($changed > 0) {
+                $updatedPoints += $changed;
+                $updatedSchedules++;
+            }
+        }
+
+        return $this->success([
+            'updated_schedules' => $updatedSchedules,
+            'updated_points' => $updatedPoints,
+        ], "ซิงค์รูปจุดรับไป {$updatedSchedules} รอบสำเร็จ");
+    }
+
     public function updatePickupPoint(Request $request, int $scheduleId, int $pointId): JsonResponse
     {
         $point = SchedulePickupPoint::where('schedule_id', $scheduleId)->findOrFail($pointId);
