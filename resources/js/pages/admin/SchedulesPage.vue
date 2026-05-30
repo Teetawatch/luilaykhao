@@ -1081,6 +1081,17 @@
                       <input v-model.number="pt.price" type="number" min="0" placeholder="ราคา" style="width:80px;" />
                     </div>
                     <input v-model="pt.map_url" placeholder="Maps URL" style="flex:1.5;" />
+                    <div class="pif-image-preview" v-if="pt.image_url">
+                      <img :src="pt.image_url" alt="รูปจุดรับ" />
+                      <button type="button" class="pif-image-remove" @click="pt.image_url = ''" title="ลบรูป">
+                        <span class="material-symbols-rounded">close</span>
+                      </button>
+                    </div>
+                    <label class="pif-image-upload">
+                      <input type="file" accept="image/*" @change="uploadPickupImage($event, pt)" hidden :disabled="pickupImageUploading" />
+                      <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupImageUploading }">{{ pickupImageUploading ? 'sync' : 'add_photo_alternate' }}</span>
+                      {{ pt.image_url ? 'เปลี่ยนรูป' : 'รูป' }}
+                    </label>
                     <button type="button" class="btn-icon btn-delete" @click="removeTplPoint(r.value, pi)"><span class="material-symbols-rounded">close</span></button>
                   </div>
                   <div v-if="!editingTemplate.points.filter(p => p.region === r.value).length" class="tpl-region-empty">ไม่มีจุดรับในภาคนี้</div>
@@ -1088,6 +1099,7 @@
               </div>
               <div v-else class="tpl-points-preview">
                 <div v-for="(pt, pi) in tpl.points" :key="pi" class="tpl-preview-item">
+                  <img v-if="pt.image_url" :src="pt.image_url" class="pid-thumb" alt="รูปจุดรับ" />
                   <span class="region-pill">{{ REGIONS.find(r=>r.value===pt.region)?.label || pt.region }}</span>
                   <span>{{ pt.pickup_location }}</span>
                   <span style="color:#6b7280;font-size:12px;">{{ pt.notes }}</span>
@@ -2220,6 +2232,7 @@ const addTplPoint = (regionValue) => {
     notes: '',
     price: 0,
     map_url: '',
+    image_url: '',
   });
 };
 
