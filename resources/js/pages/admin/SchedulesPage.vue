@@ -348,6 +348,9 @@
             <button class="btn-sm btn-secondary" @click="saveCurrentAsTemplate()">
               <span class="material-symbols-rounded">bookmark</span> บันทึกเป็นเทมเพลต
             </button>
+            <button class="btn-sm btn-primary" @click="copyPickupPoints(pickupSchedule)" :disabled="!pickupPoints.length">
+              <span class="material-symbols-rounded">content_copy</span> คัดลอกไปรอบอื่น
+            </button>
             <button class="modal-close" @click="showPickupManager = false"><span class="material-symbols-rounded">close</span></button>
           </div>
         </div>
@@ -769,6 +772,17 @@
                     <input v-model.number="pt.price" type="number" min="0" placeholder="ราคา" style="width:90px;" />
                   </div>
                   <input v-model="pt.map_url" placeholder="Maps URL (ไม่บังคับ)" style="flex:1;" />
+                  <div class="pif-image-preview" v-if="pt.image_url">
+                    <img :src="pt.image_url" alt="รูปจุดรับ" />
+                    <button type="button" class="pif-image-remove" @click="pt.image_url = ''" title="ลบรูป">
+                      <span class="material-symbols-rounded">close</span>
+                    </button>
+                  </div>
+                  <label class="pif-image-upload">
+                    <input type="file" accept="image/*" @change="uploadPickupImage($event, pt)" hidden :disabled="pickupImageUploading" />
+                    <span class="material-symbols-rounded" :class="{ 'animate-spin': pickupImageUploading }">{{ pickupImageUploading ? 'sync' : 'add_photo_alternate' }}</span>
+                    {{ pt.image_url ? 'เปลี่ยนรูป' : 'รูป' }}
+                  </label>
                   <button type="button" class="btn-icon btn-delete" @click="removePickupRow(i)">
                     <span class="material-symbols-rounded">close</span>
                   </button>
@@ -1172,32 +1186,76 @@
 
     <!-- Copy Pickup Modal -->
     <div class="modal-overlay" v-if="showCopyModal">
-      <div class="modal-card modal-sm">
+      <div class="modal-card">
         <div class="modal-header">
-          <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">content_copy</span>คัดลอกจุดรับ</h2>
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">content_copy</span>คัดลอกจุดรับไปยังรอบอื่น</h2>
+            <p class="modal-subtitle">
+              จาก <strong>{{ copySource?.trip?.title }} — {{ copySource?.departure_date }}</strong>
+              <span v-if="copySource?.vehicle?.license_plate">({{ copySource.vehicle.license_plate }})</span>
+              · {{ copySourceCount }} จุด
+            </p>
+          </div>
           <button class="modal-close" @click="showCopyModal = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
-          <p style="font-size:13px;color:#374151;margin-bottom:12px;">
-            คัดลอกจุดรับจาก <strong>{{ copySource?.departure_date }} <span v-if="copySource?.vehicle?.license_plate">({{ copySource.vehicle.license_plate }})</span></strong> ไปยังรอบ:
-          </p>
-          <div class="copy-target-list">
-            <label v-for="sch in copyTargets" :key="sch.id" class="copy-target-item">
-              <input type="checkbox" v-model="copySelectedIds" :value="sch.id" />
-              <span>
-                {{ sch.departure_date }} — {{ sch.trip?.title }}
-                <span v-if="sch.vehicle?.license_plate" style="margin-left:8px; color:var(--color-accent); font-weight:700;">
-                  ({{ sch.vehicle.license_plate }})
-                </span>
-              </span>
-            </label>
+
+          <!-- mode -->
+          <div class="apply-section">
+            <div class="apply-section-title"><span class="material-symbols-rounded">tune</span> วิธีใช้งาน</div>
+            <div class="apply-mode-wrap">
+              <label class="apply-mode-option" :class="{ active: copyMode === 'append' }">
+                <input type="radio" v-model="copyMode" value="append" />
+                <span class="material-symbols-rounded">add_circle</span>
+                <div>
+                  <div style="font-weight:700;">เพิ่มเข้าไป</div>
+                  <div style="font-size:11px;color:#6b7280;">จุดรับเดิมยังคงอยู่ ข้ามจุดที่ซ้ำ</div>
+                </div>
+              </label>
+              <label class="apply-mode-option" :class="{ active: copyMode === 'replace' }">
+                <input type="radio" v-model="copyMode" value="replace" />
+                <span class="material-symbols-rounded">sync</span>
+                <div>
+                  <div style="font-weight:700;">เขียนทับทั้งหมด</div>
+                  <div style="font-size:11px;color:#ef4444;">ลบจุดรับเดิมทั้งหมดแล้วเขียนใหม่</div>
+                </div>
+              </label>
+            </div>
           </div>
+
+          <!-- target select -->
+          <div class="apply-section">
+            <div class="apply-section-title"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบปลายทาง ({{ copySelectedIds.length }} รอบ)</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <button class="btn-sm btn-secondary" @click="copySelectAll()">เลือกทั้งหมด</button>
+              <button class="btn-sm btn-secondary" @click="copySelectedIds = []">ยกเลิกทั้งหมด</button>
+            </div>
+            <div class="copy-target-list">
+              <div v-for="group in copyTargetGroups" :key="group.trip_id" style="margin-bottom:8px;">
+                <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
+                <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item">
+                  <input type="checkbox" v-model="copySelectedIds" :value="sch.id" />
+                  <span>
+                    {{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span>
+                    <span v-if="sch.vehicle?.license_plate" style="margin-left:8px; color:var(--color-accent); font-weight:700;">
+                      ({{ sch.vehicle.license_plate }})
+                    </span>
+                  </span>
+                  <span class="status-badge" :class="`status-${sch.status}`" style="margin-left:auto;">{{ statusLabels[sch.status] }}</span>
+                </label>
+              </div>
+              <div v-if="!copyTargets.length" class="pickup-inline-empty">
+                <span class="material-symbols-rounded">event_busy</span> ไม่มีรอบอื่นให้คัดลอก
+              </div>
+            </div>
+          </div>
+
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showCopyModal = false">ยกเลิก</button>
           <button class="btn-primary" @click="doCopyPickups" :disabled="!copySelectedIds.length || copySubmitting">
             <span class="material-symbols-rounded" :class="{ 'animate-spin': copySubmitting }" v-if="copySubmitting">sync</span>
-            คัดลอกไป {{ copySelectedIds.length }} รอบ
+            {{ copyMode === 'replace' ? 'เขียนทับ' : 'คัดลอก' }}ไป {{ copySelectedIds.length }} รอบ
           </button>
         </div>
       </div>
@@ -1864,7 +1922,7 @@ const addDateRow = () => batchForm.dates.push({ departure_date: '', return_date:
 const removeDateRow = (i) => { if (batchForm.dates.length > 1) batchForm.dates.splice(i, 1); };
 
 const addPickupRow = () => batchForm.pickups.push({
-  region: '', region_label: '', pickup_location: '', price: '', notes: '', map_url: '',
+  region: '', region_label: '', pickup_location: '', price: '', notes: '', map_url: '', image_url: '',
 });
 const removePickupRow = (i) => batchForm.pickups.splice(i, 1);
 
@@ -2001,14 +2059,44 @@ const showCopyModal = ref(false);
 const copySource = ref(null);
 const copySelectedIds = ref([]);
 const copySubmitting = ref(false);
+const copyMode = ref('append'); // 'append' | 'replace'
+const copySourceCount = ref(0);
 
 const copyTargets = computed(() =>
   (admin.schedules.data || []).filter(s => s.id !== copySource.value?.id)
 );
 
+// Group target rounds by trip, putting the source's trip first for quick access
+const copyTargetGroups = computed(() => {
+  const map = new Map();
+  for (const sch of copyTargets.value) {
+    const tid = sch.trip_id;
+    if (!map.has(tid)) {
+      map.set(tid, { trip_id: tid, trip_title: sch.trip?.title || 'N/A', schedules: [] });
+    }
+    map.get(tid).schedules.push(sch);
+  }
+  const groups = [...map.values()];
+  groups.sort((a, b) => {
+    if (a.trip_id === copySource.value?.trip_id) return -1;
+    if (b.trip_id === copySource.value?.trip_id) return 1;
+    return a.trip_title.localeCompare(b.trip_title);
+  });
+  for (const g of groups) g.schedules.sort((a, b) => a.departure_date > b.departure_date ? 1 : -1);
+  return groups;
+});
+
+const copySelectAll = () => {
+  copySelectedIds.value = copyTargets.value.map(s => s.id);
+};
+
 const copyPickupPoints = async (sch) => {
+  if (!sch) return;
   copySource.value = sch;
   copySelectedIds.value = [];
+  copyMode.value = 'append';
+  // Prefer already-loaded points when copying from the open pickup manager
+  copySourceCount.value = (sch.id === pickupSchedule.value?.id ? pickupPoints.value.length : (sch.pickup_points?.length || 0));
   showCopyModal.value = true;
 };
 
@@ -2019,10 +2107,19 @@ const doCopyPickups = async () => {
     const points = res.data.data;
     let skippedCount = 0;
     for (const targetId of copySelectedIds.value) {
-      // Fetch existing pickup points to prevent duplicates
-      const existingRes = await api.get(`/admin/schedules/${targetId}/pickup-points`);
-      const existingPoints = existingRes.data.data || [];
-      const existingKeys = new Set(existingPoints.map(p => `${p.region}::${p.pickup_location}`));
+      if (copyMode.value === 'replace') {
+        // Wipe existing points first — no duplicate handling needed
+        const existingRes = await api.get(`/admin/schedules/${targetId}/pickup-points`);
+        for (const pt of (existingRes.data.data || [])) {
+          await api.delete(`/admin/schedules/${targetId}/pickup-points/${pt.id}`);
+        }
+      }
+      // In append mode, skip points that already exist (region + location)
+      let existingKeys = new Set();
+      if (copyMode.value === 'append') {
+        const existingRes = await api.get(`/admin/schedules/${targetId}/pickup-points`);
+        existingKeys = new Set((existingRes.data.data || []).map(p => `${p.region}::${p.pickup_location}`));
+      }
       for (const pt of points) {
         const key = `${pt.region}::${pt.pickup_location}`;
         if (existingKeys.has(key)) {
@@ -2041,11 +2138,13 @@ const doCopyPickups = async () => {
           longitude: pt.longitude || null,
           sort_order: pt.sort_order || 0,
         });
+        existingKeys.add(key);
       }
     }
     showCopyModal.value = false;
     fetchData();
-    const msg = `คัดลอกจุดรับไป ${copySelectedIds.value.length} รอบสำเร็จ`;
+    const verb = copyMode.value === 'replace' ? 'เขียนทับ' : 'คัดลอก';
+    const msg = `${verb}จุดรับไป ${copySelectedIds.value.length} รอบสำเร็จ`;
     alert(skippedCount ? `${msg}\n(ข้ามจุดรับที่ซ้ำ ${skippedCount} จุด)` : msg);
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
@@ -2312,7 +2411,7 @@ const pickupForm = reactive({
 });
 const pickupImageUploading = ref(false);
 
-const uploadPickupImage = async (event) => {
+const uploadPickupImage = async (event, target = pickupForm) => {
   const file = event.target.files?.[0];
   if (!file) return;
   pickupImageUploading.value = true;
@@ -2322,7 +2421,7 @@ const uploadPickupImage = async (event) => {
     const res = await api.post('/admin/pickup-points/image', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    pickupForm.image_url = res.data.data.url;
+    target.image_url = res.data.data.url;
   } catch (e) {
     alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
   } finally {
