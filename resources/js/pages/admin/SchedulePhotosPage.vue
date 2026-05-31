@@ -58,12 +58,20 @@
             class="schedule-row"
           >
             <div class="schedule-info">
-              <div class="schedule-trip">{{ sch.trip?.title || '—' }}</div>
+              <div class="schedule-trip">
+                <span class="round-badge">รอบ #{{ sch.id }}</span>
+                {{ sch.trip?.title || '—' }}
+              </div>
               <div class="schedule-meta">
                 <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-2px;">event</span>
                 {{ formatDate(sch.departure_date) }}
                 <template v-if="sch.return_date && sch.return_date !== sch.departure_date">
                   → {{ formatDate(sch.return_date) }}
+                </template>
+                <template v-if="sch.vehicle">
+                  <span class="dot">·</span>
+                  <span class="material-symbols-rounded" style="font-size:14px;vertical-align:-2px;">directions_bus</span>
+                  {{ sch.vehicle.name }}<template v-if="sch.vehicle.license_plate"> ({{ sch.vehicle.license_plate }})</template>
                 </template>
                 <span class="dot">·</span>
                 <span :class="['status-pill', `pill-${sch.status}`]">{{ statusLabel(sch.status) }}</span>
@@ -98,11 +106,15 @@
                 photo_library
               </span>
               {{ manager.schedule?.trip?.title }}
+              <span class="round-badge" v-if="manager.schedule">รอบ #{{ manager.schedule.id }}</span>
             </h2>
             <p class="modal-subtitle">
               {{ formatDate(manager.schedule?.departure_date) }}
               <template v-if="manager.schedule?.return_date && manager.schedule.return_date !== manager.schedule.departure_date">
                 → {{ formatDate(manager.schedule.return_date) }}
+              </template>
+              <template v-if="manager.schedule?.vehicle">
+                · {{ manager.schedule.vehicle.name }}<template v-if="manager.schedule.vehicle.license_plate"> ({{ manager.schedule.vehicle.license_plate }})</template>
               </template>
             </p>
           </div>
@@ -235,15 +247,30 @@ const fetchTrips = async () => {
 const fetchSchedules = async () => {
   loading.value = true;
   try {
-    const params = {};
-    if (filters.tripId) params.trip_id = filters.tripId;
-    if (filters.from) params.from = filters.from;
-    if (filters.to) params.to = filters.to;
-    const res = await api.get('/admin/schedules', { params });
-    schedules.value = res.data.data ?? res.data ?? [];
-    // Fetch photo counts in parallel — cap at 30 at a time to avoid bursting.
+    const baseParams = { per_page: 100 };
+    if (filters.tripId) baseParams.trip_id = filters.tripId;
+    if (filters.from) baseParams.from = filters.from;
+    if (filters.to) baseParams.to = filters.to;
+
+    // The admin schedules endpoint is paginated. One trip can have many rounds,
+    // so walk every page instead of showing only the first.
+    const all = [];
+    let page = 1;
+    let lastPage = 1;
+    do {
+      const res = await api.get('/admin/schedules', {
+        params: { ...baseParams, page },
+      });
+      const list = res.data.data ?? res.data ?? [];
+      all.push(...list);
+      lastPage = res.data.meta?.last_page ?? 1;
+      page += 1;
+    } while (page <= lastPage);
+
+    schedules.value = all;
+    // Fetch photo counts in parallel — cap at 60 to avoid bursting the API.
     await Promise.all(
-      schedules.value.slice(0, 30).map((s) => loadPhotoCount(s.id))
+      schedules.value.slice(0, 60).map((s) => loadPhotoCount(s.id))
     );
   } catch (e) {
     schedules.value = [];
@@ -445,6 +472,19 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.round-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-accent, #2d7a4f);
+  background: rgba(45, 122, 79, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  letter-spacing: 0.02em;
 }
 
 .schedule-meta {

@@ -267,6 +267,12 @@ class AdminController extends Controller
         if ($request->filled('upcoming')) {
             $query->where('departure_date', '>=', now()->startOfDay());
         }
+        if ($request->filled('from')) {
+            $query->whereDate('departure_date', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('departure_date', '<=', $request->to);
+        }
 
         $schedules = $query->orderByDesc('departure_date')->paginate($request->get('per_page', 15));
         $schedules->getCollection()->each->syncBookedSeats();
