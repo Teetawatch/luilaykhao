@@ -110,9 +110,21 @@
                   <i class="fa-regular fa-envelope text-text-muted/60"></i>
                 </div>
                 <input v-model="form.email" type="email" required
-                  class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                  placeholder="email@example.com" />
+                  @blur="validateEmail" @input="emailError = ''"
+                  :class="[
+                    'w-full bg-white border rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 outline-none placeholder:text-text-muted/50',
+                    emailError
+                      ? 'border-red-400 focus:ring-red-200 focus:border-red-400'
+                      : 'border-sand-dark/60 focus:ring-accent/20 focus:border-accent'
+                  ]"
+                  placeholder="example@gmail.com" />
               </div>
+              <p v-if="emailError" class="text-xs text-red-600 flex items-center gap-1">
+                <i class="fa-solid fa-circle-exclamation"></i>{{ emailError }}
+              </p>
+              <p v-else class="text-xs text-text-muted/70">
+                รองรับ Gmail, Hotmail, Outlook, Yahoo, iCloud ฯลฯ
+              </p>
             </div>
 
             <div class="space-y-1.5">
@@ -209,6 +221,18 @@ import { useAuthStore } from '../stores/auth';
 const auth = useAuthStore();
 const router = useRouter();
 const error = ref('');
+const emailError = ref('');
+
+// Mirror of config/email_domains.php — well-known active providers only.
+// The backend is the real gate; this is for immediate UX feedback.
+const ALLOWED_EMAIL_DOMAINS = [
+  'gmail.com', 'googlemail.com',
+  'hotmail.com', 'hotmail.co.th', 'outlook.com', 'outlook.co.th',
+  'live.com', 'live.co.th', 'msn.com',
+  'yahoo.com', 'yahoo.co.th', 'ymail.com',
+  'icloud.com', 'me.com', 'mac.com',
+  'proton.me', 'protonmail.com',
+];
 
 const form = ref({
   title: '',
@@ -221,8 +245,25 @@ const form = ref({
   password_confirmation: '',
 });
 
+function validateEmail() {
+  const value = (form.value.email || '').trim().toLowerCase();
+  if (!value) {
+    emailError.value = '';
+    return true;
+  }
+  const at = value.lastIndexOf('@');
+  const domain = at >= 0 ? value.slice(at + 1) : '';
+  if (!ALLOWED_EMAIL_DOMAINS.includes(domain)) {
+    emailError.value = 'กรุณาใช้อีเมลจากผู้ให้บริการที่รองรับ เช่น Gmail, Hotmail, Outlook, Yahoo หรือ iCloud';
+    return false;
+  }
+  emailError.value = '';
+  return true;
+}
+
 async function handleRegister() {
   error.value = '';
+  if (!validateEmail()) return;
   try {
     await auth.register(form.value);
     router.push('/');
