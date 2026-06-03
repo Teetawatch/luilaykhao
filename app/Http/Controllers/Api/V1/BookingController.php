@@ -10,6 +10,7 @@ use App\Http\Requests\Booking\RescheduleBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\SchedulePhotoResource;
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Services\BookingService;
 use App\Services\WeatherService;
 use App\Traits\ApiResponse;
@@ -110,7 +111,17 @@ class BookingController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $bookings = Booking::where('user_id', $request->user()->id)
+        $userId = $request->user()->id;
+
+        // การจองที่ผู้ใช้เป็นเจ้าของ หรือถูกเชิญเข้าร่วมในฐานะเพื่อน (companion)
+        $memberBookingIds = BookingMember::where('user_id', $userId)
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->pluck('booking_id');
+
+        $bookings = Booking::where(function ($q) use ($userId, $memberBookingIds) {
+            $q->where('user_id', $userId)
+                ->orWhereIn('id', $memberBookingIds);
+        })
             ->with([
                 'schedule.trip',
                 'schedule.pickupPoints',

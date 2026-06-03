@@ -51,10 +51,10 @@
       </div>
 
       <!-- Wheels (front + rear axles, both sides) -->
-      <div class="absolute -left-2 top-[20%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
-      <div class="absolute -right-2 top-[20%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
-      <div class="absolute -left-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
-      <div class="absolute -right-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -left-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -right-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -left-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -right-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
 
       <!-- Sliding door (left side — Thai vans), spans from behind front seat down to near rear wheel -->
       <div class="absolute left-0 top-[31%] bottom-[27%] z-30 flex flex-col items-center justify-center gap-2 w-6 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 shadow-sm pointer-events-none">

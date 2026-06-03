@@ -56,61 +56,77 @@ class FcmService
 
         $isSos = $type === self::SOS_TYPE;
 
-        // SOS is sent as a notification message (not data-only) pointing at the
-        // loud `sos_emergency_v2` channel. The Android system then displays the
-        // alert and plays the siren + vibration even when the app is killed or
-        // backgrounded — data-only messages are throttled/dropped by Doze and
-        // OEM battery managers, which left killed apps silent.
-        $androidPayload = $isSos
-            ? [
-                'priority' => 'HIGH',
-                'notification' => [
-                    'channel_id' => 'sos_emergency_v2',
-                    'sound' => 'sos_siren',
-                    'notification_priority' => 'PRIORITY_MAX',
-                    'default_vibrate_timings' => true,
-                    'visibility' => 'PUBLIC',
-                    'tag' => 'sos_alert',
+        if ($isSos) {
+            // Android SOS is sent DATA-ONLY (no `notification` block) so the
+            // Flutter background handler builds the alert itself with
+            // fullScreenIntent + the looping siren. A system-displayed FCM
+            // notification cannot set fullScreenIntent/category=alarm, so on the
+            // loud alarm-usage channel it posts silently (shows in the tray but
+            // no sound/vibration until tapped) — which is exactly the bug this
+            // replaces. iOS keeps its apns alert, which already sounds while
+            // killed. The `title`/`body` ride along in `data` for the handler.
+            $messagePayload = [
+                'token' => $token,
+                'data' => $this->stringData([
+                    ...$data,
+                    'title' => $title,
+                    'body' => $body,
+                ]),
+                'android' => [
+                    // High priority wakes the device from Doze and delivers
+                    // immediately so the background handler can fire the siren.
+                    'priority' => 'HIGH',
                 ],
-            ]
-            : [
-                'priority' => 'HIGH',
-                'notification' => [
-                    'channel_id' => 'important_updates',
-                    'sound' => 'default',
-                    'notification_priority' => 'PRIORITY_HIGH',
-                    'default_vibrate_timings' => true,
-                    'visibility' => 'PUBLIC',
+                'apns' => [
+                    'headers' => [
+                        'apns-priority' => '10',
+                        'apns-push-type' => 'alert',
+                    ],
+                    'payload' => [
+                        // No `content-available` so iOS treats it purely as a
+                        // high-priority alert delivered immediately, instead of a
+                        // background push the system may coalesce or delay.
+                        'aps' => [
+                            'alert' => ['title' => $title, 'body' => $body],
+                            'sound' => 'sos_siren.wav',
+                            'badge' => 1,
+                            'interruption-level' => 'time-sensitive',
+                        ],
+                    ],
                 ],
             ];
-
-        $messagePayload = array_filter([
-            'token' => $token,
-            'notification' => ['title' => $title, 'body' => $body],
-            'data' => $this->stringData($data),
-            'android' => $androidPayload,
-            'apns' => [
-                'headers' => [
-                    'apns-priority' => '10',
-                    'apns-push-type' => 'alert',
+        } else {
+            $messagePayload = array_filter([
+                'token' => $token,
+                'notification' => ['title' => $title, 'body' => $body],
+                'data' => $this->stringData($data),
+                'android' => [
+                    'priority' => 'HIGH',
+                    'notification' => [
+                        'channel_id' => 'important_updates',
+                        'sound' => 'default',
+                        'notification_priority' => 'PRIORITY_HIGH',
+                        'default_vibrate_timings' => true,
+                        'visibility' => 'PUBLIC',
+                    ],
                 ],
-                'payload' => [
-                    // SOS drops `content-available` so iOS treats it purely as a
-                    // high-priority alert delivered immediately, instead of a
-                    // background push that the system may coalesce or delay.
-                    'aps' => array_filter([
-                        'alert' => [
-                            'title' => $title,
-                            'body' => $body,
+                'apns' => [
+                    'headers' => [
+                        'apns-priority' => '10',
+                        'apns-push-type' => 'alert',
+                    ],
+                    'payload' => [
+                        'aps' => [
+                            'alert' => ['title' => $title, 'body' => $body],
+                            'sound' => 'default',
+                            'badge' => 1,
+                            'content-available' => 1,
+                            'interruption-level' => 'active',
                         ],
-                        'sound' => $isSos ? 'sos_siren.wav' : 'default',
-                        'badge' => 1,
-                        'content-available' => $isSos ? null : 1,
-                        'interruption-level' => $isSos ? 'time-sensitive' : 'active',
-                    ], fn ($value) => $value !== null),
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        }
 
         try {
             $response = Http::withToken($this->accessToken())
@@ -121,6 +137,7 @@ class FcmService
 
             if ($response->successful()) {
                 FcmToken::where('token', $token)->update(['last_used_at' => now()]);
+
                 return;
             }
 

@@ -14,6 +14,8 @@ class BookingResource extends JsonResource
             'id' => $this->id,
             'booking_ref' => $this->booking_ref,
             'user_id' => $this->user_id,
+            // ผู้เรียกเป็นเจ้าของการจองหรือไม่ (เพื่อนที่ถูกเชิญจะเป็น false)
+            'viewer_is_owner' => $request->user() ? $this->user_id === $request->user()->id : null,
             'user' => $this->when($this->relationLoaded('user'), function () {
                 return [
                     'id' => $this->user->id,

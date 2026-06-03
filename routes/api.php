@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AppVersionController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
+use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ContactController;
@@ -98,6 +99,13 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
+
+        // Booking members / companion invites (เชิญเพื่อนเข้าการจองเดียวกัน)
+        Route::get('bookings/{ref}/members', [BookingMemberController::class, 'index']);
+        Route::post('bookings/{ref}/invites', [BookingMemberController::class, 'store']);
+        Route::delete('bookings/{ref}/members/{memberId}', [BookingMemberController::class, 'destroy']);
+        Route::get('booking-invites/{token}', [BookingMemberController::class, 'showInvite']);
+        Route::post('booking-invites/{token}/accept', [BookingMemberController::class, 'acceptInvite']);
 
         // Group chat per trip schedule (customers + assigned staff + admins)
         Route::get('schedules/{id}/chat/messages', [ChatController::class, 'index']);

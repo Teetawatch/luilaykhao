@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Models\ChatMessage;
 use App\Models\ChatRead;
 use App\Models\TripSchedule;
@@ -27,9 +28,21 @@ class ChatService
             return true;
         }
 
-        return Booking::where('schedule_id', $schedule->id)
+        $isOwner = Booking::where('schedule_id', $schedule->id)
             ->where('user_id', $user->id)
             ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->exists();
+
+        if ($isOwner) {
+            return true;
+        }
+
+        // เพื่อนที่ถูกเชิญเข้าการจอง (companion) ก็เข้าห้องแชทของรอบนี้ได้
+        return BookingMember::where('user_id', $user->id)
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->whereHas('booking', fn ($q) => $q
+                ->where('schedule_id', $schedule->id)
+                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES))
             ->exists();
     }
 
@@ -60,9 +73,17 @@ class ChatService
             ->whereNotNull('user_id')
             ->pluck('user_id');
 
+        // เพื่อนที่เข้าร่วมการจอง (companion) ก็ควรได้รับ push ของห้องนี้ด้วย
+        $memberIds = BookingMember::where('status', BookingMember::STATUS_ACTIVE)
+            ->whereNotNull('user_id')
+            ->whereHas('booking', fn ($q) => $q
+                ->where('schedule_id', $schedule->id)
+                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES))
+            ->pluck('user_id');
+
         $staffIds = $schedule->staff()->pluck('users.id');
 
-        return $customerIds->merge($staffIds)->unique()->values();
+        return $customerIds->merge($memberIds)->merge($staffIds)->unique()->values();
     }
 
     public function markRead(User $user, TripSchedule $schedule, int $messageId): void

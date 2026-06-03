@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Events\VehicleLocationUpdated;
 use App\Http\Controllers\Controller;
-use App\Models\Trip;
+use App\Models\Booking;
+use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
@@ -125,7 +126,7 @@ class VehicleTrackingController extends Controller
 
             // เก็บเฉพาะตัวล่าสุดของแต่ละรถ
             $vid = $loc['vehicle_id'];
-            if (!isset($latestByVehicle[$vid]) || $location->recorded_at > $latestByVehicle[$vid]->recorded_at) {
+            if (! isset($latestByVehicle[$vid]) || $location->recorded_at > $latestByVehicle[$vid]->recorded_at) {
                 $latestByVehicle[$vid] = $location;
             }
         }
@@ -133,7 +134,9 @@ class VehicleTrackingController extends Controller
         // Broadcast เฉพาะตำแหน่งล่าสุดของแต่ละคัน
         foreach ($latestByVehicle as $vid => $location) {
             $vehicle = Vehicle::find($vid);
-            if (!$vehicle) continue;
+            if (! $vehicle) {
+                continue;
+            }
 
             $this->cacheCurrentLocation($vehicle, $location);
 
@@ -174,7 +177,7 @@ class VehicleTrackingController extends Controller
     {
         // ลองอ่านจาก Redis ก่อน
         $cached = $this->getAllCachedLocations();
-        if (!empty($cached)) {
+        if (! empty($cached)) {
             return $this->success($cached, 'ตำแหน่งล่าสุดของรถทั้งหมด');
         }
 
@@ -238,7 +241,7 @@ class VehicleTrackingController extends Controller
             ->orderByDesc('recorded_at')
             ->first();
 
-        if (!$latest) {
+        if (! $latest) {
             return $this->error('ไม่พบข้อมูลตำแหน่ง', 404);
         }
 
@@ -348,6 +351,7 @@ class VehicleTrackingController extends Controller
     {
         try {
             $data = Redis::get("vehicle:location:{$vehicleId}");
+
             return $data ? json_decode($data, true) : null;
         } catch (\Exception $e) {
             return null;
@@ -358,7 +362,9 @@ class VehicleTrackingController extends Controller
     {
         try {
             $ids = Redis::smembers('vehicle:active_ids');
-            if (empty($ids)) return [];
+            if (empty($ids)) {
+                return [];
+            }
 
             $locations = [];
             foreach ($ids as $id) {
@@ -367,6 +373,7 @@ class VehicleTrackingController extends Controller
                     $locations[] = json_decode($data, true);
                 }
             }
+
             return $locations;
         } catch (\Exception $e) {
             return [];
@@ -383,14 +390,14 @@ class VehicleTrackingController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'booking_ref' => 'required|string',
-            'phone'       => 'required|string|min:4',
+            'phone' => 'required|string|min:4',
         ]);
 
         if ($validator->fails()) {
             return $this->error('กรุณากรอกรหัสการจองและเบอร์โทร', 422, $validator->errors());
         }
 
-        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle', 'passengers', 'pickupPoint'])
+        $booking = Booking::with(['schedule.trip', 'schedule.vehicle', 'passengers', 'pickupPoint'])
             ->where('booking_ref', strtoupper(trim($request->booking_ref)))
             ->first();
 
@@ -400,10 +407,11 @@ class VehicleTrackingController extends Controller
 
         // ตรวจสอบเบอร์โทรด้วย 4 หลักท้าย
         $inputDigits = preg_replace('/\D/', '', $request->phone);
-        $last4       = substr($inputDigits, -4);
+        $last4 = substr($inputDigits, -4);
 
         $matched = $booking->passengers->first(function ($p) use ($last4) {
             $digits = preg_replace('/\D/', '', $p->phone ?? '');
+
             return str_ends_with($digits, $last4);
         });
 
@@ -412,28 +420,28 @@ class VehicleTrackingController extends Controller
         }
 
         $schedule = $booking->schedule;
-        $trip     = $schedule?->trip;
-        $vehicle  = $schedule?->vehicle;
+        $trip = $schedule?->trip;
+        $vehicle = $schedule?->vehicle;
 
         [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
 
         return $this->success([
-            'booking_ref'    => $booking->booking_ref,
-            'status'         => $booking->status,
-            'qr_code'        => $booking->qr_code,
-            'trip_title'     => $trip?->title ?? '',
+            'booking_ref' => $booking->booking_ref,
+            'status' => $booking->status,
+            'qr_code' => $booking->qr_code,
+            'trip_title' => $trip?->title ?? '',
             'departure_point' => $trip?->departure_point ?? '',
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
-            'schedule_id'    => $booking->schedule_id,
-            'vehicle_id'     => $schedule?->vehicle_id,
-            'driver_name'    => $vehicle?->driver_name,
-            'driver_phone'   => $vehicle?->driver_phone,
-            'license_plate'  => $vehicle?->license_plate,
-            'pickup_lat'     => $pickupLat,
-            'pickup_lng'     => $pickupLng,
+            'schedule_id' => $booking->schedule_id,
+            'vehicle_id' => $schedule?->vehicle_id,
+            'driver_name' => $vehicle?->driver_name,
+            'driver_phone' => $vehicle?->driver_phone,
+            'license_plate' => $vehicle?->license_plate,
+            'pickup_lat' => $pickupLat,
+            'pickup_lng' => $pickupLng,
             'destination_lat' => $trip?->latitude,
             'destination_lng' => $trip?->longitude,
-            'share_url'      => $booking->shareUrl(),
+            'share_url' => $booking->shareUrl(),
         ], 'พบข้อมูลการจอง');
     }
 
@@ -445,7 +453,7 @@ class VehicleTrackingController extends Controller
     public function guestLookupByName(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name'  => 'required|string|min:2',
+            'name' => 'required|string|min:2',
             'phone' => 'required|string|min:8',
         ]);
 
@@ -453,10 +461,10 @@ class VehicleTrackingController extends Controller
             return $this->error('กรุณากรอกชื่อและเบอร์โทรให้ครบถ้วน', 422, $validator->errors());
         }
 
-        $inputName   = trim($request->name);
+        $inputName = trim($request->name);
         $inputDigits = preg_replace('/\D/', '', $request->phone);
 
-        $passengers = \App\Models\BookingPassenger::with([
+        $passengers = BookingPassenger::with([
             'booking.schedule.trip',
             'booking.schedule.vehicle',
             'booking.pickupPoint',
@@ -465,6 +473,7 @@ class VehicleTrackingController extends Controller
             ->get()
             ->filter(function ($p) use ($inputDigits) {
                 $stored = preg_replace('/\D/', '', $p->phone ?? '');
+
                 return $stored !== '' && str_ends_with($stored, substr($inputDigits, -8));
             });
 
@@ -473,25 +482,25 @@ class VehicleTrackingController extends Controller
         }
 
         $results = $passengers->map(function ($p) {
-            $booking  = $p->booking;
+            $booking = $p->booking;
             $schedule = $booking?->schedule;
-            $trip     = $schedule?->trip;
-            $vehicle  = $schedule?->vehicle;
+            $trip = $schedule?->trip;
+            $vehicle = $schedule?->vehicle;
 
             [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
 
             return [
-                'status'          => $booking?->status,
-                'trip_title'      => $trip?->title ?? '',
+                'status' => $booking?->status,
+                'trip_title' => $trip?->title ?? '',
                 'departure_point' => $trip?->departure_point ?? '',
-                'departure_date'  => $schedule?->departure_date?->toDateString() ?? '',
-                'schedule_id'     => $booking?->schedule_id,
-                'vehicle_id'      => $schedule?->vehicle_id,
-                'driver_name'     => $vehicle?->driver_name,
-                'driver_phone'    => $vehicle?->driver_phone,
-                'license_plate'   => $vehicle?->license_plate,
-                'pickup_lat'      => $pickupLat,
-                'pickup_lng'      => $pickupLng,
+                'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+                'schedule_id' => $booking?->schedule_id,
+                'vehicle_id' => $schedule?->vehicle_id,
+                'driver_name' => $vehicle?->driver_name,
+                'driver_phone' => $vehicle?->driver_phone,
+                'license_plate' => $vehicle?->license_plate,
+                'pickup_lat' => $pickupLat,
+                'pickup_lng' => $pickupLng,
                 'destination_lat' => $trip?->latitude,
                 'destination_lng' => $trip?->longitude,
             ];
@@ -506,44 +515,46 @@ class VehicleTrackingController extends Controller
      */
     public function bookingTracking(Request $request, string $ref): JsonResponse
     {
-        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
+        $booking = Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
             ->where('booking_ref', $ref)
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return $this->error('ไม่พบข้อมูลการจอง กรุณาตรวจสอบรหัสการจอง', 404);
         }
 
         $user = $request->user();
         $canViewAnyBooking = $user?->hasAnyRole(['admin', 'operator', 'staff']) ?? false;
-        if (!$user || ($booking->user_id !== $user->id && !$canViewAnyBooking)) {
+        // เจ้าของ, เพื่อนที่ถูกเชิญ (companion) หรือสตาฟ/แอดมิน ดูได้
+        $canView = $user && ($canViewAnyBooking || $booking->isAccessibleByUser($user->id));
+        if (! $canView) {
             return $this->error('คุณไม่มีสิทธิ์ดูข้อมูลการจองนี้', 403);
         }
 
         $schedule = $booking->schedule;
-        $trip     = $schedule?->trip;
-        $vehicle  = $schedule?->vehicle;
+        $trip = $schedule?->trip;
+        $vehicle = $schedule?->vehicle;
 
         [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
 
         $data = [
-            'id'              => $booking->id,
-            'booking_ref'     => $booking->booking_ref,
-            'schedule_id'     => $booking->schedule_id,
-            'vehicle_id'      => $schedule?->vehicle_id,
-            'trip_title'      => $trip?->title ?? '',
+            'id' => $booking->id,
+            'booking_ref' => $booking->booking_ref,
+            'schedule_id' => $booking->schedule_id,
+            'vehicle_id' => $schedule?->vehicle_id,
+            'trip_title' => $trip?->title ?? '',
             'departure_point' => $trip?->departure_point ?? '',
-            'pickup_lat'      => $pickupLat,
-            'pickup_lng'      => $pickupLng,
+            'pickup_lat' => $pickupLat,
+            'pickup_lng' => $pickupLng,
             'destination_lat' => $trip?->latitude,
             'destination_lng' => $trip?->longitude,
-            'departure_date'  => $schedule?->departure_date?->toDateString() ?? '',
-            'status'          => $booking->status,
+            'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+            'status' => $booking->status,
             // Vehicle info for driver call button
-            'driver_name'     => $vehicle?->driver_name,
-            'driver_phone'    => $vehicle?->driver_phone,
-            'license_plate'   => $vehicle?->license_plate,
-            'share_url'       => $booking->shareUrl(),
+            'driver_name' => $vehicle?->driver_name,
+            'driver_phone' => $vehicle?->driver_phone,
+            'license_plate' => $vehicle?->license_plate,
+            'share_url' => $booking->shareUrl(),
         ];
 
         return $this->success($data, 'ข้อมูลการจองสำหรับติดตาม');
@@ -555,7 +566,7 @@ class VehicleTrackingController extends Controller
      */
     public function sharedTracking(string $token): JsonResponse
     {
-        $booking = \App\Models\Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
+        $booking = Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
             ->where('share_token', strtolower(trim($token)))
             ->first();
 
@@ -564,8 +575,8 @@ class VehicleTrackingController extends Controller
         }
 
         $schedule = $booking->schedule;
-        $trip     = $schedule?->trip;
-        $vehicle  = $schedule?->vehicle;
+        $trip = $schedule?->trip;
+        $vehicle = $schedule?->vehicle;
 
         [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
         $pickupName = $booking->pickupPoint?->pickup_location
@@ -574,22 +585,23 @@ class VehicleTrackingController extends Controller
 
         $status = $booking->status;
         $payload = [
-            'trip_title'     => $trip?->title ?? 'ทริปของคุณ',
-            'status'         => $status,
+            'trip_title' => $trip?->title ?? 'ทริปของคุณ',
+            'status' => $status,
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
-            'pickup'         => [
+            'pickup' => [
                 'name' => $pickupName,
-                'lat'  => $pickupLat,
-                'lng'  => $pickupLng,
+                'lat' => $pickupLat,
+                'lng' => $pickupLng,
             ],
-            'vehicle'        => null,
-            'eta'            => null,
-            'trackable'      => false,
-            'message'        => '',
+            'vehicle' => null,
+            'eta' => null,
+            'trackable' => false,
+            'message' => '',
         ];
 
         if (in_array($status, ['cancelled', 'refunded'], true)) {
             $payload['message'] = 'การจองนี้ถูกยกเลิกแล้ว';
+
             return $this->success($payload, 'ข้อมูลการติดตาม');
         }
 
@@ -598,25 +610,27 @@ class VehicleTrackingController extends Controller
             $payload['message'] = $tripDate->isFuture()
                 ? 'จะติดตามรถได้ในวันเดินทาง'
                 : 'ทริปนี้สิ้นสุดแล้ว';
+
             return $this->success($payload, 'ข้อมูลการติดตาม');
         }
 
         $vehicleId = $schedule?->vehicle_id;
-        $location  = $vehicleId ? $this->resolveVehicleLocation($vehicleId) : null;
+        $location = $vehicleId ? $this->resolveVehicleLocation($vehicleId) : null;
 
         if (! $vehicleId || ! $location) {
             $payload['message'] = 'รถยังไม่เริ่มส่งตำแหน่ง โปรดติดตามอีกครั้ง';
+
             return $this->success($payload, 'ข้อมูลการติดตาม');
         }
 
         $payload['vehicle'] = [
-            'lat'           => (float) $location['latitude'],
-            'lng'           => (float) $location['longitude'],
-            'speed'         => isset($location['speed']) ? (float) $location['speed'] : null,
-            'heading'       => isset($location['heading']) ? (float) $location['heading'] : null,
+            'lat' => (float) $location['latitude'],
+            'lng' => (float) $location['longitude'],
+            'speed' => isset($location['speed']) ? (float) $location['speed'] : null,
+            'heading' => isset($location['heading']) ? (float) $location['heading'] : null,
             'license_plate' => $vehicle?->license_plate,
-            'driver_name'   => $vehicle?->driver_name,
-            'updated_at'    => $location['recorded_at'] ?? null,
+            'driver_name' => $vehicle?->driver_name,
+            'updated_at' => $location['recorded_at'] ?? null,
         ];
 
         if ($pickupLat !== null && $pickupLng !== null) {
@@ -631,6 +645,7 @@ class VehicleTrackingController extends Controller
         }
 
         $payload['trackable'] = true;
+
         return $this->success($payload, 'ข้อมูลการติดตาม');
     }
 
@@ -653,10 +668,10 @@ class VehicleTrackingController extends Controller
         }
 
         return [
-            'latitude'    => $latest->latitude,
-            'longitude'   => $latest->longitude,
-            'speed'       => $latest->speed,
-            'heading'     => $latest->heading,
+            'latitude' => $latest->latitude,
+            'longitude' => $latest->longitude,
+            'speed' => $latest->speed,
+            'heading' => $latest->heading,
             'recorded_at' => $latest->recorded_at?->toIso8601String(),
         ];
     }
@@ -666,7 +681,7 @@ class VehicleTrackingController extends Controller
      *
      * @return array{0: ?float, 1: ?float}
      */
-    private function resolvePickupCoords(\App\Models\Booking $booking): array
+    private function resolvePickupCoords(Booking $booking): array
     {
         $point = $booking->pickupPoint;
         if ($point && $point->latitude !== null && $point->longitude !== null) {
@@ -674,6 +689,7 @@ class VehicleTrackingController extends Controller
         }
 
         $trip = $booking->schedule?->trip;
+
         return [$trip?->latitude, $trip?->longitude];
     }
 
@@ -701,7 +717,7 @@ class VehicleTrackingController extends Controller
         $minutes = (int) round(($distanceKm / $effectiveSpeed) * 60);
 
         return [
-            'minutes'     => max($minutes, 0),
+            'minutes' => max($minutes, 0),
             'distance_km' => round($distanceKm, 2),
         ];
     }

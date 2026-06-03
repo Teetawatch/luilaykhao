@@ -99,6 +99,46 @@ class Booking extends Model
         return $this->hasMany(BookingPassenger::class);
     }
 
+    public function members(): HasMany
+    {
+        return $this->hasMany(BookingMember::class);
+    }
+
+    /**
+     * user id ที่เข้าถึงการจองนี้ได้ผ่านแอป = เจ้าของ + สมาชิกที่รับคำเชิญแล้ว (active)
+     *
+     * @return list<int>
+     */
+    public function accessUserIds(): array
+    {
+        $ids = $this->members()
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->whereNotNull('user_id')
+            ->pluck('user_id')
+            ->all();
+
+        if ($this->user_id !== null) {
+            $ids[] = $this->user_id;
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /**
+     * ผู้ใช้รายนี้เข้าถึงการจองนี้ได้หรือไม่ (เจ้าของหรือสมาชิก active)
+     */
+    public function isAccessibleByUser(int $userId): bool
+    {
+        if ($this->user_id === $userId) {
+            return true;
+        }
+
+        return $this->members()
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
     public function installmentPayments(): HasMany
     {
         return $this->hasMany(InstallmentPayment::class)->orderBy('installment_no');
