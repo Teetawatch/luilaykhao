@@ -26,6 +26,16 @@
       </div>
     </div>
 
+    <!-- Booking note -->
+    <div v-if="!readonly" class="flex items-start gap-2 px-4 py-3 rounded-2xl border"
+      :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-teal-50/60 border-teal-100'">
+      <span class="material-symbols-rounded text-[18px] shrink-0 mt-px" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
+        style="font-variation-settings:'FILL' 1,'wght' 400">info</span>
+      <span class="text-[11px] font-bold leading-relaxed" :class="isWomenOnly ? 'text-[#9d174d]' : 'text-[#0f5132]'">
+        การจองหลายท่าน คือต้องเลือกหลายที่นั่ง ตามจำนวนคน
+      </span>
+    </div>
+
     <!-- Vehicle layout -->
     <div class="van-body relative mx-auto max-w-sm bg-white border-2 border-gray-200 rounded-t-[6rem] rounded-b-[3rem] pt-9 pb-6 px-6 md:px-8 shadow-md">
       <!-- Clip layer: ambient glows + headlights (clipped to van shape) -->
@@ -40,18 +50,14 @@
         <div class="absolute top-3 left-1/2 -translate-x-1/2 w-16 h-1.5 rounded-full bg-gray-100"></div>
       </div>
 
-      <!-- Side mirrors (near front) -->
-      <div class="absolute -left-2.5 top-[8%] w-3.5 h-3 rounded bg-gray-400 shadow-sm pointer-events-none"></div>
-      <div class="absolute -right-2.5 top-[8%] w-3.5 h-3 rounded bg-gray-400 shadow-sm pointer-events-none"></div>
-
       <!-- Wheels (front + rear axles, both sides) -->
       <div class="absolute -left-2 top-[20%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
       <div class="absolute -right-2 top-[20%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
       <div class="absolute -left-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
       <div class="absolute -right-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
 
-      <!-- Sliding door (left side — Thai vans) -->
-      <div class="absolute left-0 top-[33%] z-30 flex flex-col items-center justify-center gap-1 w-6 py-2.5 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 shadow-sm pointer-events-none">
+      <!-- Sliding door (left side — Thai vans), spans from behind front seat down to near rear wheel -->
+      <div class="absolute left-0 top-[31%] bottom-[27%] z-30 flex flex-col items-center justify-center gap-2 w-6 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 shadow-sm pointer-events-none">
         <span class="material-symbols-rounded text-[16px] text-amber-700" style="font-variation-settings:'FILL' 1,'wght' 500">door_open</span>
         <span class="text-[10px] font-black text-amber-700 tracking-wide" style="writing-mode:vertical-rl;text-orientation:mixed;">ประตู</span>
       </div>
