@@ -136,7 +136,8 @@ class SosController extends Controller
     private function isWithinTripWindow(TripSchedule $schedule): bool
     {
         $today = now(TripSchedule::REVIEW_AVAILABLE_TIMEZONE)->toDateString();
-        $start = $schedule->departure_date?->toDateString();
+        // เปิด SOS ตั้งแต่ 1 วันก่อนเดินทาง (ตรงกับฝั่งแอป) จนถึงวันเดินทางกลับ
+        $start = $schedule->departure_date?->copy()->subDay()->toDateString();
         $end = ($schedule->return_date ?? $schedule->departure_date)?->toDateString();
 
         if (! $start) {

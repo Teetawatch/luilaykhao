@@ -115,11 +115,39 @@ class ReviewEligibilityTest extends TestCase
             ->assertJsonPath('data.0.schedule.review_available_at', '2026-05-08T13:00:00.000000Z');
     }
 
+    public function test_long_past_trip_is_reviewable_until_reviewed(): void
+    {
+        // ทริปที่จบไปแล้วนาน (return_date ในอดีต) ต้องยังรีวิวได้
+        $user = User::factory()->create();
+        $booking = $this->createConfirmedBooking($user, '2026-05-08');
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/bookings')
+            ->assertOk()
+            ->assertJsonPath('data.0.can_review', true)
+            ->assertJsonPath('data.0.has_reviewed', false);
+
+        // หลังรีวิวแล้ว can_review ต้องเป็น false และ has_reviewed เป็น true
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/reviews', [
+                'booking_id' => $booking->id,
+                'rating' => 5,
+                'comment' => 'จบทริปแล้วมารีวิว',
+            ])
+            ->assertCreated();
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/bookings')
+            ->assertOk()
+            ->assertJsonPath('data.0.can_review', false)
+            ->assertJsonPath('data.0.has_reviewed', true);
+    }
+
     private function createConfirmedBooking(User $user, string $returnDate): Booking
     {
         $trip = Trip::create([
             'title' => 'Test Trip',
-            'slug' => 'test-trip-' . uniqid(),
+            'slug' => 'test-trip-'.uniqid(),
             'type' => 'trekking',
             'location' => 'Khao Yai',
             'difficulty' => 'easy',
@@ -140,7 +168,7 @@ class ReviewEligibilityTest extends TestCase
         ]);
 
         return Booking::create([
-            'booking_ref' => Booking::generateRef() . '-' . uniqid(),
+            'booking_ref' => Booking::generateRef().'-'.uniqid(),
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',
@@ -162,7 +190,7 @@ class ReviewEligibilityTest extends TestCase
         ]);
 
         return Booking::create([
-            'booking_ref' => Booking::generateRef() . '-' . uniqid(),
+            'booking_ref' => Booking::generateRef().'-'.uniqid(),
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',

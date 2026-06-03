@@ -63,6 +63,7 @@ class BookingController extends Controller
                 'seats',
                 'passengers.pickupPoint',
                 'installmentPayments',
+                'review',
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', auth()->id()),
             ])
             ->firstOrFail();
@@ -131,6 +132,7 @@ class BookingController extends Controller
                 'seats',
                 'passengers.pickupPoint',
                 'installmentPayments',
+                'review',
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
             ])
             ->orderByDesc('created_at')

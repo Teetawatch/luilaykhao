@@ -60,7 +60,9 @@ class BookingResource extends JsonResource
             'can_review' => $this->status === 'confirmed'
                 && $this->relationLoaded('schedule')
                 && $this->schedule
-                && $this->schedule->isReviewAvailable(),
+                && $this->schedule->isReviewAvailable()
+                && ! ($this->relationLoaded('review') && $this->review),
+            'has_reviewed' => $this->relationLoaded('review') ? (bool) $this->review : null,
             'can_modify' => $this->relationLoaded('schedule') && $this->schedule
                 ? $this->canBeModified()
                 : false,
