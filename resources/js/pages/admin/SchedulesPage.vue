@@ -88,10 +88,22 @@
                   <th>การจัดการ</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="sch in group.schedules" :key="sch.id">
+              <tbody v-for="m in groupSchedulesByMonth(group.schedules)" :key="m.key">
+                <tr class="month-sep-row">
+                  <td :colspan="7">
+                    <span class="material-symbols-rounded month-sep-icon">event</span>
+                    <span class="month-sep-label">{{ m.label }}</span>
+                    <span class="month-sep-count">{{ m.schedules.length }} รอบ</span>
+                  </td>
+                </tr>
+                <tr v-for="sch in m.schedules" :key="sch.id">
                   <td class="date">{{ sch.departure_date }}</td>
-                  <td class="date">{{ sch.return_date }}</td>
+                  <td class="date">
+                    <span v-if="isDayTrip(sch)" class="daytrip-pill">
+                      <span class="material-symbols-rounded icon-xs">wb_sunny</span> เดย์ทริป
+                    </span>
+                    <template v-else>{{ sch.return_date }}</template>
+                  </td>
                   <td>
                     <span class="type-tag" :class="`type-${sch.transport_type === 'van' ? 'trekking' : 'diving'}`">
                       <span class="material-symbols-rounded" style="font-size:14px;">{{ sch.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
@@ -180,11 +192,18 @@
                 <option v-for="t in tripOptions" :key="t.id" :value="t.id">{{ t.title }}</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group full-width">
+              <label class="daytrip-toggle">
+                <input type="checkbox" v-model="form.is_day_trip" />
+                <span class="material-symbols-rounded icon-xs">wb_sunny</span>
+                <span>เดย์ทริป — ไป-กลับวันเดียว (ไม่ต้องเลือกวันกลับ)</span>
+              </label>
+            </div>
+            <div class="form-group" :class="{ 'full-width': form.is_day_trip }">
               <label>วันเดินทาง *</label>
               <input v-model="form.departure_date" type="date" required />
             </div>
-            <div class="form-group">
+            <div class="form-group" v-if="!form.is_day_trip">
               <label>วันกลับ *</label>
               <input v-model="form.return_date" type="date" required />
             </div>
@@ -725,22 +744,59 @@
 
           <!-- Section 2: Dates -->
           <div class="batch-section">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-              <h3 class="section-label" style="margin:0;"><span class="material-symbols-rounded">calendar_month</span> วันเดินทาง ({{ batchForm.dates.length }} รอบ)</h3>
-              <button type="button" class="btn-sm btn-secondary" @click="addDateRow">
-                <span class="material-symbols-rounded">add</span> เพิ่มวัน
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+              <h3 class="section-label" style="margin:0;">
+                <span class="material-symbols-rounded">calendar_month</span> วันเดินทาง ({{ batchForm.dates.length }} รอบ)
+                <span v-if="batchMonthsCovered > 1" class="batch-months-chip">{{ batchMonthsCovered }} เดือน</span>
+              </h3>
+              <label class="daytrip-toggle">
+                <input type="checkbox" v-model="batchForm.is_day_trip" />
+                <span class="material-symbols-rounded icon-xs">wb_sunny</span>
+                <span>เดย์ทริป — ไป-กลับวันเดียว</span>
+              </label>
+            </div>
+
+            <!-- Auto-generate helper -->
+            <div class="date-gen">
+              <span class="date-gen-label"><span class="material-symbols-rounded icon-xs">auto_awesome</span> สร้างอัตโนมัติ</span>
+              <div class="date-gen-field">
+                <span>เริ่ม</span>
+                <input v-model="batchGen.start" type="date" />
+              </div>
+              <div class="date-gen-field">
+                <span>จำนวน</span>
+                <input v-model.number="batchGen.count" type="number" min="1" class="input-sm-60" />
+                <span>รอบ</span>
+              </div>
+              <div class="date-gen-field">
+                <span>ทุกๆ</span>
+                <input v-model.number="batchGen.every" type="number" min="1" class="input-sm-60" />
+                <span>วัน</span>
+              </div>
+              <div class="date-gen-field" v-if="!batchForm.is_day_trip">
+                <span>ค้าง</span>
+                <input v-model.number="batchGen.nights" type="number" min="0" class="input-sm-60" />
+                <span>คืน</span>
+              </div>
+              <button type="button" class="btn-sm btn-primary" @click="generateDates">
+                <span class="material-symbols-rounded">playlist_add</span> สร้างวัน
               </button>
             </div>
+
             <div class="date-rows">
               <div v-for="(d, i) in batchForm.dates" :key="i" class="date-row">
                 <span class="date-row-num">{{ i + 1 }}</span>
                 <div class="form-group" style="flex:1;margin:0;">
                   <input v-model="d.departure_date" type="date" required placeholder="วันเดินทาง" />
                 </div>
-                <span style="color:#9ca3af;font-size:13px;">→</span>
-                <div class="form-group" style="flex:1;margin:0;">
-                  <input v-model="d.return_date" type="date" required placeholder="วันกลับ" />
-                </div>
+                <template v-if="!batchForm.is_day_trip">
+                  <span style="color:#9ca3af;font-size:13px;">→</span>
+                  <div class="form-group" style="flex:1;margin:0;">
+                    <input v-model="d.return_date" type="date" required placeholder="วันกลับ" />
+                  </div>
+                </template>
+                <span v-else class="daytrip-pill"><span class="material-symbols-rounded icon-xs">wb_sunny</span> ไป-กลับวันเดียว</span>
+                <span v-if="rowMonthLabel(d)" class="date-row-month">{{ rowMonthLabel(d) }}</span>
                 <button type="button" class="btn-icon btn-delete" @click="removeDateRow(i)" :disabled="batchForm.dates.length <= 1">
                   <span class="material-symbols-rounded">close</span>
                 </button>
@@ -1459,6 +1515,26 @@ const toggleGroup = (tripId) => {
   else s.add(tripId);
   openGroups.value = s;
 };
+
+// ─── Month grouping & day-trip helpers ─────────────────────
+const MONTH_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const monthKeyOf = (dateStr) => (dateStr ? String(dateStr).slice(0, 7) : '');
+const monthLabelOf = (dateStr) => {
+  if (!dateStr) return '';
+  const [y, m] = String(dateStr).split('-');
+  return `${MONTH_TH[parseInt(m, 10) - 1]} ${parseInt(y, 10) + 543}`;
+};
+// Group a trip's schedules into [{ key, label, schedules }] ordered by month
+const groupSchedulesByMonth = (schedules) => {
+  const map = new Map();
+  for (const sch of schedules) {
+    const k = monthKeyOf(sch.departure_date);
+    if (!map.has(k)) map.set(k, { key: k, label: monthLabelOf(sch.departure_date), schedules: [] });
+    map.get(k).schedules.push(sch);
+  }
+  return [...map.values()].sort((a, b) => (a.key > b.key ? 1 : -1));
+};
+const isDayTrip = (sch) => !!sch.departure_date && sch.departure_date === sch.return_date;
 const showForm = ref(false);
 const showDeleteConfirm = ref(false);
 const editing = ref(null);
@@ -1468,7 +1544,7 @@ const tripOptions = ref([]);
 const vehicleOptions = ref([]);
 
 const form = reactive({
-  trip_id: '', departure_date: '', return_date: '',
+  trip_id: '', departure_date: '', return_date: '', is_day_trip: false,
   total_seats: 10, transport_type: 'van', vehicle_id: null,
   price_override: null, status: 'open',
   installment_enabled: false, installment_count: 2, installment_interval_days: 30,
@@ -1520,6 +1596,7 @@ const openForm = (item = null) => {
       trip_id: item.trip_id,
       departure_date: item.departure_date,
       return_date: item.return_date,
+      is_day_trip: item.departure_date === item.return_date,
       total_seats: item.total_seats,
       transport_type: item.transport_type,
       vehicle_id: item.vehicle?.id || null,
@@ -1539,7 +1616,7 @@ const openForm = (item = null) => {
   } else {
     Object.assign(form, {
       trip_id: item?.trip_id || '',
-      departure_date: '', return_date: '',
+      departure_date: '', return_date: '', is_day_trip: false,
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
       installment_enabled: false, installment_count: 2, installment_interval_days: 30,
@@ -1555,6 +1632,8 @@ const submitForm = async () => {
   submitting.value = true;
   try {
     const data = { ...form };
+    if (data.is_day_trip) data.return_date = data.departure_date;
+    delete data.is_day_trip;
     if (!data.price_override) data.price_override = null;
     if (!data.deposit_enabled) {
       data.deposit_type = null;
@@ -1591,6 +1670,7 @@ const batchForm = reactive({
   vehicle_id: null,
   total_seats: 10,
   price_override: null,
+  is_day_trip: false,
   dates: [{ departure_date: '', return_date: '' }],
   pickups: [],
   join_trip_enabled: false,
@@ -1944,6 +2024,7 @@ const openBatchForm = (presetTripId = '') => {
     vehicle_id: null,
     total_seats: 10,
     price_override: null,
+    is_day_trip: false,
     dates: [{ departure_date: '', return_date: '' }],
     pickups: [],
     join_trip_enabled: false,
@@ -1975,6 +2056,45 @@ const deleteTripGroup = async (group) => {
 const addDateRow = () => batchForm.dates.push({ departure_date: '', return_date: '' });
 const removeDateRow = (i) => { if (batchForm.dates.length > 1) batchForm.dates.splice(i, 1); };
 
+// Live month label for a batch date row (updates as the admin types)
+const rowMonthLabel = (d) => monthLabelOf(d.departure_date);
+// Distinct months covered by the current date list, for the summary chip
+const batchMonthsCovered = computed(() => {
+  const set = new Set(batchForm.dates.map(d => monthKeyOf(d.departure_date)).filter(Boolean));
+  return set.size;
+});
+
+// ─── Auto-generate dates ───────────────────────────────────
+const batchGen = reactive({ start: '', count: 4, every: 7, nights: 1 });
+const addDays = (dateStr, days) => {
+  const dt = new Date(dateStr + 'T00:00:00');
+  dt.setDate(dt.getDate() + days);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const generateDates = () => {
+  if (!batchGen.start) { toast.error('กรุณาเลือกวันเริ่มต้น'); return; }
+  const count = Math.max(1, Number(batchGen.count) || 1);
+  const every = Math.max(1, Number(batchGen.every) || 1);
+  const nights = batchForm.is_day_trip ? 0 : Math.max(0, Number(batchGen.nights) || 0);
+  const rows = [];
+  for (let i = 0; i < count; i++) {
+    const dep = addDays(batchGen.start, i * every);
+    rows.push({ departure_date: dep, return_date: addDays(dep, nights) });
+  }
+  // Drop any leading blank row, then append generated rows
+  const existing = batchForm.dates.filter(d => d.departure_date);
+  batchForm.dates = [...existing, ...rows];
+  toast.success(`สร้าง ${rows.length} วันเดินทางแล้ว`);
+};
+
+// Keep return_date in sync with departure when day-trip mode is on
+watch(() => batchForm.is_day_trip, (on) => {
+  if (on) batchForm.dates.forEach(d => { d.return_date = d.departure_date; });
+});
+
 const addPickupRow = () => batchForm.pickups.push({
   region: '', region_label: '', pickup_location: '', price: '', notes: '', map_url: '', image_url: '',
 });
@@ -1990,6 +2110,8 @@ const submitBatchForm = async () => {
   try {
     const results = [];
     for (const d of batchForm.dates) {
+      if (!d.departure_date) continue;
+      const returnDate = batchForm.is_day_trip ? d.departure_date : d.return_date;
       const scheduleRes = await api.post('/admin/schedules', {
         trip_id: batchForm.trip_id,
         transport_type: batchForm.transport_type,
@@ -1997,7 +2119,7 @@ const submitBatchForm = async () => {
         total_seats: batchForm.total_seats,
         price_override: batchForm.price_override || null,
         departure_date: d.departure_date,
-        return_date: d.return_date,
+        return_date: returnDate,
         status: 'open',
         join_trip_enabled: batchForm.join_trip_enabled || false,
         join_trip_price: batchForm.join_trip_enabled ? batchForm.join_trip_price : null,
@@ -3486,6 +3608,102 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* Month separator row inside schedule table */
+.month-sep-row td {
+  background: var(--color-sand);
+  padding: 7px 14px !important;
+  border-top: 2px solid var(--color-sand-dark);
+}
+.month-sep-icon {
+  font-size: 16px;
+  vertical-align: middle;
+  color: var(--color-accent);
+  margin-right: 6px;
+}
+.month-sep-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text-dark);
+  letter-spacing: .2px;
+}
+.month-sep-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-left: 8px;
+}
+
+/* Day-trip pill & toggle */
+.daytrip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.daytrip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c2410c;
+  cursor: pointer;
+}
+.daytrip-toggle input { accent-color: #ea580c; }
+
+/* Batch: months-covered chip, generator, per-row month label */
+.batch-months-chip {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-accent);
+  background: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
+  padding: 1px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
+}
+.date-gen {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--color-sand);
+  border: 1px dashed var(--color-sand-dark);
+  border-radius: 8px;
+}
+.date-gen-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text-dark);
+}
+.date-gen-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--color-text-mid);
+}
+.date-gen-field input[type="date"] { padding: 5px 8px; }
+.date-row-month {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-width: 96px;
 }
 
 .pickup-inline-list {
