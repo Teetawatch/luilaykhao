@@ -27,21 +27,34 @@
     </div>
 
     <!-- Vehicle layout -->
-    <div class="relative bg-white rounded-3xl py-7 px-5 md:px-8 border border-gray-100 overflow-hidden shadow-sm">
-      <!-- Subtle ambient glows -->
-      <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-3xl pointer-events-none opacity-50"
-        :class="isWomenOnly ? 'bg-pink-100' : 'bg-teal-50'"></div>
-      <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="van-body relative mx-auto max-w-sm bg-white border-2 border-gray-200 rounded-t-[6rem] rounded-b-[3rem] pt-9 pb-6 px-6 md:px-8 shadow-md">
+      <!-- Clip layer: ambient glows + headlights (clipped to van shape) -->
+      <div class="absolute inset-0 rounded-t-[6rem] rounded-b-[3rem] overflow-hidden pointer-events-none">
+        <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-3xl opacity-50"
+          :class="isWomenOnly ? 'bg-pink-100' : 'bg-teal-50'"></div>
+        <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl"></div>
+        <!-- Headlights -->
+        <div class="absolute top-5 left-8 w-7 h-3 rounded-full bg-amber-200/80 blur-[1px]"></div>
+        <div class="absolute top-5 right-8 w-7 h-3 rounded-full bg-amber-200/80 blur-[1px]"></div>
+        <!-- Front grille hint -->
+        <div class="absolute top-3 left-1/2 -translate-x-1/2 w-16 h-1.5 rounded-full bg-gray-100"></div>
+      </div>
 
-      <!-- Side mirrors -->
-      <div class="absolute left-1 md:left-3 top-14 w-3 h-7 rounded-full bg-gray-200 shadow-sm pointer-events-none"></div>
-      <div class="absolute right-1 md:right-3 top-14 w-3 h-7 rounded-full bg-gray-200 shadow-sm pointer-events-none"></div>
+      <!-- Side mirrors (near front) -->
+      <div class="absolute -left-2.5 top-[8%] w-3.5 h-3 rounded bg-gray-400 shadow-sm pointer-events-none"></div>
+      <div class="absolute -right-2.5 top-[8%] w-3.5 h-3 rounded bg-gray-400 shadow-sm pointer-events-none"></div>
+
+      <!-- Wheels (front + rear axles, both sides) -->
+      <div class="absolute -left-2 top-[20%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -right-2 top-[20%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -left-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -right-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
 
       <div class="relative max-w-xs mx-auto">
 
         <!-- Windshield (van nose) -->
-        <div class="mx-auto w-[86%] h-7 rounded-t-[2.5rem] border border-b-0 pointer-events-none"
-          :class="isWomenOnly ? 'bg-gradient-to-b from-pink-100/80 to-white border-pink-100' : 'bg-gradient-to-b from-sky-100/80 to-white border-teal-100'"></div>
+        <div class="mx-auto w-[94%] h-9 rounded-t-[3.5rem] border-2 border-b-0 shadow-inner pointer-events-none"
+          :class="isWomenOnly ? 'bg-gradient-to-b from-pink-200/70 via-pink-50 to-white border-pink-100' : 'bg-gradient-to-b from-sky-200/70 via-sky-50 to-white border-teal-100'"></div>
 
         <!-- Front cabin: staff + front passenger (left) · label · driver (right) -->
         <div class="flex items-end justify-between mb-7 px-1 pt-1 pb-6 border-2 border-t-0 rounded-b-3xl border-dashed"
@@ -139,11 +152,14 @@
           </div>
         </div>
 
-        <!-- Rear label -->
-        <div class="mt-7 pt-5 border-t-2 border-dashed border-gray-100 flex justify-center">
-          <span class="px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-gray-400 text-[10px] font-black tracking-widest uppercase">
-            {{ layoutConfig.rear_label }}
-          </span>
+        <!-- Rear (cargo door) -->
+        <div class="mt-7 pt-5 border-t-2 border-dashed border-gray-100">
+          <div class="mx-auto w-[88%] rounded-b-[2rem] border-2 border-t-0 border-gray-100 bg-gray-50/60 pt-2 pb-3 flex flex-col items-center gap-1.5">
+            <div class="w-[65%] h-2 rounded-full bg-gray-200"></div>
+            <span class="text-gray-400 text-[10px] font-black tracking-widest uppercase text-center px-3 leading-tight">
+              {{ layoutConfig.rear_label }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
