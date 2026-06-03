@@ -33,35 +33,57 @@
         :class="isWomenOnly ? 'bg-pink-100' : 'bg-teal-50'"></div>
       <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl pointer-events-none"></div>
 
+      <!-- Side mirrors -->
+      <div class="absolute left-1 md:left-3 top-14 w-3 h-7 rounded-full bg-gray-200 shadow-sm pointer-events-none"></div>
+      <div class="absolute right-1 md:right-3 top-14 w-3 h-7 rounded-full bg-gray-200 shadow-sm pointer-events-none"></div>
+
       <div class="relative max-w-xs mx-auto">
 
-        <!-- Front: passenger + front label + driver -->
-        <div class="flex items-end justify-between mb-7 pb-6 border-b-2 border-dashed border-gray-100">
-          <!-- Front passenger seat -->
-          <button
-            v-if="frontPassengerSeat"
-            :disabled="readonly || frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked'"
-            @click="handleSeatClick(frontPassengerSeat)"
-            class="group flex flex-col items-center gap-1 transition-all duration-200 shrink-0"
-            :class="readonly ? 'cursor-default' : frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-            :title="readonly ? '' : frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : 'คลิกเพื่อเลือก'"
-          >
-            <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2"
-              :class="seatBgClass(frontPassengerSeat)">
-              <span class="material-symbols-rounded text-[20px] transition-all duration-200"
-                :class="seatIconClass(frontPassengerSeat)"
-                style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_normal</span>
+        <!-- Windshield (van nose) -->
+        <div class="mx-auto w-[86%] h-7 rounded-t-[2.5rem] border border-b-0 pointer-events-none"
+          :class="isWomenOnly ? 'bg-gradient-to-b from-pink-100/80 to-white border-pink-100' : 'bg-gradient-to-b from-sky-100/80 to-white border-teal-100'"></div>
+
+        <!-- Front cabin: staff + front passenger (left) · label · driver (right) -->
+        <div class="flex items-end justify-between mb-7 px-1 pt-1 pb-6 border-2 border-t-0 rounded-b-3xl border-dashed"
+          :class="isWomenOnly ? 'border-pink-100/70' : 'border-teal-100/70'">
+          <!-- Left group: staff then front passenger seat -->
+          <div class="flex items-end gap-2 shrink-0">
+            <!-- Staff -->
+            <div v-if="layoutConfig.show_staff" class="flex flex-col items-center gap-1 shrink-0">
+              <div class="w-12 h-12 rounded-2xl flex items-center justify-center border-2"
+                :class="isWomenOnly ? 'bg-pink-50 border-pink-200' : 'bg-teal-50 border-teal-200'">
+                <span class="material-symbols-rounded text-[20px]"
+                  :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
+                  style="font-variation-settings:'FILL' 1,'wght' 400">{{ layoutConfig.staff_icon }}</span>
+              </div>
+              <span class="text-[10px] font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'">สตาฟ</span>
             </div>
-            <span class="text-[10px] font-extrabold leading-none transition-colors" :class="seatLabelClass(frontPassengerSeat)">
-              {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
-            </span>
-            <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-red-400 font-bold -mt-0.5">จองแล้ว</span>
-            <span v-else-if="frontPassengerSeat.status === 'locked'" class="text-[9px] text-amber-500 font-bold -mt-0.5">ล็อค</span>
-          </button>
-          <div v-else class="w-12 shrink-0"></div>
+
+            <!-- Front passenger seat -->
+            <button
+              v-if="frontPassengerSeat"
+              :disabled="readonly || frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked'"
+              @click="handleSeatClick(frontPassengerSeat)"
+              class="group flex flex-col items-center gap-1 transition-all duration-200 shrink-0"
+              :class="readonly ? 'cursor-default' : frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
+              :title="readonly ? '' : frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : 'คลิกเพื่อเลือก'"
+            >
+              <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2"
+                :class="seatBgClass(frontPassengerSeat)">
+                <span class="material-symbols-rounded text-[20px] transition-all duration-200"
+                  :class="seatIconClass(frontPassengerSeat)"
+                  style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_normal</span>
+              </div>
+              <span class="text-[10px] font-extrabold leading-none transition-colors" :class="seatLabelClass(frontPassengerSeat)">
+                {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
+              </span>
+              <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-red-400 font-bold -mt-0.5">จองแล้ว</span>
+              <span v-else-if="frontPassengerSeat.status === 'locked'" class="text-[9px] text-amber-500 font-bold -mt-0.5">ล็อค</span>
+            </button>
+          </div>
 
           <!-- Front label -->
-          <div class="flex-1 flex justify-center">
+          <div class="flex-1 flex justify-center self-center">
             <span class="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase transition-colors duration-300"
               :class="isWomenOnly ? 'bg-pink-50 text-[#db2777] border border-pink-100' : 'bg-teal-50 text-[#006565] border border-teal-100'">
               {{ layoutConfig.front_label }}
@@ -69,7 +91,7 @@
           </div>
 
           <!-- Driver -->
-          <div v-if="layoutConfig.show_driver" class="flex flex-col items-center gap-1 opacity-40 shrink-0">
+          <div v-if="layoutConfig.show_driver" class="flex flex-col items-center gap-1 shrink-0">
             <div class="w-12 h-12 rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
               <span class="material-symbols-rounded text-xl text-gray-500" style="font-variation-settings:'FILL' 0,'wght' 300">{{ layoutConfig.driver_icon }}</span>
             </div>
@@ -173,6 +195,8 @@ const layoutConfig = computed(() => {
     rear_label: sm?.rear_label || 'ท้ายรถ (เก็บสัมภาระ)',
     driver_icon: sm?.driver_icon || 'directions_car',
     show_driver: sm?.show_driver !== false,
+    staff_icon: sm?.staff_icon || 'support_agent',
+    show_staff: sm?.show_staff !== false,
   };
 });
 

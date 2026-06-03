@@ -98,6 +98,8 @@ class ScheduleController extends Controller
             'rear_label' => $layout['rear_label'] ?? 'ท้ายรถ (สำหรับเก็บสัมภาระ)',
             'driver_icon' => $layout['driver_icon'] ?? 'directions_car',
             'show_driver' => $layout['show_driver'] ?? true,
+            'staff_icon' => $layout['staff_icon'] ?? 'support_agent',
+            'show_staff' => $layout['show_staff'] ?? true,
         ]);
     }
 }
