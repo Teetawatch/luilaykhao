@@ -50,6 +50,12 @@
       <div class="absolute -left-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
       <div class="absolute -right-2 bottom-[11%] w-3.5 h-16 rounded-2xl bg-gray-700 shadow-md pointer-events-none"></div>
 
+      <!-- Sliding door (left side — Thai vans) -->
+      <div class="absolute left-0 top-[33%] z-30 flex flex-col items-center justify-center gap-1 w-6 py-2.5 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 shadow-sm pointer-events-none">
+        <span class="material-symbols-rounded text-[16px] text-amber-700" style="font-variation-settings:'FILL' 1,'wght' 500">door_open</span>
+        <span class="text-[10px] font-black text-amber-700 tracking-wide" style="writing-mode:vertical-rl;text-orientation:mixed;">ประตู</span>
+      </div>
+
       <div class="relative max-w-xs mx-auto">
 
         <!-- Windshield (van nose) -->
