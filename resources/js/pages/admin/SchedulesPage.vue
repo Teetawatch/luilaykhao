@@ -2195,9 +2195,9 @@ const doCopySchedule = async () => {
       installment_count: src.installment_count || 2,
       installment_interval_days: src.installment_interval_days || 30,
       deposit_enabled: src.deposit_enabled || false,
-      deposit_type: src.deposit_type || 'amount',
-      deposit_amount: src.deposit_amount ? Number(src.deposit_amount) : null,
-      deposit_percent: src.deposit_percent || null,
+      deposit_type: src.deposit_enabled ? (src.deposit_type || 'amount') : null,
+      deposit_amount: src.deposit_enabled && src.deposit_type !== 'percent' ? (src.deposit_amount ? Number(src.deposit_amount) : null) : null,
+      deposit_percent: src.deposit_enabled && src.deposit_type === 'percent' ? src.deposit_percent : null,
       join_trip_enabled: src.join_trip_enabled || false,
       join_trip_price: src.join_trip_price || null,
     });
