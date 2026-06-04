@@ -6,16 +6,19 @@ use App\Events\PaymentConfirmed;
 use App\Events\SeatBooked;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\ChargeRequest;
+use App\Http\Resources\BookingResource;
 use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
 use App\Services\BookingService;
+use App\Services\InstallmentPaymentService;
 use App\Services\MailService;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +33,7 @@ class PaymentController extends Controller
         private BookingService $bookingService,
         private MailService $mailService,
         private SmsService $smsService,
+        private InstallmentPaymentService $installmentPaymentService,
     ) {}
 
     public function charge(ChargeRequest $request): JsonResponse
@@ -40,68 +44,68 @@ class PaymentController extends Controller
                 ->with(['schedule', 'seats'])
                 ->firstOrFail();
 
-            $paymentType    = $request->input('payment_type', 'full');
-            $paymentMethod  = $request->input('payment_method', 'promptpay');
-            $transferDt     = $this->resolveTransferDatetime($request);
+            $paymentType = $request->input('payment_type', 'full');
+            $paymentMethod = $request->input('payment_method', 'promptpay');
+            $transferDt = $this->resolveTransferDatetime($request);
 
             // Store slip image
             $slipPath = null;
             if ($request->hasFile('slip_image')) {
-                $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+                $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
             }
 
             // ── Installment payment ──────────────────────────────────
             if ($paymentType === 'installment') {
                 $schedule = $booking->schedule;
 
-                if (!$schedule->installment_enabled) {
+                if (! $schedule->installment_enabled) {
                     return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
                 }
 
-                $installmentCount        = (int) ($request->input('installment_count') ?? $schedule->installment_count);
-                $maxAllowed              = (int) $schedule->installment_count;
+                $installmentCount = (int) ($request->input('installment_count') ?? $schedule->installment_count);
+                $maxAllowed = (int) $schedule->installment_count;
                 if ($installmentCount < 2 || $installmentCount > min($maxAllowed, 6)) {
                     return $this->error("จำนวนงวดต้องอยู่ระหว่าง 2-{$maxAllowed} งวด", 422);
                 }
                 $installmentIntervalDays = (int) $schedule->installment_interval_days;
-                $totalAmount             = (float) $booking->total_amount;
-                $perInstallment          = round($totalAmount / $installmentCount, 2);
+                $totalAmount = (float) $booking->total_amount;
+                $perInstallment = round($totalAmount / $installmentCount, 2);
 
                 DB::transaction(function () use (
                     $booking, $installmentCount, $installmentIntervalDays,
                     $perInstallment, $totalAmount, $paymentMethod, $slipPath, $transferDt
                 ) {
-                    $paymentRef = 'PAY-INST-' . strtoupper(uniqid());
+                    $paymentRef = 'PAY-INST-'.strtoupper(uniqid());
                     $now = now();
 
                     $booking->update([
-                        'payment_type'              => 'installment',
-                        'installment_count'         => $installmentCount,
+                        'payment_type' => 'installment',
+                        'installment_count' => $installmentCount,
                         'installment_interval_days' => $installmentIntervalDays,
-                        'payment_method'            => $paymentMethod,
-                        'payment_ref'               => $paymentRef,
-                        'slip_path'                 => $slipPath,
-                        'transfer_datetime'         => $transferDt,
-                        'slip_ocr_status'           => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                        'payment_method' => $paymentMethod,
+                        'payment_ref' => $paymentRef,
+                        'slip_path' => $slipPath,
+                        'transfer_datetime' => $transferDt,
+                        'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
                     ]);
 
                     for ($i = 1; $i <= $installmentCount; $i++) {
                         $dueDate = $now->copy()->addDays(($i - 1) * $installmentIntervalDays);
-                        $amount  = ($i === $installmentCount)
+                        $amount = ($i === $installmentCount)
                             ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
                             : $perInstallment;
 
                         InstallmentPayment::create([
-                            'booking_id'       => $booking->id,
-                            'installment_no'   => $i,
-                            'amount'           => $amount,
-                            'due_date'         => $dueDate->toDateString(),
-                            'status'           => $i === 1 ? 'paid'      : 'pending',
-                            'payment_method'   => $i === 1 ? $paymentMethod : null,
-                            'payment_ref'      => $i === 1 ? $paymentRef    : null,
-                            'paid_at'          => $i === 1 ? $now            : null,
-                            'slip_path'        => $i === 1 ? $slipPath       : null,
-                            'transfer_datetime'=> $i === 1 ? $transferDt     : null,
+                            'booking_id' => $booking->id,
+                            'installment_no' => $i,
+                            'amount' => $amount,
+                            'due_date' => $dueDate->toDateString(),
+                            'status' => $i === 1 ? 'paid' : 'pending',
+                            'payment_method' => $i === 1 ? $paymentMethod : null,
+                            'payment_ref' => $i === 1 ? $paymentRef : null,
+                            'paid_at' => $i === 1 ? $now : null,
+                            'slip_path' => $i === 1 ? $slipPath : null,
+                            'transfer_datetime' => $i === 1 ? $transferDt : null,
                         ]);
                     }
 
@@ -134,7 +138,7 @@ class PaymentController extends Controller
                         $booking->seats->pluck('seat_id')->toArray(),
                     ));
                 } catch (\Exception $e) {
-                    Log::warning('Broadcast failed: ' . $e->getMessage());
+                    Log::warning('Broadcast failed: '.$e->getMessage());
                 }
 
                 // Send payment confirmation email (installment)
@@ -152,8 +156,8 @@ class PaymentController extends Controller
                 );
 
                 return $this->success([
-                    'status'  => 'confirmed',
-                    'booking' => new \App\Http\Resources\BookingResource($booking),
+                    'status' => 'confirmed',
+                    'booking' => new BookingResource($booking),
                 ], 'ชำระงวดแรกสำเร็จ กรุณาชำระงวดถัดไปตามกำหนด');
             }
 
@@ -181,22 +185,22 @@ class PaymentController extends Controller
                     ? CarbonImmutable::parse($departureDate)->subDays(15)->startOfDay()
                     : null;
 
-                $paymentRef = 'PAY-DEP-' . strtoupper(uniqid());
+                $paymentRef = 'PAY-DEP-'.strtoupper(uniqid());
 
                 DB::transaction(function () use (
                     $booking, $depositAmount, $balanceAmount, $balanceDueAt,
                     $paymentMethod, $paymentRef, $slipPath, $transferDt
                 ) {
                     $booking->update([
-                        'payment_type'       => 'deposit',
-                        'deposit_amount'     => $depositAmount,
-                        'balance_amount'     => $balanceAmount,
-                        'balance_due_at'     => $balanceDueAt,
-                        'payment_method'     => $paymentMethod,
-                        'payment_ref'        => $paymentRef,
-                        'slip_path'          => $slipPath,
-                        'transfer_datetime'  => $transferDt,
-                        'slip_ocr_status'    => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                        'payment_type' => 'deposit',
+                        'deposit_amount' => $depositAmount,
+                        'balance_amount' => $balanceAmount,
+                        'balance_due_at' => $balanceDueAt,
+                        'payment_method' => $paymentMethod,
+                        'payment_ref' => $paymentRef,
+                        'slip_path' => $slipPath,
+                        'transfer_datetime' => $transferDt,
+                        'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
                     ]);
 
                     $this->bookingService->confirmBooking(
@@ -229,7 +233,7 @@ class PaymentController extends Controller
                         $booking->seats->pluck('seat_id')->toArray(),
                     ));
                 } catch (\Exception $e) {
-                    Log::warning('Broadcast failed: ' . $e->getMessage());
+                    Log::warning('Broadcast failed: '.$e->getMessage());
                 }
 
                 $this->mailService->sendDepositPaidEmail($booking);
@@ -248,13 +252,13 @@ class PaymentController extends Controller
                 );
 
                 return $this->success([
-                    'status'  => 'confirmed',
-                    'booking' => new \App\Http\Resources\BookingResource($booking),
+                    'status' => 'confirmed',
+                    'booking' => new BookingResource($booking),
                 ], 'ชำระเงินมัดจำสำเร็จ กรุณาชำระยอดส่วนที่เหลือก่อนเดินทาง 15 วัน');
             }
 
             // ── Full payment ─────────────────────────────────────────
-            $paymentRef = 'PAY-' . strtoupper(uniqid());
+            $paymentRef = 'PAY-'.strtoupper(uniqid());
 
             $booking = $this->bookingService->confirmBooking(
                 $booking,
@@ -263,10 +267,10 @@ class PaymentController extends Controller
             );
 
             $booking->update([
-                'payment_type'      => 'full',
-                'slip_path'         => $slipPath,
+                'payment_type' => 'full',
+                'slip_path' => $slipPath,
                 'transfer_datetime' => $transferDt,
-                'slip_ocr_status'   => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
             ]);
 
             if ($slipPath) {
@@ -289,7 +293,7 @@ class PaymentController extends Controller
                     $booking->seats->pluck('seat_id')->toArray(),
                 ));
             } catch (\Exception $e) {
-                Log::warning('Broadcast failed: ' . $e->getMessage());
+                Log::warning('Broadcast failed: '.$e->getMessage());
             }
 
             // Send payment confirmation email (full)
@@ -307,31 +311,32 @@ class PaymentController extends Controller
             );
 
             return $this->success([
-                'status'  => 'confirmed',
-                'booking' => new \App\Http\Resources\BookingResource($booking),
+                'status' => 'confirmed',
+                'booking' => new BookingResource($booking),
             ], 'ชำระเงินสำเร็จ');
         } catch (ValidationException $e) {
             return $this->error($e->validator->errors()->first(), 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return $this->error('ไม่พบข้อมูลการจอง หรือสถานะการจองไม่ถูกต้อง', 404);
         } catch (\Exception $e) {
-            Log::error('Payment processing error: ' . $e->getMessage(), [
+            Log::error('Payment processing error: '.$e->getMessage(), [
                 'booking_ref' => $request->booking_ref,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            return $this->error('เกิดข้อผิดพลาดในการประมวลผลการชำระเงิน: ' . $e->getMessage(), 500);
+
+            return $this->error('เกิดข้อผิดพลาดในการประมวลผลการชำระเงิน: '.$e->getMessage(), 500);
         }
     }
 
     public function chargeInstallment(Request $request): JsonResponse
     {
         $request->validate([
-            'booking_ref'    => ['required', 'string'],
+            'booking_ref' => ['required', 'string'],
             'installment_no' => ['required', 'integer', 'min:2'],
             'payment_method' => ['nullable', 'in:promptpay,mobile_banking'],
-            'slip_image'     => ['nullable', 'image', 'max:5120'],
-            'transfer_date'  => ['nullable', 'date'],
-            'transfer_time'  => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
+            'slip_image' => ['nullable', 'image', 'max:5120'],
+            'transfer_date' => ['nullable', 'date'],
+            'transfer_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
         ]);
 
         $booking = Booking::where('booking_ref', $request->booking_ref)
@@ -345,64 +350,37 @@ class PaymentController extends Controller
             ->where('status', '!=', 'paid')
             ->first();
 
-        if (!$installment) {
+        if (! $installment) {
             return $this->error('ไม่พบงวดที่ต้องชำระ หรือชำระแล้ว', 422);
         }
 
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
         }
 
-        $paymentRef = 'PAY-INST-' . strtoupper(uniqid());
-        $transferDt = $this->resolveTransferDatetime($request);
-
-        $installment->update([
-            'status'            => 'paid',
-            'payment_method'    => $request->input('payment_method', 'promptpay'),
-            'payment_ref'       => $paymentRef,
-            'paid_at'           => now(),
-            'slip_path'         => $slipPath,
-            'transfer_datetime' => $transferDt,
-            'slip_ocr_status'   => $slipPath ? SlipOcrService::STATUS_PENDING : null,
-        ]);
-
-        if ($slipPath) {
-            VerifySlipJob::dispatch('installment', $installment->id, $slipPath, (float) $installment->amount);
-        }
-
-        $totalPaid = (float) $booking->paid_amount + (float) $installment->amount;
-        $booking->update(['paid_amount' => $totalPaid]);
-
-        // Send installment payment confirmation email
-        $this->mailService->sendInstallmentPaidEmail($booking->fresh(), $installment);
-        $this->smsService->sendInstallmentPaid($booking->fresh(), $installment);
-        SmartNotification::send(
-            $booking->user_id,
-            'installment_paid',
-            'รับชำระค่างวดแล้ว',
-            "รับชำระงวดที่ {$installment->installment_no} ของเลขการจอง {$booking->booking_ref} แล้ว",
-            [
-                'booking_ref' => $booking->booking_ref,
-                'installment_no' => $installment->installment_no,
-                'route' => 'booking',
-            ],
+        $this->installmentPaymentService->recordPayment(
+            $booking,
+            $installment,
+            $request->input('payment_method', 'promptpay'),
+            $slipPath,
+            $this->resolveTransferDatetime($request),
         );
 
         return $this->success([
             'installment_no' => $installment->installment_no,
-            'amount'         => $installment->amount,
+            'amount' => $installment->amount,
         ], "ชำระงวดที่ {$installment->installment_no} สำเร็จ");
     }
 
     public function chargeBalance(Request $request): JsonResponse
     {
         $request->validate([
-            'booking_ref'    => ['required', 'string'],
+            'booking_ref' => ['required', 'string'],
             'payment_method' => ['nullable', 'in:promptpay,mobile_banking'],
-            'slip_image'     => ['nullable', 'image', 'max:5120'],
-            'transfer_date'  => ['nullable', 'date'],
-            'transfer_time'  => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
+            'slip_image' => ['nullable', 'image', 'max:5120'],
+            'transfer_date' => ['nullable', 'date'],
+            'transfer_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
         ]);
 
         $booking = Booking::where('booking_ref', $request->booking_ref)
@@ -416,24 +394,24 @@ class PaymentController extends Controller
 
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/' . date('Y/m'), 'public');
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
         }
 
         $paymentMethod = $request->input('payment_method', 'promptpay');
-        $paymentRef = 'PAY-BAL-' . strtoupper(uniqid());
+        $paymentRef = 'PAY-BAL-'.strtoupper(uniqid());
         $transferDt = $this->resolveTransferDatetime($request);
         $balanceAmount = (float) $booking->balance_amount;
 
-        DB::transaction(function () use ($booking, $paymentRef, $paymentMethod, $slipPath, $transferDt, $balanceAmount) {
+        DB::transaction(function () use ($booking, $paymentRef, $slipPath, $transferDt, $balanceAmount) {
             $totalPaid = (float) $booking->paid_amount + $balanceAmount;
 
             $booking->update([
-                'paid_amount'                  => $totalPaid,
-                'balance_paid_at'              => now(),
-                'balance_payment_ref'          => $paymentRef,
-                'balance_slip_path'            => $slipPath,
-                'balance_transfer_datetime'    => $transferDt,
-                'balance_slip_ocr_status'      => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                'paid_amount' => $totalPaid,
+                'balance_paid_at' => now(),
+                'balance_payment_ref' => $paymentRef,
+                'balance_slip_path' => $slipPath,
+                'balance_transfer_datetime' => $transferDt,
+                'balance_slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
             ]);
         });
 
@@ -458,8 +436,8 @@ class PaymentController extends Controller
         );
 
         return $this->success([
-            'status'  => 'confirmed',
-            'booking' => new \App\Http\Resources\BookingResource($booking),
+            'status' => 'confirmed',
+            'booking' => new BookingResource($booking),
         ], 'ชำระยอดส่วนที่เหลือสำเร็จ');
     }
 
@@ -467,6 +445,7 @@ class PaymentController extends Controller
     {
         $payload = $request->all();
         Log::info('Payment webhook received', $payload);
+
         return $this->success(null, 'Webhook processed');
     }
 
@@ -477,18 +456,18 @@ class PaymentController extends Controller
             ->firstOrFail();
 
         return $this->success([
-            'booking_ref'          => $booking->booking_ref,
-            'status'               => $booking->status,
-            'payment_type'         => $booking->payment_type ?? 'full',
-            'paid_amount'          => $booking->paid_amount,
-            'total_amount'         => $booking->total_amount,
-            'paid_at'              => $booking->paid_at?->toISOString(),
+            'booking_ref' => $booking->booking_ref,
+            'status' => $booking->status,
+            'payment_type' => $booking->payment_type ?? 'full',
+            'paid_amount' => $booking->paid_amount,
+            'total_amount' => $booking->total_amount,
+            'paid_at' => $booking->paid_at?->toISOString(),
             'installment_payments' => $booking->installmentPayments->map(fn ($ip) => [
-                'installment_no'   => $ip->installment_no,
-                'amount'           => $ip->amount,
-                'due_date'         => $ip->due_date?->toDateString(),
-                'status'           => $ip->status,
-                'paid_at'          => $ip->paid_at?->toISOString(),
+                'installment_no' => $ip->installment_no,
+                'amount' => $ip->amount,
+                'due_date' => $ip->due_date?->toDateString(),
+                'status' => $ip->status,
+                'paid_at' => $ip->paid_at?->toISOString(),
             ]),
         ]);
     }
@@ -502,7 +481,7 @@ class PaymentController extends Controller
             return null;
         }
 
-        if (!preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $date, $dateParts)) {
+        if (! preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $date, $dateParts)) {
             throw ValidationException::withMessages([
                 'transfer_date' => 'รูปแบบวันที่โอนเงินไม่ถูกต้อง',
             ]);
@@ -531,7 +510,7 @@ class PaymentController extends Controller
         }
 
         if (
-            !checkdate($month, $day, $year)
+            ! checkdate($month, $day, $year)
             || $hour > 23
             || $minute > 59
             || $second > 59

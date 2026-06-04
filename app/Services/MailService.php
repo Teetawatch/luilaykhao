@@ -229,6 +229,7 @@ class MailService
     public function sendInstallmentDueReminderEmail(Booking $booking, InstallmentPayment $installment, string $reminderType): void
     {
         $booking->loadMissing(['user', 'schedule.trip', 'passengers']);
+        $booking->ensurePaymentToken();
 
         try {
             $this->sendToCustomerEmails($booking, fn () => new InstallmentDueReminderMail($booking, $installment, $reminderType));

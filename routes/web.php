@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PublicPaymentController;
 use Illuminate\Support\Facades\Route;
 use App\Models\Trip;
 
@@ -27,6 +28,16 @@ Route::get('/track/{token}', function (string $token) {
 Route::get('/driver/track', function () {
     return view('driver-track');
 });
+
+// Public installment payment page — ชำระค่างวดจากลิงก์ในอีเมล (ไม่ต้องล็อกอิน)
+Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.pay.show');
+Route::post('/pay/{token}', [PublicPaymentController::class, 'pay'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:payment')
+    ->name('public.pay.submit');
 
 // SPA catch-all (must be last!)
 Route::get('/{any?}', function () {
