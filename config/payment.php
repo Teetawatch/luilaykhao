@@ -18,7 +18,7 @@ return [
 
     'bank_name' => env('PAYMENT_BANK_NAME', 'ธนาคารกสิกรไทย'),
     'bank_account' => env('PAYMENT_BANK_ACCOUNT', '230-139095-8'),
-    'bank_holder' => env('PAYMENT_BANK_HOLDER', 'บจก. ลุยล้ายเขา'),
+    'bank_holder' => env('PAYMENT_BANK_HOLDER', 'นายธีร์ธวัช พิพัฒน์เดชธน'),
 
     'support_phone' => env('PAYMENT_SUPPORT_PHONE', '062-612-6006'),
 ];

@@ -16,7 +16,7 @@
             </div>
         @endif
 
-        <div นายธีร์ธวัช พิพัฒน์เดชธน="amount-box">
+        <div class="amount-box">
             <div class="amount-label">ยอดที่ชำระแล้วทั้งหมด</div>
             <div class="amount">฿{{ number_format($booking->paid_amount, 0) }}</div>
             <div class="amount-sub">จากยอดรวม ฿{{ number_format($booking->total_amount, 0) }}</div>
