@@ -11,6 +11,7 @@ use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
+use App\Services\BalancePaymentService;
 use App\Services\BookingService;
 use App\Services\InstallmentPaymentService;
 use App\Services\MailService;
@@ -34,6 +35,7 @@ class PaymentController extends Controller
         private MailService $mailService,
         private SmsService $smsService,
         private InstallmentPaymentService $installmentPaymentService,
+        private BalancePaymentService $balancePaymentService,
     ) {}
 
     public function charge(ChargeRequest $request): JsonResponse
@@ -397,43 +399,14 @@ class PaymentController extends Controller
             $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
         }
 
-        $paymentMethod = $request->input('payment_method', 'promptpay');
-        $paymentRef = 'PAY-BAL-'.strtoupper(uniqid());
-        $transferDt = $this->resolveTransferDatetime($request);
-        $balanceAmount = (float) $booking->balance_amount;
-
-        DB::transaction(function () use ($booking, $paymentRef, $slipPath, $transferDt, $balanceAmount) {
-            $totalPaid = (float) $booking->paid_amount + $balanceAmount;
-
-            $booking->update([
-                'paid_amount' => $totalPaid,
-                'balance_paid_at' => now(),
-                'balance_payment_ref' => $paymentRef,
-                'balance_slip_path' => $slipPath,
-                'balance_transfer_datetime' => $transferDt,
-                'balance_slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
-            ]);
-        });
-
-        if ($slipPath) {
-            VerifySlipJob::dispatch('balance', $booking->id, $slipPath, $balanceAmount);
-        }
+        $this->balancePaymentService->recordPayment(
+            $booking,
+            $request->input('payment_method', 'promptpay'),
+            $slipPath,
+            $this->resolveTransferDatetime($request),
+        );
 
         $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);
-
-        $this->mailService->sendBalancePaidEmail($booking);
-        $this->smsService->sendBalancePaid($booking);
-
-        SmartNotification::send(
-            $booking->user_id,
-            'balance_paid',
-            'รับชำระเงินส่วนที่เหลือแล้ว',
-            "รับชำระยอดส่วนที่เหลือของเลขการจอง {$booking->booking_ref} ครบถ้วนแล้ว",
-            [
-                'booking_ref' => $booking->booking_ref,
-                'route' => 'booking',
-            ],
-        );
 
         return $this->success([
             'status' => 'confirmed',

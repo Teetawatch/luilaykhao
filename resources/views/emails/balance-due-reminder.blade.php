@@ -137,11 +137,14 @@
     @endif
 
     <div class="cta-wrap">
-      <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
+      <a href="{{ $booking->payUrl() }}"
          class="cta-btn" style="background: {{ $headerBg }};">
         ชำระเงินส่วนที่เหลือตอนนี้ &rarr;
       </a>
     </div>
+    <p style="text-align:center; font-size:12px; color:#94a3b8; margin-top:8px;">
+      กดปุ่มเพื่อดู QR PromptPay และแนบสลิป โดยไม่ต้องเข้าสู่ระบบ
+    </p>
 
     <div class="contact-bar">
       หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)

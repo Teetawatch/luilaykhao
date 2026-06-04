@@ -1,8 +1,9 @@
 <?php
 
+use App\Http\Controllers\AdminPaymentWebController;
 use App\Http\Controllers\PublicPaymentController;
-use Illuminate\Support\Facades\Route;
 use App\Models\Trip;
+use Illuminate\Support\Facades\Route;
 
 // Google Search Console verification
 Route::get('/google2a5171f00ca2654e.html', function () {
@@ -13,9 +14,9 @@ Route::get('/google2a5171f00ca2654e.html', function () {
 // XML Sitemap
 Route::get('/sitemap.xml', function () {
     $trips = Trip::where('status', 'published')->orWhere('status', 'active')->get();
-    
+
     return response()->view('sitemap', [
-        'trips' => $trips
+        'trips' => $trips,
     ])->header('Content-Type', 'text/xml');
 });
 
@@ -29,7 +30,7 @@ Route::get('/driver/track', function () {
     return view('driver-track');
 });
 
-// Public installment payment page — ชำระค่างวดจากลิงก์ในอีเมล (ไม่ต้องล็อกอิน)
+// Public payment page — ชำระค่างวด/ยอดส่วนที่เหลือ จากลิงก์ในอีเมล (ไม่ต้องล็อกอิน)
 Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:60,1')
@@ -39,8 +40,17 @@ Route::post('/pay/{token}', [PublicPaymentController::class, 'pay'])
     ->middleware('throttle:payment')
     ->name('public.pay.submit');
 
+// Admin payment-tracking page — ดูลูกค้าที่ค้างชำระ + ส่งลิงก์ (session login, admin/operator)
+Route::prefix('admin/payments')->group(function () {
+    Route::get('/', [AdminPaymentWebController::class, 'index'])->name('admin.payments.index');
+    Route::post('/login', [AdminPaymentWebController::class, 'login'])
+        ->middleware('throttle:auth')->name('admin.payments.login');
+    Route::post('/logout', [AdminPaymentWebController::class, 'logout'])->name('admin.payments.logout');
+    Route::post('/{ref}/send-link', [AdminPaymentWebController::class, 'sendLink'])
+        ->middleware('throttle:payment')->name('admin.payments.send-link');
+});
+
 // SPA catch-all (must be last!)
 Route::get('/{any?}', function () {
     return view('app');
 })->where('any', '.*');
-

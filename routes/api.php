@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
+use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AppVersionController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -275,6 +276,11 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/slip/reject', [AdminController::class, 'rejectSlip']);
         Route::post('bookings/{ref}/slip/reverify', [AdminController::class, 'reverifySlip']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);
+
+        // Outstanding payments — ติดตาม/ส่งลิงก์ชำระเงินให้ลูกค้าที่ยังค้างจ่าย
+        Route::get('payments/outstanding', [AdminPaymentController::class, 'outstanding']);
+        Route::post('payments/send-links', [AdminPaymentController::class, 'sendLinksBulk']);
+        Route::post('payments/{ref}/send-link', [AdminPaymentController::class, 'sendLink']);
 
         // Vehicles CRUD
         Route::get('vehicles', [AdminController::class, 'vehicles']);

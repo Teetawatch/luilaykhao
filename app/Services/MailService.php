@@ -249,6 +249,7 @@ class MailService
     public function sendBalanceDueReminderEmail(Booking $booking): void
     {
         $booking->load(['user', 'schedule.trip', 'passengers']);
+        $booking->ensurePaymentToken();
 
         try {
             $this->sendToCustomerEmails($booking, fn () => new BalanceDueReminderMail($booking));
