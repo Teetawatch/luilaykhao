@@ -50,6 +50,9 @@
             </div>
             <div class="conv-sub">
               <i class="fas fa-calendar-day"></i> {{ formatDate(conv.departure_date) }}
+              <span v-if="conv.vehicle_name" class="conv-vehicle">
+                <i class="fas fa-van-shuttle"></i> {{ conv.vehicle_name }}
+              </span>
             </div>
             <div class="conv-bottom">
               <span class="conv-preview" v-if="conv.last_message">
@@ -82,7 +85,12 @@
             </div>
             <div>
               <h3>{{ activeConv?.trip_title || 'ทริป' }}</h3>
-              <span class="chat-sub">เดินทาง {{ formatDate(activeConv?.departure_date) }}</span>
+              <span class="chat-sub">
+                เดินทาง {{ formatDate(activeConv?.departure_date) }}
+                <span v-if="activeConv?.vehicle_name" class="header-vehicle">
+                  · <i class="fas fa-van-shuttle"></i> {{ activeConv.vehicle_name }}
+                </span>
+              </span>
             </div>
           </div>
           <span class="ws-pill" :class="{ on: wsConnected }">
@@ -463,8 +471,9 @@ onBeforeUnmount(() => {
 .conv-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .conv-title { font-weight: 800; font-size: 13.5px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .conv-time { font-size: 11px; color: #9ca3af; flex-shrink: 0; }
-.conv-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
+.conv-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .conv-sub i { font-size: 10px; }
+.conv-vehicle { display: inline-flex; align-items: center; gap: 3px; color: #2D7A4F; font-weight: 700; }
 .conv-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; }
 .conv-preview { font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .conv-preview.muted { color: #b0b6c0; font-style: italic; }
@@ -497,6 +506,8 @@ onBeforeUnmount(() => {
 .header-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .chat-header h3 { margin: 0; font-size: 16px; font-weight: 800; color: #1f2937; }
 .chat-sub { font-size: 12px; color: #6b7280; }
+.header-vehicle { color: #2D7A4F; font-weight: 700; }
+.header-vehicle i { font-size: 11px; }
 .ws-pill {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 11.5px; font-weight: 700; color: #9ca3af;

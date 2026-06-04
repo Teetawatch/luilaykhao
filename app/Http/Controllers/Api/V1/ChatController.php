@@ -140,7 +140,7 @@ class ChatController extends Controller
     public function adminConversations(Request $request): JsonResponse
     {
         $schedules = TripSchedule::query()
-            ->with('trip:id,title,cover_image,thumbnail_image')
+            ->with(['trip:id,title,cover_image,thumbnail_image', 'vehicle:id,name,type'])
             ->where('departure_date', '>=', now()->subDays(7)->startOfDay())
             ->whereIn('status', ['open', 'closed', 'full'])
             ->orderBy('departure_date')
@@ -159,6 +159,7 @@ class ChatController extends Controller
                 'schedule_id' => $schedule->id,
                 'trip_title' => $schedule->trip?->title,
                 'trip_image' => $schedule->trip?->thumbnail_image ?: $schedule->trip?->cover_image,
+                'vehicle_name' => $schedule->vehicle?->name,
                 'departure_date' => $schedule->departure_date?->toDateString(),
                 'return_date' => $schedule->return_date?->toDateString(),
                 'status' => $schedule->status,
