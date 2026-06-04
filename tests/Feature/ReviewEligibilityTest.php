@@ -100,6 +100,43 @@ class ReviewEligibilityTest extends TestCase
             ->assertJsonPath('data.rating_breakdown.value', 4);
     }
 
+    public function test_review_accepts_up_to_six_images_and_rejects_more(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-08 20:00:00', 'Asia/Bangkok'));
+
+        $user = User::factory()->create();
+        $booking = $this->createConfirmedBooking($user, '2026-05-08');
+
+        $sixImages = array_map(
+            fn ($i) => "/storage/reviews/photo-{$i}.jpg",
+            range(1, 6),
+        );
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/reviews', [
+                'booking_id' => $booking->id,
+                'rating' => 5,
+                'comment' => 'แนบรูปหกภาพ',
+                'images' => $sixImages,
+            ])
+            ->assertCreated()
+            ->assertJsonCount(6, 'data.images');
+
+        // A seventh image is over the limit.
+        $userB = User::factory()->create();
+        $bookingB = $this->createConfirmedBooking($userB, '2026-05-08');
+
+        $this->actingAs($userB, 'sanctum')
+            ->postJson('/api/v1/reviews', [
+                'booking_id' => $bookingB->id,
+                'rating' => 5,
+                'comment' => 'แนบรูปเจ็ดภาพ',
+                'images' => array_merge($sixImages, ['/storage/reviews/photo-7.jpg']),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('images');
+    }
+
     public function test_booking_resource_marks_review_available_after_return_date_8pm(): void
     {
         $user = User::factory()->create();

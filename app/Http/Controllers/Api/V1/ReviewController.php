@@ -53,7 +53,7 @@ class ReviewController extends Controller
             'rating_food' => ['nullable', 'integer', 'min:1', 'max:5'],
             'rating_value' => ['nullable', 'integer', 'min:1', 'max:5'],
             'comment' => ['nullable', 'string', 'max:2000'],
-            'images' => ['nullable', 'array', 'max:5'],
+            'images' => ['nullable', 'array', 'max:6'],
             'images.*' => ['string'],
         ]);
 
@@ -101,7 +101,7 @@ class ReviewController extends Controller
             'rating_food' => ['nullable', 'integer', 'min:1', 'max:5'],
             'rating_value' => ['nullable', 'integer', 'min:1', 'max:5'],
             'comment' => ['nullable', 'string', 'max:2000'],
-            'images' => ['nullable', 'array', 'max:5'],
+            'images' => ['nullable', 'array', 'max:6'],
             'images.*' => ['string'],
         ]);
 
