@@ -111,6 +111,10 @@
                       <span class="driver-phone" v-if="v.driver_phone">
                         <span class="material-symbols-rounded">phone</span> {{ v.driver_phone }}
                       </span>
+                      <span class="gps-pin-badge" :class="v.has_driver_pin ? 'on' : 'off'">
+                        <span class="material-symbols-rounded">my_location</span>
+                        {{ v.has_driver_pin ? 'รหัส GPS พร้อม' : 'ยังไม่ตั้งรหัส GPS' }}
+                      </span>
                     </div>
                     <div class="color-dot" v-if="v.color"
                       :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
@@ -324,6 +328,28 @@
             <div class="form-group">
               <label>เบอร์โทรศัพท์คนขับ</label>
               <input v-model="form.driver_phone" placeholder="08x-xxx-xxxx" class="form-input" />
+            </div>
+            <div class="form-group full-width gps-pin-box">
+              <label>
+                <span class="material-symbols-rounded">my_location</span>
+                รหัสส่ง GPS (PIN) — สำหรับหน้า /driver/track
+              </label>
+              <div v-if="editing && editing.has_driver_pin" class="gps-pin-status">
+                <span class="pin-set"><span class="material-symbols-rounded">check_circle</span> ตั้งรหัสไว้แล้ว</span>
+                <button type="button" class="btn-clear-pin" @click="clearDriverPin" :disabled="pinBusy">ลบรหัส</button>
+              </div>
+              <input
+                v-model="form.driver_pin"
+                type="text" inputmode="numeric" maxlength="8" autocomplete="off"
+                :placeholder="editing && editing.has_driver_pin ? 'กรอกรหัสใหม่เพื่อเปลี่ยน (เว้นว่างถ้าไม่เปลี่ยน)' : 'ตั้งรหัส 4-8 หลัก'"
+                class="form-input"
+                @input="form.driver_pin = form.driver_pin.replace(/\D/g, '')"
+              />
+              <p class="gps-pin-hint">
+                คนขับนำรหัสนี้ไปกรอกที่หน้า
+                <a href="/driver/track" target="_blank" rel="noopener">/driver/track</a>
+                เพื่อส่งพิกัด GPS ของรถคันนี้ — รหัสคนขับแยกต่างหากจากบัญชีผู้ใช้งานระบบ
+              </p>
             </div>
             <div class="form-group full-width">
               <label>รูปคนขับประจำรถ</label>
@@ -584,8 +610,9 @@ const upcomingSchedules = ref([]);
 const form = reactive({
   name: '', type: 'van', capacity: 10,
   license_plate: '', color: '', driver_name: '', driver_phone: '',
-  driver_photo: '', interior_video: '', images: [],
+  driver_photo: '', interior_video: '', images: [], driver_pin: '',
 });
+const pinBusy = ref(false);
 
 const driverPhotoInput = ref(null);
 const galleryInput = ref(null);
@@ -759,13 +786,13 @@ const openForm = (v = null) => {
       license_plate: v.license_plate || '', color: v.color || '',
       driver_name: v.driver_name || '', driver_phone: v.driver_phone || '',
       driver_photo: v.driver_photo || '', interior_video: v.interior_video || '',
-      images: v.images || [],
+      images: v.images || [], driver_pin: '',
     });
   } else {
     Object.assign(form, {
       name: '', type: 'van', capacity: 10, license_plate: '', color: '',
       driver_name: '', driver_phone: '', driver_photo: '', interior_video: '',
-      images: [],
+      images: [], driver_pin: '',
     });
   }
   showForm.value = true;
@@ -774,18 +801,49 @@ const openForm = (v = null) => {
 const submitForm = async () => {
   submitting.value = true;
   try {
-    const data = { ...form };
+    const { driver_pin, ...data } = form;
+
+    let vehicleId = editing.value?.id;
     if (editing.value) {
       await admin.updateVehicle(editing.value.id, data);
     } else {
-      await admin.createVehicle(data);
+      const created = await admin.createVehicle(data);
+      vehicleId = created?.data?.id;
     }
+
+    // ตั้ง/เปลี่ยนรหัสส่ง GPS (ถ้ากรอกมา) — เป็น endpoint แยกต่างหาก
+    const pin = (driver_pin || '').trim();
+    if (pin && vehicleId) {
+      if (pin.length < 4 || pin.length > 8) {
+        alert('รหัสส่ง GPS ต้องเป็นตัวเลข 4-8 หลัก');
+        submitting.value = false;
+        return;
+      }
+      await api.put(`/admin/vehicles/${vehicleId}/driver-pin`, { driver_pin: pin });
+    }
+
     showForm.value = false;
     fetchData();
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
     submitting.value = false;
+  }
+};
+
+const clearDriverPin = async () => {
+  if (!editing.value?.id) return;
+  if (!confirm('ลบรหัสส่ง GPS ของรถคันนี้?')) return;
+  pinBusy.value = true;
+  try {
+    await api.delete(`/admin/vehicles/${editing.value.id}/driver-pin`);
+    editing.value.has_driver_pin = false;
+    form.driver_pin = '';
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'ลบรหัสไม่สำเร็จ');
+  } finally {
+    pinBusy.value = false;
   }
 };
 
@@ -1161,6 +1219,34 @@ onMounted(() => fetchData());
   font-size: 12px; color: var(--color-ocean); margin-top: 2px;
 }
 .driver-phone .material-symbols-rounded { font-size: 13px; }
+.gps-pin-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; margin-top: 4px;
+  padding: 2px 8px; border-radius: 999px;
+}
+.gps-pin-badge .material-symbols-rounded { font-size: 13px; }
+.gps-pin-badge.on { background: #dcfce7; color: #15803d; }
+.gps-pin-badge.off { background: #f1f5f9; color: #94a3b8; }
+/* ── GPS PIN box in form ── */
+.gps-pin-box { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 12px; padding: 12px 14px; }
+.gps-pin-box > label { display: flex; align-items: center; gap: 5px; }
+.gps-pin-box > label .material-symbols-rounded { font-size: 16px; color: #0d9488; }
+.gps-pin-status {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.gps-pin-status .pin-set {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: #15803d; font-size: 13px; font-weight: 600;
+}
+.gps-pin-status .pin-set .material-symbols-rounded { font-size: 16px; }
+.btn-clear-pin {
+  border: 1px solid #fca5a5; background: #fef2f2; color: #dc2626;
+  border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+}
+.btn-clear-pin:disabled { opacity: 0.6; cursor: default; }
+.gps-pin-hint { font-size: 11.5px; color: #64748b; margin-top: 6px; line-height: 1.5; }
+.gps-pin-hint a { color: #0d9488; font-weight: 600; text-decoration: none; }
 .color-dot {
   width: 18px; height: 18px; border-radius: 50%;
   flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.15);

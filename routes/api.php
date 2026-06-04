@@ -287,6 +287,8 @@ Route::prefix('v1')->group(function () {
         Route::post('vehicles', [AdminController::class, 'storeVehicle']);
         Route::put('vehicles/{id}', [AdminController::class, 'updateVehicle']);
         Route::delete('vehicles/{id}', [AdminController::class, 'deleteVehicle']);
+        Route::put('vehicles/{id}/driver-pin', [AdminController::class, 'setVehicleDriverPin']);
+        Route::delete('vehicles/{id}/driver-pin', [AdminController::class, 'clearVehicleDriverPin']);
 
         // Vehicle Pickup Points
         Route::get('vehicles/{id}/pickup-points', [AdminController::class, 'vehiclePickupPoints']);

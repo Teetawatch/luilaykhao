@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class DriverController extends Controller
 {
@@ -25,10 +26,15 @@ class DriverController extends Controller
             'driver_pin' => ['required', 'string', 'regex:/^\d{4,8}$/'],
         ]);
 
-        $user = User::role(['staff', 'operator', 'admin'])
-            ->whereNotNull('driver_pin_hash')
-            ->get()
-            ->first(fn (User $candidate) => Hash::check($validated['driver_pin'], $candidate->driver_pin_hash));
+        // จำกัดเฉพาะ role ที่มีอยู่จริง (กัน RoleDoesNotExist ถ้ายังไม่เคยสร้าง role 'driver')
+        $roles = Role::whereIn('name', ['driver', 'staff', 'operator', 'admin'])->pluck('name')->all();
+
+        $user = collect($roles)->isEmpty()
+            ? null
+            : User::role($roles)
+                ->whereNotNull('driver_pin_hash')
+                ->get()
+                ->first(fn (User $candidate) => Hash::check($validated['driver_pin'], $candidate->driver_pin_hash));
 
         if (! $user) {
             return $this->error('ไม่พบรหัสคนขับนี้ กรุณาตรวจสอบอีกครั้ง', 401);
@@ -234,6 +240,9 @@ class DriverController extends Controller
             $query->where(function (Builder $query) use ($user) {
                 $query->whereHas('staff', fn (Builder $staff) => $staff->where('users.id', $user->id));
 
+                // รถที่ผูกบัญชีคนขับคนนี้ไว้โดยตรง (PIN ส่ง GPS)
+                $query->orWhereHas('vehicle', fn (Builder $vehicle) => $vehicle->where('driver_user_id', $user->id));
+
                 $phone = $this->normalizePhone($user->phone);
                 if ($phone !== '') {
                     $query->orWhereHas('vehicle', function (Builder $vehicle) use ($phone, $user) {
@@ -256,7 +265,7 @@ class DriverController extends Controller
 
     private function hasDriverAccess(Request $request): bool
     {
-        return $request->user()->hasAnyRole(['staff', 'operator', 'admin']);
+        return $request->user()->hasAnyRole(['driver', 'staff', 'operator', 'admin']);
     }
 
     private function canAccessSchedule(Request $request, ?TripSchedule $schedule): bool
@@ -271,6 +280,10 @@ class DriverController extends Controller
         }
 
         if ($schedule->staff?->contains(fn ($staff) => (int) $staff->id === (int) $user->id)) {
+            return true;
+        }
+
+        if ($schedule->vehicle && (int) $schedule->vehicle->driver_user_id === (int) $user->id) {
             return true;
         }
 

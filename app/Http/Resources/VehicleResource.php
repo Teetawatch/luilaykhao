@@ -19,6 +19,8 @@ class VehicleResource extends JsonResource
             'color' => $this->color,
             'driver_name' => $this->driver_name,
             'driver_phone' => $this->driver_phone,
+            'driver_user_id' => $this->driver_user_id,
+            'has_driver_pin' => $this->whenLoaded('driverUser', fn () => ! empty($this->driverUser?->driver_pin_hash), false),
             'driver_photo' => $this->driver_photo,
             'interior_video' => $this->interior_video,
             'images' => $this->images ?? [],

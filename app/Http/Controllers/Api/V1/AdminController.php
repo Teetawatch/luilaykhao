@@ -30,6 +30,7 @@ use App\Services\BookingService;
 use App\Services\MailService;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
+use App\Services\VehicleDriverService;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
@@ -52,6 +53,7 @@ class AdminController extends Controller
     public function __construct(
         private BookingService $bookingService,
         private MailService $mailService,
+        private VehicleDriverService $vehicleDriverService,
     ) {}
 
     // ─── Dashboard Stats ──────────────────────────────────────
@@ -1567,7 +1569,7 @@ class AdminController extends Controller
 
     public function vehicles(Request $request): JsonResponse
     {
-        $query = Vehicle::withCount('schedules')->with('pickupPoints');
+        $query = Vehicle::withCount('schedules')->with(['pickupPoints', 'driverUser']);
 
         if ($request->filled('type')) {
             $query->where('type', $request->type);
@@ -1582,7 +1584,7 @@ class AdminController extends Controller
     {
         $vehicle = Vehicle::create($request->validated());
 
-        return $this->success(new VehicleResource($vehicle->load('pickupPoints')), 'สร้างยานพาหนะสำเร็จ', 201);
+        return $this->success(new VehicleResource($vehicle->load(['pickupPoints', 'driverUser'])), 'สร้างยานพาหนะสำเร็จ', 201);
     }
 
     public function updateVehicle(StoreVehicleRequest $request, int $id): JsonResponse
@@ -1590,7 +1592,47 @@ class AdminController extends Controller
         $vehicle = Vehicle::findOrFail($id);
         $vehicle->update($request->validated());
 
-        return $this->success(new VehicleResource($vehicle->fresh()->load('pickupPoints')), 'อัปเดตยานพาหนะสำเร็จ');
+        // ซิงก์ชื่อ/เบอร์ของบัญชีคนขับที่ผูกไว้ ให้ตรงกับข้อมูลรถที่เพิ่งแก้
+        $this->vehicleDriverService->syncDriverProfile($vehicle);
+
+        return $this->success(new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser'])), 'อัปเดตยานพาหนะสำเร็จ');
+    }
+
+    /**
+     * ตั้ง/เปลี่ยนรหัสส่ง GPS (PIN) ของคนขับประจำรถ — ใช้ล็อกอินที่ /driver/track
+     */
+    public function setVehicleDriverPin(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'driver_pin' => ['required', 'string', 'regex:/^\d{4,8}$/'],
+        ]);
+
+        $vehicle = Vehicle::findOrFail($id);
+
+        try {
+            $this->vehicleDriverService->setPin($vehicle, $validated['driver_pin']);
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser'])),
+            'ตั้งรหัสส่ง GPS สำเร็จ',
+        );
+    }
+
+    /**
+     * ลบรหัสส่ง GPS ของคนขับประจำรถ
+     */
+    public function clearVehicleDriverPin(int $id): JsonResponse
+    {
+        $vehicle = Vehicle::findOrFail($id);
+        $this->vehicleDriverService->clearPin($vehicle);
+
+        return $this->success(
+            new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser'])),
+            'ลบรหัสส่ง GPS แล้ว',
+        );
     }
 
     public function deleteVehicle(int $id): JsonResponse
@@ -1710,6 +1752,9 @@ class AdminController extends Controller
     public function users(Request $request): JsonResponse
     {
         $query = User::withCount(['bookings', 'assignedSchedules'])->with('roles');
+
+        // บัญชีคนขับ (role: driver) ใช้แค่ PIN ส่ง GPS — จัดการในหน้ายานพาหนะ ไม่แสดงที่นี่
+        $query->whereDoesntHave('roles', fn ($r) => $r->where('name', VehicleDriverService::DRIVER_ROLE));
 
         if ($request->filled('role')) {
             $requestedRole = $request->role;
