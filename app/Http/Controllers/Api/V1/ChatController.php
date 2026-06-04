@@ -134,39 +134,59 @@ class ChatController extends Controller
     }
 
     /**
-     * Admin/operator: รายการห้องแชท (รอบที่กำลังจะเดินทาง) พร้อมข้อความล่าสุด
+     * Admin/operator: รายการห้องแชททุกรอบที่กำลังจะเดินทาง (รวมห้องที่ยังไม่มีข้อความ
+     * เพื่อให้แอดมินเข้าไปเริ่มแชทในรอบไหนก็ได้) พร้อมข้อความล่าสุดของแต่ละห้อง
      */
     public function adminConversations(Request $request): JsonResponse
     {
         $schedules = TripSchedule::query()
-            ->with('trip:id,title')
+            ->with('trip:id,title,cover_image,thumbnail_image')
             ->where('departure_date', '>=', now()->subDays(7)->startOfDay())
             ->whereIn('status', ['open', 'closed', 'full'])
             ->orderBy('departure_date')
             ->get();
 
-        $lastMessages = ChatMessage::whereIn('schedule_id', $schedules->pluck('id'))
+        $messagesBySchedule = ChatMessage::whereIn('schedule_id', $schedules->pluck('id'))
+            ->with('user:id,name,nickname')
             ->get()
             ->groupBy('schedule_id');
 
-        $conversations = $schedules->map(function ($schedule) use ($lastMessages) {
-            $messages = $lastMessages->get($schedule->id);
+        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule) {
+            $messages = $messagesBySchedule->get($schedule->id);
             $last = $messages?->sortByDesc('id')->first();
 
             return [
                 'schedule_id' => $schedule->id,
                 'trip_title' => $schedule->trip?->title,
+                'trip_image' => $schedule->trip?->thumbnail_image ?: $schedule->trip?->cover_image,
                 'departure_date' => $schedule->departure_date?->toDateString(),
+                'return_date' => $schedule->return_date?->toDateString(),
+                'status' => $schedule->status,
                 'message_count' => $messages?->count() ?? 0,
                 'last_message' => $last ? [
                     'body' => $last->body,
+                    'image_url' => $last->image_url,
                     'sender_role' => $last->sender_role,
+                    'sender_name' => $last->user?->nickname ?: $last->user?->name,
                     'created_at' => $last->created_at?->toISOString(),
                 ] : null,
+                'last_activity' => $last?->created_at?->toISOString(),
             ];
-        })->filter(fn ($c) => $c['message_count'] > 0)->values();
+        });
 
-        return $this->success($conversations->all());
+        // ห้องที่มีข้อความ: เรียงตามความเคลื่อนไหวล่าสุด (ใหม่สุดอยู่บน)
+        $withMessages = $conversations
+            ->filter(fn ($c) => $c['message_count'] > 0)
+            ->sortByDesc('last_activity')
+            ->values();
+
+        // ห้องที่ยังไม่มีข้อความ: เรียงตามวันเดินทางที่ใกล้ที่สุด
+        $empty = $conversations
+            ->filter(fn ($c) => $c['message_count'] === 0)
+            ->sortBy('departure_date')
+            ->values();
+
+        return $this->success($withMessages->concat($empty)->all());
     }
 
     private function present(ChatMessage $message, int $currentUserId): array
