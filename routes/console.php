@@ -4,6 +4,7 @@ use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\ProcessTripAlertsJob;
+use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendWeatherAlertsJob;
 use Illuminate\Foundation\Inspiring;
@@ -19,6 +20,8 @@ Schedule::command('deposit:remind-balance')->dailyAt('08:10')->timezone('Asia/Ba
 Schedule::command('sms:booking-reminders')->dailyAt('08:15')->timezone('Asia/Bangkok');
 Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone('Asia/Bangkok');
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// Review window opens at 20:00 (Asia/Bangkok) on the trip's last day — invite right after.
+Schedule::job(new SendReviewInvitesJob)->dailyAt('20:05')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
