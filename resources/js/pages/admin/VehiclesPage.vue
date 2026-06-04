@@ -736,7 +736,9 @@ const seatClass = (s) => {
 };
 
 const fetchData = () => {
-  admin.fetchVehicles({ ...filters });
+  // per_page สูงเพื่อดึงรถมาครบทุกคัน — หน้านี้ไม่มี pagination UI
+  // ถ้าไม่ส่ง backend จะ default ที่ 15 ทำให้รถที่เพิ่มใหม่ไม่ขึ้น และสถิติ/รายการนับไม่ครบ
+  admin.fetchVehicles({ ...filters, per_page: 200 });
   fetchStaff();
   fetchUpcomingSchedules();
 };
