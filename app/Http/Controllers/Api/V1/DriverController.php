@@ -13,6 +13,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -344,6 +345,9 @@ class DriverController extends Controller
             'vehicle' => $schedule->vehicle ? [
                 'id' => $schedule->vehicle->id,
                 'name' => $schedule->vehicle->name,
+                'type' => $schedule->vehicle->type,
+                'capacity' => $schedule->vehicle->capacity,
+                'color' => $schedule->vehicle->color,
                 'license_plate' => $schedule->vehicle->license_plate,
                 'driver_name' => $schedule->vehicle->driver_name,
                 'driver_phone' => $schedule->vehicle->driver_phone,
@@ -380,7 +384,7 @@ class DriverController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ดูรอบเดินทางนี้', 403);
         }
 
-        $bookings = Booking::with(['user', 'pickupPoint', 'passengers'])
+        $bookings = Booking::with(['user', 'pickupPoint', 'passengers.pickupPoint'])
             ->where('schedule_id', $schedule->id)
             ->where('status', 'confirmed')
             ->orderBy('checked_in')
@@ -421,9 +425,65 @@ class DriverController extends Controller
                 'bookings' => $bookings->count(),
                 'checked_in' => $bookings->where('checked_in', true)->count(),
                 'passengers' => $bookings->sum(fn (Booking $booking) => $booking->passengers->count()),
+                'checked_in_passengers' => $bookings->where('checked_in', true)
+                    ->sum(fn (Booking $booking) => $booking->passengers->count()),
             ],
+            'pickup_groups' => $this->buildPickupGroups($bookings),
             'bookings' => $manifest,
         ], 'รายชื่อผู้โดยสาร');
+    }
+
+    /**
+     * จัดผู้โดยสารทุกคนเป็นกลุ่มตามจุดรับ (ผู้โดยสารแต่ละคนอาจเลือกจุดรับเองได้
+     * ไม่งั้นใช้จุดรับระดับการจอง) พร้อมข้อมูลครบ + สถานะเช็คอินรายคน
+     */
+    private function buildPickupGroups(Collection $bookings): array
+    {
+        $groups = [];
+
+        foreach ($bookings as $booking) {
+            foreach ($booking->passengers as $passenger) {
+                $point = $passenger->pickupPoint ?: $booking->pickupPoint;
+                $key = $point?->id ?? 0;
+
+                if (! isset($groups[$key])) {
+                    $groups[$key] = [
+                        'id' => $point?->id,
+                        'label' => $point
+                            ? ($point->pickup_location ?: $point->region_label ?: 'จุดรับ')
+                            : 'ไม่ระบุจุดรับ',
+                        'region_label' => $point?->region_label,
+                        'map_url' => $point?->map_url,
+                        'notes' => $point?->notes,
+                        'sort_order' => $point?->sort_order ?? 9999,
+                        'passengers' => [],
+                    ];
+                }
+
+                $groups[$key]['passengers'][] = [
+                    'title' => $passenger->title,
+                    'name' => $passenger->name,
+                    'full_name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
+                    'nickname' => $passenger->nickname,
+                    'phone' => $passenger->phone ?: $booking->user?->phone,
+                    'checked_in' => (bool) $booking->checked_in,
+                    'booking_ref' => $booking->booking_ref,
+                ];
+            }
+        }
+
+        return collect($groups)
+            ->sortBy('sort_order')
+            ->map(function ($group) {
+                $group['passenger_count'] = count($group['passengers']);
+                $group['checked_in_count'] = collect($group['passengers'])
+                    ->where('checked_in', true)->count();
+                unset($group['sort_order']);
+
+                return $group;
+            })
+            ->values()
+            ->all();
     }
 
     /**
