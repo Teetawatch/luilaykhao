@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Events\ChatMessageSent;
+use App\Events\ChatPinned;
+use App\Events\ChatReactionUpdated;
+use App\Events\ChatReadUpdated;
+use App\Events\ChatTyping;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
@@ -12,6 +16,7 @@ use App\Services\ChatService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ChatController extends Controller
 {
@@ -37,20 +42,20 @@ class ChatController extends Controller
         // Polling for live updates: return messages newer than $afterId, oldest-first.
         if ($afterId > 0) {
             $messages = ChatMessage::where('schedule_id', $scheduleId)
-                ->with('user:id,name,nickname,avatar')
+                ->with($this->messageRelations())
                 ->where('id', '>', $afterId)
                 ->orderBy('id')
                 ->limit($perPage)
                 ->get();
 
             return $this->success([
-                'messages' => $messages->map(fn ($m) => $this->present($m, $user->id))->all(),
+                'messages' => $messages->map(fn ($m) => $this->chatService->presentMessage($m, $user->id))->all(),
                 'has_more' => false,
             ]);
         }
 
         $messages = ChatMessage::where('schedule_id', $scheduleId)
-            ->with('user:id,name,nickname,avatar')
+            ->with($this->messageRelations())
             ->when($beforeId > 0, fn ($q) => $q->where('id', '<', $beforeId))
             ->orderByDesc('id')
             ->limit($perPage)
@@ -59,9 +64,19 @@ class ChatController extends Controller
             ->values();
 
         return $this->success([
-            'messages' => $messages->map(fn ($m) => $this->present($m, $user->id))->all(),
+            'messages' => $messages->map(fn ($m) => $this->chatService->presentMessage($m, $user->id))->all(),
             'has_more' => $messages->count() === $perPage,
         ]);
+    }
+
+    /** Relations needed to present a message (author, quoted message, reactions). */
+    private function messageRelations(): array
+    {
+        return [
+            'user:id,name,nickname,avatar',
+            'replyTo.user:id,name,nickname,avatar',
+            'reactions:id,message_id,user_id,emoji',
+        ];
     }
 
     public function store(Request $request, int $scheduleId): JsonResponse
@@ -69,6 +84,11 @@ class ChatController extends Controller
         $validated = $request->validate([
             'body' => ['nullable', 'string', 'max:2000', 'required_without:image'],
             'image' => ['nullable', 'image', 'max:5120'],
+            // Reply must point at a message in this same room.
+            'reply_to_id' => [
+                'nullable', 'integer',
+                Rule::exists('chat_messages', 'id')->where('schedule_id', $scheduleId),
+            ],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -87,11 +107,12 @@ class ChatController extends Controller
         $message = ChatMessage::create([
             'schedule_id' => $scheduleId,
             'user_id' => $user->id,
+            'reply_to_id' => $validated['reply_to_id'] ?? null,
             'sender_role' => $this->chatService->senderRole($user, $schedule),
             'body' => $body !== '' ? $body : null,
             'image_path' => $imagePath,
         ]);
-        $message->load('user:id,name,nickname,avatar');
+        $message->load($this->messageRelations());
 
         broadcast(new ChatMessageSent($message))->toOthers();
 
@@ -100,7 +121,7 @@ class ChatController extends Controller
 
         SendChatPushJob::dispatch($message->id, $user->id);
 
-        return $this->success($this->present($message, $user->id), 'ส่งข้อความสำเร็จ', 201);
+        return $this->success($this->chatService->presentMessage($message, $user->id), 'ส่งข้อความสำเร็จ', 201);
     }
 
     public function markRead(Request $request, int $scheduleId): JsonResponse
@@ -117,7 +138,92 @@ class ChatController extends Controller
 
         $this->chatService->markRead($user, $schedule, $latestId);
 
+        // Live "อ่านแล้ว N" — let others move this member's read marker without
+        // waiting for their next poll.
+        if ($latestId > 0) {
+            broadcast(new ChatReadUpdated($scheduleId, $user->id, $latestId))->toOthers();
+        }
+
         return $this->success(['unread' => 0], 'อ่านแล้ว');
+    }
+
+    public function pin(Request $request, int $scheduleId, int $messageId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canModerate($user, $schedule)) {
+            return $this->error('เฉพาะสตาฟหรือทีมงานเท่านั้นที่ปักหมุดได้', 403);
+        }
+
+        $message = ChatMessage::where('schedule_id', $scheduleId)->findOrFail($messageId);
+        $this->chatService->pinMessage($user, $message);
+
+        $payload = $this->chatService->pinnedPayload(
+            $this->chatService->pinnedMessage($schedule)
+        );
+        broadcast(new ChatPinned($scheduleId, $payload))->toOthers();
+
+        return $this->success(['pinned_message' => $payload], 'ปักหมุดข้อความแล้ว');
+    }
+
+    public function unpin(Request $request, int $scheduleId, int $messageId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canModerate($user, $schedule)) {
+            return $this->error('เฉพาะสตาฟหรือทีมงานเท่านั้นที่ปลดหมุดได้', 403);
+        }
+
+        $message = ChatMessage::where('schedule_id', $scheduleId)->findOrFail($messageId);
+        $this->chatService->unpinMessage($message);
+
+        broadcast(new ChatPinned($scheduleId, null))->toOthers();
+
+        return $this->success(['pinned_message' => null], 'ปลดหมุดข้อความแล้ว');
+    }
+
+    public function react(Request $request, int $scheduleId, int $messageId): JsonResponse
+    {
+        $validated = $request->validate([
+            'emoji' => ['required', 'string', Rule::in(ChatService::REACTION_EMOJIS)],
+        ]);
+
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        $message = ChatMessage::where('schedule_id', $scheduleId)->findOrFail($messageId);
+        $reactions = $this->chatService->toggleReaction($user, $message, $validated['emoji']);
+
+        broadcast(new ChatReactionUpdated($scheduleId, $message->id, $reactions))->toOthers();
+
+        return $this->success([
+            'message_id' => $message->id,
+            'reactions' => $reactions,
+        ], 'อัปเดตรีแอกชันแล้ว');
+    }
+
+    public function typing(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        broadcast(new ChatTyping(
+            $scheduleId,
+            $user->id,
+            $user->nickname ?: $user->name ?: 'สมาชิก',
+        ))->toOthers();
+
+        return $this->success(['ok' => true]);
     }
 
     public function unreadCount(Request $request, int $scheduleId): JsonResponse
@@ -172,6 +278,11 @@ class ChatController extends Controller
                 'driver_name' => $vehicle->driver_name,
                 'driver_phone' => $vehicle->driver_phone,
             ] : null,
+            'pinned_message' => $this->chatService->pinnedPayload(
+                $this->chatService->pinnedMessage($schedule)
+            ),
+            'can_moderate' => $this->chatService->canModerate($user, $schedule),
+            'reaction_emojis' => ChatService::REACTION_EMOJIS,
             'member_count' => $members->count(),
             'members' => $members->map(function ($m) use ($reads, $user) {
                 $u = $m['user'];
@@ -244,26 +355,5 @@ class ChatController extends Controller
             ->values();
 
         return $this->success($withMessages->concat($empty)->all());
-    }
-
-    private function present(ChatMessage $message, int $currentUserId): array
-    {
-        $user = $message->user;
-
-        return [
-            'id' => $message->id,
-            'schedule_id' => $message->schedule_id,
-            'body' => $message->body,
-            'image_url' => $message->image_url,
-            'sender_role' => $message->sender_role,
-            'is_mine' => $message->user_id === $currentUserId,
-            'user' => $user ? [
-                'id' => $user->id,
-                'name' => $user->name,
-                'nickname' => $user->nickname,
-                'avatar_url' => $user->avatar_url,
-            ] : null,
-            'created_at' => $message->created_at?->toISOString(),
-        ];
     }
 }

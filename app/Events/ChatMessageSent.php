@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\ChatMessage;
+use App\Services\ChatService;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -31,21 +32,11 @@ class ChatMessageSent implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        $user = $this->message->user;
+        // Present with the shared formatter so realtime pushes carry reply/
+        // reaction data. currentUserId is null — recipients resolve "is_mine"
+        // locally (own sends are added optimistically, never via the socket).
+        $this->message->loadMissing(['user', 'replyTo.user', 'reactions']);
 
-        return [
-            'id' => $this->message->id,
-            'schedule_id' => $this->message->schedule_id,
-            'body' => $this->message->body,
-            'image_url' => $this->message->image_url,
-            'sender_role' => $this->message->sender_role,
-            'user' => $user ? [
-                'id' => $user->id,
-                'name' => $user->name,
-                'nickname' => $user->nickname,
-                'avatar_url' => $user->avatar_url,
-            ] : null,
-            'created_at' => $this->message->created_at?->toISOString(),
-        ];
+        return app(ChatService::class)->presentMessage($this->message);
     }
 }

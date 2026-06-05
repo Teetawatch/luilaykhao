@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\ChatService;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -472,6 +473,13 @@ class DriverController extends Controller
                 ],
             );
         }
+
+        // Drop a system notice into the trip's group chat so the departure is
+        // visible in-thread alongside the push notification.
+        app(ChatService::class)->postSystem(
+            $schedule,
+            'คนขับเริ่มออกเดินทางแล้ว 🚐 ติดตามตำแหน่งรถแบบเรียลไทม์ได้เลย',
+        );
 
         Cache::put($cacheKey, true, now()->endOfDay());
 

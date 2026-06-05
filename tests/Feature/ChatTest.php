@@ -25,7 +25,7 @@ class ChatTest extends TestCase
     {
         $trip = Trip::create([
             'title' => 'Chat Trip',
-            'slug' => 'chat-trip',
+            'slug' => 'chat-trip-'.uniqid(),
             'type' => 'trekking',
             'location' => 'Khao Yai',
             'difficulty' => 'easy',
@@ -282,5 +282,192 @@ class ChatTest extends TestCase
         $this->actingAs($outsider, 'sanctum')
             ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
             ->assertForbidden();
+    }
+
+    private function makeStaff(TripSchedule $schedule): User
+    {
+        Role::findOrCreate('staff');
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        return $staff;
+    }
+
+    public function test_reply_stores_and_presents_excerpt(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $user = $this->bookOnto(User::factory()->create(), $schedule)->user;
+
+        $original = ChatMessage::create([
+            'schedule_id' => $schedule->id, 'user_id' => $user->id,
+            'sender_role' => 'customer', 'body' => 'จุดนัดพบที่ไหนครับ',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", [
+                'body' => 'ปั๊ม ปตท. พระราม 2 ครับ',
+                'reply_to_id' => $original->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.reply_to.id', $original->id)
+            ->assertJsonPath('data.reply_to.body', 'จุดนัดพบที่ไหนครับ');
+    }
+
+    public function test_reply_to_message_from_another_schedule_is_rejected(): void
+    {
+        $scheduleA = $this->makeSchedule();
+        $scheduleB = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $scheduleA);
+
+        $foreign = ChatMessage::create([
+            'schedule_id' => $scheduleB->id, 'user_id' => $user->id,
+            'sender_role' => 'customer', 'body' => 'ห้องอื่น',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$scheduleA->id}/chat/messages", [
+                'body' => 'reply ข้ามห้อง',
+                'reply_to_id' => $foreign->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrorFor('reply_to_id');
+    }
+
+    public function test_staff_can_pin_and_room_returns_pinned(): void
+    {
+        $schedule = $this->makeSchedule();
+        $staff = $this->makeStaff($schedule);
+
+        $message = ChatMessage::create([
+            'schedule_id' => $schedule->id, 'user_id' => $staff->id,
+            'sender_role' => 'staff', 'body' => 'นัดเจอ 6 โมงเช้า',
+        ]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$message->id}/pin")
+            ->assertOk()
+            ->assertJsonPath('data.pinned_message.id', $message->id);
+
+        $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertOk()
+            ->assertJsonPath('data.pinned_message.id', $message->id)
+            ->assertJsonPath('data.can_moderate', true);
+    }
+
+    public function test_pinning_a_new_message_replaces_the_previous_pin(): void
+    {
+        $schedule = $this->makeSchedule();
+        $staff = $this->makeStaff($schedule);
+
+        $first = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $staff->id, 'sender_role' => 'staff', 'body' => 'เก่า']);
+        $second = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $staff->id, 'sender_role' => 'staff', 'body' => 'ใหม่']);
+
+        $this->actingAs($staff, 'sanctum')->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$first->id}/pin")->assertOk();
+        $this->actingAs($staff, 'sanctum')->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$second->id}/pin")->assertOk();
+
+        $this->assertNull($first->fresh()->pinned_at);
+        $this->assertNotNull($second->fresh()->pinned_at);
+    }
+
+    public function test_customer_cannot_pin(): void
+    {
+        $schedule = $this->makeSchedule();
+        $customer = User::factory()->create();
+        $this->bookOnto($customer, $schedule);
+
+        $message = ChatMessage::create([
+            'schedule_id' => $schedule->id, 'user_id' => $customer->id,
+            'sender_role' => 'customer', 'body' => 'ขอปักหมุดเอง',
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$message->id}/pin")
+            ->assertForbidden();
+    }
+
+    public function test_unpin_clears_pinned_message(): void
+    {
+        $schedule = $this->makeSchedule();
+        $staff = $this->makeStaff($schedule);
+        $message = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $staff->id, 'sender_role' => 'staff', 'body' => 'หมุด']);
+
+        $this->actingAs($staff, 'sanctum')->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$message->id}/pin")->assertOk();
+        $this->actingAs($staff, 'sanctum')
+            ->deleteJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$message->id}/pin")
+            ->assertOk()
+            ->assertJsonPath('data.pinned_message', null);
+
+        $this->assertNull($message->fresh()->pinned_at);
+    }
+
+    public function test_reaction_toggles_on_and_off(): void
+    {
+        $schedule = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $schedule);
+        $message = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $user->id, 'sender_role' => 'customer', 'body' => 'เย้']);
+
+        // Add 👍
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$message->id}/react", ['emoji' => '👍'])
+            ->assertOk()
+            ->assertJsonPath('data.reactions.0.emoji', '👍')
+            ->assertJsonPath('data.reactions.0.count', 1);
+
+        // Toggle off
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$message->id}/react", ['emoji' => '👍'])
+            ->assertOk()
+            ->assertJsonCount(0, 'data.reactions');
+
+        $this->assertDatabaseCount('chat_message_reactions', 0);
+    }
+
+    public function test_reaction_rejects_unknown_emoji(): void
+    {
+        $schedule = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $schedule);
+        $message = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $user->id, 'sender_role' => 'customer', 'body' => 'x']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$message->id}/react", ['emoji' => '💩'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrorFor('emoji');
+    }
+
+    public function test_typing_ok_for_member_and_forbidden_for_stranger(): void
+    {
+        $schedule = $this->makeSchedule();
+        $member = User::factory()->create();
+        $this->bookOnto($member, $schedule);
+        $stranger = User::factory()->create();
+
+        $this->actingAs($member, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/typing")
+            ->assertOk();
+
+        $this->actingAs($stranger, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/typing")
+            ->assertForbidden();
+    }
+
+    public function test_depart_posts_system_message_into_chat(): void
+    {
+        $schedule = $this->makeSchedule();
+        $staff = $this->makeStaff($schedule);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/driver/schedules/{$schedule->id}/depart")
+            ->assertOk();
+
+        $this->assertDatabaseHas('chat_messages', [
+            'schedule_id' => $schedule->id,
+            'sender_role' => 'system',
+        ]);
     }
 }

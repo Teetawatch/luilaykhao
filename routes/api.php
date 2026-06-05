@@ -114,6 +114,10 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/read', [ChatController::class, 'markRead']);
         Route::get('schedules/{id}/chat/unread-count', [ChatController::class, 'unreadCount']);
         Route::get('schedules/{id}/chat/room', [ChatController::class, 'room']);
+        Route::post('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'pin']);
+        Route::delete('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'unpin']);
+        Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
+        Route::post('schedules/{id}/chat/typing', [ChatController::class, 'typing'])->middleware('throttle:60,1');
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');
