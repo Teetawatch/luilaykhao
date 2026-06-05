@@ -109,6 +109,7 @@ Route::prefix('v1')->group(function () {
         Route::post('booking-invites/{token}/accept', [BookingMemberController::class, 'acceptInvite']);
 
         // Group chat per trip schedule (customers + assigned staff + admins)
+        Route::get('chat/my-conversations', [ChatController::class, 'myConversations']);
         Route::get('schedules/{id}/chat/messages', [ChatController::class, 'index']);
         Route::post('schedules/{id}/chat/messages', [ChatController::class, 'store'])->middleware('throttle:chat');
         Route::post('schedules/{id}/chat/read', [ChatController::class, 'markRead']);

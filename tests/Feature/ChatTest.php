@@ -470,4 +470,42 @@ class ChatTest extends TestCase
             'sender_role' => 'system',
         ]);
     }
+
+    public function test_my_conversations_lists_member_rooms_with_unread(): void
+    {
+        $withChat = $this->makeSchedule();
+        $noChat = $this->makeSchedule();
+
+        $me = User::factory()->create();
+        $other = User::factory()->create();
+        $this->bookOnto($me, $withChat);
+        $this->bookOnto($other, $withChat);
+        $this->bookOnto($me, $noChat);
+
+        // Other posts 2 messages in $withChat; $me has read none → unread 2.
+        ChatMessage::create(['schedule_id' => $withChat->id, 'user_id' => $other->id, 'sender_role' => 'customer', 'body' => 'หนึ่ง']);
+        ChatMessage::create(['schedule_id' => $withChat->id, 'user_id' => $other->id, 'sender_role' => 'customer', 'body' => 'สอง']);
+
+        $response = $this->actingAs($me, 'sanctum')
+            ->getJson('/api/v1/chat/my-conversations')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        // Room with activity sorts first and reports the unread count.
+        $response->assertJsonPath('data.0.schedule_id', $withChat->id)
+            ->assertJsonPath('data.0.unread_count', 2)
+            ->assertJsonPath('data.1.schedule_id', $noChat->id)
+            ->assertJsonPath('data.1.unread_count', 0);
+    }
+
+    public function test_my_conversations_empty_for_non_member(): void
+    {
+        $this->makeSchedule();
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider, 'sanctum')
+            ->getJson('/api/v1/chat/my-conversations')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
 }

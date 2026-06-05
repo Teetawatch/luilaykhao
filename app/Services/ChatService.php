@@ -131,6 +131,36 @@ class ChatService
         ])->values();
     }
 
+    /**
+     * id ของรอบเดินทางที่ผู้ใช้เป็นสมาชิกห้องแชท (ลูกค้าที่จอง active + เพื่อนที่
+     * ถูกเชิญ + สตาฟที่ assign) ใช้สร้างรายการ "แชทของฉัน"
+     *
+     * @return Collection<int, int>
+     */
+    public function userScheduleIds(User $user): Collection
+    {
+        $bookingScheduleIds = Booking::where('user_id', $user->id)
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->pluck('schedule_id');
+
+        $companionScheduleIds = BookingMember::where('user_id', $user->id)
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->whereHas('booking', fn ($q) => $q
+                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES))
+            ->with('booking:id,schedule_id')
+            ->get()
+            ->pluck('booking.schedule_id');
+
+        $staffScheduleIds = $user->assignedSchedules()->pluck('trip_schedules.id');
+
+        return $bookingScheduleIds
+            ->merge($companionScheduleIds)
+            ->merge($staffScheduleIds)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
     public function markRead(User $user, TripSchedule $schedule, int $messageId): void
     {
         $read = ChatRead::firstOrNew([

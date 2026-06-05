@@ -301,6 +301,79 @@ class ChatController extends Controller
     }
 
     /**
+     * รายการห้องแชททริปของผู้ใช้ (ลูกค้า/เพื่อนร่วมจอง/สตาฟ) พร้อมข้อความล่าสุด
+     * และจำนวนที่ยังไม่อ่าน สำหรับแท็บ "แชท"
+     */
+    public function myConversations(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $scheduleIds = $this->chatService->userScheduleIds($user);
+
+        if ($scheduleIds->isEmpty()) {
+            return $this->success([]);
+        }
+
+        $schedules = TripSchedule::query()
+            ->with(['trip:id,title,cover_image,thumbnail_image', 'vehicle:id,name'])
+            ->whereIn('id', $scheduleIds)
+            // เก็บเฉพาะรอบที่ยังไม่ผ่านไปนาน (กันลิสต์ยาวด้วยทริปเก่า)
+            ->whereDate('departure_date', '>=', now()->subDays(14)->toDateString())
+            ->get();
+
+        $messagesBySchedule = ChatMessage::whereIn('schedule_id', $schedules->pluck('id'))
+            ->with('user:id,name,nickname')
+            ->get()
+            ->groupBy('schedule_id');
+
+        $reads = ChatRead::where('user_id', $user->id)
+            ->whereIn('schedule_id', $schedules->pluck('id'))
+            ->pluck('last_read_message_id', 'schedule_id');
+
+        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule, $reads, $user) {
+            $messages = $messagesBySchedule->get($schedule->id) ?? collect();
+            $last = $messages->sortByDesc('id')->first();
+            $lastReadId = (int) ($reads[$schedule->id] ?? 0);
+
+            $unread = $messages
+                ->where('id', '>', $lastReadId)
+                ->filter(fn ($m) => $m->user_id === null || $m->user_id !== $user->id)
+                ->count();
+
+            return [
+                'schedule_id' => $schedule->id,
+                'trip_title' => $schedule->trip?->title,
+                'trip_image' => $schedule->trip?->thumbnail_image ?: $schedule->trip?->cover_image,
+                'vehicle_name' => $schedule->vehicle?->name,
+                'departure_date' => $schedule->departure_date?->toDateString(),
+                'return_date' => $schedule->return_date?->toDateString(),
+                'status' => $schedule->status,
+                'unread_count' => $unread,
+                'last_message' => $last ? [
+                    'body' => $last->body,
+                    'image_url' => $last->image_url,
+                    'sender_role' => $last->sender_role,
+                    'sender_name' => $last->user?->nickname ?: $last->user?->name,
+                    'created_at' => $last->created_at?->toISOString(),
+                ] : null,
+                'last_activity' => $last?->created_at?->toISOString(),
+            ];
+        });
+
+        // ห้องที่มีความเคลื่อนไหวอยู่บน เรียงตามล่าสุด; ห้องที่ยังไม่มีข้อความเรียงตามวันเดินทาง
+        $withMessages = $conversations
+            ->filter(fn ($c) => $c['last_activity'] !== null)
+            ->sortByDesc('last_activity')
+            ->values();
+
+        $empty = $conversations
+            ->filter(fn ($c) => $c['last_activity'] === null)
+            ->sortBy('departure_date')
+            ->values();
+
+        return $this->success($withMessages->concat($empty)->all());
+    }
+
+    /**
      * Admin/operator: รายการห้องแชททุกรอบที่กำลังจะเดินทาง (รวมห้องที่ยังไม่มีข้อความ
      * เพื่อให้แอดมินเข้าไปเริ่มแชทในรอบไหนก็ได้) พร้อมข้อความล่าสุดของแต่ละห้อง
      */
