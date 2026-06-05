@@ -86,6 +86,45 @@ class ChatService
         return $customerIds->merge($memberIds)->merge($staffIds)->unique()->values();
     }
 
+    /**
+     * รายชื่อสมาชิกในห้องแชทของรอบนี้ = ลูกค้าที่จอง active + เพื่อนที่ถูกเชิญ
+     * (companion) + สตาฟที่ assign แต่ละคนพร้อมบทบาทสำหรับแสดงป้ายกำกับ
+     * (admin/operator เข้าถึงได้แต่ไม่นับเป็นสมาชิกประจำรอบ)
+     *
+     * @return Collection<int, array{user: User, role: string}>
+     */
+    public function members(TripSchedule $schedule): Collection
+    {
+        $customerIds = Booking::where('schedule_id', $schedule->id)
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
+
+        $companionIds = BookingMember::where('status', BookingMember::STATUS_ACTIVE)
+            ->whereNotNull('user_id')
+            ->whereHas('booking', fn ($q) => $q
+                ->where('schedule_id', $schedule->id)
+                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES))
+            ->pluck('user_id');
+
+        $staffIds = $schedule->staff()->pluck('users.id');
+
+        $allIds = $customerIds->merge($companionIds)->merge($staffIds)->unique()->values();
+
+        if ($allIds->isEmpty()) {
+            return collect();
+        }
+
+        $users = User::whereIn('id', $allIds)->get(['id', 'name', 'nickname', 'avatar']);
+        $staffSet = $staffIds->unique();
+
+        // Staff badge wins when a user is both booked and assigned as staff.
+        return $users->map(fn (User $u) => [
+            'user' => $u,
+            'role' => $staffSet->contains($u->id) ? 'staff' : 'customer',
+        ])->values();
+    }
+
     public function markRead(User $user, TripSchedule $schedule, int $messageId): void
     {
         $read = ChatRead::firstOrNew([

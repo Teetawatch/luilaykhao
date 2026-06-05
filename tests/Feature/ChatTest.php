@@ -9,6 +9,7 @@ use App\Models\ChatMessage;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
@@ -216,5 +217,70 @@ class ChatTest extends TestCase
             ->getJson("/api/v1/schedules/{$schedule->id}/chat/unread-count")
             ->assertOk()
             ->assertJsonPath('data.count', 0);
+    }
+
+    public function test_room_returns_members_vehicle_and_read_positions(): void
+    {
+        Bus::fake();
+        Role::findOrCreate('staff');
+        $schedule = $this->makeSchedule();
+
+        $vehicle = Vehicle::create([
+            'name' => 'รถตู้คันที่ 1',
+            'type' => 'van',
+            'capacity' => 10,
+            'license_plate' => 'กข 1234',
+            'driver_name' => 'พี่สมชาย',
+            'driver_phone' => '0801112222',
+        ]);
+        $schedule->vehicle_id = $vehicle->id;
+        $schedule->save();
+
+        $alice = User::factory()->create();
+        $bob = User::factory()->create();
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+        $this->bookOnto($alice, $schedule);
+        $this->bookOnto($bob, $schedule);
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        // Alice ส่ง 2 ข้อความ, Bob อ่านถึงข้อความแรกเท่านั้น
+        $first = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $alice->id, 'sender_role' => 'customer', 'body' => 'หนึ่ง']);
+        $second = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $alice->id, 'sender_role' => 'customer', 'body' => 'สอง']);
+
+        $this->actingAs($bob, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/read", ['message_id' => $first->id])
+            ->assertOk();
+
+        $response = $this->actingAs($alice, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertOk()
+            ->assertJsonPath('data.member_count', 3)
+            ->assertJsonPath('data.vehicle.name', 'รถตู้คันที่ 1')
+            ->assertJsonPath('data.vehicle.driver_name', 'พี่สมชาย');
+
+        $members = collect($response->json('data.members'));
+        $this->assertEqualsCanonicalizing(
+            ['customer', 'customer', 'staff'],
+            $members->pluck('role')->all(),
+        );
+
+        // Bob อ่านถึงข้อความแรก → last_read_message_id ตรงกับ id ข้อความแรก
+        $bobMember = $members->firstWhere('id', $bob->id);
+        $this->assertSame($first->id, $bobMember['last_read_message_id']);
+        $this->assertLessThan($second->id, $bobMember['last_read_message_id']);
+
+        // Alice เห็นตัวเองเป็น is_me
+        $this->assertTrue($members->firstWhere('id', $alice->id)['is_me']);
+    }
+
+    public function test_room_forbidden_for_non_member(): void
+    {
+        $schedule = $this->makeSchedule();
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertForbidden();
     }
 }

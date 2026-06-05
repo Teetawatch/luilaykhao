@@ -113,6 +113,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/messages', [ChatController::class, 'store'])->middleware('throttle:chat');
         Route::post('schedules/{id}/chat/read', [ChatController::class, 'markRead']);
         Route::get('schedules/{id}/chat/unread-count', [ChatController::class, 'unreadCount']);
+        Route::get('schedules/{id}/chat/room', [ChatController::class, 'room']);
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');

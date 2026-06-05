@@ -6,6 +6,7 @@ use App\Events\ChatMessageSent;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
+use App\Models\ChatRead;
 use App\Models\TripSchedule;
 use App\Services\ChatService;
 use App\Traits\ApiResponse;
@@ -130,6 +131,61 @@ class ChatController extends Controller
 
         return $this->success([
             'count' => $this->chatService->unreadCount($user, $schedule),
+        ]);
+    }
+
+    /**
+     * ข้อมูลห้องแชท: รายชื่อสมาชิก จำนวนคน ตำแหน่งที่อ่านล่าสุดของแต่ละคน
+     * (สำหรับสถานะ "อ่านแล้วกี่คน") และรถประจำรอบ
+     */
+    public function room(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::with(['trip:id,title', 'vehicle'])->findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        $members = $this->chatService->members($schedule);
+        $memberIds = $members->map(fn ($m) => $m['user']->id);
+
+        // last_read_message_id ของสมาชิกแต่ละคน → ใช้คำนวณ "อ่านแล้ว N คน" ฝั่ง client
+        $reads = ChatRead::where('schedule_id', $scheduleId)
+            ->whereIn('user_id', $memberIds)
+            ->pluck('last_read_message_id', 'user_id');
+
+        $vehicle = $schedule->vehicle;
+
+        return $this->success([
+            'schedule' => [
+                'id' => $schedule->id,
+                'trip_title' => $schedule->trip?->title,
+                'departure_date' => $schedule->departure_date?->toDateString(),
+                'return_date' => $schedule->return_date?->toDateString(),
+                'status' => $schedule->status,
+            ],
+            'vehicle' => $vehicle ? [
+                'name' => $vehicle->name,
+                'type' => $vehicle->type,
+                'license_plate' => $vehicle->license_plate,
+                'driver_name' => $vehicle->driver_name,
+                'driver_phone' => $vehicle->driver_phone,
+            ] : null,
+            'member_count' => $members->count(),
+            'members' => $members->map(function ($m) use ($reads, $user) {
+                $u = $m['user'];
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'nickname' => $u->nickname,
+                    'avatar_url' => $u->avatar_url,
+                    'role' => $m['role'],
+                    'is_me' => $u->id === $user->id,
+                    'last_read_message_id' => (int) ($reads[$u->id] ?? 0),
+                ];
+            })->values()->all(),
         ]);
     }
 
