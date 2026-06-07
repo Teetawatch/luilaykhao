@@ -8,14 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\SchedulePickupPoint;
-use App\Models\WaitlistEntry;
+use Illuminate\Support\Str;
 
 class TripSchedule extends Model
 {
     use HasFactory;
 
     public const ACTIVE_BOOKING_STATUSES = ['pending', 'confirmed'];
+
     public const REVIEW_AVAILABLE_TIMEZONE = 'Asia/Bangkok';
 
     protected $table = 'trip_schedules';
@@ -27,7 +27,7 @@ class TripSchedule extends Model
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',
-        'is_charter',
+        'is_charter', 'photo_token',
     ];
 
     protected function casts(): array
@@ -37,16 +37,16 @@ class TripSchedule extends Model
             'return_date' => 'date',
             'total_seats' => 'integer',
             'booked_seats' => 'integer',
-            'price_override'            => 'decimal:2',
-            'installment_enabled'       => 'boolean',
-            'installment_count'         => 'integer',
+            'price_override' => 'decimal:2',
+            'installment_enabled' => 'boolean',
+            'installment_count' => 'integer',
             'installment_interval_days' => 'integer',
-            'deposit_enabled'           => 'boolean',
-            'deposit_amount'            => 'decimal:2',
-            'deposit_percent'           => 'integer',
-            'join_trip_enabled'         => 'boolean',
-            'join_trip_price'           => 'decimal:2',
-            'is_charter'                => 'boolean',
+            'deposit_enabled' => 'boolean',
+            'deposit_amount' => 'decimal:2',
+            'deposit_percent' => 'integer',
+            'join_trip_enabled' => 'boolean',
+            'join_trip_price' => 'decimal:2',
+            'is_charter' => 'boolean',
         ];
     }
 
@@ -57,7 +57,7 @@ class TripSchedule extends Model
      */
     public function resolveDepositAmount(float $totalAmount, int $passengerCount = 1): ?float
     {
-        if (!$this->deposit_enabled) {
+        if (! $this->deposit_enabled) {
             return null;
         }
 
@@ -71,6 +71,7 @@ class TripSchedule extends Model
 
         // Cap deposit at total amount, ensure positive
         $deposit = max(0.0, min($deposit, $totalAmount));
+
         return $deposit > 0 ? $deposit : null;
     }
 
@@ -111,11 +112,39 @@ class TripSchedule extends Model
         return $this->hasMany(WaitlistEntry::class, 'schedule_id');
     }
 
-    public function photos(): HasMany
+    public function photos(): BelongsToMany
     {
-        return $this->hasMany(SchedulePhoto::class, 'schedule_id')
-            ->orderBy('sort_order')
-            ->orderBy('id');
+        return $this->belongsToMany(SchedulePhoto::class, 'schedule_photo', 'schedule_id', 'photo_id')
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order')
+            ->orderBy('schedule_photos.id');
+    }
+
+    /**
+     * Generate (or rotate) the public photo-album token. Pass $rotate to force a new one.
+     */
+    public function ensurePhotoToken(bool $rotate = false): string
+    {
+        if ($rotate || empty($this->photo_token)) {
+            do {
+                $token = Str::lower(Str::random(12));
+            } while (static::where('photo_token', $token)->exists());
+
+            $this->forceFill(['photo_token' => $token])->save();
+        }
+
+        return $this->photo_token;
+    }
+
+    public function revokePhotoToken(): void
+    {
+        $this->forceFill(['photo_token' => null])->save();
+    }
+
+    public function photoAlbumUrl(): ?string
+    {
+        return $this->photo_token ? url('/album/'.$this->photo_token) : null;
     }
 
     public function getAvailableSeatsAttribute(): int
@@ -146,12 +175,12 @@ class TripSchedule extends Model
      */
     public function syncBookedSeats(): int
     {
-        $count = \App\Models\BookingPassenger::whereHas('booking', function($q) {
+        $count = BookingPassenger::whereHas('booking', function ($q) {
             $q->where('schedule_id', $this->id)
-              ->whereIn('status', self::ACTIVE_BOOKING_STATUSES)
-              ->where('is_join_trip', false);
+                ->whereIn('status', self::ACTIVE_BOOKING_STATUSES)
+                ->where('is_join_trip', false);
         })->count();
-        
+
         $this->update(['booked_seats' => $count]);
         $this->booked_seats = $count;
 

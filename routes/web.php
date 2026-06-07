@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminPaymentWebController;
+use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Models\Trip;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,21 @@ Route::get('/track/{token}', function (string $token) {
 Route::get('/driver/track', function () {
     return view('driver-track');
 });
+
+// Public photo album — ดาวน์โหลดรูปประจำรอบจากลิงก์สาธารณะ (ไม่ต้องล็อกอิน)
+Route::get('/album/{token}', function (string $token) {
+    return response()->view('album', ['token' => $token]);
+})->where('token', '[A-Za-z0-9]+')->middleware('throttle:120,1');
+
+Route::get('/album/{token}/download', [PublicAlbumController::class, 'downloadAll'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:30,1')
+    ->name('album.download');
+
+Route::get('/album/{token}/download/{photoId}', [PublicAlbumController::class, 'downloadOne'])
+    ->where(['token' => '[A-Za-z0-9]+', 'photoId' => '[0-9]+'])
+    ->middleware('throttle:120,1')
+    ->name('album.download-one');
 
 // Public payment page — ชำระค่างวด/ยอดส่วนที่เหลือ จากลิงก์ในอีเมล (ไม่ต้องล็อกอิน)
 Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])

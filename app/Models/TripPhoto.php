@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class TripPhoto extends Model
 {
     protected $fillable = [
-        'trip_id', 'disk', 'path', 'url', 'original_name',
+        'trip_id', 'disk', 'path', 'thumb_path', 'url', 'thumb_url', 'original_name',
         'mime', 'size', 'width', 'height', 'sort_order',
     ];
 
@@ -26,9 +26,9 @@ class TripPhoto extends Model
     protected static function booted(): void
     {
         static::deleting(function (TripPhoto $photo) {
-            if ($photo->path) {
-                Storage::disk($photo->disk ?: config('filesystems.default'))
-                    ->delete($photo->path);
+            $disk = Storage::disk($photo->disk ?: config('filesystems.default'));
+            foreach (array_filter([$photo->path, $photo->thumb_path]) as $path) {
+                $disk->delete($path);
             }
         });
     }
@@ -46,5 +46,18 @@ class TripPhoto extends Model
 
         return Storage::disk($this->disk ?: config('filesystems.default'))
             ->url($this->path);
+    }
+
+    public function getThumbPublicUrlAttribute(): ?string
+    {
+        if ($this->thumb_url) {
+            return $this->thumb_url;
+        }
+        if ($this->thumb_path) {
+            return Storage::disk($this->disk ?: config('filesystems.default'))
+                ->url($this->thumb_path);
+        }
+
+        return $this->public_url; // fall back to the full image
     }
 }

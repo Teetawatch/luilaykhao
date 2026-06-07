@@ -124,6 +124,39 @@
         </div>
 
         <div class="modal-body">
+          <!-- Public album share link -->
+          <div class="share-panel">
+            <div class="share-head">
+              <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-accent,#2d7a4f)">link</span>
+              <span style="font-weight:700;font-size:13px;">ลิงก์อัลบั้มสาธารณะ</span>
+              <span class="share-hint">ใครมีลิงก์ก็เปิดดู/ดาวน์โหลดได้ ไม่ต้องล็อกอิน</span>
+            </div>
+
+            <div v-if="share.loading" style="font-size:13px;color:#6b7280;padding:4px 0">กำลังโหลด…</div>
+
+            <template v-else-if="share.url">
+              <div class="share-row">
+                <input class="share-input" :value="share.url" readonly @focus="$event.target.select()" />
+                <button class="btn-primary btn-sm" @click="copyShareLink">
+                  <span class="material-symbols-rounded" style="font-size:16px">{{ copied ? 'check' : 'content_copy' }}</span>
+                  {{ copied ? 'คัดลอกแล้ว' : 'คัดลอก' }}
+                </button>
+              </div>
+              <div class="share-actions">
+                <button class="link-btn" @click="rotateShareLink" :disabled="share.busy">สร้างลิงก์ใหม่ (ปิดลิงก์เดิม)</button>
+                <span class="dot">·</span>
+                <button class="link-btn danger" @click="revokeShareLink" :disabled="share.busy">ปิดการแชร์</button>
+              </div>
+            </template>
+
+            <template v-else>
+              <button class="btn-secondary btn-sm" @click="enableShareLink" :disabled="share.busy">
+                <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px">add_link</span>
+                สร้างลิงก์สำหรับแชร์
+              </button>
+            </template>
+          </div>
+
           <!-- Drop zone -->
           <div
             class="upload-zone large"
@@ -171,7 +204,7 @@
               :key="photo.id"
               class="photo-tile"
             >
-              <img :src="photo.url" :alt="`photo-${photo.id}`" loading="lazy" />
+              <img :src="photo.thumb_url || photo.url" :alt="`photo-${photo.id}`" loading="lazy" />
               <button
                 class="photo-delete"
                 :disabled="deletingId === photo.id"
@@ -190,7 +223,82 @@
           <span style="font-size:13px;color:#6b7280">
             ทั้งหมด {{ manager.photos.length }} รูป
           </span>
-          <button class="btn-secondary" @click="closeManager">ปิด</button>
+          <div style="display:flex;gap:8px;">
+            <button
+              class="btn-secondary"
+              :disabled="!manager.photos.length"
+              @click="openApplyPicker"
+            >
+              <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;">content_copy</span>
+              ใช้รูปชุดนี้กับรอบอื่น
+            </button>
+            <button class="btn-secondary" @click="closeManager">ปิด</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Apply-to-other-rounds picker -->
+    <div class="modal-overlay" v-if="applyPicker.open" @click.self="closeApplyPicker">
+      <div class="modal-card" style="max-width: 560px">
+        <div class="modal-header">
+          <div>
+            <h2>
+              <span class="material-symbols-rounded heading-icon" style="font-size:22px;vertical-align:-4px;">content_copy</span>
+              ใช้รูปชุดนี้กับรอบอื่น
+            </h2>
+            <p class="modal-subtitle">
+              เลือกรอบเดินทางของทริปเดียวกันที่จะใช้รูปทั้ง {{ manager.photos.length }} รูปนี้ร่วมกัน
+              (ไม่อัปโหลดไฟล์ซ้ำ — ใช้ไฟล์เดิมบน R2)
+            </p>
+          </div>
+          <button class="modal-close" @click="closeApplyPicker">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div v-if="!applyTargets.length" class="empty-state" style="padding:24px 0">
+            ไม่มีรอบเดินทางอื่นของทริปนี้ในรายการ
+          </div>
+          <div v-else class="round-pick-list">
+            <label
+              v-for="sch in applyTargets"
+              :key="sch.id"
+              class="round-pick-item"
+            >
+              <input type="checkbox" :value="sch.id" v-model="applyPicker.selected" />
+              <div class="round-pick-info">
+                <div class="round-pick-title">
+                  <span class="round-badge">รอบ #{{ sch.id }}</span>
+                  {{ formatDate(sch.departure_date) }}
+                  <span :class="['status-pill', `pill-${sch.status}`]" style="margin-left:6px">
+                    {{ statusLabel(sch.status) }}
+                  </span>
+                </div>
+                <div class="round-pick-meta">
+                  มีอยู่แล้ว {{ photoCounts[sch.id] ?? '—' }} รูป
+                  <template v-if="sch.vehicle"> · {{ sch.vehicle.name }}</template>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <span style="font-size:13px;color:#6b7280">
+            เลือกแล้ว {{ applyPicker.selected.length }} รอบ
+          </span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-secondary" @click="closeApplyPicker">ยกเลิก</button>
+            <button
+              class="btn-primary"
+              :disabled="!applyPicker.selected.length || applyPicker.submitting"
+              @click="applyToRounds"
+            >
+              {{ applyPicker.submitting ? 'กำลังนำไปใช้…' : 'ยืนยัน' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -224,6 +332,30 @@ const manager = reactive({
   schedule: null,
   photos: [],
   loadingPhotos: false,
+});
+
+const applyPicker = reactive({
+  open: false,
+  selected: [],
+  submitting: false,
+});
+
+const share = reactive({
+  token: null,
+  url: null,
+  loading: false,
+  busy: false,
+});
+const copied = ref(false);
+
+// Other rounds of the same trip the current photo set can be shared with.
+const applyTargets = computed(() => {
+  if (!manager.schedule) return [];
+  const tripId = manager.schedule.trip?.id ?? manager.schedule.trip_id;
+  return schedules.value.filter(
+    (s) => s.id !== manager.schedule.id &&
+      (s.trip?.id ?? s.trip_id) === tripId
+  );
 });
 
 const filteredSchedules = computed(() => {
@@ -301,7 +433,75 @@ const openManager = async (schedule) => {
   manager.schedule = schedule;
   manager.open = true;
   manager.photos = [];
-  await loadManagerPhotos();
+  share.token = null;
+  share.url = null;
+  copied.value = false;
+  await Promise.all([loadManagerPhotos(), loadShareLink()]);
+};
+
+const loadShareLink = async () => {
+  if (!manager.schedule) return;
+  share.loading = true;
+  try {
+    const res = await api.get(`/admin/schedules/${manager.schedule.id}/photos/share`);
+    share.token = res.data?.data?.token ?? null;
+    share.url = res.data?.data?.url ?? null;
+  } catch {
+    share.token = null;
+    share.url = null;
+  } finally {
+    share.loading = false;
+  }
+};
+
+const enableShareLink = async (rotate = false) => {
+  if (!manager.schedule) return;
+  share.busy = true;
+  try {
+    const res = await api.post(
+      `/admin/schedules/${manager.schedule.id}/photos/share`,
+      { rotate }
+    );
+    share.token = res.data?.data?.token ?? null;
+    share.url = res.data?.data?.url ?? null;
+    copied.value = false;
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'สร้างลิงก์ไม่สำเร็จ');
+  } finally {
+    share.busy = false;
+  }
+};
+
+const rotateShareLink = async () => {
+  if (!confirm('สร้างลิงก์ใหม่? ลิงก์เดิมจะใช้ไม่ได้อีกต่อไป')) return;
+  await enableShareLink(true);
+};
+
+const revokeShareLink = async () => {
+  if (!manager.schedule) return;
+  if (!confirm('ปิดการแชร์อัลบั้มนี้? ลิงก์เดิมจะเปิดไม่ได้อีก')) return;
+  share.busy = true;
+  try {
+    await api.delete(`/admin/schedules/${manager.schedule.id}/photos/share`);
+    share.token = null;
+    share.url = null;
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'ปิดการแชร์ไม่สำเร็จ');
+  } finally {
+    share.busy = false;
+  }
+};
+
+const copyShareLink = async () => {
+  if (!share.url) return;
+  try {
+    await navigator.clipboard.writeText(share.url);
+    copied.value = true;
+    setTimeout(() => { copied.value = false; }, 1800);
+  } catch {
+    // Fallback: select the input so the user can copy manually.
+    alert('คัดลอกอัตโนมัติไม่สำเร็จ — กรุณาเลือกลิงก์แล้วคัดลอกเอง');
+  }
 };
 
 const closeManager = () => {
@@ -327,16 +527,40 @@ const loadManagerPhotos = async () => {
 const onFileSelect = (e) => uploadFiles(Array.from(e.target.files || []));
 const onDrop = (e) => uploadFiles(Array.from(e.dataTransfer.files || []));
 
+const isHeic = (file) =>
+  /image\/heic|image\/heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+
+// HEIC isn't viewable in most browsers, so convert to full-resolution JPEG in the
+// admin's browser before upload (the server can't decode HEIC). Download stays sharp.
+const convertHeic = async (file) => {
+  try {
+    const { default: heic2any } = await import('heic2any');
+    const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+    const out = Array.isArray(blob) ? blob[0] : blob;
+    const name = file.name.replace(/\.(heic|heif)$/i, '') + '.jpg';
+    return new File([out], name, { type: 'image/jpeg' });
+  } catch (e) {
+    // Fall back to the original file; the server will store it without a thumbnail.
+    return file;
+  }
+};
+
 const uploadFiles = async (files) => {
   if (!manager.schedule || !files.length) return;
-  // Chunk into batches of 10 so the backend's max:20-per-request stays comfortable
-  // and progress feedback stays responsive on slow links.
-  const chunks = [];
-  for (let i = 0; i < files.length; i += 10) chunks.push(files.slice(i, i + 10));
 
   uploading.value = true;
   uploadProgress.value = 0;
   try {
+    // Convert any HEIC/HEIF files first.
+    if (files.some(isHeic)) {
+      files = await Promise.all(files.map((f) => (isHeic(f) ? convertHeic(f) : f)));
+    }
+
+    // Chunk into batches of 10 so the backend's max:20-per-request stays comfortable
+    // and progress feedback stays responsive on slow links.
+    const chunks = [];
+    for (let i = 0; i < files.length; i += 10) chunks.push(files.slice(i, i + 10));
+
     for (let i = 0; i < chunks.length; i++) {
       const fd = new FormData();
       for (const f of chunks[i]) fd.append('files[]', f);
@@ -375,6 +599,36 @@ const confirmDeletePhoto = async (photo) => {
     alert(e.response?.data?.message ?? 'ลบรูปไม่สำเร็จ');
   } finally {
     deletingId.value = null;
+  }
+};
+
+const openApplyPicker = () => {
+  applyPicker.selected = [];
+  applyPicker.open = true;
+};
+
+const closeApplyPicker = () => {
+  applyPicker.open = false;
+  applyPicker.selected = [];
+};
+
+const applyToRounds = async () => {
+  if (!manager.schedule || !applyPicker.selected.length) return;
+  applyPicker.submitting = true;
+  try {
+    const res = await api.post(
+      `/admin/schedules/${manager.schedule.id}/photos/apply`,
+      { schedule_ids: applyPicker.selected }
+    );
+    // Refresh photo counts for the rounds we just updated.
+    await Promise.all(applyPicker.selected.map((id) => loadPhotoCount(id)));
+    const n = res.data?.data?.schedules ?? applyPicker.selected.length;
+    alert(`นำรูปไปใช้กับ ${n} รอบเดินทางแล้ว`);
+    closeApplyPicker();
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'นำรูปไปใช้กับรอบอื่นไม่สำเร็จ');
+  } finally {
+    applyPicker.submitting = false;
   }
 };
 
@@ -620,4 +874,110 @@ onMounted(async () => {
   font-size: 13px;
   color: #6b7280;
 }
+
+.round-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.round-pick-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.round-pick-item:hover {
+  border-color: var(--color-accent, #2d7a4f);
+  background: #f0fdf4;
+}
+
+.round-pick-item input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent, #2d7a4f);
+}
+
+.round-pick-info { flex: 1; min-width: 0; }
+
+.round-pick-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #111827;
+}
+
+.round-pick-meta {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.share-panel {
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.share-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.share-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.share-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.share-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: #fff;
+  color: #374151;
+}
+
+.share-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent, #2d7a4f);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.link-btn.danger { color: #dc2626; }
+.link-btn:disabled { opacity: 0.5; cursor: default; }
+.share-actions .dot { color: #d1d5db; }
 </style>

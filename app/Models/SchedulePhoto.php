@@ -3,14 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 
 class SchedulePhoto extends Model
 {
     protected $fillable = [
-        'schedule_id', 'disk', 'path', 'url', 'original_name',
-        'mime', 'size', 'width', 'height', 'sort_order',
+        'disk', 'path', 'thumb_path', 'url', 'thumb_url', 'original_name',
+        'mime', 'size', 'width', 'height',
     ];
 
     protected function casts(): array
@@ -19,23 +19,24 @@ class SchedulePhoto extends Model
             'size' => 'integer',
             'width' => 'integer',
             'height' => 'integer',
-            'sort_order' => 'integer',
         ];
     }
 
     protected static function booted(): void
     {
         static::deleting(function (SchedulePhoto $photo) {
-            if ($photo->path) {
-                Storage::disk($photo->disk ?: config('filesystems.default'))
-                    ->delete($photo->path);
+            $disk = Storage::disk($photo->disk ?: config('filesystems.default'));
+            foreach (array_filter([$photo->path, $photo->thumb_path]) as $path) {
+                $disk->delete($path);
             }
         });
     }
 
-    public function schedule(): BelongsTo
+    public function schedules(): BelongsToMany
     {
-        return $this->belongsTo(TripSchedule::class, 'schedule_id');
+        return $this->belongsToMany(TripSchedule::class, 'schedule_photo', 'photo_id', 'schedule_id')
+            ->withPivot('sort_order')
+            ->withTimestamps();
     }
 
     public function getPublicUrlAttribute(): ?string
@@ -46,5 +47,18 @@ class SchedulePhoto extends Model
 
         return Storage::disk($this->disk ?: config('filesystems.default'))
             ->url($this->path);
+    }
+
+    public function getThumbPublicUrlAttribute(): ?string
+    {
+        if ($this->thumb_url) {
+            return $this->thumb_url;
+        }
+        if ($this->thumb_path) {
+            return Storage::disk($this->disk ?: config('filesystems.default'))
+                ->url($this->thumb_path);
+        }
+
+        return $this->public_url; // fall back to the full image
     }
 }

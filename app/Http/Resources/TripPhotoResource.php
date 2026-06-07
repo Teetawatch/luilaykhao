@@ -13,6 +13,7 @@ class TripPhotoResource extends JsonResource
             'id' => $this->id,
             'trip_id' => $this->trip_id,
             'url' => $this->public_url,
+            'thumb_url' => $this->thumb_public_url,
             'mime' => $this->mime,
             'size' => $this->size,
             'width' => $this->width,

@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PromotionController;
+use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SeatController;
@@ -208,6 +209,9 @@ Route::prefix('v1')->group(function () {
     // Live Share Link: ติดตามรถแบบสาธารณะผ่าน share token (ไม่ต้องล็อกอิน)
     Route::get('track/{token}', [VehicleTrackingController::class, 'sharedTracking'])->middleware('throttle:120,1');
 
+    // Public photo album: ดาวน์โหลดรูปประจำรอบผ่านลิงก์สาธารณะ (ไม่ต้องล็อกอิน)
+    Route::get('album/{token}/photos', [PublicAlbumController::class, 'photos'])->middleware('throttle:120,1');
+
     // Customer Tracking is authenticated above; booking refs are not public lookup keys.
 
     // Distance Matrix (public)
@@ -318,8 +322,15 @@ Route::prefix('v1')->group(function () {
 
         Route::get('schedules/{id}/photos', [PhotoController::class, 'scheduleIndex']);
         Route::post('schedules/{id}/photos', [PhotoController::class, 'scheduleUpload']);
+        Route::post('schedules/{id}/photos/apply', [PhotoController::class, 'scheduleApply']);
         Route::post('schedules/{id}/photos/reorder', [PhotoController::class, 'scheduleReorder']);
-        Route::delete('schedules/{id}/photos/{photoId}', [PhotoController::class, 'scheduleDestroy']);
+        Route::delete('schedules/{id}/photos/{photoId}', [PhotoController::class, 'scheduleDestroy'])
+            ->whereNumber('photoId');
+
+        // Public album share link (anyone with the link can download — no login)
+        Route::get('schedules/{id}/photos/share', [PhotoController::class, 'scheduleShareShow']);
+        Route::post('schedules/{id}/photos/share', [PhotoController::class, 'scheduleShareStore']);
+        Route::delete('schedules/{id}/photos/share', [PhotoController::class, 'scheduleShareDestroy']);
 
         // Upload
         Route::post('upload-image', [AdminController::class, 'uploadMedia']);

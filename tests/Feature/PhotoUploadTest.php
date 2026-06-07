@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\SchedulePhoto;
 use App\Models\Trip;
 use App\Models\TripPhoto;
 use App\Models\TripSchedule;
@@ -31,6 +32,7 @@ class PhotoUploadTest extends TestCase
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $admin = User::factory()->create();
         $admin->assignRole('admin');
+
         return $admin;
     }
 
@@ -131,7 +133,7 @@ class PhotoUploadTest extends TestCase
             ->postJson("/api/v1/admin/schedules/{$schedule->id}/photos", [
                 'files' => [UploadedFile::fake()->image('s.jpg', 600, 400)],
             ])->assertCreated()
-              ->assertJsonCount(1, 'data');
+            ->assertJsonCount(1, 'data');
 
         $this->assertSame(1, $schedule->photos()->count());
     }
@@ -234,6 +236,206 @@ class PhotoUploadTest extends TestCase
         $this->actingAs($customer, 'sanctum')
             ->getJson("/api/v1/bookings/{$booking->booking_ref}/photos")
             ->assertNotFound();
+    }
+
+    public function test_upload_generates_a_downscaled_thumbnail(): void
+    {
+        $admin = $this->makeAdmin();
+        $schedule = $this->makeSchedule($this->makeTrip());
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/photos", [
+                'files' => [UploadedFile::fake()->image('big.jpg', 2400, 1600)],
+            ])->assertCreated()
+            ->assertJsonStructure(['data' => [['id', 'url', 'thumb_url']]]);
+
+        $photo = $schedule->photos()->first();
+
+        // Full image is stored untouched; a separate thumbnail exists alongside it.
+        $this->assertNotNull($photo->thumb_path);
+        $this->assertNotSame($photo->path, $photo->thumb_path);
+        Storage::disk('public')->assertExists($photo->path);
+        Storage::disk('public')->assertExists($photo->thumb_path);
+
+        // Thumbnail's longest edge is capped at 800px; the response exposes its url.
+        [$tw, $th] = getimagesizefromstring(Storage::disk('public')->get($photo->thumb_path));
+        $this->assertLessThanOrEqual(800, max($tw, $th));
+        $this->assertStringContainsString('/thumbs/', $photo->thumb_path);
+        $this->assertNotNull($response->json('data.0.thumb_url'));
+    }
+
+    public function test_deleting_a_photo_also_removes_its_thumbnail(): void
+    {
+        $admin = $this->makeAdmin();
+        $schedule = $this->makeSchedule($this->makeTrip());
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/photos", [
+                'files' => [UploadedFile::fake()->image('z.jpg', 1200, 800)],
+            ])->assertCreated();
+
+        $photo = $schedule->photos()->first();
+        $full = $photo->path;
+        $thumb = $photo->thumb_path;
+        Storage::disk('public')->assertExists($thumb);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/schedules/{$schedule->id}/photos/{$photo->id}")
+            ->assertOk();
+
+        Storage::disk('public')->assertMissing($full);
+        Storage::disk('public')->assertMissing($thumb);
+    }
+
+    public function test_admin_can_apply_one_rounds_photos_to_other_rounds(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $roundB = $this->makeSchedule($trip);
+        $roundC = $this->makeSchedule($trip);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos", [
+                'files' => [
+                    UploadedFile::fake()->image('a.jpg'),
+                    UploadedFile::fake()->image('b.jpg'),
+                ],
+            ])->assertCreated();
+
+        $sourcePhotoIds = $source->photos()->pluck('schedule_photos.id')->sort()->values()->all();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos/apply", [
+                'schedule_ids' => [$roundB->id, $roundC->id],
+            ])->assertOk()
+            ->assertJsonPath('data.attached', 4)
+            ->assertJsonPath('data.schedules', 2);
+
+        // Same photo records (same R2 objects) are now shared across all three rounds.
+        $this->assertSame($sourcePhotoIds, $roundB->photos()->pluck('schedule_photos.id')->sort()->values()->all());
+        $this->assertSame($sourcePhotoIds, $roundC->photos()->pluck('schedule_photos.id')->sort()->values()->all());
+        $this->assertSame(2, SchedulePhoto::count(), 'No duplicate photo rows/files were created.');
+    }
+
+    public function test_apply_is_idempotent_and_skips_already_attached_photos(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $target = $this->makeSchedule($trip);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos", [
+                'files' => [UploadedFile::fake()->image('a.jpg')],
+            ])->assertCreated();
+
+        $apply = fn () => $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos/apply", [
+                'schedule_ids' => [$target->id],
+            ]);
+
+        $apply()->assertOk()->assertJsonPath('data.attached', 1);
+        $apply()->assertOk()->assertJsonPath('data.attached', 0);
+
+        $this->assertSame(1, $target->photos()->count());
+    }
+
+    public function test_apply_rejects_rounds_from_a_different_trip(): void
+    {
+        $admin = $this->makeAdmin();
+        $source = $this->makeSchedule($this->makeTrip());
+
+        $otherTrip = Trip::create([
+            'title' => 'Other Trip', 'slug' => 'other-trip', 'type' => 'trekking',
+            'location' => 'Pai', 'difficulty' => 'easy', 'duration_days' => 1,
+            'max_participants' => 8, 'price_per_person' => 1000, 'status' => 'active',
+        ]);
+        $foreign = $this->makeSchedule($otherTrip);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos", [
+                'files' => [UploadedFile::fake()->image('a.jpg')],
+            ])->assertCreated();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos/apply", [
+                'schedule_ids' => [$foreign->id],
+            ])->assertStatus(422);
+
+        $this->assertSame(0, $foreign->photos()->count());
+    }
+
+    public function test_deleting_a_shared_photo_from_one_round_keeps_the_file_for_others(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $target = $this->makeSchedule($trip);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos", [
+                'files' => [UploadedFile::fake()->image('a.jpg')],
+            ])->assertCreated();
+
+        $photo = $source->photos()->first();
+        $path = $photo->path;
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos/apply", [
+                'schedule_ids' => [$target->id],
+            ])->assertOk();
+
+        // Delete from the source round only — file must survive because target still uses it.
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/schedules/{$source->id}/photos/{$photo->id}")
+            ->assertOk();
+
+        $this->assertSame(0, $source->photos()->count());
+        $this->assertSame(1, $target->photos()->count());
+        Storage::disk('public')->assertExists($path);
+
+        // Delete from the last round — now the file is removed from disk.
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/schedules/{$target->id}/photos/{$photo->id}")
+            ->assertOk();
+
+        $this->assertSame(0, SchedulePhoto::count());
+        Storage::disk('public')->assertMissing($path);
+    }
+
+    public function test_schedule_reorder_is_independent_per_round(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $target = $this->makeSchedule($trip);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos", [
+                'files' => [
+                    UploadedFile::fake()->image('a.jpg'),
+                    UploadedFile::fake()->image('b.jpg'),
+                ],
+            ])->assertCreated();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos/apply", [
+                'schedule_ids' => [$target->id],
+            ])->assertOk();
+
+        $ids = $source->photos()->pluck('schedule_photos.id')->all();
+        $reversed = array_reverse($ids);
+
+        // Reorder only the target round.
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$target->id}/photos/reorder", [
+                'order' => $reversed,
+            ])->assertOk();
+
+        $this->assertSame($reversed, $target->photos()->pluck('schedule_photos.id')->all());
+        // Source round order is untouched.
+        $this->assertSame($ids, $source->photos()->pluck('schedule_photos.id')->all());
     }
 
     public function test_upload_rejects_non_image_files(): void
