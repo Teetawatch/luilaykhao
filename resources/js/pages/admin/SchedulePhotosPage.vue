@@ -530,11 +530,28 @@ const onDrop = (e) => uploadFiles(Array.from(e.dataTransfer.files || []));
 const isHeic = (file) =>
   /image\/heic|image\/heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
 
+// Load heic2any from a CDN on demand instead of bundling it (it pulls in a large
+// libheif WASM blob and would otherwise be a hard build dependency on the server).
+const HEIC2ANY_CDN = 'https://unpkg.com/heic2any@0.0.4/dist/heic2any.min.js';
+let heicLibPromise = null;
+const loadHeic2any = () => {
+  if (window.heic2any) return Promise.resolve(window.heic2any);
+  if (heicLibPromise) return heicLibPromise;
+  heicLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = HEIC2ANY_CDN;
+    s.onload = () => resolve(window.heic2any);
+    s.onerror = () => { heicLibPromise = null; reject(new Error('โหลดตัวแปลง HEIC ไม่สำเร็จ')); };
+    document.head.appendChild(s);
+  });
+  return heicLibPromise;
+};
+
 // HEIC isn't viewable in most browsers, so convert to full-resolution JPEG in the
 // admin's browser before upload (the server can't decode HEIC). Download stays sharp.
 const convertHeic = async (file) => {
   try {
-    const { default: heic2any } = await import('heic2any');
+    const heic2any = await loadHeic2any();
     const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
     const out = Array.isArray(blob) ? blob[0] : blob;
     const name = file.name.replace(/\.(heic|heif)$/i, '') + '.jpg';
