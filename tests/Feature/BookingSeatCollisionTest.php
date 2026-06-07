@@ -142,6 +142,48 @@ class BookingSeatCollisionTest extends TestCase
     }
 
     /**
+     * การจองที่ถูกคืนเงิน (refunded) ต้องปล่อยที่นั่งคืนเหมือนการยกเลิก —
+     * ก่อนหน้านี้ processRefund ไม่ลบแถว booking_seats ทำให้แถวค้างแล้วไปชน unique constraint
+     * ตอนมีคนจองที่นั่งเดิมซ้ำ (refunded ไม่อยู่ใน active statuses จึงไม่ถูก guard ดักด้วย)
+     */
+    public function test_refunded_booking_frees_the_seat_for_rebooking(): void
+    {
+        Mail::fake();
+
+        $schedule = $this->makeSchedule($this->makeTrip());
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+
+        $service = app(BookingService::class);
+
+        $first = $service->createBooking(
+            userId: $userA->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengersFor(['A2']),
+            seatIds: ['A2'],
+        );
+
+        $service->processRefund($first->fresh(['seats', 'schedule.trip']), 1500, 'คืนเงินเต็มจำนวน');
+
+        // แถวที่นั่งของการจองที่คืนเงินต้องถูกลบ
+        $this->assertSame(0, BookingSeat::where('schedule_id', $schedule->id)
+            ->where('seat_id', 'A2')->count());
+
+        // User B จองที่นั่งเดิมได้ ไม่ชน unique constraint
+        $second = $service->createBooking(
+            userId: $userB->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengersFor(['A2']),
+            seatIds: ['A2'],
+        );
+
+        $this->assertSame(1, BookingSeat::where('schedule_id', $schedule->id)
+            ->where('seat_id', 'A2')->count());
+        $this->assertSame($second->id, BookingSeat::where('schedule_id', $schedule->id)
+            ->where('seat_id', 'A2')->value('booking_id'));
+    }
+
+    /**
      * ตอน Redis ใช้ไม่ได้ (fallback path ใน test env) lock() ต้องไม่แจกล็อกให้ที่นั่งที่ถูกจองจริงไปแล้ว
      * — กันไม่ให้ผู้ใช้เลือกที่นั่งที่เต็มแล้วไปจนถึงหน้าชำระเงินโดยเปล่าประโยชน์
      */

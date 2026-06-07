@@ -1063,178 +1063,197 @@ class AdminController extends Controller
             ->where('booking_ref', $ref)
             ->firstOrFail();
 
-        DB::transaction(function () use ($request, $data, $booking) {
-            $oldSchedule = $booking->schedule;
+        try {
+            DB::transaction(function () use ($request, $data, $booking) {
+                $oldSchedule = $booking->schedule;
 
-            if ($booking->user && isset($data['user'])) {
-                $booking->user->update(array_filter([
-                    'name' => $data['user']['name'] ?? null,
-                    'email' => $data['user']['email'] ?? null,
-                    'phone' => $data['user']['phone'] ?? null,
-                ], fn ($value) => $value !== null));
-            }
-
-            $bookingUpdates = [];
-            foreach ([
-                'status', 'schedule_id', 'pickup_region', 'pickup_point_id', 'group_name', 'group_notes',
-                'qr_code', 'cancellation_reason', 'total_amount', 'paid_amount', 'payment_method',
-                'payment_type', 'installment_count', 'installment_interval_days', 'payment_ref',
-                'paid_at', 'transfer_datetime', 'cancelled_at', 'checked_in_at',
-            ] as $field) {
-                if (array_key_exists($field, $data)) {
-                    $bookingUpdates[$field] = $data[$field];
+                if ($booking->user && isset($data['user'])) {
+                    $booking->user->update(array_filter([
+                        'name' => $data['user']['name'] ?? null,
+                        'email' => $data['user']['email'] ?? null,
+                        'phone' => $data['user']['phone'] ?? null,
+                    ], fn ($value) => $value !== null));
                 }
-            }
 
-            if (array_key_exists('is_join_trip', $data)) {
-                $bookingUpdates['is_join_trip'] = (bool) $data['is_join_trip'];
-            }
-            if (array_key_exists('is_group', $data)) {
-                $bookingUpdates['is_group'] = (bool) $data['is_group'];
-            }
-            if (array_key_exists('checked_in', $data)) {
-                $bookingUpdates['checked_in'] = (bool) $data['checked_in'];
-                if (! $bookingUpdates['checked_in']) {
-                    $bookingUpdates['checked_in_at'] = null;
-                } elseif (empty($bookingUpdates['checked_in_at']) && ! $booking->checked_in_at) {
-                    $bookingUpdates['checked_in_at'] = now();
-                }
-            }
-
-            if (($data['delete_slip'] ?? false) && $booking->slip_path) {
-                Storage::disk('public')->delete($booking->slip_path);
-                $bookingUpdates['slip_path'] = null;
-            }
-            if ($request->hasFile('slip_image')) {
-                if ($booking->slip_path) {
-                    Storage::disk('public')->delete($booking->slip_path);
-                }
-                $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
-            }
-
-            if ($bookingUpdates) {
-                $booking->update($bookingUpdates);
-            }
-
-            if (array_key_exists('passengers', $data)) {
-                $keptIds = [];
-                foreach ($data['passengers'] ?? [] as $passengerData) {
-                    $passengerId = $passengerData['id'] ?? null;
-                    $payload = [
-                        'title' => $passengerData['title'] ?? '',
-                        'name' => $passengerData['name'],
-                        'nickname' => $passengerData['nickname'] ?? null,
-                        'id_card' => $passengerData['id_card'] ?? null,
-                        'phone' => $passengerData['phone'] ?? null,
-                        'email' => $passengerData['email'] ?? null,
-                        'blood_group' => $passengerData['blood_group'] ?? null,
-                        'allergies' => $passengerData['allergies'] ?? null,
-                        'health_notes' => $passengerData['health_notes'] ?? null,
-                        'emergency_contact' => $passengerData['emergency_contact'] ?? null,
-                        'emergency_phone' => $passengerData['emergency_phone'] ?? null,
-                        'dive_cert_level' => $passengerData['dive_cert_level'] ?? null,
-                        'cert_number' => $passengerData['cert_number'] ?? null,
-                        'weight' => $passengerData['weight'] ?? null,
-                        'halal_food' => array_key_exists('halal_food', $passengerData) ? (bool) $passengerData['halal_food'] : null,
-                    ];
-
-                    $passenger = $passengerId
-                        ? $booking->passengers()->whereKey($passengerId)->first()
-                        : null;
-
-                    if ($passenger) {
-                        $passenger->update($payload);
-                    } else {
-                        $passenger = $booking->passengers()->create($payload);
+                $bookingUpdates = [];
+                foreach ([
+                    'status', 'schedule_id', 'pickup_region', 'pickup_point_id', 'group_name', 'group_notes',
+                    'qr_code', 'cancellation_reason', 'total_amount', 'paid_amount', 'payment_method',
+                    'payment_type', 'installment_count', 'installment_interval_days', 'payment_ref',
+                    'paid_at', 'transfer_datetime', 'cancelled_at', 'checked_in_at',
+                ] as $field) {
+                    if (array_key_exists($field, $data)) {
+                        $bookingUpdates[$field] = $data[$field];
                     }
-                    $keptIds[] = $passenger->id;
                 }
 
-                $booking->passengers()->whereNotIn('id', $keptIds ?: [0])->delete();
-            }
+                if (array_key_exists('is_join_trip', $data)) {
+                    $bookingUpdates['is_join_trip'] = (bool) $data['is_join_trip'];
+                }
+                if (array_key_exists('is_group', $data)) {
+                    $bookingUpdates['is_group'] = (bool) $data['is_group'];
+                }
+                if (array_key_exists('checked_in', $data)) {
+                    $bookingUpdates['checked_in'] = (bool) $data['checked_in'];
+                    if (! $bookingUpdates['checked_in']) {
+                        $bookingUpdates['checked_in_at'] = null;
+                    } elseif (empty($bookingUpdates['checked_in_at']) && ! $booking->checked_in_at) {
+                        $bookingUpdates['checked_in_at'] = now();
+                    }
+                }
 
-            if (array_key_exists('seat_ids', $data)) {
-                $booking->seats()->delete();
-                if (! ($booking->fresh()->is_join_trip)) {
-                    foreach (array_values(array_filter($data['seat_ids'] ?? [])) as $index => $seatId) {
-                        $booking->seats()->create([
-                            'schedule_id' => $booking->schedule_id,
-                            'seat_id' => $seatId,
-                            'passenger_name' => $booking->passengers()->skip($index)->first()?->name,
+                if (($data['delete_slip'] ?? false) && $booking->slip_path) {
+                    Storage::disk('public')->delete($booking->slip_path);
+                    $bookingUpdates['slip_path'] = null;
+                }
+                if ($request->hasFile('slip_image')) {
+                    if ($booking->slip_path) {
+                        Storage::disk('public')->delete($booking->slip_path);
+                    }
+                    $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
+                }
+
+                if ($bookingUpdates) {
+                    $booking->update($bookingUpdates);
+                }
+
+                if (array_key_exists('passengers', $data)) {
+                    $keptIds = [];
+                    foreach ($data['passengers'] ?? [] as $passengerData) {
+                        $passengerId = $passengerData['id'] ?? null;
+                        $payload = [
+                            'title' => $passengerData['title'] ?? '',
+                            'name' => $passengerData['name'],
+                            'nickname' => $passengerData['nickname'] ?? null,
+                            'id_card' => $passengerData['id_card'] ?? null,
+                            'phone' => $passengerData['phone'] ?? null,
+                            'email' => $passengerData['email'] ?? null,
+                            'blood_group' => $passengerData['blood_group'] ?? null,
+                            'allergies' => $passengerData['allergies'] ?? null,
+                            'health_notes' => $passengerData['health_notes'] ?? null,
+                            'emergency_contact' => $passengerData['emergency_contact'] ?? null,
+                            'emergency_phone' => $passengerData['emergency_phone'] ?? null,
+                            'dive_cert_level' => $passengerData['dive_cert_level'] ?? null,
+                            'cert_number' => $passengerData['cert_number'] ?? null,
+                            'weight' => $passengerData['weight'] ?? null,
+                            'halal_food' => array_key_exists('halal_food', $passengerData) ? (bool) $passengerData['halal_food'] : null,
+                        ];
+
+                        $passenger = $passengerId
+                            ? $booking->passengers()->whereKey($passengerId)->first()
+                            : null;
+
+                        if ($passenger) {
+                            $passenger->update($payload);
+                        } else {
+                            $passenger = $booking->passengers()->create($payload);
+                        }
+                        $keptIds[] = $passenger->id;
+                    }
+
+                    $booking->passengers()->whereNotIn('id', $keptIds ?: [0])->delete();
+                }
+
+                if (array_key_exists('seat_ids', $data)) {
+                    // ล็อกรอบเดินทางก่อนแก้ที่นั่ง — ลบของเดิมแล้วค่อยตรวจ จึงไม่ติดที่นั่งตัวเอง
+                    TripSchedule::lockForUpdate()->find($booking->schedule_id);
+                    $booking->seats()->delete();
+                    if (! ($booking->fresh()->is_join_trip)) {
+                        $newSeatIds = array_values(array_filter($data['seat_ids'] ?? []));
+
+                        // ที่นั่งเหล่านี้ต้องไม่มีแถวค้างของ booking อื่นเลย (unique constraint ไม่สนสถานะ)
+                        $occupied = BookingSeat::where('schedule_id', $booking->schedule_id)
+                            ->whereIn('seat_id', $newSeatIds)
+                            ->pluck('seat_id')
+                            ->unique()
+                            ->values();
+
+                        if ($occupied->isNotEmpty()) {
+                            throw new \RuntimeException('ที่นั่ง '.$occupied->join(', ').' ถูกจองแล้ว');
+                        }
+
+                        foreach ($newSeatIds as $index => $seatId) {
+                            $booking->seats()->create([
+                                'schedule_id' => $booking->schedule_id,
+                                'seat_id' => $seatId,
+                                'passenger_name' => $booking->passengers()->skip($index)->first()?->name,
+                            ]);
+                        }
+                    }
+                }
+
+                if (($data['payment_type'] ?? $booking->payment_type) === 'full') {
+                    if (array_key_exists('payment_type', $data)) {
+                        foreach ($booking->installmentPayments as $payment) {
+                            if ($payment->slip_path) {
+                                Storage::disk('public')->delete($payment->slip_path);
+                            }
+                        }
+                        $booking->installmentPayments()->delete();
+                        $booking->update([
+                            'installment_count' => null,
+                            'installment_interval_days' => null,
                         ]);
                     }
-                }
-            }
+                } elseif (array_key_exists('installments', $data)) {
+                    $keptInstallmentIds = [];
+                    foreach ($data['installments'] ?? [] as $index => $installmentData) {
+                        $installment = isset($installmentData['id'])
+                            ? $booking->installmentPayments()->whereKey($installmentData['id'])->first()
+                            : null;
 
-            if (($data['payment_type'] ?? $booking->payment_type) === 'full') {
-                if (array_key_exists('payment_type', $data)) {
-                    foreach ($booking->installmentPayments as $payment) {
+                        $paymentPayload = [
+                            'installment_no' => $installmentData['installment_no'],
+                            'amount' => $installmentData['amount'],
+                            'due_date' => $installmentData['due_date'] ?? null,
+                            'status' => $installmentData['status'] ?? 'pending',
+                            'payment_method' => $installmentData['payment_method'] ?? null,
+                            'payment_ref' => $installmentData['payment_ref'] ?? null,
+                            'paid_at' => $installmentData['paid_at'] ?? null,
+                            'transfer_datetime' => $installmentData['transfer_datetime'] ?? null,
+                        ];
+
+                        if ($installment) {
+                            $installment->update($paymentPayload);
+                        } else {
+                            $installment = $booking->installmentPayments()->create($paymentPayload);
+                        }
+
+                        if (($installmentData['delete_slip'] ?? false) && $installment->slip_path) {
+                            Storage::disk('public')->delete($installment->slip_path);
+                            $installment->update(['slip_path' => null]);
+                        }
+
+                        $file = $request->file("installments.$index.slip_image");
+                        if ($file) {
+                            if ($installment->slip_path) {
+                                Storage::disk('public')->delete($installment->slip_path);
+                            }
+                            $installment->update([
+                                'slip_path' => $file->store('slips/'.date('Y/m'), 'public'),
+                            ]);
+                        }
+
+                        $keptInstallmentIds[] = $installment->id;
+                    }
+
+                    $removedPayments = $booking->installmentPayments()->whereNotIn('id', $keptInstallmentIds ?: [0])->get();
+                    foreach ($removedPayments as $payment) {
                         if ($payment->slip_path) {
                             Storage::disk('public')->delete($payment->slip_path);
                         }
+                        $payment->delete();
                     }
-                    $booking->installmentPayments()->delete();
-                    $booking->update([
-                        'installment_count' => null,
-                        'installment_interval_days' => null,
-                    ]);
-                }
-            } elseif (array_key_exists('installments', $data)) {
-                $keptInstallmentIds = [];
-                foreach ($data['installments'] ?? [] as $index => $installmentData) {
-                    $installment = isset($installmentData['id'])
-                        ? $booking->installmentPayments()->whereKey($installmentData['id'])->first()
-                        : null;
-
-                    $paymentPayload = [
-                        'installment_no' => $installmentData['installment_no'],
-                        'amount' => $installmentData['amount'],
-                        'due_date' => $installmentData['due_date'] ?? null,
-                        'status' => $installmentData['status'] ?? 'pending',
-                        'payment_method' => $installmentData['payment_method'] ?? null,
-                        'payment_ref' => $installmentData['payment_ref'] ?? null,
-                        'paid_at' => $installmentData['paid_at'] ?? null,
-                        'transfer_datetime' => $installmentData['transfer_datetime'] ?? null,
-                    ];
-
-                    if ($installment) {
-                        $installment->update($paymentPayload);
-                    } else {
-                        $installment = $booking->installmentPayments()->create($paymentPayload);
-                    }
-
-                    if (($installmentData['delete_slip'] ?? false) && $installment->slip_path) {
-                        Storage::disk('public')->delete($installment->slip_path);
-                        $installment->update(['slip_path' => null]);
-                    }
-
-                    $file = $request->file("installments.$index.slip_image");
-                    if ($file) {
-                        if ($installment->slip_path) {
-                            Storage::disk('public')->delete($installment->slip_path);
-                        }
-                        $installment->update([
-                            'slip_path' => $file->store('slips/'.date('Y/m'), 'public'),
-                        ]);
-                    }
-
-                    $keptInstallmentIds[] = $installment->id;
                 }
 
-                $removedPayments = $booking->installmentPayments()->whereNotIn('id', $keptInstallmentIds ?: [0])->get();
-                foreach ($removedPayments as $payment) {
-                    if ($payment->slip_path) {
-                        Storage::disk('public')->delete($payment->slip_path);
-                    }
-                    $payment->delete();
+                $booking->fresh(['schedule'])->schedule?->syncBookedSeats();
+                if ($oldSchedule && $oldSchedule->id !== $booking->schedule_id) {
+                    $oldSchedule->syncBookedSeats();
                 }
-            }
-
-            $booking->fresh(['schedule'])->schedule?->syncBookedSeats();
-            if ($oldSchedule && $oldSchedule->id !== $booking->schedule_id) {
-                $oldSchedule->syncBookedSeats();
-            }
-        });
+            });
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
 
         $booking = Booking::with([
             'schedule.trip',
@@ -1399,83 +1418,111 @@ class AdminController extends Controller
         }
         $paymentRef = $isPaid ? 'PAY-MANUAL-'.strtoupper(uniqid()) : null;
 
-        $booking = Booking::create([
-            'booking_ref' => Booking::generateRef(),
-            'user_id' => $user->id,
-            'schedule_id' => $request->schedule_id,
-            'pickup_region' => $pickupPoint?->region ?: $request->input('pickup_region'),
-            'pickup_point_id' => $pickupPoint?->id,
-            'is_group' => $participantCount > 1,
-            'status' => $request->status,
-            'total_amount' => $totalAmount,
-            'paid_amount' => $paidAmount,
-            'payment_type' => $paymentType,
-            'installment_count' => $installmentCount,
-            'installment_interval_days' => $installmentIntervalDays,
-            'payment_method' => $request->input('payment_method', 'promptpay'),
-            'payment_ref' => $paymentRef,
-            'paid_at' => $isPaid ? now() : null,
-            'slip_path' => $slipPath,
-            'transfer_datetime' => $transferDt,
-            'qr_code' => Booking::generateQrCode(),
-            'is_join_trip' => $isJoinTrip,
-        ]);
+        try {
+            $booking = DB::transaction(function () use (
+                $request, $schedule, $user, $pickupPoint, $participantCount, $totalAmount,
+                $paidAmount, $paymentType, $installmentCount, $installmentIntervalDays,
+                $isPaid, $paymentRef, $slipPath, $transferDt, $isJoinTrip, $passengers, $seatIds
+            ) {
+                // ล็อกรอบเดินทางแล้วตรวจที่นั่งซ้ำใต้ lock — ทำให้ check-แล้ว-insert เป็น atomic
+                // กัน race กับการจองอื่น (ของลูกค้า/แอดมินคนอื่น) ที่ทำให้ชน unique constraint
+                $lockedSchedule = TripSchedule::lockForUpdate()->findOrFail($schedule->id);
 
-        $passengerModels = $passengers->map(function ($passenger) use ($booking) {
-            return BookingPassenger::create([
-                'booking_id' => $booking->id,
-                'title' => $passenger['title'] ?? '',
-                'name' => $passenger['name'],
-                'nickname' => $passenger['nickname'] ?? null,
-                'phone' => $passenger['phone'] ?? null,
-                'email' => $passenger['email'] ?? null,
-                'id_card' => $passenger['id_card'] ?? null,
-                'blood_group' => $passenger['blood_group'] ?? null,
-                'allergies' => $passenger['allergies'] ?? null,
-                'health_notes' => $passenger['health_notes'] ?? null,
-                'emergency_contact' => $passenger['emergency_contact'] ?? null,
-                'emergency_phone' => $passenger['emergency_phone'] ?? null,
-                'dive_cert_level' => $passenger['dive_cert_level'] ?? null,
-                'cert_number' => $passenger['cert_number'] ?? null,
-                'weight' => $passenger['weight'] ?? null,
-                'halal_food' => (bool) ($passenger['halal_food'] ?? false),
-            ]);
-        });
+                if (! $isJoinTrip && $seatIds->isNotEmpty()) {
+                    $occupied = BookingSeat::where('schedule_id', $lockedSchedule->id)
+                        ->whereIn('seat_id', $seatIds->all())
+                        ->pluck('seat_id')
+                        ->unique()
+                        ->values();
 
-        if (! $isJoinTrip && $seatIds->isNotEmpty()) {
-            foreach ($seatIds as $index => $seatId) {
-                BookingSeat::create([
-                    'booking_id' => $booking->id,
-                    'schedule_id' => $schedule->id,
-                    'seat_id' => $seatId,
-                    'passenger_name' => $passengerModels->get($index)?->name,
+                    if ($occupied->isNotEmpty()) {
+                        throw new \RuntimeException('ที่นั่ง '.$occupied->join(', ').' ถูกจองแล้ว');
+                    }
+                }
+
+                $booking = Booking::create([
+                    'booking_ref' => Booking::generateRef(),
+                    'user_id' => $user->id,
+                    'schedule_id' => $request->schedule_id,
+                    'pickup_region' => $pickupPoint?->region ?: $request->input('pickup_region'),
+                    'pickup_point_id' => $pickupPoint?->id,
+                    'is_group' => $participantCount > 1,
+                    'status' => $request->status,
+                    'total_amount' => $totalAmount,
+                    'paid_amount' => $paidAmount,
+                    'payment_type' => $paymentType,
+                    'installment_count' => $installmentCount,
+                    'installment_interval_days' => $installmentIntervalDays,
+                    'payment_method' => $request->input('payment_method', 'promptpay'),
+                    'payment_ref' => $paymentRef,
+                    'paid_at' => $isPaid ? now() : null,
+                    'slip_path' => $slipPath,
+                    'transfer_datetime' => $transferDt,
+                    'qr_code' => Booking::generateQrCode(),
+                    'is_join_trip' => $isJoinTrip,
                 ]);
-            }
+
+                $passengerModels = $passengers->map(function ($passenger) use ($booking) {
+                    return BookingPassenger::create([
+                        'booking_id' => $booking->id,
+                        'title' => $passenger['title'] ?? '',
+                        'name' => $passenger['name'],
+                        'nickname' => $passenger['nickname'] ?? null,
+                        'phone' => $passenger['phone'] ?? null,
+                        'email' => $passenger['email'] ?? null,
+                        'id_card' => $passenger['id_card'] ?? null,
+                        'blood_group' => $passenger['blood_group'] ?? null,
+                        'allergies' => $passenger['allergies'] ?? null,
+                        'health_notes' => $passenger['health_notes'] ?? null,
+                        'emergency_contact' => $passenger['emergency_contact'] ?? null,
+                        'emergency_phone' => $passenger['emergency_phone'] ?? null,
+                        'dive_cert_level' => $passenger['dive_cert_level'] ?? null,
+                        'cert_number' => $passenger['cert_number'] ?? null,
+                        'weight' => $passenger['weight'] ?? null,
+                        'halal_food' => (bool) ($passenger['halal_food'] ?? false),
+                    ]);
+                });
+
+                if (! $isJoinTrip && $seatIds->isNotEmpty()) {
+                    foreach ($seatIds as $index => $seatId) {
+                        BookingSeat::create([
+                            'booking_id' => $booking->id,
+                            'schedule_id' => $lockedSchedule->id,
+                            'seat_id' => $seatId,
+                            'passenger_name' => $passengerModels->get($index)?->name,
+                        ]);
+                    }
+                }
+
+                if ($paymentType === 'installment' && $isPaid) {
+                    $perInstallment = round($totalAmount / $installmentCount, 2);
+                    for ($i = 1; $i <= $installmentCount; $i++) {
+                        $amount = $i === $installmentCount
+                            ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
+                            : $perInstallment;
+
+                        InstallmentPayment::create([
+                            'booking_id' => $booking->id,
+                            'installment_no' => $i,
+                            'amount' => $amount,
+                            'due_date' => now()->copy()->addDays(($i - 1) * $installmentIntervalDays)->toDateString(),
+                            'status' => $i === 1 ? 'paid' : 'pending',
+                            'payment_method' => $i === 1 ? $booking->payment_method : null,
+                            'payment_ref' => $i === 1 ? $paymentRef : null,
+                            'paid_at' => $i === 1 ? $booking->paid_at : null,
+                            'slip_path' => $i === 1 ? $slipPath : null,
+                            'transfer_datetime' => $i === 1 ? $transferDt : null,
+                        ]);
+                    }
+                }
+
+                $lockedSchedule->syncBookedSeats();
+
+                return $booking;
+            });
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage(), 422);
         }
-
-        if ($paymentType === 'installment' && $isPaid) {
-            $perInstallment = round($totalAmount / $installmentCount, 2);
-            for ($i = 1; $i <= $installmentCount; $i++) {
-                $amount = $i === $installmentCount
-                    ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
-                    : $perInstallment;
-
-                InstallmentPayment::create([
-                    'booking_id' => $booking->id,
-                    'installment_no' => $i,
-                    'amount' => $amount,
-                    'due_date' => now()->copy()->addDays(($i - 1) * $installmentIntervalDays)->toDateString(),
-                    'status' => $i === 1 ? 'paid' : 'pending',
-                    'payment_method' => $i === 1 ? $booking->payment_method : null,
-                    'payment_ref' => $i === 1 ? $paymentRef : null,
-                    'paid_at' => $i === 1 ? $booking->paid_at : null,
-                    'slip_path' => $i === 1 ? $slipPath : null,
-                    'transfer_datetime' => $i === 1 ? $transferDt : null,
-                ]);
-            }
-        }
-
-        $schedule->syncBookedSeats();
 
         $booking->load(['schedule.trip', 'schedule.vehicle', 'pickupPoint', 'user', 'passengers', 'seats', 'installmentPayments']);
 

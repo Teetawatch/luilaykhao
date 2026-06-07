@@ -650,6 +650,8 @@ class BookingService
     public function processRefund(Booking $booking, float $refundAmount, ?string $note = null): Booking
     {
         $refunded = DB::transaction(function () use ($booking, $refundAmount, $note) {
+            $booking->loadMissing('seats');
+
             $booking->update([
                 'status' => 'refunded',
                 'refund_status' => 'refunded',
@@ -659,8 +661,16 @@ class BookingService
                 'cancelled_at' => $booking->cancelled_at ?? now(),
             ]);
 
+            // ปล่อยที่นั่งคืน — booking ที่ refund แล้วต้องไม่ถือที่นั่งไว้ (เหมือน cancelBooking)
+            // มิฉะนั้นแถว booking_seats จะค้างและไปชน unique constraint ตอนมีคนจองที่นั่งเดิมซ้ำ
+            foreach ($booking->seats as $seat) {
+                $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
+            }
+            $booking->seats()->delete();
+
             // Sync seats back
-            $booking->schedule()?->syncBookedSeats();
+            $schedule = $booking->schedule()->lockForUpdate()->first();
+            $schedule?->syncBookedSeats();
 
             return $booking->fresh(['passengers', 'schedule.trip']);
         });
