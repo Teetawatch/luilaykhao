@@ -2,13 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\BookingSeat;
 use App\Models\TripSchedule;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Log;
 
 class SeatLockService
 {
     private const LOCK_TTL = 600;          // 10 minutes base
+
     private const LOCK_TTL_PER_SEAT = 300; // +5 minutes per additional seat
 
     public static function lockTtlSeconds(int $seatCount = 1): int
@@ -20,6 +21,7 @@ class SeatLockService
     {
         try {
             Redis::ping();
+
             return true;
         } catch (\Throwable $e) {
             return false;
@@ -28,7 +30,17 @@ class SeatLockService
 
     public function lock(int $scheduleId, string $seatId, int $userId, array $metadata = [], int $ttlSeconds = self::LOCK_TTL): array
     {
-        if (!$this->redisAvailable()) {
+        if (! $this->redisAvailable()) {
+            // ไม่มี Redis ก็ทำ soft-lock แบบกันชนระหว่างผู้ใช้ไม่ได้ (ไม่มี shared store)
+            // แต่ยังกันไม่ให้แจกล็อกบนที่นั่งที่ "ถูกจองจริง" แล้วได้ โดยอ่านจาก booking_seats ตรง ๆ
+            // ส่วนการกันจองซ้ำตอน commit อาศัย DB guard + lockForUpdate ใน BookingService
+            if ($this->isSeatBooked($scheduleId, $seatId)) {
+                return [
+                    'locked' => false,
+                    'message' => 'ที่นั่งนี้ถูกจองไปแล้ว',
+                ];
+            }
+
             return [
                 'locked' => true,
                 'expires_at' => now()->addSeconds($ttlSeconds)->toISOString(),
@@ -49,6 +61,7 @@ class SeatLockService
         $lockedBy = $this->lockUserId(Redis::get($key));
         if ($lockedBy === $userId) {
             Redis::setex($key, $ttlSeconds, $value);
+
             return [
                 'locked' => true,
                 'expires_at' => now()->addSeconds($ttlSeconds)->toISOString(),
@@ -67,10 +80,11 @@ class SeatLockService
 
         foreach ($seatIds as $seatId) {
             $result = $this->lock($scheduleId, $seatId, $userId, $metadata, $ttlSeconds);
-            if (!$result['locked']) {
+            if (! $result['locked']) {
                 foreach ($lockedSeats as $lockedSeatId) {
                     $this->unlock($scheduleId, $lockedSeatId, $userId);
                 }
+
                 return [
                     'locked' => false,
                     'message' => "ที่นั่ง {$seatId} ถูกล็อคอยู่แล้ว",
@@ -89,7 +103,7 @@ class SeatLockService
 
     public function unlock(int $scheduleId, string $seatId, int $userId): bool
     {
-        if (!$this->redisAvailable()) {
+        if (! $this->redisAvailable()) {
             return true;
         }
 
@@ -98,6 +112,7 @@ class SeatLockService
 
         if ($lockedBy === $userId) {
             Redis::del($key);
+
             return true;
         }
 
@@ -112,18 +127,19 @@ class SeatLockService
                 $count++;
             }
         }
+
         return $count;
     }
 
     public function activeLocksForUser(int $userId): array
     {
-        if (!$this->redisAvailable()) {
+        if (! $this->redisAvailable()) {
             return [];
         }
 
         $groups = [];
         foreach (Redis::keys('seat_lock:*') as $key) {
-            if (!preg_match('/seat_lock:(\d+):(.+)$/', (string) $key, $matches)) {
+            if (! preg_match('/seat_lock:(\d+):(.+)$/', (string) $key, $matches)) {
                 continue;
             }
 
@@ -167,7 +183,7 @@ class SeatLockService
         return collect($groups)
             ->map(function (array $lock) use ($schedules) {
                 $schedule = $schedules->get($lock['schedule_id']);
-                if (!$schedule) {
+                if (! $schedule) {
                     return null;
                 }
 
@@ -212,7 +228,7 @@ class SeatLockService
         $activeLock = collect($this->activeLocksForUser($userId))
             ->firstWhere('schedule_id', $scheduleId);
 
-        if (!$activeLock) {
+        if (! $activeLock) {
             return [
                 'unlocked_count' => 0,
                 'seat_ids' => [],
@@ -239,7 +255,7 @@ class SeatLockService
 
     public function forceUnlock(int $scheduleId, string $seatId): void
     {
-        if (!$this->redisAvailable()) {
+        if (! $this->redisAvailable()) {
             return;
         }
         Redis::del($this->seatKey($scheduleId, $seatId));
@@ -248,9 +264,9 @@ class SeatLockService
     public function getSeatStatus(int $scheduleId, array $allSeatIds, ?int $userId = null): array
     {
         $statuses = [];
-        $bookedSeats = \App\Models\BookingSeat::where('schedule_id', $scheduleId)
+        $bookedSeats = BookingSeat::where('schedule_id', $scheduleId)
             ->whereHas('booking', fn ($query) => $query
-                ->whereIn('status', \App\Models\TripSchedule::ACTIVE_BOOKING_STATUSES)
+                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
                 ->where('is_join_trip', false))
             ->get(['seat_id', 'passenger_name'])
             ->keyBy('seat_id');
@@ -277,6 +293,7 @@ class SeatLockService
                         'locked_until' => null,
                         'locked_by_current_user' => false,
                     ];
+
                     continue;
                 }
 
@@ -304,11 +321,26 @@ class SeatLockService
 
     public function isLockedByUser(int $scheduleId, string $seatId, int $userId): bool
     {
-        if (!$this->redisAvailable()) {
+        if (! $this->redisAvailable()) {
             return true;
         }
         $key = $this->seatKey($scheduleId, $seatId);
+
         return $this->lockUserId(Redis::get($key)) === $userId;
+    }
+
+    /**
+     * ที่นั่งถูกจองจริงหรือยัง (อ่านจาก source of truth = booking_seats ของการจองที่ยัง active)
+     * ใช้เป็น fallback ตอน Redis ใช้ไม่ได้
+     */
+    private function isSeatBooked(int $scheduleId, string $seatId): bool
+    {
+        return BookingSeat::where('schedule_id', $scheduleId)
+            ->where('seat_id', $seatId)
+            ->whereHas('booking', fn ($query) => $query
+                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+                ->where('is_join_trip', false))
+            ->exists();
     }
 
     private function seatKey(int $scheduleId, string $seatId): string
@@ -346,6 +378,7 @@ class SeatLockService
     {
         $payload = $this->lockPayload($value);
         $userId = $payload['user_id'] ?? null;
+
         return $userId === null ? null : (int) $userId;
     }
 }

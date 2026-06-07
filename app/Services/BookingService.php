@@ -61,6 +61,21 @@ class BookingService
                         throw new \Exception("ที่นั่ง {$seatId} ไม่ได้ถูกล็อคโดยคุณ");
                     }
                 }
+
+                // ตรวจกับ booking_seats ซึ่งเป็น source of truth จริง — Redis lock เป็นของชั่วคราว
+                // (TTL หมด/ล่ม/ถูก forceUnlock หลังจองสำเร็จ) จึงกันที่นั่งซ้ำไม่ได้เสมอ
+                // เราถือ lockForUpdate ของ schedule อยู่แล้ว การอ่านตรงนี้จึง race-safe กับการจองพร้อมกันบนรอบเดียวกัน
+                $alreadyBooked = BookingSeat::where('schedule_id', $scheduleId)
+                    ->whereIn('seat_id', $seatIds)
+                    ->whereHas('booking', fn ($query) => $query
+                        ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES))
+                    ->pluck('seat_id')
+                    ->unique()
+                    ->values();
+
+                if ($alreadyBooked->isNotEmpty()) {
+                    throw new \Exception('ที่นั่ง '.$alreadyBooked->join(', ').' ถูกจองไปแล้ว กรุณาเลือกที่นั่งอื่น');
+                }
             }
 
             // Use join trip price if applicable
