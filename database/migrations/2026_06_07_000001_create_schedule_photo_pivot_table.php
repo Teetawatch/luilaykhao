@@ -14,40 +14,50 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('schedule_photo', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('schedule_id')->constrained('trip_schedules')->cascadeOnDelete();
-            $table->foreignId('photo_id')->constrained('schedule_photos')->cascadeOnDelete();
-            $table->unsignedInteger('sort_order')->default(0);
-            $table->timestamps();
+        // Idempotent: a previous run may have created/backfilled the pivot before
+        // failing on the column drop (MySQL won't drop an index a foreign key needs).
+        if (! Schema::hasTable('schedule_photo')) {
+            Schema::create('schedule_photo', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('schedule_id')->constrained('trip_schedules')->cascadeOnDelete();
+                $table->foreignId('photo_id')->constrained('schedule_photos')->cascadeOnDelete();
+                $table->unsignedInteger('sort_order')->default(0);
+                $table->timestamps();
 
-            $table->unique(['schedule_id', 'photo_id']);
-            $table->index(['schedule_id', 'sort_order']);
-        });
+                $table->unique(['schedule_id', 'photo_id']);
+                $table->index(['schedule_id', 'sort_order']);
+            });
+        }
 
-        // Backfill the pivot from the existing one-to-one rows.
-        DB::table('schedule_photos')->orderBy('id')->chunk(200, function ($rows) {
-            $now = now();
-            $insert = $rows->map(fn ($row) => [
-                'schedule_id' => $row->schedule_id,
-                'photo_id' => $row->id,
-                'sort_order' => $row->sort_order ?? 0,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ])->all();
+        // While the legacy column still exists: backfill the pivot, then drop it.
+        if (Schema::hasColumn('schedule_photos', 'schedule_id')) {
+            DB::table('schedule_photos')->orderBy('id')->chunk(200, function ($rows) {
+                $now = now();
+                $insert = $rows->map(fn ($row) => [
+                    'schedule_id' => $row->schedule_id,
+                    'photo_id' => $row->id,
+                    'sort_order' => $row->sort_order ?? 0,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->all();
 
-            if ($insert) {
-                DB::table('schedule_photo')->insert($insert);
-            }
-        });
+                if ($insert) {
+                    // insertOrIgnore + the unique(schedule_id, photo_id) key make a
+                    // re-run safe if the pivot was already partially backfilled.
+                    DB::table('schedule_photo')->insertOrIgnore($insert);
+                }
+            });
 
-        // The link now lives on the pivot; drop the columns from the photo record.
-        // The composite index must go first or SQLite refuses to drop schedule_id.
-        Schema::table('schedule_photos', function (Blueprint $table) {
-            $table->dropIndex(['schedule_id', 'sort_order']);
-            $table->dropConstrainedForeignId('schedule_id');
-            $table->dropColumn('sort_order');
-        });
+            // The link now lives on the pivot; drop the columns from the photo record.
+            // Order matters on MySQL: the foreign key relies on the composite index,
+            // so the FK must be dropped before the index, and the index before the
+            // columns. SQLite rebuilds the table and tolerates the same order.
+            Schema::table('schedule_photos', function (Blueprint $t) {
+                $t->dropForeign(['schedule_id']);
+                $t->dropIndex(['schedule_id', 'sort_order']);
+                $t->dropColumn(['schedule_id', 'sort_order']);
+            });
+        }
     }
 
     public function down(): void
