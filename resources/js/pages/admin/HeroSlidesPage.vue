@@ -190,6 +190,51 @@
       </div>
     </div>
 
+    <!-- Crop Modal -->
+    <div class="modal-overlay" v-if="showCropper" @click.self="closeCropper">
+      <div class="modal-card" style="max-width:720px">
+        <div class="modal-header">
+          <h2>ปรับขนาดภาพ (16:9)</h2>
+          <button class="modal-close" @click="closeCropper">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13px;color:#6b7280;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+            <span class="material-symbols-rounded" style="font-size:18px;color:var(--color-accent)">crop</span>
+            ลากเพื่อย้ายตำแหน่ง และเลื่อนสกอลล์/บีบนิ้วเพื่อซูม เลือกเฉพาะส่วนที่ต้องการให้แสดง
+          </p>
+          <div class="cropper-wrap">
+            <img ref="cropImg" :src="cropImageSrc" alt="ครอปภาพ" />
+          </div>
+          <div class="cropper-tools">
+            <button type="button" class="btn-icon" @click="cropperInstance?.zoom(0.1)" title="ซูมเข้า">
+              <span class="material-symbols-rounded" style="font-size:18px">zoom_in</span>
+            </button>
+            <button type="button" class="btn-icon" @click="cropperInstance?.zoom(-0.1)" title="ซูมออก">
+              <span class="material-symbols-rounded" style="font-size:18px">zoom_out</span>
+            </button>
+            <button type="button" class="btn-icon" @click="cropperInstance?.rotate(-90)" title="หมุนซ้าย">
+              <span class="material-symbols-rounded" style="font-size:18px">rotate_left</span>
+            </button>
+            <button type="button" class="btn-icon" @click="cropperInstance?.rotate(90)" title="หมุนขวา">
+              <span class="material-symbols-rounded" style="font-size:18px">rotate_right</span>
+            </button>
+            <button type="button" class="btn-icon" @click="cropperInstance?.reset()" title="รีเซ็ต">
+              <span class="material-symbols-rounded" style="font-size:18px">restart_alt</span>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" @click="closeCropper">ยกเลิก</button>
+          <button type="button" class="btn-primary" @click="confirmCrop" :disabled="cropping">
+            <span class="material-symbols-rounded animate-spin" style="font-size:16px" v-if="cropping">sync</span>
+            ใช้ภาพนี้
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Delete Confirm Modal -->
     <div class="modal-overlay" v-if="showDeleteConfirm" @click.self="showDeleteConfirm = false">
       <div class="modal-card modal-sm">
@@ -223,7 +268,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import Cropper from 'cropperjs';
+import 'cropperjs/dist/cropper.css';
 import api from '../../../js/lib/axios';
 
 const slides = ref([]);
@@ -239,6 +286,15 @@ const uploadPreview = ref('');
 const uploading = ref(false);
 const uploadProgress = ref(0);
 const urlPreviewError = ref(false);
+
+// ─── Crop state ───
+const HERO_ASPECT = 16 / 9;
+const showCropper = ref(false);
+const cropImageSrc = ref('');
+const cropImg = ref(null);
+const cropping = ref(false);
+let cropperInstance = null;
+let cropObjectUrl = '';
 
 const form = reactive({
   image_url: '',
@@ -257,6 +313,11 @@ const fetchSlides = async () => {
 };
 
 onMounted(fetchSlides);
+
+onBeforeUnmount(() => {
+  cropperInstance?.destroy();
+  if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+});
 
 const openForm = (slide = null) => {
   editing.value = slide;
@@ -277,12 +338,71 @@ const openForm = (slide = null) => {
 
 const handleDrop = (e) => {
   const file = e.dataTransfer.files[0];
-  if (file) uploadFile(file);
+  if (file) openCropper(file);
 };
 
 const handleFileSelect = (e) => {
   const file = e.target.files[0];
-  if (file) uploadFile(file);
+  if (file) openCropper(file);
+};
+
+// เปิดกล่อง Crop ทุกครั้งที่เลือกรูป เพื่อจัดองค์ประกอบให้พอดีสัดส่วน 16:9
+const openCropper = async (file) => {
+  if (!file.type.startsWith('image/')) {
+    alert('รองรับเฉพาะไฟล์รูปภาพเท่านั้น');
+    return;
+  }
+  if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+  cropObjectUrl = URL.createObjectURL(file);
+  cropImageSrc.value = cropObjectUrl;
+  showCropper.value = true;
+  await nextTick();
+  cropperInstance?.destroy();
+  cropperInstance = new Cropper(cropImg.value, {
+    aspectRatio: HERO_ASPECT,
+    viewMode: 1,
+    autoCropArea: 1,
+    background: false,
+    responsive: true,
+    movable: true,
+    zoomable: true,
+  });
+};
+
+const closeCropper = () => {
+  cropperInstance?.destroy();
+  cropperInstance = null;
+  showCropper.value = false;
+  cropImageSrc.value = '';
+  if (cropObjectUrl) {
+    URL.revokeObjectURL(cropObjectUrl);
+    cropObjectUrl = '';
+  }
+  if (fileInput.value) fileInput.value.value = '';
+};
+
+const confirmCrop = () => {
+  if (!cropperInstance) return;
+  cropping.value = true;
+  const canvas = cropperInstance.getCroppedCanvas({
+    maxWidth: 2560,
+    maxHeight: 1440,
+    imageSmoothingQuality: 'high',
+  });
+  canvas.toBlob(
+    (blob) => {
+      cropping.value = false;
+      if (!blob) {
+        alert('ครอปภาพไม่สำเร็จ กรุณาลองใหม่');
+        return;
+      }
+      const file = new File([blob], `hero-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      closeCropper();
+      uploadFile(file);
+    },
+    'image/jpeg',
+    0.92,
+  );
 };
 
 const clearUpload = () => {
@@ -306,8 +426,11 @@ const uploadFile = async (file) => {
       },
     });
     form.image_url = res.data.data?.url ?? res.data.url;
-  } catch {
-    alert('อัปโหลดภาพไม่สำเร็จ');
+  } catch (e) {
+    const msg = e.response?.data?.errors?.file?.[0]
+      ?? e.response?.data?.message
+      ?? 'อัปโหลดภาพไม่สำเร็จ';
+    alert(msg);
     clearUpload();
   } finally {
     uploading.value = false;
@@ -509,6 +632,25 @@ const moveSlide = async (index, direction) => {
   border-radius: 10px;
   border: 1px solid #e5e7eb;
   display: block;
+}
+
+/* ─── Cropper ───────────────────────────── */
+.cropper-wrap {
+  width: 100%;
+  max-height: 60vh;
+  background: #1f2937;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.cropper-wrap img {
+  display: block;
+  max-width: 100%;
+}
+.cropper-tools {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 /* ─── Toggle switch ────────────────────── */
