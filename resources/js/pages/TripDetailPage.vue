@@ -563,25 +563,25 @@
                 </div>
               </div>
 
-              <!-- Urgency Card -->
-              <div v-if="urgentSchedules.length" class="flex flex-col gap-3">
-                <div
-                  v-for="s in urgentSchedules"
-                  :key="s.id"
-                  class="bg-[#FFF8EE] p-6 rounded-[1.5rem] border border-[#C8963E]/30 flex items-center gap-5 shadow-sm animate-fade-in-up"
-                >
-                  <div class="w-14 h-14 rounded-full bg-[#C8963E] flex items-center justify-center text-white shrink-0 shadow-md">
-                    <span class="material-symbols-rounded text-[28px]">local_fire_department</span>
+              <!-- Urgency Card — แสดงเฉพาะรอบที่ใกล้จะถึงที่สุด -->
+              <div
+                v-if="urgentSchedule"
+                class="relative overflow-hidden bg-[#FFF8EE] p-5 rounded-[1.5rem] border border-[#C8963E]/30 shadow-sm animate-fade-in-up"
+              >
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 rounded-full bg-[#C8963E] flex items-center justify-center text-white shrink-0 shadow-md">
+                    <span class="material-symbols-rounded text-[24px]">local_fire_department</span>
                   </div>
-                  <div>
-                    <p class="font-extrabold text-[var(--color-text-dark)] text-lg mb-0.5">จองด่วน!</p>
-                    <p class="text-sm font-bold text-[#A87830]">เหลือเพียง {{ s.available_seats }} ที่นั่งสุดท้าย</p>
-                    <p class="text-xs font-semibold text-[#A87830]/80 mt-0.5 flex items-center gap-1">
-                      <span class="material-symbols-rounded text-[13px]">calendar_today</span>
-                      ทริปวันที่ {{ formatDate(s.departure_date) }}
-                      <template v-if="s.return_date && s.return_date !== s.departure_date">
-                        &ndash; {{ formatDate(s.return_date) }}
-                      </template>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 mb-0.5">
+                      <p class="font-extrabold text-[var(--color-text-dark)] text-base leading-none">จองด่วน!</p>
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#C8963E]/15 text-[11px] font-bold text-[#A87830]">
+                        <span class="material-symbols-rounded text-[12px]">calendar_today</span>
+                        {{ formatDate(urgentSchedule.departure_date) }}
+                      </span>
+                    </div>
+                    <p class="text-sm font-bold text-[#A87830]">
+                      เหลือเพียง {{ urgentSchedule.available_seats }} ที่นั่งสุดท้าย
                     </p>
                   </div>
                 </div>
@@ -1631,11 +1631,18 @@ const highlights = computed(() => {
 
 /* Inclusions/Exclusions are now directly from trip data */
 
-const urgentSchedules = computed(() => {
-  if (!schedules.value.length) return [];
+const urgentSchedule = computed(() => {
+  if (!schedules.value.length) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   return schedules.value
-    .filter(s => !s.join_trip_enabled && hasAvailableSeats(s) && s.available_seats <= 5)
-    .sort((a, b) => a.available_seats - b.available_seats);
+    .filter(s =>
+      !s.join_trip_enabled &&
+      hasAvailableSeats(s) &&
+      s.available_seats <= 5 &&
+      new Date(s.departure_date) >= today
+    )
+    .sort((a, b) => new Date(a.departure_date) - new Date(b.departure_date))[0] || null;
 });
 
 async function openSeatMapPreview(schedule) {
