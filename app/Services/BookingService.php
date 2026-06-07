@@ -56,6 +56,17 @@ class BookingService
 
             // Verify seat locks if seat-based booking and NOT join trip
             if (! $isJoinTrip && ! empty($seatIds)) {
+                // กันที่นั่งซ้ำ "ภายในคำขอเดียวกัน" — ถ้า seat_ids มี A2 ซ้ำสองครั้ง
+                // insert ตัวที่สองจะชนตัวแรกในธุรกรรมเดียวกัน (unique constraint) แล้ว rollback ทั้งก้อน
+                $duplicateSeatIds = collect($seatIds)
+                    ->duplicates()
+                    ->unique()
+                    ->values();
+
+                if ($duplicateSeatIds->isNotEmpty()) {
+                    throw new \Exception('เลือกที่นั่งซ้ำกัน: '.$duplicateSeatIds->join(', ').' กรุณาเลือกที่นั่งใหม่');
+                }
+
                 foreach ($seatIds as $seatId) {
                     if (! $this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId)) {
                         throw new \Exception("ที่นั่ง {$seatId} ไม่ได้ถูกล็อคโดยคุณ");

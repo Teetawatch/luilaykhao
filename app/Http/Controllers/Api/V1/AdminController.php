@@ -1161,6 +1161,12 @@ class AdminController extends Controller
                     if (! ($booking->fresh()->is_join_trip)) {
                         $newSeatIds = array_values(array_filter($data['seat_ids'] ?? []));
 
+                        // กันที่นั่งซ้ำภายในคำขอเดียว ก่อนตรวจกับแถวอื่น
+                        $duplicateSeatIds = collect($newSeatIds)->duplicates()->unique()->values();
+                        if ($duplicateSeatIds->isNotEmpty()) {
+                            throw new \RuntimeException('เลือกที่นั่งซ้ำกัน: '.$duplicateSeatIds->join(', ').' กรุณาเลือกที่นั่งใหม่');
+                        }
+
                         // ที่นั่งเหล่านี้ต้องไม่มีแถวค้างของ booking อื่นเลย (unique constraint ไม่สนสถานะ)
                         $occupied = BookingSeat::where('schedule_id', $booking->schedule_id)
                             ->whereIn('seat_id', $newSeatIds)
@@ -1350,6 +1356,12 @@ class AdminController extends Controller
         if (! $isJoinTrip && $seatIds->isNotEmpty()) {
             if ($seatIds->count() !== $participantCount) {
                 return $this->error('จำนวนที่นั่งต้องเท่ากับจำนวนผู้เดินทาง', 422);
+            }
+
+            // กันที่นั่งซ้ำภายในคำขอเดียว — insert ตัวที่สองจะชนตัวแรกในธุรกรรมเดียวกัน
+            $duplicateSeatIds = $seatIds->duplicates()->unique()->values();
+            if ($duplicateSeatIds->isNotEmpty()) {
+                return $this->error('เลือกที่นั่งซ้ำกัน: '.$duplicateSeatIds->join(', ').' กรุณาเลือกที่นั่งใหม่', 422);
             }
 
             $occupiedSeatIds = BookingSeat::where('schedule_id', $schedule->id)

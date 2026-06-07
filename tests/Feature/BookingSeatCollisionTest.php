@@ -142,6 +142,38 @@ class BookingSeatCollisionTest extends TestCase
     }
 
     /**
+     * ที่นั่งซ้ำ "ภายในคำขอเดียว" (เช่น 2 ผู้โดยสารถูก assign A2 ทั้งคู่) ต้องโดนปฏิเสธด้วยข้อความไทย
+     * ก่อนหน้านี้ insert ตัวที่สองจะชนตัวแรกในธุรกรรมเดียวกัน → unique constraint → rollback ทั้งก้อน
+     * (อาการคือ booking id ไล่ขึ้นเรื่อย ๆ แต่ไม่มีแถวเหลือใน DB)
+     */
+    public function test_duplicate_seat_within_one_request_is_rejected_cleanly(): void
+    {
+        Mail::fake();
+
+        $schedule = $this->makeSchedule($this->makeTrip());
+        $user = User::factory()->create();
+
+        $service = app(BookingService::class);
+
+        try {
+            $service->createBooking(
+                userId: $user->id,
+                scheduleId: $schedule->id,
+                passengers: $this->passengersFor(['A2', 'A2']),
+                seatIds: ['A2', 'A2'],
+            );
+            $this->fail('คาดว่าจะ throw exception เพราะเลือกที่นั่ง A2 ซ้ำในคำขอเดียว');
+        } catch (\Exception $e) {
+            $this->assertStringContainsString('เลือกที่นั่งซ้ำกัน', $e->getMessage());
+            $this->assertStringContainsString('A2', $e->getMessage());
+        }
+
+        // ต้อง rollback ทั้งหมด — ไม่มีแถวที่นั่งและไม่มี booking ค้าง
+        $this->assertSame(0, BookingSeat::where('schedule_id', $schedule->id)->count());
+        $this->assertSame(0, Booking::where('schedule_id', $schedule->id)->count());
+    }
+
+    /**
      * การจองที่ถูกคืนเงิน (refunded) ต้องปล่อยที่นั่งคืนเหมือนการยกเลิก —
      * ก่อนหน้านี้ processRefund ไม่ลบแถว booking_seats ทำให้แถวค้างแล้วไปชน unique constraint
      * ตอนมีคนจองที่นั่งเดิมซ้ำ (refunded ไม่อยู่ใน active statuses จึงไม่ถูก guard ดักด้วย)
