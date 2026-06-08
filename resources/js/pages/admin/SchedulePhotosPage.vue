@@ -178,7 +178,7 @@
                 คลิกหรือลากรูปมาวางที่นี่ (เลือกได้หลายไฟล์)
               </p>
               <p style="font-size:12px;color:#9ca3af">
-                JPG, PNG, WebP, HEIC — ครั้งละสูงสุด 20 ไฟล์ · ไฟล์ละไม่เกิน 15 MB
+                JPG, PNG, WebP, HEIC — เลือกได้หลายร้อยรูป ระบบจะทยอยอัปให้เอง · ไฟล์ละไม่เกิน 15 MB
               </p>
             </div>
           </div>
@@ -189,7 +189,8 @@
               <div class="progress-bar" :style="{ width: uploadProgress + '%' }"></div>
             </div>
             <p style="font-size:12px;color:#6b7280;margin-top:6px">
-              กำลังอัปโหลด {{ uploadProgress }}%
+              กำลังอัปโหลด {{ uploadDone }} / {{ uploadTotal }} รูป
+              <template v-if="uploadFailed"> · ไม่สำเร็จ {{ uploadFailed }}</template>
             </p>
           </div>
 
@@ -324,7 +325,14 @@ const filters = reactive({
 
 const filePicker = ref(null);
 const uploading = ref(false);
-const uploadProgress = ref(0);
+const uploadTotal = ref(0);
+const uploadDone = ref(0);
+const uploadFailed = ref(0);
+const uploadProgress = computed(() =>
+  uploadTotal.value
+    ? Math.round(((uploadDone.value + uploadFailed.value) / uploadTotal.value) * 100)
+    : 0
+);
 const deletingId = ref(null);
 
 const manager = reactive({
@@ -562,11 +570,38 @@ const convertHeic = async (file) => {
   }
 };
 
+// Upload one chunk, retrying a few times on failure (flaky network / transient
+// 5xx) before giving up. Returns true on success so the caller can tally results.
+const uploadChunk = async (chunk, attempts = 3) => {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const fd = new FormData();
+      for (const f of chunk) fd.append('files[]', f);
+      await api.post(
+        `/admin/schedules/${manager.schedule.id}/photos`,
+        fd,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      return true;
+    } catch (e) {
+      if (attempt === attempts) {
+        console.error('upload chunk failed after retries', e);
+        return false;
+      }
+      // Linear backoff before the next attempt.
+      await new Promise((r) => setTimeout(r, attempt * 800));
+    }
+  }
+  return false;
+};
+
 const uploadFiles = async (files) => {
   if (!manager.schedule || !files.length) return;
 
   uploading.value = true;
-  uploadProgress.value = 0;
+  uploadTotal.value = files.length;
+  uploadDone.value = 0;
+  uploadFailed.value = 0;
   try {
     // Convert any HEIC/HEIF files first.
     if (files.some(isHeic)) {
@@ -574,33 +609,32 @@ const uploadFiles = async (files) => {
     }
 
     // Chunk into batches of 10 so the backend's max:20-per-request stays comfortable
-    // and progress feedback stays responsive on slow links.
+    // and progress feedback stays responsive on slow links. Each chunk is retried
+    // independently — one failed batch no longer aborts the whole upload.
     const chunks = [];
     for (let i = 0; i < files.length; i += 10) chunks.push(files.slice(i, i + 10));
 
-    for (let i = 0; i < chunks.length; i++) {
-      const fd = new FormData();
-      for (const f of chunks[i]) fd.append('files[]', f);
-      await api.post(
-        `/admin/schedules/${manager.schedule.id}/photos`,
-        fd,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (ev) => {
-            const chunkPct = Math.round((ev.loaded / (ev.total || 1)) * 100);
-            uploadProgress.value = Math.round(
-              ((i + chunkPct / 100) / chunks.length) * 100
-            );
-          },
-        }
+    for (const chunk of chunks) {
+      const ok = await uploadChunk(chunk);
+      if (ok) uploadDone.value += chunk.length;
+      else uploadFailed.value += chunk.length;
+    }
+
+    await loadManagerPhotos();
+
+    if (uploadFailed.value > 0) {
+      alert(
+        `อัปโหลดสำเร็จ ${uploadDone.value} รูป · ไม่สำเร็จ ${uploadFailed.value} รูป\n` +
+        'ลองเลือกเฉพาะรูปที่ยังไม่ขึ้นมาอัปใหม่อีกครั้งได้เลย'
       );
     }
-    await loadManagerPhotos();
   } catch (e) {
     alert(e.response?.data?.message ?? 'อัปโหลดไม่สำเร็จ');
   } finally {
     uploading.value = false;
-    uploadProgress.value = 0;
+    uploadTotal.value = 0;
+    uploadDone.value = 0;
+    uploadFailed.value = 0;
     if (filePicker.value) filePicker.value.value = '';
   }
 };
