@@ -623,11 +623,13 @@ const uploadFiles = async (files) => {
       files = await Promise.all(files.map((f) => (isHeic(f) ? convertHeic(f) : f)));
     }
 
-    // Chunk into batches of 10 so the backend's max:20-per-request stays comfortable
-    // and progress feedback stays responsive on slow links. Each chunk is retried
-    // independently — one failed batch no longer aborts the whole upload.
+    // Chunk into small batches so each request body stays well under the server's
+    // post_max_size / nginx client_max_body_size (phone photos run 3–12 MB each, so
+    // 5 × 15 MB ≈ 75 MB is a safe ceiling). Each chunk is retried independently —
+    // one failed batch no longer aborts the whole upload.
+    const CHUNK_SIZE = 5;
     const chunks = [];
-    for (let i = 0; i < files.length; i += 10) chunks.push(files.slice(i, i + 10));
+    for (let i = 0; i < files.length; i += CHUNK_SIZE) chunks.push(files.slice(i, i + CHUNK_SIZE));
 
     let lastError = null;
     for (const chunk of chunks) {
