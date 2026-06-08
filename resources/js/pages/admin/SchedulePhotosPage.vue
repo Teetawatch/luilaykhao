@@ -570,9 +570,22 @@ const convertHeic = async (file) => {
   }
 };
 
+// Turn an upload error into a short, human-readable reason so the operator can
+// tell a body-size limit (413) from a validation reject (422) at a glance.
+const describeUploadError = (e) => {
+  const status = e?.response?.status;
+  const serverMsg = e?.response?.data?.message;
+  if (status === 413) return 'ไฟล์ชุดนี้ใหญ่เกินที่เซิร์ฟเวอร์รับ (413) — ปรับ client_max_body_size / post_max_size';
+  if (status === 422) return serverMsg || 'ไฟล์ไม่ผ่านการตรวจ (422) — เกิน 15 MB หรือชนิดไฟล์ไม่รองรับ';
+  if (status === 504 || status === 408) return 'เซิร์ฟเวอร์ใช้เวลานานเกินไป (timeout)';
+  if (status) return serverMsg ? `${serverMsg} (${status})` : `เซิร์ฟเวอร์ตอบกลับ ${status}`;
+  return 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ (เน็ตหลุด/CORS/หมดเวลา)';
+};
+
 // Upload one chunk, retrying a few times on failure (flaky network / transient
-// 5xx) before giving up. Returns true on success so the caller can tally results.
+// 5xx) before giving up. Returns the last error on failure, or null on success.
 const uploadChunk = async (chunk, attempts = 3) => {
+  let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const fd = new FormData();
@@ -582,17 +595,19 @@ const uploadChunk = async (chunk, attempts = 3) => {
         fd,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
-      return true;
+      return null;
     } catch (e) {
-      if (attempt === attempts) {
-        console.error('upload chunk failed after retries', e);
-        return false;
-      }
+      lastError = e;
+      // A 4xx (too big / invalid) won't fix itself on retry — fail fast.
+      const status = e?.response?.status;
+      if (status >= 400 && status < 500) break;
+      if (attempt === attempts) break;
       // Linear backoff before the next attempt.
       await new Promise((r) => setTimeout(r, attempt * 800));
     }
   }
-  return false;
+  console.error('upload chunk failed', lastError);
+  return lastError;
 };
 
 const uploadFiles = async (files) => {
@@ -614,10 +629,15 @@ const uploadFiles = async (files) => {
     const chunks = [];
     for (let i = 0; i < files.length; i += 10) chunks.push(files.slice(i, i + 10));
 
+    let lastError = null;
     for (const chunk of chunks) {
-      const ok = await uploadChunk(chunk);
-      if (ok) uploadDone.value += chunk.length;
-      else uploadFailed.value += chunk.length;
+      const err = await uploadChunk(chunk);
+      if (err) {
+        uploadFailed.value += chunk.length;
+        lastError = err;
+      } else {
+        uploadDone.value += chunk.length;
+      }
     }
 
     await loadManagerPhotos();
@@ -625,6 +645,7 @@ const uploadFiles = async (files) => {
     if (uploadFailed.value > 0) {
       alert(
         `อัปโหลดสำเร็จ ${uploadDone.value} รูป · ไม่สำเร็จ ${uploadFailed.value} รูป\n` +
+        `สาเหตุ: ${describeUploadError(lastError)}\n` +
         'ลองเลือกเฉพาะรูปที่ยังไม่ขึ้นมาอัปใหม่อีกครั้งได้เลย'
       );
     }
