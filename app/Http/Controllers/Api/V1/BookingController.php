@@ -11,6 +11,7 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\SchedulePhotoResource;
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\TripSchedule;
 use App\Services\BookingService;
 use App\Services\WeatherService;
 use App\Traits\ApiResponse;
@@ -128,6 +129,9 @@ class BookingController extends Controller
                 'schedule.pickupPoints',
                 'schedule.staff',
                 'schedule.vehicle',
+                // ผู้ร่วมเดินทางทั้งหมดในรอบ (ทุกการจองที่ยัง active) สำหรับแสดงอวาตาร์
+                'schedule.bookings' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
+                'schedule.bookings.passengers',
                 'pickupPoint',
                 'seats',
                 'passengers.pickupPoint',

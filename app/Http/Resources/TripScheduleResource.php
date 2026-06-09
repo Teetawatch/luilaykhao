@@ -2,11 +2,27 @@
 
 namespace App\Http\Resources;
 
+use App\Models\BookingPassenger;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 
 class TripScheduleResource extends JsonResource
 {
+    /**
+     * นำเสนอชื่อผู้ร่วมเดินทางแบบสั้น: ชื่อเล่นถ้ามี ไม่งั้นใช้ชื่อต้นคำเดียว
+     * เพื่อไม่เปิดเผยชื่อ-นามสกุลเต็มของลูกค้าคนอื่นในรอบ
+     */
+    protected function travelerDisplayName(BookingPassenger $passenger): string
+    {
+        $nickname = trim((string) $passenger->nickname);
+        if ($nickname !== '') {
+            return $nickname;
+        }
+
+        return Str::of((string) $passenger->name)->trim()->explode(' ')->first() ?: 'ผู้ร่วมเดินทาง';
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -46,6 +62,20 @@ class TripScheduleResource extends JsonResource
             'weather' => $this->when(
                 isset($this->weather_forecast),
                 fn () => $this->weather_forecast
+            ),
+            // ผู้ร่วมเดินทางทั้งหมดในรอบนี้ (ทุกการจองที่ยัง active) — ใช้แสดง
+            // อวาตาร์ผู้ร่วมทริปบนการ์ดการจอง เปิดเผยเฉพาะชื่อเล่น/ชื่อต้นเพื่อความเป็นส่วนตัว
+            'travelers' => $this->when(
+                $this->relationLoaded('bookings'),
+                fn () => $this->bookings
+                    ->flatMap(fn ($booking) => $booking->relationLoaded('passengers')
+                        ? $booking->passengers->map(fn ($p) => [
+                            'name' => $this->travelerDisplayName($p),
+                            'is_self' => $request->user() !== null
+                                && $booking->user_id === $request->user()->id,
+                        ])
+                        : [])
+                    ->values()
             ),
             'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
             'waitlist_count' => $this->when(
