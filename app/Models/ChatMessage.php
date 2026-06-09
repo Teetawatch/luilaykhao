@@ -11,13 +11,16 @@ class ChatMessage extends Model
 {
     protected $fillable = [
         'schedule_id', 'user_id', 'reply_to_id', 'sender_role', 'body', 'image_path',
-        'pinned_at', 'pinned_by_id',
+        'pinned_at', 'pinned_by_id', 'edited_at', 'is_deleted', 'mentions',
     ];
 
     protected function casts(): array
     {
         return [
             'pinned_at' => 'datetime',
+            'edited_at' => 'datetime',
+            'is_deleted' => 'boolean',
+            'mentions' => 'array',
         ];
     }
 

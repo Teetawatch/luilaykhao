@@ -18,9 +18,13 @@ class SendChatPushJob implements ShouldQueue
 
     public int $backoff = 15;
 
+    /**
+     * @param  array<int>  $mentionedUserIds
+     */
     public function __construct(
         public readonly int $messageId,
         public readonly int $senderUserId,
+        public readonly array $mentionedUserIds = [],
     ) {}
 
     public function handle(ChatService $chatService, FcmService $fcm): void
@@ -37,20 +41,29 @@ class SendChatPushJob implements ShouldQueue
             ? Str::limit($message->body, 120)
             : ($message->image_path ? '📷 ส่งรูปภาพ' : '');
 
+        $mentioned = collect($this->mentionedUserIds)->map(fn ($id) => (int) $id);
+
         $recipientIds = $chatService->pushRecipientIds($message->schedule)
             ->reject(fn ($id) => (int) $id === $this->senderUserId);
 
         foreach ($recipientIds as $userId) {
+            // Mentioned members get a more salient "you were mentioned" push
+            // instead of the regular new-message one.
+            $isMention = $mentioned->contains((int) $userId);
+
             try {
                 $fcm->sendToUser(
                     (int) $userId,
-                    "💬 $tripTitle",
-                    "$senderName: $preview",
+                    $isMention ? "📣 $tripTitle" : "💬 $tripTitle",
+                    $isMention
+                        ? "$senderName กล่าวถึงคุณ: $preview"
+                        : "$senderName: $preview",
                     [
                         'type' => 'chat_message',
                         'route' => 'chat',
                         'schedule_id' => (string) $message->schedule_id,
                         'message_id' => (string) $message->id,
+                        'mention' => $isMention ? '1' : '0',
                     ],
                 );
             } catch (\Throwable $e) {

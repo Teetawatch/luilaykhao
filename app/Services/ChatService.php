@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\ChatMessageSent;
+use App\Events\ChatMessageUpdated;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\ChatMessage;
@@ -11,6 +12,7 @@ use App\Models\ChatRead;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ChatService
@@ -215,6 +217,88 @@ class ChatService
     }
 
     /**
+     * โพสต์ข้อความต้อนรับครั้งแรกของห้อง — เรียกแบบ lazy ตอนเปิดห้องครั้งแรกที่
+     * ยังไม่มีข้อความใดเลย เพื่อให้ทุกห้องเริ่มต้นด้วยการทักทาย idempotent โดย
+     * เช็คว่ามีข้อความระบบประเภทต้อนรับอยู่แล้วหรือยัง
+     */
+    public function ensureWelcome(TripSchedule $schedule): void
+    {
+        $hasAny = ChatMessage::where('schedule_id', $schedule->id)->exists();
+        if ($hasAny) {
+            return;
+        }
+
+        $title = $schedule->trip?->title ?? 'ทริปนี้';
+        $this->postSystem(
+            $schedule,
+            "ยินดีต้อนรับเข้าสู่ห้องแชท “{$title}” 🎉 ใช้ห้องนี้พูดคุยกับเพื่อนร่วมทริปและทีมงานได้เลย ทีมงานจะคอยดูแลและอัปเดตข่าวสารให้นะคะ 🌿",
+        );
+    }
+
+    /**
+     * แก้ไขเนื้อหาข้อความ (เฉพาะข้อความตัวอักษรของเจ้าของ) แล้วกระจายเรียลไทม์
+     */
+    public function editMessage(ChatMessage $message, string $body): ChatMessage
+    {
+        $message->forceFill([
+            'body' => $body,
+            'edited_at' => now(),
+        ])->save();
+
+        $message->load(['user', 'replyTo.user', 'reactions']);
+        broadcast(new ChatMessageUpdated($message));
+
+        return $message;
+    }
+
+    /**
+     * ลบข้อความแบบ soft — เก็บแถวไว้เพื่อความต่อเนื่องของเธรด แต่ล้างเนื้อหา
+     * ปลดหมุดถ้าถูกปักไว้ แล้วกระจายให้ทุกเครื่องอัปเดตเป็น "ข้อความถูกลบ"
+     */
+    public function deleteMessage(ChatMessage $message): void
+    {
+        if ($message->image_path) {
+            Storage::disk('public')->delete($message->image_path);
+        }
+
+        $message->forceFill([
+            'is_deleted' => true,
+            'body' => null,
+            'image_path' => null,
+            'mentions' => null,
+            'pinned_at' => null,
+            'pinned_by_id' => null,
+        ])->save();
+
+        $message->load(['user', 'replyTo.user', 'reactions']);
+        broadcast(new ChatMessageUpdated($message));
+    }
+
+    /**
+     * คัดเฉพาะ user_id ที่เป็นสมาชิกห้องนี้จริง จากรายการ mention ที่ client ส่งมา
+     *
+     * @param  array<int|string>  $ids
+     * @return array<int, int>
+     */
+    public function sanitizeMentions(TripSchedule $schedule, array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $memberIds = $this->pushRecipientIds($schedule)
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return collect($ids)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => in_array($id, $memberIds, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * ปักหมุดข้อความ — หนึ่งห้องมีหมุดเดียว ปักใหม่จะปลดอันเดิมอัตโนมัติ
      */
     public function pinMessage(User $user, ChatMessage $message): ChatMessage
@@ -302,14 +386,18 @@ class ChatService
     public function presentMessage(ChatMessage $message, ?int $currentUserId = null): array
     {
         $user = $message->user;
+        $deleted = (bool) $message->is_deleted;
 
         return [
             'id' => $message->id,
             'schedule_id' => $message->schedule_id,
-            'body' => $message->body,
-            'image_url' => $message->image_url,
+            'body' => $deleted ? null : $message->body,
+            'image_url' => $deleted ? null : $message->image_url,
             'sender_role' => $message->sender_role,
             'is_mine' => $currentUserId !== null && $message->user_id === $currentUserId,
+            'is_deleted' => $deleted,
+            'edited_at' => $message->edited_at?->toISOString(),
+            'mentions' => $deleted ? [] : array_map('intval', $message->mentions ?? []),
             'user' => $user ? [
                 'id' => $user->id,
                 'name' => $user->name,

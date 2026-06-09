@@ -39,6 +39,12 @@ class ChatController extends Controller
         $beforeId = (int) $request->get('before_id', 0);
         $afterId = (int) $request->get('after_id', 0);
 
+        // First time anyone opens the room, seed a welcome system message so the
+        // conversation never starts on an empty screen.
+        if ($beforeId === 0 && $afterId === 0) {
+            $this->chatService->ensureWelcome($schedule);
+        }
+
         // Polling for live updates: return messages newer than $afterId, oldest-first.
         if ($afterId > 0) {
             $messages = ChatMessage::where('schedule_id', $scheduleId)
@@ -89,6 +95,9 @@ class ChatController extends Controller
                 'nullable', 'integer',
                 Rule::exists('chat_messages', 'id')->where('schedule_id', $scheduleId),
             ],
+            // user_ids tagged with @mention in the body.
+            'mentions' => ['nullable', 'array'],
+            'mentions.*' => ['integer'],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -103,6 +112,7 @@ class ChatController extends Controller
             : null;
 
         $body = isset($validated['body']) ? trim($validated['body']) : null;
+        $mentions = $this->chatService->sanitizeMentions($schedule, $validated['mentions'] ?? []);
 
         $message = ChatMessage::create([
             'schedule_id' => $scheduleId,
@@ -111,6 +121,7 @@ class ChatController extends Controller
             'sender_role' => $this->chatService->senderRole($user, $schedule),
             'body' => $body !== '' ? $body : null,
             'image_path' => $imagePath,
+            'mentions' => $mentions ?: null,
         ]);
         $message->load($this->messageRelations());
 
@@ -119,9 +130,63 @@ class ChatController extends Controller
         // ผู้ส่งถือว่าอ่านถึงข้อความล่าสุดแล้ว
         $this->chatService->markRead($user, $schedule, $message->id);
 
-        SendChatPushJob::dispatch($message->id, $user->id);
+        SendChatPushJob::dispatch($message->id, $user->id, $mentions);
 
         return $this->success($this->chatService->presentMessage($message, $user->id), 'ส่งข้อความสำเร็จ', 201);
+    }
+
+    /**
+     * แก้ไขข้อความของตัวเอง (เฉพาะข้อความตัวอักษร ไม่ใช่รูป/ระบบ และยังไม่ถูกลบ)
+     */
+    public function update(Request $request, int $scheduleId, int $messageId): JsonResponse
+    {
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'max:2000'],
+            'mentions' => ['nullable', 'array'],
+            'mentions.*' => ['integer'],
+        ]);
+
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        $message = ChatMessage::where('schedule_id', $scheduleId)->findOrFail($messageId);
+
+        if ($message->user_id !== $user->id) {
+            return $this->error('แก้ไขได้เฉพาะข้อความของคุณเอง', 403);
+        }
+        if ($message->is_deleted || $message->sender_role === 'system' || $message->image_path) {
+            return $this->error('ข้อความนี้แก้ไขไม่ได้', 422);
+        }
+
+        $message->mentions = $this->chatService->sanitizeMentions($schedule, $validated['mentions'] ?? []) ?: null;
+        $message->save();
+
+        $this->chatService->editMessage($message, trim($validated['body']));
+
+        return $this->success($this->chatService->presentMessage($message, $user->id), 'แก้ไขข้อความแล้ว');
+    }
+
+    /**
+     * ลบข้อความ — เจ้าของลบของตัวเองได้ สตาฟ/แอดมินลบของใครก็ได้ในห้องที่ดูแล
+     */
+    public function destroy(Request $request, int $scheduleId, int $messageId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        $message = ChatMessage::where('schedule_id', $scheduleId)->findOrFail($messageId);
+
+        $isOwner = $message->user_id === $user->id;
+        if (! $isOwner && ! $this->chatService->canModerate($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์ลบข้อความนี้', 403);
+        }
+        if ($message->is_deleted) {
+            return $this->success($this->chatService->presentMessage($message, $user->id), 'ลบแล้ว');
+        }
+
+        $this->chatService->deleteMessage($message);
+
+        return $this->success($this->chatService->presentMessage($message, $user->id), 'ลบข้อความแล้ว');
     }
 
     public function markRead(Request $request, int $scheduleId): JsonResponse

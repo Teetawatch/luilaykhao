@@ -113,6 +113,8 @@ Route::prefix('v1')->group(function () {
         Route::get('chat/my-conversations', [ChatController::class, 'myConversations']);
         Route::get('schedules/{id}/chat/messages', [ChatController::class, 'index']);
         Route::post('schedules/{id}/chat/messages', [ChatController::class, 'store'])->middleware('throttle:chat');
+        Route::put('schedules/{id}/chat/messages/{messageId}', [ChatController::class, 'update']);
+        Route::delete('schedules/{id}/chat/messages/{messageId}', [ChatController::class, 'destroy']);
         Route::post('schedules/{id}/chat/read', [ChatController::class, 'markRead']);
         Route::get('schedules/{id}/chat/unread-count', [ChatController::class, 'unreadCount']);
         Route::get('schedules/{id}/chat/room', [ChatController::class, 'room']);

@@ -508,4 +508,124 @@ class ChatTest extends TestCase
             ->assertOk()
             ->assertJsonCount(0, 'data');
     }
+
+    public function test_first_room_open_seeds_a_welcome_system_message(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $schedule);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/messages")
+            ->assertOk()
+            ->assertJsonPath('data.messages.0.sender_role', 'system');
+
+        // Idempotent — opening again does not add a second welcome.
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/messages")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.messages');
+
+        $this->assertSame(
+            1,
+            ChatMessage::where('schedule_id', $schedule->id)->where('sender_role', 'system')->count(),
+        );
+    }
+
+    public function test_author_can_edit_own_message(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $user = User::factory()->create();
+        $this->bookOnto($user, $schedule);
+
+        $id = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", ['body' => 'พิมพ์ผิด'])
+            ->json('data.id');
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$id}", ['body' => 'แก้ไขแล้ว'])
+            ->assertOk()
+            ->assertJsonPath('data.body', 'แก้ไขแล้ว')
+            ->assertJsonPath('data.is_deleted', false);
+
+        $this->assertNotNull(ChatMessage::find($id)->edited_at);
+    }
+
+    public function test_cannot_edit_someone_elses_message(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $author = User::factory()->create();
+        $other = User::factory()->create();
+        $this->bookOnto($author, $schedule);
+        $this->bookOnto($other, $schedule);
+
+        $id = $this->actingAs($author, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", ['body' => 'ของฉัน'])
+            ->json('data.id');
+
+        $this->actingAs($other, 'sanctum')
+            ->putJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$id}", ['body' => 'แอบแก้'])
+            ->assertStatus(403);
+    }
+
+    public function test_author_can_delete_and_staff_can_delete_any(): void
+    {
+        Bus::fake();
+        Role::findOrCreate('staff');
+        $schedule = $this->makeSchedule();
+        $author = User::factory()->create();
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+        $this->bookOnto($author, $schedule);
+
+        $ownId = $this->actingAs($author, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", ['body' => 'ลบเองได้'])
+            ->json('data.id');
+
+        $this->actingAs($author, 'sanctum')
+            ->deleteJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$ownId}")
+            ->assertOk()
+            ->assertJsonPath('data.is_deleted', true)
+            ->assertJsonPath('data.body', null);
+
+        // Staff can delete a customer's message.
+        $custId = $this->actingAs($author, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", ['body' => 'สตาฟลบได้'])
+            ->json('data.id');
+
+        $this->actingAs($staff, 'sanctum')
+            ->deleteJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$custId}")
+            ->assertOk()
+            ->assertJsonPath('data.is_deleted', true);
+    }
+
+    public function test_mentions_are_persisted_and_pushed_to_mentioned_members(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $sender = User::factory()->create();
+        $mentioned = User::factory()->create();
+        $stranger = User::factory()->create(); // not a room member
+        $this->bookOnto($sender, $schedule);
+        $this->bookOnto($mentioned, $schedule);
+
+        $id = $this->actingAs($sender, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/messages", [
+                'body' => '@เพื่อน มาประชุมหน่อย',
+                'mentions' => [$mentioned->id, $stranger->id], // stranger filtered out
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->assertSame([$mentioned->id], ChatMessage::find($id)->mentions);
+
+        Bus::assertDispatched(
+            SendChatPushJob::class,
+            fn (SendChatPushJob $job) => $job->mentionedUserIds === [$mentioned->id],
+        );
+    }
 }
