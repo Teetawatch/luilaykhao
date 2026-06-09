@@ -30,38 +30,7 @@ class ScheduleController extends Controller
     {
         $schedule = TripSchedule::with('vehicle')->findOrFail($id);
         $schedule->syncBookedSeats(); // Sync real-time data to ensure accuracy
-        $layout = $schedule->vehicle?->seat_layout;
-        
-        // If no layout, generate a default grid layout
-        if (!$layout || !isset($layout['seats'])) {
-            $total = $schedule->total_seats ?: 10;
-            $cols = ['A', 'B', 'C', 'D'];
-            $numCols = 4;
-            $numRows = ceil($total / $numCols);
-            
-            $generatedSeats = [];
-            for ($i = 0; $i < $total; $i++) {
-                $row = floor($i / $numCols) + 1;
-                $colIdx = $i % $numCols;
-                $seatId = $cols[$colIdx] . $row;
-                $generatedSeats[] = [
-                    'id' => $seatId,
-                    'row' => $row,
-                    'column' => $colIdx + 1,
-                    'label' => $seatId,
-                ];
-            }
-            
-            $layout = [
-                'rows' => $numRows,
-                'columns' => array_slice($cols, 0, $numCols),
-                'seats' => $generatedSeats,
-                'front_label' => 'หน้ารถ',
-                'rear_label' => 'หลังรถ',
-                'show_driver' => true,
-                'driver_icon' => 'directions_car',
-            ];
-        }
+        $layout = $schedule->resolveSeatLayout();
 
         $allSeatIds = collect($layout['seats'])->pluck('id')->toArray();
         $statuses = $this->seatLockService->getSeatStatus(
@@ -78,6 +47,7 @@ class ScheduleController extends Controller
                 'locked_until' => null,
                 'locked_by_current_user' => false,
             ];
+
             return [
                 ...$seat,
                 ...$seatStatus,

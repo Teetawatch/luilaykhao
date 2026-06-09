@@ -384,7 +384,7 @@ class DriverController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ดูรอบเดินทางนี้', 403);
         }
 
-        $bookings = Booking::with(['user', 'pickupPoint', 'passengers.pickupPoint'])
+        $bookings = Booking::with(['user', 'pickupPoint', 'passengers.pickupPoint', 'seats'])
             ->where('schedule_id', $schedule->id)
             ->where('status', 'confirmed')
             ->orderBy('checked_in')
@@ -429,8 +429,60 @@ class DriverController extends Controller
                     ->sum(fn (Booking $booking) => $booking->passengers->count()),
             ],
             'pickup_groups' => $this->buildPickupGroups($bookings),
+            'seat_map' => $this->buildSeatMap($schedule, $bookings),
             'bookings' => $manifest,
         ], 'รายชื่อผู้โดยสาร');
+    }
+
+    /**
+     * Overlay each booked seat with its occupant (name + nickname, matched from
+     * the booking's passenger list) onto the vehicle layout, so staff can see
+     * who sits where. Returns null when this schedule has no seat assignments
+     * (e.g. charters / join trips) — the app then hides the seat-map section.
+     */
+    private function buildSeatMap(TripSchedule $schedule, Collection $bookings): ?array
+    {
+        $occupants = [];
+
+        foreach ($bookings as $booking) {
+            $byName = $booking->passengers->keyBy(fn ($p) => trim((string) $p->name));
+
+            foreach ($booking->seats as $seat) {
+                $name = trim((string) $seat->passenger_name);
+                $passenger = $name !== '' ? $byName->get($name) : null;
+
+                $occupants[$seat->seat_id] = [
+                    'name' => $name !== '' ? $name : ($booking->user?->name ?? ''),
+                    'nickname' => $passenger?->nickname,
+                    'booking_ref' => $booking->booking_ref,
+                    'checked_in' => (bool) $booking->checked_in,
+                ];
+            }
+        }
+
+        if (empty($occupants)) {
+            return null;
+        }
+
+        $layout = $schedule->resolveSeatLayout();
+        $seats = collect($layout['seats'])->map(fn ($seat) => [
+            'id' => $seat['id'],
+            'label' => $seat['label'] ?? $seat['id'],
+            'occupant' => $occupants[$seat['id']] ?? null,
+        ])->values();
+
+        return [
+            'rows' => $layout['rows'] ?? 0,
+            'columns' => $layout['columns'] ?? [],
+            'seats' => $seats,
+            'front_seat' => $layout['front_seat'] ?? null,
+            'last_row_center' => $layout['last_row_center'] ?? [],
+            'front_label' => $layout['front_label'] ?? 'หน้ารถ',
+            'rear_label' => $layout['rear_label'] ?? 'ท้ายรถ',
+            'show_driver' => $layout['show_driver'] ?? true,
+            'occupied' => count($occupants),
+            'total' => collect($layout['seats'])->count(),
+        ];
     }
 
     /**

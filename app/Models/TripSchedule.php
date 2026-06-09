@@ -157,6 +157,48 @@ class TripSchedule extends Model
         return $this->price_override ?? $this->trip->price_per_person;
     }
 
+    /**
+     * Resolve the vehicle's seat layout, falling back to a generated 4-column
+     * grid when no custom layout is configured. Returns the raw layout (seats
+     * carry id/row/column/label but no live status) so callers can overlay
+     * their own per-seat data — booking availability or staff occupancy.
+     */
+    public function resolveSeatLayout(): array
+    {
+        $layout = $this->vehicle?->seat_layout;
+        if ($layout && isset($layout['seats'])) {
+            return $layout;
+        }
+
+        $total = $this->total_seats ?: 10;
+        $cols = ['A', 'B', 'C', 'D'];
+        $numCols = 4;
+        $numRows = (int) ceil($total / $numCols);
+
+        $seats = [];
+        for ($i = 0; $i < $total; $i++) {
+            $row = (int) floor($i / $numCols) + 1;
+            $colIdx = $i % $numCols;
+            $seatId = $cols[$colIdx].$row;
+            $seats[] = [
+                'id' => $seatId,
+                'row' => $row,
+                'column' => $colIdx + 1,
+                'label' => $seatId,
+            ];
+        }
+
+        return [
+            'rows' => $numRows,
+            'columns' => array_slice($cols, 0, $numCols),
+            'seats' => $seats,
+            'front_label' => 'หน้ารถ',
+            'rear_label' => 'หลังรถ',
+            'show_driver' => true,
+            'driver_icon' => 'directions_car',
+        ];
+    }
+
     public function reviewAvailableAt(): CarbonImmutable
     {
         $reviewDate = $this->return_date ?? $this->departure_date;

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\BookingSeat;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -193,6 +194,68 @@ class StaffMySchedulesTest extends TestCase
         $this->assertTrue($p['checked_in']);
 
         $this->assertNotNull($groups->firstWhere('label', 'ไม่ระบุจุดรับ'));
+    }
+
+    public function test_manifest_seat_map_labels_seats_with_occupants(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule(); // total_seats 20 → default A1..D5 grid
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $booking = $this->makeBooking($schedule, passengerCount: 0, checkedIn: true);
+        BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'สมหญิง รักเที่ยว',
+            'nickname' => 'หญิง',
+            'phone' => '0822222222',
+        ]);
+        BookingSeat::create([
+            'booking_id' => $booking->id,
+            'schedule_id' => $schedule->id,
+            'seat_id' => 'A1',
+            'passenger_name' => 'สมหญิง รักเที่ยว',
+        ]);
+
+        $data = $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->json('data');
+
+        $seatMap = $data['seat_map'];
+        $this->assertNotNull($seatMap);
+        $this->assertSame(1, $seatMap['occupied']);
+
+        // The booked seat carries its occupant — name, matched nickname, ref, check-in.
+        $seatA1 = collect($seatMap['seats'])->firstWhere('id', 'A1');
+        $this->assertSame('สมหญิง รักเที่ยว', $seatA1['occupant']['name']);
+        $this->assertSame('หญิง', $seatA1['occupant']['nickname']);
+        $this->assertTrue($seatA1['occupant']['checked_in']);
+        $this->assertSame($booking->booking_ref, $seatA1['occupant']['booking_ref']);
+
+        // An unbooked seat stays empty.
+        $seatB2 = collect($seatMap['seats'])->firstWhere('id', 'B2');
+        $this->assertNull($seatB2['occupant']);
+    }
+
+    public function test_manifest_seat_map_is_null_without_seat_assignments(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+        $this->makeBooking($schedule, passengerCount: 2); // passengers, but no seats
+
+        $data = $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertNull($data['seat_map']);
     }
 
     private function makeSchedule(): TripSchedule
