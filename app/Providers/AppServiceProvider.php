@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Observers\TripObserver;
 use App\Observers\TripScheduleObserver;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Line\Provider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,9 +27,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(function (SocialiteWasCalled $event) {
-            $event->extendSocialite('line', \SocialiteProviders\Line\Provider::class);
+            $event->extendSocialite('line', Provider::class);
         });
 
         TripSchedule::observe(TripScheduleObserver::class);
+        Trip::observe(TripObserver::class);
     }
 }

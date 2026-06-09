@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
@@ -28,3 +29,10 @@ Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlappi
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 Schedule::job(new ProcessTripAlertsJob)->everyThirtyMinutes()->withoutOverlapping();
 Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping();
+// "Almost sold out" marketing blasts — only sweep during the day; the service
+// also defers any individual send that lands inside quiet hours.
+Schedule::job(new BroadcastLowSeatsJob)
+    ->everyFifteenMinutes()
+    ->between('8:00', '21:00')
+    ->timezone('Asia/Bangkok')
+    ->withoutOverlapping();

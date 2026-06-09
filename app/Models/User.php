@@ -30,6 +30,7 @@ class User extends Authenticatable
             'id_card' => 'encrypted',
             'allergies' => 'encrypted',
             'health_notes' => 'encrypted',
+            'marketing_push_enabled' => 'boolean',
         ];
     }
 
