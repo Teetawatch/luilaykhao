@@ -55,57 +55,12 @@
 
     <!-- ─── ASSIGN TAB ──────────────────────────────────────── -->
     <template v-if="activeTab === 'assign'">
-      <div class="table-card filters-card">
-        <div class="filters-row">
-          <div class="form-group scope-picker">
-            <label>ช่วงรอบเดินทาง</label>
-            <select v-model="scheduleScope" @change="loadData" :disabled="loading">
-              <option value="upcoming">รอบที่กำลังจะมาถึง</option>
-              <option value="all">ทั้งหมด</option>
-            </select>
-          </div>
-
-          <div class="form-group schedule-picker">
-            <label>เลือกรอบเดินทาง</label>
-            <select v-model="selectedScheduleId" @change="loadAssignedStaff" :disabled="loading || !scheduleOptions.length">
-              <option value="">-- เลือกรอบ --</option>
-              <option v-for="sch in scheduleOptions" :key="sch.id" :value="sch.id">
-                {{ scheduleOptionLabel(sch) }}
-              </option>
-            </select>
-          </div>
-
-          <div class="search-box schedule-search">
-            <span class="material-symbols-rounded">travel_explore</span>
-            <input v-model="scheduleSearch" placeholder="ค้นหารอบ/ชื่อทริป/สถานที่" />
-          </div>
-
-          <div class="search-box staff-search">
-            <span class="material-symbols-rounded">search</span>
-            <input v-model="search" placeholder="ค้นหาสตาฟ ชื่อ / อีเมล / เบอร์โทร" />
-          </div>
-        </div>
-
-        <div v-if="activeScheduleMeta" class="schedule-meta">
-          <span class="meta-pill"><span class="material-symbols-rounded">route</span>{{ activeScheduleMeta.trip_title }}</span>
-          <span class="meta-pill"><span class="material-symbols-rounded">place</span>{{ activeScheduleMeta.trip_location || '-' }}</span>
-          <span class="meta-pill"><span class="material-symbols-rounded">event</span>{{ scheduleDateRange(activeScheduleMeta) }}</span>
-          <span class="meta-pill"><span class="material-symbols-rounded">directions_car</span>{{ vehicleLabel(activeScheduleMeta.vehicle, activeScheduleMeta.transport_type) }}</span>
-          <span class="meta-pill"><span class="material-symbols-rounded">groups</span>จองแล้ว {{ activeScheduleMeta.active_bookings_count ?? activeScheduleMeta.booked_seats ?? 0 }} รายการ</span>
-          <span class="meta-pill"><span class="material-symbols-rounded">event_seat</span>{{ activeScheduleMeta.booked_seats ?? 0 }}/{{ activeScheduleMeta.total_seats ?? 0 }} ที่นั่ง</span>
-          <span class="meta-pill status" :class="`status-${activeScheduleMeta.status || 'unknown'}`">
-            <span class="material-symbols-rounded">radio_button_checked</span>{{ statusLabel(activeScheduleMeta.status) }}
-          </span>
-          <span class="meta-pill selected"><span class="material-symbols-rounded">check_circle</span>เลือกแล้ว {{ selectedStaffIds.length }} คน</span>
-        </div>
-      </div>
-
       <div class="summary-grid">
         <div class="summary-card">
           <span class="material-symbols-rounded">event_note</span>
           <div>
             <p>รอบที่แสดง</p>
-            <strong>{{ scheduleOptions.length }}</strong>
+            <strong>{{ visibleSchedulesCount }}</strong>
           </div>
         </div>
         <div class="summary-card">
@@ -131,81 +86,189 @@
         </div>
       </div>
 
-      <div class="table-card">
-        <div v-if="loading" class="loading-state"><div class="spinner"></div></div>
+      <div class="assign-layout">
+        <!-- ── LEFT: trip / round picker ── -->
+        <aside class="trip-panel table-card">
+          <div class="panel-head">
+            <div class="form-group">
+              <label>ช่วงรอบเดินทาง</label>
+              <select v-model="scheduleScope" @change="loadData" :disabled="loading">
+                <option value="upcoming">รอบที่กำลังจะมาถึง</option>
+                <option value="all">ทั้งหมด</option>
+              </select>
+            </div>
+            <div class="search-box">
+              <span class="material-symbols-rounded">travel_explore</span>
+              <input v-model="scheduleSearch" placeholder="ค้นหาทริป / สถานที่ / วันที่" />
+            </div>
+          </div>
 
-        <div v-else class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th style="width:56px;">เลือก</th>
-                <th>สตาฟ</th>
-                <th>ชื่อเล่น</th>
-                <th>ติดต่อ</th>
-                <th>รอบที่รับผิดชอบ</th>
-                <th>คะแนนเฉลี่ย</th>
-                <th>จำนวนรีวิว</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="staff in filteredStaff" :key="staff.id" :class="{ selected: isStaffSelected(staff.id) }">
-                <td>
-                  <input
-                    class="staff-checkbox"
-                    type="checkbox"
-                    :checked="isStaffSelected(staff.id)"
-                    @change="toggleStaff(staff.id)"
-                    :disabled="!selectedScheduleId"
-                  />
-                </td>
-                <td>
-                  <div class="staff-cell">
-                    <img v-if="staff.avatar_url" :src="staff.avatar_url" :alt="staff.name" class="staff-avatar" />
-                    <div v-else class="staff-avatar fallback">{{ staff.name?.charAt(0)?.toUpperCase() }}</div>
-                    <span class="staff-name">{{ staff.name }}</span>
+          <div v-if="loading" class="loading-state"><div class="spinner"></div></div>
+
+          <div v-else class="trip-groups">
+            <div v-for="group in groupedTrips" :key="group.id" class="trip-group">
+              <button type="button" class="trip-group-head" @click="toggleTrip(group.id)">
+                <span class="material-symbols-rounded chev">{{ isTripExpanded(group.id) ? 'expand_more' : 'chevron_right' }}</span>
+                <div class="trip-group-info">
+                  <span class="trip-group-title">{{ group.title }}</span>
+                  <span v-if="group.location" class="trip-group-loc">
+                    <span class="material-symbols-rounded">place</span>{{ group.location }}
+                  </span>
+                </div>
+                <div class="trip-group-badges">
+                  <span class="rounds-count">{{ group.rounds.length }} รอบ</span>
+                  <span v-if="group.missingStaff" class="missing-badge">
+                    <span class="material-symbols-rounded">person_off</span>{{ group.missingStaff }}
+                  </span>
+                </div>
+              </button>
+
+              <div v-if="isTripExpanded(group.id)" class="round-list">
+                <button
+                  v-for="round in group.rounds"
+                  :key="round.id"
+                  type="button"
+                  class="round-item"
+                  :class="{ active: Number(round.id) === Number(selectedScheduleId) }"
+                  @click="selectSchedule(round.id)"
+                >
+                  <div class="round-main">
+                    <span class="round-date">
+                      <span class="material-symbols-rounded">event</span>{{ scheduleDateRange(round) }}
+                    </span>
+                    <span class="round-meta">
+                      <span class="material-symbols-rounded">event_seat</span>{{ round.booked_seats ?? 0 }}/{{ round.total_seats ?? 0 }}
+                      <span class="status-dot" :class="`dot-${round.status || 'unknown'}`"></span>{{ statusLabel(round.status) }}
+                    </span>
                   </div>
-                </td>
-                <td>
-                  <span v-if="staff.nickname" class="nickname-pill">{{ staff.nickname }}</span>
-                  <span v-else class="muted">-</span>
-                </td>
-                <td>
-                  <div class="staff-contact">
-                    <div>{{ staff.email || '-' }}</div>
+                  <span class="round-staff-badge" :class="{ none: !Number(round.assigned_staff_count || 0) }">
+                    <span class="material-symbols-rounded">{{ Number(round.assigned_staff_count || 0) ? 'group' : 'person_off' }}</span>
+                    {{ Number(round.assigned_staff_count || 0) ? `สตาฟ ${round.assigned_staff_count} คน` : 'ยังไม่มีสตาฟ' }}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="!groupedTrips.length" class="panel-empty">
+              <span class="material-symbols-rounded">search_off</span>
+              <p>ไม่พบรอบเดินทาง</p>
+            </div>
+          </div>
+        </aside>
+
+        <!-- ── RIGHT: staff assignment for selected round ── -->
+        <section class="detail-panel">
+          <div v-if="!selectedScheduleId" class="table-card detail-empty">
+            <span class="material-symbols-rounded">touch_app</span>
+            <p>เลือกรอบเดินทางจากรายการด้านซ้าย<br />เพื่อจัดสตาฟประจำรอบ</p>
+          </div>
+
+          <template v-else>
+            <!-- Round header -->
+            <div class="table-card round-header-card" v-if="activeScheduleMeta">
+              <div class="round-header-top">
+                <div>
+                  <h2 class="round-title">{{ activeScheduleMeta.trip_title }}</h2>
+                  <p class="round-subtitle">
+                    <span class="material-symbols-rounded">event</span>{{ scheduleDateRange(activeScheduleMeta) }}
+                  </p>
+                </div>
+                <span class="meta-pill status" :class="`status-${activeScheduleMeta.status || 'unknown'}`">
+                  <span class="material-symbols-rounded">radio_button_checked</span>{{ statusLabel(activeScheduleMeta.status) }}
+                </span>
+              </div>
+              <div class="schedule-meta">
+                <span class="meta-pill"><span class="material-symbols-rounded">place</span>{{ activeScheduleMeta.trip_location || '-' }}</span>
+                <span class="meta-pill"><span class="material-symbols-rounded">directions_car</span>{{ vehicleLabel(activeScheduleMeta.vehicle, activeScheduleMeta.transport_type) }}</span>
+                <span class="meta-pill"><span class="material-symbols-rounded">groups</span>จองแล้ว {{ activeScheduleMeta.active_bookings_count ?? activeScheduleMeta.booked_seats ?? 0 }} รายการ</span>
+                <span class="meta-pill"><span class="material-symbols-rounded">event_seat</span>{{ activeScheduleMeta.booked_seats ?? 0 }}/{{ activeScheduleMeta.total_seats ?? 0 }} ที่นั่ง</span>
+              </div>
+            </div>
+
+            <!-- Assigned staff -->
+            <div class="table-card assigned-card">
+              <div class="section-head">
+                <span class="material-symbols-rounded">how_to_reg</span>
+                <strong>สตาฟประจำรอบนี้</strong>
+                <span class="section-count">{{ selectedStaff.length }} คน</span>
+              </div>
+              <div v-if="selectedStaff.length" class="assigned-list">
+                <div v-for="staff in selectedStaff" :key="staff.id" class="assigned-chip">
+                  <img v-if="staff.avatar_url" :src="staff.avatar_url" :alt="staff.name" class="chip-avatar" />
+                  <div v-else class="chip-avatar fallback">{{ staff.name?.charAt(0)?.toUpperCase() }}</div>
+                  <div class="chip-info">
+                    <span class="chip-name">{{ staff.name }}<span v-if="staff.nickname" class="chip-nick"> ({{ staff.nickname }})</span></span>
                     <a v-if="staff.phone" :href="`tel:${staff.phone}`" class="phone-link">
                       <span class="material-symbols-rounded">call</span>{{ staff.phone }}
                     </a>
-                    <span v-else class="muted">ไม่มีเบอร์</span>
                   </div>
-                </td>
-                <td><span class="count-pill">{{ staff.assigned_schedules_count || 0 }} รอบ</span></td>
-                <td>
-                  <span class="rating-pill" :class="{ empty: !staff.avg_staff_rating }">
-                    <span class="material-symbols-rounded">star</span>
-                    {{ formatRating(staff.avg_staff_rating) }}
-                  </span>
-                </td>
-                <td>{{ staff.total_staff_reviews || 0 }}</td>
-              </tr>
-              <tr v-if="!filteredStaff.length">
-                <td colspan="7" class="empty-state">ไม่พบสตาฟ</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  <button type="button" class="chip-remove" @click="removeStaff(staff.id)" title="นำออกจากรอบนี้">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
+                </div>
+              </div>
+              <div v-else class="assigned-empty">
+                <span class="material-symbols-rounded">person_off</span>
+                ยังไม่มีสตาฟในรอบนี้ — เลือกจากรายชื่อด้านล่าง
+              </div>
+            </div>
 
-        <div class="actions-row">
-          <div class="selected-preview">
-            <span v-if="!selectedStaff.length" class="muted">ยังไม่ได้เลือกสตาฟสำหรับรอบนี้</span>
-            <span v-for="staff in selectedStaff" :key="staff.id" class="selected-chip">
-              {{ staff.name }}<span v-if="staff.nickname"> ({{ staff.nickname }})</span>
-            </span>
-          </div>
-          <button class="btn-primary" @click="saveAssignments" :disabled="saving || !selectedScheduleId">
-            <span class="material-symbols-rounded" v-if="saving">sync</span>
-            บันทึกการมอบหมายสตาฟ
-          </button>
-        </div>
+            <!-- Staff picker -->
+            <div class="table-card pick-card">
+              <div class="section-head">
+                <span class="material-symbols-rounded">person_add</span>
+                <strong>เลือกสตาฟเพิ่ม</strong>
+                <div class="search-box pick-search">
+                  <span class="material-symbols-rounded">search</span>
+                  <input v-model="search" placeholder="ค้นหาสตาฟ ชื่อ / ชื่อเล่น / เบอร์โทร" />
+                </div>
+              </div>
+              <div class="staff-pick-list">
+                <div v-for="staff in availableStaff" :key="staff.id" class="staff-pick-row">
+                  <img v-if="staff.avatar_url" :src="staff.avatar_url" :alt="staff.name" class="staff-avatar" />
+                  <div v-else class="staff-avatar fallback">{{ staff.name?.charAt(0)?.toUpperCase() }}</div>
+                  <div class="pick-info">
+                    <span class="pick-name">{{ staff.name }}<span v-if="staff.nickname" class="chip-nick"> ({{ staff.nickname }})</span></span>
+                    <div class="pick-meta">
+                      <a v-if="staff.phone" :href="`tel:${staff.phone}`" class="phone-link">
+                        <span class="material-symbols-rounded">call</span>{{ staff.phone }}
+                      </a>
+                      <span class="count-pill">{{ staff.assigned_schedules_count || 0 }} รอบ</span>
+                      <span class="rating-pill" :class="{ empty: !staff.avg_staff_rating }">
+                        <span class="material-symbols-rounded">star</span>{{ formatRating(staff.avg_staff_rating) }}
+                        <span v-if="staff.total_staff_reviews" class="review-count">({{ staff.total_staff_reviews }})</span>
+                      </span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-add" @click="addStaff(staff.id)">
+                    <span class="material-symbols-rounded">add</span> เพิ่ม
+                  </button>
+                </div>
+                <div v-if="!availableStaff.length" class="panel-empty small">
+                  <span class="material-symbols-rounded">{{ search ? 'search_off' : 'done_all' }}</span>
+                  <p>{{ search ? 'ไม่พบสตาฟที่ค้นหา' : 'สตาฟทุกคนถูกเลือกแล้ว' }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Save bar -->
+            <div class="save-bar" :class="{ dirty: isDirty }">
+              <span v-if="isDirty" class="dirty-note">
+                <span class="material-symbols-rounded">warning</span> มีการแก้ไขที่ยังไม่บันทึก
+              </span>
+              <span v-else class="saved-note">
+                <span class="material-symbols-rounded">check_circle</span> ข้อมูลล่าสุดถูกบันทึกแล้ว
+              </span>
+              <button v-if="isDirty" class="btn-secondary" @click="resetSelection" :disabled="saving">
+                <span class="material-symbols-rounded">undo</span> ยกเลิกการแก้ไข
+              </button>
+              <button class="btn-primary" @click="saveAssignments" :disabled="saving || !isDirty">
+                <span class="material-symbols-rounded">{{ saving ? 'sync' : 'save' }}</span>
+                บันทึกการมอบหมายสตาฟ
+              </button>
+            </div>
+          </template>
+        </section>
       </div>
     </template>
 
@@ -319,6 +382,8 @@ const schedules = ref([]);
 const staffUsers = ref([]);
 const selectedScheduleMeta = ref(null);
 const selectedStaffIds = ref([]);
+const originalStaffIds = ref([]);
+const expandedTripIds = ref([]);
 
 // Roster state
 const rosterLoading = ref(false);
@@ -366,6 +431,54 @@ const scheduleOptions = computed(() => {
   });
 });
 
+// Group filtered schedules into Trip → rounds, trips ordered by earliest round.
+const groupedTrips = computed(() => {
+  const groups = new Map();
+  for (const schedule of scheduleOptions.value) {
+    const tripId = schedule.trip?.id ?? `none-${schedule.id}`;
+    if (!groups.has(tripId)) {
+      groups.set(tripId, {
+        id: tripId,
+        title: schedule.trip?.title || 'ไม่ระบุทริป',
+        location: schedule.trip?.location || '',
+        rounds: [],
+      });
+    }
+    groups.get(tripId).rounds.push(schedule);
+  }
+  const list = [...groups.values()];
+  for (const group of list) {
+    group.rounds.sort((a, b) => String(a.departure_date).localeCompare(String(b.departure_date)));
+    group.missingStaff = group.rounds.filter((r) => !Number(r.assigned_staff_count || 0)).length;
+  }
+  list.sort((a, b) => String(a.rounds[0]?.departure_date).localeCompare(String(b.rounds[0]?.departure_date)));
+  return list;
+});
+
+const visibleSchedulesCount = computed(() => scheduleOptions.value.length);
+
+const isTripExpanded = (tripId) => {
+  // While searching, always show matches expanded so results aren't hidden.
+  if (scheduleSearch.value.trim()) return true;
+  return expandedTripIds.value.includes(tripId);
+};
+
+const toggleTrip = (tripId) => {
+  if (expandedTripIds.value.includes(tripId)) {
+    expandedTripIds.value = expandedTripIds.value.filter((id) => id !== tripId);
+  } else {
+    expandedTripIds.value = [...expandedTripIds.value, tripId];
+  }
+};
+
+const expandTripOfSchedule = (scheduleId) => {
+  const schedule = schedules.value.find((s) => Number(s.id) === Number(scheduleId));
+  const tripId = schedule?.trip?.id;
+  if (tripId != null && !expandedTripIds.value.includes(tripId)) {
+    expandedTripIds.value = [...expandedTripIds.value, tripId];
+  }
+};
+
 const selectedSchedule = computed(() => {
   const id = Number(selectedScheduleId.value);
   return schedules.value.find((schedule) => Number(schedule.id) === id) || null;
@@ -409,6 +522,14 @@ const filteredStaff = computed(() => {
   });
 });
 
+const availableStaff = computed(() => filteredStaff.value.filter((staff) => !isStaffSelected(staff.id)));
+
+const isDirty = computed(() => {
+  const current = [...selectedStaffIds.value.map(Number)].sort((a, b) => a - b);
+  const original = [...originalStaffIds.value.map(Number)].sort((a, b) => a - b);
+  return JSON.stringify(current) !== JSON.stringify(original);
+});
+
 const formatDate = (date) => {
   if (!date) return '-';
   return new Date(date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -435,12 +556,6 @@ const statusLabel = (status) => {
 const formatRating = (rating) => {
   if (!rating) return '-';
   return Number(rating).toFixed(2).replace(/\.?0+$/, '');
-};
-
-const scheduleOptionLabel = (schedule) => {
-  const title = schedule.trip?.title || 'ไม่ระบุทริป';
-  const staffCount = Number(schedule.assigned_staff_count || 0);
-  return `${title} · ${scheduleDateRange(schedule)} · สตาฟ ${staffCount} คน`;
 };
 
 const normalizeStaffFromUsersApi = (users = []) => {
@@ -493,6 +608,7 @@ const loadData = async () => {
     }
 
     if (selectedScheduleId.value) {
+      expandTripOfSchedule(selectedScheduleId.value);
       await loadAssignedStaff();
     }
   } catch (e) {
@@ -520,10 +636,18 @@ const attachTodayStaff = async () => {
   }
 };
 
+const selectSchedule = async (scheduleId) => {
+  if (Number(scheduleId) === Number(selectedScheduleId.value)) return;
+  if (isDirty.value && !confirm('มีการแก้ไขที่ยังไม่บันทึก ต้องการละทิ้งการแก้ไขหรือไม่?')) return;
+  selectedScheduleId.value = scheduleId;
+  await loadAssignedStaff();
+};
+
 const loadAssignedStaff = async () => {
   if (!selectedScheduleId.value) {
     selectedScheduleMeta.value = null;
     selectedStaffIds.value = [];
+    originalStaffIds.value = [];
     return;
   }
   loading.value = true;
@@ -531,6 +655,7 @@ const loadAssignedStaff = async () => {
     const res = await admin.fetchScheduleStaff(selectedScheduleId.value);
     selectedScheduleMeta.value = res.data?.schedule || null;
     selectedStaffIds.value = (res.data?.staff || []).map((s) => s.id);
+    originalStaffIds.value = [...selectedStaffIds.value];
     mergeAssignedStaffStats(res.data?.staff || []);
   } catch (e) {
     alert(e?.response?.data?.message || 'โหลดรายการสตาฟของรอบไม่สำเร็จ');
@@ -539,13 +664,17 @@ const loadAssignedStaff = async () => {
   }
 };
 
-const toggleStaff = (staffId) => {
-  const normalizedId = Number(staffId);
-  if (isStaffSelected(normalizedId)) {
-    selectedStaffIds.value = selectedStaffIds.value.filter((id) => Number(id) !== normalizedId);
-    return;
-  }
-  selectedStaffIds.value = [...selectedStaffIds.value, normalizedId];
+const addStaff = (staffId) => {
+  if (!selectedScheduleId.value || isStaffSelected(staffId)) return;
+  selectedStaffIds.value = [...selectedStaffIds.value, Number(staffId)];
+};
+
+const removeStaff = (staffId) => {
+  selectedStaffIds.value = selectedStaffIds.value.filter((id) => Number(id) !== Number(staffId));
+};
+
+const resetSelection = () => {
+  selectedStaffIds.value = [...originalStaffIds.value];
 };
 
 const isStaffSelected = (staffId) => selectedStaffIds.value.map(Number).includes(Number(staffId));
@@ -566,6 +695,7 @@ const saveAssignments = async () => {
     const res = await admin.syncScheduleStaff(selectedScheduleId.value, selectedStaffIds.value.map(Number));
     selectedScheduleMeta.value = res.data?.schedule || selectedScheduleMeta.value;
     selectedStaffIds.value = (res.data?.staff || []).map((s) => s.id);
+    originalStaffIds.value = [...selectedStaffIds.value];
     mergeAssignedStaffStats(res.data?.staff || []);
     await loadStaffUsers();
     await admin.fetchSchedules({ per_page: 500, ...(scheduleScope.value === 'upcoming' ? { upcoming: 1 } : {}) });
@@ -798,49 +928,6 @@ onMounted(loadData);
   font-size: 16px;
 }
 
-/* ── Filters ─────────────────────────────────────────────── */
-.filters-card {
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.filters-row {
-  display: flex;
-  gap: 12px;
-  align-items: end;
-  flex-wrap: wrap;
-}
-
-.scope-picker { min-width: 180px; }
-.schedule-picker { min-width: 320px; flex: 1.2; }
-.schedule-search, .staff-search { min-width: 260px; flex: 1; }
-
-.schedule-meta {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.meta-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  padding: 5px 10px;
-}
-
-.meta-pill.selected { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
-.meta-pill.status-open { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
-.meta-pill.status-closed, .meta-pill.status-full { color: #92400e; background: #fffbeb; border-color: #fde68a; }
-.meta-pill.status-cancelled { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
-.meta-pill .material-symbols-rounded { font-size: 15px; }
-
 /* ── Summary grid ─────────────────────────────────────────── */
 .summary-grid {
   display: grid;
@@ -875,19 +962,461 @@ onMounted(loadData);
 .summary-card p { margin: 0; color: #64748b; font-size: 12px; font-weight: 600; }
 .summary-card strong { display: block; color: #0f172a; font-size: 22px; line-height: 1; margin-top: 4px; }
 
-/* ── Staff table ──────────────────────────────────────────── */
-.data-table tbody tr.selected { background: #f0fdfa; }
+/* ── Assign layout (master–detail) ───────────────────────── */
+.assign-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
 
-.staff-checkbox { width: 16px; height: 16px; accent-color: var(--color-accent); }
+/* Left: trip panel */
+.trip-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 120px);
+  position: sticky;
+  top: 16px;
+  overflow: hidden;
+}
 
-.staff-cell { display: flex; align-items: center; gap: 10px; }
+.panel-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
 
-.staff-avatar {
+.panel-head .form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.panel-head select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #fff;
+}
+
+.trip-groups {
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trip-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.trip-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.trip-group-head:hover { background: #f1f5f9; }
+
+.trip-group-head .chev {
+  font-size: 20px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.trip-group-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.trip-group-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-group-loc {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.trip-group-loc .material-symbols-rounded { font-size: 13px; }
+
+.trip-group-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rounds-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.missing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.missing-badge .material-symbols-rounded { font-size: 13px; }
+
+.round-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #f1f5f9;
+}
+
+.round-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px 10px 30px;
+  border: none;
+  border-top: 1px solid #f8fafc;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.round-item:hover { background: #f8fafc; }
+
+.round-item.active {
+  background: #ecfdf5;
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.round-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.round-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.round-date .material-symbols-rounded { font-size: 15px; color: #94a3b8; }
+
+.round-item.active .round-date .material-symbols-rounded { color: var(--color-accent); }
+
+.round-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.round-meta .material-symbols-rounded { font-size: 13px; }
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  margin-left: 4px;
+}
+
+.dot-open { background: #10b981; }
+.dot-closed, .dot-full { background: #f59e0b; }
+.dot-cancelled { background: #ef4444; }
+
+.round-staff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  padding: 3px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.round-staff-badge.none {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.round-staff-badge .material-symbols-rounded { font-size: 13px; }
+
+.panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 36px 16px;
+  color: #94a3b8;
+}
+
+.panel-empty .material-symbols-rounded { font-size: 36px; }
+.panel-empty p { margin: 0; font-size: 13px; font-weight: 600; color: #64748b; text-align: center; }
+.panel-empty.small { padding: 24px 16px; }
+.panel-empty.small .material-symbols-rounded { font-size: 28px; }
+
+/* Right: detail panel */
+.detail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 80px 24px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.detail-empty .material-symbols-rounded { font-size: 44px; }
+.detail-empty p { margin: 0; font-size: 14px; font-weight: 600; color: #64748b; line-height: 1.6; }
+
+.round-header-card { padding: 16px 18px; }
+
+.round-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.round-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.round-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.round-subtitle .material-symbols-rounded { font-size: 16px; }
+
+.schedule-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 5px 10px;
+}
+
+.meta-pill.status-open { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+.meta-pill.status-closed, .meta-pill.status-full { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.meta-pill.status-cancelled { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+.meta-pill .material-symbols-rounded { font-size: 15px; }
+
+/* Section heads */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+  color: #0f172a;
+  flex-wrap: wrap;
+}
+
+.section-head .material-symbols-rounded {
+  font-size: 19px;
+  color: var(--color-accent);
+}
+
+.section-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #047857;
+  background: #ecfdf5;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.pick-search {
+  margin-left: auto;
+  min-width: 240px;
+  flex: 1;
+  max-width: 340px;
+}
+
+/* Assigned chips */
+.assigned-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.assigned-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.chip-avatar {
   width: 34px;
   height: 34px;
+  border-radius: 9px;
+  object-fit: cover;
+  border: 1px solid #d1fae5;
+  flex-shrink: 0;
+}
+
+.chip-avatar.fallback {
+  background: var(--color-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.chip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.chip-name { font-size: 13px; font-weight: 700; color: #065f46; }
+.chip-nick { color: #64748b; font-weight: 600; }
+
+.chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
   border-radius: 8px;
+  background: transparent;
+  color: #059669;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.chip-remove:hover { background: #fee2e2; color: #b91c1c; }
+.chip-remove .material-symbols-rounded { font-size: 17px; }
+
+.assigned-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.assigned-empty .material-symbols-rounded { font-size: 18px; }
+
+/* Staff picker list */
+.staff-pick-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.staff-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid #f8fafc;
+  transition: background 0.15s;
+}
+
+.staff-pick-row:hover { background: #f8fafc; }
+
+.staff-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   object-fit: cover;
   border: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 .staff-avatar.fallback {
@@ -899,20 +1428,22 @@ onMounted(loadData);
   font-weight: 700;
 }
 
-.staff-name { font-weight: 600; color: #111827; }
-
-.nickname-pill {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-  font-size: 12px;
-  font-weight: 700;
+.pick-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
 }
 
-.staff-contact .muted { color: #6b7280; font-size: 12px; }
+.pick-name { font-size: 13px; font-weight: 700; color: #0f172a; }
+
+.pick-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
 .phone-link {
   display: inline-flex;
@@ -925,67 +1456,99 @@ onMounted(loadData);
 }
 
 .phone-link:hover { text-decoration: underline; }
-
 .phone-link .material-symbols-rounded { font-size: 14px; }
 
 .count-pill {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: #f1f5f9;
   color: #334155;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .rating-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 3px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: #fff7ed;
   color: #9a3412;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .rating-pill.empty { background: #f3f4f6; color: #6b7280; }
-.rating-pill .material-symbols-rounded { font-size: 14px; }
+.rating-pill .material-symbols-rounded { font-size: 13px; }
+.review-count { color: #b45309; font-weight: 600; }
 
-.actions-row {
-  border-top: 1px solid #e5e7eb;
-  padding: 12px 16px;
-  display: flex;
-  gap: 12px;
+.btn-add {
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 4px;
+  padding: 7px 14px;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
 }
 
-.selected-preview {
-  flex: 1;
+.btn-add:hover { background: #d1fae5; }
+.btn-add .material-symbols-rounded { font-size: 16px; }
+
+/* Save bar */
+.save-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  position: sticky;
+  bottom: 12px;
+}
+
+.save-bar.dirty { border-color: #fde68a; }
+
+.dirty-note,
+.saved-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-right: auto;
+}
+
+.dirty-note { color: #b45309; }
+.saved-note { color: #047857; }
+.dirty-note .material-symbols-rounded,
+.saved-note .material-symbols-rounded { font-size: 17px; }
+
+/* ── Roster ───────────────────────────────────────────────── */
+.filters-card {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.filters-row {
+  display: flex;
+  gap: 12px;
+  align-items: end;
   flex-wrap: wrap;
 }
 
-.selected-preview .muted { color: #6b7280; font-size: 13px; font-weight: 600; }
-
-.selected-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* ── Roster ───────────────────────────────────────────────── */
 .roster-wrapper {
   display: flex;
   flex-direction: column;
@@ -1115,6 +1678,15 @@ onMounted(loadData);
 
 .unassigned-dot { color: #cbd5e1; font-size: 16px; }
 
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .assign-layout { grid-template-columns: 1fr; }
+  .trip-panel {
+    position: static;
+    max-height: 420px;
+  }
+}
+
 @media (max-width: 900px) {
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .today-grid { grid-template-columns: 1fr; }
@@ -1122,9 +1694,10 @@ onMounted(loadData);
 
 @media (max-width: 640px) {
   .summary-grid { grid-template-columns: 1fr; }
-  .schedule-picker, .schedule-search, .staff-search, .scope-picker { min-width: 100%; }
-  .actions-row { align-items: stretch; flex-direction: column; }
   .tab-switcher { width: 100%; }
   .tab-btn { flex: 1; justify-content: center; }
+  .pick-search { min-width: 100%; max-width: 100%; }
+  .save-bar { flex-direction: column; align-items: stretch; }
+  .dirty-note, .saved-note { margin-right: 0; justify-content: center; }
 }
 </style>
