@@ -39,7 +39,7 @@
   }
 
   $dueDateFormatted = $booking->balance_due_at?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
-  $depDateFormatted = $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
+  $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
 <x-emails.partials.base subject="{{ $bannerTitle }} — {{ $booking->booking_ref }}">

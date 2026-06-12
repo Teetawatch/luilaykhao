@@ -28,7 +28,7 @@
   $dueDateFormatted = $installment->due_date
     ? \Carbon\Carbon::parse($installment->due_date)->locale('th')->isoFormat('D MMMM YYYY')
     : '-';
-  $depDateFormatted = $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
+  $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
 <x-emails.partials.base subject="{{ $bannerTitle }} งวดที่ {{ $installment->installment_no }} — {{ $booking->booking_ref }}">

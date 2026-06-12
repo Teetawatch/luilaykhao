@@ -111,6 +111,7 @@ class BookingMemberController extends Controller
             'booking_ref' => $booking->booking_ref,
             'trip_title' => $trip?->title,
             'departure_date' => $schedule?->departure_date?->toDateString(),
+            'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
             'already_member' => $booking->isAccessibleByUser($request->user()->id),
         ]);
     }

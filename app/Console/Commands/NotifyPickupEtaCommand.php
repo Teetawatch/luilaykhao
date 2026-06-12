@@ -18,6 +18,7 @@ class NotifyPickupEtaCommand extends Command
 
     /** เตือนเมื่อ ETA ต่ำกว่าค่านี้ (นาที) */
     private const APPROACHING_MINUTES = 20;
+
     private const ARRIVING_MINUTES = 5;
 
     /** ถือว่ารถถึงจุดรับแล้วเมื่ออยู่ใกล้กว่าระยะนี้ (กม.) */
@@ -29,7 +30,8 @@ class NotifyPickupEtaCommand extends Command
     public function handle(): int
     {
         $schedules = TripSchedule::with('trip')
-            ->whereDate('departure_date', today())
+            // เทียบกับวันออกรถจริง — รอบที่รถออกคืนก่อนวันทริปจะรับลูกค้าในวันก่อนหน้า
+            ->departingOn(today())
             ->whereNotNull('vehicle_id')
             ->whereNotIn('status', ['cancelled', 'completed'])
             ->get();
@@ -131,6 +133,7 @@ class NotifyPickupEtaCommand extends Command
         if ($minutes <= self::APPROACHING_MINUTES) {
             return 'approaching';
         }
+
         return null;
     }
 
@@ -170,9 +173,9 @@ class NotifyPickupEtaCommand extends Command
             $body,
             [
                 'booking_ref' => $booking->booking_ref,
-                'vehicle_id'  => $schedule->vehicle_id,
+                'vehicle_id' => $schedule->vehicle_id,
                 'eta_minutes' => $minutes,
-                'stage'       => $stage,
+                'stage' => $stage,
             ],
         );
 

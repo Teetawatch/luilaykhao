@@ -27,7 +27,7 @@
   $accentColor = $cfg['accent'];
   $boxStyle    = 'background:' . $cfg['boxBg'] . '; border-color:' . $cfg['boxBorder'] . '; text-align:center;';
 
-  $depDateFormatted = $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
+  $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
 <x-emails.partials.base subject="อัปเดตสถานะการจอง {{ $booking->booking_ref }}">

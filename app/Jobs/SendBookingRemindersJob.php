@@ -14,6 +14,7 @@ class SendBookingRemindersJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
     public int $backoff = 60;
 
     public function handle(SmsService $smsService, FcmService $fcmService): void
@@ -23,7 +24,8 @@ class SendBookingRemindersJob implements ShouldQueue
         foreach ([3, 1] as $daysBefore) {
             $bookings = Booking::where('status', 'confirmed')
                 ->whereHas('schedule', function ($query) use ($daysBefore) {
-                    $query->whereDate('departure_date', now()->addDays($daysBefore)->toDateString())
+                    // นับวันจากเวลาออกเดินทางจริง (departs_at) ไม่ใช่วันทริป
+                    $query->departingOn(now()->addDays($daysBefore))
                         ->where('status', '!=', 'cancelled');
                 })
                 ->with(['user', 'passengers', 'schedule.trip', 'pickupPoint'])

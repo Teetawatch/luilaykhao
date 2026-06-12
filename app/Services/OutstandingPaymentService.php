@@ -106,6 +106,7 @@ class OutstandingPaymentService
             'email' => $passenger->email ?? $booking->user?->email ?? null,
             'trip_title' => $booking->schedule->trip->title ?? '-',
             'departure_date' => $booking->schedule?->departure_date?->toDateString(),
+            'departs_at' => $booking->schedule?->departs_at?->format('Y-m-d H:i:s'),
             'type' => $type,
             'label' => $label,
             'installment_no' => $installmentNo,

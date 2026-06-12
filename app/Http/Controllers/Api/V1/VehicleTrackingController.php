@@ -59,7 +59,7 @@ class VehicleTrackingController extends Controller
         // Get active schedule for auto-ETA info in broadcast
         $schedule = TripSchedule::with('trip')
             ->where('vehicle_id', $vehicle->id)
-            ->whereDate('departure_date', today())
+            ->departingOn(today())
             ->whereNotIn('status', ['cancelled'])
             ->first();
 
@@ -143,7 +143,7 @@ class VehicleTrackingController extends Controller
             // Get active schedule for auto-ETA info in broadcast
             $schedule = TripSchedule::with('trip')
                 ->where('vehicle_id', $vehicle->id)
-                ->whereDate('departure_date', today())
+                ->departingOn(today())
                 ->whereNotIn('status', ['cancelled'])
                 ->first();
 
@@ -194,7 +194,7 @@ class VehicleTrackingController extends Controller
                 // Get active schedule for auto-ETA
                 $schedule = TripSchedule::with('trip')
                     ->where('vehicle_id', $vehicle->id)
-                    ->whereDate('departure_date', today())
+                    ->departingOn(today())
                     ->whereNotIn('status', ['cancelled'])
                     ->first();
 
@@ -248,7 +248,7 @@ class VehicleTrackingController extends Controller
         // Get active schedule for auto-ETA
         $schedule = TripSchedule::with('trip')
             ->where('vehicle_id', $vehicleId)
-            ->whereDate('departure_date', today())
+            ->departingOn(today())
             ->whereNotIn('status', ['cancelled'])
             ->first();
 
@@ -312,7 +312,7 @@ class VehicleTrackingController extends Controller
         // Get active schedule for auto-ETA info in cache
         $schedule = TripSchedule::with('trip')
             ->where('vehicle_id', $vehicle->id)
-            ->whereDate('departure_date', today())
+            ->departingOn(today())
             ->whereNotIn('status', ['cancelled'])
             ->first();
 
@@ -432,6 +432,7 @@ class VehicleTrackingController extends Controller
             'trip_title' => $trip?->title ?? '',
             'departure_point' => $trip?->departure_point ?? '',
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+            'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
             'schedule_id' => $booking->schedule_id,
             'vehicle_id' => $schedule?->vehicle_id,
             'driver_name' => $vehicle?->driver_name,
@@ -494,6 +495,7 @@ class VehicleTrackingController extends Controller
                 'trip_title' => $trip?->title ?? '',
                 'departure_point' => $trip?->departure_point ?? '',
                 'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+                'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
                 'schedule_id' => $booking?->schedule_id,
                 'vehicle_id' => $schedule?->vehicle_id,
                 'driver_name' => $vehicle?->driver_name,
@@ -549,6 +551,7 @@ class VehicleTrackingController extends Controller
             'destination_lat' => $trip?->latitude,
             'destination_lng' => $trip?->longitude,
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+            'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
             'status' => $booking->status,
             // Vehicle info for driver call button
             'driver_name' => $vehicle?->driver_name,
@@ -588,6 +591,7 @@ class VehicleTrackingController extends Controller
             'trip_title' => $trip?->title ?? 'ทริปของคุณ',
             'status' => $status,
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
+            'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
             'pickup' => [
                 'name' => $pickupName,
                 'lat' => $pickupLat,
@@ -758,7 +762,7 @@ class VehicleTrackingController extends Controller
 
         $schedules = TripSchedule::with('trip')
             ->where('vehicle_id', $id)
-            ->whereDate('departure_date', today())
+            ->departingOn(today())
             ->whereNotIn('status', ['cancelled'])
             ->orderBy('departure_date')
             ->get();

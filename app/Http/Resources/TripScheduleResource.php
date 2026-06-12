@@ -30,6 +30,9 @@ class TripScheduleResource extends JsonResource
             'trip_id' => $this->trip_id,
             'trip' => new TripResource($this->whenLoaded('trip')),
             'departure_date' => $this->departure_date?->toDateString(),
+            // เวลาออกเดินทางจริง (เวลาท้องถิ่นไทย ไม่แปลง timezone) — อาจอยู่ก่อน
+            // departure_date เช่น รถออกคืนวันศุกร์ 23:30 สำหรับทริปวันเสาร์
+            'departs_at' => $this->departs_at?->format('Y-m-d H:i:s'),
             'return_date' => $this->return_date?->toDateString(),
             'review_available_at' => ($this->return_date || $this->departure_date)
                 ? $this->reviewAvailableAt()->toISOString()

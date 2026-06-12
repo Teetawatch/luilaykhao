@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class TripSchedule extends Model
@@ -21,7 +22,7 @@ class TripSchedule extends Model
     protected $table = 'trip_schedules';
 
     protected $fillable = [
-        'trip_id', 'departure_date', 'return_date',
+        'trip_id', 'departure_date', 'departs_at', 'return_date',
         'total_seats', 'booked_seats', 'transport_type',
         'vehicle_id', 'status', 'price_override',
         'installment_enabled', 'installment_count', 'installment_interval_days',
@@ -34,6 +35,7 @@ class TripSchedule extends Model
     {
         return [
             'departure_date' => 'date',
+            'departs_at' => 'datetime',
             'return_date' => 'date',
             'total_seats' => 'integer',
             'booked_seats' => 'integer',
@@ -48,6 +50,71 @@ class TripSchedule extends Model
             'join_trip_price' => 'decimal:2',
             'is_charter' => 'boolean',
         ];
+    }
+
+    /**
+     * วัน-เวลาออกเดินทางจริง — ใช้ departs_at ถ้ากำหนดไว้ (เช่น รถออกคืนก่อนวันทริป)
+     * ไม่งั้น fallback เป็นต้นวันของ departure_date
+     */
+    public function effectiveDepartsAt(): ?Carbon
+    {
+        if ($this->departs_at) {
+            return $this->departs_at->copy();
+        }
+
+        return $this->departure_date?->copy()->startOfDay();
+    }
+
+    /**
+     * วันที่ของการออกเดินทางจริง (ไม่รวมเวลา) — ฐานคำนวณเส้นตายแก้ไข/เลื่อนการจอง
+     */
+    public function effectiveDepartureDate(): ?Carbon
+    {
+        return $this->effectiveDepartsAt()?->startOfDay();
+    }
+
+    /**
+     * ข้อความวันเดินทางภาษาไทย เช่น "12 มิถุนายน 2026 เวลา 23:30 น."
+     * ถ้าไม่ได้กำหนดเวลาออกรถ จะแสดงเฉพาะวันทริป
+     */
+    public function departureLabelThai(): string
+    {
+        if ($this->departs_at) {
+            return $this->departs_at->locale('th')->isoFormat('D MMMM YYYY').' เวลา '.$this->departs_at->format('H:i').' น.';
+        }
+
+        return $this->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
+    }
+
+    /**
+     * ข้อความวันเดินทางแบบสั้น เช่น "12/06/2026 23:30 น." — ใช้ใน SMS
+     */
+    public function departureLabelShort(): string
+    {
+        if ($this->departs_at) {
+            return $this->departs_at->format('d/m/Y H:i').' น.';
+        }
+
+        return $this->departure_date?->format('d/m/Y') ?? '-';
+    }
+
+    /**
+     * Scope: รอบที่ "ออกเดินทางจริง" ตรงกับวันที่กำหนด — เทียบ departs_at
+     * ถ้ามี ไม่งั้นเทียบ departure_date (รองรับรอบที่รถออกคืนก่อนวันทริป)
+     */
+    public function scopeDepartingOn($query, \DateTimeInterface|string $date)
+    {
+        $dateString = $date instanceof \DateTimeInterface
+            ? Carbon::instance($date)->toDateString()
+            : Carbon::parse($date)->toDateString();
+
+        return $query->where(function ($query) use ($dateString) {
+            $query->whereDate('departs_at', $dateString)
+                ->orWhere(function ($query) use ($dateString) {
+                    $query->whereNull('departs_at')
+                        ->whereDate('departure_date', $dateString);
+                });
+        });
     }
 
     /**

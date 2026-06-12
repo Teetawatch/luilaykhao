@@ -299,6 +299,7 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'departure_date' => ['sometimes', 'date'],
+            'departs_at' => ['sometimes', 'nullable', 'date'],
             'return_date' => ['sometimes', 'date'],
             'total_seats' => ['sometimes', 'integer', 'min:1'],
             'transport_type' => ['sometimes', 'in:van,boat,bus'],

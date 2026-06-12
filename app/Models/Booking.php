@@ -220,13 +220,14 @@ class Booking extends Model
     }
 
     /**
-     * กำหนดเส้นตายสำหรับการแก้ไขการจอง — ก่อนวันเดินทาง 1 วัน (สิ้นสุดปลายวัน)
+     * กำหนดเส้นตายสำหรับการแก้ไขการจอง — ก่อนวันออกเดินทางจริง 1 วัน (สิ้นสุดปลายวัน)
+     * ใช้ departs_at ถ้ารอบนั้นรถออกคืนก่อนวันทริป
      */
     public function modificationDeadline(): ?Carbon
     {
         $schedule = $this->relationLoaded('schedule') ? $this->schedule : $this->schedule()->first();
 
-        return $schedule?->departure_date?->copy()->subDay()->endOfDay();
+        return $schedule?->effectiveDepartureDate()?->subDay()->endOfDay();
     }
 
     /**
@@ -244,13 +245,13 @@ class Booking extends Model
     }
 
     /**
-     * เส้นตายการเปลี่ยนวันเดินทาง — ก่อนวันเดินทางอย่างน้อย RESCHEDULE_LEAD_DAYS วัน
+     * เส้นตายการเปลี่ยนวันเดินทาง — ก่อนวันออกเดินทางจริงอย่างน้อย RESCHEDULE_LEAD_DAYS วัน
      */
     public function rescheduleDeadline(): ?Carbon
     {
         $schedule = $this->relationLoaded('schedule') ? $this->schedule : $this->schedule()->first();
 
-        return $schedule?->departure_date?->copy()->subDays(self::RESCHEDULE_LEAD_DAYS)->endOfDay();
+        return $schedule?->effectiveDepartureDate()?->subDays(self::RESCHEDULE_LEAD_DAYS)->endOfDay();
     }
 
     /**

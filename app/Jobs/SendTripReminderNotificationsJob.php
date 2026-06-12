@@ -31,7 +31,9 @@ class SendTripReminderNotificationsJob implements ShouldQueue
             $bookings = Booking::where('status', 'confirmed')
                 ->whereNotNull('user_id')
                 ->whereHas('schedule', function ($query) use ($daysBefore) {
-                    $query->whereDate('departure_date', now()->addDays($daysBefore)->toDateString())
+                    // นับวันจากเวลาออกเดินทางจริง (departs_at) ไม่ใช่วันทริป
+                    // เพื่อให้รอบที่รถออกคืนก่อนวันทริปได้แจ้งเตือนถูกวัน
+                    $query->departingOn(now()->addDays($daysBefore))
                         ->where('status', '!=', 'cancelled');
                 })
                 ->with('schedule.trip')
@@ -48,8 +50,11 @@ class SendTripReminderNotificationsJob implements ShouldQueue
                     ? 'พรุ่งนี้ออกเดินทางแล้ว! 🎒'
                     : "อีก {$daysBefore} วันจะถึงวันเดินทาง";
 
+                $departsAt = $booking->schedule?->departs_at;
+                $timeNote = $departsAt ? ' เวลา '.$departsAt->format('H:i').' น.' : '';
+
                 $body = $daysBefore === 1
-                    ? "{$tripTitle} ออกเดินทางพรุ่งนี้ อย่าลืมเช็กรายการสิ่งที่ต้องเตรียมให้พร้อม"
+                    ? "{$tripTitle} ออกเดินทางพรุ่งนี้{$timeNote} อย่าลืมเช็กรายการสิ่งที่ต้องเตรียมให้พร้อม"
                     : "{$tripTitle} ใกล้ถึงแล้ว เริ่มเตรียมของตามเช็กลิสต์ได้เลย";
 
                 SmartNotification::send(

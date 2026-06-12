@@ -205,6 +205,7 @@ class SeatLockService
                     'schedule' => [
                         'id' => $schedule->id,
                         'departure_date' => $schedule->departure_date?->toDateString(),
+                        'departs_at' => $schedule->departs_at?->format('Y-m-d H:i:s'),
                         'return_date' => $schedule->return_date?->toDateString(),
                         'status' => $schedule->status,
                         'transport_type' => $schedule->transport_type,

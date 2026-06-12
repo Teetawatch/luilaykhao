@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 
 class StoreScheduleRequest extends FormRequest
 {
@@ -16,6 +17,20 @@ class StoreScheduleRequest extends FormRequest
         return [
             'trip_id' => ['required', 'exists:trips,id'],
             'departure_date' => ['required', 'date', 'after_or_equal:today'],
+            'departs_at' => ['nullable', 'date', function (string $attribute, mixed $value, \Closure $fail) {
+                $departureDate = $this->input('departure_date');
+                if (! $departureDate) {
+                    return;
+                }
+
+                $departsAt = Carbon::parse($value);
+                $tripDate = Carbon::parse($departureDate);
+
+                if ($departsAt->lt($tripDate->copy()->subDay()->startOfDay())
+                    || $departsAt->gt($tripDate->copy()->endOfDay())) {
+                    $fail('เวลาออกเดินทางต้องอยู่ระหว่าง 1 วันก่อนวันทริปถึงสิ้นสุดวันทริป');
+                }
+            }],
             'return_date' => ['required', 'date', 'after_or_equal:departure_date'],
             'total_seats' => ['required', 'integer', 'min:1'],
             'transport_type' => ['required', 'in:van,boat,bus'],

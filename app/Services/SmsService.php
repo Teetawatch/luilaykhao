@@ -54,7 +54,7 @@ class SmsService
         return $this->queueOrSend(
             booking: $booking,
             type: 'installment_paid',
-            dedupeKey: 'installment:' . $installment->installment_no,
+            dedupeKey: 'installment:'.$installment->installment_no,
             message: sprintf(
                 'รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว%s',
                 $installment->installment_no,
@@ -102,8 +102,8 @@ class SmsService
 
         return $this->queueOrSend(
             booking: $booking,
-            type: 'installment_' . $reminderType,
-            dedupeKey: 'installment:' . $installment->installment_no . ':' . $installment->due_date?->toDateString(),
+            type: 'installment_'.$reminderType,
+            dedupeKey: 'installment:'.$installment->installment_no.':'.$installment->due_date?->toDateString(),
             message: sprintf(
                 '%s งวดที่ %d จำนวน %s บาท booking %s กำหนด %s ชำระที่ %s',
                 $prefix,
@@ -181,7 +181,7 @@ class SmsService
         return $this->queueOrSend(
             booking: $booking,
             type: 'departure_reminder',
-            dedupeKey: $daysBefore . '_days_before',
+            dedupeKey: $daysBefore.'_days_before',
             message: sprintf(
                 'อีก %d วันถึงทริป %s วันที่ %s จุดนัดพบ %s รายละเอียด %s',
                 $daysBefore,
@@ -197,6 +197,7 @@ class SmsService
     {
         if (! $this->isConfigured()) {
             Log::info('SMS pending send skipped: ThaiBulkSMS is not enabled or configured.');
+
             return 0;
         }
 
@@ -310,7 +311,7 @@ class SmsService
                 'provider_message_id' => $providerId,
                 'sent_at' => $result['ok'] ? now() : null,
                 'failed_at' => $result['ok'] ? null : now(),
-                'error_message' => $result['ok'] ? null : 'ThaiBulkSMS returned HTTP ' . $result['status'],
+                'error_message' => $result['ok'] ? null : 'ThaiBulkSMS returned HTTP '.$result['status'],
             ]);
 
             return $result['ok'];
@@ -369,7 +370,7 @@ class SmsService
         }
 
         if (str_starts_with($digits, '0') && strlen($digits) === 10) {
-            return '66' . substr($digits, 1);
+            return '66'.substr($digits, 1);
         }
 
         if (str_starts_with($digits, '66')) {
@@ -386,7 +387,8 @@ class SmsService
 
     private function departureDate(Booking $booking): string
     {
-        return $booking->schedule?->departure_date?->format('d/m/Y') ?? '-';
+        // แสดงวัน-เวลาออกรถจริง (เช่น 12/06/2026 23:30 น.) ถ้ารอบนั้นกำหนดไว้
+        return $booking->schedule?->departureLabelShort() ?? '-';
     }
 
     private function meetingPoint(Booking $booking): string
@@ -398,12 +400,12 @@ class SmsService
 
     private function bookingUrl(Booking $booking): string
     {
-        return rtrim((string) config('app.frontend_url', config('app.url')), '/') . '/confirmation/' . $booking->booking_ref;
+        return rtrim((string) config('app.frontend_url', config('app.url')), '/').'/confirmation/'.$booking->booking_ref;
     }
 
     private function installmentPaymentUrl(Booking $booking): string
     {
-        return rtrim((string) config('app.frontend_url', config('app.url')), '/') . '/installment-payment/' . $booking->booking_ref;
+        return rtrim((string) config('app.frontend_url', config('app.url')), '/').'/installment-payment/'.$booking->booking_ref;
     }
 
     private function money(mixed $amount): string

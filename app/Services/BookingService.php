@@ -560,7 +560,7 @@ class BookingService
             $rescheduled->user_id,
             'booking_rescheduled',
             'เปลี่ยนวันเดินทางสำเร็จ',
-            "การจอง {$rescheduled->booking_ref} ย้ายไปวันที่ ".$rescheduled->schedule->departure_date->format('d/m/Y').' แล้ว',
+            "การจอง {$rescheduled->booking_ref} ย้ายไปวันที่ ".$rescheduled->schedule->departureLabelShort().' แล้ว',
             [
                 'booking_ref' => $rescheduled->booking_ref,
                 'route' => 'booking',
@@ -605,7 +605,8 @@ class BookingService
     public function calculateRefundPercent(Booking $booking): int
     {
         $schedule = $booking->schedule;
-        $daysUntilDeparture = now()->diffInDays($schedule->departure_date, false);
+        // นับถอยหลังจากวันออกรถจริง (อาจเป็นคืนก่อนวันทริป)
+        $daysUntilDeparture = now()->diffInDays($schedule->effectiveDepartureDate(), false);
 
         if ($daysUntilDeparture >= 7) {
             return 80;

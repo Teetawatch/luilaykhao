@@ -33,7 +33,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $booking->schedule->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-' }}</span>
+        <span class="info-value">{{ $booking->schedule?->departureLabelThai() ?? '-' }}</span>
       </div>
       @if($booking->pickupPoint || $booking->pickup_region)
       <div class="pickup-block">

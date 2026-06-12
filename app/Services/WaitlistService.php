@@ -23,7 +23,7 @@ class WaitlistService
                 throw new \Exception('รอบเดินทางนี้ถูกยกเลิกแล้ว');
             }
 
-            if ($schedule->departure_date->isPast()) {
+            if ($schedule->effectiveDepartsAt()->isPast()) {
                 throw new \Exception('รอบเดินทางนี้ผ่านมาแล้ว');
             }
 
@@ -69,11 +69,12 @@ class WaitlistService
             ->whereIn('status', ['waiting', 'offered'])
             ->first();
 
-        if (!$entry) {
+        if (! $entry) {
             return false;
         }
 
         $entry->update(['status' => 'cancelled']);
+
         return true;
     }
 
@@ -93,7 +94,7 @@ class WaitlistService
     {
         return DB::transaction(function () use ($scheduleId) {
             $schedule = TripSchedule::lockForUpdate()->find($scheduleId);
-            if (!$schedule) {
+            if (! $schedule) {
                 return 0;
             }
 
@@ -141,7 +142,7 @@ class WaitlistService
                     $entry->user_id,
                     'waitlist_offered',
                     'มีที่นั่งว่างแล้ว!',
-                    'มีที่นั่งว่างในทริปที่คุณรอคิวอยู่ กรุณาจองภายใน ' . self::OFFER_TTL_MINUTES . ' นาที',
+                    'มีที่นั่งว่างในทริปที่คุณรอคิวอยู่ กรุณาจองภายใน '.self::OFFER_TTL_MINUTES.' นาที',
                     [
                         'schedule_id' => (string) $scheduleId,
                         'expires_at' => now()->addMinutes(self::OFFER_TTL_MINUTES)->toISOString(),
