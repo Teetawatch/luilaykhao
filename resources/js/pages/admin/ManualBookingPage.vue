@@ -41,6 +41,7 @@
                 <option v-for="schedule in schedules" :key="schedule.id" :value="schedule.id">
                   {{ scheduleRegionLabel(schedule) }} · {{ formatDate(schedule.departure_date) }}
                   <template v-if="schedule.return_date"> - {{ formatDate(schedule.return_date) }}</template>
+                  <template v-if="schedule.departs_at"> · ออกรถ {{ departsTimeLabel(schedule) }}</template>
                   · ว่าง {{ schedule.available_seats }} ที่
                 </option>
               </select>
@@ -405,6 +406,10 @@
           <div class="summary-row">
             <span>รอบเดินทาง</span>
             <strong>{{ selectedSchedule ? formatDate(selectedSchedule.departure_date) : '-' }}</strong>
+          </div>
+          <div v-if="selectedSchedule?.departs_at" class="summary-row">
+            <span>ออกรถจริง</span>
+            <strong>{{ departsTimeLabel(selectedSchedule) }}</strong>
           </div>
           <div class="summary-row">
             <span>ภาค</span>
@@ -853,6 +858,14 @@ function formatDate(value) {
     month: 'short',
     year: 'numeric',
   });
+}
+
+// เวลาออกรถจริง เช่น "23:30 น. (คืนก่อนวันทริป)" — รถอาจออกก่อนวันทริป
+function departsTimeLabel(schedule) {
+  if (!schedule?.departs_at) return '';
+  const time = schedule.departs_at.slice(11, 16);
+  const nightBefore = schedule.departs_at.slice(0, 10) < schedule.departure_date;
+  return `${time} น.${nightBefore ? ' (คืนก่อนวันทริป)' : ''}`;
 }
 
 function formatCurrency(value) {

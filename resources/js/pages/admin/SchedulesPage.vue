@@ -97,7 +97,13 @@
                   </td>
                 </tr>
                 <tr v-for="sch in m.schedules" :key="sch.id">
-                  <td class="date">{{ sch.departure_date }}</td>
+                  <td class="date">
+                    {{ sch.departure_date }}
+                    <div v-if="sch.departs_at" class="text-muted-sm">
+                      <span class="material-symbols-rounded icon-xs">schedule</span>
+                      {{ departsTimeLabel(sch) }}
+                    </div>
+                  </td>
                   <td class="date">
                     <span v-if="isDayTrip(sch)" class="daytrip-pill">
                       <span class="material-symbols-rounded icon-xs">wb_sunny</span> เดย์ทริป
@@ -206,6 +212,24 @@
             <div class="form-group" v-if="!form.is_day_trip">
               <label>วันกลับ *</label>
               <input v-model="form.return_date" type="date" required />
+            </div>
+            <div class="form-group full-width">
+              <label>เวลาออกรถจริง (ไม่บังคับ)</label>
+              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                <input v-model="form.departs_time" type="time" style="max-width:140px;" />
+                <label class="daytrip-toggle" style="margin:0;" v-if="form.departs_time">
+                  <input type="checkbox" v-model="form.departs_night_before" />
+                  <span class="material-symbols-rounded icon-xs">dark_mode</span>
+                  <span>รถออกคืนก่อนวันทริป</span>
+                </label>
+                <button type="button" class="btn-sm btn-secondary" v-if="form.departs_time"
+                  @click="form.departs_time = ''; form.departs_night_before = false;">ล้าง</button>
+              </div>
+              <p class="form-toggle-hint" v-if="form.departs_time && form.departure_date" style="margin-top:6px;">
+                ลูกค้าจะเห็นว่าออกเดินทาง
+                {{ form.departs_night_before ? shiftDateStr(form.departure_date, -1) : form.departure_date }}
+                เวลา {{ form.departs_time }} น.
+              </p>
             </div>
             <div class="form-group">
               <label>จำนวนที่นั่ง *</label>
@@ -699,6 +723,19 @@
                 <label>ราคาพิเศษ (฿)</label>
                 <input v-model.number="batchForm.price_override" type="number" min="0" placeholder="ไม่ระบุใช้ราคาทริป" />
               </div>
+              <div class="form-group full-width">
+                <label>เวลาออกรถจริง (ไม่บังคับ — ใช้กับทุกรอบ)</label>
+                <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                  <input v-model="batchForm.departs_time" type="time" style="max-width:140px;" />
+                  <label class="daytrip-toggle" style="margin:0;" v-if="batchForm.departs_time">
+                    <input type="checkbox" v-model="batchForm.departs_night_before" />
+                    <span class="material-symbols-rounded icon-xs">dark_mode</span>
+                    <span>รถออกคืนก่อนวันทริป</span>
+                  </label>
+                  <button type="button" class="btn-sm btn-secondary" v-if="batchForm.departs_time"
+                    @click="batchForm.departs_time = ''; batchForm.departs_night_before = false;">ล้าง</button>
+                </div>
+              </div>
             </div>
 
             <!-- Join Trip + Installment in batch -->
@@ -971,7 +1008,7 @@
                        <span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span>
                     </div>
                     <div style="font-size:11px;color:#6b7280;margin-top:2px;">
-                      ว่าง {{ sch.available_seats }} ที่นั่ง · {{ sch.vehicle?.name || sch.transport_type }}
+                      <span v-if="sch.departs_at">{{ departsTimeLabel(sch) }} · </span>ว่าง {{ sch.available_seats }} ที่นั่ง · {{ sch.vehicle?.name || sch.transport_type }}
                       <span v-if="sch.id !== moveSource.id && sch.available_seats < selectedMoveSeatCount" style="color:#dc2626;font-weight:700;">
                         · ที่นั่งไม่พอสำหรับ {{ selectedMoveSeatCount }} คน
                       </span>
@@ -1545,6 +1582,7 @@ const vehicleOptions = ref([]);
 
 const form = reactive({
   trip_id: '', departure_date: '', return_date: '', is_day_trip: false,
+  departs_time: '', departs_night_before: false,
   total_seats: 10, transport_type: 'van', vehicle_id: null,
   price_override: null, status: 'open',
   installment_enabled: false, installment_count: 2, installment_interval_days: 30,
@@ -1552,6 +1590,30 @@ const form = reactive({
   join_trip_enabled: false, join_trip_price: null,
   is_charter: false,
 });
+
+// ─── เวลาออกรถจริง (departs_at) ─────────────────────────────
+// รถอาจออกคืนก่อนวันทริป เช่น ทริปเสาร์ที่ 13 แต่รถออกศุกร์ที่ 12 เวลา 23:30
+
+const shiftDateStr = (dateStr, days) => {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
+const buildDepartsAt = (departureDate, time, nightBefore) => {
+  if (!time || !departureDate) return null;
+  const date = nightBefore ? shiftDateStr(departureDate, -1) : departureDate;
+  return `${date} ${time}:00`;
+};
+
+const departsTimeLabel = (sch) => {
+  if (!sch.departs_at) return '';
+  const time = sch.departs_at.slice(11, 16);
+  const nightBefore = sch.departs_at.slice(0, 10) < sch.departure_date;
+  return `ออกรถ ${time} น.${nightBefore ? ' (คืนก่อนวันทริป)' : ''}`;
+};
 
 const statusLabels = { 
   open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก',
@@ -1597,6 +1659,8 @@ const openForm = (item = null) => {
       departure_date: item.departure_date,
       return_date: item.return_date,
       is_day_trip: item.departure_date === item.return_date,
+      departs_time: item.departs_at ? item.departs_at.slice(11, 16) : '',
+      departs_night_before: !!item.departs_at && item.departs_at.slice(0, 10) < item.departure_date,
       total_seats: item.total_seats,
       transport_type: item.transport_type,
       vehicle_id: item.vehicle?.id || null,
@@ -1617,6 +1681,7 @@ const openForm = (item = null) => {
     Object.assign(form, {
       trip_id: item?.trip_id || '',
       departure_date: '', return_date: '', is_day_trip: false,
+      departs_time: '', departs_night_before: false,
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
       installment_enabled: false, installment_count: 2, installment_interval_days: 30,
@@ -1634,6 +1699,9 @@ const submitForm = async () => {
     const data = { ...form };
     if (data.is_day_trip) data.return_date = data.departure_date;
     delete data.is_day_trip;
+    data.departs_at = buildDepartsAt(data.departure_date, data.departs_time, data.departs_night_before);
+    delete data.departs_time;
+    delete data.departs_night_before;
     if (!data.price_override) data.price_override = null;
     if (!data.deposit_enabled) {
       data.deposit_type = null;
@@ -1671,6 +1739,8 @@ const batchForm = reactive({
   total_seats: 10,
   price_override: null,
   is_day_trip: false,
+  departs_time: '',
+  departs_night_before: false,
   dates: [{ departure_date: '', return_date: '' }],
   pickups: [],
   join_trip_enabled: false,
@@ -2025,6 +2095,8 @@ const openBatchForm = (presetTripId = '') => {
     total_seats: 10,
     price_override: null,
     is_day_trip: false,
+    departs_time: '',
+    departs_night_before: false,
     dates: [{ departure_date: '', return_date: '' }],
     pickups: [],
     join_trip_enabled: false,
@@ -2119,6 +2191,7 @@ const submitBatchForm = async () => {
         total_seats: batchForm.total_seats,
         price_override: batchForm.price_override || null,
         departure_date: d.departure_date,
+        departs_at: buildDepartsAt(d.departure_date, batchForm.departs_time, batchForm.departs_night_before),
         return_date: returnDate,
         status: 'open',
         join_trip_enabled: batchForm.join_trip_enabled || false,
@@ -2182,9 +2255,14 @@ const doCopySchedule = async () => {
   copyScheduleSubmitting.value = true;
   try {
     const src = copyScheduleSource.value;
+    // คงเวลาออกรถจริงของต้นฉบับ (รวม offset คืนก่อนวันทริป) เทียบกับวันใหม่
+    const srcNightBefore = !!src.departs_at && src.departs_at.slice(0, 10) < src.departure_date;
     const newScheduleRes = await api.post('/admin/schedules', {
       trip_id: copyScheduleForm.trip_id,
       departure_date: copyScheduleForm.departure_date,
+      departs_at: src.departs_at
+        ? buildDepartsAt(copyScheduleForm.departure_date, src.departs_at.slice(11, 16), srcNightBefore)
+        : null,
       return_date: copyScheduleForm.return_date,
       total_seats: src.total_seats,
       transport_type: src.transport_type,
