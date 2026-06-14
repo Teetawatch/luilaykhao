@@ -7,10 +7,10 @@ use App\Jobs\BroadcastSosAlert;
 use App\Models\Booking;
 use App\Models\SosAlert;
 use App\Models\TripSchedule;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class SosController extends Controller
 {
@@ -54,7 +54,7 @@ class SosController extends Controller
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('sos/'.date('Y/m'), 'public');
+            $photoPath = $request->file('photo')->store('sos/'.date('Y/m'), MediaDisk::name());
         }
 
         if ($recentAlert) {
@@ -154,7 +154,7 @@ class SosController extends Controller
             'schedule_id' => $alert->schedule_id,
             'user_name' => $alert->user?->name,
             'message' => $alert->message,
-            'photo_url' => $alert->photo_path ? Storage::disk('public')->url($alert->photo_path) : null,
+            'photo_url' => MediaDisk::url($alert->photo_path),
             'contact_phone' => $alert->contact_phone,
             'latitude' => $alert->latitude,
             'longitude' => $alert->longitude,

@@ -9,6 +9,7 @@ use App\Models\SchedulePhoto;
 use App\Models\Trip;
 use App\Models\TripPhoto;
 use App\Models\TripSchedule;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,10 +34,7 @@ class PhotoController extends Controller
 
     private function disk(): string
     {
-        return config('filesystems.default') === 'r2' ? 'r2' : (
-            // Prefer r2 when configured, otherwise fall back to public.
-            config('filesystems.disks.r2.bucket') ? 'r2' : 'public'
-        );
+        return MediaDisk::name();
     }
 
     /* ───── Trip photos ─────────────────────────────────────── */

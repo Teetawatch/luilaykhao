@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MediaDisk;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -96,14 +96,13 @@ class User extends Authenticatable
             return $this->avatar;
         }
 
-        // Clean leading slashes to prevent double slashes in URL
-        $path = ltrim($this->avatar, '/');
-
-        // If it starts with avatars, it's stored in public/avatars directamente
-        if (str_starts_with($path, 'avatars')) {
-            return url($path);
+        // Legacy avatars written straight into the public web root were saved
+        // with a leading slash (/avatars/…); serve those from the app URL.
+        if (str_starts_with($this->avatar, '/avatars')) {
+            return url(ltrim($this->avatar, '/'));
         }
 
-        return Storage::url($path);
+        // Everything else is a disk-relative path (avatars/… on the media disk).
+        return MediaDisk::url($this->avatar) ?? '';
     }
 }

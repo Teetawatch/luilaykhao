@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class ChatMessage extends Model
 {
@@ -26,9 +26,7 @@ class ChatMessage extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image_path
-            ? Storage::disk('public')->url($this->image_path)
-            : null;
+        return MediaDisk::url($this->image_path);
     }
 
     public function schedule(): BelongsTo

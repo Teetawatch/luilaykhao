@@ -11,6 +11,7 @@ use App\Models\ChatReaction;
 use App\Models\ChatRead;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\MediaDisk;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -258,7 +259,7 @@ class ChatService
     public function deleteMessage(ChatMessage $message): void
     {
         if ($message->image_path) {
-            Storage::disk('public')->delete($message->image_path);
+            Storage::disk(MediaDisk::name())->delete($message->image_path);
         }
 
         $message->forceFill([

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
+use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -35,8 +36,8 @@ class ContactController extends Controller
         $imagePaths = [];
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $path = $image->store('contacts', 'public');
-                $imagePaths[] = Storage::url($path);
+                $path = $image->store('contacts', MediaDisk::name());
+                $imagePaths[] = MediaDisk::url($path);
             }
         }
 
@@ -53,7 +54,7 @@ class ContactController extends Controller
 
         return response()->json([
             'message' => 'Message sent successfully',
-            'contact' => $contact
+            'contact' => $contact,
         ], 201);
     }
 
@@ -64,6 +65,7 @@ class ContactController extends Controller
     {
         $contact = Contact::findOrFail($id);
         $contact->update(['read_at' => now()]);
+
         return response()->json(['message' => 'Marked as read']);
     }
 
@@ -73,16 +75,21 @@ class ContactController extends Controller
     public function destroy($id)
     {
         $contact = Contact::findOrFail($id);
-        
-        // Delete images from storage
+
+        // Delete images from storage. Stored values are full URLs, so recover
+        // the relative path from the 'contacts/' segment — works for both the
+        // local public URL and an R2 public URL.
         if ($contact->images) {
             foreach ($contact->images as $url) {
-                $path = str_replace('/storage/', '', $url);
-                Storage::disk('public')->delete($path);
+                $pos = strpos((string) $url, 'contacts/');
+                if ($pos !== false) {
+                    Storage::disk(MediaDisk::name())->delete(substr($url, $pos));
+                }
             }
         }
-        
+
         $contact->delete();
+
         return response()->json(['message' => 'Deleted successfully']);
     }
 }

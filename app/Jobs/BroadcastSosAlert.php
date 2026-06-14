@@ -6,10 +6,10 @@ use App\Events\SosTriggered;
 use App\Models\Booking;
 use App\Models\SmartNotification;
 use App\Models\SosAlert;
+use App\Support\MediaDisk;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class BroadcastSosAlert implements ShouldQueue
 {
@@ -42,7 +42,7 @@ class BroadcastSosAlert implements ShouldQueue
             ->reject(fn ($id) => (int) $id === (int) $sender->id)
             ->values();
 
-        $photoUrl = $alert->photo_path ? Storage::disk('public')->url($alert->photo_path) : null;
+        $photoUrl = MediaDisk::url($alert->photo_path);
 
         $tripTitle = $schedule->trip?->title ?? 'ทริป';
         $title = '🆘 ขอความช่วยเหลือ SOS';

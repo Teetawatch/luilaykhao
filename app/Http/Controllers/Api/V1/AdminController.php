@@ -31,6 +31,7 @@ use App\Services\MailService;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\VehicleDriverService;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
@@ -1104,14 +1105,14 @@ class AdminController extends Controller
                 }
 
                 if (($data['delete_slip'] ?? false) && $booking->slip_path) {
-                    Storage::disk('public')->delete($booking->slip_path);
+                    Storage::disk(MediaDisk::name())->delete($booking->slip_path);
                     $bookingUpdates['slip_path'] = null;
                 }
                 if ($request->hasFile('slip_image')) {
                     if ($booking->slip_path) {
-                        Storage::disk('public')->delete($booking->slip_path);
+                        Storage::disk(MediaDisk::name())->delete($booking->slip_path);
                     }
-                    $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
+                    $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
                 }
 
                 if ($bookingUpdates) {
@@ -1193,7 +1194,7 @@ class AdminController extends Controller
                     if (array_key_exists('payment_type', $data)) {
                         foreach ($booking->installmentPayments as $payment) {
                             if ($payment->slip_path) {
-                                Storage::disk('public')->delete($payment->slip_path);
+                                Storage::disk(MediaDisk::name())->delete($payment->slip_path);
                             }
                         }
                         $booking->installmentPayments()->delete();
@@ -1227,17 +1228,17 @@ class AdminController extends Controller
                         }
 
                         if (($installmentData['delete_slip'] ?? false) && $installment->slip_path) {
-                            Storage::disk('public')->delete($installment->slip_path);
+                            Storage::disk(MediaDisk::name())->delete($installment->slip_path);
                             $installment->update(['slip_path' => null]);
                         }
 
                         $file = $request->file("installments.$index.slip_image");
                         if ($file) {
                             if ($installment->slip_path) {
-                                Storage::disk('public')->delete($installment->slip_path);
+                                Storage::disk(MediaDisk::name())->delete($installment->slip_path);
                             }
                             $installment->update([
-                                'slip_path' => $file->store('slips/'.date('Y/m'), 'public'),
+                                'slip_path' => $file->store('slips/'.date('Y/m'), MediaDisk::name()),
                             ]);
                         }
 
@@ -1247,7 +1248,7 @@ class AdminController extends Controller
                     $removedPayments = $booking->installmentPayments()->whereNotIn('id', $keptInstallmentIds ?: [0])->get();
                     foreach ($removedPayments as $payment) {
                         if ($payment->slip_path) {
-                            Storage::disk('public')->delete($payment->slip_path);
+                            Storage::disk(MediaDisk::name())->delete($payment->slip_path);
                         }
                         $payment->delete();
                     }
@@ -1427,7 +1428,7 @@ class AdminController extends Controller
         }
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
         }
         $paymentRef = $isPaid ? 'PAY-MANUAL-'.strtoupper(uniqid()) : null;
 
@@ -1579,13 +1580,13 @@ class AdminController extends Controller
 
         // 1. Delete associated files
         if ($booking->slip_path) {
-            Storage::disk('public')->delete($booking->slip_path);
+            Storage::disk(MediaDisk::name())->delete($booking->slip_path);
         }
 
         // Also delete slip for installment payments
         foreach ($booking->installmentPayments as $payment) {
             if ($payment->slip_path) {
-                Storage::disk('public')->delete($payment->slip_path);
+                Storage::disk(MediaDisk::name())->delete($payment->slip_path);
             }
         }
 
@@ -2177,10 +2178,7 @@ class AdminController extends Controller
 
         $file = $request->file('file');
 
-        // Prefer R2 when configured, otherwise fall back to the public disk.
-        $disk = config('filesystems.default') === 'r2' || config('filesystems.disks.r2.bucket')
-            ? 'r2'
-            : 'public';
+        $disk = MediaDisk::name();
 
         $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'jpg');
         $filename = date('YmdHis').'_'.Str::random(10).'.'.$ext;
@@ -2234,8 +2232,8 @@ class AdminController extends Controller
         $file = $request->file('file');
         $filename = time().'_'.Str::random(8).'.'.$file->getClientOriginalExtension();
 
-        $path = $file->storeAs('media', $filename, 'public');
-        $url = Storage::disk('public')->url($path);
+        $path = $file->storeAs('media', $filename, MediaDisk::name());
+        $url = Storage::disk(MediaDisk::name())->url($path);
 
         return $this->success([
             'url' => $url,
@@ -2245,7 +2243,7 @@ class AdminController extends Controller
 
     public function listMedia(): JsonResponse
     {
-        $files = Storage::disk('public')->files('media');
+        $files = Storage::disk(MediaDisk::name())->files('media');
 
         $extractFilename = function ($url) {
             return basename(parse_url((string) $url, PHP_URL_PATH));
@@ -2280,13 +2278,13 @@ class AdminController extends Controller
 
         $media = collect($files)->map(function ($path) use ($inUseFilenames) {
             $filename = basename($path);
-            $url = Storage::disk('public')->url($path);
+            $url = Storage::disk(MediaDisk::name())->url($path);
 
             return [
                 'filename' => $filename,
                 'url' => $url,
-                'size' => Storage::disk('public')->size($path),
-                'last_modified' => Storage::disk('public')->lastModified($path),
+                'size' => Storage::disk(MediaDisk::name())->size($path),
+                'last_modified' => Storage::disk(MediaDisk::name())->lastModified($path),
                 'in_use' => $inUseFilenames->contains($filename),
             ];
         })->sortByDesc('last_modified')->values();
@@ -2302,8 +2300,8 @@ class AdminController extends Controller
 
         $path = 'media/'.$request->filename;
 
-        if (Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if (Storage::disk(MediaDisk::name())->exists($path)) {
+            Storage::disk(MediaDisk::name())->delete($path);
 
             return $this->success(null, 'ลบไฟล์สำเร็จ');
         }

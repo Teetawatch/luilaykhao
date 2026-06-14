@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class BookingResource extends JsonResource
 {
@@ -89,10 +89,10 @@ class BookingResource extends JsonResource
             'balance_due_at' => $this->balance_due_at?->toISOString(),
             'balance_paid_at' => $this->balance_paid_at?->toISOString(),
             'balance_payment_ref' => $this->balance_payment_ref,
-            'balance_slip_url' => $this->balance_slip_path ? Storage::disk('public')->url($this->balance_slip_path) : null,
+            'balance_slip_url' => MediaDisk::url($this->balance_slip_path),
             'balance_transfer_datetime' => $this->balance_transfer_datetime?->toISOString(),
             'payment_ref' => $this->payment_ref,
-            'slip_url' => $this->slip_path ? Storage::disk('public')->url($this->slip_path) : null,
+            'slip_url' => MediaDisk::url($this->slip_path),
             'slip_ocr_status' => $this->slip_ocr_status,
             'transfer_datetime' => $this->transfer_datetime?->toISOString(),
             'paid_at' => $this->paid_at?->toISOString(),
@@ -106,7 +106,7 @@ class BookingResource extends JsonResource
                     'due_date' => $ip->due_date?->toDateString(),
                     'status' => $ip->status,
                     'payment_method' => $ip->payment_method,
-                    'slip_url' => $ip->slip_path ? Storage::disk('public')->url($ip->slip_path) : null,
+                    'slip_url' => MediaDisk::url($ip->slip_path),
                     'slip_ocr_status' => $ip->slip_ocr_status,
                     'transfer_datetime' => $ip->transfer_datetime?->toISOString(),
                     'paid_at' => $ip->paid_at?->toISOString(),

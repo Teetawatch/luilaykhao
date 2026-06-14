@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Review;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ReviewController extends Controller
 {
@@ -127,8 +127,8 @@ class ReviewController extends Controller
             'image' => ['required', 'image', 'max:5120'],
         ]);
 
-        $path = $request->file('image')->store('reviews', 'public');
-        $url = Storage::url($path);
+        $path = $request->file('image')->store('reviews', MediaDisk::name());
+        $url = MediaDisk::url($path);
 
         return $this->success(['url' => $url], 'อัปโหลดรูปภาพสำเร็จ');
     }

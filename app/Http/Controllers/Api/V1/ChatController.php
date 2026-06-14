@@ -13,6 +13,7 @@ use App\Models\ChatMessage;
 use App\Models\ChatRead;
 use App\Models\TripSchedule;
 use App\Services\ChatService;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,7 +109,7 @@ class ChatController extends Controller
         }
 
         $imagePath = $request->hasFile('image')
-            ? $request->file('image')->store('chat/'.date('Y/m'), 'public')
+            ? $request->file('image')->store('chat/'.date('Y/m'), MediaDisk::name())
             : null;
 
         $body = isset($validated['body']) ? trim($validated['body']) : null;

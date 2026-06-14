@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\MediaDisk;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -32,16 +33,18 @@ class SlipOcrService
             return ['status' => self::STATUS_FAILED, 'reason' => 'api_key_missing', 'raw' => null];
         }
 
-        $absolutePath = Storage::disk('public')->path($slipPath);
+        // Read via the media disk so OCR works whether the slip lives locally
+        // or on R2 (a remote disk has no local ->path()).
+        $disk = Storage::disk(MediaDisk::name());
 
-        if (! file_exists($absolutePath)) {
-            Log::warning("SlipOcrService: slip file not found at {$absolutePath}");
+        if (! $disk->exists($slipPath)) {
+            Log::warning("SlipOcrService: slip file not found at {$slipPath}");
 
             return ['status' => self::STATUS_FAILED, 'reason' => 'file_not_found', 'raw' => null];
         }
 
-        $imageData = base64_encode(file_get_contents($absolutePath));
-        $mimeType = $this->detectMimeType($absolutePath);
+        $imageData = base64_encode($disk->get($slipPath));
+        $mimeType = $this->detectMimeType($slipPath);
 
         $prompt = <<<'PROMPT'
         คุณคือระบบตรวจสอบสลิปโอนเงินไทย

@@ -17,6 +17,7 @@ use App\Services\InstallmentPaymentService;
 use App\Services\MailService;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -53,7 +54,7 @@ class PaymentController extends Controller
             // Store slip image
             $slipPath = null;
             if ($request->hasFile('slip_image')) {
-                $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
+                $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
             }
 
             // ── Installment payment ──────────────────────────────────
@@ -358,7 +359,7 @@ class PaymentController extends Controller
 
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
         }
 
         $this->installmentPaymentService->recordPayment(
@@ -396,7 +397,7 @@ class PaymentController extends Controller
 
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), 'public');
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
         }
 
         $this->balancePaymentService->recordPayment(

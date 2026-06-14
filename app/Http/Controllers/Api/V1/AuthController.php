@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
 use App\Services\MailService;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -96,10 +98,8 @@ class AuthController extends Controller
             }
         }
 
-        // Remove locally stored avatar so no personal media is left behind.
-        if ($user->avatar && ! str_starts_with($user->avatar, 'http') && file_exists(public_path(ltrim($user->avatar, '/')))) {
-            @unlink(public_path(ltrim($user->avatar, '/')));
-        }
+        // Remove the stored avatar so no personal media is left behind.
+        $this->deleteAvatarFile($user->avatar);
 
         // Revoke all access tokens, then delete the user. Related records
         // (bookings, reviews, loyalty, notifications, fcm tokens, …) are removed
@@ -155,27 +155,47 @@ class AuthController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            // Delete old avatar if exists
-            if ($user->avatar && file_exists(public_path($user->avatar))) {
-                @unlink(public_path($user->avatar));
-            }
-
-            $file = $request->file('avatar');
-            $filename = time().'_avatar_'.$user->id.'.'.$file->getClientOriginalExtension();
-
-            // Ensure avatars directory exists
-            if (! file_exists(public_path('avatars'))) {
-                mkdir(public_path('avatars'), 0755, true);
-            }
-
-            $file->move(public_path('avatars'), $filename);
-            $user->avatar = '/avatars/'.$filename;
+            $this->deleteAvatarFile($user->avatar);
+            // Store on the media disk (R2 when configured) and keep the
+            // disk-relative path; the accessor builds the public URL.
+            $user->avatar = $request->file('avatar')->store('avatars', MediaDisk::name());
         }
 
         $user->save();
         $user->load('roles');
 
         return $this->success($this->formatUser($user->fresh()), 'อัปเดตโปรไฟล์สำเร็จ');
+    }
+
+    /**
+     * Best-effort removal of a user's existing avatar, covering all three shapes
+     * a stored value can take: a full URL (disk-stored, possibly R2), a legacy
+     * web-root path (/avatars/…), or a disk-relative path (avatars/…).
+     */
+    private function deleteAvatarFile(?string $avatar): void
+    {
+        if (! $avatar) {
+            return;
+        }
+
+        if (str_starts_with($avatar, 'http')) {
+            $pos = strpos($avatar, 'avatars/');
+            if ($pos !== false) {
+                Storage::disk(MediaDisk::name())->delete(substr($avatar, $pos));
+            }
+
+            return;
+        }
+
+        // Legacy file written straight into the public web root.
+        $webRootFile = public_path(ltrim($avatar, '/'));
+        if (is_file($webRootFile)) {
+            @unlink($webRootFile);
+
+            return;
+        }
+
+        Storage::disk(MediaDisk::name())->delete(ltrim($avatar, '/'));
     }
 
     public function socialRedirect(Request $request, string $provider): RedirectResponse
