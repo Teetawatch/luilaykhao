@@ -8,6 +8,7 @@ use App\Models\BookingPassenger;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\MediaDisk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -75,7 +76,7 @@ class PublicBalancePaymentTest extends TestCase
     {
         Mail::fake();
         Queue::fake();
-        Storage::fake('public');
+        Storage::fake(MediaDisk::slipDisk());
         config()->set('services.thaibulksms.enabled', false);
 
         $booking = $this->makeDepositBooking();
@@ -91,7 +92,7 @@ class PublicBalancePaymentTest extends TestCase
         $this->assertNotNull($booking->balance_paid_at);
         $this->assertEquals(3000.0, (float) $booking->paid_amount);
         $this->assertNotNull($booking->balance_slip_path);
-        Storage::disk('public')->assertExists($booking->balance_slip_path);
+        Storage::disk(MediaDisk::slipDisk())->assertExists($booking->balance_slip_path);
 
         Queue::assertPushed(VerifySlipJob::class);
 

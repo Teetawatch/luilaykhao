@@ -1105,14 +1105,14 @@ class AdminController extends Controller
                 }
 
                 if (($data['delete_slip'] ?? false) && $booking->slip_path) {
-                    Storage::disk(MediaDisk::name())->delete($booking->slip_path);
+                    Storage::disk(MediaDisk::slipDisk())->delete($booking->slip_path);
                     $bookingUpdates['slip_path'] = null;
                 }
                 if ($request->hasFile('slip_image')) {
                     if ($booking->slip_path) {
-                        Storage::disk(MediaDisk::name())->delete($booking->slip_path);
+                        Storage::disk(MediaDisk::slipDisk())->delete($booking->slip_path);
                     }
-                    $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
+                    $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
                 }
 
                 if ($bookingUpdates) {
@@ -1194,7 +1194,7 @@ class AdminController extends Controller
                     if (array_key_exists('payment_type', $data)) {
                         foreach ($booking->installmentPayments as $payment) {
                             if ($payment->slip_path) {
-                                Storage::disk(MediaDisk::name())->delete($payment->slip_path);
+                                Storage::disk(MediaDisk::slipDisk())->delete($payment->slip_path);
                             }
                         }
                         $booking->installmentPayments()->delete();
@@ -1228,17 +1228,17 @@ class AdminController extends Controller
                         }
 
                         if (($installmentData['delete_slip'] ?? false) && $installment->slip_path) {
-                            Storage::disk(MediaDisk::name())->delete($installment->slip_path);
+                            Storage::disk(MediaDisk::slipDisk())->delete($installment->slip_path);
                             $installment->update(['slip_path' => null]);
                         }
 
                         $file = $request->file("installments.$index.slip_image");
                         if ($file) {
                             if ($installment->slip_path) {
-                                Storage::disk(MediaDisk::name())->delete($installment->slip_path);
+                                Storage::disk(MediaDisk::slipDisk())->delete($installment->slip_path);
                             }
                             $installment->update([
-                                'slip_path' => $file->store('slips/'.date('Y/m'), MediaDisk::name()),
+                                'slip_path' => $file->store('slips/'.date('Y/m'), MediaDisk::slipDisk()),
                             ]);
                         }
 
@@ -1248,7 +1248,7 @@ class AdminController extends Controller
                     $removedPayments = $booking->installmentPayments()->whereNotIn('id', $keptInstallmentIds ?: [0])->get();
                     foreach ($removedPayments as $payment) {
                         if ($payment->slip_path) {
-                            Storage::disk(MediaDisk::name())->delete($payment->slip_path);
+                            Storage::disk(MediaDisk::slipDisk())->delete($payment->slip_path);
                         }
                         $payment->delete();
                     }
@@ -1428,7 +1428,7 @@ class AdminController extends Controller
         }
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
         }
         $paymentRef = $isPaid ? 'PAY-MANUAL-'.strtoupper(uniqid()) : null;
 
@@ -1580,13 +1580,13 @@ class AdminController extends Controller
 
         // 1. Delete associated files
         if ($booking->slip_path) {
-            Storage::disk(MediaDisk::name())->delete($booking->slip_path);
+            Storage::disk(MediaDisk::slipDisk())->delete($booking->slip_path);
         }
 
         // Also delete slip for installment payments
         foreach ($booking->installmentPayments as $payment) {
             if ($payment->slip_path) {
-                Storage::disk(MediaDisk::name())->delete($payment->slip_path);
+                Storage::disk(MediaDisk::slipDisk())->delete($payment->slip_path);
             }
         }
 

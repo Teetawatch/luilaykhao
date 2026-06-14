@@ -8,6 +8,7 @@ use App\Models\InstallmentPayment;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\MediaDisk;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -77,7 +78,7 @@ class PaymentInstallmentTest extends TestCase
     public function test_customer_can_pay_an_installment_with_slip(): void
     {
         Mail::fake();
-        Storage::fake('public');
+        Storage::fake(MediaDisk::slipDisk());
         config()->set('services.thaibulksms.enabled', false);
 
         $user = User::factory()->create();
@@ -101,7 +102,7 @@ class PaymentInstallmentTest extends TestCase
 
         $this->assertSame('paid', $installment->status);
         $this->assertNotNull($installment->slip_path);
-        Storage::disk('public')->assertExists($installment->slip_path);
+        Storage::disk(MediaDisk::slipDisk())->assertExists($installment->slip_path);
 
         // paid_amount เพิ่มจากงวดแรก 1000 เป็น 2000
         $this->assertEquals(2000.0, (float) $booking->fresh()->paid_amount);
@@ -110,7 +111,7 @@ class PaymentInstallmentTest extends TestCase
     public function test_cannot_pay_the_same_installment_twice(): void
     {
         Mail::fake();
-        Storage::fake('public');
+        Storage::fake(MediaDisk::slipDisk());
         config()->set('services.thaibulksms.enabled', false);
 
         $user = User::factory()->create();

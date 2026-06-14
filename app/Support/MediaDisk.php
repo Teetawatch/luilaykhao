@@ -2,17 +2,23 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Single source of truth for which filesystem disk user-uploaded media lives
- * on. Prefers Cloudflare R2 when it's configured, otherwise the local public
- * disk. Every upload (reviews, chat, contact, SOS, slips, media library,
- * avatars, trip/schedule photos) must both store files and build their public
- * URLs through here, so a file's write location and its URL never drift apart.
+ * on. Public media (reviews, chat, contact, SOS, media library, avatars,
+ * trip/schedule photos) goes on the public disk/bucket; sensitive media
+ * (payment slips) goes on a separate PRIVATE disk and is only ever exposed
+ * through short-lived signed URLs. Routing every upload + URL through here keeps
+ * a file's write location and its URL from ever drifting apart.
  */
 class MediaDisk
 {
+    /** How long a signed slip URL stays valid. */
+    public const SLIP_URL_TTL_MINUTES = 30;
+
     /**
      * The disk to read/write media on. R2 when it's wired up, else 'public'.
      */
@@ -40,5 +46,39 @@ class MediaDisk
         }
 
         return Storage::disk(self::name())->url($path);
+    }
+
+    /**
+     * The PRIVATE disk for sensitive uploads (payment slips). Uses the dedicated
+     * R2 private bucket when configured, otherwise the local 'local' disk —
+     * which, unlike 'public', is not web-served.
+     */
+    public static function slipDisk(): string
+    {
+        return config('filesystems.disks.r2_private.bucket') ? 'r2_private' : 'local';
+    }
+
+    /**
+     * A short-lived signed URL for a slip. R2 yields a native presigned URL;
+     * disks without temporary-URL support (local dev) fall back to a signed
+     * app route that streams the file. Never returns a directly-public URL.
+     */
+    public static function slipUrl(?string $path, int $ttlMinutes = self::SLIP_URL_TTL_MINUTES): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        $expiry = now()->addMinutes($ttlMinutes);
+
+        try {
+            return Storage::disk(self::slipDisk())->temporaryUrl($path, $expiry);
+        } catch (\Throwable $e) {
+            return URL::temporarySignedRoute(
+                'slips.show',
+                $expiry,
+                ['token' => Crypt::encryptString($path)],
+            );
+        }
     }
 }

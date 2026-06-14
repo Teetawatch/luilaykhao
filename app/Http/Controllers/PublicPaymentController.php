@@ -57,7 +57,7 @@ class PublicPaymentController extends Controller
                     ->with('status', 'ชำระครบแล้ว');
             }
 
-            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
             $this->balancePaymentService->recordPayment($booking, $method, $slipPath, $transferDt);
 
             return redirect()->route('public.pay.show', $token)->with('paid_balance', true);
@@ -70,7 +70,7 @@ class PublicPaymentController extends Controller
                 ->with('status', 'ชำระครบทุกงวดแล้ว');
         }
 
-        $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
+        $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
         $this->installmentPaymentService->recordPayment($booking, $installment, $method, $slipPath, $transferDt);
 
         return redirect()->route('public.pay.show', $token)

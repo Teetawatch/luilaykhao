@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminPaymentWebController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\PublicPaymentController;
+use App\Http\Controllers\SlipController;
 use App\Models\Trip;
 use Illuminate\Support\Facades\Route;
 
@@ -65,6 +66,12 @@ Route::prefix('admin/payments')->group(function () {
     Route::post('/{ref}/send-link', [AdminPaymentWebController::class, 'sendLink'])
         ->middleware('throttle:payment')->name('admin.payments.send-link');
 });
+
+// Signed slip viewer — streams a private payment slip; only the fallback for
+// disks that can't mint presigned URLs (local dev). 'signed' enforces expiry.
+Route::get('/slips/{token}', [SlipController::class, 'show'])
+    ->middleware('signed')
+    ->name('slips.show');
 
 // SPA catch-all (must be last!)
 Route::get('/{any?}', function () {

@@ -78,6 +78,23 @@ return [
             'report' => false,
         ],
 
+        // Cloudflare R2 — PRIVATE bucket for sensitive media (payment slips).
+        // This bucket must NOT have a public custom domain / r2.dev URL: R2 has
+        // no per-object ACL, so anything in a publicly-exposed bucket is public.
+        // Access is via presigned (temporary) URLs only — hence no 'url' here.
+        'r2_private' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => env('R2_REGION', 'auto'),
+            'bucket' => env('R2_PRIVATE_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

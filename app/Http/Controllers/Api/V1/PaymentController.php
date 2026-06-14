@@ -54,7 +54,7 @@ class PaymentController extends Controller
             // Store slip image
             $slipPath = null;
             if ($request->hasFile('slip_image')) {
-                $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
+                $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
             }
 
             // ── Installment payment ──────────────────────────────────
@@ -359,7 +359,7 @@ class PaymentController extends Controller
 
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
         }
 
         $this->installmentPaymentService->recordPayment(
@@ -397,7 +397,7 @@ class PaymentController extends Controller
 
         $slipPath = null;
         if ($request->hasFile('slip_image')) {
-            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::name());
+            $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
         }
 
         $this->balancePaymentService->recordPayment(

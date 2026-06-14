@@ -33,9 +33,9 @@ class SlipOcrService
             return ['status' => self::STATUS_FAILED, 'reason' => 'api_key_missing', 'raw' => null];
         }
 
-        // Read via the media disk so OCR works whether the slip lives locally
-        // or on R2 (a remote disk has no local ->path()).
-        $disk = Storage::disk(MediaDisk::name());
+        // Read via the private slip disk so OCR works whether the slip lives
+        // locally or on R2 (a remote disk has no local ->path()).
+        $disk = Storage::disk(MediaDisk::slipDisk());
 
         if (! $disk->exists($slipPath)) {
             Log::warning("SlipOcrService: slip file not found at {$slipPath}");
