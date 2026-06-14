@@ -49,6 +49,45 @@ class BroadcastNotificationService
     }
 
     /**
+     * Announce a brand-new departure round of an already-published trip to
+     * everyone. Skipped for the trip's very first round, since [broadcastNewTrip]
+     * already covers that — otherwise customers would get two near-identical
+     * pushes when a fresh trip and its first round are created together.
+     */
+    public function broadcastNewSchedule(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || $trip->status !== 'active' || $schedule->departure_date === null) {
+            return;
+        }
+
+        // Only treat this as a "new round" when the trip already had another
+        // bookable round before this one.
+        $hasOtherBookableRound = $trip->schedules()
+            ->where('id', '!=', $schedule->id)
+            ->where('status', 'open')
+            ->whereDate('departure_date', '>=', now(self::TIMEZONE)->startOfDay())
+            ->exists();
+        if (! $hasOtherBookableRound) {
+            return;
+        }
+
+        $this->broadcast(
+            'new_schedule',
+            "new_schedule:{$schedule->id}",
+            'เปิดรอบใหม่แล้ว! 📅',
+            "{$trip->title} เปิดจองรอบวันที่ ".$schedule->departure_date->format('d/m/Y')
+                .' แล้ว รีบจองก่อนเต็มนะ!',
+            [
+                'route' => 'trip',
+                'trip_slug' => $trip->slug,
+                'trip_id' => $trip->id,
+                'schedule_id' => $schedule->id,
+            ],
+        );
+    }
+
+    /**
      * Announce a round that's almost sold out, to create urgency. Once per round.
      */
     public function broadcastLowSeats(TripSchedule $schedule): void

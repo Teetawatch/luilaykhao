@@ -80,6 +80,65 @@ class BroadcastNotificationTest extends TestCase
         Queue::assertPushed(SendBroadcastNotificationJob::class, 1);
     }
 
+    public function test_trip_created_without_explicit_status_still_announces(): void
+    {
+        Queue::fake();
+
+        // Caller omits `status` entirely — the DB default is 'active', and the
+        // observer must see that on the fresh instance (the bug this guards).
+        $trip = Trip::create([
+            'title' => 'No Status Trip',
+            'slug' => 'no-status-'.uniqid(),
+            'type' => 'trekking',
+            'location' => 'Pai',
+            'difficulty' => 'easy',
+            'duration_days' => 1,
+            'max_participants' => 8,
+            'price_per_person' => 1200,
+        ]);
+
+        $this->assertSame('active', $trip->status);
+        $this->assertDatabaseHas('broadcast_dispatches', [
+            'event_type' => 'new_trip',
+            'dedupe_key' => "new_trip:{$trip->id}",
+        ]);
+        Queue::assertPushed(SendBroadcastNotificationJob::class, 1);
+    }
+
+    public function test_new_round_on_published_trip_broadcasts_but_first_round_does_not(): void
+    {
+        Queue::fake();
+
+        $trip = $this->makeTrip(); // active → already announced via new_trip
+
+        // First round rides on the new-trip blast, so it must not re-announce.
+        $this->makeSchedule($trip, total: 10, booked: 0);
+        $this->assertSame(0, BroadcastDispatch::where('event_type', 'new_schedule')->count());
+
+        // A genuinely additional round → broadcast to everyone.
+        $second = $this->makeSchedule($trip, total: 10, booked: 0);
+        $this->assertDatabaseHas('broadcast_dispatches', [
+            'event_type' => 'new_schedule',
+            'dedupe_key' => "new_schedule:{$second->id}",
+        ]);
+        Queue::assertPushed(
+            SendBroadcastNotificationJob::class,
+            fn (SendBroadcastNotificationJob $job) => $job->type === 'new_schedule'
+                && $job->data['schedule_id'] === $second->id,
+        );
+    }
+
+    public function test_new_round_is_not_announced_for_unpublished_trip(): void
+    {
+        Queue::fake();
+
+        $trip = $this->makeTrip(status: 'inactive'); // hidden, not announced
+        $this->makeSchedule($trip, total: 10, booked: 0);
+        $this->makeSchedule($trip, total: 10, booked: 0);
+
+        $this->assertSame(0, BroadcastDispatch::where('event_type', 'new_schedule')->count());
+    }
+
     public function test_fanout_reaches_only_opted_in_users_with_tokens(): void
     {
         $reachable = $this->userWithToken(marketing: true);

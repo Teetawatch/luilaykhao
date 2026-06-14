@@ -21,6 +21,15 @@ class TripSchedule extends Model
 
     protected $table = 'trip_schedules';
 
+    /**
+     * Mirror the DB column default in-memory so a just-created schedule reports
+     * 'open' even when the caller omits `status`. The observer that fires the
+     * "new round" alert/broadcast reads `status` off the fresh instance.
+     */
+    protected $attributes = [
+        'status' => 'open',
+    ];
+
     protected $fillable = [
         'trip_id', 'departure_date', 'departs_at', 'return_date',
         'total_seats', 'booked_seats', 'transport_type',

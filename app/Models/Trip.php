@@ -10,6 +10,16 @@ class Trip extends Model
 {
     use HasFactory;
 
+    /**
+     * Match the DB column default in-memory too, so freshly-created models
+     * report 'active' before a refresh. Observers (e.g. the new-trip broadcast)
+     * read `status` straight off the just-created instance, which would
+     * otherwise be null when the caller omits it.
+     */
+    protected $attributes = [
+        'status' => 'active',
+    ];
+
     protected $fillable = [
         'title', 'slug', 'type', 'location', 'region', 'description',
         'difficulty', 'duration_days', 'max_participants',
@@ -55,11 +65,11 @@ class Trip extends Model
 
     public function getConfirmedPassengersCountAttribute(): int
     {
-        return \App\Models\BookingPassenger::whereHas('booking', function($q) {
+        return BookingPassenger::whereHas('booking', function ($q) {
             $q->whereIn('status', ['confirmed', 'completed'])
-              ->whereHas('schedule', function($sq) {
-                  $sq->where('trip_id', $this->id);
-              });
+                ->whereHas('schedule', function ($sq) {
+                    $sq->where('trip_id', $this->id);
+                });
         })->count();
     }
 
