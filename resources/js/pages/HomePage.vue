@@ -555,41 +555,47 @@
     <!-- ══════════════════════════════════════════
          TESTIMONIALS SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-24 bg-[var(--color-sand)] relative">
+    <section class="py-24 bg-[var(--color-sand)] relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
         <div class="text-center mb-16">
           <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">รีวิวจากลูกค้า</span>
           <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">นักเดินทางพูดถึงเรา</h2>
         </div>
-        
-        <div v-if="reviews.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      </div>
+
+      <!-- Continuous marquee slider (full-bleed) -->
+      <div v-if="reviews.length > 0" class="reviews-marquee group">
+        <div
+          class="reviews-marquee__track"
+          :style="{ '--marquee-duration': marqueeDuration + 's' }"
+        >
           <div
-            v-for="review in reviews"
-            :key="review.id"
-            class="bg-white rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-shadow duration-300 relative border border-gray-100"
+            v-for="(review, idx) in marqueeReviews"
+            :key="review.id + '-' + idx"
+            class="reviews-marquee__card bg-white rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-shadow duration-300 relative border border-gray-100"
           >
             <!-- Quote Icon -->
             <div class="absolute top-8 right-8 text-gray-100">
               <span class="material-symbols-rounded text-[64px]" style="font-variation-settings:'FILL' 1">format_quote</span>
             </div>
-            
+
             <div class="relative z-10">
               <div class="flex text-[#FFB020] gap-1 mb-6">
-                <span v-for="n in 5" :key="n" class="material-symbols-rounded text-[20px]" 
+                <span v-for="n in 5" :key="n" class="material-symbols-rounded text-[20px]"
                   :class="n <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
                   :style="n <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
                   star
                 </span>
               </div>
-              
+
               <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mb-8 italic line-clamp-4">"{{ review.comment || 'ไม่มีความคิดเห็น' }}"</p>
-              
+
               <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
-                  <img 
-                    v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
-                    :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar" 
-                    class="w-full h-full object-cover" 
+                <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100 shrink-0">
+                  <img
+                    v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
+                    :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
+                    class="w-full h-full object-cover"
                   />
                   <span v-else>{{ review.user_name?.charAt(0) }}</span>
                 </div>
@@ -601,7 +607,9 @@
             </div>
           </div>
         </div>
-        <div v-else class="text-center py-12 bg-white/50 rounded-[2rem] border-2 border-dashed border-gray-200">
+      </div>
+      <div v-else class="max-w-7xl mx-auto px-6 md:px-8">
+        <div class="text-center py-12 bg-white/50 rounded-[2rem] border-2 border-dashed border-gray-200">
           <p class="text-[var(--color-text-muted)] font-bold">ยังไม่มีรีวิวจากนักเดินทาง</p>
         </div>
       </div>
@@ -722,7 +730,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
@@ -918,6 +926,18 @@ const categories = [
 
 const reviews = ref([]);
 
+// Duplicate the list so the marquee can loop seamlessly; with very few
+// reviews we repeat more times to keep the track wide enough to fill the screen.
+const marqueeReviews = computed(() => {
+  const list = reviews.value;
+  if (!list.length) return [];
+  const repeats = list.length < 4 ? 4 : 2;
+  return Array.from({ length: repeats }, () => list).flat();
+});
+
+// Scale the scroll duration to the number of cards so speed stays consistent.
+const marqueeDuration = computed(() => Math.max(30, reviews.value.length * 8));
+
 const trustItems = [
   {
     image: '/images/travel_safety.webp',
@@ -994,7 +1014,7 @@ onMounted(async () => {
     const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
       api.get('/trips/featured'),
-      api.get('/reviews', { params: { per_page: 3 } }),
+      api.get('/reviews', { params: { per_page: 30 } }),
       api.get('/stats'),
       api.get('/trips', { params: { per_page: 100 } }),
     ]);
@@ -1150,6 +1170,55 @@ onMounted(async () => {
 @keyframes scrollBounce {
   0%, 100% { transform: translateY(0); opacity: 1; }
   50%      { transform: translateY(12px); opacity: 0.3; }
+}
+
+/* Reviews marquee */
+.reviews-marquee {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
+.reviews-marquee__track {
+  display: flex;
+  gap: 2rem;
+  width: max-content;
+  padding: 1rem 1rem;
+  animation: reviewsScroll var(--marquee-duration, 40s) linear infinite;
+  will-change: transform;
+}
+
+/* Loop seamlessly: the list is rendered twice, so shifting by half the
+   track width lands exactly on the duplicate's start. */
+@keyframes reviewsScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Pause when the user hovers, so they can read a card */
+.reviews-marquee.group:hover .reviews-marquee__track {
+  animation-play-state: paused;
+}
+
+.reviews-marquee__card {
+  flex: 0 0 auto;
+  width: 360px;
+  max-width: 85vw;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reviews-marquee__track {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .reviews-marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 /* Line clamp */

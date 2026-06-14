@@ -555,7 +555,9 @@
 
             <!-- Passenger forms -->
             <div v-for="(p, i) in passengers" :key="i"
-              class="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 mb-6 shadow-sm relative overflow-hidden transition-all hover:shadow-md hover:border-gray-200">
+              :id="`passenger-card-${i}`"
+              class="bg-white border rounded-3xl p-6 md:p-8 mb-6 shadow-sm relative overflow-hidden transition-all hover:shadow-md"
+              :class="attempted && Object.keys(passengerErrors[i] || {}).length ? 'border-red-200 ring-1 ring-red-100' : 'border-gray-100 hover:border-gray-200'">
               
               <div class="absolute top-0 left-0 w-2 h-full bg-teal-600 rounded-l-3xl"></div>
               
@@ -597,7 +599,9 @@
                     <span class="text-[11px] font-normal opacity-70">฿{{ Number(pt.price).toLocaleString() }}</span>
                   </button>
                 </div>
-                <p v-if="!p.pickup_point_id" class="text-xs text-red-500 font-bold mt-2">* กรุณาเลือกจุดขึ้นรถ</p>
+                <p v-if="showErr(i, 'pickup_point_id')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                  <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'pickup_point_id') }}
+                </p>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -605,23 +609,35 @@
                   <div class="col-span-12 md:col-span-3">
                     <label class="block text-sm font-bold text-gray-700 mb-2">คำนำหน้า <span class="text-red-500">*</span></label>
                     <select v-model="p.title" required
-                      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white">
+                      class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                      :class="showErr(i, 'title') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
                       <option value="" disabled>เลือก...</option>
                       <option v-if="!schedule.trip?.is_women_only" value="นาย">นาย</option>
                       <option value="นาง">นาง</option>
                       <option value="นางสาว">นางสาว</option>
                     </select>
+                    <p v-if="showErr(i, 'title')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'title') }}
+                    </p>
                   </div>
                   <div class="col-span-12 md:col-span-9">
                     <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
                     <input v-model="p.name" type="text" required placeholder="กรอกชื่อ-นามสกุล"
-                      class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                      class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                      :class="showErr(i, 'name') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                    <p v-if="showErr(i, 'name')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'name') }}
+                    </p>
                   </div>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อเล่น <span class="text-red-500">*</span></label>
                   <input v-model="p.nickname" type="text" required placeholder="กรอกชื่อเล่น"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="showErr(i, 'nickname') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'nickname')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'nickname') }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
@@ -636,8 +652,10 @@
                     maxlength="13"
                     @input="limitDigits(p, 'id_card', 13)"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
-                    :class="p.id_card && !hasExactDigits(p.id_card, 13) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
-                  <p v-if="p.id_card && !hasExactDigits(p.id_card, 13)" class="text-xs text-red-500 font-bold mt-2">กรุณากรอกเลขบัตรประชาชน 13 หลัก</p>
+                    :class="showErr(i, 'id_card') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'id_card')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'id_card') }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
@@ -645,31 +663,43 @@
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
                     @input="limitDigits(p, 'phone', 10)"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
-                    :class="p.phone && !hasExactDigits(p.phone, 10) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
-                  <p v-if="p.phone && !hasExactDigits(p.phone, 10)" class="text-xs text-red-500 font-bold mt-2">กรุณากรอกเบอร์โทรศัพท์ 10 หลัก</p>
+                    :class="showErr(i, 'phone') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'phone')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'phone') }}
+                  </p>
                 </div>
                 <div v-if="bookingFor === 'friend' && i === 0">
                   <label class="block text-sm font-bold text-gray-700 mb-2">อีเมลสำหรับแจ้งสถานะการจอง <span class="text-red-500">*</span></label>
                   <input v-model.trim="p.email" type="email" required placeholder="friend@example.com"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
-                    :class="p.email && !isValidEmail(p.email) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
-                  <p v-if="p.email && !isValidEmail(p.email)" class="text-xs text-red-500 font-bold mt-2">รูปแบบอีเมลไม่ถูกต้อง</p>
+                    :class="showErr(i, 'email') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'email')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'email') }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">กรุ๊ปเลือด <span class="text-red-500">*</span></label>
                   <select v-model="p.blood_group" required
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white">
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="showErr(i, 'blood_group') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
                     <option value="" disabled>เลือกกรุ๊ปเลือด</option>
                     <option value="A">A</option>
                     <option value="B">B</option>
                     <option value="O">O</option>
                     <option value="AB">AB</option>
                   </select>
+                  <p v-if="showErr(i, 'blood_group')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'blood_group') }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อฉุกเฉิน <span class="text-red-500">*</span></label>
                   <input v-model="p.emergency_contact" type="text" required placeholder="ชื่อผู้ติดต่อ"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="showErr(i, 'emergency_contact') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'emergency_contact')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'emergency_contact') }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์ฉุกเฉิน <span class="text-red-500">*</span></label>
@@ -677,15 +707,17 @@
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
                     @input="limitDigits(p, 'emergency_phone', 10)"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
-                    :class="p.emergency_phone && !hasExactDigits(p.emergency_phone, 10) ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
-                  <p v-if="p.emergency_phone && !hasExactDigits(p.emergency_phone, 10)" class="text-xs text-red-500 font-bold mt-2">กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก</p>
+                    :class="showErr(i, 'emergency_phone') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'emergency_phone')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'emergency_phone') }}
+                  </p>
                 </div>
                 <div class="md:col-span-2">
                   <label class="block text-sm font-bold text-gray-700 mb-2">ต้องการอาหารฮาลาล <span class="text-red-500">*</span></label>
                   <p class="text-xs text-gray-500 mb-3">เพื่อให้เราจัดเตรียมอาหารได้เหมาะสม รบกวนแจ้งว่าท่านต้องการอาหารฮาลาลหรือไม่</p>
                   <div class="flex gap-3">
                     <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
-                      :class="p.halal_food === true ? 'border-teal-600 bg-teal-50' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
+                      :class="p.halal_food === true ? 'border-teal-600 bg-teal-50' : showErr(i, 'halal_food') ? 'border-red-300 bg-red-50/40' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
                       <input type="radio" :name="`halal_food_${i}`" :value="true" v-model="p.halal_food" required class="hidden" />
                       <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
                         :class="p.halal_food === true ? 'border-teal-600' : 'border-gray-300'">
@@ -694,7 +726,7 @@
                       <span class="text-sm font-bold" :class="p.halal_food === true ? 'text-teal-700' : 'text-gray-700'">ต้องการ</span>
                     </label>
                     <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
-                      :class="p.halal_food === false ? 'border-gray-400 bg-gray-100' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
+                      :class="p.halal_food === false ? 'border-gray-400 bg-gray-100' : showErr(i, 'halal_food') ? 'border-red-300 bg-red-50/40' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
                       <input type="radio" :name="`halal_food_${i}`" :value="false" v-model="p.halal_food" required class="hidden" />
                       <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
                         :class="p.halal_food === false ? 'border-gray-500' : 'border-gray-300'">
@@ -703,20 +735,56 @@
                       <span class="text-sm font-bold" :class="p.halal_food === false ? 'text-gray-700' : 'text-gray-700'">ไม่จำเป็น</span>
                     </label>
                   </div>
+                  <p v-if="showErr(i, 'halal_food')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'halal_food') }}
+                  </p>
                 </div>
 
                 <div class="md:col-span-2">
                   <label class="block text-sm font-bold text-gray-700 mb-2">การแพ้อาหาร / อื่นๆ <span class="text-red-500">*</span></label>
                   <input v-model="p.allergies" type="text" required placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ หรือ ไม่มี"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="showErr(i, 'allergies') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'allergies')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'allergies') }}
+                  </p>
                 </div>
 
                 <div class="md:col-span-2">
                   <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุสุขภาพ <span class="text-red-500">*</span></label>
                   <textarea v-model="p.health_notes" rows="2" required placeholder="แพ้ยา, โรคประจำตัว หรือ ไม่มี"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white resize-none"></textarea>
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white resize-none"
+                    :class="showErr(i, 'health_notes') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'"></textarea>
+                  <p v-if="showErr(i, 'health_notes')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'health_notes') }}
+                  </p>
                 </div>
               </div>
+            </div>
+
+            <!-- Incomplete-fields summary -->
+            <div v-if="attempted && incompletePassengers.length"
+              class="mt-8 p-5 rounded-2xl bg-red-50 border border-red-200 text-sm">
+              <p class="flex items-center gap-2 font-bold text-red-700 mb-2">
+                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">error</span>
+                ยังกรอกข้อมูลไม่ครบ กรุณาตรวจสอบช่องที่ทำเครื่องหมายสีแดง
+              </p>
+              <ul class="space-y-3 text-red-600 font-medium">
+                <li v-for="item in incompletePassengers" :key="item.index" class="flex items-start gap-2">
+                  <span class="material-symbols-rounded text-[16px] mt-0.5">person</span>
+                  <div class="min-w-0">
+                    <button type="button" @click="scrollToPassenger(item.index)" class="text-left font-bold text-red-700 hover:underline">
+                      ผู้เดินทางคนที่ {{ item.index + 1 }} — ยังขาดข้อมูล {{ item.count }} ช่อง
+                    </button>
+                    <ul class="mt-1 ml-1 space-y-0.5 text-[13px] text-red-500">
+                      <li v-for="(msg, field) in passengerErrors[item.index]" :key="field" class="flex items-start gap-1.5">
+                        <span class="material-symbols-rounded text-[13px] mt-0.5">chevron_right</span>
+                        <span>{{ msg }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </li>
+              </ul>
             </div>
 
             <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
@@ -726,8 +794,8 @@
                 ย้อนกลับ
               </button>
               <button @click="goToSummary"
-                :disabled="!isPassengerValid"
-                class="w-full sm:w-auto bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-teal-600 flex items-center justify-center gap-2">
+                class="w-full sm:w-auto bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2"
+                :class="{ 'opacity-60': attempted && !isPassengerValid }">
                 <span>ดูสรุปการจอง</span>
                 <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_forward</span>
               </button>
@@ -1059,8 +1127,8 @@
               <!-- Passenger info confirmed, go to summary step -->
               <button v-else-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)"
                 @click="goToSummary"
-                :disabled="!isPassengerValid"
-                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-teal-600/30 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-teal-600/30 flex items-center justify-center gap-3"
+                :class="{ 'opacity-60': attempted && !isPassengerValid }">
                 <span class="material-symbols-rounded">fact_check</span>
                 <span>ดูสรุปการจอง</span>
                 <span class="material-symbols-rounded animate-bounce-x">arrow_forward</span>
@@ -1205,8 +1273,8 @@
 
         <button v-else-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)"
           @click="goToSummary"
-          :disabled="!isPassengerValid"
-          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
+          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2"
+          :class="{ 'opacity-60': attempted && !isPassengerValid }">
           <span>ดูสรุปการจอง</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>
@@ -1232,7 +1300,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import api from '../lib/axios';
@@ -1476,21 +1544,53 @@ function limitDigits(passenger, field, length) {
   passenger[field] = digitsOnly(passenger[field]).slice(0, length);
 }
 
-const isPassengerValid = computed(() => isFriendEmailValid.value && passengers.value.every(p =>
-  p.title &&
-  hasText(p.name) &&
-  hasText(p.nickname) &&
-  hasExactDigits(p.id_card, 13) &&
-  hasExactDigits(p.phone, 10) &&
-  p.blood_group &&
-  p.halal_food !== null &&
-  hasText(p.emergency_contact) &&
-  hasExactDigits(p.emergency_phone, 10) &&
-  hasText(p.allergies) &&
-  hasText(p.health_notes) &&
-  (!pickupPoints.value.length || p.pickup_point_id) &&
-  (!schedule.value?.trip?.is_women_only || ['นาง', 'นางสาว'].includes(p.title))
-));
+// Per-passenger validation: returns { field: 'thai error message' } for every
+// field that is missing or malformed. Drives both isPassengerValid and the
+// inline error UI so they can never drift apart.
+function computePassengerErrors(p, i) {
+  const errors = {};
+  const womenOnly = schedule.value?.trip?.is_women_only;
+  if (!p.title) errors.title = 'กรุณาเลือกคำนำหน้า';
+  else if (womenOnly && !['นาง', 'นางสาว'].includes(p.title)) errors.title = 'ทริปนี้สำหรับผู้หญิงเท่านั้น';
+  if (!hasText(p.name)) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
+  if (!hasText(p.nickname)) errors.nickname = 'กรุณากรอกชื่อเล่น';
+  if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
+  if (!hasExactDigits(p.phone, 10)) errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก';
+  if (bookingFor.value === 'friend' && i === 0 && !isValidEmail(p.email)) errors.email = 'กรุณากรอกอีเมลของเพื่อนให้ถูกต้อง';
+  if (!p.blood_group) errors.blood_group = 'กรุณาเลือกกรุ๊ปเลือด';
+  if (p.halal_food === null || p.halal_food === undefined) errors.halal_food = 'กรุณาเลือกตัวเลือกอาหารฮาลาล';
+  if (!hasText(p.emergency_contact)) errors.emergency_contact = 'กรุณากรอกผู้ติดต่อฉุกเฉิน';
+  if (!hasExactDigits(p.emergency_phone, 10)) errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก';
+  if (!hasText(p.allergies)) errors.allergies = 'กรุณากรอกข้อมูลการแพ้อาหาร (หากไม่มีให้พิมพ์ "ไม่มี")';
+  if (!hasText(p.health_notes)) errors.health_notes = 'กรุณากรอกหมายเหตุสุขภาพ (หากไม่มีให้พิมพ์ "ไม่มี")';
+  if (pickupPoints.value.length && !p.pickup_point_id) errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
+  return errors;
+}
+
+const passengerErrors = computed(() => passengers.value.map((p, i) => computePassengerErrors(p, i)));
+const isPassengerValid = computed(() => passengerErrors.value.every(e => Object.keys(e).length === 0));
+const firstInvalidPassenger = computed(() => passengerErrors.value.findIndex(e => Object.keys(e).length > 0));
+const incompletePassengers = computed(() =>
+  passengerErrors.value
+    .map((e, i) => ({ index: i, count: Object.keys(e).length }))
+    .filter(x => x.count > 0)
+);
+
+// Whether the user has tried to advance — controls when "empty field" errors
+// surface. Format errors on typed-in fields show immediately regardless.
+const attempted = ref(false);
+const liveErrorFields = ['id_card', 'phone', 'emergency_phone', 'email'];
+
+// Returns the error message to display for a field, or '' when none should show.
+function showErr(i, field) {
+  const message = passengerErrors.value[i]?.[field];
+  if (!message) return '';
+  if (attempted.value) return message;
+  // Before the first submit attempt, only nag about format on fields the user
+  // has already started typing into.
+  if (liveErrorFields.includes(field) && hasText(passengers.value[i]?.[field])) return message;
+  return '';
+}
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
 
 const selectedAddonItems = computed(() => optionalAddons.value.filter((item) => selectedAddons.value.includes(item.index)));
@@ -1624,8 +1724,23 @@ async function lockAndNext() {
   }
 }
 
+function scrollToPassenger(index) {
+  nextTick(() => {
+    const card = document.getElementById(`passenger-card-${index}`);
+    const target = card?.querySelector('.field-error') || card;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+
 function goToSummary() {
-  if (!isPassengerValid.value) return;
+  if (!isPassengerValid.value) {
+    attempted.value = true;
+    const idx = firstInvalidPassenger.value;
+    const firstMsg = Object.values(passengerErrors.value[idx] || {})[0];
+    toast.error(`ผู้เดินทางคนที่ ${idx + 1}: ${firstMsg || 'กรุณากรอกข้อมูลให้ครบถ้วน'}`);
+    scrollToPassenger(idx);
+    return;
+  }
   step.value = isTrekking.value ? 3 : 2;
 }
 
