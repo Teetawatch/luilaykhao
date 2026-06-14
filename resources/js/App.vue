@@ -4,7 +4,7 @@
 
     <!-- Global Active Booking Banner -->
     <Transition name="booking-banner">
-      <div v-if="seatsStore.hasActiveBooking"
+      <div v-if="seatsStore.hasActiveBooking && !isOnActiveBookingPage"
         class="sticky z-40 w-full transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
         :style="{ top: isScrolled ? '64px' : '80px' }">
         <div class="bg-white/80 backdrop-blur-md border-b border-gray-200/50">
@@ -47,9 +47,9 @@
                   <span class="hidden md:inline">ยกเลิก</span>
                </button>
 
-              <!-- Go back to booking button -->
+              <!-- Go back to booking button (carry region so the session isn't treated as a mismatch) -->
               <router-link
-                :to="`/booking/${seatsStore.activeBookingInfo?.scheduleId}`"
+                :to="{ path: `/booking/${seatsStore.activeBookingInfo?.scheduleId}`, query: seatsStore.activeBookingInfo?.region ? { region: seatsStore.activeBookingInfo.region } : {} }"
                 class="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-black bg-gray-900 text-white hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-900/10">
                 <span class="hidden md:inline">ดำเนินการต่อ</span>
                 <span class="material-symbols-rounded text-[16px] md:text-[18px]">arrow_forward</span>
@@ -61,7 +61,7 @@
           <div class="h-1 w-full bg-gray-100/50 relative overflow-hidden">
             <div class="h-full transition-all duration-1000 ease-linear shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
               :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-500' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-500' : 'bg-teal-500'"
-              :style="{ width: `${(seatsStore.countdownSeconds / (10 * 60 + (seatsStore.activeBookingInfo?.passengerCount ? (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60 : 0))) * 100}%` }">
+              :style="{ width: `${seatsStore.countdownProgress * 100}%` }">
             </div>
           </div>
         </div>
@@ -128,6 +128,13 @@ import { useHead } from '@unhead/vue';
 const route = useRoute();
 const router = useRouter();
 const isAdminRoute = computed(() => route.path.startsWith('/admin'));
+// The global banner is meant for OTHER pages — hide it on the active booking's
+// own page (that page shows its own countdown) and on the payment page.
+const isOnActiveBookingPage = computed(() => {
+  const sid = seatsStore.activeBookingInfo?.scheduleId;
+  if (!sid) return false;
+  return route.path === `/booking/${sid}` || route.path.startsWith('/payment/');
+});
 const seatsStore = useSeatsStore();
 const bookingStore = useBookingStore();
 const wishlistStore = useWishlistStore();
@@ -210,10 +217,12 @@ function handleGlobalExpiry() {
   const isOnBookingPage = route.path.startsWith('/booking/');
   const isOnPaymentPage = route.path.startsWith('/payment/');
   if (isOnBookingPage || isOnPaymentPage) return; // These pages handle their own expiry
+  // Read the minutes BEFORE clearing — clearSelection wipes activeBookingInfo
+  const minutes = seatsStore.bookingTotalMinutes;
   seatsStore.clearSelection();
   swal.error(
     'หมดเวลาการจองแล้ว!',
-    `เวลา ${Math.floor((10 * 60 + (seatsStore.activeBookingInfo?.passengerCount ? (seatsStore.activeBookingInfo.passengerCount - 1) * 2 * 60 : 0)) / 60)} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
+    `เวลา ${minutes} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
   ).then(() => {
     router.push('/trips');
   });

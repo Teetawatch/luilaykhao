@@ -94,6 +94,16 @@ export const useSeatsStore = defineStore('seats', {
     hasSelectedSeats: (state) => state.selectedSeats.length > 0,
     selectedSeatIds: (state) => state.selectedSeats.map(s => s.id),
     hasActiveBooking: (state) => state.activeBookingInfo !== null && state.countdownSeconds > 0,
+    // Total allotted seconds for the current booking (base + per-extra-passenger),
+    // derived from the same formula used to set lockExpiry so the progress bar and
+    // expiry messages stay in sync no matter how many passengers there are.
+    bookingTotalSeconds: (state) => calculateDuration(state.activeBookingInfo?.passengerCount),
+    bookingTotalMinutes: (state) => Math.round(calculateDuration(state.activeBookingInfo?.passengerCount) / 60),
+    countdownProgress: (state) => {
+      const total = calculateDuration(state.activeBookingInfo?.passengerCount);
+      if (!total) return 0;
+      return Math.min(1, Math.max(0, state.countdownSeconds / total));
+    },
   },
 
   actions: {
@@ -119,6 +129,8 @@ export const useSeatsStore = defineStore('seats', {
           const duration = calculateDuration(seatIds.length);
           const maxExpiry = new Date(Date.now() + duration * 1000);
           this.lockExpiry = serverExpiry && serverExpiry < maxExpiry ? serverExpiry.toISOString() : maxExpiry.toISOString();
+          // Record passenger count so total-duration getters match this lock window
+          this.activeBookingInfo = { ...(this.activeBookingInfo || {}), passengerCount: seatIds.length };
           saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
           this.startCountdown();
         }
@@ -207,7 +219,10 @@ export const useSeatsStore = defineStore('seats', {
       this.selectedSeats = [];
       this.lockExpiry = null;
       this.activeBookingInfo = null;
-      this._onExpireCallbacks = [];
+      // NOTE: do NOT reset _onExpireCallbacks here. Listeners are owned by the
+      // components that registered them (via onExpire/offExpire on mount/unmount).
+      // Wiping them on every cancel/expiry left later bookings with no expiry
+      // handler, so seats never got released client-side the second time around.
       saveSession(null, null);
       this.stopCountdown();
     },

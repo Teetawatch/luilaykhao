@@ -1712,6 +1712,8 @@ async function lockAndNext() {
       scheduleId: route.params.scheduleId,
       region: preselectedRegion,
       step: isTrekking.value ? 2 : 1,
+      passengerCount: seatsStore.selectedSeats.length,
+      startedAt: Date.now(),
     });
     passengerCount.value = seatsStore.selectedSeats.length;
     step.value = isTrekking.value ? 2 : 1;
@@ -1844,12 +1846,11 @@ async function createBooking() {
 }
 
 function handleExpiry() {
+  // Read the minutes BEFORE clearing — clearSelection wipes activeBookingInfo
+  const minutes = seatsStore.bookingTotalMinutes;
   seatsStore.clearSelection();
   clearFormData();
-  const minutes = seatsStore.activeBookingInfo?.passengerCount 
-    ? Math.floor((10 * 60 + (seatsStore.activeBookingInfo.passengerCount - 1) * 5 * 60) / 60)
-    : 10;
-    
+
   swal.error(
     'หมดเวลาการจองแล้ว!',
     `เวลา ${minutes} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
