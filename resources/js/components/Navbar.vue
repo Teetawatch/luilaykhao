@@ -294,7 +294,7 @@
                               :key="`${n.id}-${item.key}`"
                               class="max-w-full px-2 py-1 rounded-lg bg-white border border-sand-dark/40 text-[10px] font-bold text-text-mid break-all"
                             >
-                              {{ item.key }}: {{ item.value }}
+                              {{ item.label }}: {{ item.value }}
                             </span>
                           </div>
 
@@ -828,13 +828,26 @@ async function clearNotifications() {
   }
 }
 
+// Only surface user-meaningful fields. Everything else in the payload
+// (route, screen, *_id, trip_slug, type, url, ...) is internal navigation
+// metadata for the app and must NOT be shown to the user.
+const NOTIFICATION_DATA_LABELS = {
+  booking_ref: 'รหัสจอง',
+  amount: 'ยอดเงิน',
+  points: 'แต้มสะสม',
+};
+
 function notificationDataEntries(data) {
   if (!data || typeof data !== 'object') return [];
 
-  return Object.entries(data).map(([key, value]) => ({
-    key,
-    value: typeof value === 'object' ? JSON.stringify(value) : String(value),
-  }));
+  return Object.entries(data)
+    .filter(([key, value]) => key in NOTIFICATION_DATA_LABELS && value != null && value !== '')
+    .map(([key, value]) => {
+      let display = String(value);
+      if (key === 'amount') display = `฿${Number(value).toLocaleString()}`;
+      else if (key === 'points') display = `${Number(value).toLocaleString()} แต้ม`;
+      return { key, label: NOTIFICATION_DATA_LABELS[key], value: display };
+    });
 }
 
 function notifIcon(type) {
