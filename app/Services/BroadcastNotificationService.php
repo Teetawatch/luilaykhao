@@ -173,6 +173,11 @@ class BroadcastNotificationService
      */
     public function quietHoursDelay(?CarbonImmutable $now = null): ?CarbonImmutable
     {
+        // Quiet hours can be switched off entirely (send immediately, any hour).
+        if (! config('services.broadcast_notifications.quiet_hours', true)) {
+            return null;
+        }
+
         $now = $now ?? CarbonImmutable::now(self::TIMEZONE);
         $hour = $now->hour;
 

@@ -55,22 +55,28 @@ return [
         'service_account_path' => env('FCM_SERVICE_ACCOUNT_PATH', 'storage/app/firebase-service-account.json'),
     ],
 
+    'broadcast_notifications' => [
+        // When true, marketing broadcasts created during quiet hours
+        // (21:00–08:00) are held until morning. Set false to send immediately.
+        'quiet_hours' => env('BROADCAST_QUIET_HOURS', true),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect' => env('GOOGLE_REDIRECT_URI', env('APP_URL') . '/api/v1/auth/google/callback'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', env('APP_URL').'/api/v1/auth/google/callback'),
     ],
 
     'facebook' => [
         'client_id' => env('FACEBOOK_CLIENT_ID'),
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-        'redirect' => env('FACEBOOK_REDIRECT_URI', env('APP_URL') . '/api/v1/auth/facebook/callback'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI', env('APP_URL').'/api/v1/auth/facebook/callback'),
     ],
 
     'line' => [
         'client_id' => env('LINE_CLIENT_ID'),
         'client_secret' => env('LINE_CLIENT_SECRET'),
-        'redirect' => env('LINE_REDIRECT_URI', env('APP_URL') . '/api/v1/auth/line/callback'),
+        'redirect' => env('LINE_REDIRECT_URI', env('APP_URL').'/api/v1/auth/line/callback'),
         'bot_prompt' => env('LINE_BOT_PROMPT', 'normal'),
     ],
 

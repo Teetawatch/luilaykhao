@@ -202,4 +202,16 @@ class BroadcastNotificationTest extends TestCase
         $earlyMorning = $service->quietHoursDelay(CarbonImmutable::parse('2026-06-09 03:00', $tz));
         $this->assertSame('2026-06-09 08:00', $earlyMorning->format('Y-m-d H:i'));
     }
+
+    public function test_quiet_hours_can_be_disabled_to_send_immediately(): void
+    {
+        config(['services.broadcast_notifications.quiet_hours' => false]);
+        $service = app(BroadcastNotificationService::class);
+        $tz = BroadcastNotificationService::TIMEZONE;
+
+        // Even at 3am, no delay when quiet hours are switched off.
+        $this->assertNull(
+            $service->quietHoursDelay(CarbonImmutable::parse('2026-06-09 03:00', $tz)),
+        );
+    }
 }
