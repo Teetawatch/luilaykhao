@@ -397,13 +397,6 @@ class DriverController extends Controller
                     'name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
                     'nickname' => $passenger->nickname,
                     'phone' => $passenger->phone,
-                    // Safety / care info surfaced at-a-glance in the manifest.
-                    'allergies' => $passenger->allergies,
-                    'health_notes' => $passenger->health_notes,
-                    'halal_food' => (bool) $passenger->halal_food,
-                    'blood_group' => $passenger->blood_group,
-                    'emergency_contact' => $passenger->emergency_contact,
-                    'emergency_phone' => $passenger->emergency_phone,
                 ])
                 ->values();
 
@@ -535,6 +528,18 @@ class DriverController extends Controller
                     'phone' => $passenger->phone ?: $booking->user?->phone,
                     'checked_in' => (bool) $booking->checked_in,
                     'booking_ref' => $booking->booking_ref,
+                    // Profile photo of the account that made the booking (only when
+                    // a real avatar was uploaded — passengers have no own photo).
+                    'avatar_url' => $booking->user?->avatar
+                        ? $booking->user->avatar_url
+                        : null,
+                    // Safety / care info surfaced at-a-glance in the manifest.
+                    'allergies' => $passenger->allergies,
+                    'health_notes' => $passenger->health_notes,
+                    'halal_food' => (bool) $passenger->halal_food,
+                    'blood_group' => $passenger->blood_group,
+                    'emergency_contact' => $passenger->emergency_contact,
+                    'emergency_phone' => $passenger->emergency_phone,
                 ];
             }
         }

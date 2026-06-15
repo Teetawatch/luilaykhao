@@ -81,6 +81,9 @@ class StaffCheckInTest extends TestCase
         [$schedule, $booking] = $this->createConfirmedBooking();
         $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
 
+        // Booker has an uploaded avatar → exposed as the passenger photo.
+        $booking->user->update(['avatar' => 'https://example.com/a.jpg']);
+
         // Add a passenger who needs care attention.
         BookingPassenger::create([
             'booking_id' => $booking->id,
@@ -94,15 +97,17 @@ class StaffCheckInTest extends TestCase
             'emergency_phone' => '0822222222',
         ]);
 
+        // The rendered list is pickup_groups[].passengers — assert there.
         $this->actingAs($staff, 'sanctum')
             ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
             ->assertOk()
-            ->assertJsonPath('data.bookings.0.passengers.1.allergies', 'ถั่ว')
-            ->assertJsonPath('data.bookings.0.passengers.1.health_notes', 'หอบหืด')
-            ->assertJsonPath('data.bookings.0.passengers.1.halal_food', true)
-            ->assertJsonPath('data.bookings.0.passengers.1.blood_group', 'O')
-            ->assertJsonPath('data.bookings.0.passengers.1.emergency_contact', 'แม่')
-            ->assertJsonPath('data.bookings.0.passengers.1.emergency_phone', '0822222222')
+            ->assertJsonPath('data.pickup_groups.0.passengers.0.avatar_url', 'https://example.com/a.jpg')
+            ->assertJsonPath('data.pickup_groups.0.passengers.1.allergies', 'ถั่ว')
+            ->assertJsonPath('data.pickup_groups.0.passengers.1.health_notes', 'หอบหืด')
+            ->assertJsonPath('data.pickup_groups.0.passengers.1.halal_food', true)
+            ->assertJsonPath('data.pickup_groups.0.passengers.1.blood_group', 'O')
+            ->assertJsonPath('data.pickup_groups.0.passengers.1.emergency_contact', 'แม่')
+            ->assertJsonPath('data.pickup_groups.0.passengers.1.emergency_phone', '0822222222')
             // 'Test Passenger' has no flags, the new one does → exactly one alert.
             ->assertJsonPath('data.summary.care_alerts', 1);
     }
