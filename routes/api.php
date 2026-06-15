@@ -198,7 +198,6 @@ Route::prefix('v1')->group(function () {
             Route::get('me', [DriverController::class, 'me']);
             Route::get('schedules', [DriverController::class, 'schedules']);
             Route::get('schedules/{id}/manifest', [DriverController::class, 'scheduleManifest']);
-            Route::post('schedules/{id}/check-in/set', [DriverController::class, 'setCheckIn']);
             Route::post('schedules/{id}/pickup-points/{pointId}/complete', [DriverController::class, 'completePickup']);
             Route::post('schedules/{id}/depart', [DriverController::class, 'markDeparted']);
             Route::post('check-in/lookup', [DriverController::class, 'lookupCheckIn']);

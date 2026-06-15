@@ -558,56 +558,6 @@ class DriverController extends Controller
      * ส่งครั้งเดียวต่อรอบเดินทางต่อวัน (idempotent ด้วย cache).
      */
     /**
-     * Roll-call toggle: check a booking in or out by booking_ref, scoped to the
-     * schedule. Unlike QR check-in this is reversible, for fast head-counting
-     * before departure. Returns refreshed head-count totals.
-     */
-    public function setCheckIn(Request $request, int $id): JsonResponse
-    {
-        if (! $this->hasDriverAccess($request)) {
-            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
-        }
-
-        $schedule = TripSchedule::with(['vehicle', 'staff'])->find($id);
-
-        if (! $schedule) {
-            return $this->error('ไม่พบรอบเดินทางนี้', 404);
-        }
-
-        if (! $this->canAccessSchedule($request, $schedule)) {
-            return $this->error('คุณไม่มีสิทธิ์อัปเดตรอบเดินทางนี้', 403);
-        }
-
-        $validated = $request->validate([
-            'booking_ref' => ['required', 'string'],
-            'checked_in' => ['required', 'boolean'],
-        ]);
-
-        $booking = Booking::where('schedule_id', $schedule->id)
-            ->where('booking_ref', $validated['booking_ref'])
-            ->first();
-
-        if (! $booking) {
-            return $this->error('ไม่พบการจองในรอบเดินทางนี้', 404);
-        }
-
-        if ($booking->status !== 'confirmed') {
-            return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน', 422);
-        }
-
-        $booking->update([
-            'checked_in' => $validated['checked_in'],
-            'checked_in_at' => $validated['checked_in'] ? now() : null,
-        ]);
-
-        return $this->success([
-            'booking_ref' => $booking->booking_ref,
-            'checked_in' => (bool) $booking->checked_in,
-            'summary' => $this->headcountSummary($schedule),
-        ], $validated['checked_in'] ? 'เช็คอินแล้ว' : 'ยกเลิกเช็คอินแล้ว');
-    }
-
-    /**
      * Mark a pickup point as picked-up (or undo it). On completion, passengers
      * waiting at the next pending pickup point are notified the van is on its
      * way so they can be ready. Returns refreshed pickup-point statuses.
@@ -712,23 +662,6 @@ class DriverController extends Controller
             ])
             ->values()
             ->all();
-    }
-
-    /** Confirmed-booking head-count totals for a schedule. */
-    private function headcountSummary(TripSchedule $schedule): array
-    {
-        $bookings = Booking::withCount('passengers')
-            ->where('schedule_id', $schedule->id)
-            ->where('status', 'confirmed')
-            ->get(['id', 'checked_in']);
-
-        return [
-            'bookings' => $bookings->count(),
-            'checked_in' => $bookings->where('checked_in', true)->count(),
-            'passengers' => $bookings->sum('passengers_count'),
-            'checked_in_passengers' => $bookings->where('checked_in', true)
-                ->sum('passengers_count'),
-        ];
     }
 
     public function markDeparted(Request $request, int $id): JsonResponse
