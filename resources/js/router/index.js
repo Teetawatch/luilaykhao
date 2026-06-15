@@ -52,6 +52,7 @@ import AdminInquiries from '../pages/admin/InquiriesPage.vue';
 import AdminVanTrips from '../pages/admin/VanTripsPage.vue';
 import AdminPromotions from '../pages/admin/PromotionsPage.vue';
 import AdminScheduleOverview from '../pages/admin/ScheduleOverviewPage.vue';
+import AdminBirthdateFollowup from '../pages/admin/BirthdateFollowupPage.vue';
 import AdminManualBooking from '../pages/admin/ManualBookingPage.vue';
 import AdminHeroSlides from '../pages/admin/HeroSlidesPage.vue';
 import AdminChat from '../pages/admin/ChatPage.vue';
@@ -214,6 +215,7 @@ const routes = [
       { path: 'staff-assignments', name: 'admin-staff-assignments', component: AdminStaffAssignments },
       { path: 'calendar', name: 'admin-calendar', component: AdminCalendar },
       { path: 'customers', name: 'admin-customers', component: AdminCustomers },
+      { path: 'birthdate-followup', name: 'admin-birthdate-followup', component: AdminBirthdateFollowup },
       { path: 'maintenance', name: 'admin-maintenance', component: AdminMaintenance },
       { path: 'reports', name: 'admin-reports', component: AdminReports },
       { path: 'check-in', name: 'admin-checkin', component: AdminCheckIn },

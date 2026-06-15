@@ -353,6 +353,9 @@ Route::prefix('v1')->group(function () {
         // Inline edit of a manifest passenger (e.g. backfill birth date)
         Route::patch('passengers/{id}', [AdminExtendedController::class, 'updatePassenger'])->whereNumber('id');
 
+        // Birth-date follow-up — upcoming bookings missing DOB + ready links to send
+        Route::get('birthdate-followup', [AdminExtendedController::class, 'birthdateFollowup']);
+
         // Customers
         Route::get('customers', [AdminExtendedController::class, 'customers']);
         Route::get('customers/{id}', [AdminExtendedController::class, 'customerDetail']);

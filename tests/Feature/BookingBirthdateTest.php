@@ -8,6 +8,7 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class BookingBirthdateTest extends TestCase
@@ -39,10 +40,12 @@ class BookingBirthdateTest extends TestCase
         ]);
     }
 
+    private int $refSeq = 0;
+
     private function groupBooking(User $booker, TripSchedule $schedule): Booking
     {
         return Booking::create([
-            'booking_ref' => 'LLK-GRP-'.random_int(1000, 9999),
+            'booking_ref' => 'LLK-GRP-'.str_pad((string) (++$this->refSeq), 4, '0', STR_PAD_LEFT),
             'user_id' => $booker->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',
@@ -155,6 +158,35 @@ class BookingBirthdateTest extends TestCase
     public function test_invalid_token_returns_404(): void
     {
         $this->get('/booking-birthdate/nope12345')->assertNotFound();
+    }
+
+    public function test_admin_followup_lists_only_bookings_missing_birth_dates(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeUpcomingSchedule();
+
+        // Booking with a missing DOB → should appear, with a ready link.
+        $needs = $this->groupBooking(User::factory()->create(['name' => 'ต้องตาม']), $schedule);
+        BookingPassenger::create(['booking_id' => $needs->id, 'name' => 'A']);
+        BookingPassenger::create(['booking_id' => $needs->id, 'name' => 'B', 'birth_date' => '1990-01-01']);
+
+        // Fully-filled booking → excluded.
+        $done = $this->groupBooking(User::factory()->create(), $schedule);
+        BookingPassenger::create(['booking_id' => $done->id, 'name' => 'C', 'birth_date' => '1991-01-01']);
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/birthdate-followup')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.booking_ref', $needs->booking_ref)
+            ->assertJsonPath('data.0.missing_count', 1)
+            ->assertJsonPath('data.0.filled_count', 1);
+
+        $this->assertStringContainsString('/booking-birthdate/', $response->json('data.0.link'));
+        $this->assertNotNull($needs->fresh()->birthdate_token);
     }
 
     public function test_command_generates_links_for_upcoming_bookings_with_missing_dates(): void

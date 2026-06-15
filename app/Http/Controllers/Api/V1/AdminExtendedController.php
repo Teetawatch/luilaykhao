@@ -199,6 +199,42 @@ class AdminExtendedController extends Controller
         ], 'อัปเดตข้อมูลผู้เดินทางแล้ว');
     }
 
+    /**
+     * Upcoming, still-active bookings that have at least one passenger without a
+     * birth date — each with a ready per-booking link to send the customer so they
+     * can fill in birth dates for everyone in the booking (covers booked-for-friends).
+     */
+    public function birthdateFollowup(Request $request): JsonResponse
+    {
+        $bookings = Booking::query()
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->whereHas('schedule', fn ($s) => $s->whereDate('departure_date', '>=', now()->toDateString()))
+            ->whereHas('passengers', fn ($p) => $p->whereNull('birth_date'))
+            ->with(['user', 'schedule.trip', 'passengers'])
+            ->get()
+            ->sortBy(fn ($b) => $b->schedule?->departure_date)
+            ->map(function ($b) {
+                $total = $b->passengers->count();
+                $missing = $b->passengers->whereNull('birth_date')->count();
+
+                return [
+                    'booking_id' => $b->id,
+                    'booking_ref' => $b->booking_ref,
+                    'customer_name' => $b->user?->name,
+                    'customer_phone' => $b->user?->phone,
+                    'trip_title' => $b->schedule?->trip?->title,
+                    'departure_date' => $b->schedule?->departure_date?->format('Y-m-d'),
+                    'total_passengers' => $total,
+                    'filled_count' => $total - $missing,
+                    'missing_count' => $missing,
+                    'link' => $b->birthdateUrl(), // lazily mints the token
+                ];
+            })
+            ->values();
+
+        return $this->success($bookings);
+    }
+
     // ─── Customer Management ───────────────────────────────────
 
     public function customers(Request $request): JsonResponse
