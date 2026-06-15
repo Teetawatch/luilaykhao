@@ -431,8 +431,16 @@ class ChatController extends Controller
             ->sortByDesc('last_activity')
             ->values();
 
+        // ห้องที่จบทริปแล้วและไม่มีข้อความ (ถูกล้างทิ้งหลังจบทริป 3 วัน) ไม่ต้องแสดง
+        // แต่ยังคงโชว์ห้องของทริปที่กำลังจะมาถึงที่ยังไม่เริ่มแชท
+        $today = now()->toDateString();
         $empty = $conversations
             ->filter(fn ($c) => $c['last_activity'] === null)
+            ->reject(function ($c) use ($today) {
+                $end = $c['return_date'] ?: $c['departure_date'];
+
+                return $end !== null && $end < $today;
+            })
             ->sortBy('departure_date')
             ->values();
 

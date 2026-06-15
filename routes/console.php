@@ -5,6 +5,7 @@ use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\ProcessTripAlertsJob;
+use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendWeatherAlertsJob;
@@ -29,6 +30,8 @@ Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlappi
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 Schedule::job(new ProcessTripAlertsJob)->everyThirtyMinutes()->withoutOverlapping();
 Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping();
+// Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.
+Schedule::job(new PurgeEndedTripChatsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // "Almost sold out" marketing blasts — only sweep during the day; the service
 // also defers any individual send that lands inside quiet hours.
 Schedule::job(new BroadcastLowSeatsJob)
