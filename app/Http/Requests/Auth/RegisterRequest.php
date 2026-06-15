@@ -38,6 +38,7 @@ class RegisterRequest extends FormRequest
             'allergies' => ['nullable', 'string'],
             'health_notes' => ['nullable', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'referral_code' => ['nullable', 'string', 'max:16'],
         ];
     }
 

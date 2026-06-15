@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
+use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
@@ -178,6 +179,9 @@ Route::prefix('v1')->group(function () {
         Route::get('loyalty/rewards', [LoyaltyController::class, 'rewards']);
         Route::post('loyalty/redeem', [LoyaltyController::class, 'redeem']);
         Route::get('loyalty/coupons', [LoyaltyController::class, 'myCoupons']);
+
+        // Referral program (invite friends → both earn loyalty points)
+        Route::get('referral', [ReferralController::class, 'show']);
 
         // Smart notifications
         Route::get('notifications', [NotificationController::class, 'index']);

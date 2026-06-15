@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
 use App\Services\MailService;
+use App\Services\ReferralService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ class AuthController extends Controller
 
     public function __construct(
         private MailService $mailService,
+        private ReferralService $referralService,
     ) {}
 
     public function register(RegisterRequest $request): JsonResponse
@@ -46,6 +48,9 @@ class AuthController extends Controller
 
         $user->assignRole('customer');
         $user->load('roles');
+
+        // Attribute the signup to a referrer when an invite code was supplied.
+        $this->referralService->attachReferrer($user, $request->referral_code);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 

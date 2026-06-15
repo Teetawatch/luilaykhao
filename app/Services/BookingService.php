@@ -19,6 +19,7 @@ class BookingService
         private MailService $mailService,
         private SmsService $smsService,
         private WaitlistService $waitlistService,
+        private ReferralService $referralService,
     ) {}
 
     public function createBooking(
@@ -384,6 +385,9 @@ class BookingService
                     $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
                 }
             }
+
+            // Reward the referrer + friend on the friend's first paid booking.
+            $this->referralService->qualifyFromBooking($booking);
 
             return $booking->fresh(['passengers', 'seats', 'schedule.trip']);
         });
