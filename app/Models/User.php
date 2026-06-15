@@ -13,10 +13,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'driver_pin_hash', 'avatar', 'title', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'social_provider', 'social_id', 'referral_code', 'referred_by'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'driver_pin_hash', 'avatar', 'title', 'nickname', 'id_card', 'birth_date', 'birthdate_token', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'social_provider', 'social_id', 'referral_code', 'referred_by'])]
 #[Hidden(['password', 'driver_pin_hash', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,10 +30,35 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'id_card' => 'encrypted',
+            'birth_date' => 'date',
             'allergies' => 'encrypted',
             'health_notes' => 'encrypted',
             'marketing_push_enabled' => 'boolean',
         ];
+    }
+
+    /** Age in whole years, computed live from birth_date; null when unknown. */
+    public function getAgeAttribute(): ?int
+    {
+        return $this->birth_date?->age;
+    }
+
+    /**
+     * Lazily mint a unique token for the public "fill in your birth date" link,
+     * reusing the existing one so a customer's link stays stable across sends.
+     */
+    public function ensureBirthdateToken(): string
+    {
+        if (! $this->birthdate_token) {
+            $this->forceFill(['birthdate_token' => Str::random(16)])->save();
+        }
+
+        return $this->birthdate_token;
+    }
+
+    public function birthdateUrl(): string
+    {
+        return url('/birthdate/'.$this->ensureBirthdateToken());
     }
 
     public function bookings(): HasMany

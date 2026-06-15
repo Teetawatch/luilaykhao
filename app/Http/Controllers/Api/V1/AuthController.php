@@ -135,6 +135,7 @@ class AuthController extends Controller
             'title' => ['nullable', 'string', 'max:20'],
             'nickname' => ['nullable', 'string', 'max:255'],
             'id_card' => ['nullable', 'string', 'digits:13'],
+            'birth_date' => ['nullable', 'date', 'before:today'],
             'blood_group' => ['nullable', 'string', 'max:10'],
             'emergency_contact' => ['nullable', 'string', 'max:255'],
             'emergency_phone' => ['nullable', 'string', 'max:255'],
@@ -153,7 +154,7 @@ class AuthController extends Controller
         }
 
         // Additional profile fields
-        foreach (['title', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes'] as $field) {
+        foreach (['title', 'nickname', 'id_card', 'birth_date', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes'] as $field) {
             if (array_key_exists($field, $validated)) {
                 $user->$field = $validated[$field];
             }
@@ -607,6 +608,8 @@ class AuthController extends Controller
             'title' => $user->title,
             'nickname' => $user->nickname,
             'id_card' => $user->id_card,
+            'birth_date' => $user->birth_date?->format('Y-m-d'),
+            'age' => $user->age,
             'blood_group' => $user->blood_group,
             'emergency_contact' => $user->emergency_contact,
             'emergency_phone' => $user->emergency_phone,

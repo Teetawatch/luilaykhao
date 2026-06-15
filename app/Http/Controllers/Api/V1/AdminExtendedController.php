@@ -104,6 +104,8 @@ class AdminExtendedController extends Controller
                             'name' => $passenger->name,
                             'nickname' => $passenger->nickname,
                             'id_card' => $passenger->id_card,
+                            'birth_date' => $passenger->birth_date?->format('Y-m-d'),
+                            'age' => $passenger->age,
                             'phone' => $passenger->phone ?: $booking->user?->phone,
                             'blood_group' => $passenger->blood_group,
                             'allergies' => $passenger->allergies,
@@ -170,6 +172,31 @@ class AdminExtendedController extends Controller
         });
 
         return $this->success($events);
+    }
+
+    /**
+     * Inline-edit a booking passenger from the schedule manifest — used to fill in a
+     * birth date retroactively for bookings made before the field existed. Returns the
+     * updated birth_date and freshly computed age.
+     */
+    public function updatePassenger(Request $request, int $id): JsonResponse
+    {
+        $passenger = BookingPassenger::findOrFail($id);
+
+        $validated = $request->validate([
+            'birth_date' => ['nullable', 'date', 'before:today'],
+        ], [
+            'birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
+        ]);
+
+        $passenger->update($validated);
+        $passenger->refresh();
+
+        return $this->success([
+            'id' => $passenger->id,
+            'birth_date' => $passenger->birth_date?->format('Y-m-d'),
+            'age' => $passenger->age,
+        ], 'อัปเดตข้อมูลผู้เดินทางแล้ว');
     }
 
     // ─── Customer Management ───────────────────────────────────

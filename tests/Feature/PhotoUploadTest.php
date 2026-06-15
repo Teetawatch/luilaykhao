@@ -404,6 +404,69 @@ class PhotoUploadTest extends TestCase
         Storage::disk('public')->assertMissing($path);
     }
 
+    public function test_admin_can_delete_all_photos_of_a_round_and_files_are_removed(): void
+    {
+        $admin = $this->makeAdmin();
+        $schedule = $this->makeSchedule($this->makeTrip());
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/photos", [
+                'files' => [
+                    UploadedFile::fake()->image('a.jpg', 1200, 800),
+                    UploadedFile::fake()->image('b.jpg', 1200, 800),
+                ],
+            ])->assertCreated();
+
+        $paths = $schedule->photos()->get()
+            ->flatMap(fn ($p) => array_filter([$p->path, $p->thumb_path]))
+            ->all();
+        $this->assertNotEmpty($paths);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/schedules/{$schedule->id}/photos")
+            ->assertOk()
+            ->assertJsonPath('data.detached', 2)
+            ->assertJsonPath('data.files_removed', 2);
+
+        $this->assertSame(0, $schedule->photos()->count());
+        $this->assertSame(0, SchedulePhoto::count());
+        foreach ($paths as $path) {
+            Storage::disk('public')->assertMissing($path);
+        }
+    }
+
+    public function test_delete_all_keeps_files_still_shared_with_another_round(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $target = $this->makeSchedule($trip);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos", [
+                'files' => [UploadedFile::fake()->image('a.jpg')],
+            ])->assertCreated();
+
+        $photo = $source->photos()->first();
+        $path = $photo->path;
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$source->id}/photos/apply", [
+                'schedule_ids' => [$target->id],
+            ])->assertOk();
+
+        // Clearing the source round leaves the shared file in place for the target.
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/schedules/{$source->id}/photos")
+            ->assertOk()
+            ->assertJsonPath('data.detached', 1)
+            ->assertJsonPath('data.files_removed', 0);
+
+        $this->assertSame(0, $source->photos()->count());
+        $this->assertSame(1, $target->photos()->count());
+        Storage::disk('public')->assertExists($path);
+    }
+
     public function test_schedule_reorder_is_independent_per_round(): void
     {
         $admin = $this->makeAdmin();

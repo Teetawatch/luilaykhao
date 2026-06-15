@@ -226,6 +226,16 @@
           </span>
           <div style="display:flex;gap:8px;">
             <button
+              class="btn-danger"
+              :disabled="!manager.photos.length || deletingAll"
+              @click="confirmDeleteAllPhotos"
+            >
+              <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;">
+                {{ deletingAll ? 'sync' : 'delete_sweep' }}
+              </span>
+              {{ deletingAll ? 'กำลังลบ…' : 'ลบรูปทั้งหมด' }}
+            </button>
+            <button
               class="btn-secondary"
               :disabled="!manager.photos.length"
               @click="openApplyPicker"
@@ -334,6 +344,7 @@ const uploadProgress = computed(() =>
     : 0
 );
 const deletingId = ref(null);
+const deletingAll = ref(false);
 
 const manager = reactive({
   open: false,
@@ -673,6 +684,24 @@ const confirmDeletePhoto = async (photo) => {
     alert(e.response?.data?.message ?? 'ลบรูปไม่สำเร็จ');
   } finally {
     deletingId.value = null;
+  }
+};
+
+const confirmDeleteAllPhotos = async () => {
+  if (!manager.schedule || !manager.photos.length) return;
+  if (!confirm(
+    `ลบรูปทั้งหมด ${manager.photos.length} รูปของรอบนี้ใช่หรือไม่?\n` +
+    'ไฟล์จะถูกลบจาก Cloudflare R2 ด้วย (รูปที่ใช้ร่วมกับรอบอื่นจะยังคงอยู่กับรอบนั้น)'
+  )) return;
+  deletingAll.value = true;
+  try {
+    await api.delete(`/admin/schedules/${manager.schedule.id}/photos`);
+    manager.photos = [];
+    photoCounts[manager.schedule.id] = 0;
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'ลบรูปทั้งหมดไม่สำเร็จ');
+  } finally {
+    deletingAll.value = false;
   }
 };
 

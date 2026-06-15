@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminPaymentWebController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
+use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\SlipController;
 use App\Models\Trip;
@@ -46,6 +47,26 @@ Route::get('/album/{token}/download/{photoId}', [PublicAlbumController::class, '
     ->where(['token' => '[A-Za-z0-9]+', 'photoId' => '[0-9]+'])
     ->middleware('throttle:120,1')
     ->name('album.download-one');
+
+// Public birth-date page — ลูกค้ากรอกวัน/เดือน/ปีเกิดเองจากลิงก์เฉพาะคน (ไม่ต้องล็อกอิน)
+Route::get('/birthdate/{token}', [PublicBirthdateController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:30,1')
+    ->name('public.birthdate.show');
+Route::post('/birthdate/{token}', [PublicBirthdateController::class, 'submit'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.birthdate.submit');
+
+// Per-booking variant — คนจองกรอกวันเกิดให้ผู้เดินทางทุกคนในการจอง (จองแทนเพื่อน)
+Route::get('/booking-birthdate/{token}', [PublicBirthdateController::class, 'showBooking'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:30,1')
+    ->name('public.birthdate.booking.show');
+Route::post('/booking-birthdate/{token}', [PublicBirthdateController::class, 'submitBooking'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.birthdate.booking.submit');
 
 // Public payment page — ชำระค่างวด/ยอดส่วนที่เหลือ จากลิงก์ในอีเมล (ไม่ต้องล็อกอิน)
 Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])

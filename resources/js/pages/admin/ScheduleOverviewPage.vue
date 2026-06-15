@@ -16,6 +16,10 @@
           <span class="material-symbols-rounded">picture_as_pdf</span>
           PDF รายชื่อประกัน
         </button>
+        <button class="btn-secondary" :disabled="!visibleManifestCount" @click="exportVisibleCsv">
+          <span class="material-symbols-rounded">table_view</span>
+          Excel รายชื่อ
+        </button>
         <button class="btn-secondary" :disabled="admin.loading" @click="fetchData">
           <span class="material-symbols-rounded" :class="{ 'animate-spin': admin.loading }">refresh</span>
           {{ admin.loading ? 'กำลังโหลด' : 'รีเฟรช' }}
@@ -212,6 +216,15 @@
               {{ trip.schedules.length }} รอบ
               <span>ว่าง {{ trip.available_seats }}/{{ trip.total_seats }}</span>
               <span>ไป {{ trip.total_passengers }} คน · {{ formatCurrency(trip.total_amount) }}</span>
+              <button
+                class="btn-export-mini"
+                :disabled="!trip.total_passengers"
+                title="ส่งออกรายชื่อทุกรอบของทริปนี้เป็น Excel"
+                @click="exportTripCsv(trip)"
+              >
+                <span class="material-symbols-rounded">table_view</span>
+                Excel
+              </button>
             </div>
           </div>
 
@@ -292,14 +305,24 @@
                     <span class="manifest-kicker">รายชื่อผู้เดินทาง</span>
                     <strong>{{ schedulePassengerCount(sch) }} คน</strong>
                   </div>
-                  <button
-                    class="btn-export-mini"
-                    :disabled="!schedulePassengerCount(sch)"
-                    @click="exportScheduleInsurancePdf(sch)"
-                  >
-                    <span class="material-symbols-rounded">picture_as_pdf</span>
-                    PDF ประกัน
-                  </button>
+                  <div class="manifest-preview-actions">
+                    <button
+                      class="btn-export-mini"
+                      :disabled="!schedulePassengerCount(sch)"
+                      @click="exportScheduleInsurancePdf(sch)"
+                    >
+                      <span class="material-symbols-rounded">picture_as_pdf</span>
+                      PDF ประกัน
+                    </button>
+                    <button
+                      class="btn-export-mini"
+                      :disabled="!schedulePassengerCount(sch)"
+                      @click="exportScheduleCsv(sch)"
+                    >
+                      <span class="material-symbols-rounded">table_view</span>
+                      Excel
+                    </button>
+                  </div>
                 </div>
 
                 <div v-if="schedulePassengers(sch).length" class="manifest-name-list">
@@ -498,14 +521,24 @@
                 <span class="manifest-kicker">รายชื่อสำหรับส่งประกัน</span>
                 <strong>{{ schedulePassengerCount(selectedSchedule) }} คน</strong>
               </div>
-              <button
-                class="btn-secondary compact"
-                :disabled="!schedulePassengerCount(selectedSchedule)"
-                @click="exportScheduleInsurancePdf(selectedSchedule)"
-              >
-                <span class="material-symbols-rounded">picture_as_pdf</span>
-                ส่งออก PDF
-              </button>
+              <div style="display:flex;gap:8px;">
+                <button
+                  class="btn-secondary compact"
+                  :disabled="!schedulePassengerCount(selectedSchedule)"
+                  @click="exportScheduleInsurancePdf(selectedSchedule)"
+                >
+                  <span class="material-symbols-rounded">picture_as_pdf</span>
+                  ส่งออก PDF
+                </button>
+                <button
+                  class="btn-secondary compact"
+                  :disabled="!schedulePassengerCount(selectedSchedule)"
+                  @click="exportScheduleCsv(selectedSchedule)"
+                >
+                  <span class="material-symbols-rounded">table_view</span>
+                  Excel รายชื่อ
+                </button>
+              </div>
             </div>
             <div v-if="schedulePassengers(selectedSchedule).length" class="insurance-table-wrap">
               <table class="insurance-table">
@@ -514,6 +547,7 @@
                     <th>ชื่อ</th>
                     <th>ประเภท</th>
                     <th>เลขบัตร/พาสปอร์ต</th>
+                    <th>วันเกิด / อายุ</th>
                     <th>โทรศัพท์</th>
                     <th>เลือด</th>
                     <th>แพ้อาหาร/โรคประจำตัว</th>
@@ -528,6 +562,19 @@
                     </td>
                     <td>{{ person.booking_type_label }}</td>
                     <td>{{ person.id_card || '-' }}</td>
+                    <td>
+                      <template v-if="person.birth_date">
+                        {{ person.birth_date }}
+                        <span v-if="person.age != null" class="age-pill">{{ person.age }} ปี</span>
+                      </template>
+                      <input
+                        v-else
+                        type="date"
+                        class="birth-date-input"
+                        :disabled="savingBirthId === person.id"
+                        @change="saveBirthDate(person, $event)"
+                      />
+                    </td>
                     <td>{{ person.phone || '-' }}</td>
                     <td>{{ person.blood_group || '-' }}</td>
                     <td>{{ healthSummary(person) }}</td>
@@ -595,6 +642,61 @@
               <SeatMap :seat-map="seatData" :show-names="true" readonly />
             </div>
           </template>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" v-if="exportPicker.open" @click.self="closeExportPicker">
+      <div class="modal-card" style="max-width: 520px">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">
+              <span class="material-symbols-rounded" style="vertical-align:-4px;">table_view</span>
+              ส่งออกรายชื่อเป็น Excel
+            </h2>
+            <p class="modal-subtitle">
+              {{ exportPicker.title }} · {{ exportPickerPassengerCount() }} คน · เลือกรูปแบบคอลัมน์
+            </p>
+          </div>
+          <button class="modal-close" @click="closeExportPicker">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <label class="export-format-option" :class="{ active: exportPicker.format === 1 }">
+            <input type="radio" :value="1" v-model="exportPicker.format" />
+            <div>
+              <strong>แบบที่ 1 — ชื่อ</strong>
+              <span>คำนำหน้า · ชื่อ-นามสกุล</span>
+            </div>
+          </label>
+          <label class="export-format-option" :class="{ active: exportPicker.format === 2 }">
+            <input type="radio" :value="2" v-model="exportPicker.format" />
+            <div>
+              <strong>แบบที่ 2 — ชื่อ + วันเกิด + เลขบัตร</strong>
+              <span>คำนำหน้า · ชื่อ-นามสกุล · วันเกิด · เลขบัตรประชาชน</span>
+            </div>
+          </label>
+          <label class="export-format-option" :class="{ active: exportPicker.format === 3 }">
+            <input type="radio" :value="3" v-model="exportPicker.format" />
+            <div>
+              <strong>แบบที่ 3 — ชื่อ + อายุ</strong>
+              <span>คำนำหน้า · ชื่อ-นามสกุล · อายุ</span>
+            </div>
+          </label>
+          <p class="export-note">
+            หมายเหตุ: รูปแบบที่มีวันเกิด/อายุ จะแสดง “ว่าง” สำหรับผู้เดินทางที่ยังไม่มีข้อมูลวันเกิด —
+            กรอกเพิ่มได้ในตารางรายชื่อของแต่ละรอบ
+          </p>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="closeExportPicker">ยกเลิก</button>
+          <button class="btn-primary" :disabled="!exportPickerPassengerCount()" @click="exportSelectedCsv">
+            <span class="material-symbols-rounded">download</span>
+            ดาวน์โหลด CSV
+          </button>
         </div>
       </div>
     </div>
@@ -1212,6 +1314,110 @@ function exportInsurancePdf(scheduleItems, title) {
   printWindow.document.write(html);
   printWindow.document.close();
   printWindow.onload = () => printWindow.print();
+}
+
+/* ───── Excel (CSV) export of the passenger name list ─────────────────────
+   Three column sets the parks/insurers ask for, chosen in a small modal.
+   CSV with a UTF-8 BOM opens cleanly in Excel with Thai text intact (same
+   approach as ReportsPage). */
+
+const exportPicker = reactive({
+  open: false,
+  schedules: [],
+  title: '',
+  format: 1,
+});
+const savingBirthId = ref(null);
+
+function openExportPicker(scheduleItems, title) {
+  const withPassengers = scheduleItems.filter((sch) => schedulePassengerCount(sch));
+  if (!withPassengers.length) return;
+  exportPicker.schedules = withPassengers;
+  exportPicker.title = title;
+  exportPicker.format = 1;
+  exportPicker.open = true;
+}
+
+function closeExportPicker() {
+  exportPicker.open = false;
+  exportPicker.schedules = [];
+}
+
+function exportPickerPassengerCount() {
+  return exportPicker.schedules.reduce((total, sch) => total + schedulePassengerCount(sch), 0);
+}
+
+function exportSelectedCsv() {
+  const fmt = exportPicker.format;
+  const headers = {
+    1: ['ลำดับ', 'คำนำหน้า', 'ชื่อ-นามสกุล', 'ทริป', 'วันเดินทาง', 'ประเภท'],
+    2: ['ลำดับ', 'คำนำหน้า', 'ชื่อ-นามสกุล', 'วันเกิด', 'เลขบัตรประชาชน', 'ทริป', 'วันเดินทาง', 'ประเภท'],
+    3: ['ลำดับ', 'คำนำหน้า', 'ชื่อ-นามสกุล', 'อายุ', 'ทริป', 'วันเดินทาง', 'ประเภท'],
+  }[fmt];
+
+  const rows = [];
+  let index = 0;
+  exportPicker.schedules.forEach((sch) => {
+    schedulePassengers(sch).forEach((person) => {
+      index += 1;
+      const head = [index, person.title || '', person.name || ''];
+      const tail = [sch.trip_title || '', formatDate(sch.start), person.booking_type_label || ''];
+      if (fmt === 1) {
+        rows.push([...head, ...tail]);
+      } else if (fmt === 2) {
+        rows.push([...head, person.birth_date || '', person.id_card || '', ...tail]);
+      } else {
+        rows.push([...head, person.age ?? '', ...tail]);
+      }
+    });
+  });
+
+  downloadCsv(headers, rows, `${exportPicker.title || 'รายชื่อผู้เดินทาง'} - แบบ${fmt}`);
+  closeExportPicker();
+}
+
+function downloadCsv(headers, rows, filename) {
+  const BOM = '﻿';
+  const esc = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+  const csv = BOM + [headers.map(esc).join(','), ...rows.map((row) => row.map(esc).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${filename}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// Scope helpers — a round, a whole trip, or everything currently shown.
+function exportScheduleCsv(sch) {
+  openExportPicker([sch], `รายชื่อ - ${sch.trip_title || 'ทริป'} - ${formatDate(sch.start)}`);
+}
+
+function exportTripCsv(trip) {
+  openExportPicker(trip.schedules, `รายชื่อ - ${trip.trip_title || 'ทริป'}`);
+}
+
+function exportVisibleCsv() {
+  openExportPicker(filteredSchedules.value, 'รายชื่อผู้เดินทางตามรอบที่แสดง');
+}
+
+// Backfill / correct a passenger's birth date from the manifest table.
+async function saveBirthDate(person, event) {
+  const value = event?.target?.value;
+  if (!value) return;
+  savingBirthId.value = person.id;
+  try {
+    const res = await api.patch(`/admin/passengers/${person.id}`, { birth_date: value });
+    person.birth_date = res.data?.data?.birth_date ?? value;
+    person.age = res.data?.data?.age ?? null;
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'บันทึกวันเกิดไม่สำเร็จ');
+  } finally {
+    savingBirthId.value = null;
+  }
 }
 
 function escapeHtml(value) {
@@ -2571,5 +2777,87 @@ onUnmounted(() => {
   .booking-summary-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.manifest-preview-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Birth-date / age cell in the manifest table */
+.age-pill {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.birth-date-input {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.birth-date-input:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* Export format chooser */
+.export-format-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.export-format-option:hover {
+  border-color: var(--color-accent, #2d7a4f);
+  background: #f0fdf4;
+}
+
+.export-format-option.active {
+  border-color: var(--color-accent, #2d7a4f);
+  background: #f0fdf4;
+}
+
+.export-format-option input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent, #2d7a4f);
+}
+
+.export-format-option strong {
+  display: block;
+  font-size: 14px;
+  color: #111827;
+}
+
+.export-format-option span {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.export-note {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 4px 0 0;
 }
 </style>

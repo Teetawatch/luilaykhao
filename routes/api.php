@@ -331,6 +331,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/photos', [PhotoController::class, 'scheduleUpload']);
         Route::post('schedules/{id}/photos/apply', [PhotoController::class, 'scheduleApply']);
         Route::post('schedules/{id}/photos/reorder', [PhotoController::class, 'scheduleReorder']);
+        Route::delete('schedules/{id}/photos', [PhotoController::class, 'scheduleDestroyAll']);
         Route::delete('schedules/{id}/photos/{photoId}', [PhotoController::class, 'scheduleDestroy'])
             ->whereNumber('photoId');
 
@@ -348,6 +349,9 @@ Route::prefix('v1')->group(function () {
 
         // Calendar
         Route::get('calendar/schedules', [AdminExtendedController::class, 'calendarSchedules']);
+
+        // Inline edit of a manifest passenger (e.g. backfill birth date)
+        Route::patch('passengers/{id}', [AdminExtendedController::class, 'updatePassenger'])->whereNumber('id');
 
         // Customers
         Route::get('customers', [AdminExtendedController::class, 'customers']);

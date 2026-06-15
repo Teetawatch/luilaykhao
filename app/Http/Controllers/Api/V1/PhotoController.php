@@ -226,6 +226,35 @@ class PhotoController extends Controller
         return $this->success(null, 'ลบรูปสำเร็จ');
     }
 
+    /**
+     * Remove every photo from this round at once. Each photo is detached from the
+     * round; its R2 file is deleted only once no other round still uses it (matching
+     * {@see scheduleDestroy}). Returns how many files were actually removed from disk.
+     */
+    public function scheduleDestroyAll(int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $photos = $schedule->photos()->get();
+
+        $filesRemoved = 0;
+
+        DB::transaction(function () use ($schedule, $photos, &$filesRemoved) {
+            $schedule->photos()->detach();
+
+            foreach ($photos as $photo) {
+                if ($photo->schedules()->count() === 0) {
+                    $photo->delete(); // model boot hook removes the file from disk
+                    $filesRemoved++;
+                }
+            }
+        });
+
+        return $this->success(
+            ['detached' => $photos->count(), 'files_removed' => $filesRemoved],
+            'ลบรูปทั้งหมดของรอบนี้แล้ว'
+        );
+    }
+
     public function scheduleReorder(Request $request, int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);

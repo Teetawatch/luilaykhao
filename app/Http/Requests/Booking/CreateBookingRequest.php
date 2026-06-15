@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Booking;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\TripSchedule;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 class CreateBookingRequest extends FormRequest
@@ -25,6 +25,7 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.name' => ['required', 'string', 'max:255'],
             'passengers.*.nickname' => ['required', 'string', 'max:100'],
             'passengers.*.id_card' => ['required', 'digits:13'],
+            'passengers.*.birth_date' => ['required', 'date', 'before:today'],
             'passengers.*.phone' => ['required', 'digits:10'],
             'passengers.*.email' => ['nullable', 'email', 'max:255'],
             'passengers.0.email' => ['required_if:booking_for,friend', 'nullable', 'email', 'max:255'],
@@ -49,14 +50,26 @@ class CreateBookingRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'passengers.*.birth_date.required' => 'กรุณาระบุวัน/เดือน/ปีเกิดของผู้เดินทาง',
+            'passengers.*.birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
+        ];
+    }
+
     public function withValidator(Validator $validator): void
     {
         $validator->after(function ($validator) {
             $scheduleId = $this->input('schedule_id');
-            if (!$scheduleId) return;
+            if (! $scheduleId) {
+                return;
+            }
 
             $schedule = TripSchedule::with('trip')->find($scheduleId);
-            if (!$schedule || !$schedule->trip) return;
+            if (! $schedule || ! $schedule->trip) {
+                return;
+            }
 
             if ($schedule->trip->is_women_only) {
                 $passengers = $this->input('passengers', []);
@@ -66,7 +79,7 @@ class CreateBookingRequest extends FormRequest
 
                 foreach ($passengers as $index => $passenger) {
                     $title = $passenger['title'] ?? '';
-                    if (!in_array($title, $allowedTitles)) {
+                    if (! in_array($title, $allowedTitles)) {
                         $validator->errors()->add(
                             "passengers.{$index}.title",
                             "ทริปนี้เป็นทริปสำหรับผู้หญิงเท่านั้น กรุณาเลือกคำนำหน้าชื่อเป็น 'นาง' หรือ 'นางสาว'"
