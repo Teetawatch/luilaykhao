@@ -658,6 +658,15 @@
                   </p>
                 </div>
                 <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">วัน/เดือน/ปีเกิด <span class="text-red-500">*</span></label>
+                  <input v-model="p.birth_date" type="date" required :max="todayDate" min="1900-01-01"
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <p v-if="showErr(i, 'birth_date')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'birth_date') }}
+                  </p>
+                </div>
+                <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
                   <input v-model="p.phone" type="tel" required placeholder="0XXXXXXXXX"
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
@@ -1415,7 +1424,7 @@ const optionalAddons = computed(() => {
 });
 
 const passengers = ref([{
-  title: '', name: '', nickname: '', id_card: '', phone: '', email: '', blood_group: '', allergies: '',
+  title: '', name: '', nickname: '', id_card: '', birth_date: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '',
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
@@ -1491,7 +1500,7 @@ watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({
-      title: '', name: '', nickname: '', id_card: '', phone: '', email: '', blood_group: '', allergies: '',
+      title: '', name: '', nickname: '', id_card: '', birth_date: '', phone: '', email: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_phone: '',
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
       pickup_point_id: selectedPickup.value?.id ?? null
@@ -1520,6 +1529,7 @@ function autoFillFromProfile(index) {
     name: user.name || '',
     nickname: user.nickname || '',
     id_card: user.id_card || '',
+    birth_date: user.birth_date || '',
     phone: user.phone || '',
     email: user.email || '',
     blood_group: user.blood_group || '',
@@ -1533,6 +1543,13 @@ function autoFillFromProfile(index) {
     toast.success('ดึงข้อมูลจากโปรไฟล์สำเร็จ');
   }
 }
+
+// Today's date as a local YYYY-MM-DD string — caps the birth-date picker and
+// rejects future dates (matches the backend's before:today rule).
+const todayDate = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})();
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 const isFriendEmailValid = computed(() => bookingFor.value !== 'friend' || isValidEmail(passengers.value[0]?.email));
@@ -1555,6 +1572,8 @@ function computePassengerErrors(p, i) {
   if (!hasText(p.name)) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
   if (!hasText(p.nickname)) errors.nickname = 'กรุณากรอกชื่อเล่น';
   if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
+  if (!hasText(p.birth_date)) errors.birth_date = 'กรุณาเลือกวัน/เดือน/ปีเกิด';
+  else if (p.birth_date >= todayDate) errors.birth_date = 'วัน/เดือน/ปีเกิดไม่ถูกต้อง';
   if (!hasExactDigits(p.phone, 10)) errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก';
   if (bookingFor.value === 'friend' && i === 0 && !isValidEmail(p.email)) errors.email = 'กรุณากรอกอีเมลของเพื่อนให้ถูกต้อง';
   if (!p.blood_group) errors.blood_group = 'กรุณาเลือกกรุ๊ปเลือด';
@@ -1807,6 +1826,7 @@ async function createBooking() {
         name: String(p.name || '').trim(),
         nickname: String(p.nickname || '').trim(),
         id_card: digitsOnly(p.id_card),
+        birth_date: p.birth_date || null,
         phone: digitsOnly(p.phone),
         email: p.email ? String(p.email).trim() : null,
         blood_group: p.blood_group || null,

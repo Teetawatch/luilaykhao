@@ -145,6 +145,10 @@
                   />
                 </label>
                 <label class="form-field">
+                  <span>วัน/เดือน/ปีเกิด</span>
+                  <input v-model="passenger.birth_date" type="date" :max="todayDate" min="1900-01-01" />
+                </label>
+                <label class="form-field">
                   <span>กรุ๊ปเลือด</span>
                   <select v-model="passenger.blood_group">
                     <option value="">ไม่ระบุ</option>
@@ -516,6 +520,12 @@ const form = reactive({
 
 const passengers = ref([newPassenger()]);
 
+// Local YYYY-MM-DD today — caps the birth-date picker so no future date is picked.
+const todayDate = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})();
+
 const selectedTrip = computed(() => trips.value.find((trip) => trip.id === Number(form.trip_id)) || null);
 const selectedSchedule = computed(() => schedules.value.find((schedule) => schedule.id === Number(form.schedule_id)) || null);
 const isWomenOnlyTrip = computed(() => Boolean(selectedTrip.value?.is_women_only || selectedSchedule.value?.trip?.is_women_only));
@@ -630,6 +640,7 @@ function newPassenger() {
     nickname: '',
     phone: '',
     id_card: '',
+    birth_date: '',
     blood_group: '',
     allergies: '',
     health_notes: '',
