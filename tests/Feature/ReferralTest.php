@@ -111,11 +111,20 @@ class ReferralTest extends TestCase
             'referee_points' => 100,
         ]);
         $this->assertSame(150, LoyaltyAccount::forUser($referrer->id)->points);
-        $this->assertSame(100, LoyaltyAccount::forUser($friend->id)->points);
 
-        // Loyalty ledger records the earn for both users.
+        // The referral ledger records the bonus for both sides. (The friend's
+        // balance also includes ordinary points earned from their booking.)
         $this->assertDatabaseHas('loyalty_transactions', [
-            'user_id' => $referrer->id, 'type' => 'earn', 'points' => 150,
+            'user_id' => $referrer->id,
+            'type' => 'earn',
+            'points' => 150,
+            'reference_type' => Referral::class,
+        ]);
+        $this->assertDatabaseHas('loyalty_transactions', [
+            'user_id' => $friend->id,
+            'type' => 'earn',
+            'points' => 100,
+            'reference_type' => Referral::class,
         ]);
     }
 

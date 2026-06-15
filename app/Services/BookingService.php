@@ -20,6 +20,7 @@ class BookingService
         private SmsService $smsService,
         private WaitlistService $waitlistService,
         private ReferralService $referralService,
+        private LoyaltyService $loyaltyService,
     ) {}
 
     public function createBooking(
@@ -385,6 +386,9 @@ class BookingService
                     $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
                 }
             }
+
+            // Award loyalty points for the trip (100 THB = 1 point).
+            $this->loyaltyService->awardForBooking($booking);
 
             // Reward the referrer + friend on the friend's first paid booking.
             $this->referralService->qualifyFromBooking($booking);
