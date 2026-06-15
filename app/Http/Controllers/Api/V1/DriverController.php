@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
+use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -153,9 +154,20 @@ class DriverController extends Controller
             'checked_in_at' => now(),
         ]);
 
+        // When this check-in completes everyone at the booking's pickup point,
+        // close the point and immediately notify the next stop's passengers.
+        $auto = $this->maybeAutoCompletePickup($booking);
+
+        $message = 'เช็คอินสำเร็จ';
+        if ($auto !== null) {
+            $message = $auto['next']
+                ? "เช็คอินสำเร็จ • จุดนี้ครบแล้ว แจ้งจุดถัดไป: {$auto['next']['label']}"
+                : 'เช็คอินสำเร็จ • รับครบทุกจุดแล้ว';
+        }
+
         return $this->success(
             new BookingResource($booking->fresh($this->checkInRelations())),
-            'เช็คอินสำเร็จ'
+            $message
         );
     }
 
@@ -593,8 +605,6 @@ class DriverController extends Controller
             return $this->error('ไม่พบจุดรับนี้ในรอบเดินทาง', 404);
         }
 
-        $wasCompleted = (bool) $point->completed_at;
-
         if (! $completed) {
             $point->update(['completed_at' => null]);
 
@@ -607,52 +617,96 @@ class DriverController extends Controller
             ], 'ยกเลิกการรับจุดนี้แล้ว');
         }
 
-        if (! $wasCompleted) {
+        $result = $this->markPickupCompleted($schedule, $point);
+
+        return $this->success([
+            'point_id' => $point->id,
+            'completed_at' => $point->completed_at?->toIso8601String(),
+            'next_point' => $result['next'],
+            'notified' => $result['notified'],
+            'pickup_points' => $this->pickupPointStatuses($schedule),
+        ], $result['next']
+            ? "แจ้งจุดรับถัดไปแล้ว: {$result['next']['label']}"
+            : 'รับครบทุกจุดแล้ว');
+    }
+
+    /**
+     * Auto-complete a booking's pickup point once everyone confirmed there has
+     * checked in (e.g. via QR), firing the next-stop notification. Returns the
+     * markPickupCompleted result, or null when nothing was triggered.
+     */
+    private function maybeAutoCompletePickup(Booking $booking): ?array
+    {
+        $pointId = $booking->pickup_point_id;
+        if (! $pointId) {
+            return null;
+        }
+
+        $schedule = $booking->schedule;
+        $point = $schedule?->pickupPoints->firstWhere('id', $pointId);
+        if (! $point || $point->completed_at) {
+            return null;
+        }
+
+        $stillWaiting = Booking::where('schedule_id', $schedule->id)
+            ->where('status', 'confirmed')
+            ->where('pickup_point_id', $pointId)
+            ->where('checked_in', false)
+            ->exists();
+
+        if ($stillWaiting) {
+            return null;
+        }
+
+        return $this->markPickupCompleted($schedule, $point);
+    }
+
+    /**
+     * Mark a pickup point completed (idempotent). On the transition into
+     * completed, notify passengers waiting at the next pending point that the
+     * van is on its way. Returns ['next' => ?array, 'notified' => int].
+     */
+    private function markPickupCompleted(TripSchedule $schedule, SchedulePickupPoint $point): array
+    {
+        $justCompleted = ! $point->completed_at;
+        if ($justCompleted) {
             $point->update(['completed_at' => now()]);
         }
 
-        // Next pending point by sort order → nudge those passengers to get ready.
         $next = $schedule->pickupPoints
             ->whereNull('completed_at')
             ->sortBy('sort_order')
             ->first();
 
+        if (! $next) {
+            return ['next' => null, 'notified' => 0];
+        }
+
+        $nextLabel = $next->pickup_location ?: $next->region_label ?: 'จุดรับถัดไป';
         $notified = 0;
-        $nextPayload = null;
 
-        if ($next) {
-            $nextLabel = $next->pickup_location ?: $next->region_label ?: 'จุดรับถัดไป';
-            $nextPayload = ['id' => $next->id, 'label' => $nextLabel];
+        // Only fire notifications on the transition into completed.
+        if ($justCompleted) {
+            $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+            $bookings = Booking::where('schedule_id', $schedule->id)
+                ->where('status', 'confirmed')
+                ->whereNotNull('user_id')
+                ->where('pickup_point_id', $next->id)
+                ->get(['id', 'booking_ref', 'user_id']);
 
-            // Only fire notifications on the transition into completed.
-            if (! $wasCompleted) {
-                $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
-                $bookings = Booking::where('schedule_id', $schedule->id)
-                    ->where('status', 'confirmed')
-                    ->whereNotNull('user_id')
-                    ->where('pickup_point_id', $next->id)
-                    ->get(['id', 'booking_ref', 'user_id']);
-
-                foreach ($bookings as $booking) {
-                    SmartNotification::send(
-                        $booking->user_id,
-                        'pickup_approaching',
-                        'รถกำลังมารับคุณ 🚐',
-                        "รถทริป \"{$tripTitle}\" กำลังมุ่งหน้าไปยังจุดรับ \"{$nextLabel}\" กรุณาเตรียมตัวให้พร้อม",
-                        ['booking_ref' => $booking->booking_ref, 'schedule_id' => $schedule->id],
-                    );
-                    $notified++;
-                }
+            foreach ($bookings as $booking) {
+                SmartNotification::send(
+                    $booking->user_id,
+                    'pickup_approaching',
+                    'รถกำลังมารับคุณ 🚐',
+                    "รถทริป \"{$tripTitle}\" กำลังมุ่งหน้าไปยังจุดรับ \"{$nextLabel}\" กรุณาเตรียมตัวให้พร้อม",
+                    ['booking_ref' => $booking->booking_ref, 'schedule_id' => $schedule->id],
+                );
+                $notified++;
             }
         }
 
-        return $this->success([
-            'point_id' => $point->id,
-            'completed_at' => $point->completed_at?->toIso8601String(),
-            'next_point' => $nextPayload,
-            'notified' => $notified,
-            'pickup_points' => $this->pickupPointStatuses($schedule),
-        ], $next ? "แจ้งจุดรับถัดไปแล้ว: {$nextPayload['label']}" : 'รับครบทุกจุดแล้ว');
+        return ['next' => ['id' => $next->id, 'label' => $nextLabel], 'notified' => $notified];
     }
 
     /** Pickup-point completion statuses for a schedule, ordered by route. */

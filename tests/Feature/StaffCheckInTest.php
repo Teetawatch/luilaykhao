@@ -182,6 +182,83 @@ class StaffCheckInTest extends TestCase
         $this->assertNull($stop1->fresh()->completed_at);
     }
 
+    public function test_qr_check_in_auto_completes_pickup_point_and_notifies_next_stop(): void
+    {
+        Role::create(['name' => 'staff']);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $bookingA] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $stop1 = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'Stop 1',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+        $stop2 = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'Stop 2',
+            'price' => 0,
+            'sort_order' => 2,
+        ]);
+
+        $bookingA->update(['pickup_point_id' => $stop1->id]);
+
+        // A second booking also at stop 1 — both must check in to complete it.
+        $bookingA2 = Booking::create([
+            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'pickup_point_id' => $stop1->id,
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+
+        // A customer waiting at stop 2 — should be notified when stop 1 is done.
+        $nextCustomer = User::factory()->create();
+        Booking::create([
+            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'user_id' => $nextCustomer->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'pickup_point_id' => $stop2->id,
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+
+        // First check-in: stop 1 still has a waiting booking → not completed yet.
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $bookingA->qr_code])
+            ->assertOk();
+
+        $this->assertNull($stop1->fresh()->completed_at);
+        $this->assertDatabaseMissing('smart_notifications', [
+            'user_id' => $nextCustomer->id,
+            'type' => 'pickup_approaching',
+        ]);
+
+        // Last check-in at stop 1 → auto-complete + notify stop 2.
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $bookingA2->qr_code])
+            ->assertOk();
+
+        $this->assertNotNull($stop1->fresh()->completed_at);
+        $this->assertDatabaseHas('smart_notifications', [
+            'user_id' => $nextCustomer->id,
+            'type' => 'pickup_approaching',
+        ]);
+    }
+
     private function createConfirmedBooking(): array
     {
         $customer = User::factory()->create();
