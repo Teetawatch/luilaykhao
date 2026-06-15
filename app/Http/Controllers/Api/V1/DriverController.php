@@ -397,6 +397,13 @@ class DriverController extends Controller
                     'name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
                     'nickname' => $passenger->nickname,
                     'phone' => $passenger->phone,
+                    // Safety / care info surfaced at-a-glance in the manifest.
+                    'allergies' => $passenger->allergies,
+                    'health_notes' => $passenger->health_notes,
+                    'halal_food' => (bool) $passenger->halal_food,
+                    'blood_group' => $passenger->blood_group,
+                    'emergency_contact' => $passenger->emergency_contact,
+                    'emergency_phone' => $passenger->emergency_phone,
                 ])
                 ->values();
 
@@ -427,6 +434,13 @@ class DriverController extends Controller
                 'passengers' => $bookings->sum(fn (Booking $booking) => $booking->passengers->count()),
                 'checked_in_passengers' => $bookings->where('checked_in', true)
                     ->sum(fn (Booking $booking) => $booking->passengers->count()),
+                'care_alerts' => $bookings->sum(
+                    fn (Booking $booking) => $booking->passengers
+                        ->filter(fn ($p) => filled($p->allergies)
+                            || filled($p->health_notes)
+                            || $p->halal_food)
+                        ->count()
+                ),
             ],
             'pickup_groups' => $this->buildPickupGroups($bookings),
             'seat_map' => $this->buildSeatMap($schedule, $bookings),
@@ -508,6 +522,7 @@ class DriverController extends Controller
                         'map_url' => $point?->map_url,
                         'notes' => $point?->notes,
                         'sort_order' => $point?->sort_order ?? 9999,
+                        'completed_at' => $point?->completed_at?->toIso8601String(),
                         'passengers' => [],
                     ];
                 }
@@ -542,6 +557,180 @@ class DriverController extends Controller
      * แจ้งเตือนผู้โดยสารว่าคนขับเริ่มออกเดินทางแล้ว เรียกตอนคนขับกด "เริ่มติดตาม".
      * ส่งครั้งเดียวต่อรอบเดินทางต่อวัน (idempotent ด้วย cache).
      */
+    /**
+     * Roll-call toggle: check a booking in or out by booking_ref, scoped to the
+     * schedule. Unlike QR check-in this is reversible, for fast head-counting
+     * before departure. Returns refreshed head-count totals.
+     */
+    public function setCheckIn(Request $request, int $id): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
+        $schedule = TripSchedule::with(['vehicle', 'staff'])->find($id);
+
+        if (! $schedule) {
+            return $this->error('ไม่พบรอบเดินทางนี้', 404);
+        }
+
+        if (! $this->canAccessSchedule($request, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์อัปเดตรอบเดินทางนี้', 403);
+        }
+
+        $validated = $request->validate([
+            'booking_ref' => ['required', 'string'],
+            'checked_in' => ['required', 'boolean'],
+        ]);
+
+        $booking = Booking::where('schedule_id', $schedule->id)
+            ->where('booking_ref', $validated['booking_ref'])
+            ->first();
+
+        if (! $booking) {
+            return $this->error('ไม่พบการจองในรอบเดินทางนี้', 404);
+        }
+
+        if ($booking->status !== 'confirmed') {
+            return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน', 422);
+        }
+
+        $booking->update([
+            'checked_in' => $validated['checked_in'],
+            'checked_in_at' => $validated['checked_in'] ? now() : null,
+        ]);
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'checked_in' => (bool) $booking->checked_in,
+            'summary' => $this->headcountSummary($schedule),
+        ], $validated['checked_in'] ? 'เช็คอินแล้ว' : 'ยกเลิกเช็คอินแล้ว');
+    }
+
+    /**
+     * Mark a pickup point as picked-up (or undo it). On completion, passengers
+     * waiting at the next pending pickup point are notified the van is on its
+     * way so they can be ready. Returns refreshed pickup-point statuses.
+     */
+    public function completePickup(Request $request, int $id, int $pointId): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
+        $schedule = TripSchedule::with(['trip', 'pickupPoints', 'vehicle', 'staff'])->find($id);
+
+        if (! $schedule) {
+            return $this->error('ไม่พบรอบเดินทางนี้', 404);
+        }
+
+        if (! $this->canAccessSchedule($request, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์อัปเดตรอบเดินทางนี้', 403);
+        }
+
+        $validated = $request->validate([
+            'completed' => ['nullable', 'boolean'],
+        ]);
+        $completed = $validated['completed'] ?? true;
+
+        $point = $schedule->pickupPoints->firstWhere('id', $pointId);
+        if (! $point) {
+            return $this->error('ไม่พบจุดรับนี้ในรอบเดินทาง', 404);
+        }
+
+        $wasCompleted = (bool) $point->completed_at;
+
+        if (! $completed) {
+            $point->update(['completed_at' => null]);
+
+            return $this->success([
+                'point_id' => $point->id,
+                'completed_at' => null,
+                'next_point' => null,
+                'notified' => 0,
+                'pickup_points' => $this->pickupPointStatuses($schedule),
+            ], 'ยกเลิกการรับจุดนี้แล้ว');
+        }
+
+        if (! $wasCompleted) {
+            $point->update(['completed_at' => now()]);
+        }
+
+        // Next pending point by sort order → nudge those passengers to get ready.
+        $next = $schedule->pickupPoints
+            ->whereNull('completed_at')
+            ->sortBy('sort_order')
+            ->first();
+
+        $notified = 0;
+        $nextPayload = null;
+
+        if ($next) {
+            $nextLabel = $next->pickup_location ?: $next->region_label ?: 'จุดรับถัดไป';
+            $nextPayload = ['id' => $next->id, 'label' => $nextLabel];
+
+            // Only fire notifications on the transition into completed.
+            if (! $wasCompleted) {
+                $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+                $bookings = Booking::where('schedule_id', $schedule->id)
+                    ->where('status', 'confirmed')
+                    ->whereNotNull('user_id')
+                    ->where('pickup_point_id', $next->id)
+                    ->get(['id', 'booking_ref', 'user_id']);
+
+                foreach ($bookings as $booking) {
+                    SmartNotification::send(
+                        $booking->user_id,
+                        'pickup_approaching',
+                        'รถกำลังมารับคุณ 🚐',
+                        "รถทริป \"{$tripTitle}\" กำลังมุ่งหน้าไปยังจุดรับ \"{$nextLabel}\" กรุณาเตรียมตัวให้พร้อม",
+                        ['booking_ref' => $booking->booking_ref, 'schedule_id' => $schedule->id],
+                    );
+                    $notified++;
+                }
+            }
+        }
+
+        return $this->success([
+            'point_id' => $point->id,
+            'completed_at' => $point->completed_at?->toIso8601String(),
+            'next_point' => $nextPayload,
+            'notified' => $notified,
+            'pickup_points' => $this->pickupPointStatuses($schedule),
+        ], $next ? "แจ้งจุดรับถัดไปแล้ว: {$nextPayload['label']}" : 'รับครบทุกจุดแล้ว');
+    }
+
+    /** Pickup-point completion statuses for a schedule, ordered by route. */
+    private function pickupPointStatuses(TripSchedule $schedule): array
+    {
+        return $schedule->pickupPoints
+            ->sortBy('sort_order')
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'label' => $p->pickup_location ?: $p->region_label ?: 'จุดรับ',
+                'completed_at' => $p->completed_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** Confirmed-booking head-count totals for a schedule. */
+    private function headcountSummary(TripSchedule $schedule): array
+    {
+        $bookings = Booking::withCount('passengers')
+            ->where('schedule_id', $schedule->id)
+            ->where('status', 'confirmed')
+            ->get(['id', 'checked_in']);
+
+        return [
+            'bookings' => $bookings->count(),
+            'checked_in' => $bookings->where('checked_in', true)->count(),
+            'passengers' => $bookings->sum('passengers_count'),
+            'checked_in_passengers' => $bookings->where('checked_in', true)
+                ->sum('passengers_count'),
+        ];
+    }
+
     public function markDeparted(Request $request, int $id): JsonResponse
     {
         if (! $this->hasDriverAccess($request)) {

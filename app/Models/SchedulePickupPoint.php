@@ -12,6 +12,7 @@ class SchedulePickupPoint extends Model
     protected $fillable = [
         'schedule_id', 'region', 'region_label', 'pickup_location',
         'price', 'map_url', 'image_url', 'latitude', 'longitude', 'notes', 'sort_order',
+        'completed_at',
     ];
 
     protected function casts(): array
@@ -21,6 +22,7 @@ class SchedulePickupPoint extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'sort_order' => 'integer',
+            'completed_at' => 'datetime',
         ];
     }
 
