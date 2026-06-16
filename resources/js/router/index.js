@@ -56,6 +56,7 @@ import AdminBirthdateFollowup from '../pages/admin/BirthdateFollowupPage.vue';
 import AdminManualBooking from '../pages/admin/ManualBookingPage.vue';
 import AdminHeroSlides from '../pages/admin/HeroSlidesPage.vue';
 import AdminChat from '../pages/admin/ChatPage.vue';
+import AdminAnnouncements from '../pages/admin/AnnouncementsPage.vue';
 import AdminSchedulePhotos from '../pages/admin/SchedulePhotosPage.vue';
 
 
@@ -220,6 +221,7 @@ const routes = [
       { path: 'reports', name: 'admin-reports', component: AdminReports },
       { path: 'check-in', name: 'admin-checkin', component: AdminCheckIn },
       { path: 'chat', name: 'admin-chat', component: AdminChat },
+      { path: 'announcements', name: 'admin-announcements', component: AdminAnnouncements },
       { path: 'reviews', name: 'admin-reviews', component: AdminReviews },
       { path: 'loyalty', name: 'admin-loyalty', component: AdminLoyalty },
       { path: 'analytics', name: 'admin-analytics', component: AdminAnalytics },

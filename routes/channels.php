@@ -24,6 +24,14 @@ Broadcast::channel('chat.schedule.{scheduleId}', function ($user, $scheduleId) {
         && app(ChatService::class)->canAccess($user, $schedule);
 });
 
+// ประกาศจากผู้จัด — สมาชิกรอบเดียวกัน (เกณฑ์เดียวกับห้องแชท) เท่านั้นที่ฟังได้
+Broadcast::channel('announcements.schedule.{scheduleId}', function ($user, $scheduleId) {
+    $schedule = TripSchedule::find($scheduleId);
+
+    return $schedule
+        && app(ChatService::class)->canAccess($user, $schedule);
+});
+
 Broadcast::channel('group.{code}', function ($user, $code) {
     $plan = GroupPlan::where('invite_code', strtoupper($code))->first();
     if (! $plan) {

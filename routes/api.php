@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
+use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AppVersionController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
@@ -123,6 +124,18 @@ Route::prefix('v1')->group(function () {
         Route::delete('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'unpin']);
         Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
         Route::post('schedules/{id}/chat/typing', [ChatController::class, 'typing'])->middleware('throttle:60,1');
+
+        // Operator announcements per schedule. Read side is open to any member;
+        // write side is gated to staff/operators inside the controller (canModerate),
+        // so assigned staff can post from the driver app too — same as chat pinning.
+        Route::get('schedules/{id}/announcements', [AnnouncementController::class, 'index']);
+        Route::post('schedules/{id}/announcements/read', [AnnouncementController::class, 'markRead']);
+        Route::get('schedules/{id}/announcements/unread-count', [AnnouncementController::class, 'unreadCount']);
+        Route::post('schedules/{id}/announcements', [AnnouncementController::class, 'store']);
+        Route::put('schedules/{id}/announcements/{announcementId}', [AnnouncementController::class, 'update']);
+        Route::delete('schedules/{id}/announcements/{announcementId}', [AnnouncementController::class, 'destroy']);
+        Route::post('schedules/{id}/announcements/{announcementId}/pin', [AnnouncementController::class, 'pin']);
+        Route::delete('schedules/{id}/announcements/{announcementId}/pin', [AnnouncementController::class, 'unpin']);
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');
