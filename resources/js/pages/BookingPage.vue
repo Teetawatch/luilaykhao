@@ -658,10 +658,27 @@
                   </p>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">วัน/เดือน/ปีเกิด <span class="text-red-500">*</span></label>
-                  <input v-model="p.birth_date" type="date" required :max="todayDate" min="1900-01-01"
-                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
-                    :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                  <label class="block text-sm font-bold text-gray-700 mb-2">วัน/เดือน/ปีเกิด (พ.ศ.) <span class="text-red-500">*</span></label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <select :value="p.birth_day" @change="updateBirth(p, 'birth_day', $event.target.value)" required
+                      class="w-full border-2 rounded-2xl px-3 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                      :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
+                      <option value="" disabled>วัน</option>
+                      <option v-for="d in daysFor(p)" :key="d" :value="String(d)">{{ d }}</option>
+                    </select>
+                    <select :value="p.birth_month" @change="updateBirth(p, 'birth_month', $event.target.value)" required
+                      class="w-full border-2 rounded-2xl px-3 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                      :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
+                      <option value="" disabled>เดือน</option>
+                      <option v-for="(m, mi) in thaiMonths" :key="mi" :value="String(mi + 1)">{{ m }}</option>
+                    </select>
+                    <select :value="p.birth_year" @change="updateBirth(p, 'birth_year', $event.target.value)" required
+                      class="w-full border-2 rounded-2xl px-3 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                      :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
+                      <option value="" disabled>พ.ศ.</option>
+                      <option v-for="y in birthYears" :key="y" :value="String(y)">{{ y + 543 }}</option>
+                    </select>
+                  </div>
                   <p v-if="showErr(i, 'birth_date')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'birth_date') }}
                   </p>
@@ -1424,7 +1441,7 @@ const optionalAddons = computed(() => {
 });
 
 const passengers = ref([{
-  title: '', name: '', nickname: '', id_card: '', birth_date: '', phone: '', email: '', blood_group: '', allergies: '',
+  title: '', name: '', nickname: '', id_card: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '',
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
@@ -1459,6 +1476,7 @@ function restoreFormData() {
     const data = JSON.parse(raw);
     if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
       passengers.value = data.passengers;
+      passengers.value.forEach(syncBirthParts);
       passengerCount.value = data.passengerCount ?? data.passengers.length;
     }
     bookingFor.value = data.bookingFor || 'self';
@@ -1500,7 +1518,7 @@ watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({
-      title: '', name: '', nickname: '', id_card: '', birth_date: '', phone: '', email: '', blood_group: '', allergies: '',
+      title: '', name: '', nickname: '', id_card: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_phone: '',
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
       pickup_point_id: selectedPickup.value?.id ?? null
@@ -1538,7 +1556,8 @@ function autoFillFromProfile(index) {
     allergies: user.allergies || '',
     health_notes: user.health_notes || '',
   };
-  
+  syncBirthParts(passengers.value[index]);
+
   if (!(isFemaleTrip && isMaleTitle)) {
     toast.success('ดึงข้อมูลจากโปรไฟล์สำเร็จ');
   }
@@ -1550,6 +1569,41 @@ const todayDate = (() => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 })();
+
+// Buddhist-era birth-date dropdowns. The selects edit birth_day/birth_month/
+// birth_year parts (year value stays C.E., displayed as พ.ศ. = +543), and
+// updateBirth() recombines them into the ISO YYYY-MM-DD that the backend wants.
+const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const birthYears = (() => {
+  const cur = new Date().getFullYear();
+  const arr = [];
+  for (let y = cur; y >= 1900; y--) arr.push(y);
+  return arr;
+})();
+
+function daysFor(p) {
+  const m = Number(p.birth_month);
+  const y = Number(p.birth_year) || 2000; // leap-year baseline keeps Feb 29 available until a year is chosen
+  return m ? new Date(y, m, 0).getDate() : 31;
+}
+
+function updateBirth(p, part, value) {
+  p[part] = value;
+  // Clamp day when the chosen month/year can't hold it (e.g. 31 -> Feb).
+  if (p.birth_day && Number(p.birth_day) > daysFor(p)) p.birth_day = '';
+  const { birth_year: y, birth_month: m, birth_day: d } = p;
+  p.birth_date = (y && m && d) ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '';
+}
+
+// Populate the dropdown parts from an ISO birth_date (profile autofill / restore).
+function syncBirthParts(p) {
+  if (p && /^\d{4}-\d{2}-\d{2}$/.test(p.birth_date || '')) {
+    const [y, m, d] = p.birth_date.split('-');
+    p.birth_year = String(Number(y));
+    p.birth_month = String(Number(m));
+    p.birth_day = String(Number(d));
+  }
+}
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 const isFriendEmailValid = computed(() => bookingFor.value !== 'friend' || isValidEmail(passengers.value[0]?.email));
