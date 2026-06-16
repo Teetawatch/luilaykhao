@@ -4,9 +4,9 @@
  * (เบราว์เซอร์บังคับ CORS กับฟอนต์ — เว็บอื่นจึงนำไป @font-face ข้ามโดเมนไม่ได้)
  * ห้ามคัดลอก/เผยแพร่ไฟล์ฟอนต์ออกจากโดเมนนี้
  *
- * size-adjust: 150% — DB Heavent มี glyph เล็กกว่าปกติมาก (สูง ~0.42em เทียบ
- * Anuphan ~0.58em) ค่าที่ทำให้เท่า Anuphan พอดีคือ ~139% แต่ตั้งไว้ 150% ตาม
- * ที่ต้องการให้ใหญ่ขึ้นอีกเล็กน้อย — ปรับเลขเดียวนี้เพื่อย่อ/ขยายทั้งเว็บได้
+ * size-adjust: 160% — DB Heavent มี glyph เล็กกว่าปกติมาก (สูง ~0.42em เทียบ
+ * Anuphan ~0.58em) ค่าที่ทำให้เท่า Anuphan พอดีคือ ~139% แต่ตั้งไว้ 160% ตาม
+ * ที่ต้องการให้ใหญ่ขึ้น — ปรับเลขเดียวนี้เพื่อย่อ/ขยายทั้งเว็บได้
  */
 
 @font-face {
@@ -14,7 +14,7 @@
   font-style: normal;
   font-weight: 100;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-Thin.woff2') format('woff2'),
        url('DBHeavent-Thin.woff') format('woff');
 }
@@ -23,7 +23,7 @@
   font-style: italic;
   font-weight: 100;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-ThinItalic.woff2') format('woff2'),
        url('DBHeavent-ThinItalic.woff') format('woff');
 }
@@ -32,7 +32,7 @@
   font-style: normal;
   font-weight: 200;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-ExtraLight.woff2') format('woff2'),
        url('DBHeavent-ExtraLight.woff') format('woff');
 }
@@ -41,7 +41,7 @@
   font-style: italic;
   font-weight: 200;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-ExtraLightItalic.woff2') format('woff2'),
        url('DBHeavent-ExtraLightItalic.woff') format('woff');
 }
@@ -50,7 +50,7 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-Light.woff2') format('woff2'),
        url('DBHeavent-Light.woff') format('woff');
 }
@@ -59,7 +59,7 @@
   font-style: italic;
   font-weight: 300;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-LightItalic.woff2') format('woff2'),
        url('DBHeavent-LightItalic.woff') format('woff');
 }
@@ -68,7 +68,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-Regular.woff2') format('woff2'),
        url('DBHeavent-Regular.woff') format('woff');
 }
@@ -77,7 +77,7 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-Italic.woff2') format('woff2'),
        url('DBHeavent-Italic.woff') format('woff');
 }
@@ -86,7 +86,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-Medium.woff2') format('woff2'),
        url('DBHeavent-Medium.woff') format('woff');
 }
@@ -95,7 +95,7 @@
   font-style: italic;
   font-weight: 500;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-MediumItalic.woff2') format('woff2'),
        url('DBHeavent-MediumItalic.woff') format('woff');
 }
@@ -104,7 +104,7 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-Bold.woff2') format('woff2'),
        url('DBHeavent-Bold.woff') format('woff');
 }
@@ -113,7 +113,7 @@
   font-style: italic;
   font-weight: 700;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-BoldItalic.woff2') format('woff2'),
        url('DBHeavent-BoldItalic.woff') format('woff');
 }
@@ -122,7 +122,7 @@
   font-style: normal;
   font-weight: 900;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-Black.woff2') format('woff2'),
        url('DBHeavent-Black.woff') format('woff');
 }
@@ -131,7 +131,7 @@
   font-style: italic;
   font-weight: 900;
   font-display: swap;
-  size-adjust: 150%;
+  size-adjust: 160%;
   src: url('DBHeavent-BlackItalic.woff2') format('woff2'),
        url('DBHeavent-BlackItalic.woff') format('woff');
 }
