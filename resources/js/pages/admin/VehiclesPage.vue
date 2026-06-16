@@ -63,11 +63,19 @@
           <span class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
+      <div class="view-toggle">
+        <button class="view-toggle-btn" :class="{ active: viewMode === 'vehicle' }" @click="viewMode = 'vehicle'">
+          <span class="material-symbols-rounded">directions_car</span> ตามคันรถ
+        </button>
+        <button class="view-toggle-btn" :class="{ active: viewMode === 'trip' }" @click="viewMode = 'trip'">
+          <span class="material-symbols-rounded">map</span> ตามทริป
+        </button>
+      </div>
     </div>
 
     <!-- Content -->
     <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
-    <template v-else>
+    <template v-else-if="viewMode === 'vehicle'">
       <!-- Grouped by type when showing all -->
       <template v-if="!filters.type">
         <template v-for="group in vehicleGroups" :key="group.type">
@@ -266,6 +274,79 @@
       <div class="empty-state-card" v-if="filteredVehicles.length === 0">
         <span class="material-symbols-rounded">directions_car</span>
         <p>ไม่พบยานพาหนะ</p>
+      </div>
+    </template>
+
+    <!-- ─── Trip View ───────────────────────────────── -->
+    <template v-else>
+      <div v-if="tripGroups.length" class="trip-view">
+        <div class="trip-section" v-for="g in tripGroups" :key="g.trip_id">
+          <div class="trip-section-header">
+            <div class="trip-title-block">
+              <span class="material-symbols-rounded">hiking</span>
+              <h3>{{ g.title }}</h3>
+            </div>
+            <div class="trip-summary">
+              <span class="trip-summary-chip">
+                <span class="material-symbols-rounded">event</span>
+                {{ g.schedules.length }} รอบ
+              </span>
+              <span class="trip-summary-chip">
+                <span class="material-symbols-rounded">groups</span>
+                {{ g.totalBooked }}/{{ g.totalSeats }} ที่นั่ง
+              </span>
+            </div>
+          </div>
+          <div class="trip-departure-list">
+            <div class="trip-departure-row" v-for="s in g.schedules" :key="s.id">
+              <div class="s-date-box">
+                <span class="s-month">{{ formatMonth(s.departure_date) }}</span>
+                <span class="s-day">{{ formatDay(s.departure_date) }}</span>
+              </div>
+              <div class="td-vehicle" v-if="s.vehicle">
+                <div class="td-vehicle-icon" :class="'vtype-bg-' + s.vehicle.type">
+                  <span class="material-symbols-rounded">{{ s.vehicle.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                </div>
+                <div class="td-vehicle-info">
+                  <span class="td-vehicle-name">{{ s.vehicle.name }}</span>
+                  <div class="td-vehicle-meta">
+                    <span class="type-tag" :class="'type-' + (s.vehicle.type === 'van' ? 'trekking' : 'diving')">
+                      {{ s.vehicle.type === 'van' ? 'รถตู้' : 'เรือ' }}
+                    </span>
+                    <span class="plate-chip" v-if="s.vehicle.license_plate">{{ s.vehicle.license_plate }}</span>
+                    <span class="td-driver" v-if="s.vehicle.driver_name">
+                      <span class="material-symbols-rounded">person</span>{{ s.vehicle.driver_name }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="td-vehicle td-no-vehicle" v-else>
+                <div class="td-vehicle-icon td-icon-empty">
+                  <span class="material-symbols-rounded">no_transfer</span>
+                </div>
+                <span class="td-vehicle-name muted">ยังไม่กำหนดรถ</span>
+              </div>
+              <div class="td-status">
+                <span class="s-seats" :class="seatClass(s)">
+                  <span class="material-symbols-rounded">chair</span>
+                  {{ s.booked_seats }}/{{ s.total_seats }}
+                </span>
+                <span class="s-status-badge" :class="'s-status-' + s.status">
+                  {{ statusLabels[s.status] || s.status }}
+                </span>
+              </div>
+              <div class="td-actions" v-if="s.vehicle">
+                <button class="btn-icon btn-layout" @click="openLayoutEditor(findVehicle(s.vehicle.id) || s.vehicle)" title="ผังที่นั่ง"><span class="material-symbols-rounded">grid_view</span></button>
+                <button class="btn-icon btn-pickup" @click="findVehicle(s.vehicle.id) && openPickupManager(findVehicle(s.vehicle.id))" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded">location_on</span></button>
+                <button class="btn-icon btn-edit" @click="findVehicle(s.vehicle.id) && openForm(findVehicle(s.vehicle.id))" title="แก้ไขรถ"><span class="material-symbols-rounded">edit</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="empty-state-card" v-else>
+        <span class="material-symbols-rounded">map</span>
+        <p>ยังไม่มีรอบทริปที่กำลังจะมาถึง</p>
       </div>
     </template>
 
@@ -598,6 +679,7 @@ import api from '../../lib/axios';
 const admin = useAdminStore();
 const filters = reactive({ type: '' });
 const searchQuery = ref('');
+const viewMode = ref('vehicle'); // 'vehicle' | 'trip'
 const showForm = ref(false);
 const showDeleteConfirm = ref(false);
 const editing = ref(null);
@@ -684,6 +766,47 @@ const vehicleGroups = computed(() => [
   { type: 'van', label: 'รถตู้', vehicles: filteredVehicles.value.filter(v => v.type === 'van') },
   { type: 'boat', label: 'เรือ', vehicles: filteredVehicles.value.filter(v => v.type === 'boat') },
 ]);
+
+// ── Trip-centric view ────────────────────────────────
+// กรองรอบทริปที่กำลังจะมาถึงตามประเภทรถ + คำค้นหา (ชื่อทริป/ชื่อรถ/ทะเบียน/คนขับ)
+const filteredSchedules = computed(() => {
+  let data = upcomingSchedules.value;
+  if (filters.type) data = data.filter(s => s.vehicle?.type === filters.type);
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    data = data.filter(s =>
+      (s.trip?.title || '').toLowerCase().includes(q) ||
+      (s.vehicle?.name || '').toLowerCase().includes(q) ||
+      (s.vehicle?.license_plate || '').toLowerCase().includes(q) ||
+      (s.vehicle?.driver_name || '').toLowerCase().includes(q)
+    );
+  }
+  return data;
+});
+
+// จัดกลุ่มรอบตามทริป — แต่ละทริปคือหนึ่งกล่อง เรียงรอบตามวันออกเดินทาง
+const tripGroups = computed(() => {
+  const map = {};
+  for (const s of filteredSchedules.value) {
+    const key = s.trip?.id ?? s.trip_id ?? 'unknown';
+    if (!map[key]) {
+      map[key] = { trip_id: key, title: s.trip?.title || 'ไม่ระบุทริป', schedules: [] };
+    }
+    map[key].schedules.push(s);
+  }
+  const groups = Object.values(map);
+  for (const g of groups) {
+    g.schedules.sort((a, b) => new Date(a.departure_date) - new Date(b.departure_date));
+    g.earliest = g.schedules[0]?.departure_date;
+    g.totalBooked = g.schedules.reduce((n, s) => n + (s.booked_seats || 0), 0);
+    g.totalSeats = g.schedules.reduce((n, s) => n + (s.total_seats || 0), 0);
+  }
+  groups.sort((a, b) => new Date(a.earliest) - new Date(b.earliest));
+  return groups;
+});
+
+// รถบนรอบทริปเป็น resource แบบย่อ — ดึงข้อมูลรถฉบับเต็ม (จุดรับ/ผังที่นั่ง) มาใช้กับปุ่มจัดการ
+const findVehicle = (id) => allVehicles.value.find(v => v.id === id) || null;
 
 const typeTabs = computed(() => [
   { value: '', icon: 'directions_car', label: 'ทั้งหมด', count: allVehicles.value.length },
@@ -1098,6 +1221,106 @@ onMounted(() => fetchData());
   text-align: center;
 }
 .type-tab:not(.active) .tab-count { background: var(--color-sand); color: var(--color-text-mid); }
+
+/* ─── View toggle (vehicle / trip) ────────────────── */
+.view-toggle {
+  display: inline-flex;
+  margin-left: auto;
+  background: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.view-toggle-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px;
+  border: none; background: transparent;
+  font-size: 13px; font-weight: 600;
+  color: var(--color-text-mid);
+  border-radius: 8px; cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
+}
+.view-toggle-btn .material-symbols-rounded { font-size: 17px; }
+.view-toggle-btn:hover { color: var(--color-accent); }
+.view-toggle-btn.active {
+  background: var(--color-white);
+  color: var(--color-accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ─── Trip View ───────────────────────────────────── */
+.trip-view { display: flex; flex-direction: column; gap: 18px; }
+
+.trip-section {
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+.trip-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f0fdf4, #f7fdf9);
+  border-bottom: 1px solid var(--color-sand-dark);
+}
+.trip-title-block { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.trip-title-block .material-symbols-rounded { font-size: 22px; color: var(--color-accent); flex-shrink: 0; }
+.trip-title-block h3 {
+  margin: 0; font-size: 16px; font-weight: 800; color: var(--color-text-dark);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trip-summary { display: flex; gap: 8px; flex-shrink: 0; }
+.trip-summary-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--color-text-mid);
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--color-sand-dark);
+  padding: 3px 10px; border-radius: 999px;
+}
+.trip-summary-chip .material-symbols-rounded { font-size: 14px; color: var(--color-accent); }
+
+.trip-departure-list { display: flex; flex-direction: column; }
+.trip-departure-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-sand);
+  transition: background 0.15s;
+  flex-wrap: wrap;
+}
+.trip-departure-row:last-child { border-bottom: none; }
+.trip-departure-row:hover { background: #f7fdf9; }
+
+.td-vehicle { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px; }
+.td-vehicle-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.td-vehicle-icon .material-symbols-rounded { font-size: 21px; }
+.vtype-bg-van.td-vehicle-icon  { background: #fef3c7; color: #b45309; }
+.vtype-bg-boat.td-vehicle-icon { background: #dbeafe; color: #1d4ed8; }
+.td-icon-empty { background: var(--color-sand); color: var(--color-text-muted); }
+.td-vehicle-info { min-width: 0; }
+.td-vehicle-name { display: block; font-size: 14px; font-weight: 700; color: var(--color-text-dark); }
+.td-vehicle-name.muted { color: var(--color-text-muted); font-weight: 600; }
+.td-vehicle-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+.td-driver {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 12px; color: var(--color-text-mid);
+}
+.td-driver .material-symbols-rounded { font-size: 13px; }
+
+.td-status { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.td-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  .view-toggle { margin-left: 0; }
+  .trip-departure-row { gap: 10px; }
+  .td-status { width: 100%; }
+}
 
 /* ─── Type Section Headers ────────────────────────── */
 .type-section { margin-bottom: 28px; }

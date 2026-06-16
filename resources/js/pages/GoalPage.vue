@@ -4,7 +4,7 @@
     <!-- ══════════════════════════════════════════
          HERO SECTION
     ══════════════════════════════════════════ -->
-    <section class="relative min-h-[600px] md:min-h-[800px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
+    <section class="relative min-h-[440px] md:min-h-[560px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
           src="/images/hiking.webp"
@@ -15,21 +15,21 @@
         <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-[var(--color-sand)]/20"></div>
       </div>
 
-      <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
-        <div class="text-center max-w-5xl mt-10 flex flex-col items-center">
-          <div class="w-20 h-1.5 bg-[var(--color-accent)] mb-8 rounded-full shadow-lg"></div>
-          
-          <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-8 tracking-tight drop-shadow-xl">
+      <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-16 md:py-24">
+        <div class="text-center max-w-4xl mt-6 flex flex-col items-center">
+          <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
+
+          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight drop-shadow-xl">
             ทำให้การท่องเที่ยวธรรมชาติ<br/>
             <span class="text-[var(--color-accent-light)]">เป็นเรื่องง่าย</span> สำหรับทุกคน
           </h1>
-          
-          <p class="text-lg md:text-xl lg:text-2xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto tracking-wide mb-12 drop-shadow-md">
+
+          <p class="text-base md:text-lg lg:text-xl text-white/90 font-medium leading-relaxed max-w-2xl mx-auto tracking-wide mb-8 drop-shadow-md">
             เพราะเราเชื่อว่าการผจญภัยที่ยอดเยี่ยม ไม่ควรถูกขัดจังหวะด้วยความยุ่งยากในการจองและข้อมูลที่สับสน
           </p>
 
           <!-- Trust Signals -->
-          <div class="flex flex-wrap justify-center gap-8 md:gap-16 pt-8 border-t border-white/20 w-full max-w-2xl">
+          <div class="flex flex-wrap justify-center gap-8 md:gap-16 pt-6 border-t border-white/20 w-full max-w-2xl">
             <div class="flex flex-col items-center">
               <span class="text-3xl md:text-4xl font-black text-white">{{ stats.total_customers.toLocaleString() }}+</span>
               <span class="text-sm md:text-base text-white/70 font-bold uppercase tracking-widest">นักเดินทางที่ไว้วางใจ</span>

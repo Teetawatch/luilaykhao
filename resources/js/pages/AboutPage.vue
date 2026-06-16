@@ -4,7 +4,7 @@
     <!-- ══════════════════════════════════════════
          HERO SECTION
     ══════════════════════════════════════════ -->
-    <section class="relative min-h-[520px] md:min-h-[700px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
+    <section class="relative min-h-[420px] md:min-h-[540px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
         <img
           src="/images/phusoidao.webp"
@@ -15,21 +15,21 @@
         <div class="absolute inset-0 bg-black/20"></div>
       </div>
 
-      <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
-        <div class="text-center max-w-5xl mt-10 flex flex-col items-center">
-          <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-8 rounded-full shadow-lg"></div>
-          <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-8 tracking-tighter drop-shadow-2xl">
+      <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-16 md:py-24">
+        <div class="text-center max-w-4xl mt-6 flex flex-col items-center">
+          <div class="w-14 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
+          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tighter drop-shadow-2xl">
             เปลี่ยนความอยากเที่ยว<br />
             <span class="text-[var(--color-accent)]">เป็นการเดินทางที่ง่ายที่สุด</span>
           </h1>
-          <p class="text-base md:text-xl lg:text-2xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto tracking-wide mb-10">
+          <p class="text-base md:text-lg lg:text-xl text-white/90 font-medium leading-relaxed max-w-2xl mx-auto tracking-wide mb-8">
             แพลตฟอร์มที่รวมทริปคุณภาพ จองง่ายเพียงไม่กี่คลิก <br class="hidden md:block"/> พร้อมระบบยืนยันที่ทันใจ เหมือนมีเพื่อนสนิทมาวางแผนให้คุณ
           </p>
           <div class="flex flex-col sm:flex-row items-center gap-4">
-            <router-link to="/trips" class="px-10 py-5 bg-[var(--color-accent)] hover:bg-[#3d8b63] text-white rounded-2xl font-black text-xl transition-all duration-300 shadow-xl hover:shadow-[0_20px_40px_rgba(76,175,125,0.3)] hover:-translate-y-1">
+            <router-link to="/trips" class="px-8 py-3.5 bg-[var(--color-accent)] hover:bg-[#3d8b63] text-white rounded-2xl font-black text-lg transition-all duration-300 shadow-xl hover:shadow-[0_20px_40px_rgba(76,175,125,0.3)] hover:-translate-y-1">
               ค้นหาทริปของคุณ
             </router-link>
-            <a href="#our-story" class="px-10 py-5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold text-xl transition-all duration-300 hover:-translate-y-1">
+            <a href="#our-story" class="px-8 py-3.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold text-lg transition-all duration-300 hover:-translate-y-1">
               ทำความรู้จักเรา
             </a>
           </div>

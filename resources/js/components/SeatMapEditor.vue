@@ -7,7 +7,7 @@
           <label class="block text-sm font-extrabold text-slate-700 mb-2 uppercase tracking-wider">จำนวนแถวที่นั่ง</label>
           <div class="flex items-center gap-3">
             <button type="button" @click="updateRows(-1)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition-colors shadow-sm">
-              <i class="fas fa-minus text-slate-500"></i>
+              <span class="material-symbols-rounded text-slate-500" style="font-size:18px">remove</span>
             </button>
             <input 
               type="number" 
@@ -16,7 +16,7 @@
               class="w-20 text-center font-black text-lg border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]"
             />
             <button type="button" @click="updateRows(1)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition-colors shadow-sm">
-              <i class="fas fa-plus text-slate-500"></i>
+              <span class="material-symbols-rounded text-slate-500" style="font-size:18px">add</span>
             </button>
           </div>
         </div>
@@ -33,7 +33,7 @@
               class="w-full font-bold border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] pr-10"
             />
             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
-              <i class="fas fa-columns"></i>
+              <span class="material-symbols-rounded" style="font-size:18px">view_week</span>
             </span>
           </div>
           <p class="text-[10px] text-slate-400 mt-2 font-medium">เว้นว่างไว้เป็นทางเดิน (e.g. A,B,,C,D)</p>
@@ -44,8 +44,8 @@
       <div class="mt-6 pt-6 border-t border-slate-200">
         <div class="flex items-center gap-2 mb-4">
           <button type="button" @click="showAdvanced = !showAdvanced" class="text-xs font-black text-slate-500 flex items-center gap-1.5 hover:text-slate-700 transition-colors">
-            <i :class="showAdvanced ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" class="text-[10px]"></i>
-            <i class="fas fa-cog"></i> ตั้งค่าขั้นสูง
+            <span class="material-symbols-rounded" style="font-size:16px">{{ showAdvanced ? 'expand_more' : 'chevron_right' }}</span>
+            <span class="material-symbols-rounded" style="font-size:16px">settings</span> ตั้งค่าขั้นสูง
           </button>
         </div>
         <div v-if="showAdvanced" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -114,13 +114,13 @@
         </div>
         <div class="flex gap-3">
           <button type="button" @click="resetToVan" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
-            <i class="fas fa-shuttle-van"></i> รีเซ็ตเป็นรถตู้ VIP
+            <span class="material-symbols-rounded" style="font-size:16px">airport_shuttle</span> รีเซ็ตเป็นรถตู้ VIP
           </button>
           <button type="button" @click="fillAll" class="px-4 py-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 text-xs font-black hover:bg-blue-100 transition-colors flex items-center gap-2">
-            <i class="fas fa-check-double"></i> เลือกทั้งหมด
+            <span class="material-symbols-rounded" style="font-size:16px">done_all</span> เลือกทั้งหมด
           </button>
           <button type="button" @click="clearAll" class="px-4 py-2 rounded-lg bg-red-50 text-red-500 border border-red-100 text-xs font-black hover:bg-red-100 transition-colors flex items-center gap-2">
-            <i class="fas fa-times"></i> ล้างทั้งหมด
+            <span class="material-symbols-rounded" style="font-size:16px">close</span> ล้างทั้งหมด
           </button>
         </div>
       </div>
@@ -148,7 +148,7 @@
             @click="toggleSeatById(layout.front_seat)"
           >
             <div class="flex flex-col items-center">
-              <i class="fas fa-user text-[10px] mb-0.5"></i>
+              <span class="material-symbols-rounded mb-0.5" style="font-size:14px">person</span>
               <span class="text-[10px]">{{ layout.front_seat }}</span>
             </div>
           </div>
@@ -177,8 +177,8 @@
                 @click="toggleSeat(col, r)"
               >
                 <div class="flex flex-col items-center">
-                   <i v-if="hasSeat(col+r)" class="fas fa-check-circle text-[10px] mb-0.5"></i>
-                   <i v-else class="fas fa-plus text-[8px] mb-0.5"></i>
+                   <span v-if="hasSeat(col+r)" class="material-symbols-rounded mb-0.5" style="font-size:14px">check_circle</span>
+                   <span v-else class="material-symbols-rounded mb-0.5" style="font-size:12px">add</span>
                    <span class="text-[11px] font-extrabold uppercase">{{ col }}{{ r }}</span>
                 </div>
               </div>

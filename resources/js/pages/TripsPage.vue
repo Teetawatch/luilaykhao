@@ -1,5 +1,5 @@
 <template>
-  <div class="pt-12 pb-24 max-w-7xl mx-auto px-4 sm:px-6 md:px-8 bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
+  <div class="pt-12 pb-24 max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
     <!-- Header Section -->
     <header class="mb-14 max-w-3xl animate-fade-in relative z-10">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-100 text-[var(--color-accent)] text-sm font-bold mb-6 shadow-sm">
@@ -161,7 +161,7 @@
 
         <!-- Results Grid -->
         <div v-else>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
             <TripCard
               v-for="(trip, index) in sortedTrips"
               :key="trip.id"
