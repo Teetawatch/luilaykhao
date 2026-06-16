@@ -58,7 +58,7 @@ class GroupPlanController extends Controller
     {
         $userId = $request->user()->id;
 
-        $plans = GroupPlan::with(['members.user', 'schedule.trip', 'booking'])
+        $plans = GroupPlan::with(['members.user', 'schedule.trip', 'schedule.pickupPoints', 'booking'])
             ->whereIn('status', ['open', 'booked'])
             ->where(function ($q) use ($userId) {
                 $q->where('host_user_id', $userId)
@@ -181,7 +181,7 @@ class GroupPlanController extends Controller
 
     private function findByCode(string $code): GroupPlan
     {
-        return GroupPlan::with(['members.user', 'schedule.trip', 'booking'])
+        return GroupPlan::with(['members.user', 'schedule.trip', 'schedule.pickupPoints', 'booking'])
             ->where('invite_code', strtoupper($code))
             ->firstOrFail();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Http\Resources\SchedulePickupPointResource;
 use App\Models\GroupPlan;
 use App\Models\GroupPlanMember;
 
@@ -14,10 +15,15 @@ class GroupPlanPresenter
 {
     public static function present(GroupPlan $plan, ?int $viewerUserId = null): array
     {
-        $plan->loadMissing(['members.user', 'schedule.trip']);
+        $plan->loadMissing(['members.user', 'schedule.trip', 'schedule.pickupPoints']);
 
         $schedule = $plan->schedule;
         $trip = $schedule?->trip;
+        $pickupPoints = $schedule
+            ? $schedule->pickupPoints
+                ->sortBy('sort_order')
+                ->values()
+            : collect();
         $claimedSeatIds = $plan->members
             ->whereNotNull('seat_id')
             ->where('status', '!=', 'left')
@@ -43,6 +49,7 @@ class GroupPlanPresenter
                 'return_date' => $schedule->return_date?->toDateString(),
                 'effective_price' => (float) $schedule->effective_price,
                 'available_seats' => $schedule->available_seats,
+                'pickup_points' => SchedulePickupPointResource::collection($pickupPoints)->resolve(),
             ] : null,
             'trip' => $trip ? [
                 'id' => $trip->id,

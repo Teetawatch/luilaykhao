@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
-use App\Models\GroupPlan;
+use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -19,7 +19,7 @@ class GroupPlanTest extends TestCase
     {
         $trip = Trip::create([
             'title' => 'Pha Daeng Group Hike',
-            'slug' => 'pha-daeng',
+            'slug' => 'pha-daeng-'.uniqid(),
             'type' => 'trekking',
             'location' => 'Chiang Mai',
             'difficulty' => 'medium',
@@ -178,5 +178,84 @@ class GroupPlanTest extends TestCase
         // Unauthenticated request is rejected by sanctum middleware.
         $this->getJson("/api/v1/group-plans/{$plan->invite_code}")
             ->assertStatus(401);
+    }
+
+    public function test_plan_payload_exposes_schedule_pickup_points(): void
+    {
+        $schedule = $this->makeSchedule();
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'north',
+            'region_label' => 'ภาคเหนือ',
+            'pickup_location' => 'หน้า มช.',
+            'price' => 2500,
+            'sort_order' => 1,
+        ]);
+        $host = User::factory()->create();
+        $plan = app(GroupPlanService::class)->create($host, $schedule, 4, null);
+
+        $this->actingAs($host, 'sanctum')
+            ->getJson("/api/v1/group-plans/{$plan->invite_code}")
+            ->assertOk()
+            ->assertJsonPath('data.schedule.pickup_points.0.region', 'north')
+            ->assertJsonPath('data.schedule.pickup_points.0.region_label', 'ภาคเหนือ')
+            ->assertJsonPath('data.schedule.pickup_points.0.pickup_location', 'หน้า มช.')
+            ->assertJsonPath('data.schedule.pickup_points.0.price', 2500);
+    }
+
+    public function test_mine_lists_hosted_and_joined_plans(): void
+    {
+        $schedule = $this->makeSchedule();
+        $host = User::factory()->create();
+        $friend = User::factory()->create();
+
+        $hosted = app(GroupPlanService::class)->create($host, $schedule, 4, 'Hosted');
+        $other = app(GroupPlanService::class)->create($friend, $this->makeSchedule(), 4, 'Friend trip');
+
+        // Host joins the friend's plan too.
+        $this->actingAs($host, 'sanctum')
+            ->postJson("/api/v1/group-plans/{$other->invite_code}/join")->assertOk();
+
+        $codes = collect(
+            $this->actingAs($host, 'sanctum')
+                ->getJson('/api/v1/group-plans/mine')
+                ->assertOk()
+                ->json('data')
+        )->pluck('invite_code');
+
+        $this->assertTrue($codes->contains($hosted->invite_code));
+        $this->assertTrue($codes->contains($other->invite_code));
+    }
+
+    public function test_checkout_applies_selected_pickup_point_price(): void
+    {
+        $schedule = $this->makeSchedule();
+        $point = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'north',
+            'region_label' => 'ภาคเหนือ',
+            'pickup_location' => 'หน้า มช.',
+            'price' => 2500, // overrides the 1800 base price
+            'sort_order' => 1,
+        ]);
+        $host = User::factory()->create();
+        $plan = app(GroupPlanService::class)->create($host, $schedule, 4, null);
+        $code = $plan->invite_code;
+
+        $this->actingAs($host, 'sanctum')
+            ->postJson("/api/v1/group-plans/{$code}/claim-seat", [
+                'seat_id' => 'A1', 'name' => 'Host',
+            ])->assertOk();
+
+        $response = $this->actingAs($host, 'sanctum')
+            ->postJson("/api/v1/group-plans/{$code}/checkout", [
+                'pickup_point_id' => $point->id,
+                'pickup_region' => 'north',
+            ])
+            ->assertCreated();
+
+        $booking = Booking::where('booking_ref', $response->json('data.booking_ref'))->firstOrFail();
+        $this->assertSame($point->id, $booking->pickup_point_id);
+        $this->assertSame(2500.0, (float) $booking->total_amount);
     }
 }
