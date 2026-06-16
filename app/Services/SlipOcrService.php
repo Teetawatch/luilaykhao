@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\MediaDisk;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -25,14 +26,6 @@ class SlipOcrService
 
     public function verify(string $slipPath, float $expectedAmount): array
     {
-        $apiKey = config('services.anthropic.key');
-
-        if (empty($apiKey)) {
-            Log::warning('SlipOcrService: ANTHROPIC_API_KEY not set, skipping OCR');
-
-            return ['status' => self::STATUS_FAILED, 'reason' => 'api_key_missing', 'raw' => null];
-        }
-
         // Read via the private slip disk so OCR works whether the slip lives
         // locally or on R2 (a remote disk has no local ->path()).
         $disk = Storage::disk(MediaDisk::slipDisk());
@@ -43,8 +36,73 @@ class SlipOcrService
             return ['status' => self::STATUS_FAILED, 'reason' => 'file_not_found', 'raw' => null];
         }
 
-        $imageData = base64_encode($disk->get($slipPath));
-        $mimeType = $this->detectMimeType($slipPath);
+        $parsed = $this->runOcr(base64_encode($disk->get($slipPath)), $this->detectMimeType($slipPath));
+
+        if (! is_array($parsed)) {
+            return ['status' => self::STATUS_FAILED, 'reason' => 'ocr_failed', 'raw' => null];
+        }
+
+        $ocrStatus = $parsed['status'] ?? 'unknown';
+        $ocrAmount = isset($parsed['amount']) ? (float) $parsed['amount'] : null;
+
+        // Verify: slip must be "success" AND amount must be within tolerance
+        if ($ocrStatus === 'success' && $ocrAmount !== null) {
+            $diff = abs($ocrAmount - $expectedAmount);
+            if ($diff <= self::AMOUNT_TOLERANCE) {
+                return ['status' => self::STATUS_VERIFIED, 'reason' => 'auto_verified', 'raw' => $parsed];
+            }
+
+            Log::info("SlipOcrService: amount mismatch — expected {$expectedAmount}, got {$ocrAmount}");
+
+            return ['status' => self::STATUS_FAILED, 'reason' => 'amount_mismatch', 'raw' => $parsed];
+        }
+
+        return ['status' => self::STATUS_FAILED, 'reason' => "slip_status_{$ocrStatus}", 'raw' => $parsed];
+    }
+
+    /**
+     * Lightweight, synchronous read of a freshly uploaded slip — used to
+     * pre-fill the transfer date/time on the payment page before submission.
+     * Returns normalized parts (Gregorian date), or null when OCR fails.
+     *
+     * @return array{status: string, amount: float|null, date: string|null, time: string|null, datetime: string|null, bank: string|null}|null
+     */
+    public function scan(UploadedFile $file): ?array
+    {
+        $imageData = base64_encode((string) file_get_contents($file->getRealPath()));
+        $mimeType = $this->detectMimeType('slip.'.strtolower($file->getClientOriginalExtension() ?: ($file->extension() ?: 'jpg')));
+
+        $parsed = $this->runOcr($imageData, $mimeType);
+
+        if (! is_array($parsed)) {
+            return null;
+        }
+
+        [$date, $time] = $this->splitDatetime($parsed['datetime'] ?? null);
+
+        return [
+            'status' => $parsed['status'] ?? 'unknown',
+            'amount' => isset($parsed['amount']) ? (float) $parsed['amount'] : null,
+            'date' => $date,
+            'time' => $time,
+            'datetime' => $parsed['datetime'] ?? null,
+            'bank' => $parsed['bank'] ?? null,
+        ];
+    }
+
+    /**
+     * Call Claude vision once and return the decoded JSON fields, or null on
+     * any failure (missing key, API error, unparseable response).
+     */
+    private function runOcr(string $base64Image, string $mimeType): ?array
+    {
+        $apiKey = config('services.anthropic.key');
+
+        if (empty($apiKey)) {
+            Log::warning('SlipOcrService: ANTHROPIC_API_KEY not set, skipping OCR');
+
+            return null;
+        }
 
         $prompt = <<<'PROMPT'
         คุณคือระบบตรวจสอบสลิปโอนเงินไทย
@@ -62,6 +120,7 @@ class SlipOcrService
         - ถ้า slip แสดงคำว่า "สำเร็จ", "สมบูรณ์", "Successful", "Completed" → status = "success"
         - ถ้า slip แสดงคำว่า "ล้มเหลว", "ยกเลิก", "Failed", "Error" → status = "failed"
         - ถ้าไม่ชัดเจน → status = "unknown"
+        - datetime: ใช้ปฏิทินสากล (ค.ศ.) เสมอ ถ้าสลิปเป็นปี พ.ศ. ให้ลบ 543 ก่อน และแปลงชื่อเดือนภาษาไทย (เช่น ม.ค., ก.พ.) เป็นตัวเลข ใช้เวลาตามที่แสดงในสลิป (เวลาประเทศไทย)
         - ตอบ JSON เท่านั้น ไม่มี markdown code block
         PROMPT;
 
@@ -84,7 +143,7 @@ class SlipOcrService
                                     'source' => [
                                         'type' => 'base64',
                                         'media_type' => $mimeType,
-                                        'data' => $imageData,
+                                        'data' => $base64Image,
                                     ],
                                 ],
                                 [
@@ -106,7 +165,7 @@ class SlipOcrService
             if (! $response->successful()) {
                 Log::error('SlipOcrService: API error', ['status' => $response->status(), 'body' => $response->body()]);
 
-                return ['status' => self::STATUS_FAILED, 'reason' => 'api_error', 'raw' => null];
+                return null;
             }
 
             // Re-attach the prefill "{" so the response is a complete JSON object.
@@ -116,31 +175,56 @@ class SlipOcrService
             if (! is_array($parsed)) {
                 Log::warning('SlipOcrService: could not parse JSON response', ['content' => $content]);
 
-                return ['status' => self::STATUS_FAILED, 'reason' => 'parse_error', 'raw' => $content];
+                return null;
             }
 
-            $ocrStatus = $parsed['status'] ?? 'unknown';
-            $ocrAmount = isset($parsed['amount']) ? (float) $parsed['amount'] : null;
-
-            // Verify: slip must be "success" AND amount must be within tolerance
-            if ($ocrStatus === 'success' && $ocrAmount !== null) {
-                $diff = abs($ocrAmount - $expectedAmount);
-                if ($diff <= self::AMOUNT_TOLERANCE) {
-                    return ['status' => self::STATUS_VERIFIED, 'reason' => 'auto_verified', 'raw' => $parsed];
-                }
-
-                Log::info("SlipOcrService: amount mismatch — expected {$expectedAmount}, got {$ocrAmount}");
-
-                return ['status' => self::STATUS_FAILED, 'reason' => 'amount_mismatch', 'raw' => $parsed];
-            }
-
-            return ['status' => self::STATUS_FAILED, 'reason' => "slip_status_{$ocrStatus}", 'raw' => $parsed];
-
+            return $parsed;
         } catch (\Exception $e) {
             Log::error('SlipOcrService: exception', ['message' => $e->getMessage()]);
 
-            return ['status' => self::STATUS_FAILED, 'reason' => 'exception', 'raw' => null];
+            return null;
         }
+    }
+
+    /**
+     * Split an OCR "datetime" string into a Gregorian date (Y-m-d) and time
+     * (H:i), tolerating Buddhist-era years and partial/garbled output.
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function splitDatetime(?string $datetime): array
+    {
+        if (! is_string($datetime) || trim($datetime) === '') {
+            return [null, null];
+        }
+
+        if (! preg_match('/(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/', $datetime, $m)) {
+            return [null, null];
+        }
+
+        $year = (int) $m[1];
+        if ($year > 2400) {
+            $year -= 543; // Buddhist Era → Gregorian, in case the model echoes พ.ศ.
+        }
+        $month = (int) $m[2];
+        $day = (int) $m[3];
+
+        if (! checkdate($month, $day, $year)) {
+            return [null, null];
+        }
+
+        $date = sprintf('%04d-%02d-%02d', $year, $month, $day);
+
+        $time = null;
+        if (isset($m[4], $m[5])) {
+            $hour = (int) $m[4];
+            $minute = (int) $m[5];
+            if ($hour <= 23 && $minute <= 59) {
+                $time = sprintf('%02d:%02d', $hour, $minute);
+            }
+        }
+
+        return [$date, $time];
     }
 
     /**

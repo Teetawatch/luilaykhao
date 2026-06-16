@@ -131,6 +131,7 @@ Route::prefix('v1')->group(function () {
         Route::post('payments/charge', [PaymentController::class, 'charge'])->middleware('throttle:payment');
         Route::post('payments/charge-installment', [PaymentController::class, 'chargeInstallment'])->middleware('throttle:payment');
         Route::post('payments/charge-balance', [PaymentController::class, 'chargeBalance'])->middleware('throttle:payment');
+        Route::post('payments/scan-slip', [PaymentController::class, 'scanSlip'])->middleware('throttle:slip-scan');
         Route::get('payments/{booking_ref}', [PaymentController::class, 'status']);
 
         // Reviews (authenticated)

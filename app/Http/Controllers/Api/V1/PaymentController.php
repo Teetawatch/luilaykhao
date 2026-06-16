@@ -446,6 +446,31 @@ class PaymentController extends Controller
         ]);
     }
 
+    /**
+     * Read a freshly attached slip and return the transfer date/time so the
+     * payment form can auto-fill them. Best-effort: a failed read is not an
+     * error the customer needs to act on — they can still type it manually.
+     */
+    public function scanSlip(Request $request, SlipOcrService $ocrService): JsonResponse
+    {
+        $request->validate([
+            'slip_image' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $result = $ocrService->scan($request->file('slip_image'));
+
+        if ($result === null || ($result['date'] === null && $result['time'] === null)) {
+            return $this->error('ไม่สามารถอ่านวันที่และเวลาจากสลิปได้ กรุณากรอกเอง', 422);
+        }
+
+        return $this->success([
+            'date' => $result['date'],
+            'time' => $result['time'],
+            'amount' => $result['amount'],
+            'bank' => $result['bank'],
+        ], 'อ่านข้อมูลจากสลิปสำเร็จ');
+    }
+
     private function resolveTransferDatetime(Request $request): ?string
     {
         $date = trim((string) $request->input('transfer_date', ''));

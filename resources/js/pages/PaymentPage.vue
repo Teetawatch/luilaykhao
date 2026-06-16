@@ -622,7 +622,20 @@
             <input ref="slipInputRef" type="file" accept="image/*" required class="hidden" @change="onSlipChange" />
 
             <!-- Datetime Inputs with Premium Feel -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+            <div class="space-y-3 bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+              <!-- Auto-detect status -->
+              <div class="flex items-center justify-between gap-2 px-1 min-h-[20px]">
+                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest">วันและเวลาที่โอน (ตามสลิป)</p>
+                <span v-if="scanningSlip" class="text-xs font-bold text-teal-600 flex items-center gap-1.5 shrink-0">
+                  <span class="w-3.5 h-3.5 border-2 border-teal-600/30 border-t-teal-600 rounded-full animate-spin"></span>
+                  กำลังอ่านข้อมูลจากสลิป...
+                </span>
+                <span v-else-if="slipAutoDetected" class="text-xs font-bold text-teal-600 flex items-center gap-1 shrink-0">
+                  <span class="material-symbols-rounded text-base" style="font-variation-settings:'FILL' 1">auto_awesome</span>
+                  กรอกอัตโนมัติแล้ว ตรวจสอบอีกครั้ง
+                </span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div class="space-y-2">
                 <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">วันที่โอน (ตามสลิป)</label>
                 <div class="relative">
@@ -638,6 +651,7 @@
                    <input v-model="transferTime" type="time" required
                     class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white shadow-sm text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -888,6 +902,8 @@ const slipFile = ref(null);
 const slipPreview = ref(null);
 const slipInputRef = ref(null);
 const isDragging = ref(false);
+const scanningSlip = ref(false);
+const slipAutoDetected = ref(false);
 
 function handleDrop(e) {
   isDragging.value = false;
@@ -903,6 +919,30 @@ function setFile(file) {
   const reader = new FileReader();
   reader.onload = (ev) => { slipPreview.value = ev.target.result; };
   reader.readAsDataURL(file);
+  scanSlipOcr(file);
+}
+
+// Read the slip with OCR and auto-fill the transfer date/time. Best-effort:
+// any failure is silent — the fields stay editable for manual entry.
+async function scanSlipOcr(file) {
+  if (!file || !file.type?.startsWith('image/')) return;
+  scanningSlip.value = true;
+  slipAutoDetected.value = false;
+  try {
+    const res = await bookingStore.scanSlip((() => {
+      const fd = new FormData();
+      fd.append('slip_image', file);
+      return fd;
+    })());
+    const data = res?.data || {};
+    if (data.date) transferDate.value = data.date;
+    if (data.time) transferTime.value = data.time;
+    slipAutoDetected.value = !!(data.date || data.time);
+  } catch (e) {
+    // Silent — customer can still fill in the date/time by hand.
+  } finally {
+    scanningSlip.value = false;
+  }
 }
 
 function copyAmount() {
@@ -1181,15 +1221,13 @@ function saveQR() {
 function onSlipChange(e) {
   const file = e.target.files[0];
   if (!file) return;
-  slipFile.value = file;
-  const reader = new FileReader();
-  reader.onload = (ev) => { slipPreview.value = ev.target.result; };
-  reader.readAsDataURL(file);
+  setFile(file);
 }
 
 function removeSlip() {
   slipFile.value = null;
   slipPreview.value = null;
+  slipAutoDetected.value = false;
   if (slipInputRef.value) slipInputRef.value.value = '';
 }
 

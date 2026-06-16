@@ -66,6 +66,13 @@ export const useBookingStore = defineStore('booking', {
       }
     },
 
+    async scanSlip(formData) {
+      const res = await api.post('/payments/scan-slip', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data;
+    },
+
     async chargeInstallment(data) {
       this.loading = true;
       try {
