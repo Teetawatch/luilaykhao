@@ -159,15 +159,21 @@
     <!-- ══════════════════════════════════════════
          CATEGORIES SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-24 bg-[var(--color-sand)] relative overflow-hidden">
+    <section class="py-28 md:py-32 bg-[var(--color-sand)] relative overflow-hidden">
       <!-- Decorative background text -->
-      <div class="absolute -top-10 -left-10 text-[15rem] font-black text-gray-200/30 select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter">
+      <div class="absolute -top-12 -left-12 text-[15rem] md:text-[19rem] font-black text-[var(--color-primary)]/[0.04] select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter leading-none">
         ลุยเลเขา
       </div>
-      
+      <!-- Ambient glow -->
+      <div class="absolute top-1/3 -right-40 w-[36rem] h-[36rem] bg-[var(--color-accent-light)]/10 rounded-full blur-[150px] pointer-events-none z-0"></div>
+
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 md:mb-20 gap-8">
           <div class="max-w-2xl">
+            <div class="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-[var(--color-primary)]/[0.08] border border-[var(--color-primary)]/10 text-[var(--color-primary)]">
+              <span class="material-symbols-rounded text-[18px]">interests</span>
+              <span class="text-xs font-black uppercase tracking-[0.2em]">หมวดหมู่ทริป</span>
+            </div>
             <h2 class="font-anuphan text-4xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.1]">เลือกประสบการณ์<br /><span class="text-[var(--color-primary)]">ในแบบของคุณ</span></h2>
           </div>
           <p class="text-[var(--color-text-muted)] text-lg max-w-sm md:text-right font-medium leading-relaxed">
@@ -175,63 +181,73 @@
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           <router-link
-            v-for="cat in categories"
+            v-for="(cat, index) in categories"
             :key="cat.type"
             :to="`/trips?type=${cat.type}`"
-            class="group relative bg-white rounded-[3rem] overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_50px_80px_rgba(0,0,0,0.15)] transition-all duration-500 hover:-translate-y-4 border border-gray-100/50 block isolate h-[520px]"
+            class="group relative rounded-[2.5rem] overflow-hidden block isolate h-[480px] lg:h-[560px] border border-white/10 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.25)] hover:shadow-[0_50px_90px_-20px_rgba(0,0,0,0.45)] transition-[transform,box-shadow] duration-700 ease-out hover:-translate-y-3"
+            :style="`--cat-color: ${cat.color}; background-color: ${cat.bgColor}`"
           >
             <!-- Premium Background Image with Dynamic Zoom -->
-            <div class="absolute inset-0 z-[-1] overflow-hidden" :style="`background-color: ${cat.bgColor}`">
-              <img 
-                :src="cat.image" 
+            <div class="absolute inset-0 z-0 overflow-hidden rounded-[2.5rem]">
+              <img
+                :src="cat.image"
                 :alt="cat.label"
-                class="w-full h-full object-cover object-center transition-transform duration-[1.5s] ease-out group-hover:scale-110"
+                loading="lazy"
+                class="w-full h-full object-cover object-center scale-105 transition-transform duration-[2s] ease-out group-hover:scale-125"
               />
-              <!-- Enhanced Readability Overlays -->
-              <div 
-                class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent transition-opacity duration-500 opacity-70 group-hover:opacity-85"
+              <!-- Legibility gradient -->
+              <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/10"></div>
+              <!-- Brand-color wash on hover -->
+              <div
+                class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                :style="`background: linear-gradient(to top, ${cat.color}cc, transparent 60%)`"
               ></div>
-              <div 
-                class="absolute inset-0 mix-blend-soft-light transition-opacity duration-700 opacity-20 group-hover:opacity-40"
-                :style="`background: ${cat.color}`"
-              ></div>
+              <!-- Inner edge highlight -->
+              <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-[2.5rem] pointer-events-none"></div>
             </div>
-            
-            <div class="p-10 md:p-12 flex flex-col h-full relative z-10">
-              <!-- Top Badge / Info Row -->
-              <div class="flex justify-between items-start mb-auto">
-                <div 
-                  v-if="cat.isPopular" 
-                  class="bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full shadow-lg"
-                >
-                  ยอดนิยม
-                </div>
-                <!-- Mini Icon Badge -->
-                <div class="ml-auto w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-xl transition-transform duration-500 group-hover:rotate-12">
-                  <span class="material-symbols-rounded text-2xl">{{ cat.icon }}</span>
-                </div>
-              </div>
-              
-              <!-- Content Area with Stagger Effect -->
-              <div class="transform transition-all duration-500 group-hover:translate-y-[-10px]">
-                <h3 class="text-4xl font-black text-white tracking-tight mb-3 drop-shadow-lg leading-none">
-                  {{ cat.label }}
-                </h3>
-                <p class="text-white/70 text-base font-medium mb-8 leading-relaxed max-w-[90%] transform transition-all duration-500 opacity-80 group-hover:text-white group-hover:opacity-100">
-                  {{ cat.subtext }}
-                </p>
-                
-                <!-- Category-Specific Actionable CTA -->
-                <div class="inline-flex items-center gap-4 text-sm font-black text-white uppercase tracking-widest bg-white/10 backdrop-blur-xl px-8 py-4 rounded-2xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.2)] hover:bg-white hover:text-[var(--color-primary)] hover:border-white transition-all duration-500 group/btn">
-                  <span>{{ cat.ctaText }}</span>
-                  <div class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover/btn:bg-[var(--color-primary)] transition-colors duration-300">
-                    <span class="material-symbols-rounded text-lg transform group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+
+            <div class="p-8 lg:p-10 flex flex-col h-full relative z-10">
+              <!-- Top Row -->
+              <div class="flex justify-between items-start">
+                <div class="flex items-center gap-3">
+                  <span class="text-white/40 font-black text-lg tabular-nums tracking-widest">0{{ index + 1 }}</span>
+                  <div
+                    v-if="cat.isPopular"
+                    class="flex items-center gap-1.5 bg-[var(--color-gold)]/95 text-[var(--color-text-dark)] text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-full shadow-lg"
+                  >
+                    <span class="material-symbols-rounded text-[14px]">star</span>
+                    ยอดนิยม
                   </div>
                 </div>
+                <!-- Icon Badge -->
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:bg-[var(--cat-color)] group-hover:border-white/40">
+                  <span class="material-symbols-rounded text-[26px]">{{ cat.icon }}</span>
+                </div>
+              </div>
+
+              <!-- Content Area -->
+              <div class="mt-auto">
+                <div class="transform transition-transform duration-500 group-hover:-translate-y-1">
+                  <h3 class="text-4xl lg:text-[2.75rem] font-black text-white tracking-tight mb-3 drop-shadow-lg leading-none">
+                    {{ cat.label }}
+                  </h3>
+                  <p class="text-white/75 text-[15px] font-medium leading-relaxed max-w-[92%] mb-6 transition-colors duration-500 group-hover:text-white/90">
+                    {{ cat.subtext }}
+                  </p>
+                </div>
+
+                <!-- Actionable CTA -->
+                <div class="inline-flex items-center gap-3 text-sm font-black text-white tracking-wide bg-white/10 backdrop-blur-xl pl-6 pr-5 py-3.5 rounded-2xl border border-white/25 shadow-[0_10px_30px_rgba(0,0,0,0.2)] transition-all duration-500 group-hover:bg-white group-hover:text-[var(--cat-color)] group-hover:border-white">
+                  <span>{{ cat.ctaText }}</span>
+                  <span class="material-symbols-rounded text-[20px] transition-transform duration-500 group-hover:translate-x-1">arrow_forward</span>
+                </div>
               </div>
             </div>
+
+            <!-- Top sheen on hover -->
+            <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10"></div>
           </router-link>
         </div>
       </div>
