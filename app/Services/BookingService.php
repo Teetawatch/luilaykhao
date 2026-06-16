@@ -10,7 +10,9 @@ use App\Models\Promotion;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BookingService
 {
@@ -37,7 +39,11 @@ class BookingService
         bool $isJoinTrip = false,
         array $selectedAddons = [],
     ): Booking {
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons) {
+        // Whether THIS booking is the one that sold out the schedule — drives
+        // the "trip is now full" admin push sent after the transaction commits.
+        $scheduleBecameFull = false;
+
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, &$scheduleBecameFull) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -269,6 +275,11 @@ class BookingService
 
             if (! $isJoinTrip) {
                 $schedule->increment('booked_seats', $participantCount);
+                // increment() also updates the in-memory attribute, so the
+                // available_seats accessor reflects the post-booking count.
+                // We already passed the availability check above, so reaching
+                // zero here means this booking is what filled the last seats.
+                $scheduleBecameFull = $schedule->available_seats <= 0;
             }
 
             $booking->load(['passengers.pickupPoint', 'seats', 'schedule.trip']);
@@ -292,7 +303,47 @@ class BookingService
         // Mark user's waitlist entry as booked (if they came from the waitlist)
         $this->waitlistService->markBooked($userId, $scheduleId);
 
+        // Alert staff via FCM when this booking just sold out the schedule
+        if ($scheduleBecameFull) {
+            $this->notifyScheduleFull($booking);
+        }
+
         return $booking;
+    }
+
+    /**
+     * แจ้งเตือนแอดมิน/ออปเปอเรเตอร์ผ่าน FCM เมื่อรอบเดินทางเพิ่งถูกจองจนเต็มทุกที่นั่ง
+     * ทำนอก DB transaction และไม่ให้ error กระทบการจอง (best-effort)
+     */
+    private function notifyScheduleFull(Booking $booking): void
+    {
+        try {
+            $schedule = $booking->schedule;
+            if (! $schedule) {
+                return;
+            }
+
+            $tripTitle = $schedule->trip?->title ?? 'ทริป';
+            $departure = $schedule->departureLabelThai();
+            $title = 'รอบเดินทางเต็มแล้ว 🎉';
+            $body = "{$tripTitle} รอบ {$departure} ถูกจองเต็มทุกที่นั่งแล้ว ({$schedule->total_seats} ที่นั่ง)";
+
+            User::role(['admin', 'operator'])->each(function (User $staff) use ($title, $body, $schedule, $booking) {
+                SmartNotification::send(
+                    $staff->id,
+                    'schedule_full',
+                    $title,
+                    $body,
+                    [
+                        'schedule_id' => (string) $schedule->id,
+                        'booking_ref' => $booking->booking_ref,
+                        'route' => 'admin.bookings',
+                    ],
+                );
+            });
+        } catch (\Throwable $e) {
+            Log::warning('BookingService: could not send schedule-full notification — '.$e->getMessage());
+        }
     }
 
     /**
