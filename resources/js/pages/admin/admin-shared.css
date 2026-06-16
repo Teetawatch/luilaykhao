@@ -4,11 +4,11 @@
 
 .admin-page {
   animation: fadeIn 0.3s ease;
-  font-family: 'Anuphan', sans-serif;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 
 .admin-page * {
-  font-family: 'Anuphan', sans-serif;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 
 .admin-page .material-symbols-rounded,
@@ -46,7 +46,7 @@
 }
 
 .page-title {
-  font-family:  'Anuphan', sans-serif;
+  font-family:  'DB Heavent', 'Anuphan', sans-serif;
   font-size: 26px;
   font-weight: 700;
   color: #111827;
@@ -368,7 +368,7 @@ td.date {
 }
 
 .booking-ref {
-  font-family: 'Anuphan', sans-serif;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
   font-size: 13px;
   color: #2d7a4f;
   font-weight: 700;
@@ -556,7 +556,7 @@ td.date {
   font-size: 14px;
   outline: none;
   transition: border-color 0.15s;
-  font-family: 'Anuphan', sans-serif;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 
 .form-group input:focus,

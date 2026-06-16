@@ -4,10 +4,10 @@
 
       <section class="mb-8 flex items-end justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'Anuphan',sans-serif;">
+          <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             การแจ้งเตือน
           </h1>
-          <p class="text-[#505E5E] text-sm" style="font-family:'Anuphan',sans-serif;">
+          <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             {{ unreadCount > 0 ? `คุณมี ${unreadCount} รายการใหม่ที่ยังไม่ได้อ่าน` : 'คุณอ่านการแจ้งเตือนครบทุกรายการแล้ว' }}
           </p>
         </div>
@@ -15,7 +15,7 @@
           v-if="unreadCount > 0"
           @click="markAllRead"
           class="flex items-center gap-1.5 text-sm text-[#006565] font-semibold hover:text-[#004f4f] bg-[#006565]/10 hover:bg-[#006565]/15 px-4 py-2.5 rounded-full transition-all"
-          style="font-family:'Anuphan',sans-serif;">
+          style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           <span class="material-symbols-rounded text-[20px]">done_all</span>
           <span>อ่านทั้งหมด</span>
         </button>
@@ -23,15 +23,15 @@
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family:'Anuphan',sans-serif;">กำลังโหลดข้อมูล...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">กำลังโหลดข้อมูล...</p>
       </div>
 
       <div v-else-if="notifications.length === 0" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] flex flex-col items-center justify-center">
         <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
           <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">notifications_off</span>
         </div>
-        <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family:'Anuphan',sans-serif;">ไม่มีการแจ้งเตือนใหม่</h3>
-        <p class="text-[#505E5E] text-sm" style="font-family:'Anuphan',sans-serif;">ขณะนี้คุณยังไม่มีข้อความแจ้งเตือนใดๆ</p>
+        <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ไม่มีการแจ้งเตือนใหม่</h3>
+        <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ขณะนี้คุณยังไม่มีข้อความแจ้งเตือนใดๆ</p>
       </div>
 
       <div v-else class="space-y-3">
@@ -55,14 +55,14 @@
 
           <div class="flex-1 min-w-0 pr-6">
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 mb-1">
-              <h4 class="font-semibold text-[15px] text-[#1a1c1c] line-clamp-1" :class="{ 'font-bold': !n.is_read }" style="font-family:'Anuphan',sans-serif;">
+              <h4 class="font-semibold text-[15px] text-[#1a1c1c] line-clamp-1" :class="{ 'font-bold': !n.is_read }" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 {{ n.title }}
               </h4>
-              <p class="text-xs font-medium text-[#889696] whitespace-nowrap shrink-0 sm:mt-0.5" style="font-family:'Anuphan',sans-serif;">
+              <p class="text-xs font-medium text-[#889696] whitespace-nowrap shrink-0 sm:mt-0.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 {{ timeAgo(n.created_at) }}
               </p>
             </div>
-            <p class="text-[14px] text-[#505E5E] line-clamp-2 leading-relaxed" style="font-family:'Anuphan',sans-serif;">
+            <p class="text-[14px] text-[#505E5E] line-clamp-2 leading-relaxed" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               {{ n.body }}
             </p>
           </div>

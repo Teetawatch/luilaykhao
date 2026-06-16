@@ -25,3 +25,7 @@ Thumbs.db
 # /driver_app
 /luilaykhao-app
 /luilaykhao-driver-app
+
+# Licensed font source — keep the installable .ttf/.otf desktop files out of
+# the repo. Only the web-optimized woff2/woff under public/fonts are served.
+/DB Heavent Original_Webfont_unhinted

@@ -3,10 +3,10 @@
     <div class="max-w-3xl mx-auto px-4 sm:px-6">
 
       <section class="mb-8 relative">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'Anuphan',sans-serif;">
+        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           แต้มสะสม
         </h1>
-        <p class="text-[#505E5E] text-sm" style="font-family:'Anuphan',sans-serif;">
+        <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           สะสมแต้มจากการจองและแลกรับของรางวัลสุดคุ้ม
         </p>
       </section>
@@ -14,7 +14,7 @@
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'Anuphan', sans-serif;">กำลังโหลดข้อมูล...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">กำลังโหลดข้อมูล...</p>
       </div>
 
       <template v-else>
@@ -25,26 +25,26 @@
           <div class="relative p-6 sm:p-8">
             <div class="flex justify-between items-start mb-6">
               <div>
-                <p class="text-white/80 text-[13px] font-bold uppercase tracking-wide mb-1" style="font-family:'Anuphan',sans-serif;">ระดับสมาชิก</p>
-                <p class="text-3xl font-bold" style="font-family:'Anuphan',sans-serif;">{{ account?.tier_label }}</p>
+                <p class="text-white/80 text-[13px] font-bold uppercase tracking-wide mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ระดับสมาชิก</p>
+                <p class="text-3xl font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.tier_label }}</p>
               </div>
               <span class="material-symbols-rounded text-[48px] opacity-90" style="font-variation-settings:'FILL' 1;">{{ tierIcon }}</span>
             </div>
             
             <div class="flex flex-wrap gap-8 mb-4">
               <div>
-                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'Anuphan',sans-serif;">แต้มคงเหลือ</p>
-                <p class="text-4xl font-extrabold tracking-tight" style="font-family:'Anuphan',sans-serif;">{{ account?.points?.toLocaleString() }}</p>
+                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แต้มคงเหลือ</p>
+                <p class="text-4xl font-extrabold tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.points?.toLocaleString() }}</p>
               </div>
               <div>
-                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'Anuphan',sans-serif;">แต้มสะสมตลอดกาล</p>
-                <p class="text-2xl font-bold mt-2 tracking-tight" style="font-family:'Anuphan',sans-serif;">{{ account?.lifetime_points?.toLocaleString() }}</p>
+                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แต้มสะสมตลอดกาล</p>
+                <p class="text-2xl font-bold mt-2 tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.lifetime_points?.toLocaleString() }}</p>
               </div>
             </div>
 
             <!-- Progress to next tier -->
             <div v-if="account?.next_tier" class="mt-6 bg-black/10 rounded-[16px] p-4 backdrop-blur-sm">
-              <div class="flex justify-between text-[13px] font-bold text-white mb-2" style="font-family:'Anuphan',sans-serif;">
+              <div class="flex justify-between text-[13px] font-bold text-white mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span>{{ account.tier_label }}</span>
                 <span>{{ account.next_tier.tier }} ({{ account.next_tier.at.toLocaleString() }} แต้ม)</span>
               </div>
@@ -53,12 +53,12 @@
                   class="h-full bg-white rounded-full transition-all duration-1000 ease-out"
                   :style="{ width: tierProgress + '%' }"></div>
               </div>
-              <p class="text-[12px] text-white/90 mt-2 font-medium" style="font-family:'Anuphan',sans-serif;">
+              <p class="text-[12px] text-white/90 mt-2 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 ต้องสะสมอีก {{ account.next_tier.points_needed.toLocaleString() }} แต้ม เพื่อเลื่อนระดับเป็น {{ account.next_tier.tier }}
               </p>
             </div>
             <div v-else class="mt-6">
-              <span class="text-[13px] font-bold bg-white/20 rounded-[12px] px-3.5 py-1.5 flex items-center w-fit gap-1" style="font-family:'Anuphan',sans-serif;">
+              <span class="text-[13px] font-bold bg-white/20 rounded-[12px] px-3.5 py-1.5 flex items-center w-fit gap-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]">verified</span> ระดับสูงสุด
               </span>
             </div>
@@ -73,7 +73,7 @@
             @click="activeTab = tab.key"
             class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
             :class="activeTab === tab.key ? 'bg-white text-[#006565] shadow-sm' : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
-            style="font-family:'Anuphan',sans-serif;">
+            style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             <span class="material-symbols-rounded text-[20px]" :style="activeTab === tab.key ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">
               {{ tab.key === 'rewards' ? 'card_giftcard' : (tab.key === 'coupons' ? 'local_play' : 'history') }}
             </span>
@@ -87,7 +87,7 @@
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">card_giftcard</span>
             </div>
-            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'Anuphan',sans-serif;">ยังไม่มีของรางวัลในขณะนี้</p>
+            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีของรางวัลในขณะนี้</p>
           </div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
@@ -99,21 +99,21 @@
                   <span class="material-symbols-rounded text-[28px] text-[#006565]">{{ rewardIcon(r.type) }}</span>
                 </div>
                 <span class="text-[12px] font-bold bg-[#E3F2F2] text-[#006565] rounded-[8px] px-3 py-1.5"
-                  style="font-family:'Anuphan',sans-serif;">
+                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   ใช้ {{ r.points_required.toLocaleString() }} แต้ม
                 </span>
               </div>
-              <h3 class="text-[16px] font-bold text-[#1a1c1c] mb-1.5" style="font-family:'Anuphan',sans-serif;">{{ r.name }}</h3>
-              <p class="text-[14px] text-[#505E5E] flex-1 mb-5 leading-relaxed" style="font-family:'Anuphan',sans-serif;">{{ r.description }}</p>
+              <h3 class="text-[16px] font-bold text-[#1a1c1c] mb-1.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ r.name }}</h3>
+              <p class="text-[14px] text-[#505E5E] flex-1 mb-5 leading-relaxed" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ r.description }}</p>
               <div class="flex justify-between items-center pt-4 border-t border-[#F4F7F6]">
-                <span class="text-[14px] font-bold text-[#006565]" style="font-family:'Anuphan',sans-serif;">
+                <span class="text-[14px] font-bold text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   {{ rewardValue(r) }}
                 </span>
                 <button
                   @click="redeemReward(r)"
                   :disabled="(account?.points ?? 0) < r.points_required || redeeming === r.id"
                   class="bg-[#006565] text-white px-5 py-2.5 rounded-[12px] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#004f4f] transition-all flex items-center gap-1.5 shadow-sm shadow-[#006565]/20"
-                  style="font-family:'Anuphan',sans-serif;">
+                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span v-if="redeeming === r.id" class="material-symbols-rounded text-[18px] animate-spin">progress_activity</span>
                   {{ redeeming === r.id ? 'กำลังแลก...' : 'แลกรับเลย' }}
                 </button>
@@ -128,7 +128,7 @@
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">local_activity</span>
             </div>
-            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'Anuphan',sans-serif;">ยังไม่มีคูปอง</p>
+            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีคูปอง</p>
           </div>
           <div v-else class="space-y-4">
             <div
@@ -140,11 +140,11 @@
                  <span class="material-symbols-rounded text-[32px] text-[#006565]">{{ rewardIcon(c.reward_type) }}</span>
               </div>
               <div class="flex-1 min-w-0 pr-4">
-                <p class="font-bold text-[15px] text-[#1a1c1c] truncate" style="font-family:'Anuphan',sans-serif;">{{ c.reward_name }}</p>
+                <p class="font-bold text-[15px] text-[#1a1c1c] truncate" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ c.reward_name }}</p>
                 <div class="flex items-center gap-3 mt-1">
                   <p class="font-mono text-lg text-[#006565] font-bold tracking-widest bg-[#E3F2F2] px-2 py-0.5 rounded-[6px]">{{ c.coupon_code }}</p>
                 </div>
-                <p class="text-[12px] text-[#889696] mt-2 flex items-center gap-1" style="font-family:'Anuphan',sans-serif;">
+                <p class="text-[12px] text-[#889696] mt-2 flex items-center gap-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span class="material-symbols-rounded text-[14px]">event</span>
                   หมดอายุ: {{ formatDate(c.expires_at) }}
                 </p>
@@ -152,7 +152,7 @@
               <span
                 class="shrink-0 text-[11px] font-bold rounded-[8px] px-3 py-1.5 flex items-center gap-1 border"
                 :class="c.is_used ? 'bg-[#F4F7F6] text-[#A0B0B0] border-[#E8EEEF]' : isExpired(c.expires_at) ? 'bg-[#FEF2F2] text-[#DC2626] border-[#FCA5A5]' : 'bg-[#E3F2F2] text-[#006565] border-[#BCDFDF]'"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span v-if="c.is_used" class="material-symbols-rounded text-[14px]">check_circle</span>
                 <span v-else-if="isExpired(c.expires_at)" class="material-symbols-rounded text-[14px]">error</span>
                 <span v-else class="material-symbols-rounded text-[14px]">verified</span>
@@ -168,7 +168,7 @@
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">history</span>
             </div>
-            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'Anuphan',sans-serif;">ยังไม่มีประวัติแต้ม</p>
+            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีประวัติแต้ม</p>
           </div>
           <div v-else class="space-y-3">
             <div
@@ -181,8 +181,8 @@
                 <span class="material-symbols-rounded text-[24px]">{{ t.type === 'earn' ? 'add' : 'remove' }}</span>
               </div>
               <div class="flex-1 min-w-0 pr-4">
-                <p class="text-[14px] font-bold text-[#1a1c1c] truncate" style="font-family:'Anuphan',sans-serif;">{{ t.description }}</p>
-                <p class="text-[12px] text-[#A0B0B0] mt-0.5 flex items-center gap-1" style="font-family:'Anuphan',sans-serif;">
+                <p class="text-[14px] font-bold text-[#1a1c1c] truncate" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ t.description }}</p>
+                <p class="text-[12px] text-[#A0B0B0] mt-0.5 flex items-center gap-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span class="material-symbols-rounded text-[14px]">calendar_today</span>
                   {{ formatDate(t.created_at) }}
                 </p>
@@ -191,10 +191,10 @@
                 <p
                   class="font-bold text-lg"
                   :class="t.type === 'earn' ? 'text-[#006565]' : 'text-[#D97706]'"
-                  style="font-family:'Anuphan',sans-serif;">
+                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   {{ t.type === 'earn' ? '+' : '-' }}{{ t.points }}
                 </p>
-                <p class="text-[12px] text-[#889696] font-medium mt-0.5" style="font-family:'Anuphan',sans-serif;">คงเหลือ {{ t.balance_after }}</p>
+                <p class="text-[12px] text-[#889696] font-medium mt-0.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">คงเหลือ {{ t.balance_after }}</p>
               </div>
             </div>
           </div>
@@ -208,23 +208,23 @@
           <div class="w-20 h-20 bg-[#E3F2F2] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
             <span class="material-symbols-rounded text-[40px] text-[#006565]">check_circle</span>
           </div>
-          <h2 class="text-2xl font-bold text-[#1a1c1c] mb-2" style="font-family:'Anuphan',sans-serif;">แลกรับสำเร็จ!</h2>
-          <p class="text-[#505E5E] mb-5 text-[15px]" style="font-family:'Anuphan',sans-serif;">{{ redeemResult.reward?.name }}</p>
+          <h2 class="text-2xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แลกรับสำเร็จ!</h2>
+          <p class="text-[#505E5E] mb-5 text-[15px]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ redeemResult.reward?.name }}</p>
           
           <div class="bg-[#F9FAFA] border border-[#E8EEEF] rounded-[16px] px-4 py-4 mb-5 relative overflow-hidden">
-             <p class="text-[12px] text-[#889696] font-bold uppercase tracking-wider mb-2" style="font-family:'Anuphan',sans-serif;">รหัสคูปองของคุณ</p>
+             <p class="text-[12px] text-[#889696] font-bold uppercase tracking-wider mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">รหัสคูปองของคุณ</p>
              <p class="text-3xl font-mono font-bold text-[#006565] tracking-widest">
                {{ redeemResult.coupon_code }}
              </p>
           </div>
           
-          <p class="text-[14px] text-[#505E5E] mb-6 font-medium" style="font-family:'Anuphan',sans-serif;">
+          <p class="text-[14px] text-[#505E5E] mb-6 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             แต้มคงเหลือ <span class="font-bold text-[#1a1c1c]">{{ redeemResult.points_remaining?.toLocaleString() }}</span> แต้ม
           </p>
           <button
             @click="redeemResult = null"
             class="w-full bg-[#006565] text-white py-3.5 rounded-[16px] font-bold hover:bg-[#004f4f] transition-all shadow-sm"
-            style="font-family:'Anuphan',sans-serif;">
+            style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             ตกลง
           </button>
         </div>

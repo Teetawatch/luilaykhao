@@ -530,7 +530,7 @@ function exportPdf(type) {
   // Generate printable HTML
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>
-  body{font-family:'Anuphan',sans-serif;padding:40px;color:#333}
+  body{font-family:'DB Heavent', 'Anuphan',sans-serif;padding:40px;color:#333}
   h1{color:#2d7a4f;margin-bottom:8px}
   .summary{margin:16px 0;padding:12px;background:#FAFAFA;border-radius:8px}
   .summary p{margin:4px 0;font-size:14px}

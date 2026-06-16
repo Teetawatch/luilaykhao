@@ -7,16 +7,16 @@
         <span class="material-symbols-rounded text-[20px] text-[#505E5E]">arrow_back</span>
       </button>
       <div class="flex-1 min-w-0">
-        <h1 class="text-base font-bold text-[#1a1c1c] truncate" style="font-family:'Anuphan',sans-serif;">
+        <h1 class="text-base font-bold text-[#1a1c1c] truncate" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           {{ tripTitle || 'แชทกลุ่มทริป' }}
         </h1>
-        <p v-if="departureDate" class="text-xs text-[#889696]" style="font-family:'Anuphan',sans-serif;">
+        <p v-if="departureDate" class="text-xs text-[#889696]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           เดินทาง {{ formatDate(departureDate) }}
         </p>
       </div>
       <div class="flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full transition-colors" :class="wsConnected ? 'bg-green-500' : 'bg-gray-300'"></span>
-        <span class="text-[11px] font-medium" :class="wsConnected ? 'text-green-600' : 'text-gray-400'" style="font-family:'Anuphan',sans-serif;">
+        <span class="text-[11px] font-medium" :class="wsConnected ? 'text-green-600' : 'text-gray-400'" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           {{ wsConnected ? 'เรียลไทม์' : 'ออฟไลน์' }}
         </span>
       </div>
@@ -27,9 +27,9 @@
       <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
         <span class="material-symbols-rounded text-3xl text-red-400">lock</span>
       </div>
-      <p class="text-[#1a1c1c] font-bold mb-1" style="font-family:'Anuphan',sans-serif;">ไม่สามารถเข้าถึงได้</p>
-      <p class="text-sm text-[#505E5E]" style="font-family:'Anuphan',sans-serif;">{{ errorMsg }}</p>
-      <button @click="$router.push('/my-bookings')" class="mt-5 px-5 py-2.5 bg-[#006565] text-white rounded-full text-sm font-bold" style="font-family:'Anuphan',sans-serif;">
+      <p class="text-[#1a1c1c] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ไม่สามารถเข้าถึงได้</p>
+      <p class="text-sm text-[#505E5E]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ errorMsg }}</p>
+      <button @click="$router.push('/my-bookings')" class="mt-5 px-5 py-2.5 bg-[#006565] text-white rounded-full text-sm font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
         กลับหน้าการจอง
       </button>
     </div>
@@ -37,7 +37,7 @@
     <template v-else>
       <!-- Load older messages -->
       <div class="shrink-0 text-center py-2" v-if="hasMore">
-        <button @click="loadOlder" :disabled="loadingOlder" class="text-xs font-bold text-[#006565] hover:underline disabled:opacity-50" style="font-family:'Anuphan',sans-serif;">
+        <button @click="loadOlder" :disabled="loadingOlder" class="text-xs font-bold text-[#006565] hover:underline disabled:opacity-50" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           {{ loadingOlder ? 'กำลังโหลด...' : 'โหลดข้อความก่อนหน้า' }}
         </button>
       </div>
@@ -53,7 +53,7 @@
             <div class="w-16 h-16 rounded-full bg-[#E8EEEF] flex items-center justify-center mb-4">
               <span class="material-symbols-rounded text-3xl text-[#A0B0B0]">chat_bubble</span>
             </div>
-            <p class="text-[#505E5E] text-sm" style="font-family:'Anuphan',sans-serif;">ยังไม่มีข้อความ เริ่มสนทนากับสตาฟได้เลย!</p>
+            <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีข้อความ เริ่มสนทนากับสตาฟได้เลย!</p>
           </div>
 
           <div
@@ -74,10 +74,10 @@
             <div class="flex flex-col gap-0.5" :class="m.is_mine ? 'items-end' : 'items-start'" style="max-width: 72%;">
               <!-- Name + role -->
               <div v-if="!m.is_mine" class="flex items-center gap-1.5 px-1">
-                <span class="text-[11px] font-bold text-[#374151]" style="font-family:'Anuphan',sans-serif;">
+                <span class="text-[11px] font-bold text-[#374151]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   {{ m.user?.nickname || m.user?.name || 'ผู้ใช้' }}
                 </span>
-                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full" :class="roleTagClass(m.sender_role)" style="font-family:'Anuphan',sans-serif;">
+                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full" :class="roleTagClass(m.sender_role)" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   {{ roleLabel(m.sender_role) }}
                 </span>
               </div>
@@ -87,7 +87,7 @@
                 :class="m.is_mine
                   ? 'bg-[#006565] text-white rounded-tr-sm'
                   : 'bg-white text-[#1a1c1c] border border-[#E8EEEF] rounded-tl-sm'"
-                style="font-family:'Anuphan',sans-serif; word-break: break-word;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif; word-break: break-word;">
                 <!-- Image -->
                 <img v-if="m.image_url" :src="m.image_url" alt="รูปภาพ"
                   class="max-w-[220px] rounded-xl mb-1 cursor-pointer"
@@ -96,7 +96,7 @@
               </div>
 
               <!-- Time -->
-              <span class="text-[10px] text-[#A0B0B0] px-1" style="font-family:'Anuphan',sans-serif;">{{ formatTime(m.created_at) }}</span>
+              <span class="text-[10px] text-[#A0B0B0] px-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ formatTime(m.created_at) }}</span>
             </div>
           </div>
         </template>
@@ -108,8 +108,8 @@
         <div v-if="imagePreview" class="absolute bottom-20 left-4 right-4 bg-white border border-[#E8EEEF] rounded-2xl p-3 flex items-center gap-3 shadow-lg">
           <img :src="imagePreview" class="w-16 h-16 rounded-xl object-cover" />
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-[#1a1c1c] truncate" style="font-family:'Anuphan',sans-serif;">{{ imageFile?.name }}</p>
-            <p class="text-xs text-[#889696]" style="font-family:'Anuphan',sans-serif;">แนบรูปภาพ</p>
+            <p class="text-sm font-bold text-[#1a1c1c] truncate" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ imageFile?.name }}</p>
+            <p class="text-xs text-[#889696]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แนบรูปภาพ</p>
           </div>
           <button @click="clearImage" class="w-7 h-7 rounded-full bg-[#F4F7F6] flex items-center justify-center">
             <span class="material-symbols-rounded text-[16px] text-[#505E5E]">close</span>
@@ -132,7 +132,7 @@
             @input="autoResize"
             ref="textareaEl"
             class="flex-1 bg-transparent text-sm text-[#1a1c1c] resize-none outline-none placeholder-[#A0B0B0] max-h-28 leading-relaxed"
-            style="font-family:'Anuphan',sans-serif;"
+            style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
           ></textarea>
         </div>
 

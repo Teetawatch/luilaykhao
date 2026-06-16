@@ -7,7 +7,10 @@
 @source '../**/*.vue';
 
 @theme {
-    --font-anuphan:  'Anuphan', sans-serif;
+    /* DB Heavent is the primary site font; Anuphan stays as a glyph fallback.
+       Faces are declared in /public/fonts/db-heavent/db-heavent.css. */
+    --font-heavent:  'DB Heavent', 'Anuphan', sans-serif;
+    --font-anuphan:  'DB Heavent', 'Anuphan', sans-serif;
     --font-playfair: 'Playfair Display', serif;
 
     /* ── Primary Forest Colors ─────────────────────────────── */
@@ -62,7 +65,11 @@ body {
 
 /* ── Font Utility Classes ─────────────────────────────── */
 .font-anuphan {
-    font-family: 'Anuphan', sans-serif;
+    font-family: 'DB Heavent', 'Anuphan', sans-serif;
+}
+
+.font-heavent {
+    font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 
 .font-playfair {

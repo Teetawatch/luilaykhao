@@ -486,7 +486,7 @@ onMounted(() => loadReviews());
   resize: none;
   outline: none;
   box-sizing: border-box;
-  font-family: 'Anuphan', sans-serif;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 
 .reply-textarea:focus { border-color: var(--color-accent); }

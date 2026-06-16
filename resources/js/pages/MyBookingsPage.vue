@@ -4,10 +4,10 @@
 
       <!-- Page Header -->
       <section class="mb-8 relative">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'Anuphan',sans-serif;">
+        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           การจองของฉัน
         </h1>
-        <p class="text-[#505E5E] text-sm" style="font-family:'Anuphan',sans-serif;">
+        <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           จัดการแผนการเดินทางที่แสนพิเศษของคุณได้ที่นี่
         </p>
       </section>
@@ -20,7 +20,7 @@
           :class="activeTab === 'upcoming'
             ? 'bg-white text-[#006565] shadow-sm'
             : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
-          style="font-family: 'Anuphan', sans-serif;">
+          style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'upcoming' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">event_upcoming</span>
           ที่กำลังจะมาถึง
         </button>
@@ -30,7 +30,7 @@
           :class="activeTab === 'past'
             ? 'bg-white text-[#006565] shadow-sm'
             : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
-          style="font-family: 'Anuphan', sans-serif;">
+          style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'past' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">history</span>
           ที่ผ่านมาแล้ว
         </button>
@@ -39,7 +39,7 @@
       <!-- Loading -->
       <div v-if="bookingStore.loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'Anuphan', sans-serif;">กำลังโหลดข้อมูลการจอง...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">กำลังโหลดข้อมูลการจอง...</p>
       </div>
 
       <!-- Empty State -->
@@ -50,15 +50,15 @@
               {{ activeTab === 'upcoming' ? 'event_busy' : 'history_toggle_off' }}
             </span>
           </div>
-          <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family: 'Anuphan', sans-serif;">ยังไม่มีการจอง</h3>
-          <p class="text-[#505E5E] text-sm mb-6 max-w-sm mx-auto" style="font-family: 'Anuphan', sans-serif;">
+          <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">ยังไม่มีการจอง</h3>
+          <p class="text-[#505E5E] text-sm mb-6 max-w-sm mx-auto" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
             {{ activeTab === 'upcoming' 
                 ? 'คุณยังไม่มีแผนการเดินทางที่กำลังจะมาถึง เริ่มค้นหาประสบการณ์ใหม่ๆ ได้เลย!' 
                 : 'คุณยังไม่เคยเดินทางกับเรามาก่อน ลองดูทริปที่น่าสนใจสิ' }}
           </p>
           <router-link to="/trips"
              class="inline-flex items-center gap-2 bg-[#006565] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#004f4f] transition-all"
-             style="font-family: 'Anuphan', sans-serif;">
+             style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
             <span class="material-symbols-rounded text-[20px]">explore</span>
             เริ่มค้นหากิจกรรม
             <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
@@ -87,7 +87,7 @@
             
             <!-- Date Badge on Image (Mobile only) -->
             <div class="absolute top-4 left-4 md:hidden bg-white px-3 py-1.5 rounded-[12px] shadow-sm flex flex-col items-center leading-tight">
-              <span class="text-[10px] font-bold text-[#889696] uppercase" style="font-family: 'Anuphan', sans-serif;">{{ getMonthShort(b.schedule?.departure_date) }}</span>
+              <span class="text-[10px] font-bold text-[#889696] uppercase" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">{{ getMonthShort(b.schedule?.departure_date) }}</span>
               <span class="text-base font-extrabold text-[#1a1c1c]">{{ getDay(b.schedule?.departure_date) }}</span>
             </div>
           </div>
@@ -95,13 +95,13 @@
           <!-- Content -->
           <div class="p-5 md:p-6 flex-1 flex flex-col relative w-full">
             <div class="flex flex-col sm:flex-row justify-between items-start mb-3 gap-3">
-              <h2 class="text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]" style="font-family:'Anuphan',sans-serif;">
+              <h2 class="text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 {{ b.schedule?.trip?.title || 'การจอง' }}
               </h2>
               <div class="flex flex-col items-end gap-2 shrink-0">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] flex items-center gap-1.5 whitespace-nowrap"
                   :class="statusClass(b.status)"
-                  style="font-family:'Anuphan',sans-serif;">
+                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(b.status)"></span>
                   {{ statusLabel(b.status) }}
                 </span>
@@ -115,13 +115,13 @@
 
             <div class="space-y-3 mb-5 bg-[#F9FAFA] p-3.5 rounded-[16px] border border-[#E8EEEF]">
               <div class="flex items-center justify-between text-[13px] text-[#505E5E]">
-                <div class="flex items-center gap-2.5" style="font-family:'Anuphan',sans-serif;">
+                <div class="flex items-center gap-2.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-[#E8EEEF] shrink-0">
                     <span class="material-symbols-rounded text-[16px] text-[#006565]">calendar_month</span>
                   </div>
                   <span class="font-medium text-[#1a1c1c]">{{ formatDate(b.schedule?.departure_date) }}</span>
                 </div>
-                <div class="text-right shrink-0" style="font-family:'Anuphan',sans-serif;">
+                <div class="text-right shrink-0" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span class="text-[10px] text-[#889696] font-bold block mb-0.5 uppercase tracking-wider">หมายเลขการจอง</span>
                   <span class="font-bold text-[#1a1c1c]">{{ b.booking_ref }}</span>
                 </div>
@@ -130,7 +130,7 @@
 
             <!-- Price & Installment Info -->
             <div class="mb-5">
-              <div class="flex justify-between items-end" style="font-family:'Anuphan',sans-serif;">
+              <div class="flex justify-between items-end" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <div class="text-[11px] font-bold text-[#889696] uppercase tracking-wide">ยอดชำระ</div>
                 <div class="text-xl md:text-2xl font-bold text-[#006565] tracking-tight">
                   <span class="text-sm text-[#006565] mr-0.5">฿</span>{{ Number(b.total_amount).toLocaleString() }}
@@ -250,7 +250,7 @@
                 v-if="b.status !== 'pending'"
                 :to="`/confirmation/${b.booking_ref}`"
                 class="flex-1 text-center bg-[#006565] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#004f4f] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span v-if="b.status === 'confirmed'" class="material-symbols-rounded text-[18px]">confirmation_number</span>
                 <span v-else class="material-symbols-rounded text-[18px]">visibility</span>
                 {{ b.status === 'confirmed' ? 'ดาวน์โหลดตั๋ว' : 'ดูรายละเอียด' }}
@@ -260,7 +260,7 @@
                 v-if="b.status === 'pending'"
                 :to="`/payment/${b.booking_ref}`"
                 class="flex-1 text-center bg-[#D97706] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all flex items-center justify-center gap-1.5 animate-pulse"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">payments</span>
                 ชำระเงิน
               </router-link>
@@ -269,7 +269,7 @@
                 v-if="b.status === 'confirmed' || b.status === 'pending'"
                 @click="$router.push(`/confirmation/${b.booking_ref}`)"
                 class="flex-1 bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]">info</span>
                 รายละเอียด
               </button>
@@ -278,7 +278,7 @@
                 v-if="activeTab === 'past' && b.status === 'completed'"
                 to="/my-reviews"
                 class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]">star</span>
                 เขียนรีวิว
               </router-link>
@@ -287,7 +287,7 @@
                 v-if="b.status === 'confirmed'"
                 :to="{ name: 'trip-chat', params: { scheduleId: b.schedule.id }, query: { title: b.schedule?.trip?.title, date: b.schedule?.departure_date } }"
                 class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]">chat</span>
                 แชท
               </router-link>
@@ -296,7 +296,7 @@
                 v-if="canReviewStaff(b)"
                 @click="openStaffReviewModal(b)"
                 class="flex-1 text-center border-2 border-[#0C4A6E] text-[#0C4A6E] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E0F2FE] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]">badge</span>
                 รีวิวสตาฟ
               </button>
@@ -305,7 +305,7 @@
                 v-if="b.status === 'pending'"
                 @click="handleCancel(b)"
                 class="flex-1 sm:flex-none border border-[#FCA5A5] text-[#DC2626] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#FEF2F2] hover:border-[#F87171] transition-all"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 ยกเลิก
               </button>
 
@@ -313,7 +313,7 @@
                 v-if="isOngoingTrip(b)"
                 @click="openSosModal(b)"
                 class="flex-1 sm:flex-none bg-red-600 text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-red-600/20"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">sos</span>
                 SOS
               </button>
@@ -331,7 +331,7 @@
             :class="page === bookingStore.meta.current_page
               ? 'bg-[#006565] text-white shadow-sm'
               : 'bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA]'"
-            style="font-family: 'Anuphan', sans-serif;">
+            style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
             {{ page }}
           </button>
         </div>
@@ -342,8 +342,8 @@
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-[#E8EEEF] overflow-hidden">
           <div class="px-5 py-4 border-b border-[#E8EEEF] flex items-center justify-between">
             <div>
-              <h3 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'Anuphan',sans-serif;">รีวิวสตาฟประจำทริป</h3>
-              <p class="text-xs text-[#6b7280] mt-0.5" style="font-family:'Anuphan',sans-serif;">{{ reviewingBooking?.schedule?.trip?.title || '-' }}</p>
+              <h3 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">รีวิวสตาฟประจำทริป</h3>
+              <p class="text-xs text-[#6b7280] mt-0.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ reviewingBooking?.schedule?.trip?.title || '-' }}</p>
             </div>
             <button @click="showStaffReviewModal = false" class="w-8 h-8 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] inline-flex items-center justify-center">
               <span class="material-symbols-rounded text-[18px]">close</span>
@@ -352,8 +352,8 @@
 
           <div class="p-5 space-y-4">
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'Anuphan',sans-serif;">เลือกสตาฟ</label>
-              <select v-model.number="staffReviewForm.staff_user_id" @change="hydrateStaffReviewForm" class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm" style="font-family:'Anuphan',sans-serif;">
+              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">เลือกสตาฟ</label>
+              <select v-model.number="staffReviewForm.staff_user_id" @change="hydrateStaffReviewForm" class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <option :value="0" disabled>-- เลือกสตาฟ --</option>
                 <option v-for="staff in reviewingBooking?.assigned_staff || []" :key="staff.id" :value="staff.id">
                   {{ staff.name }}
@@ -362,7 +362,7 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'Anuphan',sans-serif;">คะแนนความพึงพอใจ</label>
+              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">คะแนนความพึงพอใจ</label>
               <div class="grid grid-cols-5 gap-2">
                 <button
                   v-for="score in [1,2,3,4,5]"
@@ -371,7 +371,7 @@
                   @click="staffReviewForm.rating = score"
                   class="h-10 rounded-xl border text-sm font-bold transition"
                   :class="staffReviewForm.rating === score ? 'bg-[#006565] text-white border-[#006565]' : 'bg-white text-[#475569] border-[#D7E0E1] hover:bg-[#F8FAFC]'"
-                  style="font-family:'Anuphan',sans-serif;"
+                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
                 >
                   {{ score }} ★
                 </button>
@@ -379,28 +379,28 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'Anuphan',sans-serif;">ความคิดเห็น (ไม่บังคับ)</label>
+              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ความคิดเห็น (ไม่บังคับ)</label>
               <textarea
                 v-model="staffReviewForm.comment"
                 rows="4"
                 class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm"
                 placeholder="เล่าประสบการณ์การดูแลของสตาฟคนนี้"
-                style="font-family:'Anuphan',sans-serif;"
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
               ></textarea>
             </div>
 
-            <div v-if="selectedStaffReview" class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-xs text-[#475569]" style="font-family:'Anuphan',sans-serif;">
+            <div v-if="selectedStaffReview" class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-xs text-[#475569]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               คุณเคยรีวิวสตาฟคนนี้แล้ว ระบบจะอัปเดตรีวิวเดิม
             </div>
           </div>
 
           <div class="px-5 py-4 border-t border-[#E8EEEF] flex justify-end gap-2">
-            <button @click="showStaffReviewModal = false" class="px-4 py-2.5 rounded-xl border border-[#D7E0E1] text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC]" style="font-family:'Anuphan',sans-serif;">ยกเลิก</button>
+            <button @click="showStaffReviewModal = false" class="px-4 py-2.5 rounded-xl border border-[#D7E0E1] text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยกเลิก</button>
             <button
               @click="submitStaffReview"
               :disabled="reviewSubmitting || !staffReviewForm.staff_user_id"
               class="px-4 py-2.5 rounded-xl bg-[#006565] text-white text-sm font-bold hover:bg-[#004f4f] disabled:opacity-60"
-              style="font-family:'Anuphan',sans-serif;"
+              style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
             >
               {{ selectedStaffReview ? 'อัปเดตรีวิวสตาฟ' : 'ส่งรีวิวสตาฟ' }}
             </button>
@@ -420,8 +420,8 @@
               <span class="material-symbols-rounded text-white text-[22px]" style="font-variation-settings:'FILL' 1">sos</span>
             </div>
             <div class="flex-1">
-              <h3 class="text-white font-black text-base" style="font-family:'Anuphan',sans-serif;">ขอความช่วยเหลือ SOS</h3>
-              <p class="text-red-100 text-xs" style="font-family:'Anuphan',sans-serif;">{{ sosBooking?.schedule?.trip?.title }}</p>
+              <h3 class="text-white font-black text-base" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ขอความช่วยเหลือ SOS</h3>
+              <p class="text-red-100 text-xs" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ sosBooking?.schedule?.trip?.title }}</p>
             </div>
             <button @click="showSosModal = false" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
               <span class="material-symbols-rounded text-white text-[18px]">close</span>
@@ -429,7 +429,7 @@
           </div>
 
           <div class="p-5 space-y-4">
-            <p class="text-sm text-[#505E5E]" style="font-family:'Anuphan',sans-serif;">เลือกข้อความที่ต้องการส่งให้สตาฟและผู้ร่วมทริป</p>
+            <p class="text-sm text-[#505E5E]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">เลือกข้อความที่ต้องการส่งให้สตาฟและผู้ร่วมทริป</p>
 
             <!-- Predefined options -->
             <div class="grid grid-cols-2 gap-2">
@@ -441,7 +441,7 @@
                 :class="sosSelectedOption === opt.value
                   ? 'bg-red-50 border-red-500 text-red-700'
                   : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#1a1c1c] hover:border-red-300 hover:bg-red-50/50'"
-                style="font-family:'Anuphan',sans-serif;">
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="block text-lg mb-0.5">{{ opt.emoji }}</span>
                 {{ opt.label }}
               </button>
@@ -449,30 +449,30 @@
 
             <!-- Custom message (shown when "อื่น ๆ" selected) -->
             <div v-if="sosSelectedOption === 'other'" class="space-y-1.5">
-              <label class="text-xs font-bold text-[#505E5E] uppercase tracking-wide" style="font-family:'Anuphan',sans-serif;">ระบุเพิ่มเติม</label>
+              <label class="text-xs font-bold text-[#505E5E] uppercase tracking-wide" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ระบุเพิ่มเติม</label>
               <textarea
                 v-model="sosCustomMessage"
                 rows="3"
                 maxlength="255"
                 placeholder="อธิบายสถานการณ์โดยย่อ..."
                 class="w-full rounded-[14px] border-2 border-[#E8EEEF] focus:border-red-400 focus:outline-none px-3.5 py-2.5 text-sm resize-none"
-                style="font-family:'Anuphan',sans-serif;"
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
               ></textarea>
             </div>
 
-            <p class="text-xs text-[#889696] bg-[#F4F7F6] p-3 rounded-[12px]" style="font-family:'Anuphan',sans-serif;">
+            <p class="text-xs text-[#889696] bg-[#F4F7F6] p-3 rounded-[12px]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <span class="material-symbols-rounded text-[14px] align-middle mr-1" style="font-variation-settings:'FILL' 1">info</span>
               สตาฟและผู้โดยสารในทริปจะได้รับการแจ้งเตือนทันที
             </p>
           </div>
 
           <div class="px-5 pb-5 flex gap-2">
-            <button @click="showSosModal = false" class="flex-1 py-3 rounded-[14px] border-2 border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6] transition-all" style="font-family:'Anuphan',sans-serif;">ยกเลิก</button>
+            <button @click="showSosModal = false" class="flex-1 py-3 rounded-[14px] border-2 border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6] transition-all" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยกเลิก</button>
             <button
               @click="submitSos"
               :disabled="!sosSelectedOption || sosSubmitting || (sosSelectedOption === 'other' && !sosCustomMessage.trim())"
               class="flex-1 py-3 rounded-[14px] bg-red-600 text-white font-black text-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
-              style="font-family:'Anuphan',sans-serif;">
+              style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <span v-if="sosSubmitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
               <span class="material-symbols-rounded text-[18px]" v-else style="font-variation-settings:'FILL' 1">sos</span>
               {{ sosSubmitting ? 'กำลังส่ง...' : 'ส่งสัญญาณ SOS' }}

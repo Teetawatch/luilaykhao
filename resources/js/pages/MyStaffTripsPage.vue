@@ -3,10 +3,10 @@
     <div class="max-w-5xl mx-auto px-4 sm:px-6">
       <section class="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-[#1a1c1c] mb-2" style="font-family:'Anuphan',sans-serif;">ตารางงานสตาฟของฉัน</h1>
-          <p class="text-sm text-[#505E5E]" style="font-family:'Anuphan',sans-serif;">ดูว่าคุณได้รับมอบหมายให้ดูแลทริปไหน วันไหนบ้าง</p>
+          <h1 class="text-3xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ตารางงานสตาฟของฉัน</h1>
+          <p class="text-sm text-[#505E5E]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ดูว่าคุณได้รับมอบหมายให้ดูแลทริปไหน วันไหนบ้าง</p>
         </div>
-        <button class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#D7E0E1] text-[#006565] font-semibold text-sm hover:bg-[#F7FBFB]" @click="loadData" :disabled="loading" style="font-family:'Anuphan',sans-serif;">
+        <button class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#D7E0E1] text-[#006565] font-semibold text-sm hover:bg-[#F7FBFB]" @click="loadData" :disabled="loading" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           <span class="material-symbols-rounded text-[18px]">refresh</span>
           รีเฟรช
         </button>
@@ -14,18 +14,18 @@
 
       <div class="grid sm:grid-cols-2 gap-4 mb-6">
         <div class="bg-white border border-[#E8EEEF] rounded-2xl p-4">
-          <div class="text-xs text-[#889696] font-bold uppercase mb-1" style="font-family:'Anuphan',sans-serif;">คะแนนเฉลี่ยความพึงพอใจ</div>
+          <div class="text-xs text-[#889696] font-bold uppercase mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">คะแนนเฉลี่ยความพึงพอใจ</div>
           <div class="flex items-center gap-2">
             <span class="material-symbols-rounded text-[#F59E0B]">star</span>
-            <span class="text-2xl font-bold text-[#1a1c1c]" style="font-family:'Anuphan',sans-serif;">{{ summary.avg_rating ?? '-' }}</span>
+            <span class="text-2xl font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ summary.avg_rating ?? '-' }}</span>
           </div>
         </div>
 
         <div class="bg-white border border-[#E8EEEF] rounded-2xl p-4">
-          <div class="text-xs text-[#889696] font-bold uppercase mb-1" style="font-family:'Anuphan',sans-serif;">จำนวนรีวิวที่ได้รับ</div>
+          <div class="text-xs text-[#889696] font-bold uppercase mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">จำนวนรีวิวที่ได้รับ</div>
           <div class="flex items-center gap-2">
             <span class="material-symbols-rounded text-[#006565]">reviews</span>
-            <span class="text-2xl font-bold text-[#1a1c1c]" style="font-family:'Anuphan',sans-serif;">{{ summary.total_reviews || 0 }}</span>
+            <span class="text-2xl font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ summary.total_reviews || 0 }}</span>
           </div>
         </div>
       </div>
@@ -36,27 +36,27 @@
 
       <div v-else-if="!isStaff" class="bg-white rounded-2xl border border-[#E8EEEF] p-10 text-center">
         <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">lock</span>
-        <p class="mt-3 text-[#505E5E] font-medium" style="font-family:'Anuphan',sans-serif;">หน้านี้สำหรับผู้ใช้ที่มีสิทธิ์สตาฟเท่านั้น</p>
+        <p class="mt-3 text-[#505E5E] font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">หน้านี้สำหรับผู้ใช้ที่มีสิทธิ์สตาฟเท่านั้น</p>
       </div>
 
       <div v-else-if="!schedules.length" class="bg-white rounded-2xl border border-[#E8EEEF] p-10 text-center">
         <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">event_busy</span>
-        <p class="mt-3 text-[#505E5E] font-medium" style="font-family:'Anuphan',sans-serif;">ยังไม่มีงานที่ได้รับมอบหมายในตอนนี้</p>
+        <p class="mt-3 text-[#505E5E] font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีงานที่ได้รับมอบหมายในตอนนี้</p>
       </div>
 
       <div v-else class="space-y-4">
         <article v-for="sch in schedules" :key="sch.id" class="bg-white border border-[#E8EEEF] rounded-2xl p-4 sm:p-5 shadow-sm">
           <div class="flex flex-wrap justify-between gap-3 mb-3">
             <div>
-              <h2 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'Anuphan',sans-serif;">{{ sch.trip?.title || 'ไม่ระบุทริป' }}</h2>
-              <p class="text-sm text-[#6b7280]" style="font-family:'Anuphan',sans-serif;">{{ sch.trip?.location || '-' }}</p>
+              <h2 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ sch.trip?.title || 'ไม่ระบุทริป' }}</h2>
+              <p class="text-sm text-[#6b7280]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ sch.trip?.location || '-' }}</p>
             </div>
-            <span class="inline-flex items-center h-fit px-3 py-1 rounded-full text-xs font-bold" :class="statusClass(sch.status)" style="font-family:'Anuphan',sans-serif;">
+            <span class="inline-flex items-center h-fit px-3 py-1 rounded-full text-xs font-bold" :class="statusClass(sch.status)" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               {{ statusLabel(sch.status) }}
             </span>
           </div>
 
-          <div class="grid sm:grid-cols-3 gap-3 text-sm text-[#334155]" style="font-family:'Anuphan',sans-serif;">
+          <div class="grid sm:grid-cols-3 gap-3 text-sm text-[#334155]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             <div class="info-box">
               <span class="material-symbols-rounded text-[18px] text-[#006565]">event</span>
               <div>

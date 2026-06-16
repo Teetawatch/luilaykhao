@@ -1082,7 +1082,7 @@ onMounted(() => fetchData());
   color: var(--color-text-mid);
   cursor: pointer;
   transition: all 0.15s;
-  font-family: 'Anuphan', sans-serif;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 .type-tab .material-symbols-rounded { font-size: 16px; }
 .type-tab:hover { border-color: var(--color-accent); color: var(--color-accent); }
@@ -1348,7 +1348,7 @@ onMounted(() => fetchData());
   background: var(--color-sand); border: 1px solid var(--color-sand-dark);
   padding: 3px 10px; border-radius: 8px;
   cursor: pointer; transition: all 0.15s; font-weight: 500;
-  font-family: 'Anuphan', sans-serif;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 .footer-chip:hover { border-color: var(--color-accent); color: var(--color-accent); background: #f0fdf4; }
 .footer-chip .material-symbols-rounded { font-size: 14px; }

@@ -3,18 +3,18 @@
   <div v-if="loading" class="flex items-center justify-center min-h-[60vh]">
     <div class="flex flex-col items-center gap-4">
       <div class="w-12 h-12 rounded-full border-4 border-[#b4eae9] border-t-[#006565] animate-spin"></div>
-      <p class="text-[#6e7979] font-['Anuphan']">กำลังโหลด...</p>
+      <p class="text-[#6e7979] font-['DB Heavent', 'Anuphan']">กำลังโหลด...</p>
     </div>
   </div>
 
   <!-- No booking -->
-  <div v-else-if="!booking" class="flex flex-col items-center justify-center min-h-[60vh] text-[#6e7979] font-['Anuphan']">
+  <div v-else-if="!booking" class="flex flex-col items-center justify-center min-h-[60vh] text-[#6e7979] font-['DB Heavent', 'Anuphan']">
     <span class="material-symbols-rounded text-6xl mb-4 text-[#bdc9c8]">sentiment_dissatisfied</span>
     <p class="text-lg">ไม่พบข้อมูลการจอง</p>
   </div>
 
   <!-- Main Content -->
-  <div v-else class="font-['Anuphan'] bg-[#f9f9f9] min-h-screen pt-8 pb-24 px-4 md:px-8 lg:px-12">
+  <div v-else class="font-['DB Heavent', 'Anuphan'] bg-[#f9f9f9] min-h-screen pt-8 pb-24 px-4 md:px-8 lg:px-12">
     <!-- Progress Stepper -->
     <div class="flex items-center justify-center mb-12 max-w-7xl mx-auto">
       <div class="flex items-center w-full max-w-2xl">
