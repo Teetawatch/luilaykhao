@@ -25,7 +25,9 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.name' => ['required', 'string', 'max:255'],
             'passengers.*.nickname' => ['required', 'string', 'max:100'],
             'passengers.*.id_card' => ['required', 'digits:13'],
-            'passengers.*.birth_date' => ['required', 'date', 'before:today'],
+            // Temporarily optional: the production mobile app does not send
+            // birth_date yet. Revert to 'required' once the app ships.
+            'passengers.*.birth_date' => ['nullable', 'date', 'before:today'],
             'passengers.*.phone' => ['required', 'digits:10'],
             'passengers.*.email' => ['nullable', 'email', 'max:255'],
             'passengers.0.email' => ['required_if:booking_for,friend', 'nullable', 'email', 'max:255'],

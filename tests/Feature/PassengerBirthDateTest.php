@@ -70,8 +70,10 @@ class PassengerBirthDateTest extends TestCase
         $this->assertSame(Carbon::parse('2000-01-15')->age, $passenger->age);
     }
 
-    public function test_booking_endpoint_requires_passenger_birth_date(): void
+    public function test_booking_endpoint_allows_missing_birth_date(): void
     {
+        // Temporary: birth_date is optional until the production mobile app
+        // ships the field. A booking without it must still succeed.
         $user = User::factory()->create();
         $schedule = $this->makeSchedule();
 
@@ -91,8 +93,7 @@ class PassengerBirthDateTest extends TestCase
                     // birth_date intentionally omitted
                 ]],
             ])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['passengers.0.birth_date']);
+            ->assertCreated();
     }
 
     public function test_manifest_exposes_birth_date_and_age(): void
