@@ -1747,6 +1747,25 @@ const handleKeyDown = (e) => {
   if (e.key === 'ArrowLeft') prevGalleryImage();
 };
 
+// Lightweight polling so "ที่นั่งสุดท้าย" reflects bookings made by others while
+// the page is open. Pauses when the tab is hidden; keeps the selected round fresh.
+let schedulePoll = null;
+const SCHEDULE_POLL_MS = 25000;
+
+async function refreshSchedules() {
+  if (typeof document !== 'undefined' && document.hidden) return;
+  try {
+    const sRes = await api.get(`/trips/${route.params.slug}/schedules`);
+    schedules.value = sRes.data.data;
+    if (selectedSchedule.value) {
+      const match = schedules.value.find(s => s.id === selectedSchedule.value.id);
+      if (match) selectedSchedule.value = match;
+    }
+  } catch (e) {
+    // transient — keep current data
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await api.get(`/trips/${route.params.slug}`);
@@ -1758,7 +1777,8 @@ onMounted(async () => {
     schedulesLoading.value = true;
     const sRes = await api.get(`/trips/${route.params.slug}/schedules`);
     schedules.value = sRes.data.data;
-    
+    schedulePoll = setInterval(refreshSchedules, SCHEDULE_POLL_MS);
+
     // Auto-select schedule and region from query params
     if (route.query.schedule) {
       const scheduleId = Number(route.query.schedule);
@@ -1807,6 +1827,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
   if (sectorObserver) sectorObserver.disconnect();
+  if (schedulePoll) clearInterval(schedulePoll);
   document.body.style.overflow = '';
 });
 

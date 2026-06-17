@@ -27,6 +27,12 @@ class TripController extends Controller
         if ($request->filled('difficulty')) {
             $query->where('difficulty', $request->difficulty);
         }
+        if ($request->filled('min_days')) {
+            $query->where('duration_days', '>=', (int) $request->min_days);
+        }
+        if ($request->filled('max_days')) {
+            $query->where('duration_days', '<=', (int) $request->max_days);
+        }
         if ($request->filled('date')) {
             $query->whereHas('schedules', function ($q) use ($request) {
                 $q->where('departure_date', $request->date)->where('status', 'open');
@@ -36,8 +42,8 @@ class TripController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('location', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('location', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -48,7 +54,7 @@ class TripController extends Controller
         }])->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
         $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
-        return $this->paginated($trips->through(fn($trip) => new TripResource($trip)));
+        return $this->paginated($trips->through(fn ($trip) => new TripResource($trip)));
     }
 
     public function featured(): JsonResponse
@@ -63,6 +69,39 @@ class TripController extends Controller
         $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->success(TripResource::collection($trips));
+    }
+
+    /**
+     * Trips with at least one OPEN upcoming round that is almost full
+     * (1–5 seats left). Sorted most-urgent first. Powers the "ใกล้เต็มแล้ว" rail.
+     */
+    public function almostFull(): JsonResponse
+    {
+        $trips = Trip::where('status', 'active')
+            ->with(['photos', 'schedules' => function ($q) {
+                $q->where('status', 'open')
+                    ->where('departure_date', '>=', now()->startOfDay())
+                    ->with('pickupPoints');
+            }])
+            ->get();
+
+        $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
+
+        $almost = $trips
+            ->map(function ($trip) {
+                $seats = $trip->schedules
+                    ->filter(fn ($s) => $s->available_seats > 0)
+                    ->min(fn ($s) => $s->available_seats);
+
+                return ['trip' => $trip, 'seats' => $seats];
+            })
+            ->filter(fn ($row) => $row['seats'] !== null && $row['seats'] <= 5)
+            ->sortBy('seats')
+            ->take(10)
+            ->map(fn ($row) => $row['trip'])
+            ->values();
+
+        return $this->success(TripResource::collection($almost));
     }
 
     public function show(string $slug): JsonResponse

@@ -43,6 +43,31 @@ export function scheduleAvailabilityLabel(schedule) {
     : 'เต็มแล้ว';
 }
 
+// ─── Trip-level scarcity (uses TripResource `seats_left`) ───
+// seats_left = lowest available among the trip's OPEN upcoming rounds.
+// null = no open/upcoming round, or all such rounds are full.
+
+export function tripSeatsLeft(trip) {
+  const n = trip?.seats_left;
+  return typeof n === 'number' ? n : null;
+}
+
+// 'last' (≤2, red + pulse) | 'soon' (≤5, amber) | null
+export function tripScarcityLevel(trip) {
+  const n = tripSeatsLeft(trip);
+  if (n === null || n <= 0) return null;
+  if (n <= 2) return 'last';
+  if (n <= 5) return 'soon';
+  return null;
+}
+
+export function tripScarcityLabel(trip) {
+  const n = tripSeatsLeft(trip);
+  const level = tripScarcityLevel(trip);
+  if (!level) return null;
+  return level === 'last' ? `เหลือ ${n} ที่นั่งสุดท้าย` : `ใกล้เต็ม · เหลือ ${n} ที่`;
+}
+
 export function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 }

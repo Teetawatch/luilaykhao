@@ -64,6 +64,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('throttle:api')->group(function () {
         Route::get('trips', [TripController::class, 'index']);
         Route::get('trips/featured', [TripController::class, 'featured']);
+        Route::get('trips/almost-full', [TripController::class, 'almostFull']);
         Route::get('trips/{slug}', [TripController::class, 'show']);
         Route::get('trips/{slug}/schedules', [TripController::class, 'schedules']);
     });

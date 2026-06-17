@@ -13,6 +13,8 @@ export const useTripsStore = defineStore('trips', {
       difficulty: '',
       search: '',
       date: '',
+      min_days: '',
+      max_days: '',
     },
   }),
 
@@ -25,6 +27,8 @@ export const useTripsStore = defineStore('trips', {
         if (this.filters.difficulty) params.difficulty = this.filters.difficulty;
         if (this.filters.search) params.search = this.filters.search;
         if (this.filters.date) params.date = this.filters.date;
+        if (this.filters.min_days) params.min_days = this.filters.min_days;
+        if (this.filters.max_days) params.max_days = this.filters.max_days;
 
         const res = await api.get('/trips', { params });
         this.trips = res.data.data;
@@ -32,6 +36,23 @@ export const useTripsStore = defineStore('trips', {
       } finally {
         this.loading = false;
       }
+    },
+
+    // One-off lookup for the Trip Finder quiz — returns trips without touching
+    // the listing state. Pass { type, difficulty, min_days, max_days }.
+    async findTrips(params = {}) {
+      const clean = { per_page: 12 };
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== '' && v != null) clean[k] = v;
+      }
+      const res = await api.get('/trips', { params: clean });
+      return res.data.data;
+    },
+
+    // Trips with an open upcoming round that's almost full (powers the home rail).
+    async fetchAlmostFull() {
+      const res = await api.get('/trips/almost-full');
+      return res.data.data;
     },
 
     async fetchTrip(slug) {
@@ -56,7 +77,7 @@ export const useTripsStore = defineStore('trips', {
     },
 
     clearFilters() {
-      this.filters = { type: '', difficulty: '', search: '', date: '' };
+      this.filters = { type: '', difficulty: '', search: '', date: '', min_days: '', max_days: '' };
     },
   },
 });

@@ -26,6 +26,8 @@ class TripResource extends JsonResource
             $prices->push((float) $this->price_per_person);
         }
 
+        $seatsLeft = $this->lowestOpenSeats();
+
         return [
             'id' => $this->id,
             'title' => $this->title,
@@ -60,9 +62,37 @@ class TripResource extends JsonResource
             'review_count' => $this->reviews()->where('is_approved', true)->count(),
             'rating_breakdown' => $this->ratingBreakdown(),
             'confirmed_passengers_count' => $this->confirmed_passengers_count,
+            'seats_left' => $seatsLeft,
+            'is_almost_full' => $seatsLeft !== null && $seatsLeft <= 5,
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
             'created_at' => $this->created_at?->toISOString(),
         ];
+    }
+
+    /**
+     * Lowest available-seat count across this trip's OPEN, upcoming schedules —
+     * the basis for the "almost full / last seats" scarcity cue. Null when the
+     * schedules relation isn't loaded or no open upcoming round exists.
+     */
+    private function lowestOpenSeats(): ?int
+    {
+        if (! $this->relationLoaded('schedules')) {
+            return null;
+        }
+
+        $today = now()->startOfDay();
+        $open = $this->schedules->filter(
+            fn ($s) => $s->status === 'open'
+                && $s->available_seats > 0
+                && $s->departure_date
+                && $s->departure_date->gte($today)
+        );
+
+        if ($open->isEmpty()) {
+            return null;
+        }
+
+        return (int) $open->min(fn ($s) => $s->available_seats);
     }
 
     /**

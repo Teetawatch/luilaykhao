@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth';
 
 import HomePage from '../pages/HomePage.vue';
 import TripsPage from '../pages/TripsPage.vue';
+import TripFinderPage from '../pages/TripFinderPage.vue';
 import TripDetailPage from '../pages/TripDetailPage.vue';
 import BookingPage from '../pages/BookingPage.vue';
 import PaymentPage from '../pages/PaymentPage.vue';
@@ -80,6 +81,16 @@ const routes = [
     meta: {
       title: 'ค้นหาทริปทั้งหมด | เดินป่า ดำน้ำตื้น เช่ารถตู้',
       description: 'รวมทริปท่องเที่ยวทั่วประเทศไทย ทริปเดินป่าภูกระดึง ภูสอยดาว เขาช้างเผือก ทริปดำน้ำตื้นดูปะการัง และบริการเช่ารถตู้นำเที่ยว VIP พร้อมคนขับ จองออนไลน์ได้เลย',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/find',
+    name: 'trip-finder',
+    component: TripFinderPage,
+    meta: {
+      title: 'ค้นหาทริปที่ใช่ | ตอบไม่กี่ข้อ เจอทริปที่ชอบ',
+      description: 'ตอบคำถามสั้นๆ เรื่องประเภทกิจกรรม ระดับความท้าทาย และจำนวนวัน แล้วให้เราแนะนำทริปที่ใช่สำหรับคุณ',
       ogType: 'website'
     }
   },

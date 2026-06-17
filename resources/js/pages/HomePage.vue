@@ -102,6 +102,16 @@
             <span class="text-xl md:text-base lg:text-lg pr-1">เริ่มเที่ยวเลย</span>
           </button>
         </div>
+
+        <!-- Trip Finder CTA -->
+        <router-link
+          to="/find"
+          class="group inline-flex items-center gap-2 mt-6 text-white/90 hover:text-white font-bold text-sm md:text-base bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 px-5 py-2.5 rounded-full transition-all duration-300 hover:-translate-y-0.5"
+        >
+          <span class="material-symbols-rounded text-[20px] text-[var(--color-accent-light)]">auto_awesome</span>
+          ยังเลือกไม่ถูก? ให้เราช่วยหาทริปที่ใช่ใน 1 นาที
+          <span class="material-symbols-rounded text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+        </router-link>
       </div>
 
       <!-- Scroll indicator -->
@@ -113,6 +123,23 @@
       
       <!-- Bottom fade -->
       <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[var(--color-sand)] to-transparent z-0"></div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         ALMOST-FULL RAIL — รีบจองก่อนเต็ม
+    ══════════════════════════════════════════ -->
+    <section v-if="almostFullTrips.length" class="bg-[var(--color-sand)] pt-10 pb-2">
+      <div class="max-w-7xl mx-auto px-6 md:px-8">
+        <div class="flex items-center gap-2 mb-5">
+          <span class="material-symbols-rounded text-red-500">local_fire_department</span>
+          <h2 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">ใกล้เต็มแล้ว · รีบจอง</h2>
+        </div>
+        <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
+          <div v-for="t in almostFullTrips" :key="t.id" class="snap-start shrink-0 w-72">
+            <TripCard :trip="t" />
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ══════════════════════════════════════════
@@ -750,6 +777,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
+import TripCard from '../components/TripCard.vue';
 
 const wishlistStore = useWishlistStore();
 const router = useRouter();
@@ -769,6 +797,7 @@ let sliderInterval = null;
 
 const trips = ref([]);
 const featuredTrips = ref([]);
+const almostFullTrips = ref([]);
 const loading = ref(true);
 
 
@@ -1027,16 +1056,18 @@ onMounted(async () => {
   }
 
   try {
-    const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes] = await Promise.all([
+    const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes, almostFullRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
       api.get('/trips/featured'),
       api.get('/reviews', { params: { per_page: 30 } }),
       api.get('/stats'),
       api.get('/trips', { params: { per_page: 100 } }),
+      api.get('/trips/almost-full'),
     ]);
     trips.value = tripsRes.data.data;
     allTrips.value = allTripsRes.data.data || [];
     featuredTrips.value = featuredRes.data.data || [];
+    almostFullTrips.value = almostFullRes.data.data || [];
     reviews.value = reviewsRes.data.data || [];
     
     // Update stats

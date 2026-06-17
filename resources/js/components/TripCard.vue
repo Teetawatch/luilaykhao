@@ -16,6 +16,11 @@
       
       <!-- Badges -->
       <div class="absolute top-4 left-4 flex flex-col gap-2">
+        <span v-if="scarcity" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide shadow-lg backdrop-blur-md flex items-center gap-1"
+          :class="scarcity.level === 'last' ? 'bg-red-500 text-white animate-pulse' : 'bg-amber-400 text-amber-950'">
+          <span class="material-symbols-rounded text-[14px]">local_fire_department</span>
+          {{ scarcity.label }}
+        </span>
         <span class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide shadow-lg backdrop-blur-md"
           :class="typeBadgeClass">
           {{ typeLabel }}
@@ -107,9 +112,15 @@
 <script setup>
 import { computed } from 'vue';
 import { useWishlistStore } from '../stores/wishlist';
+import { tripScarcityLabel, tripScarcityLevel } from '../lib/scheduleHelpers';
 
 const props = defineProps({
   trip: { type: Object, required: true },
+});
+
+const scarcity = computed(() => {
+  const label = tripScarcityLabel(props.trip);
+  return label ? { label, level: tripScarcityLevel(props.trip) } : null;
 });
 
 const wishlist = useWishlistStore();
