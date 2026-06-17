@@ -44,12 +44,21 @@ class RecoverSlipsToPrivate extends Command
         $this->line('Source disks ที่จะค้นหา: '.implode(', ', $candidates));
         $this->newLine();
 
+        // The slip disks run with throw=false, so a failed upload (e.g. the
+        // token can't write the bucket) makes writeStream() silently return
+        // false. Force this disk to throw while we copy so failures are loud and
+        // we never report a write that didn't happen.
+        config(["filesystems.disks.{$target}.throw" => true]);
+        Storage::forgetDisk($target);
         $to = Storage::disk($target);
 
         $alreadyThere = 0; // อยู่บน r2_private แล้ว — ปกติดี
-        $recovered = 0;    // เจอบน disk อื่น แล้วคัดลอกขึ้น (หรือจะคัดลอกถ้า --apply)
+        $recovered = 0;    // คัดลอกขึ้นสำเร็จ (หรือจะคัดลอกถ้า --apply)
+        $candidate = 0;    // เจอบน source พร้อมคัดลอก (โหมด audit)
         $missing = [];     // หาไม่เจอที่ไหนเลย — กู้ไม่ได้
+        $failed = [];      // เจอ source แต่เขียนขึ้น target ไม่สำเร็จ
         $foundOn = [];     // นับว่าเจอจาก disk ไหนบ้าง
+        $firstError = null;
 
         foreach ($this->slipPaths() as [$path, $owner]) {
             // HEAD on the private bucket returns 200 for an existing object but
@@ -77,24 +86,44 @@ class RecoverSlipsToPrivate extends Command
                 continue;
             }
 
-            $foundOn[$src] = ($foundOn[$src] ?? 0) + 1;
-            $recovered++;
+            if (! $apply) {
+                $candidate++;
+                $foundOn[$src] = ($foundOn[$src] ?? 0) + 1;
 
-            if ($apply) {
+                continue;
+            }
+
+            try {
                 $stream = Storage::disk($src)->readStream($path);
                 $to->writeStream($path, $stream);
                 if (is_resource($stream)) {
                     fclose($stream);
                 }
+                $recovered++;
+                $foundOn[$src] = ($foundOn[$src] ?? 0) + 1;
+            } catch (\Throwable $e) {
+                $failed[] = "{$owner}  ({$path})";
+                $firstError ??= $e->getMessage();
             }
         }
 
         $this->newLine();
         $this->info("อยู่บน '{$target}' อยู่แล้ว: {$alreadyThere}");
-        $verb = $apply ? 'คัดลอกขึ้น' : 'คัดลอกได้ (รอ --apply)';
-        $this->info("{$verb} '{$target}': {$recovered}");
+
+        if ($apply) {
+            $this->info("คัดลอกขึ้น '{$target}' สำเร็จ: {$recovered}");
+        } else {
+            $this->info("คัดลอกได้ (รอ --apply): {$candidate}");
+        }
         foreach ($foundOn as $disk => $count) {
             $this->line("    └ เจอบน '{$disk}': {$count}");
+        }
+
+        if ($failed !== []) {
+            $this->newLine();
+            $this->error('เขียนขึ้น "'.$target.'" ไม่สำเร็จ: '.count($failed));
+            $this->error('สาเหตุ (รายแรก): '.$firstError);
+            $this->warn('มักเกิดจาก R2 API token ไม่มีสิทธิ์เขียน bucket นี้ — ตรวจสอบ token ให้เป็น Object Read & Write ที่ครอบคลุม bucket แล้วรันใหม่');
         }
 
         if ($missing !== []) {
@@ -105,12 +134,12 @@ class RecoverSlipsToPrivate extends Command
             }
         }
 
-        if (! $apply && $recovered > 0) {
+        if (! $apply && $candidate > 0) {
             $this->newLine();
-            $this->warn("รัน `php artisan slips:recover --apply` เพื่อคัดลอก {$recovered} ไฟล์ขึ้น '{$target}' จริง");
+            $this->warn("รัน `php artisan slips:recover --apply` เพื่อคัดลอก {$candidate} ไฟล์ขึ้น '{$target}' จริง");
         }
 
-        return self::SUCCESS;
+        return $failed === [] ? self::SUCCESS : self::FAILURE;
     }
 
     /**
