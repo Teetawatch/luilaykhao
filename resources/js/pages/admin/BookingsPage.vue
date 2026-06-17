@@ -636,8 +636,14 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Schedule ID</label>
-                <input v-model.number="editForm.schedule_id" type="number" min="1" />
+                <label>รอบเดินทาง</label>
+                <select v-model.number="editForm.schedule_id" @change="onEditScheduleChange">
+                  <option v-for="schedule in editScheduleOptions" :key="schedule.id" :value="schedule.id">
+                    {{ formatScheduleRange(schedule) }}
+                    <template v-if="schedule.available_seats != null"> · ว่าง {{ schedule.available_seats }} ที่</template>
+                  </option>
+                </select>
+                <small v-if="editSchedulesLoading" class="field-hint">กำลังโหลดรอบเดินทาง...</small>
               </div>
               <div class="form-group">
                 <label>ประเภทการจอง</label>
@@ -721,7 +727,15 @@
               </div>
               <div class="form-group">
                 <label>ช่องทางชำระ</label>
-                <input v-model.trim="editForm.payment_method" type="text" placeholder="promptpay / mobile_banking / manual" />
+                <select v-model="editForm.payment_method">
+                  <option value="">— ไม่ระบุ —</option>
+                  <option value="promptpay">พร้อมเพย์</option>
+                  <option value="mobile_banking">Mobile Banking</option>
+                  <option value="bank_transfer">โอนผ่านธนาคาร</option>
+                  <option value="credit_card">บัตรเครดิต</option>
+                  <option value="cash">เงินสด</option>
+                  <option value="manual">แอดมินสร้างให้</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>รหัสอ้างอิง</label>
@@ -765,16 +779,26 @@
             </div>
             <div class="form-grid">
               <div class="form-group">
-                <label>Pickup Point ID</label>
-                <input v-model.number="editForm.pickup_point_id" type="number" min="1" />
+                <label>จุดรับ</label>
+                <select v-model.number="editForm.pickup_point_id" @change="onEditPickupChange" :disabled="!editPickupPoints.length">
+                  <option value="">— ไม่ระบุจุดรับ —</option>
+                  <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
+                    {{ point.region_label || point.region }} · {{ point.pickup_location }}
+                  </option>
+                </select>
+                <small v-if="!editPickupPoints.length" class="field-hint">รอบเดินทางนี้ยังไม่มีจุดรับให้เลือก</small>
               </div>
-              <div class="form-group">
-                <label>ภูมิภาคจุดรับ</label>
-                <input v-model.trim="editForm.pickup_region" type="text" />
+              <div class="form-group" v-if="editForm.is_join_trip">
+                <label>ภูมิภาคจุดรับ (จอยทริป)</label>
+                <input v-model.trim="editForm.pickup_region" type="text" placeholder="เช่น กรุงเทพฯ" />
+                <small class="field-hint">ใช้กรณีจอยทริปที่ระบุเฉพาะภูมิภาค ไม่มีจุดรับตายตัว</small>
               </div>
               <div class="form-group full-span">
-                <label>ที่นั่ง (คั่นด้วย comma)</label>
+                <label>ที่นั่ง</label>
                 <input v-model.trim="editForm.seat_ids_text" type="text" placeholder="A1, A2, B1" :disabled="editForm.is_join_trip" />
+                <small class="field-hint">
+                  {{ editForm.is_join_trip ? 'จอยทริปไม่ต้องระบุที่นั่ง' : 'พิมพ์รหัสที่นั่งคั่นด้วยเครื่องหมายจุลภาค จำนวนต้องเท่ากับผู้โดยสาร' }}
+                </small>
               </div>
             </div>
           </section>
@@ -1138,9 +1162,11 @@
 <script setup>
 import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useAdminStore } from '../../stores/admin';
+import { useToast } from '../../lib/toast';
 import api from '../../lib/axios';
 
 const admin = useAdminStore();
+const toast = useToast();
 
 const filters = reactive({
   search: '',
@@ -1200,6 +1226,8 @@ const editForm = reactive({
 
 const allTrips = ref([]);
 const availableSchedules = ref([]);
+const editSchedules = ref([]);
+const editSchedulesLoading = ref(false);
 const manualForm = reactive({
   trip_id: '',
   schedule_id: '',
@@ -1212,6 +1240,23 @@ const manualForm = reactive({
 
 const bookings = computed(() => Array.isArray(admin.bookings.data) ? admin.bookings.data : []);
 const hasActiveFilters = computed(() => Boolean(filters.search || filters.status || filters.date || filters.booking_type || filters.payment_type));
+
+// รอบเดินทางที่เลือกได้ใน modal แก้ไข — รวมรอบปัจจุบันของการจองไว้เสมอ
+// แม้จะเป็นรอบในอดีตที่ไม่ถูกดึงมาในรายการ
+const editScheduleOptions = computed(() => {
+  const list = [...editSchedules.value];
+  const current = editBooking.value?.schedule;
+  if (current?.id && !list.some((s) => s.id === current.id)) {
+    list.unshift(current);
+  }
+  return list;
+});
+
+// จุดรับของรอบเดินทางที่กำลังเลือกอยู่ใน modal แก้ไข
+const editPickupPoints = computed(() => {
+  const schedule = editScheduleOptions.value.find((s) => s.id === editForm.schedule_id);
+  return schedule?.pickup_points || editBooking.value?.schedule?.pickup_points || [];
+});
 
 const groupedBookings = computed(() => {
   const groups = new Map();
@@ -1313,7 +1358,7 @@ async function openDetail(booking) {
     const res = await api.get(`/admin/bookings/${booking.booking_ref}`);
     detailBooking.value = res.data?.data || booking;
   } catch (e) {
-    alert(e.response?.data?.message || 'ไม่สามารถโหลดรายละเอียดการจองได้');
+    toast.error(e.response?.data?.message || 'ไม่สามารถโหลดรายละเอียดการจองได้');
   } finally {
     loadingDetail.value = false;
   }
@@ -1327,21 +1372,56 @@ function closeDetail() {
 async function openEditModal(booking) {
   editBooking.value = booking;
   showEditModal.value = true;
+  editSchedules.value = [];
 
   try {
     const res = await api.get(`/admin/bookings/${booking.booking_ref}`);
     const fullBooking = res.data?.data || booking;
     editBooking.value = fullBooking;
     fillEditForm(fullBooking);
+    loadEditSchedules(fullBooking);
   } catch (e) {
     fillEditForm(booking);
-    alert(e.response?.data?.message || 'โหลดข้อมูลล่าสุดไม่ได้ จะแสดงข้อมูลเท่าที่มีอยู่');
+    loadEditSchedules(booking);
+    toast.error(e.response?.data?.message || 'โหลดข้อมูลล่าสุดไม่ได้ จะแสดงข้อมูลเท่าที่มีอยู่');
   }
+}
+
+// ดึงรอบเดินทางทั้งหมดของทริปนี้ มาให้เลือกใน dropdown แทนการพิมพ์ ID
+async function loadEditSchedules(booking) {
+  const tripId = booking?.schedule?.trip?.id || booking?.schedule?.trip_id;
+  if (!tripId) return;
+
+  editSchedulesLoading.value = true;
+  try {
+    const res = await api.get('/admin/schedules', { params: { trip_id: tripId, per_page: 100 } });
+    editSchedules.value = res.data?.data || [];
+  } catch (e) {
+    console.error('Failed to fetch schedules for edit', e);
+  } finally {
+    editSchedulesLoading.value = false;
+  }
+}
+
+// เมื่อเปลี่ยนรอบเดินทาง: ล้างจุดรับเดิมถ้าไม่อยู่ในรอบใหม่
+function onEditScheduleChange() {
+  const valid = editPickupPoints.value.some((p) => p.id === editForm.pickup_point_id);
+  if (!valid) {
+    editForm.pickup_point_id = '';
+    editForm.pickup_region = '';
+  }
+}
+
+// เมื่อเลือกจุดรับจาก dropdown: เติม region ให้อัตโนมัติ
+function onEditPickupChange() {
+  const point = editPickupPoints.value.find((p) => p.id === editForm.pickup_point_id);
+  editForm.pickup_region = point?.region || '';
 }
 
 function closeEditModal() {
   showEditModal.value = false;
   editBooking.value = null;
+  editSchedules.value = [];
   resetEditForm();
 }
 
@@ -1506,8 +1586,9 @@ async function doUpdateBooking() {
     if (detailBooking.value?.booking_ref === updated.booking_ref) {
       await openDetail(updated);
     }
+    toast.success('บันทึกข้อมูลการจองเรียบร้อยแล้ว');
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลการจอง');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลการจอง');
   } finally {
     submitting.value = false;
   }
@@ -1600,8 +1681,9 @@ async function doUpdateStatus() {
       await openDetail(statusBooking.value);
     }
     await fetchData(currentPage.value);
+    toast.success(`เปลี่ยนสถานะเป็น "${statusLabels[statusForm.status] || statusForm.status}" แล้ว`);
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะ');
   } finally {
     submitting.value = false;
   }
@@ -1614,9 +1696,11 @@ async function confirmDelete(booking) {
   submitting.value = true;
   try {
     await admin.deleteBooking(booking.booking_ref);
+    if (detailBooking.value?.booking_ref === booking.booking_ref) closeDetail();
     await fetchData(currentPage.value);
+    toast.success(`ลบการจอง ${booking.booking_ref} แล้ว`);
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาดในการลบการจอง');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการลบการจอง');
   } finally {
     submitting.value = false;
   }
@@ -1658,11 +1742,12 @@ async function doCreateManualBooking() {
     showManualModal.value = false;
     await fetchData();
     const newBooking = res.data?.data || res.data;
+    toast.success('สร้างการจองเรียบร้อยแล้ว');
     if (newBooking?.booking_ref) {
       await openDetail(newBooking);
     }
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาดในการสร้างการจอง');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการสร้างการจอง');
   } finally {
     submitting.value = false;
   }
@@ -1761,7 +1846,9 @@ function paymentMethodLabel(method) {
   const labels = {
     promptpay: 'พร้อมเพย์',
     mobile_banking: 'Mobile Banking',
+    bank_transfer: 'โอนผ่านธนาคาร',
     credit_card: 'บัตรเครดิต',
+    cash: 'เงินสด',
     manual: 'แอดมินสร้างให้',
   };
   return labels[method] || method || '-';
@@ -1883,6 +1970,7 @@ async function doTransferBooking() {
       await openDetail({ booking_ref: transferBookingRef.value });
     }
     await fetchData(currentPage.value);
+    toast.success(`ย้ายการจองไปยัง ${transferTargetUser.value.name} แล้ว`);
   } catch (e) {
     transferError.value = e.response?.data?.message || 'เกิดข้อผิดพลาดในการย้ายการจอง';
   } finally {
@@ -1910,20 +1998,24 @@ async function approveSlip(bookingRef, slipType, installmentNo = null) {
   try {
     await api.post(`/admin/bookings/${bookingRef}/slip/approve`, payload);
     await openDetail({ booking_ref: bookingRef });
+    await fetchData(currentPage.value);
+    toast.success('อนุมัติสลิปแล้ว');
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการอนุมัติสลิป');
   }
 }
 
 async function rejectSlip(bookingRef, slipType, installmentNo = null) {
-  const reason = prompt('ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ):') ?? '';
+  const reason = prompt('ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ):');
+  if (reason === null) return; // ผู้ใช้กดยกเลิก
   const payload = { slip_type: slipType, reason };
   if (installmentNo) payload.installment_no = installmentNo;
   try {
     await api.post(`/admin/bookings/${bookingRef}/slip/reject`, payload);
     await openDetail({ booking_ref: bookingRef });
+    toast.success('ปฏิเสธสลิปแล้ว');
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการปฏิเสธสลิป');
   }
 }
 
@@ -1931,8 +2023,9 @@ async function reverifySlip(bookingRef, slipType) {
   try {
     await api.post(`/admin/bookings/${bookingRef}/slip/reverify`, { slip_type: slipType });
     await openDetail({ booking_ref: bookingRef });
+    toast.info('ส่งสลิปตรวจสอบใหม่แล้ว');
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการตรวจสอบสลิป');
   }
 }
 </script>
@@ -2922,6 +3015,15 @@ async function reverifySlip(bookingRef, slipType) {
 
 .full-span {
   grid-column: 1 / -1;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .check-row {
