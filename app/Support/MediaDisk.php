@@ -69,6 +69,13 @@ class MediaDisk
             return null;
         }
 
+        // Slips always live under slips/. A path that doesn't (e.g. a "0" left
+        // behind by a failed upload that stored a falsy return value) would only
+        // ever mint a link to a non-existent object, so don't.
+        if (! str_starts_with($path, 'slips/')) {
+            return null;
+        }
+
         $expiry = now()->addMinutes($ttlMinutes);
 
         try {
