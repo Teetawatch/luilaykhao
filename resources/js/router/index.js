@@ -41,6 +41,7 @@ import AdminCalendar from '../pages/admin/CalendarPage.vue';
 import AdminCustomers from '../pages/admin/CustomersPage.vue';
 import AdminMaintenance from '../pages/admin/MaintenancePage.vue';
 import AdminReports from '../pages/admin/ReportsPage.vue';
+import AdminProfit from '../pages/admin/ProfitPage.vue';
 import AdminCheckIn from '../pages/admin/CheckInPage.vue';
 import AdminReviews from '../pages/admin/ReviewsPage.vue';
 import AdminLoyalty from '../pages/admin/LoyaltyPage.vue';
@@ -219,6 +220,7 @@ const routes = [
       { path: 'birthdate-followup', name: 'admin-birthdate-followup', component: AdminBirthdateFollowup },
       { path: 'maintenance', name: 'admin-maintenance', component: AdminMaintenance },
       { path: 'reports', name: 'admin-reports', component: AdminReports },
+      { path: 'finance', name: 'admin-finance', component: AdminProfit },
       { path: 'check-in', name: 'admin-checkin', component: AdminCheckIn },
       { path: 'chat', name: 'admin-chat', component: AdminChat },
       { path: 'announcements', name: 'admin-announcements', component: AdminAnnouncements },

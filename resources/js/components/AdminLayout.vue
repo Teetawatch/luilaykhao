@@ -112,6 +112,7 @@ const menuGroups = ref([
       { to: '/admin', icon: 'fas fa-tachometer-alt', label: 'แดชบอร์ด' },
       { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
       { to: '/admin/reports', icon: 'fas fa-chart-line', label: 'รายงาน' },
+      { to: '/admin/finance', icon: 'fas fa-money-bill-wave', label: 'สรุปกำไร/ค่าใช้จ่าย' },
     ],
     isOpen: true
   },

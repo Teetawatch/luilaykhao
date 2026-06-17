@@ -171,6 +171,11 @@ class TripSchedule extends Model
         return $this->hasMany(BookingSeat::class, 'schedule_id');
     }
 
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(ScheduleExpense::class, 'schedule_id')->orderBy('id');
+    }
+
     public function pickupPoints(): HasMany
     {
         return $this->hasMany(SchedulePickupPoint::class, 'schedule_id')->orderBy('sort_order');

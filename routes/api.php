@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
+use App\Http\Controllers\Api\V1\AdminFinanceController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
@@ -384,6 +385,21 @@ Route::prefix('v1')->group(function () {
         Route::get('reports/bookings', [AdminExtendedController::class, 'reportBookings']);
         Route::get('reports/revenue', [AdminExtendedController::class, 'reportRevenue']);
         Route::get('reports/vehicles', [AdminExtendedController::class, 'reportVehicles']);
+
+        // Finance — สรุปกำไร/ค่าใช้จ่ายต่อทริปและต่อรอบเดินทาง
+        Route::prefix('finance')->group(function () {
+            Route::get('trips', [AdminFinanceController::class, 'tripProfitSummary']);
+            Route::get('trips/{tripId}/schedules', [AdminFinanceController::class, 'tripScheduleProfit']);
+            Route::get('trips/{tripId}/templates', [AdminFinanceController::class, 'templates']);
+            Route::post('trips/{tripId}/templates', [AdminFinanceController::class, 'storeTemplate']);
+            Route::put('trips/{tripId}/templates/{id}', [AdminFinanceController::class, 'updateTemplate']);
+            Route::delete('trips/{tripId}/templates/{id}', [AdminFinanceController::class, 'deleteTemplate']);
+            Route::get('schedules/{scheduleId}/expenses', [AdminFinanceController::class, 'expenses']);
+            Route::post('schedules/{scheduleId}/expenses', [AdminFinanceController::class, 'storeExpense']);
+            Route::post('schedules/{scheduleId}/expenses/apply-templates', [AdminFinanceController::class, 'applyTemplates']);
+            Route::put('schedules/{scheduleId}/expenses/{id}', [AdminFinanceController::class, 'updateExpense']);
+            Route::delete('schedules/{scheduleId}/expenses/{id}', [AdminFinanceController::class, 'deleteExpense']);
+        });
 
         // QR Check-in
         Route::post('check-in', [AdminExtendedController::class, 'checkIn']);

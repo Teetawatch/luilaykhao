@@ -58,6 +58,11 @@ class Trip extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function expenseTemplates(): HasMany
+    {
+        return $this->hasMany(ExpenseTemplate::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function photos(): HasMany
     {
         return $this->hasMany(TripPhoto::class)->orderBy('sort_order')->orderBy('id');

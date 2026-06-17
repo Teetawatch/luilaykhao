@@ -344,5 +344,61 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    // ─── Finance: สรุปกำไร/ค่าใช้จ่าย ──────────────
+    async fetchFinanceTrips(params = {}) {
+      const res = await api.get('/admin/finance/trips', { params });
+      return res.data.data;
+    },
+
+    async fetchTripScheduleProfit(tripId) {
+      const res = await api.get(`/admin/finance/trips/${tripId}/schedules`);
+      return res.data.data;
+    },
+
+    async fetchExpenseTemplates(tripId) {
+      const res = await api.get(`/admin/finance/trips/${tripId}/templates`);
+      return res.data.data;
+    },
+
+    async createExpenseTemplate(tripId, data) {
+      const res = await api.post(`/admin/finance/trips/${tripId}/templates`, data);
+      return res.data.data;
+    },
+
+    async updateExpenseTemplate(tripId, id, data) {
+      const res = await api.put(`/admin/finance/trips/${tripId}/templates/${id}`, data);
+      return res.data.data;
+    },
+
+    async deleteExpenseTemplate(tripId, id) {
+      const res = await api.delete(`/admin/finance/trips/${tripId}/templates/${id}`);
+      return res.data;
+    },
+
+    async fetchScheduleExpenses(scheduleId) {
+      const res = await api.get(`/admin/finance/schedules/${scheduleId}/expenses`);
+      return res.data.data;
+    },
+
+    async createScheduleExpense(scheduleId, data) {
+      const res = await api.post(`/admin/finance/schedules/${scheduleId}/expenses`, data);
+      return res.data.data;
+    },
+
+    async applyExpenseTemplates(scheduleId) {
+      const res = await api.post(`/admin/finance/schedules/${scheduleId}/expenses/apply-templates`);
+      return res.data;
+    },
+
+    async updateScheduleExpense(scheduleId, id, data) {
+      const res = await api.put(`/admin/finance/schedules/${scheduleId}/expenses/${id}`, data);
+      return res.data.data;
+    },
+
+    async deleteScheduleExpense(scheduleId, id) {
+      const res = await api.delete(`/admin/finance/schedules/${scheduleId}/expenses/${id}`);
+      return res.data.data;
+    },
+
   },
 });
