@@ -92,15 +92,10 @@
                     </div>
                     <template v-else>
                       <div class="sched-list-head">
-                        <span class="sched-count">{{ visibleSchedules.length }} / {{ detail.schedules.length }} รอบเดินทาง</span>
-                        <button class="btn-secondary btn-xs" :class="{ 'is-on': upcomingOnly }" @click="upcomingOnly = !upcomingOnly">
-                          <span class="material-symbols-rounded" style="font-size:16px;">{{ upcomingOnly ? 'check_box' : 'check_box_outline_blank' }}</span>
-                          เฉพาะที่กำลังจะถึง
-                        </button>
+                        <span class="sched-count">{{ detail.schedules.length }} รอบเดินทาง (รวมรอบที่ผ่านมาแล้ว)</span>
                       </div>
                       <div class="sched-scroll">
-                        <div v-if="!visibleSchedules.length" class="exp-empty">ไม่มีรอบที่กำลังจะถึง</div>
-                        <div v-for="s in visibleSchedules" :key="s.schedule_id" class="sched-card">
+                        <div v-for="s in detail.schedules" :key="s.schedule_id" class="sched-card">
                           <div class="sched-head">
                             <div class="sched-date">
                               <span class="material-symbols-rounded">calendar_month</span>
@@ -321,12 +316,6 @@ const trips = ref([]);
 const expanded = ref(null);
 const detail = ref(null);
 const detailLoading = ref(false);
-const upcomingOnly = ref(false);
-const todayStr = new Date().toISOString().slice(0, 10);
-const visibleSchedules = computed(() => {
-  const all = detail.value?.schedules || [];
-  return upcomingOnly.value ? all.filter(s => s.departure_date && s.departure_date >= todayStr) : all;
-});
 
 // expense modal state
 const showExpenses = ref(false);
@@ -631,7 +620,6 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .schedule-list { display: flex; flex-direction: column; gap: 10px; }
 .sched-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .sched-count { font-size: 13px; font-weight: 700; color: #6b7280; }
-.sched-list-head .btn-secondary.is-on { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
 .sched-scroll { display: flex; flex-direction: column; gap: 10px; max-height: min(60vh, 520px); overflow-y: auto; padding-right: 4px; }
 .sched-card { background: #fff; border: 1px solid #eef0f3; border-radius: 10px; padding: 12px 14px; }
 .sched-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
