@@ -90,25 +90,37 @@
                       <span class="material-symbols-rounded">event_busy</span>
                       <p>ยังไม่มีรอบเดินทาง</p>
                     </div>
-                    <div v-for="s in detail.schedules" :key="s.schedule_id" class="sched-card">
-                      <div class="sched-head">
-                        <div class="sched-date">
-                          <span class="material-symbols-rounded">calendar_month</span>
-                          {{ s.departure_label }}
-                          <span class="status-badge" :class="`status-${s.status}`">{{ s.status }}</span>
-                        </div>
-                        <button class="btn-secondary btn-xs" @click="openExpenses(t, s)">
-                          <span class="material-symbols-rounded" style="font-size:16px;">receipt_long</span>
-                          จัดการค่าใช้จ่าย ({{ s.expenses.length }})
+                    <template v-else>
+                      <div class="sched-list-head">
+                        <span class="sched-count">{{ visibleSchedules.length }} / {{ detail.schedules.length }} รอบเดินทาง</span>
+                        <button class="btn-secondary btn-xs" :class="{ 'is-on': upcomingOnly }" @click="upcomingOnly = !upcomingOnly">
+                          <span class="material-symbols-rounded" style="font-size:16px;">{{ upcomingOnly ? 'check_box' : 'check_box_outline_blank' }}</span>
+                          เฉพาะที่กำลังจะถึง
                         </button>
                       </div>
-                      <div class="sched-figures">
-                        <span>รายรับจริง <b class="money-green">{{ formatMoney(s.paid_revenue) }}</b></span>
-                        <span>ค่าใช้จ่าย <b class="money-orange">{{ formatMoney(s.expense_total) }}</b></span>
-                        <span>กำไร <b :class="profitClass(s.profit)">{{ formatMoney(s.profit) }}</b></span>
-                        <span class="sched-pax">{{ s.passengers_count }} คน · {{ s.bookings_count }} จอง</span>
+                      <div class="sched-scroll">
+                        <div v-if="!visibleSchedules.length" class="exp-empty">ไม่มีรอบที่กำลังจะถึง</div>
+                        <div v-for="s in visibleSchedules" :key="s.schedule_id" class="sched-card">
+                          <div class="sched-head">
+                            <div class="sched-date">
+                              <span class="material-symbols-rounded">calendar_month</span>
+                              {{ s.departure_label }}
+                              <span class="status-badge" :class="`status-${s.status}`">{{ s.status }}</span>
+                            </div>
+                            <button class="btn-secondary btn-xs" @click="openExpenses(t, s)">
+                              <span class="material-symbols-rounded" style="font-size:16px;">receipt_long</span>
+                              จัดการค่าใช้จ่าย ({{ s.expenses.length }})
+                            </button>
+                          </div>
+                          <div class="sched-figures">
+                            <span>รายรับจริง <b class="money-green">{{ formatMoney(s.paid_revenue) }}</b></span>
+                            <span>ค่าใช้จ่าย <b class="money-orange">{{ formatMoney(s.expense_total) }}</b></span>
+                            <span>กำไร <b :class="profitClass(s.profit)">{{ formatMoney(s.profit) }}</b></span>
+                            <span class="sched-pax">{{ s.passengers_count }} คน · {{ s.bookings_count }} จอง</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    </template>
                   </div>
                 </td>
               </tr>
@@ -309,6 +321,12 @@ const trips = ref([]);
 const expanded = ref(null);
 const detail = ref(null);
 const detailLoading = ref(false);
+const upcomingOnly = ref(false);
+const todayStr = new Date().toISOString().slice(0, 10);
+const visibleSchedules = computed(() => {
+  const all = detail.value?.schedules || [];
+  return upcomingOnly.value ? all.filter(s => s.departure_date && s.departure_date >= todayStr) : all;
+});
 
 // expense modal state
 const showExpenses = ref(false);
@@ -611,6 +629,10 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .schedule-loading { display: flex; justify-content: center; padding: 16px; }
 .spinner-sm { width: 22px; height: 22px; }
 .schedule-list { display: flex; flex-direction: column; gap: 10px; }
+.sched-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sched-count { font-size: 13px; font-weight: 700; color: #6b7280; }
+.sched-list-head .btn-secondary.is-on { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+.sched-scroll { display: flex; flex-direction: column; gap: 10px; max-height: min(60vh, 520px); overflow-y: auto; padding-right: 4px; }
 .sched-card { background: #fff; border: 1px solid #eef0f3; border-radius: 10px; padding: 12px 14px; }
 .sched-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .sched-date { display: flex; align-items: center; gap: 8px; font-weight: 700; }
