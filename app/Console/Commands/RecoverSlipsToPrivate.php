@@ -52,7 +52,12 @@ class RecoverSlipsToPrivate extends Command
         $foundOn = [];     // นับว่าเจอจาก disk ไหนบ้าง
 
         foreach ($this->slipPaths() as [$path, $owner]) {
-            if ($to->exists($path)) {
+            // HEAD on the private bucket returns 200 for an existing object but
+            // 403 (not 404) for a missing one when the token lacks ListBucket —
+            // and Flysystem turns that 403 into an exception. existsOn() swallows
+            // it and reports false, which is exactly what we want: a file we
+            // can't confirm is there gets re-fetched from a source disk below.
+            if ($this->existsOn($target, $path)) {
                 $alreadyThere++;
 
                 continue;
