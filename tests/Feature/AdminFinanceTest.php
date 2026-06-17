@@ -208,6 +208,52 @@ class AdminFinanceTest extends TestCase
         $this->assertDatabaseMissing('schedule_expenses', ['id' => $expense->id]);
     }
 
+    public function test_copy_expenses_to_other_rounds(): void
+    {
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $targetA = $this->makeSchedule($trip);
+        $targetB = $this->makeSchedule($trip);
+
+        $e1 = ScheduleExpense::create(['schedule_id' => $source->id, 'name' => 'ค่าน้ำมัน', 'amount' => 1200, 'note' => 'เต็มถัง']);
+        $e2 = ScheduleExpense::create(['schedule_id' => $source->id, 'name' => 'ค่าอาหาร', 'amount' => 800]);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/finance/schedules/{$source->id}/expenses/copy-to", [
+                'expense_ids' => [$e1->id, $e2->id],
+                'target_schedule_ids' => [$targetA->id, $targetB->id, $source->id], // source ต้องถูกข้าม
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.created', 4)
+            ->assertJsonPath('data.targets_count', 2);
+
+        // ปลายทางได้สำเนา (เป็นรายการอิสระ ไม่ผูก template) พร้อมหมายเหตุ
+        $this->assertDatabaseHas('schedule_expenses', [
+            'schedule_id' => $targetA->id, 'name' => 'ค่าน้ำมัน', 'note' => 'เต็มถัง',
+            'expense_template_id' => null, 'created_by' => $this->admin->id,
+        ]);
+        $this->assertEquals(2, ScheduleExpense::where('schedule_id', $targetA->id)->count());
+        $this->assertEquals(2, ScheduleExpense::where('schedule_id', $targetB->id)->count());
+        // ต้นทางไม่ถูกเพิ่มซ้ำ
+        $this->assertEquals(2, ScheduleExpense::where('schedule_id', $source->id)->count());
+    }
+
+    public function test_copy_ignores_expense_ids_from_other_schedules(): void
+    {
+        $trip = $this->makeTrip();
+        $source = $this->makeSchedule($trip);
+        $target = $this->makeSchedule($trip);
+        $foreign = ScheduleExpense::create(['schedule_id' => $target->id, 'name' => 'ของรอบอื่น', 'amount' => 500]);
+
+        // expense_ids ที่ไม่ได้อยู่ในรอบต้นทาง → ถือว่าไม่มีรายการให้คัดลอก
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/finance/schedules/{$source->id}/expenses/copy-to", [
+                'expense_ids' => [$foreign->id],
+                'target_schedule_ids' => [$target->id],
+            ])
+            ->assertStatus(422);
+    }
+
     public function test_non_admin_is_forbidden(): void
     {
         $trip = $this->makeTrip();

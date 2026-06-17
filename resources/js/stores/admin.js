@@ -390,6 +390,11 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    async copyExpensesTo(scheduleId, payload) {
+      const res = await api.post(`/admin/finance/schedules/${scheduleId}/expenses/copy-to`, payload);
+      return res.data;
+    },
+
     async updateScheduleExpense(scheduleId, id, data) {
       const res = await api.put(`/admin/finance/schedules/${scheduleId}/expenses/${id}`, data);
       return res.data.data;

@@ -142,15 +142,23 @@
               <span class="material-symbols-rounded" style="font-size:16px;">playlist_add</span>
               ใช้รายการประจำ
             </button>
+            <button class="btn-secondary btn-xs" @click="openCopy" :disabled="expBusy || !selectedIds.length" title="เลือกรายการในตารางก่อน">
+              <span class="material-symbols-rounded" style="font-size:16px;">content_copy</span>
+              คัดลอกไปรอบอื่น<template v-if="selectedIds.length"> ({{ selectedIds.length }})</template>
+            </button>
           </div>
 
           <div class="loading-state" v-if="expLoading"><div class="spinner spinner-sm"></div></div>
           <table class="data-table exp-table" v-else>
             <thead>
-              <tr><th>รายการ</th><th class="num">จำนวนเงิน</th><th>หมายเหตุ</th><th></th></tr>
+              <tr>
+                <th class="check-col"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" :disabled="!expenses.length" /></th>
+                <th>รายการ</th><th class="num">จำนวนเงิน</th><th>หมายเหตุ</th><th></th>
+              </tr>
             </thead>
             <tbody>
-              <tr v-for="e in expenses" :key="e.id">
+              <tr v-for="e in expenses" :key="e.id" :class="{ 'row-selected': selectedIds.includes(e.id) }">
+                <td class="check-col"><input type="checkbox" :value="e.id" v-model="selectedIds" /></td>
                 <td>
                   {{ e.name }}
                   <span v-if="e.expense_template_id" class="tmpl-chip" title="มาจากรายการประจำ">ประจำ</span>
@@ -162,7 +170,7 @@
                   <button class="btn-icon btn-delete" title="ลบ" @click="removeExpense(e)"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
                 </td>
               </tr>
-              <tr v-if="!expenses.length"><td colspan="4" class="exp-empty">ยังไม่มีรายการค่าใช้จ่าย</td></tr>
+              <tr v-if="!expenses.length"><td colspan="5" class="exp-empty">ยังไม่มีรายการค่าใช้จ่าย</td></tr>
             </tbody>
           </table>
 
@@ -188,6 +196,41 @@
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Copy-to-other-rounds modal ─── -->
+    <div class="modal-overlay" v-if="showCopy">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <h2>คัดลอกไปรอบอื่น</h2>
+          <button class="modal-close" @click="showCopy = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <p class="page-subtitle" style="margin-bottom:12px;">คัดลอก {{ selectedIds.length }} รายการที่เลือก ไปยังรอบเดินทางที่ติ๊กด้านล่าง</p>
+
+          <div v-if="!copyTargets.length" class="exp-empty">ทริปนี้ไม่มีรอบเดินทางอื่นให้คัดลอกไป</div>
+          <template v-else>
+            <label class="copy-row copy-all">
+              <input type="checkbox" :checked="allTargetsSelected" @change="toggleAllTargets" />
+              <span>เลือกทุกรอบ</span>
+            </label>
+            <div class="copy-list">
+              <label v-for="s in copyTargets" :key="s.schedule_id" class="copy-row">
+                <input type="checkbox" :value="s.schedule_id" v-model="targetIds" />
+                <span>{{ s.departure_label }}</span>
+                <span class="status-badge" :class="`status-${s.status}`">{{ s.status }}</span>
+              </label>
+            </div>
+          </template>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showCopy = false">ยกเลิก</button>
+          <button class="btn-primary" :disabled="copyBusy || !targetIds.length" @click="doCopy">
+            <span class="material-symbols-rounded animate-spin" v-if="copyBusy" style="font-size:16px;">sync</span>
+            คัดลอก
+          </button>
         </div>
       </div>
     </div>
@@ -252,7 +295,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 
 const admin = useAdminStore();
@@ -276,6 +319,15 @@ const expSummary = ref(null);
 const expLoading = ref(false);
 const expBusy = ref(false);
 const expForm = reactive({ id: null, name: '', amount: null, note: '' });
+
+// row selection + copy-to-other-rounds state
+const selectedIds = ref([]);
+const allSelected = computed(() => expenses.value.length > 0 && selectedIds.value.length === expenses.value.length);
+const showCopy = ref(false);
+const targetIds = ref([]);
+const copyBusy = ref(false);
+const copyTargets = computed(() => (detail.value?.schedules || []).filter(s => s.schedule_id !== activeSchedule.value?.schedule_id));
+const allTargetsSelected = computed(() => copyTargets.value.length > 0 && targetIds.value.length === copyTargets.value.length);
 
 // templates modal state
 const showTemplates = ref(false);
@@ -358,10 +410,48 @@ async function loadExpenses() {
     const data = await admin.fetchScheduleExpenses(activeSchedule.value.schedule_id);
     expenses.value = data.expenses;
     expSummary.value = data.summary;
+    // keep selection only for rows that still exist
+    const ids = expenses.value.map(e => e.id);
+    selectedIds.value = selectedIds.value.filter(id => ids.includes(id));
   } catch (e) {
     alert(e.response?.data?.message || 'ไม่สามารถโหลดค่าใช้จ่ายได้');
   } finally {
     expLoading.value = false;
+  }
+}
+
+function toggleSelectAll(ev) {
+  selectedIds.value = ev.target.checked ? expenses.value.map(e => e.id) : [];
+}
+
+// ─── Copy selected expenses to other rounds ───
+function openCopy() {
+  if (!selectedIds.value.length) return;
+  targetIds.value = [];
+  showCopy.value = true;
+}
+
+function toggleAllTargets(ev) {
+  targetIds.value = ev.target.checked ? copyTargets.value.map(s => s.schedule_id) : [];
+}
+
+async function doCopy() {
+  if (!targetIds.value.length) return;
+  copyBusy.value = true;
+  try {
+    const res = await admin.copyExpensesTo(activeSchedule.value.schedule_id, {
+      expense_ids: [...selectedIds.value],
+      target_schedule_ids: [...targetIds.value],
+    });
+    showCopy.value = false;
+    selectedIds.value = [];
+    alert(res.message);
+    // target rounds changed — refresh trip detail + summary figures
+    await refreshAfterExpenseChange();
+  } catch (e) {
+    alert(e.response?.data?.message || 'คัดลอกไม่สำเร็จ');
+  } finally {
+    copyBusy.value = false;
   }
 }
 
@@ -543,4 +633,15 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .exp-form .form-group { flex: 1; min-width: 140px; margin: 0; }
 .exp-form .exp-amount { flex: 0 0 140px; }
 .exp-form-actions { display: flex; gap: 8px; }
+
+.check-col { width: 36px; text-align: center; }
+.check-col input { width: 16px; height: 16px; cursor: pointer; }
+.exp-table tr.row-selected { background: #eff6ff; }
+
+.copy-all { font-weight: 700; border-bottom: 1px solid #eef0f3; margin-bottom: 6px; }
+.copy-list { display: flex; flex-direction: column; gap: 2px; max-height: 280px; overflow-y: auto; }
+.copy-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: 8px; cursor: pointer; }
+.copy-row:hover { background: #f7f8fa; }
+.copy-row input { width: 16px; height: 16px; cursor: pointer; }
+.copy-row .status-badge { margin-left: auto; }
 </style>

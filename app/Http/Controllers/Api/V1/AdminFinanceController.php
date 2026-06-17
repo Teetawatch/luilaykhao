@@ -307,6 +307,58 @@ class AdminFinanceController extends Controller
         ], $created > 0 ? "เพิ่มรายการประจำ {$created} รายการ" : 'ไม่มีรายการประจำใหม่ให้เพิ่ม');
     }
 
+    /**
+     * คัดลอกค่าใช้จ่ายที่เลือกจากรอบนี้ไปยังรอบอื่น — จะได้ไม่ต้องพิมพ์ใหม่ทุกรอบ
+     * คัดลอกเป็นรายการอิสระ (ไม่ผูก template) เพื่อไม่ให้อ้างข้าม template ของทริปอื่น
+     */
+    public function copyExpensesTo(Request $request, int $scheduleId): JsonResponse
+    {
+        $source = TripSchedule::findOrFail($scheduleId);
+
+        $validated = $request->validate([
+            'expense_ids' => ['required', 'array', 'min:1'],
+            'expense_ids.*' => ['integer'],
+            'target_schedule_ids' => ['required', 'array', 'min:1'],
+            'target_schedule_ids.*' => ['integer'],
+        ]);
+
+        $sourceExpenses = ScheduleExpense::where('schedule_id', $source->id)
+            ->whereIn('id', $validated['expense_ids'])
+            ->get();
+
+        if ($sourceExpenses->isEmpty()) {
+            return $this->error('ไม่พบรายการค่าใช้จ่ายที่เลือก', 422);
+        }
+
+        // ตัดรอบต้นทางออก เผื่อถูกเลือกมาด้วย
+        $targets = TripSchedule::whereIn('id', $validated['target_schedule_ids'])
+            ->where('id', '!=', $source->id)
+            ->get();
+
+        if ($targets->isEmpty()) {
+            return $this->error('กรุณาเลือกรอบเดินทางปลายทางอย่างน้อย 1 รอบ', 422);
+        }
+
+        $created = 0;
+        foreach ($targets as $target) {
+            foreach ($sourceExpenses as $expense) {
+                $target->expenses()->create([
+                    'expense_template_id' => null,
+                    'name' => $expense->name,
+                    'amount' => $expense->amount,
+                    'note' => $expense->note,
+                    'created_by' => $request->user()?->id,
+                ]);
+                $created++;
+            }
+        }
+
+        return $this->success([
+            'created' => $created,
+            'targets_count' => $targets->count(),
+        ], "คัดลอก {$sourceExpenses->count()} รายการไปยัง {$targets->count()} รอบเดินทาง");
+    }
+
     public function updateExpense(Request $request, int $scheduleId, int $id): JsonResponse
     {
         $expense = ScheduleExpense::where('schedule_id', $scheduleId)->findOrFail($id);

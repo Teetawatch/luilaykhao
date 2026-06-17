@@ -397,6 +397,7 @@ Route::prefix('v1')->group(function () {
             Route::get('schedules/{scheduleId}/expenses', [AdminFinanceController::class, 'expenses']);
             Route::post('schedules/{scheduleId}/expenses', [AdminFinanceController::class, 'storeExpense']);
             Route::post('schedules/{scheduleId}/expenses/apply-templates', [AdminFinanceController::class, 'applyTemplates']);
+            Route::post('schedules/{scheduleId}/expenses/copy-to', [AdminFinanceController::class, 'copyExpensesTo']);
             Route::put('schedules/{scheduleId}/expenses/{id}', [AdminFinanceController::class, 'updateExpense']);
             Route::delete('schedules/{scheduleId}/expenses/{id}', [AdminFinanceController::class, 'deleteExpense']);
         });
