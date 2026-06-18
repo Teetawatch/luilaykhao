@@ -11,7 +11,7 @@
                 <div style="margin-top:8px;font-size:13.5px;opacity:.95;">
                     {{ $booking->schedule->trip->title }}
                     @if ($booking->schedule->departure_date)
-                        · {{ $booking->schedule->departure_date->format('d/m/Y') }}
+                        · {{ $booking->schedule->departure_date->format('d/m/') }}{{ $booking->schedule->departure_date->year + 543 }}
                     @endif
                 </div>
             @endif
@@ -41,17 +41,17 @@
             <form method="POST" action="{{ route('public.birthdate.booking.submit', request()->route('token')) }}">
                 @csrf
                 @foreach ($booking->passengers as $i => $passenger)
-                    <label class="field" for="bd-{{ $passenger->id }}">
+                    <label class="field">
                         {{ $i + 1 }}. {{ $passenger->title }} {{ $passenger->name }}
                     </label>
-                    <input
-                        type="date"
-                        id="bd-{{ $passenger->id }}"
-                        name="birth_dates[{{ $passenger->id }}]"
-                        max="{{ now()->toDateString() }}"
-                        min="1900-01-01"
-                        value="{{ old('birth_dates.'.$passenger->id, $passenger->birth_date?->format('Y-m-d')) }}"
-                    >
+                    @include('birthdate.dob-fields', [
+                        'dayName' => "birth_days[$passenger->id]",
+                        'monthName' => "birth_months[$passenger->id]",
+                        'yearName' => "birth_years[$passenger->id]",
+                        'selDay' => old("birth_days.$passenger->id", $passenger->birth_date?->day),
+                        'selMonth' => old("birth_months.$passenger->id", $passenger->birth_date?->month),
+                        'selYear' => old("birth_years.$passenger->id", $passenger->birth_date?->year),
+                    ])
                 @endforeach
                 <button type="submit" class="btn">บันทึกวันเกิด</button>
             </form>

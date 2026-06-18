@@ -90,11 +90,9 @@ class BookingBirthdateTest extends TestCase
         $token = $booking->ensureBirthdateToken();
 
         $this->post("/booking-birthdate/{$token}", [
-            'birth_dates' => [
-                $leader->id => '1985-01-01',
-                $friendA->id => '1990-06-15',
-                $friendB->id => '1995-12-31',
-            ],
+            'birth_days' => [$leader->id => 1, $friendA->id => 15, $friendB->id => 31],
+            'birth_months' => [$leader->id => 1, $friendA->id => 6, $friendB->id => 12],
+            'birth_years' => [$leader->id => 1985, $friendA->id => 1990, $friendB->id => 1995],
         ])
             ->assertRedirect(route('public.birthdate.booking.show', $token))
             ->assertSessionHas('saved', true);
@@ -118,14 +116,19 @@ class BookingBirthdateTest extends TestCase
         $token = $booking->ensureBirthdateToken();
 
         // Future date is rejected; nothing saved.
+        $future = now()->endOfYear();
         $this->post("/booking-birthdate/{$token}", [
-            'birth_dates' => [$p1->id => now()->addYear()->toDateString()],
-        ])->assertSessionHasErrors('birth_dates.'.$p1->id);
+            'birth_days' => [$p1->id => $future->day],
+            'birth_months' => [$p1->id => $future->month],
+            'birth_years' => [$p1->id => $future->year],
+        ])->assertSessionHasErrors('birth_dates');
         $this->assertNull($p1->fresh()->birth_date);
 
         // Blank entries are simply skipped — partial save is allowed.
         $this->post("/booking-birthdate/{$token}", [
-            'birth_dates' => [$p1->id => '1992-02-02', $p2->id => ''],
+            'birth_days' => [$p1->id => 2],
+            'birth_months' => [$p1->id => 2],
+            'birth_years' => [$p1->id => 1992],
         ])->assertSessionHas('saved');
         $this->assertSame('1992-02-02', $p1->fresh()->birth_date->format('Y-m-d'));
         $this->assertNull($p2->fresh()->birth_date);
@@ -145,10 +148,9 @@ class BookingBirthdateTest extends TestCase
         $token = $booking->ensureBirthdateToken();
 
         $this->post("/booking-birthdate/{$token}", [
-            'birth_dates' => [
-                $mine->id => '1991-01-01',
-                $foreign->id => '1991-01-01',
-            ],
+            'birth_days' => [$mine->id => 1, $foreign->id => 1],
+            'birth_months' => [$mine->id => 1, $foreign->id => 1],
+            'birth_years' => [$mine->id => 1991, $foreign->id => 1991],
         ])->assertSessionHas('saved');
 
         $this->assertSame('1991-01-01', $mine->fresh()->birth_date->format('Y-m-d'));

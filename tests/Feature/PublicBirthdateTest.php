@@ -92,7 +92,7 @@ class PublicBirthdateTest extends TestCase
         $user = $this->makeCustomer();
         $token = $user->ensureBirthdateToken();
 
-        $this->post("/birthdate/{$token}", ['birth_date' => '1992-08-10'])
+        $this->post("/birthdate/{$token}", ['birth_day' => 10, 'birth_month' => 8, 'birth_year' => 1992])
             ->assertRedirect(route('public.birthdate.show', $token))
             ->assertSessionHas('saved', true);
 
@@ -104,8 +104,14 @@ class PublicBirthdateTest extends TestCase
         $user = $this->makeCustomer();
         $token = $user->ensureBirthdateToken();
 
-        $this->post("/birthdate/{$token}", ['birth_date' => now()->addYear()->toDateString()])
-            ->assertSessionHasErrors('birth_date');
+        // A future date that stays within the current year still exercises the
+        // "must be in the past" check in composeBirthDate (→ birth_day error).
+        $future = now()->endOfYear();
+        $this->post("/birthdate/{$token}", [
+            'birth_day' => $future->day,
+            'birth_month' => $future->month,
+            'birth_year' => $future->year,
+        ])->assertSessionHasErrors('birth_day');
 
         $this->assertNull($user->fresh()->birth_date);
     }
@@ -140,7 +146,7 @@ class PublicBirthdateTest extends TestCase
             'id_card' => '1111111111111',
         ]);
 
-        $this->post("/birthdate/{$token}", ['birth_date' => '1990-01-01'])->assertSessionHas('saved');
+        $this->post("/birthdate/{$token}", ['birth_day' => 1, 'birth_month' => 1, 'birth_year' => 1990])->assertSessionHas('saved');
 
         $this->assertSame('1990-01-01', $self->fresh()->birth_date->format('Y-m-d'));
         $this->assertNull($friend->fresh()->birth_date);

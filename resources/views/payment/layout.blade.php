@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>@yield('title', 'ชำระค่างวด') · Luilaykhao</title>
+    {{-- Primary site font: DB Heavent (licensed, self-hosted, same-origin only) --}}
+    <link rel="stylesheet" href="{{ asset('fonts/db-heavent/db-heavent.css') }}?v={{ filemtime(public_path('fonts/db-heavent/db-heavent.css')) }}">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', 'Noto Sans Thai', sans-serif;
+            font-family: 'DB Heavent', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f1f5f9;
             color: #0f172a;
             line-height: 1.6;

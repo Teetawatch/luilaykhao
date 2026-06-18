@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>@yield('title', 'กรอกวันเกิด') · Luilaykhao</title>
+    {{-- Primary site font: DB Heavent (licensed, self-hosted, same-origin only) --}}
+    <link rel="stylesheet" href="{{ asset('fonts/db-heavent/db-heavent.css') }}?v={{ filemtime(public_path('fonts/db-heavent/db-heavent.css')) }}">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Sarabun', 'Noto Sans Thai', sans-serif;
+            font-family: 'DB Heavent', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f1f5f9;
             color: #0f172a;
             line-height: 1.6;
@@ -24,10 +26,16 @@
         .hello strong { color: #0f172a; }
         .lead { font-size: 13.5px; color: #64748b; margin-bottom: 20px; }
         label.field { display: block; font-size: 13px; color: #475569; margin-bottom: 6px; font-weight: 600; }
-        input[type=date] {
+        input[type=date], select {
             width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 13px 12px;
-            font-size: 16px; font-family: inherit; background: #fff; margin-bottom: 16px;
+            font-size: 16px; font-family: inherit; background: #fff; color: #0f172a; margin-bottom: 16px;
         }
+        select { -webkit-appearance: none; appearance: none; }
+        .dob-row { display: flex; gap: 8px; margin-bottom: 16px; }
+        .dob-row select { margin-bottom: 0; padding: 13px 8px; }
+        .dob-row .dob-day { flex: 0 0 68px; }
+        .dob-row .dob-month { flex: 1 1 auto; }
+        .dob-row .dob-year { flex: 0 0 92px; }
         .btn {
             display: block; width: 100%; border: none; border-radius: 12px; padding: 15px;
             background: #059669; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;

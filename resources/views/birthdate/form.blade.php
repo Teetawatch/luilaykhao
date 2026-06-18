@@ -33,7 +33,7 @@
 
             @if ($user->birth_date)
                 <div class="current">
-                    วันเกิดปัจจุบันในระบบ: {{ $user->birth_date->format('d/m/Y') }}
+                    วันเกิดปัจจุบันในระบบ: {{ $user->birth_date->format('d/m/') }}{{ $user->birth_date->year + 543 }}
                     @if ($user->age !== null) · อายุ {{ $user->age }} ปี @endif
                     <br>เลือกใหม่ด้านล่างได้หากต้องการแก้ไข
                 </div>
@@ -41,16 +41,16 @@
 
             <form method="POST" action="{{ route('public.birthdate.submit', request()->route('token')) }}">
                 @csrf
-                <label class="field" for="birth_date">วัน/เดือน/ปีเกิด</label>
-                <input
-                    type="date"
-                    id="birth_date"
-                    name="birth_date"
-                    max="{{ now()->toDateString() }}"
-                    min="1900-01-01"
-                    value="{{ old('birth_date', $user->birth_date?->format('Y-m-d')) }}"
-                    required
-                >
+                <label class="field">วัน/เดือน/ปีเกิด</label>
+                @include('birthdate.dob-fields', [
+                    'dayName' => 'birth_day',
+                    'monthName' => 'birth_month',
+                    'yearName' => 'birth_year',
+                    'selDay' => old('birth_day', $user->birth_date?->day),
+                    'selMonth' => old('birth_month', $user->birth_date?->month),
+                    'selYear' => old('birth_year', $user->birth_date?->year),
+                    'required' => true,
+                ])
                 <button type="submit" class="btn">บันทึกวันเกิด</button>
             </form>
 

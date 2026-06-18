@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -26,16 +27,23 @@ class PublicBirthdateController extends Controller
     {
         $user = $this->resolveUser($token);
 
-        $validated = $request->validate([
-            'birth_date' => ['required', 'date', 'before:today', 'after:1900-01-01'],
+        $request->validate([
+            'birth_day' => ['required', 'integer', 'between:1,31'],
+            'birth_month' => ['required', 'integer', 'between:1,12'],
+            'birth_year' => ['required', 'integer', 'min:1900', 'max:'.now()->year],
         ], [
-            'birth_date.required' => 'กรุณาเลือกวัน/เดือน/ปีเกิด',
-            'birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
-            'birth_date.after' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
+            'birth_day.required' => 'กรุณาเลือกวัน/เดือน/ปีเกิด',
+            'birth_month.required' => 'กรุณาเลือกวัน/เดือน/ปีเกิด',
+            'birth_year.required' => 'กรุณาเลือกวัน/เดือน/ปีเกิด',
         ]);
 
-        $user->update(['birth_date' => $validated['birth_date']]);
-        $this->propagateToUpcomingTrips($user, $validated['birth_date']);
+        $date = $this->composeBirthDate($request->birth_year, $request->birth_month, $request->birth_day);
+        if (! $date) {
+            return back()->withInput()->withErrors(['birth_day' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง']);
+        }
+
+        $user->update(['birth_date' => $date->toDateString()]);
+        $this->propagateToUpcomingTrips($user, $date->toDateString());
 
         return redirect()
             ->route('public.birthdate.show', $token)
@@ -73,6 +81,30 @@ class PublicBirthdateController extends Controller
         return User::where('birthdate_token', trim($token))->firstOrFail();
     }
 
+    /**
+     * Build a valid birth date from the day/month/year dropdowns (year submitted
+     * as A.D. — the พ.ศ. shown to the user is display-only). Returns null when the
+     * combination is incomplete, not a real calendar date, or not in the past.
+     */
+    private function composeBirthDate($year, $month, $day): ?CarbonImmutable
+    {
+        if (! $year || ! $month || ! $day) {
+            return null;
+        }
+
+        $y = (int) $year;
+        $m = (int) $month;
+        $d = (int) $day;
+
+        if ($y < 1900 || ! checkdate($m, $d, $y)) {
+            return null;
+        }
+
+        $date = CarbonImmutable::create($y, $m, $d)->startOfDay();
+
+        return $date->lessThan(CarbonImmutable::now()->startOfDay()) ? $date : null;
+    }
+
     /* ───── Per-booking link — covers everyone in the booking (e.g. booked for 9) ───── */
 
     public function showBooking(string $token): View
@@ -84,26 +116,31 @@ class PublicBirthdateController extends Controller
     {
         $booking = $this->resolveBooking($token);
 
-        $validated = $request->validate([
-            'birth_dates' => ['array'],
-            'birth_dates.*' => ['nullable', 'date', 'before:today', 'after:1900-01-01'],
-        ], [
-            'birth_dates.*.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
-            'birth_dates.*.after' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
-        ]);
+        $days = $request->input('birth_days', []);
+        $months = $request->input('birth_months', []);
+        $years = $request->input('birth_years', []);
 
-        $dates = $validated['birth_dates'] ?? [];
         // Restrict writes to passengers that actually belong to this booking.
         $passengers = $booking->passengers->keyBy('id');
 
-        foreach ($dates as $passengerId => $date) {
-            if (! $date) {
+        foreach ($passengers as $passengerId => $passenger) {
+            $day = $days[$passengerId] ?? null;
+            $month = $months[$passengerId] ?? null;
+            $year = $years[$passengerId] ?? null;
+
+            // Leave untouched when this passenger's row was left blank.
+            if (! $day && ! $month && ! $year) {
                 continue;
             }
-            $passenger = $passengers->get((int) $passengerId);
-            if ($passenger) {
-                $passenger->update(['birth_date' => $date]);
+
+            $date = $this->composeBirthDate($year, $month, $day);
+            if (! $date) {
+                return back()->withInput()->withErrors([
+                    'birth_dates' => 'วัน/เดือน/ปีเกิดของผู้เดินทางบางท่านไม่ถูกต้อง กรุณาตรวจสอบ',
+                ]);
             }
+
+            $passenger->update(['birth_date' => $date->toDateString()]);
         }
 
         $this->syncBookerProfile($booking->fresh('passengers'));
