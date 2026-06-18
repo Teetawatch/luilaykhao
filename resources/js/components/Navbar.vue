@@ -103,34 +103,38 @@
           
           <!-- Utility Actions (Search, Wishlist, Login) -->
           <div class="flex items-center gap-4">
-            <!-- Search -->
-            <div class="relative flex items-center transition-all duration-300">
-              <button 
-                v-if="!desktopSearchExpanded"
-                @click="toggleDesktopSearch"
-                class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-300"
+            <!-- Search — เปิดเป็นแผงลอยใต้ไอคอน ไม่ดันเมนู -->
+            <div ref="desktopSearchRef" class="relative flex items-center">
+              <button
+                @click.stop="toggleDesktopSearch"
+                class="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300"
+                :class="desktopSearchExpanded ? 'text-primary bg-sand/50' : 'text-text-mid hover:text-primary hover:bg-sand/50'"
                 title="ค้นหา"
               >
-                <span class="material-symbols-rounded text-[20px]">search</span>
+                <span class="material-symbols-rounded text-[20px]">{{ desktopSearchExpanded ? 'close' : 'search' }}</span>
               </button>
-              
-              <div v-else class="relative w-[180px] lg:w-[220px] flex items-center animate-in fade-in zoom-in-95 duration-300">
-                <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
-                <input 
-                  type="text" 
-                  v-model="searchQuery" 
-                  ref="desktopSearchInput"
-                  @keyup.enter="doSearch(); desktopSearchExpanded = false"
-                  @blur="!searchQuery && (desktopSearchExpanded = false)"
-                  placeholder="ค้นหา..." 
-                  class="w-full bg-sand/30 border-none rounded-full py-2 pl-9 pr-8 text-[12px] font-bold text-text-dark outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-                <button 
-                  @click="desktopSearchExpanded = false; searchQuery = ''" 
-                  class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
-                >
-                  <span class="material-symbols-rounded text-[14px]">close</span>
-                </button>
+
+              <div v-if="desktopSearchExpanded" class="absolute top-full right-0 w-[300px] pt-3 z-[60] animation-fade-slide">
+                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 p-2.5">
+                  <div class="relative flex items-center">
+                    <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
+                    <input
+                      type="text"
+                      v-model="searchQuery"
+                      ref="desktopSearchInput"
+                      @keyup.enter="doSearch(); desktopSearchExpanded = false"
+                      placeholder="ค้นหาทริป..."
+                      class="w-full bg-sand/30 border-none rounded-full py-2.5 pl-10 pr-9 text-[13px] font-bold text-text-dark outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
+                    <button
+                      v-if="searchQuery"
+                      @click="searchQuery = ''"
+                      class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
+                    >
+                      <span class="material-symbols-rounded text-[14px]">close</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -676,6 +680,7 @@ const userDropdownRef = ref(null);
 const wishlistDropdownRef = ref(null);
 const notificationDropdownRef = ref(null);
 const desktopSearchInput = ref(null);
+const desktopSearchRef = ref(null);
 const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
 
@@ -730,6 +735,12 @@ function handleClickOutside(e) {
   }
   if (!notificationEl || !notificationEl.contains(e.target)) {
     notificationDropdownOpen.value = false;
+  }
+  const searchEl = Array.isArray(desktopSearchRef.value)
+    ? desktopSearchRef.value[0]
+    : desktopSearchRef.value;
+  if (!searchEl || !searchEl.contains(e.target)) {
+    desktopSearchExpanded.value = false;
   }
 }
 
