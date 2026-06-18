@@ -1020,9 +1020,17 @@ class AdminController extends Controller
             'total_amount' => ['nullable', 'numeric', 'min:0'],
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
             'payment_method' => ['nullable', 'string', 'max:100'],
-            'payment_type' => ['nullable', 'in:full,installment'],
+            'payment_type' => ['nullable', 'in:full,deposit,installment'],
             'installment_count' => ['nullable', 'integer', 'min:1', 'max:12'],
             'installment_interval_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'deposit_amount' => ['nullable', 'numeric', 'min:0'],
+            'balance_amount' => ['nullable', 'numeric', 'min:0'],
+            'balance_due_at' => ['nullable', 'date'],
+            'balance_paid_at' => ['nullable', 'date'],
+            'balance_payment_ref' => ['nullable', 'string', 'max:255'],
+            'balance_transfer_datetime' => ['nullable', 'date'],
+            'delete_balance_slip' => ['nullable', 'boolean'],
+            'balance_slip_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
             'payment_ref' => ['nullable', 'string', 'max:255'],
             'paid_at' => ['nullable', 'date'],
             'transfer_datetime' => ['nullable', 'date'],
@@ -1083,6 +1091,8 @@ class AdminController extends Controller
                     'qr_code', 'cancellation_reason', 'total_amount', 'paid_amount', 'payment_method',
                     'payment_type', 'installment_count', 'installment_interval_days', 'payment_ref',
                     'paid_at', 'transfer_datetime', 'cancelled_at', 'checked_in_at',
+                    'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_payment_ref',
+                    'balance_paid_at', 'balance_transfer_datetime',
                 ] as $field) {
                     if (array_key_exists($field, $data)) {
                         $bookingUpdates[$field] = $data[$field];
@@ -1113,6 +1123,17 @@ class AdminController extends Controller
                         Storage::disk(MediaDisk::slipDisk())->delete($booking->slip_path);
                     }
                     $bookingUpdates['slip_path'] = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
+                }
+
+                if (($data['delete_balance_slip'] ?? false) && $booking->balance_slip_path) {
+                    Storage::disk(MediaDisk::slipDisk())->delete($booking->balance_slip_path);
+                    $bookingUpdates['balance_slip_path'] = null;
+                }
+                if ($request->hasFile('balance_slip_image')) {
+                    if ($booking->balance_slip_path) {
+                        Storage::disk(MediaDisk::slipDisk())->delete($booking->balance_slip_path);
+                    }
+                    $bookingUpdates['balance_slip_path'] = $request->file('balance_slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
                 }
 
                 if ($bookingUpdates) {
@@ -1190,7 +1211,9 @@ class AdminController extends Controller
                     }
                 }
 
-                if (($data['payment_type'] ?? $booking->payment_type) === 'full') {
+                $effectiveType = $data['payment_type'] ?? $booking->payment_type;
+                if ($effectiveType !== 'installment') {
+                    // เปลี่ยนเป็นชำระเต็ม/มัดจำ — เคลียร์งวดผ่อนเดิมทิ้งพร้อมสลิป
                     if (array_key_exists('payment_type', $data)) {
                         foreach ($booking->installmentPayments as $payment) {
                             if ($payment->slip_path) {

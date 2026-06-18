@@ -95,6 +95,7 @@
         <select v-model="filters.payment_type" @change="fetchData()">
           <option value="">ทุกการชำระ</option>
           <option value="full">ชำระเต็ม</option>
+          <option value="deposit">มัดจำ</option>
           <option value="installment">ผ่อนชำระ</option>
         </select>
 
@@ -159,6 +160,7 @@
                     <span class="mini-badge">{{ booking.is_join_trip ? 'จอยทริป' : 'จองปกติ' }}</span>
                     <span v-if="booking.is_group" class="mini-badge group">กรุ๊ป</span>
                     <span v-if="booking.payment_type === 'installment'" class="mini-badge installment">ผ่อนชำระ</span>
+                    <span v-else-if="booking.payment_type === 'deposit'" class="mini-badge deposit">มัดจำ</span>
                   </div>
                 </div>
                 <div class="booking-card-status">
@@ -230,8 +232,12 @@
                     <div class="payment-progress">
                       <div :style="{ width: paymentProgress(booking) + '%' }"></div>
                     </div>
-                    <span class="payment-type" :class="booking.payment_type === 'installment' ? 'installment' : 'full'">
+                    <span class="payment-type" :class="booking.payment_type || 'full'">
                       {{ paymentTypeLabel(booking) }}
+                    </span>
+                    <span v-if="booking.payment_type === 'deposit' && Number(booking.balance_amount) > 0">
+                      คงเหลือมัดจำ {{ formatMoney(booking.balance_amount) }}
+                      <template v-if="booking.balance_due_at"> · ครบกำหนด {{ formatDate(booking.balance_due_at) }}</template>
                     </span>
                     <span v-if="booking.payment_method">ช่องทาง: {{ paymentMethodLabel(booking.payment_method) }}</span>
                   </div>
@@ -431,7 +437,15 @@
               <InfoItem label="รหัสอ้างอิง" :value="detailBooking.payment_ref || '-'" />
               <InfoItem label="ชำระเมื่อ" :value="formatDateTime(detailBooking.paid_at)" />
               <InfoItem label="วันเวลาโอนเงิน" :value="formatDateTime(detailBooking.transfer_datetime)" />
-              <InfoItem label="จำนวนงวด" :value="installmentSummary(detailBooking)" />
+              <InfoItem v-if="detailBooking.payment_type === 'installment'" label="จำนวนงวด" :value="installmentSummary(detailBooking)" />
+              <template v-if="detailBooking.payment_type === 'deposit'">
+                <InfoItem label="ยอดมัดจำ" :value="formatMoney(detailBooking.deposit_amount)" />
+                <InfoItem label="ยอดส่วนที่เหลือ" :value="formatMoney(detailBooking.balance_amount)" />
+                <InfoItem label="กำหนดชำระส่วนที่เหลือ" :value="formatDate(detailBooking.balance_due_at)" />
+                <InfoItem label="รหัสอ้างอิง (ส่วนที่เหลือ)" :value="detailBooking.balance_payment_ref || '-'" />
+                <InfoItem label="ชำระส่วนที่เหลือเมื่อ" :value="formatDateTime(detailBooking.balance_paid_at)" />
+                <InfoItem label="วันเวลาโอน (ส่วนที่เหลือ)" :value="formatDateTime(detailBooking.balance_transfer_datetime)" />
+              </template>
             </div>
 
             <div v-if="detailBooking.slip_url" class="slip-box">
@@ -709,6 +723,15 @@
               <span class="material-symbols-rounded">payments</span>
               การชำระเงินและสลิปหลัก
             </div>
+
+            <div class="pay-type-tabs">
+              <label v-for="opt in paymentTypeOptions" :key="opt.value" class="pay-type-tab" :class="{ active: editForm.payment_type === opt.value }">
+                <input type="radio" v-model="editForm.payment_type" :value="opt.value" />
+                <span class="material-symbols-rounded">{{ opt.icon }}</span>
+                {{ opt.label }}
+              </label>
+            </div>
+
             <div class="form-grid">
               <div class="form-group">
                 <label>ยอดรวม</label>
@@ -719,11 +742,8 @@
                 <input v-model.number="editForm.paid_amount" type="number" min="0" step="0.01" />
               </div>
               <div class="form-group">
-                <label>ประเภทชำระ</label>
-                <select v-model="editForm.payment_type">
-                  <option value="full">ชำระเต็มจำนวน</option>
-                  <option value="installment">ผ่อนชำระ</option>
-                </select>
+                <label>คงเหลือ</label>
+                <input :value="formatMoney(editRemaining)" type="text" readonly class="readonly-field" />
               </div>
               <div class="form-group">
                 <label>ช่องทางชำระ</label>
@@ -749,24 +769,75 @@
                 <label>วันเวลาโอน</label>
                 <input v-model="editForm.transfer_datetime" type="datetime-local" />
               </div>
-              <div class="form-group">
-                <label>จำนวนงวด</label>
-                <input v-model.number="editForm.installment_count" type="number" min="1" max="12" />
-              </div>
-              <div class="form-group">
-                <label>ระยะห่างงวด (วัน)</label>
-                <input v-model.number="editForm.installment_interval_days" type="number" min="1" />
-              </div>
               <div class="form-group full-span">
-                <label>แนบสลิปหลักใหม่</label>
+                <label>{{ editForm.payment_type === 'deposit' ? 'แนบสลิปมัดจำใหม่' : 'แนบสลิปหลักใหม่' }}</label>
                 <input type="file" accept="image/*,.pdf" @change="onMainSlipChange" />
                 <div class="slip-edit-row">
                   <a v-if="editForm.current_slip_url" :href="editForm.current_slip_url" target="_blank">เปิดสลิปปัจจุบัน</a>
                   <label v-if="editForm.current_slip_url" class="check-row inline">
                     <input v-model="editForm.delete_slip" type="checkbox" />
-                    <span>ลบสลิปหลักเดิม</span>
+                    <span>ลบสลิปเดิม</span>
                   </label>
                   <span v-if="editForm.slip_image">{{ editForm.slip_image.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ผ่อนชำระ: ตั้งค่าจำนวนงวด -->
+            <div v-if="editForm.payment_type === 'installment'" class="pay-subsection">
+              <p class="pay-subsection-title">ตั้งค่าการผ่อน</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>จำนวนงวด</label>
+                  <input v-model.number="editForm.installment_count" type="number" min="1" max="12" />
+                </div>
+                <div class="form-group">
+                  <label>ระยะห่างงวด (วัน)</label>
+                  <input v-model.number="editForm.installment_interval_days" type="number" min="1" />
+                </div>
+              </div>
+            </div>
+
+            <!-- มัดจำ: ยอดมัดจำ + ยอดส่วนที่เหลือ + สลิปยอดคงเหลือ -->
+            <div v-if="editForm.payment_type === 'deposit'" class="pay-subsection">
+              <p class="pay-subsection-title">ยอดมัดจำและส่วนที่เหลือ</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>ยอดมัดจำ</label>
+                  <input v-model.number="editForm.deposit_amount" type="number" min="0" step="0.01" />
+                </div>
+                <div class="form-group">
+                  <label>ยอดส่วนที่เหลือ</label>
+                  <input v-model.number="editForm.balance_amount" type="number" min="0" step="0.01" />
+                  <small class="field-hint">ยอดที่ลูกค้าต้องชำระเพิ่มหลังมัดจำ</small>
+                </div>
+                <div class="form-group">
+                  <label>กำหนดชำระส่วนที่เหลือ</label>
+                  <input v-model="editForm.balance_due_at" type="date" />
+                </div>
+                <div class="form-group">
+                  <label>รหัสอ้างอิง (ส่วนที่เหลือ)</label>
+                  <input v-model.trim="editForm.balance_payment_ref" type="text" />
+                </div>
+                <div class="form-group">
+                  <label>ชำระส่วนที่เหลือเมื่อ</label>
+                  <input v-model="editForm.balance_paid_at" type="datetime-local" />
+                </div>
+                <div class="form-group">
+                  <label>วันเวลาโอน (ส่วนที่เหลือ)</label>
+                  <input v-model="editForm.balance_transfer_datetime" type="datetime-local" />
+                </div>
+                <div class="form-group full-span">
+                  <label>แนบสลิปยอดส่วนที่เหลือใหม่</label>
+                  <input type="file" accept="image/*,.pdf" @change="onBalanceSlipChange" />
+                  <div class="slip-edit-row">
+                    <a v-if="editForm.current_balance_slip_url" :href="editForm.current_balance_slip_url" target="_blank">เปิดสลิปปัจจุบัน</a>
+                    <label v-if="editForm.current_balance_slip_url" class="check-row inline">
+                      <input v-model="editForm.delete_balance_slip" type="checkbox" />
+                      <span>ลบสลิปเดิม</span>
+                    </label>
+                    <span v-if="editForm.balance_slip_image">{{ editForm.balance_slip_image.name }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1217,6 +1288,15 @@ const editForm = reactive({
   transfer_datetime: '',
   installment_count: '',
   installment_interval_days: '',
+  deposit_amount: '',
+  balance_amount: '',
+  balance_due_at: '',
+  balance_payment_ref: '',
+  balance_paid_at: '',
+  balance_transfer_datetime: '',
+  current_balance_slip_url: '',
+  delete_balance_slip: false,
+  balance_slip_image: null,
   current_slip_url: '',
   delete_slip: false,
   slip_image: null,
@@ -1240,6 +1320,20 @@ const manualForm = reactive({
 
 const bookings = computed(() => Array.isArray(admin.bookings.data) ? admin.bookings.data : []);
 const hasActiveFilters = computed(() => Boolean(filters.search || filters.status || filters.date || filters.booking_type || filters.payment_type));
+
+// ตัวเลือกประเภทการชำระในฟอร์มแก้ไข (full / deposit / installment)
+const paymentTypeOptions = [
+  { value: 'full', label: 'ชำระเต็มจำนวน', icon: 'paid' },
+  { value: 'deposit', label: 'มัดจำ', icon: 'savings' },
+  { value: 'installment', label: 'ผ่อนชำระ', icon: 'calendar_month' },
+];
+
+// ยอดคงเหลือที่คำนวณสดในฟอร์มแก้ไข (ยอดรวม − ชำระแล้ว)
+const editRemaining = computed(() => {
+  const total = moneyNumber(editForm.total_amount);
+  const paid = moneyNumber(editForm.paid_amount);
+  return Math.max(total - paid, 0);
+});
 
 // รอบเดินทางที่เลือกได้ใน modal แก้ไข — รวมรอบปัจจุบันของการจองไว้เสมอ
 // แม้จะเป็นรอบในอดีตที่ไม่ถูกดึงมาในรายการ
@@ -1450,6 +1544,15 @@ function resetEditForm() {
     transfer_datetime: '',
     installment_count: '',
     installment_interval_days: '',
+    deposit_amount: '',
+    balance_amount: '',
+    balance_due_at: '',
+    balance_payment_ref: '',
+    balance_paid_at: '',
+    balance_transfer_datetime: '',
+    current_balance_slip_url: '',
+    delete_balance_slip: false,
+    balance_slip_image: null,
     current_slip_url: '',
     delete_slip: false,
     slip_image: null,
@@ -1488,6 +1591,15 @@ function fillEditForm(booking) {
     transfer_datetime: toDatetimeInput(booking.transfer_datetime),
     installment_count: booking.installment_count || '',
     installment_interval_days: booking.installment_interval_days || '',
+    deposit_amount: booking.deposit_amount != null ? moneyNumber(booking.deposit_amount) : '',
+    balance_amount: booking.balance_amount != null ? moneyNumber(booking.balance_amount) : '',
+    balance_due_at: toDateInput(booking.balance_due_at),
+    balance_payment_ref: booking.balance_payment_ref || '',
+    balance_paid_at: toDatetimeInput(booking.balance_paid_at),
+    balance_transfer_datetime: toDatetimeInput(booking.balance_transfer_datetime),
+    current_balance_slip_url: booking.balance_slip_url || '',
+    delete_balance_slip: false,
+    balance_slip_image: null,
     current_slip_url: booking.slip_url || '',
     delete_slip: false,
     slip_image: null,
@@ -1563,6 +1675,11 @@ function onMainSlipChange(event) {
   if (editForm.slip_image) editForm.delete_slip = false;
 }
 
+function onBalanceSlipChange(event) {
+  editForm.balance_slip_image = event.target.files?.[0] || null;
+  if (editForm.balance_slip_image) editForm.delete_balance_slip = false;
+}
+
 function onInstallmentSlipChange(index, event) {
   const file = event.target.files?.[0] || null;
   editForm.installments[index].slip_image = file;
@@ -1622,6 +1739,17 @@ function buildEditFormData() {
   appendForm(fd, 'installment_interval_days', editForm.installment_interval_days);
   appendForm(fd, 'delete_slip', editForm.delete_slip ? 1 : 0);
   if (editForm.slip_image) fd.append('slip_image', editForm.slip_image);
+
+  if (editForm.payment_type === 'deposit') {
+    appendForm(fd, 'deposit_amount', editForm.deposit_amount);
+    appendForm(fd, 'balance_amount', editForm.balance_amount);
+    appendForm(fd, 'balance_due_at', editForm.balance_due_at);
+    appendForm(fd, 'balance_payment_ref', editForm.balance_payment_ref);
+    appendForm(fd, 'balance_paid_at', editForm.balance_paid_at);
+    appendForm(fd, 'balance_transfer_datetime', editForm.balance_transfer_datetime);
+    appendForm(fd, 'delete_balance_slip', editForm.delete_balance_slip ? 1 : 0);
+    if (editForm.balance_slip_image) fd.append('balance_slip_image', editForm.balance_slip_image);
+  }
 
   const seatIds = editForm.seat_ids_text
     .split(',')
@@ -1837,6 +1965,9 @@ function installmentSummary(booking) {
 function paymentTypeLabel(booking) {
   if (booking?.payment_type === 'installment') {
     return `ผ่อนชำระ ${installmentSummary(booking)}`;
+  }
+  if (booking?.payment_type === 'deposit') {
+    return Number(booking.balance_amount) > 0 ? 'มัดจำ (ค้างยอดส่วนที่เหลือ)' : 'มัดจำ (ชำระครบแล้ว)';
   }
 
   return 'ชำระเต็มจำนวน';
@@ -2416,6 +2547,12 @@ async function reverifySlip(bookingRef, slipType) {
   border: 1px solid #fde68a;
 }
 
+.mini-badge.deposit {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+}
+
 .payment-progress {
   height: 5px;
   width: 95px;
@@ -2444,6 +2581,11 @@ async function reverifySlip(bookingRef, slipType) {
 .payment-type.installment {
   background: #eff6ff;
   color: #2563eb;
+}
+
+.payment-type.deposit {
+  background: #f5f3ff;
+  color: #7c3aed;
 }
 
 .checkin-badge {
@@ -3015,6 +3157,70 @@ async function reverifySlip(bookingRef, slipType) {
 
 .full-span {
   grid-column: 1 / -1;
+}
+
+/* ── ตัวเลือกประเภทการชำระแบบ segmented (full / deposit / installment) ── */
+.pay-type-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pay-type-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1.5px solid var(--color-sand-dark);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.pay-type-tab:hover {
+  border-color: var(--color-accent-light);
+}
+
+.pay-type-tab.active {
+  border-color: var(--color-accent);
+  background: #ecfdf5;
+  color: var(--color-accent-mid);
+}
+
+.pay-type-tab input {
+  display: none;
+}
+
+.pay-type-tab .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.pay-subsection {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #eeeeee;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.pay-subsection-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text-mid);
+}
+
+.readonly-field {
+  background: #f5f5f5 !important;
+  color: var(--color-text-muted);
+  font-weight: 800;
 }
 
 .field-hint {
