@@ -126,23 +126,6 @@
     </section>
 
     <!-- ══════════════════════════════════════════
-         ALMOST-FULL RAIL — รีบจองก่อนเต็ม
-    ══════════════════════════════════════════ -->
-    <section v-if="almostFullTrips.length" class="bg-[var(--color-sand)] pt-10 pb-2">
-      <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="flex items-center gap-2 mb-5">
-          <span class="material-symbols-rounded text-red-500">local_fire_department</span>
-          <h2 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">ใกล้เต็มแล้ว · รีบจอง</h2>
-        </div>
-        <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
-          <div v-for="t in almostFullTrips" :key="t.id" class="snap-start shrink-0 w-72">
-            <TripCard :trip="t" />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ══════════════════════════════════════════
          SOCIAL PROOF & TRUST SECTION (Redesigned)
     ══════════════════════════════════════════ -->
     <section 
@@ -178,6 +161,23 @@
             <div class="text-[13px] lg:text-sm font-bold text-[var(--color-text-muted)] tracking-wide uppercase max-w-[140px] leading-relaxed relative z-10">
               {{ stat.label }}
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         ALMOST-FULL RAIL — รีบจองก่อนเต็ม
+    ══════════════════════════════════════════ -->
+    <section v-if="almostFullTrips.length" class="bg-[var(--color-sand)] pb-4">
+      <div class="max-w-7xl mx-auto px-6 md:px-8">
+        <div class="flex items-center gap-2 mb-5">
+          <span class="material-symbols-rounded text-red-500">local_fire_department</span>
+          <h2 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">ใกล้เต็มแล้ว · รีบจอง</h2>
+        </div>
+        <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
+          <div v-for="t in almostFullTrips" :key="t.id" class="snap-start shrink-0 w-72">
+            <TripCard :trip="t" />
           </div>
         </div>
       </div>
