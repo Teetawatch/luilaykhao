@@ -609,11 +609,18 @@ class VehicleTrackingController extends Controller
             return $this->success($payload, 'ข้อมูลการติดตาม');
         }
 
-        $tripDate = $schedule?->departure_date;
-        if ($tripDate && ! $tripDate->isToday()) {
-            $payload['message'] = $tripDate->isFuture()
-                ? 'จะติดตามรถได้ในวันเดินทาง'
-                : 'ทริปนี้สิ้นสุดแล้ว';
+        // เปิดให้ติดตามตั้งแต่ "วันที่รถออกจริง" (departs_at อาจเป็นคืนก่อนวันทริป)
+        // จนถึงสิ้นสุดทริป (return_date ถ้ามี ไม่งั้นวันทริป)
+        $trackFrom = $schedule?->effectiveDepartsAt()?->startOfDay();
+        $trackUntil = ($schedule?->return_date ?? $schedule?->departure_date)?->copy()->endOfDay();
+        $now = now();
+        if ($trackFrom && $now->lt($trackFrom)) {
+            $payload['message'] = 'จะติดตามรถได้ในวันออกเดินทาง';
+
+            return $this->success($payload, 'ข้อมูลการติดตาม');
+        }
+        if ($trackUntil && $now->gt($trackUntil)) {
+            $payload['message'] = 'ทริปนี้สิ้นสุดแล้ว';
 
             return $this->success($payload, 'ข้อมูลการติดตาม');
         }
