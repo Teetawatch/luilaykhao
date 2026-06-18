@@ -943,6 +943,7 @@ const navLinks = [
     ]
   },
   { to: '/trips', icon: 'explore', label: 'กิจกรรม' },
+  { to: '/gallery', icon: 'photo_library', label: 'ภาพประทับใจ' },
   { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
 ];
 

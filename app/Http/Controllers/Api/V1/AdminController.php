@@ -15,6 +15,7 @@ use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\GalleryImage;
 use App\Models\HeroSlide;
 use App\Models\InstallmentPayment;
 use App\Models\Review;
@@ -2431,6 +2432,85 @@ class AdminController extends Controller
         }
 
         return $this->success(null, 'จัดเรียงสไลด์สำเร็จ');
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Gallery — แกลเลอรีภาพประทับใจ (รูปที่แอดมินคัดเลือกเอง โชว์หน้า /gallery)
+
+    public function publicGallery(): JsonResponse
+    {
+        $images = GalleryImage::where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'image_url', 'caption', 'location']);
+
+        return $this->success($images);
+    }
+
+    public function galleryImages(): JsonResponse
+    {
+        $images = GalleryImage::orderBy('sort_order')->get();
+
+        return $this->success($images);
+    }
+
+    public function storeGalleryImage(Request $request): JsonResponse
+    {
+        $request->validate([
+            'image_url' => ['required', 'string', 'url'],
+            'caption' => ['nullable', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $maxOrder = GalleryImage::max('sort_order') ?? -1;
+
+        $image = GalleryImage::create([
+            'image_url' => $request->image_url,
+            'caption' => $request->caption,
+            'location' => $request->location,
+            'sort_order' => $maxOrder + 1,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return $this->success($image, 'เพิ่มภาพเข้าแกลเลอรีสำเร็จ');
+    }
+
+    public function updateGalleryImage(Request $request, int $id): JsonResponse
+    {
+        $image = GalleryImage::findOrFail($id);
+
+        $request->validate([
+            'image_url' => ['sometimes', 'string', 'url'],
+            'caption' => ['nullable', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $image->update($request->only(['image_url', 'caption', 'location', 'is_active']));
+
+        return $this->success($image, 'อัปเดตภาพสำเร็จ');
+    }
+
+    public function deleteGalleryImage(int $id): JsonResponse
+    {
+        $image = GalleryImage::findOrFail($id);
+        $image->delete();
+
+        return $this->success(null, 'ลบภาพออกจากแกลเลอรีสำเร็จ');
+    }
+
+    public function reorderGalleryImages(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer'],
+        ]);
+
+        foreach ($request->ids as $order => $id) {
+            GalleryImage::where('id', $id)->update(['sort_order' => $order]);
+        }
+
+        return $this->success(null, 'จัดเรียงภาพสำเร็จ');
     }
 
     // ──────────────────────────────────────────────────────────────

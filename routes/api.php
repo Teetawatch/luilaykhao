@@ -262,6 +262,9 @@ Route::prefix('v1')->group(function () {
     // Hero Slides (public)
     Route::get('hero-slides', [AdminController::class, 'publicHeroSlides']);
 
+    // Gallery — ภาพประทับใจ (public)
+    Route::get('gallery', [AdminController::class, 'publicGallery']);
+
     // Admin routes
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {
         // Dashboard
@@ -460,5 +463,12 @@ Route::prefix('v1')->group(function () {
         Route::put('hero-slides/{id}', [AdminController::class, 'updateHeroSlide']);
         Route::delete('hero-slides/{id}', [AdminController::class, 'deleteHeroSlide']);
         Route::post('hero-slides/reorder', [AdminController::class, 'reorderHeroSlides']);
+
+        // Gallery — ภาพประทับใจ CRUD
+        Route::get('gallery', [AdminController::class, 'galleryImages']);
+        Route::post('gallery', [AdminController::class, 'storeGalleryImage']);
+        Route::put('gallery/{id}', [AdminController::class, 'updateGalleryImage']);
+        Route::delete('gallery/{id}', [AdminController::class, 'deleteGalleryImage']);
+        Route::post('gallery/reorder', [AdminController::class, 'reorderGalleryImages']);
     });
 });

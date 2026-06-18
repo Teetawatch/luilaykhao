@@ -185,6 +185,7 @@ const menuGroups = ref([
     items: [
       { to: '/admin/users', icon: 'fas fa-users-cog', label: 'ผู้ใช้งานระบบ' },
       { to: '/admin/hero-slides', icon: 'fas fa-images', label: 'สไลด์หน้าแรก' },
+      { to: '/admin/gallery', icon: 'fas fa-photo-film', label: 'ภาพประทับใจ' },
     ],
     isOpen: false
   }

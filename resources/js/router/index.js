@@ -28,6 +28,7 @@ import BookingGuidePage from '../pages/BookingGuidePage.vue';
 import FAQPage from '../pages/FAQPage.vue';
 import InstallmentPaymentPage from '../pages/InstallmentPaymentPage.vue';
 import TripChatPage from '../pages/TripChatPage.vue';
+import GalleryPage from '../pages/GalleryPage.vue';
 
 // Admin
 import AdminLayout from '../components/AdminLayout.vue';
@@ -60,6 +61,7 @@ import AdminHeroSlides from '../pages/admin/HeroSlidesPage.vue';
 import AdminChat from '../pages/admin/ChatPage.vue';
 import AdminAnnouncements from '../pages/admin/AnnouncementsPage.vue';
 import AdminSchedulePhotos from '../pages/admin/SchedulePhotosPage.vue';
+import AdminGallery from '../pages/admin/GalleryPage.vue';
 
 
 const routes = [
@@ -173,6 +175,16 @@ const routes = [
     }
   },
   {
+    path: '/gallery',
+    name: 'gallery',
+    component: GalleryPage,
+    meta: {
+      title: 'ภาพประทับใจ | แกลเลอรีจากทริปลุยเลเขา',
+      description: 'รวมภาพความประทับใจจากทริปเดินป่า ดำน้ำตื้น และทริปธรรมชาติทั่วไทยกับลุยเลเขา ภาพคัดสรรจากการเดินทางจริงของนักเดินทาง',
+      ogType: 'website'
+    }
+  },
+  {
     path: '/how-to-book',
     name: 'how-to-book',
     component: BookingGuidePage,
@@ -244,6 +256,7 @@ const routes = [
       { path: 'promotions', name: 'admin-promotions', component: AdminPromotions },
       { path: 'schedule-overview', name: 'admin-schedule-overview', component: AdminScheduleOverview },
       { path: 'hero-slides', name: 'admin-hero-slides', component: AdminHeroSlides },
+      { path: 'gallery', name: 'admin-gallery', component: AdminGallery },
       { path: 'schedule-photos', name: 'admin-schedule-photos', component: AdminSchedulePhotos },
     ],
 
