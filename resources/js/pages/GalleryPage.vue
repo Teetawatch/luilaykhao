@@ -57,7 +57,7 @@
               :src="image.image_url"
               :alt="image.caption || 'ภาพประทับใจลุยเลเขา'"
               loading="lazy"
-              class="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.04]"
+              class="gallery-img block transition-transform duration-500 group-hover:scale-[1.04]"
             />
             <div
               v-if="image.caption || image.location"
@@ -169,29 +169,37 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Masonry via CSS columns — รูปเล็กลง คอลัมน์ถี่ขึ้น รองรับแนวตั้ง/แนวนอนคละกัน */
+/* Justified rows — แถวความสูงเท่ากัน จัดกึ่งกลาง คงสัดส่วนภาพเดิม (ไม่ครอป)
+   วิธีนี้ทำให้ทุกแถวอยู่กึ่งกลางเสมอ ไม่ว่ารูปจะมีกี่รูป */
 .gallery-masonry {
-  column-count: 3;
-  column-gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
 }
-@media (min-width: 640px) { .gallery-masonry { column-count: 4; } }
-@media (min-width: 1024px) { .gallery-masonry { column-count: 5; } }
-@media (min-width: 1440px) { .gallery-masonry { column-count: 6; } }
 
 .gallery-item {
   position: relative;
   display: block;
-  width: 100%;
-  margin: 0 0 10px;
+  height: 120px;
+  max-width: 100%;
+  flex: 0 0 auto;
   padding: 0;
   border: none;
   border-radius: 0.85rem;
   overflow: hidden;
   cursor: pointer;
-  break-inside: avoid;
   background: var(--color-sand-dark);
   box-shadow: 0 2px 10px rgba(13, 43, 30, 0.05);
   transition: box-shadow 0.35s ease, transform 0.35s ease;
+}
+@media (min-width: 640px) { .gallery-item { height: 150px; } }
+@media (min-width: 1024px) { .gallery-item { height: 185px; } }
+
+.gallery-img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
 }
 .gallery-item:hover {
   transform: translateY(-3px);
