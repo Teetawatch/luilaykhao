@@ -171,21 +171,21 @@ onBeforeUnmount(() => {
 <style scoped>
 /* Masonry via CSS columns — รูปเล็กลง คอลัมน์ถี่ขึ้น รองรับแนวตั้ง/แนวนอนคละกัน */
 .gallery-masonry {
-  column-count: 2;
-  column-gap: 12px;
+  column-count: 3;
+  column-gap: 10px;
 }
-@media (min-width: 640px) { .gallery-masonry { column-count: 3; } }
-@media (min-width: 1024px) { .gallery-masonry { column-count: 4; } }
-@media (min-width: 1440px) { .gallery-masonry { column-count: 5; } }
+@media (min-width: 640px) { .gallery-masonry { column-count: 4; } }
+@media (min-width: 1024px) { .gallery-masonry { column-count: 5; } }
+@media (min-width: 1440px) { .gallery-masonry { column-count: 6; } }
 
 .gallery-item {
   position: relative;
   display: block;
   width: 100%;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   padding: 0;
   border: none;
-  border-radius: 1rem;
+  border-radius: 0.85rem;
   overflow: hidden;
   cursor: pointer;
   break-inside: avoid;
