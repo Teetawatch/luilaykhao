@@ -3,11 +3,13 @@
 @section('title', 'ชำระยอดส่วนที่เหลือ')
 
 @php
-    $dueDate = $booking->balance_due_at
-        ? \Carbon\Carbon::parse($booking->balance_due_at)->locale('th')->isoFormat('D MMM YYYY')
+    $dueDateObj = $booking->balance_due_at ? \Carbon\Carbon::parse($booking->balance_due_at) : null;
+    // แสดงปีเป็น พ.ศ. (ปี ค.ศ. + 543) ให้เหมือนหน้าอื่นในระบบ
+    $dueDate = $dueDateObj
+        ? $dueDateObj->locale('th')->isoFormat('D MMM').' '.($dueDateObj->year + 543)
         : null;
     $tripTitle = $booking->schedule->trip->title ?? '-';
-    $isOverdue = $booking->balance_due_at && \Carbon\Carbon::parse($booking->balance_due_at)->isPast();
+    $isOverdue = $dueDateObj && $dueDateObj->isPast();
 @endphp
 
 @section('content')

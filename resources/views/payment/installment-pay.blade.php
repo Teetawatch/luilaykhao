@@ -3,8 +3,10 @@
 @section('title', 'ชำระค่างวดที่ ' . $installment->installment_no)
 
 @php
-    $dueDate = $installment->due_date
-        ? \Carbon\Carbon::parse($installment->due_date)->locale('th')->isoFormat('D MMM YYYY')
+    $dueDateObj = $installment->due_date ? \Carbon\Carbon::parse($installment->due_date) : null;
+    // แสดงปีเป็น พ.ศ. (ปี ค.ศ. + 543) ให้เหมือนหน้าอื่นในระบบ
+    $dueDate = $dueDateObj
+        ? $dueDateObj->locale('th')->isoFormat('D MMM').' '.($dueDateObj->year + 543)
         : '-';
     $tripTitle = $booking->schedule->trip->title ?? '-';
     $isOverdue = $installment->status === 'overdue';
