@@ -18,7 +18,7 @@
     </section>
 
     <section class="py-14 md:py-20">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
 
         <!-- Loading -->
         <div v-if="loading" class="text-center py-24">
@@ -70,7 +70,7 @@
               </p>
             </div>
             <span class="gallery-zoom">
-              <span class="material-symbols-rounded text-[20px]">zoom_in</span>
+              <span class="material-symbols-rounded text-[18px]">zoom_in</span>
             </span>
           </button>
         </div>
@@ -169,37 +169,50 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Masonry via CSS columns — รองรับรูปแนวตั้ง/แนวนอนคละกันได้สวย */
+/* Masonry via CSS columns — รูปเล็กลง คอลัมน์ถี่ขึ้น รองรับแนวตั้ง/แนวนอนคละกัน */
 .gallery-masonry {
-  column-count: 1;
-  column-gap: 16px;
+  column-count: 2;
+  column-gap: 12px;
 }
-@media (min-width: 640px) { .gallery-masonry { column-count: 2; } }
-@media (min-width: 1024px) { .gallery-masonry { column-count: 3; } }
+@media (min-width: 640px) { .gallery-masonry { column-count: 3; } }
+@media (min-width: 1024px) { .gallery-masonry { column-count: 4; } }
+@media (min-width: 1440px) { .gallery-masonry { column-count: 5; } }
 
 .gallery-item {
   position: relative;
   display: block;
   width: 100%;
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   padding: 0;
   border: none;
-  border-radius: 1.25rem;
+  border-radius: 1rem;
   overflow: hidden;
   cursor: pointer;
   break-inside: avoid;
   background: var(--color-sand-dark);
-  box-shadow: 0 4px 20px rgba(13, 43, 30, 0.06);
-  transition: box-shadow 0.3s ease;
+  box-shadow: 0 2px 10px rgba(13, 43, 30, 0.05);
+  transition: box-shadow 0.35s ease, transform 0.35s ease;
 }
-.gallery-item:hover { box-shadow: 0 12px 36px rgba(13, 43, 30, 0.16); }
+.gallery-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(13, 43, 30, 0.18);
+}
+/* เคลือบเงาบางๆ ให้ขอบภาพดูคมและทันสมัยขึ้น */
+.gallery-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
 
 .gallery-caption {
   position: absolute;
   inset: auto 0 0 0;
-  padding: 28px 16px 14px;
+  padding: 26px 12px 11px;
   text-align: left;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0));
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -208,21 +221,23 @@ onBeforeUnmount(() => {
 
 .gallery-zoom {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   color: #fff;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transform: scale(0.8);
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
-.gallery-item:hover .gallery-zoom { opacity: 1; }
+.gallery-item:hover .gallery-zoom { opacity: 1; transform: scale(1); }
+.gallery-zoom .material-symbols-rounded { font-size: 18px; }
 
 /* Lightbox */
 .lightbox {
