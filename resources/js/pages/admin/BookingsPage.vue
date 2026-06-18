@@ -235,9 +235,8 @@
                     <span class="payment-type" :class="booking.payment_type || 'full'">
                       {{ paymentTypeLabel(booking) }}
                     </span>
-                    <span v-if="booking.payment_type === 'deposit' && Number(booking.balance_amount) > 0">
-                      คงเหลือมัดจำ {{ formatMoney(booking.balance_amount) }}
-                      <template v-if="booking.balance_due_at"> · ครบกำหนด {{ formatDate(booking.balance_due_at) }}</template>
+                    <span v-if="booking.payment_type === 'deposit' && !booking.balance_paid_at && booking.balance_due_at">
+                      ครบกำหนดส่วนที่เหลือ {{ formatDate(booking.balance_due_at) }}
                     </span>
                     <span v-if="booking.payment_method">ช่องทาง: {{ paymentMethodLabel(booking.payment_method) }}</span>
                   </div>
@@ -1950,6 +1949,13 @@ function paymentProgress(booking) {
 }
 
 function paymentBalance(booking) {
+  // มัดจำ: ยอดคงเหลือ = ยอดส่วนที่เหลือ (balance_amount) ให้ตรงกับหน้าชำระเงินของลูกค้า
+  // ชำระส่วนที่เหลือแล้ว (balance_paid_at) ถือว่าเหลือ 0
+  if (booking?.payment_type === 'deposit') {
+    if (booking.balance_paid_at) return 0;
+    const balance = moneyNumber(booking.balance_amount);
+    if (balance > 0) return balance;
+  }
   return Math.max(0, moneyNumber(booking?.total_amount) - moneyNumber(booking?.paid_amount));
 }
 
