@@ -311,13 +311,20 @@
                   <span class="radio-dot"></span>
                   จ่ายเต็ม
                 </label>
+                <label class="radio-card" :class="{ active: form.payment_type === 'deposit', disabled: !depositAllowed }">
+                  <input v-model="form.payment_type" type="radio" value="deposit" :disabled="!depositAllowed" />
+                  <span class="radio-dot"></span>
+                  มัดจำ
+                </label>
                 <label class="radio-card" :class="{ active: form.payment_type === 'installment', disabled: !installmentAllowed }">
                   <input v-model="form.payment_type" type="radio" value="installment" :disabled="!installmentAllowed" />
                   <span class="radio-dot"></span>
                   ผ่อนชำระ
                 </label>
               </div>
-              <p v-if="!installmentAllowed" class="field-note">รอบนี้ยังไม่เปิดผ่อนชำระ หรือเป็นจอยทริป</p>
+              <p v-if="!depositAllowed && !installmentAllowed" class="field-note">รอบนี้รับชำระเต็มจำนวนเท่านั้น (ยังไม่เปิดมัดจำ/ผ่อน หรือเป็นจอยทริป)</p>
+              <p v-else-if="!depositAllowed && form.payment_type !== 'installment'" class="field-note">รอบนี้ยังไม่เปิดมัดจำ หรือเป็นจอยทริป</p>
+              <p v-else-if="!installmentAllowed && form.payment_type !== 'deposit'" class="field-note">รอบนี้ยังไม่เปิดผ่อนชำระ หรือเป็นจอยทริป</p>
             </div>
 
             <label v-if="form.payment_type === 'installment'" class="form-field">
@@ -326,6 +333,19 @@
                 <option v-for="count in installmentCountOptions" :key="count" :value="count">{{ count }} งวด</option>
               </select>
             </label>
+
+            <div v-if="form.payment_type === 'deposit'" class="installment-plan full">
+              <div class="installment-row">
+                <span>ยอดมัดจำ (รับตอนนี้)</span>
+                <strong>{{ formatCurrency(depositAmount) }}</strong>
+                <small>ชำระทันที</small>
+              </div>
+              <div class="installment-row">
+                <span>ยอดส่วนที่เหลือ</span>
+                <strong>{{ formatCurrency(balanceAmount) }}</strong>
+                <small v-if="balanceDueDate">ครบกำหนด {{ formatDate(balanceDueDate) }}</small>
+              </div>
+            </div>
 
             <div class="payment-block">
               <div class="block-label">ช่องทางชำระ</div>
@@ -354,7 +374,7 @@
                 <span>โอนผ่านบัญชีธนาคาร</span>
               </div>
               <div class="pay-amount">
-                <span>{{ form.payment_type === 'installment' ? 'ยอดรับงวดแรก' : 'ยอดที่ต้องชำระ' }}</span>
+                <span>{{ payableNowLabel }}</span>
                 <strong>{{ formatCurrency(payableNow) }}</strong>
               </div>
             </div>
@@ -433,7 +453,7 @@
           </div>
           <div class="summary-row">
             <span>การจ่าย</span>
-            <strong>{{ form.payment_type === 'installment' ? `ผ่อน ${form.installment_count} งวด` : 'จ่ายเต็ม' }}</strong>
+            <strong>{{ paymentPlanLabel }}</strong>
           </div>
           <div class="summary-row">
             <span>รับตอนนี้</span>
@@ -536,6 +556,7 @@ const pickupPoints = computed(() => selectedSchedule.value?.pickup_points || [])
 const selectedPickup = computed(() => pickupPoints.value.find((point) => point.id === Number(form.pickup_point_id)) || null);
 const requiresDiveInfo = computed(() => ['diving', 'snorkeling'].includes(selectedTrip.value?.type || selectedSchedule.value?.trip?.type));
 const installmentAllowed = computed(() => Boolean(selectedSchedule.value?.installment_enabled && !form.is_join_trip));
+const depositAllowed = computed(() => Boolean(selectedSchedule.value?.deposit_enabled && !form.is_join_trip));
 const maxInstallmentCount = computed(() => Math.min(Math.max(Number(selectedSchedule.value?.installment_count || 2), 2), 6));
 const installmentCountOptions = computed(() => Array.from({ length: maxInstallmentCount.value - 1 }, (_, index) => index + 2));
 const pricePerPerson = computed(() => {
@@ -565,9 +586,41 @@ const installmentPlan = computed(() => {
     };
   });
 });
-const payableNow = computed(() => (form.payment_type === 'installment'
-  ? installmentPlan.value[0]?.amount || 0
-  : totalAmount.value));
+// ยอดมัดจำ — คำนวณฝั่ง client ให้ตรงกับ TripSchedule::resolveDepositAmount() ฝั่งเซิร์ฟเวอร์
+const depositAmount = computed(() => {
+  const schedule = selectedSchedule.value;
+  if (!schedule || !schedule.deposit_enabled) return 0;
+  let deposit = 0;
+  if (schedule.deposit_type === 'percent' && schedule.deposit_percent) {
+    deposit = Math.round((totalAmount.value * Number(schedule.deposit_percent) / 100) * 100) / 100;
+  } else if (schedule.deposit_type === 'amount' && schedule.deposit_amount) {
+    deposit = Math.round(Number(schedule.deposit_amount) * Math.max(1, passengers.value.length) * 100) / 100;
+  }
+  return Math.max(0, Math.min(deposit, totalAmount.value));
+});
+const balanceAmount = computed(() => Math.max(0, Math.round((totalAmount.value - depositAmount.value) * 100) / 100));
+const balanceDueDate = computed(() => {
+  const departure = selectedSchedule.value?.departure_date;
+  if (!departure) return '';
+  const due = new Date(departure);
+  due.setDate(due.getDate() - 15);
+  return formatInputDate(due);
+});
+const payableNow = computed(() => {
+  if (form.payment_type === 'installment') return installmentPlan.value[0]?.amount || 0;
+  if (form.payment_type === 'deposit') return depositAmount.value;
+  return totalAmount.value;
+});
+const payableNowLabel = computed(() => {
+  if (form.payment_type === 'installment') return 'ยอดรับงวดแรก';
+  if (form.payment_type === 'deposit') return 'ยอดมัดจำ';
+  return 'ยอดที่ต้องชำระ';
+});
+const paymentPlanLabel = computed(() => {
+  if (form.payment_type === 'installment') return `ผ่อน ${form.installment_count} งวด`;
+  if (form.payment_type === 'deposit') return 'มัดจำ';
+  return 'จ่ายเต็ม';
+});
 const paymentEvidenceRequired = computed(() => form.status === 'confirmed');
 const seatColumns = computed(() => seatMap.value?.columns || []);
 const seatGridStyle = computed(() => ({
@@ -595,6 +648,7 @@ const canSubmit = computed(() => {
   if (passengers.value.some((passenger) => !isPassengerComplete(passenger))) return false;
   if (!form.is_join_trip && selectedSeatIds.value.length !== passengers.value.length) return false;
   if (form.payment_type === 'installment' && !installmentAllowed.value) return false;
+  if (form.payment_type === 'deposit' && !depositAllowed.value) return false;
   if (paymentEvidenceRequired.value && (!slipFile.value || !form.transfer_date || !form.transfer_time)) return false;
   return true;
 });
@@ -608,6 +662,7 @@ const submitHint = computed(() => {
     return `เลือกที่นั่ง ${selectedSeatIds.value.length}/${passengers.value.length}`;
   }
   if (form.payment_type === 'installment' && !installmentAllowed.value) return 'รอบนี้ยังไม่เปิดผ่อนชำระ';
+  if (form.payment_type === 'deposit' && !depositAllowed.value) return 'รอบนี้ยังไม่เปิดมัดจำ';
   if (paymentEvidenceRequired.value && !slipFile.value) return 'แนบไฟล์สลิปก่อน';
   if (paymentEvidenceRequired.value && (!form.transfer_date || !form.transfer_time)) return 'ระบุวันที่และเวลาที่โอน';
   return '';
@@ -620,9 +675,9 @@ watch(() => passengers.value.length, () => {
 });
 
 watch([selectedSchedule, () => form.is_join_trip], () => {
-  if (!installmentAllowed.value) {
-    form.payment_type = 'full';
-  }
+  // รีเซ็ตเฉพาะเมื่อรูปแบบที่เลือกอยู่ใช้ไม่ได้กับรอบใหม่ ไม่ทับรูปแบบที่ยังใช้ได้
+  if (form.payment_type === 'installment' && !installmentAllowed.value) form.payment_type = 'full';
+  if (form.payment_type === 'deposit' && !depositAllowed.value) form.payment_type = 'full';
   form.installment_count = Math.min(Number(form.installment_count || 2), maxInstallmentCount.value);
 });
 

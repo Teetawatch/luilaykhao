@@ -1335,7 +1335,7 @@ class AdminController extends Controller
             'is_join_trip' => ['nullable', 'boolean'],
             'status' => ['required', 'in:pending,confirmed'],
             'payment_method' => ['nullable', 'string', 'max:100'],
-            'payment_type' => ['nullable', 'in:full,installment'],
+            'payment_type' => ['nullable', 'in:full,deposit,installment'],
             'installment_count' => ['nullable', 'integer', 'min:2', 'max:6'],
             'slip_image' => ['nullable', 'image', 'max:5120'],
             'transfer_date' => ['nullable', 'date'],
@@ -1372,6 +1372,10 @@ class AdminController extends Controller
 
         if ($paymentType === 'installment' && ($isJoinTrip || ! $schedule->installment_enabled)) {
             return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
+        }
+
+        if ($paymentType === 'deposit' && ($isJoinTrip || ! $schedule->deposit_enabled)) {
+            return $this->error('รอบเดินทางนี้ไม่รองรับการชำระแบบมัดจำ', 422);
         }
 
         if (! $isJoinTrip && $schedule->available_seats < $participantCount) {
@@ -1434,6 +1438,9 @@ class AdminController extends Controller
         $totalAmount = $pricePerPerson * $participantCount;
         $installmentCount = null;
         $installmentIntervalDays = null;
+        $depositAmount = null;
+        $balanceAmount = null;
+        $balanceDueAt = null;
         $paidAmount = $isPaid ? $totalAmount : 0;
 
         if ($paymentType === 'installment') {
@@ -1444,6 +1451,19 @@ class AdminController extends Controller
             }
             $installmentIntervalDays = (int) $schedule->installment_interval_days;
             $paidAmount = $isPaid ? round($totalAmount / $installmentCount, 2) : 0;
+        }
+
+        if ($paymentType === 'deposit') {
+            $depositAmount = $schedule->resolveDepositAmount($totalAmount, $participantCount);
+            if (! $depositAmount || $depositAmount >= $totalAmount) {
+                return $this->error('ไม่สามารถคำนวณยอดมัดจำสำหรับรอบเดินทางนี้', 422);
+            }
+            $balanceAmount = round($totalAmount - $depositAmount, 2);
+            // กำหนดชำระยอดส่วนที่เหลือ: ก่อนเดินทาง 15 วัน (เหมือนฝั่งลูกค้าใน PaymentController)
+            $balanceDueAt = $schedule->departure_date
+                ? CarbonImmutable::parse($schedule->departure_date)->subDays(15)->startOfDay()
+                : null;
+            $paidAmount = $isPaid ? $depositAmount : 0;
         }
 
         $transferDt = $this->resolveManualTransferDatetime($request);
@@ -1460,6 +1480,7 @@ class AdminController extends Controller
             $booking = DB::transaction(function () use (
                 $request, $schedule, $user, $pickupPoint, $participantCount, $totalAmount,
                 $paidAmount, $paymentType, $installmentCount, $installmentIntervalDays,
+                $depositAmount, $balanceAmount, $balanceDueAt,
                 $isPaid, $paymentRef, $slipPath, $transferDt, $isJoinTrip, $passengers, $seatIds
             ) {
                 // ล็อกรอบเดินทางแล้วตรวจที่นั่งซ้ำใต้ lock — ทำให้ check-แล้ว-insert เป็น atomic
@@ -1491,6 +1512,9 @@ class AdminController extends Controller
                     'payment_type' => $paymentType,
                     'installment_count' => $installmentCount,
                     'installment_interval_days' => $installmentIntervalDays,
+                    'deposit_amount' => $depositAmount,
+                    'balance_amount' => $balanceAmount,
+                    'balance_due_at' => $balanceDueAt,
                     'payment_method' => $request->input('payment_method', 'promptpay'),
                     'payment_ref' => $paymentRef,
                     'paid_at' => $isPaid ? now() : null,
