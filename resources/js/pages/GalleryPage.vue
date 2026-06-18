@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
 .gallery-item {
   position: relative;
   display: block;
-  height: 120px;
+  height: 170px;
   max-width: 100%;
   flex: 0 0 auto;
   padding: 0;
@@ -193,8 +193,9 @@ onBeforeUnmount(() => {
   box-shadow: 0 2px 10px rgba(13, 43, 30, 0.05);
   transition: box-shadow 0.35s ease, transform 0.35s ease;
 }
-@media (min-width: 640px) { .gallery-item { height: 150px; } }
-@media (min-width: 1024px) { .gallery-item { height: 185px; } }
+@media (min-width: 640px) { .gallery-item { height: 220px; } }
+@media (min-width: 1024px) { .gallery-item { height: 260px; } }
+@media (min-width: 1440px) { .gallery-item { height: 300px; } }
 
 .gallery-img {
   height: 100%;
