@@ -107,10 +107,10 @@
               <img src="/images/logo.png" alt="Luilaykhao Logo" class="w-20 h-20 rounded-[1.25rem] shadow-sm border border-gray-100 bg-white p-2 object-contain" />
             </div>
             <div class="flex flex-col gap-0 -mt-10">
-              <a href="#" class="block hover:opacity-80 transition-opacity">
+              <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" class="block hover:opacity-80 transition-opacity">
                 <img src="/images/icon-appstore.webp" alt="App Store" class="w-28 h-28 object-contain" />
               </a>
-              <a href="#" class="block -mt-15 hover:opacity-80 transition-opacity">
+              <a href="https://play.google.com/store/apps/details?id=com.luilaykhao.app&hl=th" target="_blank" rel="noopener" class="block -mt-15 hover:opacity-80 transition-opacity">
                 <img src="/images/icon-playstore.webp" alt="Play Store" class="w-28 h-28 object-contain" />
               </a>
             </div>
