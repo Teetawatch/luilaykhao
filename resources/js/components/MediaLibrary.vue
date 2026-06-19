@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="show" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div v-if="show" class="fixed inset-0 z-[1000] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="$emit('close')"></div>
         
         <div class="bg-white rounded-[2.5rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -151,7 +151,7 @@
 
   <!-- Image Preview Modal -->
   <Teleport to="body">
-    <div v-if="previewing" class="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-black/90 backdrop-blur-md" @click="previewing = null">
+    <div v-if="previewing" class="fixed inset-0 z-[1010] flex items-center justify-center p-8 bg-black/90 backdrop-blur-md" @click="previewing = null">
       <video v-if="isVideoMode" :src="previewing.url" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" controls autoplay @click.stop></video>
       <img v-else :src="previewing.url" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" />
       <button class="absolute top-6 right-6 text-white bg-white/20 p-2 rounded-full hover:bg-white/30" @click.stop="previewing = null">
