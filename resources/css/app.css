@@ -123,7 +123,10 @@ body {
 }
 
 .material-symbols-rounded {
-    font-family: 'Material Symbols Rounded';
+    /* !important so the icon font wins even when a page's scoped `.admin-page * { font-family }`
+       rule leaks onto child components (e.g. SeatMapEditor) — scoped @import of admin-shared.css
+       confines its own !important icon rule to the page, leaving children on this global rule. */
+    font-family: 'Material Symbols Rounded' !important;
     font-weight: normal;
     font-style: normal;
     font-size: 24px;
@@ -134,5 +137,6 @@ body {
     white-space: nowrap;
     word-wrap: normal;
     direction: ltr;
+    font-feature-settings: 'liga';
     -webkit-font-smoothing: antialiased;
 }

@@ -25,7 +25,7 @@
           <!-- Actions -->
           <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50">
             <div class="flex items-center gap-3 w-full sm:w-auto">
-              <input type="file" ref="fileInput" @change="handleUpload" class="hidden" accept="image/*" multiple />
+              <input type="file" ref="fileInput" @change="handleUpload" class="hidden" :accept="isVideoMode ? 'video/*' : 'image/*'" multiple />
               <button @click="$refs.fileInput.click()" :disabled="uploading" class="flex-1 sm:flex-none bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
                 <span class="material-symbols-rounded text-xl" :class="{'animate-spin': uploading}">{{ uploading ? 'sync' : 'upload' }}</span>
                 {{ uploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่' }}
@@ -85,7 +85,11 @@
                 :class="{'border-[var(--color-accent)] shadow-md ring-4 ring-[var(--color-accent)]/10': isSelected(m)}"
                 @click="select(m)"
               >
-                <img :src="m.url" :alt="m.filename" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                <video v-if="isVideoMode" :src="m.url" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" muted preload="metadata"></video>
+                <img v-else :src="m.url" :alt="m.filename" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                <div v-if="isVideoMode" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span class="material-symbols-rounded text-white/90 text-4xl drop-shadow-lg">play_circle</span>
+                </div>
                 
                 <!-- Status Badge -->
                 <div class="absolute top-2 left-2 z-10">
@@ -148,7 +152,8 @@
   <!-- Image Preview Modal -->
   <Teleport to="body">
     <div v-if="previewing" class="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-black/90 backdrop-blur-md" @click="previewing = null">
-      <img :src="previewing.url" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" />
+      <video v-if="isVideoMode" :src="previewing.url" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" controls autoplay @click.stop></video>
+      <img v-else :src="previewing.url" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" />
       <button class="absolute top-6 right-6 text-white bg-white/20 p-2 rounded-full hover:bg-white/30" @click.stop="previewing = null">
         <span class="material-symbols-rounded">close</span>
       </button>
@@ -163,7 +168,9 @@ import api from '../lib/axios';
 const props = defineProps({
   show: Boolean,
   multiple: { type: [Boolean, String], default: false },
-  initialSelection: [String, Array]
+  initialSelection: [String, Array],
+  // 'image' (default) or 'video' — controls which files are listed and how they preview
+  mediaType: { type: String, default: 'image' },
 });
 
 const emit = defineEmits(['close', 'select']);
@@ -177,6 +184,10 @@ const previewing = ref(null);
 const filterUnused = ref(false);
 
 const isMultipleMode = computed(() => props.multiple === true || props.multiple === 'true');
+const isVideoMode = computed(() => props.mediaType === 'video');
+
+const VIDEO_EXT = ['mp4', 'mov', 'avi', 'webm', 'm4v'];
+const isVideoFile = (filename) => VIDEO_EXT.includes((filename.split('.').pop() || '').toLowerCase());
 
 const normalizeSelection = () => {
   if (isMultipleMode.value) {
@@ -208,11 +219,14 @@ const fetchMedia = async () => {
 
 const filteredMedia = computed(() => {
   let list = media.value;
-  
+
+  // Only show files matching the requested media type (images vs videos)
+  list = list.filter(m => isVideoMode.value ? isVideoFile(m.filename) : !isVideoFile(m.filename));
+
   if (filterUnused.value) {
     list = list.filter(m => !m.in_use);
   }
-  
+
   if (!search.value) return list;
   const q = search.value.toLowerCase();
   return list.filter(m => m.filename.toLowerCase().includes(q));

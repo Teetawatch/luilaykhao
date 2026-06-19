@@ -448,6 +448,9 @@
                 </div>
                 <input ref="driverPhotoInput" type="file" hidden accept="image/*" @change="handleMediaUpload($event, 'driver')" />
               </div>
+              <button type="button" class="media-library-btn" @click="openVehicleMedia('driver')">
+                <span class="material-symbols-rounded">photo_library</span> เลือกจากคลังสื่อ
+              </button>
             </div>
           </div>
           <div class="form-section-title">
@@ -470,6 +473,9 @@
                 </div>
               </div>
               <input ref="galleryInput" type="file" hidden multiple accept="image/*" @change="handleMediaUpload($event, 'gallery')" />
+              <button type="button" class="media-library-btn" v-if="form.images.length < 10" @click="openVehicleMedia('gallery')">
+                <span class="material-symbols-rounded">photo_library</span> เลือกจากคลังสื่อ
+              </button>
             </div>
             <div class="form-group full-width">
               <label>วิดีโอภายในรถ</label>
@@ -487,6 +493,9 @@
                 </div>
                 <input ref="videoInput" type="file" hidden accept="video/*" @change="handleMediaUpload($event, 'video')" />
               </div>
+              <button type="button" class="media-library-btn" @click="openVehicleMedia('video')">
+                <span class="material-symbols-rounded">video_library</span> เลือกจากคลังสื่อ
+              </button>
             </div>
           </div>
           <div class="modal-footer">
@@ -667,6 +676,17 @@
         </div>
       </div>
     </div>
+
+    <!-- ─── Media Library Picker ──────────────────── -->
+    <MediaLibrary
+      :key="mediaTarget"
+      :show="showMediaLibrary"
+      :multiple="mediaTarget === 'gallery'"
+      :media-type="mediaTarget === 'video' ? 'video' : 'image'"
+      :initial-selection="mediaInitialSelection"
+      @close="showMediaLibrary = false"
+      @select="handleVehicleMediaSelect"
+    />
   </div>
 </template>
 
@@ -674,6 +694,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import SeatMapEditor from '../../components/SeatMapEditor.vue';
+import MediaLibrary from '../../components/MediaLibrary.vue';
 import api from '../../lib/axios';
 
 const admin = useAdminStore();
@@ -700,6 +721,30 @@ const driverPhotoInput = ref(null);
 const galleryInput = ref(null);
 const videoInput = ref(null);
 const uploadState = reactive({ driver: false, gallery: false, video: false });
+
+// ── Media library picker ─────────────────────────────
+const showMediaLibrary = ref(false);
+const mediaTarget = ref('driver'); // 'driver' | 'gallery' | 'video'
+const mediaInitialSelection = computed(() => {
+  if (mediaTarget.value === 'gallery') return form.images;
+  if (mediaTarget.value === 'video') return form.interior_video;
+  return form.driver_photo;
+});
+
+const openVehicleMedia = (target) => {
+  mediaTarget.value = target;
+  showMediaLibrary.value = true;
+};
+
+const handleVehicleMediaSelect = (data) => {
+  if (mediaTarget.value === 'driver') {
+    form.driver_photo = data || '';
+  } else if (mediaTarget.value === 'video') {
+    form.interior_video = data || '';
+  } else if (mediaTarget.value === 'gallery' && Array.isArray(data)) {
+    form.images = [...new Set(data.filter(Boolean))].slice(0, 10);
+  }
+};
 
 const showPickupManager = ref(false);
 const pickupVehicle = ref(null);
@@ -1688,4 +1733,15 @@ onMounted(() => fetchData());
 }
 .remove-btn:hover { transform: scale(1.1); }
 .remove-btn .material-symbols-rounded { font-size: 12px; }
+
+.media-library-btn {
+  margin-top: 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 9px;
+  background: #fff; border: 1px solid var(--color-sand-dark);
+  color: var(--color-text-mid); font-weight: 700; font-size: 13px;
+  cursor: pointer; transition: all 0.15s;
+}
+.media-library-btn:hover { border-color: var(--color-ocean); color: var(--color-ocean); background: #eff6ff; }
+.media-library-btn .material-symbols-rounded { font-size: 18px; }
 </style>
