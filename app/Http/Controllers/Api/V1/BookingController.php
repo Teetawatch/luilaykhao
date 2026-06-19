@@ -44,6 +44,12 @@ class BookingController extends Controller
                 promotionCode: $request->promotion_code,
                 isJoinTrip: (bool) $request->is_join_trip,
                 selectedAddons: $request->selected_addons ?? [],
+                customPickup: $request->filled('custom_pickup_lat') ? [
+                    'label' => $request->custom_pickup_label,
+                    'lat' => (float) $request->custom_pickup_lat,
+                    'lng' => (float) $request->custom_pickup_lng,
+                    'note' => $request->custom_pickup_note,
+                ] : null,
             );
 
             return $this->success(new BookingResource($booking), 'สร้างการจองสำเร็จ', 201);

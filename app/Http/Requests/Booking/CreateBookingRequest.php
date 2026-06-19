@@ -18,6 +18,11 @@ class CreateBookingRequest extends FormRequest
         return [
             'schedule_id' => ['required', 'exists:trip_schedules,id'],
             'pickup_region' => ['nullable', 'string', 'max:50'],
+            // จุดรับที่ลูกค้าปักหมุดเอง — lat/lng/label ต้องมาพร้อมกันถ้าจะใช้
+            'custom_pickup_label' => ['nullable', 'string', 'max:255', 'required_with:custom_pickup_lat'],
+            'custom_pickup_lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:custom_pickup_lng'],
+            'custom_pickup_lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:custom_pickup_lat'],
+            'custom_pickup_note' => ['nullable', 'string', 'max:1000'],
             'seat_ids' => ['nullable', 'array'],
             'seat_ids.*' => ['string', 'max:10'],
             'passengers' => ['required', 'array', 'min:1'],
@@ -57,6 +62,9 @@ class CreateBookingRequest extends FormRequest
         return [
             'passengers.*.birth_date.required' => 'กรุณาระบุวัน/เดือน/ปีเกิดของผู้เดินทาง',
             'passengers.*.birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
+            'custom_pickup_label.required_with' => 'กรุณาระบุชื่อจุดรับที่ปักหมุด',
+            'custom_pickup_lat.required_with' => 'กรุณาปักหมุดตำแหน่งจุดรับบนแผนที่',
+            'custom_pickup_lng.required_with' => 'กรุณาปักหมุดตำแหน่งจุดรับบนแผนที่',
         ];
     }
 

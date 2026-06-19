@@ -17,6 +17,13 @@ class Booking extends Model
     // สถานะที่ลูกค้าแก้ไขการจอง (ย้ายวัน/เปลี่ยนจุดรับ) ได้
     public const MODIFIABLE_STATUSES = ['pending', 'confirmed'];
 
+    // สถานะจุดรับแบบ custom ที่ลูกค้าปักหมุดเอง รอแอดมินยืนยัน
+    public const CUSTOM_PICKUP_PENDING = 'pending';
+
+    public const CUSTOM_PICKUP_APPROVED = 'approved';
+
+    public const CUSTOM_PICKUP_REJECTED = 'rejected';
+
     // เปลี่ยนวันเดินทางได้ก่อนเดินทางอย่างน้อยกี่วัน
     public const RESCHEDULE_LEAD_DAYS = 20;
 
@@ -25,6 +32,8 @@ class Booking extends Model
 
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
+        'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
+        'custom_pickup_status', 'custom_pickup_price', 'custom_pickup_reject_reason', 'custom_pickup_resolved_at',
         'is_group', 'group_name', 'group_notes',
         'qr_code', 'share_token', 'payment_token', 'birthdate_token', 'checked_in', 'checked_in_at',
         'total_amount', 'selected_addons', 'addons_total', 'paid_amount', 'payment_method',
@@ -67,6 +76,10 @@ class Booking extends Model
             'balance_transfer_datetime' => 'datetime',
             'balance_slip_ocr_result' => 'array',
             'slip_ocr_result' => 'array',
+            'custom_pickup_lat' => 'float',
+            'custom_pickup_lng' => 'float',
+            'custom_pickup_price' => 'decimal:2',
+            'custom_pickup_resolved_at' => 'datetime',
         ];
     }
 

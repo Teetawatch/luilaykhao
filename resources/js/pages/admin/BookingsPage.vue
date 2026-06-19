@@ -203,6 +203,10 @@
                     <span>{{ vehicleName(booking) }}</span>
                     <span v-if="booking.schedule?.transport_type">ประเภทเดินทาง: {{ booking.schedule.transport_type }}</span>
                     <span v-if="pickupInfo(booking)">จุดรับ: {{ pickupInfo(booking).regionLabel }} • {{ pickupInfo(booking).location }}</span>
+                    <span v-if="booking.custom_pickup?.status === 'pending'" class="cp-list-flag">
+                      <span class="material-symbols-rounded">add_location_alt</span>
+                      จุดรับปักหมุดเอง · รอยืนยัน
+                    </span>
                   </div>
                 </div>
 
@@ -395,6 +399,50 @@
               <InfoItem label="เบอร์โทร" :value="detailBooking.user?.phone || detailBooking.passengers?.[0]?.phone || '-'" />
               <InfoItem v-if="detailBooking.is_group" label="ชื่อกลุ่ม" :value="detailBooking.group_name || '-'" />
               <InfoItem v-if="detailBooking.group_notes" label="หมายเหตุกลุ่ม" :value="detailBooking.group_notes" wide />
+            </div>
+          </section>
+
+          <!-- จุดรับแบบ custom ที่ลูกค้าปักหมุดเอง -->
+          <section v-if="detailBooking.custom_pickup" class="detail-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">add_location_alt</span>
+              จุดรับที่ลูกค้าปักหมุดเอง
+              <span class="cp-badge" :class="`cp-${detailBooking.custom_pickup.status}`">
+                {{ customPickupStatusLabel(detailBooking.custom_pickup.status) }}
+              </span>
+            </div>
+            <div class="detail-grid">
+              <InfoItem label="ชื่อจุดรับ" :value="detailBooking.custom_pickup.label" />
+              <InfoItem label="พิกัด" :value="`${detailBooking.custom_pickup.lat}, ${detailBooking.custom_pickup.lng}`" />
+              <InfoItem v-if="detailBooking.custom_pickup.note" label="รายละเอียด" :value="detailBooking.custom_pickup.note" wide />
+              <InfoItem v-if="detailBooking.custom_pickup.status === 'approved'" label="ค่าบริการที่ตั้ง" :value="formatMoney(detailBooking.custom_pickup.price)" />
+              <InfoItem v-if="detailBooking.custom_pickup.status === 'rejected' && detailBooking.custom_pickup.reject_reason" label="เหตุผลที่ปฏิเสธ" :value="detailBooking.custom_pickup.reject_reason" wide />
+            </div>
+
+            <a :href="`https://www.google.com/maps/search/?api=1&query=${detailBooking.custom_pickup.lat},${detailBooking.custom_pickup.lng}`"
+              target="_blank" class="cp-map-link">
+              <span class="material-symbols-rounded">map</span> เปิดดูบนแผนที่
+            </a>
+
+            <!-- ฟอร์มยืนยัน/ปฏิเสธ (เฉพาะที่ยังรอดำเนินการ) -->
+            <div v-if="detailBooking.custom_pickup.status === 'pending'" class="cp-resolve">
+              <label class="cp-field">
+                <span>ค่าบริการจุดรับ (บาท)</span>
+                <input v-model.number="customPickupForm.price" type="number" min="0" step="1" placeholder="เช่น 300" />
+              </label>
+              <label class="cp-field">
+                <span>เหตุผล (กรณีปฏิเสธ)</span>
+                <input v-model="customPickupForm.rejectReason" type="text" maxlength="1000" placeholder="เช่น อยู่นอกเส้นทางผ่าน" />
+              </label>
+              <div class="cp-actions">
+                <button class="btn-secondary compact" :disabled="customPickupSaving" @click="resolveCustomPickup('reject')">
+                  ปฏิเสธ
+                </button>
+                <button class="btn-primary compact" :disabled="customPickupSaving || customPickupForm.price == null" @click="resolveCustomPickup('approve')">
+                  ยืนยัน + ตั้งราคา
+                </button>
+              </div>
+              <p class="cp-hint">เมื่อยืนยัน ระบบจะบวกค่าบริการนี้เข้ายอดรวมของการจองโดยอัตโนมัติ</p>
             </div>
           </section>
 
@@ -1263,6 +1311,8 @@ const submitting = ref(false);
 const loadingDetail = ref(false);
 const currentPage = ref(1);
 const statusForm = reactive({ status: '', reason: '' });
+const customPickupForm = reactive({ price: null, rejectReason: '' });
+const customPickupSaving = ref(false);
 const editForm = reactive({
   status: 'pending',
   schedule_id: '',
@@ -1446,6 +1496,8 @@ async function openDetail(booking) {
   detailBooking.value = booking;
   showDetail.value = true;
   loadingDetail.value = true;
+  customPickupForm.price = null;
+  customPickupForm.rejectReason = '';
 
   try {
     const res = await api.get(`/admin/bookings/${booking.booking_ref}`);
@@ -2129,6 +2181,34 @@ function ocrLabel(status) {
   return labels[status] || '— ยังไม่ตรวจ';
 }
 
+function customPickupStatusLabel(status) {
+  return { pending: 'รอยืนยัน', approved: 'ยืนยันแล้ว', rejected: 'ปฏิเสธ' }[status] || status;
+}
+
+async function resolveCustomPickup(action) {
+  const ref = detailBooking.value?.booking_ref;
+  if (!ref || customPickupSaving.value) return;
+  if (action === 'approve' && customPickupForm.price == null) {
+    toast.error('กรุณาระบุค่าบริการจุดรับก่อนยืนยัน');
+    return;
+  }
+  customPickupSaving.value = true;
+  try {
+    await api.post(`/admin/bookings/${ref}/custom-pickup`, {
+      action,
+      price: action === 'approve' ? customPickupForm.price : undefined,
+      reject_reason: action === 'reject' ? customPickupForm.rejectReason : undefined,
+    });
+    await openDetail({ booking_ref: ref });
+    await fetchData(currentPage.value);
+    toast.success(action === 'approve' ? 'ยืนยันจุดรับและตั้งราคาแล้ว' : 'ปฏิเสธจุดรับแล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการดำเนินการ');
+  } finally {
+    customPickupSaving.value = false;
+  }
+}
+
 async function approveSlip(bookingRef, slipType, installmentNo = null) {
   const payload = { slip_type: slipType };
   if (installmentNo) payload.installment_no = installmentNo;
@@ -2744,6 +2824,60 @@ async function reverifySlip(bookingRef, slipType) {
   color: var(--color-accent);
   font-size: 20px;
 }
+
+/* จุดรับแบบ custom */
+.cp-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+.cp-pending { background: #fef3c7; color: #b45309; }
+.cp-approved { background: #dcfce7; color: #15803d; }
+.cp-rejected { background: #fee2e2; color: #b91c1c; }
+
+.cp-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.cp-map-link .material-symbols-rounded { font-size: 18px; }
+
+.cp-resolve {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cp-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; color: #374151; }
+.cp-field input {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  font-weight: 500;
+}
+.cp-field input:focus { outline: none; border-color: var(--color-accent); }
+.cp-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.cp-hint { font-size: 12px; color: #92400e; margin: 0; }
+
+.cp-list-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #b45309 !important;
+  font-weight: 800;
+}
+.cp-list-flag .material-symbols-rounded { font-size: 15px; }
 
 .detail-grid,
 .passenger-info-grid {

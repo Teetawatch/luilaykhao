@@ -109,10 +109,27 @@
               <span class="material-symbols-rounded text-6xl text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">map</span>
             </div>
             <p class="text-lg font-bold text-gray-600">ยังไม่ได้กำหนดจุดรับผู้เดินทาง</p>
-            <p class="text-sm text-gray-400 mt-1">เจ้าหน้าที่จะติดต่อท่านเพื่อยืนยันจุดรับอีกครั้ง</p>
-            <button @click="skipRegionStep" class="mt-6 px-6 py-2 rounded-xl bg-teal-50 text-teal-700 font-bold hover:bg-teal-100 transition-all">
-              ดำเนินการต่อ
-            </button>
+            <p class="text-sm text-gray-400 mt-1">ปักหมุดจุดที่สะดวก แล้วเจ้าหน้าที่จะตรวจสอบและแจ้งกลับ</p>
+
+            <div v-if="customPickup" class="mt-5 w-full max-w-sm p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/40 text-left">
+              <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">จุดรับที่ปักหมุดเอง</p>
+              <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
+              <p v-if="customPickup.note" class="text-sm text-gray-500 mt-0.5">{{ customPickup.note }}</p>
+              <div class="flex gap-3 mt-2">
+                <button @click="openCustomPickup" class="text-xs font-bold text-teal-600 hover:text-teal-700">แก้ไขจุด</button>
+                <button @click="clearCustomPickup" class="text-xs font-bold text-gray-400 hover:text-red-500">เอาออก</button>
+              </div>
+            </div>
+
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+              <button @click="openCustomPickup" class="px-6 py-2 rounded-xl bg-amber-50 text-amber-700 font-bold hover:bg-amber-100 transition-all flex items-center gap-2">
+                <span class="material-symbols-rounded text-[18px]">add_location_alt</span>
+                {{ customPickup ? 'แก้ไขจุดที่ปักหมุด' : 'ปักหมุดจุดรับเอง' }}
+              </button>
+              <button @click="skipRegionStep" class="px-6 py-2 rounded-xl bg-teal-50 text-teal-700 font-bold hover:bg-teal-100 transition-all">
+                ดำเนินการต่อ
+              </button>
+            </div>
           </div>
 
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -177,6 +194,35 @@
             </div>
           </div>
 
+          <!-- Custom pickup: ปักหมุดเอง (อยู่ในเส้นทางผ่านที่รับได้) -->
+          <div class="mt-6">
+            <div v-if="customPickup"
+              class="p-5 rounded-[2rem] border-2 border-amber-300 bg-amber-50/40 flex items-start gap-4">
+              <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                <span class="material-symbols-rounded">add_location_alt</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">จุดรับที่ปักหมุดเอง</p>
+                <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
+                <p v-if="customPickup.note" class="text-sm text-gray-500 mt-0.5">{{ customPickup.note }}</p>
+                <p class="text-xs text-amber-700 mt-2 flex items-center gap-1">
+                  <span class="material-symbols-rounded text-[15px]">info</span>
+                  รอเจ้าหน้าที่ตรวจสอบและแจ้งค่าบริการก่อนยืนยัน
+                </p>
+                <div class="flex gap-3 mt-3">
+                  <button @click="openCustomPickup" class="text-xs font-bold text-teal-600 hover:text-teal-700">แก้ไขจุด</button>
+                  <button @click="clearCustomPickup" class="text-xs font-bold text-gray-400 hover:text-red-500">เอาออก</button>
+                </div>
+              </div>
+            </div>
+
+            <button v-else @click="openCustomPickup"
+              class="w-full p-5 rounded-[2rem] border-2 border-dashed border-gray-200 hover:border-teal-400 hover:bg-teal-50/30 transition-all flex items-center justify-center gap-3 text-gray-500 hover:text-teal-700 font-bold">
+              <span class="material-symbols-rounded">add_location_alt</span>
+              ไม่มีจุดที่สะดวก? ปักหมุดจุดรับเอง
+            </button>
+          </div>
+
           <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
             <button @click="$router.push('/trips')"
               class="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900 px-6 py-3 rounded-2xl font-bold transition-all">
@@ -187,14 +233,14 @@
             <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
                 @click="confirmRegion"
-                :disabled="!selectedPickup && pickupPoints.length > 0"
+                :disabled="!selectedPickup && !customPickup && pickupPoints.length > 0"
                 class="w-full sm:w-auto bg-teal-600 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-xl shadow-teal-600/20 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed group flex items-center justify-center gap-3">
                 <span>{{ pickupPoints.length ? 'ไปเลือกที่นั่ง' : 'ขั้นตอนถัดไป' }}</span>
                 <span class="material-symbols-rounded transition-transform group-hover:translate-x-1">arrow_forward</span>
               </button>
             </div>
           </div>
-          <p v-if="!selectedPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-red-500 font-bold animate-pulse">
+          <p v-if="!selectedPickup && !customPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-red-500 font-bold animate-pulse">
             * กรุณาเลือกจุดขึ้นรถก่อนเดินทางต่อ
           </p>
         </div>
@@ -1315,13 +1361,22 @@
 
         <button v-else-if="isTrekking && step === 0"
           @click="confirmRegion"
-          :disabled="!selectedPickup && pickupPoints.length > 0"
+          :disabled="!selectedPickup && !customPickup && pickupPoints.length > 0"
           class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
           <span>ไปเลือกที่นั่ง</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>
       </div>
     </div>
+
+    <CustomPickupModal
+      v-if="showCustomPickupModal"
+      :center-lat="pickupMapCenter.lat"
+      :center-lng="pickupMapCenter.lng"
+      :initial="customPickup"
+      @confirm="onCustomPickupConfirm"
+      @close="showCustomPickupModal = false"
+    />
 </div>
 </template>
 
@@ -1334,6 +1389,7 @@ import { useSeatsStore } from '../stores/seats';
 import { useBookingStore } from '../stores/booking';
 import SeatMap from '../components/SeatMap.vue';
 import CountdownTimer from '../components/CountdownTimer.vue';
+import CustomPickupModal from '../components/CustomPickupModal.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
@@ -1410,6 +1466,31 @@ const pickupPoints = computed(() => {
   return filtered.length ? filtered : all;
 });
 const selectedPickup = ref(null);
+// จุดรับที่ลูกค้าปักหมุดเอง { label, lat, lng, note } — ใช้เมื่อไม่มีจุดที่กำหนดที่สะดวก
+const customPickup = ref(null);
+const showCustomPickupModal = ref(false);
+
+// จุดเริ่มต้นแผนที่ = พิกัดจุดรับแรกของรอบ (ถ้ามี) เพื่อให้ลูกค้าเห็นบริเวณเส้นทาง
+const pickupMapCenter = computed(() => {
+  const withCoords = pickupPoints.value.find(pt => pt.latitude && pt.longitude);
+  return withCoords
+    ? { lat: Number(withCoords.latitude), lng: Number(withCoords.longitude) }
+    : { lat: 13.7563, lng: 100.5018 };
+});
+
+function openCustomPickup() {
+  showCustomPickupModal.value = true;
+}
+
+function onCustomPickupConfirm(payload) {
+  customPickup.value = payload;
+  selectedPickup.value = null; // จุด custom กับจุดที่กำหนดเลือกได้อย่างใดอย่างหนึ่ง
+  showCustomPickupModal.value = false;
+}
+
+function clearCustomPickup() {
+  customPickup.value = null;
+}
 
 const steps = computed(() => {
   if (isTrekking.value) {
@@ -1743,6 +1824,7 @@ function formatDate(d) {
 
 function selectRegion(pt) {
   selectedPickup.value = pt;
+  customPickup.value = null; // เลือกจุดที่กำหนด → ยกเลิกจุดที่ปักเอง
 }
 
 function confirmRegion() {
@@ -1895,6 +1977,13 @@ async function createBooking() {
         pickup_point_id: p.pickup_point_id || null,
       })),
     };
+    // จุดรับที่ลูกค้าปักหมุดเอง (ส่งเมื่อไม่ได้เลือกจุดที่กำหนด) — รอแอดมินยืนยันราคา
+    if (!selectedPickup.value && customPickup.value) {
+      data.custom_pickup_label = customPickup.value.label;
+      data.custom_pickup_lat = customPickup.value.lat;
+      data.custom_pickup_lng = customPickup.value.lng;
+      data.custom_pickup_note = customPickup.value.note;
+    }
     if (promotionCode.value) {
       data.promotion_code = promotionCode.value;
     }

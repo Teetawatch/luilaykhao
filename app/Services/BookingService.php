@@ -38,12 +38,13 @@ class BookingService
         ?string $promotionCode = null,
         bool $isJoinTrip = false,
         array $selectedAddons = [],
+        ?array $customPickup = null,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
         $scheduleBecameFull = false;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, &$scheduleBecameFull) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, &$scheduleBecameFull) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -228,12 +229,24 @@ class BookingService
                 }
             }
 
+            // จุดรับแบบ custom (ลูกค้าปักหมุดเอง) จะถูกใช้ก็ต่อเมื่อไม่ได้เลือกจุดที่กำหนดไว้
+            // และไม่ใช่ join trip — บันทึกสถานะ pending รอแอดมินยืนยันราคา ยังไม่บวกเงิน
+            $useCustomPickup = ! $isJoinTrip
+                && ! $pickupPoint
+                && $customPickup
+                && isset($customPickup['lat'], $customPickup['lng'], $customPickup['label']);
+
             $booking = Booking::create([
                 'booking_ref' => Booking::generateRef(),
                 'user_id' => $userId,
                 'schedule_id' => $scheduleId,
                 'pickup_region' => $pickupRegion,
                 'pickup_point_id' => $pickupPoint?->id,
+                'custom_pickup_label' => $useCustomPickup ? $customPickup['label'] : null,
+                'custom_pickup_lat' => $useCustomPickup ? $customPickup['lat'] : null,
+                'custom_pickup_lng' => $useCustomPickup ? $customPickup['lng'] : null,
+                'custom_pickup_note' => $useCustomPickup ? ($customPickup['note'] ?? null) : null,
+                'custom_pickup_status' => $useCustomPickup ? Booking::CUSTOM_PICKUP_PENDING : null,
                 'is_group' => $isGroup || $participantCount > 1,
                 'group_name' => $groupName,
                 'group_notes' => $groupNotes,
@@ -656,6 +669,47 @@ class BookingService
                 'pickup_point_id' => $pickupPoint->id,
                 'pickup_region' => $pickupPoint->region,
             ]);
+
+            return $booking->fresh(['passengers', 'seats', 'schedule.trip', 'pickupPoint']);
+        });
+    }
+
+    /**
+     * แอดมินยืนยันจุดรับแบบ custom ที่ลูกค้าปักหมุดเอง — ตั้งราคาแล้วอนุมัติ
+     * (บวกเข้า total_amount) หรือปฏิเสธพร้อมเหตุผล
+     */
+    public function resolveCustomPickup(
+        Booking $booking,
+        bool $approve,
+        ?float $price = null,
+        ?string $rejectReason = null,
+    ): Booking {
+        return DB::transaction(function () use ($booking, $approve, $price, $rejectReason) {
+            if ($booking->custom_pickup_status !== Booking::CUSTOM_PICKUP_PENDING) {
+                throw new \Exception('การจองนี้ไม่มีจุดรับที่รอยืนยัน');
+            }
+
+            if ($approve) {
+                $fee = round((float) ($price ?? 0), 2);
+                if ($fee < 0) {
+                    throw new \Exception('ราคาจุดรับต้องไม่ติดลบ');
+                }
+
+                $booking->update([
+                    'custom_pickup_status' => Booking::CUSTOM_PICKUP_APPROVED,
+                    'custom_pickup_price' => $fee,
+                    'custom_pickup_reject_reason' => null,
+                    'custom_pickup_resolved_at' => now(),
+                    // บวกค่าจุดรับเข้ายอดรวม ลูกค้าจะเห็นเป็นยอดที่ต้องชำระเพิ่ม
+                    'total_amount' => (float) $booking->total_amount + $fee,
+                ]);
+            } else {
+                $booking->update([
+                    'custom_pickup_status' => Booking::CUSTOM_PICKUP_REJECTED,
+                    'custom_pickup_reject_reason' => $rejectReason,
+                    'custom_pickup_resolved_at' => now(),
+                ]);
+            }
 
             return $booking->fresh(['passengers', 'seats', 'schedule.trip', 'pickupPoint']);
         });

@@ -49,6 +49,16 @@ class BookingResource extends JsonResource
                     'notes' => $this->pickupPoint->notes,
                 ];
             }),
+            'custom_pickup' => $this->when($this->custom_pickup_status !== null, fn () => [
+                'label' => $this->custom_pickup_label,
+                'lat' => $this->custom_pickup_lat,
+                'lng' => $this->custom_pickup_lng,
+                'note' => $this->custom_pickup_note,
+                'status' => $this->custom_pickup_status,
+                'price' => $this->custom_pickup_price,
+                'reject_reason' => $this->custom_pickup_reject_reason,
+                'resolved_at' => $this->custom_pickup_resolved_at?->toISOString(),
+            ]),
             'is_group' => $this->is_group,
             'group_name' => $this->group_name,
             'group_notes' => $this->group_notes,
