@@ -27,6 +27,12 @@
           <div class="pointer-events-none absolute left-1/2 top-1/2 z-[400] -translate-x-1/2 -translate-y-full">
             <span class="material-symbols-rounded text-teal-600 drop-shadow" style="font-size:42px; font-variation-settings:'FILL' 1">location_on</span>
           </div>
+          <!-- ปุ่มหาตำแหน่งฉัน -->
+          <button type="button" @click="goToMyLocation" :disabled="locating"
+            class="absolute right-3 bottom-3 z-[401] w-11 h-11 rounded-full bg-white shadow-md flex items-center justify-center text-teal-600 hover:bg-gray-50 disabled:opacity-60 transition-all">
+            <span v-if="locating" class="material-symbols-rounded animate-spin">progress_activity</span>
+            <span v-else class="material-symbols-rounded">my_location</span>
+          </button>
         </div>
 
         <div v-if="coords" class="flex items-center gap-2 text-xs text-gray-500 font-medium">
@@ -83,6 +89,7 @@ const mapEl = ref(null);
 const coords = ref(props.initial?.lat != null ? { lat: props.initial.lat, lng: props.initial.lng } : null);
 const label = ref(props.initial?.label || '');
 const note = ref(props.initial?.note || '');
+const locating = ref(false);
 
 let map = null;
 let L = null;
@@ -131,6 +138,28 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (map) { map.remove(); map = null; }
 });
+
+// เลื่อนแผนที่ไปตำแหน่ง GPS ปัจจุบัน (ปุ่ม my-location แบบ LINE MAN/Grab)
+function goToMyLocation() {
+  if (locating.value || !map) return;
+  if (!('geolocation' in navigator)) {
+    alert('เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง');
+    return;
+  }
+  locating.value = true;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+      syncCenter();
+      locating.value = false;
+    },
+    () => {
+      locating.value = false;
+      alert('ไม่สามารถระบุตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่งและลองอีกครั้ง');
+    },
+    { enableHighAccuracy: true, timeout: 10000 },
+  );
+}
 
 function confirm() {
   if (!canConfirm.value) return;
