@@ -1,5 +1,45 @@
 <template>
-  <div class="schedule-calendar">
+  <div class="schedule-calendar-host">
+    <Teleport to="body" :disabled="!expanded">
+      <!-- When expanded this wrapper becomes the modal backdrop; otherwise it's a transparent pass-through. -->
+      <div
+        :class="expanded
+          ? 'fixed inset-0 z-[120] flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-md overflow-y-auto'
+          : ''"
+        @click.self="expanded && (expanded = false)"
+      >
+        <div
+          class="schedule-calendar"
+          :class="expanded ? 'bg-white rounded-3xl shadow-2xl w-full max-w-lg p-5 sm:p-7 my-auto' : ''"
+        >
+          <!-- Modal header (expanded view only) -->
+          <div v-if="expanded" class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-rounded text-[var(--color-accent)]">calendar_month</span>
+              <p class="font-black text-lg text-[var(--color-text-dark)] truncate">เลือกวันเดินทาง</p>
+            </div>
+            <button
+              type="button"
+              @click="expanded = false"
+              class="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 text-gray-500 hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)] active:scale-95 transition-all shrink-0"
+              aria-label="ปิด"
+            >
+              <span class="material-symbols-rounded text-[20px]">close</span>
+            </button>
+          </div>
+
+          <!-- Expand trigger (inline view only) -->
+          <div v-else class="flex justify-end mb-2">
+            <button
+              type="button"
+              @click="expanded = true"
+              class="flex items-center gap-1 text-[11px] font-black text-gray-400 hover:text-[var(--color-accent)] px-2 py-1 rounded-lg hover:bg-[var(--color-accent)]/8 transition-colors"
+            >
+              <span class="material-symbols-rounded text-[15px]">open_in_full</span>
+              ขยายปฏิทิน
+            </button>
+          </div>
+
     <!-- Month navigation -->
     <div class="flex items-center justify-between gap-2 mb-3">
       <button
@@ -51,7 +91,7 @@
     <div class="grid grid-cols-7 gap-1 sm:gap-1.5">
       <template v-for="cell in calendarCells" :key="cell.key">
         <!-- Padding cell -->
-        <div v-if="!cell.inMonth" class="aspect-square sm:aspect-auto sm:min-h-[58px]"></div>
+        <div v-if="!cell.inMonth" :class="cellSizeClass"></div>
 
         <!-- Selectable day (has departure rounds) -->
         <button
@@ -59,9 +99,16 @@
           type="button"
           :disabled="!cell.bookable"
           @click="selectDate(cell)"
-          class="aspect-square sm:aspect-auto sm:min-h-[58px] rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 px-0.5 py-1 transition-all duration-150 relative overflow-hidden"
-          :class="cellClass(cell)"
+          :title="cell.holiday || undefined"
+          class="rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 px-0.5 py-1 transition-all duration-150 relative overflow-hidden"
+          :class="[cellSizeClass, cellClass(cell)]"
         >
+          <!-- Holiday marker -->
+          <span
+            v-if="cell.holiday"
+            class="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full"
+            :class="isAnchorCell(cell) ? 'bg-white' : 'bg-red-400'"
+          ></span>
           <span
             class="text-sm sm:text-base font-black leading-none"
             :class="{ 'line-through decoration-2': !cell.bookable }"
@@ -92,7 +139,9 @@
         <!-- Covered day inside the selected multi-day trip (no own departure) -->
         <div
           v-else-if="cellInRange(cell)"
-          class="aspect-square sm:aspect-auto sm:min-h-[58px] rounded-xl border-2 border-[var(--color-accent)]/25 bg-[var(--color-accent)]/12 flex flex-col items-center justify-center gap-0.5"
+          :title="cell.holiday || undefined"
+          class="rounded-xl border-2 border-[var(--color-accent)]/25 bg-[var(--color-accent)]/12 flex flex-col items-center justify-center gap-0.5"
+          :class="cellSizeClass"
         >
           <span class="text-sm sm:text-base font-black leading-none text-[var(--color-accent)]">{{ cell.day }}</span>
           <span class="text-[8px] sm:text-[9px] font-black leading-none text-[var(--color-accent)]/70 flex items-center gap-0.5">
@@ -102,8 +151,24 @@
         </div>
 
         <!-- Empty day -->
-        <div v-else class="aspect-square sm:aspect-auto sm:min-h-[58px] rounded-xl flex items-center justify-center">
-          <span class="text-sm font-bold" :class="cell.isPast ? 'text-gray-200' : 'text-gray-300'">{{ cell.day }}</span>
+        <div
+          v-else
+          :title="cell.holiday || undefined"
+          class="rounded-xl flex flex-col items-center justify-center gap-0.5 px-0.5 relative"
+          :class="cellSizeClass"
+        >
+          <span
+            class="text-sm font-bold leading-none"
+            :class="cell.holiday ? 'text-red-400' : (cell.isPast ? 'text-gray-200' : 'text-gray-300')"
+          >{{ cell.day }}</span>
+          <span
+            v-if="cell.holiday && expanded"
+            class="text-[8px] font-bold leading-tight text-red-400/80 text-center line-clamp-2"
+          >{{ cell.holiday }}</span>
+          <span
+            v-else-if="cell.holiday"
+            class="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-red-400"
+          ></span>
         </div>
       </template>
     </div>
@@ -114,6 +179,7 @@
       <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>ใกล้เต็ม</span>
       <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>เต็ม</span>
       <span class="flex items-center gap-1"><span class="w-3 h-2 rounded-sm bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30"></span>ช่วงทริปหลายวัน</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>วันหยุดราชการ</span>
       <span class="flex items-center gap-1"><span class="text-[var(--color-accent)] font-black">2</span>= จำนวนรอบ</span>
     </div>
 
@@ -132,7 +198,7 @@
         <div
           v-for="(s, idx) in activeDateSchedules"
           :key="s.id"
-          @click="isScheduleBookable(s) && emit('select', s)"
+          @click="chooseSchedule(s)"
           class="border-2 rounded-2xl p-3.5 transition-all duration-200"
           :class="[
             selectedSchedule?.id === s.id
@@ -203,11 +269,14 @@
       <span class="material-symbols-rounded text-[15px]">touch_app</span>
       แตะวันที่ในปฏิทินเพื่อเลือกรอบเดินทาง
     </p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import {
   hasAvailableSeats,
   isScheduleBookable,
@@ -215,6 +284,7 @@ import {
   scheduleAvailabilityLabel,
   getSortedPickupPoints,
 } from '../lib/scheduleHelpers';
+import { getThaiHoliday } from '../lib/thaiHolidays';
 
 const props = defineProps({
   schedules: { type: Array, default: () => [] },
@@ -226,6 +296,34 @@ const props = defineProps({
 const emit = defineEmits(['select', 'preview-seats']);
 
 const weekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+
+// Expand the calendar into a centred modal for a roomier date picker.
+const expanded = ref(false);
+
+function onKeydown(e) {
+  if (e.key === 'Escape') expanded.value = false;
+}
+
+// Lock background scroll + wire Escape while the modal is open.
+watch(expanded, (open) => {
+  if (typeof document === 'undefined') return;
+  document.body.style.overflow = open ? 'hidden' : '';
+  if (open) document.addEventListener('keydown', onKeydown);
+  else document.removeEventListener('keydown', onKeydown);
+});
+
+onBeforeUnmount(() => {
+  if (typeof document === 'undefined') return;
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', onKeydown);
+});
+
+// Day cells grow when the calendar is shown inside the modal.
+const cellSizeClass = computed(() =>
+  expanded.value
+    ? 'min-h-[62px] sm:min-h-[78px]'
+    : 'aspect-square sm:aspect-auto sm:min-h-[58px]'
+);
 
 const todayKey = (() => {
   const d = new Date();
@@ -340,6 +438,7 @@ const calendarCells = computed(() => {
       totalAvailable,
       joinOnly,
       isPast: dateKey < todayKey,
+      holiday: getThaiHoliday(dateKey),
     });
   }
   return cells;
@@ -426,13 +525,21 @@ function cellSeatLabel(cell) {
   return `ว่าง ${cell.totalAvailable}`;
 }
 
+// Pick a concrete round and, when expanded, collapse the modal back to the
+// booking panel so the chosen round is visible there.
+function chooseSchedule(s) {
+  if (!isScheduleBookable(s)) return;
+  emit('select', s);
+  expanded.value = false;
+}
+
 function selectDate(cell) {
   if (!cell.bookable) return;
   activeDateKey.value = cell.dateKey;
   const bookables = cell.schedules.filter(isScheduleBookable);
   if (bookables.length === 1) {
     // Single round: select it outright.
-    emit('select', bookables[0]);
+    chooseSchedule(bookables[0]);
   } else if (props.selectedSchedule && dateKeyOf(props.selectedSchedule) !== cell.dateKey) {
     // Moved to a different multi-round day — clear the stale selection so the
     // booking panel and the green highlight stay on this one day only.
