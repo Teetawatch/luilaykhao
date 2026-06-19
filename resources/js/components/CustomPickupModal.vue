@@ -16,12 +16,18 @@
 
       <div class="overflow-y-auto px-6 py-4 flex flex-col gap-4">
         <p class="text-sm text-gray-500 leading-relaxed">
-          ลากหมุดหรือแตะบนแผนที่เพื่อเลือกจุดที่สะดวก ระบบจะส่งให้เจ้าหน้าที่ตรวจสอบว่าอยู่ในเส้นทางที่รับได้
+          เลื่อนแผนที่ให้หมุดอยู่ตรงจุดที่สะดวก ระบบจะส่งให้เจ้าหน้าที่ตรวจสอบว่าอยู่ในเส้นทางที่รับได้
           แล้ว<strong class="text-gray-700">แจ้งค่าบริการกลับไปยืนยันอีกครั้ง</strong>
         </p>
 
-        <!-- Map -->
-        <div ref="mapEl" class="w-full h-64 rounded-2xl border border-gray-200 overflow-hidden bg-gray-50 z-0"></div>
+        <!-- Map — หมุดตรึงกลาง เลื่อนแผนที่เอา (แบบ LINE MAN) -->
+        <div class="relative w-full h-64 rounded-2xl border border-gray-200 overflow-hidden bg-gray-50">
+          <div ref="mapEl" class="absolute inset-0 z-0"></div>
+          <!-- หมุดคงที่กลางจอ ปลายหมุดชี้จุดกึ่งกลาง -->
+          <div class="pointer-events-none absolute left-1/2 top-1/2 z-[400] -translate-x-1/2 -translate-y-full">
+            <span class="material-symbols-rounded text-teal-600 drop-shadow" style="font-size:42px; font-variation-settings:'FILL' 1">location_on</span>
+          </div>
+        </div>
 
         <div v-if="coords" class="flex items-center gap-2 text-xs text-gray-500 font-medium">
           <span class="material-symbols-rounded text-[16px] text-teal-600">my_location</span>
@@ -73,12 +79,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'confirm']);
 
 const mapEl = ref(null);
+// จุดที่เลือก = จุดกึ่งกลางแผนที่เสมอ (หมุดตรึงกลาง เลื่อนแผนที่เอา)
 const coords = ref(props.initial?.lat != null ? { lat: props.initial.lat, lng: props.initial.lng } : null);
 const label = ref(props.initial?.label || '');
 const note = ref(props.initial?.note || '');
 
 let map = null;
-let marker = null;
 let L = null;
 
 const canConfirm = computed(() => coords.value && label.value.trim().length > 0);
@@ -97,29 +103,29 @@ function loadLeaflet() {
   });
 }
 
-function setMarker(latlng) {
-  coords.value = { lat: latlng.lat, lng: latlng.lng };
-  if (!marker) {
-    marker = L.marker(latlng, { draggable: true }).addTo(map);
-    marker.on('dragend', () => setMarker(marker.getLatLng()));
-  } else {
-    marker.setLatLng(latlng);
-  }
+function syncCenter() {
+  const c = map.getCenter();
+  coords.value = { lat: c.lat, lng: c.lng };
 }
 
 onMounted(async () => {
   await loadLeaflet();
   await nextTick();
   const start = coords.value || { lat: props.centerLat, lng: props.centerLng };
-  map = L.map(mapEl.value).setView([start.lat, start.lng], coords.value ? 14 : 11);
+  map = L.map(mapEl.value, { zoomControl: true }).setView(
+    [start.lat, start.lng],
+    coords.value ? 15 : 11,
+  );
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap',
     maxZoom: 19,
   }).addTo(map);
-  if (coords.value) setMarker(coords.value);
-  map.on('click', e => setMarker(e.latlng));
+  syncCenter();
+  // อัปเดตพิกัดตามจุดกึ่งกลางขณะเลื่อนแผนที่
+  map.on('move', syncCenter);
+  map.on('moveend', syncCenter);
   // ให้แผนที่คำนวณขนาดใหม่หลัง modal เปิด (กัน tile โหลดครึ่งเดียว)
-  setTimeout(() => map && map.invalidateSize(), 200);
+  setTimeout(() => { if (map) { map.invalidateSize(); syncCenter(); } }, 200);
 });
 
 onBeforeUnmount(() => {
