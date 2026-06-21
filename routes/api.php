@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
+use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
@@ -218,6 +219,11 @@ Route::prefix('v1')->group(function () {
             Route::post('schedules/{id}/depart', [DriverController::class, 'markDeparted']);
             Route::post('check-in/lookup', [DriverController::class, 'lookupCheckIn']);
             Route::post('check-in', [DriverController::class, 'checkIn']);
+
+            // On-trip incident reports (accident / injury logged by staff)
+            Route::get('schedules/{id}/incidents', [IncidentController::class, 'index']);
+            Route::post('schedules/{id}/incidents', [IncidentController::class, 'store']);
+            Route::post('incidents/{id}/resolve', [IncidentController::class, 'resolve']);
         });
     });
 
@@ -313,6 +319,10 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/slip/reject', [AdminController::class, 'rejectSlip']);
         Route::post('bookings/{ref}/slip/reverify', [AdminController::class, 'reverifySlip']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);
+
+        // On-trip incident reports (accident / injury) — ops view + close case
+        Route::get('incidents', [IncidentController::class, 'adminIndex']);
+        Route::post('incidents/{id}/resolve', [IncidentController::class, 'resolve']);
 
         // Outstanding payments — ติดตาม/ส่งลิงก์ชำระเงินให้ลูกค้าที่ยังค้างจ่าย
         Route::get('payments/outstanding', [AdminPaymentController::class, 'outstanding']);
