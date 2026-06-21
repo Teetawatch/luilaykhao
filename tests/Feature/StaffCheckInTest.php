@@ -112,6 +112,32 @@ class StaffCheckInTest extends TestCase
             ->assertJsonPath('data.summary.care_alerts', 1);
     }
 
+    public function test_manifest_surfaces_customer_selected_addons(): void
+    {
+        Role::create(['name' => 'staff']);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $booking] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $booking->update([
+            'selected_addons' => [
+                ['name' => 'เช่าเต็นท์', 'unit_price' => 200, 'price_type' => 'per_booking', 'quantity' => 1, 'total_price' => 200],
+                ['name' => 'อาหารฮาลาล', 'unit_price' => 100, 'price_type' => 'per_person', 'quantity' => 2, 'total_price' => 200],
+            ],
+        ]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->assertJsonPath('data.bookings.0.selected_addons.0.name', 'เช่าเต็นท์')
+            ->assertJsonPath('data.bookings.0.selected_addons.1.name', 'อาหารฮาลาล')
+            ->assertJsonPath('data.bookings.0.selected_addons.1.quantity', 2)
+            ->assertJsonPath('data.summary.addon_requests', 1);
+    }
+
     public function test_completing_a_pickup_point_notifies_next_stop_passengers(): void
     {
         Role::create(['name' => 'staff']);

@@ -412,6 +412,17 @@ class DriverController extends Controller
                 ])
                 ->values();
 
+            // Add-ons the customer requested at booking time, so staff can
+            // prepare them. Snapshot shape: {name, quantity, ...}; we expose
+            // just what staff need to read off the manifest.
+            $addons = collect($booking->selected_addons ?? [])
+                ->map(fn ($addon) => [
+                    'name' => (string) ($addon['name'] ?? ''),
+                    'quantity' => (int) ($addon['quantity'] ?? 1),
+                ])
+                ->filter(fn ($addon) => $addon['name'] !== '')
+                ->values();
+
             return [
                 'booking_ref' => $booking->booking_ref,
                 'status' => $booking->status,
@@ -428,6 +439,7 @@ class DriverController extends Controller
                 'pickup_notes' => $booking->pickupPoint?->notes,
                 'passenger_count' => $passengers->count(),
                 'passengers' => $passengers,
+                'selected_addons' => $addons,
             ];
         })->values();
 
@@ -446,6 +458,9 @@ class DriverController extends Controller
                             || $p->halal_food)
                         ->count()
                 ),
+                'addon_requests' => $bookings
+                    ->filter(fn (Booking $booking) => filled($booking->selected_addons))
+                    ->count(),
             ],
             'pickup_groups' => $this->buildPickupGroups($bookings),
             'seat_map' => $this->buildSeatMap($schedule, $bookings),
