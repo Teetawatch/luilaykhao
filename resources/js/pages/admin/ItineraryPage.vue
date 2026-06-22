@@ -21,44 +21,35 @@
       </label>
 
       <div v-if="loadingList" class="empty-hint">กำลังโหลด...</div>
-      <div v-else-if="!groupedSchedules.length" class="empty-hint">
+      <div v-else-if="!sortedSchedules.length" class="empty-hint">
         {{ search ? 'ไม่พบรอบเดินทางที่ค้นหา' : 'ไม่มีรอบเดินทาง' }}
       </div>
 
-      <div v-else class="conv-list">
-        <!-- จัดกลุ่มตามทริป (เรียงทริปที่มีรอบใกล้ถึงก่อน) -->
-        <section v-for="g in groupedSchedules" :key="g.tripId" class="trip-group">
-          <header class="trip-group-head">
-            <div class="trip-group-thumb">
-              <img v-if="g.cover" :src="g.cover" alt="" />
-              <i v-else class="fas fa-mountain-sun"></i>
-            </div>
-            <span class="trip-group-title">{{ g.title }}</span>
-            <span class="trip-group-count">{{ g.items.length }} รอบ</span>
-          </header>
-
-          <ul class="round-list">
-            <li
-              v-for="sch in g.items"
-              :key="sch.id"
-              class="round-item"
-              :class="{ active: sch.id === activeId, past: sch.isPast }"
-              @click="openSchedule(sch)"
-            >
-              <span class="round-dot"></span>
-              <div class="round-content">
-                <span class="round-date">{{ formatDateRange(sch.departure_date, sch.return_date) }}</span>
-                <span class="round-sub">
-                  <span class="round-countdown">{{ countdownLabel(sch.departure_date) }}</span>
-                  <span v-if="sch.vehicle?.name" class="conv-vehicle">
-                    <i class="fas fa-van-shuttle"></i> {{ sch.vehicle.name }}
-                  </span>
-                </span>
-              </div>
-            </li>
-          </ul>
-        </section>
-      </div>
+      <ul v-else class="conv-list">
+        <!-- ลิสต์เดียวเรียงตามวันที่ (ใกล้จะถึงสุดอยู่บน) -->
+        <li
+          v-for="sch in sortedSchedules"
+          :key="sch.id"
+          class="conv-item"
+          :class="{ active: sch.id === activeId, past: sch.isPast }"
+          @click="openSchedule(sch)"
+        >
+          <div class="conv-thumb">
+            <img v-if="sch.trip?.cover_image" :src="sch.trip.cover_image" alt="" />
+            <i v-else class="fas fa-mountain-sun"></i>
+          </div>
+          <div class="conv-content">
+            <span class="round-date">{{ formatDateRange(sch.departure_date, sch.return_date) }}</span>
+            <span class="conv-title">{{ sch.trip?.title || 'ทริป' }}</span>
+            <span class="conv-sub">
+              <span class="round-countdown">{{ countdownLabel(sch.departure_date) }}</span>
+              <span v-if="sch.vehicle?.name" class="conv-vehicle">
+                <i class="fas fa-van-shuttle"></i> {{ sch.vehicle.name }}
+              </span>
+            </span>
+          </div>
+        </li>
+      </ul>
     </div>
 
     <!-- ─── Main : composer + timeline ──────────────── -->
@@ -214,35 +205,17 @@ function compareUpcoming(a, b) {
   return aUp ? ta - tb : tb - ta;
 }
 
-// จัดกลุ่มตามทริป + เรียงรอบในกลุ่ม และเรียงกลุ่มด้วยรอบที่ใกล้ถึงสุด
-const groupedSchedules = computed(() => {
+// ลิสต์เดียวเรียงตามวันที่: รอบที่ยังไม่ออกเรียงใกล้สุดก่อน ตามด้วยรอบที่ผ่านไปแล้ว
+const sortedSchedules = computed(() => {
   const q = search.value.trim().toLowerCase();
   const list = q
     ? schedules.value.filter((s) => (s.trip?.title || '').toLowerCase().includes(q))
     : schedules.value;
 
   const now = startOfToday();
-  const groups = new Map();
-  for (const s of list) {
-    const tripId = s.trip_id ?? s.trip?.id ?? `t:${s.trip?.title || '?'}`;
-    if (!groups.has(tripId)) {
-      groups.set(tripId, {
-        tripId,
-        title: s.trip?.title || 'ทริป',
-        cover: s.trip?.cover_image || null,
-        items: [],
-      });
-    }
-    groups.get(tripId).items.push({ ...s, isPast: dateVal(s.departure_date) < now });
-  }
-
-  const result = [...groups.values()];
-  for (const g of result) {
-    g.items.sort((a, b) => compareUpcoming(a.departure_date, b.departure_date));
-    g.repDate = g.items[0]?.departure_date ?? null;
-  }
-  result.sort((a, b) => compareUpcoming(a.repDate, b.repDate));
-  return result;
+  return list
+    .map((s) => ({ ...s, isPast: dateVal(s.departure_date) < now }))
+    .sort((a, b) => compareUpcoming(a.departure_date, b.departure_date));
 });
 
 // ป้ายนับถอยหลังสั้น ๆ: "วันนี้ / พรุ่งนี้ / อีก N วัน / ผ่านมาแล้ว N วัน"
@@ -441,40 +414,24 @@ loadSchedules();
 }
 .upcoming-toggle input { width: 15px; height: 15px; accent-color: #2D7A4F; }
 
-.conv-list { margin: 0; padding: 0; overflow-y: auto; flex: 1; }
-
-/* ── Trip group ── */
-.trip-group { border-bottom: 8px solid #f3f4f6; }
-.trip-group:last-child { border-bottom: none; }
-.trip-group-head {
-  display: flex; align-items: center; gap: 10px; padding: 11px 14px;
-  background: #f9fafb; border-bottom: 1px solid #eef0f2; position: sticky; top: 0; z-index: 1;
-}
-.trip-group-thumb {
-  width: 30px; height: 30px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+.conv-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+.conv-item { display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s; }
+.conv-item:hover { background: #f9fafb; }
+.conv-item.active { background: #ecfdf5; box-shadow: inset 3px 0 0 #2D7A4F; }
+.conv-thumb {
+  width: 48px; height: 48px; border-radius: 12px; overflow: hidden; flex-shrink: 0;
   background: linear-gradient(135deg, #e7f5ee, #d1f0df);
-  display: flex; align-items: center; justify-content: center; color: #2D7A4F; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; color: #2D7A4F;
 }
-.trip-group-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.trip-group-title { flex: 1; min-width: 0; font-weight: 800; font-size: 13.5px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.trip-group-count { flex-shrink: 0; font-size: 11px; font-weight: 700; color: #2D7A4F; background: #ecfdf5; border-radius: 999px; padding: 2px 9px; }
-
-/* ── Round item ── */
-.round-list { list-style: none; margin: 0; padding: 0; }
-.round-item {
-  display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px 11px 18px;
-  border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s;
-}
-.round-item:hover { background: #f9fafb; }
-.round-item.active { background: #ecfdf5; box-shadow: inset 3px 0 0 #2D7A4F; }
-.round-dot { width: 8px; height: 8px; border-radius: 50%; background: #2D7A4F; margin-top: 5px; flex-shrink: 0; }
-.round-item.past .round-dot { background: #cbd5e1; }
-.round-content { flex: 1; min-width: 0; }
-.round-date { display: block; font-weight: 800; font-size: 13px; color: #111827; }
-.round-item.past .round-date { color: #6b7280; }
-.round-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.conv-item.past .conv-thumb { filter: grayscale(0.5); opacity: 0.75; }
+.conv-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.conv-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.round-date { font-weight: 800; font-size: 13.5px; color: #111827; }
+.conv-item.past .round-date { color: #6b7280; }
+.conv-title { font-size: 12px; font-weight: 700; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.conv-sub { font-size: 11.5px; color: #6b7280; margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .round-countdown { font-weight: 700; color: #2D7A4F; }
-.round-item.past .round-countdown { color: #9ca3af; }
+.conv-item.past .round-countdown { color: #9ca3af; }
 .conv-vehicle { display: inline-flex; align-items: center; gap: 3px; color: #6b7280; font-weight: 700; }
 .conv-vehicle i { font-size: 10px; }
 .empty-hint { padding: 24px 16px; color: #9ca3af; font-size: 13px; text-align: center; }
