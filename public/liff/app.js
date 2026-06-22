@@ -204,11 +204,21 @@ async function showTrip(slug) {
   }
 
   const node = el(`<div></div>`);
-  node.appendChild(appbar(trip.title, showTrips));
+  node.appendChild(appbar('รายละเอียดทริป', showTrips));
   const content = el(`<div class="content"></div>`);
 
-  if (trip.cover_image) content.appendChild(el(`<img class="cover" style="border-radius:16px" src="${esc(trip.cover_image)}" alt="">`));
-  content.appendChild(el(`<p class="muted" style="margin-top:12px">${esc(trip.description || '')}</p>`));
+  if (trip.cover_image) content.appendChild(el(`<img class="hero" src="${esc(trip.cover_image)}" alt="">`));
+
+  content.appendChild(el(`<h2 class="trip-title">${esc(trip.title)}</h2>`));
+  content.appendChild(el(`<div class="meta" style="margin-bottom:4px">
+    <span>📍 ${esc(trip.location || '')}</span>
+    <span>${trip.duration_days || 1} วัน</span>
+    ${trip.seats_left != null ? `<span>เหลือ ${trip.seats_left} ที่</span>` : ''}
+  </div>`));
+
+  if (trip.description) {
+    content.appendChild(el(`<p class="trip-desc">${esc(trip.description)}</p>`));
+  }
 
   if (Array.isArray(trip.highlights) && trip.highlights.length) {
     content.appendChild(el(`<div class="section-heading">ไฮไลต์</div>`));
@@ -313,24 +323,42 @@ function renderSeatStep() {
   summary.querySelector('#next').onclick = proceedToPassengers;
 }
 
+// Column position of a seat, tolerating different layout key names.
+const seatCol = (s) => Number(s.column ?? s.col ?? s.x ?? 0);
+const seatRow = (s) => (s.row ?? s.y ?? null);
+
 function buildSeatMap() {
   const wrap = el(`<div class="seatmap"></div>`);
   wrap.appendChild(el(`<div class="seatmap-head">${esc(bk.seatData.front_label || 'หน้ารถ')}</div>`));
 
   const seats = bk.seatData.seats || [];
-  const rows = bk.seatData.rows || Math.max(...seats.map((s) => s.row || 1), 1);
-  const cols = (bk.seatData.columns && bk.seatData.columns.length)
-    ? bk.seatData.columns.length
-    : Math.max(...seats.map((s) => s.column || 1), 1);
-
-  const grid = el(`<div class="seat-grid" style="grid-template-columns:repeat(${cols}, 1fr)"></div>`);
-  for (let r = 1; r <= rows; r++) {
-    for (let c = 1; c <= cols; c++) {
-      const seat = seats.find((s) => (s.row || 1) === r && (s.column || 1) === c);
-      if (!seat) { grid.appendChild(el(`<div class="seat ghost"></div>`)); continue; }
-      grid.appendChild(seatCell(seat));
-    }
+  if (!seats.length) {
+    wrap.appendChild(el(`<p class="muted center" style="padding:12px 0">ไม่พบผังที่นั่งของรอบนี้</p>`));
+    return wrap;
   }
+
+  // Render row-by-row so we never depend on a strict column grid (real vehicle
+  // layouts use varying keys / gaps). When no row info exists, flow seats in
+  // order. Each row centers its seats; the source order preserves the aisle.
+  const grid = el(`<div class="seat-rows"></div>`);
+  const hasRows = seats.some((s) => seatRow(s) != null);
+
+  if (hasRows) {
+    [...new Set(seats.map((s) => seatRow(s)))]
+      .sort((a, b) => Number(a) - Number(b))
+      .forEach((r) => {
+        const rowEl = el(`<div class="seat-row"></div>`);
+        seats.filter((s) => seatRow(s) === r)
+          .sort((a, b) => seatCol(a) - seatCol(b))
+          .forEach((s) => rowEl.appendChild(seatCell(s)));
+        grid.appendChild(rowEl);
+      });
+  } else {
+    const rowEl = el(`<div class="seat-row wrap"></div>`);
+    seats.forEach((s) => rowEl.appendChild(seatCell(s)));
+    grid.appendChild(rowEl);
+  }
+
   wrap.appendChild(grid);
   return wrap;
 }
