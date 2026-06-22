@@ -21,6 +21,7 @@ class SchedulePickupPointResource extends JsonResource
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'notes' => $this->notes,
+            'pickup_time' => $this->pickup_time,
             'sort_order' => $this->sort_order,
         ];
     }

@@ -424,13 +424,17 @@
                       <div class="pickup-item-edit">
                         <div class="pif-row">
                           <input v-model="pickupForm.pickup_location" placeholder="จุดขึ้นรถ *" class="pif-location" />
-                          <input v-model="pickupForm.notes" placeholder="เวลานัด / หมายเหตุ" class="pif-notes" />
+                          <input v-model="pickupForm.notes" placeholder="หมายเหตุ (ไม่บังคับ)" class="pif-notes" />
                           <div class="pif-price-wrap">
                             <span class="pif-baht">฿</span>
                             <input v-model.number="pickupForm.price" type="number" min="0" placeholder="ราคา" class="pif-price" />
                           </div>
                         </div>
                         <div class="pif-row">
+                          <label class="pif-time-wrap" title="เวลาขึ้นรถ">
+                            <span class="material-symbols-rounded">schedule</span>
+                            <input v-model="pickupForm.pickup_time" type="time" class="pif-time" />
+                          </label>
                           <input v-model="pickupForm.map_url" placeholder="Google Maps URL (ไม่บังคับ)" class="pif-map" />
                           <input v-model.number="pickupForm.sort_order" type="number" min="0" placeholder="ลำดับ" class="pif-order" />
                         </div>
@@ -461,9 +465,10 @@
                         <img v-if="pt.image_url" :src="pt.image_url" class="pid-thumb" alt="รูปจุดรับ" />
                         <div class="pid-left">
                           <span class="pid-location"><span class="material-symbols-rounded" style="font-size:16px;">push_pin</span> {{ pt.pickup_location }}</span>
-                          <span class="pid-notes" v-if="pt.notes"><span class="material-symbols-rounded" style="font-size:16px;">schedule</span> {{ pt.notes }}</span>
+                          <span class="pid-notes" v-if="pt.notes"><span class="material-symbols-rounded" style="font-size:16px;">sticky_note_2</span> {{ pt.notes }}</span>
                         </div>
                         <div class="pid-right">
+                          <span class="pid-time" v-if="pt.pickup_time"><span class="material-symbols-rounded">schedule</span> {{ pt.pickup_time }} น.</span>
                           <a :href="pt.map_url" target="_blank" class="pid-map" v-if="pt.map_url" title="ดูแผนที่">
                             <span class="material-symbols-rounded">map</span>
                           </a>
@@ -487,6 +492,10 @@
                     </div>
                   </div>
                   <div class="pif-row">
+                    <label class="pif-time-wrap" title="เวลาขึ้นรถ">
+                      <span class="material-symbols-rounded">schedule</span>
+                      <input v-model="pickupForm.pickup_time" type="time" class="pif-time" />
+                    </label>
                     <input v-model="pickupForm.map_url" placeholder="Google Maps URL (ไม่บังคับ)" class="pif-map" />
                     <input v-model.number="pickupForm.sort_order" type="number" min="0" placeholder="ลำดับ" class="pif-order" />
                   </div>
@@ -2168,7 +2177,7 @@ watch(() => batchForm.is_day_trip, (on) => {
 });
 
 const addPickupRow = () => batchForm.pickups.push({
-  region: '', region_label: '', pickup_location: '', price: '', notes: '', map_url: '', image_url: '',
+  region: '', region_label: '', pickup_location: '', price: '', notes: '', pickup_time: '', map_url: '', image_url: '',
 });
 const removePickupRow = (i) => batchForm.pickups.splice(i, 1);
 
@@ -2213,6 +2222,7 @@ const submitBatchForm = async () => {
           pickup_location: pt.pickup_location,
           price: pt.price,
           notes: pt.notes || null,
+          pickup_time: pt.pickup_time || null,
           map_url: pt.map_url || null,
           image_url: pt.image_url || null,
         });
@@ -2615,6 +2625,7 @@ const doApplyTemplate = async () => {
           pickup_location: pt.pickup_location,
           price: pt.price,
           notes: pt.notes || null,
+          pickup_time: pt.pickup_time || null,
           map_url: pt.map_url || null,
           image_url: pt.image_url || null,
         });
@@ -2674,7 +2685,7 @@ const openManifest = async (sch) => {
 const pickupForm = reactive({
   region: '', region_label: '', pickup_location: '',
   price: '', map_url: '', image_url: '', latitude: null, longitude: null,
-  notes: '', sort_order: 0,
+  notes: '', pickup_time: '', sort_order: 0,
 });
 const pickupImageUploading = ref(false);
 
@@ -2739,7 +2750,7 @@ const resetPickupForm = () => {
   Object.assign(pickupForm, {
     region: '', region_label: '', pickup_location: '',
     price: '', map_url: '', image_url: '', latitude: null, longitude: null,
-    notes: '', sort_order: 0,
+    notes: '', pickup_time: '', sort_order: 0,
   });
   editingPickup.value = null;
 };
@@ -2779,7 +2790,7 @@ const startAddInRegion = (regionValue) => {
     region: regionValue,
     region_label: found?.label || regionValue,
     pickup_location: '', price: '', map_url: '', image_url: '',
-    latitude: null, longitude: null, notes: '', sort_order: 0,
+    latitude: null, longitude: null, notes: '', pickup_time: '', sort_order: 0,
   });
   addingInRegion.value = regionValue;
 };
@@ -2797,6 +2808,7 @@ const submitPickupForm = async () => {
     if (!payload.image_url) payload.image_url = null;
     if (!payload.latitude) payload.latitude = null;
     if (!payload.longitude) payload.longitude = null;
+    if (!payload.pickup_time) payload.pickup_time = null;
 
     if (editingPickup.value) {
       await api.put(`/admin/schedules/${scheduleId}/pickup-points/${editingPickup.value.id}`, payload);
@@ -2826,6 +2838,7 @@ const editPickupPoint = (pt) => {
     latitude: pt.latitude || null,
     longitude: pt.longitude || null,
     notes: pt.notes || '',
+    pickup_time: pt.pickup_time || '',
     sort_order: pt.sort_order || 0,
   });
 };
@@ -4138,6 +4151,21 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+.pid-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--color-accent);
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pid-time .material-symbols-rounded { font-size: 15px; }
+
 .pid-map {
   color: var(--color-accent);
   font-size: 13px;
@@ -4194,6 +4222,27 @@ onMounted(() => {
 
 .pif-price {
   width: 90px;
+}
+
+.pif-time-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 8px;
+  background: var(--color-white);
+  flex-shrink: 0;
+}
+.pif-time-wrap .material-symbols-rounded {
+  font-size: 17px;
+  color: var(--color-accent);
+}
+.pif-time {
+  border: none !important;
+  padding: 7px 0 !important;
+  width: 96px;
+  background: transparent;
 }
 
 .pif-map {

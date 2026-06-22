@@ -2165,6 +2165,7 @@ class AdminController extends Controller
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'pickup_time' => ['nullable', 'date_format:H:i'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
@@ -2250,6 +2251,7 @@ class AdminController extends Controller
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'pickup_time' => ['nullable', 'date_format:H:i'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 

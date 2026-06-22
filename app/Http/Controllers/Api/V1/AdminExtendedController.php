@@ -166,6 +166,7 @@ class AdminExtendedController extends Controller
                     'pickup_location' => $pt->pickup_location,
                     'price' => (float) $pt->price,
                     'notes' => $pt->notes,
+                    'pickup_time' => $pt->pickup_time,
                     'map_url' => $pt->map_url,
                 ])->values()->all(),
             ];
