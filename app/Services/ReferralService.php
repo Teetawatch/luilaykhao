@@ -188,7 +188,7 @@ class ReferralService
 
     private function shareMessage(string $code): string
     {
-        return "มาเที่ยวกับลุยลายเขากันเถอะ! 🏕️ ใช้โค้ดแนะนำเพื่อน \"{$code}\" "
+        return "มาเที่ยวกับลุยเลเขากันเถอะ! 🏕️ ใช้โค้ดแนะนำเพื่อน \"{$code}\" "
             ."ตอนสมัคร แล้วเราทั้งคู่จะได้รับแต้มสะสมเมื่อคุณจองทริปแรกสำเร็จ\n".$this->shareUrl($code);
     }
 
