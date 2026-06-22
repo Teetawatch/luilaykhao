@@ -181,6 +181,17 @@ class TripSchedule extends Model
         return $this->hasMany(SchedulePickupPoint::class, 'schedule_id')->orderBy('sort_order');
     }
 
+    public function itineraryItems(): HasMany
+    {
+        return $this->hasMany(ScheduleItineraryItem::class, 'schedule_id')
+            ->orderByRaw('item_date is null')
+            ->orderBy('item_date')
+            ->orderByRaw('time is null')
+            ->orderBy('time')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function staff(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'schedule_staff_assignments', 'schedule_id', 'user_id')

@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
+use App\Http\Controllers\Api\V1\ScheduleItineraryController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\StaffController;
@@ -140,6 +141,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('schedules/{id}/announcements/{announcementId}', [AnnouncementController::class, 'destroy']);
         Route::post('schedules/{id}/announcements/{announcementId}/pin', [AnnouncementController::class, 'pin']);
         Route::delete('schedules/{id}/announcements/{announcementId}/pin', [AnnouncementController::class, 'unpin']);
+
+        // กำหนดการรอบเดินทาง (itinerary) — สตาฟประจำรอบ/ทีมงานอ่าน; แอดมินจัดการในบล็อก admin
+        Route::get('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'index']);
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');
@@ -304,6 +308,13 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/pickup-points/sync-images', [AdminController::class, 'syncPickupImages']);
         Route::put('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'updatePickupPoint']);
         Route::delete('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'deletePickupPoint']);
+
+        // Schedule Itinerary (กำหนดการรอบเดินทาง) — แอดมิน/operator สร้าง/แก้/ลบ/จัดลำดับ
+        Route::get('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'index']);
+        Route::post('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'store']);
+        Route::post('schedules/{id}/itinerary/reorder', [ScheduleItineraryController::class, 'reorder']);
+        Route::put('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'update']);
+        Route::delete('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'destroy']);
 
         // Bookings
         Route::get('bookings', [AdminController::class, 'bookings']);
