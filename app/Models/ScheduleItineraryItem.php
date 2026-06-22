@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ScheduleItineraryItem extends Model
 {
     protected $fillable = [
-        'schedule_id', 'item_date', 'time', 'title', 'detail', 'sort_order', 'created_by',
+        'schedule_id', 'item_date', 'time', 'title', 'detail', 'link', 'sort_order', 'created_by',
     ];
 
     protected function casts(): array

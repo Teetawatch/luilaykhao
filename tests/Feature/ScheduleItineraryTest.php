@@ -199,6 +199,44 @@ class ScheduleItineraryTest extends TestCase
         ], $titles);
     }
 
+    public function test_admin_can_attach_and_clear_link(): void
+    {
+        $schedule = $this->makeSchedule();
+        $admin = $this->makeAdmin();
+
+        $id = $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/itinerary", [
+                'title' => 'จุดนัดพบ',
+                'link' => 'https://maps.google.com/?q=13.7,100.5',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.link', 'https://maps.google.com/?q=13.7,100.5')
+            ->json('data.id');
+
+        // ส่ง link ว่าง → เคลียร์เป็น null
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/schedules/{$schedule->id}/itinerary/{$id}", [
+                'title' => 'จุดนัดพบ',
+                'link' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.link', null);
+    }
+
+    public function test_link_must_be_valid_url(): void
+    {
+        $schedule = $this->makeSchedule();
+        $admin = $this->makeAdmin();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/itinerary", [
+                'title' => 'ลิงก์ผิด',
+                'link' => 'ไม่ใช่ลิงก์',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['link']);
+    }
+
     public function test_time_must_be_valid_format(): void
     {
         $schedule = $this->makeSchedule();

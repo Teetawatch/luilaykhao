@@ -50,6 +50,7 @@ class ScheduleItineraryService
             'time' => $data['time'] ?? null,
             'title' => trim($data['title']),
             'detail' => isset($data['detail']) ? trim($data['detail']) : null,
+            'link' => isset($data['link']) ? (trim($data['link']) ?: null) : null,
             'sort_order' => $data['sort_order'] ?? 0,
             'created_by' => $author->id,
         ]);
@@ -64,6 +65,9 @@ class ScheduleItineraryService
             'detail' => array_key_exists('detail', $data)
                 ? ($data['detail'] !== null ? trim($data['detail']) : null)
                 : $item->detail,
+            'link' => array_key_exists('link', $data)
+                ? ($data['link'] !== null ? (trim($data['link']) ?: null) : null)
+                : $item->link,
             'sort_order' => $data['sort_order'] ?? $item->sort_order,
         ]);
 
@@ -97,6 +101,7 @@ class ScheduleItineraryService
             'time' => $item->time,
             'title' => $item->title,
             'detail' => $item->detail,
+            'link' => $item->link,
             'sort_order' => $item->sort_order,
         ];
     }

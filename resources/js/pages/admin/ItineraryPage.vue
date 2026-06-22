@@ -109,6 +109,17 @@
               placeholder="รายละเอียด (ถ้ามี) เช่น นัดพบปั๊ม ปตท. พระราม 2 เวลา 05:45"
             ></textarea>
 
+            <div class="link-input">
+              <i class="fas fa-link"></i>
+              <input
+                v-model="form.link"
+                class="composer-input"
+                type="url"
+                maxlength="2048"
+                placeholder="ลิงก์ (ถ้ามี) เช่น Google Maps จุดนัดพบ"
+              />
+            </div>
+
             <div class="composer-actions">
               <button type="submit" class="post-btn" :disabled="saving || !canSave">
                 <i class="fas" :class="saving ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
@@ -140,6 +151,16 @@
                   <div class="itin-card-main">
                     <h4 class="itin-card-title">{{ it.title }}</h4>
                     <p v-if="it.detail" class="itin-card-detail">{{ it.detail }}</p>
+                    <a
+                      v-if="it.link"
+                      class="itin-card-link"
+                      :href="it.link"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      @click.stop
+                    >
+                      <i class="fas fa-link"></i> เปิดลิงก์
+                    </a>
                   </div>
                   <div class="itin-card-actions">
                     <button class="mini-btn" @click="startEdit(it)" title="แก้ไข"><i class="fas fa-pen"></i></button>
@@ -177,7 +198,7 @@ const loadingItems = ref(false);
 const saving = ref(false);
 const editingId = ref(null);
 
-const form = ref({ item_date: '', time: '', title: '', detail: '' });
+const form = ref({ item_date: '', time: '', title: '', detail: '', link: '' });
 
 const canSave = computed(() => form.value.title.trim().length > 0);
 
@@ -329,6 +350,7 @@ function resetForm() {
     time: '',
     title: '',
     detail: '',
+    link: '',
   };
 }
 
@@ -339,6 +361,7 @@ function startEdit(it) {
     time: it.time || '',
     title: it.title || '',
     detail: it.detail || '',
+    link: it.link || '',
   };
 }
 
@@ -348,6 +371,7 @@ function payload() {
     time: form.value.time || null,
     title: form.value.title.trim(),
     detail: form.value.detail.trim() || null,
+    link: form.value.link.trim() || null,
   };
 }
 
@@ -482,6 +506,9 @@ loadSchedules();
 .field .composer-input { margin-bottom: 0; }
 .composer-input:focus, .composer-textarea:focus { border-color: #2D7A4F; }
 .composer-textarea { resize: vertical; line-height: 1.5; }
+.link-input { position: relative; display: flex; align-items: center; }
+.link-input > i { position: absolute; left: 14px; color: #9ca3af; font-size: 13px; }
+.link-input .composer-input { padding-left: 36px; margin-bottom: 10px; }
 .composer-actions { display: flex; align-items: center; gap: 12px; }
 .post-btn {
   border: none; background: #2D7A4F; color: #fff;
@@ -513,6 +540,13 @@ loadSchedules();
 .itin-card-main { flex: 1; min-width: 0; }
 .itin-card-title { margin: 2px 0 0; font-size: 15px; font-weight: 800; color: #111827; }
 .itin-card-detail { margin: 5px 0 0; font-size: 13.5px; line-height: 1.55; color: #4b5563; white-space: pre-wrap; word-break: break-word; }
+.itin-card-link {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+  font-size: 12.5px; font-weight: 700; color: #2563eb; text-decoration: none;
+  background: #eff6ff; border-radius: 8px; padding: 5px 10px;
+}
+.itin-card-link:hover { background: #dbeafe; }
+.itin-card-link i { font-size: 11px; }
 .itin-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .mini-btn { border: 1px solid #e5e7eb; background: #fff; color: #6b7280; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
 .mini-btn:hover { background: #f3f4f6; color: #374151; }

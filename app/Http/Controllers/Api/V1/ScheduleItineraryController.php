@@ -121,6 +121,7 @@ class ScheduleItineraryController extends Controller
             'time' => ['nullable', 'date_format:H:i'],
             'title' => [$isCreate ? 'required' : 'sometimes', 'string', 'max:200'],
             'detail' => ['nullable', 'string', 'max:4000'],
+            'link' => ['nullable', 'string', 'url', 'max:2048'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
     }
