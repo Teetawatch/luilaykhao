@@ -321,16 +321,7 @@ class AuthController extends Controller
         }
 
         $expectedChannelId = config('services.line.liff_channel_id');
-        $actualChannelId = (string) $verify->json('client_id');
-        if ($expectedChannelId && $actualChannelId !== (string) $expectedChannelId) {
-            // Mismatch means LINE_LIFF_CHANNEL_ID (or LINE_CLIENT_ID) does not
-            // match the channel the LIFF token was issued for — log both sides so
-            // the correct channel ID is visible in storage/logs/laravel.log.
-            \Log::warning('LINE LIFF channel mismatch', [
-                'expected_channel_id' => (string) $expectedChannelId,
-                'actual_channel_id' => $actualChannelId,
-            ]);
-
+        if ($expectedChannelId && (string) $verify->json('client_id') !== (string) $expectedChannelId) {
             return $this->error('โทเคน LINE ไม่ถูกต้องสำหรับแอปนี้', 401);
         }
 

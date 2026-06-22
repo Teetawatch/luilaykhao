@@ -1,7 +1,8 @@
 /* Luilaykhao LIFF booking app — framework-free.
  *
  * Flow: liff.init → grab the LINE access token → exchange it at
- * POST /auth/line/liff for a Sanctum token → browse trips → book.
+ * POST /auth/line/liff for a Sanctum token → browse trips → book (seat map,
+ * pickup, passengers, add-ons, promo) against the existing booking API.
  * The Sanctum token is kept in memory (and sessionStorage) and sent as a
  * Bearer header on every authenticated API call. */
 
@@ -32,7 +33,9 @@ async function api(path, { method = 'GET', body, auth = true } = {}) {
 
   if (!res.ok) {
     const msg = (json && (json.message || firstError(json))) || 'เกิดข้อผิดพลาด (' + res.status + ')';
-    throw new Error(msg);
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
   }
   return json;
 }
@@ -207,6 +210,13 @@ async function showTrip(slug) {
   if (trip.cover_image) content.appendChild(el(`<img class="cover" style="border-radius:16px" src="${esc(trip.cover_image)}" alt="">`));
   content.appendChild(el(`<p class="muted" style="margin-top:12px">${esc(trip.description || '')}</p>`));
 
+  if (Array.isArray(trip.highlights) && trip.highlights.length) {
+    content.appendChild(el(`<div class="section-heading">ไฮไลต์</div>`));
+    const ul = el(`<ul class="bullets"></ul>`);
+    trip.highlights.forEach((h) => ul.appendChild(el(`<li>${esc(h)}</li>`)));
+    content.appendChild(ul);
+  }
+
   content.appendChild(el(`<div class="section-heading">รอบเดินทางที่เปิดจอง</div>`));
   const bookable = schedules.filter((s) => (s.available_seats == null || s.available_seats > 0) && s.status !== 'closed');
   if (!bookable.length) {
@@ -220,7 +230,8 @@ async function showTrip(slug) {
       </div>
       <button class="btn" style="width:auto;padding:9px 16px;font-size:14px">จอง</button>
     </div>`);
-    row.querySelector('button').onclick = () => showBooking(trip, s);
+    // Re-fetch the full schedule (pickup points + seats) when booking starts.
+    row.querySelector('button').onclick = () => startBooking(trip, s.id);
     content.appendChild(row);
   }
 
@@ -228,81 +239,265 @@ async function showTrip(slug) {
   render(node);
 }
 
-/* -------------------------- screen: booking --------------------------- */
+/* ===================== booking wizard (3 steps) ====================== */
 
-function showBooking(trip, schedule) {
+let bk = null; // active booking draft
+
+async function startBooking(trip, scheduleId) {
+  loading('กำลังเตรียมข้อมูลการจอง…');
+  try {
+    const schedule = (await api('/schedules/' + scheduleId)).data;
+    const seatData = (await api('/schedules/' + scheduleId + '/seats')).data;
+    bk = {
+      trip,
+      schedule,
+      seatData,
+      selected: [],
+      pickupId: null,
+      addons: new Set(),
+      promo: '',
+      passengers: {}, // index -> passenger object
+    };
+    renderSeatStep();
+  } catch (e) {
+    errorScreen(e.message, () => startBooking(trip, scheduleId));
+  }
+}
+
+function maxSelectable() {
+  const avail = bk.seatData.available_seats;
+  return avail == null ? 9 : Math.min(avail, 9);
+}
+
+/* --------- step 1: seat map + pickup point --------- */
+
+function renderSeatStep() {
   const node = el(`<div></div>`);
-  node.appendChild(appbar('ข้อมูลผู้เดินทาง', () => showTrip(trip.slug)));
+  node.appendChild(appbar('เลือกที่นั่ง', () => showTrip(bk.trip.slug)));
   const content = el(`<div class="content"></div>`);
 
-  content.appendChild(el(`<div class="card"><div class="body">
-    <p class="title">${esc(trip.title)}</p>
-    <div class="meta"><span>${thaiDate(schedule.departure_date)}</span><span class="price">${baht(schedule.price)}</span></div>
-  </div></div>`));
+  content.appendChild(el(`<div class="step-dots"><span class="on"></span><span></span><span></span></div>`));
 
-  const womenOnly = !!trip.is_women_only;
-  const titleOpts = womenOnly
-    ? ['นาง', 'นางสาว']
-    : ['นาย', 'นาง', 'นางสาว'];
+  // Seat map
+  content.appendChild(buildSeatMap());
 
-  const form = el(`<form id="bk"></form>`);
-  form.innerHTML = `
-    <label class="field"><span>คำนำหน้า</span>
-      <select name="title" required>${titleOpts.map((t) => `<option>${t}</option>`).join('')}</select>
-    </label>
-    <label class="field"><span>ชื่อ-นามสกุล</span>
-      <input name="name" required value="${esc(state.profile?.displayName || '')}" placeholder="ชื่อจริง นามสกุล">
-    </label>
-    <label class="field"><span>ชื่อเล่น</span>
-      <input name="nickname" required placeholder="ชื่อเล่น">
-    </label>
-    <label class="field"><span>เลขบัตรประชาชน (13 หลัก)</span>
-      <input name="id_card" required inputmode="numeric" maxlength="13" placeholder="x xxxx xxxxx xx x">
-    </label>
-    <div class="row2">
-      <label class="field"><span>เบอร์โทร</span>
-        <input name="phone" required inputmode="numeric" maxlength="10" placeholder="08xxxxxxxx">
-      </label>
-      <label class="field"><span>กรุ๊ปเลือด</span>
-        <select name="blood_group" required>
-          <option value="">เลือก</option><option>A</option><option>B</option><option>O</option><option>AB</option>
-        </select>
-      </label>
-    </div>
-    <label class="field"><span>วันเกิด (ไม่บังคับ)</span>
-      <input name="birth_date" type="date">
-    </label>
-    <div class="row2">
-      <label class="field"><span>ผู้ติดต่อฉุกเฉิน</span>
-        <input name="emergency_contact" required placeholder="ชื่อผู้ติดต่อ">
-      </label>
-      <label class="field"><span>เบอร์ฉุกเฉิน</span>
-        <input name="emergency_phone" required inputmode="numeric" maxlength="10" placeholder="08xxxxxxxx">
-      </label>
-    </div>
-    <label class="field"><span>อาหารฮาลาล</span>
-      <select name="halal_food"><option value="0">ไม่</option><option value="1">ใช่</option></select>
-    </label>
-    <label class="field"><span>แพ้อาหาร/ยา (ถ้ามี)</span>
-      <textarea name="allergies" rows="2" placeholder="ระบุหากมี"></textarea>
-    </label>
-  `;
-  content.appendChild(form);
+  // Legend
+  content.appendChild(el(`<div class="legend">
+    <span><i class="sw avail"></i> ว่าง</span>
+    <span><i class="sw sel"></i> ที่เลือก</span>
+    <span><i class="sw taken"></i> ไม่ว่าง</span>
+  </div>`));
 
-  const banner = el(`<div></div>`);
-  content.appendChild(banner);
+  // Pickup points
+  const points = bk.schedule.pickup_points || [];
+  if (points.length) {
+    content.appendChild(el(`<div class="section-heading">จุดรับ</div>`));
+    const list = el(`<div></div>`);
+    list.appendChild(pickupOption(null, 'ขึ้นที่จุดนัดหมายหลัก', bk.schedule.price, null));
+    points.forEach((p) => list.appendChild(
+      pickupOption(p.id, p.pickup_location || p.region_label || 'จุดรับ', p.price, p.pickup_time)
+    ));
+    content.appendChild(list);
+  }
+
   node.appendChild(content);
 
-  const cta = el(`<div class="sticky-cta"><button class="btn" id="submit">ยืนยันการจอง</button></div>`);
+  const summary = el(`<div class="sticky-cta">
+    <div class="cta-row"><span class="muted" id="selCount">ยังไม่ได้เลือกที่นั่ง</span><span class="price" id="estTotal"></span></div>
+    <button class="btn" id="next" disabled>ถัดไป</button>
+  </div>`);
+  node.appendChild(summary);
+  render(node);
+
+  refreshSeatStep();
+  summary.querySelector('#next').onclick = proceedToPassengers;
+}
+
+function buildSeatMap() {
+  const wrap = el(`<div class="seatmap"></div>`);
+  wrap.appendChild(el(`<div class="seatmap-head">${esc(bk.seatData.front_label || 'หน้ารถ')}</div>`));
+
+  const seats = bk.seatData.seats || [];
+  const rows = bk.seatData.rows || Math.max(...seats.map((s) => s.row || 1), 1);
+  const cols = (bk.seatData.columns && bk.seatData.columns.length)
+    ? bk.seatData.columns.length
+    : Math.max(...seats.map((s) => s.column || 1), 1);
+
+  const grid = el(`<div class="seat-grid" style="grid-template-columns:repeat(${cols}, 1fr)"></div>`);
+  for (let r = 1; r <= rows; r++) {
+    for (let c = 1; c <= cols; c++) {
+      const seat = seats.find((s) => (s.row || 1) === r && (s.column || 1) === c);
+      if (!seat) { grid.appendChild(el(`<div class="seat ghost"></div>`)); continue; }
+      grid.appendChild(seatCell(seat));
+    }
+  }
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function seatAvailable(seat) {
+  if (seat.status === 'booked') return false;
+  if (seat.status === 'locked' && !seat.locked_by_current_user) return false;
+  return true;
+}
+
+function seatCell(seat) {
+  const usable = seatAvailable(seat);
+  const cell = el(`<button class="seat" ${usable ? '' : 'disabled'}>${esc(seat.label || seat.id)}</button>`);
+  cell.dataset.id = seat.id;
+  cell.onclick = () => toggleSeat(seat.id, cell);
+  return cell;
+}
+
+function toggleSeat(id, cell) {
+  const i = bk.selected.indexOf(id);
+  if (i >= 0) {
+    bk.selected.splice(i, 1);
+  } else {
+    if (bk.selected.length >= maxSelectable()) {
+      return; // at limit
+    }
+    bk.selected.push(id);
+  }
+  cell.classList.toggle('selected', bk.selected.includes(id));
+  refreshSeatStep();
+}
+
+function selectedPickup() {
+  if (bk.pickupId == null) return null;
+  return (bk.schedule.pickup_points || []).find((p) => p.id === bk.pickupId) || null;
+}
+
+function basePerPax() {
+  const p = selectedPickup();
+  return p && p.price ? Number(p.price) : Number(bk.schedule.price || 0);
+}
+
+function estimateTotal() {
+  const n = bk.selected.length;
+  let total = basePerPax() * n;
+  addonItems().forEach((item, idx) => {
+    if (!bk.addons.has(idx)) return;
+    const qty = (item.price_type === 'per_person') ? n : 1;
+    total += Number(item.price || 0) * qty;
+  });
+  return total;
+}
+
+function refreshSeatStep() {
+  const n = bk.selected.length;
+  const count = document.getElementById('selCount');
+  const est = document.getElementById('estTotal');
+  const next = document.getElementById('next');
+  if (count) count.textContent = n ? `เลือกแล้ว ${n} ที่ (${bk.selected.join(', ')})` : 'ยังไม่ได้เลือกที่นั่ง';
+  if (est) est.textContent = n ? baht(estimateTotal()) : '';
+  if (next) next.disabled = n === 0;
+}
+
+function pickupOption(id, label, price, time) {
+  const opt = el(`<label class="pick">
+    <input type="radio" name="pickup" ${id === bk.pickupId ? 'checked' : ''}>
+    <div class="pick-body">
+      <div class="pick-name">${esc(label)}</div>
+      <div class="pick-sub">${time ? '🕖 ' + esc(time) + ' · ' : ''}${baht(price ?? bk.schedule.price)}</div>
+    </div>
+  </label>`);
+  opt.querySelector('input').onchange = () => { bk.pickupId = id; refreshSeatStep(); };
+  return opt;
+}
+
+/* --------- step 2: passengers (one per seat) --------- */
+
+async function proceedToPassengers() {
+  const next = document.getElementById('next');
+  next.disabled = true;
+  next.textContent = 'กำลังจองที่นั่ง…';
+  try {
+    await api('/schedules/' + bk.schedule.id + '/seats/lock', {
+      method: 'POST',
+      body: { seat_ids: bk.selected, pickup_point_id: bk.pickupId },
+    });
+  } catch (e) {
+    next.disabled = false;
+    next.textContent = 'ถัดไป';
+    alert(e.message); // seat taken / lock failed
+    return;
+  }
+  renderPassengerStep();
+}
+
+function renderPassengerStep() {
+  const node = el(`<div></div>`);
+  node.appendChild(appbar('ข้อมูลผู้เดินทาง', renderSeatStep));
+  const content = el(`<div class="content"></div>`);
+  content.appendChild(el(`<div class="step-dots"><span></span><span class="on"></span><span></span></div>`));
+
+  const womenOnly = !!bk.trip.is_women_only;
+  bk.selected.forEach((seatId, idx) => {
+    content.appendChild(passengerForm(seatId, idx, womenOnly));
+  });
+
+  node.appendChild(content);
+  const cta = el(`<div class="sticky-cta"><button class="btn" id="toSummary">ถัดไป</button></div>`);
   node.appendChild(cta);
   render(node);
 
-  cta.querySelector('#submit').onclick = async () => {
-    banner.innerHTML = '';
-    const fd = new FormData(form);
-    if (!form.reportValidity()) return;
+  cta.querySelector('#toSummary').onclick = () => {
+    if (!collectPassengers()) return;
+    renderSummaryStep();
+  };
+}
 
-    const passenger = {
+function passengerForm(seatId, idx, womenOnly) {
+  const titleOpts = womenOnly ? ['นาง', 'นางสาว'] : ['นาย', 'นาง', 'นางสาว'];
+  const saved = bk.passengers[idx] || {};
+  const prefillName = idx === 0 ? (saved.name || state.profile?.displayName || '') : (saved.name || '');
+  const card = el(`<form class="card pax" data-idx="${idx}"><div class="body"></div></form>`);
+  card.querySelector('.body').innerHTML = `
+    <div class="pax-head">ผู้เดินทางคนที่ ${idx + 1} <span class="tag">ที่นั่ง ${esc(seatId)}</span></div>
+    <label class="field"><span>คำนำหน้า</span>
+      <select name="title">${titleOpts.map((t) => `<option ${saved.title === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    </label>
+    <label class="field"><span>ชื่อ-นามสกุล</span>
+      <input name="name" required value="${esc(prefillName)}" placeholder="ชื่อจริง นามสกุล"></label>
+    <label class="field"><span>ชื่อเล่น</span>
+      <input name="nickname" required value="${esc(saved.nickname || '')}" placeholder="ชื่อเล่น"></label>
+    <label class="field"><span>เลขบัตรประชาชน (13 หลัก)</span>
+      <input name="id_card" required inputmode="numeric" maxlength="13" value="${esc(saved.id_card || '')}"></label>
+    <div class="row2">
+      <label class="field"><span>เบอร์โทร</span>
+        <input name="phone" required inputmode="numeric" maxlength="10" value="${esc(saved.phone || '')}"></label>
+      <label class="field"><span>กรุ๊ปเลือด</span>
+        <select name="blood_group" required>
+          <option value="">เลือก</option>
+          ${['A', 'B', 'O', 'AB'].map((b) => `<option ${saved.blood_group === b ? 'selected' : ''}>${b}</option>`).join('')}
+        </select></label>
+    </div>
+    <label class="field"><span>วันเกิด (ไม่บังคับ)</span>
+      <input name="birth_date" type="date" value="${esc(saved.birth_date || '')}"></label>
+    <div class="row2">
+      <label class="field"><span>ผู้ติดต่อฉุกเฉิน</span>
+        <input name="emergency_contact" required value="${esc(saved.emergency_contact || '')}"></label>
+      <label class="field"><span>เบอร์ฉุกเฉิน</span>
+        <input name="emergency_phone" required inputmode="numeric" maxlength="10" value="${esc(saved.emergency_phone || '')}"></label>
+    </div>
+    <label class="field"><span>อาหารฮาลาล</span>
+      <select name="halal_food"><option value="0">ไม่</option><option value="1" ${saved.halal_food ? 'selected' : ''}>ใช่</option></select></label>
+    <label class="field"><span>แพ้อาหาร/ยา (ถ้ามี)</span>
+      <textarea name="allergies" rows="2">${esc(saved.allergies || '')}</textarea></label>
+  `;
+  return card;
+}
+
+function collectPassengers() {
+  const forms = [...document.querySelectorAll('form.pax')];
+  for (const form of forms) {
+    if (!form.reportValidity()) return false;
+  }
+  forms.forEach((form) => {
+    const idx = Number(form.dataset.idx);
+    const fd = new FormData(form);
+    const p = {
       title: fd.get('title'),
       name: fd.get('name'),
       nickname: fd.get('nickname'),
@@ -315,44 +510,134 @@ function showBooking(trip, schedule) {
       allergies: fd.get('allergies') || null,
     };
     const bd = fd.get('birth_date');
-    if (bd) passenger.birth_date = bd;
+    if (bd) p.birth_date = bd;
+    bk.passengers[idx] = p;
+  });
+  return true;
+}
 
-    const btn = cta.querySelector('#submit');
-    btn.disabled = true;
-    btn.textContent = 'กำลังจอง…';
-    try {
-      const res = await api('/bookings', {
-        method: 'POST',
-        body: {
-          schedule_id: schedule.id,
-          booking_for: 'self',
-          passengers: [passenger],
-        },
-      });
-      showConfirmation(trip, schedule, res.data);
-    } catch (e) {
-      banner.innerHTML = `<div class="banner error">${esc(e.message)}</div>`;
-      btn.disabled = false;
-      btn.textContent = 'ยืนยันการจอง';
-    }
+/* --------- step 3: add-ons + promo + summary --------- */
+
+function addonItems() {
+  const items = bk.trip?.must_know?.items;
+  if (!Array.isArray(items)) return [];
+  // Treat only priced entries as bookable add-ons (plain info rows have no price).
+  return items.filter((it) => it && it.name && Number(it.price) > 0);
+}
+
+function renderSummaryStep() {
+  const node = el(`<div></div>`);
+  node.appendChild(appbar('ตรวจสอบ & ยืนยัน', renderPassengerStep));
+  const content = el(`<div class="content"></div>`);
+  content.appendChild(el(`<div class="step-dots"><span></span><span></span><span class="on"></span></div>`));
+
+  // Add-ons
+  const addons = addonItems();
+  if (addons.length) {
+    content.appendChild(el(`<div class="section-heading">บริการเสริม</div>`));
+    addons.forEach((item, idx) => {
+      const opt = el(`<label class="pick">
+        <input type="checkbox" ${bk.addons.has(idx) ? 'checked' : ''}>
+        <div class="pick-body">
+          <div class="pick-name">${esc(item.name)}</div>
+          <div class="pick-sub">${baht(item.price)} ${item.price_type === 'per_person' ? '/ คน' : '/ การจอง'}</div>
+        </div>
+      </label>`);
+      opt.querySelector('input').onchange = (e) => {
+        e.target.checked ? bk.addons.add(idx) : bk.addons.delete(idx);
+        renderSummaryStep();
+      };
+      content.appendChild(opt);
+    });
+  }
+
+  // Promotion
+  content.appendChild(el(`<div class="section-heading">โค้ดส่วนลด</div>`));
+  const promo = el(`<input id="promo" placeholder="ใส่โค้ด (ถ้ามี)" value="${esc(bk.promo)}">`);
+  promo.oninput = (e) => { bk.promo = e.target.value.trim(); };
+  content.appendChild(promo);
+
+  // Price summary
+  const n = bk.selected.length;
+  content.appendChild(el(`<div class="section-heading">สรุปการจอง</div>`));
+  const sum = el(`<div class="card"><div class="body">
+    <div class="kv"><span class="k">ทริป</span><span class="v">${esc(bk.trip.title)}</span></div>
+    <div class="kv"><span class="k">วันเดินทาง</span><span class="v">${thaiDate(bk.schedule.departure_date)}</span></div>
+    <div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>
+    <div class="kv"><span class="k">ค่าทริป (${n} คน)</span><span class="v">${baht(basePerPax() * n)}</span></div>
+    ${addonLines()}
+    <div class="kv total"><span class="k">ยอดประมาณ</span><span class="v price">${baht(estimateTotal())}</span></div>
+  </div></div>`);
+  content.appendChild(sum);
+  if (bk.promo) content.appendChild(el(`<p class="muted center" style="margin-top:4px">* ส่วนลดจากโค้ดจะคำนวณตอนยืนยัน</p>`));
+
+  const banner = el(`<div></div>`);
+  content.appendChild(banner);
+  node.appendChild(content);
+
+  const cta = el(`<div class="sticky-cta"><button class="btn" id="confirm">ยืนยันการจอง · ${baht(estimateTotal())}</button></div>`);
+  node.appendChild(cta);
+  render(node);
+
+  cta.querySelector('#confirm').onclick = () => submitBooking(banner, cta.querySelector('#confirm'));
+}
+
+function addonLines() {
+  const n = bk.selected.length;
+  return addonItems().map((item, idx) => {
+    if (!bk.addons.has(idx)) return '';
+    const qty = item.price_type === 'per_person' ? n : 1;
+    return `<div class="kv"><span class="k">${esc(item.name)}</span><span class="v">${baht(Number(item.price) * qty)}</span></div>`;
+  }).join('');
+}
+
+async function submitBooking(banner, btn) {
+  banner.innerHTML = '';
+  btn.disabled = true;
+  btn.textContent = 'กำลังจอง…';
+
+  const passengers = bk.selected.map((_, idx) => ({
+    ...bk.passengers[idx],
+    pickup_point_id: bk.pickupId || undefined,
+  }));
+
+  const payload = {
+    schedule_id: bk.schedule.id,
+    seat_ids: bk.selected,
+    booking_for: 'self',
+    passengers,
   };
+  if (bk.pickupId) payload.pickup_point_id = bk.pickupId;
+  if (bk.promo) payload.promotion_code = bk.promo;
+  const addons = [...bk.addons];
+  if (addons.length) payload.selected_addons = addons;
+
+  try {
+    const res = await api('/bookings', { method: 'POST', body: payload });
+    showConfirmation(res.data);
+  } catch (e) {
+    banner.innerHTML = `<div class="banner error">${esc(e.message)}</div>`;
+    btn.disabled = false;
+    btn.textContent = 'ยืนยันการจอง · ' + baht(estimateTotal());
+  }
 }
 
 /* ----------------------- screen: confirmation ------------------------- */
 
-function showConfirmation(trip, schedule, booking) {
-  const ref = booking?.booking_ref || booking?.ref || '-';
-  const total = booking?.total_amount ?? booking?.amount ?? schedule.price;
+function showConfirmation(booking) {
+  const ref = booking?.booking_ref || '-';
+  const total = booking?.total_amount ?? estimateTotal();
 
   const node = el(`<div></div>`);
   node.appendChild(appbar('จองสำเร็จ'));
   const content = el(`<div class="content"></div>`);
   content.appendChild(el(`<div class="banner success">จองสำเร็จแล้ว! กรุณาชำระเงินเพื่อยืนยันที่นั่ง</div>`));
   content.appendChild(el(`<div class="card"><div class="body">
-    <div class="kv"><span class="k">ทริป</span><span class="v">${esc(trip.title)}</span></div>
-    <div class="kv"><span class="k">วันเดินทาง</span><span class="v">${thaiDate(schedule.departure_date)}</span></div>
+    <div class="kv"><span class="k">ทริป</span><span class="v">${esc(bk.trip.title)}</span></div>
+    <div class="kv"><span class="k">วันเดินทาง</span><span class="v">${thaiDate(bk.schedule.departure_date)}</span></div>
+    <div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>
     <div class="kv"><span class="k">เลขที่จอง</span><span class="v">${esc(ref)}</span></div>
-    <div class="kv"><span class="k">ยอดที่ต้องชำระ</span><span class="v price">${baht(total)}</span></div>
+    <div class="kv total"><span class="k">ยอดที่ต้องชำระ</span><span class="v price">${baht(total)}</span></div>
   </div></div>`));
   content.appendChild(el(`<p class="muted center" style="margin-top:8px">โอนเงินแล้วแนบสลิปในหน้า "การจองของฉัน" เพื่อให้ทีมงานยืนยัน</p>`));
 

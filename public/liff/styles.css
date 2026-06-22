@@ -113,7 +113,56 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green); bor
 .profile img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 .profile .name { font-size: 13px; font-weight: 600; }
 
-.kv { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .kv:last-child { border-bottom: none; }
 .kv .k { color: var(--muted); }
-.kv .v { font-weight: 600; }
+.kv .v { font-weight: 600; text-align: right; }
+.kv.total { padding-top: 12px; margin-top: 4px; border-top: 2px solid var(--line); border-bottom: none; }
+.kv.total .k, .kv.total .v { font-size: 16px; font-weight: 800; }
+
+ul.bullets { margin: 6px 0 0; padding-left: 18px; }
+ul.bullets li { margin-bottom: 4px; }
+
+/* ---- Step dots ---- */
+.step-dots { display: flex; gap: 6px; justify-content: center; margin: 4px 0 16px; }
+.step-dots span { width: 26px; height: 4px; border-radius: 4px; background: var(--line); }
+.step-dots span.on { background: var(--green); }
+
+/* ---- Seat map ---- */
+.seatmap { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+.seatmap-head {
+  text-align: center; font-size: 12px; font-weight: 700; color: var(--muted);
+  border-bottom: 2px dashed var(--line); padding-bottom: 8px; margin-bottom: 12px;
+}
+.seat-grid { display: grid; gap: 8px; justify-items: center; }
+.seat {
+  width: 100%; max-width: 52px; aspect-ratio: 1; border-radius: 10px;
+  border: 1.5px solid var(--green); background: #eaf4ee; color: var(--green-dark);
+  font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.seat.selected { background: var(--green); color: #fff; border-color: var(--green); }
+.seat[disabled] { background: #ececec; border-color: #d8d8d8; color: #b3b3b3; cursor: not-allowed; }
+.seat.ghost { border: none; background: transparent; cursor: default; }
+
+.legend { display: flex; gap: 16px; justify-content: center; margin: 12px 0 4px; font-size: 12px; color: var(--muted); }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.legend .sw { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+.legend .sw.avail { background: #eaf4ee; border: 1.5px solid var(--green); }
+.legend .sw.sel { background: var(--green); }
+.legend .sw.taken { background: #ececec; border: 1.5px solid #d8d8d8; }
+
+/* ---- Pickup / add-on option rows ---- */
+.pick {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 8px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+}
+.pick input { width: auto; }
+.pick-body { flex: 1; }
+.pick-name { font-weight: 600; }
+.pick-sub { font-size: 12px; color: var(--muted); }
+
+.pax .pax-head { font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+.cta-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.cta-row .price { font-size: 18px; font-weight: 800; }
