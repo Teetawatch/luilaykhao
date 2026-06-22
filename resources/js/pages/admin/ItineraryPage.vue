@@ -279,10 +279,20 @@ function formatShort(d) {
 async function loadSchedules() {
   loadingList.value = true;
   try {
-    const params = { per_page: 100 };
-    if (upcomingOnly.value) params.upcoming = 1;
-    const res = await api.get('/admin/schedules', { params });
-    schedules.value = res.data.data || [];
+    // ไล่โหลดทุกหน้าให้ครบ — /admin/schedules เป็น paginated (เพดานหน้าละ 100)
+    // ถ้าโหลดแค่หน้าแรก รอบที่เกิน 100 จะหายไป
+    const all = [];
+    let page = 1;
+    let lastPage = 1;
+    do {
+      const params = { per_page: 100, page };
+      if (upcomingOnly.value) params.upcoming = 1;
+      const res = await api.get('/admin/schedules', { params });
+      all.push(...(res.data.data || []));
+      lastPage = res.data.meta?.last_page || 1;
+      page += 1;
+    } while (page <= lastPage && page <= 50); // กันลูปค้าง
+    schedules.value = all;
   } catch {
     toast.error('โหลดรายชื่อรอบเดินทางไม่สำเร็จ');
   } finally {
