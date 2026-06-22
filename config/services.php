@@ -78,6 +78,10 @@ return [
         'client_secret' => env('LINE_CLIENT_SECRET'),
         'redirect' => env('LINE_REDIRECT_URI', env('APP_URL').'/api/v1/auth/line/callback'),
         'bot_prompt' => env('LINE_BOT_PROMPT', 'normal'),
+        // The LINE Login channel ID that the LIFF app lives under. Access tokens
+        // from liff.getAccessToken() are verified against this channel. Falls back
+        // to the OAuth client_id when the LIFF app shares the same channel.
+        'liff_channel_id' => env('LINE_LIFF_CHANNEL_ID', env('LINE_CLIENT_ID')),
     ],
 
     'apple' => [

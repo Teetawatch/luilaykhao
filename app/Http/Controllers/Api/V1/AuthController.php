@@ -273,44 +273,13 @@ class AuthController extends Controller
         }
 
         try {
-            $socialId = (string) $socialUser->getId();
-            $email = $socialUser->getEmail();
-
-            if (! $email) {
-                $sanitizedSocialId = preg_replace('/[^a-zA-Z0-9]/', '', $socialId) ?: Str::random(12);
-                $email = $provider.'_'.$sanitizedSocialId.'@social.local';
-            }
-
-            $user = User::where('social_provider', $provider)
-                ->where('social_id', $socialId)
-                ->first();
-
-            if (! $user) {
-                if ($socialUser->getEmail()) {
-                    $user = User::where('email', $socialUser->getEmail())->first();
-                }
-
-                if ($user) {
-                    $user->update([
-                        'social_provider' => $provider,
-                        'social_id' => $socialId,
-                        'avatar' => $user->avatar ?: $socialUser->getAvatar(),
-                    ]);
-                } else {
-                    $user = User::create([
-                        'name' => $socialUser->getName() ?: ($socialUser->getNickname() ?: 'User'),
-                        'email' => $email,
-                        'social_provider' => $provider,
-                        'social_id' => $socialId,
-                        'avatar' => $socialUser->getAvatar(),
-                        'password' => null,
-                    ]);
-                    $user->assignRole('customer');
-
-                    // Send welcome email for new social users
-                    $this->mailService->sendWelcomeEmail($user);
-                }
-            }
+            $user = $this->findOrCreateSocialUser(
+                $provider,
+                (string) $socialUser->getId(),
+                $socialUser->getEmail(),
+                $socialUser->getName() ?: ($socialUser->getNickname() ?: 'User'),
+                $socialUser->getAvatar(),
+            );
 
             $user->load('roles');
             $token = $user->createToken('auth-token')->plainTextToken;
@@ -326,6 +295,115 @@ class AuthController extends Controller
 
             return $this->redirectSocialError($frontendUrl, $mobileReturnTo, 'social_auth_failed', 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง');
         }
+    }
+
+    /**
+     * Token-based LINE login for the LIFF web app. The LIFF client obtains an
+     * access token via liff.getAccessToken() and posts it here; we verify it
+     * against our LINE Login channel, then resolve (or create) the matching user
+     * and issue a Sanctum token — the same account a customer gets via web OAuth.
+     */
+    public function lineLiffLogin(Request $request): JsonResponse
+    {
+        $request->validate([
+            'access_token' => ['required', 'string'],
+        ]);
+
+        $accessToken = $request->input('access_token');
+
+        // 1. Verify the token is genuine, unexpired, and issued for our channel.
+        $verify = Http::asForm()->get('https://api.line.me/oauth2/v2.1/verify', [
+            'access_token' => $accessToken,
+        ]);
+
+        if ($verify->failed()) {
+            return $this->error('ไม่สามารถยืนยันตัวตนกับ LINE ได้ กรุณาลองใหม่อีกครั้ง', 401);
+        }
+
+        $expectedChannelId = config('services.line.liff_channel_id');
+        if ($expectedChannelId && (string) $verify->json('client_id') !== (string) $expectedChannelId) {
+            return $this->error('โทเคน LINE ไม่ถูกต้องสำหรับแอปนี้', 401);
+        }
+
+        // 2. Pull the public LINE profile (userId / displayName / pictureUrl).
+        $profile = Http::withToken($accessToken)->get('https://api.line.me/v2/profile');
+
+        if ($profile->failed() || ! $profile->json('userId')) {
+            return $this->error('ไม่สามารถดึงข้อมูลโปรไฟล์ LINE ได้ กรุณาลองใหม่อีกครั้ง', 401);
+        }
+
+        // The LIFF profile scope carries no email, so social users are matched on
+        // the LINE userId alone (synthetic email is generated when none exists).
+        $user = $this->findOrCreateSocialUser(
+            'line',
+            (string) $profile->json('userId'),
+            null,
+            $profile->json('displayName') ?: 'User',
+            $profile->json('pictureUrl'),
+        );
+
+        $user->load('roles');
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return $this->success([
+            'user' => $this->formatUser($user),
+            'token' => $token,
+        ], 'เข้าสู่ระบบสำเร็จ');
+    }
+
+    /**
+     * Resolve the local account for a social identity, creating one (and a
+     * welcome email) on first sign-in. Existing accounts are matched first by
+     * provider + social id, then linked by email when the address is known.
+     */
+    private function findOrCreateSocialUser(
+        string $provider,
+        string $socialId,
+        ?string $email,
+        string $name,
+        ?string $avatar,
+    ): User {
+        $user = User::where('social_provider', $provider)
+            ->where('social_id', $socialId)
+            ->first();
+
+        if ($user) {
+            return $user;
+        }
+
+        if ($email) {
+            $user = User::where('email', $email)->first();
+        }
+
+        if ($user) {
+            $user->update([
+                'social_provider' => $provider,
+                'social_id' => $socialId,
+                'avatar' => $user->avatar ?: $avatar,
+            ]);
+
+            return $user;
+        }
+
+        if (! $email) {
+            $sanitizedSocialId = preg_replace('/[^a-zA-Z0-9]/', '', $socialId) ?: Str::random(12);
+            $email = $provider.'_'.$sanitizedSocialId.'@social.local';
+        }
+
+        $user = User::create([
+            'name' => $name ?: 'User',
+            'email' => $email,
+            'social_provider' => $provider,
+            'social_id' => $socialId,
+            'avatar' => $avatar,
+            'password' => null,
+        ]);
+        $user->assignRole('customer');
+
+        // Send welcome email for new social users
+        $this->mailService->sendWelcomeEmail($user);
+
+        return $user;
     }
 
     private function makeSocialState(?string $returnTo): string
