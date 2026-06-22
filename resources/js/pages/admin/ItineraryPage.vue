@@ -21,35 +21,44 @@
       </label>
 
       <div v-if="loadingList" class="empty-hint">กำลังโหลด...</div>
-      <div v-else-if="!filteredSchedules.length" class="empty-hint">
+      <div v-else-if="!groupedSchedules.length" class="empty-hint">
         {{ search ? 'ไม่พบรอบเดินทางที่ค้นหา' : 'ไม่มีรอบเดินทาง' }}
       </div>
 
-      <ul v-else class="conv-list">
-        <li
-          v-for="sch in filteredSchedules"
-          :key="sch.id"
-          class="conv-item"
-          :class="{ active: sch.id === activeId }"
-          @click="openSchedule(sch)"
-        >
-          <div class="conv-thumb">
-            <img v-if="sch.trip?.cover_image" :src="sch.trip.cover_image" alt="" />
-            <i v-else class="fas fa-mountain-sun"></i>
-          </div>
-          <div class="conv-content">
-            <div class="conv-top">
-              <span class="conv-title">{{ sch.trip?.title || 'ทริป' }}</span>
+      <div v-else class="conv-list">
+        <!-- จัดกลุ่มตามทริป (เรียงทริปที่มีรอบใกล้ถึงก่อน) -->
+        <section v-for="g in groupedSchedules" :key="g.tripId" class="trip-group">
+          <header class="trip-group-head">
+            <div class="trip-group-thumb">
+              <img v-if="g.cover" :src="g.cover" alt="" />
+              <i v-else class="fas fa-mountain-sun"></i>
             </div>
-            <div class="conv-sub">
-              <i class="fas fa-calendar-day"></i> {{ formatDateRange(sch.departure_date, sch.return_date) }}
-              <span v-if="sch.vehicle?.name" class="conv-vehicle">
-                <i class="fas fa-van-shuttle"></i> {{ sch.vehicle.name }}
-              </span>
-            </div>
-          </div>
-        </li>
-      </ul>
+            <span class="trip-group-title">{{ g.title }}</span>
+            <span class="trip-group-count">{{ g.items.length }} รอบ</span>
+          </header>
+
+          <ul class="round-list">
+            <li
+              v-for="sch in g.items"
+              :key="sch.id"
+              class="round-item"
+              :class="{ active: sch.id === activeId, past: sch.isPast }"
+              @click="openSchedule(sch)"
+            >
+              <span class="round-dot"></span>
+              <div class="round-content">
+                <span class="round-date">{{ formatDateRange(sch.departure_date, sch.return_date) }}</span>
+                <span class="round-sub">
+                  <span class="round-countdown">{{ countdownLabel(sch.departure_date) }}</span>
+                  <span v-if="sch.vehicle?.name" class="conv-vehicle">
+                    <i class="fas fa-van-shuttle"></i> {{ sch.vehicle.name }}
+                  </span>
+                </span>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </div>
     </div>
 
     <!-- ─── Main : composer + timeline ──────────────── -->
@@ -181,11 +190,72 @@ const form = ref({ item_date: '', time: '', title: '', detail: '' });
 
 const canSave = computed(() => form.value.title.trim().length > 0);
 
-const filteredSchedules = computed(() => {
+// timestamp ของวันที่ (วันที่ไม่ระบุ → Infinity ให้ไปท้ายสุด)
+function dateVal(d) {
+  if (!d) return Infinity;
+  const t = new Date(d).getTime();
+  return Number.isNaN(t) ? Infinity : t;
+}
+
+const startOfToday = () => {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+};
+
+// เรียง "ใกล้จะถึงก่อน": รอบที่ยังไม่ออก (วันนี้เป็นต้นไป) เรียงจากใกล้สุด
+// ตามด้วยรอบที่ผ่านไปแล้วเรียงจากล่าสุด
+function compareUpcoming(a, b) {
+  const now = startOfToday();
+  const ta = dateVal(a);
+  const tb = dateVal(b);
+  const aUp = ta >= now;
+  const bUp = tb >= now;
+  if (aUp !== bUp) return aUp ? -1 : 1;
+  return aUp ? ta - tb : tb - ta;
+}
+
+// จัดกลุ่มตามทริป + เรียงรอบในกลุ่ม และเรียงกลุ่มด้วยรอบที่ใกล้ถึงสุด
+const groupedSchedules = computed(() => {
   const q = search.value.trim().toLowerCase();
-  if (!q) return schedules.value;
-  return schedules.value.filter((s) => (s.trip?.title || '').toLowerCase().includes(q));
+  const list = q
+    ? schedules.value.filter((s) => (s.trip?.title || '').toLowerCase().includes(q))
+    : schedules.value;
+
+  const now = startOfToday();
+  const groups = new Map();
+  for (const s of list) {
+    const tripId = s.trip_id ?? s.trip?.id ?? `t:${s.trip?.title || '?'}`;
+    if (!groups.has(tripId)) {
+      groups.set(tripId, {
+        tripId,
+        title: s.trip?.title || 'ทริป',
+        cover: s.trip?.cover_image || null,
+        items: [],
+      });
+    }
+    groups.get(tripId).items.push({ ...s, isPast: dateVal(s.departure_date) < now });
+  }
+
+  const result = [...groups.values()];
+  for (const g of result) {
+    g.items.sort((a, b) => compareUpcoming(a.departure_date, b.departure_date));
+    g.repDate = g.items[0]?.departure_date ?? null;
+  }
+  result.sort((a, b) => compareUpcoming(a.repDate, b.repDate));
+  return result;
 });
+
+// ป้ายนับถอยหลังสั้น ๆ: "วันนี้ / พรุ่งนี้ / อีก N วัน / ผ่านมาแล้ว N วัน"
+function countdownLabel(d) {
+  const t = dateVal(d);
+  if (t === Infinity) return 'ยังไม่ระบุวัน';
+  const days = Math.round((new Date(new Date(d).getFullYear(), new Date(d).getMonth(), new Date(d).getDate()).getTime() - startOfToday()) / 86400000);
+  if (days === 0) return 'วันนี้';
+  if (days === 1) return 'พรุ่งนี้';
+  if (days > 1) return `อีก ${days} วัน`;
+  if (days === -1) return 'เมื่อวาน';
+  return `ผ่านมาแล้ว ${Math.abs(days)} วัน`;
+}
 
 // จัดกลุ่มตามวันที่ — backend ส่งมาเรียง วัน → เวลา → ลำดับ อยู่แล้ว
 const groupedItems = computed(() => {
@@ -371,22 +441,42 @@ loadSchedules();
 }
 .upcoming-toggle input { width: 15px; height: 15px; accent-color: #2D7A4F; }
 
-.conv-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
-.conv-item { display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s; }
-.conv-item:hover { background: #f9fafb; }
-.conv-item.active { background: #ecfdf5; box-shadow: inset 3px 0 0 #2D7A4F; }
-.conv-thumb {
-  width: 48px; height: 48px; border-radius: 12px; overflow: hidden; flex-shrink: 0;
-  background: linear-gradient(135deg, #e7f5ee, #d1f0df);
-  display: flex; align-items: center; justify-content: center; color: #2D7A4F;
+.conv-list { margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+
+/* ── Trip group ── */
+.trip-group { border-bottom: 8px solid #f3f4f6; }
+.trip-group:last-child { border-bottom: none; }
+.trip-group-head {
+  display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+  background: #f9fafb; border-bottom: 1px solid #eef0f2; position: sticky; top: 0; z-index: 1;
 }
-.conv-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.conv-content { flex: 1; min-width: 0; }
-.conv-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.conv-title { font-weight: 800; font-size: 13.5px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.conv-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.conv-sub i { font-size: 10px; }
-.conv-vehicle { display: inline-flex; align-items: center; gap: 3px; color: #2D7A4F; font-weight: 700; }
+.trip-group-thumb {
+  width: 30px; height: 30px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  background: linear-gradient(135deg, #e7f5ee, #d1f0df);
+  display: flex; align-items: center; justify-content: center; color: #2D7A4F; font-size: 13px;
+}
+.trip-group-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.trip-group-title { flex: 1; min-width: 0; font-weight: 800; font-size: 13.5px; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-group-count { flex-shrink: 0; font-size: 11px; font-weight: 700; color: #2D7A4F; background: #ecfdf5; border-radius: 999px; padding: 2px 9px; }
+
+/* ── Round item ── */
+.round-list { list-style: none; margin: 0; padding: 0; }
+.round-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px 11px 18px;
+  border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s;
+}
+.round-item:hover { background: #f9fafb; }
+.round-item.active { background: #ecfdf5; box-shadow: inset 3px 0 0 #2D7A4F; }
+.round-dot { width: 8px; height: 8px; border-radius: 50%; background: #2D7A4F; margin-top: 5px; flex-shrink: 0; }
+.round-item.past .round-dot { background: #cbd5e1; }
+.round-content { flex: 1; min-width: 0; }
+.round-date { display: block; font-weight: 800; font-size: 13px; color: #111827; }
+.round-item.past .round-date { color: #6b7280; }
+.round-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.round-countdown { font-weight: 700; color: #2D7A4F; }
+.round-item.past .round-countdown { color: #9ca3af; }
+.conv-vehicle { display: inline-flex; align-items: center; gap: 3px; color: #6b7280; font-weight: 700; }
+.conv-vehicle i { font-size: 10px; }
 .empty-hint { padding: 24px 16px; color: #9ca3af; font-size: 13px; text-align: center; }
 
 /* ─── Main ─────────────────────────────────────────── */
