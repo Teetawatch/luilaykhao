@@ -135,5 +135,8 @@ class AlmostFullTripsTest extends TestCase
 
         $this->assertSame(3, $row['seats_left']);
         $this->assertTrue($row['is_almost_full']);
+        // The date must point at the near-full (3-left) round, not the soonest
+        // (already full) one.
+        $this->assertSame(now()->addDays(30)->toDateString(), $row['almost_full_date']);
     }
 }

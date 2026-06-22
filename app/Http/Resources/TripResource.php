@@ -64,6 +64,7 @@ class TripResource extends JsonResource
             'confirmed_passengers_count' => $this->confirmed_passengers_count,
             'seats_left' => $seatsLeft,
             'is_almost_full' => $seatsLeft !== null && $seatsLeft <= 5,
+            'almost_full_date' => $this->lowestOpenSeatsDate(),
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
             'created_at' => $this->created_at?->toISOString(),
         ];
@@ -93,6 +94,31 @@ class TripResource extends JsonResource
         }
 
         return (int) $open->min(fn ($s) => $s->available_seats);
+    }
+
+    /**
+     * Departure date (Y-m-d) of the OPEN, upcoming schedule with the fewest
+     * available seats — the round driving the "almost full" cue. Null when the
+     * schedules relation isn't loaded or no eligible round exists.
+     */
+    private function lowestOpenSeatsDate(): ?string
+    {
+        if (! $this->relationLoaded('schedules')) {
+            return null;
+        }
+
+        $today = now()->startOfDay();
+        $schedule = $this->schedules
+            ->filter(
+                fn ($s) => $s->status === 'open'
+                    && $s->available_seats > 0
+                    && $s->departure_date
+                    && $s->departure_date->gte($today)
+            )
+            ->sortBy(fn ($s) => $s->available_seats)
+            ->first();
+
+        return $schedule?->departure_date?->toDateString();
     }
 
     /**
