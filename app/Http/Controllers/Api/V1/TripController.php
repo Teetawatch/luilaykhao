@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Models\Trip;
+use App\Services\WeatherService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,8 @@ use Illuminate\Http\Request;
 class TripController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private WeatherService $weatherService) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -112,6 +115,7 @@ class TripController extends Controller
             }])
             ->firstOrFail();
         $trip->schedules->each->syncBookedSeats();
+        $trip->schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
         return $this->success(new TripResource($trip->loadCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
@@ -129,6 +133,7 @@ class TripController extends Controller
             ->orderBy('departure_date')
             ->get();
         $schedules->each->syncBookedSeats();
+        $schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
         return $this->success(TripScheduleResource::collection($schedules));
     }

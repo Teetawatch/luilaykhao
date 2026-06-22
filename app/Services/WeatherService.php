@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Trip;
+use App\Models\TripSchedule;
 use App\Models\WeatherForecast;
 use App\Services\Weather\OpenWeatherProvider;
 use App\Services\Weather\WeatherProvider;
+use Illuminate\Support\Facades\Log;
 
 class WeatherService
 {
@@ -14,6 +17,55 @@ class WeatherService
      * 3 decimals ≈ 110 m.
      */
     private const COORD_PRECISION = 3;
+
+    /**
+     * How many days ahead a forecast is meaningful. OpenWeather's free tier
+     * returns ~5 days; we keep a little slack. Schedules departing beyond this
+     * are skipped so we never make a pointless upstream call for them.
+     */
+    public const FORECAST_WINDOW_DAYS = 6;
+
+    /**
+     * Resolve the departure-day forecast for [$schedule] (using its trip's
+     * coordinates) and stash it on the model as `weather_forecast` so the API
+     * resource can expose it. No-op when coords/date are missing or the date is
+     * outside the forecast window. Never throws — weather is best-effort.
+     */
+    public function attach(TripSchedule $schedule, ?Trip $trip = null): void
+    {
+        $trip ??= $schedule->trip;
+        if (! $trip || $trip->latitude === null || $trip->longitude === null) {
+            return;
+        }
+
+        $departure = $schedule->departure_date;
+        if (! $departure) {
+            return;
+        }
+
+        // Only within the forecast window (today .. +N days).
+        if ($departure->isBefore(now()->startOfDay())
+            || $departure->isAfter(now()->startOfDay()->addDays(self::FORECAST_WINDOW_DAYS))) {
+            return;
+        }
+
+        try {
+            $forecast = $this->forecastFor(
+                (float) $trip->latitude,
+                (float) $trip->longitude,
+                $departure->toDateString(),
+            );
+
+            if ($forecast) {
+                $schedule->weather_forecast = $forecast->toPayload();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Unable to attach weather to schedule', [
+                'schedule_id' => $schedule->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
 
     private WeatherProvider $provider;
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TripScheduleResource;
 use App\Models\TripSchedule;
 use App\Services\SeatLockService;
+use App\Services\WeatherService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,12 +17,14 @@ class ScheduleController extends Controller
 
     public function __construct(
         private SeatLockService $seatLockService,
+        private WeatherService $weatherService,
     ) {}
 
     public function show(int $id): JsonResponse
     {
         $schedule = TripSchedule::with(['trip.photos', 'vehicle', 'pickupPoints'])->findOrFail($id);
         $schedule->syncBookedSeats();
+        $this->weatherService->attach($schedule);
 
         return $this->success(new TripScheduleResource($schedule));
     }
