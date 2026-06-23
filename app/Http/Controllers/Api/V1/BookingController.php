@@ -62,6 +62,7 @@ class BookingController extends Controller
     {
         $booking = Booking::where('booking_ref', $ref)
             ->with([
+                'user',
                 'schedule.trip',
                 'schedule.pickupPoints',
                 'schedule.staff',
@@ -132,6 +133,7 @@ class BookingController extends Controller
                 ->orWhereIn('id', $memberBookingIds);
         })
             ->with([
+                'user',
                 'schedule.trip',
                 'schedule.pickupPoints',
                 'schedule.staff',
