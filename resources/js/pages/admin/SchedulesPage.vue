@@ -2299,6 +2299,7 @@ const doCopySchedule = async () => {
           pickup_location: pt.pickup_location,
           price: pt.price,
           notes: pt.notes || null,
+          pickup_time: pt.pickup_time || null,
           map_url: pt.map_url || null,
           image_url: pt.image_url || null,
           latitude: pt.latitude || null,
@@ -2408,6 +2409,7 @@ const doCopyPickups = async () => {
           pickup_location: pt.pickup_location,
           price: pt.price,
           notes: pt.notes || null,
+          pickup_time: pt.pickup_time || null,
           map_url: pt.map_url || null,
           image_url: pt.image_url || null,
           latitude: pt.latitude || null,
@@ -2516,6 +2518,7 @@ const saveCurrentAsTemplate = async () => {
     pickup_location: pt.pickup_location,
     notes: pt.notes || '',
     price: pt.price,
+    pickup_time: pt.pickup_time || '',
     map_url: pt.map_url || '',
     image_url: pt.image_url || '',
   }));
@@ -2552,6 +2555,7 @@ const applyTemplateToSchedule = async (tpl) => {
         pickup_location: pt.pickup_location,
         price: pt.price,
         notes: pt.notes || null,
+        pickup_time: pt.pickup_time || null,
         map_url: pt.map_url || null,
         image_url: pt.image_url || null,
       });
