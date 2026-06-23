@@ -161,6 +161,7 @@ Route::prefix('v1')->group(function () {
         Route::put('reviews/{id}', [ReviewController::class, 'update']);
         Route::delete('reviews/{id}', [ReviewController::class, 'destroy']);
         Route::post('reviews/upload-image', [ReviewController::class, 'uploadImage']);
+        Route::post('reviews/upload-video', [ReviewController::class, 'uploadVideo']);
 
         // Staff assignment and reviews
         Route::get('staff/schedules/my', [StaffController::class, 'mySchedules']);

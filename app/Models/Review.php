@@ -10,13 +10,14 @@ class Review extends Model
     protected $fillable = [
         'user_id', 'booking_id', 'trip_id', 'rating',
         'rating_guide', 'rating_vehicle', 'rating_food', 'rating_value', 'comment',
-        'images', 'admin_reply', 'admin_replied_by', 'admin_replied_at', 'is_approved',
+        'images', 'videos', 'admin_reply', 'admin_replied_by', 'admin_replied_at', 'is_approved',
     ];
 
     protected function casts(): array
     {
         return [
             'images' => 'array',
+            'videos' => 'array',
             'is_approved' => 'boolean',
             'admin_replied_at' => 'datetime',
             'rating' => 'integer',

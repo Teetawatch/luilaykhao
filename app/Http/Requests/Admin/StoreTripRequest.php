@@ -33,6 +33,8 @@ class StoreTripRequest extends FormRequest
             'is_women_only' => ['nullable', 'boolean'],
             'gallery' => ['nullable', 'array'],
             'gallery.*' => ['string'],
+            'videos' => ['nullable', 'array'],
+            'videos.*' => ['string'],
             'inclusions' => ['nullable', 'array'],
             'inclusions.*' => ['string'],
             'exclusions' => ['nullable', 'array'],

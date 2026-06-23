@@ -364,6 +364,33 @@
           </div>
           <input ref="galleryInput" type="file" multiple accept="image/*" class="hidden-file-input" @change="handleGallerySelect" />
         </div>
+
+        <!-- Videos -->
+        <div class="card section-card">
+          <h3 class="section-title"><span class="material-symbols-rounded">videocam</span> วิดีโอทริป</h3>
+          <p class="text-xs text-gray-400 mt-1">แสดงในแอปถัดจากรูปภาพ — รองรับ mp4, mov (สูงสุด 50MB ต่อไฟล์)</p>
+          <div class="gallery-grid-editor mt-4">
+            <div v-for="(vid, idx) in form.videos" :key="idx" class="gallery-item-preview">
+              <video :src="vid" class="w-full h-full object-cover" muted playsinline preload="metadata"></video>
+              <span class="video-play-badge"><span class="material-symbols-rounded">play_arrow</span></span>
+              <button type="button" class="remove-gallery-img" @click="removeItem('videos', idx)">
+                <span class="material-symbols-rounded">close</span>
+              </button>
+            </div>
+            <div class="flex flex-col gap-2">
+              <button type="button" class="gallery-add-btn h-full" @click="triggerVideoUpload">
+                <span class="material-symbols-rounded" style="font-size:32px;" v-if="!videoUploading">video_call</span>
+                <span class="material-symbols-rounded animate-spin" v-else>sync</span>
+                <span class="text-xs">อัปโหลดวิดีโอ</span>
+              </button>
+              <button type="button" class="gallery-add-btn h-full !border-[var(--color-primary)] !text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5" @click="openMediaLibrary('videos')">
+                <span class="material-symbols-rounded" style="font-size:32px;">video_library</span>
+                <span class="text-xs">เลือกจากคลัง</span>
+              </button>
+            </div>
+          </div>
+          <input ref="videoInput" type="file" multiple accept="video/mp4,video/quicktime,video/x-m4v" class="hidden-file-input" @change="handleVideoSelect" />
+        </div>
       </div>
 
       <!-- Sidebar Content -->
@@ -583,8 +610,9 @@
     :show="showMediaLibrary" 
     @close="showMediaLibrary = false" 
     @select="handleMediaSelect"
-    :multiple="isGalleryMediaPicker"
-    :initial-selection="isGalleryMediaPicker ? form.gallery : form.cover_image"
+    :multiple="isMultiMediaPicker"
+    :initial-selection="mediaPickerInitial"
+    :media-type="mediaPickerType"
   />
 </template>
 
@@ -610,13 +638,25 @@ const submitError = ref('');
 
 // Media Library State
 const showMediaLibrary = ref(false);
-const mediaLibraryTarget = ref('cover'); // 'cover', 'thumbnail', or 'gallery'
+const mediaLibraryTarget = ref('cover'); // 'cover', 'thumbnail', 'gallery', or 'videos'
 const isGalleryMediaPicker = computed(() => mediaLibraryTarget.value === 'gallery');
+const isVideoMediaPicker = computed(() => mediaLibraryTarget.value === 'videos');
+// Both gallery and videos pick multiple files; cover/thumbnail pick a single one.
+const isMultiMediaPicker = computed(() => isGalleryMediaPicker.value || isVideoMediaPicker.value);
+const mediaPickerInitial = computed(() => {
+  if (isVideoMediaPicker.value) return form.videos;
+  if (isGalleryMediaPicker.value) return form.gallery;
+  return form.cover_image;
+});
+const mediaPickerType = computed(() => (isVideoMediaPicker.value ? 'video' : 'image'));
 
 const openMediaLibrary = (target) => {
   mediaLibraryTarget.value = target;
   if (target === 'gallery' && !Array.isArray(form.gallery)) {
     form.gallery = normalizeArray(form.gallery);
+  }
+  if (target === 'videos' && !Array.isArray(form.videos)) {
+    form.videos = normalizeArray(form.videos);
   }
   showMediaLibrary.value = true;
 };
@@ -630,6 +670,10 @@ const handleMediaSelect = (data) => {
     if (Array.isArray(data)) {
       form.gallery = [...new Set(data.filter(Boolean))];
     }
+  } else if (mediaLibraryTarget.value === 'videos') {
+    if (Array.isArray(data)) {
+      form.videos = [...new Set(data.filter(Boolean))];
+    }
   }
 };
 
@@ -638,7 +682,7 @@ const form = reactive({
   difficulty: 'medium', duration_days: 1, max_participants: 10,
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
   latitude: null, longitude: null, is_featured: false, is_women_only: false,
-  gallery: [], inclusions: [], exclusions: [],
+  gallery: [], videos: [], inclusions: [], exclusions: [],
   highlights: [],
   must_know: { items: [], remarks: '' },
   itinerary: [],
@@ -709,6 +753,7 @@ const buildTripPayload = () => {
     cover_image: form.cover_image || '',
     thumbnail_image: form.thumbnail_image || '',
     gallery: compactStringArray(form.gallery),
+    videos: compactStringArray(form.videos),
     inclusions: compactStringArray(form.inclusions),
     exclusions: compactStringArray(form.exclusions),
     preparations: compactStringArray(form.preparations),
@@ -768,6 +813,8 @@ const uploading = ref(false);
 const isDragging = ref(false);
 const galleryInput = ref(null);
 const galleryUploading = ref(false);
+const videoInput = ref(null);
+const videoUploading = ref(false);
 const thumbnailInput = ref(null);
 const thumbnailPreview = ref(null);
 const activeIconPicker = ref(null);
@@ -941,6 +988,33 @@ const handleGallerySelect = async (event) => {
   }
 };
 
+const triggerVideoUpload = () => videoInput.value?.click();
+const handleVideoSelect = async (event) => {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  videoUploading.value = true;
+  try {
+    const validFiles = files.filter(file => file.size <= 50 * 1024 * 1024);
+    if (validFiles.length < files.length) alert('มีบางไฟล์ขนาดเกิน 50MB และจะถูกข้ามไป');
+    if (!validFiles.length) { videoUploading.value = false; return; }
+
+    const uploadPromises = validFiles.map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/admin/upload-image', formData);
+      return res.data.data.url;
+    });
+
+    const urls = await Promise.all(uploadPromises);
+    form.videos = [...normalizeArray(form.videos), ...urls];
+  } catch (e) {
+    alert('อัปโหลดวิดีโอบางส่วนล้มเหลว');
+  } finally {
+    videoUploading.value = false;
+    if (videoInput.value) videoInput.value.value = '';
+  }
+};
+
 const submitForm = async () => {
   const payload = buildTripPayload();
   const missingFields = getClientValidationErrors(payload);
@@ -1044,6 +1118,7 @@ const initData = async () => {
       form.latitude = trip.latitude || null;
       form.longitude = trip.longitude || null;
       form.gallery = normalizeArray(trip.gallery);
+      form.videos = normalizeArray(trip.videos);
       form.inclusions = normalizeArray(trip.inclusions);
       form.exclusions = normalizeArray(trip.exclusions);
       form.highlights = normalizeArray(trip.highlights);
@@ -1589,6 +1664,26 @@ onMounted(() => {
 }
 .gallery-item-preview {
   aspect-ratio: 1/1;
+  position: relative;
+  overflow: hidden;
+}
+
+.video-play-badge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.video-play-badge .material-symbols-rounded {
+  color: #fff;
+  font-size: 36px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 9999px;
+  padding: 4px;
 }
 
 @media (max-width: 1024px) {

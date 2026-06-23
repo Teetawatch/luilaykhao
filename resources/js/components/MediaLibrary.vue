@@ -28,7 +28,7 @@
               <input type="file" ref="fileInput" @change="handleUpload" class="hidden" :accept="isVideoMode ? 'video/*' : 'image/*'" multiple />
               <button @click="$refs.fileInput.click()" :disabled="uploading" class="flex-1 sm:flex-none bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
                 <span class="material-symbols-rounded text-xl" :class="{'animate-spin': uploading}">{{ uploading ? 'sync' : 'upload' }}</span>
-                {{ uploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่' }}
+                {{ uploading ? 'กำลังอัปโหลด...' : (isVideoMode ? 'อัปโหลดวิดีโอใหม่' : 'อัปโหลดรูปใหม่') }}
               </button>
               <button @click="fetchMedia" class="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-100 transition-all text-gray-500 bg-white" title="รีเฟรช">
                 <span class="material-symbols-rounded">refresh</span>
@@ -72,12 +72,12 @@
           <div class="p-6 overflow-y-auto flex-grow custom-scrollbar min-h-[400px]">
             <div v-if="loading" class="flex flex-col items-center justify-center py-20 text-gray-400">
               <div class="w-12 h-12 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin mb-4"></div>
-              <p class="font-bold">กำลังโหลดรูปภาพ...</p>
+              <p class="font-bold">{{ isVideoMode ? 'กำลังโหลดวิดีโอ...' : 'กำลังโหลดรูปภาพ...' }}</p>
             </div>
             <div v-else-if="filteredMedia.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
-              <span class="material-symbols-rounded text-6xl mb-4">image_not_supported</span>
-              <p class="font-bold text-lg">ไม่พบรูปภาพในคลัง</p>
-              <p class="text-sm">ลองอัปโหลดรูปภาพใหม่ หรือเปลี่ยนคำค้นหา</p>
+              <span class="material-symbols-rounded text-6xl mb-4">{{ isVideoMode ? 'video_library' : 'image_not_supported' }}</span>
+              <p class="font-bold text-lg">{{ isVideoMode ? 'ไม่พบวิดีโอในคลัง' : 'ไม่พบรูปภาพในคลัง' }}</p>
+              <p class="text-sm">{{ isVideoMode ? 'ลองอัปโหลดวิดีโอใหม่ หรือเปลี่ยนคำค้นหา' : 'ลองอัปโหลดรูปภาพใหม่ หรือเปลี่ยนคำค้นหา' }}</p>
             </div>
             <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <div v-for="m in filteredMedia" :key="m.filename" 

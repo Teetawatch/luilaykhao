@@ -673,6 +673,7 @@ class AdminExtendedController extends Controller
             'rating' => $r->rating,
             'comment' => $r->comment,
             'images' => $r->images ?? [],
+            'videos' => $r->videos ?? [],
             'admin_reply' => $r->admin_reply,
             'admin_replied_by' => $r->repliedBy?->name,
             'admin_replied_at' => $r->admin_replied_at?->toISOString(),

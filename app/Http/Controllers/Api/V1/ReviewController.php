@@ -9,6 +9,7 @@ use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ReviewController extends Controller
 {
@@ -55,15 +56,25 @@ class ReviewController extends Controller
             'comment' => ['nullable', 'string', 'max:2000'],
             'images' => ['nullable', 'array', 'max:6'],
             'images.*' => ['string'],
+            'videos' => ['nullable', 'array', 'max:2'],
+            'videos.*' => ['string'],
         ]);
 
+        $userId = $request->user()->id;
+
         $booking = Booking::where('id', $validated['booking_id'])
-            ->where('user_id', $request->user()->id)
             ->where('status', 'confirmed')
             ->with('schedule')
             ->firstOrFail();
 
-        $existing = Review::where('booking_id', $booking->id)->first();
+        // เจ้าของการจอง หรือเพื่อนร่วมเดินทาง (companion) ที่รับคำเชิญแล้ว รีวิวได้คนละหนึ่งครั้ง
+        if (! $booking->isAccessibleByUser($userId)) {
+            return $this->error('คุณไม่มีสิทธิ์รีวิวการจองนี้', 403);
+        }
+
+        $existing = Review::where('booking_id', $booking->id)
+            ->where('user_id', $userId)
+            ->first();
         if ($existing) {
             return $this->error('คุณรีวิวการจองนี้ไปแล้ว', 422);
         }
@@ -73,7 +84,7 @@ class ReviewController extends Controller
         }
 
         $review = Review::create([
-            'user_id' => $request->user()->id,
+            'user_id' => $userId,
             'booking_id' => $booking->id,
             'trip_id' => $booking->schedule->trip_id,
             'rating' => $validated['rating'],
@@ -83,6 +94,7 @@ class ReviewController extends Controller
             'rating_value' => $validated['rating_value'] ?? null,
             'comment' => $validated['comment'] ?? null,
             'images' => $validated['images'] ?? [],
+            'videos' => $validated['videos'] ?? [],
         ]);
 
         return $this->success($this->formatReview($review->load(['user', 'trip'])), 'รีวิวสำเร็จแล้ว', 201);
@@ -103,6 +115,8 @@ class ReviewController extends Controller
             'comment' => ['nullable', 'string', 'max:2000'],
             'images' => ['nullable', 'array', 'max:6'],
             'images.*' => ['string'],
+            'videos' => ['nullable', 'array', 'max:2'],
+            'videos.*' => ['string'],
         ]);
 
         $review->update($validated);
@@ -133,6 +147,23 @@ class ReviewController extends Controller
         return $this->success(['url' => $url], 'อัปโหลดรูปภาพสำเร็จ');
     }
 
+    public function uploadVideo(Request $request): JsonResponse
+    {
+        $request->validate([
+            'video' => ['required', 'file', 'mimes:mp4,mov,quicktime,m4v', 'max:51200'], // max 50MB
+        ]);
+
+        $file = $request->file('video');
+        $path = $file->storeAs(
+            'reviews/videos',
+            date('YmdHis').'_'.Str::random(10).'.'.strtolower($file->getClientOriginalExtension() ?: 'mp4'),
+            MediaDisk::name(),
+        );
+        $url = MediaDisk::url($path);
+
+        return $this->success(['url' => $url], 'อัปโหลดวิดีโอสำเร็จ');
+    }
+
     private function formatReview(Review $r): array
     {
         return [
@@ -154,6 +185,7 @@ class ReviewController extends Controller
             'rating_value' => $r->rating_value,
             'comment' => $r->comment,
             'images' => $r->images ?? [],
+            'videos' => $r->videos ?? [],
             'admin_reply' => $r->admin_reply,
             'admin_replied_by' => $r->repliedBy?->name,
             'admin_replied_at' => $r->admin_replied_at?->toISOString(),

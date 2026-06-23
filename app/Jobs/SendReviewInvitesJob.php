@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Booking;
+use App\Models\Review;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,8 +14,9 @@ use Illuminate\Support\Facades\Log;
  * Sends a warm in-app + push (FCM) invite to review a trip as soon as it wraps
  * up. The review window opens at 20:00 (Asia/Bangkok) on the trip's last day —
  * see TripSchedule::reviewAvailableAt() — so this job runs just after that and
- * nudges every confirmed traveller who hasn't reviewed yet. Deduplicated per
- * booking so a customer is only ever invited once.
+ * nudges everyone on the booking who hasn't reviewed yet: the owner AND every
+ * companion who accepted the invite. Deduplicated per traveller so each person
+ * is only ever invited once.
  */
 class SendReviewInvitesJob implements ShouldQueue
 {
@@ -30,8 +32,6 @@ class SendReviewInvitesJob implements ShouldQueue
 
         $bookings = Booking::query()
             ->where('status', 'confirmed')
-            ->whereNotNull('user_id')
-            ->whereDoesntHave('review')
             ->whereHas('schedule', function ($query) use ($today) {
                 $query->where('status', '!=', 'cancelled')
                     ->where(function ($q) use ($today) {
@@ -56,38 +56,56 @@ class SendReviewInvitesJob implements ShouldQueue
                 continue;
             }
 
-            if ($this->alreadyInvited($booking)) {
-                continue;
-            }
-
             $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
 
-            SmartNotification::send(
-                $booking->user_id,
-                'review_invite',
-                'ทริปจบแล้ว เป็นยังไงบ้างคะ? ✨',
-                "หวังว่า {$tripTitle} จะเป็นความทรงจำดี ๆ ของคุณนะคะ 🌿 "
-                    .'แวะมารีวิวสัก 1 นาที เล่าให้เราและเพื่อน ๆ นักเดินทางฟังหน่อยน้า เรารออ่านอยู่นะ 💚',
-                [
-                    'booking_ref' => $booking->booking_ref,
-                    'trip_id' => $schedule->trip_id,
-                    'schedule_id' => $booking->schedule_id,
-                    'route' => 'booking',
-                ],
-            );
+            // Invite the owner AND every companion who accepted the invite —
+            // each traveller reviews on their own account, once.
+            foreach ($booking->accessUserIds() as $userId) {
+                if ($this->alreadyReviewed($booking->id, $userId)) {
+                    continue;
+                }
 
-            $sent++;
+                if ($this->alreadyInvited($booking, $userId)) {
+                    continue;
+                }
+
+                SmartNotification::send(
+                    $userId,
+                    'review_invite',
+                    'ทริปจบแล้ว เป็นยังไงบ้างคะ? ✨',
+                    "หวังว่า {$tripTitle} จะเป็นความทรงจำดี ๆ ของคุณนะคะ 🌿 "
+                        .'แวะมารีวิวสัก 1 นาที เล่าให้เราและเพื่อน ๆ นักเดินทางฟังหน่อยน้า เรารออ่านอยู่นะ 💚',
+                    [
+                        'booking_ref' => $booking->booking_ref,
+                        'trip_id' => $schedule->trip_id,
+                        'schedule_id' => $booking->schedule_id,
+                        'route' => 'booking',
+                    ],
+                );
+
+                $sent++;
+            }
         }
 
         Log::info('SendReviewInvitesJob completed', ['sent' => $sent]);
     }
 
     /**
+     * This traveller already reviewed this booking — don't nudge them again.
+     */
+    private function alreadyReviewed(int $bookingId, int $userId): bool
+    {
+        return Review::where('booking_id', $bookingId)
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
+    /**
      * Guard against double-sending if the job runs more than once.
      */
-    private function alreadyInvited(Booking $booking): bool
+    private function alreadyInvited(Booking $booking, int $userId): bool
     {
-        return SmartNotification::where('user_id', $booking->user_id)
+        return SmartNotification::where('user_id', $userId)
             ->where('type', 'review_invite')
             ->where('data->booking_ref', $booking->booking_ref)
             ->exists();

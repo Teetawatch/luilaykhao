@@ -24,7 +24,7 @@ class Trip extends Model
         'title', 'slug', 'type', 'location', 'region', 'description',
         'difficulty', 'duration_days', 'max_participants',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
-        'status', 'cover_image', 'thumbnail_image', 'gallery', 'inclusions', 'exclusions', 'is_featured',
+        'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations',
     ];
 
@@ -38,6 +38,7 @@ class Trip extends Model
             'longitude' => 'float',
             'is_featured' => 'boolean',
             'gallery' => 'array',
+            'videos' => 'array',
             'inclusions' => 'array',
             'exclusions' => 'array',
             'highlights' => 'array',
