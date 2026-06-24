@@ -95,6 +95,13 @@
                 <span>{{ link.label }}</span>
               </router-link>
             </template>
+            <!-- Blog is server-rendered (Blade) — use a real link for a full-page load -->
+            <a
+              href="/blog"
+              class="nav-link flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300"
+            >
+              <span>บทความ</span>
+            </a>
           </div>
         </div>
 

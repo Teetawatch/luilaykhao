@@ -64,6 +64,8 @@ import AdminItinerary from '../pages/admin/ItineraryPage.vue';
 import AdminIncidents from '../pages/admin/IncidentsPage.vue';
 import AdminSchedulePhotos from '../pages/admin/SchedulePhotosPage.vue';
 import AdminGallery from '../pages/admin/GalleryPage.vue';
+import AdminArticles from '../pages/admin/ArticlesPage.vue';
+import AdminArticleEdit from '../pages/admin/ArticleEditPage.vue';
 
 
 const routes = [
@@ -262,6 +264,9 @@ const routes = [
       { path: 'hero-slides', name: 'admin-hero-slides', component: AdminHeroSlides },
       { path: 'gallery', name: 'admin-gallery', component: AdminGallery },
       { path: 'schedule-photos', name: 'admin-schedule-photos', component: AdminSchedulePhotos },
+      { path: 'articles', name: 'admin-articles', component: AdminArticles },
+      { path: 'articles/create', name: 'admin-article-create', component: AdminArticleEdit },
+      { path: 'articles/:id/edit', name: 'admin-article-edit', component: AdminArticleEdit },
     ],
 
   },

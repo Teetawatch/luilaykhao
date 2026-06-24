@@ -13,6 +13,7 @@ export const useAdminStore = defineStore('admin', {
     customers: { data: [], meta: null },
     maintenances: { data: [], meta: null },
     contacts: { data: [], meta: null },
+    articles: { data: [], meta: null },
     loading: false,
 
     error: null,
@@ -403,6 +404,69 @@ export const useAdminStore = defineStore('admin', {
     async deleteScheduleExpense(scheduleId, id) {
       const res = await api.delete(`/admin/finance/schedules/${scheduleId}/expenses/${id}`);
       return res.data.data;
+    },
+
+    // ─── Blog Articles ──────────────
+    async fetchArticles(params = {}) {
+      this.loading = true;
+      try {
+        const res = await api.get('/admin/articles', { params });
+        this.articles = { data: res.data.data, meta: res.data.meta };
+      } catch (e) {
+        this.error = e.response?.data?.message || 'เกิดข้อผิดพลาด';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async fetchArticle(id) {
+      const res = await api.get(`/admin/articles/${id}`);
+      return res.data.data;
+    },
+
+    async createArticle(data) {
+      const res = await api.post('/admin/articles', data);
+      return res.data.data;
+    },
+
+    async updateArticle(id, data) {
+      const res = await api.put(`/admin/articles/${id}`, data);
+      return res.data.data;
+    },
+
+    async publishArticle(id, published) {
+      const res = await api.patch(`/admin/articles/${id}/publish`, { published });
+      return res.data.data;
+    },
+
+    async deleteArticle(id) {
+      const res = await api.delete(`/admin/articles/${id}`);
+      return res.data;
+    },
+
+    async fetchArticleCategories() {
+      const res = await api.get('/admin/article-categories');
+      return res.data.data;
+    },
+
+    async createArticleCategory(data) {
+      const res = await api.post('/admin/article-categories', data);
+      return res.data.data;
+    },
+
+    async fetchArticleTags() {
+      const res = await api.get('/admin/article-tags');
+      return res.data.data;
+    },
+
+    // Reuse the shared media upload endpoint (stores to R2) for cover + inline images.
+    async uploadArticleImage(file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api.post('/admin/upload-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data.data?.url ?? res.data.url;
     },
 
   },

@@ -53,6 +53,41 @@
         <priority>0.4</priority>
     </url>
 
+    {{-- ═══ Blog ═══ --}}
+    <url>
+        <loc>{{ url('/blog') }}</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    @foreach (($articleCategories ?? []) as $category)
+        <url>
+            <loc>{{ url('/blog/category/' . $category->slug) }}</loc>
+            <changefreq>weekly</changefreq>
+            <priority>0.6</priority>
+        </url>
+    @endforeach
+    @foreach (($articleTags ?? []) as $tag)
+        <url>
+            <loc>{{ url('/blog/tag/' . $tag->slug) }}</loc>
+            <changefreq>weekly</changefreq>
+            <priority>0.4</priority>
+        </url>
+    @endforeach
+    @foreach (($articles ?? []) as $article)
+        <url>
+            <loc>{{ url('/blog/' . $article->slug) }}</loc>
+            <lastmod>{{ $article->updated_at->toAtomString() }}</lastmod>
+            <changefreq>monthly</changefreq>
+            <priority>0.7</priority>
+            @if($article->cover_image_url)
+            <image:image>
+                <image:loc>{{ $article->cover_image_url }}</image:loc>
+                <image:title>{{ $article->title }} - ลุยเลเขา</image:title>
+            </image:image>
+            @endif
+        </url>
+    @endforeach
+
     {{-- ═══ Dynamic Trip Pages ═══ --}}
     @foreach ($trips as $trip)
         <url>

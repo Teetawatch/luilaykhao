@@ -2,9 +2,13 @@
 
 use App\Http\Controllers\AdminPaymentWebController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\SlipController;
+use App\Models\Article;
+use App\Models\ArticleCategory;
+use App\Models\Tag;
 use App\Models\Trip;
 use Illuminate\Support\Facades\Route;
 
@@ -20,8 +24,18 @@ Route::get('/sitemap.xml', function () {
 
     return response()->view('sitemap', [
         'trips' => $trips,
+        'articles' => Article::published()->orderByDesc('published_at')->get(),
+        'articleCategories' => ArticleCategory::whereHas('articles', fn ($q) => $q->published())->get(),
+        'articleTags' => Tag::whereHas('articles', fn ($q) => $q->published())->get(),
     ])->header('Content-Type', 'text/xml');
 });
+
+// Blog (server-rendered for SEO — must be before the SPA catch-all). The
+// category/tag archives are registered before the {slug} catch so they win.
+Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
+Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 
 // Live Share Link — standalone tracking page (must be before the SPA catch-all)
 Route::get('/track/{token}', function (string $token) {

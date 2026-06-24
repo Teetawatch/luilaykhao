@@ -124,6 +124,7 @@
           &copy; {{ new Date().getFullYear() }} ลุยเลเขา. All rights reserved.
         </div>
         <div class="flex gap-6 text-sm font-medium text-text-muted">
+          <a href="/blog" class="hover:text-accent transition-colors">บทความ</a>
           <router-link to="/gallery" class="hover:text-accent transition-colors">ภาพประทับใจ</router-link>
           <router-link to="/terms" class="hover:text-accent transition-colors">เงื่อนไขการให้บริการ</router-link>
           <router-link to="/privacy" class="hover:text-accent transition-colors">นโยบายความเป็นส่วนตัว</router-link>

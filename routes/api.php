@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminArticleController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
+use App\Http\Controllers\Api\V1\PublicArticleController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
@@ -82,6 +84,13 @@ Route::prefix('v1')->group(function () {
 
     // Categories (public)
     Route::get('categories', [CategoryController::class, 'index']);
+
+    // Articles / blog (public read — same content the app shows)
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('articles', [PublicArticleController::class, 'index']);
+        Route::get('articles/categories', [PublicArticleController::class, 'categories']);
+        Route::get('articles/{slug}', [PublicArticleController::class, 'show']);
+    });
 
     // Promotions (public active list)
     Route::get('promotions/active', [PromotionController::class, 'publicActive']);
@@ -292,6 +301,19 @@ Route::prefix('v1')->group(function () {
         Route::put('trips/{id}', [AdminController::class, 'updateTrip']);
         Route::patch('trips/bulk-update-field', [AdminController::class, 'bulkUpdateTripField']);
         Route::delete('trips/{id}', [AdminController::class, 'deleteTrip']);
+
+        // Blog articles CRUD + publishing
+        Route::get('articles', [AdminArticleController::class, 'index']);
+        Route::get('article-categories', [AdminArticleController::class, 'categories']);
+        Route::post('article-categories', [AdminArticleController::class, 'storeCategory']);
+        Route::put('article-categories/{id}', [AdminArticleController::class, 'updateCategory']);
+        Route::delete('article-categories/{id}', [AdminArticleController::class, 'destroyCategory']);
+        Route::get('article-tags', [AdminArticleController::class, 'tags']);
+        Route::post('articles', [AdminArticleController::class, 'store']);
+        Route::get('articles/{id}', [AdminArticleController::class, 'show']);
+        Route::put('articles/{id}', [AdminArticleController::class, 'update']);
+        Route::patch('articles/{id}/publish', [AdminArticleController::class, 'publish']);
+        Route::delete('articles/{id}', [AdminArticleController::class, 'destroy']);
 
         // Schedules CRUD
         Route::get('schedules', [AdminController::class, 'schedules']);
