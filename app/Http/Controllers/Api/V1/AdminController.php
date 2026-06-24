@@ -2321,6 +2321,27 @@ class AdminController extends Controller
         return $this->success($images);
     }
 
+    // Distinct add-on (must-know) item images already used across trips, so an
+    // admin can reuse e.g. a "tent" photo instead of re-uploading it each time.
+    public function mustKnowImages(): JsonResponse
+    {
+        $images = collect();
+
+        Trip::whereNotNull('must_know')->get(['must_know'])->each(function ($trip) use ($images) {
+            foreach (($trip->must_know['items'] ?? []) as $item) {
+                $url = is_array($item) ? ($item['image_url'] ?? null) : null;
+                if (is_string($url) && $url !== '') {
+                    $images->push([
+                        'url' => $url,
+                        'label' => is_array($item) ? (string) ($item['name'] ?? '') : '',
+                    ]);
+                }
+            }
+        });
+
+        return $this->success($images->unique('url')->values());
+    }
+
     // ─── Media Upload ─────────────────────────────────────────
     public function uploadMedia(Request $request): JsonResponse
     {

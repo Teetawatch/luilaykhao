@@ -314,17 +314,40 @@
             <div class="space-y-4">
               <label class="text-sm font-black text-amber-700 uppercase tracking-widest pl-1 mb-1 block">ตัวเลือกเสริมให้ลูกค้าติ๊กเลือก / ราคาพิเศษ</label>
               <div class="space-y-3">
-                <div v-for="(item, idx) in form.must_know.items" :key="idx" class="flex gap-3 items-center">
-                  <input v-model="item.name" placeholder="ชื่อรายการ (เช่น ข้าวไข่เจียว)" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
-                  <select v-model="item.price_type" class="w-32 px-3 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20 text-sm font-bold">
-                    <option value="per_booking">คิดครั้งเดียว</option>
-                    <option value="per_person">คิดต่อคน</option>
-                  </select>
-                  <div class="flex items-center gap-2">
-                    <span class="text-gray-400 font-bold">฿</span>
-                    <input v-model.number="item.price" type="number" placeholder="ราคา" class="w-24 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
+                <div v-for="(item, idx) in form.must_know.items" :key="idx" class="flex gap-3 items-start bg-white rounded-2xl border border-amber-100 p-3">
+                  <!-- per-item image: upload or reuse from library -->
+                  <div class="shrink-0 w-16">
+                    <div class="relative w-16 h-16 rounded-xl overflow-hidden border border-amber-200 bg-amber-50 flex items-center justify-center">
+                      <img v-if="item.image_url" :src="item.image_url" alt="" class="w-full h-full object-cover" />
+                      <span v-else class="material-symbols-rounded text-amber-300" style="font-size:26px;">image</span>
+                      <button v-if="item.image_url" type="button" @click="removeMustKnowImage(idx)" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/55 text-white flex items-center justify-center" title="ลบรูป">
+                        <span class="material-symbols-rounded" style="font-size:13px;">close</span>
+                      </button>
+                    </div>
+                    <div class="flex gap-1 mt-1">
+                      <button type="button" @click="triggerMustKnowImage(idx)" :disabled="mustKnowImageUploading" class="flex-1 py-1 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="อัปโหลดรูปใหม่">
+                        <span class="material-symbols-rounded align-middle" style="font-size:16px;">{{ mustKnowImageUploading && mustKnowImageTargetIdx === idx ? 'hourglass_top' : 'upload' }}</span>
+                      </button>
+                      <button type="button" @click="openMustKnowLibrary(idx)" class="flex-1 py-1 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="เลือกจากคลังรูป (ใช้ซ้ำได้หลายทริป)">
+                        <span class="material-symbols-rounded align-middle" style="font-size:16px;">photo_library</span>
+                      </button>
+                    </div>
                   </div>
-                  <button type="button" @click="removeItem('must_know_items', idx)" class="text-red-400 hover:text-red-600 p-2">
+                  <!-- fields -->
+                  <div class="flex-1 space-y-2 min-w-0">
+                    <input v-model="item.name" placeholder="ชื่อรายการ (เช่น ข้าวไข่เจียว)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
+                    <div class="flex gap-2 items-center flex-wrap">
+                      <select v-model="item.price_type" class="w-32 px-3 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20 text-sm font-bold">
+                        <option value="per_booking">คิดครั้งเดียว</option>
+                        <option value="per_person">คิดต่อคน</option>
+                      </select>
+                      <div class="flex items-center gap-2">
+                        <span class="text-gray-400 font-bold">฿</span>
+                        <input v-model.number="item.price" type="number" placeholder="ราคา" class="w-24 px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20" />
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" @click="removeItem('must_know_items', idx)" class="text-red-400 hover:text-red-600 p-2 mt-1">
                     <span class="material-symbols-rounded">delete</span>
                   </button>
                 </div>
@@ -336,6 +359,30 @@
             <div class="pt-4 border-t border-amber-200 space-y-3">
               <label class="text-sm font-black text-amber-700 uppercase tracking-widest pl-1 mb-1 block">หมายเหตุเพิ่มเติม</label>
               <textarea v-model="form.must_know.remarks" rows="2" placeholder="เช่น กรุณาแจ้งล่วงหน้า 1 วันหากต้องการสั่งอาหารเพิ่มเติม" class="w-full px-4 py-4 rounded-xl border border-gray-200 focus:ring-2 ring-amber-500/20 resize-none font-bold text-gray-700"></textarea>
+            </div>
+
+            <input ref="mustKnowImageInput" type="file" accept="image/*" class="hidden-file-input" @change="handleMustKnowImageSelect" />
+          </div>
+
+          <!-- Reusable image library picker -->
+          <div v-if="showMustKnowLibrary" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showMustKnowLibrary = false">
+            <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <h3 class="font-black text-gray-800">เลือกรูปจากคลัง (ใช้ซ้ำได้หลายทริป)</h3>
+                <button type="button" @click="showMustKnowLibrary = false" class="text-gray-400 hover:text-gray-600">
+                  <span class="material-symbols-rounded">close</span>
+                </button>
+              </div>
+              <div class="p-6 overflow-y-auto">
+                <div v-if="mustKnowLibraryLoading" class="text-center text-gray-400 py-12 font-bold">กำลังโหลด...</div>
+                <div v-else-if="!mustKnowLibrary.length" class="text-center text-gray-400 py-12 font-bold">ยังไม่มีรูปในคลัง — อัปโหลดรูปแรกได้เลย</div>
+                <div v-else class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  <button v-for="(img, i) in mustKnowLibrary" :key="i" type="button" @click="pickMustKnowLibrary(img.url)" class="relative rounded-xl overflow-hidden border border-gray-200 hover:border-amber-400 aspect-square">
+                    <img :src="img.url" alt="" class="w-full h-full object-cover" />
+                    <span v-if="img.label" class="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[10px] font-bold px-1.5 py-1 truncate text-left">{{ img.label }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -770,6 +817,7 @@ const buildTripPayload = () => {
           name: String(item?.name || '').trim(),
           price: Number(item?.price || 0),
           price_type: item?.price_type === 'per_person' ? 'per_person' : 'per_booking',
+          image_url: String(item?.image_url || '').trim(),
         }))
         .filter((item) => item.name),
       remarks: String(form.must_know?.remarks || '').trim(),
@@ -818,6 +866,68 @@ const videoUploading = ref(false);
 const thumbnailInput = ref(null);
 const thumbnailPreview = ref(null);
 const activeIconPicker = ref(null);
+
+// Must-know item image state (upload + reusable library)
+const mustKnowImageInput = ref(null);
+const mustKnowImageTargetIdx = ref(null);
+const mustKnowImageUploading = ref(false);
+const showMustKnowLibrary = ref(false);
+const mustKnowLibrary = ref([]);
+const mustKnowLibraryLoading = ref(false);
+const mustKnowLibraryTargetIdx = ref(null);
+
+const triggerMustKnowImage = (idx) => {
+  mustKnowImageTargetIdx.value = idx;
+  mustKnowImageInput.value?.click();
+};
+
+const handleMustKnowImageSelect = async (event) => {
+  const file = event.target.files?.[0];
+  const idx = mustKnowImageTargetIdx.value;
+  if (!file || idx == null) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('ไฟล์มีขนาดเกิน 10MB');
+    if (mustKnowImageInput.value) mustKnowImageInput.value.value = '';
+    return;
+  }
+  mustKnowImageUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/upload-image', formData);
+    if (form.must_know.items[idx]) form.must_know.items[idx].image_url = res.data.data.url;
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    mustKnowImageUploading.value = false;
+    mustKnowImageTargetIdx.value = null;
+    if (mustKnowImageInput.value) mustKnowImageInput.value.value = '';
+  }
+};
+
+const removeMustKnowImage = (idx) => {
+  if (form.must_know.items[idx]) form.must_know.items[idx].image_url = '';
+};
+
+const openMustKnowLibrary = async (idx) => {
+  mustKnowLibraryTargetIdx.value = idx;
+  showMustKnowLibrary.value = true;
+  mustKnowLibraryLoading.value = true;
+  try {
+    const res = await api.get('/admin/must-know/images');
+    mustKnowLibrary.value = res.data.data || [];
+  } catch (e) {
+    mustKnowLibrary.value = [];
+  } finally {
+    mustKnowLibraryLoading.value = false;
+  }
+};
+
+const pickMustKnowLibrary = (url) => {
+  const idx = mustKnowLibraryTargetIdx.value;
+  if (idx != null && form.must_know.items[idx]) form.must_know.items[idx].image_url = url;
+  showMustKnowLibrary.value = false;
+};
 
 // Bulk Copy state
 const showCopyModal = ref(false);
@@ -868,7 +978,7 @@ const addItem = (field, extra = null) => {
     form.preparations.push('');
   } else if (field === 'must_know_items') {
     if (!form.must_know.items) form.must_know.items = [];
-    form.must_know.items.push({ name: '', price: 0, price_type: 'per_booking' });
+    form.must_know.items.push({ name: '', price: 0, price_type: 'per_booking', image_url: '' });
   } else {
     if (!form[field]) form[field] = [];
     form[field].push('');

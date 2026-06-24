@@ -411,6 +411,7 @@ Route::prefix('v1')->group(function () {
         Route::post('upload-image', [AdminController::class, 'uploadMedia']);
         Route::post('pickup-points/image', [AdminController::class, 'uploadPickupPointImage']);
         Route::get('pickup-points/images', [AdminController::class, 'pickupPointImages']);
+        Route::get('must-know/images', [AdminController::class, 'mustKnowImages']);
         Route::get('media', [AdminController::class, 'listMedia']);
         Route::delete('media', [AdminController::class, 'deleteMedia']);
 
