@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,7 +19,7 @@ class ArticleResource extends JsonResource
             'slug' => $this->slug,
             'excerpt' => $this->excerpt,
             'body' => $this->body,
-            'cover_image_url' => MediaDisk::hostRelative($this->cover_image_url),
+            'cover_image_url' => $this->cover_image_url,
             'reading_minutes' => $this->reading_minutes,
             'views' => $this->views,
             'status' => $this->status,
