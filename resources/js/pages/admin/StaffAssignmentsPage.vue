@@ -981,6 +981,7 @@ onMounted(loadData);
 }
 
 .panel-head {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1007,6 +1008,8 @@ onMounted(loadData);
 }
 
 .trip-groups {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 8px;
   display: flex;
