@@ -553,6 +553,13 @@ function addonItems() {
   return items.filter((it) => it && it.name && Number(it.price) > 0);
 }
 
+function openImageLightbox(url) {
+  if (!url) return;
+  const ov = el(`<div class="img-lightbox"><img src="${esc(url)}" alt=""><button type="button" class="img-lightbox-close" aria-label="ปิด">✕</button></div>`);
+  ov.onclick = () => ov.remove();
+  document.body.appendChild(ov);
+}
+
 function renderSummaryStep() {
   const node = el(`<div></div>`);
   node.appendChild(appbar('ตรวจสอบ & ยืนยัน', renderPassengerStep));
@@ -564,8 +571,14 @@ function renderSummaryStep() {
   if (addons.length) {
     content.appendChild(el(`<div class="section-heading">บริการเสริม</div>`));
     addons.forEach((item, idx) => {
-      const opt = el(`<label class="pick">
-        <input type="checkbox" ${bk.addons.has(idx) ? 'checked' : ''}>
+      const checked = bk.addons.has(idx);
+      const imageUrl = (item.image_url || '').toString().trim();
+      const thumb = imageUrl
+        ? `<div class="pick-thumb"><img src="${esc(imageUrl)}" alt="" loading="lazy"><button type="button" class="pick-zoom" aria-label="ดูรูปใหญ่">⤢</button></div>`
+        : '';
+      const opt = el(`<label class="pick ${imageUrl ? 'pick-card' : ''} ${checked ? 'on' : ''}">
+        <input type="checkbox" ${checked ? 'checked' : ''}>
+        ${thumb}
         <div class="pick-body">
           <div class="pick-name">${esc(item.name)}</div>
           <div class="pick-sub">${baht(item.price)} ${item.price_type === 'per_person' ? '/ คน' : '/ การจอง'}</div>
@@ -575,6 +588,10 @@ function renderSummaryStep() {
         e.target.checked ? bk.addons.add(idx) : bk.addons.delete(idx);
         renderSummaryStep();
       };
+      const zoom = opt.querySelector('.pick-zoom');
+      if (zoom) {
+        zoom.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openImageLightbox(imageUrl); };
+      }
       content.appendChild(opt);
     });
   }

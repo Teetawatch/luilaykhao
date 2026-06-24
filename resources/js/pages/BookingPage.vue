@@ -581,22 +581,59 @@
                 </span>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div
                   v-for="addon in optionalAddons"
                   :key="addon.index"
-                  class="flex items-center gap-3 rounded-2xl border-2 p-4 cursor-pointer transition-all"
-                  :class="selectedAddons.includes(addon.index) ? 'border-amber-500 bg-amber-50/60' : 'border-gray-100 bg-gray-50/70 hover:bg-white hover:border-amber-200'"
+                  @click="toggleAddon(addon.index)"
+                  class="relative rounded-2xl border-2 cursor-pointer transition-all overflow-hidden"
+                  :class="selectedAddons.includes(addon.index) ? 'border-amber-500 ring-2 ring-amber-200' : 'border-gray-100 hover:border-amber-200'"
                 >
-                  <input v-model="selectedAddons" type="checkbox" :value="addon.index" class="w-5 h-5 accent-amber-500 shrink-0" />
-                  <div class="min-w-0 flex-1">
-                    <p class="font-black text-gray-900 text-sm leading-tight truncate">{{ addon.name }}</p>
-                    <p class="text-[11px] font-bold text-gray-500 mt-1">
+                  <!-- image / placeholder -->
+                  <div class="relative h-28" :class="addon.image_url ? 'bg-gray-100' : 'bg-amber-50 flex items-center justify-center'">
+                    <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-full h-full object-cover" loading="lazy" />
+                    <span v-else class="material-symbols-rounded text-amber-300" style="font-size:34px;">add_task</span>
+                    <button
+                      v-if="addon.image_url"
+                      type="button"
+                      @click.stop="addonZoomImage = addon.image_url"
+                      class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/65"
+                      title="ดูรูปใหญ่"
+                    >
+                      <span class="material-symbols-rounded" style="font-size:16px;">zoom_in</span>
+                    </button>
+                    <div
+                      v-if="selectedAddons.includes(addon.index)"
+                      class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shadow"
+                    >
+                      <span class="material-symbols-rounded" style="font-size:16px;">check</span>
+                    </div>
+                  </div>
+                  <!-- info -->
+                  <div class="p-3" :class="selectedAddons.includes(addon.index) ? 'bg-amber-50/60' : 'bg-white'">
+                    <p class="font-black text-gray-900 text-sm leading-tight line-clamp-2">{{ addon.name }}</p>
+                    <p class="text-[11px] font-bold text-amber-600 mt-1">
                       ฿{{ addon.price.toLocaleString() }} {{ addonPriceTypeLabel(addon) }}
                     </p>
                   </div>
-                </label>
+                </div>
               </div>
+            </div>
+
+            <!-- Add-on image lightbox -->
+            <div
+              v-if="addonZoomImage"
+              class="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
+              @click="addonZoomImage = null"
+            >
+              <img :src="addonZoomImage" alt="" class="max-w-full max-h-full object-contain rounded-xl" />
+              <button
+                type="button"
+                class="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/50 text-white flex items-center justify-center"
+                @click="addonZoomImage = null"
+              >
+                <span class="material-symbols-rounded">close</span>
+              </button>
             </div>
 
             <!-- Passenger forms -->
@@ -1434,6 +1471,13 @@ const groupName = ref('');
 const groupNotes = ref('');
 const showInsuranceModal = ref(false);
 const selectedAddons = ref([]);
+const addonZoomImage = ref(null);
+
+const toggleAddon = (index) => {
+  selectedAddons.value = selectedAddons.value.includes(index)
+    ? selectedAddons.value.filter((i) => i !== index)
+    : [...selectedAddons.value, index];
+};
 
 const promotionCode = ref('');
 const promotionInput = ref('');
@@ -1517,6 +1561,7 @@ const optionalAddons = computed(() => {
       name: String(item?.name || '').trim(),
       price: Number(item?.price || 0),
       price_type: item?.price_type === 'per_person' ? 'per_person' : 'per_booking',
+      image_url: String(item?.image_url || '').trim(),
     }))
     .filter((item) => item.name);
 });
