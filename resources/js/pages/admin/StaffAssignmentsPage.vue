@@ -974,7 +974,6 @@ onMounted(loadData);
 .trip-panel {
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 120px);
   position: sticky;
   top: 16px;
   overflow: hidden;
@@ -1010,6 +1009,7 @@ onMounted(loadData);
 .trip-groups {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: calc(100vh - 220px);
   overflow-y: auto;
   padding: 8px;
   display: flex;
@@ -1684,10 +1684,8 @@ onMounted(loadData);
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .assign-layout { grid-template-columns: 1fr; }
-  .trip-panel {
-    position: static;
-    max-height: 420px;
-  }
+  .trip-panel { position: static; }
+  .trip-groups { max-height: 60vh; }
 }
 
 @media (max-width: 900px) {
