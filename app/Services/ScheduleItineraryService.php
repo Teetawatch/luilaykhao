@@ -39,7 +39,20 @@ class ScheduleItineraryService
      */
     public function list(TripSchedule $schedule): Collection
     {
-        return $schedule->itineraryItems()->get();
+        return $schedule->itineraryItems()->with('reachedBy:id,name')->get();
+    }
+
+    /**
+     * เช็คอิน/ยกเลิกเช็คอินจุดกำหนดการ — แชร์ทั้งทีมของรอบนั้น (ใครกดก็เห็นเหมือนกัน)
+     */
+    public function setReached(ScheduleItineraryItem $item, User $user, bool $reached): ScheduleItineraryItem
+    {
+        $item->update([
+            'reached_at' => $reached ? now() : null,
+            'reached_by' => $reached ? $user->id : null,
+        ]);
+
+        return $item->fresh('reachedBy');
     }
 
     public function create(TripSchedule $schedule, User $author, array $data): ScheduleItineraryItem
@@ -103,6 +116,8 @@ class ScheduleItineraryService
             'detail' => $item->detail,
             'link' => $item->link,
             'sort_order' => $item->sort_order,
+            'reached_at' => $item->reached_at?->toIso8601String(),
+            'reached_by_name' => $item->reachedBy?->name,
         ];
     }
 }

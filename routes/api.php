@@ -153,6 +153,8 @@ Route::prefix('v1')->group(function () {
 
         // กำหนดการรอบเดินทาง (itinerary) — สตาฟประจำรอบ/ทีมงานอ่าน; แอดมินจัดการในบล็อก admin
         Route::get('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'index']);
+        // เช็คอินจุดกำหนดการ — สตาฟกดยืนยันว่ามาถึงจุดนี้แล้ว (กันลืม/ผิดแผน)
+        Route::post('schedules/{id}/itinerary/{itemId}/reach', [ScheduleItineraryController::class, 'reach']);
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');

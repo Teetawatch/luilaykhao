@@ -41,6 +41,29 @@ class ScheduleItineraryController extends Controller
         ]);
     }
 
+    /**
+     * เช็คอินจุดกำหนดการ — สตาฟประจำรอบ (และทีมงาน) กดยืนยันว่ามาถึงจุดนี้แล้ว
+     * สถานะแชร์ทั้งทีมของรอบ ใช้กันลืม/ผิดแผน ส่ง reached=false เพื่อยกเลิก
+     */
+    public function reach(Request $request, int $scheduleId, int $itemId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->service->canRead($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์อัปเดตกำหนดการของรอบนี้', 403);
+        }
+
+        $item = ScheduleItineraryItem::where('schedule_id', $schedule->id)->findOrFail($itemId);
+        $reached = $request->boolean('reached', true);
+        $item = $this->service->setReached($item, $user, $reached);
+
+        return $this->success(
+            $this->service->present($item),
+            $reached ? 'เช็คอินจุดนี้แล้ว' : 'ยกเลิกเช็คอินแล้ว',
+        );
+    }
+
     // ── จัดการ (admin/operator เท่านั้น) ───────────────────────────────────────
 
     public function store(Request $request, int $scheduleId): JsonResponse

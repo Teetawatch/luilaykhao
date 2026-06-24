@@ -261,4 +261,57 @@ class ScheduleItineraryTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['title']);
     }
+
+    private function makeItem(TripSchedule $schedule, User $author): ScheduleItineraryItem
+    {
+        return ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id, 'created_by' => $author->id,
+            'item_date' => $schedule->departure_date->toDateString(),
+            'time' => '09:00', 'title' => 'ถึงน้ำตก',
+        ]);
+    }
+
+    public function test_assigned_staff_can_check_in_and_undo_an_itinerary_point(): void
+    {
+        $schedule = $this->makeSchedule();
+        $admin = $this->makeAdmin();
+        $staff = $this->makeStaff($schedule);
+        $item = $this->makeItem($schedule, $admin);
+
+        // Check in — records who + when, and is shared on the item.
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/itinerary/{$item->id}/reach")
+            ->assertOk()
+            ->assertJsonPath('data.reached_by_name', $staff->name)
+            ->assertJsonPath('data.id', $item->id);
+        $this->assertNotNull($item->fresh()->reached_at);
+        $this->assertSame($staff->id, $item->fresh()->reached_by);
+
+        // The shared status shows up for everyone reading the itinerary.
+        $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.reached_by_name', $staff->name);
+
+        // Undo.
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/itinerary/{$item->id}/reach", ['reached' => false])
+            ->assertOk()
+            ->assertJsonPath('data.reached_at', null);
+        $this->assertNull($item->fresh()->reached_at);
+        $this->assertNull($item->fresh()->reached_by);
+    }
+
+    public function test_customer_cannot_check_in_an_itinerary_point(): void
+    {
+        $schedule = $this->makeSchedule();
+        $admin = $this->makeAdmin();
+        $customer = $this->makeCustomer($schedule);
+        $item = $this->makeItem($schedule, $admin);
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/itinerary/{$item->id}/reach")
+            ->assertStatus(403);
+        $this->assertNull($item->fresh()->reached_at);
+    }
 }

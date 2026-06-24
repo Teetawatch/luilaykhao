@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ScheduleItineraryItem extends Model
 {
     protected $fillable = [
-        'schedule_id', 'item_date', 'time', 'title', 'detail', 'link', 'sort_order', 'created_by',
+        'schedule_id', 'item_date', 'time', 'title', 'detail', 'link', 'sort_order',
+        'created_by', 'reached_at', 'reached_by',
     ];
 
     protected function casts(): array
@@ -16,6 +17,7 @@ class ScheduleItineraryItem extends Model
         return [
             'item_date' => 'date',
             'sort_order' => 'integer',
+            'reached_at' => 'datetime',
         ];
     }
 
@@ -27,5 +29,10 @@ class ScheduleItineraryItem extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function reachedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reached_by');
     }
 }
