@@ -1023,12 +1023,13 @@
                         <span class="font-bold">฿{{ passengerTicketPrice(p).toLocaleString() }}</span>
                       </div>
                     </template>
-                    <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between text-sm text-amber-100">
-                      <span class="flex items-center gap-1">
-                        <span class="material-symbols-rounded text-[16px]">add_circle</span>
-                        {{ addon.name }}
+                    <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-100">
+                      <span class="flex items-center gap-2 min-w-0">
+                        <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-white/20" />
+                        <span v-else class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
+                        <span class="truncate">{{ addon.name }}</span>
                       </span>
-                      <span class="font-bold">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
+                      <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
                     </div>
                     <div v-if="promotionData" class="flex justify-between text-sm text-teal-200 pt-2 border-t border-white/20">
                       <span class="flex items-center gap-1">
@@ -1158,8 +1159,9 @@
                 <span class="text-gray-900 font-bold">{{ seatCount }} คน</span>
               </div>
               <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
-                <span class="font-bold flex items-center gap-1 min-w-0">
-                  <span class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
+                <span class="font-bold flex items-center gap-2 min-w-0">
+                  <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-amber-100" />
+                  <span v-else class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
                   <span class="truncate">{{ addon.name }}</span>
                 </span>
                 <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
