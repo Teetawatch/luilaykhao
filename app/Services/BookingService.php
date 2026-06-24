@@ -23,6 +23,8 @@ class BookingService
         private WaitlistService $waitlistService,
         private ReferralService $referralService,
         private LoyaltyService $loyaltyService,
+        private BroadcastNotificationService $broadcastService,
+        private TripAlertService $tripAlertService,
     ) {}
 
     public function createBooking(
@@ -43,8 +45,11 @@ class BookingService
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
         $scheduleBecameFull = false;
+        // Seats left right after this booking — drives the real-time "almost
+        // sold out" customer blast (3-2-1 left). Null = join trip / not counted.
+        $availableAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, &$scheduleBecameFull) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, &$scheduleBecameFull, &$availableAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -293,6 +298,7 @@ class BookingService
                 // We already passed the availability check above, so reaching
                 // zero here means this booking is what filled the last seats.
                 $scheduleBecameFull = $schedule->available_seats <= 0;
+                $availableAfterBooking = $schedule->available_seats;
             }
 
             $booking->load(['passengers.pickupPoint', 'seats', 'schedule.trip']);
@@ -316,12 +322,64 @@ class BookingService
         // Mark user's waitlist entry as booked (if they came from the waitlist)
         $this->waitlistService->markBooked($userId, $scheduleId);
 
-        // Alert staff via FCM when this booking just sold out the schedule
+        // Alert staff via FCM when this booking just sold out the schedule, and
+        // blast customers a "sold out" push (waitlist nudge / FOMO) in real time.
         if ($scheduleBecameFull) {
             $this->notifyScheduleFull($booking);
+            $this->notifySoldOut($scheduleId);
+        }
+
+        // Real-time "almost sold out" push the instant this booking drops the
+        // round into the low band (3-2-1 seats left) — so a fast-selling round
+        // doesn't slip past the every-15-min sweep. Each level blasts once.
+        if (! $scheduleBecameFull
+            && $availableAfterBooking !== null
+            && $availableAfterBooking > 0
+            && $availableAfterBooking <= BroadcastNotificationService::LOW_SEAT_THRESHOLD) {
+            $this->notifyLowSeats($scheduleId);
         }
 
         return $booking;
+    }
+
+    /**
+     * แจ้งเตือนลูกค้าแบบเรียลไทม์เมื่อรอบเดินทางเหลือที่นั่งน้อย (3-2-1 ที่นั่ง):
+     * ยิงทั้ง marketing broadcast (ทุกคน) และ trip alert (คนที่กดติดตามทริปนี้)
+     * ทำนอก DB transaction และ best-effort — ห้ามให้ error กระทบการจอง
+     */
+    private function notifyLowSeats(int $scheduleId): void
+    {
+        try {
+            $schedule = TripSchedule::with('trip')->find($scheduleId);
+            if (! $schedule) {
+                return;
+            }
+
+            $this->broadcastService->broadcastLowSeats($schedule);
+            $this->tripAlertService->notifyLowSeats($schedule);
+        } catch (\Throwable $e) {
+            Log::warning('BookingService: low-seat notification failed — '.$e->getMessage());
+        }
+    }
+
+    /**
+     * แจ้งเตือนลูกค้าแบบเรียลไทม์เมื่อรอบเดินทางเพิ่งถูกจองจนเต็มทุกที่นั่ง:
+     * ยิงทั้ง marketing broadcast (ทุกคน) และ trip alert (คนที่กดติดตามทริปนี้)
+     * เพื่อชวนเข้าคิว waitlist ทำนอก DB transaction และ best-effort
+     */
+    private function notifySoldOut(int $scheduleId): void
+    {
+        try {
+            $schedule = TripSchedule::with('trip')->find($scheduleId);
+            if (! $schedule) {
+                return;
+            }
+
+            $this->broadcastService->broadcastSoldOut($schedule);
+            $this->tripAlertService->notifySoldOut($schedule);
+        } catch (\Throwable $e) {
+            Log::warning('BookingService: sold-out notification failed — '.$e->getMessage());
+        }
     }
 
     /**

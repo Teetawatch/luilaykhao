@@ -113,6 +113,53 @@ class TripAlertService
         }
     }
 
+    /**
+     * Real-time low-seat fan-out for one round to everyone watching its trip.
+     * Called from BookingService the moment a booking drops the round into the
+     * low band, so fast-selling rounds don't slip past the periodic sweep.
+     */
+    public function notifyLowSeats(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip) {
+            return;
+        }
+
+        TripAlert::where('trip_id', $trip->id)
+            ->where('alert_low_seats', true)
+            ->each(fn (TripAlert $alert) => $this->maybeNotifyLowSeats($alert, $schedule, $trip));
+    }
+
+    /**
+     * Real-time "sold out" fan-out to everyone watching this trip — the terminal
+     * seat event, so it rides on the same low-seat subscription flag. Once per round.
+     */
+    public function notifySoldOut(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || ! $this->isBookable($schedule) || $schedule->available_seats > 0) {
+            return;
+        }
+
+        TripAlert::where('trip_id', $trip->id)
+            ->where('alert_low_seats', true)
+            ->each(function (TripAlert $alert) use ($schedule, $trip) {
+                if ($this->alreadyDispatched($alert, $schedule->id, 'sold_out')) {
+                    return;
+                }
+
+                $this->dispatch(
+                    $alert,
+                    $schedule->id,
+                    'sold_out',
+                    "เต็มแล้ว: {$trip->title}",
+                    'รอบวันที่ '.$schedule->departure_date->format('d/m/Y').' เต็มทุกที่นั่งแล้ว กดเข้าคิว waitlist เผื่อมีที่ว่าง!',
+                    $trip,
+                    $schedule->id,
+                );
+            });
+    }
+
     private function processLowSeats(TripAlert $alert): void
     {
         if (! $alert->alert_low_seats) {
@@ -124,32 +171,44 @@ class TripAlertService
             return;
         }
 
-        $threshold = $alert->low_seat_threshold ?: 5;
-
         foreach ($trip->schedules as $schedule) {
-            if (! $this->isBookable($schedule)) {
-                continue;
-            }
-
-            $available = $schedule->available_seats;
-            if ($available <= 0 || $available > $threshold) {
-                continue;
-            }
-
-            if ($this->alreadyDispatched($alert, $schedule->id, 'low_seats')) {
-                continue;
-            }
-
-            $this->dispatch(
-                $alert,
-                $schedule->id,
-                'low_seats',
-                "ที่นั่งใกล้เต็ม: {$trip->title}",
-                'รอบวันที่ '.$schedule->departure_date->format('d/m/Y')." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนหมด!",
-                $trip,
-                $schedule->id,
-            );
+            $this->maybeNotifyLowSeats($alert, $schedule, $trip);
         }
+    }
+
+    /**
+     * Fire a low-seat alert for one (subscription, round) pair if the round is
+     * inside this subscriber's threshold and that seat level hasn't fired yet.
+     * Dedupe is per seat level ("low_seats:3" / ":2" / ":1") so each step down
+     * toward sold-out re-alerts exactly once.
+     */
+    private function maybeNotifyLowSeats(TripAlert $alert, TripSchedule $schedule, Trip $trip): void
+    {
+        if (! $alert->alert_low_seats || ! $this->isBookable($schedule)) {
+            return;
+        }
+
+        $available = $schedule->available_seats;
+        $threshold = $alert->low_seat_threshold ?: 5;
+        if ($available <= 0 || $available > $threshold) {
+            return;
+        }
+
+        $dedupeType = "low_seats:{$available}";
+        if ($this->alreadyDispatched($alert, $schedule->id, $dedupeType)) {
+            return;
+        }
+
+        $this->dispatch(
+            $alert,
+            $schedule->id,
+            'low_seats',
+            "ที่นั่งใกล้เต็ม: {$trip->title}",
+            'รอบวันที่ '.$schedule->departure_date->format('d/m/Y')." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนหมด!",
+            $trip,
+            $schedule->id,
+            $dedupeType,
+        );
     }
 
     private function minBookablePrice(Trip $trip): ?float
@@ -185,11 +244,14 @@ class TripAlertService
         string $body,
         Trip $trip,
         ?int $notificationScheduleId,
+        ?string $dedupeType = null,
     ): void {
+        // Ledger row dedupes on the (optionally per-level) key; the in-app
+        // notification keeps the plain `alert_type` so the app routing stays simple.
         TripAlertDispatch::create([
             'trip_alert_id' => $alert->id,
             'schedule_id' => $scheduleId,
-            'type' => $type,
+            'type' => $dedupeType ?? $type,
         ]);
 
         SmartNotification::send(

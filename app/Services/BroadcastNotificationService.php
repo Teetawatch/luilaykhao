@@ -88,7 +88,9 @@ class BroadcastNotificationService
     }
 
     /**
-     * Announce a round that's almost sold out, to create urgency. Once per round.
+     * Announce a round that's almost sold out, to create urgency. Blasts once
+     * per seat level (…:3, …:2, …:1) so each step toward sold-out re-creates
+     * urgency. Self-guarding, so it's safe to call directly from a booking.
      */
     public function broadcastLowSeats(TripSchedule $schedule): void
     {
@@ -99,9 +101,14 @@ class BroadcastNotificationService
 
         $available = $schedule->available_seats;
 
+        // Only the low band above zero blasts (a full round is handled elsewhere).
+        if ($available <= 0 || $available > self::LOW_SEAT_THRESHOLD) {
+            return;
+        }
+
         $this->broadcast(
             'low_seats',
-            "low_seats:{$schedule->id}",
+            "low_seats:{$schedule->id}:{$available}",
             'ที่นั่งใกล้เต็มแล้ว! ⏳',
             "{$trip->title} รอบ ".$schedule->departure_date->format('d/m/Y')
                 ." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนเต็มนะ!",
@@ -115,9 +122,40 @@ class BroadcastNotificationService
     }
 
     /**
+     * Announce a round that's just sold out — nudges customers onto the waitlist
+     * and creates FOMO. Once per round. Self-guarding, safe to call from a booking.
+     */
+    public function broadcastSoldOut(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || $schedule->departure_date === null) {
+            return;
+        }
+
+        // Only blast when the round is genuinely full.
+        if ($schedule->available_seats > 0) {
+            return;
+        }
+
+        $this->broadcast(
+            'sold_out',
+            "sold_out:{$schedule->id}",
+            'ที่นั่งเต็มแล้ว 🔴',
+            "{$trip->title} รอบ ".$schedule->departure_date->format('d/m/Y')
+                .' เต็มทุกที่นั่งแล้ว กดเข้าคิว waitlist เผื่อมีที่ว่าง!',
+            [
+                'route' => 'trip',
+                'trip_slug' => $trip->slug,
+                'trip_id' => $trip->id,
+                'schedule_id' => $schedule->id,
+            ],
+        );
+    }
+
+    /**
      * Sweep all bookable rounds and blast the ones that just dipped to a low
-     * seat count. Idempotent — the dedupe ledger keeps each round to one blast.
-     * Scheduled to run periodically.
+     * seat count. Idempotent — the dedupe ledger keeps each round to one blast
+     * per seat level. Scheduled to run periodically.
      */
     public function sweepLowSeats(): void
     {
@@ -126,10 +164,7 @@ class BroadcastNotificationService
             ->whereDate('departure_date', '>=', now(self::TIMEZONE)->startOfDay())
             ->chunkById(200, function ($schedules) {
                 foreach ($schedules as $schedule) {
-                    $available = $schedule->available_seats;
-                    if ($available <= 0 || $available > self::LOW_SEAT_THRESHOLD) {
-                        continue;
-                    }
+                    // broadcastLowSeats self-guards the threshold and per-level dedupe.
                     $this->broadcastLowSeats($schedule);
                 }
             });

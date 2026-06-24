@@ -158,4 +158,68 @@ class TripAlertTest extends TestCase
             ->filter(fn ($n) => ($n->data['alert_type'] ?? null) === 'low_seats');
         $this->assertCount(1, $lowSeatNotes);
     }
+
+    private function lowSeatNoteCount(): int
+    {
+        return SmartNotification::where('type', 'trip_alert')
+            ->get()
+            ->filter(fn ($n) => ($n->data['alert_type'] ?? null) === 'low_seats')
+            ->count();
+    }
+
+    public function test_low_seats_re_alerts_at_each_seat_level(): void
+    {
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, ['total_seats' => 10, 'booked_seats' => 7]); // 3 left
+        $user = User::factory()->create();
+        TripAlert::create([
+            'user_id' => $user->id,
+            'trip_id' => $trip->id,
+            'low_seat_threshold' => 3,
+        ]);
+
+        $service = app(TripAlertService::class);
+
+        // 3 → 2 → 1 left, each step re-alerts once.
+        $service->processAll();
+        $this->assertSame(1, $this->lowSeatNoteCount());
+
+        $schedule->update(['booked_seats' => 8]);
+        $service->processAll();
+        $this->assertSame(2, $this->lowSeatNoteCount());
+
+        $schedule->update(['booked_seats' => 9]);
+        $service->processAll();
+        $this->assertSame(3, $this->lowSeatNoteCount());
+
+        // Re-running at the same level does not duplicate.
+        $service->processAll();
+        $this->assertSame(3, $this->lowSeatNoteCount());
+    }
+
+    public function test_real_time_low_seat_fan_out_to_trip_subscribers(): void
+    {
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, ['total_seats' => 10, 'booked_seats' => 8]); // 2 left
+
+        $watcher = User::factory()->create();
+        TripAlert::create([
+            'user_id' => $watcher->id,
+            'trip_id' => $trip->id,
+            'low_seat_threshold' => 3,
+        ]);
+        // A subscriber whose threshold is below the current count is not alerted.
+        $picky = User::factory()->create();
+        TripAlert::create([
+            'user_id' => $picky->id,
+            'trip_id' => $trip->id,
+            'low_seat_threshold' => 1,
+        ]);
+
+        app(TripAlertService::class)->notifyLowSeats($schedule->fresh()->load('trip'));
+
+        $this->assertSame(1, $this->lowSeatNoteCount());
+        $this->assertSame(1, SmartNotification::where('user_id', $watcher->id)->count());
+        $this->assertSame(0, SmartNotification::where('user_id', $picky->id)->count());
+    }
 }

@@ -183,6 +183,76 @@ class BroadcastNotificationTest extends TestCase
         );
     }
 
+    public function test_low_seats_blasts_once_at_each_seat_level(): void
+    {
+        Queue::fake();
+
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, total: 10, booked: 7); // 3 left
+        $service = app(BroadcastNotificationService::class);
+
+        // 3 left → blast, keyed to this level.
+        $service->broadcastLowSeats($schedule);
+        $this->assertDatabaseHas('broadcast_dispatches', [
+            'event_type' => 'low_seats',
+            'dedupe_key' => "low_seats:{$schedule->id}:3",
+        ]);
+
+        // Same level again → no double-blast.
+        $service->broadcastLowSeats($schedule->fresh());
+        $this->assertSame(1, BroadcastDispatch::where('event_type', 'low_seats')->count());
+
+        // Drops to 2, then 1 → a fresh blast each step toward sold-out.
+        $schedule->update(['booked_seats' => 8]);
+        $service->broadcastLowSeats($schedule->fresh());
+        $schedule->update(['booked_seats' => 9]);
+        $service->broadcastLowSeats($schedule->fresh());
+
+        $this->assertSame(3, BroadcastDispatch::where('event_type', 'low_seats')->count());
+        foreach ([3, 2, 1] as $level) {
+            $this->assertDatabaseHas('broadcast_dispatches', [
+                'dedupe_key' => "low_seats:{$schedule->id}:{$level}",
+            ]);
+        }
+        Queue::assertPushed(
+            fn (SendBroadcastNotificationJob $job) => $job->type === 'low_seats',
+            3,
+        );
+
+        // Sold out (0 left) does not blast a low-seat push.
+        $schedule->update(['booked_seats' => 10]);
+        $service->broadcastLowSeats($schedule->fresh());
+        $this->assertSame(3, BroadcastDispatch::where('event_type', 'low_seats')->count());
+    }
+
+    public function test_sold_out_blasts_once_when_the_round_fills(): void
+    {
+        Queue::fake();
+
+        $trip = $this->makeTrip();
+        $full = $this->makeSchedule($trip, total: 10, booked: 10); // 0 left
+        $service = app(BroadcastNotificationService::class);
+
+        $service->broadcastSoldOut($full);
+        $this->assertDatabaseHas('broadcast_dispatches', [
+            'event_type' => 'sold_out',
+            'dedupe_key' => "sold_out:{$full->id}",
+        ]);
+        Queue::assertPushed(
+            fn (SendBroadcastNotificationJob $job) => $job->type === 'sold_out'
+                && $job->data['schedule_id'] === $full->id,
+        );
+
+        // Re-running does not double-blast.
+        $service->broadcastSoldOut($full->fresh());
+        $this->assertSame(1, BroadcastDispatch::where('event_type', 'sold_out')->count());
+
+        // A round with seats left never gets a sold-out blast.
+        $open = $this->makeSchedule($trip, total: 10, booked: 8);
+        $service->broadcastSoldOut($open);
+        $this->assertSame(1, BroadcastDispatch::where('event_type', 'sold_out')->count());
+    }
+
     public function test_quiet_hours_defer_sends_to_next_morning(): void
     {
         $service = app(BroadcastNotificationService::class);
