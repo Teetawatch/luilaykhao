@@ -144,6 +144,34 @@ class ArticleTest extends TestCase
         $this->assertEquals($firstPublishedAt, $article->fresh()->published_at);
     }
 
+    public function test_cover_url_on_our_host_is_returned_host_relative_for_the_app(): void
+    {
+        config(['app.url' => 'http://localhost']);
+        $service = app(ArticleService::class);
+
+        // Cover uploaded against our own host (local/public disk) — must be made
+        // host-relative so a phone resolves it against its own backend base URL,
+        // not a baked-in "http://localhost" it can never reach.
+        $ours = $service->create([
+            'title' => 'Local cover', 'body' => '<p>a</p>', 'status' => 'published',
+            'cover_image_url' => 'http://localhost/storage/media/x.jpg',
+        ]);
+        // An external (e.g. R2) URL is left untouched.
+        $external = $service->create([
+            'title' => 'R2 cover', 'body' => '<p>b</p>', 'status' => 'published',
+            'cover_image_url' => 'https://cdn.example.com/media/y.jpg',
+        ]);
+
+        $this->getJson("/api/v1/articles/{$ours->slug}")
+            ->assertJsonPath('data.cover_image_url', '/storage/media/x.jpg');
+        $this->getJson("/api/v1/articles/{$external->slug}")
+            ->assertJsonPath('data.cover_image_url', 'https://cdn.example.com/media/y.jpg');
+
+        // Listing payload normalizes the same way.
+        $this->getJson('/api/v1/articles')
+            ->assertJsonFragment(['cover_image_url' => '/storage/media/x.jpg']);
+    }
+
     public function test_non_admin_cannot_create_articles(): void
     {
         $user = User::factory()->create();

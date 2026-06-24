@@ -49,6 +49,26 @@ class MediaDisk
     }
 
     /**
+     * Make a media URL portable across clients. A URL that points at our own app
+     * host is returned host-relative ("/storage/…") so each client (web, mobile,
+     * any environment) resolves it against its own base — a phone can't reach a
+     * baked-in "http://localhost/…". External URLs (e.g. R2) are left untouched.
+     */
+    public static function hostRelative(?string $url): ?string
+    {
+        if ($url === null || $url === '') {
+            return $url;
+        }
+
+        $appHost = rtrim((string) config('app.url'), '/');
+        if ($appHost !== '' && str_starts_with($url, $appHost.'/')) {
+            return substr($url, strlen($appHost)); // keep the leading "/…"
+        }
+
+        return $url;
+    }
+
+    /**
      * The PRIVATE disk for sensitive uploads (payment slips). Uses the dedicated
      * R2 private bucket when configured, otherwise the local 'local' disk —
      * which, unlike 'public', is not web-served.
