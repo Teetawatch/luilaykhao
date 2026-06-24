@@ -87,86 +87,77 @@
       </div>
 
       <div class="assign-layout">
-        <!-- ── LEFT: trip / round picker ── -->
-        <aside class="trip-panel table-card">
-          <div class="panel-head">
-            <div class="form-group">
-              <label>ช่วงรอบเดินทาง</label>
-              <select v-model="scheduleScope" @change="loadData" :disabled="loading">
-                <option value="upcoming">รอบที่กำลังจะมาถึง</option>
-                <option value="all">ทั้งหมด</option>
-              </select>
+        <!-- ── LEFT: flat round picker ── -->
+        <aside class="picker">
+          <div class="picker-head">
+            <div class="seg">
+              <button type="button" :class="{ active: scheduleScope === 'upcoming' }" @click="setScope('upcoming')" :disabled="loading">
+                กำลังจะมาถึง
+              </button>
+              <button type="button" :class="{ active: scheduleScope === 'all' }" @click="setScope('all')" :disabled="loading">
+                ทั้งหมด
+              </button>
             </div>
             <div class="search-box">
-              <span class="material-symbols-rounded">travel_explore</span>
+              <span class="material-symbols-rounded">search</span>
               <input v-model="scheduleSearch" placeholder="ค้นหาทริป / สถานที่ / วันที่" />
               <button v-if="scheduleSearch" type="button" class="search-clear" @click="scheduleSearch = ''" title="ล้างคำค้นหา">
                 <span class="material-symbols-rounded">close</span>
               </button>
             </div>
-            <div class="panel-tools">
-              <button type="button" class="tool-chip" :class="{ active: onlyMissing }" @click="onlyMissing = !onlyMissing">
-                <span class="material-symbols-rounded">person_off</span>
-                ยังไม่มีสตาฟ
-                <span v-if="unassignedSchedulesCount" class="tool-count">{{ unassignedSchedulesCount }}</span>
-              </button>
-              <button type="button" class="tool-chip" :disabled="forceExpanded || !groupedTrips.length" @click="toggleExpandAll">
-                <span class="material-symbols-rounded">{{ allExpanded ? 'unfold_less' : 'unfold_more' }}</span>
-                {{ allExpanded ? 'ย่อทั้งหมด' : 'ขยายทั้งหมด' }}
-              </button>
-            </div>
+            <button type="button" class="missing-toggle" :class="{ active: onlyMissing }" @click="onlyMissing = !onlyMissing">
+              <span class="material-symbols-rounded">{{ onlyMissing ? 'filter_alt' : 'person_off' }}</span>
+              เฉพาะรอบที่ยังไม่มีสตาฟ
+              <span v-if="unassignedSchedulesCount" class="mt-count">{{ unassignedSchedulesCount }}</span>
+            </button>
           </div>
 
           <div v-if="loading" class="loading-state"><div class="spinner"></div></div>
 
-          <div v-else class="trip-groups">
-            <div v-for="group in groupedTrips" :key="group.id" class="trip-group">
-              <button type="button" class="trip-group-head" @click="toggleTrip(group.id)">
-                <span class="material-symbols-rounded chev">{{ isTripExpanded(group.id) ? 'expand_more' : 'chevron_right' }}</span>
-                <div class="trip-group-info">
-                  <span class="trip-group-title">{{ group.title }}</span>
-                  <span v-if="group.location" class="trip-group-loc">
+          <div v-else-if="!groupedTrips.length" class="picker-empty">
+            <span class="material-symbols-rounded">{{ onlyMissing ? 'task_alt' : 'search_off' }}</span>
+            <p>{{ onlyMissing ? 'ทุกรอบมีสตาฟครบแล้ว 🎉' : 'ไม่พบรอบเดินทาง' }}</p>
+          </div>
+
+          <div v-else class="trip-list">
+            <section v-for="group in groupedTrips" :key="group.id" class="trip-block">
+              <header class="trip-block-head">
+                <div class="tbh-text">
+                  <h3 class="tbh-title">{{ group.title }}</h3>
+                  <span v-if="group.location" class="tbh-loc">
                     <span class="material-symbols-rounded">place</span>{{ group.location }}
                   </span>
                 </div>
-                <div class="trip-group-badges">
-                  <span class="rounds-count">{{ group.rounds.length }} รอบ</span>
-                  <span v-if="group.missingStaff" class="missing-badge">
-                    <span class="material-symbols-rounded">person_off</span>{{ group.missingStaff }}
-                  </span>
-                </div>
-              </button>
+                <span v-if="group.missingStaff" class="tbh-flag" title="รอบที่ยังไม่มีสตาฟ">
+                  <span class="material-symbols-rounded">error</span>{{ group.missingStaff }}
+                </span>
+              </header>
 
-              <div v-if="isTripExpanded(group.id)" class="round-list">
+              <div class="round-cards">
                 <button
                   v-for="round in group.rounds"
                   :key="round.id"
                   type="button"
-                  class="round-item"
-                  :class="{ active: Number(round.id) === Number(selectedScheduleId) }"
+                  class="round-card"
+                  :class="{ active: Number(round.id) === Number(selectedScheduleId), missing: !Number(round.assigned_staff_count || 0) }"
                   @click="selectSchedule(round.id)"
                 >
-                  <div class="round-main">
-                    <span class="round-date">
-                      <span class="material-symbols-rounded">event</span>{{ scheduleDateRange(round) }}
+                  <div class="rc-top">
+                    <span class="rc-date"><span class="material-symbols-rounded">event</span>{{ scheduleDateRange(round) }}</span>
+                    <span class="rc-status" :class="`st-${round.status || 'unknown'}`">{{ statusLabel(round.status) }}</span>
+                  </div>
+                  <div class="rc-bottom">
+                    <span class="rc-seats">
+                      <span class="material-symbols-rounded">event_seat</span>{{ round.booked_seats ?? 0 }}/{{ round.total_seats ?? 0 }} ที่นั่ง
                     </span>
-                    <span class="round-meta">
-                      <span class="material-symbols-rounded">event_seat</span>{{ round.booked_seats ?? 0 }}/{{ round.total_seats ?? 0 }}
-                      <span class="status-dot" :class="`dot-${round.status || 'unknown'}`"></span>{{ statusLabel(round.status) }}
+                    <span class="rc-staff" :class="{ none: !Number(round.assigned_staff_count || 0) }">
+                      <span class="material-symbols-rounded">{{ Number(round.assigned_staff_count || 0) ? 'group' : 'person_off' }}</span>
+                      {{ Number(round.assigned_staff_count || 0) ? `${round.assigned_staff_count} สตาฟ` : 'ยังไม่มีสตาฟ' }}
                     </span>
                   </div>
-                  <span class="round-staff-badge" :class="{ none: !Number(round.assigned_staff_count || 0) }">
-                    <span class="material-symbols-rounded">{{ Number(round.assigned_staff_count || 0) ? 'group' : 'person_off' }}</span>
-                    {{ Number(round.assigned_staff_count || 0) ? `สตาฟ ${round.assigned_staff_count} คน` : 'ยังไม่มีสตาฟ' }}
-                  </span>
                 </button>
               </div>
-            </div>
-
-            <div v-if="!groupedTrips.length" class="panel-empty">
-              <span class="material-symbols-rounded">{{ onlyMissing ? 'task_alt' : 'search_off' }}</span>
-              <p>{{ onlyMissing ? 'ทุกรอบมีสตาฟครบแล้ว 🎉' : 'ไม่พบรอบเดินทาง' }}</p>
-            </div>
+            </section>
           </div>
         </aside>
 
@@ -235,6 +226,9 @@
                 <div class="search-box pick-search">
                   <span class="material-symbols-rounded">search</span>
                   <input v-model="search" placeholder="ค้นหาสตาฟ ชื่อ / ชื่อเล่น / เบอร์โทร" />
+                  <button v-if="search" type="button" class="search-clear" @click="search = ''" title="ล้างคำค้นหา">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
                 </div>
               </div>
               <div class="staff-pick-list">
@@ -258,7 +252,7 @@
                     <span class="material-symbols-rounded">add</span> เพิ่ม
                   </button>
                 </div>
-                <div v-if="!availableStaff.length" class="panel-empty small">
+                <div v-if="!availableStaff.length" class="picker-empty small">
                   <span class="material-symbols-rounded">{{ search ? 'search_off' : 'done_all' }}</span>
                   <p>{{ search ? 'ไม่พบสตาฟที่ค้นหา' : 'สตาฟทุกคนถูกเลือกแล้ว' }}</p>
                 </div>
@@ -399,7 +393,6 @@ const staffUsers = ref([]);
 const selectedScheduleMeta = ref(null);
 const selectedStaffIds = ref([]);
 const originalStaffIds = ref([]);
-const expandedTripIds = ref([]);
 
 // Roster state
 const rosterLoading = ref(false);
@@ -478,39 +471,6 @@ const groupedTrips = computed(() => {
 });
 
 const visibleSchedulesCount = computed(() => filteredSchedules.value.length);
-
-// When searching or filtering by "missing staff", every matching trip is
-// force-expanded so results are never hidden inside a collapsed group.
-const forceExpanded = computed(() => !!scheduleSearch.value.trim() || onlyMissing.value);
-
-const isTripExpanded = (tripId) => {
-  if (forceExpanded.value) return true;
-  return expandedTripIds.value.includes(tripId);
-};
-
-const allExpanded = computed(
-  () => groupedTrips.value.length > 0 && groupedTrips.value.every((g) => expandedTripIds.value.includes(g.id)),
-);
-
-const toggleExpandAll = () => {
-  expandedTripIds.value = allExpanded.value ? [] : groupedTrips.value.map((g) => g.id);
-};
-
-const toggleTrip = (tripId) => {
-  if (expandedTripIds.value.includes(tripId)) {
-    expandedTripIds.value = expandedTripIds.value.filter((id) => id !== tripId);
-  } else {
-    expandedTripIds.value = [...expandedTripIds.value, tripId];
-  }
-};
-
-const expandTripOfSchedule = (scheduleId) => {
-  const schedule = schedules.value.find((s) => Number(s.id) === Number(scheduleId));
-  const tripId = schedule?.trip?.id;
-  if (tripId != null && !expandedTripIds.value.includes(tripId)) {
-    expandedTripIds.value = [...expandedTripIds.value, tripId];
-  }
-};
 
 const selectedSchedule = computed(() => {
   const id = Number(selectedScheduleId.value);
@@ -641,7 +601,6 @@ const loadData = async () => {
     }
 
     if (selectedScheduleId.value) {
-      expandTripOfSchedule(selectedScheduleId.value);
       await loadAssignedStaff();
     }
   } catch (e) {
@@ -649,6 +608,12 @@ const loadData = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const setScope = (scope) => {
+  if (scope === scheduleScope.value) return;
+  scheduleScope.value = scope;
+  loadData();
 };
 
 const attachTodayStaff = async () => {
@@ -804,9 +769,7 @@ onMounted(loadData);
   transition: all 0.15s;
 }
 
-.tab-btn .material-symbols-rounded {
-  font-size: 17px;
-}
+.tab-btn .material-symbols-rounded { font-size: 17px; }
 
 .tab-btn.active {
   background: #fff;
@@ -834,10 +797,7 @@ onMounted(loadData);
   margin-bottom: 14px;
 }
 
-.today-header .material-symbols-rounded {
-  color: var(--color-accent);
-  font-size: 20px;
-}
+.today-header .material-symbols-rounded { color: var(--color-accent); font-size: 20px; }
 
 .today-count {
   margin-left: auto;
@@ -862,12 +822,7 @@ onMounted(loadData);
   padding: 14px;
 }
 
-.today-trip-name {
-  font-size: 14px;
-  font-weight: 800;
-  color: #0f172a;
-  margin-bottom: 4px;
-}
+.today-trip-name { font-size: 14px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
 
 .today-trip-meta {
   font-size: 12px;
@@ -879,16 +834,9 @@ onMounted(loadData);
   margin-bottom: 10px;
 }
 
-.today-trip-meta .material-symbols-rounded {
-  font-size: 14px;
-  color: #94a3b8;
-}
+.today-trip-meta .material-symbols-rounded { font-size: 14px; color: #94a3b8; }
 
-.today-staff-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.today-staff-row { display: flex; flex-direction: column; gap: 8px; }
 
 .today-staff-chip {
   display: flex;
@@ -919,22 +867,9 @@ onMounted(loadData);
   font-size: 14px;
 }
 
-.today-staff-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.today-staff-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.today-staff-nick {
-  color: #64748b;
-  font-weight: 600;
-}
+.today-staff-info { display: flex; flex-direction: column; gap: 2px; }
+.today-staff-name { font-size: 13px; font-weight: 700; color: #0f172a; }
+.today-staff-nick { color: #64748b; font-weight: 600; }
 
 .today-phone {
   display: flex;
@@ -946,13 +881,8 @@ onMounted(loadData);
   text-decoration: none;
 }
 
-.today-phone:hover {
-  text-decoration: underline;
-}
-
-.today-phone .material-symbols-rounded {
-  font-size: 14px;
-}
+.today-phone:hover { text-decoration: underline; }
+.today-phone .material-symbols-rounded { font-size: 14px; }
 
 .today-no-staff {
   display: flex;
@@ -963,9 +893,7 @@ onMounted(loadData);
   color: #94a3b8;
 }
 
-.today-no-staff .material-symbols-rounded {
-  font-size: 16px;
-}
+.today-no-staff .material-symbols-rounded { font-size: 16px; }
 
 /* ── Summary grid ─────────────────────────────────────────── */
 .summary-grid {
@@ -1020,51 +948,61 @@ button.summary-card.active {
 
 .tap-hint { font-weight: 600; color: #b45309; font-size: 11px; }
 
-/* ── Assign layout (master–detail) ───────────────────────── */
+/* ── Assign layout (master–detail, natural page flow) ─────── */
 .assign-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 
-/* Left: trip panel */
-.trip-panel {
+/* ── Left: picker (flows in the page, no internal scroll) ── */
+.picker {
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 16px;
-  overflow: hidden;
+  gap: 12px;
 }
 
-.panel-head {
-  flex-shrink: 0;
+.picker-head {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px;
-  border-bottom: 1px solid #e5e7eb;
   background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px;
 }
 
-.panel-head .form-group label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.panel-head select {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #e2e8f0;
+.seg {
+  display: flex;
+  background: #f1f5f9;
   border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-  background: #fff;
+  padding: 3px;
+  gap: 3px;
 }
 
-.panel-head .search-box { position: relative; }
+.seg button {
+  flex: 1;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.seg button:disabled { cursor: default; }
+
+.seg button.active {
+  background: #fff;
+  color: var(--color-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-box { position: relative; }
 
 .search-clear {
   position: absolute;
@@ -1087,220 +1025,192 @@ button.summary-card.active {
 .search-clear:hover { background: #f1f5f9; color: #475569; }
 .search-clear .material-symbols-rounded { font-size: 16px; }
 
-.panel-tools {
+.missing-toggle {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.tool-chip {
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 11px;
+  gap: 7px;
+  width: 100%;
+  padding: 9px 12px;
   border: 1px solid #e2e8f0;
-  border-radius: 999px;
+  border-radius: 10px;
   background: #fff;
   color: #475569;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
 }
 
-.tool-chip:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
-.tool-chip:disabled { opacity: 0.45; cursor: not-allowed; }
-.tool-chip .material-symbols-rounded { font-size: 16px; }
+.missing-toggle:hover { background: #f8fafc; border-color: #cbd5e1; }
+.missing-toggle .material-symbols-rounded { font-size: 17px; }
 
-.tool-chip.active {
+.missing-toggle.active {
   background: #fffbeb;
-  border-color: #fde68a;
+  border-color: #f59e0b;
   color: #b45309;
 }
 
-.tool-count {
+.mt-count {
+  margin-left: auto;
   background: #94a3b8;
   color: #fff;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  padding: 1px 6px;
-  min-width: 16px;
+  padding: 1px 8px;
+  min-width: 18px;
   text-align: center;
 }
 
-.tool-chip.active .tool-count { background: #b45309; }
+.missing-toggle.active .mt-count { background: #b45309; }
 
-.trip-groups {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: calc(100vh - 220px);
-  overflow-y: auto;
-  padding: 8px;
+/* Trip list — flat, always visible */
+.trip-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 14px;
 }
 
-.trip-group {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
+.trip-block {
   background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.trip-group-head {
+.trip-block-head {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  background: #f8fafc;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 2px 4px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 10px;
 }
 
-.trip-group-head:hover { background: #f1f5f9; }
+.tbh-text { min-width: 0; flex: 1; }
 
-.trip-group-head .chev {
-  font-size: 20px;
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.trip-group-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.trip-group-title {
-  font-size: 13px;
+.tbh-title {
+  margin: 0;
+  font-size: 14px;
   font-weight: 800;
   color: #0f172a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
-.trip-group-loc {
-  display: flex;
+.tbh-loc {
+  display: inline-flex;
   align-items: center;
   gap: 3px;
+  margin-top: 3px;
   font-size: 11px;
   font-weight: 600;
   color: #64748b;
 }
 
-.trip-group-loc .material-symbols-rounded { font-size: 13px; }
+.tbh-loc .material-symbols-rounded { font-size: 13px; }
 
-.trip-group-badges {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.rounds-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: #475569;
-  background: #e2e8f0;
-  border-radius: 999px;
-  padding: 3px 8px;
-}
-
-.missing-badge {
+.tbh-flag {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: #b45309;
   background: #fffbeb;
   border: 1px solid #fde68a;
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 3px 9px;
+  white-space: nowrap;
 }
 
-.missing-badge .material-symbols-rounded { font-size: 13px; }
+.tbh-flag .material-symbols-rounded { font-size: 14px; }
 
-.round-list {
+.round-cards {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #f1f5f9;
+  gap: 8px;
 }
 
-.round-item {
+.round-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  flex-direction: column;
+  gap: 7px;
   width: 100%;
-  padding: 10px 12px 10px 30px;
-  border: none;
-  border-top: 1px solid #f8fafc;
+  padding: 11px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 11px;
   background: #fff;
   cursor: pointer;
   text-align: left;
-  transition: background 0.15s;
+  transition: all 0.15s;
 }
 
-.round-item:hover { background: #f8fafc; }
+.round-card:hover { border-color: #cbd5e1; background: #f8fafc; }
 
-.round-item.active {
+.round-card.active {
+  border-color: var(--color-accent);
   background: #ecfdf5;
-  box-shadow: inset 3px 0 0 var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 
-.round-main {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
+.round-card.missing { border-left: 3px solid #f59e0b; }
+.round-card.missing.active { border-left-color: var(--color-accent); }
 
-.round-date {
+.rc-top {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rc-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 13px;
   font-weight: 700;
   color: #0f172a;
 }
 
-.round-date .material-symbols-rounded { font-size: 15px; color: #94a3b8; }
+.rc-date .material-symbols-rounded { font-size: 16px; color: #94a3b8; }
+.round-card.active .rc-date .material-symbols-rounded { color: var(--color-accent); }
 
-.round-item.active .round-date .material-symbols-rounded { color: var(--color-accent); }
+.rc-status {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
 
-.round-meta {
+.rc-status.st-open { color: #047857; background: #ecfdf5; }
+.rc-status.st-closed, .rc-status.st-full { color: #92400e; background: #fffbeb; }
+.rc-status.st-cancelled { color: #b91c1c; background: #fef2f2; }
+
+.rc-bottom {
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rc-seats {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   font-weight: 600;
   color: #64748b;
 }
 
-.round-meta .material-symbols-rounded { font-size: 13px; }
+.rc-seats .material-symbols-rounded { font-size: 14px; color: #94a3b8; }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  margin-left: 4px;
-}
-
-.dot-open { background: #10b981; }
-.dot-closed, .dot-full { background: #f59e0b; }
-.dot-cancelled { background: #ef4444; }
-
-.round-staff-badge {
+.rc-staff {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1310,34 +1220,32 @@ button.summary-card.active {
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
   border-radius: 999px;
-  padding: 3px 8px;
-  flex-shrink: 0;
+  padding: 3px 9px;
   white-space: nowrap;
 }
 
-.round-staff-badge.none {
-  color: #b45309;
-  background: #fffbeb;
-  border-color: #fde68a;
-}
+.rc-staff.none { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+.rc-staff .material-symbols-rounded { font-size: 13px; }
 
-.round-staff-badge .material-symbols-rounded { font-size: 13px; }
-
-.panel-empty {
+/* Empty states */
+.picker-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 36px 16px;
+  gap: 8px;
+  padding: 44px 16px;
+  background: #fff;
+  border: 1px dashed #e2e8f0;
+  border-radius: 14px;
   color: #94a3b8;
 }
 
-.panel-empty .material-symbols-rounded { font-size: 36px; }
-.panel-empty p { margin: 0; font-size: 13px; font-weight: 600; color: #64748b; text-align: center; }
-.panel-empty.small { padding: 24px 16px; }
-.panel-empty.small .material-symbols-rounded { font-size: 28px; }
+.picker-empty .material-symbols-rounded { font-size: 38px; }
+.picker-empty p { margin: 0; font-size: 13px; font-weight: 600; color: #64748b; text-align: center; }
+.picker-empty.small { padding: 28px 16px; border: none; }
+.picker-empty.small .material-symbols-rounded { font-size: 30px; }
 
-/* Right: detail panel */
+/* ── Right: detail panel ── */
 .detail-panel {
   display: flex;
   flex-direction: column;
@@ -1369,12 +1277,7 @@ button.summary-card.active {
   margin-bottom: 12px;
 }
 
-.round-title {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 800;
-  color: #0f172a;
-}
+.round-title { margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; }
 
 .round-subtitle {
   display: flex;
@@ -1388,11 +1291,7 @@ button.summary-card.active {
 
 .round-subtitle .material-symbols-rounded { font-size: 16px; }
 
-.schedule-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+.schedule-meta { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .meta-pill {
   display: inline-flex;
@@ -1424,10 +1323,7 @@ button.summary-card.active {
   flex-wrap: wrap;
 }
 
-.section-head .material-symbols-rounded {
-  font-size: 19px;
-  color: var(--color-accent);
-}
+.section-head .material-symbols-rounded { font-size: 19px; color: var(--color-accent); }
 
 .section-count {
   font-size: 12px;
@@ -1438,20 +1334,10 @@ button.summary-card.active {
   padding: 3px 10px;
 }
 
-.pick-search {
-  margin-left: auto;
-  min-width: 240px;
-  flex: 1;
-  max-width: 340px;
-}
+.pick-search { margin-left: auto; min-width: 240px; flex: 1; max-width: 340px; }
 
 /* Assigned chips */
-.assigned-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 14px 16px;
-}
+.assigned-list { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
 
 .assigned-chip {
   display: flex;
@@ -1482,12 +1368,7 @@ button.summary-card.active {
   font-size: 13px;
 }
 
-.chip-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
+.chip-info { display: flex; flex-direction: column; gap: 1px; }
 .chip-name { font-size: 13px; font-weight: 700; color: #065f46; }
 .chip-nick { color: #64748b; font-weight: 600; }
 
@@ -1522,10 +1403,7 @@ button.summary-card.active {
 .assigned-empty .material-symbols-rounded { font-size: 18px; }
 
 /* Staff picker list */
-.staff-pick-list {
-  max-height: 420px;
-  overflow-y: auto;
-}
+.staff-pick-list { max-height: 460px; overflow-y: auto; }
 
 .staff-pick-row {
   display: flex;
@@ -1556,22 +1434,9 @@ button.summary-card.active {
   font-weight: 700;
 }
 
-.pick-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  flex: 1;
-}
-
+.pick-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .pick-name { font-size: 13px; font-weight: 700; color: #0f172a; }
-
-.pick-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+.pick-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .phone-link {
   display: inline-flex;
@@ -1665,23 +1530,11 @@ button.summary-card.active {
 .saved-note .material-symbols-rounded { font-size: 17px; }
 
 /* ── Roster ───────────────────────────────────────────────── */
-.filters-card {
-  padding: 16px;
-  margin-bottom: 16px;
-}
+.filters-card { padding: 16px; margin-bottom: 16px; }
 
-.filters-row {
-  display: flex;
-  gap: 12px;
-  align-items: end;
-  flex-wrap: wrap;
-}
+.filters-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
 
-.roster-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.roster-wrapper { display: flex; flex-direction: column; gap: 16px; }
 
 .roster-legend {
   display: flex;
@@ -1722,12 +1575,7 @@ button.summary-card.active {
   font-size: 15px;
 }
 
-.legend-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
+.legend-info { display: flex; flex-direction: column; gap: 2px; }
 .legend-name { font-size: 13px; font-weight: 800; color: #0f172a; }
 .legend-nick { font-size: 11px; font-weight: 700; color: #64748b; }
 
@@ -1795,22 +1643,13 @@ button.summary-card.active {
 
 .roster-cell { text-align: center; vertical-align: middle; }
 
-.assigned-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-accent);
-}
-
+.assigned-badge { display: inline-flex; align-items: center; justify-content: center; color: var(--color-accent); }
 .assigned-badge .material-symbols-rounded { font-size: 20px; }
-
 .unassigned-dot { color: #cbd5e1; font-size: 16px; }
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .assign-layout { grid-template-columns: 1fr; }
-  .trip-panel { position: static; }
-  .trip-groups { max-height: 60vh; }
 }
 
 @media (max-width: 900px) {
