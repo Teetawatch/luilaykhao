@@ -77,13 +77,13 @@
             <strong>{{ selectedStaffIds.length }}</strong>
           </div>
         </div>
-        <div class="summary-card warning">
+        <button type="button" class="summary-card warning" :class="{ active: onlyMissing }" @click="onlyMissing = !onlyMissing">
           <span class="material-symbols-rounded">person_off</span>
           <div>
-            <p>รอบที่ยังไม่มีสตาฟ</p>
+            <p>รอบที่ยังไม่มีสตาฟ <span class="tap-hint">{{ onlyMissing ? '· แสดงเฉพาะนี้' : '· แตะเพื่อกรอง' }}</span></p>
             <strong>{{ unassignedSchedulesCount }}</strong>
           </div>
-        </div>
+        </button>
       </div>
 
       <div class="assign-layout">
@@ -100,6 +100,20 @@
             <div class="search-box">
               <span class="material-symbols-rounded">travel_explore</span>
               <input v-model="scheduleSearch" placeholder="ค้นหาทริป / สถานที่ / วันที่" />
+              <button v-if="scheduleSearch" type="button" class="search-clear" @click="scheduleSearch = ''" title="ล้างคำค้นหา">
+                <span class="material-symbols-rounded">close</span>
+              </button>
+            </div>
+            <div class="panel-tools">
+              <button type="button" class="tool-chip" :class="{ active: onlyMissing }" @click="onlyMissing = !onlyMissing">
+                <span class="material-symbols-rounded">person_off</span>
+                ยังไม่มีสตาฟ
+                <span v-if="unassignedSchedulesCount" class="tool-count">{{ unassignedSchedulesCount }}</span>
+              </button>
+              <button type="button" class="tool-chip" :disabled="forceExpanded || !groupedTrips.length" @click="toggleExpandAll">
+                <span class="material-symbols-rounded">{{ allExpanded ? 'unfold_less' : 'unfold_more' }}</span>
+                {{ allExpanded ? 'ย่อทั้งหมด' : 'ขยายทั้งหมด' }}
+              </button>
             </div>
           </div>
 
@@ -150,14 +164,14 @@
             </div>
 
             <div v-if="!groupedTrips.length" class="panel-empty">
-              <span class="material-symbols-rounded">search_off</span>
-              <p>ไม่พบรอบเดินทาง</p>
+              <span class="material-symbols-rounded">{{ onlyMissing ? 'task_alt' : 'search_off' }}</span>
+              <p>{{ onlyMissing ? 'ทุกรอบมีสตาฟครบแล้ว 🎉' : 'ไม่พบรอบเดินทาง' }}</p>
             </div>
           </div>
         </aside>
 
         <!-- ── RIGHT: staff assignment for selected round ── -->
-        <section class="detail-panel">
+        <section class="detail-panel" ref="detailPanel">
           <div v-if="!selectedScheduleId" class="table-card detail-empty">
             <span class="material-symbols-rounded">touch_app</span>
             <p>เลือกรอบเดินทางจากรายการด้านซ้าย<br />เพื่อจัดสตาฟประจำรอบ</p>
@@ -365,7 +379,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 
 const admin = useAdminStore();
@@ -376,7 +390,9 @@ const saving = ref(false);
 const search = ref('');
 const scheduleSearch = ref('');
 const scheduleScope = ref('upcoming');
+const onlyMissing = ref(false);
 const selectedScheduleId = ref('');
+const detailPanel = ref(null);
 
 const schedules = ref([]);
 const staffUsers = ref([]);
@@ -431,10 +447,16 @@ const scheduleOptions = computed(() => {
   });
 });
 
+// Apply the "ยังไม่มีสตาฟ" toggle on top of the search results.
+const filteredSchedules = computed(() => {
+  if (!onlyMissing.value) return scheduleOptions.value;
+  return scheduleOptions.value.filter((schedule) => Number(schedule.assigned_staff_count || 0) === 0);
+});
+
 // Group filtered schedules into Trip → rounds, trips ordered by earliest round.
 const groupedTrips = computed(() => {
   const groups = new Map();
-  for (const schedule of scheduleOptions.value) {
+  for (const schedule of filteredSchedules.value) {
     const tripId = schedule.trip?.id ?? `none-${schedule.id}`;
     if (!groups.has(tripId)) {
       groups.set(tripId, {
@@ -455,12 +477,23 @@ const groupedTrips = computed(() => {
   return list;
 });
 
-const visibleSchedulesCount = computed(() => scheduleOptions.value.length);
+const visibleSchedulesCount = computed(() => filteredSchedules.value.length);
+
+// When searching or filtering by "missing staff", every matching trip is
+// force-expanded so results are never hidden inside a collapsed group.
+const forceExpanded = computed(() => !!scheduleSearch.value.trim() || onlyMissing.value);
 
 const isTripExpanded = (tripId) => {
-  // While searching, always show matches expanded so results aren't hidden.
-  if (scheduleSearch.value.trim()) return true;
+  if (forceExpanded.value) return true;
   return expandedTripIds.value.includes(tripId);
+};
+
+const allExpanded = computed(
+  () => groupedTrips.value.length > 0 && groupedTrips.value.every((g) => expandedTripIds.value.includes(g.id)),
+);
+
+const toggleExpandAll = () => {
+  expandedTripIds.value = allExpanded.value ? [] : groupedTrips.value.map((g) => g.id);
 };
 
 const toggleTrip = (tripId) => {
@@ -641,6 +674,12 @@ const selectSchedule = async (scheduleId) => {
   if (isDirty.value && !confirm('มีการแก้ไขที่ยังไม่บันทึก ต้องการละทิ้งการแก้ไขหรือไม่?')) return;
   selectedScheduleId.value = scheduleId;
   await loadAssignedStaff();
+  // On the stacked (mobile) layout the detail panel sits below the list —
+  // bring it into view so the chosen round's staff editor is immediately visible.
+  if (typeof window !== 'undefined' && window.innerWidth <= 1024) {
+    await nextTick();
+    detailPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 };
 
 const loadAssignedStaff = async () => {
@@ -962,6 +1001,25 @@ onMounted(loadData);
 .summary-card p { margin: 0; color: #64748b; font-size: 12px; font-weight: 600; }
 .summary-card strong { display: block; color: #0f172a; font-size: 22px; line-height: 1; margin-top: 4px; }
 
+/* warning card doubles as a filter toggle */
+button.summary-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+button.summary-card:hover { border-color: #fcd34d; }
+
+button.summary-card.active {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #f59e0b;
+}
+
+.tap-hint { font-weight: 600; color: #b45309; font-size: 11px; }
+
 /* ── Assign layout (master–detail) ───────────────────────── */
 .assign-layout {
   display: grid;
@@ -1005,6 +1063,73 @@ onMounted(loadData);
   color: #0f172a;
   background: #fff;
 }
+
+.panel-head .search-box { position: relative; }
+
+.search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.search-clear:hover { background: #f1f5f9; color: #475569; }
+.search-clear .material-symbols-rounded { font-size: 16px; }
+
+.panel-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tool-chip:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
+.tool-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.tool-chip .material-symbols-rounded { font-size: 16px; }
+
+.tool-chip.active {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.tool-count {
+  background: #94a3b8;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.tool-chip.active .tool-count { background: #b45309; }
 
 .trip-groups {
   flex: 1 1 auto;
