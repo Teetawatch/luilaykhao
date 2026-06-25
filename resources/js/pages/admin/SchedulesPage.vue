@@ -3266,6 +3266,11 @@ onMounted(() => {
 .tc-full { background: #fee2e2; color: #b91c1c; }
 
 /* ── Schedules modal (per-trip) ── */
+.schedules-modal {
+  max-width: 1320px;
+  width: 96vw;
+}
+
 .smh-left {
   display: flex;
   align-items: center;
