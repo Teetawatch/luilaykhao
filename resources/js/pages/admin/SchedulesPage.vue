@@ -3266,7 +3266,8 @@ onMounted(() => {
 .tc-full { background: #fee2e2; color: #b91c1c; }
 
 /* ── Schedules modal (per-trip) ── */
-.schedules-modal {
+/* selector ต้องชนะ .modal-xl (max-width 960px) ที่ประกาศทีหลังในไฟล์นี้ */
+.modal-card.schedules-modal {
   max-width: 1600px;
   width: 97vw;
 }
