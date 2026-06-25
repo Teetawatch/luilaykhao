@@ -3267,8 +3267,8 @@ onMounted(() => {
 
 /* ── Schedules modal (per-trip) ── */
 .schedules-modal {
-  max-width: 1320px;
-  width: 96vw;
+  max-width: 1600px;
+  width: 97vw;
 }
 
 .smh-left {
