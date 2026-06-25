@@ -42,39 +42,61 @@
       </label>
     </div>
 
-    <!-- Trip-grouped Accordion -->
+    <!-- Trip cards -->
     <div class="accordion-loading" v-if="admin.loading"><div class="spinner"></div></div>
     <template v-else>
       <div v-if="!groupedByTrip.length" class="empty-card">ไม่พบรอบเดินทาง</div>
 
-      <div v-for="group in groupedByTrip" :key="group.trip_id" class="trip-group">
-        <!-- Trip header -->
-        <div class="trip-group-header" @click="toggleGroup(group.trip_id)">
-          <div class="tgh-left">
-            <span class="material-symbols-rounded tgh-chevron" :class="{ expanded: openGroups.has(group.trip_id) }">chevron_right</span>
-            <div class="tgh-info">
-              <span class="tgh-title">{{ group.trip_title }}</span>
-              <span class="tgh-meta">
-                {{ group.schedules.length }} รอบ
-                <span v-if="group.nextDate" class="tgh-next"> · รอบถัดไป {{ group.nextDate }}</span>
-              </span>
+      <div v-else class="trip-cards-grid">
+        <div v-for="group in groupedByTrip" :key="group.trip_id" class="trip-card" @click="openTripSchedules(group)">
+          <div class="trip-card-img">
+            <img v-if="group.trip_image" :src="group.trip_image" :alt="group.trip_title" loading="lazy" />
+            <div v-else class="trip-card-img--ph"><span class="material-symbols-rounded">image</span></div>
+            <span class="trip-card-count"><span class="material-symbols-rounded icon-xs">event</span> {{ group.schedules.length }} รอบ</span>
+          </div>
+          <div class="trip-card-body">
+            <h3 class="trip-card-title">{{ group.trip_title }}</h3>
+            <div class="trip-card-next">
+              <span class="material-symbols-rounded icon-xs">calendar_month</span>
+              <span v-if="group.nextDate">รอบถัดไป {{ group.nextDate }}</span>
+              <span v-else class="text-muted-sm">ไม่มีรอบที่กำลังจะถึง</span>
+            </div>
+            <div class="trip-card-stats">
+              <span class="tc-stat tc-open">เปิด {{ group.openCount }}</span>
+              <span v-if="group.fullCount" class="tc-stat tc-full">เต็ม {{ group.fullCount }}</span>
             </div>
           </div>
-          <div class="tgh-actions" @click.stop>
-            <button class="btn-sm btn-secondary" @click="openBatchFormForTrip(group.trip_id)" title="สร้างหลายรอบ">
-              <span class="material-symbols-rounded">layers</span> เพิ่มหลายรอบ
-            </button>
-            <button class="btn-sm btn-secondary" @click="openForm({ trip_id: group.trip_id })" title="เพิ่มรอบเดียว">
-              <span class="material-symbols-rounded">add</span> เพิ่มรอบ
-            </button>
-            <button class="btn-sm btn-danger-sm" @click="deleteTripGroup(group)" title="ลบทุกรอบในทริปนี้">
-              <span class="material-symbols-rounded">delete</span> ลบทั้งหมด
-            </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Schedules Modal (per-trip) -->
+    <div class="modal-overlay" v-if="activeGroup" @click.self="closeSchedulesModal">
+      <div class="modal-card modal-xl schedules-modal">
+        <div class="modal-header">
+          <div class="smh-left">
+            <img v-if="activeGroup.trip_image" :src="activeGroup.trip_image" :alt="activeGroup.trip_title" class="smh-thumb" />
+            <div>
+              <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">calendar_month</span>{{ activeGroup.trip_title }}</h2>
+              <p class="modal-subtitle">{{ activeGroup.schedules.length }} รอบ<span v-if="activeGroup.nextDate"> · รอบถัดไป {{ activeGroup.nextDate }}</span></p>
+            </div>
           </div>
+          <button class="modal-close" @click="closeSchedulesModal"><span class="material-symbols-rounded">close</span></button>
         </div>
 
-        <!-- Schedule rows -->
-        <div v-if="openGroups.has(group.trip_id)" class="trip-group-body">
+        <div class="schedules-modal-toolbar">
+          <button class="btn-sm btn-secondary" @click="openBatchFormForTrip(activeGroup.trip_id)" title="สร้างหลายรอบ">
+            <span class="material-symbols-rounded">layers</span> เพิ่มหลายรอบ
+          </button>
+          <button class="btn-sm btn-secondary" @click="openForm({ trip_id: activeGroup.trip_id })" title="เพิ่มรอบเดียว">
+            <span class="material-symbols-rounded">add</span> เพิ่มรอบ
+          </button>
+          <button class="btn-sm btn-danger-sm" @click="deleteTripGroup(activeGroup)" title="ลบทุกรอบในทริปนี้">
+            <span class="material-symbols-rounded">delete</span> ลบทั้งหมด
+          </button>
+        </div>
+
+        <div class="modal-body schedules-modal-body">
           <div class="schedule-table-wrap">
             <table class="data-table schedule-inner-table">
               <thead>
@@ -88,7 +110,7 @@
                   <th>การจัดการ</th>
                 </tr>
               </thead>
-              <tbody v-for="m in groupSchedulesByMonth(group.schedules)" :key="m.key">
+              <tbody v-for="m in groupSchedulesByMonth(activeGroup.schedules)" :key="m.key">
                 <tr class="month-sep-row">
                   <td :colspan="7">
                     <span class="material-symbols-rounded month-sep-icon">event</span>
@@ -180,7 +202,7 @@
           </div>
         </div>
       </div>
-    </template>
+    </div>
 
     <!-- Form Modal -->
     <div class="modal-overlay" v-if="showForm">
@@ -1525,7 +1547,6 @@ const REGIONS = [
 
 const admin = useAdminStore();
 const filters = reactive({ search: '', status: '', upcoming: false });
-const openGroups = ref(new Set());
 
 // Group all schedules by trip, sorted by departure_date
 const groupedByTrip = computed(() => {
@@ -1537,8 +1558,11 @@ const groupedByTrip = computed(() => {
       map.set(tid, {
         trip_id: tid,
         trip_title: sch.trip?.title || 'N/A',
+        trip_image: sch.trip?.thumbnail_image || sch.trip?.cover_image || null,
         schedules: [],
         nextDate: null,
+        openCount: 0,
+        fullCount: 0,
       });
     }
     map.get(tid).schedules.push(sch);
@@ -1549,18 +1573,23 @@ const groupedByTrip = computed(() => {
     g.schedules.sort((a, b) => a.departure_date > b.departure_date ? 1 : -1);
     const next = g.schedules.find(s => s.departure_date >= today && s.status === 'open');
     g.nextDate = next?.departure_date || null;
+    g.openCount = g.schedules.filter(s => s.status === 'open').length;
+    g.fullCount = g.schedules.filter(s => s.status === 'full').length;
     groups.push(g);
   }
   groups.sort((a, b) => (a.nextDate || '9999') > (b.nextDate || '9999') ? 1 : -1);
   return groups;
 });
 
-const toggleGroup = (tripId) => {
-  const s = new Set(openGroups.value);
-  if (s.has(tripId)) s.delete(tripId);
-  else s.add(tripId);
-  openGroups.value = s;
-};
+// คลิกการ์ดทริปเพื่อเปิด modal ดูรอบเดินทางทั้งหมดของทริปนั้น
+// เก็บเป็น trip_id แล้ว derive group จาก groupedByTrip เพื่อให้ข้อมูลใน modal
+// อัปเดตตามอัตโนมัติเมื่อมีการเพิ่ม/แก้ไข/ลบรอบ
+const activeTripId = ref(null);
+const activeGroup = computed(() =>
+  groupedByTrip.value.find(g => g.trip_id === activeTripId.value) || null
+);
+const openTripSchedules = (group) => { activeTripId.value = group.trip_id; };
+const closeSchedulesModal = () => { activeTripId.value = null; };
 
 // ─── Month grouping & day-trip helpers ─────────────────────
 const MONTH_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -1640,12 +1669,8 @@ const fetchData = () => {
   if (filters.search) params.search = filters.search;
   if (filters.status) params.status = filters.status;
   if (filters.upcoming) params.upcoming = 1;
-  admin.fetchSchedules(params).then(() => {
-    // Auto-expand all groups on first load
-    if (openGroups.value.size === 0) {
-      openGroups.value = new Set((admin.schedules.data || []).map(s => s.trip_id));
-    }
-  });
+  // เปิดหน้ามาให้ทุกหัวข้อ "ปิด" ไว้ก่อน แล้วค่อยกดเปิดเฉพาะที่ต้องการ
+  admin.fetchSchedules(params);
 };
 
 const loadOptions = async () => {
@@ -3119,81 +3144,157 @@ onMounted(() => {
 }
 
 /* ── Trip group ── */
-.trip-group {
+/* ── Trip cards grid ── */
+.trip-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.trip-card {
   background: var(--color-white);
   border: 1px solid var(--color-sand-dark);
   border-radius: 16px;
-  margin-bottom: 10px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-}
-
-.trip-group-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
   cursor: pointer;
-  user-select: none;
-  background: var(--color-white);
-  transition: background 0.15s;
-  gap: 12px;
-}
-
-.trip-group-header:hover {
-  background: var(--color-sand);
-}
-
-.tgh-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.tgh-chevron {
-  color: var(--color-text-muted);
-  font-size: 12px;
-  transition: transform 0.2s;
-  flex-shrink: 0;
-}
-
-.tgh-chevron.expanded {
-  transform: rotate(90deg);
-  color: var(--color-accent);
-}
-
-.tgh-info {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 
-.tgh-title {
+.trip-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 22px rgba(0,0,0,0.08);
+  border-color: var(--color-accent);
+}
+
+.trip-card-img {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--color-sand);
+  overflow: hidden;
+}
+
+.trip-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s;
+}
+
+.trip-card:hover .trip-card-img img {
+  transform: scale(1.05);
+}
+
+.trip-card-img--ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.trip-card-img--ph .material-symbols-rounded {
+  font-size: 44px;
+  opacity: 0.4;
+}
+
+.trip-card-count {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+}
+
+.trip-card-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.trip-card-title {
   font-size: 15px;
   font-weight: 700;
   color: var(--color-text-dark);
-  white-space: nowrap;
+  margin: 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.tgh-meta {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.tgh-next {
-  color: var(--color-accent);
-  font-weight: 600;
-}
-
-.tgh-actions {
+.trip-card-next {
   display: flex;
-  gap: 8px;
-  flex-shrink: 0;
   align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.trip-card-stats {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.tc-stat {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.tc-open { background: #dcfce7; color: #15803d; }
+.tc-full { background: #fee2e2; color: #b91c1c; }
+
+/* ── Schedules modal (per-trip) ── */
+.smh-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.smh-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--color-sand-dark);
+}
+
+.schedules-modal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--color-sand-dark);
+  background: var(--color-sand);
+}
+
+.schedules-modal-body {
+  padding: 0 !important;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .btn-danger-sm {
@@ -3215,10 +3316,6 @@ onMounted(() => {
 }
 
 /* ── Inner schedule table ── */
-.trip-group-body {
-  border-top: 1px solid var(--color-sand-dark);
-}
-
 .schedule-table-wrap {
   overflow-x: auto;
 }
