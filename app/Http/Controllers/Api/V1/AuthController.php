@@ -682,7 +682,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
-            'avatar_url' => $user->avatar ? url(ltrim($user->avatar, '/')) : null,
+            'avatar_url' => $user->avatar ? $user->avatar_url : null,
             'title' => $user->title,
             'nickname' => $user->nickname,
             'id_card' => $user->id_card,
