@@ -109,7 +109,7 @@
               <span class="material-symbols-rounded text-6xl text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">map</span>
             </div>
             <p class="text-lg font-bold text-gray-600">ยังไม่ได้กำหนดจุดรับผู้เดินทาง</p>
-            <p class="text-sm text-gray-400 mt-1">ปักหมุดจุดที่สะดวก แล้วเจ้าหน้าที่จะตรวจสอบและแจ้งกลับ</p>
+            <p class="text-sm text-gray-400 mt-1">ปักหมุดจุดที่สะดวก แล้วจองได้ทันที ไม่มีค่าบริการเพิ่ม</p>
 
             <div v-if="customPickup" class="mt-5 w-full max-w-sm p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/40 text-left">
               <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">จุดรับที่ปักหมุดเอง</p>
@@ -207,7 +207,7 @@
                 <p v-if="customPickup.note" class="text-sm text-gray-500 mt-0.5">{{ customPickup.note }}</p>
                 <p class="text-xs text-amber-700 mt-2 flex items-center gap-1">
                   <span class="material-symbols-rounded text-[15px]">info</span>
-                  รอเจ้าหน้าที่ตรวจสอบและแจ้งค่าบริการก่อนยืนยัน
+                  จุดรับนี้จะถูกบันทึกในการจอง · ไม่มีค่าบริการเพิ่ม
                 </p>
                 <div class="flex gap-3 mt-3">
                   <button @click="openCustomPickup" class="text-xs font-bold text-teal-600 hover:text-teal-700">แก้ไขจุด</button>
@@ -671,7 +671,7 @@
                   <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
                   <p class="text-xs text-amber-700 mt-1 flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]">info</span>
-                    รอเจ้าหน้าที่ตรวจสอบและแจ้งค่าบริการก่อนยืนยัน
+                    จุดรับนี้จะถูกบันทึกในการจอง · ไม่มีค่าบริการเพิ่ม
                   </p>
                 </div>
               </div>

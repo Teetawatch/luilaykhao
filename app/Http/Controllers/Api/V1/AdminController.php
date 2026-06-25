@@ -821,50 +821,6 @@ class AdminController extends Controller
         return $this->success(new BookingResource($booking));
     }
 
-    /**
-     * แอดมินยืนยัน/ปฏิเสธจุดรับแบบ custom ที่ลูกค้าปักหมุดเอง พร้อมตั้งราคา
-     */
-    public function resolveCustomPickup(Request $request, string $ref): JsonResponse
-    {
-        $validated = $request->validate([
-            'action' => ['required', 'in:approve,reject'],
-            'price' => ['required_if:action,approve', 'nullable', 'numeric', 'min:0'],
-            'reject_reason' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
-
-        try {
-            $approve = $validated['action'] === 'approve';
-            $booking = $this->bookingService->resolveCustomPickup(
-                $booking,
-                approve: $approve,
-                price: isset($validated['price']) ? (float) $validated['price'] : null,
-                rejectReason: $validated['reject_reason'] ?? null,
-            );
-        } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 422);
-        }
-
-        $approve = $booking->custom_pickup_status === Booking::CUSTOM_PICKUP_APPROVED;
-        SmartNotification::send(
-            $booking->user_id,
-            $approve ? 'custom_pickup_approved' : 'custom_pickup_rejected',
-            $approve ? 'ยืนยันจุดรับแล้ว' : 'จุดรับไม่ผ่านการยืนยัน',
-            $approve
-                ? "จุดรับ \"{$booking->custom_pickup_label}\" ได้รับการยืนยันแล้ว ค่าบริการ {$booking->custom_pickup_price} บาท"
-                : "จุดรับ \"{$booking->custom_pickup_label}\" ไม่สามารถรับได้ กรุณาเลือกจุดรับที่กำหนดไว้",
-            [
-                'booking_ref' => $booking->booking_ref,
-                'route' => 'booking',
-            ]
-        );
-
-        return $this->success(new BookingResource($booking->load([
-            'schedule.trip', 'passengers', 'seats', 'pickupPoint',
-        ])), $approve ? 'ยืนยันจุดรับแล้ว' : 'ปฏิเสธจุดรับแล้ว');
-    }
-
     public function updateBookingStatus(Request $request, string $ref): JsonResponse
     {
         $request->validate([

@@ -10,22 +10,16 @@ use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class CustomPickupTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $admin;
-
     protected function setUp(): void
     {
         parent::setUp();
         Mail::fake();
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $this->admin = User::factory()->create();
-        $this->admin->assignRole('admin');
     }
 
     private function makeSchedule(): TripSchedule
@@ -69,7 +63,7 @@ class CustomPickupTest extends TestCase
         ]];
     }
 
-    public function test_booking_with_custom_pickup_is_saved_as_pending_without_surcharge(): void
+    public function test_booking_with_custom_pickup_is_accepted_immediately_without_surcharge(): void
     {
         $user = User::factory()->create();
         $schedule = $this->makeSchedule();
@@ -84,13 +78,15 @@ class CustomPickupTest extends TestCase
                 'custom_pickup_note' => 'รอตรงร้านกาแฟ',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.custom_pickup.status', 'pending')
+            // รับจุดรับอัตโนมัติทันที ลูกค้าชำระเงินได้เลย ไม่ต้องรอเจ้าหน้าที่
+            ->assertJsonPath('data.custom_pickup.status', 'approved')
             ->assertJsonPath('data.custom_pickup.label', 'ปั๊ม ปตท. ทางเข้าเขาใหญ่');
 
         $booking = Booking::first();
-        $this->assertSame('pending', $booking->custom_pickup_status);
-        $this->assertNull($booking->custom_pickup_price);
-        // ราคายังเป็นราคาทริปปกติ ยังไม่บวกค่าจุดรับ
+        $this->assertSame('approved', $booking->custom_pickup_status);
+        $this->assertNotNull($booking->custom_pickup_resolved_at);
+        // ไม่คิดค่าบริการเพิ่ม — ราคาเท่าราคาทริปปกติ
+        $this->assertEquals(0, (float) $booking->custom_pickup_price);
         $this->assertEquals(1500, (float) $booking->total_amount);
     }
 
@@ -107,96 +103,6 @@ class CustomPickupTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['custom_pickup_lng', 'custom_pickup_label']);
-    }
-
-    public function test_admin_approves_custom_pickup_and_price_is_added_to_total(): void
-    {
-        $user = User::factory()->create();
-        $schedule = $this->makeSchedule();
-
-        $booking = app(BookingService::class)->createBooking(
-            userId: $user->id,
-            scheduleId: $schedule->id,
-            passengers: $this->passengerPayload(),
-            customPickup: [
-                'label' => 'หน้าเซเว่นปากทาง',
-                'lat' => 14.45,
-                'lng' => 101.37,
-                'note' => null,
-            ],
-        );
-
-        $this->assertEquals(1500, (float) $booking->total_amount);
-
-        $this->actingAs($this->admin, 'sanctum')
-            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/custom-pickup", [
-                'action' => 'approve',
-                'price' => 300,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.custom_pickup.status', 'approved')
-            ->assertJsonPath('data.custom_pickup.price', '300.00');
-
-        $booking->refresh();
-        $this->assertSame('approved', $booking->custom_pickup_status);
-        $this->assertEquals(300, (float) $booking->custom_pickup_price);
-        // ค่าจุดรับถูกบวกเข้ายอดรวม
-        $this->assertEquals(1800, (float) $booking->total_amount);
-        $this->assertNotNull($booking->custom_pickup_resolved_at);
-    }
-
-    public function test_admin_rejects_custom_pickup_with_reason_and_no_charge(): void
-    {
-        $user = User::factory()->create();
-        $schedule = $this->makeSchedule();
-
-        $booking = app(BookingService::class)->createBooking(
-            userId: $user->id,
-            scheduleId: $schedule->id,
-            passengers: $this->passengerPayload(),
-            customPickup: ['label' => 'นอกเส้นทาง', 'lat' => 18.0, 'lng' => 99.0, 'note' => null],
-        );
-
-        $this->actingAs($this->admin, 'sanctum')
-            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/custom-pickup", [
-                'action' => 'reject',
-                'reject_reason' => 'จุดนี้อยู่นอกเส้นทางผ่าน',
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.custom_pickup.status', 'rejected');
-
-        $booking->refresh();
-        $this->assertSame('rejected', $booking->custom_pickup_status);
-        $this->assertNull($booking->custom_pickup_price);
-        $this->assertEquals(1500, (float) $booking->total_amount); // ไม่ถูกเก็บเงินเพิ่ม
-        $this->assertSame('จุดนี้อยู่นอกเส้นทางผ่าน', $booking->custom_pickup_reject_reason);
-    }
-
-    public function test_cannot_resolve_a_pickup_that_is_not_pending(): void
-    {
-        $user = User::factory()->create();
-        $schedule = $this->makeSchedule();
-
-        $booking = app(BookingService::class)->createBooking(
-            userId: $user->id,
-            scheduleId: $schedule->id,
-            passengers: $this->passengerPayload(),
-            customPickup: ['label' => 'จุดหนึ่ง', 'lat' => 14.4, 'lng' => 101.3, 'note' => null],
-        );
-
-        // อนุมัติรอบแรก
-        $this->actingAs($this->admin, 'sanctum')
-            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/custom-pickup", [
-                'action' => 'approve', 'price' => 200,
-            ])->assertOk();
-
-        // อนุมัติซ้ำ — ต้องถูกปฏิเสธ
-        $this->actingAs($this->admin, 'sanctum')
-            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/custom-pickup", [
-                'action' => 'approve', 'price' => 999,
-            ])->assertStatus(422);
-
-        $this->assertEquals(1700, (float) $booking->fresh()->total_amount); // บวกแค่ครั้งเดียว
     }
 
     public function test_predefined_pickup_point_takes_precedence_over_custom(): void

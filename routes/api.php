@@ -347,7 +347,6 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}', [AdminController::class, 'showBooking']);
         Route::post('bookings/{ref}', [AdminController::class, 'updateBooking']);
         Route::put('bookings/{ref}/status', [AdminController::class, 'updateBookingStatus']);
-        Route::post('bookings/{ref}/custom-pickup', [AdminController::class, 'resolveCustomPickup']);
         Route::delete('bookings/{ref}', [AdminController::class, 'deleteBooking']);
         Route::get('bookings/{ref}/refund-preview', [AdminController::class, 'refundPreview']);
         Route::post('bookings/{ref}/refund', [AdminController::class, 'processRefund']);
