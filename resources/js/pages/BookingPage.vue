@@ -663,8 +663,21 @@
                 </div>
               </div>
 
+              <!-- Custom pinned pickup (chosen instead of a preset point) -->
+              <div v-if="customPickup" class="mb-6 p-4 rounded-2xl bg-amber-50/50 border border-amber-200 flex items-start gap-3">
+                <span class="material-symbols-rounded text-amber-600 text-[20px]">add_location_alt</span>
+                <div class="min-w-0">
+                  <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">จุดรับที่ปักหมุดเอง</p>
+                  <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
+                  <p class="text-xs text-amber-700 mt-1 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">info</span>
+                    รอเจ้าหน้าที่ตรวจสอบและแจ้งค่าบริการก่อนยืนยัน
+                  </p>
+                </div>
+              </div>
+
               <!-- Per-passenger pickup point selector -->
-              <div v-if="pickupPoints.length" class="mb-6 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+              <div v-else-if="pickupPoints.length" class="mb-6 p-4 rounded-2xl bg-gray-50 border border-gray-100">
                 <label class="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                   <span class="material-symbols-rounded text-teal-600 text-[18px]">location_on</span>
                   จุดขึ้นรถ <span class="text-red-500">*</span>
@@ -1764,7 +1777,8 @@ function computePassengerErrors(p, i) {
   if (!hasExactDigits(p.emergency_phone, 10)) errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก';
   if (!hasText(p.allergies)) errors.allergies = 'กรุณากรอกข้อมูลการแพ้อาหาร (หากไม่มีให้พิมพ์ "ไม่มี")';
   if (!hasText(p.health_notes)) errors.health_notes = 'กรุณากรอกหมายเหตุสุขภาพ (หากไม่มีให้พิมพ์ "ไม่มี")';
-  if (pickupPoints.value.length && !p.pickup_point_id) errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
+  // เมื่อผู้ใช้ปักหมุดจุดรับเอง (customPickup) ถือว่าเลือกจุดรับแล้ว ไม่ต้องบังคับจุดที่กำหนดไว้
+  if (pickupPoints.value.length && !p.pickup_point_id && !customPickup.value) errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
   return errors;
 }
 
