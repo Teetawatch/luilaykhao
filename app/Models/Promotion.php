@@ -15,15 +15,19 @@ class Promotion extends Model
         'max_uses',
         'used_count',
         'is_active',
+        'is_flash_sale',
         'start_date',
         'end_date',
+        'ends_at',
     ];
 
     protected $casts = [
         'trip_ids' => 'array',
         'is_active' => 'boolean',
+        'is_flash_sale' => 'boolean',
         'start_date' => 'date',
         'end_date' => 'date',
+        'ends_at' => 'datetime',
     ];
 
     public function bookings()

@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\AbandonedBookingWinbackJob;
 use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
@@ -28,6 +29,9 @@ Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
+// Win-back for abandoned (auto-expired) bookings — hourly, sends one nudge per
+// booking a couple of hours after it lapsed.
+Schedule::job(new AbandonedBookingWinbackJob)->hourly()->withoutOverlapping();
 Schedule::job(new ProcessTripAlertsJob)->everyThirtyMinutes()->withoutOverlapping();
 Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping();
 // Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.

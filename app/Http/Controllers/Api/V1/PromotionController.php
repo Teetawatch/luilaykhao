@@ -12,6 +12,7 @@ class PromotionController extends Controller
     public function index()
     {
         $promotions = Promotion::orderBy('id', 'desc')->get();
+
         return response()->json($promotions);
     }
 
@@ -27,7 +28,16 @@ class PromotionController extends Controller
             ->where(function ($q) {
                 $q->whereNull('max_uses')->orWhereColumn('used_count', '<', 'max_uses');
             })
-            ->select('id', 'code', 'name', 'type', 'value', 'start_date', 'end_date', 'max_uses', 'used_count')
+            // A flash sale with a precise deadline drops off the moment it lapses.
+            ->where(function ($q) {
+                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+            })
+            ->select(
+                'id', 'code', 'name', 'type', 'value', 'start_date', 'end_date',
+                'max_uses', 'used_count', 'is_flash_sale', 'ends_at'
+            )
+            // Surface flash sales first so the urgency is front and centre.
+            ->orderByDesc('is_flash_sale')
             ->orderBy('id', 'desc')
             ->get();
 
@@ -45,8 +55,10 @@ class PromotionController extends Controller
             'trip_ids.*' => 'integer|exists:trips,id',
             'max_uses' => 'nullable|integer|min:1',
             'is_active' => 'boolean',
+            'is_flash_sale' => 'boolean',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            'ends_at' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -61,6 +73,7 @@ class PromotionController extends Controller
     public function show($id)
     {
         $promotion = Promotion::findOrFail($id);
+
         return response()->json($promotion);
     }
 
@@ -69,7 +82,7 @@ class PromotionController extends Controller
         $promotion = Promotion::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'code' => 'required|string|unique:promotions,code,' . $promotion->id,
+            'code' => 'required|string|unique:promotions,code,'.$promotion->id,
             'name' => 'required|string',
             'type' => 'required|in:percent,fixed',
             'value' => 'required|numeric|min:0',
@@ -77,8 +90,10 @@ class PromotionController extends Controller
             'trip_ids.*' => 'integer|exists:trips,id',
             'max_uses' => 'nullable|integer|min:1',
             'is_active' => 'boolean',
+            'is_flash_sale' => 'boolean',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            'ends_at' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -93,15 +108,17 @@ class PromotionController extends Controller
     public function destroy($id)
     {
         $promotion = Promotion::findOrFail($id);
-        
+
         // Prevent deletion if already used, instead deactivate
         if ($promotion->used_count > 0) {
             $promotion->is_active = false;
             $promotion->save();
+
             return response()->json(['message' => 'Promotion is already used, so it has been deactivated instead of deleted.']);
         }
 
         $promotion->delete();
+
         return response()->json(['message' => 'Promotion deleted successfully']);
     }
 
@@ -109,12 +126,12 @@ class PromotionController extends Controller
     {
         $request->validate([
             'code' => 'required|string',
-            'trip_id' => 'required|integer|exists:trips,id'
+            'trip_id' => 'required|integer|exists:trips,id',
         ]);
 
         $promotion = Promotion::where('code', $request->code)->where('is_active', true)->first();
 
-        if (!$promotion) {
+        if (! $promotion) {
             return response()->json(['valid' => false, 'message' => 'Promotion code not found or inactive'], 404);
         }
 
@@ -126,19 +143,24 @@ class PromotionController extends Controller
             return response()->json(['valid' => false, 'message' => 'Promotion has expired'], 400);
         }
 
+        // Flash sales lapse at a precise time, not just end-of-day.
+        if ($promotion->ends_at && now()->gt($promotion->ends_at)) {
+            return response()->json(['valid' => false, 'message' => 'Promotion has expired'], 400);
+        }
+
         if ($promotion->max_uses && $promotion->used_count >= $promotion->max_uses) {
             return response()->json(['valid' => false, 'message' => 'Promotion has reached its usage limit'], 400);
         }
 
         if ($promotion->trip_ids && is_array($promotion->trip_ids)) {
-            if (!in_array($request->trip_id, $promotion->trip_ids)) {
+            if (! in_array($request->trip_id, $promotion->trip_ids)) {
                 return response()->json(['valid' => false, 'message' => 'Promotion is not applicable for this trip'], 400);
             }
         }
 
         return response()->json([
             'valid' => true,
-            'promotion' => $promotion
+            'promotion' => $promotion,
         ]);
     }
 }

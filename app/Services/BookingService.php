@@ -444,6 +444,7 @@ class BookingService
                     'status' => 'cancelled',
                     'cancellation_reason' => 'หมดเวลาชำระเงิน — ระบบยกเลิกอัตโนมัติเพื่อคืนที่นั่งภายใน '.Booking::PENDING_TTL_MINUTES.' นาที',
                     'cancelled_at' => now(),
+                    'was_auto_expired' => true,
                 ]);
 
                 $schedule = $booking->schedule()->lockForUpdate()->first();
@@ -489,6 +490,76 @@ class BookingService
         }
 
         return count($expiredBookings);
+    }
+
+    /**
+     * นัดกลับลูกค้าที่จองค้าง (abandoned booking win-back): การจองที่ถูกยกเลิก
+     * อัตโนมัติเพราะไม่ชำระเงิน ถ้ารอบยังเปิดจองและลูกค้ายังไม่กลับมาจองใหม่
+     * จะส่งการแจ้งเตือนชวนกลับมาจองให้เสร็จ — ส่งครั้งเดียวต่อการจอง
+     *
+     * เรียกเป็นระยะจาก AbandonedBookingWinbackJob — คืนจำนวนที่ส่งสำเร็จ
+     */
+    public function sendAbandonedWinbacks(): int
+    {
+        // รอสัก 2 ชม. ก่อนตาม (กันรบกวนคนที่แค่สะดุดชั่วครู่) และตามภายใน 48 ชม.
+        // ที่ความสนใจยังสด — เลยกว่านั้นถือว่าเย็นเกินไป
+        $candidates = Booking::query()
+            ->where('was_auto_expired', true)
+            ->whereNull('winback_sent_at')
+            ->where('cancelled_at', '<=', now()->subHours(2))
+            ->where('cancelled_at', '>=', now()->subHours(48))
+            ->with(['schedule.trip', 'user'])
+            ->get();
+
+        $sent = 0;
+
+        foreach ($candidates as $booking) {
+            $schedule = $booking->schedule;
+            $trip = $schedule?->trip;
+
+            // ไม่มีรอบ/ทริปแล้ว หรือลูกค้าหาย — ปิดไม่ให้ตามซ้ำ
+            if (! $schedule || ! $trip || ! $booking->user) {
+                $booking->update(['winback_sent_at' => now()]);
+
+                continue;
+            }
+
+            // ลูกค้ากลับมาจองรอบนี้แล้ว (pending/confirmed) — ไม่ต้องตาม
+            $alreadyRebooked = Booking::where('user_id', $booking->user_id)
+                ->where('schedule_id', $booking->schedule_id)
+                ->whereIn('status', ['pending', 'confirmed'])
+                ->exists();
+
+            // รอบต้องยังเปิดจองได้จริง: ไม่ถูกยกเลิก ยังไม่ออกเดินทาง และมีที่ว่าง
+            $schedule->syncBookedSeats();
+            $bookable = $schedule->status !== 'cancelled'
+                && $schedule->effectiveDepartsAt()
+                && $schedule->effectiveDepartsAt()->isFuture()
+                && $schedule->available_seats > 0;
+
+            if ($alreadyRebooked || ! $bookable) {
+                $booking->update(['winback_sent_at' => now()]);
+
+                continue;
+            }
+
+            SmartNotification::send(
+                $booking->user_id,
+                'booking_winback',
+                'ที่นั่งยังว่างอยู่นะ 🎒',
+                "ทริป \"{$trip->title}\" ที่คุณเลือกไว้ยังเปิดจองอยู่ — กลับมาจองให้เสร็จก่อนที่นั่งจะเต็ม",
+                [
+                    'trip_slug' => $trip->slug,
+                    'schedule_id' => (string) $schedule->id,
+                    'route' => 'trip',
+                ],
+            );
+
+            $booking->update(['winback_sent_at' => now()]);
+            $sent++;
+        }
+
+        return $sent;
     }
 
     public function confirmBooking(Booking $booking, string $paymentMethod, string $paymentRef, ?float $amount = null): Booking

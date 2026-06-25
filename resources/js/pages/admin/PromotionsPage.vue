@@ -43,9 +43,11 @@
                 <span :class="['status-pill', p.is_active ? 'pill-active' : 'pill-inactive']">
                   {{ p.is_active ? 'ใช้งานอยู่' : 'ปิดใช้งาน' }}
                 </span>
+                <span v-if="p.is_flash_sale" class="status-pill pill-flash" style="margin-left:4px;">⚡ Flash</span>
               </td>
               <td class="date text-sm">
-                <div v-if="p.start_date || p.end_date">
+                <div v-if="p.is_flash_sale && p.ends_at">จบ: {{ formatDateTime(p.ends_at) }}</div>
+                <div v-else-if="p.start_date || p.end_date">
                   <div>เริ่ม: {{ formatDate(p.start_date) || '-' }}</div>
                   <div>สิ้นสุด: {{ formatDate(p.end_date) || '-' }}</div>
                 </div>
@@ -118,6 +120,23 @@
             <div class="form-group">
               <label>วันสิ้นสุด (ไม่บังคับ)</label>
               <input v-model="form.end_date" type="date" />
+            </div>
+
+            <div class="form-group">
+              <label>⚡ Flash Sale (นับถอยหลังในแอป)</label>
+              <div class="toggle-group mt-2">
+                <label class="switch">
+                  <input type="checkbox" v-model="form.is_flash_sale">
+                  <span class="slider round"></span>
+                </label>
+                <span class="ml-2">{{ form.is_flash_sale ? 'เปิด' : 'ปิด' }}</span>
+              </div>
+            </div>
+
+            <div class="form-group" v-if="form.is_flash_sale">
+              <label>เวลาสิ้นสุด Flash Sale *</label>
+              <input v-model="form.ends_at" type="datetime-local" :required="form.is_flash_sale" />
+              <small class="text-gray-500 mt-1 block">แอปจะนับถอยหลังถึงเวลานี้ (ระดับวินาที) แล้วซ่อนโปรฯ อัตโนมัติ</small>
             </div>
 
             <div class="form-group full-width">
@@ -197,8 +216,10 @@ const form = reactive({
   trip_ids: [],
   max_uses: null,
   is_active: true,
+  is_flash_sale: false,
   start_date: '',
   end_date: '',
+  ends_at: '',
 });
 
 const formatCurrency = (value) => {
@@ -207,9 +228,25 @@ const formatCurrency = (value) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString('th-TH', { 
-    day: 'numeric', month: 'short', year: 'numeric' 
+  return new Date(dateString).toLocaleDateString('th-TH', {
+    day: 'numeric', month: 'short', year: 'numeric'
   });
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '';
+  return new Date(value).toLocaleString('th-TH', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+};
+
+// Convert an ISO instant to the "YYYY-MM-DDTHH:mm" a datetime-local input wants,
+// in the admin's local timezone.
+const toLocalInput = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 const fetchPromotions = async () => {
@@ -247,8 +284,10 @@ const openForm = (p = null) => {
       trip_ids: p.trip_ids || [],
       max_uses: p.max_uses,
       is_active: !!p.is_active,
+      is_flash_sale: !!p.is_flash_sale,
       start_date: p.start_date ? p.start_date.split('T')[0] : '',
       end_date: p.end_date ? p.end_date.split('T')[0] : '',
+      ends_at: toLocalInput(p.ends_at),
     });
   } else {
     Object.assign(form, {
@@ -259,8 +298,10 @@ const openForm = (p = null) => {
       trip_ids: [],
       max_uses: null,
       is_active: true,
+      is_flash_sale: false,
       start_date: '',
       end_date: '',
+      ends_at: '',
     });
   }
   showForm.value = true;
@@ -276,6 +317,11 @@ const submitForm = async () => {
     if (!payload.max_uses) payload.max_uses = null;
     if (!payload.start_date) payload.start_date = null;
     if (!payload.end_date) payload.end_date = null;
+    // Send the flash deadline as an unambiguous UTC instant; clear it when the
+    // promo isn't a flash sale so a stale time can't keep it hidden.
+    payload.ends_at = payload.is_flash_sale && payload.ends_at
+      ? new Date(payload.ends_at).toISOString()
+      : null;
     payload.code = payload.code.toUpperCase();
 
     if (editing.value) {
@@ -343,6 +389,11 @@ onMounted(() => {
 .pill-inactive {
   background: #fef2f2;
   color: #ef4444;
+}
+
+.pill-flash {
+  background: #fff7ed;
+  color: #ea580c;
 }
 
 .switch {
