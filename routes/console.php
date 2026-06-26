@@ -8,6 +8,7 @@ use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\SendReviewInvitesJob;
+use App\Jobs\SendStaffShiftRemindersJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendWeatherAlertsJob;
 use Illuminate\Foundation\Inspiring;
@@ -22,6 +23,8 @@ Schedule::command('installment:remind')->dailyAt('08:00')->timezone('Asia/Bangko
 Schedule::command('deposit:remind-balance')->dailyAt('08:10')->timezone('Asia/Bangkok');
 Schedule::command('sms:booking-reminders')->dailyAt('08:15')->timezone('Asia/Bangkok');
 Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone('Asia/Bangkok');
+// เตือนสตาฟที่ถูกมอบหมายงาน เย็นก่อนวันเดินทาง 1 วัน ให้เตรียมอุปกรณ์/ความพร้อม
+Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // Review window opens at 20:00 (Asia/Bangkok) on the trip's last day — invite exactly then.
 Schedule::job(new SendReviewInvitesJob)->dailyAt('20:00')->timezone('Asia/Bangkok')->withoutOverlapping();

@@ -11,6 +11,7 @@ use App\Http\Resources\SchedulePickupPointResource;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Http\Resources\VehicleResource;
+use App\Jobs\SendStaffAssignmentPushJob;
 use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
@@ -656,11 +657,27 @@ class AdminController extends Controller
             }
         }
 
+        // Capture who was already on this round so we only push to the staff
+        // who are *newly* assigned (not re-notifying existing ones or anyone removed).
+        $existingStaffIds = $schedule->staff()->pluck('users.id');
+
         $syncPayload = $staffIds
             ->mapWithKeys(fn ($staffId) => [(int) $staffId => ['assigned_by' => $request->user()->id]])
             ->all();
 
         $schedule->staff()->sync($syncPayload);
+
+        $newStaffIds = $staffIds->map(fn ($id) => (int) $id)
+            ->diff($existingStaffIds->map(fn ($id) => (int) $id))
+            ->values();
+
+        if ($newStaffIds->isNotEmpty()) {
+            SendStaffAssignmentPushJob::dispatch(
+                $schedule->id,
+                $newStaffIds->all(),
+                $request->user()->id,
+            );
+        }
         $schedule->load(['trip', 'vehicle']);
         $schedule->loadCount([
             'staff as assigned_staff_count',
