@@ -528,23 +528,48 @@ class DriverController extends Controller
         $groups = [];
 
         foreach ($bookings as $booking) {
+            // จุดรับที่ลูกค้าปักหมุดเอง (อยู่บนการจอง ไม่ใช่ pickup point ที่กำหนดไว้) —
+            // แต่ละหมุดไม่ซ้ำกันจึงแยกเป็นกลุ่มต่อการจอง พร้อมลิงก์ Google Maps จากพิกัด
+            $hasCustomPickup = ! $booking->pickup_point_id
+                && $booking->custom_pickup_lat !== null
+                && $booking->custom_pickup_lng !== null
+                && $booking->custom_pickup_status !== 'rejected';
+
             foreach ($booking->passengers as $passenger) {
                 $point = $passenger->pickupPoint ?: $booking->pickupPoint;
-                $key = $point?->id ?? 0;
+                $isCustom = $hasCustomPickup && ! $point;
+                $key = $isCustom ? 'custom-'.$booking->id : ($point?->id ?? 0);
 
                 if (! isset($groups[$key])) {
-                    $groups[$key] = [
-                        'id' => $point?->id,
-                        'label' => $point
-                            ? ($point->pickup_location ?: $point->region_label ?: 'จุดรับ')
-                            : 'ไม่ระบุจุดรับ',
-                        'region_label' => $point?->region_label,
-                        'map_url' => $point?->map_url,
-                        'notes' => $point?->notes,
-                        'sort_order' => $point?->sort_order ?? 9999,
-                        'completed_at' => $point?->completed_at?->toIso8601String(),
-                        'passengers' => [],
-                    ];
+                    $groups[$key] = $isCustom
+                        ? [
+                            'id' => null,
+                            'label' => $booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง',
+                            'region_label' => 'ลูกค้าปักหมุดเอง',
+                            'map_url' => sprintf(
+                                'https://www.google.com/maps/search/?api=1&query=%s,%s',
+                                $booking->custom_pickup_lat,
+                                $booking->custom_pickup_lng,
+                            ),
+                            'notes' => $booking->custom_pickup_note,
+                            'is_custom' => true,
+                            'sort_order' => 9000,
+                            'completed_at' => null,
+                            'passengers' => [],
+                        ]
+                        : [
+                            'id' => $point?->id,
+                            'label' => $point
+                                ? ($point->pickup_location ?: $point->region_label ?: 'จุดรับ')
+                                : 'ไม่ระบุจุดรับ',
+                            'region_label' => $point?->region_label,
+                            'map_url' => $point?->map_url,
+                            'notes' => $point?->notes,
+                            'is_custom' => false,
+                            'sort_order' => $point?->sort_order ?? 9999,
+                            'completed_at' => $point?->completed_at?->toIso8601String(),
+                            'passengers' => [],
+                        ];
                 }
 
                 $groups[$key]['passengers'][] = [

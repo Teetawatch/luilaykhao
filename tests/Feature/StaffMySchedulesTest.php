@@ -196,6 +196,42 @@ class StaffMySchedulesTest extends TestCase
         $this->assertNotNull($groups->firstWhere('label', 'ไม่ระบุจุดรับ'));
     }
 
+    public function test_manifest_surfaces_customer_pinned_pickup_with_maps_link(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        // A booking where the customer dropped their own pickup pin (no scheduled
+        // pickup point) — staff should see it as a distinct, mapped group.
+        $booking = $this->makeBooking($schedule, passengerCount: 1, checkedIn: true);
+        $booking->update([
+            'custom_pickup_label' => 'หน้าหมู่บ้านสุขใจ',
+            'custom_pickup_lat' => 13.7563,
+            'custom_pickup_lng' => 100.5018,
+            'custom_pickup_note' => 'ตรงป้อมยาม',
+            'custom_pickup_status' => 'approved',
+        ]);
+
+        $data = $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->json('data');
+
+        $custom = collect($data['pickup_groups'])
+            ->firstWhere('is_custom', true);
+
+        $this->assertNotNull($custom, 'custom pickup group missing from manifest');
+        $this->assertSame('หน้าหมู่บ้านสุขใจ', $custom['label']);
+        $this->assertSame('ตรงป้อมยาม', $custom['notes']);
+        $this->assertSame(1, $custom['passenger_count']);
+        $this->assertStringContainsString('13.7563,100.5018', $custom['map_url']);
+        $this->assertStringContainsString('google.com/maps', $custom['map_url']);
+    }
+
     public function test_manifest_seat_map_labels_seats_with_occupants(): void
     {
         Role::create(['name' => 'staff']);
