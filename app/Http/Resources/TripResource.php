@@ -63,6 +63,7 @@ class TripResource extends JsonResource
             'review_count' => $this->reviews()->where('is_approved', true)->count(),
             'rating_breakdown' => $this->ratingBreakdown(),
             'confirmed_passengers_count' => $this->confirmed_passengers_count,
+            'bookings_count' => $this->bookings_count,
             'seats_left' => $seatsLeft,
             'is_almost_full' => $seatsLeft !== null && $seatsLeft <= 5,
             'almost_full_date' => $this->lowestOpenSeatsDate(),

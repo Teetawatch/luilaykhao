@@ -79,6 +79,18 @@ class Trip extends Model
         })->count();
     }
 
+    /**
+     * Total successful bookings (confirmed or completed) across this trip's
+     * schedules. Powers the home "ยอดการจอง" trust stat.
+     */
+    public function getBookingsCountAttribute(): int
+    {
+        return Booking::whereIn('status', ['confirmed', 'completed'])
+            ->whereHas('schedule', function ($sq) {
+                $sq->where('trip_id', $this->id);
+            })->count();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';
