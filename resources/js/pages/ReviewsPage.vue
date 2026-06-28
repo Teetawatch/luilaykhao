@@ -79,14 +79,29 @@
               <p class="text-xl font-bold text-[var(--color-text-dark)] italic leading-relaxed whitespace-pre-line">
                 "{{ featuredReview.comment || 'ไม่มีความคิดเห็นเพิ่มเติม' }}"
               </p>
-              <div v-if="featuredReview.images?.length" class="flex flex-wrap gap-3">
-                <img
-                  v-for="(image, index) in featuredReview.images"
+              <div v-if="featuredReview.media.length" class="flex flex-wrap gap-3">
+                <button
+                  v-for="(item, index) in featuredReview.media"
                   :key="index"
-                  :src="mediaUrl(image)"
-                  :alt="`Review image ${index + 1}`"
-                  class="w-20 h-20 rounded-2xl object-cover border border-white shadow-sm"
-                />
+                  type="button"
+                  @click="openLightbox(featuredReview.media, index)"
+                  class="media-thumb group relative w-24 h-24 rounded-2xl overflow-hidden border border-white shadow-sm"
+                  :aria-label="item.type === 'video' ? 'เล่นวิดีโอรีวิว' : 'ดูรูปรีวิว'"
+                >
+                  <img
+                    v-if="item.type === 'image'"
+                    :src="item.url"
+                    :alt="`Review media ${index + 1}`"
+                    loading="lazy"
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <template v-else>
+                    <video :src="item.url" class="w-full h-full object-cover" muted playsinline preload="metadata"></video>
+                    <span class="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/45">
+                      <span class="material-symbols-rounded text-white text-4xl drop-shadow-md" style="font-variation-settings:'FILL' 1">play_circle</span>
+                    </span>
+                  </template>
+                </button>
               </div>
               <div class="flex items-center gap-4 pt-4 border-t border-[var(--color-sand-dark)]">
                 <div class="w-12 h-12 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold text-lg shadow-md overflow-hidden">
@@ -141,14 +156,29 @@
                 <p class="text-[var(--color-text-mid)] font-medium leading-relaxed whitespace-pre-line">
                   {{ review.comment || 'ไม่มีความคิดเห็นเพิ่มเติม' }}
                 </p>
-                <div v-if="review.images?.length" class="flex flex-wrap gap-2">
-                  <img
-                    v-for="(image, index) in review.images"
+                <div v-if="review.media.length" class="flex flex-wrap gap-2">
+                  <button
+                    v-for="(item, index) in review.media"
                     :key="index"
-                    :src="mediaUrl(image)"
-                    :alt="`Review image ${index + 1}`"
-                    class="w-16 h-16 rounded-xl object-cover border border-[var(--color-sand-dark)]"
-                  />
+                    type="button"
+                    @click="openLightbox(review.media, index)"
+                    class="media-thumb group relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--color-sand-dark)]"
+                    :aria-label="item.type === 'video' ? 'เล่นวิดีโอรีวิว' : 'ดูรูปรีวิว'"
+                  >
+                    <img
+                      v-if="item.type === 'image'"
+                      :src="item.url"
+                      :alt="`Review media ${index + 1}`"
+                      loading="lazy"
+                      class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <template v-else>
+                      <video :src="item.url" class="w-full h-full object-cover" muted playsinline preload="metadata"></video>
+                      <span class="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/45">
+                        <span class="material-symbols-rounded text-white text-2xl drop-shadow-md" style="font-variation-settings:'FILL' 1">play_circle</span>
+                      </span>
+                    </template>
+                  </button>
                 </div>
                 <div class="flex items-center gap-3 pt-2">
                   <div class="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center font-bold text-[var(--color-text-dark)] text-xs shadow-sm overflow-hidden">
@@ -218,17 +248,59 @@
         </div>
       </div>
     </section>
+
+    <Teleport to="body">
+      <Transition name="lightbox">
+        <div v-if="lightboxItems" class="lightbox" @click.self="closeLightbox">
+          <button class="lightbox-btn lightbox-close" @click="closeLightbox" aria-label="ปิด">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+          <button v-if="lightboxItems.length > 1" class="lightbox-btn lightbox-prev" @click.stop="prevMedia" aria-label="ก่อนหน้า">
+            <span class="material-symbols-rounded">chevron_left</span>
+          </button>
+
+          <div class="lightbox-figure">
+            <img
+              v-if="currentMedia.type === 'image'"
+              :key="`img-${lightboxIndex}`"
+              :src="currentMedia.url"
+              alt="Review media"
+              class="lightbox-img"
+            />
+            <video
+              v-else
+              :key="`vid-${lightboxIndex}`"
+              :src="currentMedia.url"
+              class="lightbox-video"
+              controls
+              autoplay
+              playsinline
+            ></video>
+          </div>
+
+          <button v-if="lightboxItems.length > 1" class="lightbox-btn lightbox-next" @click.stop="nextMedia" aria-label="ถัดไป">
+            <span class="material-symbols-rounded">chevron_right</span>
+          </button>
+
+          <div v-if="lightboxItems.length > 1" class="lightbox-counter">{{ lightboxIndex + 1 }} / {{ lightboxItems.length }}</div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 
 const reviews = ref([]);
 const meta = ref(null);
 const loading = ref(true);
 const error = ref('');
+
+const lightboxItems = ref(null);
+const lightboxIndex = ref(0);
+const currentMedia = computed(() => lightboxItems.value?.[lightboxIndex.value] || {});
 
 const featuredReview = computed(() => reviews.value[0] || null);
 const listReviews = computed(() => reviews.value.slice(1));
@@ -268,7 +340,10 @@ async function fetchReviews(page = 1) {
       },
     });
 
-    reviews.value = res.data?.data || [];
+    reviews.value = (res.data?.data || []).map((review) => ({
+      ...review,
+      media: buildMedia(review),
+    }));
     meta.value = res.data?.meta || null;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (err) {
@@ -276,6 +351,40 @@ async function fetchReviews(page = 1) {
   } finally {
     loading.value = false;
   }
+}
+
+function buildMedia(review) {
+  const images = (review.images || []).map((url) => ({ type: 'image', url: mediaUrl(url) }));
+  const videos = (review.videos || []).map((url) => ({ type: 'video', url: mediaUrl(url) }));
+  return [...images, ...videos].filter((item) => item.url);
+}
+
+function openLightbox(items, index) {
+  lightboxItems.value = items;
+  lightboxIndex.value = index;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  lightboxItems.value = null;
+  document.body.style.overflow = '';
+}
+
+function prevMedia() {
+  const total = lightboxItems.value.length;
+  lightboxIndex.value = (lightboxIndex.value - 1 + total) % total;
+}
+
+function nextMedia() {
+  const total = lightboxItems.value.length;
+  lightboxIndex.value = (lightboxIndex.value + 1) % total;
+}
+
+function onKeydown(e) {
+  if (!lightboxItems.value) return;
+  if (e.key === 'Escape') closeLightbox();
+  else if (e.key === 'ArrowLeft') prevMedia();
+  else if (e.key === 'ArrowRight') nextMedia();
 }
 
 function mediaUrl(value) {
@@ -308,6 +417,12 @@ function formatDate(value) {
 onMounted(() => {
   window.scrollTo(0, 0);
   fetchReviews();
+  window.addEventListener('keydown', onKeydown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown);
+  document.body.style.overflow = '';
 });
 </script>
 
@@ -320,4 +435,84 @@ onMounted(() => {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+.media-thumb {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.media-thumb:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transform: translateY(-2px);
+}
+.media-thumb:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 12, 10, 0.92);
+  backdrop-filter: blur(6px);
+}
+.lightbox-figure {
+  max-width: min(1100px, 92vw);
+  max-height: 88vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-img,
+.lightbox-video {
+  max-width: 100%;
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.lightbox-video {
+  background: #000;
+  width: min(900px, 92vw);
+}
+
+.lightbox-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.lightbox-btn:hover { background: rgba(255, 255, 255, 0.25); }
+.lightbox-btn .material-symbols-rounded { font-size: 28px; }
+.lightbox-close { top: 20px; right: 20px; }
+.lightbox-prev { left: 16px; top: 50%; transform: translateY(-50%); }
+.lightbox-next { right: 16px; top: 50%; transform: translateY(-50%); }
+
+.lightbox-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+.lightbox-enter-active, .lightbox-leave-active { transition: opacity 0.25s ease; }
+.lightbox-enter-from, .lightbox-leave-to { opacity: 0; }
 </style>
