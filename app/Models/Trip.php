@@ -72,7 +72,7 @@ class Trip extends Model
     public function getConfirmedPassengersCountAttribute(): int
     {
         return BookingPassenger::whereHas('booking', function ($q) {
-            $q->whereIn('status', ['confirmed', 'completed'])
+            $q->where('status', 'completed')
                 ->whereHas('schedule', function ($sq) {
                     $sq->where('trip_id', $this->id);
                 });
