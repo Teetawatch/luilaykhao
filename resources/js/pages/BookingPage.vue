@@ -1519,6 +1519,10 @@ const maxPassengers = computed(() => {
 
 const preselectedRegion = route.query.region || null;
 const pickupPoints = computed(() => {
+  // Join-trip (Enjoy Trip) bookings don't pick a pickup point — travellers
+  // arrange their own way to the meeting spot — so expose none. This cascades
+  // to the picker UI, per-passenger selector, validation, and pricing.
+  if (isJoinTrip.value) return [];
   const all = schedule.value?.pickup_points || [];
   if (!preselectedRegion) return all;
   const filtered = all.filter(pt => pt.region === preselectedRegion);
