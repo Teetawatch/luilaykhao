@@ -49,7 +49,7 @@
               </span>
             </div>
             
-            <h1 class="text-white text-2xl md:text-4xl lg:text-5xl font-black mb-4 leading-tight drop-shadow-2xl tracking-tight truncate" :title="trip.title">
+            <h1 class="text-white text-2xl md:text-4xl lg:text-5xl font-black mb-4 leading-normal py-1 drop-shadow-2xl tracking-tight truncate" :title="trip.title">
               {{ trip.title }}
             </h1>
             
