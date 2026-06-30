@@ -91,6 +91,21 @@ class Trip extends Model
             })->count();
     }
 
+    /**
+     * Head-count of travellers across this trip's successful bookings
+     * (confirmed or completed) — i.e. how many people have booked, not how
+     * many booking records exist. Powers the home "คนจองแล้ว" trust stat.
+     */
+    public function getBookedPassengersCountAttribute(): int
+    {
+        return BookingPassenger::whereHas('booking', function ($q) {
+            $q->whereIn('status', ['confirmed', 'completed'])
+                ->whereHas('schedule', function ($sq) {
+                    $sq->where('trip_id', $this->id);
+                });
+        })->count();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

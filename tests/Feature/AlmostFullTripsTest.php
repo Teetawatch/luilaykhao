@@ -83,6 +83,20 @@ class AlmostFullTripsTest extends TestCase
         $this->assertTrue($row['is_almost_full']);
     }
 
+    public function test_booked_passengers_count_is_head_count_not_booking_count(): void
+    {
+        $trip = $this->makeTrip('Head Count Trek');
+        $schedule = $this->addSchedule($trip, 20);
+        // Two confirmed bookings carrying 3 + 2 travellers = 5 people across 2 bookings.
+        $this->occupy($schedule, 3);
+        $this->occupy($schedule, 2);
+
+        $row = $this->tripRow($trip->slug);
+
+        $this->assertSame(2, $row['bookings_count']);
+        $this->assertSame(5, $row['booked_passengers_count']);
+    }
+
     public function test_plenty_of_seats_is_not_almost_full(): void
     {
         $trip = $this->makeTrip('Plenty Trek');
