@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\ChatJoined;
 use App\Jobs\SendChatPushJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
@@ -13,6 +14,7 @@ use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -453,6 +455,27 @@ class ChatTest extends TestCase
 
         $this->actingAs($stranger, 'sanctum')
             ->postJson("/api/v1/schedules/{$schedule->id}/chat/typing")
+            ->assertForbidden();
+    }
+
+    public function test_joined_broadcasts_for_member_and_forbidden_for_stranger(): void
+    {
+        Event::fake([ChatJoined::class]);
+
+        $schedule = $this->makeSchedule();
+        $member = User::factory()->create();
+        $this->bookOnto($member, $schedule);
+        $stranger = User::factory()->create();
+
+        $this->actingAs($member, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/joined")
+            ->assertOk();
+
+        Event::assertDispatched(ChatJoined::class, fn ($e) => $e->scheduleId === $schedule->id
+            && $e->userId === $member->id);
+
+        $this->actingAs($stranger, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/joined")
             ->assertForbidden();
     }
 

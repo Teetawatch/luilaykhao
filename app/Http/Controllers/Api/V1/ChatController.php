@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\ChatJoined;
 use App\Events\ChatMessageSent;
 use App\Events\ChatPinned;
 use App\Events\ChatReactionUpdated;
@@ -284,6 +285,24 @@ class ChatController extends Controller
         }
 
         broadcast(new ChatTyping(
+            $scheduleId,
+            $user->id,
+            $user->nickname ?: $user->name ?: 'สมาชิก',
+        ))->toOthers();
+
+        return $this->success(['ok' => true]);
+    }
+
+    public function joined(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        broadcast(new ChatJoined(
             $scheduleId,
             $user->id,
             $user->nickname ?: $user->name ?: 'สมาชิก',

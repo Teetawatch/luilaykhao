@@ -138,6 +138,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'unpin']);
         Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
         Route::post('schedules/{id}/chat/typing', [ChatController::class, 'typing'])->middleware('throttle:60,1');
+        Route::post('schedules/{id}/chat/joined', [ChatController::class, 'joined'])->middleware('throttle:20,1');
 
         // Operator announcements per schedule. Read side is open to any member;
         // write side is gated to staff/operators inside the controller (canModerate),
