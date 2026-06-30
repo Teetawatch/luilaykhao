@@ -377,7 +377,7 @@
                       <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
                       <router-link to="/admin" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-primary hover:bg-primary/5 transition-all">
                         <span class="material-symbols-rounded text-[20px]">admin_panel_settings</span>
-                        Admin Panel
+                        ผู้ดูแลระบบ
                       </router-link>
                     </template>
                     <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
@@ -540,7 +540,7 @@
             class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-primary hover:bg-primary/5 transition-all duration-200 active:scale-[0.98]"
           >
             <span class="material-symbols-rounded text-[22px]">admin_panel_settings</span>
-            Admin Panel
+            ผู้ดูแลระบบ
           </router-link>
 
           <div class="h-px bg-sand-dark/20 mx-2"></div>
