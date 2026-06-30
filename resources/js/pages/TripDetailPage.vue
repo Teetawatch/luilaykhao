@@ -35,11 +35,7 @@
                 <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
                 {{ Number(trip.rating || 0).toFixed(1) }} ({{ trip.review_count || 0 }} รีวิว)
               </span>
-              <span v-if="trip.confirmed_passengers_count > 0" class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
-                <span class="material-symbols-rounded text-[18px]">verified</span>
-                {{ trip.confirmed_passengers_count }} คนร่วมเดินทางแล้ว
-              </span>
-              <span v-else-if="trip.booked_passengers_count > 0" class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
+              <span v-if="trip.booked_passengers_count > 0" class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
                 <span class="material-symbols-rounded text-[18px]">group</span>
                 {{ trip.booked_passengers_count }} คนจองแล้ว
               </span>
