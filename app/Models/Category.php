@@ -12,14 +12,22 @@ class Category extends Model
 
     protected $fillable = [
         'name',
+        'display_title',
+        'subtitle',
+        'cta_text',
         'slug',
         'icon',
+        'image_url',
+        'color',
+        'bg_color',
+        'is_popular',
         'order',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_popular' => 'boolean',
         'order' => 'integer',
     ];
 

@@ -474,6 +474,7 @@ Route::prefix('v1')->group(function () {
         // Categories CRUD
         Route::get('categories', [CategoryController::class, 'adminIndex']);
         Route::post('categories', [CategoryController::class, 'store']);
+        Route::post('categories/reorder', [CategoryController::class, 'reorder']);
         Route::put('categories/{id}', [CategoryController::class, 'update']);
         Route::delete('categories/{id}', [CategoryController::class, 'destroy']);
 

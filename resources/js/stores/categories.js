@@ -48,5 +48,9 @@ export const useCategoriesStore = defineStore('categories', {
       await this.fetchAdminCategories();
       return res.data.data;
     },
+
+    async reorderCategories(ids) {
+      await api.post('/admin/categories/reorder', { ids });
+    },
   },
 });

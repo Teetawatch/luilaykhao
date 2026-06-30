@@ -208,12 +208,21 @@
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        <div class="relative">
+        <div
+          ref="categoryRail"
+          :class="isCategoryRail
+            ? 'flex gap-6 lg:gap-8 overflow-x-auto snap-x snap-mandatory cat-rail py-6 -my-6 px-1'
+            : ['grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8', categoryGridColsClass]"
+        >
           <router-link
             v-for="(cat, index) in categories"
             :key="cat.type"
             :to="`/trips?type=${cat.type}`"
-            class="group relative rounded-[2.5rem] overflow-hidden block isolate h-[480px] lg:h-[560px] border border-white/10 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.25)] hover:shadow-[0_50px_90px_-20px_rgba(0,0,0,0.45)] transition-[transform,box-shadow] duration-700 ease-out hover:-translate-y-3"
+            :class="[
+              'group relative rounded-[2.5rem] overflow-hidden block isolate h-[480px] lg:h-[560px] border border-white/10 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.25)] hover:shadow-[0_50px_90px_-20px_rgba(0,0,0,0.45)] transition-[transform,box-shadow] duration-700 ease-out hover:-translate-y-3',
+              isCategoryRail ? 'snap-start shrink-0 w-[80vw] sm:w-[360px] lg:w-[300px]' : '',
+            ]"
             :style="`--cat-color: ${cat.color}; background-color: ${cat.bgColor}`"
           >
             <!-- Premium Background Image with Dynamic Zoom -->
@@ -276,6 +285,27 @@
             <!-- Top sheen on hover -->
             <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-10"></div>
           </router-link>
+        </div>
+
+        <!-- Slider nav (only when categories overflow into a rail) -->
+        <template v-if="isCategoryRail">
+          <button
+            type="button"
+            @click="scrollCategoryRail(-1)"
+            class="cat-nav -left-4 lg:-left-5"
+            aria-label="ก่อนหน้า"
+          >
+            <span class="material-symbols-rounded text-[24px]">chevron_left</span>
+          </button>
+          <button
+            type="button"
+            @click="scrollCategoryRail(1)"
+            class="cat-nav -right-4 lg:-right-5"
+            aria-label="ถัดไป"
+          >
+            <span class="material-symbols-rounded text-[24px]">chevron_right</span>
+          </button>
+        </template>
         </div>
       </div>
     </section>
@@ -933,7 +963,9 @@ const animateStats = () => {
   });
 };
 
-const categories = [
+// Homepage showcase cards are driven by real categories (managed in admin).
+// The static list below is only a fallback for first paint / API failure.
+const FALLBACK_CATEGORIES = [
   {
     type: 'snorkeling',
     label: 'Snorkeling',
@@ -957,7 +989,7 @@ const categories = [
     isPopular: false,
   },
   {
-    type: 'climbing',
+    type: 'van-service',
     label: 'Premium Van',
     subtext: 'เดินทางระดับ Exclusive พร้อมความสะดวกสบายครบครันทุกเส้นทาง',
     ctaText: 'ดูแพ็กเกจทัวร์',
@@ -968,6 +1000,45 @@ const categories = [
     isPopular: false,
   },
 ];
+
+const categories = ref(FALLBACK_CATEGORIES);
+const categoryRail = ref(null);
+
+// Up to 4 categories render as a full row; beyond that it becomes a swipeable rail.
+const isCategoryRail = computed(() => categories.value.length > 4);
+
+// Static class strings (kept whole so Tailwind doesn't purge them).
+const categoryGridColsClass = computed(() => {
+  const n = categories.value.length;
+  if (n <= 1) return 'lg:grid-cols-1 max-w-md mx-auto';
+  if (n === 2) return 'lg:grid-cols-2 max-w-3xl mx-auto';
+  if (n === 3) return 'lg:grid-cols-3';
+  return 'lg:grid-cols-4';
+});
+
+function scrollCategoryRail(dir) {
+  const el = categoryRail.value;
+  if (!el) return;
+  // Scroll by roughly one card (incl. gap) so each click advances cleanly.
+  const amount = Math.min(el.clientWidth * 0.85, 360);
+  el.scrollBy({ left: dir * amount, behavior: 'smooth' });
+}
+
+// Map a Category API record to the card shape the template renders.
+// Only categories that have a cover image are featured in this showcase.
+function mapCategoryToCard(c) {
+  return {
+    type: c.slug,
+    label: c.display_title || c.name,
+    subtext: c.subtitle || '',
+    ctaText: c.cta_text || 'ดูทริปทั้งหมด',
+    image: c.image_url,
+    icon: c.icon || 'explore',
+    color: c.color || '#2D7A4F',
+    bgColor: c.bg_color || '#E8F5EC',
+    isPopular: !!c.is_popular,
+  };
+}
 
 const reviews = ref([]);
 
@@ -1056,19 +1127,26 @@ onMounted(async () => {
   }
 
   try {
-    const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes, almostFullRes] = await Promise.all([
+    const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes, almostFullRes, categoriesRes] = await Promise.all([
       api.get('/trips', { params: { per_page: 8 } }),
       api.get('/trips/featured'),
       api.get('/reviews', { params: { per_page: 30 } }),
       api.get('/stats'),
       api.get('/trips', { params: { per_page: 100 } }),
       api.get('/trips/almost-full'),
+      api.get('/categories'),
     ]);
     trips.value = tripsRes.data.data;
     allTrips.value = allTripsRes.data.data || [];
     featuredTrips.value = featuredRes.data.data || [];
     almostFullTrips.value = almostFullRes.data.data || [];
     reviews.value = reviewsRes.data.data || [];
+
+    // Feature only categories that have a cover image; keep the static fallback otherwise.
+    const apiCategories = (categoriesRes.data.data || []).filter((c) => c.image_url);
+    if (apiCategories.length) {
+      categories.value = apiCategories.map(mapCategoryToCard);
+    }
     
     // Update stats
     if (statsRes.data?.data) {
@@ -1265,6 +1343,48 @@ onMounted(async () => {
   .reviews-marquee {
     -webkit-mask-image: none;
     mask-image: none;
+  }
+}
+
+/* Category rail (slider when > 4 categories) */
+.cat-rail {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-padding: 0 0.25rem;
+}
+.cat-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.cat-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  background: white;
+  color: var(--color-text-dark);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+.cat-nav:hover {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 16px 36px rgba(45, 122, 79, 0.35);
+}
+.cat-nav:active {
+  transform: translateY(-50%) scale(0.92);
+}
+@media (min-width: 768px) {
+  .cat-nav {
+    display: flex;
   }
 }
 
