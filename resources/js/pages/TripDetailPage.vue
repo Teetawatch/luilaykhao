@@ -43,6 +43,10 @@
                 <span class="material-symbols-rounded text-[18px]">female</span>
                 ทริปสำหรับผู้หญิงเท่านั้น
               </span>
+              <span v-if="trip.views_count > 0" class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
+                <span class="material-symbols-rounded text-[18px]">visibility</span>
+                {{ Number(trip.views_count).toLocaleString() }} ผู้ชม
+              </span>
             </div>
             
             <h1 class="text-white text-2xl md:text-4xl lg:text-5xl font-black mb-4 leading-tight drop-shadow-2xl tracking-tight truncate" :title="trip.title">

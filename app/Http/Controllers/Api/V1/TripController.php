@@ -10,6 +10,7 @@ use App\Services\WeatherService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class TripController extends Controller
 {
@@ -107,19 +108,35 @@ class TripController extends Controller
         return $this->success(TripResource::collection($almost));
     }
 
-    public function show(string $slug): JsonResponse
+    public function show(string $slug, Request $request): JsonResponse
     {
         $trip = Trip::where('slug', $slug)
             ->with(['photos', 'schedules' => function ($q) {
                 $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
             }])
             ->firstOrFail();
+
+        $this->registerView($trip, $request);
+
         $trip->schedules->each->syncBookedSeats();
         $trip->schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
         return $this->success(new TripResource($trip->loadCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
         }])));
+    }
+
+    /**
+     * Count a unique-ish trip view. The same visitor (IP + user agent) only
+     * bumps the counter once per 30 minutes so refreshes don't inflate it.
+     */
+    private function registerView(Trip $trip, Request $request): void
+    {
+        $key = 'trip_view:'.$trip->id.':'.sha1($request->ip().'|'.$request->userAgent());
+
+        if (Cache::add($key, true, now()->addMinutes(30))) {
+            $trip->increment('views_count');
+        }
     }
 
     public function schedules(string $slug, Request $request): JsonResponse

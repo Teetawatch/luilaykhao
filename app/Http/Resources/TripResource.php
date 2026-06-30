@@ -55,6 +55,7 @@ class TripResource extends JsonResource
             'exclusions' => $this->exclusions ?? [],
             'highlights' => $this->highlights ?? [],
             'is_featured' => (bool) $this->is_featured,
+            'views_count' => (int) $this->views_count,
             'is_women_only' => (bool) $this->is_women_only,
             'must_know' => $this->must_know ?? null,
             'itinerary' => $this->itinerary ?? [],

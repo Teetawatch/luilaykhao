@@ -18,6 +18,7 @@ class Trip extends Model
      */
     protected $attributes = [
         'status' => 'active',
+        'views_count' => 0,
     ];
 
     protected $fillable = [
@@ -37,6 +38,7 @@ class Trip extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'is_featured' => 'boolean',
+            'views_count' => 'integer',
             'gallery' => 'array',
             'videos' => 'array',
             'inclusions' => 'array',
