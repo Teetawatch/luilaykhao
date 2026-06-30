@@ -41,6 +41,7 @@ class BookingService
         bool $isJoinTrip = false,
         array $selectedAddons = [],
         ?array $customPickup = null,
+        bool $verifySeatLocks = true,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -49,7 +50,7 @@ class BookingService
         // sold out" customer blast (3-2-1 left). Null = join trip / not counted.
         $availableAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, &$scheduleBecameFull, &$availableAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, $verifySeatLocks, &$scheduleBecameFull, &$availableAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -81,9 +82,15 @@ class BookingService
                     throw new \Exception('เลือกที่นั่งซ้ำกัน: '.$duplicateSeatIds->join(', ').' กรุณาเลือกที่นั่งใหม่');
                 }
 
-                foreach ($seatIds as $seatId) {
-                    if (! $this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId)) {
-                        throw new \Exception("ที่นั่ง {$seatId} ไม่ได้ถูกล็อคโดยคุณ");
+                // ตรวจ Redis soft-lock เฉพาะ flow ที่ผู้ใช้ล็อกที่นั่งเองก่อนจอง (เช่น booking flow ปกติ)
+                // สำหรับ group checkout การจองที่นั่งถูกยึดถาวรไว้ใน group_plan_members แล้ว Redis lock เป็นแค่
+                // ตัวช่วยชั่วคราวที่อาจหมดอายุ/ถูก evict ระหว่างที่กลุ่มรวมตัวกัน จึงข้ามได้ — การกันจองซ้ำจริง
+                // อาศัย DB guard ด้านล่าง (booking_seats + lockForUpdate ของ schedule) ซึ่งเป็น source of truth
+                if ($verifySeatLocks) {
+                    foreach ($seatIds as $seatId) {
+                        if (! $this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId)) {
+                            throw new \Exception("ที่นั่ง {$seatId} ไม่ได้ถูกล็อคโดยคุณ");
+                        }
                     }
                 }
 

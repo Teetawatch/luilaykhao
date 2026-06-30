@@ -8,6 +8,7 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\GroupPlanService;
+use App\Services\SeatLockService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -109,6 +110,49 @@ class GroupPlanTest extends TestCase
 
         $this->assertSame('booked', $plan->fresh()->status);
         $this->assertSame($booking->id, $plan->fresh()->booking_id);
+    }
+
+    public function test_host_can_check_out_even_when_the_redis_seat_lock_has_lapsed(): void
+    {
+        // Seats are claimed and held durably in group_plan_members; the Redis soft-lock is
+        // advisory and may expire or be evicted (shared cache/queue store) while the group
+        // gathers. Checkout must not fail with "ที่นั่งไม่ได้ถูกล็อคโดยคุณ" when that happens.
+        $this->mock(SeatLockService::class, function ($mock) {
+            $mock->shouldReceive('lock')->andReturn(['locked' => true, 'expires_at' => now()->toISOString()]);
+            $mock->shouldReceive('forceUnlock')->andReturnNull();
+            $mock->shouldReceive('unlock')->andReturnTrue();
+            // The lock has lapsed by the time the host pays.
+            $mock->shouldReceive('isLockedByUser')->andReturnFalse();
+        });
+
+        $schedule = $this->makeSchedule();
+        $host = User::factory()->create(['name' => 'Host Hugo']);
+        $friend = User::factory()->create(['name' => 'Friend Fae']);
+
+        $plan = app(GroupPlanService::class)->create($host, $schedule, 4, 'Squad');
+        $code = $plan->invite_code;
+
+        $this->actingAs($friend, 'sanctum')
+            ->postJson("/api/v1/group-plans/{$code}/join")
+            ->assertOk();
+
+        $this->actingAs($host, 'sanctum')
+            ->postJson("/api/v1/group-plans/{$code}/claim-seat", [
+                'seat_id' => 'A1', 'name' => 'Host Hugo', 'phone' => '0810000001',
+            ])->assertOk();
+
+        $this->actingAs($friend, 'sanctum')
+            ->postJson("/api/v1/group-plans/{$code}/claim-seat", [
+                'seat_id' => 'A2', 'name' => 'Friend Fae', 'phone' => '0810000002',
+            ])->assertOk();
+
+        $response = $this->actingAs($host, 'sanctum')
+            ->postJson("/api/v1/group-plans/{$code}/checkout")
+            ->assertCreated();
+
+        $booking = Booking::where('booking_ref', $response->json('data.booking_ref'))->firstOrFail();
+        $this->assertCount(2, $booking->seats);
+        $this->assertSame('booked', $plan->fresh()->status);
     }
 
     public function test_two_members_cannot_claim_the_same_seat(): void

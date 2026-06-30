@@ -221,6 +221,9 @@ class GroupPlanService
             pickupRegion: $pickupRegion,
             isGroup: true,
             groupName: $plan->name,
+            // ที่นั่งของกลุ่มถูกยึดไว้ใน group_plan_members แล้ว (durable) — ไม่ต้องพึ่ง Redis soft-lock
+            // ที่อาจหมดอายุระหว่างรวมกลุ่ม การกันจองซ้ำยังอาศัย DB guard ใน BookingService ตามเดิม
+            verifySeatLocks: false,
         );
 
         $plan->update(['status' => 'booked', 'booking_id' => $booking->id]);
