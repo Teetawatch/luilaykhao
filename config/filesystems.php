@@ -33,7 +33,12 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Serve is off so the framework does NOT register its own
+            // GET /storage/{path} route ('storage.local'), which would otherwise
+            // shadow the legacy-media → R2 redirect defined in routes/web.php.
+            // Nothing relies on it: private slips are streamed via the dedicated
+            // signed 'slips.show' route (see App\Support\MediaDisk::slipUrl).
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

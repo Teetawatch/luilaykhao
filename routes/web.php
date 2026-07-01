@@ -10,7 +10,9 @@ use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\Tag;
 use App\Models\Trip;
+use App\Support\MediaDisk;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // Google Search Console verification
 Route::get('/google2a5171f00ca2654e.html', function () {
@@ -107,6 +109,20 @@ Route::prefix('admin/payments')->group(function () {
 Route::get('/slips/{token}', [SlipController::class, 'show'])
     ->middleware('signed')
     ->name('slips.show');
+
+// Legacy local-media → R2 fallback. Older content embeds absolute /storage/…
+// URLs from before uploads moved to R2. On production nginx serves the file
+// from disk while it still exists; once it has been copied to R2 and pruned
+// (`php artisan media:migrate-to-r2 --prune`) the file is gone and the request
+// reaches here, where we 301 it to the R2 equivalent so nothing 404s. Guarded
+// to the R2-active case so it can never loop back on itself when the local
+// 'public' disk is still the media disk (e.g. local dev). The local disk's
+// 'serve' is disabled (config/filesystems.php) so this route owns /storage/*.
+Route::get('/storage/{path}', function (string $path) {
+    abort_unless(MediaDisk::name() === 'r2', 404);
+
+    return redirect()->away(Storage::disk('r2')->url($path), 301);
+})->where('path', '.*');
 
 // SPA catch-all (must be last!)
 Route::get('/{any?}', function () {
