@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class MigrateMediaToR2 extends Command
 {
-    protected $signature = 'media:migrate-to-r2 {--dry-run : Report what would change without writing anything} {--force : Overwrite files that already exist on R2}';
+    protected $signature = 'media:migrate-to-r2 {--dry-run : Report what would change without writing anything} {--force : Overwrite files that already exist on R2} {--prune : Delete each local file AFTER it is confirmed present on R2 (frees disk once serving from R2)}';
 
     protected $description = 'Copy existing local uploads to R2 and repoint database references';
 
@@ -35,15 +35,19 @@ class MigrateMediaToR2 extends Command
 
         $dryRun = (bool) $this->option('dry-run');
         $force = (bool) $this->option('force');
+        $prune = (bool) $this->option('prune');
 
         if ($dryRun) {
             $this->warn('DRY RUN — no files or database rows will be changed.');
+        }
+        if ($prune) {
+            $this->warn('PRUNE — local files will be DELETED after they are confirmed on R2.');
         }
 
         $public = Storage::disk('public');
         $r2 = Storage::disk('r2');
 
-        $this->copyDiskFiles($public, $r2, $dryRun, $force);
+        $this->copyDiskFiles($public, $r2, $dryRun, $force, $prune);
         $this->copyLegacyWebRootAvatars($r2, $dryRun, $force);
         $this->rewriteJsonUrlColumn(Review::query(), 'images', $r2, $dryRun);
         $this->rewriteJsonUrlColumn(Contact::query(), 'images', $r2, $dryRun);
@@ -60,37 +64,50 @@ class MigrateMediaToR2 extends Command
     /**
      * Stream every file on the local public disk up to R2, preserving its path.
      */
-    private function copyDiskFiles(Filesystem $public, Filesystem $r2, bool $dryRun, bool $force): void
+    private function copyDiskFiles(Filesystem $public, Filesystem $r2, bool $dryRun, bool $force, bool $prune = false): void
     {
         $files = $public->allFiles();
         $copied = 0;
         $skipped = 0;
+        $pruned = 0;
 
         $bar = $this->output->createProgressBar(count($files));
         $bar->start();
 
         foreach ($files as $path) {
-            if (! $force && $r2->exists($path)) {
-                $skipped++;
-                $bar->advance();
+            $alreadyOnR2 = $r2->exists($path);
 
-                continue;
-            }
-
-            if (! $dryRun) {
-                $stream = $public->readStream($path);
-                $r2->writeStream($path, $stream);
-                if (is_resource($stream)) {
-                    fclose($stream);
+            if ($force || ! $alreadyOnR2) {
+                if (! $dryRun) {
+                    $stream = $public->readStream($path);
+                    $r2->writeStream($path, $stream);
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
                 }
+                $copied++;
+            } else {
+                $skipped++;
             }
-            $copied++;
+
+            // Only ever delete the local copy once we have re-confirmed the file
+            // is on R2 — never delete based on the copy we just attempted, since
+            // the R2 disk is configured with throw=false and a failed upload
+            // returns silently rather than raising.
+            if ($prune && ! $dryRun && $r2->exists($path)) {
+                $public->delete($path);
+                $pruned++;
+            }
+
             $bar->advance();
         }
 
         $bar->finish();
         $this->newLine();
         $this->line("Public disk → R2: {$copied} copied, {$skipped} already present.");
+        if ($prune) {
+            $this->line("Local files pruned (confirmed on R2 first): {$pruned}.");
+        }
     }
 
     /**
