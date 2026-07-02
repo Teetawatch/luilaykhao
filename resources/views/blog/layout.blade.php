@@ -19,12 +19,12 @@
     <meta property="og:title" content="@yield('og_title', 'บทความ | ลุยเลเขา')">
     <meta property="og:description" content="@yield('meta_description', 'บทความและคำแนะนำเที่ยวธรรมชาติทั่วไทย')">
     <meta property="og:url" content="@yield('canonical', url()->current())">
-    <meta property="og:image" content="@yield('og_image', asset('images/logo.png'))">
+    <meta property="og:image" content="@yield('og_image', asset('images/logo.png').'?v=2')">
     <meta property="og:locale" content="th_TH">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="@yield('og_title', 'บทความ | ลุยเลเขา')">
     <meta name="twitter:description" content="@yield('meta_description', 'บทความและคำแนะนำเที่ยวธรรมชาติทั่วไทย')">
-    <meta name="twitter:image" content="@yield('og_image', asset('images/logo.png'))">
+    <meta name="twitter:image" content="@yield('og_image', asset('images/logo.png').'?v=2')">
 
     @stack('jsonld')
 
@@ -93,7 +93,7 @@
     <header class="site-header">
         <div class="wrap bar">
             <a href="{{ url('/') }}" class="brand">
-                <img src="{{ asset('images/logo.png') }}" alt="ลุยเลเขา">
+                <img src="{{ asset('images/logo.png').'?v=2' }}" alt="ลุยเลเขา">
                 <span>ลุยเลเขา</span>
             </a>
             <nav class="nav">

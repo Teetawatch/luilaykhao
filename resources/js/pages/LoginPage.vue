@@ -5,7 +5,7 @@
       <div class="bg-white rounded-3xl p-8 shadow-xl shadow-sand-dark/10 border border-sand-dark/30">
         <div class="text-center mb-8">
           <div class="w-20 h-20 flex items-center justify-center mx-auto mb-5">
-            <img src="/images/logo.png" alt="Luilaykhao" class="w-20 h-20 object-contain" />
+            <img src="/images/logo.png?v=2" alt="Luilaykhao" class="w-20 h-20 object-contain" />
           </div>
           <h1 class="font-anuphan text-3xl font-bold text-text-dark mb-2">เข้าสู่ระบบ</h1>
           <p class="text-text-muted">ยินดีต้อนรับกลับมา เข้าสู่บัญชีของคุณ</p>

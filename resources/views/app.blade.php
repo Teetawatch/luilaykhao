@@ -35,7 +35,7 @@
     <meta property="og:title" content="ลุยเลเขา | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว">
     <meta property="og:description" content="ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติและการผจญภัย จองง่าย ปลอดภัย">
     <meta property="og:url" content="{{ url('/') }}">
-    <meta property="og:image" content="{{ asset('images/logo.png') }}">
+    <meta property="og:image" content="{{ asset('images/logo.png').'?v=2' }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="ลุยเลเขา Luilaykhao - แพลตฟอร์มจองทริปท่องเที่ยวทั่วไทย">
@@ -45,7 +45,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="ลุยเลเขา | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว">
     <meta name="twitter:description" content="ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติและการผจญภัย">
-    <meta name="twitter:image" content="{{ asset('images/logo.png') }}">
+    <meta name="twitter:image" content="{{ asset('images/logo.png').'?v=2' }}">
     <meta name="twitter:image:alt" content="ลุยเลเขา Luilaykhao">
 
     <!-- JSON-LD Structured Data: Organization -->
@@ -56,7 +56,7 @@
         "name": "ลุยเลเขา",
         "alternateName": "Luilaykhao",
         "url": "{{ url('/') }}",
-        "logo": "{{ asset('images/logo.png') }}",
+        "logo": "{{ asset('images/logo.png').'?v=2' }}",
         "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว",
         "contactPoint": {
             "@@type": "ContactPoint",
@@ -76,8 +76,8 @@
         "@@type": "TravelAgency",
         "name": "ลุยเลเขา Luilaykhao",
         "url": "{{ url('/') }}",
-        "logo": "{{ asset('images/logo.png') }}",
-        "image": "{{ asset('images/logo.png') }}",
+        "logo": "{{ asset('images/logo.png').'?v=2' }}",
+        "image": "{{ asset('images/logo.png').'?v=2' }}",
         "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ใบอนุญาตนำเที่ยวเลขที่ 12/03773",
         "telephone": "+66-62-612-6006",
         "email": "luilaykhao.info@@gmail.com",
@@ -181,7 +181,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <!-- Favicons & PWA -->
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/logo.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/logo.png').'?v=2' }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/favicon-16x16.png') }}">
     <link rel="shortcut icon" href="{{ asset('images/favicon.ico') }}">

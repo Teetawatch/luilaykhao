@@ -3,7 +3,7 @@
     <!-- Sidebar -->
     <aside class="admin-sidebar" :class="{ collapsed: sidebarCollapsed }">
       <div class="sidebar-header flex flex-col items-center">
-        <img src="/images/logo.png" alt="TrailDive" class="w-18 h-18 object-contain" />
+        <img src="/images/logo.png?v=2" alt="TrailDive" class="w-18 h-18 object-contain" />
         <span v-if="!sidebarCollapsed" class="brand-subtitle mt-1">แผงควบคุมระบบ</span>
       </div>
 

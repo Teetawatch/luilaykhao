@@ -84,7 +84,7 @@
 </head>
 <body>
     <main class="card">
-        <img class="logo" src="{{ asset('images/logo.png') }}" alt="ลุยเลเขา">
+        <img class="logo" src="{{ asset('images/logo.png').'?v=2' }}" alt="ลุยเลเขา">
 
         <div class="badge" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

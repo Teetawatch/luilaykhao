@@ -1321,7 +1321,7 @@ useHead({
     { property: 'og:url', content: computed(() => `${window.location.origin}/trips/${route.params.slug}`) },
     { property: 'og:title', content: computed(() => trip.value ? `${trip.value.title} | ลุยเลเขา` : '') },
     { property: 'og:description', content: computed(() => trip.value ? (trip.value.description || '').substring(0, 200) : '') },
-    { property: 'og:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png`) },
+    { property: 'og:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png?v=2`) },
     { property: 'og:image:alt', content: computed(() => trip.value ? `${trip.value.title} - ลุยเลเขา` : '') },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' },
@@ -1332,7 +1332,7 @@ useHead({
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: computed(() => trip.value ? `${trip.value.title} | ลุยเลเขา` : '') },
     { name: 'twitter:description', content: computed(() => trip.value ? (trip.value.description || '').substring(0, 200) : '') },
-    { name: 'twitter:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png`) },
+    { name: 'twitter:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png?v=2`) },
     { name: 'twitter:image:alt', content: computed(() => trip.value ? trip.value.title : 'ลุยเลเขา') }
   ],
   // JSON-LD Structured Data for Trip (Product + TouristTrip)
@@ -1342,7 +1342,7 @@ useHead({
       innerHTML: computed(() => {
         if (!trip.value) return '{}';
         const t = trip.value;
-        const imageUrl = t.cover_image ? (t.cover_image.startsWith('http') ? t.cover_image : `${window.location.origin}${t.cover_image}`) : `${window.location.origin}/images/logo.png`;
+        const imageUrl = t.cover_image ? (t.cover_image.startsWith('http') ? t.cover_image : `${window.location.origin}${t.cover_image}`) : `${window.location.origin}/images/logo.png?v=2`;
         const data = {
           '@context': 'https://schema.org',
           '@type': 'TouristTrip',

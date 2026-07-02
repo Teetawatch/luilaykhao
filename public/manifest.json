@@ -11,7 +11,7 @@
     "categories": ["travel", "tourism", "lifestyle"],
     "icons": [
         {
-            "src": "/images/logo.png",
+            "src": "/images/logo.png?v=2",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
