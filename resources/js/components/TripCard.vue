@@ -33,9 +33,9 @@
       
       <!-- Favorite button -->
       <button @click.prevent="toggleFav" :aria-label="isFav ? 'นำออกจากรายการโปรด' : 'บันทึกรายการโปรด'"
-        class="absolute top-4 right-4 transition-all duration-300 rounded-full p-2 cursor-pointer z-10"
-        :class="isFav ? 'bg-red-500/80 hover:bg-red-600/80 text-white' : 'bg-white/20 hover:bg-white/30 text-white hover:text-red-400'">
-        <span class="material-symbols-rounded text-[20px]"
+        class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full cursor-pointer z-10 backdrop-blur-md"
+        :class="isFav ? 'bg-red-500/80 hover:bg-red-600/80 text-white' : 'bg-black/25 hover:bg-black/40 text-white hover:text-red-400'">
+        <span class="material-symbols-rounded text-[20px] leading-none"
           :style="isFav ? 'font-variation-settings:\'FILL\' 1,\'wght\' 400' : 'font-variation-settings:\'FILL\' 0,\'wght\' 400'">favorite</span>
       </button>
 
