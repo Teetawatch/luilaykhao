@@ -478,10 +478,10 @@
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="mb-14 flex flex-col md:flex-row justify-between items-end gap-6">
           <div>
-            <span class="text-[var(--color-accent-light)] font-bold tracking-wider uppercase text-sm mb-2 block">คัดสรรพิเศษ</span>
-            <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-white tracking-tight">แนะนำสำหรับคุณ</h2>
+            <span class="text-[var(--color-accent-light)] font-bold tracking-[0.2em] uppercase text-xs md:text-sm mb-2.5 block">คัดสรรพิเศษ</span>
+            <h2 class="font-anuphan text-[1.75rem] md:text-4xl font-bold text-white tracking-tight">แนะนำสำหรับคุณ</h2>
           </div>
-          <p class="text-white/70 max-w-sm md:text-right font-medium">
+          <p class="text-white/65 max-w-sm md:text-right font-medium text-[0.95rem] leading-relaxed">
             ประสบการณ์สุดพิเศษที่เราอยากให้คุณได้ลองสัมผัสด้วยตัวเอง
           </p>
         </div>
@@ -503,46 +503,46 @@
             <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-[3rem]"></div>
             
             <div class="absolute inset-0 p-10 md:p-14 flex flex-col justify-end">
-              <div class="flex flex-wrap items-center gap-3 mb-8 transform transition-transform duration-500 group-hover:-translate-y-2">
-                <span class="bg-[var(--color-accent-light)] text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl">{{ typeLabel(featuredTrips[0].type) }}</span>
-                
+              <div class="flex flex-wrap items-center gap-2.5 mb-7 transform transition-transform duration-500 group-hover:-translate-y-2">
+                <span class="bg-[var(--color-accent-light)] text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] shadow-lg">{{ typeLabel(featuredTrips[0].type) }}</span>
+
                 <!-- Smart Rating / New Badge -->
-                <span v-if="Number(featuredTrips[0].rating) > 0" class="bg-white/10 backdrop-blur-md text-white px-5 py-2 rounded-full text-[10px] font-black shadow-xl flex items-center gap-2 border border-white/10">
-                  <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
+                <span v-if="Number(featuredTrips[0].rating) > 0" class="bg-white/10 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[11px] font-bold shadow-lg flex items-center gap-1.5 border border-white/15">
+                  <span class="material-symbols-rounded text-[15px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
                   {{ Number(featuredTrips[0].rating).toFixed(1) }}
                 </span>
-                <span v-else class="bg-white text-[var(--color-primary)] px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl border border-white">
+                <span v-else class="bg-white text-[var(--color-primary)] px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] shadow-lg">
                   Trip ใหม่ ✨
                 </span>
               </div>
-              <div class="max-w-2xl mb-10 transform transition-transform duration-700 group-hover:-translate-y-2">
-                <h3 class="font-anuphan text-white text-4xl md:text-6xl font-black mb-5 leading-[1.1] tracking-tight group-hover:text-white transition-colors drop-shadow-2xl">
+              <div class="max-w-2xl mb-9 transform transition-transform duration-700 group-hover:-translate-y-2">
+                <h3 class="font-anuphan text-white text-3xl md:text-5xl font-extrabold mb-4 leading-[1.14] tracking-tight drop-shadow-2xl">
                   {{ featuredTrips[0].title }}
                 </h3>
-                <p class="text-white/70 text-lg md:text-xl font-medium leading-relaxed drop-shadow-lg line-clamp-2 max-w-xl group-hover:text-white/90 transition-colors">
+                <p class="text-white/70 text-base md:text-lg font-medium leading-relaxed drop-shadow-lg line-clamp-2 max-w-xl group-hover:text-white/90 transition-colors">
                   {{ featuredTrips[0].description || featuredTrips[0].location }}
                 </p>
               </div>
-              
-              <div class="flex items-center justify-between flex-wrap gap-8 mt-auto border-t border-white/10 pt-10">
+
+              <div class="flex items-center justify-between flex-wrap gap-6 mt-auto border-t border-white/10 pt-8">
                 <div class="flex flex-col">
                   <div class="flex items-baseline gap-2">
-                    <span class="text-white/70 text-sm font-bold">
+                    <span class="text-white/60 text-xs md:text-sm font-semibold">
                       {{ Number(featuredTrips[0].min_price) != Number(featuredTrips[0].max_price) ? 'ช่วงราคา' : 'เริ่มต้นเพียง' }}
                     </span>
-                    <span v-if="Number(featuredTrips[0].min_price) != Number(featuredTrips[0].max_price)" class="text-white text-3xl md:text-5xl font-black tracking-tighter">
+                    <span v-if="Number(featuredTrips[0].min_price) != Number(featuredTrips[0].max_price)" class="text-white text-2xl md:text-4xl font-extrabold tracking-tight">
                       ฿{{ Number(featuredTrips[0].min_price).toLocaleString('th-TH') }} - {{ Number(featuredTrips[0].max_price).toLocaleString('th-TH') }}
                     </span>
-                    <span v-else class="text-white text-4xl md:text-5xl font-black tracking-tighter">
+                    <span v-else class="text-white text-3xl md:text-4xl font-extrabold tracking-tight">
                       ฿{{ Number(featuredTrips[0].min_price).toLocaleString('th-TH') }}
                     </span>
                   </div>
                 </div>
-                
-                <div class="bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white px-10 py-5 rounded-2xl font-black text-lg shadow-[0_20px_40px_rgba(0,0,0,0.3)] transition-all duration-500 flex items-center gap-3 group/btn hover:-translate-y-1">
+
+                <div class="bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white px-8 py-4 rounded-2xl font-bold text-base shadow-[0_16px_36px_rgba(0,0,0,0.28)] transition-all duration-300 flex items-center gap-2.5 group/btn hover:-translate-y-0.5">
                   <span>สำรวจทริปนี้</span>
-                  <div class="w-8 h-8 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center group-hover/btn:bg-white/20 transition-colors">
-                    <span class="material-symbols-rounded text-[24px] transform group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>
+                  <div class="w-7 h-7 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center group-hover/btn:bg-white/20 transition-colors">
+                    <span class="material-symbols-rounded text-[20px] transform group-hover/btn:translate-x-0.5 transition-transform">arrow_forward</span>
                   </div>
                 </div>
               </div>
@@ -567,36 +567,36 @@
               <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent group-hover:from-black transition-all duration-700"></div>
               
               <div class="relative z-10 transform transition-transform duration-500 group-hover:-translate-y-2">
-                <div class="flex justify-between items-start mb-8">
+                <div class="flex justify-between items-start mb-7">
                   <div class="flex gap-2">
-                    <span class="px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest backdrop-blur-md border border-white/20 bg-white/10 text-white">
+                    <span class="px-3.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] backdrop-blur-md border border-white/20 bg-white/10 text-white">
                       {{ typeLabel(trip.type) }}
                     </span>
-                    <span v-if="idx === 0" class="px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-[var(--color-accent)] text-white shadow-lg">ยอดนิยม</span>
+                    <span v-if="idx === 0" class="px-3.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] bg-[var(--color-accent)] text-white shadow-lg">ยอดนิยม</span>
                   </div>
-                  <div class="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-xl transition-transform duration-500 group-hover:rotate-12">
-                    <span class="material-symbols-rounded text-[24px]">{{ typeFeaturedIcon(trip.type) }}</span>
+                  <div class="w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-lg transition-transform duration-500 group-hover:rotate-12">
+                    <span class="material-symbols-rounded text-[22px]">{{ typeFeaturedIcon(trip.type) }}</span>
                   </div>
                 </div>
-                
-                <h4 class="text-2xl md:text-3xl font-black text-white mb-3 group-hover:text-[var(--color-accent-light)] transition-colors leading-tight drop-shadow-md">
+
+                <h4 class="text-xl md:text-2xl font-extrabold text-white mb-3 group-hover:text-[var(--color-accent-light)] transition-colors leading-snug drop-shadow-md">
                   {{ trip.title }}
                 </h4>
                 <div v-if="Number(trip.rating) > 0" class="flex items-center gap-1.5 mb-2">
                   <span class="material-symbols-rounded text-[14px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
-                  <span class="text-white/80 text-xs font-bold">{{ Number(trip.rating).toFixed(1) }} Rating</span>
+                  <span class="text-white/80 text-xs font-semibold">{{ Number(trip.rating).toFixed(1) }} Rating</span>
                 </div>
               </div>
-              
-              <div class="relative z-10 pt-8 mt-4 border-t border-white/10 flex justify-between items-end">
+
+              <div class="relative z-10 pt-7 mt-4 border-t border-white/10 flex justify-between items-end">
                 <div class="flex flex-col">
-                  <span class="text-[10px] text-white/40 font-black uppercase tracking-[0.2em] mb-1">
+                  <span class="text-[10px] text-white/45 font-bold uppercase tracking-[0.18em] mb-1">
                     {{ Number(trip.min_price) != Number(trip.max_price) ? 'ช่วงราคา' : 'เริ่มต้นที่' }}
                   </span>
-                  <span v-if="Number(trip.min_price) != Number(trip.max_price)" class="text-xl font-black text-white tracking-tight">
+                  <span v-if="Number(trip.min_price) != Number(trip.max_price)" class="text-lg font-extrabold text-white tracking-tight">
                     ฿{{ Number(trip.min_price).toLocaleString('th-TH') }} - {{ Number(trip.max_price).toLocaleString('th-TH') }}
                   </span>
-                  <span v-else class="text-2xl font-black text-white tracking-tight">
+                  <span v-else class="text-xl font-extrabold text-white tracking-tight">
                     ฿{{ Number(trip.min_price).toLocaleString('th-TH') }}
                   </span>
                 </div>
@@ -616,7 +616,7 @@
                 <span class="material-symbols-rounded text-[40px]">explore</span>
               </div>
               <div>
-                <p class="text-white text-xl font-black tracking-tight mb-2">ดูทริปแนะนำทั้งหมด</p>
+                <p class="text-white text-lg font-extrabold tracking-tight mb-2">ดูทริปแนะนำทั้งหมด</p>
                 <p class="text-white/50 text-sm font-medium">ค้นหาแรงบันดาลใจครั้งใหม่ของคุณที่นี่</p>
               </div>
             </router-link>
@@ -758,40 +758,40 @@
             พร้อมจะออกไปลุยหรือยัง?
           </div>
           
-          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.08] mb-7 tracking-tight">
+          <h2 class="text-[1.75rem] sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white leading-[1.14] mb-6 tracking-tight">
             ให้เราช่วยสร้าง<br/>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 underline decoration-[var(--color-gold)] decoration-4 md:decoration-6">ความทรงจำ</span> ที่สวยงามของคุณ
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/75 underline underline-offset-4 decoration-[var(--color-gold)] decoration-2 md:decoration-4">ความทรงจำ</span> ที่สวยงามของคุณ
           </h2>
-          
-          <p class="text-base md:text-lg text-white/80 leading-relaxed font-medium mb-10 max-w-xl border-l-4 border-[var(--color-gold)] pl-5 md:pl-6">
-            เราดูแลทุกรายละเอียด เพื่อให้คุณได้ใช้เวลาที่มีค่าไปกับการ "ซึมซับบรรยากาศ" และ "สนุกกับการเดินทาง" อย่างเต็มที่
+
+          <p class="text-[0.95rem] md:text-lg text-white/75 leading-relaxed font-medium mb-10 max-w-xl border-l-2 border-[var(--color-gold)]/80 pl-5 md:pl-6">
+            เราดูแลทุกรายละเอียด เพื่อให้คุณได้ใช้เวลาที่มีค่าไปกับการ “ซึมซับบรรยากาศ” และ “สนุกกับการเดินทาง” อย่างเต็มที่
           </p>
-          
-          <div class="flex flex-col sm:flex-row gap-4">
+
+          <div class="flex flex-col sm:flex-row gap-3.5">
             <router-link
               to="/trips"
-              class="inline-flex items-center justify-center gap-3 bg-[var(--color-accent)] text-white px-7 md:px-9 py-4 rounded-[1.5rem] text-base md:text-lg font-black hover:bg-[#3D8F66] hover:shadow-[0_16px_40px_rgba(76,175,125,0.35)] transition-all duration-500 group/btn"
+              class="inline-flex items-center justify-center gap-2.5 bg-[var(--color-accent)] text-white px-7 md:px-8 py-3.5 rounded-2xl text-[0.95rem] md:text-base font-bold hover:bg-[#3D8F66] hover:shadow-[0_16px_40px_rgba(76,175,125,0.35)] transition-all duration-300 group/btn"
             >
               <span>เริ่มผจญภัยกับเราวันนี้</span>
-              <span class="material-symbols-rounded text-2xl group-hover/btn:translate-x-1.5 transition-transform">explore</span>
+              <span class="material-symbols-rounded text-xl group-hover/btn:translate-x-1 transition-transform">explore</span>
             </router-link>
             <router-link
               to="/about"
-              class="inline-flex items-center justify-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 text-white px-7 md:px-9 py-4 rounded-[1.5rem] text-base md:text-lg font-black hover:bg-white/20 transition-all duration-500"
+              class="inline-flex items-center justify-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 text-white px-7 md:px-8 py-3.5 rounded-2xl text-[0.95rem] md:text-base font-bold hover:bg-white/20 hover:border-white/30 transition-all duration-300"
             >
               รู้จักเรามากขึ้น
             </router-link>
           </div>
-          
+
           <!-- Quick Status -->
-          <div class="mt-12 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 opacity-70">
-            <div class="flex items-center gap-2.5">
-              <span class="material-symbols-rounded text-white text-[20px]">verified_user</span>
-              <span class="font-bold text-white text-sm md:text-base">จองปลอดภัย 100%</span>
+          <div class="mt-11 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3.5">
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.07] border border-white/10 px-4 py-2 backdrop-blur-sm">
+              <span class="material-symbols-rounded text-[var(--color-gold)] text-[18px]">verified_user</span>
+              <span class="font-semibold text-white/90 text-[0.8rem] md:text-sm">จองปลอดภัย 100%</span>
             </div>
-            <div class="flex items-center gap-2.5">
-              <span class="material-symbols-rounded text-white text-[20px]">thumb_up</span>
-              <span class="font-bold text-white text-sm md:text-base">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
+            <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.07] border border-white/10 px-4 py-2 backdrop-blur-sm">
+              <span class="material-symbols-rounded text-[var(--color-gold)] text-[18px]">thumb_up</span>
+              <span class="font-semibold text-white/90 text-[0.8rem] md:text-sm">พาร์ทเนอร์ที่ผ่านการตรวจสอบ</span>
             </div>
           </div>
         </div>
