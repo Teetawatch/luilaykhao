@@ -284,4 +284,33 @@ class BroadcastNotificationTest extends TestCase
             $service->quietHoursDelay(CarbonImmutable::parse('2026-06-09 03:00', $tz)),
         );
     }
+
+    public function test_urgent_events_bypass_quiet_hours_while_others_defer(): void
+    {
+        Queue::fake();
+        // 23:30 Bangkok — deep inside quiet hours.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-09 23:30', BroadcastNotificationService::TIMEZONE));
+
+        $service = app(BroadcastNotificationService::class);
+        $service->broadcast('low_seats', 'low_seats:99:2', 'x', 'y');   // urgent
+        $service->broadcast('flash_sale', 'flash_sale:99:open:1', 'x', 'y'); // urgent
+        $service->broadcast('new_trip', 'new_trip:99', 'x', 'y');       // not urgent
+
+        // Urgency pushes go out now (no delay) even at 23:30.
+        Queue::assertPushed(
+            SendBroadcastNotificationJob::class,
+            fn ($job) => $job->type === 'low_seats' && $job->delay === null,
+        );
+        Queue::assertPushed(
+            SendBroadcastNotificationJob::class,
+            fn ($job) => $job->type === 'flash_sale' && $job->delay === null,
+        );
+        // Non-urgent broadcast is still held until morning.
+        Queue::assertPushed(
+            SendBroadcastNotificationJob::class,
+            fn ($job) => $job->type === 'new_trip' && $job->delay !== null,
+        );
+
+        CarbonImmutable::setTestNow();
+    }
 }

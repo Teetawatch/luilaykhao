@@ -31,6 +31,13 @@ class BroadcastNotificationService
     public const LOW_SEAT_THRESHOLD = 3;
 
     /**
+     * Time-critical events that must reach customers immediately — they are
+     * exempt from quiet-hours deferral (a held flash-sale/last-seats push is
+     * useless once the round fills up or the sale ends overnight).
+     */
+    public const URGENT_EVENTS = ['flash_sale', 'low_seats', 'sold_out'];
+
+    /**
      * Announce a newly published trip to everyone.
      */
     public function broadcastNewTrip(Trip $trip): void
@@ -234,7 +241,12 @@ class BroadcastNotificationService
 
         $job = new SendBroadcastNotificationJob($eventType, $title, $body, $data);
 
-        $delay = $this->quietHoursDelay();
+        // Urgency pushes (flash sale, low seats, sold out) lose all their value if
+        // held overnight — the round can sell out or the sale end before morning —
+        // so they bypass quiet hours and fire immediately, any hour.
+        $delay = in_array($eventType, self::URGENT_EVENTS, true)
+            ? null
+            : $this->quietHoursDelay();
         dispatch($delay !== null ? $job->delay($delay) : $job);
 
         return true;
