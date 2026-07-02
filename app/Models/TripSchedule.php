@@ -34,6 +34,7 @@ class TripSchedule extends Model
         'trip_id', 'departure_date', 'departs_at', 'return_date',
         'total_seats', 'booked_seats', 'transport_type',
         'vehicle_id', 'status', 'price_override',
+        'flash_sale_enabled', 'flash_sale_price', 'flash_sale_ends_at',
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',
@@ -49,6 +50,9 @@ class TripSchedule extends Model
             'total_seats' => 'integer',
             'booked_seats' => 'integer',
             'price_override' => 'decimal:2',
+            'flash_sale_enabled' => 'boolean',
+            'flash_sale_price' => 'decimal:2',
+            'flash_sale_ends_at' => 'datetime',
             'installment_enabled' => 'boolean',
             'installment_count' => 'integer',
             'installment_interval_days' => 'integer',
@@ -246,7 +250,45 @@ class TripSchedule extends Model
 
     public function getEffectivePriceAttribute(): float
     {
+        if ($this->flashSaleActive()) {
+            return (float) $this->flash_sale_price;
+        }
+
         return $this->price_override ?? $this->trip->price_per_person;
+    }
+
+    /**
+     * The pre-discount selling price for this round (round price override, else
+     * the trip's base price). Shown struck-through beside the flash-sale price.
+     */
+    public function getOriginalPriceAttribute(): float
+    {
+        return $this->price_override ?? $this->trip->price_per_person;
+    }
+
+    /**
+     * Whether a flash sale is currently live for this round: admin-enabled with
+     * a price, still within the (optional) end time, and the round is actually
+     * sellable — open, upcoming, with seats left. Once any of those lapse the
+     * effective price falls back to the normal price automatically.
+     */
+    public function flashSaleActive(): bool
+    {
+        if (! $this->flash_sale_enabled || $this->flash_sale_price === null) {
+            return false;
+        }
+
+        if ($this->flash_sale_ends_at !== null && $this->flash_sale_ends_at->isPast()) {
+            return false;
+        }
+
+        if ($this->status !== 'open' || $this->available_seats <= 0) {
+            return false;
+        }
+
+        $departsAt = $this->effectiveDepartsAt();
+
+        return $departsAt === null || $departsAt->isFuture();
     }
 
     /**

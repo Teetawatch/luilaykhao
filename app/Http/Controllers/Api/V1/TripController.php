@@ -26,7 +26,7 @@ class TripController extends Controller
             $query->where('type', $request->type);
         }
         if ($request->filled('location')) {
-            $query->where('location', 'like', "%{$request->location}%");
+            $query->whereLike('location', "%{$request->location}%");
         }
         if ($request->filled('difficulty')) {
             $query->where('difficulty', $request->difficulty);
@@ -45,9 +45,9 @@ class TripController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('location', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                $q->whereLike('title', "%{$search}%")
+                    ->orWhereLike('location', "%{$search}%")
+                    ->orWhereLike('description', "%{$search}%");
             });
         }
 
@@ -106,6 +106,42 @@ class TripController extends Controller
             ->values();
 
         return $this->success(TripResource::collection($almost));
+    }
+
+    /**
+     * Trips with at least one round on a live flash sale, soonest-ending first.
+     * Powers the "⚡ Flash Sale" home rail and the flash-sale push CTA.
+     */
+    public function flashSale(): JsonResponse
+    {
+        $trips = Trip::where('status', 'active')
+            ->whereHas('schedules', fn ($q) => $q
+                ->where('flash_sale_enabled', true)
+                ->where('status', 'open')
+                ->where('departure_date', '>=', now()->startOfDay()))
+            ->with(['photos', 'schedules' => function ($q) {
+                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
+            }])
+            ->get();
+
+        $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
+
+        // whereHas prefilters cheaply; flashSaleActive() is the source of truth
+        // (price/seats/end time), so re-check in PHP after syncing booked seats.
+        $flash = $trips
+            ->map(fn ($trip) => [
+                'trip' => $trip,
+                'ends' => $trip->schedules
+                    ->filter(fn ($s) => $s->flashSaleActive())
+                    ->min(fn ($s) => $s->flash_sale_ends_at?->timestamp ?? PHP_INT_MAX),
+            ])
+            ->filter(fn ($row) => $row['ends'] !== null)
+            ->sortBy('ends')
+            ->take(10)
+            ->map(fn ($row) => $row['trip'])
+            ->values();
+
+        return $this->success(TripResource::collection($flash));
     }
 
     public function show(string $slug, Request $request): JsonResponse

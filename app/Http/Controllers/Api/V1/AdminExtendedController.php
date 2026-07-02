@@ -246,9 +246,9 @@ class AdminExtendedController extends Controller
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")
-                    ->orWhere('email', 'like', "%{$request->search}%")
-                    ->orWhere('phone', 'like', "%{$request->search}%");
+                $q->whereLike('name', "%{$request->search}%")
+                    ->orWhereLike('email', "%{$request->search}%")
+                    ->orWhereLike('phone', "%{$request->search}%");
             });
         }
 
@@ -658,8 +658,8 @@ class AdminExtendedController extends Controller
             $query->where('is_approved', $request->boolean('is_approved'));
         }
         if ($request->filled('search')) {
-            $query->whereHas('user', fn ($q) => $q->where('name', 'like', "%{$request->search}%"))
-                ->orWhere('comment', 'like', "%{$request->search}%");
+            $query->whereHas('user', fn ($q) => $q->whereLike('name', "%{$request->search}%"))
+                ->orWhereLike('comment', "%{$request->search}%");
         }
 
         $reviews = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));

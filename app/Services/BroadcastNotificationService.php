@@ -88,6 +88,44 @@ class BroadcastNotificationService
     }
 
     /**
+     * Announce a flash sale on a round to the whole customer base. Self-guarding
+     * (only fires while the sale is live). The dedupe key carries the end time
+     * and price, so re-opening a sale or changing its terms re-notifies, while a
+     * no-op re-save does not. Safe to call from the schedule observer.
+     */
+    public function broadcastFlashSale(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || $schedule->departure_date === null || ! $schedule->flashSaleActive()) {
+            return;
+        }
+
+        $price = (float) $schedule->flash_sale_price;
+        $original = $schedule->original_price;
+        $endsClause = $schedule->flash_sale_ends_at
+            ? ' ถึง '.$schedule->flash_sale_ends_at->timezone(self::TIMEZONE)->format('d/m H:i').' น.'
+            : '';
+
+        $endsKey = $schedule->flash_sale_ends_at?->timestamp ?? 'open';
+
+        $this->broadcast(
+            'flash_sale',
+            "flash_sale:{$schedule->id}:{$endsKey}:".(int) $price,
+            '⚡ Flash Sale ราคาพิเศษ!',
+            "{$trip->title} รอบ ".$schedule->departure_date->format('d/m/Y')
+                .' ลดเหลือ ฿'.number_format($price)
+                .($original > $price ? ' (จาก ฿'.number_format($original).')' : '')
+                .$endsClause.' รีบจองก่อนหมดเวลา!',
+            [
+                'route' => 'trip',
+                'trip_slug' => $trip->slug,
+                'trip_id' => $trip->id,
+                'schedule_id' => $schedule->id,
+            ],
+        );
+    }
+
+    /**
      * Announce a round that's almost sold out, to create urgency. Blasts once
      * per seat level (…:3, …:2, …:1) so each step toward sold-out re-creates
      * urgency. Self-guarding, so it's safe to call directly from a booking.

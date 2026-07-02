@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\TripSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,7 +18,9 @@ class TripResource extends JsonResource
                         $prices->push((float) $pt->price);
                     }
                 } else {
-                    $prices->push((float) ($s->price_override ?? $this->price_per_person));
+                    // effective_price already reflects an active flash sale, so the
+                    // "from ฿…" price on cards drops during a sale.
+                    $prices->push((float) $s->effective_price);
                 }
             }
         }
@@ -69,9 +72,28 @@ class TripResource extends JsonResource
             'seats_left' => $seatsLeft,
             'is_almost_full' => $seatsLeft !== null && $seatsLeft <= 5,
             'almost_full_date' => $this->lowestOpenSeatsDate(),
+            'is_flash_sale' => $this->activeFlashSaleSchedule() !== null,
+            'flash_sale_ends_at' => $this->activeFlashSaleSchedule()?->flash_sale_ends_at?->toISOString(),
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
             'created_at' => $this->created_at?->toISOString(),
         ];
+    }
+
+    /**
+     * The loaded schedule with a live flash sale that ends soonest — drives the
+     * trip-card ⚡ badge and countdown. Null when schedules aren't loaded or none
+     * is on flash sale.
+     */
+    private function activeFlashSaleSchedule(): ?TripSchedule
+    {
+        if (! $this->relationLoaded('schedules')) {
+            return null;
+        }
+
+        return $this->schedules
+            ->filter(fn ($s) => $s->flashSaleActive())
+            ->sortBy(fn ($s) => $s->flash_sale_ends_at ?? '9999-12-31')
+            ->first();
     }
 
     /**

@@ -344,9 +344,27 @@
 
               <!-- Price Card -->
               <div id="booking-section" class="bg-white p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-gray-100 relative overflow-hidden z-10">
+                <!-- Flash Sale banner -->
+                <div v-if="flashSchedule" class="mb-4 -mx-3 -mt-3 px-4 py-3 rounded-[1.25rem] bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white shadow-md">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-1.5 font-black text-sm">
+                      <span class="material-symbols-rounded" style="font-size:18px;">bolt</span>
+                      Flash Sale
+                      <span v-if="flashSchedule.flash_sale.discount_percent > 0" class="ml-1 bg-white/25 rounded-md px-1.5 py-0.5 text-[11px]">
+                        -{{ flashSchedule.flash_sale.discount_percent }}%
+                      </span>
+                    </div>
+                    <div v-if="flashSchedule.flash_sale.ends_at" class="font-mono font-black text-sm tabular-nums tracking-tight">
+                      {{ flashCountdown(flashSchedule.flash_sale.ends_at) }}
+                    </div>
+                  </div>
+                </div>
                 <!-- Starting price -->
                 <div class="flex items-end gap-2 mb-2">
                   <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
+                  <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-gray-400 text-xl pb-1.5 font-bold line-through decoration-2">
+                    ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
+                  </span>
                   <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold uppercase tracking-wider">/ ท่าน</span>
                 </div>
                 <p v-if="isTrekking && regionOptions.length" class="text-sm font-medium text-gray-400 mb-8">
@@ -1000,7 +1018,11 @@
                           </span>
                         </div>
                         <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-                        <span class="text-xs md:text-sm font-black text-[var(--color-text-dark)]">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
+                        <span class="text-xs md:text-sm font-black" :class="s.flash_sale?.active ? 'text-[#EA580C]' : 'text-[var(--color-text-dark)]'">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
+                        <span v-if="s.flash_sale?.active" class="text-[11px] font-bold text-gray-400 line-through">฿{{ Number(s.original_price).toLocaleString() }}</span>
+                        <span v-if="s.flash_sale?.active" class="inline-flex items-center gap-0.5 text-[9px] font-black bg-[#FFF7ED] text-[#EA580C] border border-[#FED7AA] px-1.5 py-0.5 rounded-md uppercase">
+                          <span class="material-symbols-rounded" style="font-size:11px;">bolt</span> Flash
+                        </span>
                       </div>
 
                       <!-- Region Badges -->
@@ -1691,6 +1713,29 @@ const displayPrice = computed(() => {
   return Number(trip.value?.price_per_person || 0);
 });
 
+// ─── Flash Sale ────────────────────────────────────────────
+// Ticks every second so countdowns stay live without per-component timers.
+const nowTick = ref(Date.now());
+let flashTimer = null;
+
+// The active flash sale to headline: the selected round if it's on sale, else
+// the soonest-ending active flash sale across this trip's rounds.
+const flashSchedule = computed(() => {
+  if (selectedSchedule.value?.flash_sale?.active) return selectedSchedule.value;
+  return schedules.value
+    .filter(s => s.flash_sale?.active)
+    .sort((a, b) => new Date(a.flash_sale.ends_at || '9999') - new Date(b.flash_sale.ends_at || '9999'))[0] || null;
+});
+
+const flashCountdown = (endsAt) => {
+  if (!endsAt) return '';
+  const diff = new Date(endsAt).getTime() - nowTick.value;
+  if (diff <= 0) return '00:00:00';
+  const pad = (n) => String(n).padStart(2, '0');
+  const totalHours = Math.floor(diff / 3600000);
+  return `${pad(totalHours)}:${pad(Math.floor((diff % 3600000) / 60000))}:${pad(Math.floor((diff % 60000) / 1000))}`;
+};
+
 function selectRegion(region) {
   selectedRegion.value = region;
   selectedSchedule.value = null;
@@ -1782,6 +1827,7 @@ onMounted(async () => {
     const sRes = await api.get(`/trips/${route.params.slug}/schedules`);
     schedules.value = sRes.data.data;
     schedulePoll = setInterval(refreshSchedules, SCHEDULE_POLL_MS);
+    flashTimer = setInterval(() => { nowTick.value = Date.now(); }, 1000);
 
     // Auto-select schedule and region from query params
     if (route.query.schedule) {
@@ -1832,6 +1878,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
   if (sectorObserver) sectorObserver.disconnect();
   if (schedulePoll) clearInterval(schedulePoll);
+  if (flashTimer) clearInterval(flashTimer);
   document.body.style.overflow = '';
 });
 

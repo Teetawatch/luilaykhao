@@ -161,6 +161,11 @@
                       <span v-if="sch.join_trip_enabled" class="status-badge badge-join-trip">
                         <span class="material-symbols-rounded icon-xs">group_add</span> จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}
                       </span>
+                      <span v-if="sch.flash_sale" class="status-badge badge-flash-sale" :class="{ 'badge-flash-inactive': !sch.flash_sale.active }">
+                        <span class="material-symbols-rounded icon-xs">bolt</span>
+                        Flash ฿{{ Number(sch.flash_sale.price || 0).toLocaleString() }}
+                        <template v-if="sch.flash_sale.ends_at"> · ถึง {{ flashEndLabel(sch.flash_sale.ends_at) }}</template>
+                      </span>
                     </div>
                   </td>
                   <td>
@@ -373,6 +378,32 @@
               <span class="material-symbols-rounded hint-icon hint-charter">info</span>
               รอบเหมาจะแสดงในแอปลูกค้าพร้อมป้าย "รอบเหมา" แต่ลูกค้าทั่วไปจะไม่สามารถกดจองได้
             </p>
+          </div>
+
+          <!-- Flash Sale Settings -->
+          <div class="form-toggle-section">
+            <div class="form-toggle-header">
+              <label class="form-toggle-label">
+                <input type="checkbox" v-model="form.flash_sale_enabled" class="check-flash-sale" />
+                <span>⚡ เปิด Flash Sale (ราคาพิเศษช่วงใกล้ออกทริป)</span>
+              </label>
+            </div>
+            <div v-if="form.flash_sale_enabled" class="form-grid">
+              <div class="form-group">
+                <label>ราคา Flash Sale (฿) *</label>
+                <input v-model.number="form.flash_sale_price" type="number" min="0" placeholder="เช่น 1990" required />
+              </div>
+              <div class="form-group">
+                <label>สิ้นสุด Flash Sale</label>
+                <input v-model="form.flash_sale_ends_at_local" type="datetime-local" />
+              </div>
+              <div class="form-group form-group-hint-cell full-width">
+                <p class="form-toggle-hint">
+                  <span class="material-symbols-rounded hint-icon hint-flash-sale">bolt</span>
+                  เมื่อเปิด ระบบจะส่ง Push แจ้งลูกค้าทันที · ราคาพิเศษมีผลกับการจอง/มัดจำจนกว่าจะหมดเวลา ที่ว่างเต็ม หรือถึงวันออกเดินทาง · เว้นเวลาว่างได้ (ไม่มีนับถอยหลัง)
+                </p>
+              </div>
+            </div>
           </div>
 
           <div class="modal-footer">
@@ -1627,7 +1658,23 @@ const form = reactive({
   deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
   join_trip_enabled: false, join_trip_price: null,
   is_charter: false,
+  flash_sale_enabled: false, flash_sale_price: null, flash_sale_ends_at_local: '',
 });
+
+// datetime-local (local time) → เก็บ/แสดงเทียบกับ ISO (UTC) ที่ backend ส่งมา
+const toLocalInput = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const flashEndLabel = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 // ─── เวลาออกรถจริง (departs_at) ─────────────────────────────
 // รถอาจออกคืนก่อนวันทริป เช่น ทริปเสาร์ที่ 13 แต่รถออกศุกร์ที่ 12 เวลา 23:30
@@ -1710,6 +1757,9 @@ const openForm = (item = null) => {
       join_trip_enabled: !!item.join_trip_enabled,
       join_trip_price: item.join_trip_price || null,
       is_charter: !!item.is_charter,
+      flash_sale_enabled: !!item.flash_sale,
+      flash_sale_price: item.flash_sale?.price || null,
+      flash_sale_ends_at_local: toLocalInput(item.flash_sale?.ends_at),
     });
   } else {
     Object.assign(form, {
@@ -1722,6 +1772,7 @@ const openForm = (item = null) => {
       deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
       join_trip_enabled: false, join_trip_price: null,
       is_charter: false,
+      flash_sale_enabled: false, flash_sale_price: null, flash_sale_ends_at_local: '',
     });
   }
   showForm.value = true;
@@ -1746,6 +1797,16 @@ const submitForm = async () => {
     } else if (data.deposit_type === 'percent') {
       data.deposit_amount = null;
     }
+    // Flash sale: send end time as UTC ISO; clear price/end when turned off.
+    if (data.flash_sale_enabled) {
+      data.flash_sale_ends_at = data.flash_sale_ends_at_local
+        ? new Date(data.flash_sale_ends_at_local).toISOString()
+        : null;
+    } else {
+      data.flash_sale_price = null;
+      data.flash_sale_ends_at = null;
+    }
+    delete data.flash_sale_ends_at_local;
     if (editing.value) {
       await admin.updateSchedule(editing.value.id, data);
     } else {
@@ -4597,6 +4658,19 @@ onMounted(() => {
   font-size: 9px;
 }
 
+.badge-flash-sale {
+  background: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+  font-size: 9px;
+}
+
+.badge-flash-inactive {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
 .icon-xs {
   font-size: 11px !important;
 }
@@ -4650,6 +4724,7 @@ onMounted(() => {
 .check-deposit     { accent-color: #0d9488; }
 .check-join-trip   { accent-color: #0f766e; }
 .check-charter     { accent-color: #7c3aed; }
+.check-flash-sale  { accent-color: #ea580c; }
 
 .form-toggle-hint {
   display: flex;
@@ -4664,6 +4739,7 @@ onMounted(() => {
 .hint-icon { font-size: 14px !important; flex-shrink: 0; margin-top: 1px; }
 .hint-deposit  { color: #0d9488; }
 .hint-join-trip { color: #0f766e; }
+.hint-flash-sale { color: #ea580c; }
 .hint-charter  { color: #7c3aed; }
 
 .form-group-hint-cell {

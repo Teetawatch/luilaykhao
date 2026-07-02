@@ -47,6 +47,9 @@ class StoreScheduleRequest extends FormRequest
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
             'is_charter' => ['nullable', 'boolean'],
+            'flash_sale_enabled' => ['nullable', 'boolean'],
+            'flash_sale_price' => ['nullable', 'numeric', 'min:0', 'required_if:flash_sale_enabled,true'],
+            'flash_sale_ends_at' => ['nullable', 'date', 'after:now'],
         ];
     }
 }

@@ -47,10 +47,10 @@ class OutstandingPaymentService
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('booking_ref', 'like', "%{$search}%")
-                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('passengers', fn ($p) => $p->where('name', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%"));
+                $q->whereLike('booking_ref', "%{$search}%")
+                    ->orWhereHas('user', fn ($u) => $u->whereLike('name', "%{$search}%"))
+                    ->orWhereHas('passengers', fn ($p) => $p->whereLike('name', "%{$search}%")
+                        ->orWhereLike('phone', "%{$search}%"));
             });
         }
 

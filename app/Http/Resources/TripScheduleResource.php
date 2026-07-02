@@ -52,6 +52,20 @@ class TripScheduleResource extends JsonResource
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,
             'price' => $this->effective_price,
+            // Pre-discount price (struck through in the UI) and the live flash-sale
+            // block, present only when the admin has enabled a flash sale.
+            'original_price' => $this->original_price,
+            'flash_sale' => $this->when(
+                (bool) $this->flash_sale_enabled,
+                fn () => [
+                    'active' => $this->flashSaleActive(),
+                    'price' => (float) $this->flash_sale_price,
+                    'ends_at' => $this->flash_sale_ends_at?->toISOString(),
+                    'discount_percent' => $this->original_price > 0
+                        ? (int) round(($this->original_price - (float) $this->flash_sale_price) / $this->original_price * 100)
+                        : 0,
+                ]
+            ),
             'installment_enabled' => (bool) $this->installment_enabled,
             'installment_count' => $this->installment_count,
             'installment_interval_days' => $this->installment_interval_days,

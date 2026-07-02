@@ -24,7 +24,7 @@ class AdminArticleController extends Controller
     {
         $articles = Article::with('category')
             ->when($request->query('status'), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->query('search'), fn ($q, $term) => $q->where('title', 'like', "%{$term}%"))
+            ->when($request->query('search'), fn ($q, $term) => $q->whereLike('title', "%{$term}%"))
             ->orderByDesc('created_at')
             ->paginate(20);
 

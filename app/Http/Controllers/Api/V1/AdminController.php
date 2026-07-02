@@ -168,8 +168,8 @@ class AdminController extends Controller
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', "%{$request->search}%")
-                    ->orWhere('location', 'like', "%{$request->search}%");
+                $q->whereLike('title', "%{$request->search}%")
+                    ->orWhereLike('location', "%{$request->search}%");
             });
         }
 
@@ -264,7 +264,7 @@ class AdminController extends Controller
             $query->where('trip_id', $request->trip_id);
         }
         if ($request->filled('search')) {
-            $query->whereHas('trip', fn ($q) => $q->where('title', 'like', "%{$request->search}%"));
+            $query->whereHas('trip', fn ($q) => $q->whereLike('title', "%{$request->search}%"));
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -319,6 +319,9 @@ class AdminController extends Controller
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
             'is_charter' => ['nullable', 'boolean'],
+            'flash_sale_enabled' => ['sometimes', 'boolean'],
+            'flash_sale_price' => ['nullable', 'numeric', 'min:0', 'required_if:flash_sale_enabled,true'],
+            'flash_sale_ends_at' => ['nullable', 'date', 'after:now'],
         ]);
 
         $schedule->update($validated);
@@ -795,13 +798,13 @@ class AdminController extends Controller
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('booking_ref', 'like', "%{$request->search}%")
-                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%")
-                        ->orWhere('email', 'like', "%{$request->search}%")
-                        ->orWhere('phone', 'like', "%{$request->search}%"))
-                    ->orWhereHas('passengers', fn ($p) => $p->where('name', 'like', "%{$request->search}%")
-                        ->orWhere('phone', 'like', "%{$request->search}%"))
-                    ->orWhereHas('schedule.trip', fn ($trip) => $trip->where('title', 'like', "%{$request->search}%"));
+                $q->whereLike('booking_ref', "%{$request->search}%")
+                    ->orWhereHas('user', fn ($u) => $u->whereLike('name', "%{$request->search}%")
+                        ->orWhereLike('email', "%{$request->search}%")
+                        ->orWhereLike('phone', "%{$request->search}%"))
+                    ->orWhereHas('passengers', fn ($p) => $p->whereLike('name', "%{$request->search}%")
+                        ->orWhereLike('phone', "%{$request->search}%"))
+                    ->orWhereHas('schedule.trip', fn ($trip) => $trip->whereLike('title', "%{$request->search}%"));
             });
         }
         if ($request->filled('booking_type')) {
@@ -1906,9 +1909,9 @@ class AdminController extends Controller
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")
-                    ->orWhere('email', 'like', "%{$request->search}%")
-                    ->orWhere('phone', 'like', "%{$request->search}%");
+                $q->whereLike('name', "%{$request->search}%")
+                    ->orWhereLike('email', "%{$request->search}%")
+                    ->orWhereLike('phone', "%{$request->search}%");
             });
         }
 
@@ -1951,9 +1954,9 @@ class AdminController extends Controller
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")
-                    ->orWhere('email', 'like', "%{$request->search}%")
-                    ->orWhere('phone', 'like', "%{$request->search}%");
+                $q->whereLike('name', "%{$request->search}%")
+                    ->orWhereLike('email', "%{$request->search}%")
+                    ->orWhereLike('phone', "%{$request->search}%");
             });
         }
 
