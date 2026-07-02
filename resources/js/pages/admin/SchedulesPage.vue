@@ -1060,7 +1060,7 @@
           <div class="apply-section">
             <div class="apply-section-title"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบเดินทางปลายทาง</div>
             <div class="copy-target-list">
-              <div v-for="group in groupedByTrip" :key="group.trip_id" style="margin-bottom:8px;">
+              <div v-for="group in moveTargetGroups" :key="group.trip_id" style="margin-bottom:8px;">
                 <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
                 <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item" :class="{ disabled: isMoveTargetDisabled(sch) }">
                   <input type="radio" v-model="moveTargetId" :value="sch.id" :disabled="isMoveTargetDisabled(sch)" />
@@ -1862,6 +1862,13 @@ const moveSeatMapLoading = ref(false);
 const moveSeatMapError = ref('');
 const moveSeatAssignments = reactive({});
 const activeMoveSeatPassengerId = ref(null);
+
+// รอบปลายทางแสดงเฉพาะทริปเดียวกับต้นทางเท่านั้น
+const moveTargetGroups = computed(() => {
+  if (!moveSource.value) return [];
+  const tid = moveSource.value.trip_id ?? moveSource.value.trip?.id;
+  return groupedByTrip.value.filter((g) => g.trip_id === tid);
+});
 
 const selectedMovePassengerCount = computed(() => moveSelectedPassengerIds.value.length);
 const selectedMovePassengers = computed(() => {
