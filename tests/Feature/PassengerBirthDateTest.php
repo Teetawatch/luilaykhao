@@ -122,6 +122,44 @@ class PassengerBirthDateTest extends TestCase
         $this->assertSame(Carbon::parse('1995-06-15')->age, $manifest['age']);
     }
 
+    public function test_manifest_surfaces_custom_pin_pickup(): void
+    {
+        $admin = $this->makeAdmin();
+        $customer = User::factory()->create();
+        $schedule = $this->makeSchedule();
+
+        app(BookingService::class)->createBooking(
+            userId: $customer->id,
+            scheduleId: $schedule->id,
+            passengers: [[
+                'title' => 'นาย',
+                'name' => 'Pin Person',
+                'phone' => '0810000000',
+            ]],
+            customPickup: [
+                'label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+                'lat' => 14.51234,
+                'lng' => 101.37890,
+                'note' => 'รอตรงร้านกาแฟ',
+            ],
+        );
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/calendar/schedules')
+            ->assertOk();
+
+        $manifest = $response->json('data.0.passenger_manifest.0');
+        $this->assertTrue($manifest['is_custom_pickup']);
+        $this->assertSame('ลูกค้าปักหมุดเอง', $manifest['pickup_region']);
+        $this->assertSame('ปั๊ม ปตท. ทางเข้าเขาใหญ่', $manifest['pickup_location']);
+        $this->assertSame(14.51234, $manifest['custom_pickup_lat']);
+        $this->assertSame(101.3789, $manifest['custom_pickup_lng']);
+        $this->assertSame(
+            'https://www.google.com/maps/search/?api=1&query=14.51234,101.3789',
+            $manifest['custom_pickup_map_url'],
+        );
+    }
+
     public function test_admin_can_backfill_passenger_birth_date(): void
     {
         $admin = $this->makeAdmin();

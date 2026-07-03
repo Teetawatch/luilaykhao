@@ -1225,7 +1225,7 @@ function exportInsurancePdf(scheduleItems, title) {
         <td>${escapeHtml(healthSummary(person))}</td>
         <td>${escapeHtml(emergencySummary(person))}</td>
         <td>${escapeHtml((person.seat_labels || []).join(', ') || (person.booking_type === 'join_trip' ? 'จอยทริป' : '-'))}</td>
-        <td>${escapeHtml([person.pickup_region, person.pickup_location].filter(Boolean).join(' / ') || '-')}</td>
+        <td>${escapeHtml([person.pickup_region, person.pickup_location].filter(Boolean).join(' / ') || '-')}${person.is_custom_pickup && person.custom_pickup_lat != null ? `<br><span style="font-size:11px;color:#666">${escapeHtml(`${person.custom_pickup_lat}, ${person.custom_pickup_lng}`)}</span>` : ''}</td>
       </tr>
     `).join('');
 

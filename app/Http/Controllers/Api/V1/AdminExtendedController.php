@@ -91,7 +91,20 @@ class AdminExtendedController extends Controller
                 ->flatMap(function ($booking) {
                     $seatLabels = $booking->seats->pluck('seat_id')->filter()->values()->all();
 
-                    return $booking->passengers->map(function ($passenger) use ($booking, $seatLabels) {
+                    // จุดรับที่ลูกค้าปักหมุดเอง (ไม่มีจุดรับตายตัว) — โชว์ชื่อ+พิกัด+ลิงก์แผนที่
+                    $hasCustomPickup = ! $booking->pickup_point_id
+                        && $booking->custom_pickup_lat !== null
+                        && $booking->custom_pickup_lng !== null
+                        && $booking->custom_pickup_status !== 'rejected';
+                    $customPickupMapUrl = $hasCustomPickup
+                        ? sprintf(
+                            'https://www.google.com/maps/search/?api=1&query=%s,%s',
+                            $booking->custom_pickup_lat,
+                            $booking->custom_pickup_lng,
+                        )
+                        : null;
+
+                    return $booking->passengers->map(function ($passenger) use ($booking, $seatLabels, $hasCustomPickup, $customPickupMapUrl) {
                         return [
                             'id' => $passenger->id,
                             'booking_id' => $booking->id,
@@ -117,8 +130,17 @@ class AdminExtendedController extends Controller
                             'weight' => $passenger->weight,
                             'halal_food' => (bool) $passenger->halal_food,
                             'seat_labels' => $booking->is_join_trip ? [] : $seatLabels,
-                            'pickup_region' => $booking->pickupPoint?->region_label ?: $booking->pickup_region,
-                            'pickup_location' => $booking->pickupPoint?->pickup_location,
+                            'pickup_region' => $hasCustomPickup
+                                ? 'ลูกค้าปักหมุดเอง'
+                                : ($booking->pickupPoint?->region_label ?: $booking->pickup_region),
+                            'pickup_location' => $hasCustomPickup
+                                ? ($booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง')
+                                : $booking->pickupPoint?->pickup_location,
+                            'is_custom_pickup' => $hasCustomPickup,
+                            'custom_pickup_lat' => $hasCustomPickup ? (float) $booking->custom_pickup_lat : null,
+                            'custom_pickup_lng' => $hasCustomPickup ? (float) $booking->custom_pickup_lng : null,
+                            'custom_pickup_note' => $hasCustomPickup ? $booking->custom_pickup_note : null,
+                            'custom_pickup_map_url' => $customPickupMapUrl,
                             'customer_name' => $booking->user?->name,
                             'customer_phone' => $booking->user?->phone,
                             'payment_type' => $booking->payment_type,
