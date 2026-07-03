@@ -2014,10 +2014,14 @@ async function createBooking() {
   bookingLoading.value = true;
   bookingError.value = '';
   try {
+    // ปักหมุดจุดรับเอง = ไม่ได้เลือกจุดที่กำหนด แล้วมีหมุด
+    const usingCustomPickup = !selectedPickup.value && !!customPickup.value;
     const data = {
       schedule_id: parseInt(route.params.scheduleId),
-      pickup_region: selectedPickup.value?.region || preselectedRegion || null,
-      pickup_point_id: selectedPickup.value?.id || null,
+      // เมื่อปักหมุดเอง ห้ามส่ง region/จุดรับตายตัว ไม่งั้น backend จะจับคู่จุดรับตายตัว
+      // แล้วมองข้ามหมุด (useCustomPickup = false) ทำให้ข้อมูลหมุดไม่ถูกบันทึก
+      pickup_region: usingCustomPickup ? null : (selectedPickup.value?.region || preselectedRegion || null),
+      pickup_point_id: usingCustomPickup ? null : (selectedPickup.value?.id || null),
       is_group: isGroup.value,
       group_name: isGroup.value ? groupName.value : null,
       group_notes: isGroup.value ? groupNotes.value : null,
@@ -2039,11 +2043,12 @@ async function createBooking() {
         dive_cert_level: p.dive_cert_level || null,
         cert_number: p.cert_number || null,
         weight: p.weight || null,
-        pickup_point_id: p.pickup_point_id || null,
+        // ปักหมุดเองเป็นระดับการจอง — ไม่ผูกจุดรับรายคน ไม่งั้นหน้าสตาฟจะจัดกลุ่มเข้าจุดตายตัว
+        pickup_point_id: usingCustomPickup ? null : (p.pickup_point_id || null),
       })),
     };
     // จุดรับที่ลูกค้าปักหมุดเอง (ส่งเมื่อไม่ได้เลือกจุดที่กำหนด) — รอแอดมินยืนยันราคา
-    if (!selectedPickup.value && customPickup.value) {
+    if (usingCustomPickup) {
       data.custom_pickup_label = customPickup.value.label;
       data.custom_pickup_lat = customPickup.value.lat;
       data.custom_pickup_lng = customPickup.value.lng;

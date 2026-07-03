@@ -91,6 +91,59 @@ class CustomPickupTest extends TestCase
         $this->assertEquals(1500, (float) $booking->total_amount);
     }
 
+    public function test_pickup_region_matching_a_point_drops_custom_pickup(): void
+    {
+        // เอกสารกำกับสัญญา backend: ถ้าส่ง pickup_region ที่ตรงกับจุดรับตายตัวมาด้วย
+        // จุดตายตัวจะชนะและหมุดจะถูกมองข้าม — หน้าจองจึงต้องไม่ส่ง region ตอนปักหมุดเอง
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengerPayload(),
+                'pickup_region' => 'bangkok', // มาจาก ?region= — ทำให้หมุดถูกมองข้าม
+                'custom_pickup_label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+                'custom_pickup_lat' => 14.4521,
+                'custom_pickup_lng' => 101.3721,
+            ])
+            ->assertCreated();
+
+        $this->assertNull(Booking::first()->custom_pickup_status);
+    }
+
+    public function test_custom_pickup_stored_when_region_omitted(): void
+    {
+        // เลียนแบบ payload ที่หน้าจองแก้แล้ว: ปักหมุดเอง = ไม่ส่ง region/จุดตายตัว
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengerPayload(),
+                'pickup_region' => null,
+                'pickup_point_id' => null,
+                'custom_pickup_label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+                'custom_pickup_lat' => 14.4521,
+                'custom_pickup_lng' => 101.3721,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.custom_pickup.status', 'approved');
+
+        $booking = Booking::first();
+        $this->assertNull($booking->pickup_point_id);
+        $this->assertNull($booking->passengers()->first()->pickup_point_id);
+    }
+
     public function test_custom_pickup_validation_requires_label_and_coords_together(): void
     {
         $user = User::factory()->create();
