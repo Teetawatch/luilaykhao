@@ -139,6 +139,24 @@ class AlmostFullTripsTest extends TestCase
         $this->assertSame([$urgent->slug, $soon->slug], $slugs->all());
     }
 
+    public function test_trips_index_defaults_to_most_booked_first(): void
+    {
+        // สร้างสามทริป จำนวนคนจองต่างกัน แล้วสร้างเรียงจากน้อยไปมากตาม created_at
+        $few = $this->makeTrip('Few Bookings');
+        $this->occupy($this->addSchedule($few, 20), 2);
+
+        $many = $this->makeTrip('Many Bookings');
+        $this->occupy($this->addSchedule($many, 20), 9);
+
+        $some = $this->makeTrip('Some Bookings');
+        $this->occupy($this->addSchedule($some, 20), 5);
+
+        $slugs = collect($this->getJson('/api/v1/trips')->assertOk()->json('data'))
+            ->pluck('slug');
+
+        $this->assertSame([$many->slug, $some->slug, $few->slug], $slugs->all());
+    }
+
     public function test_almost_full_ignores_full_round_but_keeps_low_open_round(): void
     {
         $trip = $this->makeTrip('Mixed Rounds');

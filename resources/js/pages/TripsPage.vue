@@ -248,7 +248,8 @@ const sortedTrips = computed(() => {
   if (sortOrder.value === 'price_desc') {
     return list.sort((a, b) => Number(b.price_per_person) - Number(a.price_per_person));
   }
-  return list;
+  // ทริปยอดนิยม = เรียงตามจำนวนคนจองมากไปน้อย
+  return list.sort((a, b) => (b.booked_passengers_count || 0) - (a.booked_passengers_count || 0));
 });
 
 const totalConfirmedParticipants = computed(() => {

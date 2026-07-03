@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
+use App\Models\BookingPassenger;
 use App\Models\Trip;
 use App\Services\WeatherService;
 use App\Traits\ApiResponse;
@@ -51,11 +52,22 @@ class TripController extends Controller
             });
         }
 
+        // เรียงเริ่มต้น "ทริปยอดนิยม" = จำนวนคนจอง (ผู้โดยสารในบุ๊กกิ้งที่ยืนยัน/เสร็จสิ้น) มากไปน้อย
+        // ใช้ subquery เพื่อให้เรียงถูกต้องข้ามหน้า (pagination) ไม่ใช่แค่หน้าปัจจุบัน
+        $bookedPassengersCount = BookingPassenger::query()
+            ->selectRaw('count(*)')
+            ->join('bookings', 'booking_passengers.booking_id', '=', 'bookings.id')
+            ->join('trip_schedules', 'bookings.schedule_id', '=', 'trip_schedules.id')
+            ->whereColumn('trip_schedules.trip_id', 'trips.id')
+            ->whereIn('bookings.status', ['confirmed', 'completed']);
+
         $trips = $query->with(['schedules' => function ($q) {
             $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
         }])->withCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
-        }])->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
+        }])->orderByDesc($bookedPassengersCount)
+            ->orderBy('created_at', 'desc')
+            ->paginate($request->per_page ?? 12);
         $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->paginated($trips->through(fn ($trip) => new TripResource($trip)));
