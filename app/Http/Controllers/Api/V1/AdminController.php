@@ -1161,6 +1161,7 @@ class AdminController extends Controller
                 }
 
                 // จุดรับที่ปักหมุดเอง — แอดมินปักหมุด/แก้ไข/ลบได้จากหน้าแก้ไขการจอง
+                $customPickupSet = false;
                 if ($request->boolean('clear_custom_pickup')) {
                     $bookingUpdates['custom_pickup_label'] = null;
                     $bookingUpdates['custom_pickup_lat'] = null;
@@ -1188,6 +1189,7 @@ class AdminController extends Controller
                     // เพื่อให้หน้าสตาฟ (buildPickupGroups) แสดงหมุดของลูกค้าได้ (เงื่อนไข ! pickup_point_id)
                     $bookingUpdates['pickup_point_id'] = null;
                     $bookingUpdates['pickup_region'] = null;
+                    $customPickupSet = true;
                 }
                 if (array_key_exists('checked_in', $data)) {
                     $bookingUpdates['checked_in'] = (bool) $data['checked_in'];
@@ -1259,6 +1261,12 @@ class AdminController extends Controller
                     }
 
                     $booking->passengers()->whereNotIn('id', $keptIds ?: [0])->delete();
+                }
+
+                // ปักหมุดเองเป็นระดับการจอง — ล้างจุดรับรายคนที่ค้างจากจุดตายตัวเดิม
+                // ไม่งั้นหน้าสตาฟจะจัดกลุ่มผู้โดยสารเข้าจุดเก่าแทนหมุด
+                if ($customPickupSet) {
+                    $booking->passengers()->update(['pickup_point_id' => null]);
                 }
 
                 if (array_key_exists('seat_ids', $data)) {

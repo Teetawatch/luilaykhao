@@ -311,7 +311,48 @@ class StaffCheckInTest extends TestCase
             ->assertJsonPath('data.pickup_groups.0.is_custom', true)
             ->assertJsonPath('data.pickup_groups.0.label', 'ปั๊ม ปตท. ทางเข้าเขาใหญ่')
             ->assertJsonPath('data.pickup_groups.0.notes', 'รอตรงร้านกาแฟ')
+            ->assertJsonPath('data.pickup_groups.0.lat', 14.51234)
+            ->assertJsonPath('data.pickup_groups.0.lng', 101.3789)
             ->assertJsonPath('data.pickup_groups.0.map_url', 'https://www.google.com/maps/search/?api=1&query=14.51234,101.3789');
+    }
+
+    public function test_custom_pin_wins_over_stale_per_passenger_pickup_point(): void
+    {
+        Role::create(['name' => 'staff']);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $booking] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        // Booking originally had a fixed pickup point, so the passenger still
+        // carries that pickup_point_id even after switching to a custom pin.
+        $stalePoint = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+        $booking->passengers()->update(['pickup_point_id' => $stalePoint->id]);
+        $booking->update([
+            'pickup_point_id' => null,
+            'custom_pickup_label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+            'custom_pickup_lat' => 14.51234,
+            'custom_pickup_lng' => 101.37890,
+            'custom_pickup_status' => Booking::CUSTOM_PICKUP_APPROVED,
+        ]);
+
+        // The manifest must group the passenger under the custom pin, not the
+        // stale fixed point.
+        $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->assertJsonPath('data.pickup_groups.0.is_custom', true)
+            ->assertJsonPath('data.pickup_groups.0.label', 'ปั๊ม ปตท. ทางเข้าเขาใหญ่')
+            ->assertJsonCount(1, 'data.pickup_groups');
     }
 
     private function createConfirmedBooking(): array

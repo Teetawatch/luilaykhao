@@ -174,5 +174,7 @@ class CustomPickupTest extends TestCase
         $this->assertNull($booking->pickup_region);
         $this->assertSame('approved', $booking->custom_pickup_status);
         $this->assertSame('ปั๊ม ปตท. ทางเข้าเขาใหญ่', $booking->custom_pickup_label);
+        // จุดรับรายผู้โดยสารที่ค้างต้องถูกล้างด้วย ไม่งั้นหน้าสตาฟจัดกลุ่มเข้าจุดเก่า
+        $this->assertNull($booking->passengers()->first()->pickup_point_id);
     }
 }

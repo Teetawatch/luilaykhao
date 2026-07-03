@@ -536,8 +536,10 @@ class DriverController extends Controller
                 && $booking->custom_pickup_status !== 'rejected';
 
             foreach ($booking->passengers as $passenger) {
-                $point = $passenger->pickupPoint ?: $booking->pickupPoint;
-                $isCustom = $hasCustomPickup && ! $point;
+                // จุดปักหมุดเองเป็นระดับการจอง — ถ้าการจองใช้หมุด ผู้โดยสารทุกคนอยู่กลุ่มหมุดนั้น
+                // (ไม่สนจุดรับรายคนที่อาจค้างจากตอนจองด้วยจุดตายตัวแล้วแอดมินเปลี่ยนเป็นหมุดภายหลัง)
+                $isCustom = $hasCustomPickup;
+                $point = $isCustom ? null : ($passenger->pickupPoint ?: $booking->pickupPoint);
                 $key = $isCustom ? 'custom-'.$booking->id : ($point?->id ?? 0);
 
                 if (! isset($groups[$key])) {
@@ -546,6 +548,8 @@ class DriverController extends Controller
                             'id' => null,
                             'label' => $booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง',
                             'region_label' => 'ลูกค้าปักหมุดเอง',
+                            'lat' => (float) $booking->custom_pickup_lat,
+                            'lng' => (float) $booking->custom_pickup_lng,
                             'map_url' => sprintf(
                                 'https://www.google.com/maps/search/?api=1&query=%s,%s',
                                 $booking->custom_pickup_lat,
