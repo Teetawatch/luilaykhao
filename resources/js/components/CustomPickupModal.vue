@@ -20,6 +20,33 @@
           แล้ว<strong class="text-gray-700">แจ้งค่าบริการกลับไปยืนยันอีกครั้ง</strong>
         </p>
 
+        <!-- ค้นหาสถานที่ตามชื่อ (Nominatim / OpenStreetMap) -->
+        <div class="relative">
+          <div class="relative">
+            <span class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
+            <input v-model="searchQuery" @input="onSearchInput" @keyup.enter="runSearch" type="text"
+              placeholder="ค้นหาสถานที่ เช่น เซ็นทรัลลาดพร้าว, ปั๊ม ปตท. ทางเข้าเขาใหญ่"
+              class="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium" />
+            <span v-if="searching" class="material-symbols-rounded animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-teal-500 text-[20px]">progress_activity</span>
+            <button v-else-if="searchQuery" type="button" @click="clearSearch"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <span class="material-symbols-rounded text-[20px]">close</span>
+            </button>
+          </div>
+          <!-- ผลการค้นหา -->
+          <ul v-if="searchResults.length"
+            class="absolute z-[500] mt-1 w-full max-h-56 overflow-y-auto bg-white rounded-xl border border-gray-200 shadow-lg">
+            <li v-for="(r, i) in searchResults" :key="i">
+              <button type="button" @click="pickResult(r)"
+                class="w-full text-left px-4 py-2.5 hover:bg-teal-50 flex items-start gap-2 border-b border-gray-50 last:border-0">
+                <span class="material-symbols-rounded text-teal-600 text-[18px] mt-0.5 shrink-0">location_on</span>
+                <span class="text-sm text-gray-700 leading-snug">{{ r.label }}</span>
+              </button>
+            </li>
+          </ul>
+          <p v-else-if="searchedEmpty" class="mt-1.5 text-xs text-gray-400 font-medium">ไม่พบสถานที่ตามคำค้นหา ลองพิมพ์ใหม่หรือปักหมุดบนแผนที่เอง</p>
+        </div>
+
         <!-- Map — หมุดตรึงกลาง เลื่อนแผนที่เอา (แบบ LINE MAN) -->
         <div class="relative w-full h-64 rounded-2xl border border-gray-200 overflow-hidden bg-gray-50">
           <div ref="mapEl" class="absolute inset-0 z-0"></div>
@@ -35,9 +62,23 @@
           </button>
         </div>
 
-        <div v-if="coords" class="flex items-center gap-2 text-xs text-gray-500 font-medium">
-          <span class="material-symbols-rounded text-[16px] text-teal-600">my_location</span>
-          {{ coords.lat.toFixed(5) }}, {{ coords.lng.toFixed(5) }}
+        <!-- พิกัด Lat/Long — แก้ไขเองได้ กด "ไป" เพื่อเลื่อนแผนที่ไปยังพิกัดนั้น -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1.5">พิกัด (ละติจูด, ลองจิจูด)</label>
+          <div class="flex items-center gap-2">
+            <input v-model="latInput" @keyup.enter="goToLatLng" @focus="latLngFocused = true" @blur="latLngFocused = false"
+              type="text" inputmode="decimal" placeholder="ละติจูด เช่น 13.75630"
+              class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium tabular-nums" />
+            <input v-model="lngInput" @keyup.enter="goToLatLng" @focus="latLngFocused = true" @blur="latLngFocused = false"
+              type="text" inputmode="decimal" placeholder="ลองจิจูด เช่น 100.50180"
+              class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium tabular-nums" />
+            <button type="button" @click="goToLatLng" :disabled="!canGoLatLng"
+              class="shrink-0 px-4 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-bold hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              ไป
+            </button>
+          </div>
+          <p v-if="latLngError" class="mt-1.5 text-xs text-red-500 font-medium">{{ latLngError }}</p>
+          <p v-else class="mt-1.5 text-xs text-gray-400 font-medium">วางพิกัดจาก Google Maps ได้ (เช่น 13.7563, 100.5018)</p>
         </div>
 
         <!-- Label -->
@@ -91,10 +132,42 @@ const label = ref(props.initial?.label || '');
 const note = ref(props.initial?.note || '');
 const locating = ref(false);
 
+// ค้นหาสถานที่ตามชื่อ
+const searchQuery = ref('');
+const searchResults = ref([]);
+const searching = ref(false);
+const searchedEmpty = ref(false);
+let searchTimer = null;
+let searchSeq = 0;
+
+// ช่องกรอกพิกัดเอง (แยกจาก coords เพื่อให้พิมพ์/วางได้อิสระ)
+const latInput = ref(props.initial?.lat != null ? Number(props.initial.lat).toFixed(6) : '');
+const lngInput = ref(props.initial?.lng != null ? Number(props.initial.lng).toFixed(6) : '');
+const latLngError = ref('');
+const latLngFocused = ref(false);
+
 let map = null;
 let L = null;
 
 const canConfirm = computed(() => coords.value && label.value.trim().length > 0);
+
+// รองรับการวาง "lat, lng" รวมในช่องละติจูด (คัดลอกจาก Google Maps)
+const parsedLatLng = computed(() => {
+  let latRaw = String(latInput.value).trim();
+  let lngRaw = String(lngInput.value).trim();
+  if (latRaw.includes(',')) {
+    const parts = latRaw.split(',');
+    latRaw = parts[0].trim();
+    if (!lngRaw) lngRaw = (parts[1] || '').trim();
+  }
+  const lat = Number(latRaw);
+  const lng = Number(lngRaw);
+  const valid = latRaw !== '' && lngRaw !== '' && Number.isFinite(lat) && Number.isFinite(lng)
+    && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  return { lat, lng, valid };
+});
+
+const canGoLatLng = computed(() => parsedLatLng.value.valid);
 
 function loadLeaflet() {
   if (window.L) { L = window.L; return Promise.resolve(); }
@@ -113,6 +186,83 @@ function loadLeaflet() {
 function syncCenter() {
   const c = map.getCenter();
   coords.value = { lat: c.lat, lng: c.lng };
+  // สะท้อนพิกัดกึ่งกลางลงช่องกรอก (เว้นตอนที่ผู้ใช้กำลังโฟกัสแก้ไขเอง)
+  if (!latLngFocused.value) {
+    latInput.value = c.lat.toFixed(6);
+    lngInput.value = c.lng.toFixed(6);
+    latLngError.value = '';
+  }
+}
+
+// ── ค้นหาสถานที่ตามชื่อ (Nominatim / OpenStreetMap) ──
+function onSearchInput() {
+  searchedEmpty.value = false;
+  clearTimeout(searchTimer);
+  if (searchQuery.value.trim().length < 3) {
+    searchResults.value = [];
+    return;
+  }
+  searchTimer = setTimeout(runSearch, 600);
+}
+
+async function runSearch() {
+  clearTimeout(searchTimer);
+  const q = searchQuery.value.trim();
+  if (q.length < 2) return;
+  const seq = ++searchSeq;
+  searching.value = true;
+  searchedEmpty.value = false;
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=th&countrycodes=th&q='
+      + encodeURIComponent(q);
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    const data = await res.json();
+    if (seq !== searchSeq) return; // ผลลัพธ์เก่า ทิ้งไป
+    searchResults.value = (Array.isArray(data) ? data : []).map((r) => ({
+      label: r.display_name,
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+    }));
+    searchedEmpty.value = searchResults.value.length === 0;
+  } catch (e) {
+    if (seq === searchSeq) { searchResults.value = []; searchedEmpty.value = true; }
+  } finally {
+    if (seq === searchSeq) searching.value = false;
+  }
+}
+
+function pickResult(r) {
+  searchResults.value = [];
+  searchedEmpty.value = false;
+  searchQuery.value = r.label.split(',')[0];
+  if (map) {
+    map.setView([r.lat, r.lng], 16);
+    syncCenter();
+  }
+  // เติมชื่อจุดรับให้อัตโนมัติหากยังว่าง
+  if (!label.value.trim()) label.value = r.label.split(',')[0];
+}
+
+function clearSearch() {
+  searchQuery.value = '';
+  searchResults.value = [];
+  searchedEmpty.value = false;
+}
+
+// ── ไปยังพิกัดที่กรอกเอง ──
+function goToLatLng() {
+  const { lat, lng, valid } = parsedLatLng.value;
+  if (!valid) {
+    latLngError.value = 'พิกัดไม่ถูกต้อง กรุณากรอกละติจูด (-90 ถึง 90) และลองจิจูด (-180 ถึง 180)';
+    return;
+  }
+  latLngError.value = '';
+  latInput.value = lat.toFixed(6);
+  lngInput.value = lng.toFixed(6);
+  if (map) {
+    map.setView([lat, lng], 16);
+    syncCenter();
+  }
 }
 
 onMounted(async () => {
@@ -136,6 +286,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  clearTimeout(searchTimer);
   if (map) { map.remove(); map = null; }
 });
 
