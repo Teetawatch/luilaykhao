@@ -892,6 +892,33 @@
                   {{ editForm.is_join_trip ? 'จอยทริปไม่ต้องระบุที่นั่ง' : 'พิมพ์รหัสที่นั่งคั่นด้วยเครื่องหมายจุลภาค จำนวนต้องเท่ากับผู้โดยสาร' }}
                 </small>
               </div>
+
+              <!-- จุดรับปักหมุดเอง — แอดมินปักหมุด/แก้ไข/ลบจากแผนที่ได้ -->
+              <div class="form-group full-span">
+                <label>จุดรับปักหมุดเอง (จากแผนที่)</label>
+                <div v-if="editCustomPickup" class="cp-edit-card">
+                  <div class="cp-edit-body">
+                    <span class="material-symbols-rounded cp-edit-icon">add_location_alt</span>
+                    <div class="cp-edit-text">
+                      <p class="cp-edit-label">{{ editCustomPickup.label }}</p>
+                      <p v-if="editCustomPickup.note" class="cp-edit-note">{{ editCustomPickup.note }}</p>
+                      <p class="cp-edit-coords">{{ Number(editCustomPickup.lat).toFixed(5) }}, {{ Number(editCustomPickup.lng).toFixed(5) }}</p>
+                    </div>
+                  </div>
+                  <div class="cp-edit-actions">
+                    <button type="button" class="cp-edit-btn" @click="openEditCustomPickup">
+                      <span class="material-symbols-rounded">edit_location_alt</span> แก้ไขหมุด
+                    </button>
+                    <button type="button" class="cp-edit-btn danger" @click="clearEditCustomPickup">
+                      <span class="material-symbols-rounded">delete</span> ลบ
+                    </button>
+                  </div>
+                </div>
+                <button v-else type="button" class="cp-edit-add" @click="openEditCustomPickup">
+                  <span class="material-symbols-rounded">add_location_alt</span> ปักหมุดจุดรับจากแผนที่
+                </button>
+                <small class="field-hint">ลูกค้าปักหมุดเองในหน้าจอง แอดมินปักหมุด/แก้ไขได้จากที่นี่</small>
+              </div>
             </div>
           </section>
 
@@ -1248,6 +1275,15 @@
         </div>
       </div>
     </div>
+
+    <CustomPickupModal
+      v-if="showEditCustomPickupModal"
+      :center-lat="editPickupMapCenter.lat"
+      :center-lng="editPickupMapCenter.lng"
+      :initial="editCustomPickup"
+      @confirm="onEditCustomPickupConfirm"
+      @close="showEditCustomPickupModal = false"
+    />
   </div>
 </template>
 
@@ -1256,6 +1292,7 @@ import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import { useToast } from '../../lib/toast';
 import api from '../../lib/axios';
+import CustomPickupModal from '../../components/CustomPickupModal.vue';
 
 const admin = useAdminStore();
 const toast = useToast();
@@ -1273,6 +1310,9 @@ const showStatusModal = ref(false);
 const showManualModal = ref(false);
 const showEditModal = ref(false);
 const showTransferModal = ref(false);
+// จุดรับปักหมุดเองในฟอร์มแก้ไข ({ label, lat, lng, note } หรือ null)
+const editCustomPickup = ref(null);
+const showEditCustomPickupModal = ref(false);
 const detailBooking = ref(null);
 const statusBooking = ref(null);
 const editBooking = ref(null);
@@ -1371,6 +1411,14 @@ const editScheduleOptions = computed(() => {
 const editPickupPoints = computed(() => {
   const schedule = editScheduleOptions.value.find((s) => s.id === editForm.schedule_id);
   return schedule?.pickup_points || editBooking.value?.schedule?.pickup_points || [];
+});
+
+// จุดกึ่งกลางแผนที่สำหรับปักหมุดจุดรับเอง — ใช้จุดรับที่มีพิกัดของรอบนี้ มิฉะนั้น center กรุงเทพฯ
+const editPickupMapCenter = computed(() => {
+  const withCoords = editPickupPoints.value.find((pt) => pt.latitude && pt.longitude);
+  return withCoords
+    ? { lat: Number(withCoords.latitude), lng: Number(withCoords.longitude) }
+    : { lat: 13.7563, lng: 100.5018 };
 });
 
 const groupedBookings = computed(() => {
@@ -1533,6 +1581,20 @@ function onEditPickupChange() {
   editForm.pickup_region = point?.region || '';
 }
 
+// ── จุดรับปักหมุดเอง (ปักหมุดจากแผนที่) ──
+function openEditCustomPickup() {
+  showEditCustomPickupModal.value = true;
+}
+
+function onEditCustomPickupConfirm(payload) {
+  editCustomPickup.value = payload;
+  showEditCustomPickupModal.value = false;
+}
+
+function clearEditCustomPickup() {
+  editCustomPickup.value = null;
+}
+
 function closeEditModal() {
   showEditModal.value = false;
   editBooking.value = null;
@@ -1541,6 +1603,8 @@ function closeEditModal() {
 }
 
 function resetEditForm() {
+  editCustomPickup.value = null;
+  showEditCustomPickupModal.value = false;
   Object.assign(editForm, {
     status: 'pending',
     schedule_id: '',
@@ -1584,6 +1648,14 @@ function resetEditForm() {
 
 function fillEditForm(booking) {
   resetEditForm();
+  editCustomPickup.value = booking.custom_pickup
+    ? {
+        label: booking.custom_pickup.label,
+        lat: Number(booking.custom_pickup.lat),
+        lng: Number(booking.custom_pickup.lng),
+        note: booking.custom_pickup.note || null,
+      }
+    : null;
   Object.assign(editForm, {
     status: booking.status || 'pending',
     schedule_id: booking.schedule?.id || '',
@@ -1746,6 +1818,14 @@ function buildEditFormData() {
   appendForm(fd, 'cancellation_reason', editForm.cancellation_reason);
   appendForm(fd, 'pickup_point_id', editForm.pickup_point_id);
   appendForm(fd, 'pickup_region', editForm.pickup_region);
+  if (editCustomPickup.value) {
+    appendForm(fd, 'custom_pickup_label', editCustomPickup.value.label);
+    appendForm(fd, 'custom_pickup_lat', editCustomPickup.value.lat);
+    appendForm(fd, 'custom_pickup_lng', editCustomPickup.value.lng);
+    appendForm(fd, 'custom_pickup_note', editCustomPickup.value.note || '');
+  } else {
+    appendForm(fd, 'clear_custom_pickup', 1);
+  }
   appendForm(fd, 'user[name]', editForm.user.name);
   appendForm(fd, 'user[email]', editForm.user.email);
   appendForm(fd, 'user[phone]', editForm.user.phone);
@@ -2778,6 +2858,62 @@ async function reverifySlip(bookingRef, slipType) {
   color: var(--color-accent);
 }
 .cp-map-link .material-symbols-rounded { font-size: 18px; }
+
+/* จุดรับปักหมุดเองในฟอร์มแก้ไข */
+.cp-edit-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1.5px dashed var(--color-border, #d1d5db);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cp-edit-add:hover {
+  background: rgba(20, 184, 166, 0.06);
+  border-color: var(--color-accent);
+}
+.cp-edit-add .material-symbols-rounded { font-size: 20px; }
+
+.cp-edit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #fcd34d;
+  border-radius: 14px;
+  background: rgba(251, 191, 36, 0.08);
+}
+.cp-edit-body { display: flex; gap: 12px; }
+.cp-edit-icon { color: #d97706; font-size: 24px; }
+.cp-edit-text { min-width: 0; }
+.cp-edit-label { font-weight: 800; color: var(--color-text, #111827); line-height: 1.3; }
+.cp-edit-note { font-size: 13px; color: var(--color-text-muted, #6b7280); margin-top: 2px; }
+.cp-edit-coords { font-size: 12px; color: var(--color-text-muted, #6b7280); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.cp-edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cp-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-text, #374151);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cp-edit-btn:hover { background: #f9fafb; }
+.cp-edit-btn.danger { color: #dc2626; }
+.cp-edit-btn.danger:hover { background: #fef2f2; }
+.cp-edit-btn .material-symbols-rounded { font-size: 17px; }
 
 .cp-list-flag {
   display: inline-flex;

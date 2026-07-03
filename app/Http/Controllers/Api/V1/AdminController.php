@@ -1029,6 +1029,12 @@ class AdminController extends Controller
             'schedule_id' => ['nullable', 'exists:trip_schedules,id'],
             'pickup_region' => ['nullable', 'string', 'max:100'],
             'pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
+            'custom_pickup_label' => ['nullable', 'string', 'max:255'],
+            'custom_pickup_lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:custom_pickup_lng'],
+            'custom_pickup_lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:custom_pickup_lat'],
+            'custom_pickup_note' => ['nullable', 'string', 'max:1000'],
+            'custom_pickup_price' => ['nullable', 'numeric', 'min:0'],
+            'clear_custom_pickup' => ['nullable', 'boolean'],
             'is_join_trip' => ['nullable', 'boolean'],
             'is_group' => ['nullable', 'boolean'],
             'group_name' => ['nullable', 'string', 'max:255'],
@@ -1128,6 +1134,32 @@ class AdminController extends Controller
                 }
                 if (array_key_exists('is_group', $data)) {
                     $bookingUpdates['is_group'] = (bool) $data['is_group'];
+                }
+
+                // จุดรับที่ปักหมุดเอง — แอดมินปักหมุด/แก้ไข/ลบได้จากหน้าแก้ไขการจอง
+                if ($request->boolean('clear_custom_pickup')) {
+                    $bookingUpdates['custom_pickup_label'] = null;
+                    $bookingUpdates['custom_pickup_lat'] = null;
+                    $bookingUpdates['custom_pickup_lng'] = null;
+                    $bookingUpdates['custom_pickup_note'] = null;
+                    $bookingUpdates['custom_pickup_status'] = null;
+                    $bookingUpdates['custom_pickup_price'] = null;
+                    $bookingUpdates['custom_pickup_reject_reason'] = null;
+                    $bookingUpdates['custom_pickup_resolved_at'] = null;
+                } elseif (($data['custom_pickup_lat'] ?? null) !== null && ($data['custom_pickup_lng'] ?? null) !== null) {
+                    $bookingUpdates['custom_pickup_label'] = $data['custom_pickup_label'] ?? $booking->custom_pickup_label;
+                    $bookingUpdates['custom_pickup_lat'] = $data['custom_pickup_lat'];
+                    $bookingUpdates['custom_pickup_lng'] = $data['custom_pickup_lng'];
+                    $bookingUpdates['custom_pickup_note'] = $data['custom_pickup_note'] ?? null;
+                    if (array_key_exists('custom_pickup_price', $data) && $data['custom_pickup_price'] !== null) {
+                        $bookingUpdates['custom_pickup_price'] = $data['custom_pickup_price'];
+                    }
+                    // จุดที่แอดมินปักเองถือว่าอนุมัติแล้ว (ตั้งราคาเริ่มต้น 0 หากยังไม่เคยมี)
+                    if ($booking->custom_pickup_status === null) {
+                        $bookingUpdates['custom_pickup_status'] = Booking::CUSTOM_PICKUP_APPROVED;
+                        $bookingUpdates['custom_pickup_price'] = $bookingUpdates['custom_pickup_price'] ?? ($booking->custom_pickup_price ?? 0);
+                        $bookingUpdates['custom_pickup_resolved_at'] = now();
+                    }
                 }
                 if (array_key_exists('checked_in', $data)) {
                     $bookingUpdates['checked_in'] = (bool) $data['checked_in'];

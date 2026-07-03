@@ -173,14 +173,22 @@
                       </div>
                     </div>
 
-                    <div v-if="booking.pickup_point || booking.pickup_region" class="flex items-center gap-4 group sm:col-span-2">
+                    <div v-if="booking.pickup_point || booking.pickup_region || booking.custom_pickup" class="flex items-center gap-4 group sm:col-span-2">
                       <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
-                        <span class="material-symbols-rounded text-teal-600 text-[24px]">location_on</span>
+                        <span class="material-symbols-rounded text-teal-600 text-[24px]">{{ booking.custom_pickup && !booking.pickup_point && !booking.pickup_region ? 'add_location_alt' : 'location_on' }}</span>
                       </div>
                       <div class="min-w-0">
                         <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">จุดขึ้นรถ / จุดนัดพบ</p>
                         <p v-if="!hasVariedPassengerPickups" class="font-black text-base text-gray-900 truncate">{{ pickupLabel }}</p>
                         <p v-else class="font-black text-base text-gray-900">หลายจุด (ดูรายชื่อด้านบน)</p>
+                        <template v-if="isCustomPickup">
+                          <p v-if="booking.custom_pickup.note" class="text-sm text-gray-500 font-medium mt-0.5 truncate">{{ booking.custom_pickup.note }}</p>
+                          <a :href="`https://www.google.com/maps/search/?api=1&query=${booking.custom_pickup.lat},${booking.custom_pickup.lng}`"
+                            target="_blank" rel="noopener"
+                            class="inline-flex items-center gap-1 text-xs font-black text-teal-600 mt-1 hover:text-teal-700">
+                            <span class="material-symbols-rounded text-[16px]">map</span> ดูหมุดบนแผนที่
+                          </a>
+                        </template>
                       </div>
                     </div>
 
@@ -443,11 +451,20 @@ const pickupLabel = computed(() => {
     return `${pt.region_label} — ${pt.pickup_location}`;
   }
   const region = booking.value?.pickup_region;
-  if (!region) return '';
-  const pts = booking.value?.schedule?.pickup_points || [];
-  const schedulePt = pts.find(p => p.region === region);
-  return schedulePt ? `${schedulePt.region_label} — ${schedulePt.pickup_location}` : region;
+  if (region) {
+    const pts = booking.value?.schedule?.pickup_points || [];
+    const schedulePt = pts.find(p => p.region === region);
+    return schedulePt ? `${schedulePt.region_label} — ${schedulePt.pickup_location}` : region;
+  }
+  // จุดรับที่ลูกค้าปักหมุดเอง (ไม่มีจุดรับตายตัว/ภูมิภาค)
+  const cp = booking.value?.custom_pickup;
+  return cp ? cp.label : '';
 });
+
+// จุดรับปักหมุดเอง (ไม่มีจุดรับตายตัวหรือภูมิภาค)
+const isCustomPickup = computed(() =>
+  Boolean(booking.value?.custom_pickup && !booking.value?.pickup_point && !booking.value?.pickup_region)
+);
 
 const passengerPickupLabel = (p) => {
   const pt = p?.pickup_point;
