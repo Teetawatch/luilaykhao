@@ -1160,6 +1160,10 @@ class AdminController extends Controller
                         $bookingUpdates['custom_pickup_price'] = $bookingUpdates['custom_pickup_price'] ?? ($booking->custom_pickup_price ?? 0);
                         $bookingUpdates['custom_pickup_resolved_at'] = now();
                     }
+                    // จุดปักหมุดกับจุดรับที่กำหนดไว้ใช้ร่วมกันไม่ได้ — ล้างจุดรับตายตัวออก
+                    // เพื่อให้หน้าสตาฟ (buildPickupGroups) แสดงหมุดของลูกค้าได้ (เงื่อนไข ! pickup_point_id)
+                    $bookingUpdates['pickup_point_id'] = null;
+                    $bookingUpdates['pickup_region'] = null;
                 }
                 if (array_key_exists('checked_in', $data)) {
                     $bookingUpdates['checked_in'] = (bool) $data['checked_in'];

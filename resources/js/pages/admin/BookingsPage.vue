@@ -1579,6 +1579,8 @@ function onEditScheduleChange() {
 function onEditPickupChange() {
   const point = editPickupPoints.value.find((p) => p.id === editForm.pickup_point_id);
   editForm.pickup_region = point?.region || '';
+  // จุดรับตายตัวกับหมุดของลูกค้าใช้ร่วมกันไม่ได้ — เลือกจุดตายตัวแล้วล้างหมุดออก
+  if (editForm.pickup_point_id) editCustomPickup.value = null;
 }
 
 // ── จุดรับปักหมุดเอง (ปักหมุดจากแผนที่) ──
@@ -1588,6 +1590,9 @@ function openEditCustomPickup() {
 
 function onEditCustomPickupConfirm(payload) {
   editCustomPickup.value = payload;
+  // ปักหมุดแล้วล้างจุดรับตายตัว เพื่อให้หมุดของลูกค้าแสดงในหน้าสตาฟ
+  editForm.pickup_point_id = '';
+  editForm.pickup_region = '';
   showEditCustomPickupModal.value = false;
 }
 

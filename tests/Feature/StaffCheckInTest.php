@@ -285,6 +285,35 @@ class StaffCheckInTest extends TestCase
         ]);
     }
 
+    public function test_manifest_shows_custom_pin_pickup_group(): void
+    {
+        Role::create(['name' => 'staff']);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $booking] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        // Customer pinned their own pickup on the map (no fixed pickup point).
+        $booking->update([
+            'pickup_point_id' => null,
+            'custom_pickup_label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+            'custom_pickup_lat' => 14.51234,
+            'custom_pickup_lng' => 101.37890,
+            'custom_pickup_note' => 'รอตรงร้านกาแฟ',
+            'custom_pickup_status' => Booking::CUSTOM_PICKUP_APPROVED,
+        ]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->assertJsonPath('data.pickup_groups.0.is_custom', true)
+            ->assertJsonPath('data.pickup_groups.0.label', 'ปั๊ม ปตท. ทางเข้าเขาใหญ่')
+            ->assertJsonPath('data.pickup_groups.0.notes', 'รอตรงร้านกาแฟ')
+            ->assertJsonPath('data.pickup_groups.0.map_url', 'https://www.google.com/maps/search/?api=1&query=14.51234,101.3789');
+    }
+
     private function createConfirmedBooking(): array
     {
         $customer = User::factory()->create();

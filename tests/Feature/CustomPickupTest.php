@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class CustomPickupTest extends TestCase
@@ -129,5 +130,49 @@ class CustomPickupTest extends TestCase
         $this->assertSame($pickup->id, $booking->pickup_point_id);
         $this->assertNull($booking->custom_pickup_status); // custom ถูกละไว้
         $this->assertEquals(1800, (float) $booking->total_amount);
+    }
+
+    public function test_admin_pinning_custom_pickup_clears_fixed_pickup_point(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $pickup = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'price' => 1800,
+            'sort_order' => 1,
+        ]);
+
+        // การจองเดิมมีจุดรับตายตัว
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengerPayload(),
+            pickupPointId: $pickup->id,
+        );
+        $this->assertSame($pickup->id, $booking->pickup_point_id);
+
+        // แอดมินปักหมุดจุดรับเองในหน้าแก้ไข
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", [
+                'custom_pickup_label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+                'custom_pickup_lat' => 14.51234,
+                'custom_pickup_lng' => 101.37890,
+                'custom_pickup_note' => 'รอตรงร้านกาแฟ',
+            ])
+            ->assertOk();
+
+        $booking->refresh();
+        // จุดรับตายตัวต้องถูกล้าง เพื่อให้หมุดของลูกค้าแสดงในหน้าสตาฟ
+        $this->assertNull($booking->pickup_point_id);
+        $this->assertNull($booking->pickup_region);
+        $this->assertSame('approved', $booking->custom_pickup_status);
+        $this->assertSame('ปั๊ม ปตท. ทางเข้าเขาใหญ่', $booking->custom_pickup_label);
     }
 }
