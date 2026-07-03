@@ -1058,10 +1058,20 @@
           </div>
 
           <div class="apply-section">
-            <div class="apply-section-title"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบเดินทางปลายทาง</div>
+            <div class="move-selection-head">
+              <div class="apply-section-title"><span class="material-symbols-rounded">calendar_month</span> เลือกรอบเดินทางปลายทาง (ย้ายข้ามทริปได้)</div>
+              <div class="move-target-search">
+                <span class="material-symbols-rounded">search</span>
+                <input v-model.trim="moveTargetSearch" type="text" placeholder="ค้นหาทริปปลายทาง..." />
+              </div>
+            </div>
             <div class="copy-target-list">
-              <div v-for="group in moveTargetGroups" :key="group.trip_id" style="margin-bottom:8px;">
-                <div style="font-size:11px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;padding:4px 0;">{{ group.trip_title }}</div>
+              <div v-if="!moveTargetGroups.length" class="empty-state">ไม่พบทริปปลายทางที่ตรงกับคำค้นหา</div>
+              <div v-for="group in moveTargetGroups" :key="group.trip_id" class="move-target-group" :class="{ 'is-source': group.isSource }" style="margin-bottom:8px;">
+                <div class="move-target-trip-title">
+                  {{ group.trip_title }}
+                  <span v-if="group.isSource" class="move-source-tag">ทริปต้นทาง</span>
+                </div>
                 <label v-for="sch in group.schedules" :key="sch.id" class="copy-target-item" :class="{ disabled: isMoveTargetDisabled(sch) }">
                   <input type="radio" v-model="moveTargetId" :value="sch.id" :disabled="isMoveTargetDisabled(sch)" />
                   <div style="flex:1;">
@@ -1082,7 +1092,7 @@
           </div>
           <div v-if="moveTargetId" style="margin-top:16px;padding:12px;background:#fffbeb;border:1px solid #fef3c7;border-radius:8px;font-size:13px;color:#92400e;">
              <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:4px;">warning</span>
-             ย้ายเฉพาะผู้โดยสารที่เลือก หากเลือกไม่ครบทั้งใบจอง ระบบจะแยกรายการจองใหม่ให้อัตโนมัติ และพยายามจับคู่จุดรับให้ตรงกับรอบปลายทาง
+             ย้ายเฉพาะผู้โดยสารที่เลือก หากเลือกไม่ครบทั้งใบจอง ระบบจะแยกรายการจองใหม่ให้อัตโนมัติ กรณีย้ายข้ามทริป ระบบจะจับคู่จุดรับที่ชื่อตรงกันให้ หากไม่มีจุดตรงกันจะล้างจุดรับเดิมออกเพื่อไม่ให้ข้อมูลค้าง
           </div>
 
           <div v-if="moveTargetId && selectedMoveSeatPassengers.length" class="apply-section move-seat-section">
@@ -1863,11 +1873,34 @@ const moveSeatMapError = ref('');
 const moveSeatAssignments = reactive({});
 const activeMoveSeatPassengerId = ref(null);
 
-// รอบปลายทางแสดงเฉพาะทริปเดียวกับต้นทางเท่านั้น
+// ค้นหาทริปปลายทาง (ช่วยให้รายการทริปเยอะ ๆ อยู่เป็นระเบียบ)
+const moveTargetSearch = ref('');
+
+// รอบปลายทาง: ย้ายข้ามทริปได้ — ทริปต้นทางปักไว้บนสุด ตามด้วยทริปอื่นเรียงตามรอบถัดไป
+// แสดงเฉพาะรอบที่ยังไม่ผ่าน (หรือรอบต้นทางเองไว้จัดที่นั่ง) เพื่อความเป็นระเบียบ
 const moveTargetGroups = computed(() => {
   if (!moveSource.value) return [];
-  const tid = moveSource.value.trip_id ?? moveSource.value.trip?.id;
-  return groupedByTrip.value.filter((g) => g.trip_id === tid);
+  const sourceTid = moveSource.value.trip_id ?? moveSource.value.trip?.id;
+  const sourceId = Number(moveSource.value.id);
+  const today = new Date().toISOString().split('T')[0];
+  const q = moveTargetSearch.value.trim().toLowerCase();
+
+  const groups = groupedByTrip.value
+    .map((g) => {
+      const isSource = g.trip_id === sourceTid;
+      const schedules = g.schedules.filter(
+        (s) => s.departure_date >= today || Number(s.id) === sourceId,
+      );
+      return { ...g, schedules, isSource };
+    })
+    .filter((g) => g.schedules.length)
+    // กรองด้วยคำค้นหา แต่คงทริปต้นทางไว้เสมอ
+    .filter((g) => g.isSource || !q || g.trip_title.toLowerCase().includes(q));
+
+  // ทริปต้นทางไว้บนสุด ที่เหลือคงลำดับเดิม (เรียงตามรอบถัดไปจาก groupedByTrip)
+  const source = groups.filter((g) => g.isSource);
+  const others = groups.filter((g) => !g.isSource);
+  return [...source, ...others];
 });
 
 const selectedMovePassengerCount = computed(() => moveSelectedPassengerIds.value.length);
@@ -1969,6 +2002,7 @@ const openMoveBookingsModal = async (sch) => {
   moveTargetId.value = null;
   movePassengers.value = [];
   moveSelectedPassengerIds.value = [];
+  moveTargetSearch.value = '';
   resetMoveSeatSelection();
   showMoveBookingsModal.value = true;
   moveLoading.value = true;
@@ -2013,6 +2047,7 @@ const closeMoveBookingsModal = () => {
   moveTargetId.value = null;
   movePassengers.value = [];
   moveSelectedPassengerIds.value = [];
+  moveTargetSearch.value = '';
   resetMoveSeatSelection();
   moveLoading.value = false;
 };
@@ -3468,6 +3503,64 @@ onMounted(() => {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+/* ค้นหาทริปปลายทาง */
+.move-target-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+}
+.move-target-search .material-symbols-rounded {
+  position: absolute;
+  left: 10px;
+  font-size: 18px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+.move-target-search input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.move-target-search input:focus {
+  border-color: var(--color-accent);
+}
+
+/* กลุ่มทริปปลายทาง — ทริปต้นทางเน้นให้เห็นชัด */
+.move-target-trip-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  padding: 4px 0;
+}
+.move-target-group.is-source {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 10px;
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  border-radius: 8px;
+}
+.move-source-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .move-passenger-list {

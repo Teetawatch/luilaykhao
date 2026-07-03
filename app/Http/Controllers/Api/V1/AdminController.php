@@ -484,12 +484,10 @@ class AdminController extends Controller
                 }
 
                 if ($selectedInBooking->count() === $booking->passengers->count()) {
-                    $updateData = ['schedule_id' => $target->id];
-
-                    // Update pickup point if mapped
-                    if ($booking->pickup_point_id && isset($pickupMap[$booking->pickup_point_id])) {
-                        $updateData['pickup_point_id'] = $pickupMap[$booking->pickup_point_id];
-                    }
+                    $updateData = array_merge(
+                        ['schedule_id' => $target->id],
+                        $this->resolveMovedPickup($booking, $source, $target, $pickupMap),
+                    );
 
                     $booking->update($updateData);
 
@@ -498,7 +496,7 @@ class AdminController extends Controller
                         'seat_id' => $move['target_seat_id'],
                     ]));
                 } else {
-                    $newBooking = $this->splitBookingForMove($booking, $selectedInBooking, $target, $pickupMap);
+                    $newBooking = $this->splitBookingForMove($booking, $selectedInBooking, $source, $target, $pickupMap);
 
                     $selectedInBooking
                         ->each(fn ($passenger) => $passenger->update(['booking_id' => $newBooking->id]));
@@ -555,15 +553,42 @@ class AdminController extends Controller
             ->values();
     }
 
-    private function splitBookingForMove(Booking $booking, $selectedPassengers, TripSchedule $target, array $pickupMap): Booking
+    /**
+     * แปลงจุดรับของการจองให้เข้ากับรอบปลายทางเมื่อย้าย (รองรับย้ายข้ามทริป):
+     * - จับคู่ได้ → ใช้จุดรับปลายทาง
+     * - จับคู่ไม่ได้ → ล้าง FK ที่จะค้าง (ไม่ให้ชี้จุดรับของอีกรอบ) แต่คงชื่อภูมิภาคไว้เป็นข้อความ
+     * - จุดรับปักหมุดเอง/ไม่มีจุดรับ → คงเดิม (ไม่ผูกกับรอบ)
+     */
+    private function resolveMovedPickup(Booking $booking, TripSchedule $source, TripSchedule $target, array $pickupMap): array
+    {
+        if (! $booking->pickup_point_id) {
+            return [];
+        }
+
+        if (isset($pickupMap[$booking->pickup_point_id])) {
+            $targetPoint = $target->pickupPoints->firstWhere('id', $pickupMap[$booking->pickup_point_id]);
+
+            return [
+                'pickup_point_id' => $pickupMap[$booking->pickup_point_id],
+                'pickup_region' => $targetPoint?->region ?: $booking->pickup_region,
+            ];
+        }
+
+        $sourcePoint = $source->pickupPoints->firstWhere('id', $booking->pickup_point_id);
+
+        return [
+            'pickup_point_id' => null,
+            'pickup_region' => $booking->pickup_region ?: $sourcePoint?->region,
+        ];
+    }
+
+    private function splitBookingForMove(Booking $booking, $selectedPassengers, TripSchedule $source, TripSchedule $target, array $pickupMap): Booking
     {
         $originalPassengerCount = max(1, $booking->passengers->count());
         $selectedCount = max(1, $selectedPassengers->count());
         $ratio = $selectedCount / $originalPassengerCount;
 
-        $targetPickupPointId = $booking->pickup_point_id && isset($pickupMap[$booking->pickup_point_id])
-            ? $pickupMap[$booking->pickup_point_id]
-            : $booking->pickup_point_id;
+        $movedPickup = $this->resolveMovedPickup($booking, $source, $target, $pickupMap);
 
         $newBooking = $booking->replicate([
             'booking_ref',
@@ -574,16 +599,15 @@ class AdminController extends Controller
             'checked_in_at',
         ]);
 
-        $newBooking->fill([
+        $newBooking->fill(array_merge([
             'booking_ref' => Booking::generateRef(),
             'qr_code' => Booking::generateQrCode(),
             'schedule_id' => $target->id,
-            'pickup_point_id' => $targetPickupPointId,
             'is_group' => $selectedCount > 1,
             'total_amount' => round(((float) $booking->total_amount) * $ratio, 2),
             'paid_amount' => round(((float) $booking->paid_amount) * $ratio, 2),
             'discount_amount' => round(((float) $booking->discount_amount) * $ratio, 2),
-        ]);
+        ], $movedPickup));
         $newBooking->save();
 
         $booking->update([
