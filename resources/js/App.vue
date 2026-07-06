@@ -75,7 +75,7 @@
   </div>
   <router-view v-else />
   <ToastNotification />
-  <ScarcityPopup v-if="!isAdminRoute" />
+  <UrgentTripsPopup v-if="!isAdminRoute" />
 
   <!-- Wishlist Toast (Teleported to body to avoid transform conflicts) -->
   <Teleport to="body">
@@ -120,7 +120,7 @@ import { useRoute, useRouter } from 'vue-router';
 import Navbar from './components/Navbar.vue';
 import Footer from './components/Footer.vue';
 import ToastNotification from './components/ToastNotification.vue';
-import ScarcityPopup from './components/ScarcityPopup.vue';
+import UrgentTripsPopup from './components/UrgentTripsPopup.vue';
 import { useSeatsStore } from './stores/seats';
 import { useBookingStore } from './stores/booking';
 import { useWishlistStore } from './stores/wishlist';

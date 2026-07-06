@@ -71,6 +71,7 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/featured', [TripController::class, 'featured']);
         Route::get('trips/almost-full', [TripController::class, 'almostFull']);
         Route::get('trips/flash-sale', [TripController::class, 'flashSale']);
+        Route::get('trips/urgent-popup', [TripController::class, 'urgentPopup']);
         Route::get('trips/{slug}', [TripController::class, 'show']);
         Route::get('trips/{slug}/schedules', [TripController::class, 'schedules']);
     });
@@ -514,6 +515,10 @@ Route::prefix('v1')->group(function () {
         Route::put('hero-slides/{id}', [AdminController::class, 'updateHeroSlide']);
         Route::delete('hero-slides/{id}', [AdminController::class, 'deleteHeroSlide']);
         Route::post('hero-slides/reorder', [AdminController::class, 'reorderHeroSlides']);
+
+        // Urgent-trips popup settings (ป๊อปอัพหน้าเว็บ)
+        Route::get('settings/urgent-popup', [AdminController::class, 'urgentPopupSettings']);
+        Route::put('settings/urgent-popup', [AdminController::class, 'updateUrgentPopupSettings']);
 
         // Gallery — ภาพประทับใจ CRUD
         Route::get('gallery', [AdminController::class, 'galleryImages']);

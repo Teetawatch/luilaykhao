@@ -55,6 +55,13 @@ export const useTripsStore = defineStore('trips', {
       return res.data.data;
     },
 
+    // Payload for the entry popup: flash-sale + almost-full trips, plus the
+    // admin-controlled enabled flag/title.
+    async fetchUrgentPopup() {
+      const res = await api.get('/trips/urgent-popup');
+      return res.data.data;
+    },
+
     async fetchTrip(slug) {
       this.loading = true;
       try {

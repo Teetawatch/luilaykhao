@@ -22,6 +22,7 @@ use App\Models\InstallmentPayment;
 use App\Models\Review;
 use App\Models\SchedulePickupPoint;
 use App\Models\ScheduleStaffAssignment;
+use App\Models\Setting;
 use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -34,6 +35,7 @@ use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
+use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
@@ -2546,6 +2548,29 @@ class AdminController extends Controller
         }
 
         return $this->success(null, 'จัดเรียงสไลด์สำเร็จ');
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Urgent-trips popup — ป๊อปอัพทริปด่วนหน้าเว็บ (flash sale + ที่นั่งใกล้เต็ม)
+
+    public function urgentPopupSettings(): JsonResponse
+    {
+        return $this->success(UrgentPopupSettings::get());
+    }
+
+    public function updateUrgentPopupSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'show_flash_sale' => ['required', 'boolean'],
+            'show_almost_full' => ['required', 'boolean'],
+            'seat_threshold' => ['required', 'integer', 'min:1', 'max:20'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        Setting::put(UrgentPopupSettings::KEY, $data);
+
+        return $this->success(UrgentPopupSettings::get(), 'บันทึกการตั้งค่าป๊อปอัพแล้ว');
     }
 
     // ──────────────────────────────────────────────────────────────

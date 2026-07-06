@@ -8,9 +8,11 @@ use App\Http\Resources\TripScheduleResource;
 use App\Models\BookingPassenger;
 use App\Models\Trip;
 use App\Services\WeatherService;
+use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class TripController extends Controller
@@ -93,6 +95,58 @@ class TripController extends Controller
      */
     public function almostFull(): JsonResponse
     {
+        return $this->success(TripResource::collection($this->almostFullTrips()));
+    }
+
+    /**
+     * Trips with at least one round on a live flash sale, soonest-ending first.
+     * Powers the "⚡ Flash Sale" home rail and the flash-sale push CTA.
+     */
+    public function flashSale(): JsonResponse
+    {
+        return $this->success(TripResource::collection($this->flashSaleTrips()));
+    }
+
+    /**
+     * One-shot payload for the website's entry popup: flash-sale trips
+     * (soonest-ending first) + almost-full trips, gated by the admin-editable
+     * urgent-popup settings. A trip on flash sale is not repeated in the
+     * almost-full list.
+     */
+    public function urgentPopup(): JsonResponse
+    {
+        $settings = UrgentPopupSettings::get();
+
+        if (! $settings['enabled']) {
+            return $this->success([
+                'enabled' => false,
+                'title' => $settings['title'],
+                'flash_sale' => [],
+                'almost_full' => [],
+            ]);
+        }
+
+        $flash = $settings['show_flash_sale'] ? $this->flashSaleTrips(4) : collect();
+        $almost = $settings['show_almost_full']
+            ? $this->almostFullTrips((int) $settings['seat_threshold'], 4)
+                ->reject(fn ($trip) => $flash->contains('id', $trip->id))
+                ->values()
+            : collect();
+
+        return $this->success([
+            'enabled' => true,
+            'title' => $settings['title'],
+            'flash_sale' => TripResource::collection($flash),
+            'almost_full' => TripResource::collection($almost),
+        ]);
+    }
+
+    /**
+     * Active trips whose lowest-seat OPEN upcoming round has 1–$maxSeats seats
+     * left, most-urgent first.
+     */
+    private function almostFullTrips(int $maxSeats = 5, int $limit = 10): Collection
+    {
         $trips = Trip::where('status', 'active')
             ->with(['photos', 'schedules' => function ($q) {
                 $q->where('status', 'open')
@@ -103,7 +157,7 @@ class TripController extends Controller
 
         $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
-        $almost = $trips
+        return $trips
             ->map(function ($trip) {
                 $seats = $trip->schedules
                     ->filter(fn ($s) => $s->available_seats > 0)
@@ -111,20 +165,15 @@ class TripController extends Controller
 
                 return ['trip' => $trip, 'seats' => $seats];
             })
-            ->filter(fn ($row) => $row['seats'] !== null && $row['seats'] <= 5)
+            ->filter(fn ($row) => $row['seats'] !== null && $row['seats'] <= $maxSeats)
             ->sortBy('seats')
-            ->take(10)
+            ->take($limit)
             ->map(fn ($row) => $row['trip'])
             ->values();
-
-        return $this->success(TripResource::collection($almost));
     }
 
-    /**
-     * Trips with at least one round on a live flash sale, soonest-ending first.
-     * Powers the "⚡ Flash Sale" home rail and the flash-sale push CTA.
-     */
-    public function flashSale(): JsonResponse
+    /** Active trips with a live flash-sale round, soonest-ending first. */
+    private function flashSaleTrips(int $limit = 10): Collection
     {
         $trips = Trip::where('status', 'active')
             ->whereHas('schedules', fn ($q) => $q
@@ -140,7 +189,7 @@ class TripController extends Controller
 
         // whereHas prefilters cheaply; flashSaleActive() is the source of truth
         // (price/seats/end time), so re-check in PHP after syncing booked seats.
-        $flash = $trips
+        return $trips
             ->map(fn ($trip) => [
                 'trip' => $trip,
                 'ends' => $trip->schedules
@@ -149,11 +198,9 @@ class TripController extends Controller
             ])
             ->filter(fn ($row) => $row['ends'] !== null)
             ->sortBy('ends')
-            ->take(10)
+            ->take($limit)
             ->map(fn ($row) => $row['trip'])
             ->values();
-
-        return $this->success(TripResource::collection($flash));
     }
 
     public function show(string $slug, Request $request): JsonResponse
