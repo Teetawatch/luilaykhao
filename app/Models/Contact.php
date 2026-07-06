@@ -17,8 +17,9 @@ class Contact extends Model
         'message',
         'partner_type',
         'van_description',
+        'forests_hiked',
         'images',
-        'read_at'
+        'read_at',
     ];
 
     protected $casts = [

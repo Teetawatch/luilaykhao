@@ -31,6 +31,8 @@ class ContactController extends Controller
             'message' => 'required|string',
             'partner_type' => 'nullable|string',
             'van_description' => 'nullable|string',
+            'forests_hiked' => 'nullable|string',
+            'images.*' => 'nullable|image|max:8192',
         ]);
 
         $imagePaths = [];
@@ -49,6 +51,7 @@ class ContactController extends Controller
             'message' => $validated['message'],
             'partner_type' => $validated['partner_type'] ?? null,
             'van_description' => $validated['van_description'] ?? null,
+            'forests_hiked' => $validated['forests_hiked'] ?? null,
             'images' => $imagePaths,
         ]);
 

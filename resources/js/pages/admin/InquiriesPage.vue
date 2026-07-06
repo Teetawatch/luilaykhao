@@ -126,6 +126,11 @@
                 <div class="value bg-white p-3 rounded-lg text-sm">{{ selectedItem.van_description }}</div>
               </div>
 
+              <div v-if="selectedItem.forests_hiked" class="detail-group">
+                <label>ป่าที่เคยไปเดิน</label>
+                <div class="value bg-white p-3 rounded-lg text-sm whitespace-pre-line">{{ selectedItem.forests_hiked }}</div>
+              </div>
+
               <div v-if="selectedItem.images?.length" class="detail-group">
                 <label>รูปภาพแนบ ({{ selectedItem.images.length }} รูป)</label>
                 <div class="grid grid-cols-3 gap-2 mt-2">

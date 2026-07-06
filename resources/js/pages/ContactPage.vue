@@ -170,6 +170,41 @@
                     </select>
                   </div>
 
+                  <!-- Partnership Details -->
+                  <div v-if="showOptionalFields && form.subject === 'partnership'"
+                       class="space-y-6 p-6 bg-primary/5 border border-primary/15 rounded-3xl animate-in fade-in duration-300">
+                    <div class="flex items-center gap-2 text-primary font-bold">
+                      <span class="material-symbols-rounded">handshake</span>
+                      ข้อมูลสำหรับพาร์ทเนอร์สตาฟเดินป่า
+                    </div>
+
+                    <div class="group space-y-2">
+                      <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">ป่าที่เคยไปเดิน</label>
+                      <textarea v-model="form.forests_hiked" rows="4" placeholder="เช่น เขาหลวง (นครศรีธรรมราช), ภูสอยดาว, เขาช้างเผือก, ป่าฮาลา-บาลา ฯลฯ เล่าประสบการณ์ของคุณได้เลย"
+                        class="w-full px-6 py-4 bg-white border border-sand-dark/40 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 resize-none"></textarea>
+                    </div>
+
+                    <div class="space-y-2">
+                      <label class="text-sm font-bold text-text-dark ml-1">แนบรูปภาพ (รูปตอนไปเดินป่า / ใบเซอร์ / อื่นๆ)</label>
+                      <label class="flex flex-col items-center justify-center gap-2 px-6 py-8 bg-white border-2 border-dashed border-sand-dark/60 rounded-2xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 text-center">
+                        <span class="material-symbols-rounded text-3xl text-primary">add_photo_alternate</span>
+                        <span class="text-sm font-bold text-text-dark">เลือกรูปภาพ</span>
+                        <span class="text-xs text-text-muted">รองรับ JPG, PNG (สูงสุด 8MB ต่อรูป)</span>
+                        <input type="file" accept="image/*" multiple class="hidden" @change="onImagesSelected" />
+                      </label>
+
+                      <div v-if="imagePreviews.length" class="grid grid-cols-3 sm:grid-cols-4 gap-3 pt-2">
+                        <div v-for="(preview, idx) in imagePreviews" :key="idx" class="relative aspect-square rounded-xl overflow-hidden border border-sand-dark group/img">
+                          <img :src="preview" class="w-full h-full object-cover" />
+                          <button type="button" @click="removeImage(idx)"
+                            class="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-red-500">
+                            <span class="material-symbols-rounded text-base">close</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="group space-y-2">
                     <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">เล่าให้เราฟังว่าคุณอยากไปเที่ยวแบบไหน...</label>
                     <textarea v-model="form.message" rows="5" required placeholder="เช่น อยากไปเดินป่าช่วงหน้าหนาว, สนใจทริปไหนเป็นพิเศษ หรือมีคำถามเพิ่มเติม..." 
@@ -207,7 +242,7 @@
                 </form>
 
                 <div v-if="!submitted" class="mt-6 text-center">
-                  <button @click="showOptionalFields = !showOptionalFields" class="text-xs text-text-muted hover:text-primary transition-colors underline underline-offset-4">
+                  <button @click="showOptionalFields = !showOptionalFields" class="text-sm font-semibold text-text-muted hover:text-primary transition-colors underline underline-offset-4">
                     {{ showOptionalFields ? 'ซ่อนตัวเลือกเสริม' : 'เพิ่มข้อมูลเพิ่มเติม (หัวข้อติดต่อ/พาร์ทเนอร์)' }}
                   </button>
                 </div>
@@ -250,8 +285,27 @@ const form = reactive({
   phone: '',
   email: '',
   subject: '',
-  message: ''
+  message: '',
+  forests_hiked: ''
 })
+
+const images = ref([])
+const imagePreviews = ref([])
+
+function onImagesSelected(e) {
+  const files = Array.from(e.target.files || [])
+  for (const file of files) {
+    images.value.push(file)
+    imagePreviews.value.push(URL.createObjectURL(file))
+  }
+  e.target.value = ''
+}
+
+function removeImage(idx) {
+  URL.revokeObjectURL(imagePreviews.value[idx])
+  images.value.splice(idx, 1)
+  imagePreviews.value.splice(idx, 1)
+}
 
 const socials = [
   { name: 'Facebook', icon: 'fab fa-facebook-f', link: '#' },
@@ -270,7 +324,13 @@ async function handleSubmit() {
     formData.append('email', form.email)
     formData.append('subject', form.subject || 'ทั่วไป')
     formData.append('message', form.message)
-    
+
+    if (form.subject === 'partnership') {
+      formData.append('partner_type', 'trekking_staff')
+      formData.append('forests_hiked', form.forests_hiked || '')
+      images.value.forEach((file) => formData.append('images[]', file))
+    }
+
     await axios.post('/api/v1/contacts', formData)
 
     submitted.value = true
