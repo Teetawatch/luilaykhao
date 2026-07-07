@@ -107,7 +107,7 @@
             <div class="pt-8 px-6">
               <h3 class="text-sm font-bold text-text-muted uppercase tracking-widest mb-6">ติดตามเราได้ที่</h3>
               <div class="flex gap-4">
-                <a v-for="social in socials" :key="social.name" :href="social.link" 
+                <a v-for="social in socials" :key="social.name" :href="social.link" target="_blank" rel="noopener"
                   class="w-12 h-12 rounded-xl bg-white border border-sand-dark flex items-center justify-center text-text-mid hover:text-white hover:bg-primary hover:border-primary transition-all duration-300 shadow-sm">
                   <i :class="social.icon" class="text-xl"></i>
                 </a>
@@ -308,10 +308,9 @@ function removeImage(idx) {
 }
 
 const socials = [
-  { name: 'Facebook', icon: 'fab fa-facebook-f', link: '#' },
-  { name: 'Instagram', icon: 'fab fa-instagram', link: '#' },
-  { name: 'TikTok', icon: 'fab fa-tiktok', link: '#' },
-  { name: 'YouTube', icon: 'fab fa-youtube', link: '#' }
+  { name: 'Facebook', icon: 'fab fa-facebook-f', link: 'https://www.facebook.com/p/%E0%B8%A5%E0%B8%B8%E0%B8%A2%E0%B9%80%E0%B8%A5%E0%B9%80%E0%B8%82%E0%B8%B2-Luilaykhao-61572124170207/' },
+  { name: 'Instagram', icon: 'fab fa-instagram', link: 'https://www.instagram.com/luilaykhao/' },
+  { name: 'TikTok', icon: 'fab fa-tiktok', link: 'https://www.tiktok.com/@luilaykhao' }
 ]
 
 async function handleSubmit() {
