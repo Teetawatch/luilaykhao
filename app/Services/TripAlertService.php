@@ -7,6 +7,7 @@ use App\Models\Trip;
 use App\Models\TripAlert;
 use App\Models\TripAlertDispatch;
 use App\Models\TripSchedule;
+use App\Support\ThaiDate;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -45,7 +46,7 @@ class TripAlertService
                 $schedule->id,
                 'new_schedule',
                 "เปิดรอบใหม่: {$trip->title}",
-                'เปิดให้จองรอบวันที่ '.$schedule->departure_date->format('d/m/Y').' แล้ว รีบจองก่อนเต็ม!',
+                'เปิดให้จองรอบวันที่ '.ThaiDate::full($schedule->departure_date).' แล้ว รีบจองก่อนเต็ม!',
                 $trip,
                 $schedule->id,
             );
@@ -153,7 +154,7 @@ class TripAlertService
                     $schedule->id,
                     'sold_out',
                     "เต็มแล้ว: {$trip->title}",
-                    'รอบวันที่ '.$schedule->departure_date->format('d/m/Y').' เต็มทุกที่นั่งแล้ว กดเข้าคิว waitlist เผื่อมีที่ว่าง!',
+                    'รอบวันที่ '.ThaiDate::full($schedule->departure_date).' เต็มทุกที่นั่งแล้ว กดเข้าคิว waitlist เผื่อมีที่ว่าง!',
                     $trip,
                     $schedule->id,
                 );
@@ -204,7 +205,7 @@ class TripAlertService
             $schedule->id,
             'low_seats',
             "ที่นั่งใกล้เต็ม: {$trip->title}",
-            'รอบวันที่ '.$schedule->departure_date->format('d/m/Y')." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนหมด!",
+            'รอบวันที่ '.ThaiDate::full($schedule->departure_date)." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนหมด!",
             $trip,
             $schedule->id,
             $dedupeType,

@@ -6,6 +6,7 @@ use App\Jobs\SendBroadcastNotificationJob;
 use App\Models\BroadcastDispatch;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 
@@ -83,7 +84,7 @@ class BroadcastNotificationService
             'new_schedule',
             "new_schedule:{$schedule->id}",
             'เปิดรอบใหม่แล้ว! 📅',
-            "{$trip->title} เปิดจองรอบวันที่ ".$schedule->departure_date->format('d/m/Y')
+            "{$trip->title} เปิดจองรอบวันที่ ".ThaiDate::full($schedule->departure_date)
                 .' แล้ว รีบจองก่อนเต็มนะ!',
             [
                 'route' => 'trip',
@@ -119,7 +120,7 @@ class BroadcastNotificationService
             'flash_sale',
             "flash_sale:{$schedule->id}:{$endsKey}:".(int) $price,
             '⚡ Flash Sale ราคาพิเศษ!',
-            "{$trip->title} รอบ ".$schedule->departure_date->format('d/m/Y')
+            "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
                 .' ลดเหลือ ฿'.number_format($price)
                 .($original > $price ? ' (จาก ฿'.number_format($original).')' : '')
                 .$endsClause.' รีบจองก่อนหมดเวลา!',
@@ -155,7 +156,7 @@ class BroadcastNotificationService
             'low_seats',
             "low_seats:{$schedule->id}:{$available}",
             'ที่นั่งใกล้เต็มแล้ว! ⏳',
-            "{$trip->title} รอบ ".$schedule->departure_date->format('d/m/Y')
+            "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
                 ." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนเต็มนะ!",
             [
                 'route' => 'trip',
@@ -186,7 +187,7 @@ class BroadcastNotificationService
             'sold_out',
             "sold_out:{$schedule->id}",
             'ที่นั่งเต็มแล้ว 🔴',
-            "{$trip->title} รอบ ".$schedule->departure_date->format('d/m/Y')
+            "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
                 .' เต็มทุกที่นั่งแล้ว กดเข้าคิว waitlist เผื่อมีที่ว่าง!',
             [
                 'route' => 'trip',
