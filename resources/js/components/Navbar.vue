@@ -70,20 +70,39 @@
                 <!-- Dropdown List -->
                 <div v-if="openNavDropdown === link.label" class="absolute top-full left-1/2 -translate-x-1/2 w-64 pt-3 transition-all duration-300 transform z-[60] animation-fade-slide">
                   <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
-                    <router-link 
-                      v-for="child in link.children" 
-                      :key="child.to" 
-                      :to="child.to"
-                      @click="openNavDropdown = null"
-                      class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-200"
-                      active-class="bg-primary/5 text-primary"
-                    >
-                      <span class="material-symbols-rounded text-[18px] opacity-70 group-hover:opacity-100 transition-opacity" :class="{ 'filled-icon': router.currentRoute.value.path === child.to }">{{ child.icon }}</span>
-                      {{ child.label }}
-                    </router-link>
+                    <template v-for="child in link.children" :key="child.to">
+                      <a
+                        v-if="child.external"
+                        :href="child.to"
+                        @click="openNavDropdown = null"
+                        class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-200"
+                      >
+                        <span class="material-symbols-rounded text-[18px] opacity-70">{{ child.icon }}</span>
+                        {{ child.label }}
+                      </a>
+                      <router-link
+                        v-else
+                        :to="child.to"
+                        @click="openNavDropdown = null"
+                        class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-200"
+                        active-class="bg-primary/5 text-primary"
+                      >
+                        <span class="material-symbols-rounded text-[18px] opacity-70 group-hover:opacity-100 transition-opacity" :class="{ 'filled-icon': router.currentRoute.value.path === child.to }">{{ child.icon }}</span>
+                        {{ child.label }}
+                      </router-link>
+                    </template>
                   </div>
                 </div>
               </div>
+
+              <!-- External Link (server-rendered page, full load) -->
+              <a
+                v-else-if="link.external"
+                :href="link.to"
+                class="nav-link flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300"
+              >
+                <span>{{ link.label }}</span>
+              </a>
 
               <!-- Simple Link -->
               <router-link
@@ -95,13 +114,6 @@
                 <span>{{ link.label }}</span>
               </router-link>
             </template>
-            <!-- Blog is server-rendered (Blade) — use a real link for a full-page load -->
-            <a
-              href="/blog"
-              class="nav-link flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300"
-            >
-              <span>บทความ</span>
-            </a>
           </div>
         </div>
 
@@ -338,7 +350,7 @@
                     <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
                     <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                   </div>
-                  <span class="text-[13px] font-bold text-text-dark hidden lg:block">{{ auth.userName }}</span>
+                  <span class="text-[13px] font-bold text-text-dark hidden lg:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
                   <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
                 </button>
 
@@ -348,10 +360,14 @@
                       <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
                       <p class="text-[10px] text-primary font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : 'Member' }}</p>
                     </div>
+                    <!-- บัญชี -->
                     <router-link to="/profile" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
                       <span class="material-symbols-rounded text-[20px]">account_circle</span>
                       ข้อมูลส่วนตัว
                     </router-link>
+
+                    <!-- กิจกรรมของฉัน -->
+                    <p class="px-4 pt-2.5 pb-1 text-[10px] font-bold text-text-muted/60 uppercase tracking-wider">กิจกรรมของฉัน</p>
                     <router-link to="/my-bookings" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
                       <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
                       การจองของฉัน
@@ -360,31 +376,31 @@
                       <span class="material-symbols-rounded text-[20px]">reviews</span>
                       รีวิวของฉัน
                     </router-link>
+
+                    <!-- สิทธิพิเศษ -->
+                    <p class="px-4 pt-2.5 pb-1 text-[10px] font-bold text-text-muted/60 uppercase tracking-wider">สิทธิพิเศษ</p>
                     <router-link to="/loyalty" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
                       <span class="material-symbols-rounded text-[20px]">stars</span>
                       แต้มสะสม
                     </router-link>
-
                     <router-link to="/referral" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
                       <span class="material-symbols-rounded text-[20px]">group_add</span>
                       ชวนเพื่อน
                     </router-link>
 
-                    <template v-if="isStaff">
-                      <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
-                      <router-link to="/my-staff-trips" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                    <!-- การทำงาน (สตาฟ / แอดมิน) -->
+                    <template v-if="isStaff || isAdmin">
+                      <p class="px-4 pt-2.5 pb-1 text-[10px] font-bold text-text-muted/60 uppercase tracking-wider">การทำงาน</p>
+                      <router-link v-if="isStaff" to="/my-staff-trips" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
                         <span class="material-symbols-rounded text-[20px]">badge</span>
                         ตารางงานสตาฟ
                       </router-link>
-                    </template>
-
-                    <template v-if="isAdmin">
-                      <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
-                      <router-link to="/admin" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-primary hover:bg-primary/5 transition-all">
+                      <router-link v-if="isAdmin" to="/admin" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-primary hover:bg-primary/5 transition-all">
                         <span class="material-symbols-rounded text-[20px]">admin_panel_settings</span>
                         ผู้ดูแลระบบ
                       </router-link>
                     </template>
+
                     <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
                     <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-red-500 hover:bg-red-50 transition-all">
                       <span class="material-symbols-rounded text-[20px]">logout</span>
@@ -496,7 +512,7 @@
 
           <div class="h-px bg-sand-dark/20 mx-2"></div>
 
-          <!-- Account links -->
+          <!-- บัญชี -->
           <router-link
             to="/profile"
             @click="mobileAccountOpen = false"
@@ -505,6 +521,9 @@
             <span class="material-symbols-rounded text-[22px]">account_circle</span>
             จัดการโปรไฟล์
           </router-link>
+
+          <!-- กิจกรรมของฉัน -->
+          <p class="px-5 pt-3 pb-1 text-[11px] font-bold text-text-muted/60 uppercase tracking-wider">กิจกรรมของฉัน</p>
           <router-link
             to="/my-bookings"
             @click="mobileAccountOpen = false"
@@ -521,6 +540,9 @@
             <span class="material-symbols-rounded text-[22px]">reviews</span>
             รีวิวของฉัน
           </router-link>
+
+          <!-- สิทธิพิเศษ -->
+          <p class="px-5 pt-3 pb-1 text-[11px] font-bold text-text-muted/60 uppercase tracking-wider">สิทธิพิเศษ</p>
           <router-link
             to="/loyalty"
             @click="mobileAccountOpen = false"
@@ -530,23 +552,36 @@
             แต้มสะสม
           </router-link>
           <router-link
-            v-if="isStaff"
-            to="/my-staff-trips"
+            to="/referral"
             @click="mobileAccountOpen = false"
             class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
           >
-            <span class="material-symbols-rounded text-[22px]">badge</span>
-            ตารางงานสตาฟ
+            <span class="material-symbols-rounded text-[22px]">group_add</span>
+            ชวนเพื่อน
           </router-link>
-          <router-link
-            v-if="isAdmin"
-            to="/admin"
-            @click="mobileAccountOpen = false"
-            class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-primary hover:bg-primary/5 transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">admin_panel_settings</span>
-            ผู้ดูแลระบบ
-          </router-link>
+
+          <!-- การทำงาน (สตาฟ / แอดมิน) -->
+          <template v-if="isStaff || isAdmin">
+            <p class="px-5 pt-3 pb-1 text-[11px] font-bold text-text-muted/60 uppercase tracking-wider">การทำงาน</p>
+            <router-link
+              v-if="isStaff"
+              to="/my-staff-trips"
+              @click="mobileAccountOpen = false"
+              class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+            >
+              <span class="material-symbols-rounded text-[22px]">badge</span>
+              ตารางงานสตาฟ
+            </router-link>
+            <router-link
+              v-if="isAdmin"
+              to="/admin"
+              @click="mobileAccountOpen = false"
+              class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-primary hover:bg-primary/5 transition-all duration-200 active:scale-[0.98]"
+            >
+              <span class="material-symbols-rounded text-[22px]">admin_panel_settings</span>
+              ผู้ดูแลระบบ
+            </router-link>
+          </template>
 
           <div class="h-px bg-sand-dark/20 mx-2"></div>
 
@@ -595,21 +630,41 @@
 
                 <Transition name="mobile-submenu">
                   <div v-if="mobileNavDropdownOpen === link.label" class="pl-4 space-y-1">
-                    <router-link
-                      v-for="child in link.children"
-                      :key="child.to"
-                      :to="child.to"
-                      @click="mobileOpen = false; mobileNavDropdownOpen = null"
-                      class="flex items-center gap-3.5 px-6 py-2.5 rounded-2xl text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-                      active-class="bg-primary/5 text-primary"
-                    >
-                      <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
-                      {{ child.label }}
-                    </router-link>
+                    <template v-for="child in link.children" :key="child.to">
+                      <a
+                        v-if="child.external"
+                        :href="child.to"
+                        @click="mobileOpen = false; mobileNavDropdownOpen = null"
+                        class="flex items-center gap-3.5 px-6 py-2.5 rounded-2xl text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+                      >
+                        <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
+                        {{ child.label }}
+                      </a>
+                      <router-link
+                        v-else
+                        :to="child.to"
+                        @click="mobileOpen = false; mobileNavDropdownOpen = null"
+                        class="flex items-center gap-3.5 px-6 py-2.5 rounded-2xl text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+                        active-class="bg-primary/5 text-primary"
+                      >
+                        <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
+                        {{ child.label }}
+                      </router-link>
+                    </template>
                   </div>
                 </Transition>
               </div>
               
+              <a
+                v-else-if="link.external"
+                :href="link.to"
+                @click="mobileOpen = false; mobileNavDropdownOpen = null"
+                class="mobile-nav-link flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
+              >
+                <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
+                {{ link.label }}
+              </a>
+
               <router-link
                 v-else
                 :to="link.to"
@@ -966,7 +1021,16 @@ const navLinks = [
     ]
   },
   { to: '/trips', icon: 'explore', label: 'กิจกรรม' },
-  { to: '/gallery', icon: 'photo_library', label: 'ภาพประทับใจ' },
+  {
+    label: 'ภาพประทับใจ',
+    icon: 'auto_awesome',
+    to: '/gallery',
+    children: [
+      { to: '/gallery', icon: 'photo_library', label: 'ภาพประทับใจ' },
+      // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
+      { to: '/blog', icon: 'article', label: 'บทความ', external: true },
+    ],
+  },
   { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
 ];
 

@@ -12,6 +12,20 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isLoggedIn: (state) => !!state.token,
     userName: (state) => state.user?.name || '',
+    // Compact name for tight spots (e.g. navbar): keep the first word in full and
+    // abbreviate every following word to its initial — "สมชาย วงศ์สุวรรณ" → "สมชาย ว."
+    shortName: (state) => {
+      const full = (state.user?.name || '').trim();
+      if (!full) return '';
+      const [first, ...rest] = full.split(/\s+/);
+      if (rest.length === 0) return first;
+      const initials = rest
+        .map((word) => Array.from(word)[0])
+        .filter(Boolean)
+        .map((char) => `${char}.`)
+        .join(' ');
+      return initials ? `${first} ${initials}` : first;
+    },
   },
 
   actions: {
