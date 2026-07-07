@@ -32,7 +32,7 @@
     <div class="highlight-box" style="background:#f0fdf4; border-color:#86efac; text-align:center;">
       <div class="amount-label" style="color:#166534;">งวดที่ {{ $installment->installment_no }} &mdash; ชำระแล้ว</div>
       <div class="amount" style="color:#15803d;">฿{{ number_format($installment->amount, 0) }}</div>
-      <div class="amount-note" style="color:#166534;">{{ now()->locale('th')->isoFormat('D MMM YYYY HH:mm') }} น.</div>
+      <div class="amount-note" style="color:#166534;">{{ \App\Support\ThaiDate::shortTime(now()) }} น.</div>
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
@@ -109,7 +109,7 @@
           <tr>
             <td>{{ $inst->installment_no }}</td>
             <td>฿{{ number_format($inst->amount, 0) }}</td>
-            <td>{{ $inst->due_date ? \Carbon\Carbon::parse($inst->due_date)->locale('th')->isoFormat('D MMM YYYY') : '-' }}</td>
+            <td>{{ \App\Support\ThaiDate::short($inst->due_date ? \Carbon\Carbon::parse($inst->due_date) : null) }}</td>
             <td style="text-align:right;">
               @if($inst->status === 'paid')
                 <span class="badge-paid">ชำระแล้ว</span>
@@ -131,7 +131,7 @@
       <p class="alert-title" style="color:#1e40af;">งวดถัดไป</p>
       <p class="alert-text" style="color:#1e3a5f;">
         งวดที่ {{ $nextInstallment->installment_no }} จำนวน <strong>฿{{ number_format($nextInstallment->amount, 0) }}</strong>
-        &nbsp;&mdash;&nbsp;กำหนดชำระ <strong>{{ $nextInstallment->due_date ? \Carbon\Carbon::parse($nextInstallment->due_date)->locale('th')->isoFormat('D MMMM YYYY') : '-' }}</strong>
+        &nbsp;&mdash;&nbsp;กำหนดชำระ <strong>{{ \App\Support\ThaiDate::full($nextInstallment->due_date ? \Carbon\Carbon::parse($nextInstallment->due_date) : null) }}</strong>
       </p>
     </div>
     @endif

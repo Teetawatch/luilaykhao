@@ -80,16 +80,15 @@ class ScheduleDepartsAtTest extends TestCase
         $trip = $this->makeTrip();
 
         $plain = $this->makeSchedule($trip, ['departure_date' => '2026-06-13', 'return_date' => '2026-06-14']);
-        $this->assertSame('13/06/2026', $plain->departureLabelShort());
+        $this->assertSame('13 มิ.ย. 2569', $plain->departureLabelShort());
 
         $night = $this->makeSchedule($trip, [
             'departure_date' => '2026-06-13',
             'return_date' => '2026-06-14',
             'departs_at' => '2026-06-12 23:30:00',
         ]);
-        $this->assertSame('12/06/2026 23:30 น.', $night->departureLabelShort());
-        $this->assertStringContainsString('23:30 น.', $night->departureLabelThai());
-        $this->assertStringContainsString('12', $night->departureLabelThai());
+        $this->assertSame('12 มิ.ย. 2569 23:30 น.', $night->departureLabelShort());
+        $this->assertSame('12 มิถุนายน 2569 เวลา 23:30 น.', $night->departureLabelThai());
     }
 
     public function test_departing_on_scope_uses_real_departure_date(): void

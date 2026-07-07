@@ -38,7 +38,7 @@
     $alertText   = '#1e3a5f';
   }
 
-  $dueDateFormatted = $booking->balance_due_at?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
+  $dueDateFormatted = \App\Support\ThaiDate::full($booking->balance_due_at);
   $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 

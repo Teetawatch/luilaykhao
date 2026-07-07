@@ -26,7 +26,7 @@
   }
 
   $dueDateFormatted = $installment->due_date
-    ? \Carbon\Carbon::parse($installment->due_date)->locale('th')->isoFormat('D MMMM YYYY')
+    ? \App\Support\ThaiDate::full(\Carbon\Carbon::parse($installment->due_date))
     : '-';
   $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp

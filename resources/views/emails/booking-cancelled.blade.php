@@ -59,7 +59,7 @@
       <div class="info-row">
         <span class="info-label">วันที่ยกเลิก</span>
         <span class="info-value accent-red">
-          {{ $booking->cancelled_at?->locale('th')->isoFormat('D MMM YYYY HH:mm') ?? now()->locale('th')->isoFormat('D MMM YYYY HH:mm') }} น.
+          {{ \App\Support\ThaiDate::shortTime($booking->cancelled_at ?? now()) }} น.
         </span>
       </div>
       <div class="info-row">

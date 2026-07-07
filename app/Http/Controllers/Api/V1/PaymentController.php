@@ -19,6 +19,7 @@ use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\SplitPaymentService;
 use App\Support\MediaDisk;
+use App\Support\ThaiDate;
 use App\Traits\ApiResponse;
 use App\Traits\ResolvesTransferDatetime;
 use Carbon\CarbonImmutable;
@@ -348,7 +349,7 @@ class PaymentController extends Controller
                 $this->mailService->sendDepositPaidEmail($booking);
                 $this->smsService->sendDepositPaid($booking);
 
-                $balanceDueText = $balanceDueAt ? $balanceDueAt->format('d/m/Y') : '-';
+                $balanceDueText = ThaiDate::full($balanceDueAt);
                 SmartNotification::send(
                     $booking->user_id,
                     'deposit_paid',

@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\SmartNotification;
 use App\Services\MailService;
 use App\Services\SmsService;
+use App\Support\ThaiDate;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +16,7 @@ class SendBalanceDueRemindersJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
     public int $backoff = 60;
 
     private const REMIND_DAYS_BEFORE_DUE = [5, 2, 0];
@@ -40,9 +42,9 @@ class SendBalanceDueRemindersJob implements ShouldQueue
                     $totals['emailed']++;
                 } catch (\Throwable $e) {
                     Log::error('Failed to send balance due reminder email', [
-                        'booking_ref'     => $booking->booking_ref,
+                        'booking_ref' => $booking->booking_ref,
                         'days_before_due' => $daysBeforeDue,
-                        'error'           => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                 }
 
@@ -51,9 +53,9 @@ class SendBalanceDueRemindersJob implements ShouldQueue
                     $totals['smsed']++;
                 } catch (\Throwable $e) {
                     Log::error('Failed to queue balance due reminder SMS', [
-                        'booking_ref'     => $booking->booking_ref,
+                        'booking_ref' => $booking->booking_ref,
                         'days_before_due' => $daysBeforeDue,
-                        'error'           => $e->getMessage(),
+                        'error' => $e->getMessage(),
                     ]);
                 }
 
@@ -64,7 +66,7 @@ class SendBalanceDueRemindersJob implements ShouldQueue
                         $daysBeforeDue === 0
                             ? 'ครบกำหนดชำระยอดส่วนที่เหลือวันนี้'
                             : "เหลือ {$daysBeforeDue} วัน ก่อนครบกำหนดชำระยอดส่วนที่เหลือ",
-                        "เลขการจอง {$booking->booking_ref} กรุณาชำระยอดส่วนที่เหลือภายในวันที่ " . ($booking->balance_due_at?->format('d/m/Y') ?? '-'),
+                        "เลขการจอง {$booking->booking_ref} กรุณาชำระยอดส่วนที่เหลือภายในวันที่ ".ThaiDate::full($booking->balance_due_at),
                         ['booking_ref' => $booking->booking_ref, 'days_before_due' => $daysBeforeDue, 'route' => 'booking'],
                     );
                 }

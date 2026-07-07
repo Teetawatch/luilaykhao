@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\SmsLog;
+use App\Support\ThaiDate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -110,7 +111,7 @@ class SmsService
                 $installment->installment_no,
                 $this->money($installment->amount),
                 $booking->booking_ref,
-                $installment->due_date?->format('d/m/Y'),
+                ThaiDate::short($installment->due_date),
                 $this->bookingUrl($booking),
             ),
         );
@@ -121,7 +122,7 @@ class SmsService
         $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
         $balance = (float) ($booking->balance_amount ?? 0);
-        $due = $booking->balance_due_at?->format('d/m/Y') ?? '-';
+        $due = ThaiDate::short($booking->balance_due_at);
 
         return $this->queueOrSend(
             booking: $booking,
@@ -142,7 +143,7 @@ class SmsService
     {
         $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        $due = $booking->balance_due_at?->format('d/m/Y') ?? '-';
+        $due = ThaiDate::short($booking->balance_due_at);
 
         return $this->queueOrSend(
             booking: $booking,
@@ -441,7 +442,7 @@ class SmsService
             ' งวดถัดไปงวดที่ %d จำนวน %s บาท กำหนด %s ชำระที่ %s',
             $nextInstallment->installment_no,
             $this->money($nextInstallment->amount),
-            $nextInstallment->due_date?->format('d/m/Y') ?? '-',
+            ThaiDate::short($nextInstallment->due_date),
             $this->installmentPaymentUrl($booking),
         );
     }

@@ -27,7 +27,7 @@
       <div class="amount" style="color:#15803d;">฿{{ number_format($booking->paid_amount, 0) }}</div>
       <div class="amount-note" style="color:#166534;">
         {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'โอนผ่านธนาคาร' : ($booking->payment_method ?? '-')) }}
-        &nbsp;&middot;&nbsp;{{ now()->locale('th')->isoFormat('D MMM YYYY HH:mm') }} น.
+        &nbsp;&middot;&nbsp;{{ \App\Support\ThaiDate::shortTime(now()) }} น.
       </div>
     </div>
 
@@ -117,7 +117,7 @@
           <tr>
             <td>{{ $inst->installment_no }}</td>
             <td>฿{{ number_format($inst->amount, 0) }}</td>
-            <td>{{ $inst->due_date ? \Carbon\Carbon::parse($inst->due_date)->locale('th')->isoFormat('D MMM YYYY') : '-' }}</td>
+            <td>{{ \App\Support\ThaiDate::short($inst->due_date ? \Carbon\Carbon::parse($inst->due_date) : null) }}</td>
             <td style="text-align:right;">
               @if($inst->status === 'paid')
                 <span class="badge-paid">ชำระแล้ว</span>

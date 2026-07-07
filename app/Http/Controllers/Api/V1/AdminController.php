@@ -35,6 +35,7 @@ use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
+use App\Support\ThaiDate;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
@@ -516,7 +517,7 @@ class AdminController extends Controller
             $target->syncBookedSeats();
         });
 
-        return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ ".$target->departure_date->format('d/m/Y').' สำเร็จ');
+        return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ ".ThaiDate::full($target->departure_date).' สำเร็จ');
     }
 
     private function seatMovesForBooking(Booking $booking, $selectedPassengerIds, $seatAssignments)

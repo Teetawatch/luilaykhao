@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -93,10 +94,10 @@ class TripSchedule extends Model
     public function departureLabelThai(): string
     {
         if ($this->departs_at) {
-            return $this->departs_at->locale('th')->isoFormat('D MMMM YYYY').' เวลา '.$this->departs_at->format('H:i').' น.';
+            return ThaiDate::full($this->departs_at).' เวลา '.$this->departs_at->format('H:i').' น.';
         }
 
-        return $this->departure_date?->locale('th')->isoFormat('D MMMM YYYY') ?? '-';
+        return ThaiDate::full($this->departure_date);
     }
 
     /**
@@ -105,10 +106,10 @@ class TripSchedule extends Model
     public function departureLabelShort(): string
     {
         if ($this->departs_at) {
-            return $this->departs_at->format('d/m/Y H:i').' น.';
+            return ThaiDate::shortTime($this->departs_at).' น.';
         }
 
-        return $this->departure_date?->format('d/m/Y') ?? '-';
+        return ThaiDate::short($this->departure_date);
     }
 
     /**

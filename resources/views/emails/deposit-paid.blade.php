@@ -20,7 +20,7 @@
       <div class="amount-label" style="color:#0f766e;">มัดจำที่ชำระ</div>
       <div class="amount" style="color:#0d9488;">฿{{ number_format($booking->deposit_amount, 0) }}</div>
       <div class="amount-note" style="color:#0f766e;">
-        ชำระแล้วเมื่อ {{ $booking->paid_at?->locale('th')->isoFormat('D MMM YYYY HH:mm') ?? now()->locale('th')->isoFormat('D MMM YYYY HH:mm') }} น.
+        ชำระแล้วเมื่อ {{ \App\Support\ThaiDate::shortTime($booking->paid_at ?? now()) }} น.
       </div>
     </div>
 
@@ -76,7 +76,7 @@
       <div class="info-row">
         <span class="info-label">กำหนดชำระส่วนที่เหลือ</span>
         <span class="info-value accent-amber">
-          {{ $booking->balance_due_at?->locale('th')->isoFormat('D MMMM YYYY') ?? '-' }}
+          {{ \App\Support\ThaiDate::full($booking->balance_due_at) }}
         </span>
       </div>
     </div>
@@ -85,7 +85,7 @@
       <p class="alert-title" style="color:#92400e;">กรุณาชำระส่วนที่เหลือก่อนครบกำหนด</p>
       <p class="alert-text" style="color:#78350f;">
         ท่านมียอดค้างชำระ <strong>฿{{ number_format($booking->balance_amount, 0) }}</strong>
-        กรุณาชำระภายในวันที่ <strong>{{ $booking->balance_due_at?->locale('th')->isoFormat('D MMMM YYYY') ?? '-' }}</strong>
+        กรุณาชำระภายในวันที่ <strong>{{ \App\Support\ThaiDate::full($booking->balance_due_at) }}</strong>
         เพื่อยืนยันสิทธิ์การเดินทาง
       </p>
     </div>
