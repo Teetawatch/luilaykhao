@@ -12,6 +12,13 @@ class VehicleLocationUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public function __construct(
+        public int $vehicleId,
+        public float $latitude,
+        public float $longitude,
+        public ?float $speed,
+        public ?float $heading,
+        public string $vehicleName,
         public string $licensePlate,
         public string $type,
         public string $recordedAt,
