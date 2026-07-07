@@ -35,7 +35,7 @@ return [
     ),
     'mobile_ios_store_url' => env(
         'MOBILE_IOS_STORE_URL',
-        'https://apps.apple.com/th/app/luilaykhao/id0000000000',
+        'https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th',
     ),
     'mobile_update_message' => env(
         'MOBILE_UPDATE_MESSAGE',
