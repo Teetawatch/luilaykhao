@@ -122,6 +122,15 @@ class BookingResource extends JsonResource
                     'paid_at' => $ip->paid_at?->toISOString(),
                 ])
             ),
+            // สรุปการแบ่งจ่ายกลุ่ม — มีเมื่อ controller โหลด splitShares มาด้วย
+            'split' => $this->when(
+                $this->relationLoaded('splitShares'),
+                fn () => [
+                    'enabled' => $this->splitShares->isNotEmpty(),
+                    'total_shares' => $this->splitShares->count(),
+                    'paid_shares' => $this->splitShares->where('status', 'paid')->count(),
+                ]
+            ),
             'seats' => BookingSeatResource::collection($this->whenLoaded('seats')),
             'passengers' => BookingPassengerResource::collection($this->whenLoaded('passengers')),
             'staff_reviews' => $this->when(

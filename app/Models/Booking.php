@@ -161,6 +161,11 @@ class Booking extends Model
         return $this->hasMany(InstallmentPayment::class)->orderBy('installment_no');
     }
 
+    public function splitShares(): HasMany
+    {
+        return $this->hasMany(BookingSplitShare::class)->orderBy('id');
+    }
+
     public function review(): HasOne
     {
         return $this->hasOne(Review::class);

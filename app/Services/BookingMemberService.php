@@ -45,7 +45,7 @@ class BookingMemberService
      */
     public function acceptInvite(User $user, string $token): BookingMember
     {
-        return DB::transaction(function () use ($user, $token) {
+        $member = DB::transaction(function () use ($user, $token) {
             $invite = BookingMember::where('invite_token', $token)
                 ->lockForUpdate()
                 ->first();
@@ -86,6 +86,12 @@ class BookingMemberService
 
             return $invite->fresh();
         });
+
+        // ถ้าการจองนี้เปิดแบ่งจ่ายไว้ ผูกสมาชิกใหม่กับส่วนแบ่งว่างทันที
+        // และแจ้งยอดที่ต้องจ่ายผ่าน push
+        app(SplitPaymentService::class)->linkMemberToShare($member);
+
+        return $member;
     }
 
     /**

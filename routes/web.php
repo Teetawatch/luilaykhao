@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicPaymentController;
+use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\SlipController;
 use App\Models\Article;
 use App\Models\ArticleCategory;
@@ -93,6 +94,16 @@ Route::post('/pay/{token}', [PublicPaymentController::class, 'pay'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:payment')
     ->name('public.pay.submit');
+
+// Public split-share payment — เพื่อนร่วมทริปจ่ายส่วนของตัวเองจากลิงก์ (ไม่ต้องล็อกอิน)
+Route::get('/pay-share/{token}', [PublicSharePaymentController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.pay-share.show');
+Route::post('/pay-share/{token}', [PublicSharePaymentController::class, 'pay'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:payment')
+    ->name('public.pay-share.submit');
 
 // Admin payment-tracking page — ดูลูกค้าที่ค้างชำระ + ส่งลิงก์ (session login, admin/operator)
 Route::prefix('admin/payments')->group(function () {

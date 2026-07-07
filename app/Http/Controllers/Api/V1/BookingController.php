@@ -71,6 +71,7 @@ class BookingController extends Controller
                 'seats',
                 'passengers.pickupPoint',
                 'installmentPayments',
+                'splitShares',
                 // เฉพาะรีวิวของผู้ที่กำลังดู (เจ้าของหรือเพื่อนร่วมเดินทาง) เพื่อให้ can_review เป็นรายคน
                 'review' => fn ($q) => $q->where('user_id', auth()->id()),
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', auth()->id()),
@@ -145,6 +146,7 @@ class BookingController extends Controller
                 'seats',
                 'passengers.pickupPoint',
                 'installmentPayments',
+                'splitShares',
                 // เฉพาะรีวิวของผู้ที่กำลังดู (เจ้าของหรือเพื่อนร่วมเดินทาง) เพื่อให้ can_review เป็นรายคน
                 'review' => fn ($q) => $q->where('user_id', $userId),
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),

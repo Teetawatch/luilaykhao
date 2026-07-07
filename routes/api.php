@@ -31,9 +31,11 @@ use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleItineraryController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\SosController;
+use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\TripPostController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\WaitlistController;
 use Illuminate\Support\Facades\Broadcast;
@@ -84,6 +86,13 @@ Route::prefix('v1')->group(function () {
     // Reviews (public read)
     Route::get('reviews', [ReviewController::class, 'index']);
 
+    // Trip posts / ฟีดรูปหลังทริป (public read — ฟีดรวม + ฟีดต่อทริป + คอมเมนต์)
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('trip-posts', [TripPostController::class, 'index']);
+        Route::get('trips/{slug}/posts', [TripPostController::class, 'tripIndex']);
+        Route::get('trip-posts/{postId}/comments', [TripPostController::class, 'comments']);
+    });
+
     // Categories (public)
     Route::get('categories', [CategoryController::class, 'index']);
 
@@ -126,6 +135,22 @@ Route::prefix('v1')->group(function () {
         Route::delete('bookings/{ref}/members/{memberId}', [BookingMemberController::class, 'destroy']);
         Route::get('booking-invites/{token}', [BookingMemberController::class, 'showInvite']);
         Route::post('booking-invites/{token}/accept', [BookingMemberController::class, 'acceptInvite']);
+
+        // Trip posts / ฟีดรูปหลังทริป (เขียน — โพสต์ได้เฉพาะคนที่เคยเดินทาง)
+        Route::post('trips/{slug}/posts', [TripPostController::class, 'store'])->middleware('throttle:10,60');
+        Route::delete('trip-posts/{postId}', [TripPostController::class, 'destroy']);
+        Route::post('trip-posts/{postId}/like', [TripPostController::class, 'like'])->middleware('throttle:60,1');
+        Route::post('trip-posts/{postId}/comments', [TripPostController::class, 'storeComment'])->middleware('throttle:20,1');
+        Route::delete('trip-posts/{postId}/comments/{commentId}', [TripPostController::class, 'destroyComment']);
+        Route::post('trip-posts/{postId}/report', [TripPostController::class, 'report'])->middleware('throttle:10,1');
+
+        // Split payment (แบ่งจ่ายกลุ่ม) — เจ้าของแบ่งยอดคงเหลือให้เพื่อนช่วยจ่าย
+        Route::get('bookings/{ref}/split', [SplitPaymentController::class, 'show']);
+        Route::post('bookings/{ref}/split', [SplitPaymentController::class, 'store']);
+        Route::put('bookings/{ref}/split', [SplitPaymentController::class, 'update']);
+        Route::delete('bookings/{ref}/split', [SplitPaymentController::class, 'destroy']);
+        Route::post('bookings/{ref}/split/shares/{shareId}/pay', [SplitPaymentController::class, 'pay'])->middleware('throttle:payment');
+        Route::post('bookings/{ref}/split/shares/{shareId}/remind', [SplitPaymentController::class, 'remind'])->middleware('throttle:20,1');
 
         // Group chat per trip schedule (customers + assigned staff + admins)
         Route::get('chat/my-conversations', [ChatController::class, 'myConversations']);
@@ -295,6 +320,12 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'role:admin|operator'])->prefix('admin')->group(function () {
         // Dashboard
         Route::get('dashboard', [AdminController::class, 'dashboard']);
+
+        // Trip posts moderation — ฟีดรูปหลังทริป (ดูทั้งหมด/ซ่อน/ลบ)
+        Route::get('trip-posts', [TripPostController::class, 'adminIndex']);
+        Route::post('trip-posts/{postId}/hide', [TripPostController::class, 'adminHide']);
+        Route::post('trip-posts/{postId}/unhide', [TripPostController::class, 'adminUnhide']);
+        Route::delete('trip-posts/{postId}', [TripPostController::class, 'adminDestroy']);
 
         // Group chat — list active conversations
         Route::get('chat/conversations', [ChatController::class, 'adminConversations']);

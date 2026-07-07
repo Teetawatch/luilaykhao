@@ -17,8 +17,10 @@ use App\Services\InstallmentPaymentService;
 use App\Services\MailService;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
+use App\Services\SplitPaymentService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
+use App\Traits\ResolvesTransferDatetime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +32,7 @@ use Illuminate\Validation\ValidationException;
 class PaymentController extends Controller
 {
     use ApiResponse;
+    use ResolvesTransferDatetime;
 
     public function __construct(
         private BookingService $bookingService,
@@ -37,6 +40,7 @@ class PaymentController extends Controller
         private SmsService $smsService,
         private InstallmentPaymentService $installmentPaymentService,
         private BalancePaymentService $balancePaymentService,
+        private SplitPaymentService $splitPaymentService,
     ) {}
 
     public function charge(ChargeRequest $request): JsonResponse
@@ -162,6 +166,108 @@ class PaymentController extends Controller
                     'status' => 'confirmed',
                     'booking' => new BookingResource($booking),
                 ], 'ชำระงวดแรกสำเร็จ กรุณาชำระงวดถัดไปตามกำหนด');
+            }
+
+            // ── Split payment (จ่ายเต็มแบบแบ่งจ่ายกลุ่ม) ─────────────
+            // เจ้าของชำระ "ส่วนของตัวเอง" ตอนนี้ ที่นั่งยืนยันทันที
+            // ยอดที่เหลือแบ่งให้เพื่อนร่วมทริปช่วยจ่ายผ่านแอป/ลิงก์
+            // ใช้กลไก balance ของมัดจำ (deposit_amount = ส่วนเจ้าของ)
+            if ($paymentType === 'split') {
+                $schedule = $booking->schedule;
+                $passengerCount = $booking->passengers()->count();
+
+                if ($booking->is_join_trip) {
+                    return $this->error('การจองแบบจอยทริปไม่รองรับการแบ่งจ่าย', 422);
+                }
+
+                if ($passengerCount < 2) {
+                    return $this->error('การแบ่งจ่ายต้องมีผู้เดินทางอย่างน้อย 2 คน', 422);
+                }
+
+                $totalAmount = (float) $booking->total_amount;
+                $ownerShare = round($totalAmount / $passengerCount, 2);
+                $balanceAmount = round($totalAmount - $ownerShare, 2);
+
+                $departureDate = $schedule->departure_date;
+                $balanceDueAt = $departureDate
+                    ? CarbonImmutable::parse($departureDate)->subDays(15)->startOfDay()
+                    : null;
+
+                $paymentRef = 'PAY-SPLIT-'.strtoupper(uniqid());
+
+                DB::transaction(function () use (
+                    $booking, $ownerShare, $balanceAmount, $balanceDueAt,
+                    $paymentMethod, $paymentRef, $slipPath, $transferDt, $passengerCount
+                ) {
+                    $booking->update([
+                        'payment_type' => 'deposit',
+                        'deposit_amount' => $ownerShare,
+                        'balance_amount' => $balanceAmount,
+                        'balance_due_at' => $balanceDueAt,
+                        'payment_method' => $paymentMethod,
+                        'payment_ref' => $paymentRef,
+                        'slip_path' => $slipPath,
+                        'transfer_datetime' => $transferDt,
+                        'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                    ]);
+
+                    $this->bookingService->confirmBooking(
+                        $booking->fresh(),
+                        $paymentMethod,
+                        $paymentRef,
+                        $ownerShare,
+                    );
+
+                    $this->splitPaymentService->createSharesForRemainder(
+                        $booking->fresh(),
+                        $balanceAmount,
+                        $passengerCount - 1,
+                    );
+                });
+
+                if ($slipPath) {
+                    VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $ownerShare);
+                }
+
+                $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers', 'splitShares']);
+
+                try {
+                    foreach ($booking->seats as $seat) {
+                        broadcast(new SeatBooked(
+                            $booking->schedule_id,
+                            $seat->seat_id,
+                            $booking->schedule->available_seats,
+                        ));
+                    }
+
+                    broadcast(new PaymentConfirmed(
+                        $booking->user_id,
+                        $booking->booking_ref,
+                        'confirmed',
+                        $booking->seats->pluck('seat_id')->toArray(),
+                    ));
+                } catch (\Exception $e) {
+                    Log::warning('Broadcast failed: '.$e->getMessage());
+                }
+
+                $this->mailService->sendDepositPaidEmail($booking);
+
+                $shareCount = $passengerCount - 1;
+                SmartNotification::send(
+                    $booking->user_id,
+                    'split_started',
+                    'รับชำระส่วนของคุณแล้ว',
+                    "รับชำระส่วนของคุณสำหรับเลขการจอง {$booking->booking_ref} แล้ว แบ่งยอดที่เหลือให้เพื่อนอีก {$shareCount} คน — เชิญเพื่อนเข้าการจองหรือส่งลิงก์ชำระเงินได้เลย",
+                    [
+                        'booking_ref' => $booking->booking_ref,
+                        'route' => 'booking',
+                    ],
+                );
+
+                return $this->success([
+                    'status' => 'confirmed',
+                    'booking' => new BookingResource($booking),
+                ], 'ชำระส่วนของคุณสำเร็จ ส่งลิงก์ให้เพื่อนช่วยจ่ายส่วนที่เหลือได้เลย');
             }
 
             // ── Deposit payment ──────────────────────────────────────
@@ -469,57 +575,5 @@ class PaymentController extends Controller
             'amount' => $result['amount'],
             'bank' => $result['bank'],
         ], 'อ่านข้อมูลจากสลิปสำเร็จ');
-    }
-
-    private function resolveTransferDatetime(Request $request): ?string
-    {
-        $date = trim((string) $request->input('transfer_date', ''));
-        $time = trim((string) $request->input('transfer_time', ''));
-
-        if ($date === '') {
-            return null;
-        }
-
-        if (! preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $date, $dateParts)) {
-            throw ValidationException::withMessages([
-                'transfer_date' => 'รูปแบบวันที่โอนเงินไม่ถูกต้อง',
-            ]);
-        }
-
-        $year = (int) $dateParts[1];
-        if ($year > 2400) {
-            $year -= 543;
-        }
-
-        $month = (int) $dateParts[2];
-        $day = (int) $dateParts[3];
-
-        if ($time === '') {
-            $hour = 0;
-            $minute = 0;
-            $second = 0;
-        } elseif (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/', $time, $timeParts)) {
-            $hour = (int) $timeParts[1];
-            $minute = (int) $timeParts[2];
-            $second = isset($timeParts[3]) ? (int) $timeParts[3] : 0;
-        } else {
-            throw ValidationException::withMessages([
-                'transfer_time' => 'รูปแบบเวลาโอนเงินไม่ถูกต้อง',
-            ]);
-        }
-
-        if (
-            ! checkdate($month, $day, $year)
-            || $hour > 23
-            || $minute > 59
-            || $second > 59
-        ) {
-            throw ValidationException::withMessages([
-                'transfer_datetime' => 'วันที่หรือเวลาโอนเงินไม่ถูกต้อง',
-            ]);
-        }
-
-        return CarbonImmutable::create($year, $month, $day, $hour, $minute, $second)
-            ->format('Y-m-d H:i:s');
     }
 }

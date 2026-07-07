@@ -646,6 +646,9 @@
 
         </div>
 
+        <!-- ฟีดรูปหลังทริป — UGC จากลูกค้าที่เดินทางจริง (ซ่อนตัวเองเมื่อไม่มีโพสต์) -->
+        <TripPostsFeed v-if="trip.slug" :slug="trip.slug" />
+
         <!-- Reviews Section (Moved to bottom for Mobile flow) -->
         <section id="reviews" class="mt-16 pt-16 border-t border-gray-200">
           <div class="flex items-center justify-between mb-10">
@@ -1283,6 +1286,7 @@ import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
 import SeatMap from '../components/SeatMap.vue';
 import ScheduleCalendar from '../components/ScheduleCalendar.vue';
+import TripPostsFeed from '../components/TripPostsFeed.vue';
 import {
   hasAvailableSeats,
   isScheduleBookable,

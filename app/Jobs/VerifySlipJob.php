@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Booking;
+use App\Models\BookingSplitShare;
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
 use App\Models\User;
@@ -19,13 +20,14 @@ class VerifySlipJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 60;
 
     public function __construct(
-        private readonly string $type,         // 'booking' | 'balance' | 'installment'
-        private readonly int    $modelId,      // Booking.id or InstallmentPayment.id
+        private readonly string $type,         // 'booking' | 'balance' | 'installment' | 'split'
+        private readonly int $modelId,      // Booking.id, InstallmentPayment.id or BookingSplitShare.id
         private readonly string $slipPath,
-        private readonly float  $expectedAmount,
+        private readonly float $expectedAmount,
     ) {}
 
     public function handle(SlipOcrService $ocrService): void
@@ -33,23 +35,26 @@ class VerifySlipJob implements ShouldQueue
         $result = $ocrService->verify($this->slipPath, $this->expectedAmount);
 
         Log::info('VerifySlipJob result', [
-            'type'           => $this->type,
-            'model_id'       => $this->modelId,
-            'status'         => $result['status'],
-            'reason'         => $result['reason'] ?? null,
+            'type' => $this->type,
+            'model_id' => $this->modelId,
+            'status' => $result['status'],
+            'reason' => $result['reason'] ?? null,
         ]);
 
         match ($this->type) {
-            'booking'     => $this->saveToBooking($result, 'slip_ocr_status', 'slip_ocr_result'),
-            'balance'     => $this->saveToBooking($result, 'balance_slip_ocr_status', 'balance_slip_ocr_result'),
+            'booking' => $this->saveToBooking($result, 'slip_ocr_status', 'slip_ocr_result'),
+            'balance' => $this->saveToBooking($result, 'balance_slip_ocr_status', 'balance_slip_ocr_result'),
             'installment' => $this->saveToInstallment($result),
+            'split' => $this->saveToSplitShare($result),
         };
     }
 
     private function saveToBooking(array $result, string $statusCol, string $resultCol): void
     {
         $booking = Booking::find($this->modelId);
-        if (! $booking) return;
+        if (! $booking) {
+            return;
+        }
 
         $booking->update([
             $statusCol => $result['status'],
@@ -64,7 +69,9 @@ class VerifySlipJob implements ShouldQueue
     private function saveToInstallment(array $result): void
     {
         $installment = InstallmentPayment::with('booking')->find($this->modelId);
-        if (! $installment) return;
+        if (! $installment) {
+            return;
+        }
 
         $installment->update([
             'slip_ocr_status' => $result['status'],
@@ -77,11 +84,29 @@ class VerifySlipJob implements ShouldQueue
         }
     }
 
+    private function saveToSplitShare(array $result): void
+    {
+        $share = BookingSplitShare::with('booking')->find($this->modelId);
+        if (! $share) {
+            return;
+        }
+
+        $share->update([
+            'slip_ocr_status' => $result['status'],
+            'slip_ocr_result' => $result['raw'],
+        ]);
+
+        if ($result['status'] === SlipOcrService::STATUS_FAILED) {
+            $bookingRef = $share->booking?->booking_ref ?? "share#{$this->modelId}";
+            $this->notifyAdmins("ส่วนแบ่งกลุ่มของ {$bookingRef}", $result['reason'] ?? 'unknown');
+        }
+    }
+
     private function notifyAdmins(string $bookingRef, string $reason, ?int $installmentNo = null): void
     {
         $label = $installmentNo ? "งวดที่ {$installmentNo} ของ " : '';
         $title = 'สลิปต้องตรวจสอบ';
-        $body  = "OCR ไม่ผ่านอัตโนมัติ: {$label}{$bookingRef} (สาเหตุ: {$reason}) กรุณาตรวจสอบและอนุมัติด้วยตนเอง";
+        $body = "OCR ไม่ผ่านอัตโนมัติ: {$label}{$bookingRef} (สาเหตุ: {$reason}) กรุณาตรวจสอบและอนุมัติด้วยตนเอง";
 
         try {
             User::role(['admin', 'operator'])->each(function (User $admin) use ($title, $body, $bookingRef) {
@@ -94,7 +119,7 @@ class VerifySlipJob implements ShouldQueue
                 );
             });
         } catch (\Exception $e) {
-            Log::warning('VerifySlipJob: could not notify admins — ' . $e->getMessage());
+            Log::warning('VerifySlipJob: could not notify admins — '.$e->getMessage());
         }
     }
 }
