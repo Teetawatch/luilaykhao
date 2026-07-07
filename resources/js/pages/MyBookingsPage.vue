@@ -12,6 +12,9 @@
         </p>
       </section>
 
+      <!-- คิวรอที่นั่งของฉัน -->
+      <MyWaitlist />
+
       <!-- Tabs -->
       <div class="flex gap-2 mb-8 bg-[#E8EEEF] p-1.5 rounded-[16px] w-fit shadow-inner">
         <button
@@ -242,6 +245,12 @@
                   <span class="text-xs font-black text-green-700">ชำระครบทุกงวดเรียบร้อยแล้ว ✓</span>
                 </div>
               </div>
+
+              <!-- แบ่งจ่ายกลุ่ม — มัดจำที่ยังมียอดคงเหลือค้างชำระ -->
+              <SplitPaymentPanel
+                v-if="b.status === 'confirmed' && b.payment_type === 'deposit' && !b.balance_paid_at && Number(b.balance_amount) > 0"
+                :booking-ref="b.booking_ref"
+                class="mt-4" />
             </div>
 
             <!-- Actions -->
@@ -492,6 +501,8 @@ import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
 import api from '../lib/axios';
 import CountdownTimer from '../components/CountdownTimer.vue';
+import MyWaitlist from '../components/MyWaitlist.vue';
+import SplitPaymentPanel from '../components/SplitPaymentPanel.vue';
 
 const router = useRouter();
 

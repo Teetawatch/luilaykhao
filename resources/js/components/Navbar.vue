@@ -364,7 +364,12 @@
                       <span class="material-symbols-rounded text-[20px]">stars</span>
                       แต้มสะสม
                     </router-link>
-                    
+
+                    <router-link to="/referral" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
+                      <span class="material-symbols-rounded text-[20px]">group_add</span>
+                      ชวนเพื่อน
+                    </router-link>
+
                     <template v-if="isStaff">
                       <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
                       <router-link to="/my-staff-trips" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">

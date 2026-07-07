@@ -58,6 +58,7 @@ const routes = [
   { path: '/my-reviews', name: 'my-reviews', component: () => import('../pages/MyReviewsPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/my-staff-trips', name: 'my-staff-trips', component: () => import('../pages/MyStaffTripsPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/loyalty', name: 'loyalty', component: () => import('../pages/LoyaltyPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/referral', name: 'referral', component: () => import('../pages/ReferralPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/notifications', name: 'notifications', component: () => import('../pages/NotificationsPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   {
     path: '/about',

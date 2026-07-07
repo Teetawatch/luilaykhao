@@ -556,6 +556,9 @@
                   </div>
                 </div>
 
+                <!-- พยากรณ์อากาศวันเดินทาง (แสดงเมื่อ backend แนบมากับรอบที่เลือก) -->
+                <WeatherBadge v-if="selectedSchedule?.weather" :weather="selectedSchedule.weather" class="mb-8" />
+
                 <!-- ── Book Now ── -->
                 <div v-if="selectedSchedule">
                   <router-link
@@ -579,6 +582,12 @@
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
                     สามารถปรับเปลี่ยนวันหรือเปลี่ยนผู้เข้าใช้สิทธิ์แทนได้ โดยไม่มีค่าใช้จ่าย หากแจ้งล่วงหน้าภายใน 45 วัน
                   </p>
+
+                  <!-- คิวรอที่นั่ง — เฉพาะรอบที่เต็มจริง (ไม่ใช่รอบเหมา/Enjoy Trip) -->
+                  <WaitlistJoinCard
+                    v-if="!selectedSchedule.is_charter && !hasAvailableSeats(selectedSchedule) && !selectedSchedule.join_trip_enabled"
+                    :schedule-id="selectedSchedule.id"
+                    class="mt-4" />
                 </div>
                 <div v-else class="text-center py-4 bg-gray-50 rounded-[1.25rem] border border-dashed border-gray-300">
                   <p class="text-sm font-bold text-gray-500">{{ isTrekking ? (selectedRegion ? 'โปรดเลือกวันเดินทาง' : 'โปรดเลือกภูมิภาคก่อน') : 'โปรดเลือกวันเดินทางเพื่อจอง' }}</p>
@@ -1287,6 +1296,8 @@ import { useHead } from '@unhead/vue';
 import SeatMap from '../components/SeatMap.vue';
 import ScheduleCalendar from '../components/ScheduleCalendar.vue';
 import TripPostsFeed from '../components/TripPostsFeed.vue';
+import WeatherBadge from '../components/WeatherBadge.vue';
+import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
 import {
   hasAvailableSeats,
   isScheduleBookable,
