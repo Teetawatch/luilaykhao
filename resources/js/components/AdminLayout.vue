@@ -139,6 +139,7 @@ const menuGroups = ref([
       { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },
       { to: '/admin/birthdate-followup', icon: 'fas fa-birthday-cake', label: 'ตามเก็บวันเกิด' },
       { to: '/admin/reviews', icon: 'fas fa-star', label: 'รีวิวจากลูกค้า' },
+      { to: '/admin/trip-posts', icon: 'fas fa-images', label: 'ฟีดนักเดินทาง' },
       { to: '/admin/inquiries', icon: 'fas fa-envelope', label: 'ข้อความติดต่อ' },
     ],
     isOpen: false

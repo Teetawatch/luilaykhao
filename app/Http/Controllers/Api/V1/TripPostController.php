@@ -190,14 +190,21 @@ class TripPostController extends Controller
     // ── Admin (role:admin|operator ผ่าน route middleware) ────────
 
     /**
-     * แอดมินดูโพสต์ทั้งหมด (รวมที่ถูกซ่อน) — กรอง status ได้
+     * แอดมินดูโพสต์ทั้งหมด (รวมที่ถูกซ่อน) — กรอง status / เฉพาะที่ถูกรายงาน
+     * แนบตัวเลขสรุป (ทั้งหมด/ถูกรายงาน/ซ่อนอยู่) ไว้ใน meta สำหรับ badge
      */
     public function adminIndex(Request $request): JsonResponse
     {
-        $posts = TripPost::query()
+        $query = TripPost::query()
             ->with(['user:id,name,nickname,avatar', 'trip:id,slug,title'])
-            ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status))
-            ->latest('id')
+            ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status));
+
+        // โฟกัสงาน moderation: เฉพาะที่ถูกรายงาน เรียงตามจำนวนรายงานมากสุดก่อน
+        if ($request->boolean('reported')) {
+            $query->where('reports_count', '>', 0)->orderByDesc('reports_count');
+        }
+
+        $posts = $query->latest('id')
             ->paginate(min((int) $request->input('per_page', 20), 50));
 
         $posts->getCollection()->transform(function (TripPost $post) {
@@ -208,7 +215,15 @@ class TripPostController extends Controller
             return $row;
         });
 
-        return $this->paginated($posts);
+        $response = $this->paginated($posts);
+        $data = $response->getData(true);
+        $data['meta']['counts'] = [
+            'total' => TripPost::count(),
+            'reported' => TripPost::where('reports_count', '>', 0)->count(),
+            'hidden' => TripPost::where('status', TripPost::STATUS_HIDDEN)->count(),
+        ];
+
+        return response()->json($data);
     }
 
     public function adminHide(Request $request, int $postId): JsonResponse

@@ -193,6 +193,7 @@ const routes = [
       { path: 'itinerary', name: 'admin-itinerary', component: () => import('../pages/admin/ItineraryPage.vue') },
       { path: 'incidents', name: 'admin-incidents', component: () => import('../pages/admin/IncidentsPage.vue') },
       { path: 'reviews', name: 'admin-reviews', component: () => import('../pages/admin/ReviewsPage.vue') },
+      { path: 'trip-posts', name: 'admin-trip-posts', component: () => import('../pages/admin/TripPostsModerationPage.vue') },
       { path: 'loyalty', name: 'admin-loyalty', component: () => import('../pages/admin/LoyaltyPage.vue') },
       { path: 'analytics', name: 'admin-analytics', component: () => import('../pages/admin/AnalyticsPage.vue') },
       { path: 'tracking', name: 'admin-tracking', component: () => import('../pages/admin/TrackingPage.vue') },

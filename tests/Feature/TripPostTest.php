@@ -408,4 +408,38 @@ class TripPostTest extends TestCase
             ->assertOk();
         $this->assertEquals(TripPost::STATUS_PUBLISHED, $post->fresh()->status);
     }
+
+    public function test_admin_can_filter_reported_and_gets_counts(): void
+    {
+        $trip = $this->makeTrip();
+        [$owner] = $this->makeTraveler($trip);
+        $reported = $this->makePost($owner, $trip);
+        $clean = $this->makePost($owner, $trip);
+
+        $reporter = User::factory()->create();
+        $this->actingAs($reporter, 'sanctum')
+            ->postJson("/api/v1/trip-posts/{$reported->id}/report")
+            ->assertOk();
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        // ตัวกรอง "ถูกรายงาน" คืนเฉพาะโพสต์ที่มีรายงาน
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/trip-posts?reported=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $reported->id)
+            ->assertJsonPath('data.0.reports_count', 1);
+
+        // meta.counts สรุปยอดสำหรับ badge
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/trip-posts')
+            ->assertOk()
+            ->assertJsonPath('meta.counts.total', 2)
+            ->assertJsonPath('meta.counts.reported', 1)
+            ->assertJsonPath('meta.counts.hidden', 0);
+
+        $this->assertNotNull($clean);
+    }
 }
