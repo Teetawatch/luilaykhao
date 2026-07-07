@@ -11,6 +11,7 @@ use App\Jobs\SendDepartureSoonRemindersJob;
 use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendStaffShiftRemindersJob;
 use App\Jobs\SendTripReminderNotificationsJob;
+use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Jobs\SendWeatherAlertsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -30,6 +31,8 @@ Schedule::job(new SendDepartureSoonRemindersJob)->everyFifteenMinutes()->without
 // เตือนสตาฟที่ถูกมอบหมายงาน เย็นก่อนวันเดินทาง 1 วัน ให้เตรียมอุปกรณ์/ความพร้อม
 Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// 5 วันก่อนออกเดินทาง เตือนลูกค้าเมื่อรอบยังมีผู้จองไม่ถึงขั้นต่ำ (8 ที่นั่ง) — ทริปอาจถูกยกเลิก
+Schedule::job(new SendUnderfilledTripWarningsJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // Review window opens at 20:00 (Asia/Bangkok) on the trip's last day — invite exactly then.
 Schedule::job(new SendReviewInvitesJob)->dailyAt('20:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::command('sms:send-pending')->everyFiveMinutes();

@@ -13,6 +13,7 @@ use App\Mail\DepositPaidMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
 use App\Mail\PaymentConfirmedMail;
+use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
@@ -45,7 +46,7 @@ class MailService
             ->values()
             ->all();
 
-        if (!empty($passengerEmails)) {
+        if (! empty($passengerEmails)) {
             return $passengerEmails;
         }
 
@@ -99,7 +100,7 @@ class MailService
         try {
             // Admin notification
             $adminEmails = $this->getAdminEmails();
-            if (!empty($adminEmails)) {
+            if (! empty($adminEmails)) {
                 Mail::to($adminEmails)->send(new AdminNewBookingMail($booking));
             }
         } catch (\Throwable $e) {
@@ -130,7 +131,7 @@ class MailService
         try {
             // Admin notification
             $adminEmails = $this->getAdminEmails();
-            if (!empty($adminEmails)) {
+            if (! empty($adminEmails)) {
                 Mail::to($adminEmails)->send(new AdminPaymentReceivedMail($booking, $paymentType));
             }
         } catch (\Throwable $e) {
@@ -212,7 +213,7 @@ class MailService
 
         try {
             $adminEmails = $this->getAdminEmails();
-            if (!empty($adminEmails)) {
+            if (! empty($adminEmails)) {
                 Mail::to($adminEmails)->send(new AdminPaymentReceivedMail($booking, 'deposit'));
             }
         } catch (\Throwable $e) {
@@ -235,10 +236,10 @@ class MailService
             $this->sendToCustomerEmails($booking, fn () => new InstallmentDueReminderMail($booking, $installment, $reminderType));
         } catch (\Throwable $e) {
             Log::error('Failed to send installment due reminder email', [
-                'booking_ref'    => $booking->booking_ref,
+                'booking_ref' => $booking->booking_ref,
                 'installment_no' => $installment->installment_no,
-                'reminder_type'  => $reminderType,
-                'error'          => $e->getMessage(),
+                'reminder_type' => $reminderType,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -255,6 +256,27 @@ class MailService
             $this->sendToCustomerEmails($booking, fn () => new BalanceDueReminderMail($booking));
         } catch (\Throwable $e) {
             Log::error('Failed to send balance due reminder email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send an "trip may be cancelled" warning email — the round is close to
+     * departure but still below the guaranteed minimum number of booked seats.
+     */
+    public function sendTripUnderfilledWarningEmail(Booking $booking, int $daysBefore, int $bookedSeats, int $minSeats): void
+    {
+        $booking->loadMissing(['user', 'schedule.trip', 'passengers', 'pickupPoint']);
+
+        try {
+            $this->sendToCustomerEmails(
+                $booking,
+                fn () => new TripUnderfilledWarningMail($booking, $daysBefore, $bookedSeats, $minSeats),
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to send trip underfilled warning email', [
                 'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
             ]);
@@ -279,7 +301,7 @@ class MailService
 
         try {
             $adminEmails = $this->getAdminEmails();
-            if (!empty($adminEmails)) {
+            if (! empty($adminEmails)) {
                 Mail::to($adminEmails)->send(new AdminPaymentReceivedMail($booking, 'balance'));
             }
         } catch (\Throwable $e) {
