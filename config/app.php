@@ -29,6 +29,14 @@ return [
         'MOBILE_STORE_URL',
         'https://play.google.com/store/apps/details?id=com.luilaykhao.app',
     ),
+    'mobile_android_store_url' => env(
+        'MOBILE_ANDROID_STORE_URL',
+        'https://play.google.com/store/apps/details?id=com.luilaykhao.app',
+    ),
+    'mobile_ios_store_url' => env(
+        'MOBILE_IOS_STORE_URL',
+        'https://apps.apple.com/th/app/luilaykhao/id0000000000',
+    ),
     'mobile_update_message' => env(
         'MOBILE_UPDATE_MESSAGE',
         'อัปเดตเพื่อใช้ฟีเจอร์ใหม่และแก้ไขบั๊กล่าสุด',
