@@ -146,31 +146,28 @@
     >
       <div class="max-w-7xl mx-auto px-6 md:px-8">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 -mt-20 md:-mt-24 relative z-20">
-          <div 
-            v-for="(stat, index) in statItems" 
-            :key="stat.label" 
-            class="bg-white rounded-[2.5rem] p-8 lg:p-10 flex flex-col items-center text-center shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100/50 hover:border-[var(--color-primary)]/30 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(13,43,30,0.12)] transition-all duration-500 group overflow-hidden relative"
+          <div
+            v-for="(stat, index) in statItems"
+            :key="stat.label"
+            class="bg-white rounded-3xl p-7 lg:p-9 flex flex-col items-center text-center shadow-[0_18px_44px_rgba(13,43,30,0.06)] ring-1 ring-black/[0.04] hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(13,43,30,0.1)] transition-[transform,box-shadow] duration-300 group"
             :class="[isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10']"
-            :style="{ transitionDelay: `${index * 150}ms` }"
+            :style="{ transitionDelay: `${index * 120}ms` }"
           >
-            <!-- Decorative Background Glow -->
-            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-[var(--color-primary)]/5 rounded-full blur-3xl group-hover:bg-[var(--color-primary)]/10 transition-colors duration-500"></div>
-            
-            <!-- Icon with modern container -->
-            <div class="w-16 h-16 rounded-2xl bg-[var(--color-primary)]/5 flex items-center justify-center text-[var(--color-primary)] mb-6 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:rotate-[10deg] transition-all duration-500 relative z-10">
-              <span class="material-symbols-rounded text-[32px]">{{ stat.icon }}</span>
+            <!-- Icon -->
+            <div class="w-14 h-14 rounded-2xl bg-[var(--color-primary)]/[0.06] flex items-center justify-center text-[var(--color-primary)] mb-5 group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors duration-300">
+              <span class="material-symbols-rounded text-[28px]">{{ stat.icon }}</span>
             </div>
-            
+
             <!-- Statistical Value with Count-up -->
-            <div class="flex items-baseline gap-0.5 mb-2 relative z-10">
-              <span class="text-4xl lg:text-5xl font-black text-[var(--color-text-dark)] tracking-tight leading-none">
+            <div class="flex items-baseline gap-0.5 mb-1.5">
+              <span class="text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-none tabular-nums">
                 {{ stat.displayValue }}
               </span>
-              <span v-if="stat.suffix" class="text-2xl lg:text-3xl font-black text-[var(--color-accent)]">{{ stat.suffix }}</span>
+              <span v-if="stat.suffix" class="text-xl lg:text-2xl font-bold text-[var(--color-accent)]">{{ stat.suffix }}</span>
             </div>
-            
-            <!-- Persuasive Copy -->
-            <div class="text-[13px] lg:text-sm font-bold text-[var(--color-text-muted)] tracking-wide uppercase max-w-[140px] leading-relaxed relative z-10">
+
+            <!-- Label -->
+            <div class="text-[13px] lg:text-sm font-semibold text-[var(--color-text-muted)]">
               {{ stat.label }}
             </div>
           </div>
@@ -916,33 +913,33 @@ const statsSection = ref(null);
 const isVisible = ref(false);
 
 const statItems = ref([
-  { 
-    icon: 'groups', 
-    target: 1420, 
-    displayValue: '0', 
-    suffix: '+', 
-    label: 'นักเดินทางที่ไว้ใจก้าวไปกับเรา' 
+  {
+    icon: 'groups',
+    target: 1420,
+    displayValue: '0',
+    suffix: '+',
+    label: 'นักเดินทาง',
   },
-  { 
-    icon: 'star', 
-    target: 4.9, 
-    displayValue: '0.0', 
-    suffix: '/5', 
-    label: 'คะแนนรีวิวจากความประทับใจ' 
+  {
+    icon: 'star',
+    target: 4.9,
+    displayValue: '0.0',
+    suffix: '/5',
+    label: 'คะแนนรีวิว',
   },
-  { 
-    icon: 'map', 
-    target: 24, 
-    displayValue: '0', 
-    suffix: '+', 
-    label: 'เส้นทางท่องเที่ยวที่คัดสรรมาเพื่อคุณ' 
+  {
+    icon: 'map',
+    target: 24,
+    displayValue: '0',
+    suffix: '+',
+    label: 'เส้นทางท่องเที่ยว',
   },
-  { 
-    icon: 'verified_user', 
-    target: 99.9, 
-    displayValue: '0', 
-    suffix: '%', 
-    label: 'อัตราความปลอดภัยระดับพรีเมียม' 
+  {
+    icon: 'reviews',
+    target: 320,
+    displayValue: '0',
+    suffix: '+',
+    label: 'รีวิวจากลูกค้าจริง',
   },
 ]);
 
@@ -1166,6 +1163,7 @@ onMounted(async () => {
       statItems.value[0].target = s.total_customers;
       statItems.value[1].target = s.avg_rating;
       statItems.value[2].target = s.total_trips;
+      statItems.value[3].target = s.total_reviews;
     }
 
     // Set up IntersectionObserver
