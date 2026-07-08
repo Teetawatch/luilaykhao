@@ -222,6 +222,50 @@ class TripController extends Controller
     }
 
     /**
+     * "You may also like" — other active trips ranked by relatedness to the
+     * given one (same type and/or region weighted highest, featured as a
+     * tiebreaker, trips with an upcoming open round preferred). Returns up to 6.
+     */
+    public function related(string $slug): JsonResponse
+    {
+        $trip = Trip::where('slug', $slug)->firstOrFail();
+
+        $candidates = Trip::where('status', 'active')
+            ->where('id', '!=', $trip->id)
+            ->with(['photos', 'schedules' => function ($q) {
+                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
+            }])
+            ->get();
+
+        $today = now()->startOfDay();
+
+        $ranked = $candidates
+            ->map(function ($candidate) use ($trip, $today) {
+                $hasUpcoming = $candidate->schedules->contains(
+                    fn ($s) => $s->status === 'open'
+                        && $s->departure_date
+                        && $s->departure_date->gte($today)
+                );
+
+                $score = 0;
+                $score += $candidate->type === $trip->type ? 3 : 0;
+                $score += $candidate->region === $trip->region ? 2 : 0;
+                $score += $hasUpcoming ? 2 : 0;
+                $score += $candidate->is_featured ? 1 : 0;
+
+                return ['trip' => $candidate, 'score' => $score];
+            })
+            ->sortByDesc('score')
+            ->take(6)
+            ->pluck('trip')
+            ->values();
+
+        $ranked->each(fn ($t) => $t->schedules->each->syncBookedSeats());
+
+        return $this->success(TripResource::collection($ranked));
+    }
+
+    /**
      * Count a unique-ish trip view. The same visitor (IP + user agent) only
      * bumps the counter once per 30 minutes so refreshes don't inflate it.
      */

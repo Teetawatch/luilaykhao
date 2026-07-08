@@ -336,6 +336,74 @@
                 <p v-if="!trip.exclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่ไม่รวมในทริป</p>
               </div>
             </section>
+
+            <!-- Cancellation / refund policy -->
+            <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
+              <div class="flex items-center gap-3 mb-2">
+                <span class="material-symbols-rounded text-[var(--color-accent)] text-[28px]">event_repeat</span>
+                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">นโยบายการยกเลิกและคืนเงิน</h3>
+              </div>
+              <p class="text-[var(--color-text-muted)] font-medium mb-8">
+                เปลี่ยนแผนได้อย่างสบายใจ — เงื่อนไขการคืนเงินคำนวณจากจำนวนวันก่อนออกเดินทาง
+              </p>
+
+              <div class="space-y-3">
+                <div
+                  v-for="(tier, i) in trip.cancellation_policy.tiers"
+                  :key="i"
+                  class="flex items-center gap-4 p-4 md:p-5 rounded-2xl border"
+                  :class="tier.percent >= 100 ? 'bg-[#E8F5EC] border-[#2D7A4F]/20'
+                    : tier.percent > 0 ? 'bg-[#FFF8EE] border-[#C8963E]/25'
+                    : 'bg-gray-50 border-gray-200'"
+                >
+                  <div
+                    class="shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center font-black leading-none"
+                    :class="tier.percent >= 100 ? 'bg-[#2D7A4F] text-white'
+                      : tier.percent > 0 ? 'bg-[#C8963E] text-white'
+                      : 'bg-gray-300 text-white'"
+                  >
+                    <span class="text-lg">{{ tier.percent }}%</span>
+                    <span class="text-[9px] font-bold tracking-wide mt-0.5">คืนเงิน</span>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">{{ tier.range }}</p>
+                    <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">{{ tier.detail }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <p v-if="trip.cancellation_policy.note" class="flex items-start gap-2 text-sm font-medium text-[var(--color-text-muted)] mt-6 pt-6 border-t border-gray-100">
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)] shrink-0 mt-0.5">info</span>
+                {{ trip.cancellation_policy.note }}
+              </p>
+            </section>
+
+            <!-- FAQ -->
+            <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
+              <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-rounded text-[var(--color-accent)] text-[28px]">quiz</span>
+                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">คำถามที่พบบ่อย</h3>
+              </div>
+              <div class="divide-y divide-gray-100">
+                <div v-for="(faq, i) in trip.faqs" :key="i">
+                  <button
+                    type="button"
+                    @click="openFaq = openFaq === i ? null : i"
+                    class="w-full flex items-center justify-between gap-4 py-5 text-left group"
+                    :aria-expanded="openFaq === i"
+                  >
+                    <span class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg group-hover:text-[var(--color-accent)] transition-colors">{{ faq.question }}</span>
+                    <span
+                      class="material-symbols-rounded text-[var(--color-text-muted)] shrink-0 transition-transform duration-300"
+                      :class="openFaq === i ? 'rotate-180 text-[var(--color-accent)]' : ''"
+                    >expand_more</span>
+                  </button>
+                  <div v-show="openFaq === i" class="pb-5 -mt-1">
+                    <p class="text-[var(--color-text-muted)] font-medium leading-relaxed whitespace-pre-line">{{ faq.answer }}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
             </div>
             
             <!-- Right Column: Sticky Booking Panel -->
@@ -771,7 +839,56 @@
           </div>
         </section>
 
+        <!-- Related trips — "you may also like" -->
+        <section v-if="relatedTrips.length" class="mt-16 pt-16 border-t border-gray-200">
+          <div class="flex items-end justify-between gap-4 mb-8">
+            <div>
+              <h3 class="text-2xl md:text-4xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2">ทริปที่คุณอาจสนใจ</h3>
+              <p class="text-[var(--color-text-muted)] font-medium">คัดจากทริปแนวเดียวกันและปลายทางใกล้เคียง</p>
+            </div>
+            <router-link to="/trips" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
+              ดูทั้งหมด
+              <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+            </router-link>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
+            <TripCard v-for="t in relatedTrips" :key="t.id" :trip="t" />
+          </div>
+        </section>
 
+      </div>
+
+      <!-- Sticky mobile booking bar (desktop uses the sticky side panel instead) -->
+      <div class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div class="flex items-center gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider leading-none mb-1">
+              {{ selectedSchedule ? 'ราคาสุทธิ / ท่าน' : 'เริ่มต้น / ท่าน' }}
+            </p>
+            <div class="flex items-baseline gap-1.5">
+              <span class="text-xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
+              <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-gray-400 text-sm font-bold line-through decoration-2">
+                ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
+              </span>
+            </div>
+          </div>
+          <router-link
+            v-if="canBookNow"
+            :to="{ path: `/booking/${selectedSchedule.id}`, query: bookingQuery }"
+            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base shadow-[0_8px_16px_rgba(13,43,30,0.2)] active:scale-95 transition-transform"
+          >
+            <span class="material-symbols-rounded text-[20px]">event_available</span>
+            จองเลย
+          </router-link>
+          <button
+            v-else
+            @click="scrollToBooking"
+            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base shadow-[0_8px_16px_rgba(13,43,30,0.2)] active:scale-95 transition-transform"
+          >
+            {{ selectedSchedule ? 'เลือกให้ครบ' : 'เลือกวันเดินทาง' }}
+            <span class="material-symbols-rounded text-[20px]">arrow_upward</span>
+          </button>
+        </div>
       </div>
     </div>
     <div v-else class="text-center py-32 bg-white m-8 rounded-[2rem] border border-gray-100 shadow-sm max-w-3xl mx-auto">
@@ -1296,6 +1413,7 @@ import { useHead } from '@unhead/vue';
 import SeatMap from '../components/SeatMap.vue';
 import ScheduleCalendar from '../components/ScheduleCalendar.vue';
 import TripPostsFeed from '../components/TripPostsFeed.vue';
+import TripCard from '../components/TripCard.vue';
 import WeatherBadge from '../components/WeatherBadge.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
 import {
@@ -1311,6 +1429,7 @@ import {
 
 const route = useRoute();
 const trip = ref(null);
+const relatedTrips = ref([]);
 
 useHead({
   title: computed(() => trip.value ? `${trip.value.title} - ทริป${trip.value.type === 'trekking' ? 'เดินป่า' : trip.value.type === 'snorkeling' ? 'ดำน้ำตื้น' : 'เช่ารถตู้'}` : 'รายละเอียดทริป'),
@@ -1394,6 +1513,23 @@ useHead({
         }
         return JSON.stringify(data);
       })
+    },
+    // JSON-LD FAQPage — earns FAQ rich snippets on Google when the trip has FAQs
+    {
+      type: 'application/ld+json',
+      innerHTML: computed(() => {
+        const faqs = trip.value?.faqs || [];
+        if (!faqs.length) return '{}';
+        return JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.question,
+            acceptedAnswer: { '@type': 'Answer', text: f.answer },
+          })),
+        });
+      })
     }
   ]
 });
@@ -1402,6 +1538,7 @@ const schedules = ref([]);
 const selectedSchedule = ref(null);
 const activeIconPicker = ref(null);
 const openDays = ref(['0-0']); // Default open first item of first sector
+const openFaq = ref(null);
 const activeSector = ref(0);
 let sectorObserver = null;
 
@@ -1712,6 +1849,26 @@ function getPickupForRegion(schedule, region) {
   return (schedule?.pickup_points || []).find(pt => pt.region === region) || null;
 }
 
+// Whether the current selection is ready to book — mirrors the desktop
+// book-now button condition, reused by the sticky mobile bar.
+const canBookNow = computed(() => {
+  if (!selectedSchedule.value) return false;
+  const stepDone = !isTrekking.value
+    || (isTrekking.value && selectedPickup.value)
+    || (isJoinTrip.value && selectedSchedule.value?.join_trip_enabled);
+  return Boolean(stepDone) && canBookSelectedSchedule();
+});
+
+const bookingQuery = computed(() => ({
+  ...(selectedRegion.value && !isJoinTrip.value ? { region: selectedRegion.value } : {}),
+  ...(isJoinTrip.value ? { join_trip: 1 } : {}),
+}));
+
+const scrollToBooking = () => {
+  const el = document.getElementById('booking-section');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 const displayPrice = computed(() => {
   if (isJoinTrip.value && selectedSchedule.value?.join_trip_enabled) {
     return Number(selectedSchedule.value.join_trip_price || selectedSchedule.value.price || trip.value?.price_per_person || 0);
@@ -1835,6 +1992,12 @@ onMounted(async () => {
     const res = await api.get(`/trips/${route.params.slug}`);
     trip.value = res.data.data;
     typeLabel.value = typeMap[trip.value.type]?.label || trip.value.type;
+
+    // Related trips — non-blocking, never breaks the page if it fails
+    api.get(`/trips/${route.params.slug}/related`)
+      .then((r) => { relatedTrips.value = r.data.data || []; })
+      .catch(() => {});
+
     typeBadgeClass.value = typeMap[trip.value.type]?.class || 'bg-[#6B8F7A] text-white';
     diffLabel.value = diffMap[trip.value.difficulty] || trip.value.difficulty;
 

@@ -228,6 +228,30 @@
           </div>
         </div>
 
+        <!-- FAQ -->
+        <div class="card section-card">
+          <div class="section-header-flex">
+            <h3 class="section-title text-[var(--color-primary)]">
+              <span class="material-symbols-rounded">quiz</span> คำถามที่พบบ่อย (FAQ)
+            </h3>
+          </div>
+          <p class="text-sm text-gray-400 mb-4 font-medium">แสดงบนหน้าทริป และส่งเป็น FAQ schema ให้ Google เพื่อช่วย SEO</p>
+          <div class="faqs-editor space-y-4">
+            <div v-for="(faq, idx) in form.faqs" :key="idx" class="faq-item bg-gray-50 p-5 rounded-2xl border border-gray-100 relative">
+              <div class="space-y-3">
+                <input v-model="faq.question" placeholder="คำถาม เช่น ต้องเตรียมเงินสดไปเท่าไหร่?" class="w-full px-4 py-3 rounded-xl border border-gray-200 font-bold focus:ring-2 ring-[var(--color-accent)]/20" />
+                <textarea v-model="faq.answer" rows="3" placeholder="คำตอบ" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
+              </div>
+              <button type="button" @click="removeItem('faqs', idx)" class="absolute top-3 right-3 text-red-400 hover:text-red-600 p-2">
+                <span class="material-symbols-rounded">delete</span>
+              </button>
+            </div>
+            <button type="button" class="btn-add-dashed" @click="addItem('faqs')">
+              <span class="material-symbols-rounded">add_circle</span> เพิ่มคำถาม
+            </button>
+          </div>
+        </div>
+
         <!-- Inclusions / Exclusions -->
         <div class="card section-card">
           <div class="list-editor-container">
@@ -734,6 +758,7 @@ const form = reactive({
   must_know: { items: [], remarks: '' },
   itinerary: [],
   preparations: [],
+  faqs: [],
 });
 
 const normalizeArray = (value) => {
@@ -804,6 +829,12 @@ const buildTripPayload = () => {
     inclusions: compactStringArray(form.inclusions),
     exclusions: compactStringArray(form.exclusions),
     preparations: compactStringArray(form.preparations),
+    faqs: normalizeArray(form.faqs)
+      .map((f) => ({
+        question: String(f?.question || '').trim(),
+        answer: String(f?.answer || '').trim(),
+      }))
+      .filter((f) => f.question && f.answer),
     highlights: normalizeArray(form.highlights)
       .map((hi) => ({
         title: String(hi?.title || '').trim(),
@@ -976,6 +1007,9 @@ const addItem = (field, extra = null) => {
   } else if (field === 'preparations') {
     if (!form.preparations) form.preparations = [];
     form.preparations.push('');
+  } else if (field === 'faqs') {
+    if (!form.faqs) form.faqs = [];
+    form.faqs.push({ question: '', answer: '' });
   } else if (field === 'must_know_items') {
     if (!form.must_know.items) form.must_know.items = [];
     form.must_know.items.push({ name: '', price: 0, price_type: 'per_booking', image_url: '' });
@@ -1250,6 +1284,7 @@ const initData = async () => {
       }
 
       form.preparations = normalizeArray(trip.preparations);
+      form.faqs = normalizeArray(trip.faqs);
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
       router.push({ name: backRouteName.value });

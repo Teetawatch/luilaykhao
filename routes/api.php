@@ -75,6 +75,7 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/flash-sale', [TripController::class, 'flashSale']);
         Route::get('trips/urgent-popup', [TripController::class, 'urgentPopup']);
         Route::get('trips/{slug}', [TripController::class, 'show']);
+        Route::get('trips/{slug}/related', [TripController::class, 'related']);
         Route::get('trips/{slug}/schedules', [TripController::class, 'schedules']);
     });
 

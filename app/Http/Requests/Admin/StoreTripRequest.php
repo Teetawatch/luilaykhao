@@ -58,6 +58,9 @@ class StoreTripRequest extends FormRequest
             'itinerary.*.items.*.description' => ['required', 'string'],
             'preparations' => ['nullable', 'array'],
             'preparations.*' => ['string'],
+            'faqs' => ['nullable', 'array'],
+            'faqs.*.question' => ['required_with:faqs', 'string', 'max:255'],
+            'faqs.*.answer' => ['required_with:faqs', 'string', 'max:2000'],
         ];
     }
 }

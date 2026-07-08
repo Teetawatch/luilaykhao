@@ -35,4 +35,38 @@ return [
     */
 
     'webhook_secret' => env('PAYMENT_WEBHOOK_SECRET'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cancellation / refund policy
+    |--------------------------------------------------------------------------
+    |
+    | Surfaced on every public trip page (via TripResource) as a trust block.
+    | Uniform across trips — edit here to change the published terms. `percent`
+    | is the share of the paid amount refunded within that tier and drives the
+    | colour of the badge on the web.
+    |
+    */
+
+    'cancellation_policy' => [
+        'free_change_days' => (int) env('CANCELLATION_FREE_CHANGE_DAYS', 45),
+        'tiers' => [
+            [
+                'range' => 'ก่อนเดินทางมากกว่า 45 วัน',
+                'detail' => 'คืนเงินเต็มจำนวน หรือเลื่อนวัน / เปลี่ยนผู้เดินทางแทนได้ฟรี',
+                'percent' => 100,
+            ],
+            [
+                'range' => 'ก่อนเดินทาง 30–44 วัน',
+                'detail' => 'คืนเงิน 50% ของยอดที่ชำระแล้ว',
+                'percent' => 50,
+            ],
+            [
+                'range' => 'ก่อนเดินทางน้อยกว่า 30 วัน',
+                'detail' => 'ขอสงวนสิทธิ์ไม่คืนเงิน แต่ยังเปลี่ยนผู้เดินทางแทนได้',
+                'percent' => 0,
+            ],
+        ],
+        'note' => 'การคืนเงินจะดำเนินการภายใน 7–14 วันทำการนับจากวันที่อนุมัติ หากผู้จัดยกเลิกทริปเอง ลูกค้าจะได้รับเงินคืนเต็มจำนวนทุกกรณี',
+    ],
 ];
