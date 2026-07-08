@@ -130,6 +130,24 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    async refundPreview(ref) {
+      const res = await api.get(`/admin/bookings/${ref}/refund-preview`);
+      return res.data?.data ?? res.data;
+    },
+
+    // Records a refund via the dedicated endpoint (sets refund fields, frees
+    // seats, notifies the customer) and optionally attaches a transfer slip.
+    async processRefund(ref, { amount, note = null, slip = null }) {
+      const form = new FormData();
+      form.append('refund_amount', amount);
+      if (note) form.append('note', note);
+      if (slip) form.append('refund_slip', slip);
+      const res = await api.post(`/admin/bookings/${ref}/refund`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data;
+    },
+
     async deleteBooking(ref) {
       const res = await api.delete(`/admin/bookings/${ref}`);
       return res.data;

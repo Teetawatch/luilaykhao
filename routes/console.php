@@ -53,3 +53,8 @@ Schedule::job(new BroadcastLowSeatsJob)
     ->everyFifteenMinutes()
     ->timezone('Asia/Bangkok')
     ->withoutOverlapping();
+
+// Nightly database backup to the private R2 bucket. Prune old backups first,
+// then dump — DB only (media is on R2, code is in git).
+Schedule::command('backup:clean')->dailyAt('03:45')->timezone('Asia/Bangkok')->withoutOverlapping();
+Schedule::command('backup:run --only-db')->dailyAt('04:00')->timezone('Asia/Bangkok')->withoutOverlapping();

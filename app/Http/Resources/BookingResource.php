@@ -148,6 +148,7 @@ class BookingResource extends JsonResource
             'refund_status' => $this->refund_status,
             'refund_amount' => $this->refund_amount,
             'refunded_at' => $this->refunded_at?->toISOString(),
+            'refund_slip_url' => MediaDisk::slipUrl($this->refund_slip_path),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

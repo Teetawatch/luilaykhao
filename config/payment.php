@@ -21,4 +21,18 @@ return [
     'bank_holder' => env('PAYMENT_BANK_HOLDER', 'นายธีร์ธวัช พิพัฒน์เดชธน'),
 
     'support_phone' => env('PAYMENT_SUPPORT_PHONE', '062-612-6006'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payment webhook
+    |--------------------------------------------------------------------------
+    |
+    | Shared secret used to authenticate inbound payment-gateway webhooks. The
+    | sender signs the raw request body with HMAC-SHA256 and puts the hex digest
+    | in the X-Payment-Signature header. When empty, the webhook endpoint is
+    | treated as disabled (503) instead of accepting anonymous calls.
+    |
+    */
+
+    'webhook_secret' => env('PAYMENT_WEBHOOK_SECRET'),
 ];

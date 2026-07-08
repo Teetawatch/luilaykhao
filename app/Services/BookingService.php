@@ -870,9 +870,9 @@ class BookingService
     /**
      * Admin: บันทึกการคืนเงิน — อัปเดต refund fields และเปลี่ยนสถานะเป็น 'refunded'
      */
-    public function processRefund(Booking $booking, float $refundAmount, ?string $note = null): Booking
+    public function processRefund(Booking $booking, float $refundAmount, ?string $note = null, ?string $slipPath = null): Booking
     {
-        $refunded = DB::transaction(function () use ($booking, $refundAmount, $note) {
+        $refunded = DB::transaction(function () use ($booking, $refundAmount, $note, $slipPath) {
             $booking->loadMissing('seats');
 
             $booking->update([
@@ -880,6 +880,7 @@ class BookingService
                 'refund_status' => 'refunded',
                 'refund_amount' => $refundAmount,
                 'refunded_at' => now(),
+                'refund_slip_path' => $slipPath ?? $booking->refund_slip_path,
                 'cancellation_reason' => $note ?? $booking->cancellation_reason,
                 'cancelled_at' => $booking->cancelled_at ?? now(),
             ]);

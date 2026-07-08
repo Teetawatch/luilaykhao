@@ -522,12 +522,64 @@ class PaymentController extends Controller
         ], 'ชำระยอดส่วนที่เหลือสำเร็จ');
     }
 
+    /**
+     * Inbound payment-gateway webhook.
+     *
+     * The endpoint is unauthenticated (Sanctum can't sign gateway callbacks),
+     * so the sender must instead HMAC-SHA256 the raw request body with the
+     * shared secret and send the hex digest in the X-Payment-Signature header.
+     * Unsigned/invalid calls are rejected — previously this happily returned
+     * success to anyone. Reconciliation is idempotent: replaying the same
+     * "charge succeeded" event on an already-confirmed booking is a no-op.
+     */
     public function webhook(Request $request): JsonResponse
     {
-        $payload = $request->all();
-        Log::info('Payment webhook received', $payload);
+        $secret = config('payment.webhook_secret');
 
-        return $this->success(null, 'Webhook processed');
+        if (empty($secret)) {
+            Log::warning('Payment webhook hit but no PAYMENT_WEBHOOK_SECRET is configured — rejecting.');
+
+            return $this->error('Webhook not configured', 503);
+        }
+
+        $signature = (string) $request->header('X-Payment-Signature', '');
+        $expected = hash_hmac('sha256', $request->getContent(), $secret);
+
+        if ($signature === '' || ! hash_equals($expected, $signature)) {
+            Log::warning('Payment webhook rejected: invalid signature', [
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->error('Invalid signature', 401);
+        }
+
+        $payload = $request->all();
+        $event = (string) ($payload['event'] ?? '');
+        $bookingRef = $payload['booking_ref'] ?? null;
+        Log::info('Payment webhook accepted', ['event' => $event, 'booking_ref' => $bookingRef]);
+
+        if (! $bookingRef) {
+            return $this->success(null, 'Acknowledged');
+        }
+
+        $booking = Booking::where('booking_ref', $bookingRef)->first();
+        if (! $booking) {
+            Log::warning('Payment webhook references unknown booking', ['booking_ref' => $bookingRef]);
+
+            return $this->success(null, 'Acknowledged');
+        }
+
+        // A successful charge confirms a still-pending booking. Any other state
+        // (already confirmed/cancelled) is left untouched so replays are safe.
+        if (in_array($event, ['charge.complete', 'charge.succeeded', 'payment.succeeded'], true)) {
+            if ($booking->status === 'pending') {
+                $paymentRef = $payload['payment_ref'] ?? 'WH-'.strtoupper(uniqid());
+                $this->bookingService->confirmBooking($booking, 'gateway', $paymentRef);
+                Log::info('Payment webhook confirmed booking', ['booking_ref' => $bookingRef]);
+            }
+        }
+
+        return $this->success(null, 'Processed');
     }
 
     public function status(string $bookingRef): JsonResponse

@@ -946,6 +946,7 @@ class AdminController extends Controller
         $request->validate([
             'refund_amount' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:500'],
+            'refund_slip' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $booking = Booking::where('booking_ref', $ref)
@@ -965,7 +966,13 @@ class AdminController extends Controller
             return $this->error('ยอดคืนเงินต้องไม่เกิน ฿'.number_format($booking->paid_amount, 2), 422);
         }
 
-        $booking = $this->bookingService->processRefund($booking, $refundAmount, $request->note);
+        // Store the transfer slip on the private disk (same as payment slips).
+        $slipPath = null;
+        if ($request->hasFile('refund_slip')) {
+            $slipPath = $request->file('refund_slip')->store('refund-slips/'.date('Y/m'), MediaDisk::slipDisk());
+        }
+
+        $booking = $this->bookingService->processRefund($booking, $refundAmount, $request->note, $slipPath);
 
         $this->mailService->sendBookingStatusChangedEmail($booking, 'refunded');
 
@@ -982,6 +989,7 @@ class AdminController extends Controller
             'status' => $booking->status,
             'refund_amount' => (float) $booking->refund_amount,
             'refunded_at' => $booking->refunded_at?->toISOString(),
+            'refund_slip_url' => MediaDisk::slipUrl($booking->refund_slip_path),
         ], 'คืนเงิน ฿'.number_format($refundAmount, 0).' สำเร็จ');
     }
 

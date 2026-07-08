@@ -45,7 +45,7 @@ class Booking extends Model
         'slip_ocr_status', 'slip_ocr_result',
         'cancellation_reason', 'cancelled_at', 'rescheduled_at',
         'was_auto_expired', 'winback_sent_at',
-        'refund_status', 'refund_amount', 'refunded_at',
+        'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path',
         'promotion_id', 'promotion_code', 'discount_amount',
         'is_join_trip',
     ];

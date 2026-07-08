@@ -82,6 +82,11 @@ Trip (slug-routed)
 - **Events / Jobs** — real-time broadcast via Laravel Reverb: `SeatLocked`, `SeatReleased`, `SeatBooked`, `VehicleLocationUpdated`, `SosTriggered`
 - **Rate limiters** — defined by name in `bootstrap/app.php` booted(): `auth`, `payment`, `seat-lock`, `promotion`, `contact`, `api`
 
+### Observability & ops
+
+- **Error tracking** — Sentry (`sentry/sentry-laravel`), wired in `bootstrap/app.php` `withExceptions()`. No-op unless `SENTRY_LARAVEL_DSN` is set. The Flutter apps report crashes separately via Firebase Crashlytics (`AnalyticsService`).
+- **Queues** — Redis-backed; run `php artisan horizon` in production to process/monitor jobs (dashboard at `/horizon`, gated to `admin` role via `viewHorizon`). Local dev still uses `queue:listen` in `composer dev`.
+
 ### Auth & roles
 
 - Laravel Sanctum (Bearer token for both mobile and future web)
@@ -92,12 +97,14 @@ Trip (slug-routed)
 
 ### Payments
 
-Omise is the payment gateway. `payment_type` on Booking can be:
-- `full` — full amount charged at booking
-- `deposit` — deposit charged now, balance due later (date in `balance_due_at`)
+Payments are collected via **PromptPay QR + bank transfer with slip upload** (config in `config/payment.php`). The customer uploads a transfer slip on `payments/charge` (and the balance/installment/split variants); `SlipOcrService` + `VerifySlipJob` read the slip asynchronously to flag mismatches for admin review. There is no live card-charging gateway wired up. `payment_type` on Booking can be:
+- `full` — full amount due at booking
+- `deposit` — deposit paid now, balance due later (date in `balance_due_at`)
 - `installment` — schedule driven by `InstallmentPayment` records
 
 Deposit can be configured per-schedule as either `percent` or `amount` (per-person). `TripSchedule.resolveDepositAmount()` handles both cases.
+
+`POST /api/v1/payments/webhook` is the gateway-callback endpoint for when a real gateway is connected. It is unauthenticated but requires an HMAC-SHA256 signature of the raw body in `X-Payment-Signature` verified against `PAYMENT_WEBHOOK_SECRET` (disabled/503 when the secret is empty). A `charge.complete` event idempotently confirms a still-pending booking via `BookingService::confirmBooking()`.
 
 ### Real-time tracking
 

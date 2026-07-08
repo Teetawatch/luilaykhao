@@ -1118,6 +1118,21 @@
             <label>เหตุผล</label>
             <textarea v-model="statusForm.reason" rows="3" placeholder="ระบุเหตุผลที่เปลี่ยนสถานะ..."></textarea>
           </div>
+          <template v-if="statusForm.status === 'refunded'">
+            <div class="form-group">
+              <label>ยอดคืนเงิน (บาท)</label>
+              <input v-model.number="statusForm.refundAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              <p v-if="refundPreview" class="field-hint">
+                นโยบาย: {{ refundPreview.policy_note }} — แนะนำคืน ฿{{ Number(refundPreview.refund_amount).toLocaleString() }}
+                (ชำระมาแล้ว ฿{{ Number(refundPreview.paid_amount).toLocaleString() }})
+              </p>
+            </div>
+            <div class="form-group">
+              <label>หลักฐานการโอนคืน (สลิป)</label>
+              <input type="file" accept="image/*" @change="onRefundSlipPick" />
+              <p class="field-hint">แนบสลิปการโอนเงินคืนให้ลูกค้า (ไม่บังคับ) — ลูกค้าจะเห็นในหน้าสถานะการคืนเงิน</p>
+            </div>
+          </template>
           <p v-if="statusForm.status === 'cancelled' || statusForm.status === 'refunded'" class="confirm-warning">
             <span class="material-symbols-rounded">warning</span>
             การเปลี่ยนเป็นยกเลิกหรือคืนเงินจะปล่อยที่นั่งและอัปเดตจำนวนที่นั่งของรอบเดินทาง
@@ -1288,7 +1303,7 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, reactive, ref } from 'vue';
+import { computed, h, onMounted, reactive, ref, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import { useToast } from '../../lib/toast';
 import api from '../../lib/axios';
@@ -1324,7 +1339,8 @@ const transferError = ref('');
 const submitting = ref(false);
 const loadingDetail = ref(false);
 const currentPage = ref(1);
-const statusForm = reactive({ status: '', reason: '' });
+const statusForm = reactive({ status: '', reason: '', refundAmount: null, refundSlip: null });
+const refundPreview = ref(null);
 const editForm = reactive({
   status: 'pending',
   schedule_id: '',
@@ -1901,11 +1917,61 @@ function openStatusModal(booking) {
   statusBooking.value = booking;
   statusForm.status = booking.status;
   statusForm.reason = '';
+  statusForm.refundAmount = null;
+  statusForm.refundSlip = null;
+  refundPreview.value = null;
   showStatusModal.value = true;
 }
 
+function onRefundSlipPick(e) {
+  statusForm.refundSlip = e.target.files?.[0] ?? null;
+}
+
+// When the admin switches the target status to "refunded", pull the policy
+// preview so we can prefill the recommended amount.
+watch(
+  () => statusForm.status,
+  async (status) => {
+    if (status !== 'refunded' || !statusBooking.value) return;
+    if (statusBooking.value.status === 'refunded') return;
+    try {
+      const preview = await admin.refundPreview(statusBooking.value.booking_ref);
+      refundPreview.value = preview;
+      if (statusForm.refundAmount === null) {
+        statusForm.refundAmount = Number(preview.refund_amount ?? 0);
+      }
+    } catch {
+      refundPreview.value = null;
+    }
+  },
+);
+
 async function doUpdateStatus() {
   if (!statusBooking.value) return;
+
+  // Route an actual refund through the dedicated endpoint so refund fields,
+  // seat release, notifications and the transfer slip are all handled.
+  if (statusForm.status === 'refunded' && statusBooking.value.status !== 'refunded') {
+    submitting.value = true;
+    try {
+      await admin.processRefund(statusBooking.value.booking_ref, {
+        amount: statusForm.refundAmount ?? 0,
+        note: statusForm.reason || null,
+        slip: statusForm.refundSlip,
+      });
+      showStatusModal.value = false;
+      if (detailBooking.value?.booking_ref === statusBooking.value.booking_ref) {
+        await openDetail(statusBooking.value);
+      }
+      await fetchData(currentPage.value);
+      toast.success('บันทึกการคืนเงินแล้ว');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการคืนเงิน');
+    } finally {
+      submitting.value = false;
+    }
+    return;
+  }
 
   submitting.value = true;
   try {
