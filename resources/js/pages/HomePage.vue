@@ -19,34 +19,34 @@
             class="hero-slide-img w-full h-full object-cover"
           />
         </div>
-        <div class="hero-slider-glow absolute inset-0 z-[1]" aria-hidden="true"></div>
         <div class="hero-slider-vignette absolute inset-0 z-[2]" aria-hidden="true"></div>
-        <!-- Dark Overlay (20-40%) & Gradient -->
-        <div class="absolute inset-0 bg-black/30 z-[3]"></div>
-        <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[var(--color-sand)]/90 z-[4]"></div>
+        <!-- Legibility overlay: darker top & bottom for text, clean fade into page -->
+        <div class="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-[var(--color-sand)] z-[3]"></div>
       </div>
-
-      <!-- Atmospheric orbs -->
-      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-[var(--color-accent-light)]/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
-      <div class="absolute bottom-1/3 right-1/4 w-[30rem] h-[30rem] bg-[var(--color-gold)]/15 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
 
       <!-- Content -->
       <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-16 md:pt-24 pb-12">
         
+        <!-- Trust eyebrow -->
+        <div class="hero-eyebrow inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-xs md:text-sm font-semibold">
+          <span class="material-symbols-rounded text-[16px] text-[var(--color-accent-light)]" style="font-variation-settings:'FILL' 1">verified</span>
+          แพลตฟอร์มจองทริปกลางแจ้ง ยืนยันที่นั่งทันที
+        </div>
+
         <!-- Headline -->
-        <h1 class="font-anuphan text-white text-[1.6rem] sm:text-[2rem] md:text-4xl lg:text-[3.2rem] font-extrabold mb-6 leading-[1.25] md:leading-[1.35] tracking-tight drop-shadow-2xl">
+        <h1 class="hero-title font-anuphan text-white text-[1.75rem] sm:text-[2.15rem] md:text-[2.75rem] lg:text-[3.25rem] font-extrabold mb-5 leading-[1.2] md:leading-[1.25] tracking-tight">
           การเที่ยวที่ดี เริ่มจาก<br />
-          <span class="text-[var(--color-accent-light)] font-black">ความรู้สึกที่ดี</span>
+          <span class="text-[var(--color-accent-light)]">ความรู้สึกที่ดี</span>
           ตั้งแต่การจอง
         </h1>
-        
+
         <!-- Subheadline -->
-        <p class="text-white/80 text-lg md:text-xl mb-12 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+        <p class="hero-subtitle text-white/85 text-base md:text-xl mb-10 font-normal max-w-2xl mx-auto leading-relaxed">
           จองทริปดำน้ำ เดินป่า และรถตู้พรีเมียม ครบจบในที่เดียว<br class="hidden md:block" /> รวดเร็ว ปลอดภัย ประทับใจ ไม่ต้องรอ
         </p>
 
         <!-- Modern Floating Search Bar -->
-        <div class="search-bar relative bg-white rounded-[1.8rem] md:rounded-[2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)] flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-4xl mx-auto border border-white/40 ring-1 ring-black/5 transform transition-all duration-500 hover:shadow-[0_30px_60px_-10px_rgba(0,0,0,0.3)] z-20">
+        <div class="search-bar relative bg-white rounded-2xl md:rounded-[1.6rem] shadow-[0_24px_50px_-16px_rgba(13,43,30,0.35)] flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-4xl mx-auto ring-1 ring-black/5 transition-shadow duration-300 hover:shadow-[0_32px_64px_-16px_rgba(13,43,30,0.45)] z-20">
           
           <!-- Trip Selector -->
           <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
@@ -96,11 +96,29 @@
           <!-- Book / Search Button -->
           <button
             @click="goBook"
-            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-5 md:py-3.5 rounded-[1.2rem] md:rounded-[1.5rem] font-bold transition-all duration-500 shadow-[0_8px_16px_rgba(45,122,79,0.25)] hover:shadow-[0_12px_24px_rgba(45,122,79,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0"
+            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-xl md:rounded-[1.2rem] font-bold transition-colors duration-300 shadow-[0_8px_16px_rgba(13,43,30,0.25)] flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0"
           >
-            <span class="material-symbols-rounded text-[24px]">explore</span>
-            <span class="text-xl md:text-base lg:text-lg pr-1">เริ่มเที่ยวเลย</span>
+            <span class="material-symbols-rounded text-[22px]">search</span>
+            <span class="text-lg md:text-base pr-0.5">ค้นหาทริป</span>
           </button>
+        </div>
+
+        <!-- Trust signals -->
+        <div class="hero-trust flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-7 text-white/85 text-xs md:text-sm font-medium">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="material-symbols-rounded text-[18px] text-[var(--color-gold)]" style="font-variation-settings:'FILL' 1">star</span>
+            รีวิวจริงจากนักเดินทาง
+          </span>
+          <span class="hidden sm:inline w-px h-4 bg-white/25"></span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">verified_user</span>
+            ชำระเงินปลอดภัย ตรวจสอบสลิปอัตโนมัติ
+          </span>
+          <span class="hidden sm:inline w-px h-4 bg-white/25"></span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">support_agent</span>
+            มีทีมงานดูแลตลอดทริป
+          </span>
         </div>
 
         <!-- Trip Finder CTA -->
@@ -1238,32 +1256,33 @@ onMounted(async () => {
   filter: saturate(1.12) contrast(1.08) brightness(0.9);
 }
 
-.hero-slider-glow {
-  background:
-    radial-gradient(80% 60% at 15% 20%, rgba(255, 255, 255, 0.14), transparent 60%),
-    radial-gradient(70% 55% at 85% 30%, rgba(76, 175, 125, 0.18), transparent 62%);
-  mix-blend-mode: screen;
-  opacity: 0.45;
-  animation: heroGlowShift 14s ease-in-out infinite alternate;
-}
-
 .hero-slider-vignette {
-  background: radial-gradient(circle at center, transparent 35%, rgba(0, 0, 0, 0.32) 100%);
-}
-
-@keyframes heroGlowShift {
-  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
-  to   { transform: translate3d(1.5%, 1%, 0) scale(1.04); }
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.28) 100%);
 }
 
 /* Hero animations */
 .hero-content {
   animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.search-bar {
-  opacity: 0;
-  animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+
+/* Legible, restrained text shadows (no heavy drop-shadow) */
+.hero-title {
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
 }
+.hero-subtitle {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Staggered entrance */
+.hero-eyebrow,
+.search-bar,
+.hero-trust {
+  opacity: 0;
+  animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hero-eyebrow { animation-delay: 0.1s; }
+.search-bar   { animation-delay: 0.3s; }
+.hero-trust   { animation-delay: 0.45s; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(40px); }
@@ -1413,8 +1432,9 @@ input[type="date"] {
 @media (prefers-reduced-motion: reduce) {
   .hero-slide,
   .hero-slide-img,
-  .hero-slider-glow,
   .hero-content,
+  .hero-eyebrow,
+  .hero-trust,
   .search-bar,
   .scroll-dot,
   .animate-ping,
