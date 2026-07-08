@@ -27,12 +27,6 @@
       <!-- Content -->
       <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-16 md:pt-24 pb-12">
         
-        <!-- Trust eyebrow -->
-        <div class="hero-eyebrow inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-xs md:text-sm font-semibold">
-          <span class="material-symbols-rounded text-[16px] text-[var(--color-accent-light)]" style="font-variation-settings:'FILL' 1">verified</span>
-          แพลตฟอร์มจองทริปกลางแจ้ง ยืนยันที่นั่งทันที
-        </div>
-
         <!-- Headline -->
         <h1 class="hero-title font-anuphan text-white text-[1.75rem] sm:text-[2.15rem] md:text-[2.75rem] lg:text-[3.25rem] font-extrabold mb-5 leading-[1.2] md:leading-[1.25] tracking-tight">
           การเที่ยวที่ดี เริ่มจาก<br />
@@ -1274,15 +1268,13 @@ onMounted(async () => {
 }
 
 /* Staggered entrance */
-.hero-eyebrow,
 .search-bar,
 .hero-trust {
   opacity: 0;
   animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.hero-eyebrow { animation-delay: 0.1s; }
-.search-bar   { animation-delay: 0.3s; }
-.hero-trust   { animation-delay: 0.45s; }
+.search-bar { animation-delay: 0.3s; }
+.hero-trust { animation-delay: 0.45s; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(40px); }
@@ -1433,7 +1425,6 @@ input[type="date"] {
   .hero-slide,
   .hero-slide-img,
   .hero-content,
-  .hero-eyebrow,
   .hero-trust,
   .search-bar,
   .scroll-dot,
