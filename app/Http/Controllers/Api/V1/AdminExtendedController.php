@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\InstallmentPayment;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
@@ -15,6 +16,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleMaintenance;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -195,6 +197,119 @@ class AdminExtendedController extends Controller
         });
 
         return $this->success($events);
+    }
+
+    /**
+     * Payment breakdown for every active booking on a schedule, including short-lived
+     * signed URLs for each transfer slip. Loaded on demand from the schedule detail
+     * modal rather than folded into calendarSchedules(), so the year-wide calendar
+     * payload stays lean and slip URLs are always freshly signed when viewed.
+     */
+    public function schedulePayments(int $id): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($id);
+
+        $bookings = $schedule->bookings()
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->with(['user', 'installmentPayments'])
+            ->orderBy('id')
+            ->get();
+
+        $payload = $bookings->map(function (Booking $booking) {
+            $total = (float) $booking->total_amount;
+            $paid = (float) $booking->paid_amount;
+
+            return [
+                'id' => $booking->id,
+                'booking_ref' => $booking->booking_ref,
+                'status' => $booking->status,
+                'is_join_trip' => (bool) $booking->is_join_trip,
+                'payment_type' => $booking->payment_type ?? 'full',
+                'payment_method' => $booking->payment_method,
+                'customer_name' => $booking->user?->name,
+                'customer_phone' => $booking->user?->phone,
+                'total_amount' => $total,
+                'paid_amount' => $paid,
+                'outstanding_amount' => max(0, round($total - $paid, 2)),
+                'entries' => $this->bookingPaymentEntries($booking),
+            ];
+        });
+
+        return $this->success($payload);
+    }
+
+    /**
+     * One row per money movement the customer had to make, whatever the payment type:
+     * a single full transfer, มัดจำ + ยอดคงเหลือ, or one row per installment.
+     */
+    private function bookingPaymentEntries(Booking $booking): array
+    {
+        $type = $booking->payment_type ?? 'full';
+
+        // ผ่อนชำระ — งวดที่ 1 ใช้สลิปใบเดียวกับ bookings.slip_path (ดู PaymentController::charge)
+        // จึงอ่านจากตารางงวดอย่างเดียว ไม่งั้นสลิปใบเดิมจะโผล่สองรายการ
+        if ($type === 'installment') {
+            return $booking->installmentPayments
+                ->sortBy('installment_no')
+                ->map(fn (InstallmentPayment $installment) => [
+                    'key' => 'installment-'.$installment->installment_no,
+                    'label' => 'งวดที่ '.$installment->installment_no,
+                    'amount' => (float) $installment->amount,
+                    'status' => $installment->status,
+                    'due_date' => $installment->due_date?->toDateString(),
+                    'paid_at' => $installment->paid_at?->toISOString(),
+                    'transfer_datetime' => $installment->transfer_datetime?->toISOString(),
+                    'payment_method' => $installment->payment_method,
+                    'slip_url' => MediaDisk::slipUrl($installment->slip_path),
+                    'slip_ocr_status' => $installment->slip_ocr_status,
+                ])
+                ->values()
+                ->all();
+        }
+
+        if ($type === 'deposit') {
+            return [
+                [
+                    'key' => 'deposit',
+                    'label' => 'มัดจำ',
+                    'amount' => (float) $booking->deposit_amount,
+                    'status' => $booking->paid_at ? 'paid' : 'pending',
+                    'due_date' => null,
+                    'paid_at' => $booking->paid_at?->toISOString(),
+                    'transfer_datetime' => $booking->transfer_datetime?->toISOString(),
+                    'payment_method' => $booking->payment_method,
+                    'slip_url' => MediaDisk::slipUrl($booking->slip_path),
+                    'slip_ocr_status' => $booking->slip_ocr_status,
+                ],
+                [
+                    'key' => 'balance',
+                    'label' => 'ยอดคงเหลือ',
+                    'amount' => (float) $booking->balance_amount,
+                    'status' => $booking->balance_paid_at ? 'paid' : 'pending',
+                    'due_date' => $booking->balance_due_at?->toDateString(),
+                    'paid_at' => $booking->balance_paid_at?->toISOString(),
+                    'transfer_datetime' => $booking->balance_transfer_datetime?->toISOString(),
+                    'payment_method' => $booking->payment_method,
+                    'slip_url' => MediaDisk::slipUrl($booking->balance_slip_path),
+                    'slip_ocr_status' => $booking->balance_slip_ocr_status,
+                ],
+            ];
+        }
+
+        return [
+            [
+                'key' => 'full',
+                'label' => 'ชำระเต็มจำนวน',
+                'amount' => (float) $booking->total_amount,
+                'status' => $booking->paid_at ? 'paid' : 'pending',
+                'due_date' => null,
+                'paid_at' => $booking->paid_at?->toISOString(),
+                'transfer_datetime' => $booking->transfer_datetime?->toISOString(),
+                'payment_method' => $booking->payment_method,
+                'slip_url' => MediaDisk::slipUrl($booking->slip_path),
+                'slip_ocr_status' => $booking->slip_ocr_status,
+            ],
+        ];
     }
 
     /**

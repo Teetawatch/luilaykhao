@@ -862,6 +862,105 @@
             </div>
           </section>
 
+          <!-- ── การชำระเงิน ────────────────────────────────────── -->
+          <section v-else-if="detailTab === 'payments'" class="detail-panel">
+            <div v-if="loadingPayments" class="panel-empty">
+              <div class="spinner"></div>
+              <p>กำลังโหลดข้อมูลการชำระเงิน...</p>
+            </div>
+
+            <div v-else-if="paymentsError" class="alert-card">
+              <span class="material-symbols-rounded">error</span>
+              <span>{{ paymentsError }}</span>
+            </div>
+
+            <div v-else-if="!schedulePaymentBookings.length" class="panel-empty">
+              <span class="material-symbols-rounded">receipt_long</span>
+              <p>ยังไม่มีการจองในรอบนี้</p>
+            </div>
+
+            <template v-else>
+              <article v-for="booking in schedulePaymentBookings" :key="booking.id" class="payment-card">
+                <div class="payment-card-head">
+                  <div class="payment-card-who">
+                    <strong>{{ booking.customer_name || 'ไม่ระบุชื่อผู้จอง' }}</strong>
+                    <div class="cell-chips">
+                      <span class="ref-chip">{{ booking.booking_ref }}</span>
+                      <span class="status-badge" :class="`status-${booking.status}`">
+                        {{ bookingStatusLabels[booking.status] || booking.status }}
+                      </span>
+                      <span class="tiny-chip type">{{ paymentTypeLabels[booking.payment_type] || booking.payment_type }}</span>
+                      <span v-if="booking.is_join_trip" class="tiny-chip join">จอยทริป</span>
+                    </div>
+                    <span v-if="booking.customer_phone" class="payment-card-phone">{{ booking.customer_phone }}</span>
+                  </div>
+                  <div class="payment-card-figures">
+                    <div>
+                      <span>ยอดรวม</span>
+                      <strong>{{ formatCurrency(booking.total_amount) }}</strong>
+                    </div>
+                    <div>
+                      <span>ชำระแล้ว</span>
+                      <strong class="money-value">{{ formatCurrency(booking.paid_amount) }}</strong>
+                    </div>
+                    <div>
+                      <span>ค้างชำระ</span>
+                      <strong :class="{ 'text-low': booking.outstanding_amount > 0 }">
+                        {{ formatCurrency(booking.outstanding_amount) }}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="slip-row-list">
+                  <div v-for="entry in booking.entries" :key="entry.key" class="slip-row">
+                    <button
+                      v-if="entry.slip_url"
+                      class="slip-thumb"
+                      type="button"
+                      title="ดูสลิปขนาดเต็ม"
+                      @click="openSlip(entry, booking)"
+                    >
+                      <img :src="entry.slip_url" :alt="`สลิป${entry.label}`" loading="lazy" />
+                    </button>
+                    <div v-else class="slip-thumb empty">
+                      <span class="material-symbols-rounded">image_not_supported</span>
+                    </div>
+
+                    <div class="slip-row-info">
+                      <div class="slip-row-title">
+                        <strong>{{ entry.label }}</strong>
+                        <span class="tiny-chip" :class="entry.status === 'paid' ? 'check' : 'wait'">
+                          {{ entry.status === 'paid' ? 'ชำระแล้ว' : 'รอชำระ' }}
+                        </span>
+                        <span v-if="entry.slip_url" class="ocr-badge" :class="`ocr-${entry.slip_ocr_status || 'none'}`">
+                          {{ ocrLabel(entry.slip_ocr_status) }}
+                        </span>
+                      </div>
+                      <div class="slip-row-meta">
+                        <span v-if="entry.due_date">ครบกำหนด {{ formatDate(entry.due_date) }}</span>
+                        <span v-if="entry.transfer_datetime">โอนเมื่อ {{ formatDateTime(entry.transfer_datetime) }}</span>
+                        <span v-else-if="entry.paid_at">บันทึกเมื่อ {{ formatDateTime(entry.paid_at) }}</span>
+                        <span v-if="entry.payment_method">
+                          {{ paymentMethodLabels[entry.payment_method] || entry.payment_method }}
+                        </span>
+                        <span v-if="!entry.slip_url" class="slip-missing">ไม่มีสลิปแนบ</span>
+                      </div>
+                    </div>
+
+                    <div class="slip-row-actions">
+                      <strong class="slip-row-amount">{{ formatCurrency(entry.amount) }}</strong>
+                      <button v-if="entry.slip_url" class="btn-secondary compact" @click="openSlip(entry, booking)">
+                        <span class="material-symbols-rounded">visibility</span>
+                        ดูสลิป
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </template>
+          </section>
+
           <!-- ── รายการเสริม ────────────────────────────────────── -->
           <section v-else class="detail-panel">
             <div v-if="scheduleAddons(selectedSchedule).length" class="addons-summary-block">
@@ -919,6 +1018,40 @@
               <span class="material-symbols-rounded">edit</span>
               จัดการรอบเดินทาง
             </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay slip-overlay" v-if="slipPreview" @click.self="closeSlip">
+      <div class="modal-card slip-viewer">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">สลิป{{ slipPreview.label }}</h2>
+            <p class="modal-subtitle">
+              {{ slipPreview.booking_ref }} · {{ slipPreview.customer_name || 'ไม่ระบุชื่อผู้จอง' }} · {{ formatCurrency(slipPreview.amount) }}
+            </p>
+          </div>
+          <button class="modal-close" @click="closeSlip">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="slip-viewer-body">
+          <img :src="slipPreview.slip_url" :alt="`สลิป${slipPreview.label}`" />
+        </div>
+
+        <div class="detail-actions">
+          <span class="detail-actions-hint">
+            <span v-if="slipPreview.transfer_datetime">โอนเมื่อ {{ formatDateTime(slipPreview.transfer_datetime) }}</span>
+            <span v-else>ไม่ระบุเวลาโอน</span>
+          </span>
+          <div class="detail-actions-buttons">
+            <a :href="slipPreview.slip_url" target="_blank" rel="noopener" class="btn-secondary">
+              <span class="material-symbols-rounded">open_in_new</span>
+              เปิดในแท็บใหม่
+            </a>
+            <button class="btn-primary" @click="closeSlip">ปิด</button>
           </div>
         </div>
       </div>
@@ -1057,6 +1190,13 @@ const lastUpdated = ref('');
 const detailTab = ref('overview');
 const manifestSearch = ref('');
 const manifestType = ref('all');
+
+// Payments tab — slip URLs are signed and short-lived, so they are fetched when
+// the tab is first opened rather than shipped with the calendar payload.
+const schedulePaymentBookings = ref([]);
+const loadingPayments = ref(false);
+const paymentsError = ref('');
+const slipPreview = ref(null);
 
 const statusLabels = {
   open: 'เปิดรับจอง',
@@ -1337,6 +1477,7 @@ const noPickupPassengers = computed(() => detailPassengers.value.filter((p) => !
 const detailTabs = computed(() => [
   { key: 'overview', label: 'ภาพรวม', icon: 'dashboard', count: null },
   { key: 'passengers', label: 'ผู้เดินทาง', icon: 'groups', count: detailPassengers.value.length },
+  { key: 'payments', label: 'การชำระเงิน', icon: 'receipt_long', count: detailBookings.value.length },
   { key: 'pickups', label: 'จุดรับ', icon: 'location_on', count: detailPickupPoints.value.length + customPickupPassengers.value.length },
   { key: 'addons', label: 'รายการเสริม', icon: 'add_shopping_cart', count: scheduleAddons(selectedSchedule.value).length },
 ]);
@@ -1469,8 +1610,49 @@ function openDetails(sch) {
   detailTab.value = 'overview';
   manifestSearch.value = '';
   manifestType.value = 'all';
+  schedulePaymentBookings.value = [];
+  paymentsError.value = '';
   seatData.value = null;
   seatError.value = '';
+}
+
+async function loadSchedulePayments(scheduleId) {
+  loadingPayments.value = true;
+  paymentsError.value = '';
+
+  try {
+    const res = await api.get(`/admin/calendar/schedules/${scheduleId}/payments`);
+    schedulePaymentBookings.value = res.data?.data || [];
+  } catch (e) {
+    console.error('Failed to fetch schedule payments', e);
+    paymentsError.value = e.response?.data?.message || 'ไม่สามารถโหลดข้อมูลการชำระเงินได้';
+  } finally {
+    loadingPayments.value = false;
+  }
+}
+
+function openSlip(entry, booking) {
+  slipPreview.value = {
+    ...entry,
+    booking_ref: booking.booking_ref,
+    customer_name: booking.customer_name,
+  };
+}
+
+function closeSlip() {
+  slipPreview.value = null;
+}
+
+function ocrLabel(status) {
+  const labels = {
+    pending: '⏳ กำลังตรวจสอบ',
+    verified: '✅ ผ่านอัตโนมัติ',
+    failed: '❌ ต้องตรวจสอบ',
+    manually_approved: '✅ อนุมัติแล้ว',
+    rejected: '🚫 ปฏิเสธแล้ว',
+  };
+
+  return labels[status] || '— ยังไม่ตรวจ';
 }
 
 async function viewSeatLayout(sch) {
@@ -1494,6 +1676,8 @@ async function viewSeatLayout(sch) {
 function closeModal() {
   selectedSchedule.value = null;
   activeModal.value = null;
+  slipPreview.value = null;
+  schedulePaymentBookings.value = [];
   seatData.value = null;
   seatError.value = '';
 }
@@ -1901,6 +2085,20 @@ function formatTime(value) {
   return String(value ?? '').slice(0, 5);
 }
 
+function formatDateTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  return date.toLocaleString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function scheduleDateRange(sch) {
   const start = formatDate(sch?.start);
   if (!sch?.end || sch.end === sch.start) return start;
@@ -1983,11 +2181,20 @@ const sortLabels = {
 };
 
 function handleKeyDown(event) {
-  if (event.key === 'Escape' && activeModal.value) closeModal();
+  if (event.key !== 'Escape') return;
+  if (slipPreview.value) return closeSlip();
+  if (activeModal.value) closeModal();
 }
 
 watch(activeModal, (modal) => {
   document.body.style.overflow = modal ? 'hidden' : '';
+});
+
+// Fetch slips the first time the payments tab is opened for a schedule.
+watch(detailTab, (tab) => {
+  if (tab !== 'payments' || !selectedSchedule.value) return;
+  if (schedulePaymentBookings.value.length || loadingPayments.value) return;
+  loadSchedulePayments(selectedSchedule.value.id);
 });
 
 onMounted(fetchData);
@@ -3517,6 +3724,222 @@ onUnmounted(() => {
 
 .map-link .material-symbols-rounded {
   font-size: 15px;
+}
+
+/* ─── Payments panel ──────────────────────────────────────────────────── */
+.payment-card {
+  display: grid;
+  gap: 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.payment-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.payment-card-who strong {
+  color: var(--color-text-dark);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.payment-card-phone {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.payment-card-figures {
+  display: flex;
+  gap: 20px;
+  margin-left: auto;
+  text-align: right;
+}
+
+.payment-card-figures span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.payment-card-figures strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-dark);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.slip-row-list {
+  display: grid;
+  gap: 8px;
+}
+
+.slip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fafafa;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.slip-thumb {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 6px;
+  background: var(--color-white);
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.slip-thumb:hover {
+  border-color: var(--color-accent);
+  transform: scale(1.04);
+}
+
+.slip-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.slip-thumb.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  cursor: default;
+}
+
+.slip-thumb.empty .material-symbols-rounded {
+  color: #cbd5e1;
+  font-size: 22px;
+}
+
+.slip-row-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.slip-row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.slip-row-title strong {
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.slip-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px 14px;
+  flex-wrap: wrap;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.slip-missing {
+  color: #b45309;
+}
+
+.slip-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.slip-row-amount {
+  color: var(--color-text-dark);
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.tiny-chip.type {
+  background: var(--color-sand);
+  color: var(--color-text-mid);
+}
+
+.tiny-chip.join {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.tiny-chip.wait {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ocr-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.ocr-pending { background: #fef3c7; color: #92400e; }
+.ocr-verified { background: #d1fae5; color: #065f46; }
+.ocr-failed { background: #fee2e2; color: #991b1b; }
+.ocr-manually_approved { background: #d1fae5; color: #065f46; }
+.ocr-rejected { background: #f3f4f6; color: #6b7280; }
+.ocr-none { background: #f3f4f6; color: #6b7280; }
+
+/* ─── Slip viewer ─────────────────────────────────────────────────────── */
+.slip-overlay {
+  z-index: 260;
+  background: rgba(17, 24, 39, 0.66);
+}
+
+.slip-viewer {
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  max-height: 92vh;
+  overflow: hidden;
+}
+
+.slip-viewer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background: #fafafa;
+  text-align: center;
+}
+
+.slip-viewer-body img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--color-sand-dark);
 }
 
 /* ─── Pickup panel ────────────────────────────────────────────────────── */

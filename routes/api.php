@@ -451,6 +451,7 @@ Route::prefix('v1')->group(function () {
 
         // Calendar
         Route::get('calendar/schedules', [AdminExtendedController::class, 'calendarSchedules']);
+        Route::get('calendar/schedules/{id}/payments', [AdminExtendedController::class, 'schedulePayments'])->whereNumber('id');
 
         // Inline edit of a manifest passenger (e.g. backfill birth date)
         Route::patch('passengers/{id}', [AdminExtendedController::class, 'updatePassenger'])->whereNumber('id');
