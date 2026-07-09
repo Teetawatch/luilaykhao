@@ -380,155 +380,302 @@
     </div>
 
     <div class="modal-overlay" v-if="selectedSchedule && activeModal === 'details'" @click.self="closeModal">
-      <div class="modal-card modal-lg">
-        <div class="modal-header">
-          <div>
+      <div class="modal-card detail-modal">
+        <div class="detail-header">
+          <div class="detail-heading">
+            <div class="detail-badges">
+              <span class="status-badge" :class="`status-${selectedSchedule.status}`">
+                {{ statusLabels[selectedSchedule.status] || '-' }}
+              </span>
+              <span class="availability-badge" :class="availabilityClass(selectedSchedule)">
+                {{ availabilityLabel(selectedSchedule) }}
+              </span>
+              <span class="tsh-badge" :class="`badge-${selectedSchedule.trip_type || 'other'}`">
+                {{ tripTypeLabels[selectedSchedule.trip_type] || 'อื่น ๆ' }}
+              </span>
+            </div>
             <h2 class="modal-title">{{ selectedSchedule.trip_title }}</h2>
-            <p class="modal-subtitle">
-              {{ formatDate(selectedSchedule.start) }} | {{ selectedSchedule.vehicle || transportLabels[selectedSchedule.transport_type] || 'ไม่ระบุพาหนะ' }}
-            </p>
+            <div class="detail-meta">
+              <span>
+                <span class="material-symbols-rounded">calendar_month</span>
+                {{ scheduleDateRange(selectedSchedule) }}
+              </span>
+              <span>
+                <span class="material-symbols-rounded">{{ transportIcon(selectedSchedule.transport_type) }}</span>
+                {{ selectedSchedule.vehicle || transportLabels[selectedSchedule.transport_type] || 'ไม่ระบุพาหนะ' }}
+              </span>
+              <span>
+                <span class="material-symbols-rounded">public</span>
+                {{ regionLabels[selectedSchedule.trip_region] || 'ไม่ระบุภาค' }}
+              </span>
+              <span>
+                <span class="material-symbols-rounded">sell</span>
+                {{ formatCurrency(selectedSchedule.price) }} / คน
+              </span>
+              <span class="detail-meta-id">รหัสรอบ #{{ selectedSchedule.id }}</span>
+            </div>
           </div>
           <button class="modal-close" @click="closeModal">
             <span class="material-symbols-rounded">close</span>
           </button>
         </div>
 
-        <div class="modal-body">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-label">สถานะ</span>
-              <span class="status-badge" :class="`status-${selectedSchedule.status}`">
-                {{ statusLabels[selectedSchedule.status] || '-' }}
-              </span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">ราคา</span>
-              <span class="detail-value">{{ formatCurrency(selectedSchedule.price) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">วันเดินทาง</span>
-              <span class="detail-value">{{ formatDate(selectedSchedule.start, 'long') }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">วันกลับ</span>
-              <span class="detail-value">{{ selectedSchedule.end ? formatDate(selectedSchedule.end, 'long') : '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">ประเภทยานพาหนะ</span>
-              <span class="detail-value">{{ transportLabels[selectedSchedule.transport_type] || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">ยานพาหนะ</span>
-              <span class="detail-value">{{ selectedSchedule.vehicle || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">จำนวนที่นั่งทั้งหมด</span>
-              <span class="detail-value">{{ safeNumber(selectedSchedule.total_seats) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">ที่นั่งว่าง</span>
-              <span class="detail-value seats-avail">{{ safeNumber(selectedSchedule.available_seats) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">จองแล้ว</span>
-              <span class="detail-value">{{ safeNumber(selectedSchedule.booked_seats) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">รอดำเนินการ</span>
-              <span class="detail-value">{{ safeNumber(selectedSchedule.pending_bookings) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">ทริปปกติ</span>
-              <span class="detail-value">{{ getRegularPassengers(selectedSchedule) }} คน</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">ยอดเงินทริปปกติ</span>
-              <span class="detail-value money-value">{{ formatCurrency(getRegularAmount(selectedSchedule)) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">จอยทริป</span>
-              <span class="detail-value">{{ getJoinTripPassengers(selectedSchedule) }} คน</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">ยอดเงินจอยทริป</span>
-              <span class="detail-value money-value">{{ formatCurrency(getJoinTripAmount(selectedSchedule)) }}</span>
-            </div>
-            <div class="detail-item full-span">
-              <span class="detail-label">รวมผู้เดินทาง / ยอดเงินรวม</span>
-              <span class="detail-value money-value">
-                {{ getTotalPassengers(selectedSchedule) }} คน · {{ formatCurrency(getTotalAmount(selectedSchedule)) }}
-              </span>
+        <div class="detail-kpis">
+          <div class="kpi-tile">
+            <span class="kpi-label">ที่นั่งว่าง</span>
+            <strong class="kpi-value" :class="seatTextClass(selectedSchedule)">
+              {{ safeNumber(selectedSchedule.available_seats) }}<em>/ {{ safeNumber(selectedSchedule.total_seats) }}</em>
+            </strong>
+            <div class="progress-track">
+              <div class="progress-fill" :class="progressClass(selectedSchedule)" :style="{ width: seatFillWidth(selectedSchedule) }"></div>
             </div>
           </div>
-
-          <div class="pickup-summary">
-            <div class="pickup-summary-title">
-              <span class="material-symbols-rounded">location_on</span>
-              จุดรับลูกค้า
-            </div>
-            <div v-if="selectedSchedule.pickup_points?.length" class="pickup-summary-list">
-              <div v-for="pt in selectedSchedule.pickup_points" :key="pt.id" class="pickup-summary-item">
-                <span class="pickup-summary-region">{{ pt.region_label || regionLabels[pt.region] || '-' }}</span>
-                <span class="pickup-summary-loc">
-                  {{ pt.pickup_location || '-' }}
-                  <span v-if="pt.notes" class="pickup-summary-notes">· {{ pt.notes }}</span>
-                </span>
-                <span class="pickup-summary-price">{{ formatCurrency(pt.price) }}</span>
-              </div>
-            </div>
-            <div v-else class="pickup-summary-empty">ยังไม่มีข้อมูลจุดรับสำหรับรอบนี้</div>
+          <div class="kpi-tile">
+            <span class="kpi-label">ผู้เดินทาง</span>
+            <strong class="kpi-value">{{ getTotalPassengers(selectedSchedule) }}<em>คน</em></strong>
+            <span class="kpi-sub">
+              ปกติ {{ getRegularPassengers(selectedSchedule) }} · จอยทริป {{ getJoinTripPassengers(selectedSchedule) }}
+            </span>
           </div>
+          <div class="kpi-tile">
+            <span class="kpi-label">การจอง</span>
+            <strong class="kpi-value">
+              {{ safeNumber(selectedSchedule.confirmed_bookings) + safeNumber(selectedSchedule.pending_bookings) }}<em>รายการ</em>
+            </strong>
+            <span class="kpi-sub">
+              ยืนยัน {{ safeNumber(selectedSchedule.confirmed_bookings) }} · รอ {{ safeNumber(selectedSchedule.pending_bookings) }}
+            </span>
+          </div>
+          <div class="kpi-tile">
+            <span class="kpi-label">ยอดเงินรวม</span>
+            <strong class="kpi-value money-value">{{ formatCurrency(getTotalAmount(selectedSchedule)) }}</strong>
+            <span class="kpi-sub">ชำระแล้ว {{ formatCurrency(detailPayments.paid) }}</span>
+          </div>
+          <div class="kpi-tile">
+            <span class="kpi-label">ค้างชำระ</span>
+            <strong class="kpi-value" :class="{ 'text-low': detailPayments.outstanding > 0 }">
+              {{ formatCurrency(detailPayments.outstanding) }}
+            </strong>
+            <span class="kpi-sub">
+              {{ detailPayments.unpaidBookings ? `${detailPayments.unpaidBookings} รายการยังไม่ครบ` : 'ชำระครบทุกรายการ' }}
+            </span>
+          </div>
+        </div>
 
-          <div v-if="selectedSchedule.addons_summary?.length" class="addons-summary-block">
-            <div class="addons-summary-head">
-              <span class="material-symbols-rounded">add_shopping_cart</span>
-              <div>
-                <span class="manifest-kicker">รายการเสริมที่ลูกค้าเลือก</span>
-                <strong>{{ scheduleAddonsItemCount(selectedSchedule) }} รายการ · รวม {{ formatCurrency(scheduleAddonsTotal(selectedSchedule)) }}</strong>
-              </div>
-            </div>
-            <div class="addons-summary-list">
-              <div v-for="addon in selectedSchedule.addons_summary" :key="addon.name" class="addons-summary-item">
-                <div class="addons-summary-row">
-                  <div class="addons-summary-info">
-                    <strong>{{ addon.name }}</strong>
-                    <span class="addons-summary-meta">
-                      {{ formatCurrency(addon.unit_price) }}
-                      {{ addon.price_type === 'per_person' ? '/ คน' : '/ การจอง' }}
+        <nav class="detail-tabs" role="tablist">
+          <button
+            v-for="tab in detailTabs"
+            :key="tab.key"
+            class="detail-tab"
+            :class="{ active: detailTab === tab.key }"
+            type="button"
+            role="tab"
+            :aria-selected="detailTab === tab.key"
+            @click="detailTab = tab.key"
+          >
+            <span class="material-symbols-rounded">{{ tab.icon }}</span>
+            {{ tab.label }}
+            <span v-if="tab.count !== null" class="tab-count">{{ tab.count }}</span>
+          </button>
+        </nav>
+
+        <div class="detail-body">
+          <!-- ── ภาพรวม ─────────────────────────────────────────── -->
+          <section v-if="detailTab === 'overview'" class="detail-panel overview-panel">
+            <div class="panel-card">
+              <h3 class="panel-title">
+                <span class="material-symbols-rounded">info</span>
+                ข้อมูลรอบเดินทาง
+              </h3>
+              <dl class="spec-list">
+                <div class="spec-row">
+                  <dt>ทริป</dt>
+                  <dd>{{ selectedSchedule.trip_title }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>ประเภททริป</dt>
+                  <dd>{{ tripTypeLabels[selectedSchedule.trip_type] || 'อื่น ๆ' }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>ภูมิภาค</dt>
+                  <dd>{{ regionLabels[selectedSchedule.trip_region] || 'ไม่ระบุภาค' }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>สถานะรอบ</dt>
+                  <dd>
+                    <span class="status-badge" :class="`status-${selectedSchedule.status}`">
+                      {{ statusLabels[selectedSchedule.status] || '-' }}
                     </span>
-                  </div>
-                  <span class="addons-summary-qty">× {{ addon.total_quantity }}</span>
-                  <strong class="addons-summary-price">{{ formatCurrency(addon.total_price) }}</strong>
+                  </dd>
                 </div>
-                <div v-if="addon.customers?.length" class="addons-summary-customers">
-                  <span
-                    v-for="c in addon.customers"
-                    :key="`${addon.name}-${c.booking_ref}`"
-                    class="addons-customer-chip"
-                  >
-                    <span class="addons-customer-name">{{ c.name || '-' }}</span>
-                    <span class="addons-customer-ref">{{ c.booking_ref }}</span>
-                    <span v-if="c.quantity > 1" class="addons-customer-qty">× {{ c.quantity }}</span>
-                  </span>
+                <div class="spec-row">
+                  <dt>วันเดินทาง</dt>
+                  <dd>{{ formatDate(selectedSchedule.start, 'long') }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>วันกลับ</dt>
+                  <dd>{{ selectedSchedule.end ? formatDate(selectedSchedule.end, 'long') : '-' }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>ระยะเวลา</dt>
+                  <dd>{{ tripDurationDays(selectedSchedule) }} วัน</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>ประเภทยานพาหนะ</dt>
+                  <dd>{{ transportLabels[selectedSchedule.transport_type] || '-' }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>ยานพาหนะ</dt>
+                  <dd>{{ selectedSchedule.vehicle || 'ยังไม่กำหนด' }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>ราคาต่อคน</dt>
+                  <dd class="money-value">{{ formatCurrency(selectedSchedule.price) }}</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>จอยทริป</dt>
+                  <dd v-if="selectedSchedule.join_trip_enabled">
+                    เปิดรับ ·
+                    {{ selectedSchedule.join_trip_price ? `${formatCurrency(selectedSchedule.join_trip_price)} / คน` : 'ใช้ราคาปกติ' }}
+                  </dd>
+                  <dd v-else class="muted-value">ปิดรับ</dd>
+                </div>
+                <div class="spec-row">
+                  <dt>รหัสรอบ</dt>
+                  <dd class="muted-value">#{{ selectedSchedule.id }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="panel-card">
+              <h3 class="panel-title">
+                <span class="material-symbols-rounded">event_seat</span>
+                ที่นั่งและการจอง
+              </h3>
+              <div class="seat-figure">
+                <div class="seat-figure-head">
+                  <strong :class="seatTextClass(selectedSchedule)">
+                    ว่าง {{ safeNumber(selectedSchedule.available_seats) }} ที่
+                  </strong>
+                  <span>จองแล้ว {{ seatFillPercent(selectedSchedule) }}% ของความจุ</span>
+                </div>
+                <div class="progress-track tall">
+                  <div class="progress-fill" :class="progressClass(selectedSchedule)" :style="{ width: seatFillWidth(selectedSchedule) }"></div>
+                </div>
+              </div>
+              <div class="mini-stats">
+                <div class="mini-stat">
+                  <span>ที่นั่งทั้งหมด</span>
+                  <strong>{{ safeNumber(selectedSchedule.total_seats) }}</strong>
+                </div>
+                <div class="mini-stat">
+                  <span>จองแล้ว</span>
+                  <strong>{{ safeNumber(selectedSchedule.booked_seats) }}</strong>
+                </div>
+                <div class="mini-stat">
+                  <span>ที่นั่งว่าง</span>
+                  <strong class="seats-avail">{{ safeNumber(selectedSchedule.available_seats) }}</strong>
+                </div>
+                <div class="mini-stat">
+                  <span>ยืนยันแล้ว</span>
+                  <strong>{{ safeNumber(selectedSchedule.confirmed_bookings) }} รายการ</strong>
+                </div>
+                <div class="mini-stat">
+                  <span>รอดำเนินการ</span>
+                  <strong :class="{ 'text-low': safeNumber(selectedSchedule.pending_bookings) > 0 }">
+                    {{ safeNumber(selectedSchedule.pending_bookings) }} รายการ
+                  </strong>
+                </div>
+                <div class="mini-stat">
+                  <span>เช็คอินแล้ว</span>
+                  <strong>{{ detailCheckedInCount }} รายการ</strong>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="insurance-manifest">
-            <div class="insurance-manifest-title">
-              <div>
-                <span class="manifest-kicker">รายชื่อสำหรับส่งประกัน</span>
-                <strong>{{ schedulePassengerCount(selectedSchedule) }} คน</strong>
+            <div class="panel-card span-full">
+              <h3 class="panel-title">
+                <span class="material-symbols-rounded">payments</span>
+                สรุปยอดเงิน
+              </h3>
+              <table class="money-table">
+                <thead>
+                  <tr>
+                    <th>ประเภทการจอง</th>
+                    <th>ผู้เดินทาง</th>
+                    <th>ยอดเงิน</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="manifest-type-dot"></span>จองปกติ</td>
+                    <td>{{ getRegularPassengers(selectedSchedule) }} คน</td>
+                    <td>{{ formatCurrency(getRegularAmount(selectedSchedule)) }}</td>
+                  </tr>
+                  <tr>
+                    <td><span class="manifest-type-dot join"></span>จอยทริป</td>
+                    <td>{{ getJoinTripPassengers(selectedSchedule) }} คน</td>
+                    <td>{{ formatCurrency(getJoinTripAmount(selectedSchedule)) }}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>รวมทั้งหมด</td>
+                    <td>{{ getTotalPassengers(selectedSchedule) }} คน</td>
+                    <td class="money-value">{{ formatCurrency(getTotalAmount(selectedSchedule)) }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div class="pay-split">
+                <div class="pay-chip paid">
+                  <span>ชำระแล้ว</span>
+                  <strong>{{ formatCurrency(detailPayments.paid) }}</strong>
+                  <em>จาก {{ detailBookings.length }} การจอง</em>
+                </div>
+                <div class="pay-chip" :class="detailPayments.outstanding > 0 ? 'due' : 'paid'">
+                  <span>ค้างชำระ</span>
+                  <strong>{{ formatCurrency(detailPayments.outstanding) }}</strong>
+                  <em>
+                    {{ detailPayments.unpaidBookings ? `${detailPayments.unpaidBookings} การจองยังชำระไม่ครบ` : 'ไม่มียอดค้าง' }}
+                  </em>
+                </div>
+                <div class="pay-chip">
+                  <span>รายการเสริม</span>
+                  <strong>{{ formatCurrency(scheduleAddonsTotal(selectedSchedule)) }}</strong>
+                  <em>{{ scheduleAddonsItemCount(selectedSchedule) }} ชิ้น · รวมอยู่ในยอดจองแล้ว</em>
+                </div>
               </div>
-              <div style="display:flex;gap:8px;">
+            </div>
+          </section>
+
+          <!-- ── ผู้เดินทาง ─────────────────────────────────────── -->
+          <section v-else-if="detailTab === 'passengers'" class="detail-panel">
+            <div class="manifest-toolbar">
+              <div class="search-box">
+                <span class="material-symbols-rounded">search</span>
+                <input v-model.trim="manifestSearch" placeholder="ค้นหาชื่อ เลขจอง เบอร์โทร หรือเลขบัตร..." />
+              </div>
+              <div class="segmented">
+                <button
+                  v-for="option in manifestTypeOptions"
+                  :key="option.value"
+                  class="segment"
+                  :class="{ active: manifestType === option.value }"
+                  type="button"
+                  @click="manifestType = option.value"
+                >
+                  {{ option.label }}
+                  <span class="tab-count">{{ option.count }}</span>
+                </button>
+              </div>
+              <div class="manifest-toolbar-actions">
                 <button
                   class="btn-secondary compact"
                   :disabled="!schedulePassengerCount(selectedSchedule)"
                   @click="exportScheduleInsurancePdf(selectedSchedule)"
                 >
                   <span class="material-symbols-rounded">picture_as_pdf</span>
-                  ส่งออก PDF
+                  PDF ประกัน
                 </button>
                 <button
                   class="btn-secondary compact"
@@ -540,31 +687,52 @@
                 </button>
               </div>
             </div>
-            <div v-if="schedulePassengers(selectedSchedule).length" class="insurance-table-wrap">
-              <table class="insurance-table">
+
+            <div v-if="filteredManifest.length" class="data-table-wrap">
+              <table class="data-table">
                 <thead>
                   <tr>
-                    <th>ชื่อ</th>
-                    <th>ประเภท</th>
+                    <th class="col-index">#</th>
+                    <th class="col-person">ผู้เดินทาง</th>
+                    <th>ประเภท / ที่นั่ง</th>
                     <th>เลขบัตร/พาสปอร์ต</th>
                     <th>วันเกิด / อายุ</th>
-                    <th>โทรศัพท์</th>
-                    <th>เลือด</th>
-                    <th>แพ้อาหาร/โรคประจำตัว</th>
+                    <th>ติดต่อ</th>
+                    <th>เลือด / น้ำหนัก</th>
+                    <th v-if="showDiveColumn">ใบรับรองดำน้ำ</th>
+                    <th>แพ้อาหาร / โรคประจำตัว</th>
                     <th>ติดต่อฉุกเฉิน</th>
+                    <th>จุดรับ</th>
+                    <th>การชำระเงิน</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="person in schedulePassengers(selectedSchedule)" :key="person.id">
-                    <td>
-                      <strong>{{ fullPassengerName(person) }}</strong>
-                      <span>{{ person.booking_ref }}</span>
+                  <tr v-for="(person, index) in filteredManifest" :key="person.id">
+                    <td class="col-index">{{ index + 1 }}</td>
+                    <td class="col-person">
+                      <strong>
+                        {{ fullPassengerName(person) }}
+                        <em v-if="person.nickname" class="cell-nickname">({{ person.nickname }})</em>
+                      </strong>
+                      <div class="cell-chips">
+                        <span class="ref-chip">{{ person.booking_ref }}</span>
+                        <span class="status-badge" :class="`status-${person.booking_status}`">
+                          {{ bookingStatusLabels[person.booking_status] || person.booking_status }}
+                        </span>
+                        <span v-if="person.checked_in" class="tiny-chip check">เช็คอินแล้ว</span>
+                      </div>
+                      <span v-if="person.customer_name" class="cell-owner">ผู้จอง: {{ person.customer_name }}</span>
                     </td>
-                    <td>{{ person.booking_type_label }}</td>
+                    <td>
+                      <strong :class="{ 'join-text': person.booking_type === 'join_trip' }">{{ person.booking_type_label }}</strong>
+                      <span v-if="person.seat_labels?.length">ที่นั่ง {{ person.seat_labels.join(', ') }}</span>
+                      <span v-else-if="person.booking_type === 'join_trip'">ไม่ระบุที่นั่ง</span>
+                      <span v-else>ยังไม่เลือกที่นั่ง</span>
+                    </td>
                     <td>{{ person.id_card || '-' }}</td>
                     <td>
                       <template v-if="person.birth_date">
-                        {{ person.birth_date }}
+                        <strong>{{ formatBirthDate(person.birth_date) }}</strong>
                         <span v-if="person.age != null" class="age-pill">{{ person.age }} ปี</span>
                       </template>
                       <input
@@ -575,18 +743,174 @@
                         @change="saveBirthDate(person, $event)"
                       />
                     </td>
-                    <td>{{ person.phone || '-' }}</td>
-                    <td>{{ person.blood_group || '-' }}</td>
-                    <td>{{ healthSummary(person) }}</td>
-                    <td>{{ emergencySummary(person) }}</td>
+                    <td>
+                      <strong>{{ person.phone || '-' }}</strong>
+                      <span v-if="person.customer_phone && person.customer_phone !== person.phone">
+                        ผู้จอง {{ person.customer_phone }}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{{ person.blood_group || '-' }}</strong>
+                      <span>{{ person.weight ? `${person.weight} กก.` : 'ไม่ระบุน้ำหนัก' }}</span>
+                    </td>
+                    <td v-if="showDiveColumn">
+                      <strong>{{ person.dive_cert_level || '-' }}</strong>
+                      <span v-if="person.cert_number">เลขที่ {{ person.cert_number }}</span>
+                    </td>
+                    <td>
+                      <span class="wrap-text">{{ healthSummary(person) }}</span>
+                      <span v-if="person.halal_food" class="tiny-chip halal">อาหารฮาลาล</span>
+                    </td>
+                    <td><span class="wrap-text">{{ emergencySummary(person) }}</span></td>
+                    <td>
+                      <strong>{{ person.pickup_region || 'ยังไม่เลือกจุดรับ' }}</strong>
+                      <span class="wrap-text">{{ person.pickup_location || '-' }}</span>
+                      <span v-if="person.custom_pickup_note" class="wrap-text">หมายเหตุ: {{ person.custom_pickup_note }}</span>
+                      <a
+                        v-if="person.custom_pickup_map_url"
+                        class="map-link"
+                        :href="person.custom_pickup_map_url"
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        <span class="material-symbols-rounded">map</span>
+                        เปิดแผนที่
+                      </a>
+                    </td>
+                    <td>
+                      <strong>{{ paymentTypeLabels[person.payment_type] || person.payment_type || '-' }}</strong>
+                      <span>{{ paymentMethodLabels[person.payment_method] || person.payment_method || 'ยังไม่ระบุช่องทาง' }}</span>
+                      <span :class="{ 'text-low': safeNumber(person.total_amount) - safeNumber(person.paid_amount) > 0 }">
+                        {{ formatCurrency(person.paid_amount) }} / {{ formatCurrency(person.total_amount) }}
+                      </span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div v-else class="pickup-summary-empty">ยังไม่มีรายชื่อผู้เดินทางสำหรับรอบนี้</div>
-          </div>
+            <div v-else class="panel-empty">
+              <span class="material-symbols-rounded">person_off</span>
+              <p v-if="schedulePassengerCount(selectedSchedule)">ไม่พบผู้เดินทางที่ตรงกับเงื่อนไข</p>
+              <p v-else>ยังไม่มีรายชื่อผู้เดินทางสำหรับรอบนี้</p>
+            </div>
+          </section>
 
-          <div class="modal-footer">
+          <!-- ── จุดรับ ─────────────────────────────────────────── -->
+          <section v-else-if="detailTab === 'pickups'" class="detail-panel">
+            <div v-if="detailPickupPoints.length" class="pickup-card-grid">
+              <article v-for="pt in detailPickupPoints" :key="pt.id" class="pickup-card">
+                <div class="pickup-card-head">
+                  <div>
+                    <span class="pickup-card-region">{{ pt.region_label || regionLabels[pt.region] || 'ไม่ระบุภาค' }}</span>
+                    <strong class="pickup-card-loc">{{ pt.pickup_location || '-' }}</strong>
+                  </div>
+                  <span class="pickup-card-price">{{ formatCurrency(pt.price) }}</span>
+                </div>
+                <div class="pickup-card-facts">
+                  <span v-if="pt.pickup_time">
+                    <span class="material-symbols-rounded">schedule</span>
+                    {{ formatTime(pt.pickup_time) }} น.
+                  </span>
+                  <span>
+                    <span class="material-symbols-rounded">group</span>
+                    {{ pt.passengers.length }} คน
+                  </span>
+                  <a v-if="pt.map_url" class="map-link" :href="pt.map_url" target="_blank" rel="noopener">
+                    <span class="material-symbols-rounded">map</span>
+                    เปิดแผนที่
+                  </a>
+                </div>
+                <p v-if="pt.notes" class="pickup-card-notes">{{ pt.notes }}</p>
+                <div v-if="pt.passengers.length" class="pickup-card-people">
+                  <span v-for="person in pt.passengers" :key="person.id" class="people-chip">
+                    {{ fullPassengerName(person) }}
+                  </span>
+                </div>
+                <p v-else class="pickup-card-empty">ยังไม่มีผู้เดินทางเลือกจุดรับนี้</p>
+              </article>
+            </div>
+            <div v-else class="panel-empty">
+              <span class="material-symbols-rounded">location_off</span>
+              <p>ยังไม่มีข้อมูลจุดรับสำหรับรอบนี้</p>
+            </div>
+
+            <div v-if="customPickupPassengers.length" class="panel-card span-full">
+              <h3 class="panel-title">
+                <span class="material-symbols-rounded">where_to_vote</span>
+                จุดรับที่ลูกค้าปักหมุดเอง
+                <span class="tab-count">{{ customPickupPassengers.length }}</span>
+              </h3>
+              <div class="custom-pickup-list">
+                <div v-for="person in customPickupPassengers" :key="person.id" class="custom-pickup-item">
+                  <div>
+                    <strong>{{ fullPassengerName(person) }}</strong>
+                    <span class="ref-chip">{{ person.booking_ref }}</span>
+                  </div>
+                  <span class="custom-pickup-loc">{{ person.pickup_location }}</span>
+                  <span v-if="person.custom_pickup_note" class="custom-pickup-note">{{ person.custom_pickup_note }}</span>
+                  <a class="map-link" :href="person.custom_pickup_map_url" target="_blank" rel="noopener">
+                    <span class="material-symbols-rounded">map</span>
+                    {{ person.custom_pickup_lat }}, {{ person.custom_pickup_lng }}
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="noPickupPassengers.length" class="panel-note">
+              <span class="material-symbols-rounded">help</span>
+              มีผู้เดินทาง {{ noPickupPassengers.length }} คนที่ยังไม่ได้เลือกจุดรับ
+            </div>
+          </section>
+
+          <!-- ── รายการเสริม ────────────────────────────────────── -->
+          <section v-else class="detail-panel">
+            <div v-if="scheduleAddons(selectedSchedule).length" class="addons-summary-block">
+              <div class="addons-summary-head">
+                <span class="material-symbols-rounded">add_shopping_cart</span>
+                <div>
+                  <span class="manifest-kicker">รายการเสริมที่ลูกค้าเลือก</span>
+                  <strong>{{ scheduleAddonsItemCount(selectedSchedule) }} ชิ้น · รวม {{ formatCurrency(scheduleAddonsTotal(selectedSchedule)) }}</strong>
+                </div>
+              </div>
+              <div class="addons-summary-list">
+                <div v-for="addon in selectedSchedule.addons_summary" :key="addon.name" class="addons-summary-item">
+                  <div class="addons-summary-row">
+                    <div class="addons-summary-info">
+                      <strong>{{ addon.name }}</strong>
+                      <span class="addons-summary-meta">
+                        {{ formatCurrency(addon.unit_price) }}
+                        {{ addon.price_type === 'per_person' ? '/ คน' : '/ การจอง' }}
+                      </span>
+                    </div>
+                    <span class="addons-summary-qty">× {{ addon.total_quantity }}</span>
+                    <strong class="addons-summary-price">{{ formatCurrency(addon.total_price) }}</strong>
+                  </div>
+                  <div v-if="addon.customers?.length" class="addons-summary-customers">
+                    <span
+                      v-for="c in addon.customers"
+                      :key="`${addon.name}-${c.booking_ref}`"
+                      class="addons-customer-chip"
+                    >
+                      <span class="addons-customer-name">{{ c.name || '-' }}</span>
+                      <span class="addons-customer-ref">{{ c.booking_ref }}</span>
+                      <span v-if="c.quantity > 1" class="addons-customer-qty">× {{ c.quantity }}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="panel-empty">
+              <span class="material-symbols-rounded">remove_shopping_cart</span>
+              <p>ยังไม่มีลูกค้าเลือกรายการเสริมในรอบนี้</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="detail-actions">
+          <span class="detail-actions-hint">
+            ข้อมูลอัปเดตล่าสุด {{ lastUpdated || '-' }}
+          </span>
+          <div class="detail-actions-buttons">
             <button class="btn-secondary" @click="viewSeatLayout(selectedSchedule)">
               <span class="material-symbols-rounded">grid_view</span>
               ดูผังที่นั่ง
@@ -729,11 +1053,37 @@ const seatError = ref('');
 const loadingSeats = ref(false);
 const lastUpdated = ref('');
 
+// Detail modal — tabbed so the full manifest can be shown without a scroll marathon.
+const detailTab = ref('overview');
+const manifestSearch = ref('');
+const manifestType = ref('all');
+
 const statusLabels = {
   open: 'เปิดรับจอง',
   closed: 'ปิด',
   full: 'เต็ม',
   cancelled: 'ยกเลิก',
+};
+
+const bookingStatusLabels = {
+  pending: 'รอดำเนินการ',
+  confirmed: 'ยืนยันแล้ว',
+  cancelled: 'ยกเลิก',
+  refunded: 'คืนเงินแล้ว',
+};
+
+const paymentTypeLabels = {
+  full: 'ชำระเต็มจำนวน',
+  deposit: 'มัดจำ',
+  installment: 'ผ่อนชำระ',
+};
+
+const paymentMethodLabels = {
+  promptpay: 'พร้อมเพย์',
+  mobile_banking: 'โอนผ่านแอปธนาคาร',
+  bank_transfer: 'โอนธนาคาร',
+  cash: 'เงินสด',
+  card: 'บัตรเครดิต',
 };
 
 const tripTypeLabels = {
@@ -908,6 +1258,89 @@ const groupedDaySchedules = computed(() => {
     .sort((a, b) => dateValue(a.date_key) - dateValue(b.date_key));
 });
 
+/* ───── Detail modal derivations ──────────────────────────────────────────
+   The manifest is one row per passenger, so booking-level figures (paid,
+   total, check-in) must be de-duplicated by booking before being summed. */
+
+const detailPassengers = computed(() => schedulePassengers(selectedSchedule.value));
+
+const detailBookings = computed(() => {
+  const bookings = new Map();
+
+  detailPassengers.value.forEach((person) => {
+    if (!bookings.has(person.booking_id)) {
+      bookings.set(person.booking_id, person);
+    }
+  });
+
+  return [...bookings.values()];
+});
+
+const detailCheckedInCount = computed(() => detailBookings.value.filter((booking) => booking.checked_in).length);
+
+const detailPayments = computed(() => {
+  return detailBookings.value.reduce((totals, booking) => {
+    const total = safeNumber(booking.total_amount);
+    const paid = safeNumber(booking.paid_amount);
+
+    totals.total += total;
+    totals.paid += paid;
+    totals.outstanding += Math.max(0, total - paid);
+    totals.unpaidBookings += total - paid > 0 ? 1 : 0;
+
+    return totals;
+  }, { total: 0, paid: 0, outstanding: 0, unpaidBookings: 0 });
+});
+
+const manifestTypeOptions = computed(() => [
+  { value: 'all', label: 'ทั้งหมด', count: detailPassengers.value.length },
+  { value: 'regular', label: 'จองปกติ', count: detailPassengers.value.filter((p) => p.booking_type === 'regular').length },
+  { value: 'join_trip', label: 'จอยทริป', count: detailPassengers.value.filter((p) => p.booking_type === 'join_trip').length },
+]);
+
+const filteredManifest = computed(() => {
+  const query = normalizeText(manifestSearch.value);
+
+  return detailPassengers.value.filter((person) => {
+    if (manifestType.value !== 'all' && person.booking_type !== manifestType.value) return false;
+    if (!query) return true;
+
+    const haystack = normalizeText([
+      person.title,
+      person.name,
+      person.nickname,
+      person.booking_ref,
+      person.phone,
+      person.customer_name,
+      person.id_card,
+      person.pickup_location,
+    ].filter(Boolean).join(' '));
+
+    return haystack.includes(query);
+  });
+});
+
+const showDiveColumn = computed(() => detailPassengers.value.some((p) => p.dive_cert_level || p.cert_number));
+
+const detailPickupPoints = computed(() => {
+  const points = selectedSchedule.value?.pickup_points || [];
+
+  return points.map((point) => ({
+    ...point,
+    passengers: detailPassengers.value.filter((p) => !p.is_custom_pickup && p.pickup_location === point.pickup_location),
+  }));
+});
+
+const customPickupPassengers = computed(() => detailPassengers.value.filter((p) => p.is_custom_pickup));
+const noPickupPassengers = computed(() => detailPassengers.value.filter((p) => !p.is_custom_pickup && !p.pickup_location));
+
+const detailTabs = computed(() => [
+  { key: 'overview', label: 'ภาพรวม', icon: 'dashboard', count: null },
+  { key: 'passengers', label: 'ผู้เดินทาง', icon: 'groups', count: detailPassengers.value.length },
+  { key: 'pickups', label: 'จุดรับ', icon: 'location_on', count: detailPickupPoints.value.length + customPickupPassengers.value.length },
+  { key: 'addons', label: 'รายการเสริม', icon: 'add_shopping_cart', count: scheduleAddons(selectedSchedule.value).length },
+]);
+
 function buildStats(items) {
   const tripIds = new Set();
   const regionIds = new Set();
@@ -1033,6 +1466,9 @@ function removeFilter(key) {
 function openDetails(sch) {
   selectedSchedule.value = sch;
   activeModal.value = 'details';
+  detailTab.value = 'overview';
+  manifestSearch.value = '';
+  manifestType.value = 'all';
   seatData.value = null;
   seatError.value = '';
 }
@@ -1115,6 +1551,12 @@ function seatFillWidth(sch) {
   const totalSeats = safeNumber(sch.total_seats);
   if (!totalSeats) return '0%';
   return `${Math.min(100, (safeNumber(sch.booked_seats) / totalSeats) * 100)}%`;
+}
+
+function seatFillPercent(sch) {
+  const totalSeats = safeNumber(sch.total_seats);
+  if (!totalSeats) return 0;
+  return Math.min(100, Math.round((safeNumber(sch.booked_seats) / totalSeats) * 100));
 }
 
 function getRegularPassengers(sch) {
@@ -1446,6 +1888,31 @@ function formatDate(value, style = 'short') {
     year: 'numeric',
     weekday: style === 'long' ? 'long' : 'short',
   });
+}
+
+function formatBirthDate(value) {
+  const date = scheduleDate(value);
+  if (!date) return '-';
+
+  return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatTime(value) {
+  return String(value ?? '').slice(0, 5);
+}
+
+function scheduleDateRange(sch) {
+  const start = formatDate(sch?.start);
+  if (!sch?.end || sch.end === sch.start) return start;
+  return `${start} - ${formatDate(sch.end)}`;
+}
+
+function tripDurationDays(sch) {
+  const start = scheduleDate(sch?.start);
+  const end = scheduleDate(sch?.end);
+  if (!start) return 0;
+  if (!end) return 1;
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
 }
 
 function formatCurrency(value) {
@@ -2185,16 +2652,14 @@ onUnmounted(() => {
   background: #f8fafc;
 }
 
-.manifest-preview-head,
-.insurance-manifest-title {
+.manifest-preview-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.manifest-preview-head > div,
-.insurance-manifest-title > div {
+.manifest-preview-head > div {
   display: grid;
   gap: 2px;
 }
@@ -2205,8 +2670,7 @@ onUnmounted(() => {
   font-weight: 800;
 }
 
-.manifest-preview-head strong,
-.insurance-manifest-title strong {
+.manifest-preview-head strong {
   color: var(--color-text-dark);
   font-size: 14px;
   font-weight: 900;
@@ -2374,10 +2838,6 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.modal-lg {
-  max-width: 860px;
-}
-
 .modal-xl {
   max-width: 980px;
 }
@@ -2392,37 +2852,6 @@ onUnmounted(() => {
   font-size: 13px;
 }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border: 1px solid var(--color-sand-dark);
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.detail-label {
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.detail-value {
-  color: var(--color-text-dark);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.detail-item.full-span {
-  grid-column: 1 / -1;
-}
-
 .money-value {
   color: var(--color-accent);
 }
@@ -2431,69 +2860,827 @@ onUnmounted(() => {
   color: var(--color-accent);
 }
 
-.pickup-summary {
-  margin-top: 18px;
-  border: 1px solid var(--color-sand-dark);
-  border-radius: 8px;
+/* ─── Detail modal shell ──────────────────────────────────────────────── */
+.detail-modal {
+  display: flex;
+  flex-direction: column;
+  max-width: 1180px;
+  max-height: 92vh;
   overflow: hidden;
 }
 
-.pickup-summary-title {
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.detail-heading {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.detail-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.detail-modal .modal-title {
+  color: var(--color-text-dark);
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px 16px;
+  flex-wrap: wrap;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detail-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.detail-meta .material-symbols-rounded {
+  font-size: 17px;
+  color: var(--color-accent);
+}
+
+.detail-meta-id {
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+/* ─── KPI strip ───────────────────────────────────────────────────────── */
+.detail-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px 24px;
+  background: #fafafa;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.kpi-tile {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.kpi-label {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.kpi-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--color-text-dark);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.kpi-value em {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.kpi-sub {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.kpi-tile .progress-track {
+  margin-top: 3px;
+}
+
+.progress-track.tall {
+  height: 10px;
+}
+
+/* ─── Tabs ────────────────────────────────────────────────────────────── */
+.detail-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid #eeeeee;
+  overflow-x: auto;
+}
+
+.detail-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 12px 12px 10px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.detail-tab .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.detail-tab:hover {
+  color: var(--color-text-dark);
+}
+
+.detail-tab.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.tab-count {
+  border-radius: 999px;
+  background: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
+  color: var(--color-text-mid);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 7px;
+}
+
+.detail-tab.active .tab-count {
+  background: #e8f5ec;
+  border-color: #b7dfc5;
+  color: var(--color-accent);
+}
+
+/* ─── Panels ──────────────────────────────────────────────────────────── */
+.detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+  background: #fafafa;
+}
+
+.detail-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.overview-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.panel-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.panel-card.span-full {
+  grid-column: 1 / -1;
+}
+
+.panel-title {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 10px 12px;
-  background: var(--color-sand);
-  border-bottom: 1px solid var(--color-sand-dark);
+  margin: 0 0 12px;
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.panel-title .material-symbols-rounded {
   color: var(--color-accent);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 18px;
 }
 
-.pickup-summary-title .material-symbols-rounded {
-  font-size: 17px;
-}
-
-.pickup-summary-list {
+.spec-list {
   display: grid;
+  margin: 0;
 }
 
-.pickup-summary-item {
+.spec-row {
   display: grid;
-  grid-template-columns: 120px 1fr auto;
-  gap: 10px;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 12px;
   align-items: baseline;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-sand-dark);
-  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-.pickup-summary-item:last-child {
+.spec-row:last-child {
   border-bottom: none;
 }
 
-.pickup-summary-region,
-.pickup-summary-price {
+.spec-row dt {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.spec-row dd {
+  margin: 0;
   color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.muted-value {
+  color: var(--color-text-muted) !important;
+  font-weight: 600 !important;
+}
+
+.seat-figure {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.seat-figure-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.seat-figure-head strong {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-stat {
+  display: grid;
+  gap: 2px;
+  background: #fafafa;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.mini-stat span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.mini-stat strong {
+  color: var(--color-text-dark);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.money-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.money-table th {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-sand-dark);
+}
+
+.money-table th:not(:first-child),
+.money-table td:not(:first-child) {
+  text-align: right;
+}
+
+.money-table td {
+  color: var(--color-text-mid);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.money-table td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-dark);
+}
+
+.money-table tfoot td {
+  border-bottom: none;
+  border-top: 1px solid var(--color-sand-dark);
+  color: var(--color-text-dark);
+  font-weight: 900;
+}
+
+.pay-split {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pay-chip {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 10px;
+}
+
+.pay-chip span {
+  color: var(--color-text-muted);
+  font-size: 11px;
   font-weight: 800;
 }
 
-.pickup-summary-loc {
-  color: var(--color-text-mid);
+.pay-chip strong {
+  color: var(--color-text-dark);
+  font-size: 16px;
+  font-weight: 900;
 }
 
-.pickup-summary-notes {
+.pay-chip em {
   color: var(--color-text-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
 }
 
-.pickup-summary-empty {
-  padding: 16px;
+.pay-chip.paid {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.pay-chip.paid strong {
+  color: #166534;
+}
+
+.pay-chip.due {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.pay-chip.due strong {
+  color: #b45309;
+}
+
+.panel-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
   color: var(--color-text-muted);
   font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.panel-empty p {
+  margin: 0;
+}
+
+.panel-empty .material-symbols-rounded {
+  color: #cbd5e1;
+  font-size: 42px;
+}
+
+.panel-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
+.panel-note .material-symbols-rounded {
+  font-size: 18px;
+}
+
+/* ─── Manifest table ──────────────────────────────────────────────────── */
+.manifest-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.manifest-toolbar .search-box {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.manifest-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.segment:hover {
+  color: var(--color-text-dark);
+}
+
+.segment.active {
+  background: #e8f5ec;
+  color: var(--color-accent);
+}
+
+.data-table-wrap {
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 58vh;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 1280px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  color: var(--color-text-dark);
+  font-size: 11px;
+  font-weight: 900;
+  padding: 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-sand-dark);
+}
+
+.data-table td {
+  color: var(--color-text-mid);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+
+.data-table tbody tr:hover td {
+  background: #fafafa;
+}
+
+.data-table td > strong,
+.data-table td > span {
+  display: block;
+}
+
+.data-table td > strong {
+  color: var(--color-text-dark);
+}
+
+.data-table td > span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.col-index {
+  width: 40px;
+  color: var(--color-text-muted);
+}
+
+.col-person {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-white);
+  min-width: 210px;
+  box-shadow: 1px 0 0 #f3f4f6;
+}
+
+.data-table thead .col-person {
+  z-index: 3;
+  background: #f8fafc;
+}
+
+.data-table tbody tr:hover .col-person {
+  background: #fafafa;
+}
+
+.cell-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.cell-chips .status-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+.cell-owner {
+  margin-top: 4px;
+}
+
+.ref-chip {
+  border-radius: 6px;
+  background: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
+  color: var(--color-text-mid);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.tiny-chip,
+.data-table td > .tiny-chip {
+  display: inline-block;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  margin-top: 3px;
+}
+
+.cell-nickname {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.tiny-chip.check {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tiny-chip.halal {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.join-text {
+  color: #047857 !important;
+}
+
+.wrap-text {
+  display: block;
+  min-width: 150px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.map-link:hover {
+  text-decoration: underline;
+}
+
+.map-link .material-symbols-rounded {
+  font-size: 15px;
+}
+
+/* ─── Pickup panel ────────────────────────────────────────────────────── */
+.pickup-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.pickup-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.pickup-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pickup-card-region {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.pickup-card-loc {
+  display: block;
+  color: var(--color-text-dark);
+  font-size: 14px;
+  font-weight: 800;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+.pickup-card-price {
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.pickup-card-facts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pickup-card-facts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pickup-card-facts .material-symbols-rounded {
+  font-size: 16px;
+}
+
+.pickup-card-notes {
+  margin: 0;
+  background: var(--color-sand);
+  border-radius: 6px;
+  color: var(--color-text-mid);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.pickup-card-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.people-chip {
+  border-radius: 999px;
+  background: #f0faf4;
+  border: 1px solid #b7dfc5;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+}
+
+.pickup-card-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.custom-pickup-list {
+  display: grid;
+  gap: 8px;
+}
+
+.custom-pickup-item {
+  display: grid;
+  gap: 4px;
+  background: #fafafa;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.custom-pickup-item > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.custom-pickup-item strong {
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.custom-pickup-loc,
+.custom-pickup-note {
+  color: var(--color-text-mid);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.custom-pickup-note {
+  color: var(--color-text-muted);
+}
+
+/* ─── Detail footer ───────────────────────────────────────────────────── */
+.detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  border-top: 1px solid #eeeeee;
+  background: var(--color-white);
+}
+
+.detail-actions-hint {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.detail-actions-buttons {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
 }
 
 .addons-summary-block {
-  margin-top: 18px;
   border: 1px solid #bbf7d0;
   border-radius: 8px;
   overflow: hidden;
@@ -2607,62 +3794,6 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.insurance-manifest {
-  margin-top: 18px;
-  border: 1px solid var(--color-sand-dark);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--color-white);
-}
-
-.insurance-manifest-title {
-  margin-bottom: 12px;
-}
-
-.insurance-table-wrap {
-  overflow-x: auto;
-}
-
-.insurance-table {
-  width: 100%;
-  min-width: 940px;
-  border-collapse: collapse;
-}
-
-.insurance-table th {
-  background: #f8fafc;
-  color: var(--color-text-dark);
-  font-size: 11px;
-  font-weight: 900;
-  padding: 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--color-sand-dark);
-}
-
-.insurance-table td {
-  color: var(--color-text-mid);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 8px;
-  border-bottom: 1px solid #eeeeee;
-  vertical-align: top;
-}
-
-.insurance-table td strong,
-.insurance-table td span {
-  display: block;
-}
-
-.insurance-table td strong {
-  color: var(--color-text-dark);
-}
-
-.insurance-table td span {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  margin-top: 2px;
-}
-
 .seat-map-body {
   min-height: 320px;
 }
@@ -2716,6 +3847,14 @@ onUnmounted(() => {
   .summary-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .detail-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .overview-panel {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -2732,10 +3871,6 @@ onUnmounted(() => {
 
   .card-header {
     align-items: flex-start;
-  }
-
-  .detail-grid {
-    grid-template-columns: 1fr;
   }
 
   .summary-grid {
@@ -2765,9 +3900,35 @@ onUnmounted(() => {
     text-align: left;
   }
 
-  .pickup-summary-item {
+  .detail-header,
+  .detail-kpis,
+  .detail-body,
+  .detail-actions {
+    padding-inline: 16px;
+  }
+
+  .detail-tabs {
+    padding-inline: 8px;
+  }
+
+  .spec-row {
     grid-template-columns: 1fr;
-    gap: 4px;
+    gap: 2px;
+  }
+
+  .mini-stats,
+  .pay-split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manifest-toolbar-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .col-person {
+    position: static;
+    box-shadow: none;
   }
 }
 
@@ -2776,6 +3937,10 @@ onUnmounted(() => {
   .card-actions,
   .booking-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .detail-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
