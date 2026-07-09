@@ -4,7 +4,7 @@
     <!-- ══════════════════════════════════════════
          HERO SECTION
     ══════════════════════════════════════════ -->
-    <section class="relative h-[90vh] min-h-[700px] w-full flex items-center justify-center overflow-hidden -mt-16">
+    <section class="relative min-h-[calc(100svh-8rem)] md:h-[90vh] md:min-h-[700px] w-full flex items-center justify-center overflow-hidden md:-mt-16">
       <!-- Background Slider -->
       <div class="hero-slider absolute inset-0 overflow-hidden">
         <div
@@ -25,7 +25,7 @@
       </div>
 
       <!-- Content -->
-      <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-16 md:pt-24 pb-12">
+      <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-10 md:pt-24 pb-28 md:pb-12">
         
         <!-- Headline -->
         <h1 class="hero-title font-anuphan text-white text-[1.75rem] sm:text-[2.15rem] md:text-[2.75rem] lg:text-[3.25rem] font-extrabold mb-5 leading-[1.2] md:leading-[1.25] tracking-tight">
