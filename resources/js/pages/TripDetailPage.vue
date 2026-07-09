@@ -744,10 +744,57 @@
             </div>
           </div>
 
+          <!-- Photo Album — every image from every review, in one gallery -->
+          <div
+            v-if="albumPhotos.length > 0"
+            class="mb-12 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)]"
+          >
+            <div class="flex items-center gap-4 mb-6">
+              <div class="w-12 h-12 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] shrink-0">
+                <span class="material-symbols-rounded text-[24px]">photo_library</span>
+              </div>
+              <div>
+                <p class="font-extrabold text-[var(--color-text-dark)] text-lg leading-tight mb-0.5">อัลบั้มภาพจากผู้ร่วมทริป</p>
+                <p class="text-sm font-medium text-[var(--color-text-muted)]">{{ albumTotal }} ภาพจากรีวิวจริง</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-3">
+              <div
+                v-for="(photo, idx) in displayedAlbumPhotos"
+                :key="`${photo.review_id}-${idx}`"
+                @click="openAlbumImage(idx)"
+                class="relative aspect-square rounded-2xl overflow-hidden border border-gray-100 cursor-pointer group"
+              >
+                <img
+                  :src="photo.url"
+                  loading="lazy"
+                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-2">
+                  <p class="text-white text-[11px] font-bold truncate drop-shadow">{{ photo.user_name }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="albumCanShowMore" class="mt-6 text-center">
+              <button
+                @click="loadMoreAlbumPhotos"
+                :disabled="albumLoadingMore"
+                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border-2 border-[var(--color-accent)]/25 text-[var(--color-accent)] font-extrabold text-sm hover:bg-[var(--color-accent)] hover:text-white hover:border-[var(--color-accent)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+              >
+                <span v-if="albumLoadingMore" class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                <span v-else class="material-symbols-rounded text-[18px]">expand_more</span>
+                <span v-if="albumLoadingMore">กำลังโหลด...</span>
+                <span v-else>ดูภาพเพิ่มเติม ({{ albumTotal - displayedAlbumPhotos.length }} ภาพ)</span>
+              </button>
+            </div>
+          </div>
+
           <div v-if="reviewsLoading" class="flex justify-center py-20">
             <div class="w-12 h-12 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
-          
+
           <div v-else-if="reviews.length > 0">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div v-for="review in displayedReviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)] h-full flex flex-col">
@@ -1589,6 +1636,14 @@ const reviewsHasMore = ref(false);
 const reviewsLoadingMore = ref(false);
 const REVIEWS_PER_PAGE = 6;
 const visibleReviewsCount = ref(REVIEWS_PER_PAGE);
+const albumPhotos = ref([]);
+const albumTotal = ref(0);
+const albumPage = ref(1);
+const albumHasMore = ref(false);
+const albumLoadingMore = ref(false);
+const ALBUM_PER_PAGE = 24;
+const ALBUM_INITIAL_VISIBLE = 12;
+const visibleAlbumCount = ref(ALBUM_INITIAL_VISIBLE);
 const showReviewImageModal = ref(false);
 const reviewImageModalImages = ref([]);
 const reviewImageModalIndex = ref(0);
@@ -2037,7 +2092,7 @@ onMounted(async () => {
       }, 500);
     }
 
-    await fetchReviews();
+    await Promise.all([fetchReviews(), fetchAlbumPhotos()]);
     window.addEventListener('keydown', handleKeyDown);
     
     // Setup observer for itinerary sectors
@@ -2095,6 +2150,15 @@ async function calculateDistances() {
 }
 
 const displayedReviews = computed(() => reviews.value.slice(0, visibleReviewsCount.value));
+
+const displayedAlbumPhotos = computed(() => albumPhotos.value.slice(0, visibleAlbumCount.value));
+const albumCanShowMore = computed(
+  () => displayedAlbumPhotos.value.length < albumPhotos.value.length || albumHasMore.value,
+);
+
+function openAlbumImage(index) {
+  openReviewImage(albumPhotos.value.map((p) => p.url), index);
+}
 
 function openReviewImage(images, index) {
   reviewImageModalImages.value = images;
@@ -2154,6 +2218,51 @@ async function fetchReviews() {
     console.error('Failed to fetch reviews:', error);
   } finally {
     reviewsLoading.value = false;
+  }
+}
+
+async function loadMoreAlbumPhotos() {
+  if (albumLoadingMore.value) return;
+  if (visibleAlbumCount.value < albumPhotos.value.length) {
+    visibleAlbumCount.value = Math.min(visibleAlbumCount.value + ALBUM_INITIAL_VISIBLE, albumPhotos.value.length);
+    return;
+  }
+  if (!albumHasMore.value) return;
+  albumLoadingMore.value = true;
+  try {
+    const nextPage = albumPage.value + 1;
+    const res = await api.get('/reviews/photos', {
+      params: { trip_id: trip.value.id, per_page: ALBUM_PER_PAGE, page: nextPage },
+    });
+    const payload = res.data.data || {};
+    albumPhotos.value = [...albumPhotos.value, ...(payload.photos || [])];
+    albumPage.value = nextPage;
+    albumHasMore.value = Boolean(payload.has_more);
+    visibleAlbumCount.value = albumPhotos.value.length;
+  } catch (error) {
+    console.error('Failed to load more review photos:', error);
+  } finally {
+    albumLoadingMore.value = false;
+  }
+}
+
+async function fetchAlbumPhotos() {
+  if (!trip.value?.id) return;
+  albumPage.value = 1;
+  visibleAlbumCount.value = ALBUM_INITIAL_VISIBLE;
+  try {
+    const res = await api.get('/reviews/photos', {
+      params: { trip_id: trip.value.id, per_page: ALBUM_PER_PAGE, page: 1 },
+    });
+    const payload = res.data.data || {};
+    albumPhotos.value = payload.photos || [];
+    albumTotal.value = payload.total || 0;
+    albumHasMore.value = Boolean(payload.has_more);
+  } catch (error) {
+    console.error('Failed to fetch review photos:', error);
+    albumPhotos.value = [];
+    albumTotal.value = 0;
+    albumHasMore.value = false;
   }
 }
 </script>

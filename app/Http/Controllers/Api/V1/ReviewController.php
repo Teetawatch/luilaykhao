@@ -33,6 +33,46 @@ class ReviewController extends Controller
         return $this->paginated($reviews->through(fn ($r) => $this->formatReview($r)));
     }
 
+    /**
+     * อัลบั้มภาพจากผู้ร่วมทริป — รวมรูปจากทุกรีวิวที่อนุมัติแล้วของทริปนั้น
+     * มาเรียงเป็นรายรูป (รีวิวใหม่สุดก่อน)
+     */
+    public function photos(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'trip_id' => ['required', 'integer', 'exists:trips,id'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:60'],
+        ]);
+
+        $reviews = Review::with('user')
+            ->where('trip_id', $validated['trip_id'])
+            ->where('is_approved', true)
+            ->whereNotNull('images')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $photos = $reviews->flatMap(fn (Review $r) => collect($r->images ?? [])->map(fn ($url) => [
+            'url' => $url,
+            'review_id' => $r->id,
+            'rating' => $r->rating,
+            'user_name' => $r->user?->name ?? 'ไม่ระบุชื่อ',
+            'user_avatar' => $r->user?->avatar_url,
+            'created_at' => $r->created_at?->toISOString(),
+        ]))->values();
+
+        $perPage = (int) ($validated['per_page'] ?? 24);
+        $page = (int) ($validated['page'] ?? 1);
+
+        return $this->success([
+            'photos' => $photos->forPage($page, $perPage)->values(),
+            'total' => $photos->count(),
+            'page' => $page,
+            'per_page' => $perPage,
+            'has_more' => $photos->count() > $page * $perPage,
+        ]);
+    }
+
     public function myReviews(Request $request): JsonResponse
     {
         $reviews = Review::with(['trip', 'booking'])

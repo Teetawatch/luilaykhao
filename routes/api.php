@@ -86,6 +86,7 @@ Route::prefix('v1')->group(function () {
 
     // Reviews (public read)
     Route::get('reviews', [ReviewController::class, 'index']);
+    Route::get('reviews/photos', [ReviewController::class, 'photos']);
 
     // Trip posts / ฟีดรูปหลังทริป (public read — ฟีดรวม + ฟีดต่อทริป + คอมเมนต์)
     Route::middleware('throttle:api')->group(function () {
