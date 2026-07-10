@@ -230,16 +230,22 @@
             </section>
 
             <section class="description-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
-              <h2 class="text-3xl md:text-4xl font-extrabold text-[var(--color-text-dark)] mb-6 tracking-tight">เกี่ยวกับทริปนี้</h2>
+              <div class="flex items-center gap-3.5 mb-6">
+                <span class="sec-icon"><span class="material-symbols-rounded">hiking</span></span>
+                <h2 class="sec-title">เกี่ยวกับทริปนี้</h2>
+              </div>
               <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg whitespace-pre-line font-medium">{{ trip.description }}</p>
             </section>
 
             <!-- Itinerary (Day by Day) -->
             <!-- Itinerary (Day by Day) -->
             <section v-if="itinerarySectors.length > 0" class="itinerary-section scroll-mt-24" id="itinerary">
-              <div class="flex items-center justify-between mb-8">
-                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">แผนการเดินทาง</h3>
-                <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full border border-gray-100">
+              <div class="flex items-center justify-between gap-4 mb-8">
+                <div class="flex items-center gap-3.5">
+                  <span class="sec-icon"><span class="material-symbols-rounded">route</span></span>
+                  <h3 class="sec-title">แผนการเดินทาง</h3>
+                </div>
+                <span class="shrink-0 text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full border border-gray-100">
                   {{ totalTripDays }} วัน
                 </span>
               </div>
@@ -326,11 +332,9 @@
             <section v-if="trip.preparations && trip.preparations.length > 0" class="preparations-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] relative overflow-hidden">
               <div class="absolute -right-12 -top-12 w-48 h-48 bg-[var(--color-sand)] rounded-full blur-3xl opacity-50"></div>
               <div class="relative z-10">
-                <div class="flex items-center gap-4 mb-8">
-                  <div class="w-12 h-12 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)]">
-                    <span class="material-symbols-rounded text-3xl">backpack</span>
-                  </div>
-                  <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">การเตรียมตัวและสิ่งที่ต้องเตรียม</h3>
+                <div class="flex items-center gap-3.5 mb-8">
+                  <span class="sec-icon"><span class="material-symbols-rounded">backpack</span></span>
+                  <h3 class="sec-title">การเตรียมตัวและสิ่งที่ต้องเตรียม</h3>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
@@ -347,8 +351,11 @@
             <!-- Highlights -->
             <section>
               <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
-                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">จุดเด่นของทริป</h3>
-                <button 
+                <div class="flex items-center gap-3.5">
+                  <span class="sec-icon"><span class="material-symbols-rounded">auto_awesome</span></span>
+                  <h3 class="sec-title">จุดเด่นของทริป</h3>
+                </div>
+                <button
                   @click="showAvailabilityModal = true" 
                   class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all shadow-lg shadow-black/5 active:scale-95 group"
                 >
@@ -403,9 +410,9 @@
 
             <!-- Cancellation / refund policy -->
             <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
-              <div class="flex items-center gap-3 mb-2">
-                <span class="material-symbols-rounded text-[var(--color-accent)] text-[28px]">event_repeat</span>
-                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">นโยบายการยกเลิกและคืนเงิน</h3>
+              <div class="flex items-center gap-3.5 mb-2">
+                <span class="sec-icon"><span class="material-symbols-rounded">event_repeat</span></span>
+                <h3 class="sec-title">นโยบายการยกเลิกและคืนเงิน</h3>
               </div>
               <p class="text-[var(--color-text-muted)] font-medium mb-8">
                 เปลี่ยนแผนได้อย่างสบายใจ — เงื่อนไขการคืนเงินคำนวณจากจำนวนวันก่อนออกเดินทาง
@@ -444,9 +451,9 @@
 
             <!-- FAQ -->
             <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
-              <div class="flex items-center gap-3 mb-6">
-                <span class="material-symbols-rounded text-[var(--color-accent)] text-[28px]">quiz</span>
-                <h3 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">คำถามที่พบบ่อย</h3>
+              <div class="flex items-center gap-3.5 mb-6">
+                <span class="sec-icon"><span class="material-symbols-rounded">quiz</span></span>
+                <h3 class="sec-title">คำถามที่พบบ่อย</h3>
               </div>
               <div class="divide-y divide-gray-100">
                 <div v-for="(faq, i) in trip.faqs" :key="i">
@@ -711,7 +718,7 @@
                         ...(isJoinTrip ? { join_trip: 1 } : {})
                       } 
                     }"
-                    class="block text-center bg-[var(--color-primary)] text-white py-4 rounded-full font-extrabold text-lg hover:bg-[var(--color-accent)] transition-all duration-300 shadow-[0_10px_20px_rgba(13,43,30,0.2)] hover:shadow-[0_15px_30px_rgba(45,122,79,0.3)] hover:-translate-y-1"
+                    class="book-cta"
                   >
                     ดำเนินการจองทริป{{ isJoinTrip ? ' (Enjoy Trip)' : '' }}
                   </router-link>
@@ -803,7 +810,10 @@
         <section id="reviews" class="mt-16 pt-16 border-t border-gray-200">
           <div class="flex items-center justify-between mb-10">
             <div>
-              <h3 class="text-2xl md:text-4xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2">รีวิวจากผู้ร่วมทริป</h3>
+              <div class="flex items-center gap-3.5 mb-3">
+                <span class="sec-icon"><span class="material-symbols-rounded">reviews</span></span>
+                <h3 class="sec-title">รีวิวจากผู้ร่วมทริป</h3>
+              </div>
               <div class="flex items-center gap-3">
                 <div class="flex text-[#FFB020]">
                   <span v-for="star in 5" :key="star" class="material-symbols-rounded text-[24px]"
@@ -822,10 +832,8 @@
             v-if="albumPhotos.length > 0"
             class="mb-12 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)]"
           >
-            <div class="flex items-center gap-4 mb-6">
-              <div class="w-12 h-12 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] shrink-0">
-                <span class="material-symbols-rounded text-[24px]">photo_library</span>
-              </div>
+            <div class="flex items-center gap-3.5 mb-6">
+              <span class="sec-icon"><span class="material-symbols-rounded">photo_library</span></span>
               <div>
                 <p class="font-extrabold text-[var(--color-text-dark)] text-lg leading-tight mb-0.5">อัลบั้มภาพจากผู้ร่วมทริป</p>
                 <p class="text-sm font-medium text-[var(--color-text-muted)]">{{ albumTotal }} ภาพจากรีวิวจริง</p>
@@ -963,7 +971,10 @@
         <section v-if="relatedTrips.length" class="mt-16 pt-16 border-t border-gray-200">
           <div class="flex items-end justify-between gap-4 mb-8">
             <div>
-              <h3 class="text-2xl md:text-4xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2">ทริปที่คุณอาจสนใจ</h3>
+              <div class="flex items-center gap-3.5 mb-2">
+                <span class="sec-icon"><span class="material-symbols-rounded">explore</span></span>
+                <h3 class="sec-title">ทริปที่คุณอาจสนใจ</h3>
+              </div>
               <p class="text-[var(--color-text-muted)] font-medium">คัดจากทริปแนวเดียวกันและปลายทางใกล้เคียง</p>
             </div>
             <router-link to="/trips" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
@@ -2427,6 +2438,53 @@ async function fetchAlbumPhotos() {
 </script>
 
 <style scoped>
+/* ── Section headers (unified across every body section) ── */
+.sec-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+.sec-icon .material-symbols-rounded {
+  font-size: 26px;
+}
+.sec-title {
+  font-size: 1.5rem;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dark);
+}
+@media (min-width: 768px) {
+  .sec-title { font-size: 1.875rem; }
+}
+
+/* Book-now: gradient to match the hero CTA, not a flat fill */
+.book-cta {
+  display: block;
+  text-align: center;
+  padding: 1rem;
+  border-radius: 9999px;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #fff;
+  background-image: linear-gradient(110deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.book-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+.book-cta:active {
+  transform: translateY(0) scale(0.99);
+}
+
 /* ── Hero ───────────────────────────────────────────────── */
 /* One-shot cinematic settle, not a hover-triggered zoom. */
 .hero-img {
