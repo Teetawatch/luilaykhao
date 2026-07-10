@@ -435,6 +435,15 @@
                   </span>
                   <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold uppercase tracking-wider">/ ท่าน</span>
                 </div>
+
+                <!-- ผ่อนชำระ: ยอดต่องวดที่ต่ำที่สุดเท่าที่รอบนี้ผ่อนได้จริง -->
+                <div v-if="installmentPlan" class="mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E8F5EC] border border-[#2D7A4F]/20">
+                  <span class="material-symbols-rounded text-[#2D7A4F]" style="font-size:18px;">credit_card</span>
+                  <span class="text-[13px] font-black text-[#2D7A4F]">
+                    ผ่อน 0% ได้ {{ installmentPlan.count }} งวด · งวดละ ฿{{ installmentPlan.perInstallment.toLocaleString() }}
+                  </span>
+                </div>
+
                 <p v-if="isTrekking && regionOptions.length" class="text-sm font-medium text-gray-400 mb-8">
                   * ราคาขึ้นอยู่กับภูมิภาคที่ขึ้นรถ
                 </p>
@@ -918,6 +927,9 @@
                 ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
               </span>
             </div>
+            <p v-if="installmentPlan" class="mt-0.5 text-[11px] font-black text-[#2D7A4F] truncate">
+              ผ่อน 0% {{ installmentPlan.count }} งวด · งวดละ ฿{{ installmentPlan.perInstallment.toLocaleString() }}
+            </p>
           </div>
           <router-link
             v-if="canBookNow"
@@ -1938,6 +1950,44 @@ const displayPrice = computed(() => {
   
   if (selectedSchedule.value?.price) return Number(selectedSchedule.value.price);
   return Number(trip.value?.price_per_person || 0);
+});
+
+// ─── ผ่อนชำระ ──────────────────────────────────────────────
+// เงื่อนไขต้องตรงกับหน้าชำระเงิน (PaymentPage): เพดาน 6 งวด, ขั้นต่ำ 2 งวด และ
+// งวดสุดท้ายต้องครบก่อนวันเดินทาง → (n-1) * interval <= วันที่เหลือ
+const INSTALLMENT_CAP = 6;
+
+function feasibleInstallmentCount(s) {
+  if (!s?.installment_enabled || !s.departure_date) return 0;
+  const interval = s.installment_interval_days || 30;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const departure = new Date(s.departure_date);
+  departure.setHours(0, 0, 0, 0);
+  const days = Math.floor((departure - today) / 86400000);
+  if (days <= 0) return 0;
+  const count = Math.min(
+    s.installment_count || 3,
+    INSTALLMENT_CAP,
+    Math.floor(days / interval) + 1
+  );
+  return count >= 2 ? count : 0;
+}
+
+// จำนวนงวดสูงสุดที่รอบนี้ (หรือรอบที่ยังเลือกได้) ผ่อนได้จริง — งวดยิ่งมาก ยอดต่องวดยิ่งต่ำ
+const installmentPlan = computed(() => {
+  if (isJoinTrip.value) return null; // จอยทริปผ่อนไม่ได้
+  const price = displayPrice.value;
+  if (!price) return null;
+
+  const pool = selectedSchedule.value
+    ? [selectedSchedule.value]
+    : (isTrekking.value && selectedRegion.value ? schedulesForRegion.value : schedules.value);
+
+  const count = pool.reduce((best, s) => Math.max(best, feasibleInstallmentCount(s)), 0);
+  if (!count) return null;
+
+  return { count, perInstallment: Math.ceil(price / count) };
 });
 
 // ─── Flash Sale ────────────────────────────────────────────
