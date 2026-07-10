@@ -8,65 +8,129 @@
       </div>
     </div><div v-else-if="trip" class="animate-fade-in">
       <!-- Hero Section -->
-      <section class="relative h-[60vh] min-h-[500px] md:h-[70vh] w-full overflow-hidden -mt-16">
+      <section class="relative flex w-full flex-col overflow-hidden h-[70vh] min-h-[560px] md:h-[74vh] md:min-h-[620px]">
+        <!-- Media -->
         <img
-          v-if="trip.cover_image"
+          v-if="trip.cover_image && !coverFailed"
           :src="trip.cover_image"
           :alt="trip.title"
-          class="w-full h-full object-cover transform scale-105 transition-transform duration-[20s] hover:scale-110"
-          @error="(e) => e.target.style.display='none'"
+          fetchpriority="high"
+          class="hero-img absolute inset-0 h-full w-full object-cover"
+          @error="coverFailed = true"
         />
-        <div v-else class="w-full h-full bg-[var(--color-primary)]"></div>
+        <!-- pb keeps the glyph above the heavy end of the bottom scrim -->
+        <div v-else class="hero-fallback absolute inset-0 flex items-center justify-center pb-44">
+          <span class="hero-fallback-icon material-symbols-rounded text-white/[0.16]">{{ typeIcon }}</span>
+        </div>
 
-        <!-- Solid Overlay for text readability -->
-        <div class="absolute inset-0 bg-black/40"></div>
+        <!-- Scrims: darken only where the text sits, keep the photo itself vivid -->
+        <div class="hero-scrim-bottom absolute inset-0"></div>
+        <div class="hero-scrim-top absolute inset-x-0 top-0 h-40"></div>
 
-        <!-- Hero Content -->
-        <div class="absolute inset-0 flex items-end p-6 md:p-12 lg:p-16 max-w-screen-2xl mx-auto z-10">
-          <div class="max-w-4xl hero-content w-full">
-            <div class="flex flex-wrap items-center gap-3 mb-6">
-              <span
-                class="px-5 py-2 rounded-full text-sm font-extrabold uppercase tracking-widest shadow-lg text-white"
-                :class="typeBadgeClass"
-              >
+        <!-- Top bar: breadcrumb + actions -->
+        <div class="relative z-10 mx-auto flex w-full max-w-screen-2xl items-center gap-4 px-5 pt-6 md:px-12 lg:px-16">
+          <nav aria-label="เส้นทางนำทาง" class="flex min-w-0 items-center gap-1 text-[13px] font-semibold text-white/75">
+            <router-link to="/" class="shrink-0 transition-colors hover:text-white">หน้าแรก</router-link>
+            <span class="material-symbols-rounded shrink-0 text-[16px] opacity-50">chevron_right</span>
+            <router-link to="/trips" class="shrink-0 transition-colors hover:text-white">กิจกรรม</router-link>
+            <span class="material-symbols-rounded shrink-0 text-[16px] opacity-50">chevron_right</span>
+            <span class="truncate text-white" :title="trip.title">{{ trip.title }}</span>
+          </nav>
+
+          <div class="ml-auto flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              class="hero-action"
+              :class="{ 'is-favorite': wishlistStore.isFavorite(trip.id) }"
+              :aria-pressed="wishlistStore.isFavorite(trip.id)"
+              :title="wishlistStore.isFavorite(trip.id) ? 'นำออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'"
+              @click="wishlistStore.toggleFavorite(trip)"
+            >
+              <span class="material-symbols-rounded text-[21px]">favorite</span>
+            </button>
+            <button type="button" class="hero-action" :title="shareCopied ? 'คัดลอกลิงก์แล้ว' : 'แชร์ทริปนี้'" @click="shareTrip">
+              <span class="material-symbols-rounded text-[21px]">{{ shareCopied ? 'check' : 'ios_share' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-1"></div>
+
+        <!-- Title block -->
+        <div class="relative z-10 mx-auto w-full max-w-screen-2xl px-5 pb-8 md:px-12 md:pb-10 lg:px-16">
+          <div class="hero-content max-w-4xl">
+            <div class="mb-5 flex flex-wrap items-center gap-2.5">
+              <span class="rounded-full px-4 py-1.5 text-[12px] font-extrabold uppercase tracking-widest text-white shadow-lg" :class="typeBadgeClass">
                 {{ typeLabel }}
               </span>
-              <span class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
+              <span v-if="hasRating" class="hero-chip">
                 <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
-                {{ Number(trip.rating || 0).toFixed(1) }} ({{ trip.review_count || 0 }} รีวิว)
+                {{ Number(trip.rating || 0).toFixed(1) }} ({{ trip.review_count }} รีวิว)
               </span>
-              <span v-if="trip.booked_passengers_count > 0" class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
-                <span class="material-symbols-rounded text-[18px]">group</span>
+              <span v-if="trip.booked_passengers_count > 0" class="hero-chip">
+                <span class="material-symbols-rounded text-[17px]">group</span>
                 {{ trip.booked_passengers_count }} คนจองแล้ว
               </span>
-              <span v-if="trip.is_women_only" class="bg-pink-500/80 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-black shadow-lg flex items-center gap-1.5 border border-pink-400/30 animate-pulse">
-                <span class="material-symbols-rounded text-[18px]">female</span>
+              <span v-if="trip.is_women_only" class="hero-chip hero-chip--pink">
+                <span class="material-symbols-rounded text-[17px]">female</span>
                 ทริปสำหรับผู้หญิงเท่านั้น
               </span>
-              <span v-if="trip.views_count > 0" class="bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-1.5 border border-white/10">
-                <span class="material-symbols-rounded text-[18px]">visibility</span>
-                {{ Number(trip.views_count).toLocaleString() }} ผู้ชม
-              </span>
             </div>
-            
-            <h1 class="text-white text-xl md:text-2xl lg:text-3xl font-black mb-4 leading-normal py-1 drop-shadow-2xl tracking-tight" :title="trip.title">
+
+            <h1 class="hero-title text-3xl font-black leading-[1.15] tracking-tight text-white md:text-5xl lg:text-[3.5rem]" :title="trip.title">
               {{ trip.title }}
             </h1>
-            
-            <div class="flex flex-wrap items-center text-white gap-4 md:gap-6 text-sm md:text-base font-medium">
-              <div class="flex items-center gap-2 bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
-                <span class="material-symbols-rounded text-[18px]">location_on</span>
-                <span>{{ trip.location }}</span>
-              </div>
-              <div class="flex items-center gap-2 bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
-                <span class="material-symbols-rounded text-[18px]">schedule</span>
-                <span>{{ trip.duration_days }} วัน</span>
-              </div>
-              <div class="flex items-center gap-2 bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
-                <span class="material-symbols-rounded text-[18px]">terrain</span>
-                <span>{{ diffLabel }}</span>
+
+            <div class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] font-semibold text-white/85 md:text-[15px]">
+              <span class="flex items-center gap-1.5">
+                <span class="material-symbols-rounded text-[19px]">location_on</span>{{ trip.location }}
+              </span>
+              <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
+              <span class="flex items-center gap-1.5">
+                <span class="material-symbols-rounded text-[19px]">schedule</span>{{ trip.duration_days }} วัน
+              </span>
+              <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
+              <span class="flex items-center gap-1.5">
+                <span class="material-symbols-rounded text-[19px]">terrain</span>{{ diffLabel }}
+              </span>
+              <template v-if="trip.views_count > 0">
+                <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
+                <span class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-[19px]">visibility</span>{{ Number(trip.views_count).toLocaleString() }} ผู้ชม
+                </span>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Glass booking bar. Hidden on mobile — the sticky bottom bar already covers it. -->
+        <div class="relative z-10 hidden border-t border-white/15 bg-black/30 backdrop-blur-xl md:block">
+          <div class="mx-auto flex w-full max-w-screen-2xl items-center gap-6 px-12 py-4 lg:px-16">
+            <div>
+              <p class="text-[11px] font-bold uppercase tracking-wider text-white/60">เริ่มต้น / ท่าน</p>
+              <div class="mt-0.5 flex items-baseline gap-2">
+                <span class="text-2xl font-black tracking-tight text-white lg:text-[28px]">฿{{ displayPrice.toLocaleString() }}</span>
+                <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-[15px] font-bold text-white/45 line-through decoration-2">
+                  ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
+                </span>
               </div>
             </div>
+
+            <template v-if="nextSchedule">
+              <span class="h-10 w-px bg-white/20"></span>
+              <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-white/60">รอบถัดไป</p>
+                <p class="mt-0.5 flex items-center gap-1.5 text-[15px] font-bold text-white">
+                  <span class="material-symbols-rounded text-[18px]">event</span>
+                  {{ formatDate(nextSchedule.departure_date) }}
+                </p>
+              </div>
+            </template>
+
+            <button type="button" class="hero-cta ml-auto" @click="scrollToBooking">
+              <span class="material-symbols-rounded text-[20px]">event_available</span>
+              เลือกวันเดินทาง
+            </button>
           </div>
         </div>
       </section>
@@ -1475,6 +1539,7 @@ import TripPostsFeed from '../components/TripPostsFeed.vue';
 import TripCard from '../components/TripCard.vue';
 import WeatherBadge from '../components/WeatherBadge.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
+import { useWishlistStore } from '../stores/wishlist';
 import {
   hasAvailableSeats,
   isScheduleBookable,
@@ -1842,6 +1907,49 @@ const typeLabel = ref('');
 const typeBadgeClass = ref('');
 const diffLabel = ref('');
 
+// ─── Hero ──────────────────────────────────────────────────
+const wishlistStore = useWishlistStore();
+const coverFailed = ref(false);
+const shareCopied = ref(false);
+let shareCopiedTimer = null;
+
+const typeIconMap = {
+  trekking: 'forest',
+  diving: 'scuba_diving',
+  snorkeling: 'pool',
+  climbing: 'airport_shuttle',
+};
+const typeIcon = computed(() => typeIconMap[trip.value?.type] || 'landscape');
+
+// A rating of 0.0 with no reviews reads as "bad", not "new" — so hide it.
+const hasRating = computed(() => Number(trip.value?.review_count || 0) > 0);
+
+const nextSchedule = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return schedules.value
+    .filter(s => hasAvailableSeats(s) && new Date(s.departure_date) >= today)
+    .sort((a, b) => new Date(a.departure_date) - new Date(b.departure_date))[0] || null;
+});
+
+async function shareTrip() {
+  const url = window.location.href;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: trip.value?.title, url });
+      return;
+    } catch {
+      return; // user dismissed the share sheet
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    shareCopied.value = true;
+    clearTimeout(shareCopiedTimer);
+    shareCopiedTimer = setTimeout(() => { shareCopied.value = false; }, 2000);
+  } catch {}
+}
+
 const highlights = computed(() => {
   if (trip.value?.highlights && trip.value.highlights.length > 0) {
     return trip.value.highlights;
@@ -2162,6 +2270,7 @@ onUnmounted(() => {
   if (sectorObserver) sectorObserver.disconnect();
   if (schedulePoll) clearInterval(schedulePoll);
   if (flashTimer) clearInterval(flashTimer);
+  clearTimeout(shareCopiedTimer);
   document.body.style.overflow = '';
 });
 
@@ -2318,6 +2427,137 @@ async function fetchAlbumPhotos() {
 </script>
 
 <style scoped>
+/* ── Hero ───────────────────────────────────────────────── */
+/* One-shot cinematic settle, not a hover-triggered zoom. */
+.hero-img {
+  animation: heroSettle 14s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heroSettle {
+  from { transform: scale(1.12); }
+  to   { transform: scale(1); }
+}
+
+/* Hand-tuned stops: hard enough under the title to carry white text over a
+   bright photo, gone by 70% so the image itself stays saturated. */
+.hero-scrim-bottom {
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.92) 0%,
+    rgba(0, 0, 0, 0.74) 16%,
+    rgba(0, 0, 0, 0.42) 34%,
+    rgba(0, 0, 0, 0.12) 54%,
+    transparent 72%
+  );
+}
+
+.hero-scrim-top {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent);
+}
+
+/* Shown when there is no cover image *or* the cover fails to load. */
+.hero-fallback {
+  background:
+    radial-gradient(110% 70% at 50% 8%, rgba(76, 175, 125, 0.42), transparent 62%),
+    linear-gradient(160deg, var(--color-primary-light) 0%, var(--color-primary-mid) 55%, var(--color-primary) 100%);
+}
+
+/* app.css declares `.material-symbols-rounded { font-size: 24px }` outside any
+   cascade layer, so it beats every Tailwind `text-[..]` utility. Two classes
+   here out-specify it. */
+.hero-fallback .hero-fallback-icon {
+  font-size: 220px;
+  line-height: 1;
+}
+
+.hero-title {
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.5);
+  text-wrap: balance;
+}
+
+.hero-content {
+  animation: heroContentIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: 0.1s;
+}
+
+@keyframes heroContentIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.hero-chip--pink {
+  border-color: rgba(244, 114, 182, 0.45);
+  background-color: rgba(236, 72, 153, 0.55);
+}
+
+.hero-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+.hero-action:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+.hero-action:active {
+  transform: scale(0.94);
+}
+.hero-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+.hero-action.is-favorite {
+  color: #f43f5e;
+}
+.hero-action.is-favorite .material-symbols-rounded {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* White pill reads as the primary action against a photo far better than
+   the brand green does. */
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  background-color: #fff;
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.hero-cta:hover {
+  transform: translateY(-1px);
+  background-color: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 18px 34px -12px rgba(0, 0, 0, 0.7);
+}
+.hero-cta:active {
+  transform: translateY(0) scale(0.98);
+}
+
 /* Custom scrollbar for schedule list */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -2378,6 +2618,7 @@ async function fetchAlbumPhotos() {
   .animate-fade-in,
   .animate-fade-in-up,
   .stagger-in,
+  .hero-content,
   img {
     animation: none !important;
     transition: none !important;
