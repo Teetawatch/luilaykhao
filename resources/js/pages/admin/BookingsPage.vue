@@ -1768,6 +1768,14 @@ function addPassenger() {
 
 function removePassenger(index) {
   editForm.passengers.splice(index, 1);
+
+  // ที่นั่งผูกกับผู้โดยสารตามลำดับ — ปล่อยที่นั่งของคนที่ถูกลบคืนด้วย
+  // ไม่งั้นช่องที่นั่งจะยังค้างเบอร์เดิมไว้ทั้งที่ไม่มีคนนั่งแล้ว
+  const seats = editForm.seat_ids_text.split(',').map((s) => s.trim()).filter(Boolean);
+  if (index < seats.length) {
+    seats.splice(index, 1);
+    editForm.seat_ids_text = seats.join(', ');
+  }
 }
 
 function addInstallment() {

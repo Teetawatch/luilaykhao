@@ -1314,6 +1314,11 @@ class AdminController extends Controller
                     }
                 }
 
+                // ที่นั่งบนผังผูกกับผู้โดยสารแบบ 1:1 — ลบผู้โดยสารแล้วต้องปล่อยที่นั่งคืนด้วย
+                // ไม่งั้นแถวที่นั่งค้างไว้ทำให้คนอื่นจองเบอร์นั้นซ้ำไม่ได้ (unique schedule_id+seat_id)
+                // แม้ booked_seats จะลดลงแล้วก็ตาม
+                $this->syncSeatRowsToPassengers($booking->fresh(['passengers', 'seats']));
+
                 $effectiveType = $data['payment_type'] ?? $booking->payment_type;
                 if ($effectiveType !== 'installment') {
                     // เปลี่ยนเป็นชำระเต็ม/มัดจำ — เคลียร์งวดผ่อนเดิมทิ้งพร้อมสลิป
@@ -1402,6 +1407,40 @@ class AdminController extends Controller
         ])->where('booking_ref', $ref)->firstOrFail();
 
         return $this->success(new BookingResource($booking), 'อัปเดตข้อมูลการจองสำเร็จ');
+    }
+
+    /**
+     * บังคับให้แถว booking_seats มีจำนวนไม่เกินผู้โดยสาร และชื่อบนที่นั่งตรงกับผู้โดยสาร
+     * ที่นั่งส่วนเกิน (จากการลบผู้โดยสาร) จะถูกปล่อยคืนโดยตัดจากท้ายรายการ
+     *
+     * ต้องรับ booking ที่โหลด passengers + seats มาแล้ว
+     */
+    private function syncSeatRowsToPassengers(Booking $booking): void
+    {
+        if ($booking->is_join_trip) {
+            return;
+        }
+
+        $passengers = $booking->passengers->sortBy('id')->values();
+        $seats = $booking->seats->sortBy('id')->values();
+
+        // ยังไม่มีผู้โดยสารเลย = ข้อมูลยังกรอกไม่ครบ ไม่ใช่การลบ จึงไม่แตะที่นั่ง
+        if ($passengers->isEmpty() || $seats->isEmpty()) {
+            return;
+        }
+
+        if ($seats->count() > $passengers->count()) {
+            $surplus = $seats->slice($passengers->count());
+            BookingSeat::whereKey($surplus->pluck('id'))->delete();
+            $seats = $seats->take($passengers->count());
+        }
+
+        foreach ($seats as $index => $seat) {
+            $name = $passengers[$index]->name;
+            if ($seat->passenger_name !== $name) {
+                $seat->update(['passenger_name' => $name]);
+            }
+        }
     }
 
     public function storeManualBooking(Request $request): JsonResponse

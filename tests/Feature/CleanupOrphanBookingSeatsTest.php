@@ -101,6 +101,51 @@ class CleanupOrphanBookingSeatsTest extends TestCase
         $this->assertSame(2, $schedule->fresh()->booked_seats);
     }
 
+    /**
+     * ที่นั่งที่ค้างจากการลบผู้โดยสาร (การจองยัง active แต่ที่นั่ง > ผู้โดยสาร)
+     * ต้องถูกกวาดคืนด้วย ไม่งั้นไม่มีใครจองเบอร์นั้นซ้ำได้
+     */
+    public function test_apply_releases_seats_beyond_passenger_count(): void
+    {
+        $schedule = $this->makeSchedule();
+        $booking = $this->makeBookingWithSeat($schedule, 'confirmed', 'B1');
+
+        // ผู้โดยสารเหลือ 1 คน แต่มีที่นั่งค้างอยู่ 3 เบอร์
+        foreach (['B2', 'B3'] as $seatId) {
+            BookingSeat::create([
+                'booking_id' => $booking->id,
+                'schedule_id' => $schedule->id,
+                'seat_id' => $seatId,
+                'passenger_name' => 'Test',
+            ]);
+        }
+
+        $this->artisan('seats:cleanup-orphans --apply')
+            ->expectsOutputToContain('พบที่นั่งส่วนเกิน 2 แถว')
+            ->assertSuccessful();
+
+        // เก็บที่นั่งแรกไว้ให้ผู้โดยสารที่เหลือ ปล่อยคืนสองเบอร์ท้าย
+        $this->assertSame(1, BookingSeat::where('seat_id', 'B1')->count());
+        $this->assertSame(0, BookingSeat::where('seat_id', 'B2')->count());
+        $this->assertSame(0, BookingSeat::where('seat_id', 'B3')->count());
+    }
+
+    /**
+     * การจองที่ยังไม่ได้กรอกผู้โดยสารเลยไม่ใช่เคสลบผู้โดยสาร — ห้ามลบที่นั่งทิ้ง
+     */
+    public function test_apply_keeps_seats_when_booking_has_no_passengers(): void
+    {
+        $schedule = $this->makeSchedule();
+        $booking = $this->makeBookingWithSeat($schedule, 'confirmed', 'C1');
+        $booking->passengers()->delete();
+
+        $this->artisan('seats:cleanup-orphans --apply')
+            ->expectsOutputToContain('สะอาดดีอยู่แล้ว')
+            ->assertSuccessful();
+
+        $this->assertSame(1, BookingSeat::where('seat_id', 'C1')->count());
+    }
+
     public function test_reports_clean_when_no_orphans(): void
     {
         $schedule = $this->makeSchedule();
