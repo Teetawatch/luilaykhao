@@ -1,154 +1,193 @@
 <template>
   <header class="sticky top-0 z-50 w-full">
     <!-- Trust Bar (Top Bar) -->
-    <div 
-      class="w-full bg-primary text-white overflow-hidden transform-gpu"
-      :class="isScrolled ? 'h-0 max-h-0 opacity-0 border-none' : 'h-10 md:h-12 opacity-100 border-b border-white/5'"
+    <div
+      class="w-full bg-gradient-to-r from-primary via-primary-mid to-primary text-white overflow-hidden transform-gpu"
+      :class="isScrolled ? 'h-0 max-h-0 opacity-0 border-none' : 'h-10 md:h-11 opacity-100 border-b border-white/5'"
       style="will-change: height, opacity; transition: height 0.4s ease, opacity 0.3s ease, max-height 0.4s ease;"
     >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between animate-trust-bar">
-        <!-- Left: License -->
-        <div class="flex items-center gap-3 text-[12px] md:text-[14px] font-medium tracking-wide opacity-90 hover:opacity-100 transition-opacity">
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-rounded text-[18px] md:text-[20px] text-accent-light filled-icon">verified_user</span>
-            <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ 12/03773</span>
-            <span class="sm:hidden">ใบอนุญาต 12/03773</span>
-          </div>
-          <div class="hidden md:block h-3 w-[1px] bg-white/20 mx-1"></div>
-          <div class="hidden lg:flex items-center gap-1.5 text-accent-light/80">
-            <span class="material-symbols-rounded text-[16px]">verified</span>
-            <span class="text-[11px] uppercase tracking-widest font-bold">ใบอนุญาตประกอบธุรกิจนำเที่ยว กรมการท่องเที่ยว</span>
-          </div>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-4 animate-trust-bar">
+        <div class="flex items-center gap-2 text-[12px] md:text-[13px] font-semibold tracking-wide">
+          <span class="material-symbols-rounded text-[18px] text-accent-light filled-icon">verified_user</span>
+          <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ 12/03773</span>
+          <span class="sm:hidden">ใบอนุญาต 12/03773</span>
         </div>
-        
-        <!-- Right: Phone 
-        <div class="flex items-center gap-4">
-          <a 
-            href="tel:0626126006" 
-            class="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-300 group/phone"
-            aria-label="โทรติดต่อสอบถาม 062-612-6006"
-          >
-            <span class="material-symbols-rounded text-[18px] text-accent-light group-hover/phone:rotate-12 transition-transform">call</span>
-            <span class="text-[14px] md:text-[15px] font-bold tracking-tight">062-612-6006</span>
-          </a>
-        </div>-->
+
+        <div class="hidden lg:flex items-center gap-1.5 text-white/70">
+          <span class="material-symbols-rounded text-[15px]">verified</span>
+          <span class="text-[10px] uppercase tracking-[0.18em] font-bold">ใบอนุญาตประกอบธุรกิจนำเที่ยว กรมการท่องเที่ยว</span>
+        </div>
       </div>
     </div>
 
     <!-- Main Navbar -->
-    <nav 
-      class="navbar-root bg-white/95 backdrop-blur-md border-b border-sand-dark/30"
-      :class="[isScrolled ? 'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] py-0' : 'shadow-sm py-1']"
-      style="transition: box-shadow 0.4s ease, padding 0.4s ease;"
+    <nav
+      class="navbar-root border-b transition-[background-color,box-shadow,border-color] duration-500"
+      :class="isScrolled
+        ? 'bg-white/80 supports-[backdrop-filter]:backdrop-blur-xl border-sand-dark/50 shadow-[0_8px_30px_-12px_rgba(13,43,30,0.18)]'
+        : 'bg-white border-sand-dark/30 shadow-none'"
     >
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between transform-gpu" :class="isScrolled ? 'h-16' : 'h-20'" style="will-change: height; transition: height 0.4s ease;">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div
+          class="flex items-center gap-2 transform-gpu"
+          :class="isScrolled ? 'h-16' : 'h-20'"
+          style="will-change: height; transition: height 0.4s ease;"
+        >
+          <!-- Brand -->
+          <router-link to="/" class="flex items-center gap-2.5 shrink-0 group rounded-2xl focus-ring">
+            <img
+              src="/images/logo.png?v=2"
+              alt="ลุยเลเขา"
+              class="object-contain transition-transform duration-500 group-hover:scale-105"
+              :class="isScrolled ? 'w-11 h-11' : 'w-13 h-13'"
+            />
+            <span class="hidden sm:flex flex-col leading-none">
+              <span class="text-[19px] font-black tracking-tight text-primary">ลุยเลเขา</span>
+              <span class="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-text-muted">Trip &amp; Travel</span>
+            </span>
+          </router-link>
 
-        <!-- Logo -->
-        <router-link to="/" class="flex items-center gap-3 shrink-0 group">
-          <div class="relative flex items-center justify-center w-14 h-14">
-            <img src="/images/logo.png?v=2" alt="ลุยเลเขา Logo" class="w-14 h-14" />
-          </div>
-        </router-link>
+          <!-- Desktop Nav (left-adjacent to brand, with gliding pill indicator) -->
+          <div
+            ref="navDropdownRef"
+            class="hidden md:flex flex-1 items-center min-w-0"
+          >
+            <div
+              ref="navListRef"
+              class="relative flex items-center ml-2 lg:ml-6"
+              @mouseleave="hoveredNavLabel = null"
+            >
+              <!-- Gliding pill -->
+              <span
+                aria-hidden="true"
+                class="nav-pill absolute top-1/2 -translate-y-1/2 h-9 rounded-full bg-primary/[0.07]"
+                :style="{ left: `${indicator.left}px`, width: `${indicator.width}px`, opacity: indicator.opacity }"
+              ></span>
 
-        <!-- Desktop Menu (Right-aligned) -->
-        <div ref="navDropdownRef" class="hidden md:flex items-center justify-end flex-1 px-4 lg:px-8">
-          <div class="flex items-center gap-1 lg:gap-2">
-            <template v-for="link in navLinks" :key="link.label">
-              <!-- Dropdown Menu -->
-              <div v-if="link.children" class="relative group/nav">
-                <button
-                  type="button"
-                  class="nav-link flex items-center gap-1.5 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300 cursor-pointer"
-                  :class="{ 'active-state': isDropdownActive(link) }"
-                  @click.stop="toggleNavDropdown(link.label)"
+              <template v-for="link in navLinks" :key="link.label">
+                <!-- Dropdown / Mega menu -->
+                <div
+                  v-if="link.children"
+                  class="relative"
+                  @mouseenter="onNavItemHover(link.label)"
+                  @mouseleave="onDropdownLeave"
                 >
-                  <span>{{ link.label }}</span>
-                  <span class="material-symbols-rounded text-[18px] transition-transform duration-300 group-hover/nav:translate-y-0.5" :class="{ 'rotate-180': openNavDropdown === link.label }">expand_more</span>
-                </button>
+                  <button
+                    type="button"
+                    :ref="el => setNavItemRef(link.label, el)"
+                    class="nav-link relative z-10 flex items-center gap-1 px-3.5 lg:px-4 py-2 rounded-full text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 cursor-pointer focus-ring"
+                    :class="{ 'is-active': activeNavLabel === link.label }"
+                    :aria-expanded="openNavDropdown === link.label"
+                    aria-haspopup="true"
+                    @click.stop="toggleNavDropdown(link.label)"
+                  >
+                    <span>{{ link.label }}</span>
+                    <span
+                      class="material-symbols-rounded text-[18px] transition-transform duration-300"
+                      :class="{ 'rotate-180': openNavDropdown === link.label }"
+                    >expand_more</span>
+                  </button>
 
-                <!-- Dropdown List -->
-                <div v-if="openNavDropdown === link.label" class="absolute top-full left-1/2 -translate-x-1/2 w-64 pt-3 transition-all duration-300 transform z-[60] animation-fade-slide">
-                  <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
-                    <template v-for="child in link.children" :key="child.to">
-                      <a
-                        v-if="child.external"
-                        :href="child.to"
-                        @click="openNavDropdown = null"
-                        class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-200"
-                      >
-                        <span class="material-symbols-rounded text-[18px] opacity-70">{{ child.icon }}</span>
-                        {{ child.label }}
-                      </a>
-                      <router-link
-                        v-else
-                        :to="child.to"
-                        @click="openNavDropdown = null"
-                        class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all duration-200"
-                        active-class="bg-primary/5 text-primary"
-                      >
-                        <span class="material-symbols-rounded text-[18px] opacity-70 group-hover:opacity-100 transition-opacity" :class="{ 'filled-icon': router.currentRoute.value.path === child.to }">{{ child.icon }}</span>
-                        {{ child.label }}
-                      </router-link>
-                    </template>
+                  <!-- Panel -->
+                  <div
+                    v-if="openNavDropdown === link.label"
+                    class="absolute top-full pt-3 z-[60] animation-fade-slide"
+                    :class="isMegaMenu(link)
+                      ? 'left-0 w-[min(600px,calc(100vw-3rem))]'
+                      : 'left-1/2 -translate-x-1/2 w-[min(360px,calc(100vw-3rem))]'"
+                  >
+                    <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
+                      <div class="grid gap-1 p-2" :class="isMegaMenu(link) ? 'grid-cols-2' : 'grid-cols-1'">
+                        <template v-for="child in link.children" :key="child.to">
+                          <component
+                            :is="child.external ? 'a' : 'router-link'"
+                            v-bind="child.external ? { href: child.to } : { to: child.to }"
+                            @click="openNavDropdown = null"
+                            class="menu-item group/item flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-sand focus-ring"
+                            :class="{ 'bg-sand': !child.external && route.path === child.to }"
+                          >
+                            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sand text-primary transition-colors duration-200 group-hover/item:bg-accent group-hover/item:text-white">
+                              <span class="material-symbols-rounded text-[19px]">{{ child.icon }}</span>
+                            </span>
+                            <span class="min-w-0">
+                              <span class="block text-[14px] font-bold text-text-dark transition-colors duration-200 group-hover/item:text-accent">{{ child.label }}</span>
+                              <span v-if="child.desc" class="mt-0.5 block text-[11.5px] leading-snug text-text-muted">{{ child.desc }}</span>
+                            </span>
+                          </component>
+                        </template>
+                      </div>
+
+                      <div v-if="isMegaMenu(link)" class="flex items-center justify-between gap-3 border-t border-sand-dark/40 bg-sand/40 px-4 py-3">
+                        <p class="text-[12px] font-semibold text-text-muted">มีคำถามเพิ่มเติม? ทีมงานยินดีช่วยเหลือ</p>
+                        <router-link
+                          to="/contact"
+                          @click="openNavDropdown = null"
+                          class="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary/5 px-3 py-1.5 text-[12px] font-bold text-primary transition-colors hover:bg-primary/10 focus-ring"
+                        >
+                          ติดต่อเรา
+                          <span class="material-symbols-rounded text-[15px]">arrow_forward</span>
+                        </router-link>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <!-- External Link (server-rendered page, full load) -->
-              <a
-                v-else-if="link.external"
-                :href="link.to"
-                class="nav-link flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300"
-              >
-                <span>{{ link.label }}</span>
-              </a>
+                <!-- External link (server-rendered page, full load) -->
+                <a
+                  v-else-if="link.external"
+                  :ref="el => setNavItemRef(link.label, el)"
+                  :href="link.to"
+                  class="nav-link relative z-10 px-3.5 lg:px-4 py-2 rounded-full text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
+                  :class="{ 'is-active': activeNavLabel === link.label }"
+                  @mouseenter="onNavItemHover(link.label)"
+                >{{ link.label }}</a>
 
-              <!-- Simple Link -->
-              <router-link
-                v-else
-                :to="link.to"
-                class="nav-link flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-bold text-text-mid hover:text-primary hover:bg-primary/5 transition-all duration-300 group/link"
-                :exact="link.to === '/'"
-              >
-                <span>{{ link.label }}</span>
-              </router-link>
-            </template>
+                <!-- Simple link -->
+                <router-link
+                  v-else
+                  :ref="el => setNavItemRef(link.label, el)"
+                  :to="link.to"
+                  class="nav-link relative z-10 px-3.5 lg:px-4 py-2 rounded-full text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
+                  :class="{ 'is-active': activeNavLabel === link.label }"
+                  @mouseenter="onNavItemHover(link.label)"
+                >{{ link.label }}</router-link>
+              </template>
+            </div>
           </div>
-        </div>
 
-        <!-- Right Side Actions -->
-        <div class="hidden md:flex items-center gap-5 lg:gap-6 shrink-0">
-          
-          <!-- Utility Actions (Search, Wishlist, Login) -->
-          <div class="flex items-center gap-4">
-            <!-- Search — เปิดเป็นแผงลอยใต้ไอคอน ไม่ดันเมนู -->
+          <!-- Desktop Actions -->
+          <div class="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
+            <!-- Search -->
             <div ref="desktopSearchRef" class="relative flex items-center">
               <button
+                type="button"
+                aria-label="ค้นหาทริป"
+                :aria-expanded="desktopSearchExpanded"
+                class="icon-btn"
+                :class="desktopSearchExpanded ? 'text-primary bg-sand' : ''"
                 @click.stop="toggleDesktopSearch"
-                class="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-300"
-                :class="desktopSearchExpanded ? 'text-primary bg-sand/50' : 'text-text-mid hover:text-primary hover:bg-sand/50'"
-                title="ค้นหา"
               >
-                <span class="material-symbols-rounded text-[20px]">{{ desktopSearchExpanded ? 'close' : 'search' }}</span>
+                <span class="material-symbols-rounded text-[21px]">{{ desktopSearchExpanded ? 'close' : 'search' }}</span>
               </button>
 
-              <div v-if="desktopSearchExpanded" class="absolute top-full right-0 w-[300px] pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 p-2.5">
+              <div v-if="desktopSearchExpanded" class="absolute top-full right-0 w-[320px] pt-3 z-[60] animation-fade-slide">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 p-2.5">
                   <div class="relative flex items-center">
                     <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
                     <input
-                      type="text"
-                      v-model="searchQuery"
                       ref="desktopSearchInput"
-                      @keyup.enter="doSearch(); desktopSearchExpanded = false"
+                      v-model="searchQuery"
+                      type="text"
                       placeholder="ค้นหาทริป..."
-                      class="w-full bg-sand/30 border-none rounded-full py-2.5 pl-10 pr-9 text-[13px] font-bold text-text-dark outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      class="w-full bg-sand rounded-full py-2.5 pl-10 pr-9 text-[14px] font-semibold text-text-dark outline-none ring-1 ring-transparent focus:ring-accent/40 transition"
+                      @keyup.enter="doSearch(); desktopSearchExpanded = false"
                     />
                     <button
                       v-if="searchQuery"
+                      type="button"
+                      aria-label="ล้างคำค้นหา"
+                      class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark text-text-muted hover:text-red-500 transition-colors"
                       @click="searchQuery = ''"
-                      class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark/20 text-text-muted hover:text-red-500 transition-colors"
                     >
                       <span class="material-symbols-rounded text-[14px]">close</span>
                     </button>
@@ -157,39 +196,43 @@
               </div>
             </div>
 
-            <!-- Wishlist (Only for logged in) -->
+            <!-- Wishlist -->
             <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative flex items-center">
               <button
+                type="button"
+                aria-label="รายการโปรด"
+                class="icon-btn"
+                :class="wishlistDropdownOpen ? 'text-primary bg-sand' : ''"
                 @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen; notificationDropdownOpen = false; userDropdownOpen = false"
-                class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
               >
-                <span class="material-symbols-rounded text-[20px]" :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
-                <span v-if="wishlistStore.favorites.length > 0" class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                  {{ wishlistStore.favorites.length }}
-                </span>
+                <span
+                  class="material-symbols-rounded text-[21px]"
+                  :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
+                  :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}"
+                >favorite</span>
+                <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
               </button>
 
-              <!-- Wishlist Dropdown -->
               <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden">
-                  <div class="px-5 py-3.5 bg-sand/30 border-b border-sand-dark/30 flex items-center gap-2">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
+                  <div class="px-5 py-3.5 bg-sand/50 border-b border-sand-dark/40 flex items-center gap-2">
                     <span class="material-symbols-rounded text-[18px] text-red-500 filled-icon">favorite</span>
                     <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
                     <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }}</span>
                   </div>
                   <div v-if="wishlistStore.favorites.length === 0" class="py-8 px-5 text-center">
-                    <span class="material-symbols-rounded text-[40px] text-sand-dark/40">favorite_border</span>
+                    <span class="material-symbols-rounded text-[40px] text-sand-dark">favorite_border</span>
                     <p class="mt-2 text-[12px] text-text-muted font-medium">ยังไม่มีรายการโปรด</p>
                   </div>
                   <div v-else class="max-h-64 overflow-y-auto">
-                     <router-link
+                    <router-link
                       v-for="trip in wishlistStore.favorites"
                       :key="typeof trip === 'object' ? trip.id : trip"
                       :to="`/trips/${typeof trip === 'object' ? trip.id : trip}`"
+                      class="flex items-center gap-3 px-4 py-2.5 hover:bg-sand transition-colors border-b border-sand-dark/40 last:border-0"
                       @click="wishlistDropdownOpen = false"
-                      class="flex items-center gap-3 px-4 py-2.5 hover:bg-sand/50 transition-all border-b border-sand-dark/10 last:border-0"
                     >
-                      <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-sand-dark/20">
+                      <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-sand-dark">
                         <img v-if="trip.thumbnail_image || trip.cover_image" :src="trip.thumbnail_image || trip.cover_image" class="w-full h-full object-cover" />
                       </div>
                       <div class="flex-1 min-w-0">
@@ -198,39 +241,36 @@
                       </div>
                     </router-link>
                   </div>
-                  <div class="p-3 bg-sand/10">
-                    <router-link to="/trips" @click="wishlistDropdownOpen = false" class="block w-full py-2 text-center text-[11px] font-bold text-primary bg-primary/5 hover:bg-primary/10 rounded-xl transition-all">ดูทริปทั้งหมด</router-link>
+                  <div class="p-3 bg-sand/30">
+                    <router-link to="/trips" class="block w-full py-2 text-center text-[11px] font-bold text-primary bg-primary/5 hover:bg-primary/10 rounded-xl transition-colors" @click="wishlistDropdownOpen = false">ดูทริปทั้งหมด</router-link>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Notifications (Desktop) -->
+            <!-- Notifications -->
             <div v-if="auth.isLoggedIn" ref="notificationDropdownRef" class="relative flex items-center">
               <button
                 type="button"
+                aria-label="การแจ้งเตือน"
+                class="icon-btn"
+                :class="notificationDropdownOpen ? 'text-primary bg-sand' : ''"
                 @click.stop="toggleNotificationDropdown"
-                class="flex items-center justify-center w-9 h-9 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
-                :class="{ 'text-primary bg-primary/5': notificationDropdownOpen }"
-                title="การแจ้งเตือน"
               >
-                <span class="material-symbols-rounded text-[20px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
-                <span v-if="unreadNotifications > 0" class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                  {{ unreadNotifications }}
-                </span>
+                <span class="material-symbols-rounded text-[21px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
+                <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
               </button>
 
-              <!-- Notifications Dropdown -->
               <div v-if="notificationDropdownOpen" class="absolute top-full right-0 w-[420px] pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden">
-                  <div class="px-5 py-4 bg-sand/30 border-b border-sand-dark/30">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
+                  <div class="px-5 py-4 bg-sand/50 border-b border-sand-dark/40">
                     <div class="flex items-start gap-3">
                       <div class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                         <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
                       </div>
                       <div class="flex-1 min-w-0">
                         <p class="text-[14px] font-black text-text-dark leading-tight">การแจ้งเตือน</p>
-                        <p class="text-[11px] font-bold text-text-muted mt-1">
+                        <p class="text-[11px] font-semibold text-text-muted mt-1">
                           {{ unreadNotifications > 0 ? `ยังไม่ได้อ่าน ${unreadNotifications} รายการ` : 'อ่านครบทุกข้อความแล้ว' }}
                         </p>
                       </div>
@@ -239,18 +279,18 @@
                     <div class="grid grid-cols-2 gap-2 mt-4">
                       <button
                         type="button"
-                        @click="markAllNotificationsRead"
                         :disabled="unreadNotifications === 0 || notificationBusy"
-                        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-45 disabled:cursor-not-allowed transition-all"
+                        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-45 disabled:cursor-not-allowed transition-colors"
+                        @click="markAllNotificationsRead"
                       >
                         <span class="material-symbols-rounded text-[17px]">done_all</span>
                         อ่านทั้งหมด
                       </button>
                       <button
                         type="button"
-                        @click="clearNotifications"
                         :disabled="notifications.length === 0 || notificationBusy"
-                        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-45 disabled:cursor-not-allowed transition-all"
+                        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-45 disabled:cursor-not-allowed transition-colors"
+                        @click="clearNotifications"
                       >
                         <span class="material-symbols-rounded text-[17px]">delete_sweep</span>
                         เคลียร์ข้อความ
@@ -266,20 +306,20 @@
                   <div v-else-if="notificationError" class="py-10 px-5 text-center">
                     <span class="material-symbols-rounded text-[36px] text-red-300">error</span>
                     <p class="mt-2 text-[12px] font-bold text-text-muted">{{ notificationError }}</p>
-                    <button type="button" @click="loadNotifications" class="mt-3 px-4 py-2 rounded-xl text-[11px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all">ลองใหม่</button>
+                    <button type="button" class="mt-3 px-4 py-2 rounded-xl text-[11px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-colors" @click="loadNotifications">ลองใหม่</button>
                   </div>
 
                   <div v-else-if="notifications.length === 0" class="py-10 px-5 text-center">
-                    <span class="material-symbols-rounded text-[42px] text-sand-dark/50">notifications_off</span>
+                    <span class="material-symbols-rounded text-[42px] text-sand-dark">notifications_off</span>
                     <p class="mt-2 text-[13px] font-black text-text-dark">ยังไม่มีการแจ้งเตือน</p>
-                    <p class="mt-1 text-[11px] font-bold text-text-muted">ข้อความใหม่จะแสดงในส่วนนี้</p>
+                    <p class="mt-1 text-[11px] font-semibold text-text-muted">ข้อความใหม่จะแสดงในส่วนนี้</p>
                   </div>
 
-                  <div v-else class="max-h-[440px] overflow-y-auto divide-y divide-sand-dark/20">
+                  <div v-else class="max-h-[440px] overflow-y-auto divide-y divide-sand-dark/40">
                     <div
                       v-for="n in notifications"
                       :key="n.id"
-                      class="relative px-4 py-3.5 hover:bg-sand/35 transition-colors"
+                      class="relative px-4 py-3.5 hover:bg-sand/60 transition-colors"
                       :class="{ 'bg-primary/[0.035]': !n.is_read }"
                     >
                       <div v-if="!n.is_read" class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
@@ -295,9 +335,10 @@
                             </div>
                             <button
                               type="button"
-                              @click="deleteNotification(n.id)"
-                              class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
                               title="ลบข้อความนี้"
+                              aria-label="ลบข้อความนี้"
+                              class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                              @click="deleteNotification(n.id)"
                             >
                               <span class="material-symbols-rounded text-[18px]">close</span>
                             </button>
@@ -315,7 +356,7 @@
                             <span
                               v-for="item in notificationDataEntries(n.data)"
                               :key="`${n.id}-${item.key}`"
-                              class="max-w-full px-2 py-1 rounded-lg bg-white border border-sand-dark/40 text-[10px] font-bold text-text-mid break-all"
+                              class="max-w-full px-2 py-1 rounded-lg bg-white border border-sand-dark text-[10px] font-bold text-text-mid break-all"
                             >
                               {{ item.label }}: {{ item.value }}
                             </span>
@@ -324,8 +365,8 @@
                           <div v-if="!n.is_read" class="mt-3">
                             <button
                               type="button"
+                              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
                               @click="markNotificationRead(n)"
-                              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-all"
                             >
                               <span class="material-symbols-rounded text-[15px]">done</span>
                               ทำเครื่องหมายว่าอ่านแล้ว
@@ -340,387 +381,322 @@
             </div>
 
             <!-- User / Login -->
-            <template v-if="auth.isLoggedIn">
-              <div ref="userDropdownRef" class="relative flex items-center">
-                <button 
-                  @click.stop="userDropdownOpen = !userDropdownOpen; notificationDropdownOpen = false; wishlistDropdownOpen = false"
-                  class="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-sand/50 transition-all border border-transparent hover:border-sand-dark/20"
-                >
-                  <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-sm">
-                    <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                    <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+            <div v-if="auth.isLoggedIn" ref="userDropdownRef" class="relative flex items-center ml-1">
+              <button
+                type="button"
+                class="flex items-center gap-2 p-1 pr-2.5 rounded-full border border-transparent hover:border-sand-dark hover:bg-sand transition-colors focus-ring"
+                :aria-expanded="userDropdownOpen"
+                @click.stop="userDropdownOpen = !userDropdownOpen; notificationDropdownOpen = false; wishlistDropdownOpen = false"
+              >
+                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
+                  <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                  <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                </div>
+                <span class="text-[13px] font-bold text-text-dark hidden lg:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
+                <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
+              </button>
+
+              <div v-if="userDropdownOpen" class="absolute top-full right-0 w-64 pt-3 z-[60] animation-fade-slide">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden p-1.5">
+                  <div class="px-4 py-3 border-b border-sand-dark/40 mb-1">
+                    <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
+                    <p class="text-[10px] text-accent font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : isStaff ? 'Staff' : 'Member' }}</p>
                   </div>
-                  <span class="text-[13px] font-bold text-text-dark hidden lg:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
-                  <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
-                </button>
 
-                <div v-if="userDropdownOpen" class="absolute top-full right-0 w-64 pt-3 z-[60] animation-fade-slide">
-                  <div class="bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-sand-dark/30 overflow-hidden p-1.5">
-                    <div class="px-4 py-3 border-b border-sand-dark/10 mb-1">
-                      <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
-                      <p class="text-[10px] text-primary font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : 'Member' }}</p>
-                    </div>
-                    <!-- บัญชี -->
-                    <router-link to="/profile" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                      <span class="material-symbols-rounded text-[20px]">account_circle</span>
-                      ข้อมูลส่วนตัว
-                    </router-link>
+                  <router-link to="/profile" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">account_circle</span>
+                    ข้อมูลส่วนตัว
+                  </router-link>
 
-                    <!-- กิจกรรมของฉัน -->
-                    <p class="px-4 pt-2.5 pb-1 text-[10px] font-bold text-text-muted/60 uppercase tracking-wider">กิจกรรมของฉัน</p>
-                    <router-link to="/my-bookings" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                      <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
-                      การจองของฉัน
-                    </router-link>
-                    <router-link to="/my-reviews" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                      <span class="material-symbols-rounded text-[20px]">reviews</span>
-                      รีวิวของฉัน
-                    </router-link>
+                  <p class="menu-caption">กิจกรรมของฉัน</p>
+                  <router-link to="/my-bookings" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
+                    การจองของฉัน
+                  </router-link>
+                  <router-link to="/my-reviews" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">reviews</span>
+                    รีวิวของฉัน
+                  </router-link>
 
-                    <!-- สิทธิพิเศษ -->
-                    <p class="px-4 pt-2.5 pb-1 text-[10px] font-bold text-text-muted/60 uppercase tracking-wider">สิทธิพิเศษ</p>
-                    <router-link to="/loyalty" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                      <span class="material-symbols-rounded text-[20px]">stars</span>
-                      แต้มสะสม
-                    </router-link>
-                    <router-link to="/referral" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                      <span class="material-symbols-rounded text-[20px]">group_add</span>
-                      ชวนเพื่อน
-                    </router-link>
+                  <p class="menu-caption">สิทธิพิเศษ</p>
+                  <router-link to="/loyalty" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">stars</span>
+                    แต้มสะสม
+                  </router-link>
+                  <router-link to="/referral" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">group_add</span>
+                    ชวนเพื่อน
+                  </router-link>
 
-                    <!-- การทำงาน (สตาฟ / แอดมิน) -->
-                    <template v-if="isStaff || isAdmin">
-                      <p class="px-4 pt-2.5 pb-1 text-[10px] font-bold text-text-muted/60 uppercase tracking-wider">การทำงาน</p>
-                      <router-link v-if="isStaff" to="/my-staff-trips" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-text-mid hover:text-primary hover:bg-sand/50 transition-all">
-                        <span class="material-symbols-rounded text-[20px]">badge</span>
-                        ตารางงานสตาฟ
-                      </router-link>
-                      <router-link v-if="isAdmin" to="/admin" @click="userDropdownOpen = false" class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-primary hover:bg-primary/5 transition-all">
-                        <span class="material-symbols-rounded text-[20px]">admin_panel_settings</span>
-                        ผู้ดูแลระบบ
-                      </router-link>
-                    </template>
+                  <template v-if="isStaff || isAdmin">
+                    <p class="menu-caption">การทำงาน</p>
+                    <router-link v-if="isStaff" to="/my-staff-trips" class="menu-row" @click="userDropdownOpen = false">
+                      <span class="material-symbols-rounded text-[20px]">badge</span>
+                      ตารางงานสตาฟ
+                    </router-link>
+                    <router-link v-if="isAdmin" to="/admin" class="menu-row menu-row--accent" @click="userDropdownOpen = false">
+                      <span class="material-symbols-rounded text-[20px]">admin_panel_settings</span>
+                      ผู้ดูแลระบบ
+                    </router-link>
+                  </template>
 
-                    <div class="h-px bg-sand-dark/10 my-1 mx-2"></div>
-                    <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold text-red-500 hover:bg-red-50 transition-all">
-                      <span class="material-symbols-rounded text-[20px]">logout</span>
-                      ออกจากระบบ
-                    </button>
-                  </div>
+                  <div class="h-px bg-sand-dark my-1 mx-2"></div>
+                  <button type="button" class="menu-row menu-row--danger w-full" @click="handleLogout">
+                    <span class="material-symbols-rounded text-[20px]">logout</span>
+                    ออกจากระบบ
+                  </button>
                 </div>
               </div>
-            </template>
-            <template v-else>
-              <router-link
-                to="/login"
-                class="flex items-center gap-2 px-2 py-1.5 text-[14px] font-medium text-text-mid hover:text-primary transition-all duration-150 group/login cursor-pointer"
-              >
-                <span class="material-symbols-rounded text-[20px] text-text-muted group-hover/login:text-primary group-hover/login:scale-105 transition-all duration-150">account_circle</span>
-                <span class="hover:underline underline-offset-4 decoration-primary/30">เข้าสู่ระบบ</span>
-              </router-link>
-            </template>
+            </div>
+
+            <router-link
+              v-else
+              to="/login"
+              class="flex items-center gap-1.5 px-3 py-2 rounded-full text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-colors focus-ring"
+            >
+              <span class="material-symbols-rounded text-[20px]">account_circle</span>
+              <span>เข้าสู่ระบบ</span>
+            </router-link>
+
+            <!-- Primary CTA -->
+            <router-link to="/trips" class="cta-btn ml-1">
+              <span class="cta-sheen" aria-hidden="true"></span>
+              <span class="material-symbols-rounded relative text-[20px] transition-transform duration-500 group-hover:rotate-[18deg]">explore</span>
+              <span class="relative">จองทริป</span>
+            </router-link>
           </div>
 
-          <!-- Primary CTA Button -->
-          <router-link
-            to="/trips"
-            class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full font-semibold text-[14px] shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 hover:bg-primary-dark hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98] transition-all duration-200 group"
-          >
-            <span class="material-symbols-rounded text-[20px] group-hover:rotate-12 transition-transform">explore</span>
-            <span>จองทริป</span>
-          </router-link>
-        </div>
+          <!-- Mobile Actions -->
+          <div class="md:hidden flex items-center gap-0.5 ml-auto">
+            <template v-if="auth.isLoggedIn">
+              <router-link to="/notifications" class="icon-btn w-10 h-10" aria-label="การแจ้งเตือน">
+                <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
+                <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
+              </router-link>
 
-        <!-- Mobile Right Actions -->
-        <div class="md:hidden flex items-center gap-1">
-          
-          <!-- Mobile: Quick account icons (visible without opening menu) -->
-          <template v-if="auth.isLoggedIn">
-            <!-- Notifications -->
-            <router-link
-              to="/notifications"
-              class="relative flex items-center justify-center w-10 h-10 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
-            >
-              <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
-              <span v-if="unreadNotifications > 0" class="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {{ unreadNotifications }}
-              </span>
+              <router-link to="/trips" class="icon-btn w-10 h-10" aria-label="รายการโปรด">
+                <span
+                  class="material-symbols-rounded text-[22px]"
+                  :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
+                  :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}"
+                >favorite</span>
+                <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
+              </router-link>
+
+              <button type="button" class="icon-btn w-10 h-10" aria-label="บัญชีของฉัน" @click.stop="openAccountSheet">
+                <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
+                  <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                  <span v-else class="text-white text-[11px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                </span>
+              </button>
+            </template>
+
+            <router-link v-else to="/login" class="icon-btn w-10 h-10" aria-label="เข้าสู่ระบบ">
+              <span class="material-symbols-rounded text-[22px]">account_circle</span>
             </router-link>
 
-            <!-- Wishlist -->
-            <router-link
-              to="/trips"
-              class="relative flex items-center justify-center w-10 h-10 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
-            >
-              <span class="material-symbols-rounded text-[22px]" :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }" :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}">favorite</span>
-              <span v-if="wishlistStore.favorites.length > 0" class="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                {{ wishlistStore.favorites.length }}
-              </span>
-            </router-link>
-
-            <!-- User Avatar (opens account panel) -->
-            <button
-              @click.stop="mobileAccountOpen = !mobileAccountOpen"
-              class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand/50 transition-all"
-            >
-              <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden shadow-sm border-2 border-white">
-                <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                <span v-else class="text-white text-[11px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
-              </div>
+            <button type="button" class="icon-btn w-10 h-10" aria-label="เปิดเมนู" :aria-expanded="mobileOpen" @click.stop="openNavSheet">
+              <span class="material-symbols-rounded text-[24px] text-text-dark">menu</span>
             </button>
-          </template>
-
-          <!-- Login button for guests -->
-          <router-link
-            v-else
-            to="/login"
-            class="flex items-center justify-center w-10 h-10 rounded-full text-text-mid hover:text-primary hover:bg-sand/50 transition-all"
-          >
-            <span class="material-symbols-rounded text-[22px]">account_circle</span>
-          </router-link>
-
-          <!-- Hamburger -->
-          <button
-            @click="mobileOpen = !mobileOpen; mobileAccountOpen = false; mobileNavDropdownOpen = null"
-            class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-sand transition-colors duration-200 cursor-pointer focus:outline-none"
-            aria-label="Toggle menu"
-          >
-            <span class="material-symbols-rounded text-[24px] text-text-dark transition-transform duration-300" :class="{ 'rotate-180 scale-90': mobileOpen }">
-              {{ mobileOpen ? 'close' : 'menu' }}
-            </span>
-          </button>
+          </div>
         </div>
       </div>
-    </div>
-
-
-    <!-- Mobile Account Panel (separate from nav menu) -->
-    <Transition name="mobile-menu">
-      <div v-if="mobileAccountOpen && !mobileOpen" class="md:hidden bg-white/95 backdrop-blur-xl border-t border-sand-dark/40 absolute w-full shadow-lg z-[55]">
-        <div class="max-w-7xl mx-auto px-4 py-4 space-y-1">
-          <!-- User info header -->
-          <div class="flex items-center gap-3 px-3 py-3 mb-2">
-            <div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center shadow-md overflow-hidden border-2 border-white">
-              <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-              <span v-else class="text-white text-sm font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-[15px] font-bold text-text-dark truncate">{{ auth.userName }}</div>
-              <div class="text-[11px] font-bold text-primary uppercase tracking-wider">{{ isAdmin ? 'Admin' : isStaff ? 'Staff' : 'Member' }}</div>
-            </div>
-          </div>
-
-          <div class="h-px bg-sand-dark/20 mx-2"></div>
-
-          <!-- บัญชี -->
-          <router-link
-            to="/profile"
-            @click="mobileAccountOpen = false"
-            class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">account_circle</span>
-            จัดการโปรไฟล์
-          </router-link>
-
-          <!-- กิจกรรมของฉัน -->
-          <p class="px-5 pt-3 pb-1 text-[11px] font-bold text-text-muted/60 uppercase tracking-wider">กิจกรรมของฉัน</p>
-          <router-link
-            to="/my-bookings"
-            @click="mobileAccountOpen = false"
-            class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">confirmation_number</span>
-            การจองของฉัน
-          </router-link>
-          <router-link
-            to="/my-reviews"
-            @click="mobileAccountOpen = false"
-            class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">reviews</span>
-            รีวิวของฉัน
-          </router-link>
-
-          <!-- สิทธิพิเศษ -->
-          <p class="px-5 pt-3 pb-1 text-[11px] font-bold text-text-muted/60 uppercase tracking-wider">สิทธิพิเศษ</p>
-          <router-link
-            to="/loyalty"
-            @click="mobileAccountOpen = false"
-            class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">stars</span>
-            แต้มสะสม
-          </router-link>
-          <router-link
-            to="/referral"
-            @click="mobileAccountOpen = false"
-            class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">group_add</span>
-            ชวนเพื่อน
-          </router-link>
-
-          <!-- การทำงาน (สตาฟ / แอดมิน) -->
-          <template v-if="isStaff || isAdmin">
-            <p class="px-5 pt-3 pb-1 text-[11px] font-bold text-text-muted/60 uppercase tracking-wider">การทำงาน</p>
-            <router-link
-              v-if="isStaff"
-              to="/my-staff-trips"
-              @click="mobileAccountOpen = false"
-              class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-            >
-              <span class="material-symbols-rounded text-[22px]">badge</span>
-              ตารางงานสตาฟ
-            </router-link>
-            <router-link
-              v-if="isAdmin"
-              to="/admin"
-              @click="mobileAccountOpen = false"
-              class="flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-primary hover:bg-primary/5 transition-all duration-200 active:scale-[0.98]"
-            >
-              <span class="material-symbols-rounded text-[22px]">admin_panel_settings</span>
-              ผู้ดูแลระบบ
-            </router-link>
-          </template>
-
-          <div class="h-px bg-sand-dark/20 mx-2"></div>
-
-          <!-- Logout -->
-          <button
-            @click="handleLogout(); mobileAccountOpen = false"
-            class="w-full flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-red-500 hover:bg-red-50 transition-all duration-200 active:scale-[0.98]"
-          >
-            <span class="material-symbols-rounded text-[22px]">logout</span>
-            ออกจากระบบ
-          </button>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Mobile Navigation Menu (nav links only) -->
-    <Transition name="mobile-menu">
-      <div v-if="mobileOpen" class="md:hidden bg-white/95 backdrop-blur-xl border-t border-sand-dark/40 absolute w-full shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 py-5 space-y-3 max-h-[calc(100vh-5rem)] overflow-y-auto">
-
-          <!-- Mobile Search Bar -->
-          <div class="relative group w-full mb-1">
-            <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-[20px] text-text-muted transition-colors">search</span>
-            <input 
-              type="text" 
-              v-model="searchQuery" 
-              @keyup.enter="doSearch"
-              placeholder="ค้นหาทริปที่คุณต้องการ..." 
-              class="w-full bg-sand/60 border border-sand-dark/40 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold text-text-dark placeholder:text-text-muted/60 focus:bg-white focus:border-primary outline-none transition-all"
-            />
-          </div>
-
-          <div class="space-y-1">
-            <template v-for="link in navLinks" :key="link.label">
-              <div v-if="link.children" class="flex flex-col gap-1">
-                <button
-                  type="button"
-                  class="mobile-nav-link flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-                  :class="{ 'active-state': isDropdownActive(link) }"
-                  @click.stop="toggleMobileNavDropdown(link.label)"
-                >
-                  <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
-                  {{ link.label }}
-                  <span class="material-symbols-rounded ml-auto text-[20px] transition-transform duration-300" :class="{ 'rotate-180': mobileNavDropdownOpen === link.label }">expand_more</span>
-                </button>
-
-                <Transition name="mobile-submenu">
-                  <div v-if="mobileNavDropdownOpen === link.label" class="pl-4 space-y-1">
-                    <template v-for="child in link.children" :key="child.to">
-                      <a
-                        v-if="child.external"
-                        :href="child.to"
-                        @click="mobileOpen = false; mobileNavDropdownOpen = null"
-                        class="flex items-center gap-3.5 px-6 py-2.5 rounded-2xl text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-                      >
-                        <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
-                        {{ child.label }}
-                      </a>
-                      <router-link
-                        v-else
-                        :to="child.to"
-                        @click="mobileOpen = false; mobileNavDropdownOpen = null"
-                        class="flex items-center gap-3.5 px-6 py-2.5 rounded-2xl text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-                        active-class="bg-primary/5 text-primary"
-                      >
-                        <span class="material-symbols-rounded text-[20px] transition-transform duration-200 group-active:scale-90">{{ child.icon }}</span>
-                        {{ child.label }}
-                      </router-link>
-                    </template>
-                  </div>
-                </Transition>
-              </div>
-              
-              <a
-                v-else-if="link.external"
-                :href="link.to"
-                @click="mobileOpen = false; mobileNavDropdownOpen = null"
-                class="mobile-nav-link flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-              >
-                <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
-                {{ link.label }}
-              </a>
-
-              <router-link
-                v-else
-                :to="link.to"
-                @click="mobileOpen = false; mobileNavDropdownOpen = null"
-                class="mobile-nav-link flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[15px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-all duration-200 active:scale-[0.98]"
-                :exact="link.to === '/'"
-              >
-                <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
-                {{ link.label }}
-              </router-link>
-            </template>
-          </div>
-
-          <!-- CTA -->
-          <div class="pt-2">
-            <router-link
-              to="/trips"
-              @click="mobileOpen = false; mobileNavDropdownOpen = null"
-              class="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-base font-bold text-white bg-primary hover:bg-primary-dark transition-all duration-200 active:scale-[0.98] shadow-md shadow-primary/20"
-            >
-              <span class="material-symbols-rounded text-[20px]">explore</span>
-              จองทริป
-            </router-link>
-          </div>
-
-          <!-- Guest: Login/Register -->
-          <template v-if="!auth.isLoggedIn">
-            <div class="flex flex-col gap-2 pt-1">
-              <router-link
-                to="/login"
-                @click="mobileOpen = false"
-                class="flex items-center justify-center gap-2 py-3 rounded-xl text-base font-bold text-primary bg-sand border border-sand-dark/50 hover:bg-sand-dark/50 transition-all duration-200 active:scale-[0.98]"
-              >
-                <span class="material-symbols-rounded text-[20px]">login</span>
-                เข้าสู่ระบบ
-              </router-link>
-              <router-link
-                to="/register"
-                @click="mobileOpen = false"
-                class="flex items-center justify-center gap-2 py-3 rounded-xl text-base font-bold text-white bg-primary hover:bg-primary-mid transition-all duration-200 active:scale-[0.98] shadow-md shadow-primary/20"
-              >
-                <span class="material-symbols-rounded text-[20px]">person_add</span>
-                สมัครสมาชิก
-              </router-link>
-            </div>
-          </template>
-        </div>
-      </div>
-    </Transition>
     </nav>
+
+    <!-- ── Mobile: full-screen navigation sheet ─────────────────── -->
+    <Teleport to="body">
+      <Transition name="sheet">
+        <div v-if="mobileOpen" class="md:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="เมนูหลัก">
+          <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
+            <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
+              <router-link to="/" class="flex items-center gap-2.5" @click="closeSheets">
+                <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-11 h-11 object-contain" />
+                <span class="flex flex-col leading-none">
+                  <span class="text-[18px] font-black tracking-tight text-primary">ลุยเลเขา</span>
+                  <span class="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-text-muted">Trip &amp; Travel</span>
+                </span>
+              </router-link>
+              <button type="button" class="icon-btn w-11 h-11" aria-label="ปิดเมนู" @click="closeSheets">
+                <span class="material-symbols-rounded text-[26px] text-text-dark">close</span>
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+              <div class="sheet-item relative mb-5" :style="{ '--i': 0 }">
+                <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-[20px] text-text-muted">search</span>
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="ค้นหาทริปที่คุณต้องการ..."
+                  class="w-full rounded-2xl bg-sand py-3.5 pl-12 pr-4 text-[15px] font-semibold text-text-dark placeholder:text-text-muted outline-none ring-1 ring-transparent focus:bg-white focus:ring-accent/40 transition"
+                  @keyup.enter="doSearch"
+                />
+              </div>
+
+              <nav class="space-y-1">
+                <template v-for="(link, i) in navLinks" :key="link.label">
+                  <div v-if="link.children" class="sheet-item" :style="{ '--i': i + 1 }">
+                    <button
+                      type="button"
+                      class="sheet-row w-full"
+                      :class="{ 'sheet-row--active': activeNavLabel === link.label }"
+                      :aria-expanded="mobileNavDropdownOpen === link.label"
+                      @click="toggleMobileNavDropdown(link.label)"
+                    >
+                      <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
+                      {{ link.label }}
+                      <span class="material-symbols-rounded ml-auto text-[20px] transition-transform duration-300" :class="{ 'rotate-180': mobileNavDropdownOpen === link.label }">expand_more</span>
+                    </button>
+
+                    <Transition name="mobile-submenu">
+                      <div v-if="mobileNavDropdownOpen === link.label" class="mt-1 space-y-0.5 pl-4">
+                        <component
+                          :is="child.external ? 'a' : 'router-link'"
+                          v-for="child in link.children"
+                          :key="child.to"
+                          v-bind="child.external ? { href: child.to } : { to: child.to }"
+                          class="flex items-center gap-3.5 rounded-2xl px-5 py-2.5 text-[14px] font-semibold text-text-mid transition-colors active:scale-[0.98] hover:bg-sand hover:text-primary"
+                          @click="closeSheets"
+                        >
+                          <span class="material-symbols-rounded text-[20px] text-text-muted">{{ child.icon }}</span>
+                          {{ child.label }}
+                        </component>
+                      </div>
+                    </Transition>
+                  </div>
+
+                  <component
+                    v-else
+                    :is="link.external ? 'a' : 'router-link'"
+                    v-bind="link.external ? { href: link.to } : { to: link.to }"
+                    class="sheet-item sheet-row"
+                    :class="{ 'sheet-row--active': activeNavLabel === link.label }"
+                    :style="{ '--i': i + 1 }"
+                    @click="closeSheets"
+                  >
+                    <span class="material-symbols-rounded text-[22px]">{{ link.icon }}</span>
+                    {{ link.label }}
+                    <span class="material-symbols-rounded ml-auto text-[18px] text-text-muted">chevron_right</span>
+                  </component>
+                </template>
+              </nav>
+
+              <div class="sheet-item mt-6" :style="{ '--i': navLinks.length + 1 }">
+                <router-link to="/trips" class="cta-btn w-full justify-center py-3.5 text-[16px]" @click="closeSheets">
+                  <span class="cta-sheen" aria-hidden="true"></span>
+                  <span class="material-symbols-rounded relative text-[20px]">explore</span>
+                  <span class="relative">จองทริป</span>
+                </router-link>
+              </div>
+
+              <div v-if="!auth.isLoggedIn" class="sheet-item mt-3 grid grid-cols-2 gap-2" :style="{ '--i': navLinks.length + 2 }">
+                <router-link to="/login" class="flex items-center justify-center gap-2 rounded-2xl border border-sand-dark bg-sand py-3.5 text-[15px] font-bold text-primary transition active:scale-[0.98]" @click="closeSheets">
+                  <span class="material-symbols-rounded text-[20px]">login</span>
+                  เข้าสู่ระบบ
+                </router-link>
+                <router-link to="/register" class="flex items-center justify-center gap-2 rounded-2xl border border-primary/15 bg-primary/5 py-3.5 text-[15px] font-bold text-primary transition active:scale-[0.98]" @click="closeSheets">
+                  <span class="material-symbols-rounded text-[20px]">person_add</span>
+                  สมัครสมาชิก
+                </router-link>
+              </div>
+
+              <div class="sheet-item mt-6 border-t border-sand-dark pt-5" :style="{ '--i': navLinks.length + 3 }">
+                <a href="tel:0626126006" class="flex items-center gap-3 text-text-mid">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-full bg-sand text-primary">
+                    <span class="material-symbols-rounded text-[20px]">call</span>
+                  </span>
+                  <span class="flex flex-col leading-tight">
+                    <span class="text-[11px] font-semibold text-text-muted">สอบถามเพิ่มเติม</span>
+                    <span class="text-[15px] font-bold text-text-dark">062-612-6006</span>
+                  </span>
+                </a>
+                <p class="mt-4 flex items-center gap-1.5 text-[11px] font-semibold text-text-muted">
+                  <span class="material-symbols-rounded text-[15px] text-accent filled-icon">verified_user</span>
+                  ใบอนุญาตนำเที่ยวเลขที่ 12/03773
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ── Mobile: full-screen account sheet ────────────────────── -->
+    <Teleport to="body">
+      <Transition name="sheet">
+        <div v-if="mobileAccountOpen" class="md:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="บัญชีของฉัน">
+          <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
+            <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
+              <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary ring-2 ring-white shadow-md">
+                  <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="h-full w-full object-cover" />
+                  <span v-else class="text-[15px] font-bold text-white">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate text-[16px] font-bold text-text-dark">{{ auth.userName }}</p>
+                  <p class="text-[10px] font-bold uppercase tracking-wider text-accent">{{ isAdmin ? 'Admin' : isStaff ? 'Staff' : 'Member' }}</p>
+                </div>
+              </div>
+              <button type="button" class="icon-btn w-11 h-11" aria-label="ปิด" @click="closeSheets">
+                <span class="material-symbols-rounded text-[26px] text-text-dark">close</span>
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+              <router-link to="/profile" class="sheet-item sheet-row" :style="{ '--i': 0 }" @click="closeSheets">
+                <span class="material-symbols-rounded text-[22px]">account_circle</span>
+                จัดการโปรไฟล์
+              </router-link>
+
+              <p class="sheet-item menu-caption" :style="{ '--i': 1 }">กิจกรรมของฉัน</p>
+              <router-link to="/my-bookings" class="sheet-item sheet-row" :style="{ '--i': 2 }" @click="closeSheets">
+                <span class="material-symbols-rounded text-[22px]">confirmation_number</span>
+                การจองของฉัน
+              </router-link>
+              <router-link to="/my-reviews" class="sheet-item sheet-row" :style="{ '--i': 3 }" @click="closeSheets">
+                <span class="material-symbols-rounded text-[22px]">reviews</span>
+                รีวิวของฉัน
+              </router-link>
+
+              <p class="sheet-item menu-caption" :style="{ '--i': 4 }">สิทธิพิเศษ</p>
+              <router-link to="/loyalty" class="sheet-item sheet-row" :style="{ '--i': 5 }" @click="closeSheets">
+                <span class="material-symbols-rounded text-[22px]">stars</span>
+                แต้มสะสม
+              </router-link>
+              <router-link to="/referral" class="sheet-item sheet-row" :style="{ '--i': 6 }" @click="closeSheets">
+                <span class="material-symbols-rounded text-[22px]">group_add</span>
+                ชวนเพื่อน
+              </router-link>
+
+              <template v-if="isStaff || isAdmin">
+                <p class="sheet-item menu-caption" :style="{ '--i': 7 }">การทำงาน</p>
+                <router-link v-if="isStaff" to="/my-staff-trips" class="sheet-item sheet-row" :style="{ '--i': 8 }" @click="closeSheets">
+                  <span class="material-symbols-rounded text-[22px]">badge</span>
+                  ตารางงานสตาฟ
+                </router-link>
+                <router-link v-if="isAdmin" to="/admin" class="sheet-item sheet-row sheet-row--accent" :style="{ '--i': 9 }" @click="closeSheets">
+                  <span class="material-symbols-rounded text-[22px]">admin_panel_settings</span>
+                  ผู้ดูแลระบบ
+                </router-link>
+              </template>
+
+              <div class="sheet-item mt-5 border-t border-sand-dark pt-4" :style="{ '--i': 10 }">
+                <button type="button" class="sheet-row sheet-row--danger w-full" @click="handleLogout">
+                  <span class="material-symbols-rounded text-[22px]">logout</span>
+                  ออกจากระบบ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </header>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useWishlistStore } from '../stores/wishlist';
 import api from '../lib/axios';
@@ -728,6 +704,8 @@ import api from '../lib/axios';
 const auth = useAuthStore();
 const wishlistStore = useWishlistStore();
 const router = useRouter();
+const route = useRoute();
+
 const mobileOpen = ref(false);
 const mobileAccountOpen = ref(false);
 const searchQuery = ref('');
@@ -751,12 +729,143 @@ const desktopSearchRef = ref(null);
 const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
 
+const navLinks = [
+  { to: '/', icon: 'home', label: 'หน้าแรก' },
+  {
+    label: 'เกี่ยวกับเรา',
+    icon: 'info',
+    to: '/about',
+    children: [
+      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
+      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
+      { to: '/reviews', icon: 'reviews', label: 'รีวิวลูกค้า', desc: 'เสียงจริงจากผู้ร่วมทริป' },
+      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
+      { to: '/faq', icon: 'quiz', label: 'FAQ', desc: 'คำถามที่พบบ่อย' },
+      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
+      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
+    ],
+  },
+  { to: '/trips', icon: 'explore', label: 'กิจกรรม' },
+  {
+    label: 'ภาพประทับใจ',
+    icon: 'auto_awesome',
+    to: '/gallery',
+    children: [
+      { to: '/gallery', icon: 'photo_library', label: 'ภาพประทับใจ', desc: 'อัลบั้มภาพจากทริปจริง' },
+      // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
+      { to: '/blog', icon: 'article', label: 'บทความ', desc: 'ไอเดียและคู่มือการเดินทาง', external: true },
+    ],
+  },
+  { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
+];
+
+/* ── Gliding pill indicator ──────────────────────────────────────
+   The pill tracks whichever nav item is hovered, has an open
+   dropdown, or matches the current route — in that priority. */
+const navListRef = ref(null);
+const hoveredNavLabel = ref(null);
+const indicator = ref({ left: 0, width: 0, opacity: 0 });
+const navItemEls = new Map();
+
+// Hover-to-open only makes sense on devices with a real pointer.
+const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches;
+let dropdownCloseTimer = null;
+
+function setNavItemRef(label, el) {
+  const node = el?.$el ?? el;
+  if (node instanceof HTMLElement) navItemEls.set(label, node);
+  else navItemEls.delete(label);
+}
+
+function isMegaMenu(link) {
+  return (link.children?.length ?? 0) > 3;
+}
+
+const activeNavLabel = computed(() => {
+  const path = route.path;
+  for (const link of navLinks) {
+    if (link.children) {
+      if (link.children.some(child => child.to === path)) return link.label;
+    } else if (link.to === '/' ? path === '/' : path.startsWith(link.to)) {
+      return link.label;
+    }
+  }
+  return null;
+});
+
+const indicatorLabel = computed(() => hoveredNavLabel.value ?? openNavDropdown.value ?? activeNavLabel.value);
+
+function syncIndicator() {
+  const el = indicatorLabel.value ? navItemEls.get(indicatorLabel.value) : null;
+  if (!el || !navListRef.value) {
+    indicator.value = { ...indicator.value, opacity: 0 };
+    return;
+  }
+  // Measure against the list itself: dropdown triggers sit inside a `relative`
+  // wrapper, so their offsetLeft is relative to that wrapper, not the list.
+  const listRect = navListRef.value.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  indicator.value = { left: rect.left - listRect.left, width: rect.width, opacity: 1 };
+}
+
+watch(indicatorLabel, () => nextTick(syncIndicator));
+watch(isScrolled, () => nextTick(syncIndicator));
+watch(() => route.path, () => nextTick(syncIndicator));
+
+function onNavItemHover(label) {
+  hoveredNavLabel.value = label;
+  if (!canHover) return;
+  clearTimeout(dropdownCloseTimer);
+  const link = navLinks.find(l => l.label === label);
+  openNavDropdown.value = link?.children ? label : null;
+}
+
+function onDropdownLeave() {
+  if (!canHover) return;
+  clearTimeout(dropdownCloseTimer);
+  dropdownCloseTimer = setTimeout(() => { openNavDropdown.value = null; }, 140);
+}
+
+/* ── Sheets ─────────────────────────────────────────────────────── */
+function openNavSheet() {
+  mobileAccountOpen.value = false;
+  mobileNavDropdownOpen.value = null;
+  mobileOpen.value = true;
+}
+
+function openAccountSheet() {
+  mobileOpen.value = false;
+  mobileAccountOpen.value = true;
+}
+
+function closeSheets() {
+  mobileOpen.value = false;
+  mobileAccountOpen.value = false;
+  mobileNavDropdownOpen.value = null;
+}
+
+// A full-screen sheet must not let the page behind it scroll.
+watch([mobileOpen, mobileAccountOpen], ([nav, account]) => {
+  document.body.style.overflow = nav || account ? 'hidden' : '';
+});
+
+function closeAllOverlays() {
+  closeSheets();
+  openNavDropdown.value = null;
+  userDropdownOpen.value = false;
+  wishlistDropdownOpen.value = false;
+  notificationDropdownOpen.value = false;
+  desktopSearchExpanded.value = false;
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Escape') closeAllOverlays();
+}
+
 function toggleDesktopSearch() {
   desktopSearchExpanded.value = !desktopSearchExpanded.value;
   if (desktopSearchExpanded.value) {
-    setTimeout(() => {
-      desktopSearchInput.value?.focus();
-    }, 100);
+    nextTick(() => desktopSearchInput.value?.focus());
   }
 }
 
@@ -779,43 +888,23 @@ async function toggleNotificationDropdown() {
 }
 
 function handleClickOutside(e) {
-  const navEl = Array.isArray(navDropdownRef.value)
-    ? navDropdownRef.value[0]
-    : navDropdownRef.value;
-  const userEl = Array.isArray(userDropdownRef.value)
-    ? userDropdownRef.value[0]
-    : userDropdownRef.value;
-  const wishlistEl = Array.isArray(wishlistDropdownRef.value)
-    ? wishlistDropdownRef.value[0]
-    : wishlistDropdownRef.value;
-  const notificationEl = Array.isArray(notificationDropdownRef.value)
-    ? notificationDropdownRef.value[0]
-    : notificationDropdownRef.value;
-  if (!navEl || !navEl.contains(e.target)) {
-    openNavDropdown.value = null;
-  }
-  if (!userEl || !userEl.contains(e.target)) {
-    userDropdownOpen.value = false;
-  }
-  if (!wishlistEl || !wishlistEl.contains(e.target)) {
-    wishlistDropdownOpen.value = false;
-  }
-  if (!notificationEl || !notificationEl.contains(e.target)) {
-    notificationDropdownOpen.value = false;
-  }
-  const searchEl = Array.isArray(desktopSearchRef.value)
-    ? desktopSearchRef.value[0]
-    : desktopSearchRef.value;
-  if (!searchEl || !searchEl.contains(e.target)) {
-    desktopSearchExpanded.value = false;
-  }
+  const resolve = (r) => (Array.isArray(r.value) ? r.value[0] : r.value);
+  const outside = (r) => {
+    const el = resolve(r);
+    return !el || !el.contains(e.target);
+  };
+
+  if (outside(navDropdownRef)) openNavDropdown.value = null;
+  if (outside(userDropdownRef)) userDropdownOpen.value = false;
+  if (outside(wishlistDropdownRef)) wishlistDropdownOpen.value = false;
+  if (outside(notificationDropdownRef)) notificationDropdownOpen.value = false;
+  if (outside(desktopSearchRef)) desktopSearchExpanded.value = false;
 }
 
 function doSearch() {
   if (!searchQuery.value.trim()) return;
   router.push(`/trips?search=${encodeURIComponent(searchQuery.value.trim())}`);
-  mobileOpen.value = false;
-  mobileNavDropdownOpen.value = null;
+  closeSheets();
   searchQuery.value = '';
 }
 
@@ -979,6 +1068,7 @@ function timeAgo(dateStr) {
 }
 
 let pollInterval = null;
+
 function handleScroll() {
   // Hysteresis: use different thresholds for scroll-down vs scroll-up
   // to prevent jitter from header height changes shifting the scroll position
@@ -994,49 +1084,23 @@ onMounted(() => {
   fetchUnreadCount();
   pollInterval = setInterval(fetchUnreadCount, 60000);
   window.addEventListener('scroll', handleScroll);
+  window.addEventListener('resize', syncIndicator);
   document.addEventListener('click', handleClickOutside);
   document.addEventListener('touchstart', handleClickOutside);
+  document.addEventListener('keydown', handleKeydown);
+  nextTick(syncIndicator);
 });
+
 onUnmounted(() => {
   clearInterval(pollInterval);
+  clearTimeout(dropdownCloseTimer);
   window.removeEventListener('scroll', handleScroll);
+  window.removeEventListener('resize', syncIndicator);
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('touchstart', handleClickOutside);
+  document.removeEventListener('keydown', handleKeydown);
+  document.body.style.overflow = '';
 });
-
-const navLinks = [
-  { to: '/', icon: 'home', label: 'หน้าแรก' },
-  { 
-    label: 'เกี่ยวกับเรา', 
-    icon: 'info',
-    to: '/about',
-    children: [
-      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา' },
-      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย' },
-      { to: '/reviews', icon: 'reviews', label: 'รีวิวลูกค้า' },
-      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง' },
-      { to: '/faq', icon: 'quiz', label: 'FAQ' },
-      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ' },
-      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว' },
-    ]
-  },
-  { to: '/trips', icon: 'explore', label: 'กิจกรรม' },
-  {
-    label: 'ภาพประทับใจ',
-    icon: 'auto_awesome',
-    to: '/gallery',
-    children: [
-      { to: '/gallery', icon: 'photo_library', label: 'ภาพประทับใจ' },
-      // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
-      { to: '/blog', icon: 'article', label: 'บทความ', external: true },
-    ],
-  },
-  { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
-];
-
-function isDropdownActive(link) {
-  return Boolean(link?.children?.some(child => router.currentRoute.value.path === child.to));
-}
 
 const isAdmin = computed(() => {
   const roles = auth.user?.roles?.map(r => typeof r === 'string' ? r : r.name) || [];
@@ -1050,10 +1114,7 @@ const isStaff = computed(() => {
 
 async function handleLogout() {
   await auth.logout();
-  mobileOpen.value = false;
-  mobileAccountOpen.value = false;
-  mobileNavDropdownOpen.value = null;
-  notificationDropdownOpen.value = false;
+  closeAllOverlays();
   notifications.value = [];
   unreadNotifications.value = 0;
   router.push('/');
@@ -1061,23 +1122,217 @@ async function handleLogout() {
 </script>
 
 <style scoped>
-/* Mobile menu transition */
-.mobile-menu-enter-active,
-.mobile-menu-leave-active {
-  transition: all 0.25s ease;
+/* ── Shared primitives ──────────────────────────────────────────── */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.icon-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  color: var(--color-text-mid);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.icon-btn:hover {
+  color: var(--color-primary);
+  background-color: var(--color-sand);
+}
+.icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.badge {
+  position: absolute;
+  top: 0.125rem;
+  right: 0.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.2rem;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  background-color: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* ── Gliding pill under the desktop nav ─────────────────────────── */
+.nav-pill {
+  transition:
+    left 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.nav-link.is-active {
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.filled-icon {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* ── Primary CTA ────────────────────────────────────────────────── */
+.cta-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   overflow: hidden;
+  border-radius: 9999px;
+  padding: 0.625rem 1.25rem;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background-image: linear-gradient(110deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
-.mobile-menu-enter-from,
-.mobile-menu-leave-to {
+.cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+.cta-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+.cta-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+.cta-sheen {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%) skewX(-20deg);
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cta-btn:hover .cta-sheen {
+  transform: translateX(100%) skewX(-20deg);
+}
+
+/* ── Dropdown menu rows ─────────────────────────────────────────── */
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-mid);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.menu-row:hover {
+  color: var(--color-primary);
+  background-color: var(--color-sand);
+}
+.menu-row--accent {
+  color: var(--color-accent);
+}
+.menu-row--danger {
+  color: #ef4444;
+}
+.menu-row--danger:hover {
+  color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.menu-caption {
+  padding: 0.625rem 1rem 0.25rem;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text-muted) 75%, transparent);
+}
+
+.menu-item.router-link-active {
+  background-color: var(--color-sand);
+}
+
+/* ── Mobile full-screen sheet ───────────────────────────────────── */
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 1rem;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-mid);
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+}
+.sheet-row:active {
+  transform: scale(0.98);
+}
+.sheet-row:hover {
+  color: var(--color-primary);
+  background-color: var(--color-sand);
+}
+.sheet-row--active {
+  color: var(--color-primary);
+  font-weight: 800;
+  background-color: color-mix(in srgb, var(--color-primary) 7%, transparent);
+}
+.sheet-row--accent {
+  color: var(--color-accent);
+}
+.sheet-row--danger {
+  color: #ef4444;
+}
+.sheet-row--danger:hover {
+  color: #ef4444;
+  background-color: #fef2f2;
+}
+
+/* Items cascade in each time the sheet mounts. `backwards` (not `both`) so the
+   animation releases `transform` on finish and .sheet-row:active can scale. */
+.sheet-item {
+  animation: sheetItemIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes sheetItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sheet-enter-active,
+.sheet-leave-active {
+  transition: opacity 0.28s ease;
+}
+.sheet-enter-active .sheet-panel,
+.sheet-leave-active .sheet-panel {
+  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sheet-enter-from,
+.sheet-leave-to {
   opacity: 0;
-  max-height: 0;
-  transform: translateY(-8px);
 }
-.mobile-menu-enter-to,
-.mobile-menu-leave-from {
-  opacity: 1;
-  max-height: 500px;
-  transform: translateY(0);
+.sheet-enter-from .sheet-panel,
+.sheet-leave-to .sheet-panel {
+  transform: translateY(1.5rem);
 }
 
 /* Mobile nested dropdown transition */
@@ -1099,31 +1354,9 @@ async function handleLogout() {
   transform: translateY(0);
 }
 
-/* Active route highlight */
-.nav-link.router-link-active,
-.nav-link.router-link-exact-active,
-.nav-link.active-state,
-.mobile-nav-link.router-link-active,
-.mobile-nav-link.router-link-exact-active,
-.mobile-nav-link.active-state {
-  color: var(--color-primary) !important;
-  background-color: rgba(var(--color-primary-rgb), 0.08) !important;
-}
-
-.nav-link.router-link-active span.material-symbols-rounded,
-.mobile-nav-link.router-link-active span.material-symbols-rounded,
-.filled-icon {
-  font-variation-settings: 'FILL' 1 !important;
-}
-
-/* Glassmorphism for dropdowns */
-.bg-white\/98 {
-  background-color: rgba(255, 255, 255, 0.98);
-}
-
-/* Dropdown animation with fade and slide */
+/* Dropdown panel entrance */
 .animation-fade-slide {
-  animation: fadeSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeSlide {
@@ -1136,19 +1369,20 @@ async function handleLogout() {
     transform: translateY(0);
   }
 }
-
-/* Icon Hover Micro-interactions */
-.nav-link {
-  transition: all 0.3s ease;
+/* The mega panel is horizontally centred, so its entrance must keep that translate. */
+.animation-fade-slide.-translate-x-1\/2 {
+  animation-name: fadeSlideCentered;
 }
 
-.nav-link span.material-symbols-rounded {
-  display: inline-block;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.nav-link:hover span.material-symbols-rounded:not(.filled-icon) {
-  font-variation-settings: 'FILL' 0;
+@keyframes fadeSlideCentered {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 /* Trust Bar Animation */
@@ -1162,10 +1396,16 @@ async function handleLogout() {
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .mobile-menu-enter-active,
-  .mobile-menu-leave-active,
+  .nav-pill,
+  .cta-sheen,
+  .sheet-item,
+  .sheet-enter-active,
+  .sheet-leave-active,
+  .sheet-enter-active .sheet-panel,
+  .sheet-leave-active .sheet-panel,
   .mobile-submenu-enter-active,
   .mobile-submenu-leave-active,
+  .animation-fade-slide,
   .animate-trust-bar {
     transition: none;
     animation: none;
