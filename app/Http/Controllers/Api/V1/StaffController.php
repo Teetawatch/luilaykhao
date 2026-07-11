@@ -16,7 +16,7 @@ class StaffController extends Controller
 
     public function mySchedules(Request $request): JsonResponse
     {
-        if (!$request->user()->hasRole('staff')) {
+        if (! $request->user()->hasRole('staff')) {
             return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
         }
 
@@ -46,37 +46,52 @@ class StaffController extends Controller
                 // needs the headcount, matching the admin manifest endpoint.
                 $bookings = Booking::where('schedule_id', $s->id)
                     ->whereIn('status', ['confirmed', 'completed'])
-                    ->with(['passengers:id,booking_id,pickup_point_id'])
+                    ->with(['passengers:id,booking_id,pickup_point_id,name,nickname,phone'])
                     ->get(['id', 'pickup_point_id', 'checked_in']);
 
-                // Flatten each booking into per-passenger rows so headcount
-                // and per-pickup tallies are accurate.
+                // Flatten each booking into per-passenger rows so headcount,
+                // per-pickup tallies and the per-point roster are all accurate.
                 $passengerRows = $bookings->flatMap(function ($b) {
                     return $b->passengers->map(fn ($p) => [
                         // Passengers can override the booking-level pickup
                         // (added 2026-05); fall back to the booking when null.
                         'pickup_point_id' => $p->pickup_point_id ?? $b->pickup_point_id,
                         'checked_in' => (bool) $b->checked_in,
+                        'name' => trim((string) ($p->nickname ?: $p->name)) ?: 'ผู้โดยสาร',
+                        'phone' => $p->phone,
                     ]);
                 });
 
                 $totalConfirmed = $passengerRows->count();
                 $checkedInCount = $passengerRows->where('checked_in', true)->count();
 
+                // แปลงกลุ่มผู้โดยสารเป็นรายชื่อย่อ (ชื่อ/เบอร์/สถานะเช็คอิน) ให้แอป
+                // กดขยายแต่ละจุดแล้วเห็นว่าใครขึ้นจุดไหนได้เลย
+                $roster = fn ($rows) => $rows
+                    ->map(fn ($r) => [
+                        'name' => $r['name'],
+                        'phone' => $r['phone'],
+                        'checked_in' => $r['checked_in'],
+                    ])
+                    ->values();
+
                 $pickupBreakdown = $s->pickupPoints
-                    ->map(function ($point) use ($passengerRows) {
-                        $count = $passengerRows->where('pickup_point_id', $point->id)->count();
+                    ->map(function ($point) use ($passengerRows, $roster) {
+                        $rows = $passengerRows->where('pickup_point_id', $point->id);
+
                         return [
                             'id' => $point->id,
                             'label' => $point->pickup_location ?: $point->region_label,
                             'region_label' => $point->region_label,
-                            'passenger_count' => $count,
+                            'passenger_count' => $rows->count(),
+                            'passengers' => $roster($rows),
                         ];
                     })
                     ->filter(fn ($p) => $p['passenger_count'] > 0)
                     ->values();
 
-                $noPickupCount = $passengerRows->whereNull('pickup_point_id')->count();
+                $noPickupRows = $passengerRows->whereNull('pickup_point_id');
+                $noPickupCount = $noPickupRows->count();
 
                 return [
                     'id' => $s->id,
@@ -101,6 +116,7 @@ class StaffController extends Controller
                     'checked_in_count' => $checkedInCount,
                     'pickup_breakdown' => $pickupBreakdown,
                     'no_pickup_count' => $noPickupCount,
+                    'no_pickup_passengers' => $roster($noPickupRows),
                 ];
             })->values(),
         ]);
@@ -108,7 +124,7 @@ class StaffController extends Controller
 
     public function myReviews(Request $request): JsonResponse
     {
-        if (!$request->user()->hasRole('staff')) {
+        if (! $request->user()->hasRole('staff')) {
             return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
         }
 
@@ -146,7 +162,7 @@ class StaffController extends Controller
         $isAssigned = $booking->schedule?->staff
             ?->contains(fn ($staff) => (int) $staff->id === (int) $validated['staff_user_id']);
 
-        if (!$isAssigned) {
+        if (! $isAssigned) {
             return $this->error('ไม่พบสตาฟคนนี้ในรอบเดินทางของการจองนี้', 422);
         }
 

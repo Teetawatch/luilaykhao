@@ -122,6 +122,51 @@ class StaffMySchedulesTest extends TestCase
         $breakdown = collect($payload['pickup_breakdown'])->keyBy('id');
         $this->assertSame(2, $breakdown[$pointA->id]['passenger_count']);
         $this->assertSame(1, $breakdown[$pointB->id]['passenger_count']);
+
+        // แต่ละจุดพกรายชื่อผู้โดยสารมาด้วย (ให้แอปกดขยายเห็นว่าใครขึ้นจุดไหน)
+        $namesA = collect($breakdown[$pointA->id]['passengers'])->pluck('name')->sort()->values();
+        $this->assertSame(['Passenger A1', 'Passenger A2'], $namesA->all());
+        $this->assertSame('Passenger B1', $breakdown[$pointB->id]['passengers'][0]['name']);
+    }
+
+    public function test_pickup_roster_prefers_nickname_and_bundles_unassigned(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $point = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'north',
+            'region_label' => 'โซนเหนือ',
+            'pickup_location' => 'ปั๊ม ปตท. A',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+
+        $booking = $this->makeBooking($schedule, passengerCount: 0, pickupPointId: $point->id);
+        BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'สมชาย ใจดี',
+            'nickname' => 'ชาย',
+            'phone' => '0811111111',
+        ]);
+        // ผู้โดยสารที่ไม่ได้ระบุจุด → เข้ากลุ่ม no_pickup_passengers
+        $this->makeBooking($schedule, passengerCount: 1);
+
+        $payload = $this->actingAs($staff, 'sanctum')
+            ->getJson('/api/v1/staff/schedules/my')
+            ->json('data.schedules.0');
+
+        $roster = collect($payload['pickup_breakdown'])->firstWhere('id', $point->id);
+        $this->assertSame('ชาย', $roster['passengers'][0]['name']); // ใช้ชื่อเล่นก่อน
+        $this->assertSame('0811111111', $roster['passengers'][0]['phone']);
+
+        $this->assertSame(1, $payload['no_pickup_count']);
+        $this->assertCount(1, $payload['no_pickup_passengers']);
     }
 
     public function test_manifest_groups_passengers_by_pickup_with_full_info_and_vehicle(): void
