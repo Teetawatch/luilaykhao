@@ -333,14 +333,18 @@
       </div>
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
-          <div>
-            <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">ทริปยอดฮิต</span>
-            <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">ประสบการณ์ยอดนิยม</h2>
+        <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-12 md:mb-16 gap-8">
+          <div class="max-w-xl">
+            <div class="inline-flex items-center gap-2 mb-4 pl-2.5 pr-3.5 py-1.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/15">
+              <span class="material-symbols-rounded text-[17px]" style="font-variation-settings:'FILL' 1">local_fire_department</span>
+              <span class="text-xs font-bold tracking-[0.14em] uppercase">ทริปยอดฮิต</span>
+            </div>
+            <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">ประสบการณ์ยอดนิยม</h2>
+            <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed">คัดสรรทริปที่นักเดินทางเลือกมากที่สุด พร้อมรีวิวจริงจากผู้ร่วมทาง</p>
           </div>
           <router-link
             to="/trips"
-            class="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border-2 border-gray-100 hover:border-[var(--color-accent)] text-[var(--color-text-dark)] hover:text-[var(--color-accent)] font-bold transition-all duration-300"
+            class="group shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border-2 border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] text-[var(--color-text-dark)] hover:text-[var(--color-accent)] font-bold transition-all duration-300"
           >
             ดูทั้งหมด
             <span class="material-symbols-rounded text-[20px] group-hover:translate-x-1 transition-transform duration-300">arrow_right_alt</span>
@@ -356,102 +360,98 @@
         </div>
 
         <!-- Cards Grid -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-7">
           <router-link
             v-for="trip in trips"
             :key="trip.id"
             :to="`/trips/${trip.slug}`"
-            class="group flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100 hover:border-transparent hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-300 transform hover:-translate-y-2"
+            class="group relative flex flex-col bg-white rounded-[1.75rem] overflow-hidden ring-1 ring-black/[0.05] shadow-[0_2px_14px_rgba(13,43,30,0.05)] hover:shadow-[0_28px_54px_-14px_rgba(13,43,30,0.28)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2"
           >
-            <!-- Image Container -->
-            <div class="relative overflow-hidden aspect-[4/5] m-2 rounded-[1.5rem]">
+            <!-- Image -->
+            <div class="relative overflow-hidden aspect-[4/5]">
               <img
                 v-if="trip.thumbnail_image || trip.cover_image"
                 :src="trip.thumbnail_image || trip.cover_image"
                 :alt="trip.title"
-                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                class="w-full h-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.09]"
                 @error="(e) => e.target.style.display='none'"
               />
-              <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center">
+              <div v-else class="w-full h-full bg-[var(--color-sand)] flex items-center justify-center">
                 <span class="material-symbols-rounded text-gray-300 text-5xl">image</span>
               </div>
-              
+
               <!-- Gradient Overlay -->
-              <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
-              
-              <!-- Badges -->
-              <div class="absolute top-4 left-4 flex flex-col gap-2">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"></div>
+
+              <!-- Top row: type badge + wishlist -->
+              <div class="absolute top-3.5 left-3.5 right-3.5 flex items-start justify-between gap-2">
                 <span
-                  class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide shadow-lg backdrop-blur-md"
+                  class="px-3 py-1.5 rounded-full text-[11px] font-black tracking-wide shadow-lg backdrop-blur-md"
                   :class="typeBadgeClass(trip.type)"
                 >
                   {{ typeLabel(trip.type) }}
                 </span>
-              </div>
-              
-              <!-- Wishlist -->
-              <button
-                class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full border-2 cursor-pointer active:scale-75 backdrop-blur-[2px] z-20"
-                :class="wishlistStore.isFavorite(trip.id) 
-                  ? 'border-red-500 text-red-500 bg-white/10 shadow-sm' 
-                  : 'border-white/60 text-white hover:border-white hover:bg-black/10 shadow-sm'"
-                @click.prevent="wishlistStore.toggleFavorite(trip)"
-                aria-label="บันทึกรายการโปรด"
-              >
-                <span 
-                  class="material-symbols-rounded text-[20px]"
-                  :style="wishlistStore.isFavorite(trip.id) ? 'font-variation-settings:\'FILL\' 1' : ''"
+                <button
+                  class="w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full border cursor-pointer active:scale-75 backdrop-blur-md z-20"
+                  :class="wishlistStore.isFavorite(trip.id)
+                    ? 'border-red-400/80 text-red-500 bg-white/90 shadow-md'
+                    : 'border-white/50 text-white bg-black/15 hover:bg-black/30'"
+                  @click.prevent="wishlistStore.toggleFavorite(trip)"
+                  aria-label="บันทึกรายการโปรด"
                 >
-                  favorite
-                </span>
-              </button>
-              
-              <!-- Location / Duration indicator -->
-              <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center text-white">
-                <div class="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full">
+                  <span
+                    class="material-symbols-rounded text-[19px]"
+                    :style="wishlistStore.isFavorite(trip.id) ? 'font-variation-settings:\'FILL\' 1' : ''"
+                  >
+                    favorite
+                  </span>
+                </button>
+              </div>
+
+              <!-- Bottom chips: location + duration -->
+              <div class="absolute bottom-3.5 left-3.5 right-3.5 flex items-center gap-2 text-white">
+                <div v-if="trip.location" class="min-w-0 flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-2.5 py-1.5 rounded-full">
+                  <span class="material-symbols-rounded text-[14px] shrink-0">location_on</span>
+                  <span class="text-xs font-bold truncate">{{ trip.location }}</span>
+                </div>
+                <div class="ml-auto shrink-0 flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-2.5 py-1.5 rounded-full">
                   <span class="material-symbols-rounded text-[14px]">schedule</span>
                   <span class="text-xs font-bold">{{ trip.duration_days || 1 }} วัน</span>
                 </div>
               </div>
             </div>
-            
+
             <!-- Info -->
             <div class="p-5 flex-1 flex flex-col">
-              <div class="flex items-center gap-1.5 mb-2">
-                <div class="flex text-[#FFB020] gap-0.5">
-                  <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">star</span>
-                </div>
+              <div class="flex items-center gap-1.5 mb-2.5 min-h-[22px]">
+                <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
                 <template v-if="trip.review_count > 0">
                   <span class="text-[var(--color-text-dark)] font-bold text-sm">{{ Number(trip.rating).toFixed(1) }}</span>
                   <span class="text-gray-400 text-xs font-medium">({{ trip.review_count }} รีวิว)</span>
                 </template>
-                <div v-if="trip.confirmed_passengers_count > 0" class="ml-auto flex items-center gap-1 text-[var(--color-accent)] font-bold text-xs bg-[var(--color-accent-light)]/10 px-2 py-0.5 rounded-full">
+                <span v-else class="text-gray-400 text-xs font-medium">ทริปใหม่</span>
+                <div v-if="trip.confirmed_passengers_count > 0" class="ml-auto flex items-center gap-1 text-[var(--color-accent)] font-bold text-xs bg-[var(--color-accent)]/10 px-2 py-0.5 rounded-full">
                   <span class="material-symbols-rounded text-[14px]">group</span>
                   <span>{{ trip.confirmed_passengers_count }} คน</span>
                 </div>
-                <span v-else class="text-gray-400 text-xs font-medium italic">ยังไม่มีรีวิว</span>
               </div>
-              
-              <h4 class="text-[1.1rem] font-extrabold text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">
+
+              <h4 class="text-[1.1rem] font-extrabold text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">
                 {{ trip.title }}
               </h4>
-              
-              <div class="mt-auto pt-4 flex justify-between items-end border-t border-gray-100">
-                <div class="flex flex-col">
-                  <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">
+
+              <div class="mt-auto pt-4 flex justify-between items-end border-t border-[var(--color-sand-dark)]">
+                <div class="flex flex-col min-w-0">
+                  <span class="text-[11px] text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">
                     {{ Number(trip.min_price) != Number(trip.max_price) ? 'ช่วงราคา' : 'เริ่มต้น' }}
                   </span>
-                  <div class="flex items-baseline gap-1">
-                    <template v-if="Number(trip.min_price) != Number(trip.max_price)">
-                      <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}</span>
-                    </template>
-                    <template v-else>
-                      <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }}</span>
-                    </template>
-                  </div>
+                  <span class="text-xl font-black text-[var(--color-text-dark)] truncate">
+                    <template v-if="Number(trip.min_price) != Number(trip.max_price)">฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}</template>
+                    <template v-else>฿{{ Number(trip.min_price).toLocaleString() }}</template>
+                  </span>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-colors duration-300">
-                  <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+                <div class="shrink-0 w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300 group-hover:shadow-[0_8px_18px_rgba(45,122,79,0.35)]">
+                  <span class="material-symbols-rounded text-[20px] transition-transform duration-300 group-hover:translate-x-0.5">arrow_forward</span>
                 </div>
               </div>
             </div>
