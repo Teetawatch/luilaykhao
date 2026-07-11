@@ -264,6 +264,10 @@ Route::prefix('v1')->group(function () {
             Route::get('schedules/{id}/manifest', [DriverController::class, 'scheduleManifest']);
             Route::post('schedules/{id}/pickup-points/{pointId}/complete', [DriverController::class, 'completePickup']);
             Route::post('schedules/{id}/depart', [DriverController::class, 'markDeparted']);
+
+            // Pre-trip vehicle inspection (driver-only safety checklist)
+            Route::get('schedules/{id}/inspection', [DriverController::class, 'inspection']);
+            Route::post('schedules/{id}/inspection', [DriverController::class, 'storeInspection']);
             Route::post('check-in/lookup', [DriverController::class, 'lookupCheckIn']);
             Route::post('check-in', [DriverController::class, 'checkIn']);
 

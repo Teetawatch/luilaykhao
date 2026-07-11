@@ -9,6 +9,7 @@ use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Models\VehicleInspection;
 use App\Services\ChatService;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -404,11 +405,17 @@ class DriverController extends Controller
             ->get();
 
         $manifest = $bookings->map(function (Booking $booking) {
+            // Each passenger's assigned seat, matched by name the same way the
+            // seat map overlays occupants. Null when this booking has no seats
+            // (charters / join trips).
+            $seatByName = $booking->seats->keyBy(fn ($seat) => trim((string) $seat->passenger_name));
+
             $passengers = $booking->passengers
                 ->map(fn ($passenger) => [
                     'name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
                     'nickname' => $passenger->nickname,
                     'phone' => $passenger->phone,
+                    'seat_label' => $seatByName->get(trim((string) $passenger->name))?->seat_id,
                 ])
                 ->values();
 
@@ -430,6 +437,9 @@ class DriverController extends Controller
                 'checked_in_at' => $booking->checked_in_at?->toIso8601String(),
                 'contact_name' => $booking->user?->name,
                 'contact_phone' => $booking->user?->phone,
+                // Booking owner's profile photo (only when a real avatar was
+                // uploaded — passengers have no photo of their own).
+                'contact_avatar_url' => $booking->user?->avatar ? $booking->user->avatar_url : null,
                 'is_group' => (bool) $booking->is_group,
                 'group_name' => $booking->group_name,
                 'pickup_region' => $booking->pickup_region,
@@ -535,6 +545,9 @@ class DriverController extends Controller
                 && $booking->custom_pickup_lng !== null
                 && $booking->custom_pickup_status !== 'rejected';
 
+            // Seat each passenger occupies, matched by name (same as seat map).
+            $seatByName = $booking->seats->keyBy(fn ($seat) => trim((string) $seat->passenger_name));
+
             foreach ($booking->passengers as $passenger) {
                 // จุดปักหมุดเองเป็นระดับการจอง — ถ้าการจองใช้หมุด ผู้โดยสารทุกคนอยู่กลุ่มหมุดนั้น
                 // (ไม่สนจุดรับรายคนที่อาจค้างจากตอนจองด้วยจุดตายตัวแล้วแอดมินเปลี่ยนเป็นหมุดภายหลัง)
@@ -567,6 +580,8 @@ class DriverController extends Controller
                                 ? ($point->pickup_location ?: $point->region_label ?: 'จุดรับ')
                                 : 'ไม่ระบุจุดรับ',
                             'region_label' => $point?->region_label,
+                            'lat' => $point?->latitude,
+                            'lng' => $point?->longitude,
                             'map_url' => $point?->map_url,
                             'notes' => $point?->notes,
                             'is_custom' => false,
@@ -582,6 +597,7 @@ class DriverController extends Controller
                     'full_name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
                     'nickname' => $passenger->nickname,
                     'phone' => $passenger->phone ?: $booking->user?->phone,
+                    'seat_label' => $seatByName->get(trim((string) $passenger->name))?->seat_id,
                     'checked_in' => (bool) $booking->checked_in,
                     'booking_ref' => $booking->booking_ref,
                     // Profile photo of the account that made the booking (only when
@@ -824,5 +840,113 @@ class DriverController extends Controller
             ['notified' => $bookings->count(), 'already_sent' => false],
             'ส่งแจ้งเตือนออกเดินทางให้ผู้โดยสารแล้ว'
         );
+    }
+
+    /**
+     * Pre-trip vehicle inspection: the checklist template plus this schedule's
+     * latest submission (so the app knows whether the driver already inspected).
+     */
+    public function inspection(Request $request, int $id): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
+        $schedule = TripSchedule::with(['vehicle', 'staff'])->find($id);
+        if (! $schedule) {
+            return $this->error('ไม่พบรอบเดินทางนี้', 404);
+        }
+        if (! $this->canAccessSchedule($request, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์ดูรอบเดินทางนี้', 403);
+        }
+
+        $latest = VehicleInspection::with('inspector')
+            ->where('schedule_id', $schedule->id)
+            ->latest()
+            ->first();
+
+        return $this->success([
+            'template' => VehicleInspection::ITEMS,
+            'latest' => $latest ? $this->presentInspection($latest) : null,
+        ]);
+    }
+
+    /** Record a pre-trip inspection for a schedule. */
+    public function storeInspection(Request $request, int $id): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
+        $schedule = TripSchedule::with(['vehicle', 'staff'])->find($id);
+        if (! $schedule) {
+            return $this->error('ไม่พบรอบเดินทางนี้', 404);
+        }
+        if (! $this->canAccessSchedule($request, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์ตรวจรอบเดินทางนี้', 403);
+        }
+
+        $allowed = array_keys(VehicleInspection::itemsByKey());
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.key' => ['required', 'string', 'in:'.implode(',', $allowed)],
+            'items.*.ok' => ['required', 'boolean'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+        ]);
+
+        // Merge the client's ok-flags onto the canonical template so labels /
+        // critical flags are trusted from the server, not the request.
+        $byKey = collect($validated['items'])->keyBy('key');
+        $items = [];
+        $passed = true;
+        $criticalFailed = false;
+        foreach (VehicleInspection::ITEMS as $item) {
+            $ok = (bool) ($byKey[$item['key']]['ok'] ?? false);
+            $items[] = [
+                'key' => $item['key'],
+                'label' => $item['label'],
+                'critical' => $item['critical'],
+                'ok' => $ok,
+            ];
+            if (! $ok) {
+                $passed = false;
+                if ($item['critical']) {
+                    $criticalFailed = true;
+                }
+            }
+        }
+
+        $inspection = VehicleInspection::create([
+            'schedule_id' => $schedule->id,
+            'vehicle_id' => $schedule->vehicle_id,
+            'inspected_by' => $request->user()->id,
+            'items' => $items,
+            'passed' => $passed,
+            'critical_failed' => $criticalFailed,
+            'note' => $validated['note'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+        ]);
+
+        return $this->success(
+            $this->presentInspection($inspection->fresh('inspector')),
+            $passed ? 'บันทึกผลตรวจสภาพรถแล้ว' : 'บันทึกผลตรวจแล้ว • มีรายการไม่ผ่าน'
+        );
+    }
+
+    private function presentInspection(VehicleInspection $inspection): array
+    {
+        return [
+            'id' => $inspection->id,
+            'schedule_id' => $inspection->schedule_id,
+            'items' => $inspection->items,
+            'passed' => (bool) $inspection->passed,
+            'critical_failed' => (bool) $inspection->critical_failed,
+            'note' => $inspection->note,
+            'inspected_by_name' => $inspection->inspector?->name,
+            'created_at' => $inspection->created_at?->toIso8601String(),
+        ];
     }
 }

@@ -294,6 +294,118 @@ class StaffMySchedulesTest extends TestCase
         $this->assertNull($data['seat_map']);
     }
 
+    public function test_manifest_bookings_carry_seat_label_and_owner_avatar(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $owner = User::factory()->create(['avatar' => 'https://cdn.example.com/me.jpg']);
+        $booking = Booking::create([
+            'booking_ref' => sprintf('TEST-%s-9999', now()->format('Ymd')),
+            'user_id' => $owner->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+        BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'title' => 'นาย',
+            'name' => 'สมชาย ใจดี',
+            'phone' => '0811111111',
+        ]);
+        BookingSeat::create([
+            'booking_id' => $booking->id,
+            'schedule_id' => $schedule->id,
+            'seat_id' => 'B3',
+            'passenger_name' => 'สมชาย ใจดี',
+        ]);
+
+        $data = $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->json('data');
+
+        $entry = collect($data['bookings'])->firstWhere('booking_ref', $booking->booking_ref);
+        $this->assertNotNull($entry);
+        $this->assertSame('https://cdn.example.com/me.jpg', $entry['contact_avatar_url']);
+
+        $passenger = $entry['passengers'][0];
+        $this->assertSame('นาย สมชาย ใจดี', $passenger['name']);
+        $this->assertSame('B3', $passenger['seat_label']);
+    }
+
+    public function test_pickup_group_carries_point_coords_and_passenger_seat(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $point = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'north',
+            'region_label' => 'โซนเหนือ',
+            'pickup_location' => 'ปั๊ม ปตท. A',
+            'price' => 0,
+            'latitude' => 13.75,
+            'longitude' => 100.5,
+            'sort_order' => 1,
+        ]);
+
+        $booking = $this->makeBooking($schedule, passengerCount: 0, pickupPointId: $point->id);
+        BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'สมชาย ใจดี',
+            'phone' => '0811111111',
+        ]);
+        BookingSeat::create([
+            'booking_id' => $booking->id,
+            'schedule_id' => $schedule->id,
+            'seat_id' => 'C4',
+            'passenger_name' => 'สมชาย ใจดี',
+        ]);
+
+        $data = $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->json('data');
+
+        $group = collect($data['pickup_groups'])->firstWhere('label', 'ปั๊ม ปตท. A');
+        $this->assertNotNull($group);
+        $this->assertEqualsWithDelta(13.75, $group['lat'], 0.0001);
+        $this->assertEqualsWithDelta(100.5, $group['lng'], 0.0001);
+        $this->assertSame('C4', $group['passengers'][0]['seat_label']);
+    }
+
+    public function test_manifest_seat_label_is_null_without_seat_assignment(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $booking = $this->makeBooking($schedule, passengerCount: 1);
+
+        $data = $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/driver/schedules/{$schedule->id}/manifest")
+            ->assertOk()
+            ->json('data');
+
+        $entry = collect($data['bookings'])->firstWhere('booking_ref', $booking->booking_ref);
+        $this->assertNull($entry['passengers'][0]['seat_label']);
+        $this->assertNull($entry['contact_avatar_url']);
+    }
+
     private function makeSchedule(): TripSchedule
     {
         $trip = Trip::create([
