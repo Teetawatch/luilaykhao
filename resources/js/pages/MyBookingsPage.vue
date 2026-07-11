@@ -1,13 +1,26 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32 font-anuphan">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32 font-anuphan relative overflow-hidden">
+
+    <!-- Background Decor -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[420px] bg-gradient-to-b from-[#E3F2F2]/70 to-transparent -z-0 pointer-events-none"></div>
+    <div class="absolute -top-24 -right-32 w-96 h-96 bg-[#006565]/5 rounded-full blur-3xl -z-0 pointer-events-none"></div>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
 
       <!-- Page Header -->
-      <section class="mb-8 relative">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          การจองของฉัน
-        </h1>
-        <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+      <section class="mb-8">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-[18px] bg-[#006565] flex items-center justify-center shrink-0 shadow-lg shadow-[#006565]/25">
+            <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">luggage</span>
+          </div>
+          <div>
+            <p class="text-[11px] font-bold text-[#008080] uppercase tracking-[0.18em] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แผนการเดินทางของคุณ</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-[#1a1c1c] tracking-tight leading-none" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              การจองของฉัน
+            </h1>
+          </div>
+        </div>
+        <p class="text-[#505E5E] text-sm mt-3.5 ml-[4.5rem]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           จัดการแผนการเดินทางที่แสนพิเศษของคุณได้ที่นี่
         </p>
       </section>
@@ -16,26 +29,30 @@
       <MyWaitlist />
 
       <!-- Tabs -->
-      <div class="flex gap-2 mb-8 bg-[#E8EEEF] p-1.5 rounded-[16px] w-fit shadow-inner">
+      <div class="flex gap-1.5 mb-8 bg-white/70 backdrop-blur-sm p-1.5 rounded-[16px] w-fit shadow-sm border border-[#E8EEEF]">
         <button
           @click="activeTab = 'upcoming'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'upcoming'
-            ? 'bg-white text-[#006565] shadow-sm'
-            : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
+            ? 'bg-[#006565] text-white shadow-md shadow-[#006565]/20'
+            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'"
           style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'upcoming' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">event_upcoming</span>
           ที่กำลังจะมาถึง
+          <span v-if="upcomingCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
+            :class="activeTab === 'upcoming' ? 'bg-white/25 text-white' : 'bg-[#E8EEEF] text-[#505E5E]'">{{ upcomingCount }}</span>
         </button>
         <button
           @click="activeTab = 'past'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'past'
-            ? 'bg-white text-[#006565] shadow-sm'
-            : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
+            ? 'bg-[#006565] text-white shadow-md shadow-[#006565]/20'
+            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'"
           style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'past' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">history</span>
           ที่ผ่านมาแล้ว
+          <span v-if="pastCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
+            :class="activeTab === 'past' ? 'bg-white/25 text-white' : 'bg-[#E8EEEF] text-[#505E5E]'">{{ pastCount }}</span>
         </button>
       </div>
 
@@ -46,10 +63,11 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="filteredBookings.length === 0" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] relative overflow-hidden">
+      <div v-else-if="filteredBookings.length === 0" class="text-center py-20 bg-white rounded-[28px] shadow-sm border border-[#E8EEEF] relative overflow-hidden">
+        <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#E3F2F2]/40 rounded-full blur-3xl"></div>
         <div class="relative z-10 flex flex-col items-center px-4">
-          <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
-            <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">
+          <div class="w-24 h-24 bg-gradient-to-br from-[#F4F7F6] to-[#E8EEEF] rounded-full flex items-center justify-center mb-5 border border-[#E8EEEF]">
+            <span class="material-symbols-rounded text-[44px] text-[#8FA5A5]">
               {{ activeTab === 'upcoming' ? 'event_busy' : 'history_toggle_off' }}
             </span>
           </div>
@@ -74,34 +92,40 @@
         <article
           v-for="b in filteredBookings"
           :key="b.id"
-          class="bg-white rounded-[20px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] shadow-sm transition-all duration-300 hover:shadow-md hover:border-[#006565]/30 relative"
+          class="bg-white rounded-[24px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-[#006565]/5 hover:border-[#006565]/25 hover:-translate-y-0.5 relative"
           :class="{ 'opacity-80': b.status === 'cancelled' || b.status === 'refunded' }">
-          
-          <div class="absolute top-0 left-0 w-1.5 h-full bg-[#006565] z-10" v-if="b.status === 'confirmed'"></div>
-          <div class="absolute top-0 left-0 w-1.5 h-full bg-[#D97706] z-10" v-if="b.status === 'pending'"></div>
+
+          <div class="absolute top-0 left-0 w-1.5 h-full bg-[#006565] z-20" v-if="b.status === 'confirmed'"></div>
+          <div class="absolute top-0 left-0 w-1.5 h-full bg-[#D97706] z-20" v-if="b.status === 'pending'"></div>
 
           <!-- Image -->
-          <div class="md:w-[240px] h-48 md:h-auto relative overflow-hidden shrink-0"
+          <div class="md:w-[260px] h-52 md:h-auto relative overflow-hidden shrink-0"
             :class="{ 'grayscale opacity-75': b.status === 'cancelled' || b.status === 'refunded' }">
             <img
               :src="b.schedule.trip.thumbnail_image || b.schedule.trip.cover_image"
               :alt="b.schedule?.trip?.title"
-              class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-            
-            <!-- Date Badge on Image (Mobile only) -->
-            <div class="absolute top-4 left-4 md:hidden bg-white px-3 py-1.5 rounded-[12px] shadow-sm flex flex-col items-center leading-tight">
-              <span class="text-[10px] font-bold text-[#889696] uppercase" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">{{ getMonthShort(b.schedule?.departure_date) }}</span>
-              <span class="text-base font-extrabold text-[#1a1c1c]">{{ getDay(b.schedule?.departure_date) }}</span>
+              class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-black/5"></div>
+
+            <!-- Date Badge on Image -->
+            <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-[14px] shadow-lg flex flex-col items-center leading-none">
+              <span class="text-[10px] font-bold text-[#008080] uppercase tracking-wide mb-0.5" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">{{ getMonthShort(b.schedule?.departure_date) }}</span>
+              <span class="text-xl font-extrabold text-[#1a1c1c]">{{ getDay(b.schedule?.departure_date) }}</span>
             </div>
+
+            <!-- Title overlay (mobile) -->
+            <h2 class="absolute bottom-4 left-4 right-4 md:hidden text-white text-lg font-bold leading-snug line-clamp-2 drop-shadow-md" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              {{ b.schedule?.trip?.title || 'การจอง' }}
+            </h2>
           </div>
 
           <!-- Content -->
           <div class="p-5 md:p-6 flex-1 flex flex-col relative w-full">
             <div class="flex flex-col sm:flex-row justify-between items-start mb-3 gap-3">
-              <h2 class="text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              <h2 class="hidden md:block text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 {{ b.schedule?.trip?.title || 'การจอง' }}
               </h2>
-              <div class="flex flex-col items-end gap-2 shrink-0">
+              <div class="flex flex-col items-start sm:items-end gap-2 shrink-0 w-full sm:w-auto">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] flex items-center gap-1.5 whitespace-nowrap"
                   :class="statusClass(b.status)"
                   style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
@@ -126,7 +150,7 @@
                 </div>
                 <div class="text-right shrink-0" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span class="text-[10px] text-[#889696] font-bold block mb-0.5 uppercase tracking-wider">หมายเลขการจอง</span>
-                  <span class="font-bold text-[#1a1c1c]">{{ b.booking_ref }}</span>
+                  <span class="font-bold text-[#1a1c1c] font-mono">{{ b.booking_ref }}</span>
                 </div>
               </div>
             </div>
@@ -564,6 +588,13 @@ const filteredBookings = computed(() => {
       : pastStatuses.includes(b.status)
   );
 });
+
+const upcomingCount = computed(() =>
+  bookingStore.bookings.filter(b => upcomingStatuses.includes(b.status)).length
+);
+const pastCount = computed(() =>
+  bookingStore.bookings.filter(b => pastStatuses.includes(b.status)).length
+);
 
 const statusMap = {
   pending:   'รอชำระเงิน',

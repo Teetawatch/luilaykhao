@@ -310,6 +310,105 @@
               </div>
             </section>
 
+            <!-- ── Trip Team: Staff & Driver ── -->
+            <section v-if="hasTeam" class="bg-white rounded-[2.5rem] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
+              <!-- Header Band -->
+              <div class="relative bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800 px-6 md:px-10 py-7 overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="absolute -left-8 -bottom-12 w-40 h-40 bg-amber-300/10 rounded-full blur-2xl"></div>
+                <div class="relative z-10 flex items-center gap-4">
+                  <div class="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 shrink-0">
+                    <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">diversity_3</span>
+                  </div>
+                  <div>
+                    <p class="text-[10px] font-black tracking-[0.2em] text-teal-100 uppercase mb-1">ทีมงานดูแลทริปของคุณ</p>
+                    <h3 class="text-xl md:text-2xl font-black text-white leading-tight">พร้อมดูแลคุณตลอดการเดินทาง</h3>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-6 md:p-10 space-y-6">
+                <!-- Driver Card (highlighted) -->
+                <div v-if="driver" class="relative rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50/70 to-white p-5 md:p-6 overflow-hidden">
+                  <span class="absolute top-5 right-5 text-[10px] font-black tracking-widest text-teal-700 bg-teal-100 px-3 py-1.5 rounded-full uppercase flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">directions_bus</span>
+                    คนขับรถ
+                  </span>
+                  <div class="flex items-start gap-4 md:gap-5">
+                    <!-- Avatar -->
+                    <div class="shrink-0">
+                      <img v-if="driver.photo" :src="driver.photo" :alt="driver.name"
+                        class="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border-2 border-white shadow-lg shadow-teal-900/10" />
+                      <div v-else class="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-teal-600 text-white flex items-center justify-center border-2 border-white shadow-lg shadow-teal-900/10">
+                        <span class="text-2xl font-black">{{ initials(driver.name) }}</span>
+                      </div>
+                    </div>
+                    <div class="flex-1 min-w-0 pt-1">
+                      <p class="text-lg md:text-xl font-black text-gray-900 leading-tight pr-16">{{ driver.name }}</p>
+                      <p class="text-xs font-bold text-teal-600 mb-3">ผู้ขับขี่ประจำรถของคุณ</p>
+
+                      <!-- Vehicle chips -->
+                      <div v-if="driver.plate || driver.vehicleName || driver.color" class="flex flex-wrap gap-2 mb-4">
+                        <span v-if="driver.plate" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm">
+                          <span class="material-symbols-rounded text-[16px] text-teal-600">pin</span>{{ driver.plate }}
+                        </span>
+                        <span v-if="driver.vehicleName" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm">
+                          <span class="material-symbols-rounded text-[16px] text-teal-600">airport_shuttle</span>{{ driver.vehicleName }}
+                        </span>
+                        <span v-if="driver.color" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm">
+                          <span class="material-symbols-rounded text-[16px] text-teal-600">palette</span>{{ driver.color }}
+                        </span>
+                      </div>
+
+                      <a v-if="driver.phone" :href="`tel:${driver.phone}`"
+                        class="inline-flex items-center gap-2 bg-teal-600 text-white font-black text-sm px-4 py-2.5 rounded-xl hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-600/20">
+                        <span class="material-symbols-rounded text-[18px]">call</span>
+                        {{ formatPhone(driver.phone) }}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Staff Grid -->
+                <div v-if="assignedStaff.length">
+                  <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-[18px] text-teal-500">groups</span>
+                    เจ้าหน้าที่ประจำทริป · {{ assignedStaff.length }} ท่าน
+                  </p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div v-for="s in assignedStaff" :key="s.id"
+                      class="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 hover:border-teal-200 hover:bg-white transition-all duration-300">
+                      <!-- Avatar -->
+                      <div class="shrink-0">
+                        <img v-if="s.avatar_url" :src="s.avatar_url" :alt="s.name"
+                          class="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-md" />
+                        <div v-else class="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white flex items-center justify-center border-2 border-white shadow-md">
+                          <span class="text-base font-black">{{ initials(s.name) }}</span>
+                        </div>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-black text-gray-900 leading-tight truncate">{{ s.name }}</p>
+                        <p class="text-xs font-bold text-gray-400 mb-2">
+                          <span v-if="s.nickname">({{ s.nickname }}) · </span>ทีมงานดูแลทริป
+                        </p>
+                        <a v-if="s.phone" :href="`tel:${s.phone}`"
+                          class="inline-flex items-center gap-1.5 text-xs font-black text-teal-600 bg-teal-50 px-3 py-1.5 rounded-lg hover:bg-teal-600 hover:text-white active:scale-95 transition-all border border-teal-100">
+                          <span class="material-symbols-rounded text-[16px]">call</span>
+                          {{ formatPhone(s.phone) }}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Reassurance footer -->
+                <div class="flex items-start gap-2.5 pt-1 text-gray-400">
+                  <span class="material-symbols-rounded text-[18px] mt-0.5 text-teal-500">verified_user</span>
+                  <p class="text-xs font-bold leading-relaxed">ทีมงานทุกคนผ่านการอบรมและพร้อมดูแลความปลอดภัยของคุณ หากมีข้อสงสัยก่อนเดินทาง สามารถติดต่อได้โดยตรง</p>
+                </div>
+              </div>
+            </section>
+
             <!-- Support / Help Area -->
             <section class="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm group">
               <div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
@@ -479,6 +578,37 @@ const hasVariedPassengerPickups = computed(() => {
   if (!ids.length) return false;
   return new Set(ids).size > 1;
 });
+
+// ── Trip team: staff & driver ──
+const assignedStaff = computed(() => booking.value?.assigned_staff || []);
+
+const driver = computed(() => {
+  const v = booking.value?.schedule?.vehicle;
+  if (!v || !v.driver_name) return null;
+  return {
+    name: v.driver_name,
+    phone: v.driver_phone,
+    photo: v.driver_photo,
+    plate: v.license_plate,
+    color: v.color,
+    vehicleName: v.name,
+  };
+});
+
+const hasTeam = computed(() => assignedStaff.value.length > 0 || !!driver.value);
+
+function initials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function formatPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return phone;
+}
 
 // ── Installment helpers ──
 const paidInstallmentsCount = computed(() =>
