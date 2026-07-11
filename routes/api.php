@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
+use App\Http\Controllers\Api\V1\FlexiDepartureController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
@@ -153,6 +154,10 @@ Route::prefix('v1')->group(function () {
         Route::delete('bookings/{ref}/split', [SplitPaymentController::class, 'destroy']);
         Route::post('bookings/{ref}/split/shares/{shareId}/pay', [SplitPaymentController::class, 'pay'])->middleware('throttle:payment');
         Route::post('bookings/{ref}/split/shares/{shareId}/remind', [SplitPaymentController::class, 'remind'])->middleware('throttle:20,1');
+
+        // Flexi-Price (Go Together) — ลูกค้าดู/ตอบรับข้อเสนอไปต่อ (จ่ายส่วนต่างค่ารถ)
+        Route::get('bookings/{ref}/flexi-offer', [FlexiDepartureController::class, 'show']);
+        Route::post('bookings/{ref}/flexi-offer/respond', [FlexiDepartureController::class, 'respond']);
 
         // Group chat per trip schedule (customers + assigned staff + admins)
         Route::get('chat/my-conversations', [ChatController::class, 'myConversations']);
@@ -366,6 +371,9 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/move-bookings', [AdminController::class, 'moveBookings']);
         Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);
         Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);
+
+        // Flexi-Price (Go Together) — ผู้จัดยื่นข้อเสนอส่วนต่างค่ารถให้รอบที่คนไม่ครบ
+        Route::post('schedules/{id}/flexi-offer', [FlexiDepartureController::class, 'store']);
 
         // Schedule Pickup Points
         Route::get('schedules/{id}/pickup-points', [AdminController::class, 'pickupPoints']);

@@ -87,6 +87,8 @@ class BookingResource extends JsonResource
                 : null,
             'rescheduled_at' => $this->rescheduled_at?->toISOString(),
             'total_amount' => $this->total_amount,
+            // ส่วนต่าง Flexi-Price ที่ตกลงจ่ายเพิ่ม (เก็บวันเดินทาง) — null เมื่อไม่เข้าร่วม
+            'flexi_surcharge' => $this->flexi_surcharge,
             'selected_addons' => $this->selected_addons ?? [],
             'addons_total' => $this->addons_total,
             'paid_amount' => $this->paid_amount,

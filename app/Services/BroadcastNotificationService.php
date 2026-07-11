@@ -32,6 +32,16 @@ class BroadcastNotificationService
     public const LOW_SEAT_THRESHOLD = 3;
 
     /**
+     * ส่วนลดอัตโนมัติที่เปิดให้ทันทีเมื่อรอบเดินทางขยับเป็น 🟡 Almost Ready —
+     * เป็นแรงจูงใจให้คนที่ลังเลรีบจองปิดรอบให้ครบการันตี (ผูกกับ flash sale
+     * รายรอบที่มีอยู่แล้ว จึงได้ระบบราคาตัด/นับถอยหลังมาฟรี)
+     */
+    public const ALMOST_READY_DISCOUNT_PERCENT = 5;
+
+    /** ระยะเวลาที่ดีลอัตโนมัติของสถานะ Almost Ready มีผล (ชั่วโมง). */
+    public const ALMOST_READY_DEAL_HOURS = 48;
+
+    /**
      * Time-critical events that must reach customers immediately — they are
      * exempt from quiet-hours deferral (a held flash-sale/last-seats push is
      * useless once the round fills up or the sale ends overnight).
@@ -168,6 +178,121 @@ class BroadcastNotificationService
     }
 
     /**
+     * ระบบสถานะการันตีออกเดินทาง — ยิงเมื่อรอบขยับขึ้นเป็น 🟡 Almost Ready
+     * (จอง 5-7 ที่นั่ง ขาดอีกนิดเดียวรถออกชัวร์) พร้อม "เปิดส่วนลดอัตโนมัติ"
+     * เพื่อกระตุ้นให้ปิดรอบครบการันตี ยิงครั้งเดียวต่อรอบ (dedupe ledger)
+     * self-guarding — เรียกจากการจองได้ทันที
+     */
+    public function broadcastAlmostReady(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || $schedule->departure_date === null) {
+            return;
+        }
+
+        // ต้องอยู่ในแถบ Almost Ready จริง ๆ (กัน race / เรียกซ้ำ)
+        if ($schedule->departureStatus() !== TripSchedule::STATUS_ALMOST_READY) {
+            return;
+        }
+
+        // เปิดส่วนลดอัตโนมัติ (ถ้ายังไม่มีดีลอยู่) ก่อนแต่งข้อความ เพื่อให้ push
+        // โฆษณาราคาพิเศษได้ในครั้งเดียว
+        $this->applyAlmostReadyDiscount($schedule);
+
+        $seatsLeft = $schedule->seatsToGuarantee();
+        $dealClause = $schedule->flashSaleActive()
+            ? ' จองตอนนี้รับราคาพิเศษเพียง ฿'.number_format((float) $schedule->flash_sale_price).'/คน'
+            : '';
+
+        $this->broadcast(
+            'almost_ready',
+            "almost_ready:{$schedule->id}",
+            '🟡 อีกนิดเดียว รถตู้การันตีออก!',
+            "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
+                ." ขาดอีกเพียง {$seatsLeft} ที่นั่ง รถตู้ก็การันตีออกเดินทางทันที!".$dealClause,
+            [
+                'route' => 'trip',
+                'trip_slug' => $trip->slug,
+                'trip_id' => $trip->id,
+                'schedule_id' => $schedule->id,
+            ],
+        );
+    }
+
+    /**
+     * ระบบสถานะการันตีออกเดินทาง — ยิงเมื่อรอบขยับขึ้นเป็น 🟢 Guaranteed Departure
+     * (จองครบ 8 ที่นั่งขึ้นไป การันตีออกแน่นอน 100%) สร้าง FOMO ให้คนที่ยังลังเล
+     * รีบจองที่นั่งที่เหลือ ยิงครั้งเดียวต่อรอบ self-guarding
+     */
+    public function broadcastGuaranteed(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || $schedule->departure_date === null) {
+            return;
+        }
+
+        if ($schedule->departureStatus() !== TripSchedule::STATUS_GUARANTEED) {
+            return;
+        }
+
+        // รอบที่เต็มแล้วปล่อยให้ broadcastSoldOut จัดการ (ชวนเข้าคิว waitlist)
+        if ($schedule->available_seats <= 0) {
+            return;
+        }
+
+        $this->broadcast(
+            'guaranteed',
+            "guaranteed:{$schedule->id}",
+            '🟢 การันตีออกเดินทางแน่นอน!',
+            "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
+                .' มีผู้ร่วมทางครบแล้ว ออกเดินทางแน่นอน 100% เหลืออีก '
+                ."{$schedule->available_seats} ที่นั่ง รีบจองก่อนเต็ม!",
+            [
+                'route' => 'trip',
+                'trip_slug' => $trip->slug,
+                'trip_id' => $trip->id,
+                'schedule_id' => $schedule->id,
+            ],
+        );
+    }
+
+    /**
+     * เปิดส่วนลดอัตโนมัติสำหรับรอบที่ขยับเป็น Almost Ready — ผูกกับ flash sale
+     * รายรอบที่มีอยู่แล้ว แต่บันทึกแบบเงียบ (saveQuietly) เพื่อไม่ให้ observer
+     * ยิง broadcastFlashSale ซ้ำ (push ของ almost_ready โฆษณาดีลนี้ให้แล้ว)
+     * เคารพดีลของแอดมินที่เปิดไว้ก่อน — ไม่ override
+     */
+    private function applyAlmostReadyDiscount(TripSchedule $schedule): void
+    {
+        if ($schedule->flash_sale_enabled) {
+            return;
+        }
+
+        $base = $schedule->original_price;
+        if ($base <= 0) {
+            return;
+        }
+
+        $salePrice = floor($base * (100 - self::ALMOST_READY_DISCOUNT_PERCENT) / 100);
+        if ($salePrice <= 0 || $salePrice >= $base) {
+            return;
+        }
+
+        $endsAt = CarbonImmutable::now(self::TIMEZONE)->addHours(self::ALMOST_READY_DEAL_HOURS);
+        $departsAt = $schedule->effectiveDepartsAt();
+        if ($departsAt !== null && $endsAt->greaterThan($departsAt)) {
+            $endsAt = $departsAt;
+        }
+
+        $schedule->forceFill([
+            'flash_sale_enabled' => true,
+            'flash_sale_price' => $salePrice,
+            'flash_sale_ends_at' => $endsAt,
+        ])->saveQuietly();
+        $schedule->refresh();
+    }
+
+    /**
      * Announce a round that's just sold out — nudges customers onto the waitlist
      * and creates FOMO. Once per round. Self-guarding, safe to call from a booking.
      */
@@ -210,7 +335,10 @@ class BroadcastNotificationService
             ->whereDate('departure_date', '>=', now(self::TIMEZONE)->startOfDay())
             ->chunkById(200, function ($schedules) {
                 foreach ($schedules as $schedule) {
-                    // broadcastLowSeats self-guards the threshold and per-level dedupe.
+                    // ทุกตัว self-guard สถานะ/threshold และ dedupe ต่อรอบเอง
+                    // — จึงเรียกซ้ำได้ปลอดภัย เผื่อการจองพลาดการยิงเรียลไทม์ไป
+                    $this->broadcastAlmostReady($schedule);
+                    $this->broadcastGuaranteed($schedule);
                     $this->broadcastLowSeats($schedule);
                 }
             });

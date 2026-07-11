@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\BookingPassenger;
+use App\Models\TripSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -40,6 +41,13 @@ class TripScheduleResource extends JsonResource
             'total_seats' => $this->total_seats,
             'booked_seats' => $this->booked_seats,
             'available_seats' => $this->available_seats,
+            // ระบบสถานะการันตีออกเดินทาง — waiting / almost_ready / guaranteed
+            // (null สำหรับทริปเหมาคัน) พร้อมเกณฑ์ที่นั่งเพื่อให้แอปเรนเดอร์
+            // "ขาดอีก X ที่นั่ง" ได้เองโดยไม่ต้อง hardcode
+            'departure_status' => $this->departureStatus(),
+            'seats_to_guarantee' => $this->seatsToGuarantee(),
+            'guarantee_min_seats' => TripSchedule::GUARANTEE_MIN_SEATS,
+            'almost_ready_min_seats' => TripSchedule::ALMOST_READY_MIN_SEATS,
             'active_bookings_count' => $this->when(
                 isset($this->active_bookings_count),
                 fn () => (int) $this->active_bookings_count

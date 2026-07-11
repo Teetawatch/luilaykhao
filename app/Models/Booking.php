@@ -47,7 +47,7 @@ class Booking extends Model
         'was_auto_expired', 'winback_sent_at',
         'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path',
         'promotion_id', 'promotion_code', 'discount_amount',
-        'is_join_trip',
+        'is_join_trip', 'flexi_surcharge',
     ];
 
     protected function casts(): array
@@ -57,6 +57,7 @@ class Booking extends Model
             'addons_total' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'flexi_surcharge' => 'decimal:2',
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'rescheduled_at' => 'datetime',

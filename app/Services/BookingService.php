@@ -49,8 +49,13 @@ class BookingService
         // Seats left right after this booking — drives the real-time "almost
         // sold out" customer blast (3-2-1 left). Null = join trip / not counted.
         $availableAfterBooking = null;
+        // Booked-seat count before/after this booking — drives the real-time
+        // "ระบบสถานะการันตีออกเดินทาง" push when the round crosses into the
+        // Almost Ready (5-7) or Guaranteed (8+) band. Null = join trip.
+        $bookedBeforeBooking = null;
+        $bookedAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, $verifySeatLocks, &$scheduleBecameFull, &$availableAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, $verifySeatLocks, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -302,6 +307,7 @@ class BookingService
             }
 
             if (! $isJoinTrip) {
+                $bookedBeforeBooking = (int) $schedule->booked_seats;
                 $schedule->increment('booked_seats', $participantCount);
                 // increment() also updates the in-memory attribute, so the
                 // available_seats accessor reflects the post-booking count.
@@ -309,6 +315,7 @@ class BookingService
                 // zero here means this booking is what filled the last seats.
                 $scheduleBecameFull = $schedule->available_seats <= 0;
                 $availableAfterBooking = $schedule->available_seats;
+                $bookedAfterBooking = (int) $schedule->booked_seats;
             }
 
             $booking->load(['passengers.pickupPoint', 'seats', 'schedule.trip']);
@@ -349,7 +356,51 @@ class BookingService
             $this->notifyLowSeats($scheduleId);
         }
 
+        // ระบบสถานะการันตีออกเดินทาง: ยิง push ทันทีเมื่อการจองนี้ดันรอบข้ามแถบ
+        // สถานะขึ้น (→ Almost Ready / → Guaranteed) เพื่อกระตุ้นให้ปิดรอบครบ
+        if ($bookedBeforeBooking !== null && $bookedAfterBooking !== null) {
+            $this->notifyDepartureStatusCrossing(
+                $scheduleId,
+                $bookedBeforeBooking,
+                $bookedAfterBooking,
+            );
+        }
+
         return $booking;
+    }
+
+    /**
+     * แจ้งเตือนแบบเรียลไทม์เมื่อรอบเดินทางข้ามแถบสถานะการันตีขึ้น:
+     * เข้าสู่ 🟡 Almost Ready (5-7) หรือ 🟢 Guaranteed (8+) โดยยิงตามสถานะ
+     * ปลายทางสูงสุดที่ไปถึง (ถ้ากระโดดข้าม almost ไป guaranteed เลย ก็ยิงแค่
+     * guaranteed) ทำนอก DB transaction และ best-effort — ห้ามกระทบการจอง
+     */
+    private function notifyDepartureStatusCrossing(int $scheduleId, int $before, int $after): void
+    {
+        try {
+            $guarantee = TripSchedule::GUARANTEE_MIN_SEATS;
+            $almost = TripSchedule::ALMOST_READY_MIN_SEATS;
+
+            $crossedGuaranteed = $before < $guarantee && $after >= $guarantee;
+            $crossedAlmost = $before < $almost && $after >= $almost && $after < $guarantee;
+
+            if (! $crossedGuaranteed && ! $crossedAlmost) {
+                return;
+            }
+
+            $schedule = TripSchedule::with('trip')->find($scheduleId);
+            if (! $schedule) {
+                return;
+            }
+
+            if ($crossedGuaranteed) {
+                $this->broadcastService->broadcastGuaranteed($schedule);
+            } else {
+                $this->broadcastService->broadcastAlmostReady($schedule);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('BookingService: departure-status notification failed — '.$e->getMessage());
+        }
     }
 
     /**

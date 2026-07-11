@@ -20,6 +20,24 @@ class TripSchedule extends Model
 
     public const REVIEW_AVAILABLE_TIMEZONE = 'Asia/Bangkok';
 
+    /**
+     * ระบบสถานะการันตีออกเดินทาง (Trip Status) — จำนวนที่นั่งที่จองแล้วเป็นตัวกำหนด
+     * ว่ารอบนี้จะได้ออกเดินทางแน่นอนหรือยัง (สอดคล้องกับ MIN_SEATS ใน
+     * SendUnderfilledTripWarningsJob):
+     *   1-4  → waiting       🔴 ยังขาดเพื่อนร่วมทาง
+     *   5-7  → almost_ready  🟡 ขาดอีกนิดเดียว รถตู้ออกชัวร์
+     *   8+   → guaranteed    🟢 คอนเฟิร์มรถออกแน่นอน 100%
+     */
+    public const GUARANTEE_MIN_SEATS = 8;
+
+    public const ALMOST_READY_MIN_SEATS = 5;
+
+    public const STATUS_WAITING = 'waiting';
+
+    public const STATUS_ALMOST_READY = 'almost_ready';
+
+    public const STATUS_GUARANTEED = 'guaranteed';
+
     protected $table = 'trip_schedules';
 
     /**
@@ -345,6 +363,38 @@ class TripSchedule extends Model
     public function isReviewAvailable(): bool
     {
         return now(self::REVIEW_AVAILABLE_TIMEZONE)->greaterThanOrEqualTo($this->reviewAvailableAt());
+    }
+
+    /**
+     * สถานะการันตีออกเดินทางของรอบนี้ ตามจำนวนที่นั่งที่จองแล้ว
+     * คืน null สำหรับทริปเหมาคัน (is_charter) เพราะออกเดินทางแน่นอนอยู่แล้ว
+     * ไม่ต้องพึ่งจำนวนผู้ร่วมทาง
+     */
+    public function departureStatus(): ?string
+    {
+        if ($this->is_charter) {
+            return null;
+        }
+
+        $booked = (int) $this->booked_seats;
+
+        if ($booked >= self::GUARANTEE_MIN_SEATS) {
+            return self::STATUS_GUARANTEED;
+        }
+
+        if ($booked >= self::ALMOST_READY_MIN_SEATS) {
+            return self::STATUS_ALMOST_READY;
+        }
+
+        return self::STATUS_WAITING;
+    }
+
+    /**
+     * จำนวนที่นั่งที่ยังขาดเพื่อให้รอบนี้การันตีออกเดินทาง (0 = ครบแล้ว)
+     */
+    public function seatsToGuarantee(): int
+    {
+        return max(0, self::GUARANTEE_MIN_SEATS - (int) $this->booked_seats);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 use App\Jobs\AbandonedBookingWinbackJob;
 use App\Jobs\BroadcastLowSeatsJob;
+use App\Jobs\ExpireFlexiOffersJob;
 use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
@@ -47,6 +48,7 @@ Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping()
 Schedule::job(new AbandonedBookingWinbackJob)->hourly()->withoutOverlapping();
 Schedule::job(new ProcessTripAlertsJob)->everyThirtyMinutes()->withoutOverlapping();
 Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping();
+Schedule::job(new ExpireFlexiOffersJob)->everyFiveMinutes()->withoutOverlapping();
 // Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.
 Schedule::job(new PurgeEndedTripChatsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // "Almost sold out" fallback sweep — runs 24h so a round that dips to the low
