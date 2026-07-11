@@ -1,24 +1,68 @@
 <template>
   <div class="pt-12 pb-24 max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
-    <!-- Header Section -->
-    <header class="mb-14 max-w-3xl animate-fade-in relative z-10">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-100 text-[var(--color-accent)] text-sm font-bold mb-6 shadow-sm">
-        <span class="material-symbols-rounded text-[18px]">explore</span>
-        ค้นพบประสบการณ์ใหม่
+    <!-- Cinematic Hero Header -->
+    <header class="relative overflow-hidden rounded-[2.5rem] mb-10 md:mb-14 animate-fade-in shadow-[0_30px_70px_-30px_rgba(13,43,30,0.55)]">
+      <!-- Background image + gradient -->
+      <div class="absolute inset-0 -z-10">
+        <img src="/images/landscape.webp" alt="" class="w-full h-full object-cover scale-105" />
+        <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#0D2B1E]/80 to-[var(--color-primary)]/65"></div>
       </div>
-      <h1 class="text-5xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-6 leading-[1.15]">
-        กิจกรรมและ <span class="text-[var(--color-accent)]">ทริปทั้งหมด</span>
-      </h1>
-      <p class="text-lg md:text-xl text-[var(--color-text-muted)] leading-relaxed font-medium max-w-2xl">
-        สำรวจทริปที่คัดสรรมาเพื่อคุณ ตั้งแต่ดำน้ำตื้น เดินป่า จนถึงบริการรถตู้ระดับพรีเมียม เพื่อประสบการณ์การเดินทางที่สมบูรณ์แบบที่สุด
-      </p>
+      <!-- Ambient glows -->
+      <div class="absolute -top-24 -right-16 w-96 h-96 bg-[var(--color-accent)]/25 rounded-full blur-[110px] pointer-events-none"></div>
+      <div class="absolute -bottom-28 -left-12 w-80 h-80 bg-[var(--color-gold)]/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+      <div class="relative px-7 py-12 md:px-14 md:py-16 max-w-3xl">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-bold mb-6">
+          <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">explore</span>
+          ค้นพบประสบการณ์ใหม่
+        </div>
+        <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-5 leading-[1.15]">
+          กิจกรรมและ <span class="text-[var(--color-accent-light)]">ทริปทั้งหมด</span>
+        </h1>
+        <p class="text-base md:text-xl text-white/75 leading-relaxed font-medium max-w-2xl mb-8">
+          สำรวจทริปที่คัดสรรมาเพื่อคุณ ตั้งแต่ดำน้ำตื้น เดินป่า จนถึงบริการรถตู้ระดับพรีเมียม เพื่อประสบการณ์การเดินทางที่สมบูรณ์แบบที่สุด
+        </p>
+
+        <!-- Stat / trust chips -->
+        <div class="flex flex-wrap items-center gap-2.5 md:gap-3">
+          <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-4 py-2 text-white text-sm font-bold">
+            <span class="material-symbols-rounded text-[19px] text-[var(--color-accent-light)]">map</span>
+            {{ totalTrips.toLocaleString() }} ทริปให้เลือก
+          </div>
+          <div v-if="totalConfirmedParticipants > 0" class="inline-flex items-center gap-2 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-4 py-2 text-white text-sm font-bold">
+            <span class="material-symbols-rounded text-[19px] text-[var(--color-gold)]" style="font-variation-settings:'FILL' 1">group</span>
+            {{ totalConfirmedParticipants.toLocaleString() }} คนร่วมเดินทางแล้ว
+          </div>
+          <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-4 py-2 text-white text-sm font-bold">
+            <span class="material-symbols-rounded text-[19px] text-[var(--color-accent-light)]">verified_user</span>
+            จองปลอดภัย ตรวจสลิปอัตโนมัติ
+          </div>
+        </div>
+      </div>
     </header>
 
     <div class="flex flex-col lg:flex-row gap-10 lg:gap-14">
       <!-- Filter Sidebar -->
       <aside class="lg:w-80 shrink-0 relative z-20">
-        <div class="lg:sticky lg:top-28 space-y-8 bg-white p-8 rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-gray-100">
-          
+        <div class="lg:sticky lg:top-28 space-y-7 bg-white p-8 rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-gray-100">
+
+          <!-- Sidebar title -->
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-extrabold text-[var(--color-text-dark)] flex items-center gap-2.5">
+              <span class="w-9 h-9 rounded-xl bg-[var(--color-accent)]/10 flex items-center justify-center">
+                <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">tune</span>
+              </span>
+              ตัวกรอง
+            </h2>
+            <button v-if="hasFilters" @click="clearAndFetch"
+              class="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1">
+              <span class="material-symbols-rounded text-[16px]">restart_alt</span>
+              ล้าง
+            </button>
+          </div>
+
+          <hr class="border-gray-100" />
+
           <!-- Search -->
           <section class="animate-fade-in" style="animation-delay: 0.1s">
             <h3 class="text-sm font-extrabold text-[var(--color-text-dark)] mb-4 flex items-center gap-2">
@@ -100,12 +144,6 @@
               <span class="material-symbols-rounded text-[20px]">filter_list</span>
               ใช้ตัวกรอง
             </button>
-            
-            <button v-if="hasFilters" @click="clearAndFetch"
-              class="w-full text-gray-500 hover:text-red-500 bg-gray-50 hover:bg-red-50 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer">
-              <span class="material-symbols-rounded text-[18px]">close</span>
-              ล้างตัวกรอง
-            </button>
           </div>
         </div>
       </aside>
@@ -114,13 +152,10 @@
       <div class="flex-1 min-w-0">
         <!-- Sorting & Count -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 animate-fade-in" style="animation-delay: 0.15s">
-          <p class="text-[var(--color-text-muted)] text-base font-medium flex flex-wrap items-center gap-4">
-            <span>พบทริปทั้งหมด <span class="font-extrabold text-[var(--color-text-dark)] text-lg bg-white px-3 py-1 rounded-lg shadow-sm ml-1">{{ tripsStore.meta?.total || tripsStore.trips.length }}</span></span>
-            <span v-if="totalConfirmedParticipants > 0" class="flex items-center gap-1.5 text-[var(--color-accent)] font-extrabold bg-white px-4 py-1.5 rounded-full shadow-sm border border-[var(--color-accent)]/10 animate-fade-in" style="animation-delay: 0.3s">
-              <span class="material-symbols-rounded text-[20px]">group</span>
-              {{ totalConfirmedParticipants.toLocaleString() }} คนร่วมเดินทางแล้ว
-            </span>
-          </p>
+          <div class="flex items-baseline gap-2.5">
+            <span class="text-2xl font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ tripsStore.meta?.total || tripsStore.trips.length }}</span>
+            <span class="text-[var(--color-text-muted)] text-base font-medium">ทริปที่พบ</span>
+          </div>
           <div class="flex gap-3 items-center">
             <span class="text-sm font-bold text-[var(--color-text-muted)]">เรียงโดย:</span>
             <div class="relative">
@@ -255,6 +290,8 @@ const sortedTrips = computed(() => {
 const totalConfirmedParticipants = computed(() => {
   return tripsStore.trips.reduce((sum, trip) => sum + (trip.confirmed_passengers_count || 0), 0);
 });
+
+const totalTrips = computed(() => tripsStore.meta?.total || tripsStore.trips.length);
 
 const paginationPages = computed(() => {
   if (!tripsStore.meta) return [];
