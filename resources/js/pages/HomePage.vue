@@ -206,10 +206,6 @@
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 md:mb-20 gap-8">
           <div class="max-w-2xl">
-            <div class="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-[var(--color-primary)]/[0.08] border border-[var(--color-primary)]/10 text-[var(--color-primary)]">
-              <span class="material-symbols-rounded text-[18px]">interests</span>
-              <span class="text-xs font-black uppercase tracking-[0.2em]">หมวดหมู่ทริป</span>
-            </div>
             <h2 class="font-anuphan text-4xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.1]">เลือกประสบการณ์<br /><span class="text-[var(--color-primary)]">ในแบบของคุณ</span></h2>
           </div>
           <p class="text-[var(--color-text-muted)] text-lg max-w-sm md:text-right font-medium leading-relaxed">
@@ -335,10 +331,6 @@
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-12 md:mb-16 gap-8">
           <div class="max-w-xl">
-            <div class="inline-flex items-center gap-2 mb-4 pl-2.5 pr-3.5 py-1.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/15">
-              <span class="material-symbols-rounded text-[17px]" style="font-variation-settings:'FILL' 1">local_fire_department</span>
-              <span class="text-xs font-bold tracking-[0.14em] uppercase">ทริปยอดฮิต</span>
-            </div>
             <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">ประสบการณ์ยอดนิยม</h2>
             <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed">คัดสรรทริปที่นักเดินทางเลือกมากที่สุด พร้อมรีวิวจริงจากผู้ร่วมทาง</p>
           </div>
@@ -640,10 +632,6 @@
     <section class="py-24 bg-[var(--color-sand)] relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
         <div class="flex flex-col items-center text-center mb-14 md:mb-16">
-          <div class="inline-flex items-center gap-2 mb-4 pl-2.5 pr-3.5 py-1.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/15">
-            <span class="material-symbols-rounded text-[17px]" style="font-variation-settings:'FILL' 1">favorite</span>
-            <span class="text-xs font-bold tracking-[0.14em] uppercase">รีวิวจากลูกค้า</span>
-          </div>
           <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">นักเดินทางพูดถึงเรา</h2>
           <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed max-w-xl">เสียงจริงจากผู้ร่วมทริปที่ออกเดินทางไปกับเรา</p>
         </div>
@@ -677,13 +665,14 @@
               <p class="text-[var(--color-text-mid)] text-[15px] font-medium leading-relaxed mb-7 line-clamp-4">“{{ review.comment || 'ไม่มีความคิดเห็น' }}”</p>
 
               <div class="mt-auto flex items-center gap-3.5 pt-5 border-t border-[var(--color-sand-dark)]">
-                <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-2 ring-[var(--color-accent)]/15 shadow-sm shrink-0">
+                <div class="relative w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-2 ring-[var(--color-accent)]/15 shadow-sm shrink-0">
+                  <span>{{ review.user_name?.charAt(0) }}</span>
                   <img
                     v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
                     :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
-                    class="w-full h-full object-cover"
+                    class="absolute inset-0 w-full h-full object-cover"
+                    @error="(e) => e.target.style.display='none'"
                   />
-                  <span v-else>{{ review.user_name?.charAt(0) }}</span>
                 </div>
                 <div class="min-w-0">
                   <div class="flex items-center gap-1">

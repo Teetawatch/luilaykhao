@@ -34,6 +34,9 @@ class LineLiffLoginTest extends TestCase
                 'displayName' => 'ลูกค้า LINE',
                 'pictureUrl' => 'https://line.example/p.jpg',
             ], $profile)),
+            // The login mirrors the avatar onto our storage (queued, runs sync in
+            // tests), so stub the picture host to keep it off the network.
+            'line.example/*' => Http::response('fake-jpeg', 200, ['Content-Type' => 'image/jpeg']),
         ]);
     }
 

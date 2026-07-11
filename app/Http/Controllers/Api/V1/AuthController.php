@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Jobs\MirrorSocialAvatarJob;
 use App\Models\User;
 use App\Services\MailService;
 use App\Services\ReferralService;
@@ -367,41 +368,44 @@ class AuthController extends Controller
             ->where('social_id', $socialId)
             ->first();
 
-        if ($user) {
-            return $user;
-        }
-
-        if ($email) {
+        if (! $user && $email) {
             $user = User::where('email', $email)->first();
+
+            if ($user) {
+                $user->update([
+                    'social_provider' => $provider,
+                    'social_id' => $socialId,
+                    'avatar' => $user->avatar ?: $avatar,
+                ]);
+            }
         }
 
-        if ($user) {
-            $user->update([
+        if (! $user) {
+            if (! $email) {
+                $sanitizedSocialId = preg_replace('/[^a-zA-Z0-9]/', '', $socialId) ?: Str::random(12);
+                $email = $provider.'_'.$sanitizedSocialId.'@social.local';
+            }
+
+            $user = User::create([
+                'name' => $name ?: 'User',
+                'email' => $email,
                 'social_provider' => $provider,
                 'social_id' => $socialId,
-                'avatar' => $user->avatar ?: $avatar,
+                'avatar' => $avatar,
+                'password' => null,
             ]);
+            $user->assignRole('customer');
 
-            return $user;
+            // Send welcome email for new social users
+            $this->mailService->sendWelcomeEmail($user);
         }
 
-        if (! $email) {
-            $sanitizedSocialId = preg_replace('/[^a-zA-Z0-9]/', '', $socialId) ?: Str::random(12);
-            $email = $provider.'_'.$sanitizedSocialId.'@social.local';
+        // Mirror the provider avatar onto our own storage. Providers like LINE
+        // hand out rotating CDN URLs that 404 once the user changes their photo,
+        // so we re-fetch on every login and serve a stable self-hosted copy.
+        if ($avatar && str_starts_with($avatar, 'http')) {
+            MirrorSocialAvatarJob::dispatch($user->id, $avatar);
         }
-
-        $user = User::create([
-            'name' => $name ?: 'User',
-            'email' => $email,
-            'social_provider' => $provider,
-            'social_id' => $socialId,
-            'avatar' => $avatar,
-            'password' => null,
-        ]);
-        $user->assignRole('customer');
-
-        // Send welcome email for new social users
-        $this->mailService->sendWelcomeEmail($user);
 
         return $user;
     }
