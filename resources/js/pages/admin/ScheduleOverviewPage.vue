@@ -1112,7 +1112,7 @@
               ส่งออกรายชื่อเป็น Excel
             </h2>
             <p class="modal-subtitle">
-              {{ exportPicker.title }} · {{ exportPickerPassengerCount() }} คน · เลือกรูปแบบคอลัมน์
+              {{ exportPicker.title }} · {{ exportPickerPassengerCount() }} คน · ติ๊กเลือกคอลัมน์ที่ต้องการ
             </p>
           </div>
           <button class="modal-close" @click="closeExportPicker">
@@ -1121,36 +1121,37 @@
         </div>
 
         <div class="modal-body">
-          <label class="export-format-option" :class="{ active: exportPicker.format === 1 }">
-            <input type="radio" :value="1" v-model="exportPicker.format" />
-            <div>
-              <strong>แบบที่ 1 — ชื่อ</strong>
-              <span>คำนำหน้า · ชื่อ-นามสกุล</span>
+          <div class="export-col-actions">
+            <span class="export-col-count">เลือกแล้ว {{ selectedExportCount }} คอลัมน์</span>
+            <div class="export-col-buttons">
+              <button type="button" class="export-chip-btn" @click="setAllExportColumns(true)">เลือกทั้งหมด</button>
+              <button type="button" class="export-chip-btn" @click="setAllExportColumns(false)">ล้างทั้งหมด</button>
             </div>
-          </label>
-          <label class="export-format-option" :class="{ active: exportPicker.format === 2 }">
-            <input type="radio" :value="2" v-model="exportPicker.format" />
-            <div>
-              <strong>แบบที่ 2 — ชื่อ + วันเกิด + เลขบัตร</strong>
-              <span>คำนำหน้า · ชื่อ-นามสกุล · วันเกิด · เลขบัตรประชาชน</span>
-            </div>
-          </label>
-          <label class="export-format-option" :class="{ active: exportPicker.format === 3 }">
-            <input type="radio" :value="3" v-model="exportPicker.format" />
-            <div>
-              <strong>แบบที่ 3 — ชื่อ + อายุ</strong>
-              <span>คำนำหน้า · ชื่อ-นามสกุล · อายุ</span>
-            </div>
-          </label>
+          </div>
+          <div class="export-col-grid">
+            <label
+              v-for="col in exportColumns"
+              :key="col.key"
+              class="export-col-option"
+              :class="{ active: exportPicker.selected[col.key] }"
+            >
+              <input type="checkbox" v-model="exportPicker.selected[col.key]" />
+              <span>{{ col.label }}</span>
+            </label>
+          </div>
           <p class="export-note">
-            หมายเหตุ: รูปแบบที่มีวันเกิด/อายุ จะแสดง “ว่าง” สำหรับผู้เดินทางที่ยังไม่มีข้อมูลวันเกิด —
-            กรอกเพิ่มได้ในตารางรายชื่อของแต่ละรอบ
+            หมายเหตุ: คอลัมน์ “ลำดับ” จะถูกใส่ให้อัตโนมัติ · เรียงคอลัมน์ตามลำดับด้านบน ·
+            วันเกิด/อายุ จะเว้นว่างสำหรับผู้เดินทางที่ยังไม่มีข้อมูล
           </p>
         </div>
 
         <div class="modal-footer">
           <button class="btn-secondary" @click="closeExportPicker">ยกเลิก</button>
-          <button class="btn-primary" :disabled="!exportPickerPassengerCount()" @click="exportSelectedCsv">
+          <button
+            class="btn-primary"
+            :disabled="!exportPickerPassengerCount() || !selectedExportCount"
+            @click="exportSelectedCsv"
+          >
             <span class="material-symbols-rounded">download</span>
             ดาวน์โหลด CSV
           </button>
@@ -1943,24 +1944,52 @@ function exportInsurancePdf(scheduleItems, title) {
 }
 
 /* ───── Excel (CSV) export of the passenger name list ─────────────────────
-   Three column sets the parks/insurers ask for, chosen in a small modal.
-   CSV with a UTF-8 BOM opens cleanly in Excel with Thai text intact (same
-   approach as ReportsPage). */
+   The admin ticks exactly which columns they need in a small modal, so the
+   same export serves parks, insurers, hotels, etc. Column order in the file
+   follows the order defined here. CSV with a UTF-8 BOM opens cleanly in Excel
+   with Thai text intact (same approach as ReportsPage). */
+
+const exportColumns = [
+  { key: 'title', label: 'คำนำหน้า', value: (p) => p.title || '' },
+  { key: 'name', label: 'ชื่อ-นามสกุล', value: (p) => p.name || '' },
+  { key: 'nickname', label: 'ชื่อเล่น', value: (p) => p.nickname || '' },
+  { key: 'id_card', label: 'เลขบัตรประชาชน', value: (p) => p.id_card || '' },
+  { key: 'birth_date', label: 'วันเกิด', value: (p) => p.birth_date || '' },
+  { key: 'age', label: 'อายุ', value: (p) => p.age ?? '' },
+  { key: 'phone', label: 'เบอร์โทร', value: (p) => p.phone || '' },
+  { key: 'blood_group', label: 'กลุ่มเลือด', value: (p) => p.blood_group || '' },
+  { key: 'weight', label: 'น้ำหนัก (กก.)', value: (p) => p.weight ?? '' },
+  { key: 'allergies', label: 'แพ้อาหาร', value: (p) => p.allergies || '' },
+  { key: 'health_notes', label: 'โรคประจำตัว', value: (p) => p.health_notes || '' },
+  { key: 'seat_labels', label: 'ที่นั่ง', value: (p) => (p.seat_labels || []).join(' ') },
+  { key: 'pickup', label: 'จุดรับ', value: (p) => [p.pickup_region, p.pickup_location].filter(Boolean).join(' - ') },
+  { key: 'booking_ref', label: 'รหัสจอง', value: (p) => p.booking_ref || '' },
+  { key: 'booking_type_label', label: 'ประเภท', value: (p) => p.booking_type_label || '' },
+  { key: 'trip', label: 'ทริป', value: (p, sch) => sch.trip_title || '' },
+  { key: 'start', label: 'วันเดินทาง', value: (p, sch) => formatDate(sch.start) },
+  { key: 'payment', label: 'ชำระ / ยอดรวม', value: (p) => `${formatCurrency(p.paid_amount)} / ${formatCurrency(p.total_amount)}` },
+];
+
+const DEFAULT_EXPORT_KEYS = ['title', 'name', 'id_card'];
 
 const exportPicker = reactive({
   open: false,
   schedules: [],
   title: '',
-  format: 1,
+  // key → boolean; kept across opens so the admin's last choice sticks.
+  selected: Object.fromEntries(exportColumns.map((c) => [c.key, DEFAULT_EXPORT_KEYS.includes(c.key)])),
 });
 const savingBirthId = ref(null);
+
+const selectedExportCount = computed(
+  () => exportColumns.filter((c) => exportPicker.selected[c.key]).length,
+);
 
 function openExportPicker(scheduleItems, title) {
   const withPassengers = scheduleItems.filter((sch) => schedulePassengerCount(sch));
   if (!withPassengers.length) return;
   exportPicker.schedules = withPassengers;
   exportPicker.title = title;
-  exportPicker.format = 1;
   exportPicker.open = true;
 }
 
@@ -1969,36 +1998,31 @@ function closeExportPicker() {
   exportPicker.schedules = [];
 }
 
+function setAllExportColumns(value) {
+  exportColumns.forEach((c) => {
+    exportPicker.selected[c.key] = value;
+  });
+}
+
 function exportPickerPassengerCount() {
   return exportPicker.schedules.reduce((total, sch) => total + schedulePassengerCount(sch), 0);
 }
 
 function exportSelectedCsv() {
-  const fmt = exportPicker.format;
-  const headers = {
-    1: ['ลำดับ', 'คำนำหน้า', 'ชื่อ-นามสกุล', 'ทริป', 'วันเดินทาง', 'ประเภท'],
-    2: ['ลำดับ', 'คำนำหน้า', 'ชื่อ-นามสกุล', 'วันเกิด', 'เลขบัตรประชาชน', 'ทริป', 'วันเดินทาง', 'ประเภท'],
-    3: ['ลำดับ', 'คำนำหน้า', 'ชื่อ-นามสกุล', 'อายุ', 'ทริป', 'วันเดินทาง', 'ประเภท'],
-  }[fmt];
+  const cols = exportColumns.filter((c) => exportPicker.selected[c.key]);
+  if (!cols.length) return;
 
+  const headers = ['ลำดับ', ...cols.map((c) => c.label)];
   const rows = [];
   let index = 0;
   exportPicker.schedules.forEach((sch) => {
     schedulePassengers(sch).forEach((person) => {
       index += 1;
-      const head = [index, person.title || '', person.name || ''];
-      const tail = [sch.trip_title || '', formatDate(sch.start), person.booking_type_label || ''];
-      if (fmt === 1) {
-        rows.push([...head, ...tail]);
-      } else if (fmt === 2) {
-        rows.push([...head, person.birth_date || '', person.id_card || '', ...tail]);
-      } else {
-        rows.push([...head, person.age ?? '', ...tail]);
-      }
+      rows.push([index, ...cols.map((c) => c.value(person, sch))]);
     });
   });
 
-  downloadCsv(headers, rows, `${exportPicker.title || 'รายชื่อผู้เดินทาง'} - แบบ${fmt}`);
+  downloadCsv(headers, rows, exportPicker.title || 'รายชื่อผู้เดินทาง');
   closeExportPicker();
 }
 
@@ -4399,47 +4423,86 @@ onUnmounted(() => {
   cursor: progress;
 }
 
-/* Export format chooser */
-.export-format-option {
+/* Export column chooser */
+.export-col-actions {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.export-col-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.export-col-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.export-chip-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.export-chip-btn:hover {
+  border-color: var(--color-accent, #2d7a4f);
+  color: var(--color-accent, #2d7a4f);
+  background: #f0fdf4;
+}
+
+.export-col-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .export-col-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.export-col-option {
+  display: flex;
+  align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   cursor: pointer;
-  margin-bottom: 10px;
   transition: border-color 0.15s, background 0.15s;
 }
 
-.export-format-option:hover {
+.export-col-option:hover {
   border-color: var(--color-accent, #2d7a4f);
   background: #f0fdf4;
 }
 
-.export-format-option.active {
+.export-col-option.active {
   border-color: var(--color-accent, #2d7a4f);
   background: #f0fdf4;
 }
 
-.export-format-option input {
-  margin-top: 3px;
+.export-col-option input {
   width: 16px;
   height: 16px;
   accent-color: var(--color-accent, #2d7a4f);
+  flex-shrink: 0;
 }
 
-.export-format-option strong {
-  display: block;
-  font-size: 14px;
+.export-col-option span {
+  font-size: 13px;
   color: #111827;
-}
-
-.export-format-option span {
-  display: block;
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 2px;
 }
 
 .export-note {
