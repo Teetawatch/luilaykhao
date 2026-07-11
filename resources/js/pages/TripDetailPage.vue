@@ -135,12 +135,30 @@
         </div>
       </section>
 
+      <!-- In-page section nav (editorial jump bar, scroll-spy) -->
+      <div class="page-nav sticky top-16 z-40 border-b border-gray-100 bg-white/85 supports-[backdrop-filter]:backdrop-blur-xl">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8">
+          <nav class="flex gap-1 overflow-x-auto no-scrollbar" aria-label="ส่วนต่าง ๆ ของหน้า">
+            <button
+              v-for="s in pageSections"
+              :key="s.id"
+              type="button"
+              class="page-nav__link"
+              :class="{ 'is-active': activePageSection === s.id }"
+              @click="scrollToPageSection(s.id)"
+            >
+              {{ s.label }}
+            </button>
+          </nav>
+        </div>
+      </div>
+
       <!-- Content Grid -->
       <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8 py-16">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
 
           <!-- Left Column: Details -->
-          <div class="lg:col-span-8 space-y-16">
+          <div class="lg:col-span-8 space-y-20">
 
             <!-- Gallery Bento Grid -->
             <section v-if="trip.gallery && trip.gallery.length > 0" class="gallery-section stagger-in">
@@ -229,24 +247,24 @@
               </div>
             </section>
 
-            <section class="description-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
-              <div class="flex items-center gap-3.5 mb-6">
-                <span class="sec-icon"><span class="material-symbols-rounded">hiking</span></span>
-                <h2 class="sec-title">เกี่ยวกับทริปนี้</h2>
-              </div>
-              <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg whitespace-pre-line font-medium">{{ trip.description }}</p>
+            <section id="overview" class="description-section scroll-mt-32">
+              <header class="ed-head mb-6">
+                <span class="ed-kicker">ภาพรวม</span>
+                <h2 class="ed-title">เกี่ยวกับทริปนี้</h2>
+              </header>
+              <p class="text-[var(--color-text-mid)] leading-loose text-lg md:text-xl whitespace-pre-line font-medium max-w-3xl">{{ trip.description }}</p>
             </section>
 
             <!-- Itinerary (Day by Day) -->
             <!-- Itinerary (Day by Day) -->
-            <section v-if="itinerarySectors.length > 0" class="itinerary-section scroll-mt-24" id="itinerary">
-              <div class="flex items-center justify-between gap-4 mb-8">
-                <div class="flex items-center gap-3.5">
-                  <span class="sec-icon"><span class="material-symbols-rounded">route</span></span>
-                  <h3 class="sec-title">แผนการเดินทาง</h3>
-                </div>
-                <span class="shrink-0 text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full border border-gray-100">
-                  {{ totalTripDays }} วัน
+            <section v-if="itinerarySectors.length > 0" class="itinerary-section scroll-mt-32" id="itinerary">
+              <div class="flex items-end justify-between gap-4 mb-8">
+                <header class="ed-head">
+                  <span class="ed-kicker">กำหนดการ</span>
+                  <h3 class="ed-title">แผนการเดินทาง</h3>
+                </header>
+                <span class="shrink-0 inline-flex items-center gap-1.5 text-[13px] font-black text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-3.5 py-1.5 rounded-full">
+                  <span class="material-symbols-rounded text-[16px]">event</span>{{ totalTripDays }} วัน
                 </span>
               </div>
 
@@ -283,44 +301,59 @@
                     </div>
                   </div>
                   
-                  <div class="space-y-6 relative">
-                    <!-- Vertical Timeline Line -->
-                    <div class="absolute left-6 md:left-8 top-10 bottom-10 w-0.5 bg-dashed border-l-2 border-dashed border-gray-200 z-0"></div>
+                  <div class="timeline relative pl-[4.5rem] md:pl-24">
+                    <!-- Continuous rail the day nodes sit on -->
+                    <div class="absolute left-[1.75rem] md:left-9 top-4 bottom-4 w-px bg-gradient-to-b from-[var(--color-accent)]/40 via-gray-200 to-transparent"></div>
 
-                    <div 
-                      v-for="(item, idx) in sector.items" 
-                      :key="idx" 
-                      class="itinerary-day-card bg-white rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden transition-all duration-300 relative z-10"
-                      :class="{'ring-2 ring-[var(--color-accent)]/10 shadow-[0_15px_40px_rgba(0,0,0,0.05)]': openDays.includes(sIdx + '-' + idx)}"
+                    <div
+                      v-for="(item, idx) in sector.items"
+                      :key="idx"
+                      class="timeline-item relative pb-8 last:pb-0"
                     >
-                      <div 
+                      <!-- Day node on the rail -->
+                      <button
+                        type="button"
                         @click="toggleDay(sIdx + '-' + idx)"
-                        class="p-6 md:p-8 flex items-center justify-between cursor-pointer group"
+                        class="timeline-node absolute -left-[4.5rem] md:-left-24 top-0 w-14 h-14 md:w-[4.5rem] md:h-[4.5rem] rounded-2xl flex flex-col items-center justify-center transition-all duration-300"
+                        :class="openDays.includes(sIdx + '-' + idx)
+                          ? 'bg-[var(--color-accent)] text-white shadow-lg shadow-[var(--color-accent)]/25'
+                          : 'bg-white text-[var(--color-text-dark)] border border-gray-200 hover:border-[var(--color-accent)]/50'"
+                        :aria-expanded="openDays.includes(sIdx + '-' + idx)"
                       >
-                        <div class="flex items-center gap-5 md:gap-8">
-                          <div class="day-number-circle w-12 h-12 md:w-16 md:h-16 rounded-3xl bg-white border-2 border-[var(--color-sand)] flex flex-col items-center justify-center transition-all group-hover:border-[var(--color-accent)]/30"
-                            :class="{'!bg-[var(--color-accent)] !border-[var(--color-accent)] text-white shadow-lg': openDays.includes(sIdx + '-' + idx)}">
-                            <span class="text-[10px] font-black uppercase tracking-widest opacity-70">Day</span>
-                            <span class="text-xl md:text-2xl font-black leading-none">{{ item.day }}</span>
-                          </div>
-                          <div>
-                            <h4 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">{{ item.title }}</h4>
-                            <p v-if="!openDays.includes(sIdx + '-' + idx)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1 max-w-[200px] md:max-w-md">
+                        <span class="text-[9px] font-black uppercase tracking-[0.15em] opacity-70">Day</span>
+                        <span class="text-xl md:text-2xl font-black leading-none">{{ item.day }}</span>
+                      </button>
+
+                      <!-- Day card -->
+                      <div
+                        class="itinerary-day-card rounded-[1.5rem] border transition-all duration-300"
+                        :class="openDays.includes(sIdx + '-' + idx)
+                          ? 'bg-white border-[var(--color-accent)]/20 shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
+                          : 'bg-white border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_14px_34px_rgba(0,0,0,0.05)]'"
+                      >
+                        <div
+                          @click="toggleDay(sIdx + '-' + idx)"
+                          class="p-5 md:p-6 flex items-center justify-between gap-4 cursor-pointer group"
+                        >
+                          <div class="min-w-0">
+                            <p class="text-[11px] font-black uppercase tracking-widest text-[var(--color-accent)] mb-1">วันที่ {{ item.day }}</p>
+                            <h4 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ item.title }}</h4>
+                            <p v-if="!openDays.includes(sIdx + '-' + idx)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1">
                               {{ item.description }}
                             </p>
                           </div>
+                          <div class="w-9 h-9 shrink-0 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
+                            :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(sIdx + '-' + idx)}">
+                            <span class="material-symbols-rounded">expand_more</span>
+                          </div>
                         </div>
-                        <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
-                          :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(sIdx + '-' + idx)}">
-                          <span class="material-symbols-rounded">expand_more</span>
+
+                        <div v-show="openDays.includes(sIdx + '-' + idx)" class="px-5 pb-6 md:px-6 md:pb-7 animate-fade-in">
+                          <div class="w-full h-px bg-gray-100 mb-5"></div>
+                          <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg font-medium whitespace-pre-line">
+                            {{ item.description }}
+                          </p>
                         </div>
-                      </div>
-                      
-                      <div v-show="openDays.includes(sIdx + '-' + idx)" class="px-6 pb-8 md:px-8 md:pb-10 md:ml-[104px] animate-fade-in">
-                        <div class="w-full h-px bg-gray-100 mb-6"></div>
-                        <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg font-medium whitespace-pre-line">
-                          {{ item.description }}
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -329,91 +362,97 @@
             </section>
 
             <!-- Preparations Section -->
-            <section v-if="trip.preparations && trip.preparations.length > 0" class="preparations-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] relative overflow-hidden">
-              <div class="absolute -right-12 -top-12 w-48 h-48 bg-[var(--color-sand)] rounded-full blur-3xl opacity-50"></div>
-              <div class="relative z-10">
-                <div class="flex items-center gap-3.5 mb-8">
-                  <span class="sec-icon"><span class="material-symbols-rounded">backpack</span></span>
-                  <h3 class="sec-title">การเตรียมตัวและสิ่งที่ต้องเตรียม</h3>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                  <div v-for="(item, idx) in trip.preparations" :key="idx" class="flex items-start gap-4 p-4 rounded-2xl hover:bg-[var(--color-sand)]/30 transition-colors group">
-                    <div class="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
-                      <span class="material-symbols-rounded text-[var(--color-accent)] text-lg">check</span>
-                    </div>
-                    <p class="text-[var(--color-text-mid)] font-bold text-base md:text-lg leading-relaxed pt-0.5">{{ item }}</p>
-                  </div>
+            <section v-if="trip.preparations && trip.preparations.length > 0" id="prepare" class="preparations-section scroll-mt-32">
+              <header class="ed-head mb-8">
+                <span class="ed-kicker">ก่อนออกเดินทาง</span>
+                <h3 class="ed-title">สิ่งที่ต้องเตรียม</h3>
+              </header>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div v-for="(item, idx) in trip.preparations" :key="idx"
+                  class="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-gray-100 shadow-[0_6px_18px_rgba(0,0,0,0.02)] hover:border-[var(--color-accent)]/25 transition-colors">
+                  <span class="w-7 h-7 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="material-symbols-rounded text-[16px]">check</span>
+                  </span>
+                  <p class="text-[var(--color-text-mid)] font-bold text-base leading-relaxed">{{ item }}</p>
                 </div>
               </div>
             </section>
 
             <!-- Highlights -->
-            <section>
-              <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
-                <div class="flex items-center gap-3.5">
-                  <span class="sec-icon"><span class="material-symbols-rounded">auto_awesome</span></span>
-                  <h3 class="sec-title">จุดเด่นของทริป</h3>
-                </div>
+            <section id="highlights" class="scroll-mt-32">
+              <div class="flex items-end justify-between mb-8 flex-wrap gap-4">
+                <header class="ed-head">
+                  <span class="ed-kicker">ไฮไลต์</span>
+                  <h3 class="ed-title">จุดเด่นของทริป</h3>
+                </header>
                 <button
-                  @click="showAvailabilityModal = true" 
-                  class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all shadow-lg shadow-black/5 active:scale-95 group"
+                  @click="showAvailabilityModal = true"
+                  class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all shadow-sm active:scale-95 group"
                 >
                   <span class="material-symbols-rounded text-xl transition-transform group-hover:rotate-12">calendar_month</span>
                   เช็ครอบที่ยังว่าง
                 </button>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div v-for="(hi, idx) in highlights" :key="idx" 
-                  class="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:-translate-y-1 hover:border-[var(--color-accent)]/30 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-300 group flex gap-5 items-start">
-                  <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] group-hover:bg-[var(--color-accent)] transition-colors duration-300 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-rounded text-[28px] text-[var(--color-accent)] group-hover:text-white transition-colors duration-300">{{ hi.icon || 'star' }}</span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <article v-for="(hi, idx) in highlights" :key="idx"
+                  class="hl-card group relative overflow-hidden bg-white p-6 md:p-7 rounded-[1.75rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-accent)]/30 hover:shadow-[0_22px_44px_rgba(0,0,0,0.07)]">
+                  <span class="absolute right-5 top-4 text-[54px] font-black leading-none text-[var(--color-accent)]/[0.07] tabular-nums select-none">{{ String(idx + 1).padStart(2, '0') }}</span>
+                  <div class="relative">
+                    <div class="w-14 h-14 rounded-2xl bg-[var(--color-accent)]/10 group-hover:bg-[var(--color-accent)] transition-colors duration-300 flex items-center justify-center mb-5">
+                      <span class="material-symbols-rounded hl-icon text-[var(--color-accent)] group-hover:text-white transition-colors duration-300">{{ hi.icon || 'star' }}</span>
+                    </div>
+                    <h4 class="text-lg md:text-xl font-black text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ hi.title }}</h4>
+                    <p class="text-sm md:text-[15px] text-[var(--color-text-muted)] font-medium leading-relaxed">{{ hi.desc }}</p>
                   </div>
-                  <div class="flex-grow">
-                    <h4 class="text-lg font-extrabold text-[var(--color-text-dark)] mb-2 group-hover:text-[var(--color-accent)] transition-colors">{{ hi.title }}</h4>
-                    <p class="text-sm text-[var(--color-text-muted)] font-medium leading-relaxed">{{ hi.desc }}</p>
-                  </div>
-                </div>
+                </article>
               </div>
             </section>
 
             <!-- Inclusions / Exclusions -->
-            <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div class="p-8 md:p-10 bg-white rounded-[2rem] border border-[#E8F5EC] shadow-[0_10px_40px_rgba(45,122,79,0.05)]">
-                <h4 class="text-xl font-extrabold mb-6 flex items-center gap-3 text-[#2D7A4F]">
-                  <span class="material-symbols-rounded text-[28px]" style="font-variation-settings:'FILL' 1">check_circle</span>
-                  สิ่งที่รวมในทริป
-                </h4>
-                <ul class="space-y-4 text-base font-medium text-[var(--color-text-dark)]">
-                  <li v-for="(item, i) in trip.inclusions" :key="i" class="flex items-start gap-3">
-                    <span class="material-symbols-rounded text-[#2D7A4F] shrink-0 mt-0.5 text-[20px]">check</span>
-                    <span>{{ item }}</span>
-                  </li>
-                </ul>
-                <p v-if="!trip.inclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่รวมในทริป</p>
-              </div>
-              <div class="p-8 md:p-10 bg-white rounded-[2rem] border border-red-50 shadow-[0_10px_40px_rgba(239,68,68,0.05)]">
-                <h4 class="text-xl font-extrabold mb-6 flex items-center gap-3 text-red-500">
-                  <span class="material-symbols-rounded text-[28px]" style="font-variation-settings:'FILL' 1">cancel</span>
-                  สิ่งที่ไม่รวม
-                </h4>
-                <ul class="space-y-4 text-base font-medium text-[var(--color-text-dark)]">
-                  <li v-for="(item, i) in trip.exclusions" :key="i" class="flex items-start gap-3">
-                    <span class="material-symbols-rounded text-red-400 shrink-0 mt-0.5 text-[20px]">close</span>
-                    <span>{{ item }}</span>
-                  </li>
-                </ul>
-                <p v-if="!trip.exclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่ไม่รวมในทริป</p>
+            <section id="included" class="scroll-mt-32">
+              <header class="ed-head mb-8">
+                <span class="ed-kicker">รายละเอียดราคา</span>
+                <h3 class="ed-title">สิ่งที่รวมและไม่รวม</h3>
+              </header>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 rounded-[2rem] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] overflow-hidden">
+                <div class="p-7 md:p-9 md:border-r border-gray-100">
+                  <h4 class="text-lg font-black mb-6 flex items-center gap-2.5 text-[#2D7A4F]">
+                    <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 1">check_circle</span>
+                    รวมในราคาแล้ว
+                  </h4>
+                  <ul class="space-y-3.5 text-[15px] md:text-base font-medium text-[var(--color-text-dark)]">
+                    <li v-for="(item, i) in trip.inclusions" :key="i" class="flex items-start gap-3">
+                      <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-[#E8F5EC] text-[#2D7A4F] flex items-center justify-center"><span class="material-symbols-rounded text-[14px]">check</span></span>
+                      <span>{{ item }}</span>
+                    </li>
+                  </ul>
+                  <p v-if="!trip.inclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่รวมในทริป</p>
+                </div>
+                <div class="p-7 md:p-9 border-t md:border-t-0 border-gray-100 bg-gray-50/40">
+                  <h4 class="text-lg font-black mb-6 flex items-center gap-2.5 text-gray-400">
+                    <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 1">cancel</span>
+                    ไม่รวมในราคา
+                  </h4>
+                  <ul class="space-y-3.5 text-[15px] md:text-base font-medium text-[var(--color-text-mid)]">
+                    <li v-for="(item, i) in trip.exclusions" :key="i" class="flex items-start gap-3">
+                      <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center"><span class="material-symbols-rounded text-[14px]">close</span></span>
+                      <span>{{ item }}</span>
+                    </li>
+                  </ul>
+                  <p v-if="!trip.exclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่ไม่รวมในทริป</p>
+                </div>
               </div>
             </section>
 
             <!-- Cancellation / refund policy -->
             <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
-              <div class="flex items-center gap-3.5 mb-2">
-                <span class="sec-icon"><span class="material-symbols-rounded">event_repeat</span></span>
-                <h3 class="sec-title">นโยบายการยกเลิกและคืนเงิน</h3>
-              </div>
+              <header class="ed-head mb-2">
+                <span class="ed-kicker">ความยืดหยุ่น</span>
+                <h3 class="ed-title">นโยบายการยกเลิกและคืนเงิน</h3>
+              </header>
               <p class="text-[var(--color-text-muted)] font-medium mb-8">
                 เปลี่ยนแผนได้อย่างสบายใจ — เงื่อนไขการคืนเงินคำนวณจากจำนวนวันก่อนออกเดินทาง
               </p>
@@ -451,10 +490,10 @@
 
             <!-- FAQ -->
             <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
-              <div class="flex items-center gap-3.5 mb-6">
-                <span class="sec-icon"><span class="material-symbols-rounded">quiz</span></span>
-                <h3 class="sec-title">คำถามที่พบบ่อย</h3>
-              </div>
+              <header class="ed-head mb-6">
+                <span class="ed-kicker">คำถามที่พบบ่อย</span>
+                <h3 class="ed-title">มีข้อสงสัย?</h3>
+              </header>
               <div class="divide-y divide-gray-100">
                 <div v-for="(faq, i) in trip.faqs" :key="i">
                   <button
@@ -498,13 +537,28 @@
                     </div>
                   </div>
                 </div>
+                <!-- Trust row -->
+                <div v-if="hasRating || trip.booked_passengers_count > 0" class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4">
+                  <span v-if="hasRating" class="inline-flex items-center gap-1.5 text-[13px] font-black text-[var(--color-text-dark)]">
+                    <span class="material-symbols-rounded text-[18px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
+                    {{ Number(trip.rating).toFixed(1) }}
+                    <span class="text-[var(--color-text-muted)] font-bold">({{ trip.review_count }} รีวิว)</span>
+                  </span>
+                  <span v-if="hasRating && trip.booked_passengers_count > 0" class="w-1 h-1 rounded-full bg-gray-300"></span>
+                  <span v-if="trip.booked_passengers_count > 0" class="inline-flex items-center gap-1.5 text-[13px] font-bold text-[var(--color-text-muted)]">
+                    <span class="material-symbols-rounded text-[17px]">group</span>
+                    จองแล้ว {{ trip.booked_passengers_count }} คน
+                  </span>
+                </div>
+
                 <!-- Starting price -->
+                <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-1">เริ่มต้นเพียง</p>
                 <div class="flex items-end gap-2 mb-2">
                   <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
                   <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-gray-400 text-xl pb-1.5 font-bold line-through decoration-2">
                     ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
                   </span>
-                  <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold uppercase tracking-wider">/ ท่าน</span>
+                  <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold">/ ท่าน</span>
                 </div>
 
                 <!-- ผ่อนชำระ: ยอดต่องวดที่ต่ำที่สุดเท่าที่รอบนี้ผ่อนได้จริง -->
@@ -740,6 +794,22 @@
                 <div v-else class="text-center py-4 bg-gray-50 rounded-[1.25rem] border border-dashed border-gray-300">
                   <p class="text-sm font-bold text-gray-500">{{ isTrekking ? (selectedRegion ? 'โปรดเลือกวันเดินทาง' : 'โปรดเลือกภูมิภาคก่อน') : 'โปรดเลือกวันเดินทางเพื่อจอง' }}</p>
                 </div>
+
+                <!-- Trust badges -->
+                <div class="mt-6 pt-6 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
+                  <div class="flex flex-col items-center gap-1.5">
+                    <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]">bolt</span>
+                    <span class="text-[11px] font-black text-[var(--color-text-mid)] leading-tight">ยืนยันทันที</span>
+                  </div>
+                  <div class="flex flex-col items-center gap-1.5">
+                    <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]">encrypted</span>
+                    <span class="text-[11px] font-black text-[var(--color-text-mid)] leading-tight">ชำระปลอดภัย</span>
+                  </div>
+                  <div class="flex flex-col items-center gap-1.5">
+                    <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]">health_and_safety</span>
+                    <span class="text-[11px] font-black text-[var(--color-text-mid)] leading-tight">มีประกันเดินทาง</span>
+                  </div>
+                </div>
               </div>
 
               <!-- Urgency Card — แสดงเฉพาะรอบที่ใกล้จะถึงที่สุด -->
@@ -807,13 +877,13 @@
         <TripPostsFeed v-if="trip.slug" :slug="trip.slug" />
 
         <!-- Reviews Section (Moved to bottom for Mobile flow) -->
-        <section id="reviews" class="mt-16 pt-16 border-t border-gray-200">
+        <section id="reviews" class="scroll-mt-32 mt-16 pt-16 border-t border-gray-200">
           <div class="flex items-center justify-between mb-10">
             <div>
-              <div class="flex items-center gap-3.5 mb-3">
-                <span class="sec-icon"><span class="material-symbols-rounded">reviews</span></span>
-                <h3 class="sec-title">รีวิวจากผู้ร่วมทริป</h3>
-              </div>
+              <header class="ed-head mb-3">
+                <span class="ed-kicker">เสียงจากผู้ร่วมทริป</span>
+                <h3 class="ed-title">รีวิวจริงจากนักเดินทาง</h3>
+              </header>
               <div class="flex items-center gap-3">
                 <div class="flex text-[#FFB020]">
                   <span v-for="star in 5" :key="star" class="material-symbols-rounded text-[24px]"
@@ -971,10 +1041,10 @@
         <section v-if="relatedTrips.length" class="mt-16 pt-16 border-t border-gray-200">
           <div class="flex items-end justify-between gap-4 mb-8">
             <div>
-              <div class="flex items-center gap-3.5 mb-2">
-                <span class="sec-icon"><span class="material-symbols-rounded">explore</span></span>
-                <h3 class="sec-title">ทริปที่คุณอาจสนใจ</h3>
-              </div>
+              <header class="ed-head mb-2">
+                <span class="ed-kicker">แนะนำสำหรับคุณ</span>
+                <h3 class="ed-title">ทริปที่คุณอาจสนใจ</h3>
+              </header>
               <p class="text-[var(--color-text-muted)] font-medium">คัดจากทริปแนวเดียวกันและปลายทางใกล้เคียง</p>
             </div>
             <router-link to="/trips" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
@@ -1961,6 +2031,44 @@ async function shareTrip() {
   } catch {}
 }
 
+// ─── In-page section nav (editorial jump bar + scroll-spy) ──
+const activePageSection = ref('overview');
+let pageNavObserver = null;
+
+// Only surface links whose section actually renders.
+const pageSections = computed(() => {
+  // Order must follow DOM order so the scroll-spy highlight reads intuitively.
+  const out = [{ id: 'overview', label: 'ภาพรวม' }];
+  if (itinerarySectors.value.length > 0) out.push({ id: 'itinerary', label: 'กำหนดการ' });
+  if (trip.value?.preparations?.length) out.push({ id: 'prepare', label: 'เตรียมตัว' });
+  out.push({ id: 'highlights', label: 'จุดเด่น' });
+  if (trip.value?.inclusions?.length || trip.value?.exclusions?.length) out.push({ id: 'included', label: 'ราคารวม' });
+  out.push({ id: 'reviews', label: 'รีวิว' });
+  return out;
+});
+
+function scrollToPageSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setupPageNavObserver() {
+  if (pageNavObserver) pageNavObserver.disconnect();
+  // Trigger when a section crosses the band just below the sticky nav.
+  pageNavObserver = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) activePageSection.value = e.target.id;
+      }
+    },
+    { rootMargin: '-140px 0px -70% 0px', threshold: 0 }
+  );
+  pageSections.value.forEach(s => {
+    const el = document.getElementById(s.id);
+    if (el) pageNavObserver.observe(el);
+  });
+}
+
 const highlights = computed(() => {
   if (trip.value?.highlights && trip.value.highlights.length > 0) {
     return trip.value.highlights;
@@ -2264,9 +2372,10 @@ onMounted(async () => {
     await Promise.all([fetchReviews(), fetchAlbumPhotos()]);
     window.addEventListener('keydown', handleKeyDown);
     
-    // Setup observer for itinerary sectors
+    // Setup observers for itinerary sectors + the in-page nav scroll-spy
     setTimeout(() => {
       setupSectorObserver();
+      setupPageNavObserver();
     }, 1000);
   } catch (e) {
     console.error(e);
@@ -2279,6 +2388,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
   if (sectorObserver) sectorObserver.disconnect();
+  if (pageNavObserver) pageNavObserver.disconnect();
   if (schedulePoll) clearInterval(schedulePoll);
   if (flashTimer) clearInterval(flashTimer);
   clearTimeout(shareCopiedTimer);
@@ -2438,7 +2548,42 @@ async function fetchAlbumPhotos() {
 </script>
 
 <style scoped>
-/* ── Section headers (unified across every body section) ── */
+/* ── Editorial section headers ───────────────────────────── */
+.ed-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.ed-kicker {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.ed-kicker::before {
+  content: '';
+  width: 1.6rem;
+  height: 2px;
+  border-radius: 2px;
+  background-color: var(--color-accent);
+}
+.ed-title {
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--color-text-dark);
+}
+@media (min-width: 768px) {
+  .ed-title { font-size: 2.5rem; }
+}
+
+/* Album sub-card header chip (kept from prior pass) */
 .sec-icon {
   display: flex;
   align-items: center;
@@ -2450,18 +2595,53 @@ async function fetchAlbumPhotos() {
   color: var(--color-accent);
   flex-shrink: 0;
 }
-.sec-icon .material-symbols-rounded {
-  font-size: 26px;
-}
-.sec-title {
-  font-size: 1.5rem;
-  line-height: 1.15;
+.sec-icon .material-symbols-rounded { font-size: 26px; }
+
+/* ── In-page section nav ─────────────────────────────────── */
+.page-nav__link {
+  position: relative;
+  white-space: nowrap;
+  padding: 1rem 1.1rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-text-dark);
+  color: var(--color-text-muted);
+  transition: color 0.2s ease;
 }
-@media (min-width: 768px) {
-  .sec-title { font-size: 1.875rem; }
+.page-nav__link:hover { color: var(--color-text-dark); }
+.page-nav__link.is-active { color: var(--color-primary); }
+.page-nav__link.is-active::after {
+  content: '';
+  position: absolute;
+  left: 1.1rem;
+  right: 1.1rem;
+  bottom: -1px;
+  height: 2.5px;
+  border-radius: 3px;
+  background-color: var(--color-accent);
+}
+
+/* Highlight card icon must beat the unlayered 24px icon rule */
+.hl-card .hl-icon { font-size: 28px; }
+
+/* Book-now: gradient to match the hero CTA, not a flat fill */
+.book-cta {
+  display: block;
+  text-align: center;
+  padding: 1rem;
+  border-radius: 9999px;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #fff;
+  background-image: linear-gradient(110deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.book-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
+}
+.book-cta:active {
+  transform: translateY(0) scale(0.99);
 }
 
 /* Book-now: gradient to match the hero CTA, not a flat fill */
