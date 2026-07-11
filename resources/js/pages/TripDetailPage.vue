@@ -247,12 +247,12 @@
               </div>
             </section>
 
-            <section id="overview" class="description-section scroll-mt-32">
+            <section id="overview" class="description-section scroll-mt-32 bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
               <header class="ed-head mb-6">
                 <span class="ed-kicker">ภาพรวม</span>
                 <h2 class="ed-title">เกี่ยวกับทริปนี้</h2>
               </header>
-              <p class="text-[var(--color-text-mid)] leading-loose text-lg md:text-xl whitespace-pre-line font-medium max-w-3xl">{{ trip.description }}</p>
+              <p class="text-[var(--color-text-mid)] leading-loose text-lg md:text-xl whitespace-pre-line font-medium">{{ trip.description }}</p>
             </section>
 
             <!-- Itinerary (Day by Day) -->
@@ -361,6 +361,20 @@
               </div>
             </section>
 
+            <!-- Editorial photo spread — a magazine-style rhythm break -->
+            <figure v-if="spreadImage" class="spread-band relative overflow-hidden rounded-[2.5rem] aspect-[16/9] sm:aspect-[16/7] shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+              <img :src="spreadImage" :alt="trip.title" loading="lazy" class="absolute inset-0 w-full h-full object-cover" @error="spreadImageFailed = true" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/10"></div>
+              <figcaption class="absolute inset-x-0 bottom-0 p-6 md:p-10">
+                <p class="flex items-center gap-1.5 text-white/80 text-[13px] font-bold mb-1.5">
+                  <span class="material-symbols-rounded text-[17px]">location_on</span>{{ trip.location }}
+                </p>
+                <p class="text-white text-xl md:text-3xl font-black leading-snug tracking-tight max-w-xl drop-shadow-lg">
+                  ทุกเส้นทาง คือความทรงจำที่รอคุณอยู่
+                </p>
+              </figcaption>
+            </figure>
+
             <!-- Preparations Section -->
             <section v-if="trip.preparations && trip.preparations.length > 0" id="prepare" class="preparations-section scroll-mt-32">
               <header class="ed-head mb-8">
@@ -395,7 +409,35 @@
                 </button>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <!-- Image-led editorial feature when a gallery photo is available -->
+              <div v-if="hlImage" class="grid lg:grid-cols-2 gap-8 lg:gap-10 items-stretch">
+                <figure class="hl-figure relative overflow-hidden rounded-[2rem] min-h-[320px] lg:min-h-full shadow-[0_20px_50px_rgba(0,0,0,0.08)]">
+                  <img :src="hlImage" :alt="trip.title" loading="lazy" class="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-out hover:scale-105" @error="hlImageFailed = true" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent"></div>
+                  <figcaption class="absolute bottom-5 left-5 right-5 flex items-center gap-2 text-white">
+                    <span class="material-symbols-rounded text-[19px]">location_on</span>
+                    <span class="text-[15px] font-bold drop-shadow">{{ trip.location }}</span>
+                  </figcaption>
+                </figure>
+
+                <ul class="hl-list flex flex-col justify-center divide-y divide-gray-100">
+                  <li v-for="(hi, idx) in highlights" :key="idx" class="flex items-start gap-4 py-5 first:pt-0 last:pb-0 group">
+                    <span class="shrink-0 flex items-center gap-2.5">
+                      <span class="text-[15px] font-black tabular-nums text-[var(--color-accent)]/40 w-6">{{ String(idx + 1).padStart(2, '0') }}</span>
+                      <span class="w-11 h-11 rounded-xl bg-[var(--color-accent)]/10 group-hover:bg-[var(--color-accent)] transition-colors duration-300 flex items-center justify-center">
+                        <span class="material-symbols-rounded hl-icon text-[var(--color-accent)] group-hover:text-white transition-colors duration-300">{{ hi.icon || 'star' }}</span>
+                      </span>
+                    </span>
+                    <div class="min-w-0 pt-0.5">
+                      <h4 class="text-lg font-black text-[var(--color-text-dark)] mb-1 leading-snug">{{ hi.title }}</h4>
+                      <p class="text-sm md:text-[15px] text-[var(--color-text-muted)] font-medium leading-relaxed">{{ hi.desc }}</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Fallback: card grid when there is no gallery imagery -->
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <article v-for="(hi, idx) in highlights" :key="idx"
                   class="hl-card group relative overflow-hidden bg-white p-6 md:p-7 rounded-[1.75rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-accent)]/30 hover:shadow-[0_22px_44px_rgba(0,0,0,0.07)]">
                   <span class="absolute right-5 top-4 text-[54px] font-black leading-none text-[var(--color-accent)]/[0.07] tabular-nums select-none">{{ String(idx + 1).padStart(2, '0') }}</span>
@@ -2004,6 +2046,21 @@ const typeIcon = computed(() => typeIconMap[trip.value?.type] || 'landscape');
 
 // A rating of 0.0 with no reviews reads as "bad", not "new" — so hide it.
 const hasRating = computed(() => Number(trip.value?.review_count || 0) > 0);
+
+// ─── Editorial section imagery (drawn from the trip gallery) ──
+const galleryList = computed(() =>
+  Array.isArray(trip.value?.gallery) ? trip.value.gallery.filter(Boolean) : []
+);
+// Pick a gallery photo for a section; clamp so small galleries still resolve.
+function sectionImage(idx) {
+  const g = galleryList.value;
+  return g.length ? g[Math.min(idx, g.length - 1)] : null;
+}
+// A broken section image would leave an ugly empty band, so hide the figure.
+const hlImageFailed = ref(false);
+const spreadImageFailed = ref(false);
+const hlImage = computed(() => (hlImageFailed.value ? null : sectionImage(3)));
+const spreadImage = computed(() => (spreadImageFailed.value ? null : sectionImage(4)));
 
 const nextSchedule = computed(() => {
   const today = new Date();
