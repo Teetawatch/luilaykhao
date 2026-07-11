@@ -208,6 +208,62 @@ class StaffCheckInTest extends TestCase
         $this->assertNull($stop1->fresh()->completed_at);
     }
 
+    public function test_lookup_reports_how_many_travellers_the_pickup_point_receives(): void
+    {
+        Role::create(['name' => 'staff']);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $bookingA] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $stop = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+
+        // Scanned booking: 2 travellers at this stop, already checked in.
+        $bookingA->update(['pickup_point_id' => $stop->id, 'checked_in' => true]);
+        BookingPassenger::create(['booking_id' => $bookingA->id, 'name' => 'Second Traveller']);
+
+        // Another booking at the same stop: 1 traveller, not yet checked in.
+        $bookingB = Booking::create([
+            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'pickup_point_id' => $stop->id,
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+        BookingPassenger::create(['booking_id' => $bookingB->id, 'name' => 'Other Traveller']);
+
+        // A booking at a different (implicit) stop must not be counted.
+        Booking::create([
+            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/lookup', ['qr_code' => $bookingA->qr_code])
+            ->assertOk()
+            ->assertJsonPath('meta.pickup_group.label', 'BTS หมอชิต')
+            ->assertJsonPath('meta.pickup_group.total_passengers', 3)
+            ->assertJsonPath('meta.pickup_group.checked_in_passengers', 2)
+            ->assertJsonPath('meta.pickup_group.this_booking_passengers', 2);
+    }
+
     public function test_qr_check_in_auto_completes_pickup_point_and_notifies_next_stop(): void
     {
         Role::create(['name' => 'staff']);

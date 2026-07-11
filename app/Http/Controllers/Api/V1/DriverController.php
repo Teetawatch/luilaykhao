@@ -166,9 +166,13 @@ class DriverController extends Controller
                 : 'เช็คอินสำเร็จ • รับครบทุกจุดแล้ว';
         }
 
+        $fresh = $booking->fresh($this->checkInRelations());
+
         return $this->success(
-            new BookingResource($booking->fresh($this->checkInRelations())),
-            $message
+            new BookingResource($fresh),
+            $message,
+            200,
+            $this->checkInMeta($fresh)
         );
     }
 
@@ -214,10 +218,13 @@ class DriverController extends Controller
 
     private function checkInMeta(Booking $booking): array
     {
+        $pickupGroup = $this->pickupGroupSummary($booking);
+
         if ($booking->checked_in) {
             return [
                 'can_check_in' => false,
                 'block_reason' => 'เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i'),
+                'pickup_group' => $pickupGroup,
             ];
         }
 
@@ -225,12 +232,72 @@ class DriverController extends Controller
             return [
                 'can_check_in' => false,
                 'block_reason' => 'การจองยังไม่ได้รับการยืนยัน',
+                'pickup_group' => $pickupGroup,
             ];
         }
 
         return [
             'can_check_in' => true,
             'block_reason' => null,
+            'pickup_group' => $pickupGroup,
+        ];
+    }
+
+    /**
+     * สรุปจุดรับของการจองที่กำลังเช็คอิน พร้อมจำนวนผู้เดินทาง "ทั้งหมด" ที่จุดนี้
+     * ในรอบเดียวกัน (ไม่ใช่แค่การจองนี้) และจำนวนที่เช็คอินไปแล้ว เพื่อให้สตาฟรู้ว่า
+     * จุดนี้ต้องรับกี่คน เก็บครบหรือยัง จุดปักหมุดเองนับเฉพาะการจองนั้นเพราะเป็นจุดเฉพาะตัว
+     */
+    private function pickupGroupSummary(Booking $booking): array
+    {
+        $schedule = $booking->schedule;
+        $pointId = $booking->pickup_point_id;
+        $thisBookingHeads = $booking->passengers->count();
+
+        $isCustom = ! $pointId
+            && $booking->custom_pickup_lat !== null
+            && $booking->custom_pickup_lng !== null
+            && $booking->custom_pickup_status !== 'rejected';
+
+        if ($isCustom) {
+            return [
+                'point_id' => null,
+                'label' => $booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง',
+                'is_custom' => true,
+                'total_passengers' => $thisBookingHeads,
+                'checked_in_passengers' => $booking->checked_in ? $thisBookingHeads : 0,
+                'this_booking_passengers' => $thisBookingHeads,
+            ];
+        }
+
+        $point = $pointId ? $schedule?->pickupPoints->firstWhere('id', $pointId) : null;
+
+        // ทุกการจองในรอบนี้ที่อยู่จุดรับเดียวกัน (จุดตายตัว = pickup_point_id ตรงกัน,
+        // ไม่ระบุจุด = ไม่มีทั้ง pickup point และหมุด)
+        $siblings = Booking::where('schedule_id', $schedule?->id)
+            ->where('status', 'confirmed')
+            ->when(
+                $pointId,
+                fn ($q) => $q->where('pickup_point_id', $pointId),
+                fn ($q) => $q->whereNull('pickup_point_id')
+                    ->where(fn ($q2) => $q2->whereNull('custom_pickup_lat')
+                        ->orWhereNull('custom_pickup_lng'))
+            )
+            ->withCount('passengers')
+            ->get(['id', 'checked_in']);
+
+        $total = (int) $siblings->sum('passengers_count');
+        $checkedIn = (int) $siblings->where('checked_in', true)->sum('passengers_count');
+
+        return [
+            'point_id' => $pointId,
+            'label' => $point
+                ? ($point->pickup_location ?: $point->region_label ?: 'จุดรับ')
+                : ($booking->pickup_region ?: 'ไม่ระบุจุดรับ'),
+            'is_custom' => false,
+            'total_passengers' => $total,
+            'checked_in_passengers' => $checkedIn,
+            'this_booking_passengers' => $thisBookingHeads,
         ];
     }
 
