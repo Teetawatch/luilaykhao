@@ -639,9 +639,13 @@
     ══════════════════════════════════════════ -->
     <section class="py-24 bg-[var(--color-sand)] relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="text-center mb-16">
-          <span class="text-[var(--color-accent)] font-bold tracking-wider uppercase text-sm mb-2 block">รีวิวจากลูกค้า</span>
-          <h2 class="font-anuphan text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">นักเดินทางพูดถึงเรา</h2>
+        <div class="flex flex-col items-center text-center mb-14 md:mb-16">
+          <div class="inline-flex items-center gap-2 mb-4 pl-2.5 pr-3.5 py-1.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] ring-1 ring-[var(--color-accent)]/15">
+            <span class="material-symbols-rounded text-[17px]" style="font-variation-settings:'FILL' 1">favorite</span>
+            <span class="text-xs font-bold tracking-[0.14em] uppercase">รีวิวจากลูกค้า</span>
+          </div>
+          <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">นักเดินทางพูดถึงเรา</h2>
+          <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed max-w-xl">เสียงจริงจากผู้ร่วมทริปที่ออกเดินทางไปกับเรา</p>
         </div>
       </div>
 
@@ -654,26 +658,26 @@
           <div
             v-for="(review, idx) in marqueeReviews"
             :key="review.id + '-' + idx"
-            class="reviews-marquee__card bg-white rounded-[2rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-shadow duration-300 relative border border-gray-100"
+            class="reviews-marquee__card bg-white rounded-[1.75rem] p-7 shadow-[0_2px_14px_rgba(13,43,30,0.05)] hover:shadow-[0_24px_46px_-14px_rgba(13,43,30,0.22)] transition-[transform,box-shadow] duration-500 ease-out relative ring-1 ring-black/[0.05] hover:-translate-y-1.5"
           >
-            <!-- Quote Icon -->
-            <div class="absolute top-8 right-8 text-gray-100">
-              <span class="material-symbols-rounded text-[64px]" style="font-variation-settings:'FILL' 1">format_quote</span>
+            <!-- Quote accent -->
+            <div class="absolute top-6 right-6 text-[var(--color-accent)]/10 pointer-events-none">
+              <span class="material-symbols-rounded text-[68px] leading-none" style="font-variation-settings:'FILL' 1">format_quote</span>
             </div>
 
-            <div class="relative z-10">
-              <div class="flex text-[#FFB020] gap-1 mb-6">
-                <span v-for="n in 5" :key="n" class="material-symbols-rounded text-[20px]"
+            <div class="relative z-10 flex flex-col h-full">
+              <div class="flex text-[#FFB020] gap-0.5 mb-5">
+                <span v-for="n in 5" :key="n" class="material-symbols-rounded text-[19px]"
                   :class="n <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
                   :style="n <= review.rating ? 'font-variation-settings:\'FILL\' 1' : ''">
                   star
                 </span>
               </div>
 
-              <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mb-8 italic line-clamp-4">"{{ review.comment || 'ไม่มีความคิดเห็น' }}"</p>
+              <p class="text-[var(--color-text-mid)] text-[15px] font-medium leading-relaxed mb-7 line-clamp-4">“{{ review.comment || 'ไม่มีความคิดเห็น' }}”</p>
 
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100 shrink-0">
+              <div class="mt-auto flex items-center gap-3.5 pt-5 border-t border-[var(--color-sand-dark)]">
+                <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-2 ring-[var(--color-accent)]/15 shadow-sm shrink-0">
                   <img
                     v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
                     :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
@@ -682,7 +686,10 @@
                   <span v-else>{{ review.user_name?.charAt(0) }}</span>
                 </div>
                 <div class="min-w-0">
-                  <div class="font-extrabold text-[var(--color-text-dark)] text-base truncate">{{ review.user_name }}</div>
+                  <div class="flex items-center gap-1">
+                    <span class="font-extrabold text-[var(--color-text-dark)] text-base truncate">{{ review.user_name }}</span>
+                    <span class="material-symbols-rounded text-[15px] text-[var(--color-accent)] shrink-0" style="font-variation-settings:'FILL' 1" title="ยืนยันการเดินทางจริง">verified</span>
+                  </div>
                   <div class="text-[var(--color-text-muted)] text-sm font-medium truncate">{{ review.trip_title }}</div>
                 </div>
               </div>
