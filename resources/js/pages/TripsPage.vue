@@ -1,40 +1,40 @@
 <template>
   <div class="pt-12 pb-24 max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
     <!-- Cinematic Hero Header -->
-    <header class="relative overflow-hidden rounded-[2.5rem] mb-10 md:mb-14 animate-fade-in shadow-[0_30px_70px_-30px_rgba(13,43,30,0.55)]">
+    <header class="relative overflow-hidden rounded-[2rem] mb-8 md:mb-12 animate-fade-in shadow-[0_24px_55px_-28px_rgba(13,43,30,0.55)]">
       <!-- Background image + gradient -->
       <div class="absolute inset-0 -z-10">
-        <img src="/images/landscape.webp" alt="" class="w-full h-full object-cover scale-105" />
+        <img src="/images/khaochangphueak.webp" alt="" class="w-full h-full object-cover scale-105" />
         <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#0D2B1E]/80 to-[var(--color-primary)]/65"></div>
       </div>
       <!-- Ambient glows -->
-      <div class="absolute -top-24 -right-16 w-96 h-96 bg-[var(--color-accent)]/25 rounded-full blur-[110px] pointer-events-none"></div>
-      <div class="absolute -bottom-28 -left-12 w-80 h-80 bg-[var(--color-gold)]/10 rounded-full blur-[100px] pointer-events-none"></div>
+      <div class="absolute -top-20 -right-14 w-72 h-72 bg-[var(--color-accent)]/25 rounded-full blur-[100px] pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-10 w-64 h-64 bg-[var(--color-gold)]/10 rounded-full blur-[90px] pointer-events-none"></div>
 
-      <div class="relative px-7 py-12 md:px-14 md:py-16 max-w-3xl">
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-bold mb-6">
-          <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">explore</span>
+      <div class="relative px-6 py-9 md:px-11 md:py-11 max-w-2xl">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold mb-4">
+          <span class="material-symbols-rounded text-[16px] text-[var(--color-accent-light)]">explore</span>
           ค้นพบประสบการณ์ใหม่
         </div>
-        <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-5 leading-[1.15]">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3.5 leading-[1.15]">
           กิจกรรมและ <span class="text-[var(--color-accent-light)]">ทริปทั้งหมด</span>
         </h1>
-        <p class="text-base md:text-xl text-white/75 leading-relaxed font-medium max-w-2xl mb-8">
+        <p class="text-sm md:text-base text-white/75 leading-relaxed font-medium max-w-xl mb-6">
           สำรวจทริปที่คัดสรรมาเพื่อคุณ ตั้งแต่ดำน้ำตื้น เดินป่า จนถึงบริการรถตู้ระดับพรีเมียม เพื่อประสบการณ์การเดินทางที่สมบูรณ์แบบที่สุด
         </p>
 
         <!-- Stat / trust chips -->
-        <div class="flex flex-wrap items-center gap-2.5 md:gap-3">
-          <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-4 py-2 text-white text-sm font-bold">
-            <span class="material-symbols-rounded text-[19px] text-[var(--color-accent-light)]">map</span>
+        <div class="flex flex-wrap items-center gap-2 md:gap-2.5">
+          <div class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-3.5 py-1.5 text-white text-xs font-bold">
+            <span class="material-symbols-rounded text-[17px] text-[var(--color-accent-light)]">map</span>
             {{ totalTrips.toLocaleString() }} ทริปให้เลือก
           </div>
-          <div v-if="totalConfirmedParticipants > 0" class="inline-flex items-center gap-2 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-4 py-2 text-white text-sm font-bold">
-            <span class="material-symbols-rounded text-[19px] text-[var(--color-gold)]" style="font-variation-settings:'FILL' 1">group</span>
+          <div v-if="totalConfirmedParticipants > 0" class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-3.5 py-1.5 text-white text-xs font-bold">
+            <span class="material-symbols-rounded text-[17px] text-[var(--color-gold)]" style="font-variation-settings:'FILL' 1">group</span>
             {{ totalConfirmedParticipants.toLocaleString() }} คนร่วมเดินทางแล้ว
           </div>
-          <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-4 py-2 text-white text-sm font-bold">
-            <span class="material-symbols-rounded text-[19px] text-[var(--color-accent-light)]">verified_user</span>
+          <div class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 px-3.5 py-1.5 text-white text-xs font-bold">
+            <span class="material-symbols-rounded text-[17px] text-[var(--color-accent-light)]">verified_user</span>
             จองปลอดภัย ตรวจสลิปอัตโนมัติ
           </div>
         </div>
