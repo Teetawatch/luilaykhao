@@ -9,6 +9,7 @@ use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
 use App\Jobs\SendReviewInvitesJob;
+use App\Jobs\SendSafeTravelsJob;
 use App\Jobs\SendStaffShiftRemindersJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendUnderfilledTripWarningsJob;
@@ -35,6 +36,8 @@ Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangko
 Schedule::job(new SendUnderfilledTripWarningsJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // Review window opens at 20:00 (Asia/Bangkok) on the trip's last day — invite exactly then.
 Schedule::job(new SendReviewInvitesJob)->dailyAt('20:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// 15 นาทีหลังชวนรีวิว — ส่งข้อความอวยพรเดินทางกลับโดยสวัสดิภาพให้ผู้ร่วมทริปวันนี้
+Schedule::job(new SendSafeTravelsJob)->dailyAt('20:15')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
