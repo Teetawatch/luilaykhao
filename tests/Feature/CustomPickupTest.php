@@ -144,6 +144,52 @@ class CustomPickupTest extends TestCase
         $this->assertNull($booking->passengers()->first()->pickup_point_id);
     }
 
+    public function test_round_with_pickup_points_requires_a_pickup(): void
+    {
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $point = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+
+        // ไม่ส่งจุดรับใด ๆ ทั้งที่รอบมีจุดขึ้นรถ → ถูกปฏิเสธ
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengerPayload(),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('pickup_point_id');
+
+        // เลือกจุดขึ้นรถ → ผ่าน
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'pickup_point_id' => $point->id,
+                'passengers' => $this->passengerPayload(),
+            ])
+            ->assertCreated();
+    }
+
+    public function test_round_without_pickup_points_allows_booking_without_pickup(): void
+    {
+        // รอบที่ไม่มีจุดขึ้นรถตั้งไว้ → backend ไม่บังคับ (เช่น LIFF ที่ไม่มีปุ่มปักหมุดเอง)
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengerPayload(),
+            ])
+            ->assertCreated();
+    }
+
     public function test_custom_pickup_validation_requires_label_and_coords_together(): void
     {
         $user = User::factory()->create();

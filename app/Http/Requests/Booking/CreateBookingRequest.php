@@ -81,6 +81,24 @@ class CreateBookingRequest extends FormRequest
                 return;
             }
 
+            // บังคับระบุจุดรับสำหรับการจองปกติ เมื่อรอบมีจุดขึ้นรถตั้งไว้ — กันทุกช่องทาง
+            // ที่ยิงเข้ามาไม่ให้เกิดการจองที่ไม่มีจุดรับ (join trip ยกเว้น; รอบที่ไม่มีจุด
+            // ตั้งไว้ก็ยกเว้นฝั่ง backend เพราะบางช่องทาง เช่น LIFF ไม่มีปุ่มปักหมุดเอง)
+            if (! $this->boolean('is_join_trip') && $schedule->pickupPoints()->exists()) {
+                $hasBookingPickup = filled($this->input('pickup_point_id'));
+                $hasPassengerPickup = collect($this->input('passengers', []))
+                    ->contains(fn ($p) => filled($p['pickup_point_id'] ?? null));
+                $hasCustomPin = filled($this->input('custom_pickup_lat'))
+                    && filled($this->input('custom_pickup_lng'));
+
+                if (! $hasBookingPickup && ! $hasPassengerPickup && ! $hasCustomPin) {
+                    $validator->errors()->add(
+                        'pickup_point_id',
+                        'กรุณาเลือกจุดรับผู้โดยสาร หรือปักหมุดจุดรับเอง'
+                    );
+                }
+            }
+
             if ($schedule->trip->is_women_only) {
                 $passengers = $this->input('passengers', []);
                 $allowedTitles = ['นาง', 'นางสาว', 'น.ส.', 'นส', 'ด.ญ.']; // Added ด.ญ. just in case, but user said Mrs/Ms only. Let's stick to Mrs/Ms for now if unsure.
