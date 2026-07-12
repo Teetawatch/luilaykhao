@@ -803,6 +803,19 @@
       </div>
     </section>
 
+    <!-- ══════════════════════════════════════════
+         FLOATING LINE OA CONTACT BUTTON
+    ══════════════════════════════════════════ -->
+    <a
+      href="https://line.me/R/ti/p/@luilaykhao"
+      target="_blank"
+      rel="noopener"
+      aria-label="ติดต่อเราผ่าน LINE"
+      class="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full bg-[#06C755] text-white font-bold text-[0.95rem] px-5 py-3.5 hover:bg-[#05b34c] transition-colors"
+    >
+      <span class="material-symbols-rounded text-[22px]">chat</span>
+      <span>แชทผ่าน LINE</span>
+    </a>
 
   </div>
 </template>
@@ -1104,9 +1117,6 @@ const typeFeaturedIcon = (type) => {
 
 onUnmounted(() => {
   clearInterval(sliderInterval);
-  if (window.Tawk_API && typeof window.Tawk_API.hideWidget === 'function') {
-    window.Tawk_API.hideWidget();
-  }
 });
 
 onMounted(async () => {
@@ -1187,22 +1197,6 @@ onMounted(async () => {
       { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
     )
     document.querySelectorAll('.reveal-section').forEach((el) => revealObserver.observe(el))
-    
-    // Tawk.to logic
-    if (!window.Tawk_API) {
-      window.Tawk_API = window.Tawk_API || {};
-      window.Tawk_LoadStart = new Date();
-      (function(){
-        var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-        s1.async=true;
-        s1.src='https://embed.tawk.to/69e8c26faed59b1c34e3582a/1jmvrs6vj';
-        s1.charset='UTF-8';
-        s1.setAttribute('crossorigin','*');
-        s0.parentNode.insertBefore(s1,s0);
-      })();
-    } else if (typeof window.Tawk_API.showWidget === 'function') {
-      window.Tawk_API.showWidget();
-    }
   } catch (e) {
     console.error('Failed to load home data', e);
   } finally {
