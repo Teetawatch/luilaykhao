@@ -148,12 +148,32 @@ class ScheduleItineraryTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_customer_cannot_read_itinerary(): void
+    public function test_booked_customer_can_read_but_not_manage_itinerary(): void
     {
         $schedule = $this->makeSchedule();
+        $admin = $this->makeAdmin();
         $customer = $this->makeCustomer($schedule);
 
+        ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id, 'created_by' => $admin->id,
+            'item_date' => $schedule->departure_date->toDateString(),
+            'time' => '08:00', 'title' => 'อาหารเช้า',
+        ]);
+
+        // ลูกค้าที่จอง active อ่านกำหนดการได้ (ผ่านปุ่มลัดในแชท) แต่จัดการไม่ได้
         $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.can_manage', false)
+            ->assertJsonPath('data.items.0.title', 'อาหารเช้า');
+    }
+
+    public function test_non_member_cannot_read_itinerary(): void
+    {
+        $schedule = $this->makeSchedule();
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider, 'sanctum')
             ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
             ->assertForbidden();
     }

@@ -14,6 +14,7 @@ use App\Models\ChatMessage;
 use App\Models\ChatRead;
 use App\Models\TripSchedule;
 use App\Services\ChatService;
+use App\Services\WeatherService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,7 @@ class ChatController extends Controller
 
     public function __construct(
         private ChatService $chatService,
+        private WeatherService $weatherService,
     ) {}
 
     public function index(Request $request, int $scheduleId): JsonResponse
@@ -331,7 +333,11 @@ class ChatController extends Controller
      */
     public function room(Request $request, int $scheduleId): JsonResponse
     {
-        $schedule = TripSchedule::with(['trip:id,title', 'vehicle'])->findOrFail($scheduleId);
+        $schedule = TripSchedule::with([
+            'trip:id,title,latitude,longitude',
+            'vehicle',
+            'pickupPoints' => fn ($q) => $q->orderBy('sort_order'),
+        ])->findOrFail($scheduleId);
         $user = $request->user();
 
         if (! $this->chatService->canAccess($user, $schedule)) {
@@ -348,6 +354,10 @@ class ChatController extends Controller
 
         $vehicle = $schedule->vehicle;
 
+        // พยากรณ์อากาศวันเดินทาง (เฉพาะเมื่ออยู่ในกรอบเวลา + trip มีพิกัด) และ
+        // ธงว่ารอบนี้มีกำหนดการไหม → ใช้ตัดสินใจแสดงปุ่มลัด "ข้อมูลทริป" ในแอป
+        $this->weatherService->attach($schedule);
+
         return $this->success([
             'schedule' => [
                 'id' => $schedule->id,
@@ -363,6 +373,18 @@ class ChatController extends Controller
                 'driver_name' => $vehicle->driver_name,
                 'driver_phone' => $vehicle->driver_phone,
             ] : null,
+            'weather' => $schedule->weather_forecast ?? null,
+            'has_itinerary' => $schedule->itineraryItems()->exists(),
+            'pickup_points' => $schedule->pickupPoints->map(fn ($p) => [
+                'id' => $p->id,
+                'region_label' => $p->region_label,
+                'pickup_location' => $p->pickup_location,
+                'pickup_time' => $p->pickup_time,
+                'notes' => $p->notes,
+                'map_url' => $p->map_url,
+                'latitude' => $p->latitude,
+                'longitude' => $p->longitude,
+            ])->values()->all(),
             'pinned_message' => $this->chatService->pinnedPayload(
                 $this->chatService->pinnedMessage($schedule)
             ),
@@ -372,12 +394,18 @@ class ChatController extends Controller
             'members' => $members->map(function ($m) use ($reads, $user) {
                 $u = $m['user'];
 
+                // เปิดเบอร์เฉพาะสตาฟ/ทีมงาน เพื่อให้ลูกค้าติดต่อไกด์ประจำรอบได้
+                // (สอดคล้องกับหน้า "วันเดินทาง" ที่โชว์เบอร์สตาฟอยู่แล้ว) —
+                // ไม่เปิดเบอร์ลูกค้าให้กัน
+                $isStaff = in_array($m['role'], ['staff', 'admin'], true);
+
                 return [
                     'id' => $u->id,
                     'name' => $u->name,
                     'nickname' => $u->nickname,
                     'avatar_url' => $u->avatar_url,
                     'role' => $m['role'],
+                    'phone' => $isStaff ? $u->phone : null,
                     'is_me' => $u->id === $user->id,
                     'last_read_message_id' => (int) ($reads[$u->id] ?? 0),
                 ];

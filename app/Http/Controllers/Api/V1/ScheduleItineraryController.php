@@ -50,7 +50,9 @@ class ScheduleItineraryController extends Controller
         $schedule = TripSchedule::findOrFail($scheduleId);
         $user = $request->user();
 
-        if (! $this->service->canRead($user, $schedule)) {
+        // เช็คอินเป็นการกระทำของทีมงาน (สตาฟประจำรอบ/แอดมิน) เท่านั้น — ลูกค้าที่
+        // อ่านกำหนดการได้ผ่าน canRead ต้องไม่มีสิทธิ์กดยืนยันจุด
+        if (! $this->service->canCheckIn($user, $schedule)) {
             return $this->error('คุณไม่มีสิทธิ์อัปเดตกำหนดการของรอบนี้', 403);
         }
 

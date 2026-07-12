@@ -7,6 +7,8 @@ use App\Jobs\SendChatPushJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
+use App\Models\ScheduleItineraryItem;
+use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -274,6 +276,53 @@ class ChatTest extends TestCase
 
         // Alice เห็นตัวเองเป็น is_me
         $this->assertTrue($members->firstWhere('id', $alice->id)['is_me']);
+    }
+
+    public function test_room_exposes_trip_info_shortcuts(): void
+    {
+        Bus::fake();
+        Role::findOrCreate('staff');
+        $schedule = $this->makeSchedule();
+
+        $alice = User::factory()->create();
+        $this->bookOnto($alice, $schedule);
+
+        $staff = User::factory()->create(['phone' => '0899998888']);
+        $staff->assignRole('staff');
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bkk',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'ปั๊ม ปตท. พระราม 2',
+            'price' => 0,
+            'pickup_time' => '06:00',
+            'notes' => 'ถึงก่อนเวลา 15 นาที',
+            'map_url' => 'https://maps.google.com/?q=pickup',
+            'sort_order' => 1,
+        ]);
+
+        ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id,
+            'created_by' => $staff->id,
+            'item_date' => $schedule->departure_date->toDateString(),
+            'time' => '08:00',
+            'title' => 'อาหารเช้า',
+        ]);
+
+        $response = $this->actingAs($alice, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertOk()
+            ->assertJsonPath('data.has_itinerary', true)
+            ->assertJsonPath('data.pickup_points.0.pickup_location', 'ปั๊ม ปตท. พระราม 2')
+            ->assertJsonPath('data.pickup_points.0.pickup_time', '06:00');
+
+        $members = collect($response->json('data.members'));
+
+        // เบอร์สตาฟเปิดให้ลูกค้าติดต่อได้ แต่เบอร์ลูกค้าด้วยกันถูกซ่อน (null)
+        $this->assertSame('0899998888', $members->firstWhere('id', $staff->id)['phone']);
+        $this->assertNull($members->firstWhere('id', $alice->id)['phone']);
     }
 
     public function test_room_forbidden_for_non_member(): void

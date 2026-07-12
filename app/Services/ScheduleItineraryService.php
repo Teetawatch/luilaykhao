@@ -19,9 +19,20 @@ class ScheduleItineraryService
     ) {}
 
     /**
-     * อ่านได้: สตาฟประจำรอบ + admin/operator (ตัดลูกค้าออก)
+     * อ่านได้: สมาชิกห้องแชทของรอบ — ลูกค้าที่จอง active + เพื่อนร่วมทริป +
+     * สตาฟประจำรอบ + admin/operator (เปิดให้ลูกค้าดูกำหนดการผ่านปุ่มลัดในแชท
+     * เพื่อลดการถามซ้ำ) ส่วนการแก้ไขยังจำกัดเฉพาะ admin/operator ผ่าน canManage
      */
     public function canRead(User $user, TripSchedule $schedule): bool
+    {
+        return $this->chatService->canAccess($user, $schedule);
+    }
+
+    /**
+     * เช็คอินจุดกำหนดการ — สตาฟประจำรอบ + admin/operator (ไม่รวมลูกค้า แม้จะ
+     * อ่านกำหนดการได้) เพื่อกันลูกค้ากดยืนยันจุดแทนทีมงาน
+     */
+    public function canCheckIn(User $user, TripSchedule $schedule): bool
     {
         return $this->chatService->canModerate($user, $schedule);
     }

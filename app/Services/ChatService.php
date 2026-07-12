@@ -124,7 +124,7 @@ class ChatService
             return collect();
         }
 
-        $users = User::whereIn('id', $allIds)->get(['id', 'name', 'nickname', 'avatar']);
+        $users = User::whereIn('id', $allIds)->get(['id', 'name', 'nickname', 'avatar', 'phone']);
         $staffSet = $staffIds->unique();
 
         // Staff badge wins when a user is both booked and assigned as staff.
