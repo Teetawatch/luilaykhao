@@ -207,7 +207,10 @@ class TripController extends Controller
     {
         $trip = Trip::where('slug', $slug)
             ->with(['photos', 'schedules' => function ($q) {
-                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
+                $q->where('status', 'open')
+                    ->where('departure_date', '>=', now()->startOfDay())
+                    ->with('pickupPoints')
+                    ->orderBy('departure_date');
             }])
             ->firstOrFail();
 
