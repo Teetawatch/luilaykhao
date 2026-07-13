@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripPostController;
@@ -173,6 +174,13 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
         Route::post('schedules/{id}/chat/typing', [ChatController::class, 'typing'])->middleware('throttle:60,1');
         Route::post('schedules/{id}/chat/joined', [ChatController::class, 'joined'])->middleware('throttle:20,1');
+
+        // ศูนย์ช่วยเหลือในแอป (async support inbox) — ลูกค้าคุยกับทีมงาน
+        Route::get('support/conversation', [SupportController::class, 'show']);
+        Route::get('support/messages', [SupportController::class, 'messages']);
+        Route::post('support/messages', [SupportController::class, 'send'])->middleware('throttle:chat');
+        Route::post('support/read', [SupportController::class, 'markRead']);
+        Route::get('support/unread-count', [SupportController::class, 'unreadCount']);
 
         // Operator announcements per schedule. Read side is open to any member;
         // write side is gated to staff/operators inside the controller (canModerate),
@@ -340,6 +348,15 @@ Route::prefix('v1')->group(function () {
 
         // Group chat — list active conversations
         Route::get('chat/conversations', [ChatController::class, 'adminConversations']);
+
+        // ศูนย์ช่วยเหลือ — กล่องข้อความรวมของทีมงาน
+        Route::get('support/conversations', [SupportController::class, 'adminIndex']);
+        Route::get('support/conversations/unread-count', [SupportController::class, 'adminUnreadTotal']);
+        Route::get('support/conversations/{id}', [SupportController::class, 'adminShow']);
+        Route::post('support/conversations/{id}/read', [SupportController::class, 'adminMarkRead']);
+        Route::post('support/conversations/{id}/messages', [SupportController::class, 'adminReply'])->middleware('throttle:chat');
+        Route::post('support/conversations/{id}/close', [SupportController::class, 'adminClose']);
+        Route::post('support/conversations/{id}/reopen', [SupportController::class, 'adminReopen']);
 
         // Trips CRUD
         Route::get('trips', [AdminController::class, 'trips']);

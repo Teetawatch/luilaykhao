@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\GroupPlan;
+use App\Models\SupportConversation;
 use App\Models\TripSchedule;
 use App\Services\ChatService;
 use Illuminate\Support\Facades\Broadcast;
@@ -30,6 +31,22 @@ Broadcast::channel('announcements.schedule.{scheduleId}', function ($user, $sche
 
     return $schedule
         && app(ChatService::class)->canAccess($user, $schedule);
+});
+
+// ห้องช่วยเหลือ — เจ้าของห้อง (ลูกค้า) หรือทีมงานเท่านั้นที่ฟังได้
+Broadcast::channel('support.conversation.{conversationId}', function ($user, $conversationId) {
+    if ($user->hasAnyRole(['admin', 'operator'])) {
+        return true;
+    }
+
+    return SupportConversation::where('id', $conversationId)
+        ->where('user_id', $user->id)
+        ->exists();
+});
+
+// กล่องข้อความรวมของทีมงาน — เฉพาะแอดมิน/ผู้ดูแล
+Broadcast::channel('support.admins', function ($user) {
+    return $user->hasAnyRole(['admin', 'operator']);
 });
 
 Broadcast::channel('group.{code}', function ($user, $code) {

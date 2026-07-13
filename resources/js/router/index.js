@@ -190,6 +190,7 @@ const routes = [
       { path: 'finance', name: 'admin-finance', component: () => import('../pages/admin/ProfitPage.vue') },
       { path: 'check-in', name: 'admin-checkin', component: () => import('../pages/admin/CheckInPage.vue') },
       { path: 'chat', name: 'admin-chat', component: () => import('../pages/admin/ChatPage.vue') },
+      { path: 'support', name: 'admin-support', component: () => import('../pages/admin/SupportPage.vue') },
       { path: 'announcements', name: 'admin-announcements', component: () => import('../pages/admin/AnnouncementsPage.vue') },
       { path: 'itinerary', name: 'admin-itinerary', component: () => import('../pages/admin/ItineraryPage.vue') },
       { path: 'incidents', name: 'admin-incidents', component: () => import('../pages/admin/IncidentsPage.vue') },

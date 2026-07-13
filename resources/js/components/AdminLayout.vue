@@ -177,6 +177,7 @@ const menuGroups = ref([
       { to: '/admin/incidents', icon: 'fas fa-triangle-exclamation', label: 'แจ้งเหตุ/อุบัติเหตุ' },
       { to: '/admin/staff-assignments', icon: 'fas fa-user-check', label: 'มอบหมายสตาฟ' },
       { to: '/admin/chat', icon: 'fas fa-comments', label: 'แชทกลุ่มทริป' },
+      { to: '/admin/support', icon: 'fas fa-headset', label: 'ศูนย์ช่วยเหลือ' },
       { to: '/admin/announcements', icon: 'fas fa-bullhorn', label: 'ประกาศจากผู้จัด' },
       { to: '/admin/itinerary', icon: 'fas fa-list-check', label: 'กำหนดการเดินทาง' },
       { to: '/admin/schedule-photos', icon: 'fas fa-camera-retro', label: 'ภาพให้ลูกค้า' },
