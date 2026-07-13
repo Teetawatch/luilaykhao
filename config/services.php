@@ -38,6 +38,7 @@ return [
     'google_maps' => [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
         'distance_matrix_url' => 'https://maps.googleapis.com/maps/api/distancematrix/json',
+        'directions_url' => 'https://maps.googleapis.com/maps/api/directions/json',
     ],
 
     'weather' => [

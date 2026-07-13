@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
@@ -51,7 +50,7 @@ class DistanceController extends Controller
             $request->mode ?? 'driving'
         );
 
-        if (!$result) {
+        if (! $result) {
             return $this->error('ไม่สามารถคำนวณระยะทางได้', 500);
         }
 
@@ -84,7 +83,7 @@ class DistanceController extends Controller
             return $this->success([], 'ไม่มีจุดรับที่มีพิกัด');
         }
 
-        $destinations = $pickupPoints->map(fn($pt) => [
+        $destinations = $pickupPoints->map(fn ($pt) => [
             'id' => $pt->id,
             'lat' => (float) $pt->latitude,
             'lng' => (float) $pt->longitude,
@@ -99,6 +98,7 @@ class DistanceController extends Controller
         // merge ข้อมูล pickup point เข้ากับ distance
         $result = $pickupPoints->map(function ($pt) use ($distances) {
             $distInfo = collect($distances)->firstWhere('id', $pt->id);
+
             return [
                 'pickup_point_id' => $pt->id,
                 'region' => $pt->region,
@@ -135,7 +135,7 @@ class DistanceController extends Controller
         // ดึงตำแหน่งล่าสุดจาก Redis ก่อน
         $currentLocation = $this->getVehicleCurrentLocation($vehicleId);
 
-        if (!$currentLocation) {
+        if (! $currentLocation) {
             return $this->error('ไม่พบตำแหน่งปัจจุบันของรถ', 404);
         }
 
@@ -146,7 +146,7 @@ class DistanceController extends Controller
             (float) $request->dest_lng
         );
 
-        if (!$result) {
+        if (! $result) {
             return $this->error('ไม่สามารถคำนวณ ETA ได้', 500);
         }
 
@@ -171,7 +171,7 @@ class DistanceController extends Controller
 
         $currentLocation = $this->getVehicleCurrentLocation($vehicleId);
 
-        if (!$currentLocation) {
+        if (! $currentLocation) {
             return $this->error('ไม่พบตำแหน่งปัจจุบันของรถ', 404);
         }
 
@@ -185,7 +185,7 @@ class DistanceController extends Controller
             return $this->success([], 'ไม่มีจุดรับที่มีพิกัด');
         }
 
-        $destinations = $pickupPoints->map(fn($pt) => [
+        $destinations = $pickupPoints->map(fn ($pt) => [
             'id' => $pt->id,
             'lat' => (float) $pt->latitude,
             'lng' => (float) $pt->longitude,
@@ -199,6 +199,7 @@ class DistanceController extends Controller
 
         $result = $pickupPoints->map(function ($pt) use ($distances) {
             $distInfo = collect($distances)->firstWhere('id', $pt->id);
+
             return [
                 'pickup_point_id' => $pt->id,
                 'region_label' => $pt->region_label,
@@ -222,6 +223,34 @@ class DistanceController extends Controller
     }
 
     /**
+     * เส้นทางขับรถตามถนนจริง จากตำแหน่งรถไปยังจุดของลูกค้า (วาดเส้นบนแผนที่)
+     * GET /api/v1/tracking/route?from_lat=&from_lng=&to_lat=&to_lng=
+     */
+    public function route(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'from_lat' => ['required', 'numeric', 'between:-90,90'],
+            'from_lng' => ['required', 'numeric', 'between:-180,180'],
+            'to_lat' => ['required', 'numeric', 'between:-90,90'],
+            'to_lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error('ข้อมูลไม่ถูกต้อง', 422, $validator->errors());
+        }
+
+        $result = $this->distanceService->getRoute(
+            (float) $request->from_lat,
+            (float) $request->from_lng,
+            (float) $request->to_lat,
+            (float) $request->to_lng,
+        );
+
+        // ไม่มีคีย์/หาเส้นทางไม่ได้ → คืน 200 พร้อม polyline ว่าง เพื่อให้แอป fallback เส้นตรง
+        return $this->success($result ?? ['polyline' => '', 'distance' => 0, 'duration' => 0]);
+    }
+
+    /**
      * ดึงตำแหน่งปัจจุบันจาก Redis หรือ DB
      */
     private function getVehicleCurrentLocation(int $vehicleId): ?array
@@ -240,7 +269,7 @@ class DistanceController extends Controller
             ->orderByDesc('recorded_at')
             ->first();
 
-        if (!$latest) {
+        if (! $latest) {
             return null;
         }
 

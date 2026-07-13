@@ -318,6 +318,7 @@ Route::prefix('v1')->group(function () {
         Route::get('current', [VehicleTrackingController::class, 'currentLocations']);
         Route::get('current/{vehicleId}', [VehicleTrackingController::class, 'currentLocation']);
         Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
+        Route::get('route', [DistanceController::class, 'route'])->middleware('throttle:60,1');
         Route::get('{vehicleId}/eta', [DistanceController::class, 'vehicleETA']);
         Route::get('{vehicleId}/eta/schedule/{scheduleId}', [DistanceController::class, 'vehicleETAToPickups']);
     });

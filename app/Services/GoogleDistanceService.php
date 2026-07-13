@@ -9,23 +9,81 @@ use Illuminate\Support\Facades\Log;
 class GoogleDistanceService
 {
     private string $apiKey;
+
     private string $baseUrl;
+
+    private string $directionsUrl;
 
     public function __construct()
     {
-        $this->apiKey = config('services.google_maps.api_key', '');
-        $this->baseUrl = config('services.google_maps.distance_matrix_url');
+        $this->apiKey = (string) config('services.google_maps.api_key', '');
+        $this->baseUrl = (string) config('services.google_maps.distance_matrix_url');
+        $this->directionsUrl = (string) config('services.google_maps.directions_url', 'https://maps.googleapis.com/maps/api/directions/json');
+    }
+
+    /**
+     * เส้นทางขับรถตามถนนจริงจากต้นทางไปปลายทาง (สำหรับวาดเส้นบนแผนที่แบบ Grab)
+     * คืน overview_polyline (encoded) + ระยะทาง/เวลา; คืน null เมื่อไม่มีคีย์/หาเส้นทางไม่ได้
+     * เพื่อให้แอป fallback ไปเส้นตรงเอง
+     *
+     * @return array{polyline:string, distance:int, duration:int}|null
+     */
+    public function getRoute(
+        float $originLat,
+        float $originLng,
+        float $destLat,
+        float $destLng
+    ): ?array {
+        if (empty($this->apiKey)) {
+            return null;
+        }
+
+        // cache สั้น (60 วิ) เพราะรถวิ่งตลอด แต่ปัดพิกัดกันยิงซ้ำถี่เกิน
+        $cacheKey = 'route:'.round($originLat, 3).','.round($originLng, 3)
+                  .':'.round($destLat, 3).','.round($destLng, 3);
+
+        return Cache::remember($cacheKey, 60, function () use ($originLat, $originLng, $destLat, $destLng) {
+            try {
+                $response = Http::timeout(10)->get($this->directionsUrl, [
+                    'origin' => "{$originLat},{$originLng}",
+                    'destination' => "{$destLat},{$destLng}",
+                    'mode' => 'driving',
+                    'departure_time' => 'now',
+                    'language' => 'th',
+                    'key' => $this->apiKey,
+                ]);
+
+                if (! $response->successful()) {
+                    Log::error('Google Directions API HTTP error', ['status' => $response->status()]);
+
+                    return null;
+                }
+
+                $data = $response->json();
+                if (($data['status'] ?? '') !== 'OK' || empty($data['routes'])) {
+                    return null;
+                }
+
+                $route = $data['routes'][0];
+                $leg = $route['legs'][0] ?? [];
+
+                return [
+                    'polyline' => $route['overview_polyline']['points'] ?? '',
+                    'distance' => (int) ($leg['distance']['value'] ?? 0),
+                    'duration' => (int) ($leg['duration']['value'] ?? 0),
+                ];
+            } catch (\Throwable $e) {
+                Log::error('Google Directions API error', ['error' => $e->getMessage()]);
+
+                return null;
+            }
+        });
     }
 
     /**
      * คำนวณระยะทางและเวลาเดินทางจาก origin ไปยัง destination
      *
-     * @param  float  $originLat
-     * @param  float  $originLng
-     * @param  float  $destLat
-     * @param  float  $destLng
-     * @param  string $mode  driving|walking|bicycling|transit
-     * @return array|null
+     * @param  string  $mode  driving|walking|bicycling|transit
      */
     public function getDistance(
         float $originLat,
@@ -48,11 +106,7 @@ class GoogleDistanceService
     /**
      * คำนวณระยะทางจาก origin ไปยังหลาย destinations พร้อมกัน
      *
-     * @param  float  $originLat
-     * @param  float  $originLng
      * @param  array  $destinations  [['lat' => float, 'lng' => float, 'id' => mixed], ...]
-     * @param  string $mode
-     * @return array
      */
     public function getDistances(
         float $originLat,
@@ -65,14 +119,14 @@ class GoogleDistanceService
         }
 
         $destStrings = array_map(
-            fn($d) => "{$d['lat']},{$d['lng']}",
+            fn ($d) => "{$d['lat']},{$d['lng']}",
             $destinations
         );
 
         $destParam = implode('|', $destStrings);
         $origin = "{$originLat},{$originLng}";
 
-        $cacheKey = "distances:" . md5("{$origin}:{$destParam}:{$mode}");
+        $cacheKey = 'distances:'.md5("{$origin}:{$destParam}:{$mode}");
 
         return Cache::remember($cacheKey, 3600, function () use ($origin, $destParam, $destinations, $mode) {
             return $this->callApiMultiple($origin, $destParam, $destinations, $mode);
@@ -82,11 +136,8 @@ class GoogleDistanceService
     /**
      * คำนวณ ETA ของรถถึงจุดหมาย (สำหรับ vehicle tracking)
      *
-     * @param  float  $vehicleLat    ตำแหน่งปัจจุบันของรถ
-     * @param  float  $vehicleLng
-     * @param  float  $destLat       ปลายทาง (จุดรับผู้โดยสาร / จุดหมาย)
-     * @param  float  $destLng
-     * @return array|null
+     * @param  float  $vehicleLat  ตำแหน่งปัจจุบันของรถ
+     * @param  float  $destLat  ปลายทาง (จุดรับผู้โดยสาร / จุดหมาย)
      */
     public function getETA(
         float $vehicleLat,
@@ -99,8 +150,8 @@ class GoogleDistanceService
         }
 
         // ETA cache สั้นกว่า (5 นาที) เพราะรถเคลื่อนที่ตลอด
-        $cacheKey = "eta:" . round($vehicleLat, 3) . "," . round($vehicleLng, 3)
-                  . ":" . round($destLat, 3) . "," . round($destLng, 3);
+        $cacheKey = 'eta:'.round($vehicleLat, 3).','.round($vehicleLng, 3)
+                  .':'.round($destLat, 3).','.round($destLng, 3);
 
         $result = Cache::remember($cacheKey, 300, function () use ($vehicleLat, $vehicleLng, $destLat, $destLng) {
             return $this->callApi(
@@ -138,12 +189,12 @@ class GoogleDistanceService
 
         $distanceKm = $distanceM / 1000;
         $distanceText = $distanceKm >= 1
-            ? round($distanceKm, 1) . ' กม.'
-            : round($distanceM) . ' ม.';
+            ? round($distanceKm, 1).' กม.'
+            : round($distanceM).' ม.';
 
         $durationMin = (int) round($durationSec / 60);
         if ($durationMin < 60) {
-            $durationText = $durationMin . ' นาที';
+            $durationText = $durationMin.' นาที';
         } else {
             $h = intdiv($durationMin, 60);
             $m = $durationMin % 60;
@@ -152,16 +203,16 @@ class GoogleDistanceService
 
         return [
             'distance' => [
-                'text'  => $distanceText,
+                'text' => $distanceText,
                 'value' => (int) round($distanceM),
             ],
             'duration' => [
-                'text'  => $durationText,
+                'text' => $durationText,
                 'value' => $durationSec,
             ],
-            'origin'      => "{$originLat},{$originLng}",
+            'origin' => "{$originLat},{$originLng}",
             'destination' => "{$destLat},{$destLng}",
-            'source'      => 'haversine',
+            'source' => 'haversine',
         ];
     }
 
@@ -176,6 +227,7 @@ class GoogleDistanceService
     ): ?array {
         if (empty($this->apiKey)) {
             Log::warning('Google Maps API Key is not configured.');
+
             return null;
         }
 
@@ -195,10 +247,11 @@ class GoogleDistanceService
 
             $response = Http::timeout(10)->get($this->baseUrl, $params);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('Google Distance Matrix API HTTP error', [
                     'status' => $response->status(),
                 ]);
+
                 return null;
             }
 
@@ -209,12 +262,13 @@ class GoogleDistanceService
                     'status' => $data['status'],
                     'error_message' => $data['error_message'] ?? null,
                 ]);
+
                 return null;
             }
 
             $element = $data['rows'][0]['elements'][0] ?? null;
 
-            if (!$element || $element['status'] !== 'OK') {
+            if (! $element || $element['status'] !== 'OK') {
                 return null;
             }
 
@@ -244,6 +298,7 @@ class GoogleDistanceService
             Log::error('Google Distance Matrix API exception', [
                 'message' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -259,6 +314,7 @@ class GoogleDistanceService
     ): array {
         if (empty($this->apiKey)) {
             Log::warning('Google Maps API Key is not configured.');
+
             return [];
         }
 
@@ -271,7 +327,7 @@ class GoogleDistanceService
                 'key' => $this->apiKey,
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return [];
             }
 
@@ -281,6 +337,7 @@ class GoogleDistanceService
                 Log::error('Google Distance Matrix API error (multiple)', [
                     'status' => $data['status'],
                 ]);
+
                 return [];
             }
 
@@ -311,6 +368,7 @@ class GoogleDistanceService
             Log::error('Google Distance Matrix API exception (multiple)', [
                 'message' => $e->getMessage(),
             ]);
+
             return [];
         }
     }
