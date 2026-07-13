@@ -2875,6 +2875,16 @@ const pickupPointsByRegion = computed(() => {
     if (!map[pt.region]) map[pt.region] = [];
     map[pt.region].push(pt);
   }
+  // เรียงตามเวลาขึ้นรถ (เวลาถึงก่อนอยู่บนสุด); จุดที่ยังไม่ใส่เวลาไปอยู่ล่างสุด
+  const timeKey = (pt) => (pt.pickup_time && String(pt.pickup_time).trim()) || '99:99';
+  for (const region of Object.keys(map)) {
+    map[region].sort((a, b) => {
+      const ta = timeKey(a);
+      const tb = timeKey(b);
+      if (ta !== tb) return ta < tb ? -1 : 1;
+      return (a.sort_order || 0) - (b.sort_order || 0);
+    });
+  }
   return map;
 });
 
