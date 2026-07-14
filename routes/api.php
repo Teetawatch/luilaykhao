@@ -88,6 +88,7 @@ Route::prefix('v1')->group(function () {
 
     // Reviews (public read)
     Route::get('reviews', [ReviewController::class, 'index']);
+    Route::get('reviews/stats', [ReviewController::class, 'stats']);
     Route::get('reviews/photos', [ReviewController::class, 'photos']);
 
     // Trip posts / ฟีดรูปหลังทริป (public read — ฟีดรวม + ฟีดต่อทริป + คอมเมนต์)

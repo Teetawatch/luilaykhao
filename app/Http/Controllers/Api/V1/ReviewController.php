@@ -34,6 +34,47 @@ class ReviewController extends Controller
     }
 
     /**
+     * สรุปคะแนนรีวิวทั้งหมด (ค่าเฉลี่ยรวม, การกระจายดาว 1-5, ค่าเฉลี่ยรายหมวด)
+     * ใช้ในหน้ารีวิวสาธารณะเพื่อแสดงภาพรวมความพึงพอใจ
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $base = Review::where('is_approved', true);
+
+        if ($request->filled('trip_id')) {
+            $base->where('trip_id', $request->trip_id);
+        }
+
+        $total = (clone $base)->count();
+
+        $distribution = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
+        foreach ((clone $base)->selectRaw('rating, COUNT(*) as c')->groupBy('rating')->pluck('c', 'rating') as $rating => $count) {
+            $distribution[(int) $rating] = (int) $count;
+        }
+
+        $average = $total > 0 ? round((clone $base)->avg('rating'), 2) : 0.0;
+
+        $categories = [];
+        foreach (['guide' => 'rating_guide', 'vehicle' => 'rating_vehicle', 'food' => 'rating_food', 'value' => 'rating_value'] as $key => $column) {
+            $scoped = (clone $base)->whereNotNull($column);
+            $count = $scoped->count();
+            $categories[$key] = [
+                'average' => $count > 0 ? round((clone $scoped)->avg($column), 2) : null,
+                'count' => $count,
+            ];
+        }
+
+        return $this->success([
+            'total' => $total,
+            'average' => (float) $average,
+            'distribution' => $distribution,
+            'with_media' => (clone $base)->where(fn ($q) => $q->whereNotNull('images')->orWhereNotNull('videos'))->count(),
+            'with_reply' => (clone $base)->whereNotNull('admin_reply')->count(),
+            'categories' => $categories,
+        ]);
+    }
+
+    /**
      * อัลบั้มภาพจากผู้ร่วมทริป — รวมรูปจากทุกรีวิวที่อนุมัติแล้วของทริปนั้น
      * มาเรียงเป็นรายรูป (รีวิวใหม่สุดก่อน)
      */
