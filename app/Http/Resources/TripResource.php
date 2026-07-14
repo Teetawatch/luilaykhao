@@ -65,6 +65,7 @@ class TripResource extends JsonResource
             'itinerary' => $this->itinerary ?? [],
             'preparations' => $this->preparations ?? [],
             'faqs' => $this->faqs ?? [],
+            'rental_items' => $this->rental_items ?? [],
             'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
             'review_count' => $this->reviews()->where('is_approved', true)->count(),
             'rating_breakdown' => $this->ratingBreakdown(),

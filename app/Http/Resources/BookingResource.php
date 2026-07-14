@@ -91,6 +91,8 @@ class BookingResource extends JsonResource
             'flexi_surcharge' => $this->flexi_surcharge,
             'selected_addons' => $this->selected_addons ?? [],
             'addons_total' => $this->addons_total,
+            'selected_rentals' => $this->selected_rentals ?? [],
+            'rentals_total' => $this->rentals_total,
             'paid_amount' => $this->paid_amount,
             'payment_method' => $this->payment_method,
             'payment_type' => $this->payment_type ?? 'full',

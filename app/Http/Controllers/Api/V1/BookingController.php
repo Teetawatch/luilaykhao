@@ -44,6 +44,7 @@ class BookingController extends Controller
                 promotionCode: $request->promotion_code,
                 isJoinTrip: (bool) $request->is_join_trip,
                 selectedAddons: $request->selected_addons ?? [],
+                selectedRentals: $request->selected_rentals ?? [],
                 customPickup: $request->filled('custom_pickup_lat') ? [
                     'label' => $request->custom_pickup_label,
                     'lat' => (float) $request->custom_pickup_lat,

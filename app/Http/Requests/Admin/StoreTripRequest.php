@@ -61,6 +61,11 @@ class StoreTripRequest extends FormRequest
             'faqs' => ['nullable', 'array'],
             'faqs.*.question' => ['required_with:faqs', 'string', 'max:255'],
             'faqs.*.answer' => ['required_with:faqs', 'string', 'max:2000'],
+            'rental_items' => ['nullable', 'array'],
+            'rental_items.*.name' => ['required_with:rental_items', 'string', 'max:255'],
+            'rental_items.*.price' => ['required_with:rental_items', 'numeric', 'min:0'],
+            'rental_items.*.image_url' => ['nullable', 'string', 'max:2048'],
+            'rental_items.*.description' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

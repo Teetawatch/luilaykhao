@@ -54,6 +54,9 @@ class CreateBookingRequest extends FormRequest
             'booking_for' => ['nullable', 'in:self,friend'],
             'selected_addons' => ['nullable', 'array'],
             'selected_addons.*' => ['integer', 'min:0'],
+            'selected_rentals' => ['nullable', 'array'],
+            'selected_rentals.*.index' => ['required', 'integer', 'min:0'],
+            'selected_rentals.*.quantity' => ['required', 'integer', 'min:1', 'max:20'],
         ];
     }
 

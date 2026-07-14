@@ -40,6 +40,7 @@ class BookingService
         ?string $promotionCode = null,
         bool $isJoinTrip = false,
         array $selectedAddons = [],
+        array $selectedRentals = [],
         ?array $customPickup = null,
         bool $verifySeatLocks = true,
     ): Booking {
@@ -55,7 +56,7 @@ class BookingService
         $bookedBeforeBooking = null;
         $bookedAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $customPickup, $verifySeatLocks, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -190,6 +191,37 @@ class BookingService
                 ];
             }
 
+            // Equipment rentals — chosen by index into trip.rental_items with a
+            // per-item quantity (e.g. 2 sleeping bags). Snapshotted like add-ons.
+            $rentalOptions = collect($schedule->trip?->rental_items ?? [])->values();
+            $selectedRentalSnapshots = [];
+            $rentalsTotal = 0;
+
+            foreach ($selectedRentals as $rental) {
+                $rentalIndex = (int) ($rental['index'] ?? -1);
+                $quantity = (int) ($rental['quantity'] ?? 0);
+                if ($quantity <= 0) {
+                    continue;
+                }
+
+                $option = $rentalOptions->get($rentalIndex);
+                if (! $option || ! is_array($option) || empty($option['name'])) {
+                    throw new \Exception('อุปกรณ์เช่าที่เลือกไม่ถูกต้อง');
+                }
+
+                $unitPrice = (float) ($option['price'] ?? 0);
+                $totalPrice = $unitPrice * $quantity;
+                $rentalsTotal += $totalPrice;
+
+                $selectedRentalSnapshots[] = [
+                    'name' => (string) $option['name'],
+                    'unit_price' => $unitPrice,
+                    'quantity' => $quantity,
+                    'total_price' => $totalPrice,
+                    'image_url' => (string) ($option['image_url'] ?? ''),
+                ];
+            }
+
             if ($isJoinTrip) {
                 $passengersSubtotal = $pricePerPerson * $participantCount;
             } else {
@@ -199,7 +231,7 @@ class BookingService
                 ));
             }
 
-            $totalAmount = $passengersSubtotal + $addonsTotal;
+            $totalAmount = $passengersSubtotal + $addonsTotal + $rentalsTotal;
 
             // ... rest of the logic remains the same until Booking::create
             // I need to include the rest of the logic here because I'm replacing a large block.
@@ -275,6 +307,8 @@ class BookingService
                 'total_amount' => $totalAmount,
                 'selected_addons' => $selectedAddonSnapshots,
                 'addons_total' => $addonsTotal,
+                'selected_rentals' => $selectedRentalSnapshots,
+                'rentals_total' => $rentalsTotal,
                 'promotion_id' => $promotionId,
                 'promotion_code' => $promotionId ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
