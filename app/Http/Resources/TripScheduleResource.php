@@ -67,7 +67,11 @@ class TripScheduleResource extends JsonResource
                 (bool) $this->flash_sale_enabled,
                 fn () => [
                     'active' => $this->flashSaleActive(),
+                    // Waiting for its scheduled start; the customer UI keys off
+                    // `active`, so an upcoming sale renders as the normal price.
+                    'upcoming' => $this->flashSaleUpcoming(),
                     'price' => (float) $this->flash_sale_price,
+                    'starts_at' => $this->flash_sale_starts_at?->toISOString(),
                     'ends_at' => $this->flash_sale_ends_at?->toISOString(),
                     'discount_percent' => $this->original_price > 0
                         ? (int) round(($this->original_price - (float) $this->flash_sale_price) / $this->original_price * 100)

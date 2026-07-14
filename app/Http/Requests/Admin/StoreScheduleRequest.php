@@ -49,7 +49,8 @@ class StoreScheduleRequest extends FormRequest
             'is_charter' => ['nullable', 'boolean'],
             'flash_sale_enabled' => ['nullable', 'boolean'],
             'flash_sale_price' => ['nullable', 'numeric', 'min:0', 'required_if:flash_sale_enabled,true'],
-            'flash_sale_ends_at' => ['nullable', 'date', 'after:now'],
+            'flash_sale_starts_at' => ['nullable', 'date'],
+            'flash_sale_ends_at' => ['nullable', 'date', 'after:now', 'after:flash_sale_starts_at'],
         ];
     }
 }

@@ -53,7 +53,7 @@ class TripSchedule extends Model
         'trip_id', 'departure_date', 'departs_at', 'return_date',
         'total_seats', 'booked_seats', 'transport_type',
         'vehicle_id', 'status', 'price_override',
-        'flash_sale_enabled', 'flash_sale_price', 'flash_sale_ends_at',
+        'flash_sale_enabled', 'flash_sale_starts_at', 'flash_sale_price', 'flash_sale_ends_at',
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',
@@ -70,6 +70,7 @@ class TripSchedule extends Model
             'booked_seats' => 'integer',
             'price_override' => 'decimal:2',
             'flash_sale_enabled' => 'boolean',
+            'flash_sale_starts_at' => 'datetime',
             'flash_sale_price' => 'decimal:2',
             'flash_sale_ends_at' => 'datetime',
             'installment_enabled' => 'boolean',
@@ -287,13 +288,19 @@ class TripSchedule extends Model
 
     /**
      * Whether a flash sale is currently live for this round: admin-enabled with
-     * a price, still within the (optional) end time, and the round is actually
-     * sellable — open, upcoming, with seats left. Once any of those lapse the
-     * effective price falls back to the normal price automatically.
+     * a price, past its (optional) scheduled start, still within the (optional)
+     * end time, and the round is actually sellable — open, upcoming, with seats
+     * left. Once any of those lapse the effective price falls back to the normal
+     * price automatically.
      */
     public function flashSaleActive(): bool
     {
         if (! $this->flash_sale_enabled || $this->flash_sale_price === null) {
+            return false;
+        }
+
+        // Scheduled to start later — configured but dormant until then.
+        if ($this->flash_sale_starts_at !== null && $this->flash_sale_starts_at->isFuture()) {
             return false;
         }
 
@@ -308,6 +315,36 @@ class TripSchedule extends Model
         $departsAt = $this->effectiveDepartsAt();
 
         return $departsAt === null || $departsAt->isFuture();
+    }
+
+    /**
+     * A flash sale that is enabled and priced but hasn't reached its scheduled
+     * start yet — configured, waiting to go live. The customer UI keys off
+     * flashSaleActive(), so these stay invisible until they start.
+     */
+    public function flashSaleUpcoming(): bool
+    {
+        return $this->flash_sale_enabled
+            && $this->flash_sale_price !== null
+            && $this->flash_sale_starts_at !== null
+            && $this->flash_sale_starts_at->isFuture();
+    }
+
+    /**
+     * Scope: rounds whose scheduled flash sale has just gone live (start passed,
+     * still enabled). Used by StartScheduledFlashSalesJob to fire the launch push
+     * the moment the sale begins; flashSaleActive() + the broadcast dedupe ledger
+     * keep it to a single announcement.
+     */
+    public function scopeFlashSaleJustStarted($query)
+    {
+        return $query->where('flash_sale_enabled', true)
+            ->whereNotNull('flash_sale_price')
+            ->whereNotNull('flash_sale_starts_at')
+            ->where('flash_sale_starts_at', '<=', now())
+            ->where(function ($q) {
+                $q->whereNull('flash_sale_ends_at')->orWhere('flash_sale_ends_at', '>', now());
+            });
     }
 
     /**

@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\StartScheduledFlashSalesJob;
 use App\Models\BroadcastDispatch;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Services\BroadcastNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -108,6 +110,78 @@ class ScheduleFlashSaleTest extends TestCase
         // Moving the end time is a new sale window → re-announce.
         $schedule->update(['flash_sale_ends_at' => now()->addDays(2)]);
         $this->assertSame(2, BroadcastDispatch::where('event_type', 'flash_sale')->count());
+    }
+
+    public function test_scheduled_flash_sale_is_dormant_before_its_start(): void
+    {
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, [
+            'flash_sale_enabled' => true, 'flash_sale_price' => 1990,
+            'flash_sale_starts_at' => now()->addHours(2),
+            'flash_sale_ends_at' => now()->addHours(5),
+        ]);
+
+        // Configured but waiting → normal price, not active, and no push yet.
+        $this->assertFalse($schedule->flashSaleActive());
+        $this->assertTrue($schedule->flashSaleUpcoming());
+        $this->assertSame(3000.0, $schedule->effective_price);
+        $this->assertSame(0, BroadcastDispatch::where('event_type', 'flash_sale')->count());
+    }
+
+    public function test_scheduled_flash_sale_activates_once_its_start_passes(): void
+    {
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, [
+            'flash_sale_enabled' => true, 'flash_sale_price' => 1990,
+            'flash_sale_starts_at' => now()->subMinute(),
+            'flash_sale_ends_at' => now()->addHours(3),
+        ]);
+
+        $this->assertTrue($schedule->flashSaleActive());
+        $this->assertFalse($schedule->flashSaleUpcoming());
+        $this->assertSame(1990.0, $schedule->effective_price);
+    }
+
+    public function test_start_job_announces_scheduled_sale_exactly_once_at_start(): void
+    {
+        $trip = $this->makeTrip();
+        $this->makeSchedule($trip, [
+            'flash_sale_enabled' => true, 'flash_sale_price' => 1990,
+            'flash_sale_starts_at' => now()->addHour(),
+            'flash_sale_ends_at' => now()->addHours(4),
+        ]);
+
+        // Dormant → the observer did not announce it.
+        $this->assertSame(0, BroadcastDispatch::where('event_type', 'flash_sale')->count());
+
+        $job = fn () => (new StartScheduledFlashSalesJob)->handle(app(BroadcastNotificationService::class));
+
+        // Before the start passes, the launch job still finds nothing to announce.
+        $job();
+        $this->assertSame(0, BroadcastDispatch::where('event_type', 'flash_sale')->count());
+
+        // Once the start time passes, it fires the launch push — just once.
+        $this->travelTo(now()->addHours(1)->addMinute());
+        $job();
+        $job();
+        $this->assertSame(1, BroadcastDispatch::where('event_type', 'flash_sale')->count());
+    }
+
+    public function test_trip_resource_marks_upcoming_scheduled_sale(): void
+    {
+        $trip = $this->makeTrip();
+        $this->makeSchedule($trip, [
+            'flash_sale_enabled' => true, 'flash_sale_price' => 1990,
+            'flash_sale_starts_at' => now()->addHours(2),
+            'flash_sale_ends_at' => now()->addHours(5),
+        ]);
+
+        $this->getJson("/api/v1/trips/{$trip->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.is_flash_sale', false)          // not live yet
+            ->assertJsonPath('data.schedules.0.price', 3000)       // normal price
+            ->assertJsonPath('data.schedules.0.flash_sale.active', false)
+            ->assertJsonPath('data.schedules.0.flash_sale.upcoming', true);
     }
 
     public function test_flash_sale_endpoint_lists_only_active_soonest_first(): void

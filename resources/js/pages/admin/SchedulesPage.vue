@@ -164,7 +164,8 @@
                       <span v-if="sch.flash_sale" class="status-badge badge-flash-sale" :class="{ 'badge-flash-inactive': !sch.flash_sale.active }">
                         <span class="material-symbols-rounded icon-xs">bolt</span>
                         Flash ฿{{ Number(sch.flash_sale.price || 0).toLocaleString() }}
-                        <template v-if="sch.flash_sale.ends_at"> · ถึง {{ flashEndLabel(sch.flash_sale.ends_at) }}</template>
+                        <template v-if="sch.flash_sale.upcoming"> · เริ่ม {{ flashEndLabel(sch.flash_sale.starts_at) }}</template>
+                        <template v-else-if="sch.flash_sale.ends_at"> · ถึง {{ flashEndLabel(sch.flash_sale.ends_at) }}</template>
                       </span>
                     </div>
                   </td>
@@ -394,13 +395,17 @@
                 <input v-model.number="form.flash_sale_price" type="number" min="0" placeholder="เช่น 1990" required />
               </div>
               <div class="form-group">
+                <label>เริ่ม Flash Sale</label>
+                <input v-model="form.flash_sale_starts_at_local" type="datetime-local" />
+              </div>
+              <div class="form-group">
                 <label>สิ้นสุด Flash Sale</label>
                 <input v-model="form.flash_sale_ends_at_local" type="datetime-local" />
               </div>
               <div class="form-group form-group-hint-cell full-width">
                 <p class="form-toggle-hint">
                   <span class="material-symbols-rounded hint-icon hint-flash-sale">bolt</span>
-                  เมื่อเปิด ระบบจะส่ง Push แจ้งลูกค้าทันที · ราคาพิเศษมีผลกับการจอง/มัดจำจนกว่าจะหมดเวลา ที่ว่างเต็ม หรือถึงวันออกเดินทาง · เว้นเวลาว่างได้ (ไม่มีนับถอยหลัง)
+                  ตั้ง “เริ่ม” ไว้ล่วงหน้าได้ — ก่อนถึงเวลา ราคายังปกติและยังไม่ส่ง Push · เมื่อถึงเวลา (หรือปล่อยว่าง = เริ่มทันที) ระบบจะส่ง Push แจ้งลูกค้า · ราคาพิเศษมีผลจนกว่าจะหมดเวลา ที่ว่างเต็ม หรือถึงวันออกเดินทาง · เว้นเวลาว่างได้ (ไม่มีนับถอยหลัง)
                 </p>
               </div>
             </div>
@@ -1684,7 +1689,7 @@ const form = reactive({
   deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
   join_trip_enabled: false, join_trip_price: null,
   is_charter: false,
-  flash_sale_enabled: false, flash_sale_price: null, flash_sale_ends_at_local: '',
+  flash_sale_enabled: false, flash_sale_price: null, flash_sale_starts_at_local: '', flash_sale_ends_at_local: '',
 });
 
 // datetime-local (local time) → เก็บ/แสดงเทียบกับ ISO (UTC) ที่ backend ส่งมา
@@ -1785,6 +1790,7 @@ const openForm = (item = null) => {
       is_charter: !!item.is_charter,
       flash_sale_enabled: !!item.flash_sale,
       flash_sale_price: item.flash_sale?.price || null,
+      flash_sale_starts_at_local: toLocalInput(item.flash_sale?.starts_at),
       flash_sale_ends_at_local: toLocalInput(item.flash_sale?.ends_at),
     });
   } else {
@@ -1798,7 +1804,7 @@ const openForm = (item = null) => {
       deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
       join_trip_enabled: false, join_trip_price: null,
       is_charter: false,
-      flash_sale_enabled: false, flash_sale_price: null, flash_sale_ends_at_local: '',
+      flash_sale_enabled: false, flash_sale_price: null, flash_sale_starts_at_local: '', flash_sale_ends_at_local: '',
     });
   }
   showForm.value = true;
@@ -1823,15 +1829,20 @@ const submitForm = async () => {
     } else if (data.deposit_type === 'percent') {
       data.deposit_amount = null;
     }
-    // Flash sale: send end time as UTC ISO; clear price/end when turned off.
+    // Flash sale: send start/end times as UTC ISO; clear all when turned off.
     if (data.flash_sale_enabled) {
+      data.flash_sale_starts_at = data.flash_sale_starts_at_local
+        ? new Date(data.flash_sale_starts_at_local).toISOString()
+        : null;
       data.flash_sale_ends_at = data.flash_sale_ends_at_local
         ? new Date(data.flash_sale_ends_at_local).toISOString()
         : null;
     } else {
       data.flash_sale_price = null;
+      data.flash_sale_starts_at = null;
       data.flash_sale_ends_at = null;
     }
+    delete data.flash_sale_starts_at_local;
     delete data.flash_sale_ends_at_local;
     if (editing.value) {
       await admin.updateSchedule(editing.value.id, data);

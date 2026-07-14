@@ -16,6 +16,7 @@ use App\Jobs\SendStaffShiftRemindersJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Jobs\SendWeatherAlertsJob;
+use App\Jobs\StartScheduledFlashSalesJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -33,6 +34,8 @@ Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone(
 Schedule::job(new SendDepartureSoonRemindersJob)->everyFifteenMinutes()->withoutOverlapping();
 // ~45 นาทีก่อนออกรถจริง เตือนลูกค้าที่ยังไม่เช็คอิน (แสดง QR) + สรุปให้สตาฟว่าเหลือใคร
 Schedule::job(new SendCheckInRemindersJob)->everyFiveMinutes()->withoutOverlapping();
+// ยิงประกาศ flash sale ที่ตั้งเวลาเริ่มไว้ ทันทีที่ถึงเวลาเริ่ม (ก่อนหน้านั้นเงียบ)
+Schedule::job(new StartScheduledFlashSalesJob)->everyMinute()->withoutOverlapping();
 // เตือนสตาฟที่ถูกมอบหมายงาน เย็นก่อนวันเดินทาง 1 วัน ให้เตรียมอุปกรณ์/ความพร้อม
 Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
