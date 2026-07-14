@@ -14,7 +14,7 @@ class Vehicle extends Model
 
     protected $fillable = [
         'name', 'type', 'capacity', 'seat_layout',
-        'license_plate', 'color', 'driver_name', 'driver_phone', 'driver_user_id', 'images',
+        'license_plate', 'color', 'driver_id', 'driver_name', 'driver_phone', 'driver_user_id', 'images',
         'driver_photo', 'interior_video',
     ];
 
@@ -30,6 +30,14 @@ class Vehicle extends Model
     public function schedules(): HasMany
     {
         return $this->hasMany(TripSchedule::class);
+    }
+
+    /**
+     * คนขับจากทะเบียนคนขับที่ผูกกับรถคันนี้
+     */
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(Driver::class);
     }
 
     public function maintenances(): HasMany

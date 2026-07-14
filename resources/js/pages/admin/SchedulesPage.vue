@@ -444,6 +444,22 @@
             <button class="btn-sm btn-secondary" @click="saveCurrentAsTemplate()">
               <span class="material-symbols-rounded">bookmark</span> บันทึกเป็นเทมเพลต
             </button>
+            <button class="btn-sm btn-secondary" @click="togglePullDropdown()" style="position:relative;">
+              <span class="material-symbols-rounded">download</span> ดึงจากรอบอื่น
+              <div v-if="showPullDropdown" class="template-dropdown" @click.stop style="min-width:240px;">
+                <div v-if="pullLoading" class="template-dropdown-item" style="justify-content:center;">
+                  <span class="material-symbols-rounded animate-spin">sync</span>
+                </div>
+                <div v-else-if="!pullSources.length" class="template-dropdown-item" style="color:var(--color-text-muted);">
+                  ไม่มีรอบอื่นของทริปนี้ที่มีจุดรับ
+                </div>
+                <div v-else v-for="src in pullSources" :key="src.id" class="template-dropdown-item" @click="pullFromRound(src)">
+                  <span class="material-symbols-rounded" style="font-size:15px;">event</span>
+                  <span>{{ src.departure_date_label || src.departure_date }}</span>
+                  <span class="tpl-count">{{ src.pickup_points_count }} จุด</span>
+                </div>
+              </div>
+            </button>
             <button class="btn-sm btn-primary" @click="copyPickupPoints(pickupSchedule)" :disabled="!pickupPoints.length">
               <span class="material-symbols-rounded">content_copy</span> คัดลอกไปรอบอื่น
             </button>
@@ -2483,6 +2499,40 @@ const copySelectAll = () => {
   copySelectedIds.value = copyTargets.value.map(s => s.id);
 };
 
+// ── ดึงจุดรับจากรอบอื่น (pull) ─────────────────────
+const showPullDropdown = ref(false);
+const pullSources = ref([]);
+const pullLoading = ref(false);
+
+const togglePullDropdown = async () => {
+  showPullDropdown.value = !showPullDropdown.value;
+  if (!showPullDropdown.value || !pickupSchedule.value) return;
+  pullLoading.value = true;
+  try {
+    const res = await api.get(`/admin/schedules/${pickupSchedule.value.id}/pickup-points/copy-sources`);
+    pullSources.value = res.data.data || [];
+  } catch (e) {
+    pullSources.value = [];
+  } finally {
+    pullLoading.value = false;
+  }
+};
+
+const pullFromRound = async (src) => {
+  if (!pickupSchedule.value) return;
+  showPullDropdown.value = false;
+  try {
+    const res = await api.post(`/admin/schedules/${pickupSchedule.value.id}/pickup-points/copy-from`, {
+      source_schedule_id: src.id,
+    });
+    await loadPickupPoints(pickupSchedule.value.id);
+    fetchData();
+    alert(res.data.message || 'คัดลอกจุดรับสำเร็จ');
+  } catch (e) {
+    alert(e.response?.data?.message || 'คัดลอกไม่สำเร็จ');
+  }
+};
+
 const copyPickupPoints = async (sch) => {
   if (!sch) return;
   copySource.value = sch;
@@ -2908,6 +2958,8 @@ const openPickupManager = async (sch) => {
   pickupSchedule.value = sch;
   resetPickupForm();
   addingInRegion.value = null;
+  showPullDropdown.value = false;
+  pullSources.value = [];
   showPickupManager.value = true;
   await loadPickupPoints(sch.id);
 };

@@ -391,25 +391,54 @@
           </div>
           <div class="form-grid">
             <div class="form-group full-width">
-              <label>เลือกจากผู้ใช้งาน (ถ้ามี)</label>
+              <label>เลือกจากทะเบียนคนขับ</label>
               <div class="select-with-icon">
-                <span class="material-symbols-rounded">person_search</span>
-                <select @change="onDriverSelect" class="form-input">
-                  <option value="">-- เลือกผู้ใช้งานเพื่อดึงข้อมูล --</option>
-                  <option v-for="u in staffUsers" :key="u.id" :value="u.id">
-                    {{ u.name }} {{ u.phone ? `(${u.phone})` : '' }}
+                <span class="material-symbols-rounded">badge</span>
+                <select v-model="form.driver_id" @change="onRegistryDriverSelect" class="form-input">
+                  <option value="">-- กรอกเอง / ไม่ผูกทะเบียน --</option>
+                  <option v-for="d in registryDrivers" :key="d.id" :value="d.id">
+                    {{ d.name }} {{ d.phone ? `(${d.phone})` : '' }}
                   </option>
                 </select>
               </div>
+              <p class="registry-hint">
+                <span class="material-symbols-rounded">info</span>
+                เก็บคนขับไว้ในทะเบียนครั้งเดียว แล้วเลือกซ้ำได้ทุกคัน —
+                <router-link to="/admin/drivers" target="_blank">จัดการทะเบียนคนขับ</router-link>
+              </p>
             </div>
-            <div class="form-group">
-              <label>ชื่อคนขับ</label>
-              <input v-model="form.driver_name" placeholder="ชื่อ-นามสกุลคนขับ" class="form-input" />
+            <div class="form-group full-width" v-if="form.driver_id">
+              <div class="driver-linked-badge">
+                <span class="material-symbols-rounded">link</span>
+                ผูกกับทะเบียนคนขับ: <strong>{{ form.driver_name }}</strong>
+                <button type="button" class="unlink-btn" @click="unlinkRegistryDriver">
+                  <span class="material-symbols-rounded">link_off</span> ยกเลิกการผูก
+                </button>
+              </div>
+              <p class="registry-hint">แก้ไขชื่อ/เบอร์/รูป ได้ที่หน้าทะเบียนคนขับ (จะอัปเดตทุกคันที่ผูกไว้)</p>
             </div>
-            <div class="form-group">
-              <label>เบอร์โทรศัพท์คนขับ</label>
-              <input v-model="form.driver_phone" placeholder="08x-xxx-xxxx" class="form-input" />
-            </div>
+            <template v-else>
+              <div class="form-group full-width">
+                <label>เลือกจากผู้ใช้งาน (ถ้ามี)</label>
+                <div class="select-with-icon">
+                  <span class="material-symbols-rounded">person_search</span>
+                  <select @change="onDriverSelect" class="form-input">
+                    <option value="">-- เลือกผู้ใช้งานเพื่อดึงข้อมูล --</option>
+                    <option v-for="u in staffUsers" :key="u.id" :value="u.id">
+                      {{ u.name }} {{ u.phone ? `(${u.phone})` : '' }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>ชื่อคนขับ</label>
+                <input v-model="form.driver_name" placeholder="ชื่อ-นามสกุลคนขับ" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label>เบอร์โทรศัพท์คนขับ</label>
+                <input v-model="form.driver_phone" placeholder="08x-xxx-xxxx" class="form-input" />
+              </div>
+            </template>
             <div class="form-group full-width gps-pin-box">
               <label>
                 <span class="material-symbols-rounded">my_location</span>
@@ -437,18 +466,18 @@
               <div class="media-upload-row">
                 <div class="media-preview-sm" v-if="form.driver_photo">
                   <img :src="form.driver_photo" />
-                  <button type="button" class="remove-btn" @click="form.driver_photo = ''">
+                  <button type="button" class="remove-btn" v-if="!form.driver_id" @click="form.driver_photo = ''">
                     <span class="material-symbols-rounded">close</span>
                   </button>
                 </div>
-                <div class="upload-placeholder" v-else @click="triggerUpload(driverPhotoInput)">
+                <div class="upload-placeholder" v-else-if="!form.driver_id" @click="triggerUpload(driverPhotoInput)">
                   <span class="material-symbols-rounded animate-spin" v-if="uploadState.driver">sync</span>
                   <span class="material-symbols-rounded" v-else>photo_camera</span>
                   <span>อัปโหลดรูปคนขับ</span>
                 </div>
                 <input ref="driverPhotoInput" type="file" hidden accept="image/*" @change="handleMediaUpload($event, 'driver')" />
               </div>
-              <button type="button" class="media-library-btn" @click="openVehicleMedia('driver')">
+              <button type="button" class="media-library-btn" v-if="!form.driver_id" @click="openVehicleMedia('driver')">
                 <span class="material-symbols-rounded">photo_library</span> เลือกจากคลังสื่อ
               </button>
             </div>
@@ -712,10 +741,11 @@ const upcomingSchedules = ref([]);
 
 const form = reactive({
   name: '', type: 'van', capacity: 10,
-  license_plate: '', color: '', driver_name: '', driver_phone: '',
+  license_plate: '', color: '', driver_id: '', driver_name: '', driver_phone: '',
   driver_photo: '', interior_video: '', images: [], driver_pin: '',
 });
 const pinBusy = ref(false);
+const registryDrivers = ref([]);
 
 const driverPhotoInput = ref(null);
 const galleryInput = ref(null);
@@ -908,7 +938,17 @@ const fetchData = () => {
   // ถ้าไม่ส่ง backend จะ default ที่ 15 ทำให้รถที่เพิ่มใหม่ไม่ขึ้น และสถิติ/รายการนับไม่ครบ
   admin.fetchVehicles({ ...filters, per_page: 200 });
   fetchStaff();
+  fetchRegistryDrivers();
   fetchUpcomingSchedules();
+};
+
+const fetchRegistryDrivers = async () => {
+  try {
+    const res = await admin.fetchDrivers({ per_page: 200, active_only: 1 });
+    registryDrivers.value = res.data || [];
+  } catch (e) {
+    console.error('Failed to fetch drivers:', e);
+  }
 };
 
 const fetchStaff = async () => {
@@ -948,12 +988,28 @@ const onDriverSelect = (e) => {
   }
 };
 
+// เลือกคนขับจากทะเบียน — ดึงชื่อ/เบอร์/รูปมาเติมให้อัตโนมัติ
+const onRegistryDriverSelect = () => {
+  const d = registryDrivers.value.find(x => x.id == form.driver_id);
+  if (d) {
+    form.driver_name = d.name;
+    form.driver_phone = d.phone || '';
+    form.driver_photo = d.photo || '';
+  }
+};
+
+// ยกเลิกการผูกทะเบียน — กลับไปกรอกเอง (ไม่ล้างข้อมูลที่เติมไว้)
+const unlinkRegistryDriver = () => {
+  form.driver_id = '';
+};
+
 const openForm = (v = null) => {
   editing.value = v;
   if (v) {
     Object.assign(form, {
       name: v.name, type: v.type, capacity: v.capacity,
       license_plate: v.license_plate || '', color: v.color || '',
+      driver_id: v.driver_id || '',
       driver_name: v.driver_name || '', driver_phone: v.driver_phone || '',
       driver_photo: v.driver_photo || '', interior_video: v.interior_video || '',
       images: v.images || [], driver_pin: '',
@@ -961,7 +1017,7 @@ const openForm = (v = null) => {
   } else {
     Object.assign(form, {
       name: '', type: 'van', capacity: 10, license_plate: '', color: '',
-      driver_name: '', driver_phone: '', driver_photo: '', interior_video: '',
+      driver_id: '', driver_name: '', driver_phone: '', driver_photo: '', interior_video: '',
       images: [], driver_pin: '',
     });
   }
@@ -1698,6 +1754,15 @@ onMounted(() => fetchData());
 .select-with-icon { position: relative; display: flex; align-items: center; }
 .select-with-icon .material-symbols-rounded { position: absolute; left: 12px; color: var(--color-text-muted); pointer-events: none; font-size: 20px; }
 .select-with-icon .form-input { padding-left: 40px; }
+
+/* ─── Driver registry picker ─────────────────────── */
+.registry-hint { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; color: var(--color-text-muted); }
+.registry-hint .material-symbols-rounded { font-size: 15px; }
+.registry-hint a, .registry-hint :deep(a) { color: var(--color-primary, #0f766e); font-weight: 700; }
+.driver-linked-badge { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #ecfdf5; color: #065f46; border-radius: 10px; font-size: 14px; }
+.driver-linked-badge .material-symbols-rounded { font-size: 18px; }
+.driver-linked-badge .unlink-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: none; background: transparent; color: #b91c1c; font-weight: 700; cursor: pointer; font-size: 13px; }
+.driver-linked-badge .unlink-btn .material-symbols-rounded { font-size: 16px; }
 
 /* ─── Media Upload ───────────────────────────────── */
 .media-upload-row { display: flex; gap: 12px; margin-top: 8px; }

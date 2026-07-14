@@ -68,6 +68,30 @@ class VehicleDriverService
     }
 
     /**
+     * คัดลอกข้อมูลคนขับจากทะเบียนคนขับ (drivers) ลงเป็น snapshot บนตัวรถ
+     * เพื่อให้โค้ดเดิมที่อ่าน driver_name/driver_phone/driver_photo จากรถทำงานได้เหมือนเดิม
+     *
+     * เรียกก่อนบันทึกรถ หลัง fill ค่า driver_id แล้ว
+     */
+    public function applyDriverSnapshot(Vehicle $vehicle): void
+    {
+        if (! $vehicle->driver_id) {
+            return;
+        }
+
+        $driver = $vehicle->driver()->first();
+        if (! $driver) {
+            return;
+        }
+
+        $vehicle->forceFill([
+            'driver_name' => $driver->name,
+            'driver_phone' => $driver->phone,
+            'driver_photo' => $driver->photo,
+        ]);
+    }
+
+    /**
      * ซิงก์ชื่อ/เบอร์ของบัญชีคนขับให้ตรงกับข้อมูลรถ (เรียกหลังแก้ไขข้อมูลรถ)
      */
     public function syncDriverProfile(Vehicle $vehicle): void

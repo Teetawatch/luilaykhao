@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreScheduleRequest;
 use App\Http\Requests\Admin\StoreTripRequest;
 use App\Http\Requests\Admin\StoreVehicleRequest;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\DriverResource;
 use App\Http\Resources\SchedulePickupPointResource;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
@@ -16,6 +17,7 @@ use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\Driver;
 use App\Models\GalleryImage;
 use App\Models\HeroSlide;
 use App\Models\InstallmentPayment;
@@ -292,11 +294,77 @@ class AdminController extends Controller
     {
         $schedule = TripSchedule::create($request->validated());
 
+        // คัดลอกจุดรับจากรอบล่าสุดของทริปเดียวกันให้อัตโนมัติ (ราคา/เวลานัดติดมาด้วย)
+        $seeded = $this->autoSeedPickupPoints($schedule);
+
+        $message = $seeded > 0
+            ? "สร้างรอบเดินทางสำเร็จ — คัดลอกจุดรับ {$seeded} จุดจากรอบก่อนหน้าให้อัตโนมัติ"
+            : 'สร้างรอบเดินทางสำเร็จ';
+
         return $this->success(
-            new TripScheduleResource($schedule->load('trip', 'vehicle')),
-            'สร้างรอบเดินทางสำเร็จ',
+            new TripScheduleResource($schedule->load('trip', 'vehicle', 'pickupPoints')),
+            $message,
             201,
         );
+    }
+
+    /**
+     * เติมจุดรับให้รอบใหม่จากรอบล่าสุดของทริปเดียวกันที่มีจุดรับอยู่ — คืนจำนวนที่คัดลอก
+     */
+    private function autoSeedPickupPoints(TripSchedule $schedule): int
+    {
+        if ($schedule->pickupPoints()->exists()) {
+            return 0;
+        }
+
+        $source = TripSchedule::where('trip_id', $schedule->trip_id)
+            ->where('id', '!=', $schedule->id)
+            ->whereHas('pickupPoints')
+            ->with('pickupPoints')
+            ->orderByDesc('departure_date')
+            ->orderByDesc('id')
+            ->first();
+
+        return $source ? $this->clonePickupPoints($source, $schedule) : 0;
+    }
+
+    /**
+     * คัดลอกจุดรับจากรอบต้นทางไปยังรอบปลายทาง ข้ามจุดที่ซ้ำ (ภูมิภาค+ชื่อจุด) — คืนจำนวนที่คัดลอกจริง
+     */
+    private function clonePickupPoints(TripSchedule $source, TripSchedule $target): int
+    {
+        $existing = $target->pickupPoints()
+            ->get(['region', 'pickup_location'])
+            ->map(fn ($p) => $p->region.'|'.$p->pickup_location)
+            ->flip();
+
+        $copied = 0;
+        foreach ($source->pickupPoints as $point) {
+            $key = $point->region.'|'.$point->pickup_location;
+            if ($existing->has($key)) {
+                continue;
+            }
+
+            SchedulePickupPoint::create([
+                'schedule_id' => $target->id,
+                'region' => $point->region,
+                'region_label' => $point->region_label,
+                'pickup_location' => $point->pickup_location,
+                'price' => $point->price,
+                'map_url' => $point->map_url,
+                'image_url' => $point->image_url,
+                'latitude' => $point->latitude,
+                'longitude' => $point->longitude,
+                'notes' => $point->notes,
+                'pickup_time' => $point->pickup_time,
+                'sort_order' => $point->sort_order,
+            ]);
+
+            $existing->put($key, true);
+            $copied++;
+        }
+
+        return $copied;
     }
 
     public function updateSchedule(Request $request, int $id): JsonResponse
@@ -1821,7 +1889,7 @@ class AdminController extends Controller
 
     public function vehicles(Request $request): JsonResponse
     {
-        $query = Vehicle::withCount('schedules')->with(['pickupPoints', 'driverUser']);
+        $query = Vehicle::withCount('schedules')->with(['pickupPoints', 'driverUser', 'driver']);
 
         if ($request->filled('type')) {
             $query->where('type', $request->type);
@@ -1834,20 +1902,28 @@ class AdminController extends Controller
 
     public function storeVehicle(StoreVehicleRequest $request): JsonResponse
     {
-        $vehicle = Vehicle::create($request->validated());
+        $vehicle = new Vehicle($request->validated());
 
-        return $this->success(new VehicleResource($vehicle->load(['pickupPoints', 'driverUser'])), 'สร้างยานพาหนะสำเร็จ', 201);
+        // ถ้าเลือกคนขับจากทะเบียน ดึงชื่อ/เบอร์/รูปมาเก็บเป็น snapshot บนรถ
+        $this->vehicleDriverService->applyDriverSnapshot($vehicle);
+        $vehicle->save();
+
+        return $this->success(new VehicleResource($vehicle->load(['pickupPoints', 'driverUser', 'driver'])), 'สร้างยานพาหนะสำเร็จ', 201);
     }
 
     public function updateVehicle(StoreVehicleRequest $request, int $id): JsonResponse
     {
         $vehicle = Vehicle::findOrFail($id);
-        $vehicle->update($request->validated());
+        $vehicle->fill($request->validated());
+
+        // ถ้าเลือกคนขับจากทะเบียน ดึงชื่อ/เบอร์/รูปมาทับ snapshot บนรถ
+        $this->vehicleDriverService->applyDriverSnapshot($vehicle);
+        $vehicle->save();
 
         // ซิงก์ชื่อ/เบอร์ของบัญชีคนขับที่ผูกไว้ ให้ตรงกับข้อมูลรถที่เพิ่งแก้
         $this->vehicleDriverService->syncDriverProfile($vehicle);
 
-        return $this->success(new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser'])), 'อัปเดตยานพาหนะสำเร็จ');
+        return $this->success(new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser', 'driver'])), 'อัปเดตยานพาหนะสำเร็จ');
     }
 
     /**
@@ -1902,6 +1978,73 @@ class AdminController extends Controller
         $vehicle->delete();
 
         return $this->success(null, 'ลบยานพาหนะสำเร็จ');
+    }
+
+    // ─── Drivers (ทะเบียนคนขับ) ───────────────────────────────
+
+    public function drivers(Request $request): JsonResponse
+    {
+        $query = Driver::withCount('vehicles');
+
+        if ($request->filled('search')) {
+            $term = '%'.$request->search.'%';
+            $query->where(fn ($q) => $q->where('name', 'like', $term)->orWhere('phone', 'like', $term));
+        }
+
+        if ($request->boolean('active_only')) {
+            $query->where('is_active', true);
+        }
+
+        $drivers = $query->orderBy('name')->paginate($request->get('per_page', 20));
+
+        return $this->paginated($drivers->through(fn ($d) => new DriverResource($d)));
+    }
+
+    public function storeDriver(Request $request): JsonResponse
+    {
+        $driver = Driver::create($this->validateDriver($request));
+
+        return $this->success(new DriverResource($driver->fresh()->loadCount('vehicles')), 'เพิ่มคนขับสำเร็จ', 201);
+    }
+
+    public function updateDriver(Request $request, int $id): JsonResponse
+    {
+        $driver = Driver::findOrFail($id);
+        $driver->update($this->validateDriver($request));
+
+        // อัปเดต snapshot บนรถทุกคันที่ผูกคนขับคนนี้ + ซิงก์บัญชี PIN
+        $driver->vehicles()->get()->each(function (Vehicle $vehicle) {
+            $this->vehicleDriverService->applyDriverSnapshot($vehicle);
+            $vehicle->save();
+            $this->vehicleDriverService->syncDriverProfile($vehicle);
+        });
+
+        return $this->success(new DriverResource($driver->fresh()->loadCount('vehicles')), 'อัปเดตคนขับสำเร็จ');
+    }
+
+    public function deleteDriver(int $id): JsonResponse
+    {
+        $driver = Driver::withCount('vehicles')->findOrFail($id);
+
+        if ($driver->vehicles_count > 0) {
+            return $this->error('ไม่สามารถลบคนขับที่ยังผูกกับรถอยู่ กรุณาเปลี่ยนคนขับของรถก่อน', 422);
+        }
+
+        $driver->delete();
+
+        return $this->success(null, 'ลบคนขับสำเร็จ');
+    }
+
+    private function validateDriver(Request $request): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'photo' => ['nullable', 'string', 'max:500'],
+            'license_number' => ['nullable', 'string', 'max:50'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
     }
 
     // ─── Vehicle Pickup Points ────────────────────────────────
@@ -2360,6 +2503,58 @@ class AdminController extends Controller
         $point->delete();
 
         return $this->success(null, 'ลบจุดรับผู้โดยสารสำเร็จ');
+    }
+
+    /**
+     * รอบอื่นของทริปเดียวกันที่มีจุดรับ — ใช้เป็นตัวเลือกให้ปุ่ม "ดึงจุดรับจากรอบอื่น"
+     */
+    public function pickupCopySources(int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+
+        $sources = TripSchedule::where('trip_id', $schedule->trip_id)
+            ->where('id', '!=', $scheduleId)
+            ->whereHas('pickupPoints')
+            ->withCount('pickupPoints')
+            ->orderByDesc('departure_date')
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'departure_date' => $s->departure_date?->toDateString(),
+                'departure_date_label' => $s->departure_date ? ThaiDate::short($s->departure_date) : null,
+                'pickup_points_count' => $s->pickup_points_count,
+            ]);
+
+        return $this->success($sources);
+    }
+
+    /**
+     * ดึง (คัดลอก) จุดรับจากรอบต้นทางมาไว้ในรอบนี้ — ข้ามจุดที่ซ้ำอยู่แล้ว
+     */
+    public function copyPickupPointsFrom(Request $request, int $scheduleId): JsonResponse
+    {
+        $target = TripSchedule::findOrFail($scheduleId);
+
+        $validated = $request->validate([
+            'source_schedule_id' => ['required', 'integer', 'exists:trip_schedules,id'],
+        ]);
+
+        if ((int) $validated['source_schedule_id'] === $scheduleId) {
+            return $this->error('ไม่สามารถคัดลอกจากรอบเดียวกันได้', 422);
+        }
+
+        $source = TripSchedule::with('pickupPoints')->findOrFail($validated['source_schedule_id']);
+
+        $copied = $this->clonePickupPoints($source, $target);
+
+        $points = $target->pickupPoints()->orderBy('sort_order')->orderBy('id')->get();
+
+        return $this->success([
+            'copied' => $copied,
+            'pickup_points' => SchedulePickupPointResource::collection($points),
+        ], $copied > 0
+            ? "คัดลอกจุดรับ {$copied} จุดสำเร็จ"
+            : 'ไม่มีจุดรับใหม่ให้คัดลอก (ซ้ำกับที่มีอยู่แล้วทั้งหมด)');
     }
 
     // ─── Pickup Point Image Upload ────────────────────────────

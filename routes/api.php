@@ -398,6 +398,8 @@ Route::prefix('v1')->group(function () {
 
         // Schedule Pickup Points
         Route::get('schedules/{id}/pickup-points', [AdminController::class, 'pickupPoints']);
+        Route::get('schedules/{id}/pickup-points/copy-sources', [AdminController::class, 'pickupCopySources']);
+        Route::post('schedules/{id}/pickup-points/copy-from', [AdminController::class, 'copyPickupPointsFrom']);
         Route::post('schedules/{id}/pickup-points', [AdminController::class, 'storePickupPoint']);
         Route::post('schedules/{id}/pickup-points/sync-images', [AdminController::class, 'syncPickupImages']);
         Route::put('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'updatePickupPoint']);
@@ -433,6 +435,12 @@ Route::prefix('v1')->group(function () {
         Route::get('payments/outstanding', [AdminPaymentController::class, 'outstanding']);
         Route::post('payments/send-links', [AdminPaymentController::class, 'sendLinksBulk']);
         Route::post('payments/{ref}/send-link', [AdminPaymentController::class, 'sendLink']);
+
+        // Drivers (ทะเบียนคนขับ)
+        Route::get('drivers', [AdminController::class, 'drivers']);
+        Route::post('drivers', [AdminController::class, 'storeDriver']);
+        Route::put('drivers/{id}', [AdminController::class, 'updateDriver']);
+        Route::delete('drivers/{id}', [AdminController::class, 'deleteDriver']);
 
         // Vehicles CRUD
         Route::get('vehicles', [AdminController::class, 'vehicles']);

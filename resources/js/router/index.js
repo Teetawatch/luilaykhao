@@ -180,6 +180,7 @@ const routes = [
       { path: 'manual-booking', name: 'admin-manual-booking', component: () => import('../pages/admin/ManualBookingPage.vue') },
       { path: 'bookings', name: 'admin-bookings', component: () => import('../pages/admin/BookingsPage.vue') },
       { path: 'vehicles', name: 'admin-vehicles', component: () => import('../pages/admin/VehiclesPage.vue') },
+      { path: 'drivers', name: 'admin-drivers', component: () => import('../pages/admin/DriversPage.vue') },
       { path: 'users', name: 'admin-users', component: () => import('../pages/admin/UsersPage.vue') },
       { path: 'staff-assignments', name: 'admin-staff-assignments', component: () => import('../pages/admin/StaffAssignmentsPage.vue') },
       { path: 'calendar', name: 'admin-calendar', component: () => import('../pages/admin/CalendarPage.vue') },

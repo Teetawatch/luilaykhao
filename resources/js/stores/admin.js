@@ -211,6 +211,27 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    // ─── Drivers (ทะเบียนคนขับ) ──────
+    async fetchDrivers(params = {}) {
+      const res = await api.get('/admin/drivers', { params });
+      return res.data;
+    },
+
+    async createDriver(data) {
+      const res = await api.post('/admin/drivers', data);
+      return res.data;
+    },
+
+    async updateDriver(id, data) {
+      const res = await api.put(`/admin/drivers/${id}`, data);
+      return res.data;
+    },
+
+    async deleteDriver(id) {
+      const res = await api.delete(`/admin/drivers/${id}`);
+      return res.data;
+    },
+
     // ─── Users ──────────────────────
     async fetchUsers(params = {}) {
       this.loading = true;
