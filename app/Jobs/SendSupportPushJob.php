@@ -43,7 +43,7 @@ class SendSupportPushJob implements ShouldQueue
             $recipientIds = $support->adminRecipientIds();
         } else {
             $senderName = $message->user?->nickname ?: ($message->user?->name ?? 'ทีมงาน');
-            $title = '💬 ทีมงานลุยไล่เขา';
+            $title = '💬 ทีมงานลุยเลเขา';
             $body = "$senderName: $preview";
 
             $ownerId = $message->conversation->user_id;
