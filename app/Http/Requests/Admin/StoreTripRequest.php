@@ -21,6 +21,8 @@ class StoreTripRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'difficulty' => ['required', 'in:easy,medium,hard'],
             'duration_days' => ['required', 'integer', 'min:1'],
+            'distance_km' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'elevation_gain_m' => ['nullable', 'integer', 'min:0', 'max:99999'],
             'max_participants' => ['required', 'integer', 'min:1'],
             'price_per_person' => ['required', 'numeric', 'min:0'],
             'departure_point' => ['nullable', 'string', 'max:255'],

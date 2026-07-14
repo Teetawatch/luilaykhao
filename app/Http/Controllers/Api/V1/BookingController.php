@@ -11,6 +11,7 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\SchedulePhotoResource;
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\TripPost;
 use App\Models\TripSchedule;
 use App\Services\BookingService;
 use App\Services\WeatherService;
@@ -227,5 +228,87 @@ class BookingController extends Controller
         $photos = $booking->schedule?->photos ?? collect();
 
         return $this->success(SchedulePhotoResource::collection($photos));
+    }
+
+    /**
+     * Trip Recap — การ์ดสรุปทริปแบบ story หลังจบทริป (สายเดินป่า Wrapped รายทริป).
+     * รวมสถิติจากทริป/รอบ/กลุ่ม + รูปเด่นจากฟีดหลังทริป เพื่อให้ลูกค้าแชร์อวดได้.
+     */
+    public function recap(Request $request, string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)
+            ->with(['schedule.trip', 'passengers'])
+            ->firstOrFail();
+
+        if (! $booking->isAccessibleByUser($request->user()->id)) {
+            return $this->error('ไม่พบการจองนี้', 404);
+        }
+
+        if ($booking->status === 'cancelled') {
+            return $this->error('การจองนี้ถูกยกเลิกแล้ว', 422);
+        }
+
+        $schedule = $booking->schedule;
+        $trip = $schedule?->trip;
+
+        if (! $schedule || ! $trip) {
+            return $this->error('ไม่พบข้อมูลทริปสำหรับการจองนี้', 404);
+        }
+
+        // รอบนี้ถือว่า "จบทริป" เมื่อวันเดินทาง (หรือวันกลับ) ผ่านมาแล้ว.
+        $endDate = $schedule->return_date ?? $schedule->departure_date;
+        $tripCompleted = $endDate !== null && $endDate->copy()->endOfDay()->isPast();
+
+        // รูปเด่น: โพสต์ที่เผยแพร่ในฟีดของรอบนี้ (fallback เป็นทั้งทริป) เรียงตามยอดไลก์.
+        $photos = TripPost::query()
+            ->where('status', TripPost::STATUS_PUBLISHED)
+            ->where(function ($q) use ($schedule, $trip) {
+                $q->where('schedule_id', $schedule->id)
+                    ->orWhere('trip_id', $trip->id);
+            })
+            ->orderByDesc('likes_count')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get()
+            ->flatMap(fn (TripPost $post) => collect($post->photos ?? [])
+                ->pluck('url')
+                ->filter())
+            ->take(6)
+            ->values()
+            ->all();
+
+        $difficultyLabels = [
+            'easy' => 'สายชิล',
+            'medium' => 'ปานกลาง',
+            'hard' => 'สายโหด',
+        ];
+
+        $hasReviewed = $booking->review()
+            ->where('user_id', $request->user()->id)
+            ->exists();
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'trip_completed' => $tripCompleted,
+            'trip' => [
+                'title' => $trip->title,
+                'slug' => $trip->slug,
+                'location' => $trip->location,
+                'region' => $trip->region,
+                'difficulty' => $trip->difficulty,
+                'difficulty_label' => $difficultyLabels[$trip->difficulty] ?? $trip->difficulty,
+                'cover_image' => $trip->cover_image,
+            ],
+            'departure_date' => $schedule->departure_date?->toDateString(),
+            'return_date' => $schedule->return_date?->toDateString(),
+            'departs_at' => $schedule->departs_at?->toISOString(),
+            'duration_days' => $trip->duration_days,
+            'distance_km' => $trip->distance_km !== null ? (float) $trip->distance_km : null,
+            'elevation_gain_m' => $trip->elevation_gain_m,
+            'group_size' => $booking->passengers->count(),
+            'total_travelers' => (int) $schedule->booked_seats,
+            'photos' => $photos,
+            'has_reviewed' => $hasReviewed,
+        ]);
     }
 }

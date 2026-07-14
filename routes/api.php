@@ -132,6 +132,7 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
+        Route::get('bookings/{ref}/recap', [BookingController::class, 'recap']);
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
 
         // Booking members / companion invites (เชิญเพื่อนเข้าการจองเดียวกัน)

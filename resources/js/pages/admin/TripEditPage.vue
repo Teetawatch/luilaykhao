@@ -533,6 +533,17 @@
                 <input v-model.number="form.max_participants" type="number" min="1" required data-required-field="max_participants" />
               </div>
             </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="form-group">
+                <label>ระยะทางรวม (กม.)</label>
+                <input v-model.number="form.distance_km" type="number" min="0" step="0.1" placeholder="เช่น 12.5" />
+              </div>
+              <div class="form-group">
+                <label>ความสูงสะสม (ม.)</label>
+                <input v-model.number="form.elevation_gain_m" type="number" min="0" step="1" placeholder="เช่น 900" />
+              </div>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">ใช้โชว์ในการ์ดสรุปทริป (Recap) ของลูกค้า — เว้นว่างได้</p>
           </div>
         </div>
 
@@ -750,7 +761,7 @@ const handleMediaSelect = (data) => {
 
 const form = reactive({
   title: '', type: 'trekking', location: '', region: '', description: '',
-  difficulty: 'medium', duration_days: 1, max_participants: 10,
+  difficulty: 'medium', duration_days: 1, distance_km: null, elevation_gain_m: null, max_participants: 10,
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
   latitude: null, longitude: null, is_featured: false, is_women_only: false,
   gallery: [], videos: [], inclusions: [], exclusions: [],
