@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\FlexiDepartureOffer;
 use App\Models\TripSchedule;
 use App\Services\FlexiDepartureService;
 use App\Traits\ApiResponse;
@@ -89,11 +90,47 @@ class FlexiDepartureController extends Controller
             return $this->error($e->getMessage(), 422);
         }
 
+        return $this->success(
+            $this->flexi->adminOfferPayload($offer->load([
+                'schedule.trip', 'creator:id,name',
+                'consents.booking.user:id,name', 'consents.booking.passengers:id,booking_id,name',
+            ])),
+            'ส่งข้อเสนอ Flexi-Price ให้ลูกค้าแล้ว',
+            201,
+        );
+    }
+
+    /**
+     * ผู้จัด (admin|operator): รายการข้อเสนอ Flexi-Price ทั้งหมด + รอบที่ยังยื่นได้
+     */
+    public function adminIndex(): JsonResponse
+    {
         return $this->success([
-            'offer_id' => $offer->id,
-            'status' => $offer->status,
-            'consents' => $offer->consents()->count(),
-        ], 'ส่งข้อเสนอ Flexi-Price ให้ลูกค้าแล้ว', 201);
+            'offers' => $this->flexi->adminList(),
+            'candidates' => $this->flexi->candidateSchedules(),
+        ]);
+    }
+
+    /**
+     * ผู้จัด (admin|operator): ยกเลิกข้อเสนอที่ยังเปิดรับการตอบรับอยู่
+     */
+    public function adminCancel(int $id): JsonResponse
+    {
+        $offer = FlexiDepartureOffer::findOrFail($id);
+
+        try {
+            $this->flexi->cancelOffer($offer);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            $this->flexi->adminOfferPayload($offer->fresh()->load([
+                'schedule.trip', 'creator:id,name',
+                'consents.booking.user:id,name', 'consents.booking.passengers:id,booking_id,name',
+            ])),
+            'ยกเลิกข้อเสนอ Flexi-Price แล้ว',
+        );
     }
 
     private function resolveBooking(string $ref): Booking

@@ -222,6 +222,145 @@ class FlexiDepartureService
         ];
     }
 
+    /**
+     * ผู้จัด: รายการข้อเสนอ Flexi-Price ทั้งหมด (ล่าสุดก่อน) พร้อมความคืบหน้า
+     * และรายละเอียดการตอบรับของแต่ละการจอง สำหรับหน้าจอแอดมิน
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function adminList(int $limit = 100): array
+    {
+        return FlexiDepartureOffer::with([
+            'schedule.trip',
+            'creator:id,name',
+            'consents.booking.user:id,name',
+            'consents.booking.passengers:id,booking_id,name',
+        ])
+            ->latest('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (FlexiDepartureOffer $offer) => $this->adminOfferPayload($offer))
+            ->all();
+    }
+
+    /**
+     * รายละเอียดข้อเสนอหนึ่งรายการในรูปแบบสำหรับแอดมิน
+     *
+     * @return array<string, mixed>
+     */
+    public function adminOfferPayload(FlexiDepartureOffer $offer): array
+    {
+        $consents = $offer->consents;
+        $schedule = $offer->schedule;
+
+        return [
+            'id' => $offer->id,
+            'status' => $offer->status,
+            'is_open' => $offer->isOpen(),
+            'surcharge_per_person' => (float) $offer->surcharge_per_person,
+            'surcharge_pool' => (float) $consents->sum('surcharge_total'),
+            'reason' => $offer->reason,
+            'respond_by' => $offer->respond_by?->toISOString(),
+            'created_at' => $offer->created_at?->toISOString(),
+            'confirmed_at' => $offer->confirmed_at?->toISOString(),
+            'resolved_at' => $offer->resolved_at?->toISOString(),
+            'creator_name' => $offer->creator?->name,
+            'schedule' => $schedule ? [
+                'id' => $schedule->id,
+                'trip_title' => $schedule->trip?->title ?? 'ทริป',
+                'departure_date' => $schedule->departure_date?->toISOString(),
+                'departure_label' => $schedule->departure_date ? ThaiDate::full($schedule->departure_date) : null,
+                'booked_seats' => (int) $schedule->booked_seats,
+                'total_seats' => (int) $schedule->total_seats,
+            ] : null,
+            'progress' => [
+                'total' => $consents->count(),
+                'accepted' => $consents->where('status', FlexiDepartureConsent::STATUS_ACCEPTED)->count(),
+                'declined' => $consents->where('status', FlexiDepartureConsent::STATUS_DECLINED)->count(),
+                'pending' => $consents->where('status', FlexiDepartureConsent::STATUS_PENDING)->count(),
+            ],
+            'consents' => $consents->map(fn (FlexiDepartureConsent $c) => [
+                'id' => $c->id,
+                'booking_ref' => $c->booking?->booking_ref,
+                'customer_name' => $this->customerLabel($c->booking),
+                'pax' => $c->booking ? max(1, $c->booking->passengers->count()) : 1,
+                'surcharge_total' => (float) $c->surcharge_total,
+                'status' => $c->status,
+                'responded_at' => $c->responded_at?->toISOString(),
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * ผู้จัด: รอบเดินทางที่ "คนไม่ครบ" และยังยื่นข้อเสนอ Flexi-Price ได้
+     * (ใกล้ถึง/ยังไม่ถึงวันเดินทาง, ไม่ใช่เหมาคัน, ยังไม่ยกเลิก, จองไม่ถึงขั้นต่ำ
+     * การันตี และยังไม่มีข้อเสนอที่เปิดอยู่) เรียงตามวันเดินทางใกล้สุดก่อน
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function candidateSchedules(): array
+    {
+        $today = now('Asia/Bangkok')->toDateString();
+
+        return TripSchedule::with('trip')
+            ->where('is_charter', false)
+            ->where('status', '!=', 'cancelled')
+            ->whereDate('departure_date', '>=', $today)
+            ->where('booked_seats', '<', TripSchedule::GUARANTEE_MIN_SEATS)
+            ->orderBy('departure_date')
+            ->get()
+            ->filter(fn (TripSchedule $s) => $this->activeOffer($s) === null)
+            ->map(function (TripSchedule $s) {
+                $confirmed = Booking::where('schedule_id', $s->id)
+                    ->where('status', 'confirmed')
+                    ->where('is_join_trip', false)
+                    ->count();
+
+                return [
+                    'schedule_id' => $s->id,
+                    'trip_title' => $s->trip?->title ?? 'ทริป',
+                    'departure_date' => $s->departure_date?->toISOString(),
+                    'departure_label' => $s->departure_date ? ThaiDate::full($s->departure_date) : null,
+                    'booked_seats' => (int) $s->booked_seats,
+                    'total_seats' => (int) $s->total_seats,
+                    'confirmed_bookings' => $confirmed,
+                    'seats_short' => $s->seatsToGuarantee(),
+                ];
+            })
+            ->filter(fn (array $c) => $c['confirmed_bookings'] > 0)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * ผู้จัด: ยกเลิกข้อเสนอที่ยังเปิดอยู่ (ยังไม่มีใครตอบรับครบ) แล้วแจ้งลูกค้า
+     */
+    public function cancelOffer(FlexiDepartureOffer $offer): void
+    {
+        if ($offer->status !== FlexiDepartureOffer::STATUS_PENDING) {
+            throw new \Exception('ยกเลิกได้เฉพาะข้อเสนอที่ยังเปิดรับการตอบรับอยู่');
+        }
+
+        $offer->update([
+            'status' => FlexiDepartureOffer::STATUS_CANCELLED,
+            'resolved_at' => now(),
+        ]);
+
+        $this->notifyResolved($offer, FlexiDepartureOffer::STATUS_CANCELLED);
+    }
+
+    private function customerLabel(?Booking $booking): string
+    {
+        if ($booking === null) {
+            return 'ไม่ทราบชื่อ';
+        }
+
+        return $booking->user?->name
+            ?? $booking->passengers->first()?->name
+            ?? $booking->group_name
+            ?? 'ไม่ทราบชื่อ';
+    }
+
     /** ข้อเสนอที่ยังเปิดอยู่ของรอบเดินทาง (pending + ยังไม่เลยเส้นตาย) */
     public function activeOffer(TripSchedule $schedule): ?FlexiDepartureOffer
     {
@@ -322,6 +461,10 @@ class FlexiDepartureService
             FlexiDepartureOffer::STATUS_EXPIRED => [
                 'อัปเดตรอบเดินทาง',
                 "รอบ{$title} วันที่ {$dateText} หมดเวลาตอบรับข้อเสนอไปต่อแล้ว ทีมงานจะติดต่อกลับเรื่องทางเลือกและการคืนเงินโดยเร็ว",
+            ],
+            FlexiDepartureOffer::STATUS_CANCELLED => [
+                'อัปเดตรอบเดินทาง',
+                "ผู้จัดยกเลิกข้อเสนอไปต่อของรอบ{$title} วันที่ {$dateText} แล้ว ทีมงานจะติดต่อกลับเรื่องทางเลือกและการคืนเงินโดยเร็ว",
             ],
             default => ['อัปเดตรอบเดินทาง', "มีอัปเดตเกี่ยวกับรอบ{$title} วันที่ {$dateText}"],
         };

@@ -204,6 +204,7 @@ const routes = [
       { path: 'promotions', name: 'admin-promotions', component: () => import('../pages/admin/PromotionsPage.vue') },
       { path: 'urgent-popup', name: 'admin-urgent-popup', component: () => import('../pages/admin/UrgentPopupPage.vue') },
       { path: 'schedule-overview', name: 'admin-schedule-overview', component: () => import('../pages/admin/ScheduleOverviewPage.vue') },
+      { path: 'flexi-price', name: 'admin-flexi-price', component: () => import('../pages/admin/FlexiPricePage.vue') },
       { path: 'hero-slides', name: 'admin-hero-slides', component: () => import('../pages/admin/HeroSlidesPage.vue') },
       { path: 'gallery', name: 'admin-gallery', component: () => import('../pages/admin/GalleryPage.vue') },
       { path: 'schedule-photos', name: 'admin-schedule-photos', component: () => import('../pages/admin/SchedulePhotosPage.vue') },

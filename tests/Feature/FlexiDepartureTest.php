@@ -90,7 +90,9 @@ class FlexiDepartureTest extends TestCase
                 'reason' => 'ค่าน้ำมันส่วนต่าง',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.consents', 2);
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.progress.total', 2)
+            ->assertJsonCount(2, 'data.consents');
 
         // ส่วนต่างรวมต่อการจอง = 300 × จำนวนผู้เดินทาง
         $offer = FlexiDepartureOffer::first();
@@ -197,5 +199,57 @@ class FlexiDepartureTest extends TestCase
             ->assertJsonPath('data.is_open', true)
             ->assertJsonPath('data.my_surcharge_total', 500)
             ->assertJsonPath('data.my_consent', FlexiDepartureConsent::STATUS_PENDING);
+    }
+
+    public function test_admin_index_lists_offers_and_underfilled_candidates(): void
+    {
+        // รอบที่มีข้อเสนอเปิดอยู่แล้ว
+        $withOffer = $this->makeSchedule();
+        $this->makeConfirmedBooking($withOffer, User::factory()->create(), pax: 2);
+        $this->service()->createOffer($withOffer, 300, now()->addDays(2));
+
+        // รอบคนไม่ครบที่ยังยื่นได้ (มีการจองยืนยันแต่ต่ำกว่าขั้นต่ำการันตี)
+        $candidate = $this->makeSchedule();
+        $candidate->update(['booked_seats' => 3]);
+        $this->makeConfirmedBooking($candidate, User::factory()->create(), pax: 3);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $res = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/flexi-offers')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.offers')
+            ->assertJsonPath('data.offers.0.schedule.id', $withOffer->id)
+            ->assertJsonCount(1, 'data.offers.0.consents')
+            ->assertJsonPath('data.offers.0.consents.0.pax', 2);
+
+        // รอบที่มีข้อเสนอเปิดอยู่ต้องไม่ถูกเสนอเป็น candidate ซ้ำ
+        $candidateIds = collect($res->json('data.candidates'))->pluck('schedule_id');
+        $this->assertTrue($candidateIds->contains($candidate->id));
+        $this->assertFalse($candidateIds->contains($withOffer->id));
+    }
+
+    public function test_admin_can_cancel_a_pending_offer(): void
+    {
+        $schedule = $this->makeSchedule();
+        $owner = User::factory()->create();
+        $booking = $this->makeConfirmedBooking($schedule, $owner, pax: 1);
+        $offer = $this->service()->createOffer($schedule, 300, now()->addDays(2));
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/flexi-offers/{$offer->id}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.status', FlexiDepartureOffer::STATUS_CANCELLED);
+
+        $this->assertSame(FlexiDepartureOffer::STATUS_CANCELLED, $offer->fresh()->status);
+
+        // ยกเลิกซ้ำไม่ได้ (ไม่ใช่ pending แล้ว)
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/flexi-offers/{$offer->id}/cancel")
+            ->assertStatus(422);
     }
 }
