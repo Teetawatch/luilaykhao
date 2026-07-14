@@ -155,6 +155,8 @@ class DriverController extends Controller
             'checked_in_at' => now(),
         ]);
 
+        $this->notifyCheckIn($booking);
+
         // When this check-in completes everyone at the booking's pickup point,
         // close the point and immediately notify the next stop's passengers.
         $auto = $this->maybeAutoCompletePickup($booking);
@@ -174,6 +176,31 @@ class DriverController extends Controller
             200,
             $this->checkInMeta($fresh)
         );
+    }
+
+    /**
+     * แจ้งเตือน (in-app + FCM push) ให้เจ้าของการจองและเพื่อนร่วมทริปที่มีบัญชี
+     * ทราบว่าเช็คอินสำเร็จแล้ว เรียกครั้งเดียวตอน QR ถูกสแกนสำเร็จเท่านั้น
+     */
+    private function notifyCheckIn(Booking $booking): void
+    {
+        $tripTitle = $booking->schedule?->trip?->title;
+        $body = $tripTitle
+            ? "เช็คอินทริป {$tripTitle} เรียบร้อยแล้ว ขอให้เดินทางปลอดภัย"
+            : 'เช็คอินเรียบร้อยแล้ว ขอให้เดินทางปลอดภัย';
+
+        foreach ($booking->accessUserIds() as $userId) {
+            SmartNotification::send(
+                $userId,
+                'checked_in',
+                'เช็คอินสำเร็จ ✓',
+                $body,
+                [
+                    'booking_ref' => $booking->booking_ref,
+                    'route' => 'booking',
+                ],
+            );
+        }
     }
 
     private function resolveCheckInBooking(Request $request, string $rawCode, ?int $scheduleId = null): Booking|JsonResponse

@@ -8,6 +8,7 @@ use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
+use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
 use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendSafeTravelsJob;
@@ -30,6 +31,8 @@ Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone(
 // เตือน push ~2–3 ชม. ก่อนเวลาออกรถจริง (departs_at) — เติมช่องว่างระหว่าง
 // เตือน 1 วันก่อน กับ ETA จุดรับ; รองรับรถที่ออกคืนก่อนวันทริป
 Schedule::job(new SendDepartureSoonRemindersJob)->everyFifteenMinutes()->withoutOverlapping();
+// ~45 นาทีก่อนออกรถจริง เตือนลูกค้าที่ยังไม่เช็คอิน (แสดง QR) + สรุปให้สตาฟว่าเหลือใคร
+Schedule::job(new SendCheckInRemindersJob)->everyFiveMinutes()->withoutOverlapping();
 // เตือนสตาฟที่ถูกมอบหมายงาน เย็นก่อนวันเดินทาง 1 วัน ให้เตรียมอุปกรณ์/ความพร้อม
 Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();

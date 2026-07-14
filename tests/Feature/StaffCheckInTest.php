@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Models\BookingPassenger;
 use App\Models\SchedulePickupPoint;
+use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -52,6 +54,70 @@ class StaffCheckInTest extends TestCase
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
             'checked_in' => true,
+        ]);
+    }
+
+    public function test_check_in_notifies_the_booker_and_blocks_a_second_scan(): void
+    {
+        Role::create(['name' => 'staff']);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $booking] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $booking->qr_code])
+            ->assertOk()
+            ->assertJsonPath('data.checked_in', true);
+
+        // A push/in-app notification is fired to the booking owner.
+        $this->assertDatabaseHas('smart_notifications', [
+            'user_id' => $booking->user_id,
+            'type' => 'checked_in',
+        ]);
+
+        // Scanning the same QR again is rejected — cannot check in twice.
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $booking->qr_code])
+            ->assertStatus(422);
+
+        // And no duplicate notification was created by the blocked attempt.
+        $this->assertEquals(
+            1,
+            SmartNotification::where('user_id', $booking->user_id)
+                ->where('type', 'checked_in')
+                ->count(),
+        );
+    }
+
+    public function test_check_in_also_notifies_companions_with_accounts(): void
+    {
+        Role::create(['name' => 'staff']);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $booking] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        // An active companion who has their own account.
+        $companion = User::factory()->create();
+        BookingMember::create([
+            'booking_id' => $booking->id,
+            'user_id' => $companion->id,
+            'role' => 'member',
+            'status' => BookingMember::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $booking->qr_code])
+            ->assertOk();
+
+        $this->assertDatabaseHas('smart_notifications', [
+            'user_id' => $companion->id,
+            'type' => 'checked_in',
         ]);
     }
 
