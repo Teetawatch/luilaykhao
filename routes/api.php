@@ -124,6 +124,9 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/seats/lock', [SeatController::class, 'lock'])->middleware('throttle:seat-lock');
         Route::delete('schedules/{id}/seats/lock', [SeatController::class, 'unlock']);
 
+        // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
+        Route::get('me/passport', [\App\Http\Controllers\Api\V1\PassportController::class, 'show']);
+
         // Bookings
         Route::post('bookings', [BookingController::class, 'store']);
         Route::get('bookings', [BookingController::class, 'index']);
