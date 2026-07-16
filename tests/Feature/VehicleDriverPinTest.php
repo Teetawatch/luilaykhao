@@ -120,4 +120,81 @@ class VehicleDriverPinTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrorFor('driver_pin');
     }
+
+    public function test_pin_clash_message_names_the_vehicle_holding_it(): void
+    {
+        $old = $this->makeVehicle();
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$old->id}/driver-pin", ['driver_pin' => '4521'])
+            ->assertOk();
+
+        $new = Vehicle::create([
+            'name' => 'รถตู้ 2', 'type' => 'van', 'capacity' => 12,
+            'license_plate' => '2ขข5678', 'driver_name' => 'สมชาย',
+        ]);
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$new->id}/driver-pin", ['driver_pin' => '4521'])
+            ->assertStatus(422);
+
+        // แอดมินต้องรู้ว่าต้องไปลบรหัสที่รถคันไหน
+        $this->assertStringContainsString('รถตู้ 1', $res->json('message'));
+        $this->assertStringContainsString('สมชาย', $res->json('message'));
+    }
+
+    public function test_pin_clash_message_points_at_a_system_user_holding_it(): void
+    {
+        $staff = User::factory()->create(['name' => 'สมหญิง', 'driver_pin_hash' => bcrypt('4521')]);
+        $staff->assignRole(Role::firstOrCreate(['name' => 'staff', 'guard_name' => 'web'])->name);
+
+        $vehicle = $this->makeVehicle();
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$vehicle->id}/driver-pin", ['driver_pin' => '4521'])
+            ->assertStatus(422);
+
+        $this->assertStringContainsString('สมหญิง', $res->json('message'));
+        $this->assertStringContainsString('ผู้ใช้งานระบบ', $res->json('message'));
+    }
+
+    public function test_system_user_pin_cannot_duplicate_a_vehicle_driver_pin(): void
+    {
+        $vehicle = $this->makeVehicle();
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$vehicle->id}/driver-pin", ['driver_pin' => '4521'])
+            ->assertOk();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/users', [
+                'name' => 'สมหญิง', 'email' => 'somying@example.com',
+                'password' => 'secret123', 'role' => 'staff', 'driver_pin' => '4521',
+            ])
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('users', ['email' => 'somying@example.com']);
+    }
+
+    public function test_deleting_a_vehicle_releases_its_driver_pin(): void
+    {
+        $vehicle = $this->makeVehicle();
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$vehicle->id}/driver-pin", ['driver_pin' => '4521'])
+            ->assertOk();
+
+        $driverId = $vehicle->refresh()->driver_user_id;
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/vehicles/{$vehicle->id}")
+            ->assertOk();
+
+        $this->assertNull(User::find($driverId)->driver_pin_hash);
+
+        // รหัสเดิมกลับมาใช้กับรถคันใหม่ได้ทันที
+        $other = Vehicle::create([
+            'name' => 'รถตู้ 2', 'type' => 'van', 'capacity' => 12, 'license_plate' => '2ขข5678',
+        ]);
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$other->id}/driver-pin", ['driver_pin' => '4521'])
+            ->assertOk();
+    }
 }

@@ -112,15 +112,37 @@ class VehicleDriverService
      *
      * @throws \RuntimeException
      */
-    private function assertPinAvailable(string $pin, ?int $ignoreUserId): void
+    public function assertPinAvailable(string $pin, ?int $ignoreUserId): void
     {
         $clash = User::whereNotNull('driver_pin_hash')
             ->when($ignoreUserId, fn ($q) => $q->where('id', '!=', $ignoreUserId))
             ->get()
-            ->contains(fn (User $candidate) => Hash::check($pin, $candidate->driver_pin_hash));
+            ->first(fn (User $candidate) => Hash::check($pin, $candidate->driver_pin_hash));
 
         if ($clash) {
-            throw new \RuntimeException('รหัส PIN นี้ถูกใช้กับคนขับคนอื่นแล้ว กรุณาเลือกรหัสอื่น');
+            throw new \RuntimeException($this->clashMessage($clash));
         }
+    }
+
+    /**
+     * บอกให้ชัดว่ารหัสไปค้างอยู่ที่ใคร — PIN มาจากได้สองที่ (หน้ายานพาหนะ กับ
+     * เมนูผู้ใช้งานระบบ) แอดมินจึงมักหาไม่เจอว่า "คนขับคนอื่น" คือใคร
+     */
+    private function clashMessage(User $clash): string
+    {
+        $holder = Vehicle::where('driver_user_id', $clash->id)->first();
+
+        if ($holder) {
+            return sprintf(
+                'รหัส PIN นี้ถูกใช้กับคนขับ "%s" ของรถ "%s" อยู่แล้ว — ลบรหัสของรถคันนั้นก่อน หรือเลือกรหัสอื่น',
+                $clash->name,
+                $holder->name,
+            );
+        }
+
+        return sprintf(
+            'รหัส PIN นี้ถูกใช้กับผู้ใช้ "%s" ในเมนูผู้ใช้งานระบบอยู่แล้ว — ลบรหัสของผู้ใช้คนนั้นก่อน หรือเลือกรหัสอื่น',
+            $clash->name,
+        );
     }
 }

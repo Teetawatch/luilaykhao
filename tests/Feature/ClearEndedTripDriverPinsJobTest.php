@@ -134,7 +134,7 @@ class ClearEndedTripDriverPinsJobTest extends TestCase
             app(VehicleDriverService::class)->setPin($new, '4521');
             $this->fail('setPin ควรปฏิเสธรหัสที่ยังค้างอยู่กับรถคันอื่น');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('ถูกใช้กับคนขับคนอื่นแล้ว', $e->getMessage());
+            $this->assertStringContainsString('รถตู้ เก่า', $e->getMessage());
         }
 
         (new ClearEndedTripDriverPinsJob)->handle(app(VehicleDriverService::class));
@@ -156,5 +156,18 @@ class ClearEndedTripDriverPinsJobTest extends TestCase
         (new ClearEndedTripDriverPinsJob)->handle(app(VehicleDriverService::class));
 
         $this->assertNotNull($staff->refresh()->driver_pin_hash);
+    }
+
+    public function test_clears_the_pin_of_a_driver_account_left_behind_by_a_deleted_vehicle(): void
+    {
+        $vehicle = $this->withPin($this->makeVehicle());
+        $orphan = User::find($vehicle->driver_user_id);
+
+        // ลบรถตรง ๆ เลียนแบบข้อมูลเก่าที่ลบไปก่อนมี fix ใน deleteVehicle
+        $vehicle->delete();
+
+        (new ClearEndedTripDriverPinsJob)->handle(app(VehicleDriverService::class));
+
+        $this->assertNull($orphan->refresh()->driver_pin_hash);
     }
 }

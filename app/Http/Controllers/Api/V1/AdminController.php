@@ -2003,6 +2003,9 @@ class AdminController extends Controller
             return $this->error('ไม่สามารถลบยานพาหนะที่มีรอบเดินทางอยู่', 422);
         }
 
+        // คืนรหัสก่อนลบ ไม่งั้นบัญชีคนขับจะกลายเป็นกำพร้าที่ล็อก PIN นั้นไว้ตลอดไป
+        app(VehicleDriverService::class)->clearPin($vehicle);
+
         $vehicle->delete();
 
         return $this->success(null, 'ลบยานพาหนะสำเร็จ');
@@ -2326,6 +2329,15 @@ class AdminController extends Controller
             'role' => ['required', 'in:admin,operator,staff,customer'],
         ]);
 
+        // PIN ใช้เลขชุดเดียวกับคนขับประจำรถ — ถ้าซ้ำ pinLogin จะพาไปเข้าบัญชีผิดคน
+        if (! empty($validated['driver_pin'])) {
+            try {
+                app(VehicleDriverService::class)->assertPinAvailable($validated['driver_pin'], null);
+            } catch (\RuntimeException $e) {
+                return $this->error($e->getMessage(), 422);
+            }
+        }
+
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -2366,6 +2378,13 @@ class AdminController extends Controller
             $userData['password'] = Hash::make($validated['password']);
         }
         if (isset($validated['driver_pin']) && $validated['driver_pin'] !== '') {
+            // PIN ใช้เลขชุดเดียวกับคนขับประจำรถ — ถ้าซ้ำ pinLogin จะพาไปเข้าบัญชีผิดคน
+            try {
+                app(VehicleDriverService::class)->assertPinAvailable($validated['driver_pin'], $user->id);
+            } catch (\RuntimeException $e) {
+                return $this->error($e->getMessage(), 422);
+            }
+
             $userData['driver_pin_hash'] = Hash::make($validated['driver_pin']);
         }
 

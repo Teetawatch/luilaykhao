@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\TripSchedule;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\VehicleDriverService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,7 +29,21 @@ class ClearEndedTripDriverPinsJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public function handle(VehicleDriverService $vehicleDrivers): void
+    public function handle(VehicleDriverService $vehicleDrivers): int
+    {
+        $cleared = $this->clearEndedRounds($vehicleDrivers) + $this->clearOrphanedDriverAccounts();
+
+        if ($cleared > 0) {
+            Log::info('ClearEndedTripDriverPinsJob completed', ['pins_cleared' => $cleared]);
+        }
+
+        return $cleared;
+    }
+
+    /**
+     * คืนรหัสของรถที่รอบเดินทางจบไปแล้ว
+     */
+    private function clearEndedRounds(VehicleDriverService $vehicleDrivers): int
     {
         // เผื่อคนขับที่ยังขับรถกลับดึก ๆ อยู่ — ล้างเฉพาะรอบที่จบตั้งแต่เมื่อวานลงไป
         $cutoff = now(self::TIMEZONE)->subDay()->toDateString();
@@ -40,7 +55,7 @@ class ClearEndedTripDriverPinsJob implements ShouldQueue
             ->get();
 
         if ($schedules->isEmpty()) {
-            return;
+            return 0;
         }
 
         $vehicles = Vehicle::with('driverUser')
@@ -63,11 +78,28 @@ class ClearEndedTripDriverPinsJob implements ShouldQueue
             $schedule->forceFill(['driver_pin_cleared_at' => now()])->save();
         }
 
-        if ($cleared > 0) {
-            Log::info('ClearEndedTripDriverPinsJob completed', [
-                'schedules_marked' => $schedules->count(),
-                'pins_cleared' => $cleared,
-            ]);
+        return $cleared;
+    }
+
+    /**
+     * คืนรหัสของบัญชีคนขับที่รถถูกลบไปแล้ว — บัญชีพวกนี้ล็อกรหัสไว้เฉย ๆ
+     * ทั้งที่ไม่มีรถให้ส่ง GPS อีกแล้ว และไม่มีรอบเดินทางให้ job ข้างบนตามไปเจอ
+     *
+     * ดูจากอีเมล @gps.local ที่ VehicleDriverService สร้างให้ เพื่อไม่ให้ไปแตะ
+     * PIN ของสตาฟ/แอดมินที่ตั้งจากเมนูผู้ใช้งานระบบ
+     */
+    private function clearOrphanedDriverAccounts(): int
+    {
+        $orphans = User::query()
+            ->whereNotNull('driver_pin_hash')
+            ->where('email', 'like', '%@gps.local')
+            ->whereNotIn('id', Vehicle::whereNotNull('driver_user_id')->pluck('driver_user_id'))
+            ->get();
+
+        foreach ($orphans as $orphan) {
+            $orphan->forceFill(['driver_pin_hash' => null])->save();
         }
+
+        return $orphans->count();
     }
 }
