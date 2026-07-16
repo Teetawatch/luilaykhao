@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PromotionController;
@@ -85,6 +86,7 @@ Route::prefix('v1')->group(function () {
     Route::get('vehicles', [VehicleTrackingController::class, 'vehicles']);
     Route::get('vehicles/{id}/schedules/today', [VehicleTrackingController::class, 'vehicleTodaySchedules']);
     Route::post('driver/pin-login', [DriverController::class, 'pinLogin']);
+    Route::post('driver/qr-login', [DriverController::class, 'qrLogin'])->middleware('throttle:auth');
 
     // Reviews (public read)
     Route::get('reviews', [ReviewController::class, 'index']);
@@ -125,7 +127,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('schedules/{id}/seats/lock', [SeatController::class, 'unlock']);
 
         // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
-        Route::get('me/passport', [\App\Http\Controllers\Api\V1\PassportController::class, 'show']);
+        Route::get('me/passport', [PassportController::class, 'show']);
 
         // Bookings
         Route::post('bookings', [BookingController::class, 'store']);
@@ -453,6 +455,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('vehicles/{id}', [AdminController::class, 'deleteVehicle']);
         Route::put('vehicles/{id}/driver-pin', [AdminController::class, 'setVehicleDriverPin']);
         Route::delete('vehicles/{id}/driver-pin', [AdminController::class, 'clearVehicleDriverPin']);
+        Route::post('vehicles/{id}/login-qr', [AdminController::class, 'createVehicleDriverLoginQr']);
 
         // Vehicle Pickup Points
         Route::get('vehicles/{id}/pickup-points', [AdminController::class, 'vehiclePickupPoints']);

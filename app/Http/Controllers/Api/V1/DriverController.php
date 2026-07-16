@@ -11,6 +11,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\VehicleInspection;
 use App\Services\ChatService;
+use App\Services\DriverLoginCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -45,6 +46,42 @@ class DriverController extends Controller
         }
 
         $user->load('roles');
+        $token = $user->createToken('driver-app-token')->plainTextToken;
+
+        return $this->success([
+            'token' => $token,
+            'user' => $this->formatUser($user),
+            'schedules' => $this->driverSchedulesQueryForUser($user)
+                ->limit(10)
+                ->get()
+                ->map(fn (TripSchedule $schedule) => $this->formatSchedule($schedule))
+                ->values(),
+        ], 'เข้าสู่ระบบคนขับสำเร็จ');
+    }
+
+    /**
+     * เข้าสู่ระบบด้วย QR ที่แอดมินสร้างให้ — โค้ดใช้ได้ครั้งเดียวและหมดอายุตาม DriverLoginCodeService::TTL_HOURS
+     * คืนค่าเหมือน pinLogin ทุกประการ เพื่อให้แอปใช้เส้นทางเดิมต่อได้
+     */
+    public function qrLogin(Request $request, DriverLoginCodeService $loginCodes): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:64'],
+        ]);
+
+        $user = $loginCodes->redeem($validated['code']);
+
+        if (! $user) {
+            return $this->error('QR หมดอายุหรือถูกใช้ไปแล้ว กรุณาให้แอดมินสร้างใหม่', 401);
+        }
+
+        $user->load('roles');
+
+        // กันกรณีสิทธิ์ถูกถอนหลังจากสร้าง QR ไปแล้ว
+        if (! $user->hasAnyRole(['driver', 'staff', 'operator', 'admin'])) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
         $token = $user->createToken('driver-app-token')->plainTextToken;
 
         return $this->success([

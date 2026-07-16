@@ -32,6 +32,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
 use App\Services\BookingService;
+use App\Services\DriverLoginCodeService;
 use App\Services\MailService;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
@@ -62,6 +63,7 @@ class AdminController extends Controller
         private BookingService $bookingService,
         private MailService $mailService,
         private VehicleDriverService $vehicleDriverService,
+        private DriverLoginCodeService $driverLoginCodes,
     ) {}
 
     // ─── Dashboard Stats ──────────────────────────────────────
@@ -1948,6 +1950,30 @@ class AdminController extends Controller
             new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser'])),
             'ตั้งรหัสส่ง GPS สำเร็จ',
         );
+    }
+
+    /**
+     * สร้าง QR ให้คนขับสแกนเข้าแอปโดยไม่ต้องพิมพ์ PIN — ใช้ได้ครั้งเดียว หมดอายุใน 24 ชม.
+     */
+    public function createVehicleDriverLoginQr(int $id): JsonResponse
+    {
+        $vehicle = Vehicle::findOrFail($id);
+        $driver = $vehicle->driverUser;
+
+        if (! $driver || ! $driver->driver_pin_hash) {
+            return $this->error('รถคันนี้ยังไม่มีบัญชีคนขับ กรุณาตั้งรหัสส่ง GPS ก่อน', 422);
+        }
+
+        $issued = $this->driverLoginCodes->issue($driver);
+
+        return $this->success([
+            'code' => $issued['code'],
+            'expires_at' => $issued['expires_at']->toISOString(),
+            'expires_at_label' => ThaiDate::full($issued['expires_at']).' เวลา '.$issued['expires_at']->format('H:i').' น.',
+            'expires_in_seconds' => DriverLoginCodeService::TTL_HOURS * 3600,
+            'driver_name' => $driver->name,
+            'vehicle_name' => $vehicle->name,
+        ], 'สร้าง QR เข้าสู่ระบบสำเร็จ');
     }
 
     /**

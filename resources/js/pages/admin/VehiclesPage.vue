@@ -446,6 +446,10 @@
               </label>
               <div v-if="editing && editing.has_driver_pin" class="gps-pin-status">
                 <span class="pin-set"><span class="material-symbols-rounded">check_circle</span> ตั้งรหัสไว้แล้ว</span>
+                <button type="button" class="btn-login-qr" @click="openLoginQr" :disabled="qrBusy">
+                  <span class="material-symbols-rounded">qr_code_2</span>
+                  {{ qrBusy ? 'กำลังสร้าง…' : 'QR เข้าแอป' }}
+                </button>
                 <button type="button" class="btn-clear-pin" @click="clearDriverPin" :disabled="pinBusy">ลบรหัส</button>
               </div>
               <input
@@ -686,6 +690,32 @@
       </div>
     </div>
 
+    <!-- ─── Driver Login QR Modal ─────────────────── -->
+    <div class="modal-overlay" v-if="showLoginQr">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <h2><span class="material-symbols-rounded heading-icon">qr_code_2</span> QR เข้าแอปคนขับ</h2>
+          <button class="modal-close" @click="closeLoginQr"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body login-qr-body">
+          <img v-if="qrImage" :src="qrImage" alt="QR เข้าสู่ระบบคนขับ" class="qr-image" />
+          <p class="qr-driver">{{ qrInfo?.driver_name }} · {{ qrInfo?.vehicle_name }}</p>
+          <p class="qr-countdown">
+            <span class="material-symbols-rounded">schedule</span>
+            ใช้ได้ถึง {{ qrInfo?.expires_at_label }}
+          </p>
+          <p class="qr-hint">
+            ให้คนขับเปิดแอป Luilaykhao Driver แล้วกด “สแกน QR แทนการกรอกรหัส”
+            — สแกนจากหน้าจอนี้ หรือส่งรูป QR ให้คนขับไปเลือกจากคลังภาพก็ได้
+            <br />ใช้ได้ครั้งเดียวเท่านั้น
+          </p>
+          <button class="btn-secondary qr-regen" @click="openLoginQr" :disabled="qrBusy">
+            {{ qrBusy ? 'กำลังสร้าง…' : 'สร้าง QR ใหม่' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Seat Layout Editor Modal ──────────────── -->
     <div class="modal-overlay" v-if="showLayoutEditor">
       <div class="modal-card modal-lg">
@@ -721,6 +751,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
+import QRCode from 'qrcode';
 import { useAdminStore } from '../../stores/admin';
 import SeatMapEditor from '../../components/SeatMapEditor.vue';
 import MediaLibrary from '../../components/MediaLibrary.vue';
@@ -1071,6 +1102,36 @@ const clearDriverPin = async () => {
   } finally {
     pinBusy.value = false;
   }
+};
+
+// ─── Driver login QR ───────────────────────────────
+// Admin issues a single-use code; the driver scans it instead of typing the PIN.
+const showLoginQr = ref(false);
+const qrBusy = ref(false);
+const qrImage = ref('');
+const qrInfo = ref(null);
+
+const openLoginQr = async () => {
+  if (!editing.value?.id) return;
+  qrBusy.value = true;
+  try {
+    const res = await api.post(`/admin/vehicles/${editing.value.id}/login-qr`);
+    const data = res.data.data;
+    qrInfo.value = data;
+    qrImage.value = await QRCode.toDataURL(data.code, { width: 320, margin: 1 });
+    showLoginQr.value = true;
+  } catch (e) {
+    alert(e.response?.data?.message || 'สร้าง QR ไม่สำเร็จ');
+  } finally {
+    qrBusy.value = false;
+  }
+};
+
+const closeLoginQr = () => {
+  showLoginQr.value = false;
+  // Don't leave a scannable code sitting in the DOM after closing.
+  qrImage.value = '';
+  qrInfo.value = null;
 };
 
 const triggerUpload = (input) => input?.click();
@@ -1558,9 +1619,10 @@ onMounted(() => fetchData());
 .gps-pin-box > label { display: flex; align-items: center; gap: 5px; }
 .gps-pin-box > label .material-symbols-rounded { font-size: 16px; color: #0d9488; }
 .gps-pin-status {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: 8px;
   margin-bottom: 8px;
 }
+.gps-pin-status .pin-set { margin-right: auto; }
 .gps-pin-status .pin-set {
   display: inline-flex; align-items: center; gap: 4px;
   color: #15803d; font-size: 13px; font-weight: 600;
@@ -1571,6 +1633,28 @@ onMounted(() => fetchData());
   border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer;
 }
 .btn-clear-pin:disabled { opacity: 0.6; cursor: default; }
+.btn-login-qr {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid #99f6e4; background: #f0fdfa; color: #0d9488;
+  border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+}
+.btn-login-qr:disabled { opacity: 0.6; cursor: default; }
+.btn-login-qr .material-symbols-rounded { font-size: 16px; }
+
+.login-qr-body { text-align: center; }
+.qr-image {
+  width: 240px; height: 240px; display: block; margin: 0 auto 12px;
+  border: 1px solid var(--color-border, #e5e7eb); border-radius: 12px;
+}
+.qr-driver { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.qr-countdown {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 13px; color: #0d9488; font-weight: 600; margin-bottom: 8px;
+}
+.qr-countdown .material-symbols-rounded { font-size: 16px; }
+.qr-hint { font-size: 11.5px; color: #64748b; line-height: 1.5; }
+.qr-regen { margin-top: 14px; }
 .gps-pin-hint { font-size: 11.5px; color: #64748b; margin-top: 6px; line-height: 1.5; }
 .gps-pin-hint a { color: #0d9488; font-weight: 600; text-decoration: none; }
 .color-dot {
