@@ -111,16 +111,19 @@
                 </tr>
               </thead>
               <tbody v-for="m in groupSchedulesByMonth(activeGroup.schedules)" :key="m.key">
-                <tr class="month-sep-row">
+                <tr class="month-sep-row" :class="{ 'is-past': isPastMonth(m) }">
                   <td :colspan="7">
                     <span class="material-symbols-rounded month-sep-icon">event</span>
                     <span class="month-sep-label">{{ m.label }}</span>
                     <span class="month-sep-count">{{ m.schedules.length }} รอบ</span>
+                    <span v-if="isPastMonth(m)" class="month-sep-past">ผ่านไปแล้ว</span>
                   </td>
                 </tr>
-                <tr v-for="sch in m.schedules" :key="sch.id">
+                <tr v-for="sch in m.schedules" :key="sch.id"
+                  :class="{ 'row-past': isPastSchedule(sch), 'row-today': isTodaySchedule(sch) }">
                   <td class="date">
                     {{ sch.departure_date }}
+                    <span v-if="isTodaySchedule(sch)" class="today-pill">วันนี้</span>
                     <div v-if="sch.departs_at" class="text-muted-sm">
                       <span class="material-symbols-rounded icon-xs">schedule</span>
                       {{ departsTimeLabel(sch) }}
@@ -1672,6 +1675,17 @@ const groupSchedulesByMonth = (schedules) => {
   return [...map.values()].sort((a, b) => (a.key > b.key ? 1 : -1));
 };
 const isDayTrip = (sch) => !!sch.departure_date && sch.departure_date === sch.return_date;
+
+// วันนี้ตามเวลาไทย (YYYY-MM-DD) — ใช้เทียบว่ารอบไหนผ่านไปแล้ว
+const todayKey = computed(() => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  return parts;
+});
+const isPastSchedule = (sch) => !!sch.departure_date && sch.departure_date < todayKey.value;
+const isTodaySchedule = (sch) => !!sch.departure_date && sch.departure_date === todayKey.value;
+const isPastMonth = (m) => !!m.key && m.key < todayKey.value.slice(0, 7);
 const showForm = ref(false);
 const showDeleteConfirm = ref(false);
 const editing = ref(null);
@@ -4065,6 +4079,69 @@ onMounted(() => {
   font-weight: 700;
   color: var(--color-text-muted);
   margin-left: 8px;
+}
+
+/* รอบที่ผ่านไปแล้ว — ทำให้ทึบลง เพื่อให้หาวันปัจจุบันได้ง่าย */
+.month-sep-row.is-past td {
+  background: #e9e9e9;
+  border-top-color: #d4d4d4;
+}
+.month-sep-row.is-past .month-sep-icon,
+.month-sep-row.is-past .month-sep-label {
+  color: #8a8a8a;
+}
+.month-sep-past {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8a8a8a;
+  background: #dcdcdc;
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 8px;
+}
+.schedule-inner-table tbody tr.row-past > td {
+  background: #f1f1f1;
+  color: #9a9a9a;
+}
+.schedule-inner-table tbody tr.row-past .type-tag,
+.schedule-inner-table tbody tr.row-past .status-badge,
+.schedule-inner-table tbody tr.row-past .region-pill,
+.schedule-inner-table tbody tr.row-past .daytrip-pill,
+.schedule-inner-table tbody tr.row-past .seats-info,
+.schedule-inner-table tbody tr.row-past .action-btns {
+  filter: grayscale(1);
+  opacity: .55;
+}
+.schedule-inner-table tbody tr.row-past:hover > td {
+  background: #eaeaea;
+}
+.schedule-inner-table tbody tr.row-past:hover .type-tag,
+.schedule-inner-table tbody tr.row-past:hover .status-badge,
+.schedule-inner-table tbody tr.row-past:hover .region-pill,
+.schedule-inner-table tbody tr.row-past:hover .daytrip-pill,
+.schedule-inner-table tbody tr.row-past:hover .seats-info,
+.schedule-inner-table tbody tr.row-past:hover .action-btns {
+  filter: none;
+  opacity: 1;
+}
+
+/* รอบวันนี้ — เน้นให้เห็นชัด */
+.schedule-inner-table tbody tr.row-today > td {
+  background: #fffbeb;
+}
+.schedule-inner-table tbody tr.row-today > td:first-child {
+  border-left: 3px solid var(--color-accent);
+}
+.today-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--color-accent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 /* Day-trip pill & toggle */
