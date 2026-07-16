@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\SendDriverAssignmentPushJob;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -83,6 +84,21 @@ class TripSchedule extends Model
             'join_trip_price' => 'decimal:2',
             'is_charter' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Notify the vehicle's driver when a vehicle is assigned to this round
+        // (drivers are linked via the vehicle, not the staff pivot, so the
+        // staff-assignment push never reaches them).
+        static::saved(function (self $schedule) {
+            if ($schedule->wasChanged('vehicle_id') && $schedule->vehicle_id) {
+                SendDriverAssignmentPushJob::dispatch(
+                    $schedule->id,
+                    (int) $schedule->vehicle_id,
+                );
+            }
+        });
     }
 
     /**
