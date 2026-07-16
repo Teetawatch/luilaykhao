@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\Booking;
 use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -14,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
  * the guaranteed minimum number of booked seats and therefore risks being
  * cancelled. It is a courtesy notice — no payment action is required.
  */
-class TripUnderfilledWarningMail extends Mailable
+class TripUnderfilledWarningMail extends QueuedMail
 {
     use Queueable, SerializesModels;
 

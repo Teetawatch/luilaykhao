@@ -5,12 +5,11 @@ namespace App\Mail;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class InstallmentPaidMail extends Mailable
+class InstallmentPaidMail extends QueuedMail
 {
     use Queueable, SerializesModels;
 

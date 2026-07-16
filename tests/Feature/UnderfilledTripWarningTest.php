@@ -74,7 +74,7 @@ class UnderfilledTripWarningTest extends TestCase
 
         (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
 
-        Mail::assertSent(TripUnderfilledWarningMail::class, 1);
+        Mail::assertQueued(TripUnderfilledWarningMail::class, 1);
         $this->assertSame(1, $this->warnings($b)->count());
     }
 
@@ -84,7 +84,7 @@ class UnderfilledTripWarningTest extends TestCase
 
         (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
 
-        Mail::assertNothingSent();
+        Mail::assertNothingQueued();
     }
 
     public function test_no_warning_for_cancelled_round(): void
@@ -93,7 +93,7 @@ class UnderfilledTripWarningTest extends TestCase
 
         (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
 
-        Mail::assertNothingSent();
+        Mail::assertNothingQueued();
     }
 
     public function test_no_warning_when_departure_is_not_five_days_out(): void
@@ -102,7 +102,7 @@ class UnderfilledTripWarningTest extends TestCase
 
         (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
 
-        Mail::assertNothingSent();
+        Mail::assertNothingQueued();
     }
 
     public function test_warning_is_sent_only_once_per_daily_run(): void
@@ -111,7 +111,7 @@ class UnderfilledTripWarningTest extends TestCase
 
         (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
 
-        Mail::assertSent(TripUnderfilledWarningMail::class, 1);
+        Mail::assertQueued(TripUnderfilledWarningMail::class, 1);
         $this->assertSame(1, $this->warnings($b)->count());
     }
 

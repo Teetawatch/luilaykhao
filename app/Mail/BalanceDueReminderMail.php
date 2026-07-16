@@ -4,12 +4,11 @@ namespace App\Mail;
 
 use App\Models\Booking;
 use Illuminate\Bus\Queueable;
-use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class BalanceDueReminderMail extends Mailable
+class BalanceDueReminderMail extends QueuedMail
 {
     use Queueable, SerializesModels;
 

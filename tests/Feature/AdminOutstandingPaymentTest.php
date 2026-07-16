@@ -112,7 +112,7 @@ class AdminOutstandingPaymentTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.booking_ref', $inst->booking_ref);
 
-        Mail::assertSent(InstallmentDueReminderMail::class);
+        Mail::assertQueued(InstallmentDueReminderMail::class);
     }
 
     public function test_bulk_send_links_for_schedule(): void
@@ -131,8 +131,8 @@ class AdminOutstandingPaymentTest extends TestCase
             ->assertJsonPath('data.sent_count', 2)
             ->assertJsonPath('data.failed_count', 0);
 
-        Mail::assertSent(InstallmentDueReminderMail::class);
-        Mail::assertSent(BalanceDueReminderMail::class);
+        Mail::assertQueued(InstallmentDueReminderMail::class);
+        Mail::assertQueued(BalanceDueReminderMail::class);
     }
 
     public function test_non_admin_cannot_access(): void

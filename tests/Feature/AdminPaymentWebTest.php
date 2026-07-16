@@ -121,7 +121,7 @@ class AdminPaymentWebTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('flash_success');
 
-        Mail::assertSent(InstallmentDueReminderMail::class);
+        Mail::assertQueued(InstallmentDueReminderMail::class);
     }
 
     public function test_guest_cannot_send_link(): void

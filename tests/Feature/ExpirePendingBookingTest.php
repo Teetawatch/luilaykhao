@@ -98,7 +98,7 @@ class ExpirePendingBookingTest extends TestCase
         $this->assertSame(0, $schedule->fresh()->booked_seats);
 
         // แจ้งลูกค้าทางอีเมล (ฟรี) — ไม่ส่ง SMS
-        Mail::assertSent(BookingCancelledMail::class);
+        Mail::assertQueued(BookingCancelledMail::class);
         $this->assertDatabaseMissing('sms_logs', ['booking_id' => $booking->id]);
     }
 
