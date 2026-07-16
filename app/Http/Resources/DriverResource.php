@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 class DriverResource extends JsonResource
 {
@@ -21,8 +22,19 @@ class DriverResource extends JsonResource
             'vehicles' => $this->whenLoaded('vehicles', fn () => $this->vehicles->map(fn ($v) => [
                 'id' => $v->id,
                 'name' => $v->name,
+                'type' => $v->type,
+                'capacity' => $v->capacity,
                 'license_plate' => $v->license_plate,
+                'color' => $v->color,
+                'has_driver_pin' => $v->hasDriverPin(),
             ])),
+            'last_trip_date' => $this->whenNotNull(
+                $this->last_trip_date ? Carbon::parse($this->last_trip_date)->toDateString() : null,
+            ),
+            'upcoming_trips_count' => $this->when(
+                isset($this->upcoming_trips_count),
+                fn () => (int) $this->upcoming_trips_count,
+            ),
         ];
     }
 }

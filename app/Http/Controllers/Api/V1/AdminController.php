@@ -2015,15 +2015,33 @@ class AdminController extends Controller
 
     public function drivers(Request $request): JsonResponse
     {
-        $query = Driver::withCount('vehicles');
+        $today = now('Asia/Bangkok')->toDateString();
+
+        // ดึงข้อมูลรถและการใช้งานมาให้ครบในรอบเดียว — หน้าทะเบียนคนขับต้องตอบได้ทันที
+        // ว่าคนขับคนนี้ขับรถคันไหน ทะเบียนอะไร และยังถูกใช้งานอยู่หรือเปล่า
+        $query = Driver::withCount('vehicles')
+            ->with(['vehicles' => fn ($q) => $q->orderBy('name')->with('driverUser')])
+            ->withMax(
+                ['schedules as last_trip_date' => fn ($q) => $q->whereDate('return_date', '<', $today)],
+                'return_date',
+            )
+            ->withCount(['schedules as upcoming_trips_count' => fn ($q) => $q->whereDate('departure_date', '>=', $today)]);
 
         if ($request->filled('search')) {
             $term = '%'.$request->search.'%';
-            $query->where(fn ($q) => $q->where('name', 'like', $term)->orWhere('phone', 'like', $term));
+            $query->where(fn ($q) => $q->where('name', 'like', $term)
+                ->orWhere('phone', 'like', $term)
+                ->orWhere('license_number', 'like', $term)
+                ->orWhereHas('vehicles', fn ($v) => $v->where('name', 'like', $term)->orWhere('license_plate', 'like', $term)));
         }
 
         if ($request->boolean('active_only')) {
             $query->where('is_active', true);
+        }
+
+        // คนขับที่ยังไม่ผูกรถ = ลบได้ (deleteDriver กันไม่ให้ลบคนที่ยังผูกรถอยู่)
+        if ($request->boolean('unlinked_only')) {
+            $query->whereDoesntHave('vehicles');
         }
 
         $drivers = $query->orderBy('name')->paginate($request->get('per_page', 20));

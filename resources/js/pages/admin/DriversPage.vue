@@ -13,8 +13,12 @@
     <div class="filters-bar">
       <div class="search-box">
         <span class="material-symbols-rounded">search</span>
-        <input v-model="searchQuery" placeholder="ค้นหาชื่อ หรือเบอร์โทร..." @input="onSearch" />
+        <input v-model="searchQuery" placeholder="ค้นหาชื่อ เบอร์โทร เลขใบขับขี่ หรือทะเบียนรถ..." @input="onSearch" />
       </div>
+      <button class="filter-chip" :class="{ active: unlinkedOnly }" @click="toggleUnlinked">
+        <span class="material-symbols-rounded">person_off</span>
+        เฉพาะที่ยังไม่ผูกรถ
+      </button>
     </div>
 
     <div class="table-card">
@@ -27,7 +31,8 @@
                 <th>คนขับ</th>
                 <th>เบอร์โทร</th>
                 <th>เลขใบขับขี่</th>
-                <th>รถที่ใช้</th>
+                <th>รถที่ขับ</th>
+                <th>การใช้งาน</th>
                 <th>สถานะ</th>
                 <th></th>
               </tr>
@@ -44,10 +49,33 @@
                 <td>{{ d.phone || '-' }}</td>
                 <td>{{ d.license_number || '-' }}</td>
                 <td>
-                  <span class="veh-count" v-if="d.vehicles_count">
-                    <span class="material-symbols-rounded">directions_car</span> {{ d.vehicles_count }} คัน
-                  </span>
+                  <div class="veh-list" v-if="d.vehicles?.length">
+                    <div class="veh-chip" v-for="v in d.vehicles" :key="v.id">
+                      <span class="color-dot" v-if="v.color"
+                        :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
+                        :title="v.color"
+                      ></span>
+                      <span class="veh-name">{{ v.name }}</span>
+                      <span class="veh-plate" v-if="v.license_plate">{{ v.license_plate }}</span>
+                      <span class="veh-meta">{{ vehicleTypeLabel(v.type) }} · {{ v.capacity }} ที่</span>
+                      <span class="veh-pin" v-if="v.has_driver_pin" title="ตั้งรหัสส่ง GPS (PIN) ไว้แล้ว">
+                        <span class="material-symbols-rounded">key</span>
+                      </span>
+                    </div>
+                  </div>
                   <span v-else class="veh-none">ยังไม่ผูกรถ</span>
+                </td>
+                <td>
+                  <div class="usage-cell">
+                    <span class="usage-upcoming" v-if="d.upcoming_trips_count">
+                      <span class="material-symbols-rounded">event_upcoming</span>
+                      มีงาน {{ d.upcoming_trips_count }} รอบ
+                    </span>
+                    <span class="usage-last" v-if="d.last_trip_date">ล่าสุด {{ formatDate(d.last_trip_date) }}</span>
+                    <span class="usage-never" v-if="!d.upcoming_trips_count && !d.last_trip_date">
+                      <span class="material-symbols-rounded">block</span> ยังไม่เคยใช้งาน
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <span class="status-badge" :class="d.is_active ? 'status-active' : 'status-inactive'">
@@ -57,12 +85,21 @@
                 <td>
                   <div class="action-btns">
                     <button class="btn-icon btn-edit" @click="openForm(d)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
-                    <button class="btn-icon btn-delete" @click="confirmDelete(d)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
+                    <button
+                      class="btn-icon btn-delete"
+                      :disabled="!!d.vehicles_count"
+                      @click="confirmDelete(d)"
+                      :title="d.vehicles_count ? 'ลบไม่ได้ — ต้องปลดคนขับออกจากรถก่อน' : 'ลบ'"
+                    >
+                      <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
+                    </button>
                   </div>
                 </td>
               </tr>
               <tr v-if="!drivers.data.length">
-                <td colspan="6" class="empty-state">ยังไม่มีคนขับในทะเบียน</td>
+                <td colspan="7" class="empty-state">
+                  {{ unlinkedOnly ? 'คนขับทุกคนผูกกับรถอยู่แล้ว' : 'ยังไม่มีคนขับในทะเบียน' }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -172,11 +209,13 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import MediaLibrary from '../../components/MediaLibrary.vue';
+import { colorHex, vehicleTypeLabel } from '../../lib/vehicleDisplay';
 
 const admin = useAdminStore();
 const drivers = ref({ data: [], meta: null });
 const loading = ref(false);
 const searchQuery = ref('');
+const unlinkedOnly = ref(false);
 const showForm = ref(false);
 const showDeleteConfirm = ref(false);
 const showMediaLibrary = ref(false);
@@ -191,7 +230,11 @@ const form = reactive({ ...defaultForm });
 async function fetchData(page = 1) {
   loading.value = true;
   try {
-    const res = await admin.fetchDrivers({ search: searchQuery.value || undefined, page });
+    const res = await admin.fetchDrivers({
+      search: searchQuery.value || undefined,
+      unlinked_only: unlinkedOnly.value ? 1 : undefined,
+      page,
+    });
     drivers.value = { data: res.data, meta: res.meta };
   } finally {
     loading.value = false;
@@ -202,6 +245,17 @@ function onSearch() {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => fetchData(1), 300);
 }
+
+function toggleUnlinked() {
+  unlinkedOnly.value = !unlinkedOnly.value;
+  fetchData(1);
+}
+
+const formatDate = (date) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 
 function goPage(p) { fetchData(p); }
 
@@ -264,9 +318,28 @@ onMounted(() => fetchData());
 .driver-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .driver-avatar.placeholder .material-symbols-rounded { font-size: 20px; color: #94a3b8; }
 .driver-name { font-weight: 700; }
-.veh-count { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: #0f766e; }
-.veh-count .material-symbols-rounded { font-size: 16px; }
+.veh-list { display: flex; flex-direction: column; gap: 6px; }
+.veh-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; width: fit-content; }
+.color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.veh-name { font-weight: 700; color: #0f172a; }
+.veh-plate { font-family: ui-monospace, monospace; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 1px 6px; border-radius: 4px; }
+.veh-meta { color: #64748b; }
+.veh-pin { display: inline-flex; color: #b45309; }
+.veh-pin .material-symbols-rounded { font-size: 15px; }
 .veh-none { color: #94a3b8; font-size: 13px; }
+
+.usage-cell { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.usage-upcoming { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: #0f766e; }
+.usage-upcoming .material-symbols-rounded { font-size: 15px; }
+.usage-last { color: #64748b; }
+.usage-never { display: inline-flex; align-items: center; gap: 4px; color: #b91c1c; font-weight: 700; }
+.usage-never .material-symbols-rounded { font-size: 15px; }
+
+.filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #475569; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.filter-chip.active { background: #0f172a; border-color: #0f172a; color: #fff; }
+.filter-chip .material-symbols-rounded { font-size: 17px; }
+
+.btn-icon:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .photo-field { display: flex; align-items: center; gap: 12px; }
 .photo-preview { position: relative; width: 72px; height: 72px; border-radius: 12px; overflow: hidden; }

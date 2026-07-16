@@ -756,6 +756,7 @@ import { useAdminStore } from '../../stores/admin';
 import SeatMapEditor from '../../components/SeatMapEditor.vue';
 import MediaLibrary from '../../components/MediaLibrary.vue';
 import api from '../../lib/axios';
+import { colorHex } from '../../lib/vehicleDisplay';
 
 const admin = useAdminStore();
 const filters = reactive({ type: '' });
@@ -942,15 +943,6 @@ const groupedPickups = (points) => {
     map[pt.region].locations.push(pt);
   }
   return Object.values(map);
-};
-
-const colorHex = (colorName) => {
-  const map = {
-    'ขาว': '#ffffff', 'ดำ': '#1f2937', 'เทา': '#9ca3af', 'แดง': '#ef4444',
-    'น้ำเงิน': '#3b82f6', 'เขียว': '#22c55e', 'เหลือง': '#eab308',
-    'ส้ม': '#f97316', 'ม่วง': '#a855f7', 'ชมพู': '#ec4899',
-  };
-  return map[colorName] || '#9ca3af';
 };
 
 const MONTHS_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];

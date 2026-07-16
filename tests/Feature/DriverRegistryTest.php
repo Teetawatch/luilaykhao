@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Driver;
+use App\Models\Trip;
+use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\VehicleDriverService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -109,5 +112,97 @@ class DriverRegistryTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'อาทิตย์');
+    }
+
+    public function test_driver_list_carries_full_vehicle_detail_and_usage_in_one_call(): void
+    {
+        $driver = Driver::create(['name' => 'สมชาย', 'phone' => '081-111-2222', 'license_number' => 'บ1234567']);
+
+        $vehicle = Vehicle::create([
+            'name' => 'รถตู้ VIP-01', 'type' => 'van', 'capacity' => 12,
+            'license_plate' => '1กก1234', 'color' => 'ขาว', 'driver_id' => $driver->id,
+        ]);
+        app(VehicleDriverService::class)->setPin($vehicle, '4521');
+
+        $trip = Trip::create([
+            'title' => 'Trip', 'slug' => 'trip-'.uniqid(), 'type' => 'trekking',
+            'location' => 'Khao Yai', 'difficulty' => 'easy', 'duration_days' => 1,
+            'max_participants' => 10, 'price_per_person' => 1000, 'status' => 'active',
+        ]);
+        TripSchedule::create([
+            'trip_id' => $trip->id, 'vehicle_id' => $vehicle->id,
+            'departure_date' => now()->subDays(5)->toDateString(),
+            'return_date' => now()->subDays(4)->toDateString(),
+            'total_seats' => 10, 'booked_seats' => 0, 'transport_type' => 'van', 'status' => 'open',
+        ]);
+        TripSchedule::create([
+            'trip_id' => $trip->id, 'vehicle_id' => $vehicle->id,
+            'departure_date' => now()->addDays(3)->toDateString(),
+            'return_date' => now()->addDays(4)->toDateString(),
+            'total_seats' => 10, 'booked_seats' => 0, 'transport_type' => 'van', 'status' => 'open',
+        ]);
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/drivers')
+            ->assertOk();
+
+        $res->assertJsonPath('data.0.vehicles_count', 1)
+            ->assertJsonPath('data.0.vehicles.0.license_plate', '1กก1234')
+            ->assertJsonPath('data.0.vehicles.0.color', 'ขาว')
+            ->assertJsonPath('data.0.vehicles.0.type', 'van')
+            ->assertJsonPath('data.0.vehicles.0.capacity', 12)
+            ->assertJsonPath('data.0.vehicles.0.has_driver_pin', true)
+            ->assertJsonPath('data.0.upcoming_trips_count', 1);
+
+        // ใช้งานล่าสุด = วันกลับของรอบที่ผ่านมาแล้ว
+        $this->assertStringStartsWith(
+            now()->subDays(4)->toDateString(),
+            $res->json('data.0.last_trip_date'),
+        );
+    }
+
+    public function test_an_unused_driver_reports_no_vehicles_and_no_trips(): void
+    {
+        Driver::create(['name' => 'คนขับว่าง']);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/drivers')
+            ->assertOk()
+            ->assertJsonPath('data.0.vehicles_count', 0)
+            ->assertJsonPath('data.0.vehicles', [])
+            ->assertJsonPath('data.0.upcoming_trips_count', 0)
+            ->assertJsonMissingPath('data.0.last_trip_date');
+    }
+
+    public function test_unlinked_only_filter_returns_just_the_deletable_drivers(): void
+    {
+        $linked = Driver::create(['name' => 'มีรถ']);
+        Vehicle::create([
+            'name' => 'รถตู้ 1', 'type' => 'van', 'capacity' => 12,
+            'license_plate' => '1กก1234', 'driver_id' => $linked->id,
+        ]);
+        Driver::create(['name' => 'ไม่มีรถ']);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/drivers?unlinked_only=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'ไม่มีรถ');
+    }
+
+    public function test_drivers_are_searchable_by_licence_plate(): void
+    {
+        $driver = Driver::create(['name' => 'สมชาย']);
+        Vehicle::create([
+            'name' => 'รถตู้ 1', 'type' => 'van', 'capacity' => 12,
+            'license_plate' => '9กก9999', 'driver_id' => $driver->id,
+        ]);
+        Driver::create(['name' => 'คนอื่น']);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/drivers?'.http_build_query(['search' => '9กก9999']))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'สมชาย');
     }
 }
