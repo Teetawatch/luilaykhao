@@ -413,52 +413,107 @@
 
         <!-- Gallery -->
         <div class="card section-card">
-          <h3 class="section-title"><span class="material-symbols-rounded">photo_library</span> รูปภาพเพิ่มเติมในแกลเลอรี่</h3>
-          <div class="gallery-grid-editor mt-4">
-            <div v-for="(img, idx) in form.gallery" :key="idx" class="gallery-item-preview">
-              <img :src="img" />
-              <button type="button" class="remove-gallery-img" @click="removeItem('gallery', idx)">
-                <span class="material-symbols-rounded">close</span>
-              </button>
-            </div>
-            <div class="flex flex-col gap-2">
-              <button type="button" class="gallery-add-btn h-full" @click="triggerGalleryUpload">
-                <span class="material-symbols-rounded" style="font-size:32px;" v-if="!galleryUploading">add_photo_alternate</span>
-                <span class="material-symbols-rounded animate-spin" v-else>sync</span>
-                <span class="text-xs">อัปโหลดใหม่</span>
-              </button>
-              <button type="button" class="gallery-add-btn h-full !border-[var(--color-primary)] !text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5" @click="openMediaLibrary('gallery')">
-                <span class="material-symbols-rounded" style="font-size:32px;">photo_library</span>
-                <span class="text-xs">เลือกจากคลัง</span>
-              </button>
+          <div class="section-header-flex">
+            <h3 class="section-title"><span class="material-symbols-rounded">photo_library</span> รูปภาพเพิ่มเติมในแกลเลอรี่</h3>
+            <span class="media-count" v-if="form.gallery.length">{{ form.gallery.length }} รูป</span>
+          </div>
+          <p class="media-hint">ลากการ์ดเพื่อสลับลำดับ หรือกดปุ่มบนรูปเพื่อเปลี่ยน/ลบ — สูงสุด 10MB ต่อไฟล์</p>
+
+          <div class="gallery-grid-editor mt-4" v-if="form.gallery.length">
+            <div
+              v-for="(img, idx) in form.gallery"
+              :key="`gallery-${idx}-${img}`"
+              class="gallery-item-preview"
+              :class="{ 'is-dragging': dragField === 'gallery' && dragIndex === idx }"
+              draggable="true"
+              @dragstart="startDrag('gallery', idx)"
+              @dragover.prevent
+              @drop.prevent="dropOnItem('gallery', idx)"
+              @dragend="endDrag"
+            >
+              <img :src="img" alt="" />
+              <span class="media-index">{{ idx + 1 }}</span>
+              <div class="media-actions">
+                <button type="button" title="เลื่อนไปทางซ้าย" :disabled="idx === 0" @click="moveItem('gallery', idx, -1)">
+                  <span class="material-symbols-rounded">chevron_left</span>
+                </button>
+                <button type="button" title="เปลี่ยนรูปนี้" @click="triggerGalleryReplace(idx)">
+                  <span class="material-symbols-rounded">{{ galleryReplacingIdx === idx ? 'sync' : 'edit' }}</span>
+                </button>
+                <button type="button" class="danger" title="ลบรูปนี้" @click="removeItem('gallery', idx)">
+                  <span class="material-symbols-rounded">delete</span>
+                </button>
+                <button type="button" title="เลื่อนไปทางขวา" :disabled="idx === form.gallery.length - 1" @click="moveItem('gallery', idx, 1)">
+                  <span class="material-symbols-rounded">chevron_right</span>
+                </button>
+              </div>
             </div>
           </div>
+          <p v-else class="media-empty">ยังไม่มีรูปในแกลเลอรี่</p>
+
+          <div class="media-add-row">
+            <button type="button" class="gallery-add-btn" :disabled="galleryUploading" @click="triggerGalleryUpload">
+              <span class="material-symbols-rounded animate-spin" v-if="galleryUploading">sync</span>
+              <span class="material-symbols-rounded" v-else>add_photo_alternate</span>
+              <span>{{ galleryUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดใหม่' }}</span>
+            </button>
+            <button type="button" class="gallery-add-btn ghost" @click="openMediaLibrary('gallery')">
+              <span class="material-symbols-rounded">photo_library</span>
+              <span>เลือกจากคลัง</span>
+            </button>
+          </div>
           <input ref="galleryInput" type="file" multiple accept="image/*" class="hidden-file-input" @change="handleGallerySelect" />
+          <input ref="galleryReplaceInput" type="file" accept="image/*" class="hidden-file-input" @change="handleGalleryReplaceSelect" />
         </div>
 
         <!-- Videos -->
         <div class="card section-card">
-          <h3 class="section-title"><span class="material-symbols-rounded">videocam</span> วิดีโอทริป</h3>
-          <p class="text-xs text-gray-400 mt-1">แสดงในแอปถัดจากรูปภาพ — รองรับ mp4, mov (สูงสุด 50MB ต่อไฟล์)</p>
-          <div class="gallery-grid-editor mt-4">
-            <div v-for="(vid, idx) in form.videos" :key="idx" class="gallery-item-preview">
-              <video :src="vid" class="w-full h-full object-cover" muted playsinline preload="metadata"></video>
+          <div class="section-header-flex">
+            <h3 class="section-title"><span class="material-symbols-rounded">videocam</span> วิดีโอทริป</h3>
+            <span class="media-count" v-if="form.videos.length">{{ form.videos.length }} คลิป</span>
+          </div>
+          <p class="media-hint">แสดงในแอปถัดจากรูปภาพ — ลากการ์ดเพื่อสลับลำดับ, รองรับ mp4, mov (สูงสุด 50MB ต่อไฟล์)</p>
+
+          <div class="gallery-grid-editor mt-4" v-if="form.videos.length">
+            <div
+              v-for="(vid, idx) in form.videos"
+              :key="`video-${idx}-${vid}`"
+              class="gallery-item-preview"
+              :class="{ 'is-dragging': dragField === 'videos' && dragIndex === idx }"
+              draggable="true"
+              @dragstart="startDrag('videos', idx)"
+              @dragover.prevent
+              @drop.prevent="dropOnItem('videos', idx)"
+              @dragend="endDrag"
+            >
+              <video :src="vid" muted playsinline preload="metadata"></video>
               <span class="video-play-badge"><span class="material-symbols-rounded">play_arrow</span></span>
-              <button type="button" class="remove-gallery-img" @click="removeItem('videos', idx)">
-                <span class="material-symbols-rounded">close</span>
-              </button>
+              <span class="media-index">{{ idx + 1 }}</span>
+              <div class="media-actions">
+                <button type="button" title="เลื่อนไปทางซ้าย" :disabled="idx === 0" @click="moveItem('videos', idx, -1)">
+                  <span class="material-symbols-rounded">chevron_left</span>
+                </button>
+                <button type="button" class="danger" title="ลบวิดีโอนี้" @click="removeItem('videos', idx)">
+                  <span class="material-symbols-rounded">delete</span>
+                </button>
+                <button type="button" title="เลื่อนไปทางขวา" :disabled="idx === form.videos.length - 1" @click="moveItem('videos', idx, 1)">
+                  <span class="material-symbols-rounded">chevron_right</span>
+                </button>
+              </div>
             </div>
-            <div class="flex flex-col gap-2">
-              <button type="button" class="gallery-add-btn h-full" @click="triggerVideoUpload">
-                <span class="material-symbols-rounded" style="font-size:32px;" v-if="!videoUploading">video_call</span>
-                <span class="material-symbols-rounded animate-spin" v-else>sync</span>
-                <span class="text-xs">อัปโหลดวิดีโอ</span>
-              </button>
-              <button type="button" class="gallery-add-btn h-full !border-[var(--color-primary)] !text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5" @click="openMediaLibrary('videos')">
-                <span class="material-symbols-rounded" style="font-size:32px;">video_library</span>
-                <span class="text-xs">เลือกจากคลัง</span>
-              </button>
-            </div>
+          </div>
+          <p v-else class="media-empty">ยังไม่มีวิดีโอ</p>
+
+          <div class="media-add-row">
+            <button type="button" class="gallery-add-btn" :disabled="videoUploading" @click="triggerVideoUpload">
+              <span class="material-symbols-rounded animate-spin" v-if="videoUploading">sync</span>
+              <span class="material-symbols-rounded" v-else>video_call</span>
+              <span>{{ videoUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดวิดีโอ' }}</span>
+            </button>
+            <button type="button" class="gallery-add-btn ghost" @click="openMediaLibrary('videos')">
+              <span class="material-symbols-rounded">video_library</span>
+              <span>เลือกจากคลัง</span>
+            </button>
           </div>
           <input ref="videoInput" type="file" multiple accept="video/mp4,video/quicktime,video/x-m4v" class="hidden-file-input" @change="handleVideoSelect" />
         </div>
@@ -903,6 +958,10 @@ const uploading = ref(false);
 const isDragging = ref(false);
 const galleryInput = ref(null);
 const galleryUploading = ref(false);
+const galleryReplaceInput = ref(null);
+const galleryReplacingIdx = ref(null);
+const dragField = ref(null);
+const dragIndex = ref(null);
 const videoInput = ref(null);
 const videoUploading = ref(false);
 const thumbnailInput = ref(null);
@@ -1141,6 +1200,60 @@ const handleGallerySelect = async (event) => {
     galleryUploading.value = false;
     if (galleryInput.value) galleryInput.value.value = '';
   }
+};
+
+const triggerGalleryReplace = (idx) => {
+  galleryReplacingIdx.value = idx;
+  galleryReplaceInput.value?.click();
+};
+
+const handleGalleryReplaceSelect = async (event) => {
+  const file = event.target.files?.[0];
+  const idx = galleryReplacingIdx.value;
+  if (!file || idx === null) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('ไฟล์มีขนาดเกิน 10MB');
+    galleryReplacingIdx.value = null;
+    if (galleryReplaceInput.value) galleryReplaceInput.value.value = '';
+    return;
+  }
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/upload-image', formData);
+    form.gallery.splice(idx, 1, res.data.data.url);
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    galleryReplacingIdx.value = null;
+    if (galleryReplaceInput.value) galleryReplaceInput.value.value = '';
+  }
+};
+
+const moveItem = (field, idx, offset) => {
+  const list = form[field];
+  const target = idx + offset;
+  if (target < 0 || target >= list.length) return;
+  const [moved] = list.splice(idx, 1);
+  list.splice(target, 0, moved);
+};
+
+const startDrag = (field, idx) => {
+  dragField.value = field;
+  dragIndex.value = idx;
+};
+
+const endDrag = () => {
+  dragField.value = null;
+  dragIndex.value = null;
+};
+
+const dropOnItem = (field, idx) => {
+  if (dragField.value !== field || dragIndex.value === null || dragIndex.value === idx) return endDrag();
+  const list = form[field];
+  const [moved] = list.splice(dragIndex.value, 1);
+  list.splice(idx, 0, moved);
+  endDrag();
 };
 
 const triggerVideoUpload = () => videoInput.value?.click();
@@ -1813,15 +1926,166 @@ onMounted(() => {
 }
 
 /* ─── Gallery ─── */
+.hidden-file-input {
+  display: none;
+}
+
+.media-hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin: -12px 0 0;
+}
+
+.media-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+.media-empty {
+  margin: 16px 0 0;
+  padding: 24px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
 .gallery-grid-editor {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 12px;
 }
 .gallery-item-preview {
   aspect-ratio: 1/1;
   position: relative;
   overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: grab;
+}
+.gallery-item-preview.is-dragging {
+  opacity: 0.4;
+  border-color: var(--color-primary);
+}
+.gallery-item-preview img,
+.gallery-item-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.media-index {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.75);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-actions {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  background: rgba(17, 24, 39, 0.72);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.gallery-item-preview:hover .media-actions,
+.gallery-item-preview:focus-within .media-actions {
+  opacity: 1;
+}
+.media-actions button {
+  border: none;
+  background: transparent;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.media-actions button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+.media-actions button.danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+.media-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.media-actions button .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.media-add-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.gallery-add-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px dashed #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gallery-add-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #fff;
+}
+.gallery-add-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.gallery-add-btn.ghost {
+  border-style: solid;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #fff;
+}
+.gallery-add-btn .material-symbols-rounded {
+  font-size: 20px;
+}
+
+@media (max-width: 640px) {
+  .media-add-row {
+    flex-direction: column;
+  }
 }
 
 .video-play-badge {
