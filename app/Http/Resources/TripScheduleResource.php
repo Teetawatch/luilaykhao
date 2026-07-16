@@ -56,6 +56,10 @@ class TripScheduleResource extends JsonResource
                 isset($this->assigned_staff_count),
                 fn () => (int) $this->assigned_staff_count
             ),
+            'photos_count' => $this->when(
+                isset($this->photos_count),
+                fn () => (int) $this->photos_count
+            ),
             'transport_type' => $this->transport_type,
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,

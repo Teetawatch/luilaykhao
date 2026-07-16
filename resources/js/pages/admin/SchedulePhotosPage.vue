@@ -178,7 +178,7 @@
                 คลิกหรือลากรูปมาวางที่นี่ (เลือกได้หลายไฟล์)
               </p>
               <p style="font-size:12px;color:#9ca3af">
-                JPG, PNG, WebP, HEIC — เลือกได้หลายร้อยรูป ระบบจะทยอยอัปให้เอง · ไฟล์ละไม่เกิน 15 MB
+                JPG, PNG, WebP, HEIC — เลือกได้หลายร้อยรูป ระบบจะย่อและทยอยอัปให้เอง · ไฟล์ละไม่เกิน 15 MB
               </p>
             </div>
           </div>
@@ -228,7 +228,7 @@
             <button
               class="btn-danger"
               :disabled="!manager.photos.length || deletingAll"
-              @click="confirmDeleteAllPhotos"
+              @click="openDeleteAllConfirm"
             >
               <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;">
                 {{ deletingAll ? 'sync' : 'delete_sweep' }}
@@ -244,6 +244,63 @@
               ใช้รูปชุดนี้กับรอบอื่น
             </button>
             <button class="btn-secondary" @click="closeManager">ปิด</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete-all confirmation -->
+    <div class="modal-overlay" v-if="deleteAll.open" @click.self="closeDeleteAllConfirm">
+      <div class="modal-card" style="max-width: 460px">
+        <div class="modal-header">
+          <div>
+            <h2>
+              <span class="material-symbols-rounded heading-icon" style="font-size:22px;vertical-align:-4px;color:#dc2626">
+                delete_sweep
+              </span>
+              ลบรูปทั้งหมด
+            </h2>
+            <p class="modal-subtitle">
+              รูปทั้ง {{ manager.photos.length }} รูปของรอบนี้จะถูกลบออก และไฟล์จะถูกลบจาก Cloudflare R2 ด้วย
+              (รูปที่ใช้ร่วมกับรอบอื่นจะยังคงอยู่กับรอบนั้น) — <strong>กู้คืนไม่ได้</strong>
+            </p>
+          </div>
+          <button class="modal-close" @click="closeDeleteAllConfirm">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <label class="confirm-label" for="delete-all-confirm">
+            พิมพ์จำนวนรูป <strong>{{ manager.photos.length }}</strong> เพื่อยืนยัน
+          </label>
+          <input
+            id="delete-all-confirm"
+            v-model="deleteAll.typed"
+            class="confirm-input"
+            inputmode="numeric"
+            autocomplete="off"
+            :placeholder="String(manager.photos.length)"
+            @keyup.enter="deleteAllConfirmed && confirmDeleteAllPhotos()"
+          />
+        </div>
+
+        <div class="modal-footer">
+          <span style="font-size:12px;color:#9ca3af">
+            รอบ #{{ manager.schedule?.id }}
+          </span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-secondary" @click="closeDeleteAllConfirm">ยกเลิก</button>
+            <button
+              class="btn-danger"
+              :disabled="!deleteAllConfirmed || deletingAll"
+              @click="confirmDeleteAllPhotos"
+            >
+              <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;">
+                {{ deletingAll ? 'sync' : 'delete_sweep' }}
+              </span>
+              {{ deletingAll ? 'กำลังลบ…' : 'ลบทั้งหมด' }}
+            </button>
           </div>
         </div>
       </div>
@@ -359,6 +416,14 @@ const applyPicker = reactive({
   submitting: false,
 });
 
+// Deleting a whole album is unrecoverable, so make the operator type the count
+// rather than let a muscle-memory Enter on a confirm() wipe a few hundred photos.
+const deleteAll = reactive({ open: false, typed: '' });
+
+const deleteAllConfirmed = computed(
+  () => manager.photos.length > 0 && deleteAll.typed.trim() === String(manager.photos.length)
+);
+
 const share = reactive({
   token: null,
   url: null,
@@ -419,10 +484,12 @@ const fetchSchedules = async () => {
     } while (page <= lastPage);
 
     schedules.value = all;
-    // Fetch photo counts in parallel — cap at 60 to avoid bursting the API.
-    await Promise.all(
-      schedules.value.slice(0, 60).map((s) => loadPhotoCount(s.id))
-    );
+    // photos_count rides along on the schedule payload. This page used to fetch
+    // every round's *full* photo list just to read .length off it — 60 requests
+    // on every page load.
+    for (const s of all) {
+      if (typeof s.photos_count === 'number') photoCounts[s.id] = s.photos_count;
+    }
   } catch (e) {
     schedules.value = [];
     alert(e.response?.data?.message ?? 'โหลดรอบเดินทางไม่สำเร็จ');
@@ -431,6 +498,9 @@ const fetchSchedules = async () => {
   }
 };
 
+// Only used to refresh the handful of rounds touched by "ใช้รูปชุดนี้กับรอบอื่น",
+// where the response can't tell us each target's new total. The list view itself
+// reads photos_count straight off the schedule payload.
 const loadPhotoCount = async (scheduleId) => {
   try {
     const res = await api.get(`/admin/schedules/${scheduleId}/photos`);
@@ -581,6 +651,60 @@ const convertHeic = async (file) => {
   }
 };
 
+// Phone photos run 3–12 MB at 12MP, far past what the album ever displays. Shrink
+// them in the browser so we ship ~5–10× fewer bytes and the server never has to
+// decode a full-resolution image.
+const MAX_UPLOAD_EDGE = 2400;
+const DOWNSCALE_QUALITY = 0.85;
+const SKIP_DOWNSCALE_BYTES = 1.5 * 1024 * 1024;
+
+// How many chunk uploads may be in flight at once. Kept low so a big album can't
+// saturate the admin's uplink or the server's PHP-FPM workers.
+const UPLOAD_CONCURRENCY = 3;
+
+const downscaleImage = async (file) => {
+  if (!/^image\/(jpeg|jpg|png|webp)$/i.test(file.type)) return file;
+  if (file.size <= SKIP_DOWNSCALE_BYTES) return file;
+
+  let bitmap;
+  try {
+    // from-image so an EXIF-rotated photo doesn't get baked in sideways.
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    return file; // unsupported browser or undecodable file — let the server have it
+  }
+
+  const scale = Math.min(1, MAX_UPLOAD_EDGE / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1) {
+    bitmap.close?.();
+    return file;
+  }
+
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', DOWNSCALE_QUALITY)
+  );
+  canvas.width = canvas.height = 0; // let the tab reclaim the backing store
+
+  if (!blob || blob.size >= file.size) return file;
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+};
+
+// HEIC first (the canvas can't decode it), then shrink whatever came out.
+const prepareFile = async (file) => {
+  const decoded = isHeic(file) ? await convertHeic(file) : file;
+  return downscaleImage(decoded);
+};
+
 // Turn an upload error into a short, human-readable reason so the operator can
 // tell a body-size limit (413) from a validation reject (422) at a glance.
 const describeUploadError = (e) => {
@@ -595,14 +719,14 @@ const describeUploadError = (e) => {
 
 // Upload one chunk, retrying a few times on failure (flaky network / transient
 // 5xx) before giving up. Returns the last error on failure, or null on success.
-const uploadChunk = async (chunk, attempts = 3) => {
+const uploadChunk = async (scheduleId, chunk, attempts = 3) => {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const fd = new FormData();
       for (const f of chunk) fd.append('files[]', f);
       await api.post(
-        `/admin/schedules/${manager.schedule.id}/photos`,
+        `/admin/schedules/${scheduleId}/photos`,
         fd,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
@@ -624,34 +748,56 @@ const uploadChunk = async (chunk, attempts = 3) => {
 const uploadFiles = async (files) => {
   if (!manager.schedule || !files.length) return;
 
+  // Pin the target round up front — closing the manager mid-upload nulls
+  // manager.schedule, and in-flight chunks must still land on the right round.
+  const scheduleId = manager.schedule.id;
+
   uploading.value = true;
   uploadTotal.value = files.length;
   uploadDone.value = 0;
   uploadFailed.value = 0;
   try {
-    // Convert any HEIC/HEIF files first.
-    if (files.some(isHeic)) {
-      files = await Promise.all(files.map((f) => (isHeic(f) ? convertHeic(f) : f)));
-    }
-
     // Chunk into small batches so each request body stays well under the server's
-    // post_max_size / nginx client_max_body_size (phone photos run 3–12 MB each, so
-    // 5 × 15 MB ≈ 75 MB is a safe ceiling). Each chunk is retried independently —
-    // one failed batch no longer aborts the whole upload.
+    // post_max_size / nginx client_max_body_size. Each chunk is retried
+    // independently — one failed batch no longer aborts the whole upload.
     const CHUNK_SIZE = 5;
     const chunks = [];
     for (let i = 0; i < files.length; i += CHUNK_SIZE) chunks.push(files.slice(i, i + CHUNK_SIZE));
 
     let lastError = null;
-    for (const chunk of chunks) {
-      const err = await uploadChunk(chunk);
-      if (err) {
-        uploadFailed.value += chunk.length;
-        lastError = err;
-      } else {
-        uploadDone.value += chunk.length;
+    let next = 0;
+
+    // Pull chunks off a shared cursor with a few workers, so several uploads are
+    // in flight at once instead of strictly one after another. Chunks may land
+    // out of order — both photo relations tiebreak on id, so the grid still shows
+    // them in upload order even when parallel requests collide on sort_order.
+    const worker = async () => {
+      while (next < chunks.length) {
+        const chunk = chunks[next++];
+
+        // Convert + shrink a chunk right before its own upload, so at most
+        // UPLOAD_CONCURRENCY chunks of decoded bitmaps are live. Preparing every
+        // file up front would blow the tab's memory on a few hundred photos.
+        let prepared = chunk;
+        try {
+          prepared = await Promise.all(chunk.map(prepareFile));
+        } catch {
+          prepared = chunk; // preparation is an optimisation — send the originals
+        }
+
+        const err = await uploadChunk(scheduleId, prepared);
+        if (err) {
+          uploadFailed.value += chunk.length;
+          lastError = err;
+        } else {
+          uploadDone.value += chunk.length;
+        }
       }
-    }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(UPLOAD_CONCURRENCY, chunks.length) }, worker)
+    );
 
     await loadManagerPhotos();
 
@@ -687,17 +833,24 @@ const confirmDeletePhoto = async (photo) => {
   }
 };
 
+const openDeleteAllConfirm = () => {
+  deleteAll.typed = '';
+  deleteAll.open = true;
+};
+
+const closeDeleteAllConfirm = () => {
+  deleteAll.open = false;
+  deleteAll.typed = '';
+};
+
 const confirmDeleteAllPhotos = async () => {
-  if (!manager.schedule || !manager.photos.length) return;
-  if (!confirm(
-    `ลบรูปทั้งหมด ${manager.photos.length} รูปของรอบนี้ใช่หรือไม่?\n` +
-    'ไฟล์จะถูกลบจาก Cloudflare R2 ด้วย (รูปที่ใช้ร่วมกับรอบอื่นจะยังคงอยู่กับรอบนั้น)'
-  )) return;
+  if (!manager.schedule || !deleteAllConfirmed.value) return;
   deletingAll.value = true;
   try {
     await api.delete(`/admin/schedules/${manager.schedule.id}/photos`);
     manager.photos = [];
     photoCounts[manager.schedule.id] = 0;
+    closeDeleteAllConfirm();
   } catch (e) {
     alert(e.response?.data?.message ?? 'ลบรูปทั้งหมดไม่สำเร็จ');
   } finally {
@@ -1010,6 +1163,27 @@ onMounted(async () => {
 }
 
 .round-pick-info { flex: 1; min-width: 0; }
+
+.confirm-label {
+  display: block;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.confirm-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.confirm-input:focus {
+  outline: none;
+  border-color: #dc2626;
+}
 
 .round-pick-title {
   font-weight: 700;

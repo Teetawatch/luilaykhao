@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SchedulePhotoResource;
 use App\Http\Resources\TripPhotoResource;
+use App\Jobs\DeleteMediaFilesJob;
+use App\Jobs\GeneratePhotoThumbnailJob;
 use App\Models\SchedulePhoto;
 use App\Models\Trip;
 use App\Models\TripPhoto;
 use App\Models\TripSchedule;
 use App\Support\MediaDisk;
+use App\Support\Thumbnailer;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,10 +30,6 @@ class PhotoController extends Controller
     private const MAX_FILE_SIZE_KB = 15360; // 15 MB per photo
 
     private const ALLOWED_MIMES = 'jpeg,jpg,png,webp,heic,heif';
-
-    private const THUMB_MAX_EDGE = 800; // longest side of the generated thumbnail
-
-    private const THUMB_QUALITY = 82;
 
     private function disk(): string
     {
@@ -58,19 +57,30 @@ class PhotoController extends Controller
 
         $disk = $this->disk();
         $baseSort = (int) $trip->photos()->max('sort_order');
+
+        // Push the files to R2 *before* opening a transaction — these are network
+        // round-trips, and holding a transaction open across them is what used to
+        // pin DB connections for the length of an upload.
+        $uploads = [];
+        foreach ($request->file('files') as $file) {
+            /** @var UploadedFile $file */
+            $uploads[] = $this->storeFile($file, "trips/{$trip->id}", $disk);
+        }
+
         $stored = [];
 
-        DB::transaction(function () use ($trip, $request, $disk, $baseSort, &$stored) {
-            foreach ($request->file('files') as $idx => $file) {
-                /** @var UploadedFile $file */
-                $info = $this->storeFile($file, "trips/{$trip->id}", $disk);
-                $photo = $trip->photos()->create($info + [
+        DB::transaction(function () use ($trip, $uploads, $disk, $baseSort, &$stored) {
+            foreach ($uploads as $idx => $info) {
+                $stored[] = $trip->photos()->create($info + [
                     'disk' => $disk,
                     'sort_order' => $baseSort + $idx + 1,
                 ]);
-                $stored[] = $photo;
             }
         });
+
+        foreach ($stored as $photo) {
+            GeneratePhotoThumbnailJob::dispatch(TripPhoto::class, $photo->id)->afterCommit();
+        }
 
         return $this->success(
             TripPhotoResource::collection(collect($stored)),
@@ -127,17 +137,27 @@ class PhotoController extends Controller
 
         $disk = $this->disk();
         $baseSort = (int) $schedule->photos()->max('schedule_photo.sort_order');
+
+        // R2 round-trips first, transaction after — see tripUpload().
+        $uploads = [];
+        foreach ($request->file('files') as $file) {
+            /** @var UploadedFile $file */
+            $uploads[] = $this->storeFile($file, "schedules/{$schedule->id}", $disk);
+        }
+
         $ids = [];
 
-        DB::transaction(function () use ($schedule, $request, $disk, $baseSort, &$ids) {
-            foreach ($request->file('files') as $idx => $file) {
-                /** @var UploadedFile $file */
-                $info = $this->storeFile($file, "schedules/{$schedule->id}", $disk);
+        DB::transaction(function () use ($schedule, $uploads, $disk, $baseSort, &$ids) {
+            foreach ($uploads as $idx => $info) {
                 $photo = SchedulePhoto::create($info + ['disk' => $disk]);
                 $schedule->photos()->attach($photo->id, ['sort_order' => $baseSort + $idx + 1]);
                 $ids[] = $photo->id;
             }
         });
+
+        foreach ($ids as $id) {
+            GeneratePhotoThumbnailJob::dispatch(SchedulePhoto::class, $id)->afterCommit();
+        }
 
         // Reload through the relation so each resource carries its pivot (sort_order).
         $photos = $schedule->photos()->whereIn('schedule_photos.id', $ids)->get();
@@ -229,28 +249,48 @@ class PhotoController extends Controller
     /**
      * Remove every photo from this round at once. Each photo is detached from the
      * round; its R2 file is deleted only once no other round still uses it (matching
-     * {@see scheduleDestroy}). Returns how many files were actually removed from disk.
+     * {@see scheduleDestroy}). Returns how many files were queued for removal.
      */
     public function scheduleDestroyAll(int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
         $photos = $schedule->photos()->get();
 
-        $filesRemoved = 0;
+        if ($photos->isEmpty()) {
+            return $this->success(
+                ['detached' => 0, 'files_removed' => 0],
+                'ลบรูปทั้งหมดของรอบนี้แล้ว'
+            );
+        }
 
-        DB::transaction(function () use ($schedule, $photos, &$filesRemoved) {
+        $photoIds = $photos->pluck('id')->all();
+        $orphaned = collect();
+
+        DB::transaction(function () use ($schedule, $photos, $photoIds, &$orphaned) {
             $schedule->photos()->detach();
 
-            foreach ($photos as $photo) {
-                if ($photo->schedules()->count() === 0) {
-                    $photo->delete(); // model boot hook removes the file from disk
-                    $filesRemoved++;
-                }
+            // One query for the whole set — this used to be a count() per photo.
+            $stillUsed = DB::table('schedule_photo')
+                ->whereIn('photo_id', $photoIds)
+                ->distinct()
+                ->pluck('photo_id')
+                ->all();
+
+            $orphaned = $photos->whereNotIn('id', $stillUsed);
+
+            if ($orphaned->isNotEmpty()) {
+                SchedulePhoto::whereIn('id', $orphaned->pluck('id')->all())->delete();
             }
         });
 
+        // A mass delete skips model events, so sweep the files ourselves. One job
+        // per disk keeps this to a single dispatch no matter how many photos.
+        foreach ($orphaned->groupBy(fn (SchedulePhoto $p) => $p->storageDisk()) as $disk => $group) {
+            DeleteMediaFilesJob::dispatch($disk, $group->flatMap->mediaPaths()->all());
+        }
+
         return $this->success(
-            ['detached' => $photos->count(), 'files_removed' => $filesRemoved],
+            ['detached' => $photos->count(), 'files_removed' => $orphaned->count()],
             'ลบรูปทั้งหมดของรอบนี้แล้ว'
         );
     }
@@ -313,6 +353,11 @@ class PhotoController extends Controller
 
     /* ───── Shared upload helper ────────────────────────────── */
 
+    /**
+     * Store the original on the media disk. Reading the dimensions only parses the
+     * file header, so it stays here; the thumbnail needs a full GD decode and is
+     * left to {@see GeneratePhotoThumbnailJob}.
+     */
     private function storeFile(UploadedFile $file, string $folder, string $disk): array
     {
         $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'jpg');
@@ -328,114 +373,18 @@ class PhotoController extends Controller
             fclose($stream);
         }
 
-        [$width, $height] = $this->imageDimensions($file->getRealPath());
-
-        // Downscaled thumbnail for fast grids. Best-effort: if GD can't read the
-        // format (e.g. a HEIC slips through without browser conversion) we simply
-        // store no thumbnail and the UI falls back to the full image.
-        $thumbPath = null;
-        $thumbUrl = null;
-        if ($thumbData = $this->makeThumbnail($file->getRealPath())) {
-            $base = pathinfo($filename, PATHINFO_FILENAME);
-            $thumbPath = trim($folder, '/').'/thumbs/'.$base.'.jpg';
-            Storage::disk($disk)->put($thumbPath, $thumbData, [
-                'visibility' => 'public',
-                'ContentType' => 'image/jpeg',
-            ]);
-            $thumbUrl = Storage::disk($disk)->url($thumbPath);
-        }
+        [$width, $height] = Thumbnailer::dimensions($file->getRealPath());
 
         return [
             'path' => $path,
-            'thumb_path' => $thumbPath,
+            'thumb_path' => null,
             'url' => Storage::disk($disk)->url($path),
-            'thumb_url' => $thumbUrl,
+            'thumb_url' => null,
             'original_name' => $file->getClientOriginalName(),
             'mime' => $file->getMimeType(),
             'size' => $file->getSize(),
             'width' => $width,
             'height' => $height,
         ];
-    }
-
-    private function imageDimensions(string $path): array
-    {
-        $info = @getimagesize($path);
-        if (! $info) {
-            return [null, null];
-        }
-
-        return [$info[0] ?? null, $info[1] ?? null];
-    }
-
-    /**
-     * Build a JPEG thumbnail (longest edge {@see self::THUMB_MAX_EDGE}px) with GD,
-     * honouring EXIF orientation. Returns the encoded bytes, or null on any failure.
-     */
-    private function makeThumbnail(string $sourcePath): ?string
-    {
-        $info = @getimagesize($sourcePath);
-        if (! $info) {
-            return null;
-        }
-
-        $src = match ($info[2] ?? null) {
-            IMAGETYPE_JPEG => @imagecreatefromjpeg($sourcePath),
-            IMAGETYPE_PNG => @imagecreatefrompng($sourcePath),
-            IMAGETYPE_WEBP => @imagecreatefromwebp($sourcePath),
-            IMAGETYPE_GIF => @imagecreatefromgif($sourcePath),
-            default => false,
-        };
-        if (! $src) {
-            return null;
-        }
-
-        $src = $this->applyExifOrientation($src, $sourcePath, $info[2] ?? null);
-
-        $w = imagesx($src);
-        $h = imagesy($src);
-        $scale = min(1, self::THUMB_MAX_EDGE / max($w, $h));
-        $tw = max(1, (int) round($w * $scale));
-        $th = max(1, (int) round($h * $scale));
-
-        $dst = imagecreatetruecolor($tw, $th);
-        // Flatten transparency onto white so PNGs/WebP get a sane JPEG background.
-        $white = imagecolorallocate($dst, 255, 255, 255);
-        imagefilledrectangle($dst, 0, 0, $tw, $th, $white);
-        imagecopyresampled($dst, $src, 0, 0, 0, 0, $tw, $th, $w, $h);
-
-        ob_start();
-        imagejpeg($dst, null, self::THUMB_QUALITY);
-        $data = ob_get_clean();
-
-        imagedestroy($src);
-        imagedestroy($dst);
-
-        return $data ?: null;
-    }
-
-    private function applyExifOrientation(\GdImage $img, string $path, ?int $type): \GdImage
-    {
-        if ($type !== IMAGETYPE_JPEG || ! function_exists('exif_read_data')) {
-            return $img;
-        }
-
-        $exif = @exif_read_data($path);
-        $orientation = $exif['Orientation'] ?? 0;
-
-        $rotated = match ($orientation) {
-            3 => imagerotate($img, 180, 0),
-            6 => imagerotate($img, -90, 0),
-            8 => imagerotate($img, 90, 0),
-            default => null,
-        };
-
-        if ($rotated) {
-            imagedestroy($img);
-
-            return $rotated;
-        }
-
-        return $img;
     }
 }

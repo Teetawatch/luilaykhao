@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\DeleteMediaFilesJob;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
@@ -25,11 +26,23 @@ class SchedulePhoto extends Model
     protected static function booted(): void
     {
         static::deleting(function (SchedulePhoto $photo) {
-            $disk = Storage::disk($photo->disk ?: config('filesystems.default'));
-            foreach (array_filter([$photo->path, $photo->thumb_path]) as $path) {
-                $disk->delete($path);
-            }
+            // Sweep the files after the row is gone — an R2 round-trip inside the
+            // delete transaction is what used to make this 500 on a slow bucket.
+            DeleteMediaFilesJob::dispatch($photo->storageDisk(), $photo->mediaPaths())
+                ->afterCommit();
         });
+    }
+
+    /** The disk this photo's files live on. */
+    public function storageDisk(): string
+    {
+        return $this->disk ?: config('filesystems.default');
+    }
+
+    /** Every stored object belonging to this photo. */
+    public function mediaPaths(): array
+    {
+        return array_values(array_filter([$this->path, $this->thumb_path]));
     }
 
     public function schedules(): BelongsToMany
@@ -45,7 +58,7 @@ class SchedulePhoto extends Model
             return $this->url;
         }
 
-        return Storage::disk($this->disk ?: config('filesystems.default'))
+        return Storage::disk($this->storageDisk())
             ->url($this->path);
     }
 
@@ -55,7 +68,7 @@ class SchedulePhoto extends Model
             return $this->thumb_url;
         }
         if ($this->thumb_path) {
-            return Storage::disk($this->disk ?: config('filesystems.default'))
+            return Storage::disk($this->storageDisk())
                 ->url($this->thumb_path);
         }
 

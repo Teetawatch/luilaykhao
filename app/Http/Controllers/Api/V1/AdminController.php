@@ -261,6 +261,7 @@ class AdminController extends Controller
         $query->withCount([
             'bookings as active_bookings_count' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
             'waitlistEntries as waitlist_count' => fn ($q) => $q->whereIn('status', ['waiting', 'offered']),
+            'photos as photos_count',
         ]);
 
         if (Schema::hasTable('schedule_staff_assignments')) {
