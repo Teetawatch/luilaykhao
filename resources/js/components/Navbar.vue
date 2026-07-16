@@ -1198,13 +1198,13 @@ async function handleLogout() {
   font-size: 14px;
   font-weight: 700;
   color: #fff;
-  background-image: linear-gradient(110deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  background-color: var(--color-primary);
   box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--color-primary) 65%, transparent);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .cta-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
+  box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--color-primary) 75%, transparent);
 }
 .cta-btn:active {
   transform: translateY(0) scale(0.98);

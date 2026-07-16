@@ -2680,7 +2680,7 @@ async function fetchAlbumPhotos() {
 /* Highlight card icon must beat the unlayered 24px icon rule */
 .hl-card .hl-icon { font-size: 28px; }
 
-/* Book-now: gradient to match the hero CTA, not a flat fill */
+/* Book-now: solid single-colour fill for a cleaner, more professional look */
 .book-cta {
   display: block;
   text-align: center;
@@ -2689,19 +2689,19 @@ async function fetchAlbumPhotos() {
   font-size: 1.125rem;
   font-weight: 800;
   color: #fff;
-  background-image: linear-gradient(110deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  background-color: var(--color-primary);
   box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--color-primary) 60%, transparent);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .book-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
+  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-primary) 75%, transparent);
 }
 .book-cta:active {
   transform: translateY(0) scale(0.99);
 }
 
-/* Book-now: gradient to match the hero CTA, not a flat fill */
+/* Book-now: solid single-colour fill for a cleaner, more professional look */
 .book-cta {
   display: block;
   text-align: center;
@@ -2710,13 +2710,13 @@ async function fetchAlbumPhotos() {
   font-size: 1.125rem;
   font-weight: 800;
   color: #fff;
-  background-image: linear-gradient(110deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  background-color: var(--color-primary);
   box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--color-primary) 60%, transparent);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .book-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
+  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-primary) 75%, transparent);
 }
 .book-cta:active {
   transform: translateY(0) scale(0.99);
