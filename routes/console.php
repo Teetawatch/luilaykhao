@@ -2,6 +2,7 @@
 
 use App\Jobs\AbandonedBookingWinbackJob;
 use App\Jobs\BroadcastLowSeatsJob;
+use App\Jobs\ClearEndedTripDriverPinsJob;
 use App\Jobs\ExpireFlexiOffersJob;
 use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
@@ -57,6 +58,9 @@ Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping()
 Schedule::job(new ExpireFlexiOffersJob)->everyFiveMinutes()->withoutOverlapping();
 // Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.
 Schedule::job(new PurgeEndedTripChatsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
+// คืนรหัสส่ง GPS (PIN) ของรถที่รอบเดินทางจบไปแล้ว เพื่อให้แอดมินตั้งรหัสเดิมซ้ำได้
+// โดยไม่ชนกับ PIN ที่ค้างอยู่กับรอบเก่า
+Schedule::job(new ClearEndedTripDriverPinsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // "Almost sold out" fallback sweep — runs 24h so a round that dips to the low
 // band overnight still blasts. Low-seat/sold-out are urgency events, so the
 // service sends them immediately regardless of quiet hours.

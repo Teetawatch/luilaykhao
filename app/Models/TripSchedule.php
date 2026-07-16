@@ -83,6 +83,7 @@ class TripSchedule extends Model
             'join_trip_enabled' => 'boolean',
             'join_trip_price' => 'decimal:2',
             'is_charter' => 'boolean',
+            'driver_pin_cleared_at' => 'datetime',
         ];
     }
 
