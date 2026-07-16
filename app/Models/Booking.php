@@ -184,16 +184,24 @@ class Booking extends Model
         return $this->hasMany(StaffReview::class);
     }
 
+    /**
+     * รูปแบบเลขที่จอง: LLK-YYYYMMDD-NNNN โดย NNNN นับ 1 ใหม่ทุกวัน
+     */
+    private const REF_PATTERN = '/^LLK-\d{8}-(\d{4})$/';
+
     public static function generateRef(): string
     {
         $date = now()->format('Ymd');
-        $last = static::whereDate('created_at', today())
-            ->orderByDesc('id')
-            ->first();
 
-        $seq = $last ? ((int) substr($last->booking_ref, -4)) + 1 : 1;
+        // อ่านลำดับจากเลขที่จองที่ตรงรูปแบบเท่านั้น — เลขที่ผิดรูปแบบต้องไม่ลาก
+        // ให้ทั้งวันออกเลขซ้ำหรือพัง (substr ดิบ ๆ เคยตีคำว่า "9e18" เป็น
+        // ทศนิยมยกกำลังจนแคสต์เป็น int ไม่ได้)
+        $seq = static::whereDate('created_at', today())
+            ->pluck('booking_ref')
+            ->map(fn (?string $ref) => preg_match(self::REF_PATTERN, (string) $ref, $m) ? (int) $m[1] : 0)
+            ->max() ?? 0;
 
-        return sprintf('LLK-%s-%04d', $date, $seq);
+        return sprintf('LLK-%s-%04d', $date, $seq + 1);
     }
 
     public static function generateQrCode(): string

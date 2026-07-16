@@ -88,7 +88,7 @@ class SendSafeTravelsJobTest extends TestCase
         ]);
 
         return Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => $user->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',

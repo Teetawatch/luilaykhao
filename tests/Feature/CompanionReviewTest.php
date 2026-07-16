@@ -58,7 +58,7 @@ class CompanionReviewTest extends TestCase
         ]);
 
         $booking = Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => $owner->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',

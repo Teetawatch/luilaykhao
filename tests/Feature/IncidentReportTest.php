@@ -206,7 +206,7 @@ class IncidentReportTest extends TestCase
         // A confirmed customer on this trip must NOT be notified.
         $customer = User::factory()->create();
         Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => $customer->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',

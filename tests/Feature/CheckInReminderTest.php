@@ -54,7 +54,7 @@ class CheckInReminderTest extends TestCase
     private function booking(TripSchedule $schedule, bool $checkedIn, ?int $userId = null): Booking
     {
         return Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => $userId ?? User::factory()->create()->id,
             'schedule_id' => $schedule->id,
             'qr_code' => Booking::generateQrCode(),

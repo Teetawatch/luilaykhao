@@ -237,7 +237,7 @@ class StaffCheckInTest extends TestCase
         // A customer waiting at stop 2.
         $nextCustomer = User::factory()->create();
         Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => $nextCustomer->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',
@@ -299,7 +299,7 @@ class StaffCheckInTest extends TestCase
 
         // Another booking at the same stop: 1 traveller, not yet checked in.
         $bookingB = Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => User::factory()->create()->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',
@@ -312,7 +312,7 @@ class StaffCheckInTest extends TestCase
 
         // A booking at a different (implicit) stop must not be counted.
         Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => User::factory()->create()->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',
@@ -361,7 +361,7 @@ class StaffCheckInTest extends TestCase
 
         // A second booking also at stop 1 — both must check in to complete it.
         $bookingA2 = Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => User::factory()->create()->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',
@@ -374,7 +374,7 @@ class StaffCheckInTest extends TestCase
         // A customer waiting at stop 2 — should be notified when stop 1 is done.
         $nextCustomer = User::factory()->create();
         Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => $nextCustomer->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',
@@ -503,7 +503,7 @@ class StaffCheckInTest extends TestCase
         ]);
 
         $booking = Booking::create([
-            'booking_ref' => Booking::generateRef().'-'.uniqid(),
+            'booking_ref' => Booking::generateRef(),
             'user_id' => $customer->id,
             'schedule_id' => $schedule->id,
             'status' => 'confirmed',

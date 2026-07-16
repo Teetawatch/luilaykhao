@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\SmsLog;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -70,8 +71,13 @@ class BookingSmsTest extends TestCase
             'sms_type' => 'payment_confirmed',
             'dedupe_key' => 'full',
             'recipient' => '66812345678',
-            'message' => "รับชำระเงินแล้ว สำหรับ booking {$booking->booking_ref}",
             'status' => 'pending',
         ]);
+
+        // ตัวข้อความปรับถ้อยคำได้เรื่อย ๆ — ที่ต้องคงไว้คือลูกค้าต้องเห็นเลขที่จอง
+        $this->assertStringContainsString(
+            $booking->booking_ref,
+            SmsLog::where('booking_id', $booking->id)->where('sms_type', 'payment_confirmed')->value('message'),
+        );
     }
 }
