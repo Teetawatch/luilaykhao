@@ -1229,27 +1229,65 @@
         <div class="modal-header">
           <div>
             <h2>ย้ายเจ้าของการจอง</h2>
-            <p class="modal-subtitle">{{ transferBookingRef }}</p>
+            <p class="modal-subtitle">{{ transferBookingRef }}{{ transferTripTitle ? ` · ${transferTripTitle}` : '' }}</p>
           </div>
           <button class="modal-close" @click="closeTransferModal">
             <span class="material-symbols-rounded">close</span>
           </button>
         </div>
-        <div class="modal-body">
-          <p class="transfer-desc">
-            ค้นหาบัญชีที่ต้องการย้ายการจองไปให้ด้วยอีเมลหรือเบอร์โทรศัพท์
-          </p>
+        <div class="modal-body transfer-body">
+          <!-- From → to, so the admin can see what is actually moving. -->
+          <div class="transfer-flow">
+            <div class="transfer-party">
+              <span class="transfer-party-label">เจ้าของปัจจุบัน</span>
+              <div class="transfer-party-card">
+                <img v-if="transferCurrentUser?.avatar_url" :src="transferCurrentUser.avatar_url" alt="" class="tu-avatar" />
+                <div v-else class="tu-avatar fallback">{{ initial(transferCurrentUser?.name) }}</div>
+                <div class="tu-info">
+                  <strong>{{ transferCurrentUser?.name || '-' }}</strong>
+                  <span>{{ transferCurrentUser?.email || transferCurrentUser?.phone || '-' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <span class="transfer-arrow material-symbols-rounded">arrow_forward</span>
+
+            <div class="transfer-party">
+              <span class="transfer-party-label">เจ้าของใหม่</span>
+              <div class="transfer-party-card" :class="{ chosen: transferTargetUser, pending: !transferTargetUser }">
+                <template v-if="transferTargetUser">
+                  <img v-if="transferTargetUser.avatar_url" :src="transferTargetUser.avatar_url" alt="" class="tu-avatar" />
+                  <div v-else class="tu-avatar fallback accent">{{ initial(transferTargetUser.name) }}</div>
+                  <div class="tu-info">
+                    <strong>{{ transferTargetUser.name }}</strong>
+                    <span>{{ transferTargetUser.email || transferTargetUser.phone || '-' }}</span>
+                  </div>
+                  <button type="button" class="tu-clear" title="เลือกใหม่" @click="transferTargetUser = null">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
+                </template>
+                <template v-else>
+                  <div class="tu-avatar empty"><span class="material-symbols-rounded">person_search</span></div>
+                  <div class="tu-info"><span class="tu-placeholder">ยังไม่ได้เลือกบัญชี</span></div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <label class="transfer-label" for="transfer-search">ค้นหาบัญชีปลายทาง</label>
           <div class="transfer-search-row">
+            <span class="material-symbols-rounded search-icon">search</span>
             <input
+              id="transfer-search"
+              ref="transferInput"
               v-model.trim="transferQuery"
               type="text"
-              placeholder="อีเมล หรือ เบอร์โทร..."
-              @keydown.enter="searchTransferUser"
+              autocomplete="off"
+              placeholder="ชื่อ / อีเมล / เบอร์โทร"
             />
-            <button class="btn-secondary compact" :disabled="!transferQuery || transferSearching" @click="searchTransferUser">
-              <span v-if="transferSearching" class="material-symbols-rounded animate-spin">sync</span>
-              <span v-else class="material-symbols-rounded">search</span>
-              ค้นหา
+            <span v-if="transferSearching" class="material-symbols-rounded animate-spin search-spinner">progress_activity</span>
+            <button v-else-if="transferQuery" type="button" class="search-clear" title="ล้างคำค้นหา" @click="clearTransferSearch">
+              <span class="material-symbols-rounded">close</span>
             </button>
           </div>
 
@@ -1258,31 +1296,54 @@
             {{ transferError }}
           </div>
 
-          <div v-if="transferTargetUser" class="transfer-user-card">
-            <div class="transfer-user-avatar">
-              <span class="material-symbols-rounded">account_circle</span>
-            </div>
-            <div class="transfer-user-info">
-              <strong>{{ transferTargetUser.name }}</strong>
-              <span>{{ transferTargetUser.email || '-' }}</span>
-              <span>{{ transferTargetUser.phone || '-' }}</span>
-            </div>
-            <span class="transfer-user-check material-symbols-rounded">check_circle</span>
+          <!-- Every match is listed: picking silently for the admin is how a
+               booking ends up on the wrong account. -->
+          <div v-if="transferResults.length" class="transfer-results">
+            <button
+              v-for="user in transferResults"
+              :key="user.id"
+              type="button"
+              class="transfer-result"
+              :class="{ active: transferTargetUser?.id === user.id, self: isCurrentOwner(user) }"
+              :disabled="isCurrentOwner(user)"
+              @click="selectTransferUser(user)"
+            >
+              <img v-if="user.avatar_url" :src="user.avatar_url" alt="" class="tu-avatar" />
+              <div v-else class="tu-avatar fallback">{{ initial(user.name) }}</div>
+              <div class="tu-info">
+                <strong>{{ user.name }}</strong>
+                <span>{{ user.email || '-' }}{{ user.phone ? ` · ${user.phone}` : '' }}</span>
+              </div>
+              <span v-if="isCurrentOwner(user)" class="tu-tag">เจ้าของปัจจุบัน</span>
+              <span v-else-if="staffRoleLabel(user)" class="tu-tag warn">{{ staffRoleLabel(user) }}</span>
+              <span v-else class="tu-tag muted">{{ user.bookings_count || 0 }} การจอง</span>
+              <span v-if="transferTargetUser?.id === user.id" class="material-symbols-rounded tu-check">check_circle</span>
+            </button>
           </div>
+
+          <p v-else-if="transferSearched && !transferSearching && !transferError" class="transfer-hint empty">
+            <span class="material-symbols-rounded">person_off</span>
+            ไม่พบบัญชีที่ตรงกับ “{{ transferQuery }}”
+          </p>
+
+          <p v-else-if="!transferQuery" class="transfer-hint">
+            <span class="material-symbols-rounded">info</span>
+            พิมพ์ชื่อ อีเมล หรือเบอร์โทรของบัญชีปลายทาง แล้วเลือกจากรายการ
+          </p>
 
           <p v-if="transferTargetUser" class="confirm-warning">
             <span class="material-symbols-rounded">warning</span>
-            การจองจะถูกย้ายไปยังบัญชีด้านบน และผู้ใช้นี้จะได้รับการแจ้งเตือน
+            การจอง {{ transferBookingRef }} จะย้ายไปยังบัญชี {{ transferTargetUser.name }} และผู้ใช้จะได้รับการแจ้งเตือน
           </p>
 
           <div class="modal-footer">
-            <button class="btn-secondary" @click="closeTransferModal">ยกเลิก</button>
+            <button class="btn-secondary" :disabled="submitting" @click="closeTransferModal">ยกเลิก</button>
             <button
               class="btn-primary"
               :disabled="!transferTargetUser || submitting"
               @click="doTransferBooking"
             >
-              <span v-if="submitting" class="material-symbols-rounded animate-spin">sync</span>
+              <span v-if="submitting" class="material-symbols-rounded animate-spin">progress_activity</span>
               <span v-else class="material-symbols-rounded">move_item</span>
               ยืนยันการย้าย
             </button>
@@ -1303,7 +1364,7 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, reactive, ref, watch } from 'vue';
+import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import { useToast } from '../../lib/toast';
 import api from '../../lib/axios';
@@ -1332,10 +1393,15 @@ const detailBooking = ref(null);
 const statusBooking = ref(null);
 const editBooking = ref(null);
 const transferBookingRef = ref('');
+const transferTripTitle = ref('');
+const transferCurrentUser = ref(null);
 const transferQuery = ref('');
+const transferResults = ref([]);
 const transferTargetUser = ref(null);
 const transferSearching = ref(false);
+const transferSearched = ref(false);
 const transferError = ref('');
+const transferInput = ref(null);
 const submitting = ref(false);
 const loadingDetail = ref(false);
 const currentPage = ref(1);
@@ -2241,37 +2307,83 @@ InfoItem.props = {
   wide: Boolean,
 };
 
+const initial = (name) => (name || '?').charAt(0).toUpperCase();
+
+// Moving a booking onto a staff/admin account is almost always a mistake —
+// flag it in the list rather than letting it look like any other customer.
+const staffRoleLabel = (user) => {
+  const roles = user.roles || [];
+  if (roles.includes('admin')) return 'แอดมิน';
+  if (roles.includes('operator')) return 'ผู้ดูแล';
+  if (roles.includes('staff')) return 'สตาฟ';
+  return '';
+};
+
+const isCurrentOwner = (user) => Number(user.id) === Number(transferCurrentUser.value?.id);
+
 function openTransferModal(booking) {
   transferBookingRef.value = booking.booking_ref;
+  transferTripTitle.value = booking.schedule?.trip?.title || '';
+  transferCurrentUser.value = booking.user || null;
   transferQuery.value = '';
+  transferResults.value = [];
   transferTargetUser.value = null;
+  transferSearched.value = false;
   transferError.value = '';
   showTransferModal.value = true;
+  nextTick(() => transferInput.value?.focus());
 }
 
 function closeTransferModal() {
+  clearTimeout(transferSearchTimer);
   showTransferModal.value = false;
 }
 
-async function searchTransferUser() {
-  if (!transferQuery.value) return;
+function clearTransferSearch() {
+  transferQuery.value = '';
+  transferInput.value?.focus();
+}
 
-  transferSearching.value = true;
-  transferTargetUser.value = null;
+function selectTransferUser(user) {
+  if (isCurrentOwner(user)) return;
+  transferTargetUser.value = user;
+  transferError.value = '';
+}
+
+let transferSearchTimer = null;
+let transferSearchSeq = 0;
+
+watch(transferQuery, (query) => {
+  clearTimeout(transferSearchTimer);
   transferError.value = '';
 
-  try {
-    const res = await api.get('/admin/users', { params: { search: transferQuery.value, per_page: 5 } });
-    const users = res.data?.data || [];
-    if (!users.length) {
-      transferError.value = 'ไม่พบบัญชีผู้ใช้ที่ตรงกัน';
-    } else {
-      transferTargetUser.value = users[0];
-    }
-  } catch (e) {
-    transferError.value = e.response?.data?.message || 'เกิดข้อผิดพลาดในการค้นหา';
-  } finally {
+  if (!query) {
+    transferResults.value = [];
+    transferSearched.value = false;
     transferSearching.value = false;
+    return;
+  }
+
+  transferSearching.value = true;
+  transferSearchTimer = setTimeout(() => searchTransferUsers(query), 350);
+});
+
+async function searchTransferUsers(query) {
+  // A slow earlier request must not overwrite the results of a later one.
+  const seq = ++transferSearchSeq;
+  transferSearching.value = true;
+
+  try {
+    const res = await api.get('/admin/users', { params: { search: query, per_page: 8 } });
+    if (seq !== transferSearchSeq) return;
+    transferResults.value = res.data?.data || [];
+    transferSearched.value = true;
+  } catch (e) {
+    if (seq !== transferSearchSeq) return;
+    transferResults.value = [];
+    transferError.value = e.response?.data?.message || 'ค้นหาบัญชีไม่สำเร็จ';
+  } finally {
+    if (seq === transferSearchSeq) transferSearching.value = false;
   }
 }
 
@@ -2279,16 +2391,18 @@ async function doTransferBooking() {
   if (!transferTargetUser.value || !transferBookingRef.value) return;
 
   submitting.value = true;
+  transferError.value = '';
   try {
     await api.post(`/admin/bookings/${transferBookingRef.value}/transfer`, {
       user_id: transferTargetUser.value.id,
     });
+    const targetName = transferTargetUser.value.name;
     showTransferModal.value = false;
     if (detailBooking.value?.booking_ref === transferBookingRef.value) {
       await openDetail({ booking_ref: transferBookingRef.value });
     }
     await fetchData(currentPage.value);
-    toast.success(`ย้ายการจองไปยัง ${transferTargetUser.value.name} แล้ว`);
+    toast.success(`ย้ายการจองไปยัง ${targetName} แล้ว`);
   } catch (e) {
     transferError.value = e.response?.data?.message || 'เกิดข้อผิดพลาดในการย้ายการจอง';
   } finally {
@@ -3633,6 +3747,17 @@ async function reverifySlip(bookingRef, slipType) {
     flex-direction: column;
   }
 
+  .transfer-flow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .transfer-arrow {
+    padding: 0;
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
   .detail-hero-badges {
     justify-content: flex-start;
   }
@@ -3677,26 +3802,203 @@ async function reverifySlip(bookingRef, slipType) {
   cursor: not-allowed;
 }
 
-.transfer-desc {
+.transfer-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* From → to summary */
+.transfer-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.transfer-party {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.transfer-party-label {
+  font-size: 11px;
+  font-weight: 800;
   color: var(--color-text-muted);
+}
+
+.transfer-party-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.transfer-party-card.pending {
+  border-style: dashed;
+  background: #fff;
+}
+
+.transfer-party-card.chosen {
+  border-color: #6ee7b7;
+  background: #f0fdf4;
+}
+
+.transfer-arrow {
+  color: #94a3b8;
+  font-size: 20px;
+  padding-bottom: 20px;
+}
+
+.tu-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.tu-avatar.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.tu-avatar.fallback.accent {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.tu-avatar.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.tu-avatar.empty .material-symbols-rounded { font-size: 20px; }
+
+.tu-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tu-info strong {
   font-size: 13px;
-  margin-bottom: 14px;
+  font-weight: 800;
+  color: var(--color-text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tu-info span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tu-placeholder { font-style: italic; }
+
+.tu-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #059669;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tu-clear:hover { background: #dcfce7; }
+.tu-clear .material-symbols-rounded { font-size: 16px; }
+
+/* Search */
+.transfer-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text-dark);
+  margin-bottom: 6px;
 }
 
 .transfer-search-row {
+  position: relative;
   display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .transfer-search-row input {
-  flex: 1;
-  padding: 9px 14px;
+  width: 100%;
+  padding: 10px 38px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   color: #111827;
 }
+
+.transfer-search-row input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.transfer-search-row .search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 18px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.transfer-search-row .search-spinner {
+  position: absolute;
+  right: 11px;
+  font-size: 18px;
+  color: var(--color-accent);
+}
+
+.transfer-search-row .search-clear {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.transfer-search-row .search-clear:hover { background: #f1f5f9; color: #475569; }
+.transfer-search-row .search-clear .material-symbols-rounded { font-size: 16px; }
 
 .transfer-error {
   display: flex;
@@ -3704,51 +4006,84 @@ async function reverifySlip(bookingRef, slipType) {
   gap: 6px;
   background: #fef2f2;
   border: 1px solid #fecaca;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px 12px;
   color: #b91c1c;
   font-size: 13px;
   font-weight: 700;
-  margin-bottom: 14px;
-}
-
-.transfer-user-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  padding: 12px;
   margin-bottom: 12px;
 }
 
-.transfer-user-avatar .material-symbols-rounded {
-  font-size: 36px;
-  color: var(--color-accent);
-}
+.transfer-error .material-symbols-rounded { font-size: 18px; }
 
-.transfer-user-info {
-  flex: 1;
+/* Result list */
+.transfer-results {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 12px;
 }
 
-.transfer-user-info strong {
-  color: var(--color-text-dark);
-  font-size: 14px;
-  font-weight: 900;
+.transfer-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.transfer-user-info span {
+.transfer-result:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; }
+
+.transfer-result.active {
+  border-color: var(--color-accent);
+  background: #f0fdf4;
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.transfer-result.self { opacity: 0.55; cursor: not-allowed; }
+
+.tu-tag {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tu-tag.muted { background: #f8fafc; color: #94a3b8; }
+.tu-tag.warn { background: #fffbeb; color: #b45309; }
+
+.tu-check {
+  color: var(--color-accent);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.transfer-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px dashed #e2e8f0;
+  border-radius: 10px;
   color: var(--color-text-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
-.transfer-user-check {
-  color: #059669;
-  font-size: 22px;
-}
+.transfer-hint .material-symbols-rounded { font-size: 17px; color: #94a3b8; }
+.transfer-hint.empty { color: #b45309; border-color: #fde68a; background: #fffbeb; }
+.transfer-hint.empty .material-symbols-rounded { color: #d97706; }
 </style>
