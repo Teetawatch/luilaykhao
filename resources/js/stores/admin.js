@@ -104,6 +104,11 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    async releaseScheduleStaff(scheduleId) {
+      const res = await api.post(`/admin/schedules/${scheduleId}/staff/release`);
+      return res.data;
+    },
+
     // ─── Bookings ───────────────────
     async fetchBookings(params = {}) {
       this.loading = true;

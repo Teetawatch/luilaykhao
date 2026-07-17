@@ -11,6 +11,11 @@ class ScheduleStaffAssignment extends Model
         'schedule_id',
         'user_id',
         'assigned_by',
+        'released_at',
+    ];
+
+    protected $casts = [
+        'released_at' => 'datetime',
     ];
 
     public function schedule(): BelongsTo

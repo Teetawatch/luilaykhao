@@ -396,6 +396,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/move-bookings', [AdminController::class, 'moveBookings']);
         Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);
         Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);
+        Route::post('schedules/{id}/staff/release', [AdminController::class, 'releaseScheduleStaff']);
 
         // Flexi-Price (Go Together) — ผู้จัดยื่นข้อเสนอส่วนต่างค่ารถให้รอบที่คนไม่ครบ
         Route::get('flexi-offers', [FlexiDepartureController::class, 'adminIndex']);

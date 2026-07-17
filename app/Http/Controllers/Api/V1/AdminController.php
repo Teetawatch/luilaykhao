@@ -265,7 +265,7 @@ class AdminController extends Controller
         ]);
 
         if (Schema::hasTable('schedule_staff_assignments')) {
-            $query->withCount('staff as assigned_staff_count');
+            $query->withCount('activeStaff as assigned_staff_count');
         }
 
         if ($request->filled('trip_id')) {
@@ -719,17 +719,55 @@ class AdminController extends Controller
             return $this->success($this->formatScheduleStaffPayload($schedule));
         }
 
-        $schedule->loadCount('staff as assigned_staff_count');
-        $schedule->load(['staff' => function ($query) {
+        $this->loadScheduleStaffRelations($schedule);
+
+        return $this->success($this->formatScheduleStaffPayload($schedule));
+    }
+
+    /**
+     * ปลดสตาฟทุกคนออกจากรอบนี้พร้อมกัน — ปุ่ม "รีเซ็ตสตาฟ" หลังจบทริป สำหรับรอบ
+     * ที่แอดมินอยากเคลียร์เองก่อน ReleaseEndedTripStaffJob จะกวาดตอนตีสาม
+     */
+    public function releaseScheduleStaff(int $id): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($id);
+
+        if (! Schema::hasTable('schedule_staff_assignments')) {
+            return $this->error('ยังไม่ได้ตั้งค่าตารางมอบหมายสตาฟในระบบ', 422);
+        }
+
+        $released = ScheduleStaffAssignment::where('schedule_id', $schedule->id)
+            ->whereNull('released_at')
+            ->update(['released_at' => now()]);
+
+        $schedule->load(['trip', 'vehicle']);
+        $schedule->loadCount([
+            'bookings as active_bookings_count' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
+        ]);
+        $this->loadScheduleStaffRelations($schedule);
+
+        return $this->success(
+            $this->formatScheduleStaffPayload($schedule),
+            $released > 0 ? "ปลดสตาฟออกจากรอบนี้แล้ว {$released} คน" : 'รอบนี้ไม่มีสตาฟค้างอยู่แล้ว',
+        );
+    }
+
+    private function loadScheduleStaffRelations(TripSchedule $schedule): void
+    {
+        $withStats = function ($query) {
             $query->withCount('assignedSchedules');
 
             if (Schema::hasTable('staff_reviews')) {
                 $query->withCount('staffReviewsReceived')
                     ->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
             }
-        }]);
+        };
 
-        return $this->success($this->formatScheduleStaffPayload($schedule));
+        $schedule->loadCount('activeStaff as assigned_staff_count');
+        $schedule->load([
+            'activeStaff' => $withStats,
+            'releasedStaff' => $withStats,
+        ]);
     }
 
     public function syncScheduleStaff(Request $request, int $id): JsonResponse
@@ -761,17 +799,22 @@ class AdminController extends Controller
 
         // Capture who was already on this round so we only push to the staff
         // who are *newly* assigned (not re-notifying existing ones or anyone removed).
-        $existingStaffIds = $schedule->staff()->pluck('users.id');
+        $existingStaffIds = $schedule->activeStaff()->pluck('users.id')->map(fn ($id) => (int) $id);
+        $wantedStaffIds = $staffIds->map(fn ($id) => (int) $id);
 
-        $syncPayload = $staffIds
-            ->mapWithKeys(fn ($staffId) => [(int) $staffId => ['assigned_by' => $request->user()->id]])
-            ->all();
+        // Detaching would drop the row a released assignment lives in, taking the
+        // record of who worked the round with it — so only touch active rows here
+        // and revive released ones by clearing released_at.
+        $schedule->activeStaff()->detach($existingStaffIds->diff($wantedStaffIds)->all());
 
-        $schedule->staff()->sync($syncPayload);
+        foreach ($wantedStaffIds->diff($existingStaffIds) as $staffId) {
+            ScheduleStaffAssignment::updateOrCreate(
+                ['schedule_id' => $schedule->id, 'user_id' => $staffId],
+                ['assigned_by' => $request->user()->id, 'released_at' => null],
+            );
+        }
 
-        $newStaffIds = $staffIds->map(fn ($id) => (int) $id)
-            ->diff($existingStaffIds->map(fn ($id) => (int) $id))
-            ->values();
+        $newStaffIds = $wantedStaffIds->diff($existingStaffIds)->values();
 
         if ($newStaffIds->isNotEmpty()) {
             SendStaffAssignmentPushJob::dispatch(
@@ -782,17 +825,9 @@ class AdminController extends Controller
         }
         $schedule->load(['trip', 'vehicle']);
         $schedule->loadCount([
-            'staff as assigned_staff_count',
             'bookings as active_bookings_count' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
         ]);
-        $schedule->load(['staff' => function ($query) {
-            $query->withCount('assignedSchedules');
-
-            if (Schema::hasTable('staff_reviews')) {
-                $query->withCount('staffReviewsReceived')
-                    ->withAvg('staffReviewsReceived as avg_staff_rating', 'rating');
-            }
-        }]);
+        $this->loadScheduleStaffRelations($schedule);
 
         return $this->success($this->formatScheduleStaffPayload($schedule), 'อัปเดตรายชื่อสตาฟประจำรอบสำเร็จ');
     }
@@ -820,22 +855,33 @@ class AdminController extends Controller
                 'available_seats' => (int) $schedule->available_seats,
                 'active_bookings_count' => (int) ($schedule->active_bookings_count ?? 0),
                 'assigned_staff_count' => (int) ($schedule->assigned_staff_count
-                    ?? ($schedule->relationLoaded('staff') ? $schedule->staff->count() : 0)),
+                    ?? ($schedule->relationLoaded('activeStaff') ? $schedule->activeStaff->count() : 0)),
             ],
-            'staff' => $schedule->relationLoaded('staff')
-                ? $schedule->staff->map(fn ($user) => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'nickname' => $user->nickname,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'avatar_url' => $user->avatar_url,
-                    'assigned_schedules_count' => (int) ($user->assigned_schedules_count ?? 0),
-                    'total_staff_reviews' => (int) ($user->staff_reviews_received_count ?? 0),
-                    'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
-                    'assigned_at' => $user->pivot?->created_at?->toISOString(),
-                ])->values()
+            'staff' => $schedule->relationLoaded('activeStaff')
+                ? $schedule->activeStaff->map(fn ($user) => $this->formatScheduleStaffMember($user))->values()
                 : [],
+            'released_staff' => $schedule->relationLoaded('releasedStaff')
+                ? $schedule->releasedStaff->map(fn ($user) => $this->formatScheduleStaffMember($user))->values()
+                : [],
+        ];
+    }
+
+    private function formatScheduleStaffMember(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'nickname' => $user->nickname,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'avatar_url' => $user->avatar_url,
+            'assigned_schedules_count' => (int) ($user->assigned_schedules_count ?? 0),
+            'total_staff_reviews' => (int) ($user->staff_reviews_received_count ?? 0),
+            'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
+            'assigned_at' => $user->pivot?->created_at?->toISOString(),
+            'released_at' => $user->pivot?->released_at
+                ? Carbon::parse($user->pivot->released_at)->toISOString()
+                : null,
         ];
     }
 
@@ -2308,6 +2354,7 @@ class AdminController extends Controller
 
         $assignments = ScheduleStaffAssignment::with('user')
             ->whereIn('schedule_id', $scheduleIds)
+            ->whereNull('released_at')
             ->get()
             ->groupBy('schedule_id');
 

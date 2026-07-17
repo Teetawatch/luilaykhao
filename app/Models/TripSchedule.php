@@ -233,11 +233,29 @@ class TripSchedule extends Model
             ->orderBy('id');
     }
 
+    /**
+     * ทุกคนที่เคยถูกมอบหมายให้รอบนี้ รวมคนที่ถูกปลดหลังจบทริปแล้ว — ใช้กับสิทธิ์
+     * ที่อิงประวัติ (ห้องแชท, SOS, รายงานอุบัติเหตุ) และการนับผลงานของสตาฟ
+     */
     public function staff(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'schedule_staff_assignments', 'schedule_id', 'user_id')
-            ->withPivot(['assigned_by', 'created_at'])
+            ->withPivot(['assigned_by', 'created_at', 'released_at'])
             ->withTimestamps();
+    }
+
+    /**
+     * เฉพาะสตาฟที่ยังรับผิดชอบรอบนี้อยู่ — พอรอบจบ ReleaseEndedTripStaffJob จะปลด
+     * ทุกคนออก ทำให้รอบเก่าไม่ค้างชื่อใครไว้ในหน้าจัดการ/ตารางงาน
+     */
+    public function activeStaff(): BelongsToMany
+    {
+        return $this->staff()->wherePivotNull('released_at');
+    }
+
+    public function releasedStaff(): BelongsToMany
+    {
+        return $this->staff()->wherePivotNotNull('released_at');
     }
 
     public function waitlistEntries(): HasMany

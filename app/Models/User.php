@@ -108,11 +108,22 @@ class User extends Authenticatable
         return $this->hasMany(FcmToken::class);
     }
 
+    /**
+     * ทุกรอบที่เคยรับผิดชอบ (รวมรอบที่จบและถูกปลดแล้ว) — ตัวนับผลงานของสตาฟ
+     */
     public function assignedSchedules(): BelongsToMany
     {
         return $this->belongsToMany(TripSchedule::class, 'schedule_staff_assignments', 'user_id', 'schedule_id')
-            ->withPivot(['assigned_by', 'created_at'])
+            ->withPivot(['assigned_by', 'created_at', 'released_at'])
             ->withTimestamps();
+    }
+
+    /**
+     * เฉพาะรอบที่ยังรับผิดชอบอยู่ — ใช้กับงานที่ต้องทำจริง (staff hub)
+     */
+    public function activeAssignedSchedules(): BelongsToMany
+    {
+        return $this->assignedSchedules()->wherePivotNull('released_at');
     }
 
     public function staffReviewsReceived(): HasMany

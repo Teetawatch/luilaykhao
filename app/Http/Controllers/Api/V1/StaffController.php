@@ -23,7 +23,7 @@ class StaffController extends Controller
         $userId = $request->user()->id;
 
         $schedules = TripSchedule::with(['trip', 'vehicle', 'pickupPoints'])
-            ->whereHas('staff', fn ($q) => $q->where('users.id', $userId))
+            ->whereHas('activeStaff', fn ($q) => $q->where('users.id', $userId))
             ->orderBy('departure_date')
             ->get();
 

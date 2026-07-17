@@ -196,7 +196,21 @@
                 <span class="material-symbols-rounded">how_to_reg</span>
                 <strong>สตาฟประจำรอบนี้</strong>
                 <span class="section-count">{{ selectedStaff.length }} คน</span>
+                <button
+                  v-if="selectedStaff.length"
+                  type="button"
+                  class="btn-release"
+                  @click="releaseAllStaff"
+                  :disabled="releasing"
+                >
+                  <span class="material-symbols-rounded">{{ releasing ? 'sync' : 'restart_alt' }}</span>
+                  รีเซ็ตสตาฟรอบนี้
+                </button>
               </div>
+              <p v-if="isFinishedRound && selectedStaff.length" class="release-hint">
+                <span class="material-symbols-rounded">schedule</span>
+                รอบนี้จบแล้ว — ระบบจะปลดสตาฟให้อัตโนมัติตอนตี 3 หรือกดรีเซ็ตเองได้เลย
+              </p>
               <div v-if="selectedStaff.length" class="assigned-list">
                 <div v-for="staff in selectedStaff" :key="staff.id" class="assigned-chip">
                   <img v-if="staff.avatar_url" :src="staff.avatar_url" :alt="staff.name" class="chip-avatar" />
@@ -215,6 +229,20 @@
               <div v-else class="assigned-empty">
                 <span class="material-symbols-rounded">person_off</span>
                 ยังไม่มีสตาฟในรอบนี้ — เลือกจากรายชื่อด้านล่าง
+              </div>
+
+              <!-- Staff released after the round ended — kept as a record of who worked it. -->
+              <div v-if="releasedStaff.length" class="released-block">
+                <div class="released-head">
+                  <span class="material-symbols-rounded">history</span>
+                  ปลดหลังจบทริปแล้ว {{ releasedStaff.length }} คน
+                </div>
+                <div class="released-list">
+                  <span v-for="staff in releasedStaff" :key="staff.id" class="released-chip">
+                    {{ staff.nickname || staff.name }}
+                    <span v-if="staff.released_at" class="released-date">· {{ formatDate(staff.released_at) }}</span>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -388,11 +416,14 @@ const onlyMissing = ref(false);
 const selectedScheduleId = ref('');
 const detailPanel = ref(null);
 
+const releasing = ref(false);
+
 const schedules = ref([]);
 const staffUsers = ref([]);
 const selectedScheduleMeta = ref(null);
 const selectedStaffIds = ref([]);
 const originalStaffIds = ref([]);
+const releasedStaff = ref([]);
 
 // Roster state
 const rosterLoading = ref(false);
@@ -500,6 +531,13 @@ const activeScheduleMeta = computed(() => {
 const selectedStaff = computed(() => {
   const ids = new Set(selectedStaffIds.value.map(Number));
   return staffUsers.value.filter((staff) => ids.has(Number(staff.id)));
+});
+
+const isFinishedRound = computed(() => {
+  const meta = activeScheduleMeta.value;
+  if (!meta) return false;
+  const endsOn = meta.return_date || meta.departure_date;
+  return meta.status === 'cancelled' || (!!endsOn && String(endsOn) < todayIso());
 });
 
 const unassignedSchedulesCount = computed(() => {
@@ -652,20 +690,26 @@ const loadAssignedStaff = async () => {
     selectedScheduleMeta.value = null;
     selectedStaffIds.value = [];
     originalStaffIds.value = [];
+    releasedStaff.value = [];
     return;
   }
   loading.value = true;
   try {
     const res = await admin.fetchScheduleStaff(selectedScheduleId.value);
-    selectedScheduleMeta.value = res.data?.schedule || null;
-    selectedStaffIds.value = (res.data?.staff || []).map((s) => s.id);
-    originalStaffIds.value = [...selectedStaffIds.value];
-    mergeAssignedStaffStats(res.data?.staff || []);
+    applyStaffPayload(res.data);
   } catch (e) {
     alert(e?.response?.data?.message || 'โหลดรายการสตาฟของรอบไม่สำเร็จ');
   } finally {
     loading.value = false;
   }
+};
+
+const applyStaffPayload = (payload) => {
+  selectedScheduleMeta.value = payload?.schedule || selectedScheduleMeta.value;
+  selectedStaffIds.value = (payload?.staff || []).map((s) => s.id);
+  originalStaffIds.value = [...selectedStaffIds.value];
+  releasedStaff.value = payload?.released_staff || [];
+  mergeAssignedStaffStats(payload?.staff || []);
 };
 
 const addStaff = (staffId) => {
@@ -697,19 +741,37 @@ const saveAssignments = async () => {
   saving.value = true;
   try {
     const res = await admin.syncScheduleStaff(selectedScheduleId.value, selectedStaffIds.value.map(Number));
-    selectedScheduleMeta.value = res.data?.schedule || selectedScheduleMeta.value;
-    selectedStaffIds.value = (res.data?.staff || []).map((s) => s.id);
-    originalStaffIds.value = [...selectedStaffIds.value];
-    mergeAssignedStaffStats(res.data?.staff || []);
-    await loadStaffUsers();
-    await admin.fetchSchedules({ per_page: 500, ...(scheduleScope.value === 'upcoming' ? { upcoming: 1 } : {}) });
-    schedules.value = admin.schedules.data || [];
+    applyStaffPayload(res.data);
+    await refreshAfterStaffChange();
     alert('บันทึกการมอบหมายสตาฟสำเร็จ');
   } catch (e) {
     alert(e?.response?.data?.message || 'บันทึกข้อมูลไม่สำเร็จ');
   } finally {
     saving.value = false;
   }
+};
+
+const releaseAllStaff = async () => {
+  if (!selectedScheduleId.value) return;
+  if (!confirm('ปลดสตาฟทุกคนออกจากรอบนี้? ประวัติว่าใครดูแลรอบนี้จะยังถูกเก็บไว้')) return;
+  releasing.value = true;
+  try {
+    const res = await admin.releaseScheduleStaff(selectedScheduleId.value);
+    applyStaffPayload(res.data);
+    await refreshAfterStaffChange();
+    alert(res.message || 'รีเซ็ตสตาฟรอบนี้แล้ว');
+  } catch (e) {
+    alert(e?.response?.data?.message || 'รีเซ็ตสตาฟไม่สำเร็จ');
+  } finally {
+    releasing.value = false;
+  }
+};
+
+const refreshAfterStaffChange = async () => {
+  await loadStaffUsers();
+  await admin.fetchSchedules({ per_page: 500, ...(scheduleScope.value === 'upcoming' ? { upcoming: 1 } : {}) });
+  schedules.value = admin.schedules.data || [];
+  await attachTodayStaff();
 };
 
 // ─── ROSTER ────────────────────────────────────────────────
@@ -1389,6 +1451,73 @@ button.summary-card.active {
 
 .chip-remove:hover { background: #fee2e2; color: #b91c1c; }
 .chip-remove .material-symbols-rounded { font-size: 17px; }
+
+.btn-release {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-release:hover { background: #fee2e2; }
+.btn-release:disabled { opacity: 0.6; cursor: default; }
+.btn-release .material-symbols-rounded { font-size: 16px; color: #b91c1c; }
+
+.release-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 16px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.release-hint .material-symbols-rounded { font-size: 15px; }
+
+.released-block {
+  border-top: 1px solid #f1f5f9;
+  padding: 12px 16px;
+}
+
+.released-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.released-head .material-symbols-rounded { font-size: 15px; color: #94a3b8; }
+
+.released-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.released-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.released-date { color: #94a3b8; font-weight: 600; }
 
 .assigned-empty {
   display: flex;
