@@ -1,28 +1,25 @@
 @php
   if ($reminderType === 'overdue') {
-    $headerBg    = '#7f1d1d';
+    $emoji       = '🚨';
     $bannerTitle = 'ค่างวดเลยกำหนดชำระแล้ว';
-    $boxStyle    = 'background:#fef2f2; border-color:#fca5a5; text-align:center;';
-    $labelColor  = '#991b1b';
-    $amountColor = '#7f1d1d';
-    $noteColor   = '#7f1d1d';
-    $rowAmtColor = '#7f1d1d';
+    $headerClass = 'hdr-red';
+    $boxClass    = 'hl-red';
+    $rowAmtClass = 't-red';
+    $ctaClass    = 'cta-red';
   } elseif ($reminderType === 'due_today') {
-    $headerBg    = '#7c2d12';
+    $emoji       = '⏰';
     $bannerTitle = 'ถึงกำหนดชำระค่างวดวันนี้';
-    $boxStyle    = 'background:#fffbeb; border-color:#fde68a; text-align:center;';
-    $labelColor  = '#92400e';
-    $amountColor = '#7c2d12';
-    $noteColor   = '#78350f';
-    $rowAmtColor = '#7c2d12';
+    $headerClass = 'hdr-amber';
+    $boxClass    = 'hl-amber';
+    $rowAmtClass = 't-amber';
+    $ctaClass    = 'cta-amber';
   } else {
-    $headerBg    = '#1e3a8a';
+    $emoji       = '🔔';
     $bannerTitle = 'แจ้งเตือนชำระค่างวด';
-    $boxStyle    = 'background:#eff6ff; border-color:#93c5fd; text-align:center;';
-    $labelColor  = '#1e40af';
-    $amountColor = '#1e3a8a';
-    $noteColor   = '#1e3a5f';
-    $rowAmtColor = '#1e3a8a';
+    $headerClass = 'hdr-blue';
+    $boxClass    = 'hl-blue';
+    $rowAmtClass = 't-blue';
+    $ctaClass    = 'cta-blue';
   }
 
   $dueDateFormatted = $installment->due_date
@@ -31,11 +28,12 @@
   $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
-<x-emails.partials.base subject="{{ $bannerTitle }} งวดที่ {{ $installment->installment_no }} — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="{{ $emoji }} {{ $bannerTitle }} งวดที่ {{ $installment->installment_no }} — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: {{ $headerBg }};">
+  <div class="email-header {{ $headerClass }}">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">{{ $emoji }}</div>
     <h1 class="header-title">{{ $bannerTitle }}</h1>
     <p class="header-subtitle">งวดที่ {{ $installment->installment_no }} / {{ $booking->installment_count }}</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -48,7 +46,7 @@
       สวัสดีคุณ <strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong><br />
       @if($reminderType === 'overdue')
         ค่างวดที่ {{ $installment->installment_no }} เลขการจอง <strong>{{ $booking->booking_ref }}</strong>
-        <strong style="color:#7f1d1d;">เลยกำหนดชำระแล้ว</strong> กรุณาชำระโดยด่วนเพื่อรักษาสิทธิ์การเดินทาง
+        <strong class="t-red">เลยกำหนดชำระแล้ว</strong> กรุณาชำระโดยด่วนเพื่อรักษาสิทธิ์การเดินทาง
       @elseif($reminderType === 'due_today')
         ค่างวดที่ {{ $installment->installment_no }} เลขการจอง <strong>{{ $booking->booking_ref }}</strong>
         ครบกำหนดชำระ <strong>วันนี้</strong> กรุณาชำระให้ทันเพื่อรักษาสิทธิ์
@@ -58,15 +56,15 @@
       @endif
     </div>
 
-    <div class="highlight-box" style="{{ $boxStyle }}">
-      <div class="amount-label" style="color: {{ $labelColor }};">
+    <div class="highlight-box {{ $boxClass }}" style="text-align:center;">
+      <div class="amount-label">
         ยอดที่ต้องชำระ &mdash; งวดที่ {{ $installment->installment_no }}
       </div>
-      <div class="amount" style="color: {{ $amountColor }};">฿{{ number_format($installment->amount, 0) }}</div>
-      <div class="amount-note" style="color: {{ $noteColor }};">
+      <div class="amount">฿{{ number_format($installment->amount, 0) }}</div>
+      <div class="amount-note">
         ครบกำหนด {{ $dueDateFormatted }}
         @if($reminderType === 'overdue')
-          &nbsp;&middot;&nbsp;<strong style="color:#7f1d1d;">เลยกำหนดแล้ว</strong>
+          &nbsp;&middot;&nbsp;<strong class="t-red">เลยกำหนดแล้ว</strong>
         @elseif($reminderType === 'due_today')
           &nbsp;&middot;&nbsp;<strong>วันนี้</strong>
         @endif
@@ -105,11 +103,11 @@
       </div>
       <div class="info-row">
         <span class="info-label">งวดที่ต้องชำระ</span>
-        <span class="info-value" style="color: {{ $rowAmtColor }};">{{ $installment->installment_no }} / {{ $booking->installment_count }}</span>
+        <span class="info-value {{ $rowAmtClass }}">{{ $installment->installment_no }} / {{ $booking->installment_count }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">ยอดงวดนี้</span>
-        <span class="info-value lg" style="color: {{ $rowAmtColor }};">฿{{ number_format($installment->amount, 0) }}</span>
+        <span class="info-value lg {{ $rowAmtClass }}">฿{{ number_format($installment->amount, 0) }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">ครบกำหนด</span>
@@ -128,9 +126,9 @@
     </div>
 
     @if($reminderType === 'overdue')
-    <div class="alert-box" style="background:#fef2f2; border-left-color:#7f1d1d;">
-      <p class="alert-title" style="color:#991b1b;">เงื่อนไขสำคัญ</p>
-      <p class="alert-text" style="color:#7f1d1d;">
+    <div class="alert-box alert-red">
+      <p class="alert-title">⚠️ เงื่อนไขสำคัญ</p>
+      <p class="alert-text">
         หากไม่ชำระภายใน 3 วันนับจากวันครบกำหนด ทาง Luilaykhao ขอสงวนสิทธิ์ยกเลิกทริปและไม่คืนเงินทุกกรณี
         กรุณาติดต่อทีมงานหากต้องการขอขยายเวลา
       </p>
@@ -139,11 +137,11 @@
 
     <div class="cta-wrap">
       <a href="{{ $booking->payUrl() }}"
-         class="cta-btn" style="background: {{ $headerBg }};">
+         class="cta-btn {{ $ctaClass }}">
         ชำระค่างวดตอนนี้ &rarr;
       </a>
     </div>
-    <p style="text-align:center; font-size:12px; color:#94a3b8; margin-top:8px;">
+    <p class="t-muted" style="text-align:center; font-size:12px; margin-top:8px;">
       กดปุ่มเพื่อดู QR PromptPay และแนบสลิป โดยไม่ต้องเข้าสู่ระบบ
     </p>
 

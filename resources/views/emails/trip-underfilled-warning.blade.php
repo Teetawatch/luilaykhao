@@ -4,11 +4,12 @@
   $customerName = $booking->user->name ?? $booking->passengers->first()?->name ?? 'ลูกค้า';
 @endphp
 
-<x-emails.partials.base subject="ทริปอาจถูกยกเลิก — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="⚠️ ทริปอาจถูกยกเลิก — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #7c2d12;">
+  <div class="email-header hdr-amber">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">⚠️</div>
     <h1 class="header-title">แจ้งเตือน: ทริปอาจถูกยกเลิก</h1>
     <p class="header-subtitle">จำนวนผู้เดินทางยังไม่ถึงขั้นต่ำที่รับประกันการออกทริป</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -22,13 +23,13 @@
       เนื่องจากเหลือเวลาอีก <strong>{{ $daysBefore }} วัน</strong> ก่อนออกเดินทาง
       แต่รอบนี้มีผู้จองเพียง <strong>{{ $bookedSeats }} ที่นั่ง</strong>
       ซึ่งยังไม่ถึงขั้นต่ำ <strong>{{ $minSeats }} ที่นั่ง</strong> ที่รับประกันการออกทริป
-      <strong style="color:#b45309;">ทริปนี้จึงมีความเสี่ยงที่จะถูกยกเลิก</strong>
+      <strong class="t-amber">ทริปนี้จึงมีความเสี่ยงที่จะถูกยกเลิก</strong>
     </div>
 
-    <div class="highlight-box" style="background:#fffbeb; border-color:#fde68a; text-align:center;">
-      <div class="amount-label" style="color:#92400e;">ยังต้องการผู้เดินทางเพิ่มอีก</div>
-      <div class="amount" style="color:#7c2d12;">{{ $seatsShort }} ท่าน</div>
-      <div class="amount-note" style="color:#78350f;">
+    <div class="highlight-box hl-amber" style="text-align:center;">
+      <div class="amount-label">🙋 ยังต้องการผู้เดินทางเพิ่มอีก</div>
+      <div class="amount">{{ $seatsShort }} ท่าน</div>
+      <div class="amount-note">
         เพื่อให้ทริปออกเดินทางตามกำหนด (ขั้นต่ำ {{ $minSeats }} ที่นั่ง)
       </div>
     </div>
@@ -65,17 +66,17 @@
       </div>
     </div>
 
-    <div class="alert-box" style="background:#eff6ff; border-left-color:#1e3a8a;">
-      <p class="alert-title" style="color:#1e40af;">หากทริปถูกยกเลิก</p>
-      <p class="alert-text" style="color:#1e3a5f;">
+    <div class="alert-box alert-blue">
+      <p class="alert-title">ℹ️ หากทริปถูกยกเลิก</p>
+      <p class="alert-text">
         ทางเราจะแจ้งให้ท่านทราบล่วงหน้า และ <strong>คืนเงินเต็มจำนวน</strong>
         ที่ท่านได้ชำระมาทั้งหมด ท่านไม่ต้องดำเนินการใด ๆ ในตอนนี้
       </p>
     </div>
 
-    <div class="alert-box" style="background:#f0fdf4; border-left-color:#16a34a;">
-      <p class="alert-title" style="color:#166534;">ช่วยให้ทริปได้ออกเดินทาง</p>
-      <p class="alert-text" style="color:#14532d;">
+    <div class="alert-box alert-green">
+      <p class="alert-title">🤝 ช่วยให้ทริปได้ออกเดินทาง</p>
+      <p class="alert-text">
         หากท่านมีเพื่อนหรือครอบครัวที่สนใจ ลองชวนมาร่วมทริปเพื่อให้ครบจำนวน
         ทริปจะได้ออกเดินทางตามกำหนดแน่นอน
       </p>

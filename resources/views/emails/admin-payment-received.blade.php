@@ -24,11 +24,12 @@
   $remaining = $booking->total_amount - $booking->paid_amount;
 @endphp
 
-<x-emails.partials.base subject="[Admin] ได้รับชำระเงิน ({{ $ptLabel }}) — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="💸 [Admin] ได้รับชำระเงิน ({{ $ptLabel }}) — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #0f172a;">
+  <div class="email-header hdr-slate">
     <span class="email-brand">Luilaykhao Admin</span>
+    <div class="header-emoji">💸</div>
     <h1 class="header-title">ได้รับชำระเงิน</h1>
     <p class="header-subtitle">{{ $ptLabel }} &mdash; {{ $booking->user->name ?? 'ลูกค้า' }}</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -43,10 +44,10 @@
       @if($booking->user->phone) &nbsp;&middot;&nbsp; {{ $booking->user->phone }} @endif
     </div>
 
-    <div class="highlight-box" style="background:#f8fafc; border-color:#cbd5e1;">
-      <div class="amount-label" style="color:#475569;">ยอดที่ได้รับ &mdash; {{ $ptLabel }}</div>
-      <div class="amount" style="color:#0f172a;">฿{{ number_format($paidAmount, 0) }}</div>
-      <div class="amount-note" style="color:#64748b;">
+    <div class="highlight-box hl-slate">
+      <div class="amount-label">💵 ยอดที่ได้รับ &mdash; {{ $ptLabel }}</div>
+      <div class="amount">฿{{ number_format($paidAmount, 0) }}</div>
+      <div class="amount-note">
         {{ $methodLabel }} &nbsp;&middot;&nbsp; {{ \App\Support\ThaiDate::shortTime(now()) }} น.
       </div>
     </div>
@@ -106,7 +107,7 @@
         <span class="info-value">
           {{ $paidCount }} / {{ $booking->installment_count }} งวด
           @if($remainingCount > 0)
-            &nbsp;<span style="color:#7c2d12; font-size:12px;">(เหลือ {{ $remainingCount }} งวด)</span>
+            &nbsp;<span class="t-amber" style="font-size:12px;">(เหลือ {{ $remainingCount }} งวด)</span>
           @endif
         </span>
       </div>
@@ -172,7 +173,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #0f172a;">
+         class="cta-btn cta-slate">
         ดูรายละเอียดใน Admin &rarr;
       </a>
     </div>

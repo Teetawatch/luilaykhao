@@ -1,8 +1,9 @@
-<x-emails.partials.base subject="ชำระเงินสำเร็จ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="✅ ชำระเงินสำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #14532d;">
+  <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">✅</div>
     <h1 class="header-title">ชำระเงินสำเร็จแล้ว</h1>
     <p class="header-subtitle">
       @if($paymentType === 'installment')
@@ -22,10 +23,10 @@
       ขอบคุณสำหรับการชำระเงิน การจองของท่านได้รับการยืนยันแล้ว
     </div>
 
-    <div class="highlight-box" style="background:#f0fdf4; border-color:#86efac;">
-      <div class="amount-label" style="color:#166534;">ยอดที่ชำระ</div>
-      <div class="amount" style="color:#15803d;">฿{{ number_format($booking->paid_amount, 0) }}</div>
-      <div class="amount-note" style="color:#166534;">
+    <div class="highlight-box hl-green">
+      <div class="amount-label">💵 ยอดที่ชำระ</div>
+      <div class="amount">฿{{ number_format($booking->paid_amount, 0) }}</div>
+      <div class="amount-note">
         {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'โอนผ่านธนาคาร' : ($booking->payment_method ?? '-')) }}
         &nbsp;&middot;&nbsp;{{ \App\Support\ThaiDate::shortTime(now()) }} น.
       </div>
@@ -137,21 +138,21 @@
     <p class="section-label">ขั้นตอนถัดไป</p>
     <div class="steps-wrap">
       <div class="step-item">
-        <div class="step-num" style="background:#dcfce7; color:#15803d;">1</div>
+        <div class="step-num step-green">1</div>
         <div class="step-content">
           <p class="step-title">เก็บอีเมลนี้ไว้เป็นหลักฐาน</p>
           <p class="step-desc">ใช้สำหรับการยืนยันตัวตนในวันเดินทาง</p>
         </div>
       </div>
       <div class="step-item">
-        <div class="step-num" style="background:#dcfce7; color:#15803d;">2</div>
+        <div class="step-num step-green">2</div>
         <div class="step-content">
           <p class="step-title">รอรับข้อมูลรายละเอียดการเดินทาง</p>
           <p class="step-desc">ทีมงานจะแจ้งข้อมูลนัดหมายก่อนวันเดินทาง</p>
         </div>
       </div>
       <div class="step-item">
-        <div class="step-num" style="background:#dcfce7; color:#15803d;">3</div>
+        <div class="step-num step-green">3</div>
         <div class="step-content">
           <p class="step-title">เตรียมตัวตามรายการที่แนะนำ</p>
           <p class="step-desc">ตรวจสอบรายการสิ่งของจำเป็นในหน้าทริป</p>
@@ -159,7 +160,7 @@
       </div>
       @if($paymentType === 'installment')
       <div class="step-item">
-        <div class="step-num" style="background:#dcfce7; color:#15803d;">4</div>
+        <div class="step-num step-green">4</div>
         <div class="step-content">
           <p class="step-title">ชำระงวดถัดไปตามกำหนด</p>
           <p class="step-desc">เพื่อรักษาสิทธิ์การเดินทางของท่าน</p>

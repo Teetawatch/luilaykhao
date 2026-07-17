@@ -1,8 +1,9 @@
-<x-emails.partials.base subject="[Admin] การจองใหม่ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="🆕 [Admin] การจองใหม่ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #0f172a;">
+  <div class="email-header hdr-slate">
     <span class="email-brand">Luilaykhao Admin</span>
+    <div class="header-emoji">🆕</div>
     <h1 class="header-title">การจองใหม่เข้ามา</h1>
     <p class="header-subtitle">มีการจองใหม่จากระบบที่ต้องดำเนินการ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -17,10 +18,10 @@
       @if($booking->user->phone) &nbsp;&middot;&nbsp; {{ $booking->user->phone }} @endif
     </div>
 
-    <div class="highlight-box" style="background:#f8fafc; border-color:#cbd5e1;">
-      <div class="amount-label" style="color:#475569;">ยอดรวมการจอง</div>
-      <div class="amount" style="color:#0f172a;">฿{{ number_format($booking->total_amount, 0) }}</div>
-      <div class="amount-note" style="color:#64748b;">สถานะ: รอชำระเงิน</div>
+    <div class="highlight-box hl-slate">
+      <div class="amount-label">💰 ยอดรวมการจอง</div>
+      <div class="amount">฿{{ number_format($booking->total_amount, 0) }}</div>
+      <div class="amount-note">สถานะ: ⏳ รอชำระเงิน</div>
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
@@ -114,9 +115,9 @@
         <tbody>
           @foreach($booking->passengers as $i => $p)
           <tr>
-            <td style="color:#94a3b8; font-size:12px;">{{ $i + 1 }}</td>
-            <td style="font-weight:600;">{{ $p->name }}</td>
-            <td style="text-align:right; color:#64748b;">{{ $p->phone ?? '-' }}</td>
+            <td class="cell-index">{{ $i + 1 }}</td>
+            <td class="cell-strong">{{ $p->name }}</td>
+            <td class="cell-muted" style="text-align:right;">{{ $p->phone ?? '-' }}</td>
           </tr>
           @endforeach
         </tbody>
@@ -125,15 +126,15 @@
     @endif
 
     @if($booking->group_notes)
-    <div class="alert-box" style="background:#f8fafc; border-left-color:#64748b;">
-      <p class="alert-title" style="color:#374151;">หมายเหตุจากลูกค้า</p>
-      <p class="alert-text" style="color:#64748b;">{{ $booking->group_notes }}</p>
+    <div class="alert-box alert-neutral">
+      <p class="alert-title">📝 หมายเหตุจากลูกค้า</p>
+      <p class="alert-text">{{ $booking->group_notes }}</p>
     </div>
     @endif
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #0f172a;">
+         class="cta-btn cta-slate">
         ดูรายละเอียดใน Admin &rarr;
       </a>
     </div>

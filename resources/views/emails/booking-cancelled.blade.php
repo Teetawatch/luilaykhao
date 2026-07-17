@@ -1,8 +1,9 @@
-<x-emails.partials.base subject="ยกเลิกการจอง {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="❌ ยกเลิกการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #7f1d1d;">
+  <div class="email-header hdr-red">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">❌</div>
     <h1 class="header-title">ยกเลิกการจองแล้ว</h1>
     <p class="header-subtitle">การจองของท่านถูกยกเลิกเรียบร้อยแล้ว</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -69,23 +70,23 @@
     </div>
 
     @if($reason)
-    <div class="alert-box" style="background:#fffbeb; border-left-color:#7c2d12;">
-      <p class="alert-title" style="color:#92400e;">เหตุผลการยกเลิก</p>
-      <p class="alert-text" style="color:#78350f;">{{ $reason }}</p>
+    <div class="alert-box alert-amber">
+      <p class="alert-title">📝 เหตุผลการยกเลิก</p>
+      <p class="alert-text">{{ $reason }}</p>
     </div>
     @endif
 
     @if($booking->refund_amount > 0)
-    <div class="highlight-box" style="background:#f0fdf4; border-color:#86efac;">
-      <div class="amount-label" style="color:#166534;">ยอดคืนเงิน</div>
-      <div class="amount" style="color:#15803d;">฿{{ number_format($booking->refund_amount, 0) }}</div>
-      <div class="amount-note" style="color:#166534;">จะดำเนินการคืนเงินภายใน 3&ndash;7 วันทำการ</div>
+    <div class="highlight-box hl-green">
+      <div class="amount-label">💸 ยอดคืนเงิน</div>
+      <div class="amount">฿{{ number_format($booking->refund_amount, 0) }}</div>
+      <div class="amount-note">จะดำเนินการคืนเงินภายใน 3&ndash;7 วันทำการ</div>
     </div>
     @endif
 
-    <div class="alert-box" style="background:#fef2f2; border-left-color:#7f1d1d;">
-      <p class="alert-title" style="color:#991b1b;">นโยบายการคืนเงิน</p>
-      <p class="alert-text" style="color:#7f1d1d;">
+    <div class="alert-box alert-red">
+      <p class="alert-title">📋 นโยบายการคืนเงิน</p>
+      <p class="alert-text">
         ยกเลิกก่อนเดินทาง 7+ วัน: คืน 80%&nbsp;&middot;&nbsp;ยกเลิก 3&ndash;6 วัน: คืน 50%&nbsp;&middot;&nbsp;น้อยกว่า 3 วัน: ไม่คืนเงิน<br />
         มัดจำ: ไม่คืนทุกกรณี
       </p>

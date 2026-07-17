@@ -1,8 +1,9 @@
-<x-emails.partials.base subject="ยืนยันการจอง {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="🎉 ยืนยันการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #115e59;">
+  <div class="email-header hdr-teal">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">🎉</div>
     <h1 class="header-title">การจองสำเร็จแล้ว</h1>
     <p class="header-subtitle">กรุณาชำระเงินเพื่อยืนยันสิทธิ์ที่นั่งของท่าน</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -105,9 +106,9 @@
         <tbody>
           @foreach($booking->passengers as $i => $p)
           <tr>
-            <td style="color:#94a3b8; font-size:12px;">{{ $i + 1 }}</td>
-            <td style="font-weight:600;">{{ $p->name }}</td>
-            <td style="text-align:right; color:#64748b;">{{ $p->phone ?? '-' }}</td>
+            <td class="cell-index">{{ $i + 1 }}</td>
+            <td class="cell-strong">{{ $p->name }}</td>
+            <td class="cell-muted" style="text-align:right;">{{ $p->phone ?? '-' }}</td>
           </tr>
           @endforeach
         </tbody>
@@ -115,9 +116,9 @@
     </div>
     @endif
 
-    <div class="alert-box" style="background:#fffbeb; border-left-color:#7c2d12;">
-      <p class="alert-title" style="color:#92400e;">เงื่อนไขสำคัญที่ท่านยอมรับแล้ว</p>
-      <p class="alert-text" style="color:#78350f;">
+    <div class="alert-box alert-amber">
+      <p class="alert-title">⚠️ เงื่อนไขสำคัญที่ท่านยอมรับแล้ว</p>
+      <p class="alert-text">
         1.&nbsp;เมื่อยืนยันสิทธิ์แล้ว ขอสงวนสิทธิ์ในการคืนเงินมัดจำทุกกรณี<br />
         2.&nbsp;สามารถแจ้งเลื่อนได้ 1 ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย 45 วัน<br />
         3.&nbsp;เปลี่ยนผู้เดินทางได้ โดยแจ้งล่วงหน้าอย่างน้อย 15 วัน
@@ -126,8 +127,8 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #115e59;">
-        ดูรายละเอียดและชำระเงิน &rarr;
+         class="cta-btn cta-teal">
+        💳 ดูรายละเอียดและชำระเงิน &rarr;
       </a>
     </div>
 
@@ -140,7 +141,7 @@
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
       อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong style="color:#475569;">062-612-6006</strong> (08:00&ndash;20:00)<br />
+      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong class="t-muted">062-612-6006</strong> (08:00&ndash;20:00)<br />
       &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>

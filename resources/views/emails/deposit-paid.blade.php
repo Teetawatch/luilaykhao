@@ -1,8 +1,9 @@
-<x-emails.partials.base subject="ชำระเงินมัดจำสำเร็จ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="💰 ชำระเงินมัดจำสำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #115e59;">
+  <div class="email-header hdr-teal">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">💰</div>
     <h1 class="header-title">ชำระเงินมัดจำสำเร็จ</h1>
     <p class="header-subtitle">ที่นั่งของท่านได้รับการยืนยันแล้ว</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -16,10 +17,10 @@
       ขอบคุณที่ชำระเงินมัดจำสำหรับทริปนี้ ที่นั่งของท่านได้รับการจองเรียบร้อยแล้ว
     </div>
 
-    <div class="highlight-box" style="background:#f0fdfa; border-color:#99f6e4;">
-      <div class="amount-label" style="color:#0f766e;">มัดจำที่ชำระ</div>
-      <div class="amount" style="color:#115e59;">฿{{ number_format($booking->deposit_amount, 0) }}</div>
-      <div class="amount-note" style="color:#0f766e;">
+    <div class="highlight-box hl-teal">
+      <div class="amount-label">💰 มัดจำที่ชำระ</div>
+      <div class="amount">฿{{ number_format($booking->deposit_amount, 0) }}</div>
+      <div class="amount-note">
         ชำระแล้วเมื่อ {{ \App\Support\ThaiDate::shortTime($booking->paid_at ?? now()) }} น.
       </div>
     </div>
@@ -81,18 +82,18 @@
       </div>
     </div>
 
-    <div class="alert-box" style="background:#fffbeb; border-left-color:#7c2d12;">
-      <p class="alert-title" style="color:#92400e;">กรุณาชำระส่วนที่เหลือก่อนครบกำหนด</p>
-      <p class="alert-text" style="color:#78350f;">
+    <div class="alert-box alert-amber">
+      <p class="alert-title">⏰ กรุณาชำระส่วนที่เหลือก่อนครบกำหนด</p>
+      <p class="alert-text">
         ท่านมียอดค้างชำระ <strong>฿{{ number_format($booking->balance_amount, 0) }}</strong>
         กรุณาชำระภายในวันที่ <strong>{{ \App\Support\ThaiDate::full($booking->balance_due_at) }}</strong>
         เพื่อยืนยันสิทธิ์การเดินทาง
       </p>
     </div>
 
-    <div class="alert-box" style="background:#fef2f2; border-left-color:#7f1d1d;">
-      <p class="alert-title" style="color:#991b1b;">เงื่อนไขการยกเลิก</p>
-      <p class="alert-text" style="color:#7f1d1d;">
+    <div class="alert-box alert-red">
+      <p class="alert-title">⚠️ เงื่อนไขการยกเลิก</p>
+      <p class="alert-text">
         กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ไม่คืนเงินมัดจำทุกกรณี
         เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้าแล้ว
       </p>
@@ -100,7 +101,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #115e59;">
+         class="cta-btn cta-teal">
         ดูรายละเอียดการจอง &rarr;
       </a>
     </div>

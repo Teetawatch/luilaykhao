@@ -1,40 +1,26 @@
 @php
   $configs = [
-    'confirmed' => [
-      'header'  => '#14532d',
-      'accent'  => '#14532d',
-      'boxBg'   => '#f0fdf4', 'boxBorder' => '#86efac',
-    ],
-    'cancelled' => [
-      'header'  => '#7f1d1d',
-      'accent'  => '#7f1d1d',
-      'boxBg'   => '#fef2f2', 'boxBorder' => '#fca5a5',
-    ],
-    'refunded' => [
-      'header'  => '#7c2d12',
-      'accent'  => '#7c2d12',
-      'boxBg'   => '#fffbeb', 'boxBorder' => '#fde68a',
-    ],
-    'pending' => [
-      'header'  => '#1e3a8a',
-      'accent'  => '#1e3a8a',
-      'boxBg'   => '#eff6ff', 'boxBorder' => '#93c5fd',
-    ],
+    'confirmed' => ['emoji' => '✅', 'header' => 'hdr-green', 'text' => 't-green', 'box' => 'st-green'],
+    'cancelled' => ['emoji' => '❌', 'header' => 'hdr-red',   'text' => 't-red',   'box' => 'st-red'],
+    'refunded'  => ['emoji' => '💸', 'header' => 'hdr-amber', 'text' => 't-amber', 'box' => 'st-amber'],
+    'pending'   => ['emoji' => '⏳', 'header' => 'hdr-blue',  'text' => 't-blue',  'box' => 'st-blue'],
   ];
 
   $cfg         = $configs[$newStatus] ?? $configs['pending'];
-  $headerBg    = $cfg['header'];
-  $accentColor = $cfg['accent'];
-  $boxStyle    = 'background:' . $cfg['boxBg'] . '; border-color:' . $cfg['boxBorder'] . '; text-align:center;';
+  $headerClass = $cfg['header'];
+  $accentClass = $cfg['text'];
+  $boxClass    = $cfg['box'];
+  $statusEmoji = $cfg['emoji'];
 
   $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
-<x-emails.partials.base subject="อัปเดตสถานะการจอง {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="{{ $statusEmoji }} อัปเดตสถานะการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: {{ $headerBg }};">
+  <div class="email-header {{ $headerClass }}">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">{{ $statusEmoji }}</div>
     <h1 class="header-title">สถานะการจองอัปเดต</h1>
     <p class="header-subtitle">มีการเปลี่ยนแปลงสถานะการจองของท่าน</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -46,12 +32,12 @@
     <div class="greeting">
       สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
       สถานะการจองของท่านได้เปลี่ยนเป็น
-      <strong style="color: {{ $accentColor }};">{{ $statusLabel }}</strong> แล้ว
+      <strong class="{{ $accentClass }}">{{ $statusLabel }}</strong> แล้ว
     </div>
 
-    <div class="status-box" style="{{ $boxStyle }}">
-      <div class="status-label-small" style="color: {{ $accentColor }};">สถานะปัจจุบัน</div>
-      <div class="status-value" style="color: {{ $accentColor }};">{{ $statusLabel }}</div>
+    <div class="status-box {{ $boxClass }}">
+      <div class="status-label-small">สถานะปัจจุบัน</div>
+      <div class="status-value">{{ $statusEmoji }} {{ $statusLabel }}</div>
     </div>
 
     <p class="section-label">รายละเอียดการจอง</p>

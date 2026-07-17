@@ -5,11 +5,12 @@
   $nextInstallment = $booking->installmentPayments->where('status', 'pending')->first();
 @endphp
 
-<x-emails.partials.base subject="ชำระงวดที่ {{ $installment->installment_no }} สำเร็จ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="✅ ชำระงวดที่ {{ $installment->installment_no }} สำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #14532d;">
+  <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
+    <div class="header-emoji">{{ $isFullyPaid ? '🎉' : '✅' }}</div>
     <h1 class="header-title">
       {{ $isFullyPaid ? 'ชำระครบทุกงวดแล้ว' : "ชำระงวดที่ {$installment->installment_no} สำเร็จ" }}
     </h1>
@@ -29,10 +30,10 @@
       @if($isFullyPaid) <br />การชำระเงินทุกงวดครบสมบูรณ์แล้ว @endif
     </div>
 
-    <div class="highlight-box" style="background:#f0fdf4; border-color:#86efac; text-align:center;">
-      <div class="amount-label" style="color:#166534;">งวดที่ {{ $installment->installment_no }} &mdash; ชำระแล้ว</div>
-      <div class="amount" style="color:#15803d;">฿{{ number_format($installment->amount, 0) }}</div>
-      <div class="amount-note" style="color:#166534;">{{ \App\Support\ThaiDate::shortTime(now()) }} น.</div>
+    <div class="highlight-box hl-green" style="text-align:center;">
+      <div class="amount-label">✅ งวดที่ {{ $installment->installment_no }} &mdash; ชำระแล้ว</div>
+      <div class="amount">฿{{ number_format($installment->amount, 0) }}</div>
+      <div class="amount-note">{{ \App\Support\ThaiDate::shortTime(now()) }} น.</div>
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
@@ -127,9 +128,9 @@
     @endif
 
     @if($nextInstallment && !$isFullyPaid)
-    <div class="alert-box" style="background:#eff6ff; border-left-color:#1e3a8a;">
-      <p class="alert-title" style="color:#1e40af;">งวดถัดไป</p>
-      <p class="alert-text" style="color:#1e3a5f;">
+    <div class="alert-box alert-blue">
+      <p class="alert-title">📅 งวดถัดไป</p>
+      <p class="alert-text">
         งวดที่ {{ $nextInstallment->installment_no }} จำนวน <strong>฿{{ number_format($nextInstallment->amount, 0) }}</strong>
         &nbsp;&mdash;&nbsp;กำหนดชำระ <strong>{{ \App\Support\ThaiDate::full($nextInstallment->due_date ? \Carbon\Carbon::parse($nextInstallment->due_date) : null) }}</strong>
       </p>
