@@ -24,7 +24,7 @@
        face that renders Thai tone marks at the wrong height. */
     body {
       margin: 0; padding: 0;
-      background-color: #080d17;
+      background-color: #0a0a0a;
       font-family: 'Sarabun', 'Leelawadee UI', 'Tahoma', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
       color: #e8edf5;
       -webkit-font-smoothing: antialiased;
@@ -33,14 +33,14 @@
     /* Outer wrapper */
     .email-outer {
       width: 100%;
-      background-color: #080d17;
+      background-color: #0a0a0a;
       padding: 40px 16px 32px;
     }
     .email-wrapper {
       max-width: 600px;
       margin: 0 auto;
-      background: #131c2e;
-      border: 1px solid #263449;
+      background: #141414;
+      border: 1px solid #2a2a2a;
       border-radius: 18px;
       overflow: hidden;
     }
@@ -49,7 +49,7 @@
     .email-header {
       padding: 36px 40px 32px;
       text-align: center;
-      background: #182338;
+      background: #1a1a1a;
     }
     .email-brand {
       display: block;
@@ -98,7 +98,7 @@
     .hdr-red   { background: #2c1519; }
     .hdr-amber { background: #2b1e0e; }
     .hdr-blue  { background: #14213f; }
-    .hdr-slate { background: #182338; }
+    .hdr-slate { background: #1a1a1a; }
 
     /* Body */
     .email-body { padding: 36px 40px 32px; }
@@ -110,7 +110,7 @@
       color: #a9b8cd;
       margin: 0 0 28px;
       padding: 16px 20px;
-      background: #1a2437;
+      background: #1c1c1c;
       border-left: 3px solid #2dd4bf;
       border-radius: 4px 12px 12px 4px;
     }
@@ -125,21 +125,21 @@
       color: #7183a0;
       margin: 0 0 12px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #263449;
+      border-bottom: 1px solid #2a2a2a;
     }
 
     /* Info card */
     .info-card {
-      background: #162033;
-      border: 1px solid #263449;
+      background: #171717;
+      border: 1px solid #2a2a2a;
       border-radius: 14px;
       overflow: hidden;
       margin-bottom: 24px;
     }
     .info-card-header {
       padding: 11px 20px;
-      background: #1a2437;
-      border-bottom: 1px solid #263449;
+      background: #1c1c1c;
+      border-bottom: 1px solid #2a2a2a;
     }
     .info-card-title {
       font-size: 10px;
@@ -154,7 +154,7 @@
       display: table;
       width: 100%;
       padding: 12px 20px;
-      border-bottom: 1px solid #223049;
+      border-bottom: 1px solid #242424;
     }
     .info-row:last-child { border-bottom: none; }
     .info-label {
@@ -193,7 +193,7 @@
     /* Pickup block */
     .pickup-block {
       padding: 12px 20px;
-      border-bottom: 1px solid #223049;
+      border-bottom: 1px solid #242424;
     }
     .pickup-block:last-child { border-bottom: none; }
     .pickup-label {
@@ -263,7 +263,7 @@
     .hl-blue .amount-label, .hl-blue .amount-note { color: #93c5fd; }
     .hl-blue .amount { color: #60a5fa; }
 
-    .hl-slate { background: #1a2437; border-color: #33455f; }
+    .hl-slate { background: #1c1c1c; border-color: #383838; }
     .hl-slate .amount-label, .hl-slate .amount-note { color: #8fa1ba; }
     .hl-slate .amount { color: #e8edf5; }
 
@@ -307,11 +307,11 @@
     .table-wrap {
       border-radius: 14px;
       overflow: hidden;
-      border: 1px solid #263449;
+      border: 1px solid #2a2a2a;
       margin: 0 0 24px;
     }
     .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .data-table thead tr { background: #1a2437; }
+    .data-table thead tr { background: #1c1c1c; }
     .data-table thead th {
       padding: 10px 14px;
       text-align: left;
@@ -320,10 +320,10 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       color: #7183a0;
-      border-bottom: 1px solid #263449;
+      border-bottom: 1px solid #2a2a2a;
     }
     .data-table thead th:last-child { text-align: right; }
-    .data-table tbody tr { border-bottom: 1px solid #223049; background: #162033; }
+    .data-table tbody tr { border-bottom: 1px solid #242424; background: #171717; }
     .data-table tbody tr:last-child { border-bottom: none; }
     .data-table tbody td {
       padding: 11px 14px;
@@ -383,7 +383,7 @@
     .alert-blue .alert-title { color: #93c5fd; }
     .alert-blue .alert-text  { color: #a8bfe0; }
 
-    .alert-neutral { background: #1a2437; border-left-color: #64748b; }
+    .alert-neutral { background: #1c1c1c; border-left-color: #64748b; }
     .alert-neutral .alert-title { color: #c3d0e2; }
     .alert-neutral .alert-text  { color: #8fa1ba; }
 
@@ -410,7 +410,7 @@
       display: table;
       width: 100%;
       padding: 14px 0;
-      border-bottom: 1px solid #223049;
+      border-bottom: 1px solid #242424;
     }
     .step-item:last-child { border-bottom: none; padding-bottom: 0; }
     .step-item:first-child { padding-top: 0; }
@@ -433,8 +433,8 @@
     /* Contact bar */
     .contact-bar {
       padding: 13px 18px;
-      background: #1a2437;
-      border: 1px solid #263449;
+      background: #1c1c1c;
+      border: 1px solid #2a2a2a;
       border-radius: 12px;
       margin: 20px 0 0;
       font-size: 13px;
@@ -445,8 +445,8 @@
 
     /* Footer */
     .email-footer {
-      background: #101827;
-      border-top: 1px solid #263449;
+      background: #101010;
+      border-top: 1px solid #2a2a2a;
       padding: 24px 40px;
       text-align: center;
     }
@@ -464,7 +464,7 @@
       margin-bottom: 16px;
       font-weight: 400;
     }
-    .footer-divider { height: 1px; background: #263449; margin: 0 0 14px; }
+    .footer-divider { height: 1px; background: #2a2a2a; margin: 0 0 14px; }
     .footer-disclaimer { font-size: 11px; color: #64748b; line-height: 1.9; }
     .footer-disclaimer strong { color: #a9b8cd; }
 

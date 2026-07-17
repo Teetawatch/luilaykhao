@@ -109,8 +109,8 @@ class EmailTemplatesRenderTest extends TestCase
         $html = $make($this)->render();
 
         // The dark shell must survive: page background, card background, rounded wrapper.
-        $this->assertStringContainsString('#080d17', $html);
-        $this->assertStringContainsString('background: #131c2e', $html);
+        $this->assertStringContainsString('#0a0a0a', $html);
+        $this->assertStringContainsString('background: #141414', $html);
         $this->assertStringContainsString('border-radius: 18px', $html);
 
         // No template may reintroduce a light panel via an inline style.
