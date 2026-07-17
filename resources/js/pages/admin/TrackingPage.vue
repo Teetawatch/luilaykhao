@@ -8,6 +8,10 @@
             <span class="material-symbols-rounded" style="font-size: 10px;">circle</span>
             {{ wsConnected ? 'เชื่อมต่อแล้ว (Real-time)' : 'ไม่ได้เชื่อมต่อ' }}
           </span>
+          <span class="scope-note">
+            <span class="material-symbols-rounded">event_available</span>
+            เฉพาะรถของรอบที่กำลังเดินทาง · {{ vehicles.length }} คัน
+          </span>
         </p>
       </div>
       <div class="header-actions">
@@ -24,6 +28,10 @@
           <span class="material-symbols-rounded" :class="{ 'animate-spin': loading }">sync</span> รีเฟรช
         </button>
       </div>
+    </div>
+
+    <div v-if="loadError" class="track-banner">
+      <span class="material-symbols-rounded">cloud_off</span> {{ loadError }}
     </div>
 
     <div class="tracking-container">
@@ -43,10 +51,10 @@
             </button>
           </div>
           <div class="filter-group">
-            <button v-for="s in ['all', 'moving', 'stopped', 'offline']" :key="s" 
-              class="filter-pill sm" :class="{ active: filterStatus === s }"
-              @click="filterStatus = s">
-              {{ s === 'all' ? 'ทุกสถานะ' : (s === 'moving' ? 'กำลังวิ่ง' : (s === 'stopped' ? 'จอด' : 'ออฟไลน์')) }}
+            <button v-for="s in statusFilters" :key="s.key"
+              class="filter-pill sm" :class="{ active: filterStatus === s.key }"
+              @click="filterStatus = s.key">
+              {{ s.label }}
             </button>
           </div>
         </div>
@@ -59,16 +67,20 @@
             :class="{ active: selectedVehicleId === v.vehicle_id }"
             @click="selectVehicle(v)"
           >
-            <div class="vehicle-status-dot" :class="isOnline(v) ? 'online' : 'offline'"></div>
+            <div class="vehicle-status-dot" :class="trackingState(v)"></div>
             <div class="vehicle-list-icon">
               <span class="material-symbols-rounded">{{ getVehicleIcon(v.type) }}</span>
             </div>
             <div class="vehicle-list-info">
               <div class="vehicle-list-name">{{ v.vehicle_name }}</div>
               <div class="vehicle-list-plate">{{ v.license_plate || 'ไม่มีทะเบียน' }}</div>
+              <div v-if="v.trip_title" class="vehicle-list-trip">
+                <span class="material-symbols-rounded">route</span>{{ v.trip_title }}
+              </div>
               <div class="vehicle-list-meta">
-                <span v-if="v.speed != null" style="display:flex;align-items:center;gap:2px;">
-                  <span class="material-symbols-rounded" style="font-size:12px;">speed</span> {{ Math.round(v.speed) }} km/h
+                <span class="state-chip" :class="trackingState(v)">{{ stateLabel(v) }}</span>
+                <span v-if="isOnline(v) && v.speed != null" class="meta-speed">
+                  <span class="material-symbols-rounded">speed</span>{{ Math.round(v.speed) }} km/h
                 </span>
                 <span>{{ timeAgo(v.recorded_at) }}</span>
               </div>
@@ -76,8 +88,9 @@
             <span class="material-symbols-rounded vehicle-list-arrow">chevron_right</span>
           </div>
           <div v-if="!filteredVehicles.length" class="vehicle-list-empty">
-            <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 8px;">directions_car</span>
-            <p>{{ loading ? 'กำลังโหลด...' : 'ไม่พบข้อมูลรถ' }}</p>
+            <span class="material-symbols-rounded empty-icon">{{ vehicles.length ? 'filter_alt_off' : 'event_busy' }}</span>
+            <p>{{ emptyMessage }}</p>
+            <button v-if="vehicles.length" class="empty-reset" @click="resetFilters">ล้างตัวกรอง</button>
           </div>
         </div>
 
@@ -88,11 +101,11 @@
           </div>
           <div class="stat-item offline">
             <span class="stat-count">{{ offlineCount }}</span>
-            <span class="stat-label">ออฟไลน์</span>
+            <span class="stat-label">ขาดสัญญาณ</span>
           </div>
-          <div class="stat-item total">
-            <span class="stat-count">{{ vehicles.length }}</span>
-            <span class="stat-label">ทั้งหมด</span>
+          <div class="stat-item nosignal">
+            <span class="stat-count">{{ noSignalCount }}</span>
+            <span class="stat-label">ยังไม่ส่ง</span>
           </div>
         </div>
       </div>
@@ -113,16 +126,25 @@
             <div>
               <div class="map-info-name">{{ selectedVehicle.vehicle_name }}</div>
               <div class="map-info-plate">{{ selectedVehicle.license_plate }}</div>
-              <div v-if="selectedVehicle.trip_title" 
-                style="font-size:11px; color:var(--color-accent); font-weight:700; margin-top:2px; display:flex; align-items:center; gap:2px;">
-                <span class="material-symbols-rounded" style="font-size:12px;">route</span> {{ selectedVehicle.trip_title }}
+              <div v-if="selectedVehicle.trip_title" class="map-info-trip">
+                <span class="material-symbols-rounded">route</span> {{ selectedVehicle.trip_title }}
+              </div>
+              <div v-if="roundLabel(selectedVehicle)" class="map-info-round">
+                <span class="material-symbols-rounded">event</span> รอบ {{ roundLabel(selectedVehicle) }}
               </div>
             </div>
+            <span class="state-chip lg" :class="trackingState(selectedVehicle)">{{ stateLabel(selectedVehicle) }}</span>
           </div>
+
+          <div v-if="trackingState(selectedVehicle) === 'no_signal'" class="map-info-warn">
+            <span class="material-symbols-rounded">gps_off</span>
+            รอบนี้ยังไม่ได้รับพิกัดจากรถเลย — คนขับอาจยังไม่ได้เปิดแอปส่ง GPS
+          </div>
+
           <div class="map-info-details">
-            <div class="map-info-row">
+            <div class="map-info-row" v-if="selectedVehicle.latitude != null">
               <span class="material-symbols-rounded text-icon">location_on</span>
-              <span>{{ selectedVehicle.latitude?.toFixed(5) }}, {{ selectedVehicle.longitude?.toFixed(5) }}</span>
+              <span>{{ Number(selectedVehicle.latitude).toFixed(5) }}, {{ Number(selectedVehicle.longitude).toFixed(5) }}</span>
             </div>
             <div class="map-info-row" v-if="selectedVehicle.speed != null">
               <span class="material-symbols-rounded text-icon">speed</span>
@@ -135,6 +157,10 @@
             <div class="map-info-row">
               <span class="material-symbols-rounded text-icon">schedule</span>
               <span>{{ timeAgo(selectedVehicle.recorded_at) }}</span>
+            </div>
+            <div class="map-info-row" v-if="selectedVehicle.driver_name">
+              <span class="material-symbols-rounded text-icon">person</span>
+              <span>{{ selectedVehicle.driver_name }}</span>
             </div>
             <div class="map-info-row" v-if="trailPoints[selectedVehicle.vehicle_id]?.length">
               <span class="material-symbols-rounded text-icon">route</span>
@@ -158,17 +184,27 @@
               <span class="eta-badge traffic"><span class="material-symbols-rounded" style="font-size:12px;">directions_car</span> สภาพจราจร: {{ etaData[selectedVehicle.vehicle_id].duration_in_traffic?.text }}</span>
             </div>
           </div>
+          <p v-if="etaError" class="map-info-error">
+            <span class="material-symbols-rounded">error</span> {{ etaError }}
+          </p>
+
           <div class="map-info-actions">
             <a :href="`tel:${selectedVehicle.driver_phone}`" class="btn-eta btn-sm" v-if="selectedVehicle.driver_phone" style="text-decoration:none;">
               <span class="material-symbols-rounded">call</span> โทรหาคนขับ
             </a>
-            <button class="btn-eta btn-sm" @click="promptETACalculation(selectedVehicle)" :disabled="etaLoading">
-              <span class="material-symbols-rounded animate-spin" v-if="etaLoading">sync</span>
+            <button
+              class="btn-eta btn-sm"
+              :disabled="etaLoading || !selectedVehicle.dest_lat || selectedVehicle.latitude == null"
+              :title="!selectedVehicle.dest_lat ? 'ทริปนี้ยังไม่ได้ปักพิกัดปลายทาง' : 'คำนวณเวลาถึงปลายทางของทริป'"
+              @click="refreshETA(selectedVehicle)"
+            >
+              <span class="material-symbols-rounded animate-spin" v-if="etaLoading">progress_activity</span>
               <span class="material-symbols-rounded" v-else>directions</span>
-              {{ etaLoading ? 'ETA' : 'คำนวณ ETA' }}
+              {{ etaData[selectedVehicle.vehicle_id] ? 'อัปเดต ETA' : 'คำนวณ ETA' }}
             </button>
             <button class="btn-danger btn-sm btn-clear-trail"
               v-if="trailPoints[selectedVehicle.vehicle_id]?.length"
+              title="ล้างเส้นทาง"
               @click="clearTrail(selectedVehicle.vehicle_id)">
               <span class="material-symbols-rounded">delete</span>
             </button>
@@ -192,8 +228,12 @@ const selectedVehicleId = ref(null);
 const wsConnected = ref(false);
 const showTrail = ref(true);
 const filterType = ref('all'); // all, van, boat
-const filterStatus = ref('all'); // all, moving, stopped, idle
+const filterStatus = ref('all'); // all, moving, stopped, offline, no_signal
+const loadError = ref('');
+// เวลาปัจจุบันแบบ reactive — ไม่งั้น "x นาทีที่แล้ว" กับสถานะออนไลน์จะค้างจนกว่าพิกัดใหม่จะเข้า
+const nowTs = ref(Date.now());
 let pollInterval = null;
+let clockInterval = null;
 
 // เก็บ trail points สำหรับแต่ละรถ
 const trailPoints = ref({});   // { vehicleId: [[lat, lng], ...] }
@@ -224,14 +264,7 @@ const filteredVehicles = computed(() => {
 
   // Status Filter
   if (filterStatus.value !== 'all') {
-    list = list.filter(v => {
-      const online = isOnline(v);
-      const moving = v.speed > 5;
-      if (filterStatus.value === 'moving') return online && moving;
-      if (filterStatus.value === 'stopped') return online && !moving;
-      if (filterStatus.value === 'offline') return !online;
-      return true;
-    });
+    list = list.filter(v => trackingState(v) === filterStatus.value);
   }
 
   return list;
@@ -241,18 +274,61 @@ const selectedVehicle = computed(() =>
   vehicles.value.find(v => v.vehicle_id === selectedVehicleId.value) ?? null
 );
 
+const statusFilters = [
+  { key: 'all', label: 'ทุกสถานะ' },
+  { key: 'moving', label: 'กำลังวิ่ง' },
+  { key: 'stopped', label: 'จอด' },
+  { key: 'offline', label: 'ขาดสัญญาณ' },
+  { key: 'no_signal', label: 'ยังไม่ส่ง' },
+];
+
+const emptyMessage = computed(() => {
+  if (loading.value) return 'กำลังโหลด...';
+  // แยกให้ชัดว่า "วันนี้ไม่มีรอบเดินทาง" กับ "ตัวกรองซ่อนรถไว้" คนละเรื่องกัน
+  if (!vehicles.value.length) return 'ตอนนี้ไม่มีรอบเดินทางที่กำลังวิ่งอยู่';
+  return 'ไม่มีรถตรงกับตัวกรองที่เลือก';
+});
+
+function resetFilters() {
+  searchQuery.value = '';
+  filterType.value = 'all';
+  filterStatus.value = 'all';
+}
+
 const onlineCount = computed(() => vehicles.value.filter(isOnline).length);
-const offlineCount = computed(() => vehicles.value.filter(v => !isOnline(v)).length);
+const offlineCount = computed(() => vehicles.value.filter(v => trackingState(v) === 'offline').length);
+const noSignalCount = computed(() => vehicles.value.filter(v => trackingState(v) === 'no_signal').length);
 
 // ─── Helpers ─────────────────────────────────────────────
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
 function isOnline(v) {
   if (!v.recorded_at) return false;
-  return Date.now() - new Date(v.recorded_at).getTime() < 5 * 60 * 1000;
+  return nowTs.value - new Date(v.recorded_at).getTime() < ONLINE_WINDOW_MS;
+}
+
+// รถที่มีรอบวันนี้แต่ยังไม่เคยส่งพิกัดเลย ต่างจากรถที่ขาดสัญญาณระหว่างทาง —
+// อันแรกแปลว่าคนขับยังไม่เปิดแอป ซึ่งเป็นสิ่งที่แอดมินต้องรีบตาม
+function trackingState(v) {
+  if (!v.recorded_at) return 'no_signal';
+  if (!isOnline(v)) return 'offline';
+  return v.speed > 5 ? 'moving' : 'stopped';
+}
+
+const STATE_LABELS = {
+  moving: 'กำลังวิ่ง',
+  stopped: 'จอดอยู่',
+  offline: 'ขาดสัญญาณ',
+  no_signal: 'ยังไม่ส่งสัญญาณ',
+};
+
+function stateLabel(v) {
+  return STATE_LABELS[trackingState(v)];
 }
 
 function timeAgo(dateStr) {
-  if (!dateStr) return 'ไม่ทราบ';
-  const diff = Date.now() - new Date(dateStr).getTime();
+  if (!dateStr) return 'ยังไม่มีสัญญาณ';
+  const diff = nowTs.value - new Date(dateStr).getTime();
   const s = Math.floor(diff / 1000);
   if (s < 60) return `${s} วิ ที่แล้ว`;
   const m = Math.floor(s / 60);
@@ -260,6 +336,18 @@ function timeAgo(dateStr) {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} ชม. ที่แล้ว`;
   return `${Math.floor(h / 24)} วัน ที่แล้ว`;
+}
+
+function formatThaiDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+}
+
+function roundLabel(v) {
+  if (!v.departure_date) return '';
+  const start = formatThaiDate(v.departure_date);
+  if (v.return_date && v.return_date !== v.departure_date) return `${start} - ${formatThaiDate(v.return_date)}`;
+  return start;
 }
 
 function getVehicleIcon(type) {
@@ -392,7 +480,7 @@ function clearTrail(vehicleId) {
 
 // ─── Markers ─────────────────────────────────────────────
 function upsertMarker(v) {
-  if (!map || !L || v.latitude == null) return;
+  if (!map || !L || v.latitude == null) return;   // ยังไม่ส่งพิกัด — ไม่มีอะไรให้ปักบนแผนที่
   const online = isOnline(v);
   const icon = createIcon(v, online);
   const latlng = [v.latitude, v.longitude];
@@ -428,12 +516,13 @@ function updateAllMarkers() {
 
 // ─── ETA (Distance Matrix) ──────────────────────────────
 const etaLoading = ref(false);
+const etaError = ref('');
 const etaData = ref({});   // { vehicleId: { distance, duration, duration_in_traffic } }
-const etaDestination = ref({ lat: null, lng: null });
 
 async function calculateETA(vehicle, lat, lng) {
   if (!lat || !lng) return;
   etaLoading.value = true;
+  etaError.value = '';
   try {
     const res = await api.get(`/tracking/${vehicle.vehicle_id}/eta`, {
       params: { dest_lat: lat, dest_lng: lng },
@@ -441,22 +530,16 @@ async function calculateETA(vehicle, lat, lng) {
     etaData.value[vehicle.vehicle_id] = res.data.data;
   } catch (e) {
     console.error('Failed to calculate ETA:', e);
+    etaError.value = e.response?.data?.message || 'คำนวณ ETA ไม่สำเร็จ';
   } finally {
     etaLoading.value = false;
   }
 }
 
-async function promptETACalculation(vehicle) {
-  const destInput = prompt('กรอกพิกัดปลายทาง (lat, lng)\nเช่น: 18.7883, 98.9853');
-  if (!destInput) return;
-
-  const parts = destInput.split(',').map(s => s.trim());
-  if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) {
-    alert('รูปแบบไม่ถูกต้อง กรุณากรอก lat, lng');
-    return;
-  }
-  
-  await calculateETA(vehicle, parts[0], parts[1]);
+// ปลายทางมาจากทริปของรอบที่รถกำลังวิ่งอยู่แล้ว — แอดมินไม่ต้องพิมพ์ lat,lng เอง
+async function refreshETA(vehicle) {
+  if (!vehicle?.dest_lat || !vehicle?.dest_lng) return;
+  await calculateETA(vehicle, vehicle.dest_lat, vehicle.dest_lng);
 }
 
 // ─── Data ─────────────────────────────────────────────────
@@ -466,7 +549,6 @@ async function refreshLocations(isAutoRefresh) {
     const res = await api.get('/tracking/current');
     const data = res.data.data ?? [];
 
-    // seed trail for existing vehicles
     data.forEach(v => {
       if (v.latitude != null) addTrailPoint(v.vehicle_id, v.latitude, v.longitude);
       const existing = vehicles.value.find(x => x.vehicle_id === v.vehicle_id);
@@ -475,11 +557,34 @@ async function refreshLocations(isAutoRefresh) {
       upsertMarker(v);
       updateTrailPolyline(v.vehicle_id);
     });
+
+    // รถที่ไม่อยู่ในรอบเดินทางแล้วต้องหายไปจากลิสต์และแผนที่ด้วย ไม่ใช่ค้างจนกว่าจะรีโหลดหน้า
+    const liveIds = new Set(data.map(v => v.vehicle_id));
+    vehicles.value
+      .filter(v => !liveIds.has(v.vehicle_id))
+      .forEach(v => forgetVehicle(v.vehicle_id));
+    vehicles.value = vehicles.value.filter(v => liveIds.has(v.vehicle_id));
+    loadError.value = '';
   } catch (e) {
     console.error('Failed to fetch locations:', e);
+    loadError.value = 'โหลดตำแหน่งรถไม่สำเร็จ — กำลังลองใหม่';
   } finally {
     if (isAutoRefresh !== true) loading.value = false;
   }
+}
+
+function forgetVehicle(vehicleId) {
+  if (markers[vehicleId]) {
+    markers[vehicleId].remove();
+    delete markers[vehicleId];
+  }
+  if (trailPolylines[vehicleId]) {
+    trailPolylines[vehicleId].remove();
+    delete trailPolylines[vehicleId];
+  }
+  delete trailPoints.value[vehicleId];
+  delete etaData.value[vehicleId];
+  if (selectedVehicleId.value === vehicleId) selectedVehicleId.value = null;
 }
 
 // ─── Real-time WebSocket ──────────────────────────────────
@@ -504,18 +609,14 @@ function initEcho() {
 }
 
 function handleLocationUpdate(data) {
-  // อัปเดต vehicle list
+  // ช่อง broadcast ส่งทุกคันที่ยิง GPS เข้ามา รวมรถที่ไม่มีรอบแล้ว (เช่น แอปคนขับ
+  // ค้างเปิดหลังจบทริป) — รับเฉพาะคันที่ /tracking/current ยืนยันว่ายังมีงานอยู่
   const idx = vehicles.value.findIndex(v => v.vehicle_id === data.vehicle_id);
-  if (idx !== -1) {
-    Object.assign(vehicles.value[idx], data);
-  } else {
-    vehicles.value.push(data);
-  }
+  if (idx === -1) return;
 
-  // อัปเดต Marker (smooth move)
-  upsertMarker(data);
+  Object.assign(vehicles.value[idx], data);
+  upsertMarker(vehicles.value[idx]);
 
-  // เพิ่ม trail point
   addTrailPoint(data.vehicle_id, data.latitude, data.longitude);
   updateTrailPolyline(data.vehicle_id);
 }
@@ -523,13 +624,14 @@ function handleLocationUpdate(data) {
 // ─── UI Actions ───────────────────────────────────────────
 async function selectVehicle(v) {
   selectedVehicleId.value = v.vehicle_id;
+  etaError.value = '';
   if (map && v.latitude && v.longitude) {
     map.flyTo([v.latitude, v.longitude], 14, { duration: 0.8 });
   }
 
   // Fetch history for trail if selecting for the first time or if trail is very short
   if (!trailPoints.value[v.vehicle_id] || trailPoints.value[v.vehicle_id].length < 5) {
-    fetchHistory(v.vehicle_id);
+    fetchHistory(v);
   }
 
   // Auto-ETA if destination exists
@@ -538,14 +640,18 @@ async function selectVehicle(v) {
   }
 }
 
-async function fetchHistory(vehicleId) {
+async function fetchHistory(v) {
   try {
-    const res = await api.get(`/tracking/history/${vehicleId}`, { params: { limit: 50 } });
+    // จำกัดแค่ช่วงเวลาของรอบนี้ ไม่งั้นเส้นทางจะลากย้อนไปถึงทริปรอบก่อนของรถคันเดียวกัน
+    const params = { limit: 50 };
+    if (v.tracking_since) params.from = v.tracking_since;
+
+    const res = await api.get(`/tracking/history/${v.vehicle_id}`, { params });
     const history = res.data.data || [];
     if (history.length > 0) {
-      const pts = history.reverse().map(loc => [loc.latitude, loc.longitude]);
-      trailPoints.value[vehicleId] = pts;
-      updateTrailPolyline(vehicleId);
+      const pts = history.reverse().map(loc => [Number(loc.latitude), Number(loc.longitude)]);
+      trailPoints.value[v.vehicle_id] = pts;
+      updateTrailPolyline(v.vehicle_id);
     }
   } catch (e) {
     console.error('Failed to fetch history for trail:', e);
@@ -554,7 +660,7 @@ async function fetchHistory(vehicleId) {
 
 function centerAll() {
   if (!map || !L || !vehicles.value.length) return;
-  const pts = vehicles.value.filter(v => v.latitude && v.longitude).map(v => [v.latitude, v.longitude]);
+  const pts = vehicles.value.filter(v => v.latitude != null && v.longitude != null).map(v => [v.latitude, v.longitude]);
   if (!pts.length) return;
   map.fitBounds(L.latLngBounds(pts), { padding: [60, 60] });
 }
@@ -583,10 +689,12 @@ onMounted(async () => {
   pollInterval = setInterval(() => {
     refreshLocations(true);
   }, 5000);
+  clockInterval = setInterval(() => { nowTs.value = Date.now(); }, 1000);
 });
 
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval);
+  if (clockInterval) clearInterval(clockInterval);
   if (window.Echo) window.Echo.leave('vehicle-tracking');
   if (map) { map.remove(); map = null; }
 });
@@ -672,8 +780,66 @@ onUnmounted(() => {
 .vehicle-list-item.active { background: #eff6ff; border-left: 4px solid var(--color-accent); padding-left: 12px; }
 
 .vehicle-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.vehicle-status-dot.online  { background: var(--color-accent); box-shadow: 0 0 6px rgba(45, 122, 79, 0.4); }
-.vehicle-status-dot.offline { background: var(--color-text-muted); }
+.vehicle-status-dot.moving    { background: var(--color-accent); box-shadow: 0 0 6px rgba(45, 122, 79, 0.4); }
+.vehicle-status-dot.stopped   { background: #f59e0b; }
+.vehicle-status-dot.offline   { background: var(--color-text-muted); }
+.vehicle-status-dot.no_signal { background: #ef4444; }
+
+.state-chip {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.state-chip.moving    { background: #ecfdf5; color: #047857; }
+.state-chip.stopped   { background: #fffbeb; color: #b45309; }
+.state-chip.offline   { background: #f1f5f9; color: #64748b; }
+.state-chip.no_signal { background: #fef2f2; color: #b91c1c; }
+.state-chip.lg { font-size: 11px; padding: 4px 10px; margin-left: auto; align-self: flex-start; }
+
+.vehicle-list-trip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vehicle-list-trip .material-symbols-rounded { font-size: 13px; }
+
+.meta-speed { display: flex; align-items: center; gap: 2px; }
+.meta-speed .material-symbols-rounded { font-size: 12px; }
+
+.scope-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.scope-note .material-symbols-rounded { font-size: 14px; }
+
+.track-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+}
+.track-banner .material-symbols-rounded { font-size: 18px; }
 
 .vehicle-list-info { flex: 1; min-width: 0; }
 .vehicle-list-name  { font-size: 14px; font-weight: 700; color: var(--color-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -694,14 +860,27 @@ onUnmounted(() => {
 }
 .vehicle-list-item.active .vehicle-list-icon { background: var(--color-white); color: var(--color-accent); }
 
-.vehicle-list-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; color: var(--color-text-muted); }
-.vehicle-list-empty p { font-size: 14px; margin-top: 8px; }
+.vehicle-list-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; padding: 0 20px; color: var(--color-text-muted); text-align: center; }
+.vehicle-list-empty .empty-icon { font-size: 32px; margin-bottom: 8px; }
+.vehicle-list-empty p { font-size: 13px; font-weight: 600; margin-top: 8px; }
+.empty-reset {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-text-mid);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.empty-reset:hover { background: var(--color-sand); }
 
 .sidebar-stats { display: flex; border-top: 1px solid var(--color-sand-dark); padding: 12px; gap: 8px; background: var(--color-white); }
 .stat-item { flex: 1; text-align: center; padding: 10px; border-radius: 10px; background: var(--color-sand); border: 1px solid var(--color-sand-dark); }
 .stat-item.online  .stat-count { color: var(--color-accent); }
 .stat-item.offline .stat-count { color: var(--color-text-muted); }
-.stat-item.total   .stat-count { color: var(--color-ocean); }
+.stat-item.nosignal .stat-count { color: #dc2626; }
 .sidebar-filters { padding: 12px 16px; border-bottom: 1px solid var(--color-sand-dark); background: #f8fafc; }
 .filter-group { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .filter-group:last-child { margin-bottom: 0; }
@@ -732,7 +911,38 @@ onUnmounted(() => {
 .map-info-close { position: absolute; top: 12px; right: 12px; background: none; border: none; cursor: pointer; color: var(--color-text-muted); transition: color 0.15s; }
 .map-info-close:hover { color: var(--color-text-dark); }
 
-.map-info-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--color-sand-dark);}
+.map-info-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--color-sand-dark);}
+.map-info-trip { display: flex; align-items: center; gap: 3px; margin-top: 3px; font-size: 11px; font-weight: 700; color: var(--color-accent); }
+.map-info-trip .material-symbols-rounded { font-size: 12px; }
+.map-info-round { display: flex; align-items: center; gap: 3px; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--color-text-muted); }
+.map-info-round .material-symbols-rounded { font-size: 12px; }
+
+.map-info-warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 9px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.map-info-warn .material-symbols-rounded { font-size: 16px; flex-shrink: 0; }
+
+.map-info-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+.map-info-error .material-symbols-rounded { font-size: 14px; }
 .icon-lg { font-size: 28px; color: var(--color-accent); }
 .map-info-name  { font-size: 16px; font-weight: 700; color: var(--color-text-dark); }
 .map-info-plate { font-size: 12px; color: var(--color-text-muted); margin-top: 2px;}

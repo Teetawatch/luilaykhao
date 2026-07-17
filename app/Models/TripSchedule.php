@@ -168,6 +168,37 @@ class TripSchedule extends Model
     }
 
     /**
+     * Scope: รอบที่ "กำลังเดินทางอยู่" ในวันที่กำหนด — ตั้งแต่วันออก (หรือคืนก่อน
+     * หน้าถ้า departs_at ตั้งไว้) จนถึงวันกลับ ต่างจาก departingOn ที่จับเฉพาะ
+     * วันออกเดินทางวันแรก ทำให้ทริปหลายวันหลุดหายไปตั้งแต่วันที่สอง
+     */
+    public function scopeInProgressOn($query, \DateTimeInterface|string $date)
+    {
+        $dateString = $date instanceof \DateTimeInterface
+            ? Carbon::instance($date)->toDateString()
+            : Carbon::parse($date)->toDateString();
+
+        return $query->where(function ($query) use ($dateString) {
+            // เริ่มแล้ว
+            $query->where(function ($q) use ($dateString) {
+                $q->whereDate('departs_at', '<=', $dateString)
+                    ->orWhere(function ($q2) use ($dateString) {
+                        $q2->whereNull('departs_at')
+                            ->whereDate('departure_date', '<=', $dateString);
+                    });
+            })
+                // ยังไม่จบ
+                ->where(function ($q) use ($dateString) {
+                    $q->whereDate('return_date', '>=', $dateString)
+                        ->orWhere(function ($q2) use ($dateString) {
+                            $q2->whereNull('return_date')
+                                ->whereDate('departure_date', '>=', $dateString);
+                        });
+                });
+        });
+    }
+
+    /**
      * Resolve the deposit amount for a given booking total.
      * For 'amount' type, the configured value is per-person and is multiplied by passengerCount.
      * Returns null when deposit is not enabled or amount cannot be determined.

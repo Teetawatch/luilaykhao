@@ -12,12 +12,30 @@ use App\Models\VehicleLocation;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 
 class VehicleTrackingController extends Controller
 {
     use ApiResponse;
+
+    /** departs_at/departure_date เก็บเป็นเวลาไทย ส่วน app tz เป็น UTC */
+    public const TIMEZONE = 'Asia/Bangkok';
+
+    /**
+     * รอบที่รถคันนี้กำลังวิ่งอยู่ตอนนี้ — ใช้ทั้งตอน broadcast, cache และหน้า dashboard
+     * เพื่อให้ทุกทางเห็น "รอบที่กำลังเดินทาง" ตรงกัน (ทริปหลายวันก็ยังนับ)
+     */
+    private function activeScheduleFor(int $vehicleId): ?TripSchedule
+    {
+        return TripSchedule::with('trip')
+            ->where('vehicle_id', $vehicleId)
+            ->where('status', '!=', 'cancelled')
+            ->inProgressOn(now(self::TIMEZONE))
+            ->orderBy('departure_date')
+            ->first();
+    }
 
     /**
      * รับข้อมูล GPS จากมือถือคนขับ (single update)
@@ -56,12 +74,7 @@ class VehicleTrackingController extends Controller
         // เก็บตำแหน่งล่าสุดใน Redis (Current Location)
         $this->cacheCurrentLocation($vehicle, $location);
 
-        // Get active schedule for auto-ETA info in broadcast
-        $schedule = TripSchedule::with('trip')
-            ->where('vehicle_id', $vehicle->id)
-            ->departingOn(today())
-            ->whereNotIn('status', ['cancelled'])
-            ->first();
+        $schedule = $this->activeScheduleFor($vehicle->id);
 
         // Broadcast real-time event ผ่าน Laravel Reverb
         broadcast(new VehicleLocationUpdated(
@@ -140,12 +153,7 @@ class VehicleTrackingController extends Controller
 
             $this->cacheCurrentLocation($vehicle, $location);
 
-            // Get active schedule for auto-ETA info in broadcast
-            $schedule = TripSchedule::with('trip')
-                ->where('vehicle_id', $vehicle->id)
-                ->departingOn(today())
-                ->whereNotIn('status', ['cancelled'])
-                ->first();
+            $schedule = $this->activeScheduleFor($vehicle->id);
 
             broadcast(new VehicleLocationUpdated(
                 vehicleId: $vehicle->id,
@@ -175,53 +183,79 @@ class VehicleTrackingController extends Controller
      */
     public function currentLocations(): JsonResponse
     {
-        // ลองอ่านจาก Redis ก่อน
-        $cached = $this->getAllCachedLocations();
-        if (! empty($cached)) {
-            return $this->success($cached, 'ตำแหน่งล่าสุดของรถทั้งหมด');
-        }
+        // รถที่ "กำลังวิ่งงานอยู่" = รถของรอบที่ยังเดินทางไม่จบเท่านั้น
+        //
+        // เดิมหน้านี้ไล่ Vehicle::all() แล้วหยิบพิกัดล่าสุดของแต่ละคันมาโดยไม่ดูอายุ
+        // รถที่จบทริปไปเป็นเดือนจึงค้างอยู่บนแผนที่ตลอดไปด้วยพิกัดจุดสุดท้ายของรอบเก่า
+        $schedules = TripSchedule::with(['trip', 'vehicle'])
+            ->whereNotNull('vehicle_id')
+            ->where('status', '!=', 'cancelled')
+            ->inProgressOn(now(self::TIMEZONE))
+            ->orderBy('departure_date')
+            ->get()
+            ->filter(fn ($schedule) => $schedule->vehicle !== null)
+            // รถคันเดียวอาจถูกผูกไว้หลายรอบ — ยึดรอบที่ออกเดินทางก่อน
+            ->unique('vehicle_id');
 
-        // Fallback: ดึงจาก DB
-        $vehicles = Vehicle::all();
-        $locations = [];
+        $locations = $schedules->map(function (TripSchedule $schedule) {
+            $trackingSince = $this->trackingWindowStart($schedule);
 
-        foreach ($vehicles as $vehicle) {
-            $latest = VehicleLocation::where('vehicle_id', $vehicle->id)
+            // พิกัดต้องอยู่ในกรอบเวลาของรอบนี้ ไม่งั้นจะได้จุดสุดท้ายของทริปก่อนหน้า
+            $latest = VehicleLocation::where('vehicle_id', $schedule->vehicle_id)
+                ->where('recorded_at', '>=', $trackingSince)
                 ->orderByDesc('recorded_at')
                 ->first();
 
-            if ($latest) {
-                // Get active schedule for auto-ETA
-                $schedule = TripSchedule::with('trip')
-                    ->where('vehicle_id', $vehicle->id)
-                    ->departingOn(today())
-                    ->whereNotIn('status', ['cancelled'])
-                    ->first();
+            return $this->formatVehicleLocation($schedule->vehicle, $latest, $schedule, $trackingSince);
+        })->values();
 
-                $data = [
-                    'vehicle_id' => $vehicle->id,
-                    'vehicle_name' => $vehicle->name,
-                    'license_plate' => $vehicle->license_plate,
-                    'type' => $vehicle->type,
-                    'driver_phone' => $vehicle->driver_phone,
-                    'driver_name' => $vehicle->driver_name,
-                    'latitude' => $latest->latitude,
-                    'longitude' => $latest->longitude,
-                    'speed' => $latest->speed,
-                    'heading' => $latest->heading,
-                    'recorded_at' => $latest->recorded_at->toIso8601String(),
-                    'dest_lat' => $schedule?->trip?->latitude,
-                    'dest_lng' => $schedule?->trip?->longitude,
-                    'trip_title' => $schedule?->trip?->title,
-                ];
-                $locations[] = $data;
+        return $this->success($locations, 'ตำแหน่งล่าสุดของรถที่กำลังเดินทาง');
+    }
 
-                // Cache it
-                $this->cacheCurrentLocationInternal($data);
-            }
-        }
+    /**
+     * เริ่มนับพิกัดของรอบตั้งแต่เมื่อไหร่ — เผื่อ 6 ชม. ก่อนเวลาออกรถจริง
+     * (บางรอบรถออกตั้งแต่คืนก่อนวันเดินทาง)
+     */
+    private function trackingWindowStart(TripSchedule $schedule): Carbon
+    {
+        $departureDay = $schedule->departure_date
+            ? $schedule->departure_date->copy()->startOfDay()
+            : now(self::TIMEZONE)->startOfDay();
 
-        return $this->success($locations, 'ตำแหน่งล่าสุดของรถทั้งหมด');
+        $start = $schedule->departs_at
+            ? $schedule->departs_at->copy()->min($departureDay)
+            : $departureDay;
+
+        return $start->subHours(6);
+    }
+
+    private function formatVehicleLocation(
+        Vehicle $vehicle,
+        ?VehicleLocation $latest,
+        ?TripSchedule $schedule = null,
+        ?\DateTimeInterface $trackingSince = null,
+    ): array {
+        return [
+            'vehicle_id' => $vehicle->id,
+            'vehicle_name' => $vehicle->name,
+            'license_plate' => $vehicle->license_plate,
+            'type' => $vehicle->type,
+            'driver_phone' => $vehicle->driver_phone,
+            'driver_name' => $vehicle->driver_name,
+            'latitude' => $latest?->latitude,
+            'longitude' => $latest?->longitude,
+            'speed' => $latest?->speed,
+            'heading' => $latest?->heading,
+            'recorded_at' => $latest?->recorded_at->toIso8601String(),
+            'dest_lat' => $schedule?->trip?->latitude,
+            'dest_lng' => $schedule?->trip?->longitude,
+            'trip_title' => $schedule?->trip?->title,
+            'schedule_id' => $schedule?->id,
+            'departure_date' => $schedule?->departure_date?->toDateString(),
+            'return_date' => $schedule?->return_date?->toDateString(),
+            'departs_at' => $schedule?->departs_at?->toIso8601String(),
+            'tracking_since' => $trackingSince?->format('c'),
+        ];
     }
 
     /**
@@ -245,31 +279,12 @@ class VehicleTrackingController extends Controller
             return $this->error('ไม่พบข้อมูลตำแหน่ง', 404);
         }
 
-        // Get active schedule for auto-ETA
-        $schedule = TripSchedule::with('trip')
-            ->where('vehicle_id', $vehicleId)
-            ->departingOn(today())
-            ->whereNotIn('status', ['cancelled'])
-            ->first();
+        $schedule = $this->activeScheduleFor($vehicleId);
 
-        $data = [
-            'vehicle_id' => $vehicle->id,
-            'vehicle_name' => $vehicle->name,
-            'license_plate' => $vehicle->license_plate,
-            'type' => $vehicle->type,
-            'driver_phone' => $vehicle->driver_phone,
-            'driver_name' => $vehicle->driver_name,
-            'latitude' => $latest->latitude,
-            'longitude' => $latest->longitude,
-            'speed' => $latest->speed,
-            'heading' => $latest->heading,
-            'recorded_at' => $latest->recorded_at->toIso8601String(),
-            'dest_lat' => $schedule?->trip?->latitude,
-            'dest_lng' => $schedule?->trip?->longitude,
-            'trip_title' => $schedule?->trip?->title,
-        ];
-
-        return $this->success($data, 'ตำแหน่งล่าสุด');
+        return $this->success(
+            $this->formatVehicleLocation($vehicle, $latest, $schedule),
+            'ตำแหน่งล่าสุด',
+        );
     }
 
     /**
@@ -309,39 +324,10 @@ class VehicleTrackingController extends Controller
 
     private function cacheCurrentLocation(Vehicle $vehicle, VehicleLocation $location): void
     {
-        // Get active schedule for auto-ETA info in cache
-        $schedule = TripSchedule::with('trip')
-            ->where('vehicle_id', $vehicle->id)
-            ->departingOn(today())
-            ->whereNotIn('status', ['cancelled'])
-            ->first();
+        $data = $this->formatVehicleLocation($vehicle, $location, $this->activeScheduleFor($vehicle->id));
 
-        $data = [
-            'vehicle_id' => $vehicle->id,
-            'vehicle_name' => $vehicle->name,
-            'license_plate' => $vehicle->license_plate,
-            'type' => $vehicle->type,
-            'driver_phone' => $vehicle->driver_phone,
-            'driver_name' => $vehicle->driver_name,
-            'latitude' => $location->latitude,
-            'longitude' => $location->longitude,
-            'speed' => $location->speed,
-            'heading' => $location->heading,
-            'recorded_at' => $location->recorded_at->toIso8601String(),
-            'dest_lat' => $schedule?->trip?->latitude,
-            'dest_lng' => $schedule?->trip?->longitude,
-            'trip_title' => $schedule?->trip?->title,
-        ];
-
-        $this->cacheCurrentLocationInternal($data);
-    }
-
-    private function cacheCurrentLocationInternal(array $data): void
-    {
         try {
-            $json = json_encode($data);
-            Redis::setex("vehicle:location:{$data['vehicle_id']}", 3600, $json);
-            Redis::sadd('vehicle:active_ids', $data['vehicle_id']);
+            Redis::setex("vehicle:location:{$vehicle->id}", 3600, json_encode($data));
         } catch (\Exception $e) {
             // Redis unavailable — continue without cache
         }
@@ -355,28 +341,6 @@ class VehicleTrackingController extends Controller
             return $data ? json_decode($data, true) : null;
         } catch (\Exception $e) {
             return null;
-        }
-    }
-
-    private function getAllCachedLocations(): array
-    {
-        try {
-            $ids = Redis::smembers('vehicle:active_ids');
-            if (empty($ids)) {
-                return [];
-            }
-
-            $locations = [];
-            foreach ($ids as $id) {
-                $data = Redis::get("vehicle:location:{$id}");
-                if ($data) {
-                    $locations[] = json_decode($data, true);
-                }
-            }
-
-            return $locations;
-        } catch (\Exception $e) {
-            return [];
         }
     }
 
