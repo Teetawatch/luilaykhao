@@ -1,7 +1,7 @@
 <x-emails.partials.base subject="[Admin] การจองใหม่ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #1e293b;">
+  <div class="email-header" style="background: #0f172a;">
     <span class="email-brand">Luilaykhao Admin</span>
     <h1 class="header-title">การจองใหม่เข้ามา</h1>
     <p class="header-subtitle">มีการจองใหม่จากระบบที่ต้องดำเนินการ</p>
@@ -19,7 +19,7 @@
 
     <div class="highlight-box" style="background:#f8fafc; border-color:#cbd5e1;">
       <div class="amount-label" style="color:#475569;">ยอดรวมการจอง</div>
-      <div class="amount" style="color:#1e293b;">฿{{ number_format($booking->total_amount, 0) }}</div>
+      <div class="amount" style="color:#0f172a;">฿{{ number_format($booking->total_amount, 0) }}</div>
       <div class="amount-note" style="color:#64748b;">สถานะ: รอชำระเงิน</div>
     </div>
 
@@ -133,7 +133,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #1e293b;">
+         class="cta-btn" style="background: #0f172a;">
         ดูรายละเอียดใน Admin &rarr;
       </a>
     </div>

@@ -1,7 +1,7 @@
 <x-emails.partials.base subject="ชำระเงินสำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #059669;">
+  <div class="email-header" style="background: #14532d;">
     <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">ชำระเงินสำเร็จแล้ว</h1>
     <p class="header-subtitle">

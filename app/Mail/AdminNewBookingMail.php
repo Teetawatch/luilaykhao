@@ -19,7 +19,7 @@ class AdminNewBookingMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '🔔 การจองใหม่ #' . $this->booking->booking_ref . ' - ' . ($this->booking->user->name ?? 'ลูกค้า'),
+            subject: 'การจองใหม่ #' . $this->booking->booking_ref . ' - ' . ($this->booking->user->name ?? 'ลูกค้า'),
         );
     }
 

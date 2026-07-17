@@ -29,7 +29,7 @@ class TripUnderfilledWarningMail extends QueuedMail
         $title = $this->booking->schedule->trip->title ?? 'ทริป';
 
         return new Envelope(
-            subject: "⚠️ แจ้งเตือนสำคัญ: ทริป{$title} อาจถูกยกเลิก #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "แจ้งเตือนสำคัญ: ทริป{$title} อาจถูกยกเลิก #{$this->booking->booking_ref} - Luilaykhao",
         );
     }
 

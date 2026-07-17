@@ -22,9 +22,9 @@ class InstallmentDueReminderMail extends QueuedMail
     public function envelope(): Envelope
     {
         $subject = match ($this->reminderType) {
-            'overdue'   => "⚠️ ค่างวดที่ {$this->installment->installment_no} เลยกำหนดชำระแล้ว #{$this->booking->booking_ref}",
-            'due_today' => "🔔 ถึงกำหนดชำระค่างวดที่ {$this->installment->installment_no} วันนี้ #{$this->booking->booking_ref}",
-            default     => "📅 ใกล้ถึงกำหนดชำระค่างวดที่ {$this->installment->installment_no} #{$this->booking->booking_ref}",
+            'overdue'   => "ค่างวดที่ {$this->installment->installment_no} เลยกำหนดชำระแล้ว #{$this->booking->booking_ref}",
+            'due_today' => "ถึงกำหนดชำระค่างวดที่ {$this->installment->installment_no} วันนี้ #{$this->booking->booking_ref}",
+            default     => "ใกล้ถึงกำหนดชำระค่างวดที่ {$this->installment->installment_no} #{$this->booking->booking_ref}",
         };
 
         return new Envelope(subject: $subject);

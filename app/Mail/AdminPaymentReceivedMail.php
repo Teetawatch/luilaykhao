@@ -26,7 +26,7 @@ class AdminPaymentReceivedMail extends QueuedMail
             default       => '(เต็มจำนวน)',
         };
         return new Envelope(
-            subject: "💰 ได้รับชำระเงิน {$typeLabel} #{$this->booking->booking_ref} - ฿" . number_format($this->booking->paid_amount, 0),
+            subject: "ได้รับชำระเงิน {$typeLabel} #{$this->booking->booking_ref} - ฿" . number_format($this->booking->paid_amount, 0),
         );
     }
 

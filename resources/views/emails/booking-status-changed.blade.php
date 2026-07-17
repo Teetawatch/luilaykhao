@@ -1,23 +1,23 @@
 @php
   $configs = [
     'confirmed' => [
-      'header'  => '#059669',
-      'accent'  => '#059669',
+      'header'  => '#14532d',
+      'accent'  => '#14532d',
       'boxBg'   => '#f0fdf4', 'boxBorder' => '#86efac',
     ],
     'cancelled' => [
-      'header'  => '#dc2626',
-      'accent'  => '#dc2626',
+      'header'  => '#7f1d1d',
+      'accent'  => '#7f1d1d',
       'boxBg'   => '#fef2f2', 'boxBorder' => '#fca5a5',
     ],
     'refunded' => [
-      'header'  => '#d97706',
-      'accent'  => '#d97706',
+      'header'  => '#7c2d12',
+      'accent'  => '#7c2d12',
       'boxBg'   => '#fffbeb', 'boxBorder' => '#fde68a',
     ],
     'pending' => [
-      'header'  => '#2563eb',
-      'accent'  => '#2563eb',
+      'header'  => '#1e3a8a',
+      'accent'  => '#1e3a8a',
       'boxBg'   => '#eff6ff', 'boxBorder' => '#93c5fd',
     ],
   ];

@@ -1,7 +1,7 @@
 <x-emails.partials.base subject="ชำระเงินครบถ้วนแล้ว — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #059669;">
+  <div class="email-header" style="background: #14532d;">
     <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">ชำระเงินครบถ้วนแล้ว</h1>
     <p class="header-subtitle">ท่านพร้อมออกเดินทางแล้ว ขอบคุณค่ะ</p>
@@ -70,7 +70,7 @@
       </div>
     </div>
 
-    <div class="alert-box" style="background:#f0fdfa; border-left-color:#0d9488;">
+    <div class="alert-box" style="background:#f0fdfa; border-left-color:#115e59;">
       <p class="alert-title" style="color:#0f766e;">ขั้นตอนถัดไป</p>
       <p class="alert-text" style="color:#134e4a;">
         ทีมงานจะแจ้งรายละเอียดนัดหมายและข้อมูลการเดินทางก่อนวันเดินทางอีกครั้ง<br />
@@ -80,7 +80,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #059669;">
+         class="cta-btn" style="background: #14532d;">
         ดูรายละเอียดการจอง &rarr;
       </a>
     </div>

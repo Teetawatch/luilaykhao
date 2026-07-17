@@ -1,7 +1,7 @@
 <x-emails.partials.base subject="ยินดีต้อนรับสู่ Luilaykhao">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #0d9488;">
+  <div class="email-header" style="background: #115e59;">
     <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">ยินดีต้อนรับ</h1>
     <p class="header-subtitle">ขอบคุณที่เข้าร่วมเป็นส่วนหนึ่งของ Luilaykhao</p>
@@ -48,12 +48,12 @@
     </div>
 
     <div class="cta-wrap">
-      <a href="{{ config('app.url') }}" class="cta-btn" style="background: #0d9488;">
+      <a href="{{ config('app.url') }}" class="cta-btn" style="background: #115e59;">
         เริ่มเลือกทริปเลย &rarr;
       </a>
     </div>
 
-    <div class="alert-box" style="background:#f0fdfa; border-left-color:#0d9488;">
+    <div class="alert-box" style="background:#f0fdfa; border-left-color:#115e59;">
       <p class="alert-title" style="color:#0f766e;">หมายเหตุ</p>
       <p class="alert-text" style="color:#134e4a;">
         หากมีข้อสงสัยหรือต้องการความช่วยเหลือ ทีมงานพร้อมให้บริการ 08:00&ndash;20:00 ทุกวัน

@@ -19,7 +19,7 @@ class BalanceDueReminderMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "⏰ แจ้งเตือนชำระเงินส่วนที่เหลือ #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "แจ้งเตือนชำระเงินส่วนที่เหลือ #{$this->booking->booking_ref} - Luilaykhao",
         );
     }
 

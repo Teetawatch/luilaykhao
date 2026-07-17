@@ -1,7 +1,7 @@
 <x-emails.partials.base subject="ยกเลิกการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #dc2626;">
+  <div class="email-header" style="background: #7f1d1d;">
     <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">ยกเลิกการจองแล้ว</h1>
     <p class="header-subtitle">การจองของท่านถูกยกเลิกเรียบร้อยแล้ว</p>
@@ -69,7 +69,7 @@
     </div>
 
     @if($reason)
-    <div class="alert-box" style="background:#fffbeb; border-left-color:#d97706;">
+    <div class="alert-box" style="background:#fffbeb; border-left-color:#7c2d12;">
       <p class="alert-title" style="color:#92400e;">เหตุผลการยกเลิก</p>
       <p class="alert-text" style="color:#78350f;">{{ $reason }}</p>
     </div>
@@ -83,7 +83,7 @@
     </div>
     @endif
 
-    <div class="alert-box" style="background:#fef2f2; border-left-color:#dc2626;">
+    <div class="alert-box" style="background:#fef2f2; border-left-color:#7f1d1d;">
       <p class="alert-title" style="color:#991b1b;">นโยบายการคืนเงิน</p>
       <p class="alert-text" style="color:#7f1d1d;">
         ยกเลิกก่อนเดินทาง 7+ วัน: คืน 80%&nbsp;&middot;&nbsp;ยกเลิก 3&ndash;6 วัน: คืน 50%&nbsp;&middot;&nbsp;น้อยกว่า 3 วัน: ไม่คืนเงิน<br />

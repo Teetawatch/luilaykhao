@@ -1,7 +1,7 @@
 <x-emails.partials.base subject="ยืนยันการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #0d9488;">
+  <div class="email-header" style="background: #115e59;">
     <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">การจองสำเร็จแล้ว</h1>
     <p class="header-subtitle">กรุณาชำระเงินเพื่อยืนยันสิทธิ์ที่นั่งของท่าน</p>
@@ -115,7 +115,7 @@
     </div>
     @endif
 
-    <div class="alert-box" style="background:#fffbeb; border-left-color:#d97706;">
+    <div class="alert-box" style="background:#fffbeb; border-left-color:#7c2d12;">
       <p class="alert-title" style="color:#92400e;">เงื่อนไขสำคัญที่ท่านยอมรับแล้ว</p>
       <p class="alert-text" style="color:#78350f;">
         1.&nbsp;เมื่อยืนยันสิทธิ์แล้ว ขอสงวนสิทธิ์ในการคืนเงินมัดจำทุกกรณี<br />
@@ -126,7 +126,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #0d9488;">
+         class="cta-btn" style="background: #115e59;">
         ดูรายละเอียดและชำระเงิน &rarr;
       </a>
     </div>

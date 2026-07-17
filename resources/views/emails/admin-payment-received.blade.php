@@ -27,7 +27,7 @@
 <x-emails.partials.base subject="[Admin] ได้รับชำระเงิน ({{ $ptLabel }}) — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #1e293b;">
+  <div class="email-header" style="background: #0f172a;">
     <span class="email-brand">Luilaykhao Admin</span>
     <h1 class="header-title">ได้รับชำระเงิน</h1>
     <p class="header-subtitle">{{ $ptLabel }} &mdash; {{ $booking->user->name ?? 'ลูกค้า' }}</p>
@@ -45,7 +45,7 @@
 
     <div class="highlight-box" style="background:#f8fafc; border-color:#cbd5e1;">
       <div class="amount-label" style="color:#475569;">ยอดที่ได้รับ &mdash; {{ $ptLabel }}</div>
-      <div class="amount" style="color:#1e293b;">฿{{ number_format($paidAmount, 0) }}</div>
+      <div class="amount" style="color:#0f172a;">฿{{ number_format($paidAmount, 0) }}</div>
       <div class="amount-note" style="color:#64748b;">
         {{ $methodLabel }} &nbsp;&middot;&nbsp; {{ \App\Support\ThaiDate::shortTime(now()) }} น.
       </div>
@@ -106,7 +106,7 @@
         <span class="info-value">
           {{ $paidCount }} / {{ $booking->installment_count }} งวด
           @if($remainingCount > 0)
-            &nbsp;<span style="color:#d97706; font-size:12px;">(เหลือ {{ $remainingCount }} งวด)</span>
+            &nbsp;<span style="color:#7c2d12; font-size:12px;">(เหลือ {{ $remainingCount }} งวด)</span>
           @endif
         </span>
       </div>
@@ -172,7 +172,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #1e293b;">
+         class="cta-btn" style="background: #0f172a;">
         ดูรายละเอียดใน Admin &rarr;
       </a>
     </div>

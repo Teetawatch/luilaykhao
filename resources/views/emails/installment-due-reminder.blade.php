@@ -1,28 +1,28 @@
 @php
   if ($reminderType === 'overdue') {
-    $headerBg    = '#dc2626';
+    $headerBg    = '#7f1d1d';
     $bannerTitle = 'ค่างวดเลยกำหนดชำระแล้ว';
     $boxStyle    = 'background:#fef2f2; border-color:#fca5a5; text-align:center;';
     $labelColor  = '#991b1b';
-    $amountColor = '#dc2626';
+    $amountColor = '#7f1d1d';
     $noteColor   = '#7f1d1d';
-    $rowAmtColor = '#dc2626';
+    $rowAmtColor = '#7f1d1d';
   } elseif ($reminderType === 'due_today') {
-    $headerBg    = '#d97706';
+    $headerBg    = '#7c2d12';
     $bannerTitle = 'ถึงกำหนดชำระค่างวดวันนี้';
     $boxStyle    = 'background:#fffbeb; border-color:#fde68a; text-align:center;';
     $labelColor  = '#92400e';
-    $amountColor = '#d97706';
+    $amountColor = '#7c2d12';
     $noteColor   = '#78350f';
-    $rowAmtColor = '#d97706';
+    $rowAmtColor = '#7c2d12';
   } else {
-    $headerBg    = '#2563eb';
+    $headerBg    = '#1e3a8a';
     $bannerTitle = 'แจ้งเตือนชำระค่างวด';
     $boxStyle    = 'background:#eff6ff; border-color:#93c5fd; text-align:center;';
     $labelColor  = '#1e40af';
-    $amountColor = '#2563eb';
+    $amountColor = '#1e3a8a';
     $noteColor   = '#1e3a5f';
-    $rowAmtColor = '#2563eb';
+    $rowAmtColor = '#1e3a8a';
   }
 
   $dueDateFormatted = $installment->due_date
@@ -48,7 +48,7 @@
       สวัสดีคุณ <strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong><br />
       @if($reminderType === 'overdue')
         ค่างวดที่ {{ $installment->installment_no }} เลขการจอง <strong>{{ $booking->booking_ref }}</strong>
-        <strong style="color:#dc2626;">เลยกำหนดชำระแล้ว</strong> กรุณาชำระโดยด่วนเพื่อรักษาสิทธิ์การเดินทาง
+        <strong style="color:#7f1d1d;">เลยกำหนดชำระแล้ว</strong> กรุณาชำระโดยด่วนเพื่อรักษาสิทธิ์การเดินทาง
       @elseif($reminderType === 'due_today')
         ค่างวดที่ {{ $installment->installment_no }} เลขการจอง <strong>{{ $booking->booking_ref }}</strong>
         ครบกำหนดชำระ <strong>วันนี้</strong> กรุณาชำระให้ทันเพื่อรักษาสิทธิ์
@@ -66,7 +66,7 @@
       <div class="amount-note" style="color: {{ $noteColor }};">
         ครบกำหนด {{ $dueDateFormatted }}
         @if($reminderType === 'overdue')
-          &nbsp;&middot;&nbsp;<strong style="color:#dc2626;">เลยกำหนดแล้ว</strong>
+          &nbsp;&middot;&nbsp;<strong style="color:#7f1d1d;">เลยกำหนดแล้ว</strong>
         @elseif($reminderType === 'due_today')
           &nbsp;&middot;&nbsp;<strong>วันนี้</strong>
         @endif
@@ -128,7 +128,7 @@
     </div>
 
     @if($reminderType === 'overdue')
-    <div class="alert-box" style="background:#fef2f2; border-left-color:#dc2626;">
+    <div class="alert-box" style="background:#fef2f2; border-left-color:#7f1d1d;">
       <p class="alert-title" style="color:#991b1b;">เงื่อนไขสำคัญ</p>
       <p class="alert-text" style="color:#7f1d1d;">
         หากไม่ชำระภายใน 3 วันนับจากวันครบกำหนด ทาง Luilaykhao ขอสงวนสิทธิ์ยกเลิกทริปและไม่คืนเงินทุกกรณี

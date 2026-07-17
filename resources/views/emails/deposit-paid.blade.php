@@ -1,7 +1,7 @@
 <x-emails.partials.base subject="ชำระเงินมัดจำสำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #0d9488;">
+  <div class="email-header" style="background: #115e59;">
     <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">ชำระเงินมัดจำสำเร็จ</h1>
     <p class="header-subtitle">ที่นั่งของท่านได้รับการยืนยันแล้ว</p>
@@ -18,7 +18,7 @@
 
     <div class="highlight-box" style="background:#f0fdfa; border-color:#99f6e4;">
       <div class="amount-label" style="color:#0f766e;">มัดจำที่ชำระ</div>
-      <div class="amount" style="color:#0d9488;">฿{{ number_format($booking->deposit_amount, 0) }}</div>
+      <div class="amount" style="color:#115e59;">฿{{ number_format($booking->deposit_amount, 0) }}</div>
       <div class="amount-note" style="color:#0f766e;">
         ชำระแล้วเมื่อ {{ \App\Support\ThaiDate::shortTime($booking->paid_at ?? now()) }} น.
       </div>
@@ -81,7 +81,7 @@
       </div>
     </div>
 
-    <div class="alert-box" style="background:#fffbeb; border-left-color:#d97706;">
+    <div class="alert-box" style="background:#fffbeb; border-left-color:#7c2d12;">
       <p class="alert-title" style="color:#92400e;">กรุณาชำระส่วนที่เหลือก่อนครบกำหนด</p>
       <p class="alert-text" style="color:#78350f;">
         ท่านมียอดค้างชำระ <strong>฿{{ number_format($booking->balance_amount, 0) }}</strong>
@@ -90,7 +90,7 @@
       </p>
     </div>
 
-    <div class="alert-box" style="background:#fef2f2; border-left-color:#dc2626;">
+    <div class="alert-box" style="background:#fef2f2; border-left-color:#7f1d1d;">
       <p class="alert-title" style="color:#991b1b;">เงื่อนไขการยกเลิก</p>
       <p class="alert-text" style="color:#7f1d1d;">
         กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ไม่คืนเงินมัดจำทุกกรณี
@@ -100,7 +100,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
-         class="cta-btn" style="background: #0d9488;">
+         class="cta-btn" style="background: #115e59;">
         ดูรายละเอียดการจอง &rarr;
       </a>
     </div>

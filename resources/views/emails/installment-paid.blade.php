@@ -8,7 +8,7 @@
 <x-emails.partials.base subject="ชำระงวดที่ {{ $installment->installment_no }} สำเร็จ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header" style="background: #059669;">
+  <div class="email-header" style="background: #14532d;">
     <span class="email-brand">Luilaykhao</span>
     <h1 class="header-title">
       {{ $isFullyPaid ? 'ชำระครบทุกงวดแล้ว' : "ชำระงวดที่ {$installment->installment_no} สำเร็จ" }}
@@ -127,7 +127,7 @@
     @endif
 
     @if($nextInstallment && !$isFullyPaid)
-    <div class="alert-box" style="background:#eff6ff; border-left-color:#2563eb;">
+    <div class="alert-box" style="background:#eff6ff; border-left-color:#1e3a8a;">
       <p class="alert-title" style="color:#1e40af;">งวดถัดไป</p>
       <p class="alert-text" style="color:#1e3a5f;">
         งวดที่ {{ $nextInstallment->installment_no }} จำนวน <strong>฿{{ number_format($nextInstallment->amount, 0) }}</strong>
