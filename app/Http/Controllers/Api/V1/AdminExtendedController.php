@@ -37,6 +37,8 @@ class AdminExtendedController extends Controller
             'bookings.pickupPoint',
             'bookings.user',
             'pickupPoints',
+            // activeStaff ไม่ใช่ staff — รอบที่จบแล้วสตาฟถูกปลดออก ไม่ต้องโชว์ค้างไว้
+            'activeStaff',
         ]);
 
         if ($request->filled('start')) {
@@ -181,6 +183,13 @@ class AdminExtendedController extends Controller
                 'total_amount' => $regularTotalAmount + $joinTripTotalAmount,
                 'passenger_manifest' => $passengerManifest,
                 'addons_summary' => $addonsSummary,
+                'staff' => $s->activeStaff->map(fn ($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'nickname' => $user->nickname,
+                    'phone' => $user->phone,
+                    'avatar_url' => $user->avatar_url,
+                ])->values()->all(),
                 'status' => $s->status,
                 'price' => $s->price_override ?? $s->trip->price_per_person,
                 'pickup_points' => $s->pickupPoints->map(fn ($pt) => [

@@ -269,6 +269,16 @@
                 <span>{{ sch.vehicle || transportLabels[sch.transport_type] || 'ไม่ระบุพาหนะ' }}</span>
               </div>
 
+              <div class="staff-row" :class="{ empty: !scheduleStaff(sch).length }">
+                <span class="material-symbols-rounded">badge</span>
+                <div v-if="scheduleStaff(sch).length" class="staff-chips">
+                  <span v-for="st in scheduleStaff(sch)" :key="st.id" class="staff-chip" :title="st.phone || st.name">
+                    {{ staffDisplayName(st) }}
+                  </span>
+                </div>
+                <span v-else class="staff-empty-text">ยังไม่มีสตาฟประจำรอบ</span>
+              </div>
+
               <div class="seats-box">
                 <div class="seats-header">
                   <span>ที่นั่ง</span>
@@ -590,6 +600,36 @@
                   <span>เช็คอินแล้ว</span>
                   <strong>{{ detailCheckedInCount }} รายการ</strong>
                 </div>
+              </div>
+            </div>
+
+            <div class="panel-card span-full">
+              <h3 class="panel-title">
+                <span class="material-symbols-rounded">badge</span>
+                สตาฟประจำรอบ
+                <span class="tab-count">{{ scheduleStaff(selectedSchedule).length }}</span>
+              </h3>
+              <div v-if="scheduleStaff(selectedSchedule).length" class="staff-card-grid">
+                <div v-for="st in scheduleStaff(selectedSchedule)" :key="st.id" class="staff-card">
+                  <img v-if="st.avatar_url" :src="st.avatar_url" :alt="st.name" class="staff-avatar" />
+                  <div v-else class="staff-avatar fallback">{{ staffInitial(st) }}</div>
+                  <div class="staff-card-info">
+                    <strong>
+                      {{ st.name }}
+                      <em v-if="st.nickname" class="cell-nickname">({{ st.nickname }})</em>
+                    </strong>
+                    <a v-if="st.phone" class="staff-phone" :href="`tel:${st.phone}`">
+                      <span class="material-symbols-rounded">call</span>
+                      {{ st.phone }}
+                    </a>
+                    <span v-else class="muted-value">ไม่มีเบอร์ติดต่อ</span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="panel-note">
+                <span class="material-symbols-rounded">person_off</span>
+                ยังไม่ได้มอบหมายสตาฟให้รอบนี้ —
+                <router-link to="/admin/staff-assignments" class="panel-note-link">ไปหน้าจัดการสตาฟ</router-link>
               </div>
             </div>
 
@@ -1198,6 +1238,18 @@ const schedulePaymentBookings = ref([]);
 const loadingPayments = ref(false);
 const paymentsError = ref('');
 const slipPreview = ref(null);
+
+function scheduleStaff(schedule) {
+  return Array.isArray(schedule?.staff) ? schedule.staff : [];
+}
+
+function staffDisplayName(staff) {
+  return staff.nickname || staff.name || '-';
+}
+
+function staffInitial(staff) {
+  return (staff.name || '?').charAt(0).toUpperCase();
+}
 
 const statusLabels = {
   open: 'เปิดรับจอง',
@@ -2788,6 +2840,117 @@ onUnmounted(() => {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* ── สตาฟประจำรอบ (การ์ด) ─────────────────────────────── */
+.staff-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.staff-row > .material-symbols-rounded {
+  color: var(--color-text-muted);
+  font-size: 19px;
+  flex-shrink: 0;
+}
+
+.staff-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.staff-chip {
+  padding: 2px 9px;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.staff-row.empty > .material-symbols-rounded { color: #f59e0b; }
+
+.staff-empty-text {
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── สตาฟประจำรอบ (โมดัลรายละเอียด) ───────────────────── */
+.staff-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.staff-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 12px;
+  background: var(--color-white);
+}
+
+.staff-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--color-sand-dark);
+  flex-shrink: 0;
+}
+
+.staff-avatar.fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  border-color: transparent;
+}
+
+.staff-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.staff-card-info strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text-dark);
+}
+
+.staff-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.staff-phone:hover { text-decoration: underline; }
+.staff-phone .material-symbols-rounded { font-size: 14px; }
+
+.panel-note-link {
+  color: var(--color-accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.panel-note-link:hover { text-decoration: underline; }
 
 .seats-box {
   display: grid;
