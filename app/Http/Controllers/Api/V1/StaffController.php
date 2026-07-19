@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\StaffReview;
 use App\Models\TripSchedule;
+use App\Services\OutstandingPaymentService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,10 @@ use Illuminate\Http\Request;
 class StaffController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(
+        private OutstandingPaymentService $outstandingPaymentService,
+    ) {}
 
     public function mySchedules(Request $request): JsonResponse
     {
@@ -120,6 +125,90 @@ class StaffController extends Controller
                 ];
             })->values(),
         ]);
+    }
+
+    /**
+     * ยอดค้างชำระของรอบเดินทางที่สตาฟคนนี้รับผิดชอบ
+     *
+     * ใช้หน้างาน: ลูกค้าผ่อนชำระบางคนลืมจ่ายงวดที่เหลือ สตาฟเปิดรายการนี้
+     * แล้วให้ลูกค้าสแกน QR ที่ชี้ไปหน้า /pay/{token} บนมือถือของลูกค้าเอง
+     * (สลิปอยู่ในแอปธนาคารลูกค้า สตาฟจึงไม่ควรเป็นคนแนบ)
+     */
+    public function outstanding(Request $request, int $scheduleId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $rows = $this->outstandingPaymentService->rows($schedule->id);
+
+        return $this->success([
+            'schedule' => [
+                'id' => $schedule->id,
+                'trip_title' => $schedule->trip?->title,
+                'departure_date' => $schedule->departure_date?->toDateString(),
+            ],
+            'count' => $rows->count(),
+            'total_due' => round((float) $rows->sum('amount_due'), 2),
+            'items' => $rows->values()->all(),
+        ]);
+    }
+
+    /**
+     * ส่งลิงก์ชำระเงินซ้ำให้ลูกค้าที่ค้างชำระในรอบที่สตาฟรับผิดชอบ
+     * (เผื่อลูกค้าสแกน QR ไม่ได้ หรืออยากได้ลิงก์ไว้จ่ายทีหลัง)
+     */
+    public function sendPaymentLink(Request $request, int $scheduleId, string $ref): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        if (! $this->assignedSchedule($request, $scheduleId)) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $validated = $request->validate([
+            'channels' => ['nullable', 'array'],
+            'channels.*' => ['in:email,sms'],
+        ]);
+
+        // จำกัดให้ส่งได้เฉพาะการจองในรอบที่รับผิดชอบ — กัน staff ยิง ref ของรอบอื่น
+        $booking = Booking::where('booking_ref', $ref)
+            ->where('schedule_id', $scheduleId)
+            ->first();
+
+        if (! $booking) {
+            return $this->error('ไม่พบการจองนี้ในรอบเดินทาง', 404);
+        }
+
+        try {
+            $row = $this->outstandingPaymentService->sendLink(
+                $booking,
+                $validated['channels'] ?? ['email'],
+            );
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success($row, 'ส่งลิงก์ชำระเงินแล้ว');
+    }
+
+    /**
+     * รอบเดินทางที่ user คนนี้ยังถูก assign อยู่ (activeStaff = ยังไม่ถูกปลด)
+     */
+    private function assignedSchedule(Request $request, int $scheduleId): ?TripSchedule
+    {
+        return TripSchedule::with('trip')
+            ->whereKey($scheduleId)
+            ->whereHas('activeStaff', fn ($q) => $q->where('users.id', $request->user()->id))
+            ->first();
     }
 
     public function myReviews(Request $request): JsonResponse

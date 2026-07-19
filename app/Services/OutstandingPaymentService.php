@@ -84,6 +84,9 @@ class OutstandingPaymentService
             $dueDate = $next->due_date?->toDateString();
             $installmentNo = $next->installment_no;
             $label = "งวดที่ {$next->installment_no}/{$booking->installment_count}";
+            // สลิปถูกแนบแล้วแต่ยังไม่ผ่านการตรวจ (VerifySlipJob ทำงานแบบ async)
+            // สตาฟหน้างานต้องเห็นสถานะนี้ ไม่งั้นจะทวงซ้ำคนที่เพิ่งจ่ายไป
+            $slipPending = filled($next->slip_path);
         } elseif ($type === 'deposit') {
             if (! $this->balancePaymentService->hasOutstandingBalance($booking)) {
                 return null;
@@ -93,6 +96,7 @@ class OutstandingPaymentService
             $dueDate = $booking->balance_due_at?->toDateString();
             $installmentNo = null;
             $label = 'ยอดส่วนที่เหลือ';
+            $slipPending = filled($booking->balance_slip_path);
         } else {
             return null;
         }
@@ -113,6 +117,7 @@ class OutstandingPaymentService
             'amount_due' => $amount,
             'due_date' => $dueDate,
             'overdue' => $dueDate ? Carbon::parse($dueDate)->isPast() : false,
+            'slip_pending' => $slipPending,
             'pay_url' => $booking->payUrl(),
         ];
     }

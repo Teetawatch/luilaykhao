@@ -239,6 +239,11 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/check-in/lookup', [DriverController::class, 'lookupCheckIn']);
         Route::post('staff/check-in/confirm', [DriverController::class, 'checkIn']);
 
+        // ยอดค้างชำระของรอบที่สตาฟรับผิดชอบ (ทวง + ให้ลูกค้าสแกนจ่ายหน้างาน)
+        Route::get('staff/schedules/{id}/outstanding', [StaffController::class, 'outstanding']);
+        Route::post('staff/schedules/{id}/outstanding/{ref}/send-link', [StaffController::class, 'sendPaymentLink'])
+            ->middleware('throttle:payment');
+
         // SOS emergency alerts
         Route::post('sos', [SosController::class, 'trigger']);
         Route::get('sos/active', [SosController::class, 'active']);
