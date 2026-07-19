@@ -335,7 +335,7 @@ class ChatController extends Controller
     {
         $schedule = TripSchedule::with([
             'trip:id,title,latitude,longitude',
-            'vehicle',
+            'vehicle.driver',
             'pickupPoints' => fn ($q) => $q->orderBy('sort_order'),
         ])->findOrFail($scheduleId);
         $user = $request->user();
@@ -372,6 +372,9 @@ class ChatController extends Controller
                 'license_plate' => $vehicle->license_plate,
                 'driver_name' => $vehicle->driver_name,
                 'driver_phone' => $vehicle->driver_phone,
+                // รูปคนขับสำหรับแถบติดต่อด้านบนแชท — snapshot บนรถมาก่อน แล้วค่อย
+                // ตกไปที่รูปในทะเบียนคนขับ (รถที่ผูก driver_id ไว้)
+                'driver_photo' => $vehicle->driver_photo ?: $vehicle->driver?->photo,
             ] : null,
             'weather' => $schedule->weather_forecast ?? null,
             'has_itinerary' => $schedule->itineraryItems()->exists(),

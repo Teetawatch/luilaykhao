@@ -335,6 +335,53 @@ class ChatTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * แถบติดต่อที่ปักไว้ด้านบนแชทต้องได้ชื่อ/รูป/เบอร์ของทั้งสตาฟและคนขับ
+     * เบอร์ของลูกค้าต้องไม่หลุดออกไป
+     */
+    public function test_room_exposes_contact_details_for_staff_and_driver(): void
+    {
+        Bus::fake();
+        Role::findOrCreate('staff');
+        $schedule = $this->makeSchedule();
+
+        $vehicle = Vehicle::create([
+            'name' => 'รถตู้คันที่ 1',
+            'type' => 'van',
+            'capacity' => 10,
+            'license_plate' => 'กข 1234',
+            'driver_name' => 'พี่สมชาย',
+            'driver_phone' => '0801112222',
+            'driver_photo' => 'drivers/somchai.jpg',
+        ]);
+        $schedule->vehicle_id = $vehicle->id;
+        $schedule->save();
+
+        $customer = User::factory()->create(['phone' => '0899999999']);
+        $this->bookOnto($customer, $schedule);
+
+        $staff = User::factory()->create(['phone' => '0812223333']);
+        $staff->assignRole('staff');
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        $response = $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertOk()
+            ->assertJsonPath('data.vehicle.driver_name', 'พี่สมชาย')
+            ->assertJsonPath('data.vehicle.driver_phone', '0801112222')
+            ->assertJsonPath('data.vehicle.driver_photo', 'drivers/somchai.jpg');
+
+        $members = collect($response->json('data.members'));
+
+        $staffMember = $members->firstWhere('id', $staff->id);
+        $this->assertSame('0812223333', $staffMember['phone']);
+        $this->assertArrayHasKey('avatar_url', $staffMember);
+
+        // เบอร์ลูกค้าไม่ถูกเปิดให้สมาชิกคนอื่นเห็น
+        $customerMember = $members->firstWhere('id', $customer->id);
+        $this->assertNull($customerMember['phone']);
+    }
+
     private function makeStaff(TripSchedule $schedule): User
     {
         Role::findOrCreate('staff');
