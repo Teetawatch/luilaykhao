@@ -163,6 +163,78 @@ class StaffOutstandingPaymentTest extends TestCase
             ->assertJsonPath('data.items.0.slip_pending', false);
     }
 
+    public function test_installment_row_carries_every_instalment_with_totals(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->assign($schedule);
+        $this->makeInstallmentBooking($schedule);
+
+        $response = $this->actingAs($this->staff, 'sanctum')
+            ->getJson("/api/v1/staff/schedules/{$schedule->id}/outstanding");
+
+        $response->assertOk();
+        $row = $response->json('data.items.0');
+
+        // งวดที่ 1 จ่ายแล้ว, 2 และ 3 ยังค้าง → เหลือ 2000 จ่ายแล้ว 1000
+        $this->assertSame(3, $row['installment_count']);
+        $this->assertSame(1, $row['paid_count']);
+        $this->assertSame(1000.0, (float) $row['paid_total']);
+        $this->assertSame(2000.0, (float) $row['remaining_total']);
+        // amount_due ยังเป็นงวดถัดไปงวดเดียว (พฤติกรรมเดิมที่ admin ใช้อยู่)
+        $this->assertSame(1000.0, (float) $row['amount_due']);
+
+        $this->assertCount(3, $row['schedule']);
+        $this->assertSame('paid', $row['schedule'][0]['status']);
+        $this->assertNotNull($row['schedule'][0]['paid_at']);
+        $this->assertSame('pending', $row['schedule'][1]['status']);
+        $this->assertSame(2, $row['schedule'][1]['installment_no']);
+        $this->assertSame(1000.0, (float) $row['schedule'][2]['amount']);
+    }
+
+    public function test_installment_schedule_is_ordered_and_flags_overdue(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->assign($schedule);
+        $booking = $this->makeInstallmentBooking($schedule);
+
+        // ดันงวดที่ 2 ให้เลยกำหนด — ต้องติดธง overdue เฉพาะงวดนั้น
+        InstallmentPayment::where('booking_id', $booking->id)
+            ->where('installment_no', 2)
+            ->update(['due_date' => now()->subDays(3)->toDateString()]);
+
+        $rows = $this->actingAs($this->staff, 'sanctum')
+            ->getJson("/api/v1/staff/schedules/{$schedule->id}/outstanding")
+            ->assertOk()
+            ->json('data.items.0.schedule');
+
+        $this->assertSame([1, 2, 3], array_column($rows, 'installment_no'));
+        $this->assertFalse($rows[0]['overdue'], 'งวดที่จ่ายแล้วต้องไม่ถือว่าเลยกำหนด');
+        $this->assertTrue($rows[1]['overdue']);
+        $this->assertFalse($rows[2]['overdue']);
+    }
+
+    public function test_deposit_booking_is_rendered_as_two_step_schedule(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->assign($schedule);
+        $this->makeDepositBooking($schedule);
+
+        $row = $this->actingAs($this->staff, 'sanctum')
+            ->getJson("/api/v1/staff/schedules/{$schedule->id}/outstanding")
+            ->assertOk()
+            ->json('data.items.0');
+
+        // มัดจำถูกทำให้เป็นไทม์ไลน์ 2 ขั้น เพื่อให้แอปเรนเดอร์เหมือนผ่อนชำระ
+        $this->assertCount(2, $row['schedule']);
+        $this->assertSame('มัดจำ', $row['schedule'][0]['label']);
+        $this->assertSame('paid', $row['schedule'][0]['status']);
+        $this->assertSame(1000.0, (float) $row['schedule'][0]['amount']);
+        $this->assertSame('ยอดส่วนที่เหลือ', $row['schedule'][1]['label']);
+        $this->assertSame(2000.0, (float) $row['schedule'][1]['amount']);
+        $this->assertSame(2000.0, (float) $row['remaining_total']);
+        $this->assertSame(3000.0, (float) $row['total_amount']);
+    }
+
     public function test_staff_not_assigned_to_schedule_is_forbidden(): void
     {
         $schedule = $this->makeSchedule();

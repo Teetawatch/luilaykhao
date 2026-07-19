@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\InstallmentPayment;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -71,10 +72,8 @@ class OutstandingPaymentService
         $type = $booking->payment_type;
 
         if ($type === 'installment') {
-            $next = $booking->installmentPayments
-                ->where('status', '!=', 'paid')
-                ->sortBy('installment_no')
-                ->first();
+            $all = $booking->installmentPayments->sortBy('installment_no')->values();
+            $next = $all->firstWhere('status', '!=', 'paid');
 
             if (! $next) {
                 return null;
@@ -87,6 +86,12 @@ class OutstandingPaymentService
             // สลิปถูกแนบแล้วแต่ยังไม่ผ่านการตรวจ (VerifySlipJob ทำงานแบบ async)
             // สตาฟหน้างานต้องเห็นสถานะนี้ ไม่งั้นจะทวงซ้ำคนที่เพิ่งจ่ายไป
             $slipPending = filled($next->slip_path);
+
+            // รายละเอียดครบทุกงวด — สตาฟหน้างานต้องตอบลูกค้าได้ว่า "จ่ายมาแล้ว
+            // กี่งวด เหลืออีกเท่าไหร่" ไม่ใช่เห็นแค่งวดที่กำลังจะถึง
+            $schedule = $all->map(fn ($i) => $this->installmentRow($i))->all();
+            $paidTotal = (float) $all->where('status', 'paid')->sum('amount');
+            $remainingTotal = (float) $all->where('status', '!=', 'paid')->sum('amount');
         } elseif ($type === 'deposit') {
             if (! $this->balancePaymentService->hasOutstandingBalance($booking)) {
                 return null;
@@ -97,6 +102,33 @@ class OutstandingPaymentService
             $installmentNo = null;
             $label = 'ยอดส่วนที่เหลือ';
             $slipPending = filled($booking->balance_slip_path);
+
+            // มัดจำมองเป็น 2 งวดเสมอ (มัดจำที่จ่ายแล้ว + ยอดคงเหลือ) เพื่อให้
+            // แอปเรนเดอร์ไทม์ไลน์เดียวกันได้ทั้งสองแบบการชำระ
+            $schedule = [
+                [
+                    'installment_no' => 1,
+                    'label' => 'มัดจำ',
+                    'amount' => (float) $booking->deposit_amount,
+                    'due_date' => $booking->created_at?->toDateString(),
+                    'status' => 'paid',
+                    'paid_at' => $booking->created_at?->toISOString(),
+                    'slip_pending' => false,
+                    'overdue' => false,
+                ],
+                [
+                    'installment_no' => 2,
+                    'label' => 'ยอดส่วนที่เหลือ',
+                    'amount' => $amount,
+                    'due_date' => $dueDate,
+                    'status' => 'pending',
+                    'paid_at' => null,
+                    'slip_pending' => $slipPending,
+                    'overdue' => $dueDate ? Carbon::parse($dueDate)->isPast() : false,
+                ],
+            ];
+            $paidTotal = (float) $booking->deposit_amount;
+            $remainingTotal = $amount;
         } else {
             return null;
         }
@@ -118,7 +150,35 @@ class OutstandingPaymentService
             'due_date' => $dueDate,
             'overdue' => $dueDate ? Carbon::parse($dueDate)->isPast() : false,
             'slip_pending' => $slipPending,
+            'total_amount' => (float) $booking->total_amount,
+            'paid_total' => $paidTotal,
+            'remaining_total' => $remainingTotal,
+            'installment_count' => count($schedule),
+            'paid_count' => count(array_filter($schedule, fn ($r) => $r['status'] === 'paid')),
+            'schedule' => $schedule,
             'pay_url' => $booking->payUrl(),
+        ];
+    }
+
+    /**
+     * แปลงงวดหนึ่งเป็นแถวสำหรับแสดงผล
+     *
+     * @return array<string, mixed>
+     */
+    private function installmentRow(InstallmentPayment $installment): array
+    {
+        $paid = $installment->status === 'paid';
+        $dueDate = $installment->due_date?->toDateString();
+
+        return [
+            'installment_no' => (int) $installment->installment_no,
+            'label' => "งวดที่ {$installment->installment_no}",
+            'amount' => (float) $installment->amount,
+            'due_date' => $dueDate,
+            'status' => $installment->status,
+            'paid_at' => $installment->paid_at?->toISOString(),
+            'slip_pending' => ! $paid && filled($installment->slip_path),
+            'overdue' => ! $paid && $dueDate && Carbon::parse($dueDate)->isPast(),
         ];
     }
 
