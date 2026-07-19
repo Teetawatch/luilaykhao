@@ -275,6 +275,14 @@
                   >
                     <span class="material-symbols-rounded">move_item</span>
                   </button>
+                  <button
+                    v-if="canSplitBooking(booking)"
+                    class="btn-icon btn-split"
+                    title="แยก / ย้ายผู้โดยสารบางคน"
+                    @click="openSplitModal(booking)"
+                  >
+                    <span class="material-symbols-rounded">call_split</span>
+                  </button>
                   <button class="btn-icon btn-delete" title="ลบการจอง" @click="confirmDelete(booking)">
                     <span class="material-symbols-rounded">delete</span>
                   </button>
@@ -324,6 +332,14 @@
             >
               <span class="material-symbols-rounded">move_item</span>
               ย้ายเจ้าของ
+            </button>
+            <button
+              v-if="detailBooking && canSplitBooking(detailBooking)"
+              class="btn-secondary compact"
+              @click="openSplitModal(detailBooking)"
+            >
+              <span class="material-symbols-rounded">call_split</span>
+              แยกผู้โดยสาร
             </button>
             <button class="modal-close" @click="closeDetail">
               <span class="material-symbols-rounded">close</span>
@@ -1371,6 +1387,123 @@
       </div>
     </div>
 
+    <!-- แยกผู้โดยสารบางคนออกจากการจองกลุ่ม แล้วย้ายไปรอบอื่น (ข้ามทริปได้) -->
+    <div v-if="showSplitModal" class="modal-overlay" @click.self="closeSplitModal">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <div>
+            <h2>แยก / ย้ายผู้โดยสาร</h2>
+            <p class="modal-subtitle">
+              {{ splitBooking?.booking_ref || '-' }} · {{ splitBooking?.schedule?.trip?.title || '-' }}
+              <template v-if="splitBooking?.schedule"> · {{ formatScheduleRange(splitBooking.schedule) }}</template>
+            </p>
+          </div>
+          <button class="modal-close" @click="closeSplitModal">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body split-body">
+          <section class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">groups</span>
+              เลือกผู้โดยสารที่ต้องการย้าย
+            </div>
+            <div class="split-passenger-list">
+              <label v-for="p in splitPassengers" :key="p.id" class="split-passenger-item">
+                <input type="checkbox" v-model="splitSelectedIds" :value="p.id" />
+                <span class="split-passenger-name">{{ p.name }}</span>
+                <span class="split-passenger-meta">
+                  {{ p.phone || splitBooking?.user?.phone || 'ไม่มีเบอร์' }}
+                  <template v-if="!splitBooking?.is_join_trip">
+                    · ที่นั่ง {{ splitSeatOf(p) || '—' }}
+                  </template>
+                </span>
+              </label>
+            </div>
+            <p class="field-hint">
+              เลือก {{ splitSelectedIds.length }} / {{ splitPassengers.length }} คน
+            </p>
+          </section>
+
+          <section class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">calendar_month</span>
+              เลือกรอบเดินทางปลายทาง (ย้ายข้ามทริปได้)
+            </div>
+            <div class="split-target-search">
+              <span class="material-symbols-rounded">search</span>
+              <input v-model.trim="splitTargetSearch" type="text" placeholder="ค้นหาชื่อทริปปลายทาง..." />
+            </div>
+            <div v-if="splitTargetsLoading" class="loading-state"><div class="spinner"></div></div>
+            <div v-else-if="!splitTargetGroups.length" class="empty-state">ไม่พบรอบเดินทางปลายทาง</div>
+            <div v-else class="split-target-list">
+              <div v-for="group in splitTargetGroups" :key="group.trip_id" class="split-target-group">
+                <div class="split-target-trip">{{ group.title }}</div>
+                <label
+                  v-for="sch in group.schedules"
+                  :key="sch.id"
+                  class="split-target-item"
+                  :class="{ disabled: isSplitTargetDisabled(sch) }"
+                >
+                  <input
+                    type="radio"
+                    v-model.number="splitTargetId"
+                    :value="sch.id"
+                    :disabled="isSplitTargetDisabled(sch)"
+                  />
+                  <span>{{ formatScheduleRange(sch) }}</span>
+                  <span class="split-target-seats">ว่าง {{ sch.available_seats ?? '-' }} ที่</span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="splitTargetId && splitSeatRows.length" class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">airline_seat_recline_normal</span>
+              ที่นั่งในรอบปลายทาง
+            </div>
+            <div v-if="splitSeatMapLoading" class="loading-state"><div class="spinner"></div></div>
+            <template v-else>
+              <p v-if="splitSeatMapError" class="field-error">{{ splitSeatMapError }}</p>
+              <div v-for="row in splitSeatRows" :key="row.passenger.id" class="split-seat-row">
+                <span class="split-seat-name">{{ row.passenger.name }}</span>
+                <span class="split-seat-from">เดิม {{ row.originalSeatId || '—' }}</span>
+                <select v-model="splitSeatAssignments[row.passenger.id]">
+                  <option value="">— ไม่ระบุ (ใช้เบอร์เดิม) —</option>
+                  <option v-for="seat in splitAvailableSeats" :key="seat.id" :value="seat.id">{{ seat.id }}</option>
+                </select>
+              </div>
+              <p v-if="splitSeatError" class="field-error">{{ splitSeatError }}</p>
+            </template>
+          </section>
+
+          <div v-if="splitIsPartial" class="split-warning">
+            <span class="material-symbols-rounded">info</span>
+            <div>
+              ย้ายเพียงบางคน — ระบบจะ<strong>แยกเป็นการจองใบใหม่</strong> (เลขที่จองและ QR ใหม่)
+              พร้อมหารยอดเงิน ยอดที่ชำระแล้ว ส่วนลด และงวดผ่อนตามสัดส่วนจำนวนคน
+              ส่วนคนที่เหลือยังอยู่การจองเดิม
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" :disabled="splitSubmitting" @click="closeSplitModal">ยกเลิก</button>
+          <button
+            class="btn-primary"
+            :disabled="!splitTargetId || !splitSelectedIds.length || splitSubmitting || splitSeatMapLoading || Boolean(splitSeatError)"
+            @click="doSplitMove"
+          >
+            <span v-if="splitSubmitting" class="material-symbols-rounded animate-spin">progress_activity</span>
+            <span v-else class="material-symbols-rounded">call_split</span>
+            ย้าย {{ splitSelectedIds.length }} คน
+          </button>
+        </div>
+      </div>
+    </div>
+
     <CustomPickupModal
       v-if="showEditCustomPickupModal"
       :center-lat="editPickupMapCenter.lat"
@@ -1405,6 +1538,67 @@ const showStatusModal = ref(false);
 const showManualModal = ref(false);
 const showEditModal = ref(false);
 const showTransferModal = ref(false);
+const showSplitModal = ref(false);
+const splitBooking = ref(null);
+const splitSelectedIds = ref([]);
+const splitTargets = ref([]);
+const splitTargetsLoading = ref(false);
+const splitTargetSearch = ref('');
+const splitTargetId = ref(null);
+const splitSeatMap = ref(null);
+const splitSeatMapLoading = ref(false);
+const splitSeatMapError = ref('');
+const splitSeatAssignments = reactive({});
+const splitSubmitting = ref(false);
+
+const splitPassengers = computed(() => splitBooking.value?.passengers || []);
+const splitIsPartial = computed(
+  () => splitSelectedIds.value.length > 0 && splitSelectedIds.value.length < splitPassengers.value.length,
+);
+const splitTargetGroups = computed(() => {
+  const groups = new Map();
+  splitTargets.value.forEach((sch) => {
+    const tripId = sch.trip?.id || sch.trip_id || 'unknown';
+    if (!groups.has(tripId)) {
+      groups.set(tripId, { trip_id: tripId, title: sch.trip?.title || 'ไม่ระบุทริป', schedules: [] });
+    }
+    groups.get(tripId).schedules.push(sch);
+  });
+  return [...groups.values()];
+});
+// เฉพาะคนที่ถูกเลือกและมีที่นั่งเดิม — จองแบบจอยทริปไม่มีผังที่นั่ง
+const splitSeatRows = computed(() => {
+  if (splitBooking.value?.is_join_trip) return [];
+
+  return splitPassengers.value
+    .filter((p) => splitSelectedIds.value.includes(p.id) && splitSeatOf(p))
+    .map((passenger) => {
+      const originalSeatId = splitSeatOf(passenger);
+      return {
+        passenger,
+        originalSeatId,
+        originalSeatAvailable: isSplitSeatAvailable(originalSeatId),
+      };
+    });
+});
+const splitAvailableSeats = computed(() => (splitSeatMap.value?.seats || []).filter((seat) => seat.status === 'available'));
+const splitSeatError = computed(() => {
+  const assigned = splitSeatRows.value
+    .map((row) => splitSeatAssignments[row.passenger.id])
+    .filter(Boolean);
+
+  const duplicates = assigned.filter((seatId, index) => assigned.indexOf(seatId) !== index);
+  if (duplicates.length) return `เลือกที่นั่งซ้ำ: ${[...new Set(duplicates)].join(', ')}`;
+
+  // ไม่ระบุที่นั่งใหม่ = ใช้เบอร์เดิม ซึ่งต้องว่างในรอบปลายทาง
+  const keptTaken = splitSeatRows.value
+    .filter((row) => !splitSeatAssignments[row.passenger.id] && !row.originalSeatAvailable)
+    .map((row) => row.originalSeatId);
+  if (keptTaken.length) return `ที่นั่ง ${[...new Set(keptTaken)].join(', ')} ไม่ว่างในรอบปลายทาง กรุณาเลือกที่นั่งใหม่`;
+
+  return '';
+});
+
 // จุดรับปักหมุดเองในฟอร์มแก้ไข ({ label, lat, lng, note } หรือ null)
 const editCustomPickup = ref(null);
 const showEditCustomPickupModal = ref(false);
@@ -2428,6 +2622,164 @@ async function doTransferBooking() {
     submitting.value = false;
   }
 }
+
+// ── แยก / ย้ายผู้โดยสารบางคน ────────────────────────────────────
+// ใช้ API เดียวกับหน้าจัดการรอบเดินทาง (move-bookings) — ถ้าเลือกไม่ครบทุกคน
+// backend จะแตกการจองใบใหม่ให้พร้อมหารยอดเงินตามสัดส่วน
+
+function canSplitBooking(booking) {
+  return passengerCount(booking) > 1 && !['cancelled', 'refunded'].includes(booking?.status);
+}
+
+async function openSplitModal(booking) {
+  splitBooking.value = booking;
+  splitSelectedIds.value = [];
+  splitTargetId.value = null;
+  splitTargetSearch.value = '';
+  resetSplitSeatState();
+  showSplitModal.value = true;
+
+  // การจองในรายการอาจยังไม่มีผู้โดยสาร/ที่นั่งครบ — ดึงข้อมูลเต็มก่อน
+  try {
+    const res = await api.get(`/admin/bookings/${booking.booking_ref}`);
+    splitBooking.value = res.data?.data || booking;
+  } catch (e) {
+    toast.error('โหลดข้อมูลการจองล่าสุดไม่ได้ จะแสดงข้อมูลเท่าที่มีอยู่');
+  }
+
+  fetchSplitTargets();
+}
+
+function closeSplitModal() {
+  showSplitModal.value = false;
+  splitBooking.value = null;
+  splitSelectedIds.value = [];
+  splitTargetId.value = null;
+  splitTargetSearch.value = '';
+  splitTargets.value = [];
+  resetSplitSeatState();
+}
+
+function resetSplitSeatState() {
+  splitSeatMap.value = null;
+  splitSeatMapError.value = '';
+  splitSeatMapLoading.value = false;
+  Object.keys(splitSeatAssignments).forEach((key) => delete splitSeatAssignments[key]);
+}
+
+// ที่นั่งของผู้โดยสารคนนี้ — จับจากชื่อก่อน ไม่เจอค่อยใช้ลำดับ (ตรงกับฝั่ง backend)
+function splitSeatOf(passenger) {
+  const seats = splitBooking.value?.seats || [];
+  const byName = seats.find((seat) => seat.passenger_name && seat.passenger_name === passenger.name);
+  if (byName) return byName.seat_id;
+
+  const index = splitPassengers.value.findIndex((p) => p.id === passenger.id);
+  return seats[index]?.seat_id || '';
+}
+
+async function fetchSplitTargets() {
+  splitTargetsLoading.value = true;
+  try {
+    const res = await api.get('/admin/schedules', {
+      params: { upcoming: 1, per_page: 100, search: splitTargetSearch.value || undefined },
+    });
+    splitTargets.value = res.data?.data || [];
+  } catch (e) {
+    splitTargets.value = [];
+    toast.error('โหลดรอบเดินทางปลายทางไม่ได้');
+  } finally {
+    splitTargetsLoading.value = false;
+  }
+}
+
+async function fetchSplitSeatMap() {
+  if (!splitTargetId.value) {
+    resetSplitSeatState();
+    return;
+  }
+
+  splitSeatMapLoading.value = true;
+  splitSeatMapError.value = '';
+  try {
+    const res = await api.get(`/schedules/${splitTargetId.value}/seats`);
+    splitSeatMap.value = res.data?.data || null;
+  } catch (e) {
+    splitSeatMap.value = null;
+    splitSeatMapError.value = e.response?.data?.message || 'โหลดผังที่นั่งของรอบปลายทางไม่ได้';
+  } finally {
+    splitSeatMapLoading.value = false;
+  }
+
+  // ที่นั่งเดิมว่างในรอบใหม่ → จองเบอร์เดิมให้เลย ไม่งั้นปล่อยว่างให้แอดมินเลือก
+  splitSeatRows.value.forEach((row) => {
+    const current = splitSeatAssignments[row.passenger.id];
+    if (current && isSplitSeatAvailable(current)) return;
+    splitSeatAssignments[row.passenger.id] = row.originalSeatAvailable ? row.originalSeatId : '';
+  });
+}
+
+function isSplitSeatAvailable(seatId) {
+  const seat = (splitSeatMap.value?.seats || []).find((item) => item.id === seatId);
+  return Boolean(seat && seat.status === 'available');
+}
+
+function isSplitTargetDisabled(sch) {
+  if (!splitSelectedIds.value.length) return true;
+  if (Number(sch.id) === Number(splitBooking.value?.schedule?.id)) return true;
+  if (splitBooking.value?.is_join_trip) return false;
+  return Number(sch.available_seats || 0) < splitSelectedIds.value.length;
+}
+
+async function doSplitMove() {
+  const sourceScheduleId = splitBooking.value?.schedule?.id;
+  if (!sourceScheduleId || !splitTargetId.value || !splitSelectedIds.value.length) return;
+
+  const target = splitTargets.value.find((s) => Number(s.id) === Number(splitTargetId.value));
+  const summary = `${splitSelectedIds.value.length} คน → ${target?.trip?.title || 'รอบที่เลือก'} ${formatScheduleRange(target)}`;
+  const note = splitIsPartial.value ? '\n\nจะแยกเป็นการจองใบใหม่ (เลขที่จองและ QR ใหม่)' : '';
+  if (!confirm(`ยืนยันการย้ายผู้โดยสาร ${summary} ใช่หรือไม่?${note}\n\nการดำเนินการนี้เปลี่ยนข้อมูลถาวร`)) return;
+
+  const seatAssignments = {};
+  splitSeatRows.value.forEach((row) => {
+    const seatId = splitSeatAssignments[row.passenger.id];
+    if (seatId) seatAssignments[row.passenger.id] = seatId;
+  });
+
+  splitSubmitting.value = true;
+  try {
+    const res = await api.post('/admin/schedules/move-bookings', {
+      source_schedule_id: sourceScheduleId,
+      target_schedule_id: splitTargetId.value,
+      passenger_ids: splitSelectedIds.value,
+      seat_assignments: seatAssignments,
+    });
+    const movedRef = splitBooking.value?.booking_ref;
+    closeSplitModal();
+    if (detailBooking.value?.booking_ref === movedRef) {
+      await openDetail({ booking_ref: movedRef });
+    }
+    await fetchData(currentPage.value);
+    toast.success(res.data?.message || 'ย้ายผู้โดยสารสำเร็จ');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการย้ายผู้โดยสาร');
+  } finally {
+    splitSubmitting.value = false;
+  }
+}
+
+watch(splitTargetId, fetchSplitSeatMap);
+watch(splitSelectedIds, () => {
+  // ลดจำนวนคนแล้วรอบปลายทางอาจที่นั่งไม่พอ — ล้างตัวเลือกที่ใช้ไม่ได้ทิ้ง
+  const target = splitTargets.value.find((s) => Number(s.id) === Number(splitTargetId.value));
+  if (target && isSplitTargetDisabled(target)) splitTargetId.value = null;
+  else if (splitTargetId.value) fetchSplitSeatMap();
+});
+
+let splitSearchTimer = null;
+watch(splitTargetSearch, () => {
+  clearTimeout(splitSearchTimer);
+  splitSearchTimer = setTimeout(fetchSplitTargets, 300);
+});
 
 onMounted(() => fetchData());
 
@@ -4131,4 +4483,151 @@ async function reverifySlip(bookingRef, slipType) {
 .transfer-hint .material-symbols-rounded { font-size: 17px; color: #94a3b8; }
 .transfer-hint.empty { color: #b45309; border-color: #fde68a; background: #fffbeb; }
 .transfer-hint.empty .material-symbols-rounded { color: #d97706; }
+
+/* ── แยก / ย้ายผู้โดยสารบางคน ─────────────────────────────── */
+.btn-split {
+  color: #0f766e;
+}
+
+.btn-split:hover:not(:disabled) {
+  background: #f0fdfa;
+}
+
+.split-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.split-passenger-list,
+.split-target-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.split-target-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.split-passenger-item,
+.split-target-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.split-passenger-item:hover,
+.split-target-item:not(.disabled):hover {
+  border-color: var(--color-accent);
+}
+
+.split-target-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.split-passenger-name {
+  font-weight: 800;
+}
+
+.split-passenger-meta,
+.split-target-seats {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.split-target-group {
+  margin-bottom: 10px;
+}
+
+.split-target-trip {
+  margin-bottom: 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.split-target-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.split-target-search .material-symbols-rounded {
+  color: #94a3b8;
+  font-size: 18px;
+}
+
+.split-target-search input {
+  flex: 1;
+  border: none;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  background: transparent;
+}
+
+.split-seat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.split-seat-name {
+  min-width: 140px;
+  font-weight: 800;
+}
+
+.split-seat-from {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.split-seat-row select {
+  margin-left: auto;
+  min-width: 180px;
+}
+
+.field-error {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.split-warning {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #fef3c7;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.split-warning .material-symbols-rounded {
+  font-size: 18px;
+  flex-shrink: 0;
+}
 </style>
