@@ -7,6 +7,7 @@ use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
 use App\Services\GoogleDistanceService;
+use App\Support\Polyline;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -248,6 +249,81 @@ class DistanceController extends Controller
 
         // ไม่มีคีย์/หาเส้นทางไม่ได้ → คืน 200 พร้อม polyline ว่าง เพื่อให้แอป fallback เส้นตรง
         return $this->success($result ?? ['polyline' => '', 'distance' => 0, 'duration' => 0]);
+    }
+
+    /**
+     * เส้นทางเดินรถของรอบทริป: จุดรับทุกจุด (เรียงลำดับจอด) → ปลายทางทริป
+     * พร้อม polyline ตามถนนจริงสำหรับวาดบนแผนที่ + timeline จุดจอด
+     * GET /api/v1/schedules/{id}/route
+     */
+    public function scheduleRoute(int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::with(['trip', 'pickupPoints'])->findOrFail($scheduleId);
+        $trip = $schedule->trip;
+
+        $stops = $schedule->pickupPoints->map(fn ($pt) => [
+            'type' => 'pickup',
+            'id' => $pt->id,
+            'name' => $pt->pickup_location,
+            'region_label' => $pt->region_label,
+            'pickup_time' => $pt->pickup_time,
+            'latitude' => $pt->latitude !== null ? (float) $pt->latitude : null,
+            'longitude' => $pt->longitude !== null ? (float) $pt->longitude : null,
+            'completed' => $pt->completed_at !== null,
+        ])->values();
+
+        $destLat = $trip?->latitude !== null ? (float) $trip->latitude : null;
+        $destLng = $trip?->longitude !== null ? (float) $trip->longitude : null;
+        if ($destLat !== null && $destLng !== null) {
+            $stops->push([
+                'type' => 'destination',
+                'id' => null,
+                'name' => $trip->location ?: $trip->title,
+                'region_label' => null,
+                'pickup_time' => null,
+                'latitude' => $destLat,
+                'longitude' => $destLng,
+                'completed' => false,
+            ]);
+        }
+
+        // เส้นทางที่แอดมินวาดเอง override เส้นจาก Google ทั้งหมด (ไม่เสียค่า API)
+        $customPoints = $schedule->customRoutePoints();
+        if (count($customPoints) >= 2) {
+            return $this->success([
+                'schedule_id' => $schedule->id,
+                'trip_title' => $trip?->title,
+                'stops' => $stops,
+                'polyline' => Polyline::encode($customPoints),
+                'distance' => Polyline::pathDistanceMeters($customPoints),
+                'duration' => 0,
+                'legs' => [],
+                'source' => 'custom',
+            ], 'ดึงเส้นทางเดินรถสำเร็จ');
+        }
+
+        // วาดเส้นเฉพาะจุดที่มีพิกัด (จุดรับที่ยังไม่ได้ปักหมุดยังโชว์ใน timeline ได้)
+        $routedPoints = $stops
+            ->filter(fn ($s) => $s['latitude'] !== null && $s['longitude'] !== null)
+            ->map(fn ($s) => ['lat' => $s['latitude'], 'lng' => $s['longitude']])
+            ->values()
+            ->all();
+
+        $route = count($routedPoints) >= 2
+            ? $this->distanceService->getMultiStopRoute($routedPoints)
+            : null;
+
+        // ไม่มีคีย์/หาเส้นทางไม่ได้ → polyline ว่าง ให้แอปลากเส้นตรงระหว่างจุดเอง
+        return $this->success([
+            'schedule_id' => $schedule->id,
+            'trip_title' => $trip?->title,
+            'stops' => $stops,
+            'polyline' => $route['polyline'] ?? '',
+            'distance' => $route['distance'] ?? 0,
+            'duration' => $route['duration'] ?? 0,
+            'legs' => $route['legs'] ?? [],
+            'source' => $route ? 'google' : 'none',
+        ], 'ดึงเส้นทางเดินรถสำเร็จ');
     }
 
     /**

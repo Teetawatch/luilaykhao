@@ -111,6 +111,9 @@ class TripScheduleResource extends JsonResource
                     ->values()
             ),
             'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
+            // เส้นทางเดินรถที่แอดมินวาดเอง (จุดดิบสำหรับ editor; ลูกค้าได้ polyline
+            // ที่ encode แล้วผ่าน /schedules/{id}/route อยู่แล้ว จึงไม่ใช่ความลับ)
+            'custom_route' => $this->custom_route,
             'waitlist_count' => $this->when(
                 isset($this->waitlist_count),
                 fn () => (int) $this->waitlist_count

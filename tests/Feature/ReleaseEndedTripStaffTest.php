@@ -61,8 +61,8 @@ class ReleaseEndedTripStaffTest extends TestCase
     {
         $staff = $this->makeStaff();
         $schedule = $this->makeSchedule(
-            now()->subDays(4)->toDateString(),
-            now()->subDays(3)->toDateString(),
+            now('Asia/Bangkok')->subDays(4)->toDateString(),
+            now('Asia/Bangkok')->subDays(3)->toDateString(),
         );
         $schedule->staff()->attach($staff->id);
 
@@ -79,8 +79,8 @@ class ReleaseEndedTripStaffTest extends TestCase
     {
         $staff = $this->makeStaff();
         $schedule = $this->makeSchedule(
-            now()->addWeek()->toDateString(),
-            now()->addWeek()->addDay()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->addDay()->toDateString(),
             'cancelled',
         );
         $schedule->staff()->attach($staff->id);
@@ -94,10 +94,10 @@ class ReleaseEndedTripStaffTest extends TestCase
     {
         $staff = $this->makeStaff();
         $upcoming = $this->makeSchedule(
-            now()->addWeek()->toDateString(),
-            now()->addWeek()->addDay()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->addDay()->toDateString(),
         );
-        $today = $this->makeSchedule(now()->toDateString(), now()->toDateString());
+        $today = $this->makeSchedule(now('Asia/Bangkok')->toDateString(), now('Asia/Bangkok')->toDateString());
         $upcoming->staff()->attach($staff->id);
         $today->staff()->attach($staff->id);
 
@@ -112,8 +112,8 @@ class ReleaseEndedTripStaffTest extends TestCase
         $admin = $this->makeAdmin();
         $staff = $this->makeStaff();
         $schedule = $this->makeSchedule(
-            now()->subDays(3)->toDateString(),
-            now()->subDays(2)->toDateString(),
+            now('Asia/Bangkok')->subDays(3)->toDateString(),
+            now('Asia/Bangkok')->subDays(2)->toDateString(),
         );
         $schedule->staff()->attach($staff->id);
 
@@ -132,8 +132,8 @@ class ReleaseEndedTripStaffTest extends TestCase
         $admin = $this->makeAdmin();
         $staff = $this->makeStaff();
         $schedule = $this->makeSchedule(
-            now()->subDays(3)->toDateString(),
-            now()->subDays(2)->toDateString(),
+            now('Asia/Bangkok')->subDays(3)->toDateString(),
+            now('Asia/Bangkok')->subDays(2)->toDateString(),
         );
         $schedule->staff()->attach($staff->id, ['released_at' => now()]);
 
@@ -143,7 +143,7 @@ class ReleaseEndedTripStaffTest extends TestCase
             ->assertJsonPath('data.0.assigned_staff_count', 0);
 
         $this->actingAs($admin, 'sanctum')
-            ->getJson('/api/v1/admin/staff/roster?from='.now()->subWeek()->toDateString().'&to='.now()->toDateString())
+            ->getJson('/api/v1/admin/staff/roster?from='.now('Asia/Bangkok')->subWeek()->toDateString().'&to='.now('Asia/Bangkok')->toDateString())
             ->assertOk()
             ->assertJsonCount(0, 'data.staff');
     }
@@ -153,8 +153,8 @@ class ReleaseEndedTripStaffTest extends TestCase
         $admin = $this->makeAdmin();
         $staff = $this->makeStaff();
         $schedule = $this->makeSchedule(
-            now()->addWeek()->toDateString(),
-            now()->addWeek()->addDay()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->addDay()->toDateString(),
         );
         $schedule->staff()->attach($staff->id, ['released_at' => now()]);
 
@@ -177,8 +177,8 @@ class ReleaseEndedTripStaffTest extends TestCase
         $released = $this->makeStaff();
         $active = $this->makeStaff();
         $schedule = $this->makeSchedule(
-            now()->addWeek()->toDateString(),
-            now()->addWeek()->addDay()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->toDateString(),
+            now('Asia/Bangkok')->addWeek()->addDay()->toDateString(),
         );
         $schedule->staff()->attach($released->id, ['released_at' => now()]);
         $schedule->staff()->attach($active->id);
@@ -196,8 +196,8 @@ class ReleaseEndedTripStaffTest extends TestCase
     {
         $staff = $this->makeStaff();
         $schedule = $this->makeSchedule(
-            now()->subDays(4)->toDateString(),
-            now()->subDays(3)->toDateString(),
+            now('Asia/Bangkok')->subDays(4)->toDateString(),
+            now('Asia/Bangkok')->subDays(3)->toDateString(),
         );
         $schedule->staff()->attach($staff->id, ['released_at' => now()]);
 

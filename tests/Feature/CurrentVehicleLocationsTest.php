@@ -39,8 +39,8 @@ class CurrentVehicleLocationsTest extends TestCase
         return TripSchedule::create(array_merge([
             'trip_id' => $trip->id,
             'vehicle_id' => $vehicle->id,
-            'departure_date' => now()->toDateString(),
-            'return_date' => now()->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->toDateString(),
+            'return_date' => now('Asia/Bangkok')->toDateString(),
             'total_seats' => 10, 'booked_seats' => 0,
             'transport_type' => 'van', 'status' => 'open',
         ], $overrides));
@@ -62,8 +62,8 @@ class CurrentVehicleLocationsTest extends TestCase
     {
         $vehicle = $this->makeVehicle();
         $this->makeSchedule($vehicle, [
-            'departure_date' => now()->subDays(30)->toDateString(),
-            'return_date' => now()->subDays(29)->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->subDays(30)->toDateString(),
+            'return_date' => now('Asia/Bangkok')->subDays(29)->toDateString(),
         ]);
         $this->ping($vehicle, now()->subDays(29)->toDateTimeString());
 
@@ -90,8 +90,8 @@ class CurrentVehicleLocationsTest extends TestCase
     {
         $vehicle = $this->makeVehicle();
         $this->makeSchedule($vehicle, [
-            'departure_date' => now()->subDay()->toDateString(),
-            'return_date' => now()->addDay()->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->subDay()->toDateString(),
+            'return_date' => now('Asia/Bangkok')->addDay()->toDateString(),
         ]);
         $this->ping($vehicle, now()->subMinutes(2)->toDateTimeString());
 
@@ -132,9 +132,9 @@ class CurrentVehicleLocationsTest extends TestCase
     {
         $vehicle = $this->makeVehicle();
         $this->makeSchedule($vehicle, [
-            'departure_date' => now()->addDay()->toDateString(),
-            'departs_at' => now()->setTime(22, 30)->format('Y-m-d H:i:s'),
-            'return_date' => now()->addDay()->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->addDay()->toDateString(),
+            'departs_at' => now('Asia/Bangkok')->setTime(22, 30)->format('Y-m-d H:i:s'),
+            'return_date' => now('Asia/Bangkok')->addDay()->toDateString(),
         ]);
         $this->ping($vehicle, now()->toDateTimeString());
 

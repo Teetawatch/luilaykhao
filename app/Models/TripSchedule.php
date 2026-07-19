@@ -58,7 +58,7 @@ class TripSchedule extends Model
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',
-        'is_charter', 'photo_token',
+        'is_charter', 'photo_token', 'custom_route',
     ];
 
     protected function casts(): array
@@ -84,6 +84,7 @@ class TripSchedule extends Model
             'join_trip_price' => 'decimal:2',
             'is_charter' => 'boolean',
             'driver_pin_cleared_at' => 'datetime',
+            'custom_route' => 'array',
         ];
     }
 
@@ -251,6 +252,26 @@ class TripSchedule extends Model
     public function pickupPoints(): HasMany
     {
         return $this->hasMany(SchedulePickupPoint::class, 'schedule_id')->orderBy('sort_order');
+    }
+
+    /**
+     * จุดพิกัดของเส้นทางเดินรถที่แอดมินวาดเอง (กรองเฉพาะรายการที่พิกัดใช้ได้)
+     * — มีตั้งแต่ 2 จุดขึ้นไปเมื่อไหร่ เส้นนี้ override เส้นจาก Google Directions
+     *
+     * @return array<int, array{lat: float, lng: float}>
+     */
+    public function customRoutePoints(): array
+    {
+        $points = [];
+        foreach (is_array($this->custom_route) ? $this->custom_route : [] as $point) {
+            $lat = isset($point['lat']) && is_numeric($point['lat']) ? (float) $point['lat'] : null;
+            $lng = isset($point['lng']) && is_numeric($point['lng']) ? (float) $point['lng'] : null;
+            if ($lat !== null && $lng !== null && abs($lat) <= 90 && abs($lng) <= 180) {
+                $points[] = ['lat' => $lat, 'lng' => $lng];
+            }
+        }
+
+        return $points;
     }
 
     public function itineraryItems(): HasMany

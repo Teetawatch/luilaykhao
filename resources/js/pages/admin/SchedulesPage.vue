@@ -177,6 +177,11 @@
                       <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จัดการจุดรับ">
                         <span class="material-symbols-rounded">location_on</span>
                       </button>
+                      <button class="btn-icon" :class="sch.custom_route?.length ? 'btn-active' : 'btn-pickup'"
+                        @click="openRouteEditor(sch)"
+                        :title="sch.custom_route?.length ? 'เส้นทางเดินรถ (ใช้เส้นวาดเองอยู่)' : 'วาดเส้นทางเดินรถเอง'">
+                        <span class="material-symbols-rounded">route</span>
+                      </button>
                       <button class="btn-sm btn-secondary btn-manifest-text" @click="openManifest(sch)" title="รายชื่อผู้โดยสาร">
                         <span class="material-symbols-rounded">group</span> รายชื่อ
                       </button>
@@ -605,6 +610,57 @@
             </div>
 
           </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Route Editor Modal — วาดเส้นทางเดินรถเองบนแผนที่ (override เส้นจาก Google) -->
+    <div class="modal-overlay" v-if="showRouteEditor">
+      <div class="modal-card modal-xl">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">route</span>เส้นทางเดินรถ (วาดเอง)</h2>
+            <p class="modal-subtitle" v-if="routeSchedule">
+              {{ routeSchedule.trip?.title }} — {{ routeSchedule.departure_date }}
+            </p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn-sm btn-secondary" @click="seedRouteFromStops" title="วางจุดเริ่มต้นตามจุดรับ → ปลายทาง แล้วค่อยดัดเส้น">
+              <span class="material-symbols-rounded">auto_fix_high</span> เริ่มจากจุดรับ
+            </button>
+            <button class="btn-sm btn-secondary" @click="undoRoutePoint" :disabled="!routePoints.length">
+              <span class="material-symbols-rounded">undo</span> ย้อนกลับ
+            </button>
+            <button class="btn-sm btn-secondary" @click="routePoints = []; redrawRoute();" :disabled="!routePoints.length">
+              <span class="material-symbols-rounded">mop</span> ล้างเส้น
+            </button>
+            <button class="modal-close" @click="closeRouteEditor"><span class="material-symbols-rounded">close</span></button>
+          </div>
+        </div>
+        <div class="modal-body" style="padding:0;">
+          <div class="route-editor-hint">
+            <span class="material-symbols-rounded" style="font-size:16px;">touch_app</span>
+            คลิกบนแผนที่เพื่อเพิ่มจุดตามลำดับ · ลากหมุดเพื่อขยับ · คลิกขวาที่หมุดเพื่อลบ —
+            ถ้าไม่วาด ระบบใช้เส้นทางจาก Google อัตโนมัติ
+          </div>
+          <div ref="routeMapEl" class="route-editor-map"></div>
+          <div class="route-editor-footer">
+            <div class="route-editor-stats">
+              <span><b>{{ routePoints.length }}</b> จุด</span>
+              <span v-if="routeDistanceText">ระยะทางรวม <b>{{ routeDistanceText }}</b></span>
+              <span v-if="routeSchedule?.custom_route?.length" class="route-badge-custom">รอบนี้ใช้เส้นวาดเองอยู่</span>
+              <span v-else class="route-badge-auto">รอบนี้ใช้เส้นอัตโนมัติ (Google)</span>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button v-if="routeSchedule?.custom_route?.length" class="btn-sm btn-danger" @click="clearSavedRoute" :disabled="routeSaving">
+                <span class="material-symbols-rounded">delete</span> ลบเส้นวาดเอง (กลับไปใช้อัตโนมัติ)
+              </button>
+              <button class="btn-sm btn-primary" @click="saveRoute" :disabled="routeSaving || routePoints.length < 2">
+                <span class="material-symbols-rounded" :class="{ 'animate-spin': routeSaving }">{{ routeSaving ? 'sync' : 'save' }}</span>
+                บันทึกเส้นทาง
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1594,7 +1650,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
@@ -2858,6 +2914,214 @@ const pickupLoading = ref(false);
 const pickupSubmitting = ref(false);
 const editingPickup = ref(null);
 const addingInRegion = ref(null); // which region's inline-add form is open
+
+// ─── Route Editor (วาดเส้นทางเดินรถเอง) ───────────────────
+// เส้นที่วาดจะ override เส้นจาก Google Directions ในหน้าลูกค้าทั้งหมด
+const showRouteEditor = ref(false);
+const routeSchedule = ref(null);
+const routePoints = ref([]); // [{lat,lng}] เรียงตามลำดับที่คลิก
+const routeSaving = ref(false);
+const routeMapEl = ref(null);
+let routeMap = null;
+let routeLeaflet = null;
+let routeLine = null;
+let routeVertexMarkers = [];
+let routeRefMarkers = [];
+
+async function loadLeaflet() {
+  if (window.L) { routeLeaflet = window.L; return; }
+  await new Promise(resolve => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => { routeLeaflet = window.L; resolve(); };
+    document.head.appendChild(script);
+  });
+}
+
+const routeDistanceText = computed(() => {
+  const pts = routePoints.value;
+  if (pts.length < 2) return '';
+  let meters = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dLat = (pts[i].lat - pts[i - 1].lat) * Math.PI / 180;
+    const dLng = (pts[i].lng - pts[i - 1].lng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(pts[i - 1].lat * Math.PI / 180) * Math.cos(pts[i].lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    meters += 2 * 6371000 * Math.asin(Math.sqrt(a));
+  }
+  const km = meters / 1000;
+  return km >= 1 ? `${km >= 100 ? Math.round(km) : km.toFixed(1)} กม.` : `${Math.round(meters)} ม.`;
+});
+
+async function openRouteEditor(sch) {
+  routeSchedule.value = sch;
+  routePoints.value = (sch.custom_route || []).map(p => ({ lat: p.lat, lng: p.lng }));
+  showRouteEditor.value = true;
+  await loadLeaflet();
+  await nextTick();
+  initRouteMap();
+}
+
+function initRouteMap() {
+  const L = routeLeaflet;
+  if (!L || !routeMapEl.value) return;
+  destroyRouteMap();
+
+  routeMap = L.map(routeMapEl.value, { center: [13.7563, 100.5018], zoom: 6 });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(routeMap);
+
+  // หมุดอ้างอิง (จุดรับ + ปลายทางทริป) — ไว้เล็งตอนวาด ไม่ใช่ส่วนหนึ่งของเส้น
+  const refPts = [];
+  (routeSchedule.value?.pickup_points || []).forEach((pt, i) => {
+    if (pt.latitude == null || pt.longitude == null) return;
+    const m = L.marker([pt.latitude, pt.longitude], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div class="route-ref-pin">${i + 1}</div>`,
+        iconSize: [24, 24], iconAnchor: [12, 12],
+      }),
+      interactive: false,
+    }).addTo(routeMap);
+    routeRefMarkers.push(m);
+    refPts.push([pt.latitude, pt.longitude]);
+  });
+  const trip = routeSchedule.value?.trip;
+  if (trip?.latitude != null && trip?.longitude != null) {
+    const m = L.marker([trip.latitude, trip.longitude], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div class="route-ref-pin route-ref-dest"><span class="material-symbols-rounded" style="font-size:14px;">flag</span></div>',
+        iconSize: [26, 26], iconAnchor: [13, 13],
+      }),
+      interactive: false,
+    }).addTo(routeMap);
+    routeRefMarkers.push(m);
+    refPts.push([trip.latitude, trip.longitude]);
+  }
+
+  routeMap.on('click', (e) => {
+    routePoints.value.push({ lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6) });
+    redrawRoute();
+  });
+
+  redrawRoute();
+
+  const fitPts = routePoints.value.length >= 2
+    ? routePoints.value.map(p => [p.lat, p.lng])
+    : refPts;
+  if (fitPts.length >= 2) routeMap.fitBounds(routeLeaflet.latLngBounds(fitPts), { padding: [50, 50] });
+  else if (fitPts.length === 1) routeMap.setView(fitPts[0], 13);
+}
+
+function redrawRoute() {
+  const L = routeLeaflet;
+  if (!L || !routeMap) return;
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  routeVertexMarkers.forEach(m => m.remove());
+  routeVertexMarkers = [];
+
+  const pts = routePoints.value;
+  if (pts.length >= 2) {
+    routeLine = L.polyline(pts.map(p => [p.lat, p.lng]), { color: '#059669', weight: 4, opacity: 0.9 }).addTo(routeMap);
+  }
+  pts.forEach((p, i) => {
+    const m = L.marker([p.lat, p.lng], {
+      draggable: true,
+      icon: L.divIcon({
+        className: '',
+        html: `<div class="route-vertex${i === 0 ? ' route-vertex-first' : ''}${i === pts.length - 1 && i > 0 ? ' route-vertex-last' : ''}"></div>`,
+        iconSize: [14, 14], iconAnchor: [7, 7],
+      }),
+    }).addTo(routeMap);
+    m.on('drag', (e) => {
+      const ll = e.target.getLatLng();
+      routePoints.value[i] = { lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6) };
+      if (routeLine) routeLine.setLatLngs(routePoints.value.map(q => [q.lat, q.lng]));
+    });
+    m.on('contextmenu', () => {
+      routePoints.value.splice(i, 1);
+      redrawRoute();
+    });
+    routeVertexMarkers.push(m);
+  });
+}
+
+function undoRoutePoint() {
+  routePoints.value.pop();
+  redrawRoute();
+}
+
+// วางโครงเส้นตั้งต้นตามจุดรับ (เรียงลำดับ) → ปลายทางทริป แล้วให้แอดมินดัดต่อ
+function seedRouteFromStops() {
+  const pts = [];
+  (routeSchedule.value?.pickup_points || []).forEach(pt => {
+    if (pt.latitude != null && pt.longitude != null) pts.push({ lat: +pt.latitude, lng: +pt.longitude });
+  });
+  const trip = routeSchedule.value?.trip;
+  if (trip?.latitude != null && trip?.longitude != null) pts.push({ lat: +trip.latitude, lng: +trip.longitude });
+  if (pts.length < 2) {
+    toast.error('รอบนี้ยังไม่มีพิกัดจุดรับ/ปลายทางพอให้วางโครงเส้น');
+    return;
+  }
+  routePoints.value = pts;
+  redrawRoute();
+  if (routeMap) routeMap.fitBounds(routeLeaflet.latLngBounds(pts.map(p => [p.lat, p.lng])), { padding: [50, 50] });
+}
+
+async function saveRoute() {
+  if (routePoints.value.length < 2) return;
+  routeSaving.value = true;
+  try {
+    await api.put(`/admin/schedules/${routeSchedule.value.id}/route`, { points: routePoints.value });
+    routeSchedule.value.custom_route = [...routePoints.value];
+    toast.success('บันทึกเส้นทางเดินรถแล้ว — หน้าลูกค้าใช้เส้นนี้แทนเส้นอัตโนมัติ');
+    closeRouteEditor();
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'บันทึกเส้นทางไม่สำเร็จ');
+  } finally {
+    routeSaving.value = false;
+  }
+}
+
+async function clearSavedRoute() {
+  if (!confirm('ลบเส้นทางที่วาดเอง แล้วกลับไปใช้เส้นทางอัตโนมัติจาก Google?')) return;
+  routeSaving.value = true;
+  try {
+    await api.put(`/admin/schedules/${routeSchedule.value.id}/route`, { points: [] });
+    routeSchedule.value.custom_route = null;
+    routePoints.value = [];
+    redrawRoute();
+    toast.success('กลับไปใช้เส้นทางอัตโนมัติแล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ลบเส้นทางไม่สำเร็จ');
+  } finally {
+    routeSaving.value = false;
+  }
+}
+
+function destroyRouteMap() {
+  routeVertexMarkers.forEach(m => m.remove());
+  routeVertexMarkers = [];
+  routeRefMarkers.forEach(m => m.remove());
+  routeRefMarkers = [];
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  if (routeMap) { routeMap.remove(); routeMap = null; }
+}
+
+function closeRouteEditor() {
+  destroyRouteMap();
+  showRouteEditor.value = false;
+  routeSchedule.value = null;
+  routePoints.value = [];
+}
+
+onUnmounted(() => destroyRouteMap());
 
 // ─── Manifest ──────────────────────────────────────────────
 const showManifest = ref(false);
@@ -5062,5 +5326,87 @@ onMounted(() => {
   background: #f3f4f6;
   color: #374151;
   font-size: 10px;
+}
+
+/* ─── Route editor (วาดเส้นทางเดินรถเอง) ─── */
+.route-editor-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.route-editor-map {
+  height: 56vh;
+  min-height: 380px;
+  width: 100%;
+  z-index: 0;
+}
+.route-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border);
+}
+.route-editor-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.route-badge-custom,
+.route-badge-auto {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.route-badge-custom {
+  background: #ecfdf5;
+  color: #059669;
+}
+.route-badge-auto {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.route-editor-map :deep(.route-ref-pin) {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #475569;
+  color: #fff;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.route-editor-map :deep(.route-ref-dest) {
+  width: 26px;
+  height: 26px;
+  background: #111111;
+}
+.route-editor-map :deep(.route-vertex) {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #059669;
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+}
+.route-editor-map :deep(.route-vertex-first) {
+  background: #2563eb;
+}
+.route-editor-map :deep(.route-vertex-last) {
+  background: #dc2626;
 }
 </style>

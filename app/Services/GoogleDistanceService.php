@@ -81,6 +81,84 @@ class GoogleDistanceService
     }
 
     /**
+     * เส้นทางขับรถหลายจุดจอด (จุดแรก → waypoints → จุดสุดท้าย) สำหรับวาด
+     * "เส้นทางเดินรถ" ของรอบทริปผ่านจุดรับทุกจุดจนถึงปลายทาง
+     *
+     * เส้นทางของรอบแทบไม่เปลี่ยน จึง cache ยาว (6 ชม.) โดยผูก key กับพิกัด
+     * ทุกจุด — แก้จุดรับเมื่อไหร่ key เปลี่ยนและดึงใหม่เอง
+     *
+     * @param  array<int, array{lat: float, lng: float}>  $points  เรียงตามลำดับจอด อย่างน้อย 2 จุด
+     * @return array{polyline:string, distance:int, duration:int, legs:array<int,array{distance:int,duration:int}>}|null
+     */
+    public function getMultiStopRoute(array $points): ?array
+    {
+        if (empty($this->apiKey) || count($points) < 2) {
+            return null;
+        }
+
+        // Directions API รับ waypoints ได้สูงสุด 25 จุด
+        $points = array_values($points);
+        if (count($points) > 25) {
+            $points = array_merge(
+                array_slice($points, 0, 24),
+                [end($points)]
+            );
+        }
+
+        $coords = array_map(
+            fn ($p) => round((float) $p['lat'], 5).','.round((float) $p['lng'], 5),
+            $points
+        );
+        $cacheKey = 'schedule-route:'.md5(implode('|', $coords));
+
+        return Cache::remember($cacheKey, 6 * 3600, function () use ($coords) {
+            try {
+                $waypoints = array_slice($coords, 1, -1);
+                $params = [
+                    'origin' => $coords[0],
+                    'destination' => end($coords),
+                    'mode' => 'driving',
+                    'language' => 'th',
+                    'key' => $this->apiKey,
+                ];
+                if (! empty($waypoints)) {
+                    $params['waypoints'] = implode('|', $waypoints);
+                }
+
+                $response = Http::timeout(15)->get($this->directionsUrl, $params);
+
+                if (! $response->successful()) {
+                    Log::error('Google Directions API HTTP error (multi-stop)', ['status' => $response->status()]);
+
+                    return null;
+                }
+
+                $data = $response->json();
+                if (($data['status'] ?? '') !== 'OK' || empty($data['routes'])) {
+                    return null;
+                }
+
+                $route = $data['routes'][0];
+                $legs = array_map(fn ($leg) => [
+                    'distance' => (int) ($leg['distance']['value'] ?? 0),
+                    'duration' => (int) ($leg['duration']['value'] ?? 0),
+                ], $route['legs'] ?? []);
+
+                return [
+                    'polyline' => $route['overview_polyline']['points'] ?? '',
+                    'distance' => array_sum(array_column($legs, 'distance')),
+                    'duration' => array_sum(array_column($legs, 'duration')),
+                    'legs' => $legs,
+                ];
+            } catch (\Throwable $e) {
+                Log::error('Google Directions API error (multi-stop)', ['error' => $e->getMessage()]);
+
+                return null;
+            }
+        });
+    }
+
+    /**
      * คำนวณระยะทางและเวลาเดินทางจาก origin ไปยัง destination
      *
      * @param  string  $mode  driving|walking|bicycling|transit

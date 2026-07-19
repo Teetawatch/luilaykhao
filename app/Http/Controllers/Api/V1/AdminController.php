@@ -38,6 +38,7 @@ use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
+use App\Support\Polyline;
 use App\Support\ThaiDate;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
@@ -2615,6 +2616,41 @@ class AdminController extends Controller
         $point->delete();
 
         return $this->success(null, 'ลบจุดรับผู้โดยสารสำเร็จ');
+    }
+
+    /**
+     * บันทึกเส้นทางเดินรถที่แอดมินวาดเอง — ลำดับพิกัดที่คลิกบนแผนที่
+     * ตั้งแต่ 2 จุดขึ้นไปจะ override เส้นจาก Google ในหน้าลูกค้า; ส่ง [] เพื่อลบ
+     * แล้วกลับไปใช้เส้นอัตโนมัติ
+     * PUT /api/v1/admin/schedules/{id}/route
+     */
+    public function updateScheduleRoute(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+
+        $validated = $request->validate([
+            'points' => ['present', 'array', 'max:2000'],
+            'points.*.lat' => ['required', 'numeric', 'between:-90,90'],
+            'points.*.lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        $points = array_values(array_map(fn ($p) => [
+            'lat' => round((float) $p['lat'], 6),
+            'lng' => round((float) $p['lng'], 6),
+        ], $validated['points']));
+
+        if (count($points) === 1) {
+            return $this->error('เส้นทางต้องมีอย่างน้อย 2 จุด หรือส่งค่าว่างเพื่อลบเส้นทาง', 422);
+        }
+
+        $schedule->custom_route = $points === [] ? null : $points;
+        $schedule->save();
+
+        return $this->success([
+            'schedule_id' => $schedule->id,
+            'custom_route' => $schedule->custom_route,
+            'distance' => count($points) >= 2 ? Polyline::pathDistanceMeters($points) : 0,
+        ], $points === [] ? 'ลบเส้นทางที่วาดเองแล้ว กลับไปใช้เส้นทางอัตโนมัติ' : 'บันทึกเส้นทางเดินรถสำเร็จ');
     }
 
     /**

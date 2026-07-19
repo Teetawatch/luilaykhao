@@ -115,6 +115,8 @@ Route::prefix('v1')->group(function () {
 
     // Schedules (public)
     Route::get('schedules/{id}', [ScheduleController::class, 'show']);
+    // เส้นทางเดินรถของรอบ (จุดรับ → ปลายทาง) — public เพราะโชว์ตั้งแต่หน้าทริปก่อนจอง
+    Route::get('schedules/{id}/route', [DistanceController::class, 'scheduleRoute'])->middleware('throttle:60,1');
 
     // Authenticated routes
     Route::middleware('auth:sanctum')->group(function () {
@@ -411,6 +413,8 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/pickup-points/sync-images', [AdminController::class, 'syncPickupImages']);
         Route::put('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'updatePickupPoint']);
         Route::delete('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'deletePickupPoint']);
+        // เส้นทางเดินรถที่แอดมินวาดเอง — override เส้นจาก Google ในหน้าลูกค้า
+        Route::put('schedules/{id}/route', [AdminController::class, 'updateScheduleRoute']);
 
         // Schedule Itinerary (กำหนดการรอบเดินทาง) — แอดมิน/operator สร้าง/แก้/ลบ/จัดลำดับ
         Route::get('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'index']);
