@@ -842,34 +842,107 @@ class DriverController extends Controller
     }
 
     /**
-     * Auto-complete a booking's pickup point once everyone confirmed there has
-     * checked in (e.g. via QR), firing the next-stop notification. Returns the
-     * markPickupCompleted result, or null when nothing was triggered.
+     * ปิดจุดรับอัตโนมัติเมื่อคนสุดท้ายของจุดนั้นเช็คอินแล้ว แล้วยิงแจ้งจุดถัดไปทันที
+     * สตาฟไม่ต้องกด "รับครบแล้ว" เอง
+     *
+     * นับหัวคนแบบ "รายผู้โดยสาร" ให้ตรงกับที่ manifest จัดกลุ่ม เพราะผู้โดยสาร
+     * เลือกจุดรับรายคนได้ (booking_passengers.pickup_point_id) การนับที่หัวการจอง
+     * อย่างเดียวจะพลาดสองทาง: ปิดจุดเร็วเกินไปทั้งที่ยังมีคนรอ และไม่ยอมปิดจุดที่
+     * เก็บครบแล้ว การจองหนึ่งใบจึงปิดได้หลายจุดในการสแกนครั้งเดียว
+     *
+     * @return array{next: ?array, notified: int}|null ผลของจุดสุดท้ายที่ปิด
      */
     private function maybeAutoCompletePickup(Booking $booking): ?array
     {
-        $pointId = $booking->pickup_point_id;
-        if (! $pointId) {
-            return null;
-        }
-
         $schedule = $booking->schedule;
-        $point = $schedule?->pickupPoints->firstWhere('id', $pointId);
-        if (! $point || $point->completed_at) {
+        if (! $schedule) {
             return null;
         }
 
-        $stillWaiting = Booking::where('schedule_id', $schedule->id)
+        $validIds = $schedule->pickupPoints->pluck('id')->all();
+        $touched = $this->effectivePickupPointIds($booking, $validIds);
+
+        if (empty($touched)) {
+            return null;
+        }
+
+        // จุดไหนยังมีคนรออยู่บ้าง — ดูจากการจองที่ยังไม่เช็คอินทั้งรอบ
+        $waiting = [];
+        $pending = Booking::with('passengers:id,booking_id,pickup_point_id')
+            ->where('schedule_id', $schedule->id)
             ->where('status', 'confirmed')
-            ->where('pickup_point_id', $pointId)
             ->where('checked_in', false)
-            ->exists();
+            ->get(['id', 'pickup_point_id', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_status']);
 
-        if ($stillWaiting) {
-            return null;
+        foreach ($pending as $other) {
+            foreach ($this->effectivePickupPointIds($other, $validIds) as $id) {
+                $waiting[$id] = true;
+            }
         }
 
-        return $this->markPickupCompleted($schedule, $point);
+        // ปิดไล่ตามลำดับการเดินรถ เพื่อให้ "จุดถัดไป" ที่คำนวณได้เป็นจุดที่ถูกต้อง
+        $points = $schedule->pickupPoints
+            ->whereIn('id', $touched)
+            ->sortBy('sort_order');
+
+        $result = null;
+
+        foreach ($points as $point) {
+            if ($point->completed_at || isset($waiting[$point->id])) {
+                continue;
+            }
+
+            $result = $this->markPickupCompleted($schedule, $point);
+        }
+
+        return $result;
+    }
+
+    /**
+     * จุดรับทั้งหมดที่ผู้โดยสารของการจองนี้ยืนรออยู่จริง
+     *
+     * ใช้กติกาเดียวกับ buildPickupGroups: จุดรายคนมาก่อนจุดระดับการจอง, จุดที่ชี้
+     * ข้ามรอบ (FK ค้างจากตอนย้ายรอบ) ถือว่าใช้ไม่ได้แล้วให้ตกกลับไปจุดของการจอง
+     * และการจองที่ปักหมุดเองไม่นับเข้าจุดตายตัวใด ๆ
+     *
+     * @param  array<int, int>  $validIds  id ของจุดรับที่อยู่ในรอบนี้จริง
+     * @return array<int, int>
+     */
+    private function effectivePickupPointIds(Booking $booking, array $validIds): array
+    {
+        $hasCustomPickup = ! $booking->pickup_point_id
+            && $booking->custom_pickup_lat !== null
+            && $booking->custom_pickup_lng !== null
+            && $booking->custom_pickup_status !== 'rejected';
+
+        if ($hasCustomPickup) {
+            return [];
+        }
+
+        $bookingPointId = in_array((int) $booking->pickup_point_id, $validIds, true)
+            ? (int) $booking->pickup_point_id
+            : null;
+
+        $ids = [];
+
+        foreach ($booking->passengers as $passenger) {
+            $own = in_array((int) $passenger->pickup_point_id, $validIds, true)
+                ? (int) $passenger->pickup_point_id
+                : null;
+
+            $resolved = $own ?? $bookingPointId;
+
+            if ($resolved) {
+                $ids[$resolved] = true;
+            }
+        }
+
+        // การจองเก่าที่ไม่มีรายชื่อผู้โดยสารแยก — ใช้จุดระดับการจองแทน
+        if (empty($ids) && $bookingPointId) {
+            $ids[$bookingPointId] = true;
+        }
+
+        return array_keys($ids);
     }
 
     /**

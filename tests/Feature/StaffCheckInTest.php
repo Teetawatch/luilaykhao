@@ -477,6 +477,175 @@ class StaffCheckInTest extends TestCase
             ->assertJsonCount(1, 'data.pickup_groups');
     }
 
+    /**
+     * ผู้โดยสารเลือกจุดรับรายคนได้ (booking_passengers.pickup_point_id) ซึ่งอาจ
+     * ต่างจากจุดรับระดับการจอง จุดจะครบก็ต่อเมื่อ "ทุกคนที่ยืนรออยู่จุดนั้นจริง"
+     * เช็คอินแล้ว ไม่ใช่แค่การจองที่ผูกจุดนั้นไว้ที่หัวการจอง
+     */
+    public function test_point_waits_for_passenger_level_pickup_before_auto_completing(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $bookingA] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        [$stop1, $stop2] = $this->createTwoStops($schedule);
+
+        $bookingA->update(['pickup_point_id' => $stop1->id]);
+
+        // การจองอีกใบผูกไว้ที่ stop 2 ที่หัวการจอง แต่ผู้โดยสารคนนี้เลือกขึ้น stop 1
+        // → stop 1 ยังต้องรอเขา แม้ไม่มีการจองใบไหนที่หัวการจองชี้ stop 1 อีกแล้ว
+        $bookingB = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'pickup_point_id' => $stop2->id,
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+        BookingPassenger::create([
+            'booking_id' => $bookingB->id,
+            'name' => 'Rides From Stop 1',
+            'phone' => '0800000001',
+            'pickup_point_id' => $stop1->id,
+        ]);
+
+        $nextCustomer = User::factory()->create();
+        $bookingC = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => $nextCustomer->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'pickup_point_id' => $stop2->id,
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+        BookingPassenger::create([
+            'booking_id' => $bookingC->id,
+            'name' => 'Waits At Stop 2',
+            'phone' => '0800000002',
+        ]);
+
+        // เช็คอิน bookingA — stop 1 ยังเหลือผู้โดยสารของ bookingB ที่เลือกจุดนี้
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $bookingA->qr_code])
+            ->assertOk();
+
+        $this->assertNull(
+            $stop1->fresh()->completed_at,
+            'stop 1 ต้องยังไม่ปิด เพราะยังมีผู้โดยสารที่เลือกจุดนี้รายคนยังไม่เช็คอิน',
+        );
+        $this->assertDatabaseMissing('smart_notifications', [
+            'user_id' => $nextCustomer->id,
+            'type' => 'pickup_approaching',
+        ]);
+
+        // เช็คอิน bookingB — ตอนนี้ไม่เหลือใครที่ stop 1 → ปิดจุดและแจ้งจุดถัดไป
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $bookingB->qr_code])
+            ->assertOk();
+
+        $this->assertNotNull($stop1->fresh()->completed_at);
+        $this->assertDatabaseHas('smart_notifications', [
+            'user_id' => $nextCustomer->id,
+            'type' => 'pickup_approaching',
+        ]);
+
+        unset($bookingC);
+    }
+
+    /**
+     * การจองใบเดียวที่ผู้โดยสารกระจายอยู่หลายจุด — เมื่อเช็คอิน (เช็คอินเป็นราย
+     * การจอง) ต้องปิดได้ทุกจุดที่คนของการจองนี้เป็นคนสุดท้าย ไม่ใช่แค่จุดที่หัวการจอง
+     */
+    public function test_check_in_completes_every_point_the_booking_covers(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        [$schedule, $booking] = $this->createConfirmedBooking();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        [$stop1, $stop2] = $this->createTwoStops($schedule);
+        $stop3 = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'Stop 3',
+            'price' => 0,
+            'sort_order' => 3,
+        ]);
+
+        // การจองนี้: หัวการจองอยู่ stop 2 แต่มีผู้โดยสารอีกคนขึ้นที่ stop 1
+        $booking->update(['pickup_point_id' => $stop2->id]);
+        BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Boards At Stop 1',
+            'phone' => '0800000003',
+            'pickup_point_id' => $stop1->id,
+        ]);
+
+        $nextCustomer = User::factory()->create();
+        $bookingAtStop3 = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => $nextCustomer->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'pickup_point_id' => $stop3->id,
+            'total_amount' => 1500,
+            'paid_amount' => 1500,
+        ]);
+        BookingPassenger::create([
+            'booking_id' => $bookingAtStop3->id,
+            'name' => 'Waits At Stop 3',
+            'phone' => '0800000004',
+        ]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson('/api/v1/staff/check-in/confirm', ['qr_code' => $booking->qr_code])
+            ->assertOk();
+
+        // การสแกนครั้งเดียวเก็บครบทั้ง stop 1 และ stop 2 → ทั้งคู่ต้องปิด
+        $this->assertNotNull($stop1->fresh()->completed_at, 'stop 1 ต้องถูกปิดด้วย');
+        $this->assertNotNull($stop2->fresh()->completed_at, 'stop 2 ต้องถูกปิด');
+        $this->assertNull($stop3->fresh()->completed_at);
+
+        $this->assertDatabaseHas('smart_notifications', [
+            'user_id' => $nextCustomer->id,
+            'type' => 'pickup_approaching',
+        ]);
+    }
+
+    /** @return array{0: SchedulePickupPoint, 1: SchedulePickupPoint} */
+    private function createTwoStops(TripSchedule $schedule): array
+    {
+        return [
+            SchedulePickupPoint::create([
+                'schedule_id' => $schedule->id,
+                'region' => 'bangkok',
+                'region_label' => 'กรุงเทพฯ',
+                'pickup_location' => 'Stop 1',
+                'price' => 0,
+                'sort_order' => 1,
+            ]),
+            SchedulePickupPoint::create([
+                'schedule_id' => $schedule->id,
+                'region' => 'bangkok',
+                'region_label' => 'กรุงเทพฯ',
+                'pickup_location' => 'Stop 2',
+                'price' => 0,
+                'sort_order' => 2,
+            ]),
+        ];
+    }
+
     private function createConfirmedBooking(): array
     {
         $customer = User::factory()->create();
