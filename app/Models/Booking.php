@@ -48,6 +48,8 @@ class Booking extends Model
         'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path',
         'promotion_id', 'promotion_code', 'discount_amount',
         'is_join_trip', 'flexi_surcharge',
+        'is_gift', 'gift_code', 'gift_from_name', 'gift_message',
+        'gifted_by_user_id', 'gift_claimed_at',
     ];
 
     protected function casts(): array
@@ -69,6 +71,8 @@ class Booking extends Model
             'is_group' => 'boolean',
             'checked_in' => 'boolean',
             'is_join_trip' => 'boolean',
+            'is_gift' => 'boolean',
+            'gift_claimed_at' => 'datetime',
             'installment_count' => 'integer',
             'installment_interval_days' => 'integer',
             'transfer_datetime' => 'datetime',
@@ -97,6 +101,29 @@ class Booking extends Model
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    /**
+     * ผู้ซื้อของขวัญคนเดิม — เซ็ตหลังผู้รับกดรับ (ก่อนรับ ผู้ซื้อคือ user_id)
+     */
+    public function giftedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'gifted_by_user_id');
+    }
+
+    /**
+     * user id ของ "ผู้ให้ของขวัญ" ณ ปัจจุบัน — ก่อนรับคือเจ้าของการจอง (ผู้ซื้อ)
+     * หลังรับ ownership ย้ายไปผู้รับแล้ว ผู้ให้อยู่ที่ gifted_by_user_id
+     */
+    public function giftGiverUserId(): ?int
+    {
+        if (! $this->is_gift) {
+            return null;
+        }
+
+        return $this->gift_claimed_at !== null
+            ? $this->gifted_by_user_id
+            : $this->user_id;
     }
 
     public function schedule(): BelongsTo
@@ -207,6 +234,54 @@ class Booking extends Model
     public static function generateQrCode(): string
     {
         return 'QR-'.strtoupper(Str::random(16));
+    }
+
+    /**
+     * โค้ดของขวัญแบบอ่านง่าย 8 ตัว — ตัดอักขระที่สับสนง่าย (0/O, 1/I/L)
+     * เพราะผู้รับต้องพิมพ์ตามที่เห็นจากแชท/การ์ดอวยพร
+     */
+    public static function generateGiftCode(): string
+    {
+        $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+        do {
+            $code = '';
+            for ($i = 0; $i < 8; $i++) {
+                $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
+        } while (static::where('gift_code', $code)->exists());
+
+        return $code;
+    }
+
+    /**
+     * ลิงก์เว็บสาธารณะสำหรับหน้า reveal ของขวัญ — ผู้ให้ส่งลิงก์นี้ให้ผู้รับ
+     * (กดแล้วเปิดหน้าเปิดของขวัญบนเว็บ + ปุ่มเปิดในแอปเพื่อกดรับ)
+     */
+    public function giftUrl(): ?string
+    {
+        if (! $this->is_gift || empty($this->gift_code)) {
+            return null;
+        }
+
+        return url('/gift/'.$this->gift_code);
+    }
+
+    /**
+     * ชำระเงินครบทั้งการจองแล้วหรือยัง — เงื่อนไขก่อนให้ผู้รับกดรับของขวัญ
+     * (ห้ามส่งของขวัญที่ยังมียอดค้างไปให้ผู้รับแบกภาระ)
+     */
+    public function isFullyPaid(): bool
+    {
+        if ($this->status !== 'confirmed') {
+            return false;
+        }
+
+        return match ($this->payment_type ?? 'full') {
+            'deposit' => $this->balance_paid_at !== null,
+            'installment' => ! $this->installmentPayments()->where('status', '!=', 'paid')->exists(),
+            default => true,
+        };
     }
 
     /**

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\FlexiDepartureController;
+use App\Http\Controllers\Api\V1\GiftController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
@@ -141,6 +142,11 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
         Route::get('bookings/{ref}/recap', [BookingController::class, 'recap']);
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
+
+        // Gifts / ซื้อทริปเป็นของขวัญ (ผู้รับกรอกโค้ดเพื่อรับการจองมาเป็นของตัวเอง)
+        Route::get('gifts/sent', [GiftController::class, 'sent']);
+        Route::get('gifts/{code}', [GiftController::class, 'preview']);
+        Route::post('gifts/{code}/claim', [GiftController::class, 'claim'])->middleware('throttle:10,1');
 
         // Booking members / companion invites (เชิญเพื่อนเข้าการจองเดียวกัน)
         Route::get('bookings/{ref}/members', [BookingMemberController::class, 'index']);

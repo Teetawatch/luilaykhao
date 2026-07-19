@@ -15,6 +15,10 @@ class CreateBookingRequest extends FormRequest
 
     public function rules(): array
     {
+        // ซื้อเป็นของขวัญ: ผู้ให้รู้แค่ชื่อผู้รับ — ข้อมูลผู้เดินทางที่เหลือ
+        // จะถูกเติมจากโปรไฟล์ผู้รับตอนกดรับของขวัญ (GiftService::claim)
+        $passengerRequired = $this->boolean('is_gift') ? 'nullable' : 'required';
+
         return [
             'schedule_id' => ['required', 'exists:trip_schedules,id'],
             'pickup_region' => ['nullable', 'string', 'max:50'],
@@ -26,22 +30,22 @@ class CreateBookingRequest extends FormRequest
             'seat_ids' => ['nullable', 'array'],
             'seat_ids.*' => ['string', 'max:10'],
             'passengers' => ['required', 'array', 'min:1'],
-            'passengers.*.title' => ['required', 'string', 'max:50'],
+            'passengers.*.title' => [$passengerRequired, 'string', 'max:50'],
             'passengers.*.name' => ['required', 'string', 'max:255'],
-            'passengers.*.nickname' => ['required', 'string', 'max:100'],
-            'passengers.*.id_card' => ['required', 'digits:13'],
+            'passengers.*.nickname' => [$passengerRequired, 'string', 'max:100'],
+            'passengers.*.id_card' => [$passengerRequired, 'digits:13'],
             // Temporarily optional: the production mobile app does not send
             // birth_date yet. Revert to 'required' once the app ships.
             'passengers.*.birth_date' => ['nullable', 'date', 'before:today'],
-            'passengers.*.phone' => ['required', 'digits:10'],
+            'passengers.*.phone' => [$passengerRequired, 'digits:10'],
             'passengers.*.email' => ['nullable', 'email', 'max:255'],
             'passengers.0.email' => ['required_if:booking_for,friend', 'nullable', 'email', 'max:255'],
-            'passengers.*.blood_group' => ['required', 'in:A,B,O,AB'],
+            'passengers.*.blood_group' => [$passengerRequired, 'in:A,B,O,AB'],
             'passengers.*.allergies' => ['nullable', 'string', 'max:1000'],
-            'passengers.*.halal_food' => ['required', 'boolean'],
+            'passengers.*.halal_food' => [$passengerRequired, 'boolean'],
             'passengers.*.health_notes' => ['nullable', 'string'],
-            'passengers.*.emergency_contact' => ['required', 'string', 'max:255'],
-            'passengers.*.emergency_phone' => ['required', 'digits:10'],
+            'passengers.*.emergency_contact' => [$passengerRequired, 'string', 'max:255'],
+            'passengers.*.emergency_phone' => [$passengerRequired, 'digits:10'],
             'passengers.*.pickup_point_id' => ['nullable', 'integer', 'exists:schedule_pickup_points,id'],
             'passengers.*.dive_cert_level' => ['nullable', 'string'],
             'passengers.*.cert_number' => ['nullable', 'string'],
@@ -51,6 +55,9 @@ class CreateBookingRequest extends FormRequest
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
             'is_join_trip' => ['nullable', 'boolean'],
+            'is_gift' => ['nullable', 'boolean'],
+            'gift_from_name' => ['nullable', 'string', 'max:100', 'required_if:is_gift,true'],
+            'gift_message' => ['nullable', 'string', 'max:500'],
             'booking_for' => ['nullable', 'in:self,friend'],
             'selected_addons' => ['nullable', 'array'],
             'selected_addons.*' => ['integer', 'min:0'],
@@ -110,6 +117,12 @@ class CreateBookingRequest extends FormRequest
 
                 foreach ($passengers as $index => $passenger) {
                     $title = $passenger['title'] ?? '';
+
+                    // ของขวัญ: ผู้ให้ไม่รู้คำนำหน้าผู้รับ — ตรวจซ้ำอีกทีตอนกดรับ (GiftService)
+                    if ($this->boolean('is_gift') && $title === '') {
+                        continue;
+                    }
+
                     if (! in_array($title, $allowedTitles)) {
                         $validator->errors()->add(
                             "passengers.{$index}.title",

@@ -10,6 +10,8 @@ use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCreatedMail;
 use App\Mail\BookingStatusChangedMail;
 use App\Mail\DepositPaidMail;
+use App\Mail\GiftClaimedMail;
+use App\Mail\GiftPurchasedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
 use App\Mail\PaymentConfirmedMail;
@@ -100,6 +102,26 @@ class EmailTemplatesRenderTest extends TestCase
             'welcome' => [fn ($t) => new WelcomeRegistrationMail($t->booking->user)],
             'admin-new-booking' => [fn ($t) => new AdminNewBookingMail($t->booking)],
             'admin-payment-received' => [fn ($t) => new AdminPaymentReceivedMail($t->booking, 'deposit')],
+            'gift-purchased' => [function ($t) {
+                $t->booking->forceFill([
+                    'is_gift' => true,
+                    'gift_code' => 'K7XPQ2MB',
+                    'gift_from_name' => 'พี่หมี',
+                    'gift_message' => 'สุขสันต์วันเกิดนะ',
+                ]);
+
+                return new GiftPurchasedMail($t->booking);
+            }],
+            'gift-claimed' => [function ($t) {
+                $t->booking->forceFill([
+                    'is_gift' => true,
+                    'gift_code' => 'K7XPQ2MB',
+                    'gift_from_name' => 'พี่หมี',
+                    'gifted_by_user_id' => $t->booking->user_id,
+                ])->setRelation('giftedBy', $t->booking->user);
+
+                return new GiftClaimedMail($t->booking, 'น้องมายด์');
+            }],
         ];
     }
 

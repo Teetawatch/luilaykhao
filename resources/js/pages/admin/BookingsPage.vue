@@ -161,6 +161,9 @@
                     <span v-if="booking.is_group" class="mini-badge group">กรุ๊ป</span>
                     <span v-if="booking.payment_type === 'installment'" class="mini-badge installment">ผ่อนชำระ</span>
                     <span v-else-if="booking.payment_type === 'deposit'" class="mini-badge deposit">มัดจำ</span>
+                    <span v-if="booking.is_gift" class="mini-badge gift">
+                      🎁 ของขวัญ{{ booking.gift?.claimed ? ' · รับแล้ว' : ' · รอรับ' }}
+                    </span>
                   </div>
                 </div>
                 <div class="booking-card-status">
@@ -347,6 +350,22 @@
               </span>
               <span v-if="detailBooking.is_join_trip" class="type-badge join">จอยทริป</span>
               <span v-if="detailBooking.is_group" class="type-badge">การจองกลุ่ม</span>
+              <span v-if="detailBooking.is_gift" class="type-badge gift">🎁 ของขวัญ</span>
+            </div>
+          </div>
+
+          <div v-if="detailBooking.is_gift" class="gift-note">
+            <span class="material-symbols-rounded">card_giftcard</span>
+            <div>
+              การจองนี้เป็น<strong>ของขวัญ</strong>
+              <template v-if="detailBooking.gift?.from_name">จาก “{{ detailBooking.gift.from_name }}”</template>
+              —
+              <template v-if="detailBooking.gift?.claimed">
+                ผู้รับกดรับแล้ว เจ้าของปัจจุบันคือ <strong>{{ detailBooking.user?.name || '-' }}</strong>
+              </template>
+              <template v-else>
+                <strong>ยังไม่ถูกกดรับ</strong> — ชื่อ/ข้อมูลผู้เดินทางจะถูกเติมเมื่อผู้รับกดรับในแอป
+              </template>
             </div>
           </div>
 
@@ -2852,6 +2871,32 @@ async function reverifySlip(bookingRef, slipType) {
   background: #f5f3ff;
   color: #7c3aed;
   border: 1px solid #ddd6fe;
+}
+
+.mini-badge.gift,
+.type-badge.gift {
+  background: #fdf2f8;
+  color: #be185d;
+  border: 1px solid #fbcfe8;
+}
+
+.gift-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fdf2f8;
+  border: 1px solid #fbcfe8;
+  color: #9d174d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gift-note .material-symbols-rounded {
+  font-size: 20px;
+  color: #be185d;
 }
 
 .payment-progress {

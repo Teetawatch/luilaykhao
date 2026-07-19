@@ -10,6 +10,8 @@ use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCreatedMail;
 use App\Mail\BookingStatusChangedMail;
 use App\Mail\DepositPaidMail;
+use App\Mail\GiftClaimedMail;
+use App\Mail\GiftPurchasedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
 use App\Mail\PaymentConfirmedMail;
@@ -88,8 +90,13 @@ class MailService
         $booking->load(['user', 'schedule.trip', 'passengers']);
 
         try {
-            // Customer email
-            $this->sendToCustomerEmails($booking, fn () => new BookingCreatedMail($booking));
+            // ของขวัญ: ผู้ซื้อได้อีเมลเฉพาะที่แนบโค้ด+ลิงก์แชร์ แทนอีเมลจองปกติ
+            // (ผู้เดินทางเป็นผู้รับที่ยังไม่กรอกอีเมล — ส่งถึงผู้ซื้อโดยตรง)
+            if ($booking->is_gift) {
+                $this->sendGiftPurchasedEmail($booking);
+            } else {
+                $this->sendToCustomerEmails($booking, fn () => new BookingCreatedMail($booking));
+            }
         } catch (\Throwable $e) {
             Log::error('Failed to send booking created email', [
                 'booking_ref' => $booking->booking_ref,
@@ -105,6 +112,50 @@ class MailService
             }
         } catch (\Throwable $e) {
             Log::error('Failed to send admin new booking email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * ส่งอีเมลของขวัญให้ผู้ซื้อ — แนบโค้ดและลิงก์แชร์ไว้ส่งต่อให้ผู้รับ
+     */
+    public function sendGiftPurchasedEmail(Booking $booking): void
+    {
+        $booking->loadMissing(['user', 'schedule.trip', 'passengers']);
+
+        $email = $booking->user?->email;
+        if (! filled($email)) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->send(new GiftPurchasedMail($booking));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send gift purchased email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * ส่งอีเมลให้ผู้ให้ของขวัญเมื่อผู้รับกดรับแล้ว
+     */
+    public function sendGiftClaimedEmail(Booking $booking, string $recipientName): void
+    {
+        $booking->loadMissing(['giftedBy', 'schedule.trip']);
+
+        $email = $booking->giftedBy?->email;
+        if (! filled($email)) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->send(new GiftClaimedMail($booking, $recipientName));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send gift claimed email', [
                 'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
             ]);

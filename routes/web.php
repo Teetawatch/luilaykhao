@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminPaymentWebController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PublicBirthdateController;
+use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\SlipController;
@@ -49,6 +50,46 @@ Route::get('/track/{token}', function (string $token) {
 Route::get('/driver/track', function () {
     return view('driver-track');
 });
+
+// Gift reveal — หน้า "เปิดของขวัญ" สาธารณะจากลิงก์ที่ผู้ให้ส่งให้ผู้รับ
+Route::get('/gift/{code}', [PublicGiftController::class, 'show'])
+    ->where('code', '[A-Za-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('public.gift.show');
+
+// Universal Links (iOS) — ผูกโดเมนกับแอปเพื่อให้ https://luilaykhao.com/gift/*
+// เปิดแอปโดยตรง ต้องเสิร์ฟที่ /.well-known/ เป็น application/json ผ่าน https ห้าม redirect
+// คืน 404 เมื่อยังไม่ตั้งค่า IOS_APP_ID เพื่อไม่ให้ Apple แคชไฟล์ที่ผูกผิด
+Route::get('/.well-known/apple-app-site-association', function () {
+    $appId = config('app.ios_app_id');
+    abort_if(blank($appId), 404);
+
+    return response()->json([
+        'applinks' => [
+            'apps' => [],
+            'details' => [[
+                'appID' => $appId,
+                'paths' => ['/gift/*'],
+            ]],
+        ],
+    ]);
+})->name('well-known.aasa');
+
+// App Links (Android) — ผูก package + ลายนิ้วมือใบเซ็นแอปกับโดเมน
+// คืน 404 เมื่อยังไม่ตั้งค่า ANDROID_CERT_FINGERPRINTS
+Route::get('/.well-known/assetlinks.json', function () {
+    $fingerprints = config('app.android_cert_fingerprints');
+    abort_if(empty($fingerprints), 404);
+
+    return response()->json([[
+        'relation' => ['delegate_permission/common.handle_all_urls'],
+        'target' => [
+            'namespace' => 'android_app',
+            'package_name' => config('app.android_package'),
+            'sha256_cert_fingerprints' => array_values($fingerprints),
+        ],
+    ]]);
+})->name('well-known.assetlinks');
 
 // Public photo album — ดาวน์โหลดรูปประจำรอบจากลิงก์สาธารณะ (ไม่ต้องล็อกอิน)
 Route::get('/album/{token}', function (string $token) {

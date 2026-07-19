@@ -42,6 +42,18 @@ return [
         'อัปเดตเพื่อใช้ฟีเจอร์ใหม่และแก้ไขบั๊กล่าสุด',
     ),
 
+    // Universal / App Links — ตั้งค่าเพื่อให้ลิงก์ https://luilaykhao.com/gift/*
+    // เปิดแอปได้โดยตรง ไฟล์ well-known สร้างจากค่าเหล่านี้ (routes/web.php)
+    // - ios_app_id: <AppleTeamID>.com.luilaykhao.app (ดู Team ID ใน Apple Developer)
+    // - android_cert_fingerprints: SHA256 ของใบเซ็นแอป (release keystore + Play App Signing)
+    //   หาได้จาก `keytool -list -v -keystore <release.keystore>` หรือ Play Console → App integrity
+    'ios_app_id' => env('IOS_APP_ID'),
+    'android_package' => env('ANDROID_PACKAGE', 'com.luilaykhao.app'),
+    'android_cert_fingerprints' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('ANDROID_CERT_FINGERPRINTS', '')),
+    ))),
+
     /*
     |--------------------------------------------------------------------------
     | Support Contact (consumed by /api/v1/stats)

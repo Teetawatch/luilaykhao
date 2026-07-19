@@ -43,6 +43,9 @@ class BookingService
         array $selectedRentals = [],
         ?array $customPickup = null,
         bool $verifySeatLocks = true,
+        bool $isGift = false,
+        ?string $giftFromName = null,
+        ?string $giftMessage = null,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -56,7 +59,7 @@ class BookingService
         $bookedBeforeBooking = null;
         $bookedAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -313,6 +316,10 @@ class BookingService
                 'promotion_code' => $promotionId ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
                 'is_join_trip' => $isJoinTrip,
+                'is_gift' => $isGift,
+                'gift_code' => $isGift ? Booking::generateGiftCode() : null,
+                'gift_from_name' => $isGift ? $giftFromName : null,
+                'gift_message' => $isGift ? $giftMessage : null,
             ]);
 
             // Create passengers

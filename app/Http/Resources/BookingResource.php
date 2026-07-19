@@ -63,6 +63,22 @@ class BookingResource extends JsonResource
             'group_name' => $this->group_name,
             'group_notes' => $this->group_notes,
             'is_join_trip' => (bool) $this->is_join_trip,
+            'is_gift' => (bool) $this->is_gift,
+            'gift' => $this->when((bool) $this->is_gift, function () use ($request) {
+                $viewerIsGiver = $request->user() && $this->giftGiverUserId() === $request->user()->id;
+
+                return [
+                    'from_name' => $this->gift_from_name,
+                    'message' => $this->gift_message,
+                    'claimed' => $this->gift_claimed_at !== null,
+                    'claimed_at' => $this->gift_claimed_at?->toISOString(),
+                    'viewer_is_giver' => $viewerIsGiver,
+                    // โค้ด + ลิงก์แชร์เป็นสิทธิ์รับของขวัญ — เปิดให้เห็นเฉพาะผู้ให้เท่านั้น
+                    'code' => $viewerIsGiver ? $this->gift_code : null,
+                    'share_url' => $viewerIsGiver ? $this->giftUrl() : null,
+                    'is_fully_paid' => $this->isFullyPaid(),
+                ];
+            }),
             'qr_code' => $this->qr_code,
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),

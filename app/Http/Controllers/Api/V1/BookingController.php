@@ -52,6 +52,9 @@ class BookingController extends Controller
                     'lng' => (float) $request->custom_pickup_lng,
                     'note' => $request->custom_pickup_note,
                 ] : null,
+                isGift: $request->boolean('is_gift'),
+                giftFromName: $request->gift_from_name,
+                giftMessage: $request->gift_message,
             );
 
             return $this->success(new BookingResource($booking), 'สร้างการจองสำเร็จ', 201);
