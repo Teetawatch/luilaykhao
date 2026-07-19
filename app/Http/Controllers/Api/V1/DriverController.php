@@ -561,6 +561,8 @@ class DriverController extends Controller
                 ->filter(fn ($addon) => $addon['name'] !== '')
                 ->values();
 
+            $bookingPoint = $this->pointOnSchedule($booking->pickupPoint, $booking);
+
             return [
                 'booking_ref' => $booking->booking_ref,
                 'status' => $booking->status,
@@ -574,10 +576,10 @@ class DriverController extends Controller
                 'is_group' => (bool) $booking->is_group,
                 'group_name' => $booking->group_name,
                 'pickup_region' => $booking->pickup_region,
-                'pickup_location' => $booking->pickupPoint?->pickup_location,
-                'pickup_region_label' => $booking->pickupPoint?->region_label,
-                'pickup_map_url' => $booking->pickupPoint?->map_url,
-                'pickup_notes' => $booking->pickupPoint?->notes,
+                'pickup_location' => $bookingPoint?->pickup_location,
+                'pickup_region_label' => $bookingPoint?->region_label,
+                'pickup_map_url' => $bookingPoint?->map_url,
+                'pickup_notes' => $bookingPoint?->notes,
                 'passenger_count' => $passengers->count(),
                 'passengers' => $passengers,
                 'selected_addons' => $addons,
@@ -661,6 +663,19 @@ class DriverController extends Controller
     }
 
     /**
+     * ใช้จุดรับได้ต่อเมื่อเป็นจุดของรอบเดียวกับการจอง — กัน FK ที่ค้างจากรอบเดิม
+     * (การจองที่ถูกย้ายรอบ/ข้ามทริป) พาข้อมูลจุดรับและเวลารับของทริปเดิมมาแสดง
+     */
+    private function pointOnSchedule(?SchedulePickupPoint $point, Booking $booking): ?SchedulePickupPoint
+    {
+        if (! $point) {
+            return null;
+        }
+
+        return (int) $point->schedule_id === (int) $booking->schedule_id ? $point : null;
+    }
+
+    /**
      * จัดผู้โดยสารทุกคนเป็นกลุ่มตามจุดรับ (ผู้โดยสารแต่ละคนอาจเลือกจุดรับเองได้
      * ไม่งั้นใช้จุดรับระดับการจอง) พร้อมข้อมูลครบ + สถานะเช็คอินรายคน
      */
@@ -683,7 +698,12 @@ class DriverController extends Controller
                 // จุดปักหมุดเองเป็นระดับการจอง — ถ้าการจองใช้หมุด ผู้โดยสารทุกคนอยู่กลุ่มหมุดนั้น
                 // (ไม่สนจุดรับรายคนที่อาจค้างจากตอนจองด้วยจุดตายตัวแล้วแอดมินเปลี่ยนเป็นหมุดภายหลัง)
                 $isCustom = $hasCustomPickup;
-                $point = $isCustom ? null : ($passenger->pickupPoint ?: $booking->pickupPoint);
+                // จุดรับต้องเป็นของรอบนี้เท่านั้น — การจองที่เคยถูกย้ายรอบ/ข้ามทริปอาจมี FK
+                // ค้างชี้จุดรับของรอบเดิม ซึ่งจะพาเวลารับของทริปเดิมมาแสดงตอนเช็คอิน
+                $point = $isCustom
+                    ? null
+                    : ($this->pointOnSchedule($passenger->pickupPoint, $booking)
+                        ?: $this->pointOnSchedule($booking->pickupPoint, $booking));
                 $key = $isCustom ? 'custom-'.$booking->id : ($point?->id ?? 0);
 
                 if (! isset($groups[$key])) {

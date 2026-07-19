@@ -11,11 +11,14 @@ use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Traits\RemapsBookingPickup;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BookingService
 {
+    use RemapsBookingPickup;
+
     public function __construct(
         private SeatLockService $seatLockService,
         private MailService $mailService,
@@ -844,6 +847,10 @@ class BookingService
                     ]);
                 }
             }
+
+            // จุดรับผูกกับรอบ — จุดรับรายคนที่ค้างจากรอบเดิมต้องย้ายตาม (จับคู่จากชื่อจุด)
+            // ไม่งั้นสตาฟจะเห็นจุดรับ/เวลารับของรอบเดิมตอนเช็คอิน
+            $this->remapPassengerPickupPoints($booking, $this->pickupPointMap($source, $target));
 
             $booking->update([
                 'schedule_id' => $target->id,

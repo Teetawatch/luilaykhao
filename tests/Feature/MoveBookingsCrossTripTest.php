@@ -189,4 +189,204 @@ class MoveBookingsCrossTripTest extends TestCase
         $booking->refresh();
         $this->assertSame($targetPoint->id, $booking->pickup_point_id);
     }
+
+    public function test_cross_trip_move_remaps_passenger_level_pickup_points(): void
+    {
+        $admin = $this->makeAdmin();
+        $source = $this->makeSchedule('Source Trip');
+        $target = $this->makeSchedule('Other Trip');
+
+        // จุดรับชื่อเดียวกันคนละรอบ — เวลารับต่างกัน
+        $sourcePoint = SchedulePickupPoint::create([
+            'schedule_id' => $source->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'pickup_time' => '05:00',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+        $targetPoint = SchedulePickupPoint::create([
+            'schedule_id' => $target->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'pickup_time' => '07:30',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+        $orphanPoint = SchedulePickupPoint::create([
+            'schedule_id' => $source->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'ปั๊ม ปตท. วิภาวดี',
+            'pickup_time' => '05:30',
+            'price' => 0,
+            'sort_order' => 2,
+        ]);
+
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $source->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'total_amount' => 3000,
+            'pickup_point_id' => $sourcePoint->id,
+            'pickup_region' => 'bangkok',
+        ]);
+        $matched = BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Mover',
+            'phone' => '0800000000',
+            'pickup_point_id' => $sourcePoint->id,
+        ]);
+        $unmatched = BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Friend',
+            'phone' => '0800000001',
+            'pickup_point_id' => $orphanPoint->id,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules/move-bookings', [
+                'source_schedule_id' => $source->id,
+                'target_schedule_id' => $target->id,
+                'passenger_ids' => [$matched->id, $unmatched->id],
+            ])
+            ->assertOk();
+
+        // จุดรับรายคนต้องชี้จุดของรอบใหม่ (เวลา 07:30) ไม่ใช่ของรอบเดิม
+        $this->assertSame($targetPoint->id, $matched->fresh()->pickup_point_id);
+        // จับคู่ไม่ได้ → ล้างทิ้ง ไม่ปล่อยให้ค้างชี้รอบเดิม
+        $this->assertNull($unmatched->fresh()->pickup_point_id);
+    }
+
+    public function test_partial_move_remaps_pickup_points_of_moved_passengers_only(): void
+    {
+        $admin = $this->makeAdmin();
+        $source = $this->makeSchedule('Source Trip');
+        $target = $this->makeSchedule('Other Trip');
+
+        $sourcePoint = SchedulePickupPoint::create([
+            'schedule_id' => $source->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'pickup_time' => '05:00',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+        $targetPoint = SchedulePickupPoint::create([
+            'schedule_id' => $target->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'pickup_time' => '07:30',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $source->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'total_amount' => 3000,
+            'pickup_point_id' => $sourcePoint->id,
+            'pickup_region' => 'bangkok',
+        ]);
+        $moving = BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Mover',
+            'phone' => '0800000000',
+            'pickup_point_id' => $sourcePoint->id,
+        ]);
+        $staying = BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Stayer',
+            'phone' => '0800000001',
+            'pickup_point_id' => $sourcePoint->id,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules/move-bookings', [
+                'source_schedule_id' => $source->id,
+                'target_schedule_id' => $target->id,
+                'passenger_ids' => [$moving->id],
+            ])
+            ->assertOk();
+
+        $moving->refresh();
+        $staying->refresh();
+
+        $this->assertNotSame($booking->id, $moving->booking_id, 'ผู้โดยสารที่ย้ายต้องอยู่การจองใหม่');
+        $this->assertSame($target->id, $moving->booking->schedule_id);
+        $this->assertSame($targetPoint->id, $moving->pickup_point_id);
+        // คนที่ไม่ได้ย้ายยังอยู่รอบเดิม จุดรับต้องไม่ถูกแตะ
+        $this->assertSame($sourcePoint->id, $staying->pickup_point_id);
+    }
+
+    public function test_admin_edit_booking_schedule_change_remaps_pickup_points(): void
+    {
+        $admin = $this->makeAdmin();
+        $source = $this->makeSchedule('Source Trip');
+        $target = $this->makeSchedule('Other Trip');
+
+        $sourcePoint = SchedulePickupPoint::create([
+            'schedule_id' => $source->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'pickup_time' => '05:00',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+        $targetPoint = SchedulePickupPoint::create([
+            'schedule_id' => $target->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'pickup_time' => '07:30',
+            'price' => 0,
+            'sort_order' => 1,
+        ]);
+
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $source->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'total_amount' => 1500,
+            'pickup_point_id' => $sourcePoint->id,
+            'pickup_region' => 'bangkok',
+        ]);
+        $passenger = BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Mover',
+            'phone' => '0800000000',
+            'pickup_point_id' => $sourcePoint->id,
+        ]);
+        BookingSeat::create([
+            'booking_id' => $booking->id,
+            'schedule_id' => $source->id,
+            'seat_id' => 'A1',
+            'passenger_name' => 'Mover',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", [
+                'schedule_id' => $target->id,
+            ])
+            ->assertOk();
+
+        $booking->refresh();
+        $this->assertSame($target->id, $booking->schedule_id);
+        $this->assertSame($targetPoint->id, $booking->pickup_point_id);
+        $this->assertSame($targetPoint->id, $passenger->fresh()->pickup_point_id);
+        // แถวที่นั่งต้องย้ายตามรอบด้วย ไม่ค้างกินที่นั่งรอบเดิม
+        $this->assertSame($target->id, $booking->seats()->first()->schedule_id);
+    }
 }

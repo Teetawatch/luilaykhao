@@ -42,6 +42,7 @@ use App\Support\Polyline;
 use App\Support\ThaiDate;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
+use App\Traits\RemapsBookingPickup;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -58,7 +59,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 class AdminController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, RemapsBookingPickup;
 
     public function __construct(
         private BookingService $bookingService,
@@ -496,13 +497,7 @@ class AdminController extends Controller
         }
 
         // Prepare pickup point mapping
-        $pickupMap = [];
-        foreach ($source->pickupPoints as $sPoint) {
-            $tPoint = $target->pickupPoints->where('pickup_location', $sPoint->pickup_location)->first();
-            if ($tPoint) {
-                $pickupMap[$sPoint->id] = $tPoint->id;
-            }
-        }
+        $pickupMap = $this->pickupPointMap($source, $target);
 
         $seatMoves = $bookings
             ->flatMap(fn ($booking) => $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments))
@@ -567,6 +562,9 @@ class AdminController extends Controller
 
                     $booking->update($updateData);
 
+                    // จุดรับรายคนก็ผูกกับรอบเดิม ต้องย้ายตามด้วย ไม่งั้นสตาฟจะเห็นเวลารับของทริปเดิม
+                    $this->remapPassengerPickupPoints($booking, $pickupMap);
+
                     $seatMoves->each(fn ($move) => $move['seat']->update([
                         'schedule_id' => $target->id,
                         'seat_id' => $move['target_seat_id'],
@@ -575,7 +573,12 @@ class AdminController extends Controller
                     $newBooking = $this->splitBookingForMove($booking, $selectedInBooking, $source, $target, $pickupMap);
 
                     $selectedInBooking
-                        ->each(fn ($passenger) => $passenger->update(['booking_id' => $newBooking->id]));
+                        ->each(fn ($passenger) => $passenger->update([
+                            'booking_id' => $newBooking->id,
+                            'pickup_point_id' => $passenger->pickup_point_id
+                                ? ($pickupMap[$passenger->pickup_point_id] ?? null)
+                                : null,
+                        ]));
 
                     $seatMoves
                         ->each(fn ($move) => $move['seat']->update([
@@ -627,35 +630,6 @@ class AdminController extends Controller
                 return $move;
             })
             ->values();
-    }
-
-    /**
-     * แปลงจุดรับของการจองให้เข้ากับรอบปลายทางเมื่อย้าย (รองรับย้ายข้ามทริป):
-     * - จับคู่ได้ → ใช้จุดรับปลายทาง
-     * - จับคู่ไม่ได้ → ล้าง FK ที่จะค้าง (ไม่ให้ชี้จุดรับของอีกรอบ) แต่คงชื่อภูมิภาคไว้เป็นข้อความ
-     * - จุดรับปักหมุดเอง/ไม่มีจุดรับ → คงเดิม (ไม่ผูกกับรอบ)
-     */
-    private function resolveMovedPickup(Booking $booking, TripSchedule $source, TripSchedule $target, array $pickupMap): array
-    {
-        if (! $booking->pickup_point_id) {
-            return [];
-        }
-
-        if (isset($pickupMap[$booking->pickup_point_id])) {
-            $targetPoint = $target->pickupPoints->firstWhere('id', $pickupMap[$booking->pickup_point_id]);
-
-            return [
-                'pickup_point_id' => $pickupMap[$booking->pickup_point_id],
-                'pickup_region' => $targetPoint?->region ?: $booking->pickup_region,
-            ];
-        }
-
-        $sourcePoint = $source->pickupPoints->firstWhere('id', $booking->pickup_point_id);
-
-        return [
-            'pickup_point_id' => null,
-            'pickup_region' => $booking->pickup_region ?: $sourcePoint?->region,
-        ];
     }
 
     private function splitBookingForMove(Booking $booking, $selectedPassengers, TripSchedule $source, TripSchedule $target, array $pickupMap): Booking
@@ -1352,6 +1326,26 @@ class AdminController extends Controller
                     $bookingUpdates['balance_slip_path'] = $request->file('balance_slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
                 }
 
+                // ย้ายรอบเดินทาง (รวมข้ามทริป) — จุดรับผูกกับรอบ ถ้าไม่ย้ายตาม การจองจะยัง
+                // ชี้จุดรับของรอบเดิม ทำให้เวลารับที่สตาฟเห็นตอนเช็คอินเป็นเวลาของทริปเดิม
+                $newScheduleId = (int) ($bookingUpdates['schedule_id'] ?? $booking->schedule_id);
+                if ($oldSchedule && $newScheduleId !== (int) $oldSchedule->id) {
+                    $newSchedule = TripSchedule::with('pickupPoints')->find($newScheduleId);
+
+                    if ($newSchedule) {
+                        $pickupMap = $this->pickupPointMap($oldSchedule, $newSchedule);
+                        $this->remapPassengerPickupPoints($booking, $pickupMap);
+
+                        // แอดมินระบุจุดรับใหม่มาเอง หรือเพิ่งปักหมุด → เคารพค่าที่ส่งมา
+                        if (! $customPickupSet && ! array_key_exists('pickup_point_id', $data)) {
+                            $bookingUpdates = array_merge(
+                                $bookingUpdates,
+                                $this->resolveMovedPickup($booking, $oldSchedule, $newSchedule, $pickupMap),
+                            );
+                        }
+                    }
+                }
+
                 if ($bookingUpdates) {
                     $booking->update($bookingUpdates);
                 }
@@ -1430,6 +1424,30 @@ class AdminController extends Controller
                                 'passenger_name' => $booking->passengers()->skip($index)->first()?->name,
                             ]);
                         }
+                    }
+                }
+
+                // ย้ายรอบโดยไม่ได้เลือกที่นั่งใหม่ — แถวที่นั่งยังค้างอยู่รอบเดิม ต้องย้ายตามไปด้วย
+                // ไม่งั้นที่นั่งค้างกินโควตารอบเก่า และรอบใหม่นับที่นั่งไม่ตรง
+                if (! array_key_exists('seat_ids', $data) && $oldSchedule && $oldSchedule->id !== $booking->schedule_id) {
+                    $movingSeats = $booking->seats()->where('schedule_id', $oldSchedule->id)->get();
+
+                    if ($movingSeats->isNotEmpty()) {
+                        TripSchedule::lockForUpdate()->find($booking->schedule_id);
+
+                        $taken = BookingSeat::where('schedule_id', $booking->schedule_id)
+                            ->whereIn('seat_id', $movingSeats->pluck('seat_id'))
+                            ->whereNot('booking_id', $booking->id)
+                            ->pluck('seat_id')
+                            ->unique()
+                            ->values();
+
+                        if ($taken->isNotEmpty()) {
+                            throw new \RuntimeException('ที่นั่ง '.$taken->join(', ').' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกที่นั่งใหม่ให้การจองนี้');
+                        }
+
+                        $booking->seats()->where('schedule_id', $oldSchedule->id)
+                            ->update(['schedule_id' => $booking->schedule_id]);
                     }
                 }
 
