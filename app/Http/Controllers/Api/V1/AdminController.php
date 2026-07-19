@@ -34,6 +34,7 @@ use App\Models\VehiclePickupPoint;
 use App\Services\BookingService;
 use App\Services\DriverLoginCodeService;
 use App\Services\MailService;
+use App\Services\ScheduleSeatNotifier;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\VehicleDriverService;
@@ -66,6 +67,7 @@ class AdminController extends Controller
         private MailService $mailService,
         private VehicleDriverService $vehicleDriverService,
         private DriverLoginCodeService $driverLoginCodes,
+        private ScheduleSeatNotifier $seatNotifier,
     ) {}
 
     // ─── Dashboard Stats ──────────────────────────────────────
@@ -455,6 +457,7 @@ class AdminController extends Controller
         $sameSchedule = (int) $source->id === (int) $target->id;
         $source->syncBookedSeats();
         $target->syncBookedSeats();
+        $bookedBeforeMove = (int) $target->booked_seats;
 
         $bookings = $source->bookings->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES);
         $selectedPassengerIds = collect($request->input('passenger_ids', []))
@@ -592,6 +595,16 @@ class AdminController extends Controller
             $source->syncBookedSeats();
             $target->syncBookedSeats();
         });
+
+        // ที่นั่งรอบปลายทางเพิ่มขึ้นเหมือนมีคนจอง — ต้องแจ้งเตือนเหมือนกัน (เต็ม /
+        // เหลือน้อย / ข้ามแถบสถานะการันตี) เดิมย้ายจนรอบเต็มแล้วเงียบสนิท
+        if (! $sameSchedule) {
+            $this->seatNotifier->seatsIncreased(
+                $target->id,
+                $bookedBeforeMove,
+                (int) $target->fresh()->booked_seats,
+            );
+        }
 
         return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ ".ThaiDate::full($target->departure_date).' สำเร็จ');
     }
@@ -1241,6 +1254,11 @@ class AdminController extends Controller
             ->where('booking_ref', $ref)
             ->firstOrFail();
 
+        // ที่นั่งของรอบปลายทางก่อนแก้ไข — ใช้เทียบว่าการแก้ครั้งนี้ทำให้ที่นั่งเพิ่มจนต้องแจ้งเตือนไหม
+        $destinationBefore = TripSchedule::find($data['schedule_id'] ?? $booking->schedule_id);
+        $destinationBefore?->syncBookedSeats();
+        $bookedBeforeUpdate = $destinationBefore ? (int) $destinationBefore->booked_seats : null;
+
         try {
             DB::transaction(function () use ($request, $data, $booking) {
                 $oldSchedule = $booking->schedule;
@@ -1539,6 +1557,17 @@ class AdminController extends Controller
             });
         } catch (\RuntimeException $e) {
             return $this->error($e->getMessage(), 422);
+        }
+
+        // ย้ายการจองเข้ารอบใหม่ก็ทำให้ที่นั่งรอบนั้นเพิ่ม — แจ้งเตือนเหมือนตอนลูกค้าจอง
+        $destination = TripSchedule::find($booking->fresh()->schedule_id);
+        if ($destination) {
+            $this->seatNotifier->seatsIncreased(
+                $destination->id,
+                $bookedBeforeUpdate,
+                (int) $destination->booked_seats,
+                $booking->booking_ref,
+            );
         }
 
         $booking = Booking::with([

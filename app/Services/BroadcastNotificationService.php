@@ -340,6 +340,9 @@ class BroadcastNotificationService
                     $this->broadcastAlmostReady($schedule);
                     $this->broadcastGuaranteed($schedule);
                     $this->broadcastLowSeats($schedule);
+                    // ตาข่ายกันพลาดสำหรับรอบที่เต็มจากทางอื่นที่ไม่ใช่การจอง
+                    // (แอดมินย้ายผู้โดยสารเข้ามา ฯลฯ) — self-guard ว่าเต็มจริงและ dedupe แล้ว
+                    $this->broadcastSoldOut($schedule);
                 }
             });
     }

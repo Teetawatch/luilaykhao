@@ -13,7 +13,6 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Traits\RemapsBookingPickup;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class BookingService
 {
@@ -28,6 +27,7 @@ class BookingService
         private LoyaltyService $loyaltyService,
         private BroadcastNotificationService $broadcastService,
         private TripAlertService $tripAlertService,
+        private ScheduleSeatNotifier $seatNotifier,
     ) {}
 
     public function createBooking(
@@ -383,143 +383,16 @@ class BookingService
         // Mark user's waitlist entry as booked (if they came from the waitlist)
         $this->waitlistService->markBooked($userId, $scheduleId);
 
-        // Alert staff via FCM when this booking just sold out the schedule, and
-        // blast customers a "sold out" push (waitlist nudge / FOMO) in real time.
-        if ($scheduleBecameFull) {
-            $this->notifyScheduleFull($booking);
-            $this->notifySoldOut($scheduleId);
-        }
-
-        // Real-time "almost sold out" push the instant this booking drops the
-        // round into the low band (3-2-1 seats left) — so a fast-selling round
-        // doesn't slip past the every-15-min sweep. Each level blasts once.
-        if (! $scheduleBecameFull
-            && $availableAfterBooking !== null
-            && $availableAfterBooking > 0
-            && $availableAfterBooking <= BroadcastNotificationService::LOW_SEAT_THRESHOLD) {
-            $this->notifyLowSeats($scheduleId);
-        }
-
-        // ระบบสถานะการันตีออกเดินทาง: ยิง push ทันทีเมื่อการจองนี้ดันรอบข้ามแถบ
-        // สถานะขึ้น (→ Almost Ready / → Guaranteed) เพื่อกระตุ้นให้ปิดรอบครบ
-        if ($bookedBeforeBooking !== null && $bookedAfterBooking !== null) {
-            $this->notifyDepartureStatusCrossing(
-                $scheduleId,
-                $bookedBeforeBooking,
-                $bookedAfterBooking,
-            );
-        }
+        // แจ้งเตือนที่นั่ง: เต็ม (staff FCM + ชวนเข้า waitlist) / เหลือน้อย 3-2-1 /
+        // ข้ามแถบสถานะการันตีออกเดินทาง — ทุกอย่าง self-guard และ dedupe ในตัว
+        $this->seatNotifier->seatsIncreased(
+            $scheduleId,
+            $bookedBeforeBooking,
+            $bookedAfterBooking,
+            $booking->booking_ref,
+        );
 
         return $booking;
-    }
-
-    /**
-     * แจ้งเตือนแบบเรียลไทม์เมื่อรอบเดินทางข้ามแถบสถานะการันตีขึ้น:
-     * เข้าสู่ 🟡 Almost Ready (5-7) หรือ 🟢 Guaranteed (8+) โดยยิงตามสถานะ
-     * ปลายทางสูงสุดที่ไปถึง (ถ้ากระโดดข้าม almost ไป guaranteed เลย ก็ยิงแค่
-     * guaranteed) ทำนอก DB transaction และ best-effort — ห้ามกระทบการจอง
-     */
-    private function notifyDepartureStatusCrossing(int $scheduleId, int $before, int $after): void
-    {
-        try {
-            $guarantee = TripSchedule::GUARANTEE_MIN_SEATS;
-            $almost = TripSchedule::ALMOST_READY_MIN_SEATS;
-
-            $crossedGuaranteed = $before < $guarantee && $after >= $guarantee;
-            $crossedAlmost = $before < $almost && $after >= $almost && $after < $guarantee;
-
-            if (! $crossedGuaranteed && ! $crossedAlmost) {
-                return;
-            }
-
-            $schedule = TripSchedule::with('trip')->find($scheduleId);
-            if (! $schedule) {
-                return;
-            }
-
-            if ($crossedGuaranteed) {
-                $this->broadcastService->broadcastGuaranteed($schedule);
-            } else {
-                $this->broadcastService->broadcastAlmostReady($schedule);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('BookingService: departure-status notification failed — '.$e->getMessage());
-        }
-    }
-
-    /**
-     * แจ้งเตือนลูกค้าแบบเรียลไทม์เมื่อรอบเดินทางเหลือที่นั่งน้อย (3-2-1 ที่นั่ง):
-     * ยิงทั้ง marketing broadcast (ทุกคน) และ trip alert (คนที่กดติดตามทริปนี้)
-     * ทำนอก DB transaction และ best-effort — ห้ามให้ error กระทบการจอง
-     */
-    private function notifyLowSeats(int $scheduleId): void
-    {
-        try {
-            $schedule = TripSchedule::with('trip')->find($scheduleId);
-            if (! $schedule) {
-                return;
-            }
-
-            $this->broadcastService->broadcastLowSeats($schedule);
-            $this->tripAlertService->notifyLowSeats($schedule);
-        } catch (\Throwable $e) {
-            Log::warning('BookingService: low-seat notification failed — '.$e->getMessage());
-        }
-    }
-
-    /**
-     * แจ้งเตือนลูกค้าแบบเรียลไทม์เมื่อรอบเดินทางเพิ่งถูกจองจนเต็มทุกที่นั่ง:
-     * ยิงทั้ง marketing broadcast (ทุกคน) และ trip alert (คนที่กดติดตามทริปนี้)
-     * เพื่อชวนเข้าคิว waitlist ทำนอก DB transaction และ best-effort
-     */
-    private function notifySoldOut(int $scheduleId): void
-    {
-        try {
-            $schedule = TripSchedule::with('trip')->find($scheduleId);
-            if (! $schedule) {
-                return;
-            }
-
-            $this->broadcastService->broadcastSoldOut($schedule);
-            $this->tripAlertService->notifySoldOut($schedule);
-        } catch (\Throwable $e) {
-            Log::warning('BookingService: sold-out notification failed — '.$e->getMessage());
-        }
-    }
-
-    /**
-     * แจ้งเตือนแอดมิน/ออปเปอเรเตอร์ผ่าน FCM เมื่อรอบเดินทางเพิ่งถูกจองจนเต็มทุกที่นั่ง
-     * ทำนอก DB transaction และไม่ให้ error กระทบการจอง (best-effort)
-     */
-    private function notifyScheduleFull(Booking $booking): void
-    {
-        try {
-            $schedule = $booking->schedule;
-            if (! $schedule) {
-                return;
-            }
-
-            $tripTitle = $schedule->trip?->title ?? 'ทริป';
-            $departure = $schedule->departureLabelThai();
-            $title = 'รอบเดินทางเต็มแล้ว 🎉';
-            $body = "{$tripTitle} รอบ {$departure} ถูกจองเต็มทุกที่นั่งแล้ว ({$schedule->total_seats} ที่นั่ง)";
-
-            User::role(['admin', 'operator'])->each(function (User $staff) use ($title, $body, $schedule, $booking) {
-                SmartNotification::send(
-                    $staff->id,
-                    'schedule_full',
-                    $title,
-                    $body,
-                    [
-                        'schedule_id' => (string) $schedule->id,
-                        'booking_ref' => $booking->booking_ref,
-                        'route' => 'admin.bookings',
-                    ],
-                );
-            });
-        } catch (\Throwable $e) {
-            Log::warning('BookingService: could not send schedule-full notification — '.$e->getMessage());
-        }
     }
 
     /**
