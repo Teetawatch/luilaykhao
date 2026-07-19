@@ -640,9 +640,15 @@ class AdminController extends Controller
 
         $movedPickup = $this->resolveMovedPickup($booking, $source, $target, $pickupMap);
 
+        // คอลัมน์ที่ unique ทั้งหมดต้องไม่ถูกคัดลอก ไม่งั้น insert ชน unique index (500)
+        // token เหล่านี้สร้างเมื่อถูกเรียกใช้ครั้งแรกอยู่แล้ว (ensureShareToken ฯลฯ) จึงปล่อยว่างได้
         $newBooking = $booking->replicate([
             'booking_ref',
             'qr_code',
+            'share_token',
+            'payment_token',
+            'birthdate_token',
+            'gift_code',
             'created_at',
             'updated_at',
             'checked_in',
@@ -652,6 +658,10 @@ class AdminController extends Controller
         $newBooking->fill(array_merge([
             'booking_ref' => Booking::generateRef(),
             'qr_code' => Booking::generateQrCode(),
+            'share_token' => null,
+            'payment_token' => null,
+            'birthdate_token' => null,
+            'gift_code' => null,
             'schedule_id' => $target->id,
             'is_group' => $selectedCount > 1,
             'total_amount' => round(((float) $booking->total_amount) * $ratio, 2),

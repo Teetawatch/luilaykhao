@@ -328,6 +328,57 @@ class MoveBookingsCrossTripTest extends TestCase
         $this->assertSame($sourcePoint->id, $staying->pickup_point_id);
     }
 
+    public function test_partial_move_does_not_copy_unique_tokens_to_the_split_booking(): void
+    {
+        $admin = $this->makeAdmin();
+        $source = $this->makeSchedule('Source Trip');
+        $target = $this->makeSchedule('Other Trip');
+
+        // การจองที่เคยเปิดลิงก์แชร์/ลิงก์ชำระเงิน จะมี token unique ติดอยู่
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $source->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'total_amount' => 3000,
+        ]);
+        $booking->ensureShareToken();
+        $booking->ensurePaymentToken();
+        $booking->ensureBirthdateToken();
+
+        $moving = BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Mover',
+            'phone' => '0800000000',
+        ]);
+        BookingPassenger::create([
+            'booking_id' => $booking->id,
+            'name' => 'Stayer',
+            'phone' => '0800000001',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules/move-bookings', [
+                'source_schedule_id' => $source->id,
+                'target_schedule_id' => $target->id,
+                'passenger_ids' => [$moving->id],
+            ])
+            ->assertOk();
+
+        $splitBooking = $moving->fresh()->booking;
+        $booking->refresh();
+
+        $this->assertNotSame($booking->id, $splitBooking->id);
+        // token ที่ unique ต้องไม่ถูกคัดลอกมา (เดิม insert ชน unique index → 500)
+        $this->assertNull($splitBooking->share_token);
+        $this->assertNull($splitBooking->payment_token);
+        $this->assertNull($splitBooking->birthdate_token);
+        // การจองเดิมยังถือ token ของตัวเองไว้ครบ
+        $this->assertNotNull($booking->share_token);
+        $this->assertNotNull($booking->payment_token);
+    }
+
     public function test_admin_edit_booking_schedule_change_remaps_pickup_points(): void
     {
         $admin = $this->makeAdmin();

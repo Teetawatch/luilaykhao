@@ -1465,16 +1465,72 @@
               ที่นั่งในรอบปลายทาง
             </div>
             <div v-if="splitSeatMapLoading" class="loading-state"><div class="spinner"></div></div>
+            <p v-else-if="splitSeatMapError" class="field-error">{{ splitSeatMapError }}</p>
             <template v-else>
-              <p v-if="splitSeatMapError" class="field-error">{{ splitSeatMapError }}</p>
-              <div v-for="row in splitSeatRows" :key="row.passenger.id" class="split-seat-row">
-                <span class="split-seat-name">{{ row.passenger.name }}</span>
-                <span class="split-seat-from">เดิม {{ row.originalSeatId || '—' }}</span>
-                <select v-model="splitSeatAssignments[row.passenger.id]">
-                  <option value="">— ไม่ระบุ (ใช้เบอร์เดิม) —</option>
-                  <option v-for="seat in splitAvailableSeats" :key="seat.id" :value="seat.id">{{ seat.id }}</option>
-                </select>
+              <p class="field-hint">
+                เลือกผู้โดยสารทางซ้าย แล้วกดที่นั่งบนผัง · ว่าง {{ splitAvailableSeats.length }} ที่นั่ง
+              </p>
+
+              <div class="split-seat-layout">
+                <div class="split-seat-passengers">
+                  <button
+                    v-for="row in splitSeatRows"
+                    :key="row.passenger.id"
+                    type="button"
+                    class="split-seat-person"
+                    :class="{ active: activeSplitPassengerId === row.passenger.id, assigned: splitSeatAssignments[row.passenger.id] }"
+                    @click="activeSplitPassengerId = row.passenger.id"
+                  >
+                    <span class="split-seat-person-name">{{ row.passenger.name }}</span>
+                    <span class="split-seat-person-meta">
+                      เดิม {{ row.originalSeatId || '—' }}
+                      <template v-if="row.originalSeatId && !row.originalSeatAvailable"> · เดิมไม่ว่าง</template>
+                    </span>
+                    <strong>{{ splitSeatAssignments[row.passenger.id] || 'ยังไม่เลือก' }}</strong>
+                  </button>
+                </div>
+
+                <div class="split-seat-map">
+                  <div class="split-seat-legend">
+                    <span><i class="split-legend-box available"></i>ว่าง</span>
+                    <span><i class="split-legend-box selected"></i>เลือกอยู่</span>
+                    <span><i class="split-legend-box booked"></i>จองแล้ว/ล็อก</span>
+                  </div>
+
+                  <div class="split-seat-vehicle">
+                    <div class="split-seat-front">
+                      <span>{{ splitSeatMap?.front_label || 'หน้ารถ' }}</span>
+                      <span v-if="splitSeatMap?.show_driver !== false" class="split-seat-driver">
+                        <span class="material-symbols-rounded">{{ splitSeatMap?.driver_icon || 'directions_car' }}</span>
+                        คนขับ
+                      </span>
+                    </div>
+
+                    <div class="split-seat-grid" :style="splitSeatGridStyle">
+                      <template v-for="cell in splitSeatCells" :key="cell.key">
+                        <div v-if="cell.type === 'aisle'" class="split-seat-aisle"></div>
+                        <button
+                          v-else-if="cell.seat"
+                          type="button"
+                          class="split-seat-button"
+                          :class="splitSeatButtonClass(cell.seat)"
+                          :disabled="!canSelectSplitSeat(cell.seat)"
+                          :title="splitSeatTitle(cell.seat)"
+                          @click="assignSplitSeat(cell.seat)"
+                        >
+                          <span class="material-symbols-rounded">airline_seat_recline_normal</span>
+                          <strong>{{ cell.seat.label || cell.seat.id }}</strong>
+                          <small v-if="splitSeatAssignedName(cell.seat.id)">{{ splitSeatAssignedName(cell.seat.id) }}</small>
+                        </button>
+                        <div v-else class="split-seat-empty"></div>
+                      </template>
+                    </div>
+
+                    <div class="split-seat-rear">{{ splitSeatMap?.rear_label || 'ท้ายรถ' }}</div>
+                  </div>
+                </div>
               </div>
+
               <p v-if="splitSeatError" class="field-error">{{ splitSeatError }}</p>
             </template>
           </section>
@@ -1549,6 +1605,7 @@ const splitSeatMap = ref(null);
 const splitSeatMapLoading = ref(false);
 const splitSeatMapError = ref('');
 const splitSeatAssignments = reactive({});
+const activeSplitPassengerId = ref(null);
 const splitSubmitting = ref(false);
 
 const splitPassengers = computed(() => splitBooking.value?.passengers || []);
@@ -1582,6 +1639,35 @@ const splitSeatRows = computed(() => {
     });
 });
 const splitAvailableSeats = computed(() => (splitSeatMap.value?.seats || []).filter((seat) => seat.status === 'available'));
+
+// ผังที่นั่งของรอบปลายทาง — คอลัมน์ว่าง ('') คือทางเดิน
+const splitSeatColumns = computed(() => splitSeatMap.value?.columns || []);
+const splitSeatGridStyle = computed(() => ({
+  gridTemplateColumns: splitSeatColumns.value.map((column) => (column === '' ? '34px' : '58px')).join(' '),
+}));
+const splitSeatCells = computed(() => {
+  if (!splitSeatMap.value) return [];
+
+  const seatsById = new Map((splitSeatMap.value.seats || []).map((seat) => [seat.id, seat]));
+  const cells = [];
+
+  for (let row = 1; row <= (splitSeatMap.value.rows || 0); row += 1) {
+    splitSeatColumns.value.forEach((column, columnIndex) => {
+      if (column === '') {
+        cells.push({ key: `aisle-${row}-${columnIndex}`, type: 'aisle' });
+        return;
+      }
+
+      const seatId = `${column}${row}`;
+      cells.push({ key: seatId, type: 'seat', seat: seatsById.get(seatId) || null });
+    });
+  }
+
+  return cells;
+});
+const activeSplitPassenger = computed(
+  () => splitSeatRows.value.find((row) => row.passenger.id === activeSplitPassengerId.value)?.passenger || null,
+);
 const splitSeatError = computed(() => {
   const assigned = splitSeatRows.value
     .map((row) => splitSeatAssignments[row.passenger.id])
@@ -2664,6 +2750,7 @@ function resetSplitSeatState() {
   splitSeatMap.value = null;
   splitSeatMapError.value = '';
   splitSeatMapLoading.value = false;
+  activeSplitPassengerId.value = null;
   Object.keys(splitSeatAssignments).forEach((key) => delete splitSeatAssignments[key]);
 }
 
@@ -2710,17 +2797,91 @@ async function fetchSplitSeatMap() {
     splitSeatMapLoading.value = false;
   }
 
-  // ที่นั่งเดิมว่างในรอบใหม่ → จองเบอร์เดิมให้เลย ไม่งั้นปล่อยว่างให้แอดมินเลือก
+  initializeSplitSeatAssignments();
+}
+
+// ที่นั่งเดิมว่างในรอบใหม่ → จองเบอร์เดิมให้เลย ไม่งั้นปล่อยว่างให้แอดมินกดเลือกบนผัง
+function initializeSplitSeatAssignments() {
+  const used = new Set();
+
   splitSeatRows.value.forEach((row) => {
     const current = splitSeatAssignments[row.passenger.id];
-    if (current && isSplitSeatAvailable(current)) return;
-    splitSeatAssignments[row.passenger.id] = row.originalSeatAvailable ? row.originalSeatId : '';
+    if (current && isSplitSeatAvailable(current) && !used.has(current)) {
+      used.add(current);
+      return;
+    }
+
+    if (row.originalSeatAvailable && !used.has(row.originalSeatId)) {
+      splitSeatAssignments[row.passenger.id] = row.originalSeatId;
+      used.add(row.originalSeatId);
+    } else {
+      splitSeatAssignments[row.passenger.id] = '';
+    }
   });
+
+  // ทิ้งที่นั่งของคนที่ถูกเอาออกจากรายการย้ายแล้ว
+  Object.keys(splitSeatAssignments).forEach((passengerId) => {
+    if (!splitSeatRows.value.some((row) => String(row.passenger.id) === String(passengerId))) {
+      delete splitSeatAssignments[passengerId];
+    }
+  });
+
+  // โฟกัสคนแรกที่ยังไม่มีที่นั่ง เพื่อให้กดผังได้เลย
+  if (!splitSeatRows.value.some((row) => row.passenger.id === activeSplitPassengerId.value)) {
+    activeSplitPassengerId.value = splitSeatRows.value.find((row) => !splitSeatAssignments[row.passenger.id])?.passenger.id
+      || splitSeatRows.value[0]?.passenger.id
+      || null;
+  }
 }
 
 function isSplitSeatAvailable(seatId) {
   const seat = (splitSeatMap.value?.seats || []).find((item) => item.id === seatId);
   return Boolean(seat && seat.status === 'available');
+}
+
+function splitSeatAssignedName(seatId) {
+  const passengerId = Object.entries(splitSeatAssignments).find(([, assigned]) => assigned === seatId)?.[0];
+  if (!passengerId) return '';
+  return splitSeatRows.value.find((row) => String(row.passenger.id) === String(passengerId))?.passenger.name || '';
+}
+
+function canSelectSplitSeat(seat) {
+  if (!seat || !isSplitSeatAvailable(seat.id) || !activeSplitPassenger.value) return false;
+  // ที่นั่งที่จองให้คนอื่นไปแล้วกดซ้ำไม่ได้ ยกเว้นเป็นที่นั่งของคนที่กำลังเลือกอยู่
+  const takenBy = splitSeatAssignedName(seat.id);
+  return !takenBy || splitSeatAssignments[activeSplitPassenger.value.id] === seat.id;
+}
+
+function splitSeatButtonClass(seat) {
+  const takenBy = splitSeatAssignedName(seat.id);
+  const available = isSplitSeatAvailable(seat.id);
+
+  return {
+    available: available && !takenBy,
+    booked: !available,
+    selected: Boolean(takenBy),
+    active: Boolean(activeSplitPassenger.value) && splitSeatAssignments[activeSplitPassenger.value.id] === seat.id,
+  };
+}
+
+function splitSeatTitle(seat) {
+  if (!isSplitSeatAvailable(seat.id)) {
+    return seat.passenger_name ? `จองแล้วโดย ${seat.passenger_name}` : 'ที่นั่งไม่ว่าง';
+  }
+
+  const takenBy = splitSeatAssignedName(seat.id);
+  if (takenBy) return `เลือกให้ ${takenBy}`;
+  if (activeSplitPassenger.value) return `เลือกที่นั่ง ${seat.label || seat.id} ให้ ${activeSplitPassenger.value.name}`;
+  return 'เลือกผู้โดยสารก่อน';
+}
+
+function assignSplitSeat(seat) {
+  if (!canSelectSplitSeat(seat)) return;
+
+  splitSeatAssignments[activeSplitPassenger.value.id] = seat.id;
+  // เลื่อนโฟกัสไปคนถัดไปที่ยังไม่มีที่นั่ง เพื่อกดรัวได้
+  activeSplitPassengerId.value = splitSeatRows.value.find((row) => !splitSeatAssignments[row.passenger.id])?.passenger.id
+    || activeSplitPassenger.value.id;
 }
 
 function isSplitTargetDisabled(sch) {
@@ -2772,6 +2933,7 @@ watch(splitSelectedIds, () => {
   // ลดจำนวนคนแล้วรอบปลายทางอาจที่นั่งไม่พอ — ล้างตัวเลือกที่ใช้ไม่ได้ทิ้ง
   const target = splitTargets.value.find((s) => Number(s.id) === Number(splitTargetId.value));
   if (target && isSplitTargetDisabled(target)) splitTargetId.value = null;
+  else if (splitSeatMap.value) initializeSplitSeatAssignments();
   else if (splitTargetId.value) fetchSplitSeatMap();
 });
 
@@ -4582,28 +4744,212 @@ async function reverifySlip(bookingRef, slipType) {
   background: transparent;
 }
 
-.split-seat-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  font-size: 13px;
-  font-weight: 600;
+/* ผังที่นั่งของรอบปลายทาง — เลือกคนทางซ้าย แล้วกดที่นั่งบนผัง */
+.split-seat-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-top: 10px;
 }
 
-.split-seat-name {
-  min-width: 140px;
+.split-seat-passengers {
+  display: grid;
+  gap: 8px;
+}
+
+.split-seat-person {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.split-seat-person:hover,
+.split-seat-person.active {
+  border-color: var(--color-accent);
+  background: #f0faf4;
+}
+
+.split-seat-person.assigned:not(.active) {
+  background: #f8fafc;
+}
+
+.split-seat-person-name {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.split-seat-person-meta {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.split-seat-person strong {
+  color: var(--color-accent);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.split-seat-map {
+  min-width: 0;
+}
+
+.split-seat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--color-text-muted);
+  font-size: 11px;
   font-weight: 800;
 }
 
-.split-seat-from {
-  color: var(--color-text-muted);
-  font-size: 12px;
+.split-seat-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.split-seat-row select {
-  margin-left: auto;
-  min-width: 180px;
+.split-legend-box {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.split-legend-box.available { background: #ffffff; }
+.split-legend-box.selected { background: var(--color-accent); border-color: var(--color-accent); }
+.split-legend-box.booked { background: #d1d5db; }
+
+.split-seat-vehicle {
+  overflow-x: auto;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.split-seat-front,
+.split-seat-rear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.split-seat-front {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #d1d5db;
+}
+
+.split-seat-rear {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #d1d5db;
+}
+
+.split-seat-driver {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+}
+
+.split-seat-driver .material-symbols-rounded { font-size: 15px; }
+
+.split-seat-grid {
+  display: grid;
+  gap: 8px;
+  justify-content: center;
+  min-width: max-content;
+}
+
+.split-seat-button {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  width: 58px;
+  min-height: 62px;
+  padding: 6px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.split-seat-button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.split-seat-button .material-symbols-rounded { font-size: 20px; }
+
+.split-seat-button strong {
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.split-seat-button small {
+  max-width: 48px;
+  overflow: hidden;
+  color: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.split-seat-button.selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.split-seat-button.active {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.split-seat-button.booked,
+.split-seat-button:disabled {
+  border-color: #d1d5db;
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.split-seat-aisle {
+  width: 34px;
+  min-height: 62px;
+}
+
+.split-seat-empty {
+  width: 58px;
+  min-height: 62px;
+}
+
+@media (max-width: 720px) {
+  .split-seat-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .field-error {
