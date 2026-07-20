@@ -472,7 +472,7 @@
             <h3 class="section-title"><span class="material-symbols-rounded">videocam</span> วิดีโอทริป</h3>
             <span class="media-count" v-if="form.videos.length">{{ form.videos.length }} คลิป</span>
           </div>
-          <p class="media-hint">แสดงในแอปถัดจากรูปภาพ — ลากการ์ดเพื่อสลับลำดับ, รองรับ mp4, mov (สูงสุด 50MB ต่อไฟล์)</p>
+          <p class="media-hint">แสดงในแอปถัดจากรูปภาพ — ลากการ์ดเพื่อสลับลำดับ, รองรับ mp4, mov (สูงสุด 200MB ต่อไฟล์)</p>
 
           <div class="gallery-grid-editor mt-4" v-if="form.videos.length">
             <div
@@ -1262,8 +1262,8 @@ const handleVideoSelect = async (event) => {
   if (!files.length) return;
   videoUploading.value = true;
   try {
-    const validFiles = files.filter(file => file.size <= 50 * 1024 * 1024);
-    if (validFiles.length < files.length) alert('มีบางไฟล์ขนาดเกิน 50MB และจะถูกข้ามไป');
+    const validFiles = files.filter(file => file.size <= 200 * 1024 * 1024);
+    if (validFiles.length < files.length) alert('มีบางไฟล์ขนาดเกิน 200MB และจะถูกข้ามไป');
     if (!validFiles.length) { videoUploading.value = false; return; }
 
     const uploadPromises = validFiles.map(async (file) => {

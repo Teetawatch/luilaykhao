@@ -2840,10 +2840,21 @@ class AdminController extends Controller
     public function uploadMedia(Request $request): JsonResponse
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,gif,mp4,mov,avi', 'max:51200'], // max 50MB
+            'file' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,gif,mp4,mov,avi'],
         ]);
 
         $file = $request->file('file');
+        $isVideo = str_starts_with((string) $file->getMimeType(), 'video/');
+
+        // วิดีโอไฟล์ใหญ่ได้ถึง 200MB, รูปภาพจำกัดที่ 15MB
+        $request->validate([
+            'file' => ['max:'.($isVideo ? 204800 : 15360)],
+        ], [
+            'file.max' => $isVideo
+                ? 'วิดีโอต้องมีขนาดไม่เกิน 200MB'
+                : 'รูปภาพต้องมีขนาดไม่เกิน 15MB',
+        ]);
+
         $filename = time().'_'.Str::random(8).'.'.$file->getClientOriginalExtension();
 
         $path = $file->storeAs('media', $filename, MediaDisk::name());
