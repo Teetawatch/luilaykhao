@@ -1,6 +1,6 @@
 <template>
   <router-link :to="`/trips/${trip.slug}`"
-    class="group flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100 hover:border-transparent hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-300 transform hover:-translate-y-2 h-full">
+    class="group flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100 hover:border-transparent transition-all duration-300 transform hover:-translate-y-2 h-full">
     
     <!-- Image Container -->
     <div class="relative overflow-hidden aspect-[4/5] m-2 rounded-[1.5rem] shrink-0">
@@ -16,16 +16,16 @@
       
       <!-- Badges -->
       <div class="absolute top-4 left-4 flex flex-col gap-2">
-        <span v-if="scarcity" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide shadow-lg backdrop-blur-md flex items-center gap-1"
+        <span v-if="scarcity" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md flex items-center gap-1"
           :class="scarcity.level === 'last' ? 'bg-red-500 text-white animate-pulse' : 'bg-amber-400 text-amber-950'">
           <span class="material-symbols-rounded text-[14px]">local_fire_department</span>
           {{ scarcity.label }}
         </span>
-        <span class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide shadow-lg backdrop-blur-md"
+        <span class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md"
           :class="typeBadgeClass">
           {{ typeLabel }}
         </span>
-        <span v-if="trip.is_women_only" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide shadow-lg backdrop-blur-md bg-pink-500 text-white flex items-center gap-1">
+        <span v-if="trip.is_women_only" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md bg-pink-500 text-white flex items-center gap-1">
           <span class="material-symbols-rounded text-[14px]">female</span>
           หญิงล้วน
         </span>

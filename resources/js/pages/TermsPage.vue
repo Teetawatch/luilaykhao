@@ -11,8 +11,8 @@
         <div class="absolute inset-0 bg-black/20"></div>
       </div>
       <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
-        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
-        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight drop-shadow-md">
+        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
+        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
           ข้อกำหนดการใช้งาน
         </h1>
         <p class="text-lg md:text-xl text-white/80 font-bold max-w-2xl mx-auto tracking-wide">
@@ -24,7 +24,7 @@
     <!-- CONTENT SECTION -->
     <section class="py-16 md:py-24">
       <div class="max-w-4xl mx-auto px-6 md:px-8">
-        <div class="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-[var(--color-sand-dark)] space-y-12">
+        <div class="bg-white rounded-[2.5rem] p-8 md:p-12 border border-[var(--color-sand-dark)] space-y-12">
           
           <div class="space-y-6">
             <h2 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] flex items-center gap-3">

@@ -45,7 +45,7 @@
       </div>
 
       <div v-else class="space-y-4">
-        <article v-for="sch in schedules" :key="sch.id" class="bg-white border border-[#E8EEEF] rounded-2xl p-4 sm:p-5 shadow-sm">
+        <article v-for="sch in schedules" :key="sch.id" class="bg-white border border-[#E8EEEF] rounded-2xl p-4 sm:p-5">
           <div class="flex flex-wrap justify-between gap-3 mb-3">
             <div>
               <h2 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ sch.trip?.title || 'ไม่ระบุทริป' }}</h2>

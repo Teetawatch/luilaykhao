@@ -17,14 +17,14 @@
 
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-16 md:py-24">
         <div class="text-center max-w-4xl mt-6 flex flex-col items-center">
-          <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
+          <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
 
-          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight drop-shadow-xl">
+          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight">
             ทำให้การท่องเที่ยวธรรมชาติ<br/>
             <span class="text-[var(--color-accent-light)]">เป็นเรื่องง่าย</span> สำหรับทุกคน
           </h1>
 
-          <p class="text-base md:text-lg lg:text-xl text-white/90 font-medium leading-relaxed max-w-2xl mx-auto tracking-wide mb-8 drop-shadow-md">
+          <p class="text-base md:text-lg lg:text-xl text-white/90 font-medium leading-relaxed max-w-2xl mx-auto tracking-wide mb-8">
             เพราะเราเชื่อว่าการผจญภัยที่ยอดเยี่ยม ไม่ควรถูกขัดจังหวะด้วยความยุ่งยากในการจองและข้อมูลที่สับสน
           </p>
 
@@ -87,7 +87,7 @@
                 ลุยเลยเขา (Luilaykhao) จึงถูกสร้างขึ้นมาเพื่อให้คุณไม่ต้องมองหา 'โชค' ในการไปเที่ยว แต่ให้คุณสามารถวางแผนและออกเดินทางได้ทันทีที่คุณพร้อม
               </p>
               
-              <blockquote class="relative pl-10 py-6 mt-12 bg-white/40 backdrop-blur-sm rounded-3xl border-l-8 border-[var(--color-accent)] pr-8 shadow-sm">
+              <blockquote class="relative pl-10 py-6 mt-12 bg-white/40 backdrop-blur-sm rounded-3xl border-l-8 border-[var(--color-accent)] pr-8">
                 <p class="text-[var(--color-text-dark)] font-bold text-2xl md:text-3xl italic leading-snug">
                   "เพราะช่วงเวลาที่ดีที่สุดในการออกไปเห็นโลก คือตอนที่คุณ 'อยากไป' ที่สุด"
                 </p>
@@ -98,7 +98,7 @@
           <div class="lg:col-span-5 order-1 lg:order-2 reveal-section">
             <div class="relative group">
               <div class="absolute -inset-6 bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-gold)]/20 rounded-[3rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-              <div class="relative rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[4/5]">
+              <div class="relative rounded-[2.5rem] overflow-hidden aspect-[4/5]">
                 <img
                   src="/images/ceoluilaykhao.webp"
                   alt="ผู้ก่อตั้งลุยเลเขา"
@@ -108,7 +108,7 @@
               </div>
               
               <!-- Floating Badge -->
-              <div class="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl shadow-xl z-20 hidden md:block border border-[var(--color-sand-dark)] animate-bounce-subtle">
+              <div class="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl z-20 hidden md:block border border-[var(--color-sand-dark)] animate-bounce-subtle">
                 <div class="flex items-center gap-4">
                   <div class="w-12 h-12 bg-[var(--color-accent)]/10 rounded-2xl flex items-center justify-center">
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-3xl">favorite</span>
@@ -186,12 +186,12 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 items-stretch">
           <!-- Card 1 -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/fast_nowaitng.webp" 
                 alt="จองทริปได้ในไม่กี่คลิก" 
-                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain"
               />
             </div>
             <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">จองทริปได้ในไม่กี่คลิก</h3>
@@ -199,12 +199,12 @@
           </div>
           
           <!-- Card 2 (Featured) -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/feel_good.webp" 
                 alt="ดูแลคุณตลอดเส้นทาง" 
-                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain"
               />
             </div>
             <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">ดูแลคุณตลอดเส้นทาง</h3>
@@ -213,12 +213,12 @@
           </div>
           
           <!-- Card 3 -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/no_wating.webp" 
                 alt="เริ่มผจญภัยได้ทุกคน" 
-                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain"
               />
             </div>
             <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">เริ่มผจญภัยได้ทุกคน</h3>
@@ -274,7 +274,7 @@
           <div
             v-for="(vision, idx) in visions"
             :key="vision.title"
-            class="bg-white p-12 pt-32 rounded-[3.5rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/20 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
+            class="bg-white p-12 pt-32 rounded-[3.5rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/20 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
             :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
           >
             <!-- Image Wrapper (Out-of-bound) -->
@@ -282,7 +282,7 @@
               <img 
                 :src="vision.image" 
                 :alt="vision.title" 
-                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain"
               />
             </div>
 

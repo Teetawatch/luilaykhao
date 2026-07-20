@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-[#F4F7F6] font-anuphan flex flex-col" style="height: 100dvh;">
 
     <!-- Header -->
-    <div class="bg-white border-b border-[#E8EEEF] px-4 py-3 flex items-center gap-3 shrink-0 shadow-sm">
+    <div class="bg-white border-b border-[#E8EEEF] px-4 py-3 flex items-center gap-3 shrink-0">
       <button @click="$router.back()" class="w-9 h-9 rounded-[10px] border border-[#E8EEEF] flex items-center justify-center hover:bg-[#F4F7F6] transition-all">
         <span class="material-symbols-rounded text-[20px] text-[#505E5E]">arrow_back</span>
       </button>
@@ -63,7 +63,7 @@
             :class="m.is_mine ? 'flex-row-reverse' : 'flex-row'"
           >
             <!-- Avatar -->
-            <div v-if="!m.is_mine" class="w-8 h-8 rounded-full shrink-0 overflow-hidden shadow-sm mt-auto">
+            <div v-if="!m.is_mine" class="w-8 h-8 rounded-full shrink-0 overflow-hidden mt-auto">
               <img v-if="m.user?.avatar_url" :src="m.user.avatar_url" :alt="m.user?.name" class="w-full h-full object-cover" />
               <div v-else class="w-full h-full flex items-center justify-center text-[11px] font-black text-white"
                 :class="roleAvatarClass(m.sender_role)">
@@ -83,7 +83,7 @@
               </div>
 
               <!-- Bubble -->
-              <div class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm"
+              <div class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed"
                 :class="m.is_mine
                   ? 'bg-[#006565] text-white rounded-tr-sm'
                   : 'bg-white text-[#1a1c1c] border border-[#E8EEEF] rounded-tl-sm'"
@@ -105,7 +105,7 @@
       <!-- Input -->
       <div class="shrink-0 bg-white border-t border-[#E8EEEF] px-4 py-3 flex items-end gap-2 safe-area-pb">
         <!-- Image preview -->
-        <div v-if="imagePreview" class="absolute bottom-20 left-4 right-4 bg-white border border-[#E8EEEF] rounded-2xl p-3 flex items-center gap-3 shadow-lg">
+        <div v-if="imagePreview" class="absolute bottom-20 left-4 right-4 bg-white border border-[#E8EEEF] rounded-2xl p-3 flex items-center gap-3">
           <img :src="imagePreview" class="w-16 h-16 rounded-xl object-cover" />
           <div class="flex-1 min-w-0">
             <p class="text-sm font-bold text-[#1a1c1c] truncate" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ imageFile?.name }}</p>
@@ -138,7 +138,7 @@
 
         <button @click="send" :disabled="sending || (!draft.trim() && !imageFile)"
           class="w-9 h-9 rounded-[10px] flex items-center justify-center transition-all shrink-0"
-          :class="(draft.trim() || imageFile) && !sending ? 'bg-[#006565] text-white shadow-sm' : 'bg-[#E8EEEF] text-[#A0B0B0]'">
+          :class="(draft.trim() || imageFile) && !sending ? 'bg-[#006565] text-white' : 'bg-[#E8EEEF] text-[#A0B0B0]'">
           <span v-if="sending" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
           <span v-else class="material-symbols-rounded text-[20px]">send</span>
         </button>

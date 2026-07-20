@@ -13,7 +13,7 @@
 
       <!-- Write Review Modal -->
       <div v-if="showModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all pr-4 sm:pr-6 md:pr-0">
-        <div class="bg-white rounded-[24px] w-full max-w-lg p-6 sm:p-8 shadow-2xl relative">
+        <div class="bg-white rounded-[24px] w-full max-w-lg p-6 sm:p-8 relative">
           <h2 class="text-xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             {{ editingReview ? 'แก้ไขรีวิว' : 'เขียนรีวิว' }}
           </h2>
@@ -62,7 +62,7 @@
               <div
                 v-for="(img, i) in form.images"
                 :key="i"
-                class="relative w-[72px] h-[72px] rounded-[12px] overflow-hidden border border-[#E8EEEF] group shadow-sm z-0">
+                class="relative w-[72px] h-[72px] rounded-[12px] overflow-hidden border border-[#E8EEEF] group z-0">
                 <img :src="img" class="w-full h-full object-cover transition-transform group-hover:scale-105" />
                 <button
                   @click="form.images.splice(i, 1)"
@@ -92,7 +92,7 @@
             <button
               @click="submitReview"
               :disabled="!form.rating || submitting"
-              class="flex-1 bg-[#006565] text-white py-3.5 rounded-[16px] font-bold text-[15px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#004f4f] transition-all shadow-sm shadow-[#006565]/20 flex justify-center items-center gap-2"
+              class="flex-1 bg-[#006565] text-white py-3.5 rounded-[16px] font-bold text-[15px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#004f4f] transition-all shadow-sm/20 flex justify-center items-center gap-2"
               style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <span v-if="submitting" class="material-symbols-rounded text-[20px] animate-spin border-0">progress_activity</span>
               {{ submitting ? 'กำลังบันทึก...' : (editingReview ? 'บันทึก' : 'ส่งรีวิว') }}
@@ -118,7 +118,7 @@
             <div
               v-for="b in pendingBookings"
               :key="b.id"
-              class="bg-white rounded-[20px] p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 border border-[#E8EEEF] hover:shadow-md transition-all shadow-sm">
+              class="bg-white rounded-[20px] p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 border border-[#E8EEEF] transition-all">
               <div class="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
                 <img
                   v-if="b.schedule?.trip?.thumbnail_image || b.schedule?.trip?.cover_image"
@@ -155,7 +155,7 @@
             รีวิวที่เขียนแล้ว ({{ myReviews.length }})
           </h2>
 
-           <div v-if="myReviews.length === 0 && pendingBookings.length === 0" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] flex flex-col items-center justify-center">
+           <div v-if="myReviews.length === 0 && pendingBookings.length === 0" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center justify-center">
              <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
                <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">rate_review</span>
              </div>
@@ -175,7 +175,7 @@
             <div
               v-for="r in myReviews"
               :key="r.id"
-              class="bg-white rounded-[20px] p-5 md:p-6 border border-[#E8EEEF] hover:shadow-md hover:border-[#006565]/30 transition-all shadow-sm">
+              class="bg-white rounded-[20px] p-5 md:p-6 border border-[#E8EEEF] hover:border-[#006565]/30 transition-all">
               
               <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
                 <div class="flex-1 min-w-0">

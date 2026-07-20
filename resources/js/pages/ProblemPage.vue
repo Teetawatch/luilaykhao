@@ -19,10 +19,10 @@
 
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
         <div class="text-center max-w-4xl mt-10">
-          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-7xl font-extrabold text-white leading-tight mb-8 drop-shadow-lg">
+          <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-7xl font-extrabold text-white leading-tight mb-8">
             อุปสรรคของการเดินทาง
           </h1>
-          <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto drop-shadow-md">
+          <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto">
             สิ่งที่เราอยากแก้ไข เพื่อให้ทุกคนได้ออกไปเที่ยวอย่างแท้จริง
           </p>
         </div>
@@ -54,8 +54,8 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          <div v-for="(problem, index) in problems" :key="index" class="bg-white rounded-[2rem] p-8 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 reveal-section group">
-            <div class="w-16 h-16 bg-[var(--color-sand)] rounded-2xl flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110 shadow-sm" :style="`color: ${problem.color}`">
+          <div v-for="(problem, index) in problems" :key="index" class="bg-white rounded-[2rem] p-8 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] transition-all duration-300 transform hover:-translate-y-2 reveal-section group">
+            <div class="w-16 h-16 bg-[var(--color-sand)] rounded-2xl flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110" :style="`color: ${problem.color}`">
               <span class="material-symbols-rounded text-3xl">{{ problem.icon }}</span>
             </div>
             <h5 class="font-bold text-xl text-[var(--color-text-dark)] mb-3">{{ problem.title }}</h5>
@@ -83,7 +83,7 @@
         <div class="pt-6">
           <router-link
             to="/goal"
-            class="inline-flex items-center gap-3 bg-[var(--color-accent)] text-white px-10 py-5 rounded-2xl text-lg font-bold hover:bg-[#3D8F66] hover:scale-105 transition-all duration-300 shadow-xl focus:outline-none focus:ring-4 focus:ring-[var(--color-accent)]/30"
+            class="inline-flex items-center gap-3 bg-[var(--color-accent)] text-white px-10 py-5 rounded-2xl text-lg font-bold hover:bg-[#3D8F66] hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[var(--color-accent)]/30"
           >
             <span class="material-symbols-rounded text-2xl">arrow_forward</span>
             ดูเป้าหมายของเรา

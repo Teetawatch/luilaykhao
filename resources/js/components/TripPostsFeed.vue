@@ -14,7 +14,7 @@
       <article
         v-for="post in posts"
         :key="post.id"
-        class="bg-white rounded-[1.5rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col"
+        class="bg-white rounded-[1.5rem] border border-gray-100 overflow-hidden flex flex-col"
       >
         <!-- รูป (คลิกเปิดดูเต็ม) -->
         <button

@@ -9,11 +9,11 @@
     <!-- Legend -->
     <div class="flex flex-wrap gap-x-5 gap-y-2 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
       <div class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg bg-white border-2 border-gray-200 shadow-sm"></div>
+        <div class="w-5 h-5 rounded-lg bg-white border-2 border-gray-200"></div>
         <span class="text-[11px] font-bold text-gray-500">ว่าง</span>
       </div>
       <div v-if="!readonly" class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg border-2 shadow-sm" :class="isWomenOnly ? 'bg-[#db2777] border-[#db2777]' : 'bg-[#006565] border-[#006565]'"></div>
+        <div class="w-5 h-5 rounded-lg border-2" :class="isWomenOnly ? 'bg-[#db2777] border-[#db2777]' : 'bg-[#006565] border-[#006565]'"></div>
         <span class="text-[11px] font-bold text-gray-500">กำลังเลือก</span>
       </div>
       <div class="flex items-center gap-1.5">
@@ -37,7 +37,7 @@
     </div>
 
     <!-- Vehicle layout -->
-    <div class="van-body relative mx-auto max-w-sm bg-white border-2 border-gray-200 rounded-t-[6rem] rounded-b-[3rem] pt-9 pb-6 px-6 md:px-8 shadow-md">
+    <div class="van-body relative mx-auto max-w-sm bg-white border-2 border-gray-200 rounded-t-[6rem] rounded-b-[3rem] pt-9 pb-6 px-6 md:px-8">
       <!-- Clip layer: ambient glows + headlights (clipped to van shape) -->
       <div class="absolute inset-0 rounded-t-[6rem] rounded-b-[3rem] overflow-hidden pointer-events-none">
         <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-3xl opacity-50"
@@ -51,13 +51,13 @@
       </div>
 
       <!-- Wheels (front + rear axles, both sides) -->
-      <div class="absolute -left-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
-      <div class="absolute -right-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
-      <div class="absolute -left-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
-      <div class="absolute -right-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 shadow-md pointer-events-none"></div>
+      <div class="absolute -left-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
+      <div class="absolute -right-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
+      <div class="absolute -left-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
+      <div class="absolute -right-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
 
       <!-- Sliding door (left side — Thai vans), spans from behind front seat down to near rear wheel -->
-      <div class="absolute left-0 top-[31%] bottom-[27%] z-30 flex flex-col items-center justify-center gap-2 w-6 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 shadow-sm pointer-events-none">
+      <div class="absolute left-0 top-[31%] bottom-[27%] z-30 flex flex-col items-center justify-center gap-2 w-6 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 pointer-events-none">
         <span class="material-symbols-rounded text-[16px] text-amber-700" style="font-variation-settings:'FILL' 1,'wght' 500">door_open</span>
         <span class="text-[10px] font-black text-amber-700 tracking-wide" style="writing-mode:vertical-rl;text-orientation:mixed;">ประตู</span>
       </div>
@@ -65,7 +65,7 @@
       <div class="relative max-w-xs mx-auto">
 
         <!-- Windshield (van nose) -->
-        <div class="mx-auto w-[94%] h-9 rounded-t-[3.5rem] border-2 border-b-0 shadow-inner pointer-events-none"
+        <div class="mx-auto w-[94%] h-9 rounded-t-[3.5rem] border-2 border-b-0 pointer-events-none"
           :class="isWomenOnly ? 'bg-gradient-to-b from-pink-200/70 via-pink-50 to-white border-pink-100' : 'bg-gradient-to-b from-sky-200/70 via-sky-50 to-white border-teal-100'"></div>
 
         <!-- Front cabin: staff + front passenger (left) · label · driver (right) -->
@@ -234,8 +234,8 @@ function seatBgClass(seat) {
   if (seat.status === 'booked') return 'bg-red-100 border-red-300';
   if (isSelected(seat)) {
     return props.isWomenOnly
-      ? 'bg-[#db2777] border-[#db2777] shadow-lg shadow-pink-200 scale-105'
-      : 'bg-[#006565] border-[#006565] shadow-lg shadow-teal-200 scale-105';
+      ? 'bg-[#db2777] border-[#db2777] shadow-pink-200 scale-105'
+      : 'bg-[#006565] border-[#006565] scale-105';
   }
   if (seat.status === 'locked') return 'bg-amber-50 border-amber-300';
   if (props.readonly) return 'bg-white border-gray-200';
@@ -355,7 +355,7 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
       statusText(),
     ]),
     (props.showNames && seat?.passenger_name) ? h('div', {
-      class: 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl font-bold'
+      class: 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 font-bold'
     }, seat.passenger_name) : null
   ]);
 };

@@ -10,7 +10,7 @@
       >
         <div
           class="schedule-calendar"
-          :class="expanded ? 'bg-white rounded-3xl shadow-2xl w-full max-w-lg p-5 sm:p-7 my-auto' : ''"
+          :class="expanded ? 'bg-white rounded-3xl w-full max-w-lg p-5 sm:p-7 my-auto' : ''"
         >
           <!-- Modal header (expanded view only) -->
           <div v-if="expanded" class="flex items-center justify-between mb-5">
@@ -202,9 +202,9 @@
           class="border-2 rounded-2xl p-3.5 transition-all duration-200"
           :class="[
             selectedSchedule?.id === s.id
-              ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md shadow-[var(--color-accent)]/10'
+              ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md/10'
               : isScheduleBookable(s)
-                ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] hover:shadow-sm cursor-pointer'
+                ? 'border-gray-100 bg-white hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-sand)] cursor-pointer'
                 : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
           ]"
         >
@@ -499,7 +499,7 @@ function cellClass(cell) {
     return 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed';
   }
   if (isAnchorCell(cell)) {
-    return 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-md shadow-[var(--color-accent)]/20';
+    return 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-md/20';
   }
   if (cellInRange(cell)) {
     return 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/12 text-[var(--color-accent)]';

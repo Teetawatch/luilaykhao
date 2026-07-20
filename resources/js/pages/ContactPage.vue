@@ -29,12 +29,12 @@
         <!-- Quick Contact Buttons -->
         <div class="flex flex-col sm:flex-row gap-4 mb-16 justify-center lg:justify-start">
           <a href="https://line.me/ti/p/@luilaykhao" target="_blank" 
-             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-[#06C755] text-white rounded-2xl font-bold text-lg hover:bg-[#05b34c] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-[#06C755] text-white rounded-2xl font-bold text-lg hover:bg-[#05b34c] hover:-translate-y-1 transition-all duration-300">
             <i class="fab fa-line text-2xl"></i>
             แชทผ่าน LINE
           </a>
           <a href="tel:0626126006" 
-             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid hover:-translate-y-1 transition-all duration-300">
             <span class="material-symbols-rounded">call</span>
             โทรหาเราเลย
           </a>
@@ -54,8 +54,8 @@
               
               <div class="space-y-8">
                 <!-- LINE (Highlighted) -->
-                <div class="flex gap-5 group p-6 bg-white rounded-[2rem] border border-[#06C755]/20 shadow-sm hover:shadow-md transition-all duration-300">
-                  <div class="w-14 h-14 bg-[#06C755] rounded-2xl shadow-sm flex items-center justify-center shrink-0">
+                <div class="flex gap-5 group p-6 bg-white rounded-[2rem] border border-[#06C755]/20 transition-all duration-300">
+                  <div class="w-14 h-14 bg-[#06C755] rounded-2xl flex items-center justify-center shrink-0">
                     <i class="fab fa-line text-2xl text-white"></i>
                   </div>
                   <div>
@@ -67,7 +67,7 @@
 
                 <!-- Phone -->
                 <div class="flex gap-5 group px-6">
-                  <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
+                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
                     <span class="material-symbols-rounded text-primary group-hover:text-white transition-colors">call</span>
                   </div>
                   <div>
@@ -79,7 +79,7 @@
 
                 <!-- Email -->
                 <div class="flex gap-5 group px-6">
-                  <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
+                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
                     <span class="material-symbols-rounded text-primary group-hover:text-white transition-colors">mail</span>
                   </div>
                   <div>
@@ -90,7 +90,7 @@
 
                 <!-- Location -->
                 <div class="flex gap-5 group px-6">
-                  <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
+                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
                     <span class="material-symbols-rounded text-primary group-hover:text-white transition-colors">location_on</span>
                   </div>
                   <div>
@@ -108,7 +108,7 @@
               <h3 class="text-sm font-bold text-text-muted uppercase tracking-widest mb-6">ติดตามเราได้ที่</h3>
               <div class="flex gap-4">
                 <a v-for="social in socials" :key="social.name" :href="social.link" target="_blank" rel="noopener"
-                  class="w-12 h-12 rounded-xl bg-white border border-sand-dark flex items-center justify-center text-text-mid hover:text-white hover:bg-primary hover:border-primary transition-all duration-300 shadow-sm">
+                  class="w-12 h-12 rounded-xl bg-white border border-sand-dark flex items-center justify-center text-text-mid hover:text-white hover:bg-primary hover:border-primary transition-all duration-300">
                   <i :class="social.icon" class="text-xl"></i>
                 </a>
               </div>
@@ -117,7 +117,7 @@
 
           <!-- Contact Form -->
           <div class="lg:col-span-7">
-            <div class="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-2xl shadow-sand-dark/30 border border-sand-dark/20 relative overflow-hidden">
+            <div class="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sand-dark/30 border border-sand-dark/20 relative overflow-hidden">
               <!-- Background Accent -->
               <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
               
@@ -213,7 +213,7 @@
 
                   <div class="pt-4">
                     <button type="submit" :disabled="submitting"
-                      class="w-full py-5 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid transition-all duration-300 shadow-xl shadow-primary/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed group">
+                      class="w-full py-5 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid transition-all duration-300 shadow-primary/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed group">
                       <span v-if="submitting" class="flex items-center justify-center gap-2">
                         <i class="fas fa-circle-notch fa-spin"></i> กำลังส่งข้อมูล...
                       </span>
@@ -262,7 +262,7 @@
        <!-- Map Overlay Button -->
        <div class="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-100 transition-opacity">
          <a href="https://maps.google.com/?q=บางนา+กรุงเทพ" target="_blank" 
-            class="pointer-events-auto bg-white/90 backdrop-blur-sm text-text-dark px-8 py-3 rounded-full font-bold shadow-xl border border-sand-dark/20 hover:bg-white hover:scale-110 transition-all flex items-center gap-2">
+            class="pointer-events-auto bg-white/90 backdrop-blur-sm text-text-dark px-8 py-3 rounded-full font-bold border border-sand-dark/20 hover:bg-white hover:scale-110 transition-all flex items-center gap-2">
            <span class="material-symbols-rounded text-primary">map</span>
            เปิดใน Google Maps
          </a>

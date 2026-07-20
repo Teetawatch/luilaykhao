@@ -5,7 +5,7 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto flex items-start gap-3 min-w-[280px] max-w-[360px] px-4 py-3.5 rounded-2xl shadow-xl backdrop-blur-md text-sm font-medium select-none cursor-default"
+          class="pointer-events-auto flex items-start gap-3 min-w-[280px] max-w-[360px] px-4 py-3.5 rounded-2xl backdrop-blur-md text-sm font-medium select-none cursor-default"
           :class="toastClass(toast.type)"
         >
           <span class="material-symbols-rounded text-[20px] shrink-0 mt-0.5" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24">

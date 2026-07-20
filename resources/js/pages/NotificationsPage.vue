@@ -26,7 +26,7 @@
         <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">กำลังโหลดข้อมูล...</p>
       </div>
 
-      <div v-else-if="notifications.length === 0" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] flex flex-col items-center justify-center">
+      <div v-else-if="notifications.length === 0" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center justify-center">
         <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
           <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">notifications_off</span>
         </div>
@@ -39,7 +39,7 @@
           v-for="n in notifications"
           :key="n.id"
           @click="handleNotificationClick(n)"
-          class="group relative bg-white rounded-[20px] p-5 flex gap-4 cursor-pointer transition-all duration-300 border border-[#E8EEEF] hover:border-[#006565]/30 hover:shadow-md overflow-hidden"
+          class="group relative bg-white rounded-[20px] p-5 flex gap-4 cursor-pointer transition-all duration-300 border border-[#E8EEEF] hover:border-[#006565]/30 overflow-hidden"
           :class="{ 'opacity-80': n.is_read }">
           
           <!-- Unread Indicator Line -->
@@ -69,7 +69,7 @@
 
           <button
             @click.stop="deleteNotification(n.id)"
-            class="absolute top-1/2 -translate-y-1/2 right-4 w-10 h-10 flex items-center justify-center rounded-full text-[#A0B0B0] bg-white opacity-0 md:group-hover:opacity-100 max-md:opacity-100 hover:bg-[#FFF0F0] hover:text-[#DC2626] transition-all duration-200 border border-transparent hover:border-[#FCA5A5] shadow-sm"
+            class="absolute top-1/2 -translate-y-1/2 right-4 w-10 h-10 flex items-center justify-center rounded-full text-[#A0B0B0] bg-white opacity-0 md:group-hover:opacity-100 max-md:opacity-100 hover:bg-[#FFF0F0] hover:text-[#DC2626] transition-all duration-200 border border-transparent hover:border-[#FCA5A5]"
             title="ลบการแจ้งเตือน">
             <span class="material-symbols-rounded text-[20px]">delete</span>
           </button>

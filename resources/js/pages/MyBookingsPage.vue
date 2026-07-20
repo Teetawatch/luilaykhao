@@ -10,7 +10,7 @@
       <!-- Page Header -->
       <section class="mb-8">
         <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-[18px] bg-[#006565] flex items-center justify-center shrink-0 shadow-lg shadow-[#006565]/25">
+          <div class="w-14 h-14 rounded-[18px] bg-[#006565] flex items-center justify-center shrink-0 shadow-lg/25">
             <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">luggage</span>
           </div>
           <div>
@@ -29,12 +29,12 @@
       <MyWaitlist />
 
       <!-- Tabs -->
-      <div class="flex gap-1.5 mb-8 bg-white/70 backdrop-blur-sm p-1.5 rounded-[16px] w-fit shadow-sm border border-[#E8EEEF]">
+      <div class="flex gap-1.5 mb-8 bg-white/70 backdrop-blur-sm p-1.5 rounded-[16px] w-fit border border-[#E8EEEF]">
         <button
           @click="activeTab = 'upcoming'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'upcoming'
-            ? 'bg-[#006565] text-white shadow-md shadow-[#006565]/20'
+            ? 'bg-[#006565] text-white shadow-md/20'
             : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'"
           style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'upcoming' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">event_upcoming</span>
@@ -46,7 +46,7 @@
           @click="activeTab = 'past'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'past'
-            ? 'bg-[#006565] text-white shadow-md shadow-[#006565]/20'
+            ? 'bg-[#006565] text-white shadow-md/20'
             : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'"
           style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'past' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">history</span>
@@ -63,7 +63,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="filteredBookings.length === 0" class="text-center py-20 bg-white rounded-[28px] shadow-sm border border-[#E8EEEF] relative overflow-hidden">
+      <div v-else-if="filteredBookings.length === 0" class="text-center py-20 bg-white rounded-[28px] border border-[#E8EEEF] relative overflow-hidden">
         <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#E3F2F2]/40 rounded-full blur-3xl"></div>
         <div class="relative z-10 flex flex-col items-center px-4">
           <div class="w-24 h-24 bg-gradient-to-br from-[#F4F7F6] to-[#E8EEEF] rounded-full flex items-center justify-center mb-5 border border-[#E8EEEF]">
@@ -92,7 +92,7 @@
         <article
           v-for="b in filteredBookings"
           :key="b.id"
-          class="bg-white rounded-[24px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-[#006565]/5 hover:border-[#006565]/25 hover:-translate-y-0.5 relative"
+          class="bg-white rounded-[24px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] transition-all duration-300 hover:shadow-xl/5 hover:border-[#006565]/25 hover:-translate-y-0.5 relative"
           :class="{ 'opacity-80': b.status === 'cancelled' || b.status === 'refunded' }">
 
           <div class="absolute top-0 left-0 w-1.5 h-full bg-[#006565] z-20" v-if="b.status === 'confirmed'"></div>
@@ -108,13 +108,13 @@
             <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-black/5"></div>
 
             <!-- Date Badge on Image -->
-            <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-[14px] shadow-lg flex flex-col items-center leading-none">
+            <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-[14px] flex flex-col items-center leading-none">
               <span class="text-[10px] font-bold text-[#008080] uppercase tracking-wide mb-0.5" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">{{ getMonthShort(b.schedule?.departure_date) }}</span>
               <span class="text-xl font-extrabold text-[#1a1c1c]">{{ getDay(b.schedule?.departure_date) }}</span>
             </div>
 
             <!-- Title overlay (mobile) -->
-            <h2 class="absolute bottom-4 left-4 right-4 md:hidden text-white text-lg font-bold leading-snug line-clamp-2 drop-shadow-md" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+            <h2 class="absolute bottom-4 left-4 right-4 md:hidden text-white text-lg font-bold leading-snug line-clamp-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               {{ b.schedule?.trip?.title || 'การจอง' }}
             </h2>
           </div>
@@ -170,7 +170,7 @@
                 <!-- Header -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center shadow-sm">
+                    <div class="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center">
                       <span class="material-symbols-rounded text-white text-[16px]">calendar_month</span>
                     </div>
                     <span class="text-sm font-black text-amber-900">ผ่อนชำระ {{ b.installment_count }} งวด</span>
@@ -253,10 +253,10 @@
                   </div>
                   <button
                     @click.stop="goToInstallmentPayment(b)"
-                    class="px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
+                    class="px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5"
                     :class="isOverdue(getNextPendingInstallment(b))
-                      ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
-                      : 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20'"
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : 'bg-amber-500 text-white hover:bg-amber-600'"
                   >
                     <span class="material-symbols-rounded text-[14px]">payments</span>
                     ชำระงวด
@@ -345,7 +345,7 @@
               <button
                 v-if="isOngoingTrip(b)"
                 @click="openSosModal(b)"
-                class="flex-1 sm:flex-none bg-red-600 text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-red-600/20"
+                class="flex-1 sm:flex-none bg-red-600 text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">sos</span>
                 SOS
@@ -362,7 +362,7 @@
             @click="bookingStore.fetchMyBookings(page)"
             class="w-9 h-9 rounded-[10px] text-sm font-bold transition-all duration-300"
             :class="page === bookingStore.meta.current_page
-              ? 'bg-[#006565] text-white shadow-sm'
+              ? 'bg-[#006565] text-white'
               : 'bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA]'"
             style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
             {{ page }}
@@ -372,7 +372,7 @@
 
       <!-- Staff Review Modal -->
       <div v-if="showStaffReviewModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" @click.self="showStaffReviewModal = false">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-[#E8EEEF] overflow-hidden">
+        <div class="bg-white w-full max-w-lg rounded-2xl border border-[#E8EEEF] overflow-hidden">
           <div class="px-5 py-4 border-b border-[#E8EEEF] flex items-center justify-between">
             <div>
               <h3 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">รีวิวสตาฟประจำทริป</h3>
@@ -446,7 +446,7 @@
     <!-- SOS Modal -->
     <Teleport to="body">
       <div v-if="showSosModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0" @click.self="showSosModal = false">
-        <div class="bg-white w-full max-w-md rounded-[24px] shadow-2xl overflow-hidden">
+        <div class="bg-white w-full max-w-md rounded-[24px] overflow-hidden">
           <!-- Header -->
           <div class="bg-red-600 px-5 py-4 flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -504,7 +504,7 @@
             <button
               @click="submitSos"
               :disabled="!sosSelectedOption || sosSubmitting || (sosSelectedOption === 'other' && !sosCustomMessage.trim())"
-              class="flex-1 py-3 rounded-[14px] bg-red-600 text-white font-black text-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+              class="flex-1 py-3 rounded-[14px] bg-red-600 text-white font-black text-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <span v-if="sosSubmitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
               <span class="material-symbols-rounded text-[18px]" v-else style="font-variation-settings:'FILL' 1">sos</span>

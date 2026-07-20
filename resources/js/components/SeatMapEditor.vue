@@ -1,12 +1,12 @@
 <template>
   <div class="seat-editor bg-white rounded-2xl">
     <!-- Controls -->
-    <div class="editor-controls mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
+    <div class="editor-controls mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-100">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="form-group">
           <label class="block text-sm font-extrabold text-slate-700 mb-2 uppercase tracking-wider">จำนวนแถวที่นั่ง</label>
           <div class="flex items-center gap-3">
-            <button type="button" @click="updateRows(-1)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition-colors shadow-sm">
+            <button type="button" @click="updateRows(-1)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition-colors">
               <span class="material-symbols-rounded text-slate-500" style="font-size:18px">remove</span>
             </button>
             <input 
@@ -15,7 +15,7 @@
               min="1" max="12"
               class="w-20 text-center font-black text-lg border-slate-200 rounded-xl focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]"
             />
-            <button type="button" @click="updateRows(1)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition-colors shadow-sm">
+            <button type="button" @click="updateRows(1)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-100 transition-colors">
               <span class="material-symbols-rounded text-slate-500" style="font-size:18px">add</span>
             </button>
           </div>
@@ -129,11 +129,11 @@
     <!-- Visual Editor Section -->
     <div class="visual-grid-container p-8 border-2 border-slate-100 rounded-[2.5rem] bg-white overflow-x-auto min-h-[500px] flex items-center justify-center">
       <!-- Van/Vehicle Shell -->
-      <div class="vehicle-shell relative bg-slate-50 border-4 border-slate-200 shadow-xl rounded-[3rem] p-8 min-w-[300px] w-full max-w-sm">
+      <div class="vehicle-shell relative bg-slate-50 border-4 border-slate-200 rounded-[3rem] p-8 min-w-[300px] w-full max-w-sm">
         
         <!-- Dashboard / Front Section -->
         <div class="front-dashboard flex justify-between items-center mb-12 border-b-2 border-dashed border-slate-200 pb-8 px-4">
-          <div v-if="layout.show_driver !== false" class="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-400 shadow-inner">
+          <div v-if="layout.show_driver !== false" class="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-400">
              <span class="material-symbols-rounded text-xl opacity-60" style="font-variation-settings:'FILL' 0,'wght' 400">{{ layout.driver_icon || 'directions_car' }}</span>
           </div>
           <div v-else class="w-14 shrink-0"></div>
@@ -143,7 +143,7 @@
           </div>
           <div 
             v-if="layout.front_seat"
-            class="w-14 h-14 rounded-2xl border-2 flex items-center justify-center cursor-pointer transition-all duration-300 transform active:scale-95 shadow-sm"
+            class="w-14 h-14 rounded-2xl border-2 flex items-center justify-center cursor-pointer transition-all duration-300 transform active:scale-95"
             :class="hasSeat(layout.front_seat) ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white font-black' : 'bg-white border-slate-100 text-slate-200 border-dashed'"
             @click="toggleSeatById(layout.front_seat)"
           >
@@ -172,7 +172,7 @@
               <!-- Seat Block -->
               <div 
                 v-else
-                class="w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center cursor-pointer transition-all duration-300 transform active:scale-95 shadow-sm"
+                class="w-12 h-12 md:w-14 md:h-14 rounded-2xl border-2 flex items-center justify-center cursor-pointer transition-all duration-300 transform active:scale-95"
                 :class="seatEditorClass(col, r)"
                 @click="toggleSeat(col, r)"
               >
@@ -304,9 +304,9 @@ function seatEditorClass(col, row) {
   const isFront = layout.value.front_seat === id;
   const isCenter = (layout.value.last_row_center || []).includes(id);
 
-  if (active && isFront) return 'bg-amber-500 border-amber-500 text-white shadow-md';
-  if (active && isCenter) return 'bg-purple-500 border-purple-500 text-white shadow-md';
-  if (active) return 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md';
+  if (active && isFront) return 'bg-amber-500 border-amber-500 text-white';
+  if (active && isCenter) return 'bg-purple-500 border-purple-500 text-white';
+  if (active) return 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white';
   return 'bg-white border-slate-100 text-slate-200 border-dashed hover:border-slate-300';
 }
 

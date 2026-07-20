@@ -2,7 +2,7 @@
   <div class="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center">
     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="$emit('close')"></div>
 
-    <div class="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in duration-300 max-h-[92vh] flex flex-col">
+    <div class="relative w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in duration-300 max-h-[92vh] flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
         <div class="flex items-center gap-2">
@@ -35,7 +35,7 @@
           </div>
           <!-- ผลการค้นหา -->
           <ul v-if="searchResults.length"
-            class="absolute z-[500] mt-1 w-full max-h-56 overflow-y-auto bg-white rounded-xl border border-gray-200 shadow-lg">
+            class="absolute z-[500] mt-1 w-full max-h-56 overflow-y-auto bg-white rounded-xl border border-gray-200">
             <li v-for="(r, i) in searchResults" :key="i">
               <button type="button" @click="pickResult(r)"
                 class="w-full text-left px-4 py-2.5 hover:bg-teal-50 flex items-start gap-2 border-b border-gray-50 last:border-0">
@@ -52,11 +52,11 @@
           <div ref="mapEl" class="absolute inset-0 z-0"></div>
           <!-- หมุดคงที่กลางจอ ปลายหมุดชี้จุดกึ่งกลาง -->
           <div class="pointer-events-none absolute left-1/2 top-1/2 z-[400] -translate-x-1/2 -translate-y-full">
-            <span class="material-symbols-rounded text-teal-600 drop-shadow" style="font-size:42px; font-variation-settings:'FILL' 1">location_on</span>
+            <span class="material-symbols-rounded text-teal-600" style="font-size:42px; font-variation-settings:'FILL' 1">location_on</span>
           </div>
           <!-- ปุ่มหาตำแหน่งฉัน -->
           <button type="button" @click="goToMyLocation" :disabled="locating"
-            class="absolute right-3 bottom-3 z-[401] w-11 h-11 rounded-full bg-white shadow-md flex items-center justify-center text-teal-600 hover:bg-gray-50 disabled:opacity-60 transition-all">
+            class="absolute right-3 bottom-3 z-[401] w-11 h-11 rounded-full bg-white flex items-center justify-center text-teal-600 hover:bg-gray-50 disabled:opacity-60 transition-all">
             <span v-if="locating" class="material-symbols-rounded animate-spin">progress_activity</span>
             <span v-else class="material-symbols-rounded">my_location</span>
           </button>

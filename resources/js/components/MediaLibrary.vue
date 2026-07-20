@@ -4,7 +4,7 @@
       <div v-if="show" class="fixed inset-0 z-[1000] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="$emit('close')"></div>
         
-        <div class="bg-white rounded-[2.5rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-5xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
           <!-- Header -->
           <div class="bg-[var(--color-primary)] p-6 md:p-8 text-white relative shrink-0">
             <button @click="$emit('close')" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all active:scale-95 z-20">
@@ -26,7 +26,7 @@
           <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50">
             <div class="flex items-center gap-3 w-full sm:w-auto">
               <input type="file" ref="fileInput" @change="handleUpload" class="hidden" :accept="isVideoMode ? 'video/*' : 'image/*'" multiple />
-              <button @click="$refs.fileInput.click()" :disabled="uploading" class="flex-1 sm:flex-none bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
+              <button @click="$refs.fileInput.click()" :disabled="uploading" class="flex-1 sm:flex-none bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                 <span class="material-symbols-rounded text-xl" :class="{'animate-spin': uploading}">{{ uploading ? 'sync' : 'upload' }}</span>
                 {{ uploading ? 'กำลังอัปโหลด...' : (isVideoMode ? 'อัปโหลดวิดีโอใหม่' : 'อัปโหลดรูปใหม่') }}
               </button>
@@ -37,7 +37,7 @@
               <button 
                 @click="filterUnused = !filterUnused" 
                 class="px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 border"
-                :class="filterUnused ? 'bg-amber-50 text-amber-600 border-amber-200 shadow-sm' : 'bg-white text-gray-400 border-gray-100'"
+                :class="filterUnused ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-white text-gray-400 border-gray-100'"
               >
                 <span class="material-symbols-rounded text-sm">{{ filterUnused ? 'filter_list' : 'filter_list_off' }}</span>
                 แสดงเฉพาะที่ไม่ได้ใช้งาน
@@ -81,33 +81,33 @@
             </div>
             <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               <div v-for="m in filteredMedia" :key="m.filename" 
-                class="group relative aspect-square rounded-2xl border-2 border-transparent hover:border-[var(--color-accent)] overflow-hidden cursor-pointer transition-all bg-gray-100 shadow-sm"
-                :class="{'border-[var(--color-accent)] shadow-md ring-4 ring-[var(--color-accent)]/10': isSelected(m)}"
+                class="group relative aspect-square rounded-2xl border-2 border-transparent hover:border-[var(--color-accent)] overflow-hidden cursor-pointer transition-all bg-gray-100"
+                :class="{'border-[var(--color-accent)] ring-4 ring-[var(--color-accent)]/10': isSelected(m)}"
                 @click="select(m)"
               >
                 <video v-if="isVideoMode" :src="m.url" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" muted preload="metadata"></video>
                 <img v-else :src="m.url" :alt="m.filename" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
                 <div v-if="isVideoMode" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span class="material-symbols-rounded text-white/90 text-4xl drop-shadow-lg">play_circle</span>
+                  <span class="material-symbols-rounded text-white/90 text-4xl">play_circle</span>
                 </div>
                 
                 <!-- Status Badge -->
                 <div class="absolute top-2 left-2 z-10">
-                  <span v-if="m.in_use" class="bg-green-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm flex items-center gap-1">
+                  <span v-if="m.in_use" class="bg-green-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1">
                     <span class="w-1 h-1 rounded-full bg-white animate-pulse"></span>
                     ใช้งานอยู่
                   </span>
-                  <span v-else class="bg-gray-500/80 text-white text-[8px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm">
+                  <span v-else class="bg-gray-500/80 text-white text-[8px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm">
                     ไม่ได้ใช้
                   </span>
                 </div>
 
                 <!-- Overlay Actions -->
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button @click.stop="confirmDelete(m)" class="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 shadow-lg transition-transform hover:scale-110" title="ลบรูป">
+                  <button @click.stop="confirmDelete(m)" class="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-transform hover:scale-110" title="ลบรูป">
                     <span class="material-symbols-rounded text-xl">delete</span>
                   </button>
-                  <button @click.stop="preview(m)" class="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center hover:bg-gray-100 shadow-lg transition-transform hover:scale-110" title="ขยาย">
+                  <button @click.stop="preview(m)" class="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center hover:bg-gray-100 transition-transform hover:scale-110" title="ขยาย">
                     <span class="material-symbols-rounded text-xl">visibility</span>
                   </button>
                 </div>
@@ -120,7 +120,7 @@
 
                 <!-- Selected Indicator -->
                 <div v-if="isSelected(m)" class="absolute inset-0 border-4 border-[var(--color-accent)] pointer-events-none rounded-2xl z-10 transition-all duration-200"></div>
-                <div v-if="isSelected(m)" class="absolute top-2 right-2 w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center shadow-lg animate-in zoom-in z-20">
+                <div v-if="isSelected(m)" class="absolute top-2 right-2 w-6 h-6 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center animate-in zoom-in z-20">
                   <span class="material-symbols-rounded text-sm" v-if="!isMultipleMode">check</span>
                   <span class="text-xs font-bold" v-else>{{ selectionOrder(m) }}</span>
                 </div>
@@ -138,7 +138,7 @@
               <button @click="$emit('close')" class="px-6 py-2.5 rounded-xl text-sm font-black text-gray-500 hover:bg-gray-100 transition-all">
                 ยกเลิก
               </button>
-              <button @click="confirmSelection" :disabled="!hasSelection" class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2">
+              <button @click="confirmSelection" :disabled="!hasSelection" class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-8 py-2.5 rounded-xl text-sm font-black transition-all shadow-lg/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2">
                 เลือกใช้งาน
                 <span v-if="isMultipleMode && selectedCount > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs">{{ selectedCount }}</span>
               </button>
@@ -152,8 +152,8 @@
   <!-- Image Preview Modal -->
   <Teleport to="body">
     <div v-if="previewing" class="fixed inset-0 z-[1010] flex items-center justify-center p-8 bg-black/90 backdrop-blur-md" @click="previewing = null">
-      <video v-if="isVideoMode" :src="previewing.url" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" controls autoplay @click.stop></video>
-      <img v-else :src="previewing.url" class="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" />
+      <video v-if="isVideoMode" :src="previewing.url" class="max-w-full max-h-full rounded-2xl object-contain" controls autoplay @click.stop></video>
+      <img v-else :src="previewing.url" class="max-w-full max-h-full rounded-2xl object-contain" />
       <button class="absolute top-6 right-6 text-white bg-white/20 p-2 rounded-full hover:bg-white/30" @click.stop="previewing = null">
         <span class="material-symbols-rounded">close</span>
       </button>

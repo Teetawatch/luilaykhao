@@ -30,16 +30,16 @@
             <div v-if="booking.status === 'confirmed'" class="absolute inset-0"></div>
             
             <template v-if="booking.status === 'confirmed'">
-              <img src="/images/suscess_show.webp" alt="Success" class="w-56 h-auto mx-auto object-contain drop-shadow-[0_20px_50px_rgba(13,148,136,0.2)] animate-in zoom-in fade-in duration-700 hover:scale-105 transition-transform" />
+              <img src="/images/suscess_show.webp" alt="Success" class="w-56 h-auto mx-auto object-contain drop- animate-in zoom-in fade-in duration-700 hover:scale-105 transition-transform" />
             </template>
             <template v-else-if="booking.status === 'cancelled'">
-              <img src="/images/cancel_booking.webp" alt="Cancelled" class="w-56 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
+              <img src="/images/cancel_booking.webp" alt="Cancelled" class="w-56 h-auto mx-auto object-contain animate-in zoom-in fade-in duration-700" />
             </template>
             <template v-else-if="booking.status === 'pending'">
-              <img src="/images/pending_show.webp" alt="Pending" class="w-56 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
+              <img src="/images/pending_show.webp" alt="Pending" class="w-56 h-auto mx-auto object-contain animate-in zoom-in fade-in duration-700" />
             </template>
             <template v-else-if="booking.status === 'refunded'">
-              <img src="/images/refund_show.webp" alt="Refunded" class="w-56 h-auto mx-auto object-contain drop-shadow-xl animate-in zoom-in fade-in duration-700" />
+              <img src="/images/refund_show.webp" alt="Refunded" class="w-56 h-auto mx-auto object-contain animate-in zoom-in fade-in duration-700" />
             </template>
             <div v-else class="text-gray-400">
               <span class="material-symbols-rounded text-[120px]" style="font-variation-settings:'FILL' 1,'wght' 400">info</span>
@@ -70,7 +70,7 @@
           <div class="lg:col-span-7 space-y-8 animate-in fade-in slide-in-from-left-8 duration-700 delay-300 fill-mode-both">
             
             <!-- Booking Summary Card -->
-            <section class="bg-white rounded-[2.5rem] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden transition-all hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)]">
+            <section class="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden transition-all">
               <div class="flex flex-col">
                 <!-- Trip Image Banner -->
                 <div class="w-full h-48 md:h-56 overflow-hidden relative group">
@@ -82,10 +82,10 @@
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                   <div class="absolute bottom-4 left-6">
-                    <span class="text-[10px] font-black tracking-widest text-white bg-teal-600/80 backdrop-blur-md px-3 py-1.5 rounded-full mb-2 inline-block uppercase border border-white/20 shadow-lg">
+                    <span class="text-[10px] font-black tracking-widest text-white bg-teal-600/80 backdrop-blur-md px-3 py-1.5 rounded-full mb-2 inline-block uppercase border border-white/20">
                       สรุปการจอง
                     </span>
-                    <h2 class="text-xl md:text-2xl font-black text-white leading-tight drop-shadow-md">
+                    <h2 class="text-xl md:text-2xl font-black text-white leading-tight">
                       {{ booking.schedule?.trip?.title }}
                     </h2>
                   </div>
@@ -94,7 +94,7 @@
                 <div class="p-6 md:p-10 space-y-8">
                   <!-- Meta Header: Ref & Status -->
                   <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="bg-gray-50 px-5 py-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+                    <div class="bg-gray-50 px-5 py-3 rounded-2xl border border-gray-100 flex flex-col">
                       <span class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">รหัสการจอง</span>
                       <span class="font-mono font-black text-teal-800 text-lg leading-none tracking-tight">{{ booking.booking_ref }}</span>
                     </div>
@@ -154,7 +154,7 @@
                     </div>
 
                     <div class="flex items-center gap-4 group">
-                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
+                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
                         <span class="material-symbols-rounded text-teal-600 text-[24px]">calendar_today</span>
                       </div>
                       <div>
@@ -164,7 +164,7 @@
                     </div>
 
                     <div class="flex items-center gap-4 group">
-                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
+                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
                         <span class="material-symbols-rounded text-teal-600 text-[24px]">payments</span>
                       </div>
                       <div>
@@ -174,7 +174,7 @@
                     </div>
 
                     <div v-if="booking.pickup_point || booking.pickup_region || booking.custom_pickup" class="flex items-center gap-4 group sm:col-span-2">
-                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
+                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
                         <span class="material-symbols-rounded text-teal-600 text-[24px]">{{ booking.custom_pickup && !booking.pickup_point && !booking.pickup_region ? 'add_location_alt' : 'location_on' }}</span>
                       </div>
                       <div class="min-w-0">
@@ -193,7 +193,7 @@
                     </div>
 
                     <div v-if="booking.seats?.length" class="flex items-center gap-4 group">
-                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
+                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
                         <span class="material-symbols-rounded text-teal-600 text-[24px]">event_seat</span>
                       </div>
                       <div>
@@ -203,7 +203,7 @@
                     </div>
 
                     <div class="flex items-center gap-4 group">
-                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 shadow-sm transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
+                      <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
                         <span class="material-symbols-rounded text-teal-600 text-[24px]">group</span>
                       </div>
                       <div>
@@ -295,7 +295,7 @@
 
                     <!-- Pay Next Button -->
                     <router-link v-if="nextPendingInstallment" :to="`/installment-payment/${booking.booking_ref}`"
-                      class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-sm transition-all bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20 active:scale-[0.98]">
+                      class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-sm transition-all bg-amber-500 text-white hover:bg-amber-600 active:scale-[0.98]">
                       <span class="material-symbols-rounded text-lg">payments</span>
                       ชำระงวดที่ {{ nextPendingInstallment.installment_no }}
                     </router-link>
@@ -311,7 +311,7 @@
             </section>
 
             <!-- ── Trip Team: Staff & Driver ── -->
-            <section v-if="hasTeam" class="bg-white rounded-[2.5rem] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
+            <section v-if="hasTeam" class="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden">
               <!-- Header Band -->
               <div class="relative bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800 px-6 md:px-10 py-7 overflow-hidden">
                 <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
@@ -338,8 +338,8 @@
                     <!-- Avatar -->
                     <div class="shrink-0">
                       <img v-if="driver.photo" :src="driver.photo" :alt="driver.name"
-                        class="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border-2 border-white shadow-lg shadow-teal-900/10" />
-                      <div v-else class="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-teal-600 text-white flex items-center justify-center border-2 border-white shadow-lg shadow-teal-900/10">
+                        class="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border-2 border-white" />
+                      <div v-else class="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-teal-600 text-white flex items-center justify-center border-2 border-white">
                         <span class="text-2xl font-black">{{ initials(driver.name) }}</span>
                       </div>
                     </div>
@@ -349,19 +349,19 @@
 
                       <!-- Vehicle chips -->
                       <div v-if="driver.plate || driver.vehicleName || driver.color" class="flex flex-wrap gap-2 mb-4">
-                        <span v-if="driver.plate" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm">
+                        <span v-if="driver.plate" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl">
                           <span class="material-symbols-rounded text-[16px] text-teal-600">pin</span>{{ driver.plate }}
                         </span>
-                        <span v-if="driver.vehicleName" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm">
+                        <span v-if="driver.vehicleName" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl">
                           <span class="material-symbols-rounded text-[16px] text-teal-600">airport_shuttle</span>{{ driver.vehicleName }}
                         </span>
-                        <span v-if="driver.color" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm">
+                        <span v-if="driver.color" class="inline-flex items-center gap-1.5 text-xs font-black text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-xl">
                           <span class="material-symbols-rounded text-[16px] text-teal-600">palette</span>{{ driver.color }}
                         </span>
                       </div>
 
                       <a v-if="driver.phone" :href="`tel:${driver.phone}`"
-                        class="inline-flex items-center gap-2 bg-teal-600 text-white font-black text-sm px-4 py-2.5 rounded-xl hover:bg-teal-700 active:scale-95 transition-all shadow-md shadow-teal-600/20">
+                        class="inline-flex items-center gap-2 bg-teal-600 text-white font-black text-sm px-4 py-2.5 rounded-xl hover:bg-teal-700 active:scale-95 transition-all">
                         <span class="material-symbols-rounded text-[18px]">call</span>
                         {{ formatPhone(driver.phone) }}
                       </a>
@@ -381,8 +381,8 @@
                       <!-- Avatar -->
                       <div class="shrink-0">
                         <img v-if="s.avatar_url" :src="s.avatar_url" :alt="s.name"
-                          class="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-md" />
-                        <div v-else class="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white flex items-center justify-center border-2 border-white shadow-md">
+                          class="w-14 h-14 rounded-2xl object-cover border-2 border-white" />
+                        <div v-else class="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white flex items-center justify-center border-2 border-white">
                           <span class="text-base font-black">{{ initials(s.name) }}</span>
                         </div>
                       </div>
@@ -410,7 +410,7 @@
             </section>
 
             <!-- Support / Help Area -->
-            <section class="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm group">
+            <section class="bg-white rounded-[2rem] border border-gray-100 p-8 group">
               <div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
                 <div class="w-16 h-16 bg-gray-50 rounded-2.5rem flex items-center justify-center border border-gray-100 group-hover:scale-110 group-hover:bg-teal-50 group-hover:border-teal-100 transition-all duration-500">
                   <span class="material-symbols-rounded text-teal-600 text-[32px]">support_agent</span>
@@ -418,7 +418,7 @@
                 <div class="flex-1">
                   <h5 class="text-gray-900 font-black text-lg mb-1">มีปัญหาเกี่ยวกับการจอง?</h5>
                   <p class="text-gray-400 font-bold text-xs mb-4">ฝ่ายบริการลูกค้าของเราพร้อมช่วยเหลือคุณตลอด 24 ชม.</p>
-                  <a href="#" class="inline-flex items-center gap-2 text-teal-600 font-black text-sm bg-teal-50 px-5 py-2.5 rounded-xl hover:bg-teal-600 hover:text-white transition-all duration-300 border border-teal-100 shadow-sm">
+                  <a href="#" class="inline-flex items-center gap-2 text-teal-600 font-black text-sm bg-teal-50 px-5 py-2.5 rounded-xl hover:bg-teal-600 hover:text-white transition-all duration-300 border border-teal-100">
                     ติดต่อฝ่ายบริการลูกค้า
                     <span class="material-symbols-rounded text-sm">arrow_forward</span>
                   </a>
@@ -431,7 +431,7 @@
           <div class="lg:col-span-5 space-y-8 animate-in fade-in slide-in-from-right-8 duration-700 delay-500 fill-mode-both">
             
             <!-- QR Ticket Card (MAIN FOCUS) -->
-            <section v-if="booking.qr_code && booking.status === 'confirmed'" class="bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(13,148,136,0.15)] border-2 border-teal-500/10 p-8 md:p-10 flex flex-col items-center text-center relative overflow-hidden group">
+            <section v-if="booking.qr_code && booking.status === 'confirmed'" class="bg-white rounded-[2.5rem] border-2 border-teal-500/10 p-8 md:p-10 flex flex-col items-center text-center relative overflow-hidden group">
               <!-- Success Badge Overlay -->
               <div class="absolute -right-8 -top-8 w-32 h-32 bg-teal-600/5 rounded-full blur-3xl group-hover:bg-teal-600/10 transition-colors duration-700"></div>
               
@@ -441,12 +441,12 @@
               </div>
 
               <!-- QR Visual Container -->
-              <div class="relative z-10 p-6 bg-white rounded-[2.5rem] border-2 border-dashed border-teal-100 shadow-2xl shadow-teal-900/5 group-hover:border-teal-400 transition-all duration-500 mb-8 scale-100 group-hover:scale-[1.02]">
+              <div class="relative z-10 p-6 bg-white rounded-[2.5rem] border-2 border-dashed border-teal-100 group-hover:border-teal-400 transition-all duration-500 mb-8 scale-100 group-hover:scale-[1.02]">
                 <canvas ref="qrCanvas" class="mx-auto block" style="image-rendering:pixelated"></canvas>
                 
                 <!-- If checked in overlay -->
                 <div v-if="booking.checked_in" class="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 rounded-[2.5rem] animate-in fade-in zoom-in duration-500">
-                  <div class="w-20 h-20 bg-green-600 text-white rounded-full flex items-center justify-center shadow-xl mb-4 animate-bounce">
+                  <div class="w-20 h-20 bg-green-600 text-white rounded-full flex items-center justify-center mb-4 animate-bounce">
                     <span class="material-symbols-rounded text-[48px]">verified</span>
                   </div>
                   <p class="font-black text-green-700 text-xl">เช็คอินเรียบร้อย</p>
@@ -455,13 +455,13 @@
               </div>
 
               <!-- QR Code Text Ref -->
-              <div class="relative z-10 max-w-full overflow-x-auto whitespace-nowrap bg-gray-50 px-6 py-2.5 rounded-2xl border border-gray-100 mb-8 font-mono font-black text-teal-800 text-lg tracking-widest shadow-inner group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
+              <div class="relative z-10 max-w-full overflow-x-auto whitespace-nowrap bg-gray-50 px-6 py-2.5 rounded-2xl border border-gray-100 mb-8 font-mono font-black text-teal-800 text-lg tracking-widest group-hover:bg-teal-50 group-hover:border-teal-100 transition-colors">
                 {{ booking.qr_code }}
               </div>
 
               <!-- Primary Action: Download -->
               <button @click="saveQR"
-                class="w-full relative z-10 flex items-center justify-center gap-3 px-8 py-5 bg-teal-600 text-white font-black text-lg rounded-[1.5rem] hover:bg-teal-700 hover:-translate-y-1 active:scale-95 transition-all duration-300 shadow-[0_20px_40px_-12px_rgba(13,148,136,0.4)] group/btn">
+                class="w-full relative z-10 flex items-center justify-center gap-3 px-8 py-5 bg-teal-600 text-white font-black text-lg rounded-[1.5rem] hover:bg-teal-700 hover:-translate-y-1 active:scale-95 transition-all duration-300 group/btn">
                 <span class="material-symbols-rounded text-[24px] group-hover/btn:animate-bounce">download</span>
                 <span>บันทึก QR Code สำหรับเช็คอิน</span>
               </button>
@@ -480,15 +480,15 @@
               </h4>
               <div class="space-y-4">
                 <div class="flex items-start gap-4">
-                  <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0 shadow-sm">1</div>
+                  <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0">1</div>
                   <p class="text-amber-900/80 font-bold text-sm leading-relaxed">บันทึกรูปภาพ QR Code ด้านบนลงในโทรศัพท์มือถือของคุณ</p>
                 </div>
                 <div class="flex items-start gap-4">
-                  <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0 shadow-sm">2</div>
+                  <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0">2</div>
                   <p class="text-amber-900/80 font-bold text-sm leading-relaxed">เดินทางไปถึงจุดนัดพบอย่างน้อย 15-30 นาทีก่อนเวลาออกเดินทาง</p>
                 </div>
                 <div class="flex items-start gap-4">
-                  <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0 shadow-sm">3</div>
+                  <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0">3</div>
                   <p class="text-amber-900/80 font-bold text-sm leading-relaxed">แสดง QR Code ให้ทีมงานสแกนเพื่อยืนยันการเช็คอินขึ้นรถ</p>
                 </div>
               </div>
@@ -497,7 +497,7 @@
             <!-- More Actions (Secondary/Tertiary) -->
             <div class="flex flex-col gap-3 pt-4">
               <router-link to="/my-bookings"
-                class="w-full flex items-center justify-center gap-2 py-4 bg-white border-2 border-gray-100 text-gray-700 rounded-2xl font-black text-base hover:bg-gray-50 hover:border-gray-200 active:scale-95 transition-all duration-300 shadow-sm">
+                class="w-full flex items-center justify-center gap-2 py-4 bg-white border-2 border-gray-100 text-gray-700 rounded-2xl font-black text-base hover:bg-gray-50 hover:border-gray-200 active:scale-95 transition-all duration-300">
                 <span>ดูประวัติการจองทั้งหมด</span>
                 <span class="material-symbols-rounded text-[20px]">history</span>
               </router-link>
@@ -515,13 +515,13 @@
 
     <!-- Not Found -->
     <div v-else class="grow flex items-center justify-center text-center py-16 relative z-10">
-      <div class="bg-white p-12 rounded-[3rem] shadow-xl border border-gray-100 flex flex-col items-center max-w-sm mx-4">
+      <div class="bg-white p-12 rounded-[3rem] border border-gray-100 flex flex-col items-center max-w-sm mx-4">
         <div class="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6 text-red-400">
           <span class="material-symbols-rounded text-[56px]" style="font-variation-settings:'wght' 300">error</span>
         </div>
         <h3 class="text-gray-900 font-black text-2xl mb-2">ไม่พบข้อมูลการจอง</h3>
         <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">รหัสการจองอาจไม่ถูกต้อง หรือถูกลบออกจากระบบ กรุณาตรวจสอบอีกครั้ง</p>
-        <router-link to="/trips" class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-base hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20">
+        <router-link to="/trips" class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-base hover:bg-teal-700 transition-all">
           กลับไปหน้าทริปทั้งหมด
         </router-link>
       </div>

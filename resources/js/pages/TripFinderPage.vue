@@ -23,7 +23,7 @@
           <div :key="step" class="grid gap-4" :class="step === 0 ? 'sm:grid-cols-2' : 'sm:grid-cols-2'">
             <button v-for="opt in steps[step].options" :key="opt.key"
               @click="choose(opt)"
-              class="group relative text-left bg-white rounded-[1.75rem] p-6 border-2 border-transparent shadow-[0_4px_20px_rgba(13,43,30,0.06)] hover:shadow-[0_12px_32px_rgba(45,122,79,0.15)] hover:-translate-y-1.5 hover:border-[var(--color-accent)]/40 transition-all duration-300 cursor-pointer">
+              class="group relative text-left bg-white rounded-[1.75rem] p-6 border-2 border-transparent hover:-translate-y-1.5 hover:border-[var(--color-accent)]/40 transition-all duration-300 cursor-pointer">
               <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[var(--color-accent)]/10 text-[var(--color-accent)] group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300">
                 <span class="material-symbols-rounded text-[28px]">{{ opt.icon }}</span>
               </div>
@@ -81,7 +81,7 @@
           <!-- actions -->
           <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
             <button @click="viewAll"
-              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white px-8 py-4 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 shadow-lg hover:-translate-y-1 cursor-pointer">
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white px-8 py-4 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 hover:-translate-y-1 cursor-pointer">
               <span class="material-symbols-rounded text-[20px]">grid_view</span> ดูทั้งหมดในหน้าทริป
             </button>
             <button @click="restart"

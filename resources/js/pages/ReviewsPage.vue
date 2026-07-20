@@ -11,7 +11,7 @@
           <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">verified</span>
           รีวิวจริงจากผู้ร่วมเดินทาง
         </div>
-        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight drop-shadow-md">
+        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
           รีวิวจากลูกค้า
         </h1>
         <p class="text-lg md:text-xl text-white/80 font-medium max-w-2xl mx-auto tracking-wide">
@@ -235,7 +235,7 @@
                 <template v-else>
                   <video :src="item.url" class="w-full h-full object-cover" muted playsinline preload="metadata"></video>
                   <span class="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/45">
-                    <span class="material-symbols-rounded text-white text-3xl drop-shadow-md" style="font-variation-settings:'FILL' 1">play_circle</span>
+                    <span class="material-symbols-rounded text-white text-3xl" style="font-variation-settings:'FILL' 1">play_circle</span>
                   </span>
                 </template>
               </button>

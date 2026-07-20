@@ -7,8 +7,8 @@
         <div class="absolute inset-0 bg-black/40"></div>
       </div>
       <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
-        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
-        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight drop-shadow-md">
+        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
+        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
           ภาพประทับใจ
         </h1>
         <p class="text-lg md:text-xl text-white/80 font-bold max-w-2xl mx-auto tracking-wide">
@@ -63,7 +63,7 @@
               v-if="image.caption || image.location"
               class="gallery-caption"
             >
-              <p v-if="image.caption" class="text-white font-extrabold text-sm leading-snug drop-shadow">{{ image.caption }}</p>
+              <p v-if="image.caption" class="text-white font-extrabold text-sm leading-snug">{{ image.caption }}</p>
               <p v-if="image.location" class="text-white/85 text-xs font-bold flex items-center gap-1 mt-0.5">
                 <span class="material-symbols-rounded text-[14px]">location_on</span>
                 {{ image.location }}

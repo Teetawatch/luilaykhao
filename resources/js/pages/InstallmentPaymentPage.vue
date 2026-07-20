@@ -36,7 +36,7 @@
       </div>
 
       <!-- Installment Progress Card -->
-      <section class="bg-white rounded-3xl shadow-sm p-6 md:p-8 border border-gray-100">
+      <section class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-black text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-amber-500">credit_score</span>
@@ -91,7 +91,7 @@
       </section>
 
       <!-- Payment Section (only if there's a next installment to pay) -->
-      <section v-if="nextInstallment" class="bg-white rounded-3xl shadow-sm p-6 md:p-8 border border-gray-100">
+      <section v-if="nextInstallment" class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-black text-gray-900">ชำระงวดที่ {{ nextInstallment.installment_no }}</h2>
           <div class="text-right">
@@ -137,7 +137,7 @@
         <!-- QR Code -->
         <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
           <p class="text-sm font-bold text-gray-700">สแกน QR เพื่อชำระ ฿{{ Number(nextInstallment.amount).toLocaleString() }}</p>
-          <div class="relative p-2 bg-white rounded-2xl shadow-lg border border-gray-100">
+          <div class="relative p-2 bg-white rounded-2xl border border-gray-100">
             <canvas ref="qrCanvas" class="block rounded-xl w-full max-w-[280px] h-auto mx-auto"></canvas>
           </div>
           <p class="text-xs font-bold text-gray-400">e-Wallet: 004-99923936-2071</p>
@@ -200,7 +200,7 @@
 
         <!-- Submit -->
         <button @click="processPayment" :disabled="paying || !slipFile || !transferDate || !transferTime"
-          class="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all shadow-lg disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/30 active:scale-[0.98]">
+          class="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled: disabled:cursor-not-allowed bg-amber-500 text-white hover:bg-amber-600 active:scale-[0.98]">
           <template v-if="!paying">
             <span class="material-symbols-rounded text-xl">verified_user</span>
             ยืนยันชำระงวดที่ {{ nextInstallment.installment_no }}

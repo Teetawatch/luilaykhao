@@ -24,8 +24,8 @@
     <nav
       class="navbar-root border-b transition-[background-color,box-shadow,border-color] duration-500"
       :class="isScrolled
-        ? 'bg-white/80 supports-[backdrop-filter]:backdrop-blur-xl border-sand-dark/50 shadow-[0_8px_30px_-12px_rgba(13,43,30,0.18)]'
-        : 'bg-white border-sand-dark/30 shadow-none'"
+        ? 'bg-white/80 supports-[backdrop-filter]:backdrop-blur-xl border-sand-dark/50'
+        : 'bg-white border-sand-dark/30'"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
@@ -96,7 +96,7 @@
                       ? 'left-0 w-[min(600px,calc(100vw-3rem))]'
                       : 'left-1/2 -translate-x-1/2 w-[min(360px,calc(100vw-3rem))]'"
                   >
-                    <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
+                    <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
                       <div class="grid gap-1 p-2" :class="isMegaMenu(link) ? 'grid-cols-2' : 'grid-cols-1'">
                         <template v-for="child in link.children" :key="child.to">
                           <component
@@ -171,7 +171,7 @@
               </button>
 
               <div v-if="desktopSearchExpanded" class="absolute top-full right-0 w-[320px] pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 p-2.5">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 p-2.5">
                   <div class="relative flex items-center">
                     <span class="material-symbols-rounded absolute left-3 text-[18px] text-primary">search</span>
                     <input
@@ -214,7 +214,7 @@
               </button>
 
               <div v-if="wishlistDropdownOpen" class="absolute top-full right-0 w-80 pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
                   <div class="px-5 py-3.5 bg-sand/50 border-b border-sand-dark/40 flex items-center gap-2">
                     <span class="material-symbols-rounded text-[18px] text-red-500 filled-icon">favorite</span>
                     <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
@@ -262,7 +262,7 @@
               </button>
 
               <div v-if="notificationDropdownOpen" class="absolute top-full right-0 w-[420px] pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
                   <div class="px-5 py-4 bg-sand/50 border-b border-sand-dark/40">
                     <div class="flex items-start gap-3">
                       <div class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -388,7 +388,7 @@
                 :aria-expanded="userDropdownOpen"
                 @click.stop="userDropdownOpen = !userDropdownOpen; notificationDropdownOpen = false; wishlistDropdownOpen = false"
               >
-                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
                   <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
                   <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                 </div>
@@ -397,7 +397,7 @@
               </button>
 
               <div v-if="userDropdownOpen" class="absolute top-full right-0 w-64 pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl shadow-[0_24px_60px_-15px_rgba(13,43,30,0.28)] ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden p-1.5">
+                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden p-1.5">
                   <div class="px-4 py-3 border-b border-sand-dark/40 mb-1">
                     <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
                     <p class="text-[10px] text-accent font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : isStaff ? 'Staff' : 'Member' }}</p>
@@ -628,7 +628,7 @@
           <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
             <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
               <div class="flex items-center gap-3">
-                <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary ring-2 ring-white shadow-md">
+                <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary ring-2 ring-white">
                   <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="h-full w-full object-cover" />
                   <span v-else class="text-[15px] font-bold text-white">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                 </div>

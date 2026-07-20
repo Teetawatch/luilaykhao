@@ -17,8 +17,8 @@
 
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-16 md:py-24">
         <div class="text-center max-w-4xl mt-6 flex flex-col items-center">
-          <div class="w-14 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full shadow-lg"></div>
-          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tighter drop-shadow-2xl">
+          <div class="w-14 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
+          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tighter">
             เปลี่ยนความอยากเที่ยว<br />
             <span class="text-[var(--color-accent)]">เป็นการเดินทางที่ง่ายที่สุด</span>
           </h1>
@@ -26,7 +26,7 @@
             แพลตฟอร์มที่รวมทริปคุณภาพ จองง่ายเพียงไม่กี่คลิก <br class="hidden md:block"/> พร้อมระบบยืนยันที่ทันใจ เหมือนมีเพื่อนสนิทมาวางแผนให้คุณ
           </p>
           <div class="flex flex-col sm:flex-row items-center gap-4">
-            <router-link to="/trips" class="px-8 py-3.5 bg-[var(--color-accent)] hover:bg-[#3d8b63] text-white rounded-2xl font-black text-lg transition-all duration-300 shadow-xl hover:shadow-[0_20px_40px_rgba(76,175,125,0.3)] hover:-translate-y-1">
+            <router-link to="/trips" class="px-8 py-3.5 bg-[var(--color-accent)] hover:bg-[#3d8b63] text-white rounded-2xl font-black text-lg transition-all duration-300 hover:-translate-y-1">
               ค้นหาทริปของคุณ
             </router-link>
             <a href="#our-story" class="px-8 py-3.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold text-lg transition-all duration-300 hover:-translate-y-1">
@@ -73,7 +73,7 @@
                 ทั้งการรอแอดมินตอบ ข้อมูลทริปที่ไม่ชัดเจน หรือการจองที่ซับซ้อน 
                 เราจึงตั้งคำถามง่าย ๆ กับตัวเองว่า
               </p>
-              <div class="relative py-10 px-8 bg-white/50 rounded-3xl border border-white/80 backdrop-blur-sm shadow-inner group overflow-hidden">
+              <div class="relative py-10 px-8 bg-white/50 rounded-3xl border border-white/80 backdrop-blur-sm group overflow-hidden">
                 <div class="absolute -top-4 -left-2 text-[var(--color-accent)]/10 text-9xl font-serif">“</div>
                 <p class="relative z-10 text-[var(--color-text-dark)] font-bold text-2xl md:text-3xl italic leading-snug">
                   ทำไมการออกไปพบเจอความสุข <br class="hidden sm:block" />
@@ -90,9 +90,9 @@
               <img
                 src="/images/abouts_luilaykhao.JPG"
                 alt="บรรยากาศการเดินทางที่เต็มไปด้วยความสุข"
-                class="relative rounded-[2rem] shadow-2xl w-full object-cover aspect-[4/5] transition-transform duration-700 group-hover:scale-[1.02]"
+                class="relative rounded-[2rem] w-full object-cover aspect-[4/5] transition-transform duration-700 group-hover:scale-[1.02]"
               />
-              <div class="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-xl transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500">
+              <div class="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-6 rounded-2xl transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500">
                 <p class="text-[var(--color-text-dark)] font-bold text-lg">"ธรรมชาติบำบัดเราได้เสมอ..."</p>
                 <p class="text-[var(--color-text-muted)] text-sm italic">— ทีมงานลุยเลเขา</p>
               </div>
@@ -151,12 +151,12 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 items-stretch">
           <!-- Pillar 1 -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/abouts_ready.webp" 
                 alt="ระบบจองอัจฉริยะ" 
-                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain"
               />
             </div>
             <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">ไม่ต้องรอแอดมิน</h3>
@@ -164,12 +164,12 @@
           </div>
           
           <!-- Pillar 2 (Featured) -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/abouts_buddy.webp" 
                 alt="เพื่อนคู่เที่ยวที่ไว้วางใจ" 
-                class="w-64 h-64 max-w-none object-contain drop-shadow-2xl"
+                class="w-64 h-64 max-w-none object-contain"
               />
             </div>
             <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">เพื่อนร่วมทางตัวจริง</h3>
@@ -178,12 +178,12 @@
           </div>
           
           <!-- Pillar 3 -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
+          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
             <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
               <img 
                 src="/images/abouts_happy.webp" 
                 alt="ความสุขในการเดินทาง" 
-                class="w-72 h-72 max-w-none object-contain drop-shadow-2xl"
+                class="w-72 h-72 max-w-none object-contain"
               />
             </div>
             <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">สุขใจทุกกิโลเมตร</h3>
@@ -229,7 +229,7 @@
           <div
             v-for="(val, idx) in values"
             :key="val.title"
-            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
+            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
             :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
           >
             <!-- Image Wrapper (Out-of-bound) -->
@@ -237,7 +237,7 @@
               <img 
                 :src="val.image" 
                 :alt="val.title" 
-                class="w-48 h-48 md:w-56 md:h-56 max-w-none object-contain drop-shadow-2xl"
+                class="w-48 h-48 md:w-56 md:h-56 max-w-none object-contain"
               />
             </div>
 

@@ -5,7 +5,7 @@
     <Transition name="banner-slide">
       <div
         v-if="avatarFile"
-        class="fixed top-0 left-0 right-0 z-[100] bg-[var(--color-primary)] text-white shadow-2xl shadow-[var(--color-primary)]/30"
+        class="fixed top-0 left-0 right-0 z-[100] bg-[var(--color-primary)] text-white shadow-2xl/30"
       >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0">
@@ -27,7 +27,7 @@
             <button
               @click="uploadAvatar"
               :disabled="uploadingAvatar"
-              class="px-5 py-2 rounded-xl font-black text-sm bg-white text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 shadow-lg"
+              class="px-5 py-2 rounded-xl font-black text-sm bg-white text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60"
             >
               <span v-if="uploadingAvatar" class="material-symbols-rounded animate-spin text-[16px]">refresh</span>
               <span v-else class="material-symbols-rounded text-[16px]">save</span>
@@ -50,7 +50,7 @@
       <div class="relative w-full px-4 sm:px-6 md:px-8 pb-8 md:pb-10 flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-8 max-w-7xl mx-auto z-10">
         <!-- Avatar -->
         <div class="relative group shrink-0">
-          <div class="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-[2.5rem] border-4 border-white shadow-2xl overflow-hidden bg-white transition-transform duration-500" :class="{'scale-[1.02]': !avatarFile && !uploadingAvatar}">
+          <div class="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-[2.5rem] border-4 border-white overflow-hidden bg-white transition-transform duration-500" :class="{'scale-[1.02]': !avatarFile && !uploadingAvatar}">
             <img
               :src="avatarPreview || auth.user?.avatar_url || '/images/default-avatar.png'"
               alt="Profile"
@@ -72,7 +72,7 @@
 
           <label
             for="avatar-upload"
-            class="absolute -bottom-2 -right-2 p-2.5 md:p-3 rounded-2xl shadow-xl ring-4 ring-white transition-all cursor-pointer hover:rotate-12 active:scale-90"
+            class="absolute -bottom-2 -right-2 p-2.5 md:p-3 rounded-2xl ring-4 ring-white transition-all cursor-pointer hover:rotate-12 active:scale-90"
             :class="avatarFile
               ? 'bg-amber-500 hover:bg-amber-600'
               : 'bg-[var(--color-accent)] hover:bg-[var(--color-primary)]'"
@@ -92,7 +92,7 @@
             <div class="flex items-center justify-center sm:justify-start gap-2">
               <span
                 v-if="loyaltyTierLabel"
-                class="bg-[var(--color-accent)] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[var(--color-accent)]/20"
+                class="bg-[var(--color-accent)] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg/20"
               >
                 {{ loyaltyTierLabel }}
               </span>
@@ -118,21 +118,21 @@
 
           <!-- Meta Info Badges -->
           <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-            <div class="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm group hover:bg-white/15 transition-colors">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-2xl flex items-center gap-3 group hover:bg-white/15 transition-colors">
               <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">calendar_today</span>
               <div class="text-left">
                 <p class="text-[9px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">สมาชิกตั้งแต่</p>
                 <p class="text-xs font-bold">{{ formatJoinDate(auth.user?.created_at) }}</p>
               </div>
             </div>
-            <div class="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-sm group hover:bg-white/15 transition-colors">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-2xl flex items-center gap-3 group hover:bg-white/15 transition-colors">
               <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">confirmation_number</span>
               <div class="text-left">
                 <p class="text-[9px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">จองแล้ว</p>
                 <p class="text-xs font-bold">{{ auth.user?.bookings_count || 0 }} ครั้ง</p>
               </div>
             </div>
-            <div :class="providerBadge.class" class="px-4 py-2 rounded-2xl flex items-center gap-2 shadow-sm border opacity-90">
+            <div :class="providerBadge.class" class="px-4 py-2 rounded-2xl flex items-center gap-2 border opacity-90">
               <span class="scale-90" v-html="providerBadge.icon"></span>
               <span class="text-[10px] font-black uppercase tracking-widest">{{ providerBadge.label }}</span>
             </div>
@@ -152,7 +152,7 @@
           @click="activeTab = tab.key"
           class="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold transition-all whitespace-nowrap text-sm shrink-0"
           :class="activeTab === tab.key
-            ? 'bg-[var(--color-primary)] text-white shadow-md'
+            ? 'bg-[var(--color-primary)] text-white'
             : 'bg-white text-[var(--color-text-mid)] border border-gray-200'"
         >
           <span class="material-symbols-rounded text-[18px]" :style="activeTab === tab.key ? 'font-variation-settings:\'FILL\' 1' : ''">{{ tab.icon }}</span>
@@ -164,14 +164,14 @@
 
         <!-- Sidebar (desktop only) -->
         <aside class="hidden lg:block lg:col-span-3 space-y-8">
-          <nav class="sticky top-28 bg-white p-4 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+          <nav class="sticky top-28 bg-white p-4 rounded-[2rem] border border-gray-100 overflow-hidden">
             <button
               v-for="tab in tabs"
               :key="tab.key"
               @click="activeTab = tab.key"
               class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all text-left mb-1.5 last:mb-0 relative group overflow-hidden"
               :class="activeTab === tab.key
-                ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20'
+                ? 'bg-[var(--color-primary)] text-white shadow-lg/20'
                 : 'text-[var(--color-text-mid)] hover:bg-[var(--color-sand)] hover:text-[var(--color-primary)]'"
             >
               <div
@@ -190,7 +190,7 @@
 
             <router-link
               to="/my-bookings"
-              class="block bg-white p-7 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-gray-100 hover:border-[var(--color-primary)] hover:shadow-[0_20px_40px_-10px_rgba(13,43,30,0.1)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+              class="block bg-white p-7 rounded-[2rem] border border-gray-100 hover:border-[var(--color-primary)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
             >
               <div class="flex items-center justify-between mb-5">
                 <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-all duration-500 group-hover:rotate-6">
@@ -206,7 +206,7 @@
 
             <router-link
               to="/loyalty"
-              class="block bg-white p-7 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-gray-100 hover:border-[var(--color-gold)] hover:shadow-[0_20px_40px_-10px_rgba(184,134,11,0.1)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+              class="block bg-white p-7 rounded-[2rem] border border-gray-100 hover:border-[var(--color-gold)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
             >
               <div class="flex items-center justify-between mb-5">
                 <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-gold)] group-hover:bg-[var(--color-gold)] group-hover:text-white transition-all duration-500 group-hover:-rotate-6">
@@ -226,17 +226,17 @@
         <div class="lg:col-span-9 min-w-0">
 
           <!-- Alerts -->
-          <div v-if="error" class="mb-6 p-4 bg-red-50 border border-red-100 rounded-[1rem] flex items-center gap-3 animate-fade-in shadow-sm">
+          <div v-if="error" class="mb-6 p-4 bg-red-50 border border-red-100 rounded-[1rem] flex items-center gap-3 animate-fade-in">
             <span class="material-symbols-rounded text-red-500 text-[24px]" style="font-variation-settings:'FILL' 1">error</span>
             <p class="text-red-700 text-sm font-bold">{{ error }}</p>
           </div>
-          <div v-if="success" class="mb-6 p-4 bg-green-50 border border-green-100 rounded-[1rem] flex items-center gap-3 animate-fade-in shadow-sm">
+          <div v-if="success" class="mb-6 p-4 bg-green-50 border border-green-100 rounded-[1rem] flex items-center gap-3 animate-fade-in">
             <span class="material-symbols-rounded text-green-500 text-[24px]" style="font-variation-settings:'FILL' 1">check_circle</span>
             <p class="text-green-700 text-sm font-bold">{{ success }}</p>
           </div>
 
           <!-- ─── TAB: ข้อมูลส่วนตัว ─── -->
-          <div v-if="activeTab === 'info'" class="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
+          <div v-if="activeTab === 'info'" class="bg-white p-6 md:p-10 rounded-[2.5rem] border border-gray-100 relative overflow-hidden">
 
             <!-- Tab Header -->
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-8 border-b border-gray-100">
@@ -277,7 +277,7 @@
                 <button
                   v-if="!editMode"
                   @click="editMode = true"
-                  class="bg-[var(--color-primary)] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[var(--color-accent)] transition-all flex items-center gap-2 shadow-lg shadow-[var(--color-primary)]/20 hover:-translate-y-1 active:scale-95"
+                  class="bg-[var(--color-primary)] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[var(--color-accent)] transition-all flex items-center gap-2 shadow-lg/20 hover:-translate-y-1 active:scale-95"
                 >
                   <span class="material-symbols-rounded text-[20px]">edit</span>
                   แก้ไขข้อมูล
@@ -286,7 +286,7 @@
                   <button
                     @click="handleSave"
                     :disabled="saving"
-                    class="bg-[var(--color-primary)] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[var(--color-accent)] transition-all flex items-center gap-2 shadow-lg shadow-[var(--color-primary)]/20 hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+                    class="bg-[var(--color-primary)] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[var(--color-accent)] transition-all flex items-center gap-2 shadow-lg/20 hover:-translate-y-1 active:scale-95 disabled:opacity-50"
                   >
                     <span v-if="saving" class="material-symbols-rounded animate-spin text-[20px]">refresh</span>
                     <span v-else class="material-symbols-rounded text-[20px]">save</span>
@@ -570,14 +570,14 @@
             </div>
 
             <!-- Rewards Section -->
-            <div class="mt-16 p-1 bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary)]/80 rounded-[2.5rem] shadow-2xl shadow-[var(--color-primary)]/20 overflow-hidden relative group">
+            <div class="mt-16 p-1 bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary)]/80 rounded-[2.5rem] shadow-2xl/20 overflow-hidden relative group">
               <div class="bg-white/5 backdrop-blur-sm p-8 md:p-12 rounded-[2.4rem] relative z-10 flex flex-col md:flex-row items-center gap-10">
                 <div class="shrink-0 relative">
-                  <div class="w-24 h-24 rounded-3xl bg-white flex flex-col items-center justify-center shadow-xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                  <div class="w-24 h-24 rounded-3xl bg-white flex flex-col items-center justify-center rotate-3 group-hover:rotate-0 transition-transform duration-500">
                     <span class="text-3xl font-black text-[var(--color-primary)] leading-tight">{{ loyaltyPoints?.toLocaleString() || 0 }}</span>
                     <span class="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">แต้ม</span>
                   </div>
-                  <div class="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-[var(--color-gold)] border-4 border-white flex items-center justify-center text-white shadow-lg">
+                  <div class="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-[var(--color-gold)] border-4 border-white flex items-center justify-center text-white">
                     <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">stars</span>
                   </div>
                 </div>
@@ -610,7 +610,7 @@
 
                 <router-link
                   to="/loyalty"
-                  class="bg-white text-[var(--color-primary)] px-10 py-4 rounded-2xl font-black hover:bg-[var(--color-sand)] transition-all shrink-0 shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-3"
+                  class="bg-white text-[var(--color-primary)] px-10 py-4 rounded-2xl font-black hover:bg-[var(--color-sand)] transition-all shrink-0 hover:-translate-y-1 active:scale-95 flex items-center gap-3"
                 >
                   <span>รายละเอียดแต้ม</span>
                   <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
@@ -623,7 +623,7 @@
           </div>
 
           <!-- ─── TAB: ความปลอดภัย ─── -->
-          <div v-if="activeTab === 'security'" class="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100">
+          <div v-if="activeTab === 'security'" class="bg-white p-8 md:p-12 rounded-[2.5rem] border border-gray-100">
             <div class="mb-12 pb-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <div class="flex items-center gap-3 mb-2">
@@ -733,7 +733,7 @@
                 <button
                   @click="handleSave"
                   :disabled="saving || (form.password && form.password !== form.password_confirmation)"
-                  class="w-full md:w-auto bg-[var(--color-primary)] text-white px-12 py-4 rounded-2xl font-black shadow-lg shadow-[var(--color-primary)]/20 hover:bg-[var(--color-accent)] hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-full md:w-auto bg-[var(--color-primary)] text-white px-12 py-4 rounded-2xl font-black shadow-lg/20 hover:bg-[var(--color-accent)] hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span v-if="saving" class="material-symbols-rounded animate-spin text-[20px]">refresh</span>
                   <span v-else class="material-symbols-rounded text-[20px]">key</span>
@@ -744,7 +744,7 @@
           </div>
 
           <!-- ─── TAB: ออกจากระบบ ─── -->
-          <div v-if="activeTab === 'logout'" class="bg-white p-8 md:p-12 rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.04)] border border-gray-100">
+          <div v-if="activeTab === 'logout'" class="bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
             <div class="mb-10 pb-8 border-b border-gray-100">
               <h2 class="text-3xl font-black text-[var(--color-text-dark)] mb-2">ออกจากระบบ</h2>
               <p class="text-[var(--color-text-muted)] font-medium">คุณกำลังล็อกอินอยู่ในบัญชี <strong class="text-[var(--color-primary)]">{{ auth.user?.email }}</strong></p>
@@ -753,7 +753,7 @@
               <p class="text-sm font-medium text-[var(--color-text-muted)]">คุณจะถูกนำออกจากระบบและต้องล็อกอินใหม่เพื่อดูข้อมูลการจองของคุณ</p>
               <button
                 @click="handleLogout"
-                class="bg-white text-red-500 border-2 border-red-100 px-8 py-4 rounded-[1rem] font-black hover:bg-red-50 hover:border-red-400 transition-all flex items-center gap-3 w-full md:w-auto shadow-sm active:scale-95"
+                class="bg-white text-red-500 border-2 border-red-100 px-8 py-4 rounded-[1rem] font-black hover:bg-red-50 hover:border-red-400 transition-all flex items-center gap-3 w-full md:w-auto active:scale-95"
               >
                 <span class="material-symbols-rounded text-[24px]">logout</span>
                 ลงชื่อออกจากระบบ

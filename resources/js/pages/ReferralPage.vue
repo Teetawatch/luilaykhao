@@ -16,7 +16,7 @@
 
       <template v-else-if="data">
         <!-- Referral code card -->
-        <div class="bg-gradient-to-br from-[#006565] to-[#00A3A3] rounded-[24px] p-7 text-white shadow-lg mb-5 relative overflow-hidden">
+        <div class="bg-gradient-to-br from-[#006565] to-[#00A3A3] rounded-[24px] p-7 text-white mb-5 relative overflow-hidden">
           <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
           <div class="absolute -right-2 bottom-2 w-20 h-20 rounded-full bg-white/5"></div>
           <p class="text-white/80 text-xs font-bold uppercase tracking-wider mb-2">โค้ดชวนเพื่อนของคุณ</p>
@@ -104,7 +104,7 @@
 
       <!-- Copy toast -->
       <transition name="fade">
-        <div v-if="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-[#1a1c1c] text-white text-sm font-bold px-5 py-2.5 rounded-full shadow-lg z-50">
+        <div v-if="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-[#1a1c1c] text-white text-sm font-bold px-5 py-2.5 rounded-full z-50">
           {{ toast }}
         </div>
       </transition>

@@ -2,7 +2,7 @@
   <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 bg-sand/20">
     <div class="w-full max-w-md">
       <!-- Card -->
-      <div class="bg-white rounded-3xl p-8 shadow-xl shadow-sand-dark/10 border border-sand-dark/30">
+      <div class="bg-white rounded-3xl p-8 shadow-sand-dark/10 border border-sand-dark/30">
         <div class="text-center mb-8">
           <div class="w-20 h-20 flex items-center justify-center mx-auto mb-5">
             <img src="/images/logo.png?v=2" alt="Luilaykhao" class="w-20 h-20 object-contain" />
@@ -46,7 +46,7 @@
           </div>
 
           <!-- Error Alert -->
-          <div v-if="error" class="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-fade-in shadow-sm">
+          <div v-if="error" class="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-fade-in">
             <div class="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
               <i class="fa-solid fa-circle-exclamation text-red-600 text-sm"></i>
             </div>
@@ -58,7 +58,7 @@
 
           <!-- Submit Button -->
           <button type="submit" :disabled="auth.loading"
-            class="w-full bg-accent text-white py-3.5 rounded-xl font-bold shadow-lg shadow-accent/20 hover:bg-accent-mid hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center gap-2 mt-2">
+            class="w-full bg-accent text-white py-3.5 rounded-xl font-bold shadow-accent/20 hover:bg-accent-mid hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled: flex items-center justify-center gap-2 mt-2">
             <i v-if="auth.loading" class="fa-solid fa-circle-notch fa-spin"></i>
             <i v-else class="fa-solid fa-right-to-bracket"></i>
             {{ auth.loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ' }}
@@ -76,19 +76,19 @@
         <!-- Social Logins -->
         <div class="flex flex-col gap-3">
           <button @click="loginWithSocial('google')"
-            class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-sand-dark/60 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group shadow-sm">
+            class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-sand-dark/60 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group">
             <img src="https://www.svgrepo.com/show/355037/google.svg" class="w-5 h-5 flex-shrink-0" alt="Google" />
             <span class="text-sm font-bold text-text-dark">ดำเนินการต่อด้วย Google</span>
           </button>
           
           <button @click="loginWithSocial('facebook')"
-            class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#1877F2] text-white rounded-xl hover:bg-[#0c63d4] transition-all duration-200 shadow-sm">
+            class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#1877F2] text-white rounded-xl hover:bg-[#0c63d4] transition-all duration-200">
             <i class="fa-brands fa-facebook text-xl flex-shrink-0"></i>
             <span class="text-sm font-bold">ดำเนินการต่อด้วย Facebook</span>
           </button>
 
           <button @click="loginWithSocial('line')"
-            class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#06C755] text-white rounded-xl hover:bg-[#05b34c] transition-all duration-200 shadow-sm">
+            class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-[#06C755] text-white rounded-xl hover:bg-[#05b34c] transition-all duration-200">
             <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" class="w-5 h-5 flex-shrink-0" alt="LINE" />
             <span class="text-sm font-bold">ดำเนินการต่อด้วย LINE</span>
           </button>

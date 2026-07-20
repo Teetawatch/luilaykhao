@@ -14,13 +14,13 @@
         
         <div class="hidden sm:flex items-center space-x-4 text-xs md:text-sm font-medium">
           <div class="flex -space-x-3">
-            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent flex items-center justify-center border-2 border-transparent text-white z-30 shadow-md">
+            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent flex items-center justify-center border-2 border-transparent text-white z-30">
               <i class="fa-solid fa-user"></i>
             </div>
-            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent-mid flex items-center justify-center border-2 border-white text-white z-20 shadow-md">
+            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent-mid flex items-center justify-center border-2 border-white text-white z-20">
               <i class="fa-solid fa-star"></i>
             </div>
-            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-sand-dark flex items-center justify-center border-2 border-white text-text-dark z-10 shadow-md">
+            <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-sand-dark flex items-center justify-center border-2 border-white text-text-dark z-10">
               <span class="text-[10px] md:text-xs">+1k</span>
             </div>
           </div>
@@ -192,7 +192,7 @@
 
           <!-- Submit Button -->
           <button type="submit" :disabled="auth.loading"
-            class="w-full bg-accent text-white py-3.5 rounded-xl font-bold shadow-lg shadow-accent/20 hover:bg-accent-mid hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center gap-2 mt-4">
+            class="w-full bg-accent text-white py-3.5 rounded-xl font-bold shadow-accent/20 hover:bg-accent-mid hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled: flex items-center justify-center gap-2 mt-4">
             <i v-if="auth.loading" class="fa-solid fa-circle-notch fa-spin"></i>
             <i v-else class="fa-solid fa-user-plus"></i>
             {{ auth.loading ? 'กำลังสร้างบัญชี...' : 'สมัครสมาชิก' }}

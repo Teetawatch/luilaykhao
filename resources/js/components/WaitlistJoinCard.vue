@@ -2,7 +2,7 @@
   <!-- คิวรอที่นั่ง — แสดงบนหน้าทริปเมื่อรอบที่เลือกเต็ม -->
   <div class="p-5 rounded-[1.5rem] border-2 border-dashed border-[var(--color-accent)]/40 bg-[var(--color-accent)]/5">
     <div class="flex items-center gap-3 mb-3">
-      <div class="w-11 h-11 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white shrink-0 shadow-md">
+      <div class="w-11 h-11 rounded-full bg-[var(--color-accent)] flex items-center justify-center text-white shrink-0">
         <span class="material-symbols-rounded text-[22px]">hourglass_top</span>
       </div>
       <div>

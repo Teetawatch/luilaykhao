@@ -19,7 +19,7 @@
 
       <template v-else>
         <!-- Account Card -->
-        <div class="relative rounded-[24px] overflow-hidden mb-8 text-white shadow-lg transition-colors"
+        <div class="relative rounded-[24px] overflow-hidden mb-8 text-white transition-colors"
           :class="tierBg">
           <div class="absolute inset-0 opacity-5" style="background:repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%);background-size:20px 20px;"></div>
           <div class="relative p-6 sm:p-8">
@@ -66,13 +66,13 @@
         </div>
 
         <!-- Tabs -->
-        <div class="flex gap-2 mb-8 bg-[#E8EEEF] p-1.5 rounded-[16px] w-fit shadow-inner">
+        <div class="flex gap-2 mb-8 bg-[#E8EEEF] p-1.5 rounded-[16px] w-fit">
           <button
             v-for="tab in tabs"
             :key="tab.key"
             @click="activeTab = tab.key"
             class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
-            :class="activeTab === tab.key ? 'bg-white text-[#006565] shadow-sm' : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
+            :class="activeTab === tab.key ? 'bg-white text-[#006565]' : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
             style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             <span class="material-symbols-rounded text-[20px]" :style="activeTab === tab.key ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">
               {{ tab.key === 'rewards' ? 'card_giftcard' : (tab.key === 'coupons' ? 'local_play' : 'history') }}
@@ -83,7 +83,7 @@
 
         <!-- Rewards Tab -->
         <div v-if="activeTab === 'rewards'">
-          <div v-if="rewards.length === 0" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] flex flex-col items-center">
+          <div v-if="rewards.length === 0" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center">
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">card_giftcard</span>
             </div>
@@ -93,7 +93,7 @@
             <div
               v-for="r in rewards"
               :key="r.id"
-              class="bg-white rounded-[20px] p-5 md:p-6 flex flex-col border border-[#E8EEEF] hover:shadow-md hover:border-[#006565]/30 transition-all shadow-sm group">
+              class="bg-white rounded-[20px] p-5 md:p-6 flex flex-col border border-[#E8EEEF] hover:border-[#006565]/30 transition-all group">
               <div class="flex justify-between items-start mb-4">
                 <div class="w-12 h-12 bg-[#F9FAFA] rounded-[12px] flex items-center justify-center border border-[#E8EEEF] group-hover:scale-105 transition-transform">
                   <span class="material-symbols-rounded text-[28px] text-[#006565]">{{ rewardIcon(r.type) }}</span>
@@ -112,7 +112,7 @@
                 <button
                   @click="redeemReward(r)"
                   :disabled="(account?.points ?? 0) < r.points_required || redeeming === r.id"
-                  class="bg-[#006565] text-white px-5 py-2.5 rounded-[12px] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#004f4f] transition-all flex items-center gap-1.5 shadow-sm shadow-[#006565]/20"
+                  class="bg-[#006565] text-white px-5 py-2.5 rounded-[12px] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#004f4f] transition-all flex items-center gap-1.5 shadow-sm/20"
                   style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span v-if="redeeming === r.id" class="material-symbols-rounded text-[18px] animate-spin">progress_activity</span>
                   {{ redeeming === r.id ? 'กำลังแลก...' : 'แลกรับเลย' }}
@@ -124,7 +124,7 @@
 
         <!-- Coupons Tab -->
         <div v-else-if="activeTab === 'coupons'">
-          <div v-if="coupons.length === 0" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] flex flex-col items-center">
+          <div v-if="coupons.length === 0" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center">
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">local_activity</span>
             </div>
@@ -134,7 +134,7 @@
             <div
               v-for="c in coupons"
               :key="c.id"
-              class="bg-white rounded-[20px] p-5 flex items-center gap-4 border border-[#E8EEEF] shadow-sm"
+              class="bg-white rounded-[20px] p-5 flex items-center gap-4 border border-[#E8EEEF]"
               :class="{ 'opacity-60 grayscale-[0.5]': c.is_used || isExpired(c.expires_at) }">
               <div class="w-14 h-14 bg-[#F9FAFA] rounded-[16px] flex items-center justify-center border border-[#E8EEEF] shrink-0">
                  <span class="material-symbols-rounded text-[32px] text-[#006565]">{{ rewardIcon(c.reward_type) }}</span>
@@ -164,7 +164,7 @@
 
         <!-- History Tab -->
         <div v-else-if="activeTab === 'history'">
-          <div v-if="!account?.transactions?.length" class="text-center py-20 bg-white rounded-[24px] shadow-sm border border-[#E8EEEF] flex flex-col items-center">
+          <div v-if="!account?.transactions?.length" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center">
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">history</span>
             </div>
@@ -174,7 +174,7 @@
             <div
               v-for="t in account?.transactions"
               :key="t.id"
-              class="bg-white rounded-[16px] p-4 flex items-center gap-4 border border-[#E8EEEF] shadow-sm">
+              class="bg-white rounded-[16px] p-4 flex items-center gap-4 border border-[#E8EEEF]">
               <div
                 class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 border"
                 :class="t.type === 'earn' ? 'bg-[#F0FAFA] border-[#BCDFDF] text-[#006565]' : 'bg-[#FFFBEB] border-[#FDE68A] text-[#D97706]'">
@@ -204,8 +204,8 @@
 
       <!-- Redeem Success Modal -->
       <div v-if="redeemResult" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all pr-4 sm:pr-6 md:pr-0">
-        <div class="bg-white rounded-[24px] w-full max-w-sm p-8 text-center shadow-2xl relative">
-          <div class="w-20 h-20 bg-[#E3F2F2] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
+        <div class="bg-white rounded-[24px] w-full max-w-sm p-8 text-center relative">
+          <div class="w-20 h-20 bg-[#E3F2F2] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white">
             <span class="material-symbols-rounded text-[40px] text-[#006565]">check_circle</span>
           </div>
           <h2 class="text-2xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แลกรับสำเร็จ!</h2>
@@ -223,7 +223,7 @@
           </p>
           <button
             @click="redeemResult = null"
-            class="w-full bg-[#006565] text-white py-3.5 rounded-[16px] font-bold hover:bg-[#004f4f] transition-all shadow-sm"
+            class="w-full bg-[#006565] text-white py-3.5 rounded-[16px] font-bold hover:bg-[#004f4f] transition-all"
             style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             ตกลง
           </button>

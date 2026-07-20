@@ -12,7 +12,7 @@
     <div v-else-if="schedule" class="pt-6 pb-24 px-4 md:px-8 max-w-screen-xl mx-auto">
 
       <!-- Breadcrumb -->
-      <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2 bg-white px-4 py-3 rounded-2xl shadow-sm border border-gray-100 w-fit">
+      <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2 bg-white px-4 py-3 rounded-2xl border border-gray-100 w-fit">
         <router-link to="/trips" class="hover:text-teal-600 transition-colors flex items-center gap-1.5 font-medium">
           <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">explore</span>
           กิจกรรม
@@ -22,7 +22,7 @@
       </nav>
 
       <!-- Title Hero -->
-      <div class="mb-10 bg-white rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
+      <div class="mb-10 bg-white rounded-3xl border border-gray-100 relative overflow-hidden">
         <!-- Hero Image -->
         <div v-if="schedule.trip?.cover_image" class="relative w-full h-64 md:h-80">
           <img :src="schedule.trip.thumbnail_image || schedule.trip.cover_image" :alt="schedule.trip.title"
@@ -31,7 +31,7 @@
         </div>
         <!-- Content -->
         <div class="p-6 md:p-8 relative" :class="schedule.trip?.cover_image ? '-mt-20 md:-mt-24 relative z-10' : ''">
-          <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-lg border border-gray-100/50">
+          <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-gray-100/50">
             <h1 class="font-anuphan text-2xl md:text-4xl font-extrabold text-gray-900 mb-4">
               {{ schedule.trip?.title }}
             </h1>
@@ -67,11 +67,11 @@
           <template v-for="(s, i) in steps" :key="i">
             <div class="flex flex-col items-center flex-1 relative z-10">
               <!-- Step Circle -->
-              <div class="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center mb-3 transition-all duration-500 shadow-sm"
+              <div class="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center mb-3 transition-all duration-500"
                 :class="step > i
-                  ? 'bg-teal-600 text-white shadow-teal-600/20'
+                  ? 'bg-teal-600 text-white'
                   : step === i
-                    ? 'bg-teal-700 text-white ring-4 ring-teal-600/20 scale-110 shadow-teal-700/30'
+                    ? 'bg-teal-700 text-white ring-4 ring-teal-600/20 scale-110'
                     : 'bg-white border-2 border-gray-200 text-gray-400'">
                 <span v-if="step > i" class="material-symbols-rounded text-xl md:text-[22px]" style="font-variation-settings:'FILL' 1,'wght' 600">check</span>
                 <span v-else class="text-sm md:text-base font-bold">{{ i + 1 }}</span>
@@ -94,7 +94,7 @@
       <!-- Step: Region Picker (Trekking only, before seat map / passenger info) -->
       <div v-if="isTrekking && step === 0" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div class="lg:col-span-7 xl:col-span-8"> 
-          <div class="mb-8 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
+          <div class="mb-8 bg-white p-6 md:p-8 rounded-3xl border border-gray-100">
             <div class="flex items-center gap-3 mb-2">
               <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
                 <span class="material-symbols-rounded text-lg">location_on</span>
@@ -104,7 +104,7 @@
             <p class="text-gray-500">กรุณาเลือกจุดนัดพบที่สะดวกที่สุดสำหรับการเดินทางของคุณ</p>
           </div>
 
-          <div v-if="!pickupPoints.length" class="flex flex-col items-center justify-center py-20 text-gray-400 bg-white rounded-3xl shadow-sm border border-gray-100">
+          <div v-if="!pickupPoints.length" class="flex flex-col items-center justify-center py-20 text-gray-400 bg-white rounded-3xl border border-gray-100">
             <div class="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-4">
               <span class="material-symbols-rounded text-6xl text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">map</span>
             </div>
@@ -139,7 +139,7 @@
               class="group cursor-pointer p-6 rounded-[2rem] border-2 transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-full"
               :class="selectedPickup?.id === pt.id
                 ? 'border-emerald-500 bg-emerald-50/30 ring-4 ring-emerald-500/10'
-                : 'border-gray-100 bg-white hover:border-teal-500/30 hover:shadow-xl hover:shadow-teal-900/5 hover:-translate-y-1'">
+                : 'border-gray-100 bg-white hover:border-teal-500/30 hover:-translate-y-1'">
 
               <div v-if="pt.image_url" class="relative z-10 -mx-6 -mt-6 mb-4 h-36 overflow-hidden rounded-t-[2rem]">
                 <img :src="pt.image_url" :alt="pt.pickup_location" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
@@ -162,7 +162,7 @@
                   </div>
                   
                   <div class="shrink-0">
-                    <div v-if="selectedPickup?.id === pt.id" class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 animate-in zoom-in duration-300">
+                    <div v-if="selectedPickup?.id === pt.id" class="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center animate-in zoom-in duration-300">
                       <span class="material-symbols-rounded text-lg font-bold">check</span>
                     </div>
                     <div v-else class="w-7 h-7 rounded-full border-2 border-gray-200 group-hover:border-teal-300 transition-colors"></div>
@@ -223,7 +223,7 @@
             </button>
           </div>
 
-          <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
+          <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-6 rounded-[2rem] border border-gray-100">
             <button @click="$router.push('/trips')"
               class="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900 px-6 py-3 rounded-2xl font-bold transition-all">
               <span class="material-symbols-rounded text-[20px]">arrow_back</span>
@@ -234,7 +234,7 @@
               <button
                 @click="confirmRegion"
                 :disabled="!selectedPickup && !customPickup && pickupPoints.length > 0"
-                class="w-full sm:w-auto bg-teal-600 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-xl shadow-teal-600/20 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed group flex items-center justify-center gap-3">
+                class="w-full sm:w-auto bg-teal-600 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed group flex items-center justify-center gap-3">
                 <span>{{ pickupPoints.length ? 'ไปเลือกที่นั่ง' : 'ขั้นตอนถัดไป' }}</span>
                 <span class="material-symbols-rounded transition-transform group-hover:translate-x-1">arrow_forward</span>
               </button>
@@ -248,7 +248,7 @@
         <!-- Sidebar region summary -->
         <aside class="lg:col-span-5 xl:col-span-4 sticky transition-all duration-300 z-30"
           :class="seatsStore.hasActiveBooking ? 'top-[140px]' : 'top-[100px]'">
-          <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 overflow-hidden relative">
+          <div class="bg-white rounded-[2rem] p-6 border border-gray-100 overflow-hidden relative">
             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
               <span class="material-symbols-rounded text-teal-600">receipt_long</span>
               สรุปรายการจอง
@@ -317,7 +317,7 @@
           <div v-if="step === (isTrekking ? 1 : 0) && hasSeatMap" class="space-y-6">
 
             <!-- Header card -->
-            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="bg-white rounded-3xl border border-gray-100 overflow-hidden">
               <div class="px-6 py-5 flex items-center justify-between gap-4">
                 <div>
                   <h2 class="text-xl font-black text-gray-900 mb-1 flex items-center gap-2">
@@ -365,7 +365,7 @@
             </p>
 
             <!-- Vehicle Info -->
-            <div v-if="schedule.vehicle" class="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
+            <div v-if="schedule.vehicle" class="bg-white rounded-3xl overflow-hidden border border-gray-100">
 
               <!-- Section label -->
               <div class="px-5 pt-5 pb-3 flex items-center gap-2 border-b border-gray-50">
@@ -475,7 +475,7 @@
 
           <!-- Passenger Info step -->
           <div v-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)">
-            <div class="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="mb-8 bg-white p-6 rounded-3xl border border-gray-100">
               <h2 class="text-2xl font-bold text-gray-900 mb-2">ข้อมูลผู้เดินทาง</h2>
               <p class="text-gray-500">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการเดินทาง</p>
             </div>
@@ -485,7 +485,7 @@
               :seconds="seatsStore.countdownSeconds" class="mb-6" />
 
             <!-- Booking owner mode -->
-            <div class="mb-6 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+            <div class="mb-6 p-6 bg-white rounded-3xl border border-gray-100">
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
                 <div>
                   <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -516,7 +516,7 @@
             </div>
 
             <!-- Group Booking Toggle -->
-            <div class="mb-6 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm transition-all">
+            <div class="mb-6 p-6 bg-white rounded-3xl border border-gray-100 transition-all">
               <label class="flex items-center gap-4 cursor-pointer group">
                 <div class="relative flex items-center justify-center">
                   <input type="checkbox" v-model="isGroup"
@@ -547,7 +547,7 @@
             </div>
 
             <!-- Number of passengers -->
-            <div class="mb-8 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="mb-8 p-6 bg-white rounded-3xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <label class="flex items-center gap-2 text-base font-bold text-gray-900">
                 <span class="material-symbols-rounded text-teal-600" style="font-variation-settings:'FILL' 0,'wght' 400">group</span>
                 จำนวนผู้เดินทาง
@@ -555,7 +555,7 @@
               <!-- Locked to seat selection -->
               <div v-if="hasSeatMap" class="flex items-center gap-3">
                 <span class="text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 hidden md:inline-block">กำหนดตามที่นั่งที่เลือก ({{ seatsStore.selectedSeatIds.join(', ') }})</span>
-                <div class="inline-flex items-center gap-2 border-2 border-gray-200 rounded-2xl px-5 py-3 text-base bg-gray-50 text-gray-700 font-bold shadow-sm">
+                <div class="inline-flex items-center gap-2 border-2 border-gray-200 rounded-2xl px-5 py-3 text-base bg-gray-50 text-gray-700 font-bold">
                   <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
                   {{ seatsStore.selectedSeats.length }} คน
                 </div>
@@ -570,7 +570,7 @@
               </div>
             </div>
 
-            <div v-if="optionalAddons.length" class="mb-8 bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+            <div v-if="optionalAddons.length" class="mb-8 bg-white rounded-3xl border border-gray-100 p-6">
               <div class="flex items-center justify-between gap-4 mb-5">
                 <label class="flex items-center gap-2 text-base font-bold text-gray-900">
                   <span class="material-symbols-rounded text-amber-500">add_task</span>
@@ -639,24 +639,24 @@
             <!-- Passenger forms -->
             <div v-for="(p, i) in passengers" :key="i"
               :id="`passenger-card-${i}`"
-              class="bg-white border rounded-3xl p-6 md:p-8 mb-6 shadow-sm relative overflow-hidden transition-all hover:shadow-md"
+              class="bg-white border rounded-3xl p-6 md:p-8 mb-6 relative overflow-hidden transition-all"
               :class="attempted && Object.keys(passengerErrors[i] || {}).length ? 'border-red-200 ring-1 ring-red-100' : 'border-gray-100 hover:border-gray-200'">
               
               <div class="absolute top-0 left-0 w-2 h-full bg-teal-600 rounded-l-3xl"></div>
               
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 class="flex items-center gap-3 font-bold text-gray-900 text-lg">
-                  <span class="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center text-base font-bold shadow-sm border border-gray-200">{{ i + 1 }}</span>
+                  <span class="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center text-base font-bold border border-gray-200">{{ i + 1 }}</span>
                   ผู้เดินทางคนที่ {{ i + 1 }}
                 </h3>
                 <div class="flex flex-wrap items-center gap-3">
                   <button v-if="i === 0 && authStore.isLoggedIn && bookingFor === 'self'" type="button" @click="autoFillFromProfile(i)"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 text-teal-700 text-sm font-bold border border-gray-200 hover:bg-teal-50 hover:border-teal-100 transition-all active:scale-95 shadow-sm">
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 text-teal-700 text-sm font-bold border border-gray-200 hover:bg-teal-50 hover:border-teal-100 transition-all active:scale-95">
                     <span class="material-symbols-rounded text-[18px]">account_circle</span>
                     ดึงข้อมูลจากโปรไฟล์
                   </button>
                   <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-bold shadow-sm shadow-teal-600/20 w-fit">
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-bold w-fit">
                     <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_extra</span>
                     ที่นั่ง {{ seatsStore.selectedSeats[i].id }}
                   </div>
@@ -916,7 +916,7 @@
                 ย้อนกลับ
               </button>
               <button @click="goToSummary"
-                class="w-full sm:w-auto bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2"
+                class="w-full sm:w-auto bg-teal-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-teal-700 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
                 :class="{ 'opacity-60': attempted && !isPassengerValid }">
                 <span>ดูสรุปการจอง</span>
                 <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_forward</span>
@@ -926,7 +926,7 @@
 
           <!-- Step 2/3: Summary -->
           <div v-if="step === (isTrekking ? 3 : 2)">
-            <div class="mb-8 bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
+            <div class="mb-8 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100">
               <div class="flex items-center gap-3 mb-2">
                 <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
                   <span class="material-symbols-rounded text-lg">fact_check</span>
@@ -942,7 +942,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div class="flex flex-col gap-6">
                 <!-- Trip Details Card -->
-                <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 shadow-sm">
+                <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8">
                   <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
                     <span class="material-symbols-rounded text-teal-600">confirmation_number</span>
                     รายละเอียดการจอง
@@ -972,7 +972,7 @@
                 </div>
 
                 <!-- Promo Code Card -->
-                <div class="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
+                <div class="bg-white border border-gray-100 rounded-[2rem] p-6">
                   <h3 class="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
                     <span class="material-symbols-rounded text-teal-600">local_offer</span>
                     โค้ดส่วนลด / โปรโมชั่น
@@ -1008,7 +1008,7 @@
               </div>
 
               <!-- Price Card -->
-              <div class="bg-teal-700 text-white rounded-[2rem] p-6 md:p-8 shadow-xl shadow-teal-900/10 relative overflow-hidden flex flex-col justify-between">
+              <div class="bg-teal-700 text-white rounded-[2rem] p-6 md:p-8 relative overflow-hidden flex flex-col justify-between">
                 <!-- Background Decoration -->
                 <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
                 <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-teal-500/20 rounded-full blur-2xl"></div>
@@ -1065,7 +1065,7 @@
             </div>
 
             <!-- Passenger Summary List -->
-            <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 mb-8 shadow-sm">
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 mb-8">
               <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
                 <span class="material-symbols-rounded text-teal-600">group</span>
                 รายชื่อผู้เดินทาง ({{ passengers.length }})
@@ -1074,7 +1074,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div v-for="(p, i) in passengers" :key="i"
                   class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all duration-300">
-                  <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm font-black shadow-lg shadow-teal-600/20 shrink-0 italic">
+                  <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-sm font-black shrink-0 italic">
                     {{ i + 1 }}
                   </div>
                   <div class="flex-1 min-w-0">
@@ -1100,7 +1100,7 @@
               </button>
               <button @click="createBooking"
                 :disabled="bookingLoading"
-                class="flex-1 flex items-center justify-center gap-3 bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-emerald-600/30 disabled:opacity-50 group">
+                class="flex-1 flex items-center justify-center gap-3 bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 group">
                 <span v-if="bookingLoading" class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 <template v-else>
                   <span class="material-symbols-rounded text-2xl group-hover:rotate-12 transition-transform">verified</span>
@@ -1124,7 +1124,7 @@
           ]" v-if="!isTrekking || step > 0">
 
           <!-- Summary Card -->
-          <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 overflow-hidden relative">
+          <div class="bg-white rounded-[2rem] p-6 border border-gray-100 overflow-hidden relative">
             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
               <span class="material-symbols-rounded text-teal-600">receipt_long</span>
               สรุปรายการจอง
@@ -1132,12 +1132,12 @@
 
             <!-- Selected seats (when on step 0/1 seatmap) -->
             <div v-if="hasSeatMap && seatsStore.hasSelectedSeats" class="mb-5 animate-in fade-in zoom-in-95 duration-300">
-              <div class="flex justify-between items-center p-5 rounded-2xl bg-teal-50 border border-teal-100 shadow-sm">
+              <div class="flex justify-between items-center p-5 rounded-2xl bg-teal-50 border border-teal-100">
                 <div>
                   <p class="text-[11px] font-bold text-teal-700 uppercase tracking-wider mb-1 bg-teal-100 px-2 py-0.5 rounded-full inline-block">ที่นั่งที่เลือก</p>
                   <p class="text-2xl font-black text-teal-900 mt-1">{{ seatsStore.selectedSeatIds.join(', ') }}</p>
                 </div>
-                <div class="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-600/30">
+                <div class="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center text-white">
                   <span class="material-symbols-rounded text-[28px]">airline_seat_recline_extra</span>
                 </div>
               </div>
@@ -1153,7 +1153,7 @@
                   <p class="text-[11px] text-emerald-700 font-bold mt-1 bg-emerald-100 px-2 py-0.5 rounded-full w-fit">ภูมิภาค: {{ selectedPickup.region_label }}</p>
                   
                   <a v-if="selectedPickup.map_url" :href="selectedPickup.map_url" target="_blank"
-                    class="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-teal-600 hover:text-teal-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg transition-all shadow-sm active:scale-95">
+                    class="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-teal-600 hover:text-teal-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg transition-all active:scale-95">
                     <span class="material-symbols-rounded text-[16px]">map</span>
                     เปิด Google Maps
                   </a>
@@ -1242,7 +1242,7 @@
               <button v-if="step === (isTrekking ? 1 : 0) && hasSeatMap"
                 @click="lockAndNext"
                 :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
-                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-teal-600/30 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3 group">
+                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3 group">
                 <span v-if="lockingSeats" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 <span v-else class="material-symbols-rounded transition-transform group-hover:scale-110">lock_outline</span>
                 <span>{{ lockingSeats ? 'กำลังตรวจสอบที่นั่ง...' : 'ไปกรอกข้อมูลผู้จอง' }}</span>
@@ -1251,7 +1251,7 @@
               <!-- Passenger info confirmed, go to summary step -->
               <button v-else-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)"
                 @click="goToSummary"
-                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-teal-600/30 flex items-center justify-center gap-3"
+                class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-teal-700 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3"
                 :class="{ 'opacity-60': attempted && !isPassengerValid }">
                 <span class="material-symbols-rounded">fact_check</span>
                 <span>ดูสรุปการจอง</span>
@@ -1262,7 +1262,7 @@
               <button v-else-if="step === (isTrekking ? 3 : 2)"
                 @click="createBooking"
                 :disabled="bookingLoading"
-                class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-emerald-700 active:scale-[0.98] transition-all duration-300 shadow-xl shadow-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-emerald-700 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
                 <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 <span v-else class="material-symbols-rounded">payment</span>
                 <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
@@ -1289,7 +1289,7 @@
       <span class="material-symbols-rounded text-[80px] mb-4 text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">sentiment_dissatisfied</span>
       <p class="text-lg font-bold text-gray-700 mb-1">ไม่พบข้อมูลรอบเดินทาง</p>
       <p class="text-sm">อาจถูกยกเลิก หรือ ไม่มีในระบบ</p>
-      <router-link to="/trips" class="mt-6 bg-white border-2 border-gray-200 text-gray-700 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-gray-50 transition-colors shadow-sm">
+      <router-link to="/trips" class="mt-6 bg-white border-2 border-gray-200 text-gray-700 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-gray-50 transition-colors">
         กลับไปหน้ากิจกรรม
       </router-link>
     </div>
@@ -1298,7 +1298,7 @@
     <Teleport to="body">
       <div v-if="showInsuranceModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showInsuranceModal = false"></div>
-        <div class="bg-white rounded-[32px] w-full max-w-lg relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div class="bg-white rounded-[32px] w-full max-w-lg relative z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div class="bg-teal-600 p-8 text-white relative">
             <div class="absolute top-0 right-0 p-6">
               <button @click="showInsuranceModal = false" class="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
@@ -1369,7 +1369,7 @@
               </div>
             </div>
             
-            <button @click="showInsuranceModal = false" class="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl hover:bg-teal-700 active:scale-[0.98] transition-all shadow-lg shadow-teal-600/20 mt-8">
+            <button @click="showInsuranceModal = false" class="w-full bg-teal-600 text-white font-bold py-4 rounded-2xl hover:bg-teal-700 active:scale-[0.98] transition-all mt-8">
               รับทราบ
             </button>
           </div>
@@ -1378,7 +1378,7 @@
     </Teleport>
 
     <!-- Sticky Mobile Bottom Bar -->
-    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom duration-500">
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe z-50 animate-in slide-in-from-bottom duration-500">
       <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
         <div @click="step === (isTrekking ? 3 : 2) ? null : window.scrollTo({top: 0, behavior: 'smooth'})" class="cursor-pointer">
           <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ยอดรวมสุทธิ</p>
@@ -1390,14 +1390,14 @@
         <button v-if="step === (isTrekking ? 1 : 0) && hasSeatMap"
           @click="lockAndNext"
           :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
-          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
+          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
           <span>{{ lockingSeats ? 'ล็อคที่นั่ง...' : 'ไปเลือกที่นั่ง' }}</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>
 
         <button v-else-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)"
           @click="goToSummary"
-          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 flex items-center justify-center gap-2"
+          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all flex items-center justify-center gap-2"
           :class="{ 'opacity-60': attempted && !isPassengerValid }">
           <span>ดูสรุปการจอง</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
@@ -1406,7 +1406,7 @@
         <button v-else-if="step === (isTrekking ? 3 : 2)"
           @click="createBooking"
           :disabled="bookingLoading"
-          class="flex-1 bg-emerald-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2">
+          class="flex-1 bg-emerald-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
           <span>{{ bookingLoading ? 'กำลังสร้าง...' : 'ชำระเงิน' }}</span>
           <span class="material-symbols-rounded text-lg">payment</span>
         </button>
@@ -1414,7 +1414,7 @@
         <button v-else-if="isTrekking && step === 0"
           @click="confirmRegion"
           :disabled="!selectedPickup && !customPickup && pickupPoints.length > 0"
-          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
+          class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
           <span>ไปเลือกที่นั่ง</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>

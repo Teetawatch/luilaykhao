@@ -33,7 +33,7 @@
     <div class="flex flex-col lg:flex-row gap-10 lg:gap-14">
       <!-- Filter Sidebar -->
       <aside class="lg:w-80 shrink-0 relative z-20">
-        <div class="lg:sticky lg:top-28 space-y-7 bg-white p-8 rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-gray-100">
+        <div class="lg:sticky lg:top-28 space-y-7 bg-white p-8 rounded-[2rem] border border-gray-100">
 
           <!-- Sidebar title -->
           <div class="flex items-center justify-between">
@@ -81,7 +81,7 @@
                 @click.prevent="toggleType(cat.value)">
                 <div class="w-6 h-6 rounded-md flex items-center justify-center transition-all duration-300 border-2"
                   :class="tripsStore.filters.type === cat.value
-                    ? 'bg-[var(--color-accent)] border-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/30 scale-110'
+                    ? 'bg-[var(--color-accent)] border-[var(--color-accent)] shadow-md/30 scale-110'
                     : 'bg-white border-gray-300 group-hover:border-[var(--color-accent)]/50'">
                   <span v-if="tripsStore.filters.type === cat.value" class="material-symbols-rounded text-white text-[16px] font-bold">check</span>
                 </div>
@@ -111,7 +111,7 @@
                 @click.prevent="toggleDifficulty(diff.value)">
                 <div class="w-6 h-6 rounded-md flex items-center justify-center transition-all duration-300 border-2"
                   :class="tripsStore.filters.difficulty === diff.value
-                    ? 'bg-[var(--color-accent)] border-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/30 scale-110'
+                    ? 'bg-[var(--color-accent)] border-[var(--color-accent)] shadow-md/30 scale-110'
                     : 'bg-white border-gray-300 group-hover:border-[var(--color-accent)]/50'">
                   <span v-if="tripsStore.filters.difficulty === diff.value" class="material-symbols-rounded text-white text-[16px] font-bold">check</span>
                 </div>
@@ -129,7 +129,7 @@
           <!-- Actions -->
           <div class="pt-4 flex flex-col gap-3 animate-fade-in" style="animation-delay: 0.4s">
             <button @click="tripsStore.fetchTrips()"
-              class="w-full bg-[var(--color-primary)] text-white px-6 py-4 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 shadow-[0_8px_20px_rgba(13,43,30,0.2)] hover:shadow-[0_12px_25px_rgba(45,122,79,0.3)] hover:-translate-y-1 flex items-center justify-center gap-2 cursor-pointer">
+              class="w-full bg-[var(--color-primary)] text-white px-6 py-4 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 cursor-pointer">
               <span class="material-symbols-rounded text-[20px]">filter_list</span>
               ใช้ตัวกรอง
             </button>
@@ -150,7 +150,7 @@
             <div class="relative">
               <select
                 v-model="sortOrder"
-                class="appearance-none bg-white pl-5 pr-10 py-2.5 rounded-full shadow-sm border border-gray-100 text-sm font-bold text-[var(--color-text-dark)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
+                class="appearance-none bg-white pl-5 pr-10 py-2.5 rounded-full border border-gray-100 text-sm font-bold text-[var(--color-text-dark)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
               >
                 <option value="popular">ทริปยอดนิยม</option>
                 <option value="price_asc">ราคาจากน้อยไปมาก</option>
@@ -162,7 +162,7 @@
         </div>
 
         <!-- Loading -->
-        <div v-if="tripsStore.loading" class="text-center py-32 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
+        <div v-if="tripsStore.loading" class="text-center py-32 bg-white rounded-[2rem] border border-gray-100">
           <div class="inline-block relative">
             <div class="w-16 h-16 border-4 border-[var(--color-sand)] border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
@@ -170,14 +170,14 @@
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="tripsStore.trips.length === 0" class="text-center py-32 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
+        <div v-else-if="tripsStore.trips.length === 0" class="text-center py-32 bg-white rounded-[2rem] border border-gray-100">
           <div class="w-24 h-24 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-6">
             <span class="material-symbols-rounded text-gray-300 text-5xl">explore_off</span>
           </div>
           <h3 class="text-[var(--color-text-dark)] text-2xl font-extrabold mb-3">ไม่พบกิจกรรมที่ตรงกับเงื่อนไข</h3>
           <p class="text-[var(--color-text-muted)] text-base font-medium mb-8">ลองปรับตัวกรองหรือคำค้นหาของคุณอีกครั้ง</p>
           <button @click="clearAndFetch"
-            class="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 shadow-lg hover:-translate-y-1 cursor-pointer">
+            class="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 hover:-translate-y-1 cursor-pointer">
             <span class="material-symbols-rounded text-[20px]">refresh</span>
             ล้างตัวกรองและลองใหม่
           </button>
@@ -196,7 +196,7 @@
 
           <!-- Pagination -->
           <div v-if="tripsStore.meta && tripsStore.meta.last_page > 1"
-            class="mt-16 flex justify-center items-center gap-2 bg-white p-4 rounded-full w-max mx-auto shadow-sm border border-gray-100">
+            class="mt-16 flex justify-center items-center gap-2 bg-white p-4 rounded-full w-max mx-auto border border-gray-100">
             <!-- Previous -->
             <button
               @click="tripsStore.meta.current_page > 1 && tripsStore.fetchTrips(tripsStore.meta.current_page - 1)"
@@ -214,7 +214,7 @@
                   @click="tripsStore.fetchTrips(page)"
                   class="w-12 h-12 rounded-full flex items-center justify-center font-extrabold transition-all duration-300 text-base cursor-pointer"
                   :class="page === tripsStore.meta.current_page
-                    ? 'bg-[var(--color-accent)] text-white shadow-lg shadow-[var(--color-accent)]/30 transform scale-110'
+                    ? 'bg-[var(--color-accent)] text-white shadow-lg/30 transform scale-110'
                     : 'text-[var(--color-text-dark)] hover:bg-[var(--color-sand)]'">
                   {{ page }}
                 </button>

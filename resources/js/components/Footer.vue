@@ -10,7 +10,7 @@
         <!-- Brand & About -->
         <div class="md:col-span-6 lg:col-span-4">
           <router-link to="/" class="flex items-center gap-3 mb-6">
-            <img src="/images/logo.png?v=2" alt="ลุยเลเขา Logo" class="w-24 h-24 object-contain drop-shadow-sm" />
+            <img src="/images/logo.png?v=2" alt="ลุยเลเขา Logo" class="w-24 h-24 object-contain" />
           </router-link>
           <p class="text-m text-text-muted leading-relaxed max-w-sm mb-6">
             เราไม่ได้อยากเป็นแค่แพลตฟอร์มจองทริป แต่อยากเป็น "เพื่อน" ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทาง
@@ -104,7 +104,7 @@
           </h4>
           <div class="flex items-center gap-3 ">
             <div class="shrink-0 -mt-10">
-              <img src="/images/logo.png?v=2" alt="Luilaykhao Logo" class="w-20 h-20 rounded-[1.25rem] shadow-sm border border-gray-100 bg-white p-2 object-contain" />
+              <img src="/images/logo.png?v=2" alt="Luilaykhao Logo" class="w-20 h-20 rounded-[1.25rem] border border-gray-100 bg-white p-2 object-contain" />
             </div>
             <div class="flex flex-col gap-0 -mt-10">
               <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" class="block hover:opacity-80 transition-opacity">

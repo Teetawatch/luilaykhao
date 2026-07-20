@@ -37,7 +37,7 @@
 
     <!-- Urgency Message & Timer -->
     <div v-if="seatsStore.countdownSeconds > 0" class="max-w-7xl mx-auto mb-10">
-      <div class="bg-red-50 border border-red-100 rounded-3xl p-5 md:p-6 mb-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+      <div class="bg-red-50 border border-red-100 rounded-3xl p-5 md:p-6 mb-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
             <span class="material-symbols-rounded text-red-600 text-2xl animate-pulse">crisis_alert</span>
@@ -47,7 +47,7 @@
             <p class="text-red-700 text-sm">เราจะสำรองที่นั่งให้คุณเป็นเวลา {{ Math.floor(paymentTimeoutSeconds / 60) }} นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ</p>
           </div>
         </div>
-        <div class="bg-white px-6 py-3 rounded-2xl border border-red-200 shadow-sm">
+        <div class="bg-white px-6 py-3 rounded-2xl border border-red-200">
           <CountdownTimer :seconds="seatsStore.countdownSeconds" />
         </div>
       </div>
@@ -60,7 +60,7 @@
       <div class="lg:col-span-8 space-y-8 pb-10">
 
         <!-- ── Step Instructions ── -->
-        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+        <div class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100">
            <h2 class="text-xl font-bold mb-8 text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-teal-600">checklist</span>
             ขั้นตอนการชำระเงิน
@@ -70,17 +70,17 @@
             <div class="hidden md:block absolute top-7 left-[15%] right-[15%] h-[2px] bg-gray-100"></div>
             
             <div class="relative flex flex-col items-center text-center gap-3">
-              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 shadow-sm z-10">1</div>
+              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 z-10">1</div>
               <p class="font-bold text-gray-900">สแกน QR เพื่อชำระเงิน</p>
               <p class="text-xs text-gray-500 leading-relaxed px-2">เปิดแอปธนาคารแล้วสแกน QR Code ด้านล่าง</p>
             </div>
             <div class="relative flex flex-col items-center text-center gap-3">
-              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 shadow-sm z-10">2</div>
+              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 z-10">2</div>
               <p class="font-bold text-gray-900">อัปโหลดสลิป</p>
               <p class="text-xs text-gray-500 leading-relaxed px-2">แนบหลักฐานการโอนเงินเพื่อตรวจสอบความถูกต้อง</p>
             </div>
             <div class="relative flex flex-col items-center text-center gap-3">
-              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 shadow-sm z-10">3</div>
+              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 z-10">3</div>
               <p class="font-bold text-gray-900">กดยืนยันการชำระเงิน</p>
               <p class="text-xs text-gray-500 leading-relaxed px-2">เสร็จสิ้น! รอเจ้าหน้าที่ตรวจสอบใน 10 นาที</p>
             </div>
@@ -88,11 +88,11 @@
         </div>
 
         <!-- ── Payment Type Selection (show only if installment or deposit available) ── -->
-        <section v-if="installmentAvailable || depositAvailable" class="bg-white rounded-3xl shadow-sm p-5 sm:p-8 border border-gray-100">
+        <section v-if="installmentAvailable || depositAvailable" class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100">
           <!-- Section Header -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
             <div class="flex items-center gap-3">
-              <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-md shadow-teal-500/30 shrink-0">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shrink-0">
                 <span class="material-symbols-rounded text-white text-[22px]">credit_card</span>
               </div>
               <div>
@@ -112,7 +112,7 @@
             <button @click="paymentType = 'full'"
               class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
               :class="paymentType === 'full'
-                ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50/50 shadow-lg shadow-emerald-500/15 scale-[1.01]'
+                ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50/50 scale-[1.01]'
                 : 'border-gray-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/30 hover:-translate-y-0.5'">
 
               <!-- Recommended Ribbon -->
@@ -120,13 +120,13 @@
                 ⭐ แนะนำ
               </div>
               <!-- Selected check -->
-              <div v-if="paymentType === 'full'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-md shadow-emerald-500/40 ring-4 ring-emerald-100">
+              <div v-if="paymentType === 'full'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center ring-4 ring-emerald-100">
                 <span class="material-symbols-rounded text-white text-[18px]">check</span>
               </div>
 
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
-                  :class="paymentType === 'full' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-100 group-hover:text-emerald-600'">
+                  :class="paymentType === 'full' ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-100 group-hover:text-emerald-600'">
                   <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">payments</span>
                 </div>
                 <div>
@@ -158,19 +158,19 @@
             <button v-if="depositAvailable" @click="paymentType = 'deposit'"
               class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
               :class="paymentType === 'deposit'
-                ? 'border-teal-600 bg-gradient-to-br from-teal-50 to-cyan-50/50 shadow-lg shadow-teal-600/15 scale-[1.01]'
+                ? 'border-teal-600 bg-gradient-to-br from-teal-50 to-cyan-50/50 scale-[1.01]'
                 : 'border-gray-100 bg-white hover:border-teal-200 hover:bg-teal-50/30 hover:-translate-y-0.5'">
 
               <div v-if="paymentType !== 'deposit'" class="absolute top-0 right-0 bg-teal-600 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
                 🔥 ยอดนิยม
               </div>
-              <div v-if="paymentType === 'deposit'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center shadow-md shadow-teal-600/40 ring-4 ring-teal-100">
+              <div v-if="paymentType === 'deposit'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center ring-4 ring-teal-100">
                 <span class="material-symbols-rounded text-white text-[18px]">check</span>
               </div>
 
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
-                  :class="paymentType === 'deposit' ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30' : 'bg-gray-100 text-gray-400 group-hover:bg-teal-100 group-hover:text-teal-700'">
+                  :class="paymentType === 'deposit' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-teal-100 group-hover:text-teal-700'">
                   <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">savings</span>
                 </div>
                 <div>
@@ -207,7 +207,7 @@
               :class="installmentNotAvailable
                 ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
                 : paymentType === 'installment'
-                  ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50/50 shadow-lg shadow-amber-500/15 scale-[1.01]'
+                  ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50/50 scale-[1.01]'
                   : 'border-gray-100 bg-white hover:border-amber-200 hover:bg-amber-50/30 hover:-translate-y-0.5'">
 
               <div v-if="installmentNotAvailable" class="absolute top-0 right-0 bg-gray-400 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
@@ -216,13 +216,13 @@
               <div v-else-if="paymentType !== 'installment'" class="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
                 💳 ผ่อน 0%
               </div>
-              <div v-if="paymentType === 'installment' && !installmentNotAvailable" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/40 ring-4 ring-amber-100">
+              <div v-if="paymentType === 'installment' && !installmentNotAvailable" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center ring-4 ring-amber-100">
                 <span class="material-symbols-rounded text-white text-[18px]">check</span>
               </div>
 
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
-                  :class="paymentType === 'installment' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-gray-100 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-600'">
+                  :class="paymentType === 'installment' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-600'">
                   <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">calendar_month</span>
                 </div>
                 <div>
@@ -278,7 +278,7 @@
               <!-- Three Steps Visual -->
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 relative">
                 <!-- Step 1: Total -->
-                <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                <div class="bg-white rounded-2xl p-4 border border-gray-100">
                   <div class="flex items-center gap-2 mb-2">
                     <div class="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[11px] font-black">1</div>
                     <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest">ยอดรวมทั้งหมด</p>
@@ -288,7 +288,7 @@
                 </div>
 
                 <!-- Step 2: Deposit (highlight) -->
-                <div class="bg-white rounded-2xl p-4 border-2 border-teal-500 shadow-md shadow-teal-500/15 relative">
+                <div class="bg-white rounded-2xl p-4 border-2 border-teal-500 relative">
                   <div class="absolute -top-2.5 left-4 bg-teal-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">ชำระตอนนี้</div>
                   <div class="flex items-center gap-2 mb-2 mt-1">
                     <div class="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-[11px] font-black">2</div>
@@ -301,7 +301,7 @@
                 </div>
 
                 <!-- Step 3: Balance -->
-                <div class="bg-white rounded-2xl p-4 border border-amber-200 shadow-sm">
+                <div class="bg-white rounded-2xl p-4 border border-amber-200">
                   <div class="flex items-center gap-2 mb-2">
                     <div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[11px] font-black">3</div>
                     <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest">ส่วนที่เหลือ</p>
@@ -326,7 +326,7 @@
             <!-- No-refund Cancellation Clause -->
             <div class="bg-gradient-to-br from-red-50 to-rose-50/50 border-2 border-red-200 rounded-3xl p-5 sm:p-6">
               <div class="flex flex-col sm:flex-row gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center shrink-0 shadow-md shadow-red-600/30 self-start">
+                <div class="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center shrink-0 self-start">
                   <span class="material-symbols-rounded text-white text-[26px]" style="font-variation-settings:'FILL' 1">gavel</span>
                 </div>
                 <div class="flex-1">
@@ -360,7 +360,7 @@
               <button v-for="n in availableInstallmentOptions" :key="n" @click="selectedInstallmentCount = n"
                 class="flex-1 py-3 px-2 rounded-xl border-2 text-center transition-all font-black text-sm"
                 :class="selectedInstallmentCount === n
-                  ? 'border-amber-500 bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                  ? 'border-amber-500 bg-amber-500 text-white'
                   : 'border-gray-200 bg-white text-gray-600 hover:border-amber-300'">
                 {{ n }} งวด
               </button>
@@ -377,7 +377,7 @@
                 <h3 class="font-bold text-gray-900 tracking-tight">ตารางการผ่อนชำระ</h3>
                 <span class="text-[11px] font-black text-amber-600 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-tighter">ยอดรวมคงเดิม ไม่มีดอกเบี้ย</span>
              </div>
-            <div class="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
+            <div class="overflow-hidden rounded-2xl border border-gray-100">
               <table class="w-full text-sm">
                 <thead>
                   <tr class="bg-gray-50">
@@ -396,7 +396,7 @@
                     <td class="px-5 py-4 text-right font-black text-gray-900 border-r border-gray-50">฿{{ inst.amount.toLocaleString() }}</td>
                     <td class="px-5 py-4 text-center">
                       <span v-if="inst.no === 1"
-                        class="text-[10px] font-black px-3 py-1.5 rounded-full bg-teal-600 text-white shadow-sm uppercase tracking-tighter">
+                        class="text-[10px] font-black px-3 py-1.5 rounded-full bg-teal-600 text-white uppercase tracking-tighter">
                         ชำระงวดแรก
                       </span>
                       <span v-else
@@ -423,7 +423,7 @@
         </section>
 
         <!-- ── Payment Method ── -->
-        <section class="bg-white rounded-3xl shadow-sm p-8 border border-gray-100">
+        <section class="bg-white rounded-3xl p-8 border border-gray-100">
           <h2 class="text-xl font-extrabold mb-8 text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-teal-600">account_balance_wallet</span>
             เลือกช่องทางชำระเงิน
@@ -431,11 +431,11 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
             <button @click="paymentMethod = 'promptpay'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full shadow-sm"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full"
               :class="paymentMethod === 'promptpay'
                 ? 'border-teal-600 bg-teal-50/30'
                 : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
-              <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
+              <div class="bg-white p-4 rounded-2xl border border-gray-100 group-hover:scale-105 transition-transform">
                 <img src="/images/qr_promptpay.webp" alt="พร้อมเพย์" class="h-12 w-auto object-contain" />
               </div>
               <div class="text-center">
@@ -445,11 +445,11 @@
             </button>
             
             <button @click="paymentMethod = 'mobile_banking'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full shadow-sm"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full"
               :class="paymentMethod === 'mobile_banking'
                 ? 'border-teal-600 bg-teal-50/30'
                 : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
-              <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
+              <div class="bg-white p-4 rounded-2xl border border-gray-100 group-hover:scale-105 transition-transform">
                 <img src="/images/pay_bank.webp" alt="โมบายแบงก์กิ้ง" class="h-12 w-auto object-contain" />
               </div>
               <div class="text-center">
@@ -462,7 +462,7 @@
           <!-- PromptPay QR -->
           <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-5 py-10 bg-gray-50/50 rounded-3xl border border-gray-100">
              <!-- Thai QR Logo Header -->
-             <div class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
+             <div class="bg-white px-6 py-3 rounded-2xl border border-gray-100 flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
                <img src="/images/Thai_QR_Payment_Logo-01.jpg" alt="Thai QR Payment" class="h-10 w-auto object-contain" />
              </div>
 
@@ -473,8 +473,8 @@
 
             <div class="relative group">
                <div class="absolute -inset-4 bg-teal-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-               <div class="relative p-2 bg-white rounded-3xl shadow-xl border border-teal-100 overflow-hidden">
-                <canvas ref="qrCanvas" class="block rounded-2xl w-full max-w-[320px] h-auto mx-auto shadow-sm"></canvas>
+               <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden">
+                <canvas ref="qrCanvas" class="block rounded-2xl w-full max-w-[320px] h-auto mx-auto"></canvas>
                 <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-3xl">
                   <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
                 </div>
@@ -485,13 +485,13 @@
                 <!-- Save QR Button moved up -->
                 <div class="flex items-center gap-3">
                   <button v-if="qrGenerated" @click="saveQR"
-                    class="flex items-center gap-2.5 px-6 py-3 bg-teal-600 text-white text-sm font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-600/20">
+                    class="flex items-center gap-2.5 px-6 py-3 bg-teal-600 text-white text-sm font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
                     <span class="material-symbols-rounded text-[18px]">download</span> บันทึก QR Code
                   </button>
                 </div>
 
                 <!-- Payment Details -->
-                <div class="flex items-center justify-between w-full max-w-xs bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
+                <div class="flex items-center justify-between w-full max-w-xs bg-white p-3 rounded-2xl border border-gray-100">
                    <div class="flex flex-col">
                       <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ยอดเงินที่ต้องชำระ</span>
                       <span class="text-lg font-black text-teal-600">฿{{ currentPayAmount.toLocaleString() }}</span>
@@ -503,20 +503,20 @@
                 </div>
             </div>
              
-             <div class="flex items-center gap-2 py-2 px-4 rounded-full bg-white border border-gray-100 shadow-sm">
+             <div class="flex items-center gap-2 py-2 px-4 rounded-full bg-white border border-gray-100">
                 <span class="material-symbols-rounded text-teal-600 text-sm" style="font-variation-settings:'FILL' 1">verified_user</span>
                 <p class="text-[11px] text-gray-500 font-bold">e-Wallet: <span class="text-gray-900">004-99923936-2071</span></p>
              </div>
           </div>
 
           <!-- Bank Transfer info -->
-          <div v-else class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100 shadow-inner">
+          <div v-else class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100">
             <p class="text-sm font-black text-teal-900 flex items-center gap-2">
               <span class="material-symbols-rounded text-teal-600 text-[20px]">account_balance</span>
               ข้อมูลบัญชีธนาคาร
             </p>
             <div class="space-y-3">
-              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50 shadow-sm">
+              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shrink-0">
                       <span class="material-symbols-rounded text-white text-xl">account_balance</span>
@@ -527,7 +527,7 @@
                     </div>
                   </div>
               </div>
-              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50 shadow-sm relative group">
+              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50 relative group">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
                       <span class="material-symbols-rounded text-teal-600 text-xl">person</span>
@@ -538,7 +538,7 @@
                     </div>
                   </div>
               </div>
-               <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-600/30 shadow-md relative group">
+               <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-600/30 relative group">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
                       <span class="material-symbols-rounded text-teal-600 text-xl">numbers</span>
@@ -548,7 +548,7 @@
                       <p class="text-lg font-black text-gray-900 tracking-wider">230-1-39095-8</p>
                     </div>
                   </div>
-                  <button @click="copyAccount" class="p-2.5 rounded-xl bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors shadow-sm active:scale-90">
+                  <button @click="copyAccount" class="p-2.5 rounded-xl bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors active:scale-90">
                     <span class="material-symbols-rounded text-xl">content_copy</span>
                   </button>
               </div>
@@ -584,14 +584,14 @@
               @dragover.prevent="isDragging = true"
               @dragleave.prevent="isDragging = false"
               @drop.prevent="handleDrop"
-              class="group relative flex flex-col items-center justify-center gap-4 border-3 border-dashed rounded-[2.5rem] py-12 px-6 cursor-pointer transition-all duration-500 shadow-sm"
+              class="group relative flex flex-col items-center justify-center gap-4 border-3 border-dashed rounded-[2.5rem] py-12 px-6 cursor-pointer transition-all duration-500"
               :class="[
                 isDragging ? 'border-teal-600 bg-teal-50 scale-[0.99]' : 'border-gray-200 bg-gray-50/50 hover:border-teal-400 hover:bg-teal-50/20',
                 slipPreview ? 'border-none p-0 overflow-hidden bg-transparent' : ''
               ]">
               
               <template v-if="!slipPreview">
-                <div class="w-20 h-20 rounded-[2rem] bg-white text-teal-500 flex items-center justify-center shadow-lg border border-gray-100 group-hover:scale-110 transition-transform duration-500">
+                <div class="w-20 h-20 rounded-[2rem] bg-white text-teal-500 flex items-center justify-center border border-gray-100 group-hover:scale-110 transition-transform duration-500">
                   <span class="material-symbols-rounded text-4xl">cloud_upload</span>
                 </div>
                 <div class="text-center space-y-1">
@@ -602,16 +602,16 @@
 
               <template v-else>
                  <div class="relative w-full max-h-[400px] group/preview">
-                    <img :src="slipPreview" alt="slip" class="w-full h-full object-contain rounded-[2rem] bg-gray-100 shadow-inner" />
+                    <img :src="slipPreview" alt="slip" class="w-full h-full object-contain rounded-[2rem] bg-gray-100" />
                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity rounded-[2rem] flex items-center justify-center">
                        <p class="text-white font-bold text-sm bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">คลิกเพื่อเปลี่ยนรูป</p>
                     </div>
                     <button @click.stop="removeSlip"
-                      class="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-md text-red-600 rounded-full flex items-center justify-center shadow-xl hover:bg-red-600 hover:text-white transition-all z-20">
+                      class="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-md text-red-600 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition-all z-20">
                       <span class="material-symbols-rounded text-[22px]">delete</span>
                     </button>
                     <!-- Success indicator -->
-                    <div class="absolute bottom-4 left-4 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 shadow-lg shadow-teal-600/30">
+                    <div class="absolute bottom-4 left-4 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2">
                        <span class="material-symbols-rounded text-[18px]">check_circle</span>
                        อัปโหลดสำเร็จ
                     </div>
@@ -641,7 +641,7 @@
                 <div class="relative">
                    <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">calendar_today</span>
                    <input v-model="transferDate" type="date" required
-                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white shadow-sm text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
+                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
                 </div>
               </div>
               <div class="space-y-2">
@@ -649,7 +649,7 @@
                 <div class="relative">
                    <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">schedule</span>
                    <input v-model="transferTime" type="time" required
-                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white shadow-sm text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
+                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
                 </div>
               </div>
               </div>
@@ -659,8 +659,8 @@
 
         <!-- Trust Badges & Support -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
-             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 shadow-inner">
+           <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100">
+             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">verified</span>
              </div>
              <div>
@@ -668,8 +668,8 @@
                 <p class="text-xs text-gray-500">ข้อมูลของคุณได้รับการเข้ารหัส SSL Encryption</p>
              </div>
            </div>
-           <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
-             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 shadow-inner">
+           <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100">
+             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">support_agent</span>
              </div>
              <div>
@@ -683,7 +683,7 @@
 
       <!-- RIGHT: Booking Summary Card -->
       <aside class="lg:col-span-4 sticky top-24 pb-20">
-        <div class="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-[0_30px_70px_rgba(0,0,0,0.1)]">
+        <div class="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 transition-all duration-300">
 
           <!-- Trip Premium Header -->
           <div class="h-56 relative overflow-hidden bg-gray-100">
@@ -701,7 +701,7 @@
             </div>
 
             <div class="absolute bottom-5 left-6 right-6">
-               <p class="text-white text-lg font-black leading-tight drop-shadow-md mb-2">{{ booking.schedule?.trip?.title }}</p>
+               <p class="text-white text-lg font-black leading-tight mb-2">{{ booking.schedule?.trip?.title }}</p>
                <div class="flex items-center gap-4 text-white/90 text-xs font-bold">
                   <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1.5 rounded-xl border border-white/10">
                     <span class="material-symbols-rounded text-[14px]">calendar_today</span>
@@ -720,7 +720,7 @@
 
             <div class="space-y-4 mb-8">
                <div v-if="booking.seats?.length" class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-in fade-in slide-in-from-bottom-2">
-                 <div class="w-10 h-10 rounded-xl bg-white text-teal-600 flex items-center justify-center shadow-sm shrink-0">
+                 <div class="w-10 h-10 rounded-xl bg-white text-teal-600 flex items-center justify-center shrink-0">
                     <span class="material-symbols-rounded text-xl">airline_seat_recline_extra</span>
                  </div>
                  <div>
@@ -730,7 +730,7 @@
                </div>
                
                <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                 <div class="w-10 h-10 rounded-xl bg-white text-amber-600 flex items-center justify-center shadow-sm shrink-0">
+                 <div class="w-10 h-10 rounded-xl bg-white text-amber-600 flex items-center justify-center shrink-0">
                     <span class="material-symbols-rounded text-xl">location_on</span>
                  </div>
                  <div>
@@ -766,7 +766,7 @@
                </div>
                
                <template v-if="paymentType === 'installment'">
-                 <div class="flex justify-between items-end bg-amber-50 rounded-2xl p-4 border border-amber-100 shadow-inner">
+                 <div class="flex justify-between items-end bg-amber-50 rounded-2xl p-4 border border-amber-100">
                     <span class="text-xs font-bold text-amber-700">ชำระงวดแรกตอนนี้</span>
                     <div class="text-right">
                        <span class="text-2xl font-black text-amber-600 leading-none">฿{{ perInstallment.toLocaleString() }}</span>
@@ -776,7 +776,7 @@
                </template>
 
                <template v-else-if="paymentType === 'deposit'">
-                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-4 border border-teal-200 shadow-inner">
+                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-4 border border-teal-200">
                     <span class="text-xs font-bold text-teal-700">ชำระมัดจำตอนนี้</span>
                     <div class="text-right">
                        <span class="text-2xl font-black text-teal-700 leading-none">฿{{ depositAmount.toLocaleString() }}</span>
@@ -786,7 +786,7 @@
                </template>
 
                <template v-else>
-                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-5 border border-teal-100 shadow-inner">
+                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-5 border border-teal-100">
                     <span class="text-sm font-black text-teal-900 uppercase tracking-tight">ยอดชำระสุทธิ</span>
                     <span class="text-3xl font-black text-teal-600 leading-none">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
                  </div>
@@ -797,13 +797,13 @@
             <div class="space-y-4">
               <button @click="processPayment"
                 :disabled="paying || !slipFile"
-                class="group w-full py-5 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden relative shadow-xl disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                class="group w-full py-5 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden relative disabled: disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 :class="[
                   paymentType === 'installment'
-                    ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-600/30'
+                    ? 'bg-amber-600 text-white hover:bg-amber-700'
                     : paymentType === 'deposit'
-                      ? 'bg-teal-600 text-white hover:bg-teal-700 shadow-teal-600/30'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
+                      ? 'bg-teal-600 text-white hover:bg-teal-700'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
                 ]">
                 <!-- Loading State overlay -->
                 <div v-if="paying" class="absolute inset-0 bg-inherit flex items-center justify-center z-10">
@@ -845,11 +845,11 @@
         </div>
 
         <!-- Sticky Mobile Button (Only visible on mobile via class) -->
-        <div class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] translate-y-0 transition-transform duration-500"
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100] translate-y-0 transition-transform duration-500"
           :class="!loading && booking ? 'translate-y-0' : 'translate-y-full'">
             <button @click="processPayment" 
               :disabled="paying || !slipFile"
-              class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
+              class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying">
                 <span>ยืนยันการชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
                 <span class="material-symbols-rounded text-lg">arrow_forward</span>
