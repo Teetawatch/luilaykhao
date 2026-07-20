@@ -29,18 +29,18 @@
         
         <!-- Headline -->
         <h1 class="hero-title font-anuphan text-white text-[1.75rem] sm:text-[2.15rem] md:text-[2.75rem] lg:text-[3.25rem] font-extrabold mb-5 leading-[1.2] md:leading-[1.25] tracking-tight">
-          การเที่ยวที่ดี เริ่มจาก<br />
-          <span class="text-[var(--color-accent-light)]">ความรู้สึกที่ดี</span>
-          ตั้งแต่การจอง
+          เดินป่า ดำน้ำ ขึ้นดอย<br />
+          <span class="text-[var(--color-accent-light)]">รู้ทุกอย่างก่อนออกเดินทาง</span>
         </h1>
 
         <!-- Subheadline -->
         <p class="hero-subtitle text-white/85 text-base md:text-xl mb-10 font-normal max-w-2xl mx-auto leading-relaxed">
-          จองทริปดำน้ำ เดินป่า และรถตู้พรีเมียม ครบจบในที่เดียว<br class="hidden md:block" /> รวดเร็ว ปลอดภัย ประทับใจ ไม่ต้องรอ
+          ทุกรอบบอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกไว้ล่วงหน้า<br class="hidden md:block" />
+          ระหว่างทางที่บ้านตามดูตำแหน่งรถได้ตลอด
         </p>
 
         <!-- Modern Floating Search Bar -->
-        <div class="search-bar relative bg-white rounded-2xl md:rounded-[1.6rem] flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-4xl mx-auto ring-1 ring-black/5 transition-shadow duration-300 z-20">
+        <div class="search-bar relative bg-white rounded-2xl flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-3xl mx-auto z-20">
           
           <!-- Trip Selector -->
           <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
@@ -97,21 +97,16 @@
           </button>
         </div>
 
-        <!-- Trust signals -->
+        <!-- สิ่งที่ระบบทำได้จริง — ไม่ใช่คำโฆษณาแบบ "ปลอดภัยที่สุด" -->
         <div class="hero-trust flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-7 text-white/85 text-xs md:text-sm font-medium">
           <span class="inline-flex items-center gap-1.5">
-            <span class="material-symbols-rounded text-[18px] text-[var(--color-gold)]" style="font-variation-settings:'FILL' 1">star</span>
-            รีวิวจริงจากนักเดินทาง
+            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">near_me</span>
+            ติดตามตำแหน่งรถได้ระหว่างเดินทาง
           </span>
           <span class="hidden sm:inline w-px h-4 bg-white/25"></span>
           <span class="inline-flex items-center gap-1.5">
-            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">verified_user</span>
-            ชำระเงินปลอดภัย ตรวจสอบสลิปอัตโนมัติ
-          </span>
-          <span class="hidden sm:inline w-px h-4 bg-white/25"></span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">support_agent</span>
-            มีทีมงานดูแลตลอดทริป
+            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">receipt_long</span>
+            โอนแล้วระบบตรวจสลิปให้อัตโนมัติ
           </span>
         </div>
 
@@ -126,13 +121,6 @@
         </router-link>
       </div>
 
-      <!-- Scroll indicator -->
-      <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
-        <div class="w-7 h-12 border-2 border-white/40 rounded-full flex justify-center pt-2 backdrop-blur-sm">
-          <div class="w-1.5 h-3 bg-white rounded-full scroll-dot"></div>
-        </div>
-      </div>
-      
       <!-- Bottom fade -->
       <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[var(--color-sand)] to-transparent z-0"></div>
     </section>
@@ -140,14 +128,15 @@
     <!-- ══════════════════════════════════════════
          SOCIAL PROOF & TRUST SECTION (Redesigned)
     ══════════════════════════════════════════ -->
-    <section 
+    <section
+      v-if="visibleStats.length"
       ref="statsSection"
       class="bg-[var(--color-sand)] relative z-10 pb-28 pt-4"
     >
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 -mt-20 md:-mt-24 relative z-20">
+        <div class="grid grid-cols-2 gap-4 md:gap-8 -mt-20 md:-mt-24 relative z-20" :class="statsGridColsClass">
           <div
-            v-for="(stat, index) in statItems"
+            v-for="(stat, index) in visibleStats"
             :key="stat.label"
             class="bg-white rounded-2xl p-6 lg:p-7 flex flex-col items-center text-center border border-black/[0.06] transition-opacity duration-500"
             :class="[isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6']"
@@ -219,10 +208,10 @@
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 md:mb-20 gap-8">
           <div class="max-w-2xl">
-            <h2 class="font-anuphan text-4xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.1]">เลือกประสบการณ์<br /><span class="text-[var(--color-primary)]">ในแบบของคุณ</span></h2>
+            <h2 class="font-anuphan text-4xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.1]">เราพาไป<br /><span class="text-[var(--color-primary)]">แบบไหนบ้าง</span></h2>
           </div>
           <p class="text-[var(--color-text-muted)] text-lg max-w-sm md:text-right font-medium leading-relaxed">
-            สัมผัสความงามที่แตกต่างผ่านทริปที่เราคัดสรรมาเพื่อความประทับใจสูงสุดของคุณ
+            แต่ละแบบใช้แรงและความพร้อมต่างกัน เลือกจากสิ่งที่คุณอยากเจอ ไม่ใช่จากราคา
           </p>
         </div>
 
@@ -344,8 +333,8 @@
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-12 md:mb-16 gap-8">
           <div class="max-w-xl">
-            <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">ประสบการณ์ยอดนิยม</h2>
-            <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed">คัดสรรทริปที่นักเดินทางเลือกมากที่สุด พร้อมรีวิวจริงจากผู้ร่วมทาง</p>
+            <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">ทริปที่คนจองเยอะที่สุด</h2>
+            <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed">เรียงจากยอดจองจริงในระบบ ไม่ใช่ทริปที่เราอยากดัน</p>
           </div>
           <router-link
             to="/trips"
@@ -492,11 +481,10 @@
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="mb-14 flex flex-col md:flex-row justify-between items-end gap-6">
           <div>
-            <span class="text-[var(--color-accent-light)] font-bold tracking-[0.2em] uppercase text-xs md:text-sm mb-2.5 block">คัดสรรพิเศษ</span>
-            <h2 class="font-anuphan text-[1.75rem] md:text-4xl font-bold text-white tracking-tight">แนะนำสำหรับคุณ</h2>
+            <h2 class="font-anuphan text-[1.75rem] md:text-4xl font-bold text-white tracking-tight">ทริปที่เราอยากแนะนำ</h2>
           </div>
           <p class="text-white/65 max-w-sm md:text-right font-medium text-[0.95rem] leading-relaxed">
-            ประสบการณ์สุดพิเศษที่เราอยากให้คุณได้ลองสัมผัสด้วยตัวเอง
+            เส้นทางที่ทีมเราไปมาเองแล้วคิดว่าคุ้มค่าที่จะไป
           </p>
         </div>
 
@@ -631,7 +619,7 @@
               </div>
               <div>
                 <p class="text-white text-lg font-extrabold tracking-tight mb-2">ดูทริปแนะนำทั้งหมด</p>
-                <p class="text-white/50 text-sm font-medium">ค้นหาแรงบันดาลใจครั้งใหม่ของคุณที่นี่</p>
+                <p class="text-white/50 text-sm font-medium">ดูรอบเดินทางทั้งหมดที่เปิดอยู่</p>
               </div>
             </router-link>
           </div>
@@ -707,7 +695,7 @@
     </section>
 
     <!-- ══════════════════════════════════════════
-         WHY ANDAMAN LUXE SECTION
+         WHY US SECTION
     ══════════════════════════════════════════ -->
     <section class="py-32 bg-white relative overflow-hidden">
       <!-- Decorative background elements -->
@@ -752,6 +740,11 @@
     </section>
 
     <!-- ══════════════════════════════════════════
+         LATEST ARTICLES — เนื้อหาความรู้ ไม่ใช่สินค้า
+    ══════════════════════════════════════════ -->
+    <LatestArticles />
+
+    <!-- ══════════════════════════════════════════
          FINAL CTA
     ══════════════════════════════════════════ -->
     <section class="relative py-20 md:py-32 w-full overflow-hidden bg-[#0D2B1E]">
@@ -768,18 +761,12 @@
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="reveal-section max-w-3xl">
-          <div class="inline-flex items-center gap-3 text-[var(--color-gold)] font-bold tracking-wider uppercase text-xs md:text-sm mb-6">
-            <span class="w-10 h-[2px] bg-[var(--color-gold)]"></span>
-            พร้อมจะออกไปลุยหรือยัง?
-          </div>
-          
           <h2 class="text-[1.75rem] sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white leading-[1.14] mb-6 tracking-tight">
-            ให้เราช่วยสร้าง<br/>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-white/75 underline underline-offset-4 decoration-[var(--color-gold)] decoration-2 md:decoration-4">ความทรงจำ</span> ที่สวยงามของคุณ
+            รอบต่อไปยังมีที่ว่างอยู่
           </h2>
 
           <p class="text-[0.95rem] md:text-lg text-white/75 leading-relaxed font-medium mb-10 max-w-xl border-l-2 border-[var(--color-gold)]/80 pl-5 md:pl-6">
-            เราดูแลทุกรายละเอียด เพื่อให้คุณได้ใช้เวลาที่มีค่าไปกับการ “ซึมซับบรรยากาศ” และ “สนุกกับการเดินทาง” อย่างเต็มที่
+            ทุกรอบบอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกไว้ล่วงหน้า ดูให้ครบก่อนตัดสินใจได้เลย
           </p>
 
           <div class="flex flex-col sm:flex-row gap-3.5">
@@ -787,7 +774,7 @@
               to="/trips"
               class="inline-flex items-center justify-center gap-2.5 bg-[var(--color-accent)] text-white px-7 md:px-8 py-3.5 rounded-2xl text-[0.95rem] md:text-base font-bold hover:bg-[#3D8F66] transition-all duration-300 group/btn"
             >
-              <span>เริ่มผจญภัยกับเราวันนี้</span>
+              <span>ดูรอบที่เปิดอยู่</span>
               <span class="material-symbols-rounded text-xl group-hover/btn:translate-x-1 transition-transform">explore</span>
             </router-link>
             <router-link
@@ -831,12 +818,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
 import TripCard from '../components/TripCard.vue';
 import CommunityFeedStrip from '../components/CommunityFeedStrip.vue';
+import LatestArticles from '../components/LatestArticles.vue';
 
 const wishlistStore = useWishlistStore();
 const router = useRouter();
@@ -849,10 +837,9 @@ const heroImages = ref([
   '/images/khaochangphueak.webp',
   '/images/hiking.webp',
 ]);
-const HERO_SLIDE_INTERVAL_MS = 6500;
+// ใช้ภาพแรกเป็นภาพนิ่ง — ไม่มีการหมุนสไลด์อัตโนมัติอีกแล้ว
 const currentSlide = ref(0);
 const prefersReducedMotion = ref(false);
-let sliderInterval = null;
 
 const trips = ref([]);
 const featuredTrips = ref([]);
@@ -969,8 +956,21 @@ const statItems = ref([
   },
 ]);
 
+/**
+ * โชว์เฉพาะสถิติที่มีข้อมูลจริง — ถ้ายังไม่มีรอบที่เดินทางจบ หรือทริปยังไม่ได้กรอก
+ * ระยะทาง/ความสูง การ์ดนั้นจะหายไปแทนที่จะขึ้นเลข 0 ให้ดูเหมือนเว็บพัง
+ */
+const visibleStats = computed(() => statItems.value.filter((s) => s.target > 0));
+
+const statsGridColsClass = computed(() => {
+  const n = visibleStats.value.length;
+  if (n <= 2) return 'lg:grid-cols-2 max-w-3xl mx-auto';
+  if (n === 3) return 'lg:grid-cols-3';
+  return 'lg:grid-cols-4';
+});
+
 const animateStats = () => {
-  statItems.value.forEach((stat) => {
+  visibleStats.value.forEach((stat) => {
     const duration = 2000; // ms
     const startTime = performance.now();
     const frame = (now) => {
@@ -1003,9 +1003,9 @@ const animateStats = () => {
 const FALLBACK_CATEGORIES = [
   {
     type: 'snorkeling',
-    label: 'Snorkeling',
-    subtext: 'สำรวจโลกใต้ทะเลที่สวยที่สุดในอันดามัน พร้อมทีมงานมืออาชีพ',
-    ctaText: 'ดูทริปดำน้ำ',
+    label: 'ดำน้ำตื้น',
+    subtext: 'ลงน้ำดูปะการังและฝูงปลา เหมาะกับคนว่ายน้ำไม่แข็ง',
+    ctaText: 'ดูรอบดำน้ำ',
     image: '/images/diving_show.webp',
     icon: 'scuba_diving',
     color: '#3B9DD4',
@@ -1014,9 +1014,9 @@ const FALLBACK_CATEGORIES = [
   },
   {
     type: 'trekking',
-    label: 'Trekking',
-    subtext: 'ผจญภัยสู่ยอดเขาและเส้นทางธรรมชาติที่ยังไม่ถูกรบกวน',
-    ctaText: 'สำรวจเส้นทาง',
+    label: 'เดินป่า',
+    subtext: 'เส้นทางเดินป่าค้างคืน มีระยะทางและความสูงบอกไว้ทุกเส้น',
+    ctaText: 'ดูเส้นทางเดินป่า',
     image: '/images/hiking_show.webp',
     icon: 'hiking',
     color: '#2D7A4F',
@@ -1025,9 +1025,9 @@ const FALLBACK_CATEGORIES = [
   },
   {
     type: 'van-service',
-    label: 'Premium Van',
-    subtext: 'เดินทางระดับ Exclusive พร้อมความสะดวกสบายครบครันทุกเส้นทาง',
-    ctaText: 'ดูแพ็กเกจทัวร์',
+    label: 'รถตู้รับส่ง',
+    subtext: 'รถตู้พร้อมคนขับ ติดตามตำแหน่งได้ตลอดทาง',
+    ctaText: 'ดูรอบรถตู้',
     image: '/images/van_show.webp',
     icon: 'airport_shuttle',
     color: '#C8963E',
@@ -1132,10 +1132,6 @@ const typeFeaturedIcon = (type) => {
   return icons[type] || 'explore';
 };
 
-onUnmounted(() => {
-  clearInterval(sliderInterval);
-});
-
 onMounted(async () => {
   if (typeof window !== 'undefined') {
     prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1152,11 +1148,8 @@ onMounted(async () => {
     // keep static fallback
   }
 
-  if (!prefersReducedMotion.value && heroImages.value.length > 1) {
-    sliderInterval = setInterval(() => {
-      currentSlide.value = (currentSlide.value + 1) % heroImages.value.length;
-    }, HERO_SLIDE_INTERVAL_MS);
-  }
+  // ไม่หมุนสไลด์อัตโนมัติ — carousel ที่เลื่อนเองคือลายเซ็นของเว็บ OTA
+  // ใช้ภาพนิ่งภาพเดียว (ภาพแรกที่แอดมินตั้งไว้) ให้หน้าแรกนิ่งแบบงานเขียน
 
   try {
     const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes, almostFullRes, categoriesRes] = await Promise.all([
@@ -1200,11 +1193,15 @@ onMounted(async () => {
         ? `ไปมาแล้ว ${c.regions_count} ภูมิภาคทั่วไทย`
         : '';
 
-      statItems.value[3].target = s.avg_rating;
+      // avg_rating เป็น 5.0 by default แม้ยังไม่มีรีวิว — อย่าโชว์คะแนนที่ไม่มีใครให้
+      statItems.value[3].target = c.reviews_count ? s.avg_rating : 0;
       statItems.value[3].context = c.reviews_count
         ? `จาก ${c.reviews_count.toLocaleString()} รีวิวของคนที่เดินทางจริง`
         : '';
     }
+
+    // รอให้การ์ดสถิติ render ตาม v-if ก่อนค่อยผูก observer
+    await nextTick();
 
     // Set up IntersectionObserver
     const observer = new IntersectionObserver((entries) => {
