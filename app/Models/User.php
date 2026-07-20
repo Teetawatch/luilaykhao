@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'driver_pin_hash', 'avatar', 'title', 'nickname', 'id_card', 'birth_date', 'birthdate_token', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'social_provider', 'social_id', 'referral_code', 'referred_by'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'driver_pin_hash', 'avatar', 'title', 'nickname', 'id_card', 'birth_date', 'birthdate_token', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'self_reported_max_distance_km', 'self_reported_max_elevation_m', 'hiking_baseline_updated_at', 'social_provider', 'social_id', 'referral_code', 'referred_by'])]
 #[Hidden(['password', 'driver_pin_hash', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -33,6 +33,9 @@ class User extends Authenticatable
             'birth_date' => 'date',
             'allergies' => 'encrypted',
             'health_notes' => 'encrypted',
+            'self_reported_max_distance_km' => 'decimal:1',
+            'self_reported_max_elevation_m' => 'integer',
+            'hiking_baseline_updated_at' => 'datetime',
             'marketing_push_enabled' => 'boolean',
         ];
     }

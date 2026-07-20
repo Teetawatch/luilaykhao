@@ -63,6 +63,17 @@ class PassportService
     }
 
     /**
+     * ทริปที่จบแล้วของผู้ใช้ — เปิดให้บริการอื่นใช้ได้ (เช่น TripReadinessService
+     * ที่ต้องหาทริปหนักที่สุดที่เคยเดินจบ).
+     *
+     * @return Collection<int, array{trip: Trip, departure: Carbon, month: int}>
+     */
+    public function completedTripsFor(int $userId): Collection
+    {
+        return $this->completedTrips($userId);
+    }
+
+    /**
      * ทริปที่จบแล้วของผู้ใช้ (ไม่ซ้ำรอบ) พร้อมข้อมูลที่ใช้คำนวณ badge.
      *
      * @return Collection<int, array{trip: Trip, departure: Carbon, month: int}>

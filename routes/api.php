@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\TripReadinessController;
 use App\Http\Controllers\Api\V1\TripPostController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\WaitlistController;
@@ -81,6 +82,8 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/{slug}', [TripController::class, 'show']);
         Route::get('trips/{slug}/related', [TripController::class, 'related']);
         Route::get('trips/{slug}/schedules', [TripController::class, 'schedules']);
+        // "ทริปนี้ไหวไหม" — public เพื่อบอกให้ล็อกอินก่อนแทนที่จะตอบ 401
+        Route::get('trips/{slug}/readiness', [TripReadinessController::class, 'show']);
     });
 
     // Vehicles (public for driver app)
@@ -131,6 +134,9 @@ Route::prefix('v1')->group(function () {
 
         // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
         Route::get('me/passport', [PassportController::class, 'show']);
+
+        // ค่าอ้างอิงที่ผู้ใช้กรอกเอง สำหรับประเมิน "ทริปนี้ไหวไหม" ก่อนมีประวัติ
+        Route::post('me/hiking-baseline', [TripReadinessController::class, 'updateBaseline']);
 
         // Bookings
         Route::post('bookings', [BookingController::class, 'store']);
