@@ -28,10 +28,14 @@ export async function uploadMedia(file, onProgress) {
     if (data.data?.supported) {
       const { upload_url: uploadUrl, headers, path } = data.data;
 
-      // Bare axios on purpose: the api instance would attach our Authorization
-      // header, which R2 rejects as a conflicting credential on a signed URL.
-      await axios.put(uploadUrl, file, {
-        headers: browserSafeHeaders(headers),
+      await r2Client().put(uploadUrl, file, {
+        headers: {
+          // R2 stores whatever type we send, so send the file's real one —
+          // axios would otherwise default a PUT to form-urlencoded and the
+          // clip would come back out unplayable.
+          'Content-Type': file.type || 'application/octet-stream',
+          ...browserSafeHeaders(headers),
+        },
         onUploadProgress: (e) => report(e.loaded, e.total),
       });
 
@@ -68,6 +72,26 @@ export async function uploadMedia(file, onProgress) {
 
 /** Files past this size can only realistically go direct to R2. */
 const DIRECT_UPLOAD_ONLY_BYTES = 90 * 1024 * 1024;
+
+/**
+ * An axios that carries nothing of ours.
+ *
+ * The imported `axios` is the app-wide instance, not a blank one: bootstrap.js
+ * pins X-Requested-With onto its common defaults and laravel-echo installs an
+ * interceptor that adds X-Socket-Id. R2's CORS policy refuses any preflight
+ * naming a header it doesn't list, so either one is enough to fail the upload.
+ *
+ * A fresh instance sheds the interceptors but still copies the header defaults,
+ * hence clearing those too. Nothing we drop is needed: the signature covers no
+ * header at all (X-Amz-SignedHeaders=host).
+ */
+function r2Client() {
+  const client = axios.create();
+  client.defaults.headers.common = {};
+  client.defaults.headers.put = {};
+
+  return client;
+}
 
 /**
  * The signer hands back Guzzle-shaped headers — values are arrays, and the set
