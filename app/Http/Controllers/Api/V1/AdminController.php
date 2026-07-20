@@ -2893,18 +2893,23 @@ class AdminController extends Controller
         $ext = self::MEDIA_CONTENT_TYPES[$data['content_type']];
         $path = 'media/'.time().'_'.Str::random(8).'.'.$ext;
 
-        $signed = Storage::disk($disk)->temporaryUploadUrl(
-            $path,
-            now()->addMinutes(30),
-            ['ContentType' => $data['content_type']],
-        );
+        // Only 'host' ends up in X-Amz-SignedHeaders, so don't sign a content
+        // type — the browser sends the File's own and R2 stores that.
+        $signed = Storage::disk($disk)->temporaryUploadUrl($path, now()->addMinutes(30));
+
+        // The signer returns Guzzle-shaped headers (array values) including Host,
+        // which a browser refuses to let a script set. Send back only what the
+        // client can actually apply.
+        $headers = collect($signed['headers'])
+            ->reject(fn ($v, $k) => in_array(strtolower($k), ['host', 'content-length'], true))
+            ->map(fn ($v) => is_array($v) ? implode(', ', $v) : $v)
+            ->all();
 
         return $this->success([
             'supported' => true,
             'path' => $path,
             'upload_url' => $signed['url'],
-            // The client must replay these verbatim or the signature won't match.
-            'headers' => $signed['headers'],
+            'headers' => $headers,
         ]);
     }
 
