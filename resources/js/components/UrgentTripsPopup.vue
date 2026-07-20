@@ -5,21 +5,20 @@
         <!-- backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="close"></div>
 
-        <div class="relative w-full max-w-md bg-white rounded-[1.75rem] shadow-[0_30px_80px_rgba(0,0,0,0.35)] overflow-hidden">
+        <div class="relative w-full max-w-md bg-white rounded-[1.75rem] overflow-hidden">
           <!-- header -->
-          <div class="relative bg-gradient-to-br from-red-600 via-orange-500 to-amber-500 px-5 pt-5 pb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-                <span class="material-symbols-rounded text-[26px] text-white animate-pulse"
-                  style="font-variation-settings:'FILL' 1,'wght' 500">local_fire_department</span>
+          <div class="relative bg-[var(--color-primary)] px-5 pt-5 pb-4">
+            <div class="flex items-center gap-3 pr-8">
+              <div class="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+                <span class="material-symbols-rounded text-[24px] text-white">event_available</span>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-[10px] font-black uppercase tracking-widest text-white/80 leading-none mb-1">HOT DEALS</p>
                 <h3 class="text-lg font-extrabold text-white leading-tight">{{ headline }}</h3>
+                <p class="text-[12px] text-white/70 leading-snug mt-0.5">เผื่อคุณกำลังมองรอบเดินทางอยู่</p>
               </div>
             </div>
             <button @click="close" aria-label="ปิด"
-              class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center backdrop-blur-md transition-colors">
+              class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors">
               <span class="material-symbols-rounded text-[18px]">close</span>
             </button>
           </div>
@@ -53,7 +52,7 @@
                   <!-- almost full: seats left -->
                   <span v-else-if="scarcityLabel(item.trip)"
                     class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black"
-                    :class="scarcityLevel(item.trip) === 'last' ? 'bg-red-500 text-white animate-pulse' : 'bg-amber-100 text-amber-800'">
+                    :class="scarcityLevel(item.trip) === 'last' ? 'bg-red-500 text-white' : 'bg-amber-100 text-amber-800'">
                     <span class="material-symbols-rounded text-[12px]">airline_seat_recline_normal</span>
                     {{ scarcityLabel(item.trip) }}
                   </span>
@@ -78,7 +77,7 @@
             </router-link>
             <button @click="dontShowToday"
               class="block w-full text-center text-[11px] text-gray-400 hover:text-gray-600 font-bold mt-2 transition-colors">
-              ไม่ต้องแสดงอีกวันนี้
+              ไม่ต้องแสดงอีก
             </button>
           </div>
         </div>
@@ -88,14 +87,23 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, computed, reactive, watch, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTripsStore } from '../stores/trips';
 import { tripScarcityLabel, tripScarcityLevel } from '../lib/scheduleHelpers';
 
-const SNOOZE_KEY = 'llk_urgent_popup_snooze'; // localStorage — YYYY-MM-DD, hidden for the rest of that day
+const SNOOZE_KEY = 'llk_urgent_popup_snooze'; // localStorage — ISO date; ปิดไปจนถึงวันนั้น
 const SESSION_KEY = 'llk_urgent_popup_shown'; // sessionStorage — once per tab session
-const SHOW_DELAY_MS = 3500;
+const VIEWS_KEY = 'llk_urgent_popup_views'; // sessionStorage — นับหน้าที่ผู้ใช้เปิดในรอบนี้
+
+/**
+ * เด้ง popup ใส่คนที่เพิ่งเข้าเว็บวินาทีแรกคือสัญญาณ "เว็บกดดันให้ซื้อ" ที่แรงที่สุด
+ * เลยรอจนผู้ใช้เปิดดูอย่างน้อย 3 หน้า (แสดงว่าสนใจจริง) แล้วค่อยเสนอ
+ */
+const MIN_PAGE_VIEWS = 3;
+const SHOW_DELAY_MS = 8000;
+/** กด "ไม่ต้องแสดงอีก" แล้วเงียบไป 7 วัน ไม่ใช่แค่วันเดียว */
+const SNOOZE_DAYS = 7;
 const MAX_ITEMS = 4;
 
 const route = useRoute();
@@ -108,7 +116,7 @@ const countdowns = reactive({}); // trip.id -> "1:23:45"
 let showTimer = null;
 let tickTimer = null;
 
-const headline = computed(() => title.value || 'ทริปฮอต กำลังจะเต็ม รีบจองด่วน!');
+const headline = computed(() => title.value || 'รอบเหล่านี้ใกล้เต็มแล้ว');
 
 const scarcityLabel = tripScarcityLabel;
 const scarcityLevel = tripScarcityLevel;
@@ -122,6 +130,18 @@ function safeSet(storage, key, val) {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** วันที่ที่ snooze จะหมดอายุ (วันนี้ + SNOOZE_DAYS) */
+function snoozeUntil() {
+  const d = new Date();
+  d.setDate(d.getDate() + SNOOZE_DAYS);
+  return d.toISOString().slice(0, 10);
+}
+
+/** จำนวนหน้าที่ผู้ใช้เปิดในรอบนี้ — ใช้วัดว่าเขากำลังเลือกดูอยู่จริงไหม */
+function pageViews() {
+  return Number(safeGet(sessionStorage, VIEWS_KEY) || 0);
 }
 
 function formatPrice(n) {
@@ -174,9 +194,12 @@ function onQuietPage() {
 }
 
 async function maybeShow() {
-  if (safeGet(localStorage, SNOOZE_KEY) === today()) return;
+  const snoozedUntil = safeGet(localStorage, SNOOZE_KEY);
+  if (snoozedUntil && snoozedUntil > today()) return;
   if (safeGet(sessionStorage, SESSION_KEY) === '1') return;
   if (onQuietPage()) return;
+  // ยังดูไม่ถึง 3 หน้า = ยังไม่ได้สนใจจริง อย่าเพิ่งไปขัดจังหวะ
+  if (pageViews() < MIN_PAGE_VIEWS) return;
 
   let data = null;
   try {
@@ -207,7 +230,7 @@ function goBook() {
   close();
 }
 function dontShowToday() {
-  safeSet(localStorage, SNOOZE_KEY, today());
+  safeSet(localStorage, SNOOZE_KEY, snoozeUntil());
   close();
 }
 function stopTick() {
@@ -217,9 +240,19 @@ function stopTick() {
   }
 }
 
-onMounted(() => {
-  showTimer = setTimeout(maybeShow, SHOW_DELAY_MS);
-});
+// นับทุกครั้งที่เปลี่ยนหน้า แล้วลองเสนออีกที — popup จะโผล่ตอนที่ผู้ใช้
+// เลือกดูไปสักพักแล้วเท่านั้น ไม่ใช่ทันทีที่เปิดเว็บ
+watch(
+  () => route.path,
+  () => {
+    safeSet(sessionStorage, VIEWS_KEY, String(pageViews() + 1));
+    if (visible.value || safeGet(sessionStorage, SESSION_KEY) === '1') return;
+    if (showTimer) clearTimeout(showTimer);
+    showTimer = setTimeout(maybeShow, SHOW_DELAY_MS);
+  },
+  { immediate: true }
+);
+
 onUnmounted(() => {
   if (showTimer) clearTimeout(showTimer);
   stopTick();

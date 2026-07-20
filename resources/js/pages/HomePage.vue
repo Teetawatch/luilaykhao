@@ -40,11 +40,11 @@
         </p>
 
         <!-- Modern Floating Search Bar -->
-        <div class="search-bar relative bg-white rounded-2xl md:rounded-[1.6rem] shadow-[0_24px_50px_-16px_rgba(13,43,30,0.35)] flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-4xl mx-auto ring-1 ring-black/5 transition-shadow duration-300 hover:shadow-[0_32px_64px_-16px_rgba(13,43,30,0.45)] z-20">
+        <div class="search-bar relative bg-white rounded-2xl md:rounded-[1.6rem] flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-4xl mx-auto ring-1 ring-black/5 transition-shadow duration-300 z-20">
           
           <!-- Trip Selector -->
           <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
-            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors ring-1 ring-black/5 shrink-0">
               <span class="material-symbols-rounded text-[var(--color-primary)] text-[22px] md:text-[24px]">explore</span>
             </div>
             <div class="flex flex-col items-start min-w-0 flex-1">
@@ -66,7 +66,7 @@
 
           <!-- Schedule / Departure Date Selector -->
           <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
-            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-accent)]/20 transition-colors shadow-inner ring-1 ring-black/5 shrink-0">
+            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-accent)]/20 transition-colors ring-1 ring-black/5 shrink-0">
               <span v-if="schedulesLoading" class="w-5 h-5 border-2 border-[var(--color-accent)]/30 border-t-[var(--color-accent)] rounded-full animate-spin"></span>
               <span v-else class="material-symbols-rounded text-[var(--color-accent)] text-[22px] md:text-[24px]">calendar_today</span>
             </div>
@@ -90,7 +90,7 @@
           <!-- Book / Search Button -->
           <button
             @click="goBook"
-            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-xl md:rounded-[1.2rem] font-bold transition-colors duration-300 shadow-[0_8px_16px_rgba(13,43,30,0.25)] flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0"
+            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-xl md:rounded-[1.2rem] font-bold transition-colors duration-300 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0"
           >
             <span class="material-symbols-rounded text-[22px]">search</span>
             <span class="text-lg md:text-base pr-0.5">ค้นหาทริป</span>
@@ -149,31 +149,46 @@
           <div
             v-for="(stat, index) in statItems"
             :key="stat.label"
-            class="bg-white rounded-3xl p-7 lg:p-9 flex flex-col items-center text-center shadow-[0_18px_44px_rgba(13,43,30,0.06)] ring-1 ring-black/[0.04] hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(13,43,30,0.1)] transition-[transform,box-shadow] duration-300 group"
-            :class="[isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10']"
+            class="bg-white rounded-2xl p-6 lg:p-7 flex flex-col items-center text-center border border-black/[0.06] transition-opacity duration-500"
+            :class="[isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6']"
             :style="{ transitionDelay: `${index * 120}ms` }"
           >
             <!-- Icon -->
-            <div class="w-14 h-14 rounded-2xl bg-[var(--color-primary)]/[0.06] flex items-center justify-center text-[var(--color-primary)] mb-5 group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors duration-300">
-              <span class="material-symbols-rounded text-[28px]">{{ stat.icon }}</span>
+            <div class="w-11 h-11 rounded-xl bg-[var(--color-primary)]/[0.06] flex items-center justify-center text-[var(--color-primary)] mb-4">
+              <span class="material-symbols-rounded text-[24px]">{{ stat.icon }}</span>
             </div>
 
             <!-- Statistical Value with Count-up -->
-            <div class="flex items-baseline gap-0.5 mb-1.5">
-              <span class="text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-none tabular-nums">
+            <div class="flex items-baseline gap-1 mb-1.5">
+              <span class="text-3xl lg:text-[2.6rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-none tabular-nums">
                 {{ stat.displayValue }}
               </span>
-              <span v-if="stat.suffix" class="text-xl lg:text-2xl font-bold text-[var(--color-accent)]">{{ stat.suffix }}</span>
+              <span v-if="stat.suffix" class="text-base lg:text-lg font-bold text-[var(--color-text-muted)]">{{ stat.suffix }}</span>
             </div>
 
             <!-- Label -->
-            <div class="text-[13px] lg:text-sm font-semibold text-[var(--color-text-muted)]">
+            <div class="text-[13px] lg:text-sm font-bold text-[var(--color-text-dark)] leading-snug">
               {{ stat.label }}
+            </div>
+
+            <!-- ที่มาของตัวเลข — สิ่งที่ทำให้ต่างจากตัวเลขโฆษณา -->
+            <div v-if="stat.context" class="text-[11px] lg:text-xs text-[var(--color-text-muted)] mt-1.5 leading-snug">
+              {{ stat.context }}
             </div>
           </div>
         </div>
+
+        <p class="text-center text-xs text-[var(--color-text-muted)] mt-6">
+          ตัวเลขทั้งหมดคำนวณจากรอบที่เดินทางจบแล้วในระบบ อัปเดตอัตโนมัติทุกชั่วโมง
+        </p>
       </div>
     </section>
+
+    <!-- ══════════════════════════════════════════
+         COMMUNITY FEED — รูปจริงจากคนที่ไปมาแล้ว
+         วางไว้ก่อนแถวขายทริป: เล่าเรื่องคนก่อน แล้วค่อยขาย
+    ══════════════════════════════════════════ -->
+    <CommunityFeedStrip />
 
     <!-- ══════════════════════════════════════════
          ALMOST-FULL RAIL — รีบจองก่อนเต็ม
@@ -181,8 +196,8 @@
     <section v-if="almostFullTrips.length" class="bg-[var(--color-sand)] pb-4">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
         <div class="flex items-center gap-2 mb-5">
-          <span class="material-symbols-rounded text-red-500">local_fire_department</span>
-          <h2 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">ใกล้เต็มแล้ว · รีบจอง</h2>
+          <span class="material-symbols-rounded text-[var(--color-text-muted)]">event_available</span>
+          <h2 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">รอบที่ใกล้เต็ม</h2>
         </div>
         <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
           <div v-for="t in almostFullTrips" :key="t.id" class="snap-start shrink-0 w-72">
@@ -200,8 +215,6 @@
       <div class="absolute -top-12 -left-12 text-[15rem] md:text-[19rem] font-black text-[var(--color-primary)]/[0.04] select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter leading-none">
         ลุยเลเขา
       </div>
-      <!-- Ambient glow -->
-      <div class="absolute top-1/3 -right-40 w-[36rem] h-[36rem] bg-[var(--color-accent-light)]/10 rounded-full blur-[150px] pointer-events-none z-0"></div>
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 md:mb-20 gap-8">
@@ -225,7 +238,7 @@
             :key="cat.type"
             :to="`/trips?type=${cat.type}`"
             :class="[
-              'group relative rounded-[2.5rem] overflow-hidden block isolate h-[480px] lg:h-[560px] border border-white/10 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.25)] hover:shadow-[0_50px_90px_-20px_rgba(0,0,0,0.45)] transition-[transform,box-shadow] duration-700 ease-out hover:-translate-y-3',
+              'group relative rounded-[2.5rem] overflow-hidden block isolate h-[480px] lg:h-[560px] border border-white/10 transition-[transform,box-shadow] duration-700 ease-out hover:-translate-y-3',
               isCategoryRail ? 'snap-start shrink-0 w-[80vw] sm:w-[360px] lg:w-[300px]' : '',
             ]"
             :style="`--cat-color: ${cat.color}; background-color: ${cat.bgColor}`"
@@ -256,14 +269,14 @@
                   <span class="text-white/40 font-black text-lg tabular-nums tracking-widest">0{{ index + 1 }}</span>
                   <div
                     v-if="cat.isPopular"
-                    class="flex items-center gap-1.5 bg-[var(--color-gold)]/95 text-[var(--color-text-dark)] text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-full shadow-lg"
+                    class="flex items-center gap-1.5 bg-[var(--color-gold)]/95 text-[var(--color-text-dark)] text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1.5 rounded-full"
                   >
                     <span class="material-symbols-rounded text-[14px]">star</span>
                     ยอดนิยม
                   </div>
                 </div>
                 <!-- Icon Badge -->
-                <div class="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:bg-[var(--cat-color)] group-hover:border-white/40">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white transition-all duration-500 group-hover:scale-110 group-hover:bg-[var(--cat-color)] group-hover:border-white/40">
                   <span class="material-symbols-rounded text-[26px]">{{ cat.icon }}</span>
                 </div>
               </div>
@@ -271,7 +284,7 @@
               <!-- Content Area -->
               <div class="mt-auto">
                 <div class="transform transition-transform duration-500 group-hover:-translate-y-1">
-                  <h3 class="text-4xl lg:text-[2.75rem] font-black text-white tracking-tight mb-3 drop-shadow-lg leading-none">
+                  <h3 class="text-4xl lg:text-[2.75rem] font-black text-white tracking-tight mb-3 leading-none">
                     {{ cat.label }}
                   </h3>
                   <p class="text-white/75 text-[15px] font-medium leading-relaxed max-w-[92%] mb-6 transition-colors duration-500 group-hover:text-white/90">
@@ -280,7 +293,7 @@
                 </div>
 
                 <!-- Actionable CTA -->
-                <div class="inline-flex items-center gap-3 text-sm font-black text-white tracking-wide bg-white/10 backdrop-blur-xl pl-6 pr-5 py-3.5 rounded-2xl border border-white/25 shadow-[0_10px_30px_rgba(0,0,0,0.2)] transition-all duration-500 group-hover:bg-white group-hover:text-[var(--cat-color)] group-hover:border-white">
+                <div class="inline-flex items-center gap-3 text-sm font-black text-white tracking-wide bg-white/10 backdrop-blur-xl pl-6 pr-5 py-3.5 rounded-2xl border border-white/25 transition-all duration-500 group-hover:bg-white group-hover:text-[var(--cat-color)] group-hover:border-white">
                   <span>{{ cat.ctaText }}</span>
                   <span class="material-symbols-rounded text-[20px] transition-transform duration-500 group-hover:translate-x-1">arrow_forward</span>
                 </div>
@@ -357,7 +370,7 @@
             v-for="trip in trips"
             :key="trip.id"
             :to="`/trips/${trip.slug}`"
-            class="group relative flex flex-col bg-white rounded-[1.75rem] overflow-hidden ring-1 ring-black/[0.05] shadow-[0_2px_14px_rgba(13,43,30,0.05)] hover:shadow-[0_28px_54px_-14px_rgba(13,43,30,0.28)] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2"
+            class="group relative flex flex-col bg-white rounded-[1.75rem] overflow-hidden ring-1 ring-black/[0.05] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2"
           >
             <!-- Image -->
             <div class="relative overflow-hidden aspect-[4/5]">
@@ -378,7 +391,7 @@
               <!-- Top row: type badge + wishlist -->
               <div class="absolute top-3.5 left-3.5 right-3.5 flex items-start justify-between gap-2">
                 <span
-                  class="px-3 py-1.5 rounded-full text-[11px] font-black tracking-wide shadow-lg backdrop-blur-md"
+                  class="px-3 py-1.5 rounded-full text-[11px] font-black tracking-wide backdrop-blur-md"
                   :class="typeBadgeClass(trip.type)"
                 >
                   {{ typeLabel(trip.type) }}
@@ -386,7 +399,7 @@
                 <button
                   class="w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full border cursor-pointer active:scale-75 backdrop-blur-md z-20"
                   :class="wishlistStore.isFavorite(trip.id)
-                    ? 'border-red-400/80 text-red-500 bg-white/90 shadow-md'
+                    ? 'border-red-400/80 text-red-500 bg-white/90'
                     : 'border-white/50 text-white bg-black/15 hover:bg-black/30'"
                   @click.prevent="wishlistStore.toggleFavorite(trip)"
                   aria-label="บันทึกรายการโปรด"
@@ -442,7 +455,7 @@
                     <template v-else>฿{{ Number(trip.min_price).toLocaleString() }}</template>
                   </span>
                 </div>
-                <div class="shrink-0 w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300 group-hover:shadow-[0_8px_18px_rgba(45,122,79,0.35)]">
+                <div class="shrink-0 w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300">
                   <span class="material-symbols-rounded text-[20px] transition-transform duration-300 group-hover:translate-x-0.5">arrow_forward</span>
                 </div>
               </div>
@@ -454,7 +467,7 @@
         <div class="text-center mt-16">
           <router-link
             to="/trips"
-            class="inline-flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-10 py-4 rounded-full font-bold text-lg transition-all duration-300 shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_15px_30px_rgba(45,122,79,0.3)] hover:-translate-y-1 cursor-pointer"
+            class="inline-flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-10 py-4 rounded-full font-bold text-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
           >
             ค้นหากิจกรรมทั้งหมด
             <span class="material-symbols-rounded text-[24px]">explore</span>
@@ -491,7 +504,7 @@
           <!-- Main Hero Featured Card (Large) -->
           <router-link
             :to="`/trips/${featuredTrips[0].slug}`"
-            class="lg:col-span-8 group relative overflow-hidden rounded-[3rem] shadow-2xl h-[550px] lg:h-[650px] cursor-pointer block isolate"
+            class="lg:col-span-8 group relative overflow-hidden rounded-[3rem] h-[550px] lg:h-[650px] cursor-pointer block isolate"
           >
             <!-- Premium Image Background with Zoom -->
             <img
@@ -505,22 +518,22 @@
             
             <div class="absolute inset-0 p-10 md:p-14 flex flex-col justify-end">
               <div class="flex flex-wrap items-center gap-2.5 mb-7 transform transition-transform duration-500 group-hover:-translate-y-2">
-                <span class="bg-[var(--color-accent-light)] text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] shadow-lg">{{ typeLabel(featuredTrips[0].type) }}</span>
+                <span class="bg-[var(--color-accent-light)] text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.18em]">{{ typeLabel(featuredTrips[0].type) }}</span>
 
                 <!-- Smart Rating / New Badge -->
-                <span v-if="Number(featuredTrips[0].rating) > 0" class="bg-white/10 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[11px] font-bold shadow-lg flex items-center gap-1.5 border border-white/15">
+                <span v-if="Number(featuredTrips[0].rating) > 0" class="bg-white/10 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 border border-white/15">
                   <span class="material-symbols-rounded text-[15px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
                   {{ Number(featuredTrips[0].rating).toFixed(1) }}
                 </span>
-                <span v-else class="bg-white text-[var(--color-primary)] px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.18em] shadow-lg">
+                <span v-else class="bg-white text-[var(--color-primary)] px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.18em]">
                   Trip ใหม่ ✨
                 </span>
               </div>
               <div class="max-w-2xl mb-9 transform transition-transform duration-700 group-hover:-translate-y-2">
-                <h3 class="font-anuphan text-white text-3xl md:text-5xl font-extrabold mb-4 leading-[1.14] tracking-tight drop-shadow-2xl">
+                <h3 class="font-anuphan text-white text-3xl md:text-5xl font-extrabold mb-4 leading-[1.14] tracking-tight">
                   {{ featuredTrips[0].title }}
                 </h3>
-                <p class="text-white/70 text-base md:text-lg font-medium leading-relaxed drop-shadow-lg line-clamp-2 max-w-xl group-hover:text-white/90 transition-colors">
+                <p class="text-white/70 text-base md:text-lg font-medium leading-relaxed line-clamp-2 max-w-xl group-hover:text-white/90 transition-colors">
                   {{ featuredTrips[0].description || featuredTrips[0].location }}
                 </p>
               </div>
@@ -540,7 +553,7 @@
                   </div>
                 </div>
 
-                <div class="bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white px-8 py-4 rounded-2xl font-bold text-base shadow-[0_16px_36px_rgba(0,0,0,0.28)] transition-all duration-300 flex items-center gap-2.5 group/btn hover:-translate-y-0.5">
+                <div class="bg-white text-[var(--color-primary)] hover:bg-[var(--color-accent-light)] hover:text-white px-8 py-4 rounded-2xl font-bold text-base transition-all duration-300 flex items-center gap-2.5 group/btn hover:-translate-y-0.5">
                   <span>สำรวจทริปนี้</span>
                   <div class="w-7 h-7 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center group-hover/btn:bg-white/20 transition-colors">
                     <span class="material-symbols-rounded text-[20px] transform group-hover/btn:translate-x-0.5 transition-transform">arrow_forward</span>
@@ -556,7 +569,7 @@
               v-for="(trip, idx) in featuredTrips.slice(1, 3)"
               :key="trip.id"
               :to="`/trips/${trip.slug}`"
-              class="flex-1 group relative overflow-hidden rounded-[2.5rem] bg-gray-900 cursor-pointer block p-8 md:p-10 flex flex-col justify-between hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 isolate"
+              class="flex-1 group relative overflow-hidden rounded-[2.5rem] bg-gray-900 cursor-pointer block p-8 md:p-10 flex flex-col justify-between transition-all duration-500 transform hover:-translate-y-2 isolate"
             >
               <!-- Background Image -->
                <img
@@ -573,14 +586,14 @@
                     <span class="px-3.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] backdrop-blur-md border border-white/20 bg-white/10 text-white">
                       {{ typeLabel(trip.type) }}
                     </span>
-                    <span v-if="idx === 0" class="px-3.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] bg-[var(--color-accent)] text-white shadow-lg">ยอดนิยม</span>
+                    <span v-if="idx === 0" class="px-3.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] bg-[var(--color-accent)] text-white">ยอดนิยม</span>
                   </div>
-                  <div class="w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white shadow-lg transition-transform duration-500 group-hover:rotate-12">
+                  <div class="w-11 h-11 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 bg-white/10 text-white transition-transform duration-500 group-hover:rotate-12">
                     <span class="material-symbols-rounded text-[22px]">{{ typeFeaturedIcon(trip.type) }}</span>
                   </div>
                 </div>
 
-                <h4 class="text-xl md:text-2xl font-extrabold text-white mb-3 group-hover:text-[var(--color-accent-light)] transition-colors leading-snug drop-shadow-md">
+                <h4 class="text-xl md:text-2xl font-extrabold text-white mb-3 group-hover:text-[var(--color-accent-light)] transition-colors leading-snug">
                   {{ trip.title }}
                 </h4>
                 <div v-if="Number(trip.rating) > 0" class="flex items-center gap-1.5 mb-2">
@@ -601,7 +614,7 @@
                     ฿{{ Number(trip.min_price).toLocaleString('th-TH') }}
                   </span>
                 </div>
-                <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--color-primary)] transition-all duration-500 shadow-xl">
+                <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--color-primary)] transition-all duration-500">
                   <span class="material-symbols-rounded text-[28px]">arrow_outward</span>
                 </div>
               </div>
@@ -646,7 +659,7 @@
           <div
             v-for="(review, idx) in marqueeReviews"
             :key="review.id + '-' + idx"
-            class="reviews-marquee__card bg-white rounded-[1.75rem] p-7 shadow-[0_2px_14px_rgba(13,43,30,0.05)] hover:shadow-[0_24px_46px_-14px_rgba(13,43,30,0.22)] transition-[transform,box-shadow] duration-500 ease-out relative ring-1 ring-black/[0.05] hover:-translate-y-1.5"
+            class="reviews-marquee__card bg-white rounded-[1.75rem] p-7 transition-[transform,box-shadow] duration-500 ease-out relative ring-1 ring-black/[0.05] hover:-translate-y-1.5"
           >
             <!-- Quote accent -->
             <div class="absolute top-6 right-6 text-[var(--color-accent)]/10 pointer-events-none">
@@ -665,7 +678,7 @@
               <p class="text-[var(--color-text-mid)] text-[15px] font-medium leading-relaxed mb-7 line-clamp-4">“{{ review.comment || 'ไม่มีความคิดเห็น' }}”</p>
 
               <div class="mt-auto flex items-center gap-3.5 pt-5 border-t border-[var(--color-sand-dark)]">
-                <div class="relative w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-2 ring-[var(--color-accent)]/15 shadow-sm shrink-0">
+                <div class="relative w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-2 ring-[var(--color-accent)]/15 shrink-0">
                   <span>{{ review.user_name?.charAt(0) }}</span>
                   <img
                     v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
@@ -713,7 +726,7 @@
           <div
             v-for="(trust, idx) in trustItems"
             :key="trust.title"
-            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] shadow-lg hover:shadow-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between"
+            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between"
             :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
           >
             <!-- Image Wrapper (Out-of-bound) -->
@@ -721,7 +734,7 @@
               <img 
                 :src="trust.image" 
                 :alt="trust.title" 
-                class="w-48 h-48 md:w-56 md:h-56 max-w-none object-contain drop-shadow-2xl"
+                class="w-48 h-48 md:w-56 md:h-56 max-w-none object-contain"
               />
             </div>
 
@@ -752,9 +765,6 @@
         <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E]/95 via-[#1A3A2E]/80 to-transparent"></div>
       </div>
       
-      <!-- Premium UI Decorations -->
-      <div class="absolute top-0 right-0 w-[42rem] h-[42rem] bg-[var(--color-accent)]/16 rounded-full blur-[110px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-      <div class="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-white/5 rounded-full blur-[90px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <div class="reveal-section max-w-3xl">
@@ -775,7 +785,7 @@
           <div class="flex flex-col sm:flex-row gap-3.5">
             <router-link
               to="/trips"
-              class="inline-flex items-center justify-center gap-2.5 bg-[var(--color-accent)] text-white px-7 md:px-8 py-3.5 rounded-2xl text-[0.95rem] md:text-base font-bold hover:bg-[#3D8F66] hover:shadow-[0_16px_40px_rgba(76,175,125,0.35)] transition-all duration-300 group/btn"
+              class="inline-flex items-center justify-center gap-2.5 bg-[var(--color-accent)] text-white px-7 md:px-8 py-3.5 rounded-2xl text-[0.95rem] md:text-base font-bold hover:bg-[#3D8F66] transition-all duration-300 group/btn"
             >
               <span>เริ่มผจญภัยกับเราวันนี้</span>
               <span class="material-symbols-rounded text-xl group-hover/btn:translate-x-1 transition-transform">explore</span>
@@ -826,6 +836,7 @@ import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
 import TripCard from '../components/TripCard.vue';
+import CommunityFeedStrip from '../components/CommunityFeedStrip.vue';
 
 const wishlistStore = useWishlistStore();
 const router = useRouter();
@@ -921,34 +932,40 @@ const goBook = () => {
 const statsSection = ref(null);
 const isVisible = ref(false);
 
+// ตัวเลขทั้งหมดนี้คำนวณจริงจากรอบที่เดินทางจบแล้ว (ดู CommunityStatsService)
+// ไม่ใช่ตัวเลขโฆษณา — ค่า target เริ่มต้นเป็น 0 แล้วเติมจาก /stats
 const statItems = ref([
   {
-    icon: 'groups',
-    target: 1420,
+    icon: 'footprint',
+    target: 0,
     displayValue: '0',
-    suffix: '+',
-    label: 'นักเดินทาง',
+    suffix: 'กม.',
+    label: 'ระยะทางที่ชุมชนเราเดินสะสม',
+    context: '',
+  },
+  {
+    icon: 'landscape',
+    target: 0,
+    displayValue: '0',
+    suffix: 'ม.',
+    label: 'ความสูงที่ไต่ขึ้นไปรวมกัน',
+    context: '',
+  },
+  {
+    icon: 'groups',
+    target: 0,
+    displayValue: '0',
+    suffix: 'คน',
+    label: 'นักเดินทางที่ไปกับเราจริง',
+    context: '',
   },
   {
     icon: 'star',
-    target: 4.9,
+    target: 0,
     displayValue: '0.0',
     suffix: '/5',
-    label: 'คะแนนรีวิว',
-  },
-  {
-    icon: 'map',
-    target: 24,
-    displayValue: '0',
-    suffix: '+',
-    label: 'เส้นทางท่องเที่ยว',
-  },
-  {
-    icon: 'reviews',
-    target: 320,
-    displayValue: '0',
-    suffix: '+',
-    label: 'รีวิวจากลูกค้าจริง',
+    label: 'คะแนนจากคนที่เดินทางแล้ว',
+    context: '',
   },
 ]);
 
@@ -1163,13 +1180,30 @@ onMounted(async () => {
       categories.value = apiCategories.map(mapCategoryToCard);
     }
     
-    // Update stats
+    // Update stats — ใช้สถิติจริงของชุมชน (ระยะทาง/ความสูงสะสม) แทนตัวเลขโฆษณา
     if (statsRes.data?.data) {
       const s = statsRes.data.data;
-      statItems.value[0].target = s.total_customers;
-      statItems.value[1].target = s.avg_rating;
-      statItems.value[2].target = s.total_trips;
-      statItems.value[3].target = s.total_reviews;
+      const c = s.community || {};
+
+      statItems.value[0].target = Math.round(c.total_distance_km || 0);
+      statItems.value[0].context = c.rounds_completed
+        ? `จาก ${c.rounds_completed.toLocaleString()} รอบที่เดินทางจบแล้ว`
+        : '';
+
+      statItems.value[1].target = c.total_elevation_gain_m || 0;
+      statItems.value[1].context = c.highlights?.inthanon_multiple
+        ? `เท่ากับปีนดอยอินทนนท์ ${c.highlights.inthanon_multiple.toLocaleString()} รอบ`
+        : '';
+
+      statItems.value[2].target = c.travellers_count || 0;
+      statItems.value[2].context = c.regions_count
+        ? `ไปมาแล้ว ${c.regions_count} ภูมิภาคทั่วไทย`
+        : '';
+
+      statItems.value[3].target = s.avg_rating;
+      statItems.value[3].context = c.reviews_count
+        ? `จาก ${c.reviews_count.toLocaleString()} รีวิวของคนที่เดินทางจริง`
+        : '';
     }
 
     // Set up IntersectionObserver

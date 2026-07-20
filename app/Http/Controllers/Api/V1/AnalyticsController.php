@@ -8,6 +8,7 @@ use App\Models\Review;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\CommunityStatsService;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -151,7 +152,7 @@ class AnalyticsController extends Controller
         return $this->success($schedules);
     }
 
-    public function publicStats(): JsonResponse
+    public function publicStats(CommunityStatsService $communityStats): JsonResponse
     {
         $totalTrips = Trip::count();
         $avgRating = Review::where('is_approved', true)->avg('rating') ?: 5.0;
@@ -163,6 +164,8 @@ class AnalyticsController extends Controller
             'avg_rating' => round((float) $avgRating, 1),
             'total_reviews' => $totalReviews,
             'total_customers' => $totalCustomers,
+            // สถิติจริงของชุมชน (ระยะทาง/ความสูงสะสม) — ใช้แทนตัวเลขโฆษณาบนหน้าแรก
+            'community' => $communityStats->get(),
             'contact' => [
                 'phone' => config('app.support_phone'),
                 'line' => config('app.support_line_id'),

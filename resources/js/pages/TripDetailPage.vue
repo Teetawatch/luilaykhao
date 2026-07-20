@@ -60,7 +60,7 @@
         <div class="relative z-10 mx-auto w-full max-w-screen-2xl px-5 pb-8 md:px-12 md:pb-10 lg:px-16">
           <div class="hero-content max-w-4xl">
             <div class="mb-5 flex flex-wrap items-center gap-2.5">
-              <span class="rounded-full px-4 py-1.5 text-[12px] font-extrabold uppercase tracking-widest text-white shadow-lg" :class="typeBadgeClass">
+              <span class="rounded-full px-4 py-1.5 text-[12px] font-extrabold uppercase tracking-widest text-white" :class="typeBadgeClass">
                 {{ typeLabel }}
               </span>
               <span v-if="hasRating" class="hero-chip">
@@ -166,7 +166,7 @@
                 <!-- Main Large Image -->
                 <div 
                   @click="openGallery(0)"
-                  class="md:col-span-2 md:row-span-2 h-[300px] md:h-full overflow-hidden rounded-[2rem] md:rounded-[3rem] group relative cursor-pointer shadow-2xl shadow-black/5"
+                  class="md:col-span-2 md:row-span-2 h-[300px] md:h-full overflow-hidden rounded-[2rem] md:rounded-[3rem] group relative cursor-pointer"
                 >
                   <img :src="trip.gallery[0]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
                   <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
@@ -179,7 +179,7 @@
                 <!-- Secondary Image (Top Right) -->
                 <div v-if="trip.gallery[1]" 
                   @click="openGallery(1)"
-                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] group relative cursor-pointer shadow-xl shadow-black/5"
+                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] group relative cursor-pointer"
                 >
                   <img :src="trip.gallery[1]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
                   <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
@@ -188,14 +188,14 @@
                 <!-- Third Image + Overlay (Bottom Right) -->
                 <div v-if="trip.gallery[2]" 
                   @click="openGallery(2)"
-                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] relative group cursor-pointer shadow-xl shadow-black/5"
+                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] relative group cursor-pointer"
                 >
                   <img :src="trip.gallery[2]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
                   
                   <!-- Overlay for more images -->
                   <div v-if="trip.gallery.length > 3" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white backdrop-blur-sm transition-all duration-500 group-hover:bg-black/60 group-hover:backdrop-blur-[2px]">
                     <div class="text-center transform transition-transform duration-500 group-hover:scale-110">
-                      <div class="w-14 h-14 rounded-3xl bg-white/20 flex items-center justify-center mx-auto mb-3 border border-white/30 shadow-lg">
+                      <div class="w-14 h-14 rounded-3xl bg-white/20 flex items-center justify-center mx-auto mb-3 border border-white/30">
                         <span class="material-symbols-rounded text-3xl">photo_library</span>
                       </div>
                       <div class="font-black text-xl tracking-tight uppercase">+{{ trip.gallery.length - 3 }} รูปภาพ</div>
@@ -208,12 +208,12 @@
             </section>
 
             <!-- Women-Only Benefits Section -->
-            <section v-if="trip.is_women_only" class="women-only-benefits bg-gradient-to-br from-pink-50 to-white px-8 md:px-12 py-10 rounded-[2.5rem] border border-pink-100 shadow-[0_20px_50px_rgba(219,39,119,0.08)] relative overflow-hidden">
+            <section v-if="trip.is_women_only" class="women-only-benefits bg-gradient-to-br from-pink-50 to-white px-8 md:px-12 py-10 rounded-[2.5rem] border border-pink-100 relative overflow-hidden">
               <div class="absolute -right-16 -top-16 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl opacity-30"></div>
               <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl opacity-30"></div>
               <div class="relative z-10">
                 <div class="flex flex-col md:flex-row md:items-center gap-6 mb-10">
-                  <div class="w-20 h-20 rounded-3xl bg-pink-600 flex items-center justify-center text-white shadow-xl shadow-pink-600/30 shrink-0">
+                  <div class="w-20 h-20 rounded-3xl bg-pink-600 flex items-center justify-center text-white shrink-0">
                     <span class="material-symbols-rounded text-5xl" style="font-variation-settings:'FILL' 1">female</span>
                   </div>
                   <div>
@@ -222,21 +222,21 @@
                   </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 shadow-sm transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 transition-all hover:bg-white hover:-translate-y-1">
                     <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
                       <span class="material-symbols-rounded text-2xl">group</span>
                     </div>
                     <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">เพื่อนร่วมทริปหญิงล้วน</h4>
                     <p class="text-sm text-gray-600 leading-relaxed font-bold">เดินทางร่วมกับกลุ่มผู้หญิงที่มีความชอบเหมือนกัน สบายใจได้ตลอดทั้งทริป</p>
                   </div>
-                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 shadow-sm transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 transition-all hover:bg-white hover:-translate-y-1">
                     <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
                       <span class="material-symbols-rounded text-2xl">verified_user</span>
                     </div>
                     <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">พื้นที่ส่วนตัวและปลอดภัย</h4>
                     <p class="text-sm text-gray-600 leading-relaxed font-bold">ทุกรายละเอียดจัดการโดยเน้นความเป็นส่วนตัว (Privacy) สูงสุดสำหรับผู้หญิง</p>
                   </div>
-                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 shadow-sm transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 transition-all hover:bg-white hover:-translate-y-1">
                     <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
                       <span class="material-symbols-rounded text-2xl">favorite</span>
                     </div>
@@ -247,12 +247,40 @@
               </div>
             </section>
 
-            <section id="overview" class="description-section scroll-mt-32 bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
+            <section id="overview" class="description-section scroll-mt-32 bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-6">
                 <span class="ed-kicker">ภาพรวม</span>
                 <h2 class="ed-title">เกี่ยวกับทริปนี้</h2>
               </header>
               <p class="text-[var(--color-text-mid)] leading-loose text-lg md:text-xl whitespace-pre-line font-medium">{{ trip.description }}</p>
+
+              <!-- ข้อมูลเส้นทางแบบตัวเลข — คนที่จริงจังกับการเดินป่าดูอันนี้ ไม่ได้ดูคำโฆษณา -->
+              <div v-if="routeFacts.length" class="mt-10 pt-8 border-t border-gray-100">
+                <h3 class="text-[13px] font-bold text-[var(--color-text-muted)] mb-5">ข้อมูลเส้นทาง</h3>
+                <dl class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
+                  <div v-for="fact in routeFacts" :key="fact.label">
+                    <dt class="flex items-center gap-1.5 text-[12px] font-bold text-[var(--color-text-muted)] mb-1.5">
+                      <span class="material-symbols-rounded text-[16px]">{{ fact.icon }}</span>
+                      {{ fact.label }}
+                    </dt>
+                    <dd class="text-2xl md:text-[1.75rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-none tabular-nums">
+                      {{ fact.value }}<span v-if="fact.unit" class="text-sm font-bold text-[var(--color-text-muted)] ml-1">{{ fact.unit }}</span>
+                    </dd>
+                    <dd v-if="fact.note" class="text-[11px] text-[var(--color-text-muted)] mt-1 leading-snug">{{ fact.note }}</dd>
+                  </div>
+                </dl>
+
+                <!-- แถบเทียบความชันแบบเห็นภาพ เทียบกับดอยอินทนนท์ -->
+                <div v-if="inthanonPercent" class="mt-7 pt-6 border-t border-gray-100">
+                  <div class="flex items-baseline justify-between mb-2">
+                    <span class="text-[12px] font-bold text-[var(--color-text-muted)]">ความสูงสะสมเทียบดอยอินทนนท์ (2,565 ม.)</span>
+                    <span class="text-[13px] font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ inthanonPercent }}%</span>
+                  </div>
+                  <div class="h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div class="h-full rounded-full bg-[var(--color-primary)]" :style="{ width: `${Math.min(inthanonPercent, 100)}%` }"></div>
+                  </div>
+                </div>
+              </div>
             </section>
 
             <!-- Itinerary (Day by Day) -->
@@ -269,14 +297,14 @@
               </div>
 
               <!-- Sector Navigation (Sticky Tabs) -->
-              <div v-if="itinerarySectors.length > 1" class="sector-tabs-container sticky top-20 z-[30] bg-[var(--color-bg)]/90 backdrop-blur-md -mx-4 px-4 py-3 mb-8 md:mx-0 md:px-0 md:rounded-3xl border-b md:border border-gray-100 shadow-sm transition-all">
+              <div v-if="itinerarySectors.length > 1" class="sector-tabs-container sticky top-20 z-[30] bg-[var(--color-bg)]/90 backdrop-blur-md -mx-4 px-4 py-3 mb-8 md:mx-0 md:px-0 md:rounded-3xl border-b md:border border-gray-100 transition-all">
                 <div class="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth">
                   <button 
                     v-for="(sector, sIdx) in itinerarySectors" 
                     :key="sIdx"
                     @click="scrollToSector(sIdx)"
                     class="sector-tab-btn px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all flex items-center gap-2"
-                    :class="activeSector === sIdx ? 'bg-[var(--color-primary)] text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'"
+                    :class="activeSector === sIdx ? 'bg-[var(--color-primary)] text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'"
                   >
                     <span class="material-symbols-rounded text-lg" v-if="activeSector === sIdx">location_on</span>
                     {{ sector.sector || `ช่วงที่ ${sIdx + 1}` }}
@@ -316,7 +344,7 @@
                         @click="toggleDay(sIdx + '-' + idx)"
                         class="timeline-node absolute -left-[4.5rem] md:-left-24 top-0 w-14 h-14 md:w-[4.5rem] md:h-[4.5rem] rounded-2xl flex flex-col items-center justify-center transition-all duration-300"
                         :class="openDays.includes(sIdx + '-' + idx)
-                          ? 'bg-[var(--color-accent)] text-white shadow-lg shadow-[var(--color-accent)]/25'
+                          ? 'bg-[var(--color-accent)] text-white'
                           : 'bg-white text-[var(--color-text-dark)] border border-gray-200 hover:border-[var(--color-accent)]/50'"
                         :aria-expanded="openDays.includes(sIdx + '-' + idx)"
                       >
@@ -328,8 +356,8 @@
                       <div
                         class="itinerary-day-card rounded-[1.5rem] border transition-all duration-300"
                         :class="openDays.includes(sIdx + '-' + idx)
-                          ? 'bg-white border-[var(--color-accent)]/20 shadow-[0_18px_45px_rgba(0,0,0,0.06)]'
-                          : 'bg-white border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_14px_34px_rgba(0,0,0,0.05)]'"
+                          ? 'bg-white border-[var(--color-accent)]/20'
+                          : 'bg-white border-gray-100'"
                       >
                         <div
                           @click="toggleDay(sIdx + '-' + idx)"
@@ -362,15 +390,15 @@
             </section>
 
             <!-- Editorial photo spread — a magazine-style rhythm break -->
-            <figure v-if="spreadImage" class="spread-band relative overflow-hidden rounded-[2.5rem] aspect-[16/9] sm:aspect-[16/7] shadow-[0_24px_60px_rgba(0,0,0,0.12)]">
+            <figure v-if="spreadImage" class="spread-band relative overflow-hidden rounded-[2.5rem] aspect-[16/9] sm:aspect-[16/7]">
               <img :src="spreadImage" :alt="trip.title" loading="lazy" class="absolute inset-0 w-full h-full object-cover" @error="spreadImageFailed = true" />
               <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/10"></div>
               <figcaption class="absolute inset-x-0 bottom-0 p-6 md:p-10">
                 <p class="flex items-center gap-1.5 text-white/80 text-[13px] font-bold mb-1.5">
                   <span class="material-symbols-rounded text-[17px]">location_on</span>{{ trip.location }}
                 </p>
-                <p class="text-white text-xl md:text-3xl font-black leading-snug tracking-tight max-w-xl drop-shadow-lg">
-                  ทุกเส้นทาง คือความทรงจำที่รอคุณอยู่
+                <p class="text-white text-xl md:text-3xl font-black leading-snug tracking-tight max-w-xl">
+                  {{ trip.title }}
                 </p>
               </figcaption>
             </figure>
@@ -384,7 +412,7 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div v-for="(item, idx) in trip.preparations" :key="idx"
-                  class="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-gray-100 shadow-[0_6px_18px_rgba(0,0,0,0.02)] hover:border-[var(--color-accent)]/25 transition-colors">
+                  class="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-gray-100 hover:border-[var(--color-accent)]/25 transition-colors">
                   <span class="w-7 h-7 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center shrink-0 mt-0.5">
                     <span class="material-symbols-rounded text-[16px]">check</span>
                   </span>
@@ -402,7 +430,7 @@
                 </header>
                 <button
                   @click="showAvailabilityModal = true"
-                  class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all shadow-sm active:scale-95 group"
+                  class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all active:scale-95 group"
                 >
                   <span class="material-symbols-rounded text-xl transition-transform group-hover:rotate-12">calendar_month</span>
                   เช็ครอบที่ยังว่าง
@@ -411,12 +439,12 @@
 
               <!-- Image-led editorial feature when a gallery photo is available -->
               <div v-if="hlImage" class="grid lg:grid-cols-2 gap-8 lg:gap-10 items-stretch">
-                <figure class="hl-figure relative overflow-hidden rounded-[2rem] min-h-[320px] lg:min-h-full shadow-[0_20px_50px_rgba(0,0,0,0.08)]">
+                <figure class="hl-figure relative overflow-hidden rounded-[2rem] min-h-[320px] lg:min-h-full">
                   <img :src="hlImage" :alt="trip.title" loading="lazy" class="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-out hover:scale-105" @error="hlImageFailed = true" />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent"></div>
                   <figcaption class="absolute bottom-5 left-5 right-5 flex items-center gap-2 text-white">
                     <span class="material-symbols-rounded text-[19px]">location_on</span>
-                    <span class="text-[15px] font-bold drop-shadow">{{ trip.location }}</span>
+                    <span class="text-[15px] font-bold">{{ trip.location }}</span>
                   </figcaption>
                 </figure>
 
@@ -439,7 +467,7 @@
               <!-- Fallback: card grid when there is no gallery imagery -->
               <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <article v-for="(hi, idx) in highlights" :key="idx"
-                  class="hl-card group relative overflow-hidden bg-white p-6 md:p-7 rounded-[1.75rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-accent)]/30 hover:shadow-[0_22px_44px_rgba(0,0,0,0.07)]">
+                  class="hl-card group relative overflow-hidden bg-white p-6 md:p-7 rounded-[1.75rem] border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-accent)]/30">
                   <span class="absolute right-5 top-4 text-[54px] font-black leading-none text-[var(--color-accent)]/[0.07] tabular-nums select-none">{{ String(idx + 1).padStart(2, '0') }}</span>
                   <div class="relative">
                     <div class="w-14 h-14 rounded-2xl bg-[var(--color-accent)]/10 group-hover:bg-[var(--color-accent)] transition-colors duration-300 flex items-center justify-center mb-5">
@@ -459,7 +487,7 @@
                 <h3 class="ed-title">สิ่งที่รวมและไม่รวม</h3>
               </header>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 rounded-[2rem] border border-gray-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.04)] overflow-hidden">
+              <div class="grid grid-cols-1 md:grid-cols-2 rounded-[2rem] border border-gray-100 bg-white overflow-hidden">
                 <div class="p-7 md:p-9 md:border-r border-gray-100">
                   <h4 class="text-lg font-black mb-6 flex items-center gap-2.5 text-[#2D7A4F]">
                     <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 1">check_circle</span>
@@ -490,7 +518,7 @@
             </section>
 
             <!-- Cancellation / refund policy -->
-            <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
+            <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
                 <span class="ed-kicker">ความยืดหยุ่น</span>
                 <h3 class="ed-title">นโยบายการยกเลิกและคืนเงิน</h3>
@@ -531,7 +559,7 @@
             </section>
 
             <!-- FAQ -->
-            <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)]">
+            <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-6">
                 <span class="ed-kicker">คำถามที่พบบ่อย</span>
                 <h3 class="ed-title">มีข้อสงสัย?</h3>
@@ -563,9 +591,9 @@
             <div class="sticky top-28 space-y-6">
 
               <!-- Price Card -->
-              <div id="booking-section" class="bg-white p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-gray-100 relative overflow-hidden z-10">
+              <div id="booking-section" class="bg-white p-8 rounded-[2rem] border border-gray-100 relative overflow-hidden z-10">
                 <!-- Flash Sale banner -->
-                <div v-if="flashSchedule" class="mb-4 -mx-3 -mt-3 px-4 py-3 rounded-[1.25rem] bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white shadow-md">
+                <div v-if="flashSchedule" class="mb-4 -mx-3 -mt-3 px-4 py-3 rounded-[1.25rem] bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white">
                   <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-1.5 font-black text-sm">
                       <span class="material-symbols-rounded" style="font-size:18px;">bolt</span>
@@ -671,8 +699,8 @@
                       @click="selectRegion(r.region)"
                       class="text-left border-2 rounded-[1.25rem] p-4 transition-all duration-200"
                       :class="selectedRegion === r.region
-                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5 shadow-md'
-                        : 'border-gray-100 bg-white hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-sand)] hover:shadow-sm'"
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
+                        : 'border-gray-100 bg-white hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-sand)]'"
                     >
                       <div class="flex items-center justify-between gap-1 mb-1.5">
                         <span class="font-black text-sm text-[var(--color-text-dark)] leading-tight">{{ r.region_label }}</span>
@@ -701,7 +729,7 @@
                 <div v-if="selectedSchedule?.join_trip_enabled" class="mb-8 p-6 rounded-[1.5rem] border-2 transition-all duration-300"
                   :class="isJoinTrip ? 'border-emerald-500 bg-emerald-50' : 'border-dashed border-gray-200 bg-white'">
                   <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
                       :class="isJoinTrip ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'">
                       <span class="material-symbols-rounded text-2xl">confirmation_number</span>
                     </div>
@@ -857,10 +885,10 @@
               <!-- Urgency Card — แสดงเฉพาะรอบที่ใกล้จะถึงที่สุด -->
               <div
                 v-if="urgentSchedule"
-                class="relative overflow-hidden bg-[#FFF8EE] p-5 rounded-[1.5rem] border border-[#C8963E]/30 shadow-sm animate-fade-in-up"
+                class="relative overflow-hidden bg-[#FFF8EE] p-5 rounded-[1.5rem] border border-[#C8963E]/30 animate-fade-in-up"
               >
                 <div class="flex items-center gap-4">
-                  <div class="w-12 h-12 rounded-full bg-[#C8963E] flex items-center justify-center text-white shrink-0 shadow-md">
+                  <div class="w-12 h-12 rounded-full bg-[#C8963E] flex items-center justify-center text-white shrink-0">
                     <span class="material-symbols-rounded text-[24px]">local_fire_department</span>
                   </div>
                   <div class="min-w-0">
@@ -879,7 +907,7 @@
               </div>
 
               <!-- Quick Info Card -->
-              <div class="bg-white rounded-[1.5rem] p-6 md:p-8 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] space-y-5">
+              <div class="bg-white rounded-[1.5rem] p-6 md:p-8 border border-gray-100 space-y-5">
                 <h4 class="font-extrabold text-[var(--color-text-dark)] text-lg mb-2">ข้อมูลเบื้องต้น</h4>
                 <div class="flex items-center gap-4 text-base">
                   <div class="w-10 h-10 rounded-xl bg-[var(--color-sand)] flex items-center justify-center shrink-0">
@@ -942,7 +970,7 @@
           <!-- Photo Album — every image from every review, in one gallery -->
           <div
             v-if="albumPhotos.length > 0"
-            class="mb-12 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)]"
+            class="mb-12 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100"
           >
             <div class="flex items-center gap-3.5 mb-6">
               <span class="sec-icon"><span class="material-symbols-rounded">photo_library</span></span>
@@ -965,7 +993,7 @@
                   class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-2">
-                  <p class="text-white text-[11px] font-bold truncate drop-shadow">{{ photo.user_name }}</p>
+                  <p class="text-white text-[11px] font-bold truncate">{{ photo.user_name }}</p>
                 </div>
               </div>
             </div>
@@ -990,10 +1018,10 @@
 
           <div v-else-if="reviews.length > 0">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div v-for="review in displayedReviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.04)] h-full flex flex-col">
+              <div v-for="review in displayedReviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 transition-all h-full flex flex-col">
                 <div class="flex justify-between items-start mb-6">
                   <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white shadow-sm ring-1 ring-gray-100">
+                    <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-1 ring-gray-100">
                       <img
                         v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
                         :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
@@ -1031,7 +1059,7 @@
                   >
                     <img :src="img" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
-                      <span class="material-symbols-rounded text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg">zoom_in</span>
+                      <span class="material-symbols-rounded text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">zoom_in</span>
                     </div>
                   </div>
                 </div>
@@ -1102,7 +1130,7 @@
       </div>
 
       <!-- Sticky mobile booking bar (desktop uses the sticky side panel instead) -->
-      <div class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-100 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div class="flex items-center gap-3">
           <div class="min-w-0 flex-1">
             <p class="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider leading-none mb-1">
@@ -1121,7 +1149,7 @@
           <router-link
             v-if="canBookNow"
             :to="{ path: `/booking/${selectedSchedule.id}`, query: bookingQuery }"
-            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base shadow-[0_8px_16px_rgba(13,43,30,0.2)] active:scale-95 transition-transform"
+            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
           >
             <span class="material-symbols-rounded text-[20px]">event_available</span>
             จองเลย
@@ -1129,7 +1157,7 @@
           <button
             v-else
             @click="scrollToBooking"
-            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base shadow-[0_8px_16px_rgba(13,43,30,0.2)] active:scale-95 transition-transform"
+            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
           >
             {{ selectedSchedule ? 'เลือกให้ครบ' : 'เลือกวันเดินทาง' }}
             <span class="material-symbols-rounded text-[20px]">arrow_upward</span>
@@ -1137,13 +1165,13 @@
         </div>
       </div>
     </div>
-    <div v-else class="text-center py-32 bg-white m-8 rounded-[2rem] border border-gray-100 shadow-sm max-w-3xl mx-auto">
+    <div v-else class="text-center py-32 bg-white m-8 rounded-[2rem] border border-gray-100 max-w-3xl mx-auto">
       <div class="w-24 h-24 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-6">
         <span class="material-symbols-rounded text-gray-300 text-5xl">explore_off</span>
       </div>
       <h3 class="text-[var(--color-text-dark)] text-2xl font-extrabold mb-3">ไม่พบข้อมูลทริป</h3>
       <p class="text-[var(--color-text-muted)] text-base font-medium mb-8">ทริปที่คุณค้นหาอาจถูกลบหรือไม่มีอยู่ในระบบ</p>
-      <router-link to="/trips" class="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 shadow-lg hover:-translate-y-1">
+      <router-link to="/trips" class="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 hover:-translate-y-1">
         <span class="material-symbols-rounded text-[20px]">arrow_back</span>
         กลับไปหน้ากิจกรรมทั้งหมด
       </router-link>
@@ -1156,9 +1184,9 @@
         <div class="fixed inset-0 bg-black/65 backdrop-blur-md transition-opacity" @click="showMustKnowModal = false"></div>
         
         <!-- Modal Content -->
-        <div class="bg-white rounded-[1.5rem] sm:rounded-[2rem] w-full max-w-3xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col">
+        <div class="bg-white rounded-[1.5rem] sm:rounded-[2rem] w-full max-w-3xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] relative z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col">
           <!-- Close Button -->
-          <button @click="showMustKnowModal = false" class="absolute top-3 right-3 sm:top-5 sm:right-5 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white flex items-center justify-center transition-all active:scale-95 z-20 shadow-lg border border-white/60" aria-label="ปิดหน้าต่างข้อควรรู้">
+          <button @click="showMustKnowModal = false" class="absolute top-3 right-3 sm:top-5 sm:right-5 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white flex items-center justify-center transition-all active:scale-95 z-20 border border-white/60" aria-label="ปิดหน้าต่างข้อควรรู้">
             <span class="material-symbols-rounded text-gray-600 text-[21px] sm:text-2xl">close</span>
           </button>
 
@@ -1166,7 +1194,7 @@
           <div class="bg-gradient-to-br from-amber-500 to-[#D78A16] px-5 py-6 sm:p-8 text-white relative overflow-hidden shrink-0">
             <div class="absolute -right-10 -bottom-12 w-36 h-36 bg-white/10 rounded-full blur-2xl"></div>
             <div class="flex items-start gap-4 pr-10 sm:pr-12 relative z-10">
-              <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/20 flex items-center justify-center border border-white/20 shadow-lg shrink-0">
+              <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/20 flex items-center justify-center border border-white/20 shrink-0">
                 <span class="material-symbols-rounded text-3xl sm:text-4xl" style="font-variation-settings:'FILL' 1">campaign</span>
               </div>
               <div>
@@ -1192,7 +1220,7 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div v-for="(item, idx) in mustKnowItems" :key="idx" 
-                  class="rounded-2xl bg-white border border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-4 sm:p-5 transition-all hover:border-amber-200 hover:shadow-[0_12px_32px_rgba(0,0,0,0.07)]">
+                  class="rounded-2xl bg-white border border-gray-100 p-4 sm:p-5 transition-all hover:border-amber-200">
                   <div class="flex items-start gap-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-100 shrink-0">
                       <span class="material-symbols-rounded text-xl text-amber-600">tips_and_updates</span>
@@ -1225,7 +1253,7 @@
               </div>
             </section>
 
-            <button @click="showMustKnowModal = false" class="w-full bg-[var(--color-primary)] text-white font-extrabold py-3.5 sm:py-4 rounded-xl hover:bg-[var(--color-accent)] active:scale-[0.98] transition-all shadow-lg shadow-[var(--color-primary)]/20 text-sm sm:text-base">
+            <button @click="showMustKnowModal = false" class="w-full bg-[var(--color-primary)] text-white font-extrabold py-3.5 sm:py-4 rounded-xl hover:bg-[var(--color-accent)] active:scale-[0.98] transition-all text-sm sm:text-base">
               เข้าใจแล้ว เริ่มจองทริปกันเลยครับ
             </button>
           </div>
@@ -1245,7 +1273,7 @@
       >
         <div v-if="showGalleryModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-2xl">
           <!-- Close Button -->
-          <button @click="closeGallery" class="absolute top-6 right-6 z-[210] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl border border-white/10">
+          <button @click="closeGallery" class="absolute top-6 right-6 z-[210] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 border border-white/10">
             <span class="material-symbols-rounded text-3xl">close</span>
           </button>
 
@@ -1272,7 +1300,7 @@
                 <img 
                   :key="activeGalleryIndex"
                   :src="trip.gallery[activeGalleryIndex]" 
-                  class="max-w-full max-h-full object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-2xl"
+                  class="max-w-full max-h-full object-contain rounded-2xl"
                 />
               </Transition>
             </div>
@@ -1294,8 +1322,8 @@
                     v-for="(img, idx) in trip.gallery" 
                     :key="idx"
                     @click="activeGalleryIndex = idx"
-                    class="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shrink-0 shadow-lg"
-                    :class="activeGalleryIndex === idx ? 'border-[var(--color-accent)] scale-110 shadow-[0_0_20px_rgba(45,122,79,0.4)]' : 'border-white/10 opacity-30 hover:opacity-100 hover:border-white/30'"
+                    class="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shrink-0"
+                    :class="activeGalleryIndex === idx ? 'border-[var(--color-accent)] scale-110' : 'border-white/10 opacity-30 hover:opacity-100 hover:border-white/30'"
                   >
                     <img :src="img" class="w-full h-full object-cover" />
                   </div>
@@ -1322,7 +1350,7 @@
           <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" @click="showAvailabilityModal = false"></div>
           
           <!-- Modal Content -->
-          <div class="bg-white rounded-[2.5rem] w-full max-w-2xl relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
+          <div class="bg-white rounded-[2.5rem] w-full max-w-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
             <!-- Header -->
             <div class="bg-[var(--color-primary)] p-6 md:p-8 text-white relative shrink-0">
               <div class="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
@@ -1350,7 +1378,7 @@
                   <button 
                     @click="selectedModalRegion = null"
                     class="px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all border"
-                    :class="!selectedModalRegion ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
+                    :class="!selectedModalRegion ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
                   >
                     ทุกภาค
                   </button>
@@ -1359,7 +1387,7 @@
                     :key="reg.region"
                     @click="selectedModalRegion = reg.region"
                     class="px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all border flex items-center gap-2"
-                    :class="selectedModalRegion === reg.region ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
+                    :class="selectedModalRegion === reg.region ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
                   >
                     {{ reg.region_label }}
                     <span class="text-[10px] opacity-60 bg-black/10 px-1.5 py-0.5 rounded-full">{{ reg.schedule_count }}</span>
@@ -1369,7 +1397,7 @@
 
               <div v-if="modalSchedules.length > 0" class="space-y-4">
                 <div v-for="s in modalSchedules" :key="s.id" 
-                  class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-md"
+                  class="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-[var(--color-accent)]/30"
                   :class="{'opacity-60': !isScheduleBookable(s)}">
                   <div class="flex items-center gap-4">
                     <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[var(--color-sand)] flex flex-col items-center justify-center shrink-0 border border-gray-100">
@@ -1413,7 +1441,7 @@
                     v-if="isScheduleBookable(s)"
                     :to="{ path: `/booking/${s.id}`, query: s.join_trip_enabled && !hasAvailableSeats(s) ? { join_trip: 1 } : {} }"
                     @click="showAvailabilityModal = false"
-                    class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all shadow-md hover:-translate-y-0.5 text-center active:scale-95"
+                    class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all hover:-translate-y-0.5 text-center active:scale-95"
                   >
                     จองรอบนี้
                   </router-link>
@@ -1472,7 +1500,7 @@
           >
             <div
               v-if="showSeatMapModal"
-              class="relative w-full sm:max-w-md bg-white rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl flex flex-col"
+              class="relative w-full sm:max-w-md bg-white rounded-t-[2.5rem] sm:rounded-[2rem] flex flex-col"
               style="max-height: min(90vh, 720px)"
             >
               <!-- Drag handle (mobile) -->
@@ -1561,7 +1589,7 @@
                   v-if="seatMapPreviewSchedule && isScheduleBookable(seatMapPreviewSchedule)"
                   :to="{ path: `/booking/${seatMapPreviewSchedule.id}`, query: seatMapPreviewSchedule.join_trip_enabled && !hasAvailableSeats(seatMapPreviewSchedule) ? { join_trip: 1 } : {} }"
                   @click="showSeatMapModal = false"
-                  class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white font-black text-sm transition-all shadow-lg shadow-[var(--color-primary)]/20 active:scale-95"
+                  class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white font-black text-sm transition-all active:scale-95"
                 >
                   <span class="material-symbols-rounded text-[18px]">shopping_bag</span>
                   จองรอบนี้
@@ -1589,7 +1617,7 @@
       >
         <div v-if="showReviewImageModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-2xl" @click.self="closeReviewImage">
           <!-- Close Button -->
-          <button @click="closeReviewImage" class="absolute top-6 right-6 z-[210] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl border border-white/10">
+          <button @click="closeReviewImage" class="absolute top-6 right-6 z-[210] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 border border-white/10">
             <span class="material-symbols-rounded text-3xl">close</span>
           </button>
 
@@ -1616,7 +1644,7 @@
                 <img
                   :key="reviewImageModalIndex"
                   :src="reviewImageModalImages[reviewImageModalIndex]"
-                  class="max-w-full max-h-full object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-2xl"
+                  class="max-w-full max-h-full object-contain rounded-2xl"
                   style="max-height: calc(100vh - 160px)"
                 />
               </Transition>
@@ -2029,6 +2057,61 @@ const diffMap = { easy: 'ระดับเริ่มต้น', medium: 'ร�
 const typeLabel = ref('');
 const typeBadgeClass = ref('');
 const diffLabel = ref('');
+
+/** ดอยอินทนนท์ ยอดสูงสุดของไทย — ใช้เป็นหมุดเทียบความชันให้คนเห็นภาพ */
+const DOI_INTHANON_M = 2565;
+
+/**
+ * ข้อมูลเส้นทางแบบตัวเลข — แสดงเฉพาะฟิลด์ที่กรอกไว้จริง
+ * ทริปที่ยังไม่ได้กรอก distance/elevation จะไม่ขึ้นช่องว่างเปล่า
+ */
+const routeFacts = computed(() => {
+  const t = trip.value || {};
+  const facts = [];
+
+  const distance = Number(t.distance_km) || 0;
+  if (distance > 0) {
+    facts.push({
+      icon: 'footprint',
+      label: 'ระยะทางเดิน',
+      value: distance.toLocaleString(undefined, { maximumFractionDigits: 1 }),
+      unit: 'กม.',
+    });
+  }
+
+  const elevation = Number(t.elevation_gain_m) || 0;
+  if (elevation > 0) {
+    facts.push({
+      icon: 'landscape',
+      label: 'ความสูงสะสม',
+      value: elevation.toLocaleString(),
+      unit: 'ม.',
+    });
+  }
+
+  if (t.duration_days) {
+    facts.push({
+      icon: 'schedule',
+      label: 'ระยะเวลา',
+      value: t.duration_days,
+      unit: 'วัน',
+      note: distance > 0 ? `เฉลี่ย ${(distance / t.duration_days).toFixed(1)} กม./วัน` : '',
+    });
+  }
+
+  if (diffLabel.value) {
+    facts.push({ icon: 'terrain', label: 'ระดับความยาก', value: diffLabel.value, unit: '' });
+  }
+
+  // ต้องมีตัวเลขเส้นทางจริงอย่างน้อยหนึ่งอย่าง ไม่งั้นบล็อกนี้ก็ไม่ต่างจากข้อมูลทั่วไป
+  return distance > 0 || elevation > 0 ? facts : [];
+});
+
+/** ความสูงสะสมของทริปคิดเป็นกี่ % ของดอยอินทนนท์ */
+const inthanonPercent = computed(() => {
+  const elevation = Number(trip.value?.elevation_gain_m) || 0;
+  return elevation > 0 ? Math.round((elevation / DOI_INTHANON_M) * 100) : 0;
+});
 
 // ─── Hero ──────────────────────────────────────────────────
 const wishlistStore = useWishlistStore();
