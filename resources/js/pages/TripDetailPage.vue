@@ -248,10 +248,20 @@
             </section>
 
             <section id="overview" class="description-section scroll-mt-32 bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
-              <header class="ed-head mb-6">
-                <span class="ed-kicker">ภาพรวม</span>
-                <h2 class="ed-title">เกี่ยวกับทริปนี้</h2>
-              </header>
+              <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
+                <header class="ed-head">
+                  <span class="ed-kicker">ภาพรวม</span>
+                  <h2 class="ed-title">เกี่ยวกับทริปนี้</h2>
+                </header>
+                <!-- ย้ายมาจาก section ไฮไลต์ ซึ่งตอนนี้ซ่อนได้เมื่อทริปไม่มีข้อมูลไฮไลต์ -->
+                <button
+                  @click="showAvailabilityModal = true"
+                  class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all active:scale-95 group"
+                >
+                  <span class="material-symbols-rounded text-xl transition-transform group-hover:rotate-12">calendar_month</span>
+                  เช็ครอบที่ยังว่าง
+                </button>
+              </div>
               <p class="text-[var(--color-text-mid)] leading-loose text-lg md:text-xl whitespace-pre-line font-medium">{{ trip.description }}</p>
 
               <!-- ข้อมูลเส้นทางแบบตัวเลข — คนที่จริงจังกับการเดินป่าดูอันนี้ ไม่ได้ดูคำโฆษณา -->
@@ -422,20 +432,11 @@
             </section>
 
             <!-- Highlights -->
-            <section id="highlights" class="scroll-mt-32">
-              <div class="flex items-end justify-between mb-8 flex-wrap gap-4">
-                <header class="ed-head">
-                  <span class="ed-kicker">ไฮไลต์</span>
-                  <h3 class="ed-title">จุดเด่นของทริป</h3>
-                </header>
-                <button
-                  @click="showAvailabilityModal = true"
-                  class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all active:scale-95 group"
-                >
-                  <span class="material-symbols-rounded text-xl transition-transform group-hover:rotate-12">calendar_month</span>
-                  เช็ครอบที่ยังว่าง
-                </button>
-              </div>
+            <section v-if="highlights.length" id="highlights" class="scroll-mt-32">
+              <header class="ed-head mb-8">
+                <span class="ed-kicker">ไฮไลต์</span>
+                <h3 class="ed-title">จุดเด่นของทริป</h3>
+              </header>
 
               <!-- Image-led editorial feature when a gallery photo is available -->
               <div v-if="hlImage" class="grid lg:grid-cols-2 gap-8 lg:gap-10 items-stretch">
@@ -562,7 +563,7 @@
             <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-6">
                 <span class="ed-kicker">คำถามที่พบบ่อย</span>
-                <h3 class="ed-title">มีข้อสงสัย?</h3>
+                <h3 class="ed-title">เรื่องที่คนถามบ่อยก่อนไป</h3>
               </header>
               <div class="divide-y divide-gray-100">
                 <div v-for="(faq, i) in trip.faqs" :key="i">
@@ -952,7 +953,7 @@
             <div>
               <header class="ed-head mb-3">
                 <span class="ed-kicker">เสียงจากผู้ร่วมทริป</span>
-                <h3 class="ed-title">รีวิวจริงจากนักเดินทาง</h3>
+                <h3 class="ed-title">รีวิวจากคนที่ไปรอบก่อน</h3>
               </header>
               <div class="flex items-center gap-3">
                 <div class="flex text-[#FFB020]">
@@ -1112,10 +1113,10 @@
           <div class="flex items-end justify-between gap-4 mb-8">
             <div>
               <header class="ed-head mb-2">
-                <span class="ed-kicker">แนะนำสำหรับคุณ</span>
-                <h3 class="ed-title">ทริปที่คุณอาจสนใจ</h3>
+                <span class="ed-kicker">ทริปใกล้เคียง</span>
+                <h3 class="ed-title">เส้นทางแนวเดียวกัน</h3>
               </header>
-              <p class="text-[var(--color-text-muted)] font-medium">คัดจากทริปแนวเดียวกันและปลายทางใกล้เคียง</p>
+              <p class="text-[var(--color-text-muted)] font-medium">ประเภทเดียวกันหรือปลายทางอยู่ใกล้กัน</p>
             </div>
             <router-link to="/trips" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
               ดูทั้งหมด
@@ -2181,7 +2182,7 @@ const pageSections = computed(() => {
   const out = [{ id: 'overview', label: 'ภาพรวม' }];
   if (itinerarySectors.value.length > 0) out.push({ id: 'itinerary', label: 'กำหนดการ' });
   if (trip.value?.preparations?.length) out.push({ id: 'prepare', label: 'เตรียมตัว' });
-  out.push({ id: 'highlights', label: 'จุดเด่น' });
+  if (highlights.value.length) out.push({ id: 'highlights', label: 'จุดเด่น' });
   if (trip.value?.inclusions?.length || trip.value?.exclusions?.length) out.push({ id: 'included', label: 'ราคารวม' });
   out.push({ id: 'reviews', label: 'รีวิว' });
   return out;
@@ -2209,37 +2210,15 @@ function setupPageNavObserver() {
   });
 }
 
-const highlights = computed(() => {
-  if (trip.value?.highlights && trip.value.highlights.length > 0) {
-    return trip.value.highlights;
-  }
-  
-  // Custom fallback defaults based on trip type
-  const base = [
-    { icon: 'shield_person', title: 'ประกันภัยการเดินทาง', desc: 'คุ้มครองอุบัติเหตุตลอดการเดินทางด้วยวงเงินสูงสุด 1 ล้านบาท' },
-    { icon: 'restaurant', title: 'บริการอาหารและเครื่องดื่ม', desc: 'คัดสรรเมนูคุณภาพ พร้อมของว่างและเครื่องดื่มตลอดทริป' },
-  ];
-  const t = trip.value?.type;
-  if (t === 'diving' || t === 'snorkeling') {
-    return [
-      { icon: 'scuba_diving', title: 'อุปกรณ์ดำน้ำมาตรฐาน', desc: 'หน้ากาก ท่อหายใจ เสื้อชูชีพ คุณภาพดีและผ่านการฆ่าเชื้อ' },
-      { icon: 'directions_boat', title: 'เดินทางด้วยสปีดโบ๊ท', desc: 'สะดวกรวดเร็ว ปลอดภัย พร้อมกัปตันผู้เชี่ยวชาญเส้นทาง' },
-      ...base,
-      { icon: 'photo_camera', title: 'บริการถ่ายภาพใต้น้ำ', desc: 'ฟรี! รูปถ่ายใต้น้ำสวยๆ จากช่างภาพมืออาชีพ' },
-    ];
-  } else if (t === 'trekking') {
-    return [
-      { icon: 'hiking', title: 'ไกด์ท้องถิ่นผู้เชี่ยวชาญ', desc: 'มัคคุเทศก์ที่รู้ลึกเรื่องเส้นทางและพรรณไม้ ดูแลอย่างใกล้ชิด' },
-      { icon: 'camping', title: 'อุปกรณ์แคมป์ปิ้งครบชุด', desc: 'เต็นท์กันฝน ถุงนอน แผ่นรองนอน สะอาดและได้มาตรฐาน' },
-      ...base,
-    ];
-  }
-  return [
-    { icon: 'airport_shuttle', title: 'รถตู้ VIP ระดับพรีเมียม', desc: 'เบาะกว้าง นั่งสบาย แอร์เย็นฉ่ำ พร้อมสิ่งอำนวยความสะดวก' },
-    { icon: 'badge', title: 'พนักงานขับรถมืออาชีพ', desc: 'ชำนาญเส้นทาง สุภาพ และผ่านการฝึกอบรมการขับขี่ปลอดภัย' },
-    ...base,
-  ];
-});
+/**
+ * จุดเด่นของทริป — เอาเฉพาะที่แอดมินกรอกไว้จริงเท่านั้น
+ *
+ * เดิมตรงนี้มี fallback ที่แต่งขึ้นเองตามประเภททริป (ประกัน 1 ล้าน, ถ่ายภาพ
+ * ใต้น้ำฟรี, อุปกรณ์ผ่านการฆ่าเชื้อ ฯลฯ) ซึ่งขึ้นให้ทุกทริปที่ยังไม่ได้กรอก
+ * ข้อมูล เท่ากับหน้าเว็บสัญญาบริการแทนบริษัทโดยที่ไม่มีใครพิมพ์ไว้ ถ้าไม่มี
+ * ข้อมูลจริงให้ซ่อน section ไปเลย ดีกว่าเขียนสิ่งที่อาจไม่ได้ให้จริง
+ */
+const highlights = computed(() => trip.value?.highlights || []);
 
 /* Inclusions/Exclusions are now directly from trip data */
 
