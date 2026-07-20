@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\TripProgressController;
 use App\Http\Controllers\Api\V1\TripReadinessController;
 use App\Http\Controllers\Api\V1\TripPostController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
@@ -148,6 +149,8 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
         Route::get('bookings/{ref}/recap', [BookingController::class, 'recap']);
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
+        // ความคืบหน้าตามกำหนดการที่ทีมงานกดยืนยัน (ไม่ใช้ GPS ลูกค้า)
+        Route::get('bookings/{ref}/progress', [TripProgressController::class, 'show']);
 
         // Gifts / ซื้อทริปเป็นของขวัญ (ผู้รับกรอกโค้ดเพื่อรับการจองมาเป็นของตัวเอง)
         Route::get('gifts/sent', [GiftController::class, 'sent']);
@@ -327,6 +330,8 @@ Route::prefix('v1')->group(function () {
 
     // Live Share Link: ติดตามรถแบบสาธารณะผ่าน share token (ไม่ต้องล็อกอิน)
     Route::get('track/{token}', [VehicleTrackingController::class, 'sharedTracking'])->middleware('throttle:120,1');
+    // หมุดกำหนดการสำหรับลิงก์ที่แชร์ให้ที่บ้าน (ไม่มีพิกัดสด — ดู controller)
+    Route::get('track/{token}/progress', [TripProgressController::class, 'shared'])->middleware('throttle:120,1');
 
     // Public photo album: ดาวน์โหลดรูปประจำรอบผ่านลิงก์สาธารณะ (ไม่ต้องล็อกอิน)
     Route::get('album/{token}/photos', [PublicAlbumController::class, 'photos'])->middleware('throttle:120,1');

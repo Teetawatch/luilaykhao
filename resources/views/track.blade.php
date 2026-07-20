@@ -175,6 +175,54 @@
             display: flex; align-items: center; justify-content: center;
         }
         .pin-marker span { transform: rotate(45deg); font-size: 13px; }
+
+        /* หมุดกำหนดการ */
+        .progress-panel {
+            background: #fff;
+            border-top: 1px solid #e6e9ee;
+            padding: 16px 18px 20px;
+            max-height: 42vh;
+            overflow-y: auto;
+        }
+        .progress-head {
+            display: flex; align-items: baseline; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .progress-head span:first-child { font-weight: 800; font-size: 15px; }
+        .progress-count { font-weight: 800; font-size: 13px; color: var(--brand); }
+        .progress-track {
+            height: 7px; border-radius: 99px; background: #eceff3; overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .progress-fill {
+            height: 100%; width: 0; border-radius: 99px; background: var(--brand);
+            transition: width .4s ease;
+        }
+        .milestones { list-style: none; margin: 0; padding: 0; }
+        .milestone {
+            display: flex; gap: 12px; align-items: flex-start;
+            padding-bottom: 14px; position: relative;
+        }
+        .milestone:not(:last-child)::before {
+            content: ''; position: absolute; left: 8px; top: 20px; bottom: 0;
+            width: 2px; background: #e6e9ee;
+        }
+        .milestone.reached:not(:last-child)::before { background: rgba(8,124,104,0.35); }
+        .milestone .dot {
+            width: 18px; height: 18px; border-radius: 50%; flex: 0 0 18px;
+            border: 2px solid #d3d8e0; background: #fff; z-index: 1;
+        }
+        .milestone.reached .dot { border-color: var(--brand); background: var(--brand); }
+        .milestone.current .dot {
+            border-color: var(--brand); background: #fff;
+            box-shadow: 0 0 0 4px rgba(8,124,104,0.15);
+        }
+        .milestone .label { font-size: 13.5px; font-weight: 600; color: #97a0ad; }
+        .milestone.reached .label, .milestone.current .label { color: var(--ink); }
+        .milestone.current .label { font-weight: 800; }
+        .milestone .meta { font-size: 11.5px; color: #97a0ad; margin-top: 2px; }
+        .milestone.current .meta { color: var(--brand); font-weight: 700; }
+        .progress-updated { font-size: 11.5px; color: #97a0ad; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -204,6 +252,18 @@
     </div>
 
     <div class="sheet" id="sheet"></div>
+
+    {{-- หมุดกำหนดการ — ที่บ้านเห็นว่าคณะถึงจุดไหนแล้ว โดยไม่เปิดเผยพิกัดสด
+         ของผู้โดยสารคนอื่นในรถคันเดียวกัน --}}
+    <div class="progress-panel hidden" id="progressPanel">
+        <div class="progress-head">
+            <span id="progressTitle">ถึงไหนแล้ว</span>
+            <span class="progress-count" id="progressCount"></span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <ol class="milestones" id="milestones"></ol>
+        <div class="progress-updated" id="progressUpdated"></div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -370,10 +430,79 @@
         }
     }
 
+    // ── หมุดกำหนดการ ────────────────────────────────────────────────────────
+    // ดึงแยกจากตำแหน่งรถ เพราะ endpoint นี้ตั้งใจส่งเฉพาะ "ถึงจุดไหนแล้ว"
+    // ไม่มีพิกัดใด ๆ ติดมา (ผู้โดยสารคนอื่นในรถไม่ได้ยินยอมให้เปิดตำแหน่ง)
+    const PROGRESS_URL = '/api/v1/track/' + encodeURIComponent(TOKEN) + '/progress';
+
+    function renderProgress(progress) {
+        const panel = document.getElementById('progressPanel');
+        const items = (progress && progress.items) || [];
+
+        if (!progress || !progress.has_itinerary || items.length === 0) {
+            panel.classList.add('hidden');
+            return;
+        }
+
+        document.getElementById('progressCount').textContent =
+            progress.reached_count + '/' + progress.total;
+        document.getElementById('progressFill').style.width = (progress.percent || 0) + '%';
+
+        document.getElementById('milestones').innerHTML = items.map((item) => {
+            const classes = ['milestone'];
+            if (item.reached) classes.push('reached');
+            if (item.is_current) classes.push('current');
+
+            const meta = item.is_current
+                ? (item.time ? item.time + ' • อยู่ที่นี่' : 'อยู่ที่นี่')
+                : (item.time || '');
+
+            return `<li class="${classes.join(' ')}">
+                <div class="dot"></div>
+                <div>
+                    <div class="label">${escapeHtml(item.title || '')}</div>
+                    ${meta ? `<div class="meta">${escapeHtml(meta)}</div>` : ''}
+                </div>
+            </li>`;
+        }).join('');
+
+        document.getElementById('progressUpdated').textContent =
+            progress.last_update_at ? 'อัปเดตล่าสุด ' + timeAgo(progress.last_update_at) : '';
+
+        panel.classList.remove('hidden');
+    }
+
+    function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value;
+        return div.innerHTML;
+    }
+
+    async function pollProgress() {
+        try {
+            const res = await fetch(PROGRESS_URL, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+
+            const data = (await res.json()).data || {};
+            if (data.cancelled) {
+                document.getElementById('progressPanel').classList.add('hidden');
+                return;
+            }
+            renderProgress(data.progress);
+        } catch (e) {
+            // เงียบไว้ — แผงนี้เป็นข้อมูลเสริม ไม่ควรทำให้หน้าติดตามรถพัง
+        }
+    }
+
     poll();
+    pollProgress();
     pollTimer = setInterval(poll, POLL_MS);
+    setInterval(pollProgress, POLL_MS);
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') poll();
+        if (document.visibilityState === 'visible') {
+            poll();
+            pollProgress();
+        }
     });
 </script>
 </body>
