@@ -65,6 +65,37 @@ class AdminMediaUploadTest extends TestCase
             ->assertJsonPath('data.supported', false);
     }
 
+    public function test_presign_returns_only_headers_the_bucket_cors_allows(): void
+    {
+        // R2's CORS policy lists the headers a browser may forward, and a single
+        // unlisted one fails the whole preflight. The AWS signer hands back its
+        // full internal header set, so anything but Content-Type must be dropped
+        // here rather than left for the bucket policy to have to accommodate.
+        $disk = Storage::fake('r2');
+        config(['filesystems.disks.r2.bucket' => 'luilaykhao']);
+
+        $disk->buildTemporaryUploadUrlsUsing(fn ($path, $expiration) => [
+            'url' => 'https://r2.example.com/'.$path.'?X-Amz-SignedHeaders=host',
+            'headers' => [
+                'Host' => ['r2.example.com'],
+                'X-Amz-Content-Sha256' => ['UNSIGNED-PAYLOAD'],
+                'Content-Type' => ['video/mp4'],
+                'Content-Length' => ['1024'],
+            ],
+        ]);
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/media/presign', [
+                'filename' => 'trip.mp4',
+                'content_type' => 'video/mp4',
+                'size' => 10 * 1024 * 1024,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.supported', true);
+
+        $this->assertSame(['Content-Type' => 'video/mp4'], $response->json('data.headers'));
+    }
+
     public function test_confirm_rejects_a_path_it_could_not_have_issued(): void
     {
         $this->actingAs($this->admin, 'sanctum')

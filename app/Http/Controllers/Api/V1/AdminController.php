@@ -2897,11 +2897,14 @@ class AdminController extends Controller
         // type — the browser sends the File's own and R2 stores that.
         $signed = Storage::disk($disk)->temporaryUploadUrl($path, now()->addMinutes(30));
 
-        // The signer returns Guzzle-shaped headers (array values) including Host,
-        // which a browser refuses to let a script set. Send back only what the
-        // client can actually apply.
+        // Whitelist, not blacklist. The signer hands back every header it built
+        // the request with — Host, X-Amz-Content-Sha256, and whatever else the
+        // SDK adds — and any one of them the browser forwards has to appear in
+        // the bucket's CORS AllowedHeaders or the preflight is refused outright.
+        // Nothing but the payload's own type is needed here (SignedHeaders=host
+        // means the signature covers no header at all), so send only that.
         $headers = collect($signed['headers'])
-            ->reject(fn ($v, $k) => in_array(strtolower($k), ['host', 'content-length'], true))
+            ->filter(fn ($v, $k) => strtolower($k) === 'content-type')
             ->map(fn ($v) => is_array($v) ? implode(', ', $v) : $v)
             ->all();
 
