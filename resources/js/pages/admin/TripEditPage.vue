@@ -504,11 +504,34 @@
           </div>
           <p v-else class="media-empty">ยังไม่มีวิดีโอ</p>
 
+          <div class="video-upload-panel" v-if="videoUploading && videoUploads.length">
+            <div class="video-upload-head">
+              <span class="material-symbols-rounded animate-spin">progress_activity</span>
+              <span>กำลังอัปโหลด {{ videoUploads.length }} ไฟล์ — {{ videoUploadPercent }}%</span>
+            </div>
+            <div class="video-upload-file" v-for="(up, i) in videoUploads" :key="`up-${i}`">
+              <div class="video-upload-file-head">
+                <span class="video-upload-name">{{ up.name }}</span>
+                <span class="video-upload-meta" :class="{ 'is-failed': up.failed }">
+                  {{ up.failed ? 'ล้มเหลว' : up.done ? 'เสร็จแล้ว' : `${formatBytes(up.loaded)} / ${formatBytes(up.size)}` }}
+                </span>
+              </div>
+              <div class="upload-progress">
+                <div
+                  class="progress-bar"
+                  :class="{ 'is-failed': up.failed }"
+                  :style="{ width: Math.round((up.loaded / up.size) * 100) + '%' }"
+                ></div>
+              </div>
+            </div>
+            <p class="video-upload-hint">อย่าปิดหน้านี้จนกว่าจะอัปโหลดเสร็จ</p>
+          </div>
+
           <div class="media-add-row">
             <button type="button" class="gallery-add-btn" :disabled="videoUploading" @click="triggerVideoUpload">
               <span class="material-symbols-rounded animate-spin" v-if="videoUploading">sync</span>
               <span class="material-symbols-rounded" v-else>video_call</span>
-              <span>{{ videoUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดวิดีโอ' }}</span>
+              <span>{{ videoUploading ? `กำลังอัปโหลด ${videoUploadPercent}%` : 'อัปโหลดวิดีโอ' }}</span>
             </button>
             <button type="button" class="gallery-add-btn ghost" @click="openMediaLibrary('videos')">
               <span class="material-symbols-rounded">video_library</span>
@@ -759,6 +782,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import { useCategoriesStore } from '../../stores/categories';
 import api from '../../lib/axios';
+import { uploadMedia } from '../../lib/mediaUpload';
 import MediaLibrary from '../../components/MediaLibrary.vue';
 
 const route = useRoute();
@@ -964,6 +988,9 @@ const dragField = ref(null);
 const dragIndex = ref(null);
 const videoInput = ref(null);
 const videoUploading = ref(false);
+// One entry per file being uploaded: { name, size, loaded, done, failed }.
+// A 200MB clip takes a while, so the panel reports each file's own progress.
+const videoUploads = ref([]);
 const thumbnailInput = ref(null);
 const thumbnailPreview = ref(null);
 const activeIconPicker = ref(null);
@@ -1257,6 +1284,22 @@ const dropOnItem = (field, idx) => {
 };
 
 const triggerVideoUpload = () => videoInput.value?.click();
+
+// Overall progress across every file in this batch, weighted by size so one
+// large clip doesn't get averaged away by a handful of small ones.
+const videoUploadPercent = computed(() => {
+  const total = videoUploads.value.reduce((sum, u) => sum + u.size, 0);
+  if (!total) return 0;
+  const loaded = videoUploads.value.reduce((sum, u) => sum + u.loaded, 0);
+  return Math.min(100, Math.round((loaded / total) * 100));
+});
+
+const formatBytes = (bytes) => {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${Math.round(bytes / 1024 / 1024)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
+
 const handleVideoSelect = async (event) => {
   const files = Array.from(event.target.files);
   if (!files.length) return;
@@ -1266,19 +1309,39 @@ const handleVideoSelect = async (event) => {
     if (validFiles.length < files.length) alert('มีบางไฟล์ขนาดเกิน 200MB และจะถูกข้ามไป');
     if (!validFiles.length) { videoUploading.value = false; return; }
 
-    const uploadPromises = validFiles.map(async (file) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await api.post('/admin/upload-image', formData);
-      return res.data.data.url;
+    videoUploads.value = validFiles.map(file => ({
+      name: file.name,
+      size: file.size,
+      loaded: 0,
+      done: false,
+      failed: false,
+    }));
+
+    const uploadPromises = validFiles.map(async (file, idx) => {
+      const entry = videoUploads.value[idx];
+      try {
+        const url = await uploadMedia(file, (loaded, total) => {
+          entry.loaded = Math.min(loaded, total);
+        });
+        entry.loaded = entry.size;
+        entry.done = true;
+        return url;
+      } catch (e) {
+        entry.failed = true;
+        throw e;
+      }
     });
 
-    const urls = await Promise.all(uploadPromises);
-    form.videos = [...normalizeArray(form.videos), ...urls];
-  } catch (e) {
-    alert('อัปโหลดวิดีโอบางส่วนล้มเหลว');
+    // settled, not all — one bad file shouldn't discard the clips that made it.
+    const results = await Promise.allSettled(uploadPromises);
+    const urls = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+    if (urls.length) form.videos = [...normalizeArray(form.videos), ...urls];
+    if (urls.length < results.length) {
+      alert(`อัปโหลดวิดีโอล้มเหลว ${results.length - urls.length} ไฟล์`);
+    }
   } finally {
     videoUploading.value = false;
+    videoUploads.value = [];
     if (videoInput.value) videoInput.value.value = '';
   }
 };
@@ -2045,6 +2108,69 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   margin-top: 16px;
+}
+
+.video-upload-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f9fafb;
+}
+
+.video-upload-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.video-upload-file + .video-upload-file { margin-top: 12px; }
+
+.video-upload-file-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.video-upload-name {
+  font-size: 13px;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-upload-meta {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+.video-upload-meta.is-failed { color: #dc2626; font-weight: 700; }
+
+.upload-progress {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.25s;
+}
+.progress-bar.is-failed { background: #dc2626; }
+
+.video-upload-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #9ca3af;
 }
 
 .gallery-add-btn {

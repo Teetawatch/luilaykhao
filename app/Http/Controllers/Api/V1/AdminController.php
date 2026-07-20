@@ -53,6 +53,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use Spatie\Permission\Guard as SpatieGuard;
 use Spatie\Permission\Models\Role;
@@ -2837,6 +2838,119 @@ class AdminController extends Controller
     }
 
     // ─── Media Upload ─────────────────────────────────────────
+
+    /** Upload size ceilings in bytes — video is far bigger than any image needs. */
+    private const MEDIA_MAX_VIDEO_BYTES = 204800 * 1024;   // 200MB
+
+    private const MEDIA_MAX_IMAGE_BYTES = 15360 * 1024;    // 15MB
+
+    /** Content types accepted by both the direct and the presigned upload paths. */
+    private const MEDIA_CONTENT_TYPES = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+        'video/mp4' => 'mp4',
+        'video/quicktime' => 'mov',
+        'video/x-m4v' => 'm4v',
+        'video/x-msvideo' => 'avi',
+    ];
+
+    /**
+     * Hand the browser a presigned PUT so a large file goes straight to R2
+     * instead of through PHP. Routing a 200MB clip through the server meant
+     * uploading it twice over (client → server → R2) and squeezing it past
+     * post_max_size and the proxy body limit; this does neither.
+     *
+     * Falls back to `supported: false` on disks that can't presign (local dev
+     * runs on the 'public' disk), which tells the client to POST as before.
+     */
+    public function presignMedia(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'filename' => ['required', 'string', 'max:255'],
+            'content_type' => ['required', 'string', Rule::in(array_keys(self::MEDIA_CONTENT_TYPES))],
+            'size' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $isVideo = str_starts_with($data['content_type'], 'video/');
+        $maxBytes = $isVideo ? self::MEDIA_MAX_VIDEO_BYTES : self::MEDIA_MAX_IMAGE_BYTES;
+
+        if ($data['size'] > $maxBytes) {
+            return $this->error(
+                $isVideo ? 'วิดีโอต้องมีขนาดไม่เกิน 200MB' : 'รูปภาพต้องมีขนาดไม่เกิน 15MB',
+                422
+            );
+        }
+
+        $disk = MediaDisk::name();
+
+        if ($disk !== 'r2') {
+            return $this->success(['supported' => false], 'ดิสก์นี้ไม่รองรับการอัปโหลดตรง');
+        }
+
+        // Build the key ourselves — never trust the client's filename in a path.
+        $ext = self::MEDIA_CONTENT_TYPES[$data['content_type']];
+        $path = 'media/'.time().'_'.Str::random(8).'.'.$ext;
+
+        $signed = Storage::disk($disk)->temporaryUploadUrl(
+            $path,
+            now()->addMinutes(30),
+            ['ContentType' => $data['content_type']],
+        );
+
+        return $this->success([
+            'supported' => true,
+            'path' => $path,
+            'upload_url' => $signed['url'],
+            // The client must replay these verbatim or the signature won't match.
+            'headers' => $signed['headers'],
+        ]);
+    }
+
+    /**
+     * Called once the browser's PUT lands. The size the client declared at
+     * presign time is only a claim, so re-check the object that actually
+     * arrived and drop it if it's over the cap.
+     */
+    public function confirmMedia(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'path' => ['required', 'string', 'max:255'],
+        ]);
+
+        $path = $data['path'];
+
+        // Confine confirmations to keys presignMedia could have issued.
+        if (! preg_match('#^media/\d+_[A-Za-z0-9]+\.[A-Za-z0-9]+$#', $path)) {
+            return $this->error('เส้นทางไฟล์ไม่ถูกต้อง', 422);
+        }
+
+        $disk = Storage::disk(MediaDisk::name());
+
+        if (! $disk->exists($path)) {
+            return $this->error('ไม่พบไฟล์ที่อัปโหลด', 404);
+        }
+
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $isVideo = in_array($ext, ['mp4', 'mov', 'm4v', 'avi'], true);
+        $maxBytes = $isVideo ? self::MEDIA_MAX_VIDEO_BYTES : self::MEDIA_MAX_IMAGE_BYTES;
+
+        if ($disk->size($path) > $maxBytes) {
+            $disk->delete($path);
+
+            return $this->error(
+                $isVideo ? 'วิดีโอต้องมีขนาดไม่เกิน 200MB' : 'รูปภาพต้องมีขนาดไม่เกิน 15MB',
+                422
+            );
+        }
+
+        return $this->success([
+            'url' => $disk->url($path),
+            'filename' => basename($path),
+        ], 'อัปโหลดสื่อสำเร็จ');
+    }
+
     public function uploadMedia(Request $request): JsonResponse
     {
         $request->validate([

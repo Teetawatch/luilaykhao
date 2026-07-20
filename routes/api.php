@@ -508,6 +508,9 @@ Route::prefix('v1')->group(function () {
 
         // Upload
         Route::post('upload-image', [AdminController::class, 'uploadMedia']);
+        // Direct-to-R2 path for large files — see AdminController::presignMedia().
+        Route::post('media/presign', [AdminController::class, 'presignMedia']);
+        Route::post('media/confirm', [AdminController::class, 'confirmMedia']);
         Route::post('pickup-points/image', [AdminController::class, 'uploadPickupPointImage']);
         Route::get('pickup-points/images', [AdminController::class, 'pickupPointImages']);
         Route::get('must-know/images', [AdminController::class, 'mustKnowImages']);
