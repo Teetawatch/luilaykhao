@@ -818,7 +818,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
@@ -837,9 +837,10 @@ const heroImages = ref([
   '/images/khaochangphueak.webp',
   '/images/hiking.webp',
 ]);
-// ใช้ภาพแรกเป็นภาพนิ่ง — ไม่มีการหมุนสไลด์อัตโนมัติอีกแล้ว
+const HERO_SLIDE_INTERVAL_MS = 6500;
 const currentSlide = ref(0);
 const prefersReducedMotion = ref(false);
+let sliderInterval = null;
 
 const trips = ref([]);
 const featuredTrips = ref([]);
@@ -1132,6 +1133,10 @@ const typeFeaturedIcon = (type) => {
   return icons[type] || 'explore';
 };
 
+onUnmounted(() => {
+  clearInterval(sliderInterval);
+});
+
 onMounted(async () => {
   if (typeof window !== 'undefined') {
     prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1148,8 +1153,11 @@ onMounted(async () => {
     // keep static fallback
   }
 
-  // ไม่หมุนสไลด์อัตโนมัติ — carousel ที่เลื่อนเองคือลายเซ็นของเว็บ OTA
-  // ใช้ภาพนิ่งภาพเดียว (ภาพแรกที่แอดมินตั้งไว้) ให้หน้าแรกนิ่งแบบงานเขียน
+  if (!prefersReducedMotion.value && heroImages.value.length > 1) {
+    sliderInterval = setInterval(() => {
+      currentSlide.value = (currentSlide.value + 1) % heroImages.value.length;
+    }, HERO_SLIDE_INTERVAL_MS);
+  }
 
   try {
     const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes, almostFullRes, categoriesRes] = await Promise.all([
