@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\ScheduleRallyController;
 use App\Http\Controllers\Api\V1\TripProgressController;
 use App\Http\Controllers\Api\V1\TripReadinessController;
 use App\Http\Controllers\Api\V1\TripPostController;
@@ -132,6 +133,9 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/seats', [ScheduleController::class, 'seats']);
         Route::post('schedules/{id}/seats/lock', [SeatController::class, 'lock'])->middleware('throttle:seat-lock');
         Route::delete('schedules/{id}/seats/lock', [SeatController::class, 'unlock']);
+
+        // "ช่วยกันเปิดรอบ" — ชวนเพื่อนมาเติมให้รอบที่ยังไม่การันตีได้ออกเดินทาง
+        Route::get('schedules/{id}/rally', [ScheduleRallyController::class, 'show']);
 
         // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
         Route::get('me/passport', [PassportController::class, 'show']);
