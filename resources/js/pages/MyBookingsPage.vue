@@ -155,111 +155,13 @@
                 </div>
               </div>
 
-              <!-- ── Installment Tracker ── -->
-              <div v-if="b.payment_type === 'installment' && b.installment_payments?.length" class="mt-4 p-4 bg-amber-50 rounded-[16px] border border-amber-100 space-y-4">
-                
-                <!-- Header -->
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center">
-                      <span class="material-symbols-rounded text-white text-[16px]">calendar_month</span>
-                    </div>
-                    <span class="text-sm font-black text-amber-900">ผ่อนชำระ {{ b.installment_count }} งวด</span>
-                  </div>
-                  <span class="text-[10px] font-black text-amber-600 bg-amber-100 px-2.5 py-1 rounded-full uppercase tracking-tight">
-                    {{ getPaidInstallments(b).length }} / {{ b.installment_count }} งวด
-                  </span>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="relative">
-                  <div class="h-2.5 bg-amber-100 rounded-full overflow-hidden">
-                    <div 
-                      class="h-full bg-amber-500 rounded-full transition-all duration-700 ease-out"
-                      :style="{ width: (getPaidInstallments(b).length / b.installment_count * 100) + '%' }"
-                    ></div>
-                  </div>
-                </div>
-
-                <!-- Installment Steps -->
-                <div class="flex gap-1.5">
-                  <div 
-                    v-for="inst in b.installment_payments" 
-                    :key="inst.installment_no"
-                    class="flex-1 flex flex-col items-center gap-1.5 py-2 px-1 rounded-xl transition-all"
-                    :class="{
-                      'bg-green-50 border border-green-200': inst.status === 'paid',
-                      'bg-amber-100/50 border border-amber-200 ring-2 ring-amber-300/50': inst.status === 'pending' && isNextDue(b, inst),
-                      'bg-white/50 border border-gray-100': inst.status === 'pending' && !isNextDue(b, inst),
-                    }"
-                  >
-                    <div 
-                      class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black"
-                      :class="{
-                        'bg-green-500 text-white': inst.status === 'paid',
-                        'bg-amber-500 text-white animate-pulse': inst.status === 'pending' && isNextDue(b, inst),
-                        'bg-gray-200 text-gray-500': inst.status === 'pending' && !isNextDue(b, inst),
-                      }"
-                    >
-                      <span v-if="inst.status === 'paid'" class="material-symbols-rounded text-[14px]">check</span>
-                      <span v-else>{{ inst.installment_no }}</span>
-                    </div>
-                    <span class="text-[9px] font-bold text-center leading-tight"
-                      :class="inst.status === 'paid' ? 'text-green-700' : 'text-gray-500'"
-                    >
-                      {{ inst.status === 'paid' ? 'ชำระแล้ว' : formatShortDate(inst.due_date) }}
-                    </span>
-                    <span class="text-[10px] font-black" :class="inst.status === 'paid' ? 'text-green-600' : 'text-gray-700'">
-                      ฿{{ Number(inst.amount).toLocaleString() }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Next Due Alert -->
-                <div v-if="getNextPendingInstallment(b)" class="flex items-center justify-between p-3 rounded-xl border-2 border-dashed transition-all"
-                  :class="isOverdue(getNextPendingInstallment(b))
-                    ? 'bg-red-50 border-red-300'
-                    : isDueSoon(getNextPendingInstallment(b))
-                      ? 'bg-amber-50 border-amber-300'
-                      : 'bg-white border-gray-200'"
-                >
-                  <div class="flex items-center gap-2.5">
-                    <span class="material-symbols-rounded text-[18px]" 
-                      :class="isOverdue(getNextPendingInstallment(b)) ? 'text-red-500' : 'text-amber-600'"
-                      :style="isOverdue(getNextPendingInstallment(b)) ? 'font-variation-settings:\'FILL\' 1' : ''"
-                    >
-                      {{ isOverdue(getNextPendingInstallment(b)) ? 'warning' : 'schedule' }}
-                    </span>
-                    <div>
-                      <p class="text-[11px] font-black uppercase tracking-wide"
-                        :class="isOverdue(getNextPendingInstallment(b)) ? 'text-red-700' : 'text-amber-800'"
-                      >
-                        {{ isOverdue(getNextPendingInstallment(b)) ? '⚠ เลยกำหนดชำระแล้ว!' : 'งวดถัดไป: งวดที่ ' + getNextPendingInstallment(b).installment_no }}
-                      </p>
-                      <p class="text-[10px] font-bold" :class="isOverdue(getNextPendingInstallment(b)) ? 'text-red-600' : 'text-amber-700'">
-                        กำหนด {{ formatDate(getNextPendingInstallment(b).due_date) }}
-                        <span v-if="!isOverdue(getNextPendingInstallment(b))" class="text-amber-500"> · {{ getDaysUntil(getNextPendingInstallment(b).due_date) }}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    @click.stop="goToInstallmentPayment(b)"
-                    class="px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5"
-                    :class="isOverdue(getNextPendingInstallment(b))
-                      ? 'bg-red-500 text-white hover:bg-red-600'
-                      : 'bg-amber-500 text-white hover:bg-amber-600'"
-                  >
-                    <span class="material-symbols-rounded text-[14px]">payments</span>
-                    ชำระงวด
-                  </button>
-                </div>
-
-                <!-- All Paid -->
-                <div v-else-if="getPaidInstallments(b).length === b.installment_count" class="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
-                  <span class="material-symbols-rounded text-green-600 text-[18px]" style="font-variation-settings:'FILL' 1">verified</span>
-                  <span class="text-xs font-black text-green-700">ชำระครบทุกงวดเรียบร้อยแล้ว ✓</span>
-                </div>
-              </div>
+              <!-- แผนผ่อนชำระ — component เดียวกับหน้ายืนยันการจอง -->
+              <InstallmentPlanPanel
+                v-if="b.payment_type === 'installment' && b.installment_payments?.length"
+                :booking-ref="b.booking_ref"
+                :installments="b.installment_payments"
+                :installment-count="b.installment_count"
+                class="mt-4" />
 
               <!-- แบ่งจ่ายกลุ่ม — มัดจำที่ยังมียอดคงเหลือค้างชำระ -->
               <SplitPaymentPanel
@@ -533,7 +435,6 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
 import api from '../lib/axios';
@@ -543,8 +444,8 @@ import { bangkokToday, daysUntil } from '../lib/bangkokDate';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import MyWaitlist from '../components/MyWaitlist.vue';
 import SplitPaymentPanel from '../components/SplitPaymentPanel.vue';
+import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
 
-const router = useRouter();
 const swal = useSwal();
 const toast = useToast();
 
@@ -680,48 +581,6 @@ function formatDate(d) {
 function formatShortDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-}
-
-// ── Installment helper functions ──
-function getPaidInstallments(b) {
-  return (b.installment_payments || []).filter(ip => ip.status === 'paid');
-}
-
-function getNextPendingInstallment(b) {
-  return (b.installment_payments || []).find(ip => ip.status !== 'paid');
-}
-
-function isNextDue(b, inst) {
-  const next = getNextPendingInstallment(b);
-  return next && next.installment_no === inst.installment_no;
-}
-
-// กำหนดชำระเป็นวันที่ตามปฏิทินไทย จึงนับเป็น "วัน" ล้วน ๆ ไม่เอาเวลาของเบราว์เซอร์มาปน
-function isOverdue(inst) {
-  const days = daysUntil(inst?.due_date);
-
-  return days !== null && days < 0;
-}
-
-function isDueSoon(inst) {
-  const days = daysUntil(inst?.due_date);
-
-  return days !== null && days >= 0 && days <= 7;
-}
-
-function getDaysUntil(dateStr) {
-  const days = daysUntil(dateStr);
-
-  if (days === null) return '';
-  if (days < 0) return 'เลยกำหนด';
-  if (days === 0) return 'วันนี้!';
-  if (days === 1) return 'พรุ่งนี้';
-
-  return `อีก ${days} วัน`;
-}
-
-function goToInstallmentPayment(b) {
-  router.push(`/installment-payment/${b.booking_ref}`);
 }
 
 function getDay(d) {
