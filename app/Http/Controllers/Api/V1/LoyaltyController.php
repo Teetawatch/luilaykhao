@@ -146,9 +146,8 @@ class LoyaltyController extends Controller
      * สิทธิ์ของระดับในรูปแบบที่หน้าจอเอาไปแสดงได้เลย — ส่งทั้งค่าดิบ (ให้เอาไป
      * คำนวณต่อ) และข้อความไทย (ให้แสดงตรง ๆ โดยไม่ต้องเขียนคำซ้ำทั้งเว็บและแอป)
      *
-     * แสดงเฉพาะสิทธิ์ที่ "มีโค้ดบังคับใช้จริงแล้ว" เท่านั้น — early_access_hours
-     * กับ birthday_coupon_baht ตั้งค่าไว้ใน LoyaltyTier แล้วแต่ยังไม่มีอะไรไป
-     * บังคับใช้ จึงยังไม่ประกาศออกไป ไม่งั้นจะเป็นการสัญญาสิ่งที่ระบบยังทำไม่ได้
+     * แสดงเฉพาะสิทธิ์ที่ "มีโค้ดบังคับใช้จริงแล้ว" เท่านั้น — อย่าเพิ่มรายการใหม่
+     * ที่นี่ก่อนจะมีอะไรไปบังคับใช้ ไม่งั้นจะเป็นการสัญญาสิ่งที่ระบบยังทำไม่ได้
      */
     private function perksFor(array $tier): array
     {
@@ -159,6 +158,14 @@ class LoyaltyController extends Controller
                 'key' => 'point_multiplier',
                 'value' => $tier['point_multiplier'],
                 'label' => 'สะสมแต้ม ×'.rtrim(rtrim(number_format($tier['point_multiplier'], 2), '0'), '.'),
+            ];
+        }
+
+        if ($tier['early_access_hours'] > 0) {
+            $perks[] = [
+                'key' => 'early_access_hours',
+                'value' => $tier['early_access_hours'],
+                'label' => 'เปิดจองรอบใหม่ก่อนใคร '.$tier['early_access_hours'].' ชม.',
             ];
         }
 
@@ -175,6 +182,14 @@ class LoyaltyController extends Controller
                 'key' => 'deposit_discount_percent',
                 'value' => $tier['deposit_discount_percent'],
                 'label' => 'มัดจำน้อยลง '.$tier['deposit_discount_percent'].'%',
+            ];
+        }
+
+        if ($tier['birthday_coupon_baht'] > 0) {
+            $perks[] = [
+                'key' => 'birthday_coupon_baht',
+                'value' => $tier['birthday_coupon_baht'],
+                'label' => 'ส่วนลดวันเกิด '.number_format($tier['birthday_coupon_baht']).' บาท',
             ];
         }
 

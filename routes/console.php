@@ -7,6 +7,7 @@ use App\Jobs\ExpireFlexiOffersJob;
 use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
+use App\Jobs\IssueBirthdayCouponsJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
@@ -43,6 +44,9 @@ Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // 5 วันก่อนออกเดินทาง เตือนลูกค้าเมื่อรอบยังมีผู้จองไม่ถึงขั้นต่ำ (8 ที่นั่ง) — ทริปอาจถูกยกเลิก
 Schedule::job(new SendUnderfilledTripWarningsJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+
+// ของขวัญวันเกิดตามระดับสมาชิก — เช้าพอที่จะเห็นตั้งแต่ต้นวันเกิด
+Schedule::job(new IssueBirthdayCouponsJob)->dailyAt('07:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // Review window opens at 20:00 (Asia/Bangkok) on the trip's last day — invite exactly then.
 Schedule::job(new SendReviewInvitesJob)->dailyAt('20:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // 15 นาทีหลังชวนรีวิว — ส่งข้อความอวยพรเดินทางกลับโดยสวัสดิภาพให้ผู้ร่วมทริปวันนี้

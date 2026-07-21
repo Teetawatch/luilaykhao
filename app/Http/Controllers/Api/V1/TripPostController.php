@@ -114,7 +114,7 @@ class TripPostController extends Controller
         $viewerId = auth('sanctum')->id();
 
         $comments = $post->comments()
-            ->with('user:id,name,nickname,avatar')
+            ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier'])
             ->paginate(min((int) $request->input('per_page', 30), 50));
 
         $comments->getCollection()->transform(
@@ -196,7 +196,7 @@ class TripPostController extends Controller
     public function adminIndex(Request $request): JsonResponse
     {
         $query = TripPost::query()
-            ->with(['user:id,name,nickname,avatar', 'trip:id,slug,title'])
+            ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier', 'trip:id,slug,title'])
             ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status));
 
         // โฟกัสงาน moderation: เฉพาะที่ถูกรายงาน เรียงตามจำนวนรายงานมากสุดก่อน
@@ -258,7 +258,7 @@ class TripPostController extends Controller
         $viewer = auth('sanctum')->user();
 
         $query = TripPost::published()
-            ->with(['user:id,name,nickname,avatar', 'trip:id,slug,title'])
+            ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier', 'trip:id,slug,title'])
             ->when($trip, fn ($q) => $q->where('trip_id', $trip->id))
             ->latest('id');
 

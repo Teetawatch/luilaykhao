@@ -77,6 +77,7 @@
                 <span class="text-[11px] font-bold text-[#374151]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   {{ m.user?.nickname || m.user?.name || 'ผู้ใช้' }}
                 </span>
+                <TierBadge :tier="m.user?.tier" :label="m.user?.tier_label" size="sm" />
                 <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full" :class="roleTagClass(m.sender_role)" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   {{ roleLabel(m.sender_role) }}
                 </span>
@@ -156,6 +157,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
+import TierBadge from '../components/TierBadge.vue';
 
 const route = useRoute();
 const scheduleId = route.params.scheduleId;

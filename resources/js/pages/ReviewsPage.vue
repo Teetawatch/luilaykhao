@@ -175,7 +175,10 @@
                 <span v-else>{{ avatarInitial(review) }}</span>
               </div>
               <div class="min-w-0 flex-1">
-                <div class="font-bold text-[var(--color-text-dark)] truncate">{{ review.user_name }}</div>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="font-bold text-[var(--color-text-dark)] truncate">{{ review.user_name }}</span>
+                  <TierBadge :tier="review.user?.tier" :label="review.user?.tier_label" size="sm" />
+                </div>
                 <router-link
                   v-if="review.trip_id"
                   :to="`/trips/${review.trip_id}`"
@@ -344,6 +347,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
+import TierBadge from '../components/TierBadge.vue';
 
 const reviews = ref([]);
 const meta = ref(null);

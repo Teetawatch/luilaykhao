@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\LoyaltyTier;
 use App\Support\MediaDisk;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -97,6 +98,24 @@ class User extends Authenticatable
         $this->forceFill(['public_handle' => $handle])->save();
 
         return $handle;
+    }
+
+    /**
+     * ระดับสมาชิกสำหรับแสดงป้ายในที่ที่คนอื่นเห็น (แชท รีวิว ฟีดรูป โปรไฟล์สาธารณะ)
+     *
+     * อ่านจาก relation ที่โหลดมาแล้วเสมอเมื่อมี — ผู้เรียกที่ดึงเป็นรายการควร
+     * eager load `loyaltyAccount` มาด้วย ไม่งั้นจะยิงคิวรีต่อหนึ่งแถว
+     */
+    public function tierBadge(): array
+    {
+        $tier = $this->relationLoaded('loyaltyAccount')
+            ? ($this->loyaltyAccount?->tier ?? LoyaltyTier::FRIEND)
+            : LoyaltyAccount::tierForUser($this->id);
+
+        return [
+            'tier' => $tier,
+            'tier_label' => LoyaltyTier::label($tier),
+        ];
     }
 
     public function publicProfileUrl(): string

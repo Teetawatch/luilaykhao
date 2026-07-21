@@ -26,6 +26,12 @@ class SeatController extends Controller
         $userId = $request->user()->id;
         $seatIds = $request->seat_ids;
 
+        // กันตั้งแต่ล็อกที่นั่ง ไม่งั้นคนที่ยังไม่ถึงคิวจะล็อกที่นั่งกันคนอื่นไว้ได้
+        // ทั้งที่ตัวเองจองไม่ได้
+        if (! $schedule->isBookableBy($userId)) {
+            return $this->error('รอบนี้ยังไม่เปิดจองสำหรับคุณ', 422);
+        }
+
         $ttlSeconds = SeatLockService::lockTtlSeconds(count($seatIds), $userId);
         $result = $this->seatLockService->lockMultiple($scheduleId, $seatIds, $userId, [
             'pickup_point_id' => $request->input('pickup_point_id'),

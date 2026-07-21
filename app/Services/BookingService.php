@@ -6,11 +6,13 @@ use App\Jobs\ProcessWaitlistJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\LoyaltyRedemption;
 use App\Models\Promotion;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\ThaiDate;
 use App\Traits\RemapsBookingPickup;
 use Illuminate\Support\Facades\DB;
 
@@ -68,6 +70,16 @@ class BookingService
 
             if ($schedule->is_charter) {
                 throw new \Exception('รอบเดินทางนี้เป็นรอบเหมา ไม่สามารถจองได้');
+            }
+
+            // รอบที่ตั้งเวลาเปิดจองไว้ — สมาชิกระดับสูงเข้าได้ก่อนตามชั่วโมงของระดับ
+            if (! $schedule->isBookableBy($userId)) {
+                $opensAt = $schedule->bookingOpensAtFor($userId);
+
+                throw new \Exception(
+                    'รอบนี้ยังไม่เปิดจอง จะเปิดให้คุณจองได้วันที่ '
+                    .ThaiDate::short($opensAt).' เวลา '.$opensAt->timezone('Asia/Bangkok')->format('H:i').' น.'
+                );
             }
 
             if ($isJoinTrip && ! $schedule->join_trip_enabled) {
@@ -245,7 +257,24 @@ class BookingService
             $promotionId = null;
             $discountAmount = 0;
 
-            if ($promotionCode) {
+            // คูปองส่วนบุคคล (แลกด้วยแต้ม หรือของขวัญวันเกิด) ใช้ช่องกรอกโค้ดเดียวกับ
+            // โค้ดโปรโมชัน — เดิมช่องนี้ดูแค่ตาราง promotions คูปองที่ลูกค้าแลกมาจึง
+            // ใช้ไม่ได้เลยสักใบ
+            $redemption = $promotionCode
+                ? LoyaltyRedemption::with('reward')
+                    ->where('coupon_code', $promotionCode)
+                    ->lockForUpdate()
+                    ->first()
+                : null;
+
+            if ($redemption) {
+                if (! $redemption->isUsableBy($userId)) {
+                    throw new \Exception('คูปองนี้ใช้ไม่ได้ (อาจถูกใช้ไปแล้ว หมดอายุ หรือไม่ใช่ของบัญชีนี้)');
+                }
+
+                $discountAmount = min($redemption->discountBaht(), $totalAmount);
+                $totalAmount -= $discountAmount;
+            } elseif ($promotionCode) {
                 $promotion = Promotion::where('code', $promotionCode)->where('is_active', true)->lockForUpdate()->first();
                 if ($promotion) {
                     $isValid = true;
@@ -316,7 +345,7 @@ class BookingService
                 'selected_rentals' => $selectedRentalSnapshots,
                 'rentals_total' => $rentalsTotal,
                 'promotion_id' => $promotionId,
-                'promotion_code' => $promotionId ? $promotionCode : null,
+                'promotion_code' => ($promotionId || $redemption) ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
                 'is_join_trip' => $isJoinTrip,
                 'is_gift' => $isGift,
@@ -324,6 +353,15 @@ class BookingService
                 'gift_from_name' => $isGift ? $giftFromName : null,
                 'gift_message' => $isGift ? $giftMessage : null,
             ]);
+
+            // ตัดคูปองทิ้งทันทีที่ผูกกับการจองแล้ว อยู่ใน transaction เดียวกับการ
+            // สร้างการจอง คูปองใบเดียวจึงใช้ได้ครั้งเดียวแม้กดพร้อมกันสองหน้าต่าง
+            if ($redemption) {
+                $redemption->update([
+                    'is_used' => true,
+                    'booking_id' => $booking->id,
+                ]);
+            }
 
             // Create passengers
             foreach ($passengers as $index => $passengerData) {

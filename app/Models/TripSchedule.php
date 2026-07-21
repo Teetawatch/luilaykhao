@@ -54,7 +54,7 @@ class TripSchedule extends Model
     protected $fillable = [
         'trip_id', 'departure_date', 'departs_at', 'return_date',
         'total_seats', 'booked_seats', 'transport_type',
-        'vehicle_id', 'status', 'price_override',
+        'vehicle_id', 'status', 'booking_opens_at', 'price_override',
         'flash_sale_enabled', 'flash_sale_starts_at', 'flash_sale_price', 'flash_sale_ends_at',
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
@@ -67,6 +67,7 @@ class TripSchedule extends Model
         return [
             'departure_date' => 'date',
             'departs_at' => 'datetime',
+            'booking_opens_at' => 'datetime',
             'return_date' => 'date',
             'total_seats' => 'integer',
             'booked_seats' => 'integer',
@@ -205,6 +206,33 @@ class TripSchedule extends Model
      * For 'amount' type, the configured value is per-person and is multiplied by passengerCount.
      * Returns null when deposit is not enabled or amount cannot be determined.
      */
+    /**
+     * เวลาที่ผู้ใช้คนนี้เริ่มจองรอบนี้ได้ — null = จองได้เลย
+     *
+     * สมาชิกระดับสูงได้เริ่มก่อนเวลาเปิดจองสาธารณะตามชั่วโมงของระดับตัวเอง
+     */
+    public function bookingOpensAtFor(?int $userId): ?Carbon
+    {
+        if (! $this->booking_opens_at) {
+            return null;
+        }
+
+        $hours = (int) LoyaltyTier::perk(
+            LoyaltyAccount::tierForUser($userId),
+            'early_access_hours',
+        );
+
+        return $this->booking_opens_at->copy()->subHours($hours);
+    }
+
+    /** ผู้ใช้คนนี้จองรอบนี้ได้แล้วหรือยัง. */
+    public function isBookableBy(?int $userId): bool
+    {
+        $opensAt = $this->bookingOpensAtFor($userId);
+
+        return $opensAt === null || $opensAt->isPast();
+    }
+
     /**
      * ยอดมัดจำของรอบนี้
      *

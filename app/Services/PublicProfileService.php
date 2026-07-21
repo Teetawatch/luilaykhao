@@ -30,7 +30,8 @@ class PublicProfileService
      */
     public function forHandle(string $handle): ?array
     {
-        $user = User::where('public_handle', $handle)
+        $user = User::with('loyaltyAccount')
+            ->where('public_handle', $handle)
             ->where('public_profile_enabled', true)
             ->first();
 
@@ -48,6 +49,7 @@ class PublicProfileService
             'name' => $user->nickname ?: $user->name,
             'bio' => $user->public_bio,
             'avatar_url' => $user->avatar_url,
+            ...$user->tierBadge(),
             'stats' => $passport['stats'],
             'highlights' => $passport['highlights'],
             'badges' => $earned->all(),

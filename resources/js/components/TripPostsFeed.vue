@@ -58,6 +58,7 @@
             <div class="min-w-0">
               <p class="font-extrabold text-sm text-[var(--color-text-dark)] truncate">
                 {{ post.user?.name || 'นักเดินทาง' }}
+                <TierBadge :tier="post.user?.tier" :label="post.user?.tier_label" size="sm" class="ml-1" />
               </p>
               <p class="text-xs text-[var(--color-text-muted)] font-semibold">
                 {{ timeAgo(post.created_at) }}
@@ -143,6 +144,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import api from '../lib/axios';
+import TierBadge from './TierBadge.vue';
 
 const props = defineProps({
   slug: { type: String, required: true },

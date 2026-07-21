@@ -21,7 +21,7 @@ class ReviewController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Review::with(['user', 'trip', 'repliedBy'])
+        $query = Review::with(['user.loyaltyAccount', 'trip', 'repliedBy'])
             ->where('is_approved', true);
 
         if ($request->filled('trip_id')) {
@@ -92,7 +92,7 @@ class ReviewController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:60'],
         ]);
 
-        $reviews = Review::with(['user', 'trip:id,title,slug,location', 'booking.schedule:id,departure_date'])
+        $reviews = Review::with(['user.loyaltyAccount', 'trip:id,title,slug,location', 'booking.schedule:id,departure_date'])
             ->where('is_approved', true)
             ->whereNotNull('images')
             ->when(isset($validated['trip_id']), fn ($q) => $q->where('trip_id', $validated['trip_id']))
@@ -282,6 +282,7 @@ class ReviewController extends Controller
             'user' => [
                 'name' => $r->user?->name,
                 'avatar_url' => $r->user?->avatar_url,
+                ...($r->user?->tierBadge() ?? []),
             ],
             'user_id' => $r->user_id,
             'trip_id' => $r->trip_id,

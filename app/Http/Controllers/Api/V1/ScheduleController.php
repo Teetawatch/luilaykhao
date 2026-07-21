@@ -67,6 +67,9 @@ class ScheduleController extends Controller
             // บอกเวลาที่ผู้ใช้คนนี้จะได้จริง (รวมโบนัสระดับสมาชิก) ไม่งั้นหน้าจอ
             // จะนับถอยหลังคนละเลขกับที่ล็อกจริง
             'lock_ttl_seconds' => SeatLockService::lockTtlSeconds(1, $request->user()?->id),
+            // เวลาเปิดจองสำหรับ "คนที่ถามมา" — สมาชิกระดับสูงได้เวลาที่เร็วกว่า
+            'booking_opens_at' => $schedule->bookingOpensAtFor($request->user()?->id)?->toISOString(),
+            'is_bookable_now' => $schedule->isBookableBy($request->user()?->id),
             'front_seat' => $layout['front_seat'] ?? null,
             'last_row_center' => $layout['last_row_center'] ?? [],
             'front_label' => $layout['front_label'] ?? 'หน้ารถ',

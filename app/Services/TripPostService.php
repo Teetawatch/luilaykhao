@@ -260,6 +260,7 @@ class TripPostService
                 'id' => $user->id,
                 'name' => $user->nickname ?: $user->name,
                 'avatar_url' => $user->avatar_url,
+                ...$user->tierBadge(),
             ] : null,
             'trip' => $trip ? [
                 'id' => $trip->id,
@@ -290,6 +291,7 @@ class TripPostService
                 'id' => $user->id,
                 'name' => $user->nickname ?: $user->name,
                 'avatar_url' => $user->avatar_url,
+                ...$user->tierBadge(),
             ] : null,
             'can_delete' => $canDelete,
         ];

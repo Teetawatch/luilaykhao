@@ -326,7 +326,7 @@ class ChatService
     {
         return ChatMessage::where('schedule_id', $schedule->id)
             ->whereNotNull('pinned_at')
-            ->with(['user:id,name,nickname,avatar', 'pinnedBy:id,name,nickname'])
+            ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier', 'pinnedBy:id,name,nickname'])
             ->latest('pinned_at')
             ->first();
     }
@@ -404,6 +404,7 @@ class ChatService
                 'name' => $user->name,
                 'nickname' => $user->nickname,
                 'avatar_url' => $user->avatar_url,
+                ...$user->tierBadge(),
             ] : null,
             'reply_to' => $this->presentReplyExcerpt($message->replyTo),
             'reactions' => $this->aggregateReactions($message),

@@ -93,6 +93,21 @@
         }
 
         .name { font-size: 26px; font-weight: 800; line-height: 1.25; }
+
+        /* ป้ายระดับสมาชิก — สีเดียวกับ TierBadge.vue ฝั่ง SPA */
+        .tier {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .tier--frequent { background: #E8F0EF; color: #0F6B5C; }
+        .tier--comrade  { background: #E7EEF7; color: #1D4E86; }
+        .tier--insider  { background: #F6EDDC; color: #8A5A12; }
         .bio { font-size: 15px; color: rgba(255,255,255,0.72); margin-top: 4px; }
 
         /* ---- สถิติ ---- */
@@ -226,6 +241,9 @@
                 <img class="avatar" src="{{ $profile['avatar_url'] }}" alt="{{ $profile['name'] }}">
                 <div>
                     <div class="name">{{ $profile['name'] }}</div>
+                    @if (($profile['tier'] ?? 'friend') !== 'friend')
+                        <span class="tier tier--{{ $profile['tier'] }}">⛰ {{ $profile['tier_label'] }}</span>
+                    @endif
                     @if ($profile['bio'])
                         <div class="bio">{{ $profile['bio'] }}</div>
                     @endif

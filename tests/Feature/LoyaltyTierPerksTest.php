@@ -119,7 +119,7 @@ class LoyaltyTierPerksTest extends TestCase
         $this->assertNotEmpty($response->json('data.perks'));
     }
 
-    public function test_only_enforced_perks_are_advertised(): void
+    public function test_every_advertised_perk_has_something_enforcing_it(): void
     {
         $user = $this->userAtTier(LoyaltyTier::INSIDER, 900);
 
@@ -130,10 +130,9 @@ class LoyaltyTierPerksTest extends TestCase
                 ->json('data.perks')
         )->pluck('key');
 
-        // ตั้งค่าไว้แล้วใน LoyaltyTier แต่ยังไม่มีโค้ดบังคับใช้ — ห้ามประกาศออกไป
-        $this->assertNotContains('early_access_hours', $keys);
-        $this->assertNotContains('birthday_coupon_baht', $keys);
-
+        // ทุกข้อที่ประกาศต้องมีโค้ดบังคับใช้จริง (ดูเทสต์ของแต่ละสิทธิ์ประกอบ)
+        $this->assertContains('early_access_hours', $keys);
+        $this->assertContains('birthday_coupon_baht', $keys);
         $this->assertContains('point_multiplier', $keys);
         $this->assertContains('seat_lock_bonus_minutes', $keys);
         $this->assertContains('deposit_discount_percent', $keys);
@@ -280,6 +279,24 @@ class LoyaltyTierPerksTest extends TestCase
         $account->updateTier();
 
         $this->assertSame(LoyaltyTier::COMRADE, $account->fresh()->tier);
+    }
+
+    public function test_tier_travels_with_the_author_where_others_can_see_it(): void
+    {
+        $author = $this->userAtTier(LoyaltyTier::INSIDER, 700);
+
+        // ป้ายจะมีความหมายก็ต่อเมื่อคนอื่นเห็น — API ที่คนอื่นอ่านต้องส่งระดับมาด้วย
+        $badge = $author->fresh()->tierBadge();
+
+        $this->assertSame(LoyaltyTier::INSIDER, $badge['tier']);
+        $this->assertSame('คนกันเอง', $badge['tier_label']);
+    }
+
+    public function test_a_user_without_a_loyalty_account_still_has_a_badge(): void
+    {
+        $user = User::factory()->create();
+
+        $this->assertSame(LoyaltyTier::FRIEND, $user->tierBadge()['tier']);
     }
 
     public function test_waitlist_entries_default_to_no_priority(): void
