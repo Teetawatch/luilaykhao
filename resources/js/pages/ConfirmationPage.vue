@@ -1,10 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50/30 flex flex-col pt-8 pb-24 relative overflow-hidden font-anuphan">
     
-    <!-- Background Decor -->
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-teal-50/50 to-transparent -z-0"></div>
-    <div class="absolute -top-24 -right-24 w-96 h-96 bg-teal-100/20 rounded-full blur-3xl -z-0"></div>
-    <div class="absolute top-1/2 -left-24 w-72 h-72 bg-amber-100/20 rounded-full blur-3xl -z-0"></div>
 
     <!-- Loading -->
     <div v-if="loading" class="grow flex items-center justify-center relative z-10">
@@ -26,11 +22,8 @@
         <!-- Hero Header -->
         <div class="text-center mb-16 flex flex-col items-center animate-in fade-in slide-in-from-top-8 duration-1000">
           <div class="mb-8 relative">
-            <!-- Glow effect for success -->
-            <div v-if="booking.status === 'confirmed'" class="absolute inset-0"></div>
-            
             <template v-if="booking.status === 'confirmed'">
-              <img src="/images/suscess_show.webp" alt="Success" class="w-56 h-auto mx-auto object-contain drop- animate-in zoom-in fade-in duration-700 hover:scale-105 transition-transform" />
+              <img src="/images/suscess_show.webp" alt="Success" class="w-56 h-auto mx-auto object-contain animate-in zoom-in fade-in duration-700 hover:scale-105 transition-transform" />
             </template>
             <template v-else-if="booking.status === 'cancelled'">
               <img src="/images/cancel_booking.webp" alt="Cancelled" class="w-56 h-auto mx-auto object-contain animate-in zoom-in fade-in duration-700" />
@@ -239,7 +232,7 @@
                   <!-- Footer: Paid Timestamp -->
                   <div v-if="booking.paid_at" class="pt-6 border-t border-gray-100 flex items-center gap-2 text-gray-400">
                     <span class="material-symbols-rounded text-base">check_circle</span>
-                    <span class="text-xs font-bold uppercase tracking-wider">ชำระเงินเรียบร้อยแล้วเมื่อ {{ new Date(booking.paid_at).toLocaleString('th-TH') }}</span>
+                    <span class="text-xs font-bold uppercase tracking-wider">ชำระเงินเรียบร้อยแล้วเมื่อ {{ formatDateTime(booking.paid_at) }}</span>
                   </div>
 
                   <!-- ── Installment Tracker ── -->
@@ -257,7 +250,7 @@
 
                     <!-- Progress -->
                     <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-amber-400 to-green-500 rounded-full transition-all duration-700"
+                      <div class="h-full bg-green-500 rounded-full transition-all duration-700"
                         :style="{ width: (paidInstallmentsCount / booking.installment_count * 100) + '%' }"></div>
                     </div>
 
@@ -285,7 +278,7 @@
                           </p>
                           <p class="text-xs font-bold" :class="inst.status === 'paid' ? 'text-green-600' : 'text-gray-400'">
                             {{ inst.status === 'paid'
-                              ? 'ชำระแล้ว ' + new Date(inst.paid_at).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' })
+                              ? (inst.paid_at ? 'ชำระแล้ว ' + formatDate(inst.paid_at) : 'ชำระแล้ว')
                               : 'กำหนดชำระ ' + formatDate(inst.due_date) }}
                           </p>
                         </div>
@@ -313,9 +306,7 @@
             <!-- ── Trip Team: Staff & Driver ── -->
             <section v-if="hasTeam" class="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden">
               <!-- Header Band -->
-              <div class="relative bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800 px-6 md:px-10 py-7 overflow-hidden">
-                <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-                <div class="absolute -left-8 -bottom-12 w-40 h-40 bg-amber-300/10 rounded-full blur-2xl"></div>
+              <div class="relative bg-teal-700 px-6 md:px-10 py-7 overflow-hidden">
                 <div class="relative z-10 flex items-center gap-4">
                   <div class="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 shrink-0">
                     <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">diversity_3</span>
@@ -329,7 +320,7 @@
 
               <div class="p-6 md:p-10 space-y-6">
                 <!-- Driver Card (highlighted) -->
-                <div v-if="driver" class="relative rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50/70 to-white p-5 md:p-6 overflow-hidden">
+                <div v-if="driver" class="relative rounded-3xl border border-teal-100 bg-teal-50/70 p-5 md:p-6 overflow-hidden">
                   <span class="absolute top-5 right-5 text-[10px] font-black tracking-widest text-teal-700 bg-teal-100 px-3 py-1.5 rounded-full uppercase flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">directions_bus</span>
                     คนขับรถ
@@ -382,7 +373,7 @@
                       <div class="shrink-0">
                         <img v-if="s.avatar_url" :src="s.avatar_url" :alt="s.name"
                           class="w-14 h-14 rounded-2xl object-cover border-2 border-white" />
-                        <div v-else class="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white flex items-center justify-center border-2 border-white">
+                        <div v-else class="w-14 h-14 rounded-2xl bg-teal-600 text-white flex items-center justify-center border-2 border-white">
                           <span class="text-base font-black">{{ initials(s.name) }}</span>
                         </div>
                       </div>
@@ -417,11 +408,11 @@
                 </div>
                 <div class="flex-1">
                   <h5 class="text-gray-900 font-black text-lg mb-1">มีปัญหาเกี่ยวกับการจอง?</h5>
-                  <p class="text-gray-400 font-bold text-xs mb-4">ฝ่ายบริการลูกค้าของเราพร้อมช่วยเหลือคุณตลอด 24 ชม.</p>
-                  <a href="#" class="inline-flex items-center gap-2 text-teal-600 font-black text-sm bg-teal-50 px-5 py-2.5 rounded-xl hover:bg-teal-600 hover:text-white transition-all duration-300 border border-teal-100">
+                  <p class="text-gray-400 font-bold text-xs mb-4">ทักหาทีมงานได้ พร้อมแจ้งรหัสการจอง {{ booking.booking_ref }}</p>
+                  <router-link to="/contact" class="inline-flex items-center gap-2 text-teal-600 font-black text-sm bg-teal-50 px-5 py-2.5 rounded-xl hover:bg-teal-600 hover:text-white transition-all duration-300 border border-teal-100">
                     ติดต่อฝ่ายบริการลูกค้า
                     <span class="material-symbols-rounded text-sm">arrow_forward</span>
-                  </a>
+                  </router-link>
                 </div>
               </div>
             </section>
@@ -432,8 +423,6 @@
             
             <!-- QR Ticket Card (MAIN FOCUS) -->
             <section v-if="booking.qr_code && booking.status === 'confirmed'" class="bg-white rounded-[2.5rem] border-2 border-teal-500/10 p-8 md:p-10 flex flex-col items-center text-center relative overflow-hidden group">
-              <!-- Success Badge Overlay -->
-              <div class="absolute -right-8 -top-8 w-32 h-32 bg-teal-600/5 rounded-full blur-3xl group-hover:bg-teal-600/10 transition-colors duration-700"></div>
               
               <div class="relative z-10 w-full mb-8">
                 <h3 class="text-2xl font-black text-gray-900 mb-2">ใช้ QR นี้สำหรับเช็คอิน</h3>
@@ -450,7 +439,7 @@
                     <span class="material-symbols-rounded text-[48px]">verified</span>
                   </div>
                   <p class="font-black text-green-700 text-xl">เช็คอินเรียบร้อย</p>
-                  <p class="text-green-600/60 font-bold text-xs mt-1">{{ new Date(booking.checked_in_at).toLocaleString('th-TH') }}</p>
+                  <p v-if="booking.checked_in_at" class="text-green-600/60 font-bold text-xs mt-1">{{ formatDateTime(booking.checked_in_at) }}</p>
                 </div>
               </div>
 
@@ -517,13 +506,24 @@
     <div v-else class="grow flex items-center justify-center text-center py-16 relative z-10">
       <div class="bg-white p-12 rounded-[3rem] border border-gray-100 flex flex-col items-center max-w-sm mx-4">
         <div class="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6 text-red-400">
-          <span class="material-symbols-rounded text-[56px]" style="font-variation-settings:'wght' 300">error</span>
+          <span class="material-symbols-rounded text-[56px]" style="font-variation-settings:'wght' 300">
+            {{ loadError === 'forbidden' ? 'lock' : 'error' }}
+          </span>
         </div>
-        <h3 class="text-gray-900 font-black text-2xl mb-2">ไม่พบข้อมูลการจอง</h3>
-        <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">รหัสการจองอาจไม่ถูกต้อง หรือถูกลบออกจากระบบ กรุณาตรวจสอบอีกครั้ง</p>
-        <router-link to="/trips" class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-base hover:bg-teal-700 transition-all">
-          กลับไปหน้าทริปทั้งหมด
-        </router-link>
+        <template v-if="loadError === 'forbidden'">
+          <h3 class="text-gray-900 font-black text-2xl mb-2">การจองนี้ไม่ใช่ของบัญชีนี้</h3>
+          <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">ลองสลับไปบัญชีที่ใช้จอง หรือให้เจ้าของการจองเชิญคุณเข้าร่วมเดินทาง</p>
+          <router-link to="/my-bookings" class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-base hover:bg-teal-700 transition-all">
+            ดูการจองของฉัน
+          </router-link>
+        </template>
+        <template v-else>
+          <h3 class="text-gray-900 font-black text-2xl mb-2">ไม่พบข้อมูลการจอง</h3>
+          <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">รหัสการจองอาจไม่ถูกต้อง หรือถูกลบออกจากระบบ กรุณาตรวจสอบอีกครั้ง</p>
+          <router-link to="/trips" class="w-full bg-teal-600 text-white py-4 rounded-2xl font-black text-base hover:bg-teal-700 transition-all">
+            กลับไปหน้าทริปทั้งหมด
+          </router-link>
+        </template>
       </div>
     </div>
 
@@ -539,6 +539,7 @@ import QRCode from 'qrcode';
 const route = useRoute();
 const booking = ref(null);
 const loading = ref(true);
+const loadError = ref(null);
 const qrCanvas = ref(null);
 
 const statusMap = { pending: 'รอชำระเงิน', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิกแล้ว', refunded: 'คืนเงินแล้ว' };
@@ -629,6 +630,12 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+function formatDateTime(d) {
+  if (!d) return '';
+  // ตั้ง timeZone ไว้ชัด ๆ ไม่งั้นคนที่เปิดจากต่างประเทศจะเห็นเวลาของเครื่องตัวเอง
+  return new Date(d).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
+}
+
 function passengerNameParts(passenger) {
   const name = String(passenger?.name || '').trim();
   if (!name) return { firstName: '-', lastName: '-' };
@@ -638,10 +645,6 @@ function passengerNameParts(passenger) {
     firstName: parts[0] || '-',
     lastName: parts.slice(1).join(' ') || '-',
   };
-}
-
-function passengerDisplayName(passenger) {
-  return [passenger?.title, passenger?.name].filter(Boolean).join(' ') || '-';
 }
 
 async function renderQrCode() {
@@ -679,35 +682,12 @@ onMounted(async () => {
       renderQrCode();
     }
   } catch (e) {
-    console.error(e);
+    // แยก "ไม่มีสิทธิ์" ออกจาก "ไม่พบ" — บอกว่ารหัสผิดทั้งที่จริงคือเข้าไม่ได้
+    // จะทำให้คนที่เปิดผิดบัญชีงมหาสาเหตุอยู่นาน
+    loadError.value = e?.response?.status === 403 ? 'forbidden' : 'not_found';
   } finally {
     loading.value = false;
   }
 });
 </script>
 
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  height: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
-}
-
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
-}
-
-.hover-float:hover {
-  animation: float 3s ease-in-out infinite;
-}
-</style>

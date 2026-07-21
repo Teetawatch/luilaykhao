@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\GiftClaimedMail;
 use App\Mail\GiftPurchasedMail;
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Models\BookingPassenger;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -292,11 +293,19 @@ class GiftBookingTest extends TestCase
     public function test_gift_code_hidden_from_non_giver_on_booking_detail(): void
     {
         $buyer = User::factory()->create();
-        $recipient = User::factory()->create();
+        $companion = User::factory()->create();
         $booking = $this->makeGiftBooking($buyer, $this->makeSchedule());
 
-        // คนอื่นที่รู้เลขที่จอง (เช่น เพื่อนที่ถูกแชร์ลิงก์) ต้องไม่เห็นโค้ด
-        $response = $this->actingAs($recipient, 'sanctum')
+        // เพื่อนร่วมเดินทางเปิดดูการจองได้ แต่ต้องไม่เห็นโค้ดของขวัญ
+        // (เดิมเทสต์นี้ใช้คนแปลกหน้าเป็นผู้ดู ซึ่งอาศัยช่องโหว่ที่ /bookings/{ref}
+        // เปิดให้ใครก็ได้อ่าน — ปิดไปแล้ว ตัวเทสต์จึงต้องใช้ผู้ดูที่มีสิทธิ์จริง)
+        BookingMember::create([
+            'booking_id' => $booking->id,
+            'user_id' => $companion->id,
+            'status' => BookingMember::STATUS_ACTIVE,
+        ]);
+
+        $response = $this->actingAs($companion, 'sanctum')
             ->getJson("/api/v1/bookings/{$booking->booking_ref}")
             ->assertOk();
 

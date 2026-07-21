@@ -63,7 +63,14 @@ class BookingController extends Controller
         }
     }
 
-    public function show(string $ref): JsonResponse
+    /**
+     * รายละเอียดการจองหนึ่งรายการ
+     *
+     * booking_ref เป็นรูปแบบที่เดาได้ (LLK-วันที่-เลขสี่หลัก) จึงกันสิทธิ์ที่ตัวผู้เรียก
+     * ไม่ใช่ที่ความลับของรหัส — เจ้าของ เพื่อนที่ถูกเชิญ และทีมงานเท่านั้นที่เปิดดูได้
+     * (กติกาเดียวกับ VehicleTrackingController::bookingTracking)
+     */
+    public function show(Request $request, string $ref): JsonResponse
     {
         $booking = Booking::where('booking_ref', $ref)
             ->with([
@@ -82,6 +89,13 @@ class BookingController extends Controller
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', auth()->id()),
             ])
             ->firstOrFail();
+
+        $user = $request->user();
+        $isTeam = $user->hasAnyRole(['admin', 'operator', 'staff']);
+
+        if (! $isTeam && ! $booking->isAccessibleByUser($user->id)) {
+            return $this->error('คุณไม่มีสิทธิ์ดูข้อมูลการจองนี้', 403);
+        }
 
         $this->attachWeather($booking);
 
