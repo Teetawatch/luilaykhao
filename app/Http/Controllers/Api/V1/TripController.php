@@ -63,13 +63,20 @@ class TripController extends Controller
             ->whereColumn('trip_schedules.trip_id', 'trips.id')
             ->whereIn('bookings.status', ['confirmed', 'completed']);
 
-        $trips = $query->with(['schedules' => function ($q) {
+        $query->with(['schedules' => function ($q) {
             $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
         }])->withCount(['schedules' => function ($q) {
             $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
-        }])->orderByDesc($bookedPassengersCount)
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 12);
+        }]);
+
+        // การเรียงต้องทำที่นี่ ไม่ใช่ฝั่งหน้าเว็บ ไม่งั้น "ราคาน้อยไปมาก" จะเรียงแค่ทริปในหน้าปัจจุบัน
+        match ($request->input('sort')) {
+            'price_asc' => $query->orderBy('price_per_person'),
+            'price_desc' => $query->orderByDesc('price_per_person'),
+            default => $query->orderByDesc($bookedPassengersCount),
+        };
+
+        $trips = $query->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
         $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->paginated($trips->through(fn ($trip) => new TripResource($trip)));

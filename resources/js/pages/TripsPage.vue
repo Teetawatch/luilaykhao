@@ -2,18 +2,18 @@
   <div class="pt-12 pb-24 max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
     <!-- Header -->
     <header class="mb-10 md:mb-12 max-w-3xl animate-fade-in relative z-10">
-      <div class="inline-flex items-center gap-1.5 text-[var(--color-accent)] text-sm font-bold mb-4">
-        <span class="material-symbols-rounded text-[18px]">explore</span>
-        ค้นพบประสบการณ์ใหม่
-      </div>
       <h1 class="text-4xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-4 leading-[1.15]">
         กิจกรรมและ <span class="text-[var(--color-accent)]">ทริปทั้งหมด</span>
       </h1>
+      <!--
+        บอกว่าหน้านี้คืออะไรและกรองยังไง — ไม่ใช่ "คัดสรรมาเพื่อคุณ" (หน้านี้ไม่มี personalization)
+        หรือ "สมบูรณ์แบบที่สุด" ซึ่งไม่มีอะไรรองรับ
+      -->
       <p class="text-base md:text-lg text-[var(--color-text-muted)] leading-relaxed font-medium max-w-2xl mb-5">
-        สำรวจทริปที่คัดสรรมาเพื่อคุณ ตั้งแต่ดำน้ำตื้น เดินป่า จนถึงบริการรถตู้ระดับพรีเมียม เพื่อประสบการณ์การเดินทางที่สมบูรณ์แบบที่สุด
+        ทริปทั้งหมดที่เปิดรับจองอยู่ตอนนี้ ทั้งเดินป่า ดำน้ำตื้น และรถตู้เช่าพร้อมคนขับ กรองตามประเภทหรือระดับความยากได้จากแถบด้านซ้าย
       </p>
 
-      <!-- Inline trust text -->
+      <!-- ตัวเลขจากข้อมูลจริง + สิ่งที่ต้องรู้ก่อนอ่านราคา ไม่ใช่ตรารับรอง -->
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm font-semibold text-[var(--color-text-muted)]">
         <span class="inline-flex items-center gap-1.5">
           <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">map</span>
@@ -24,8 +24,8 @@
           {{ totalConfirmedParticipants.toLocaleString() }} คนร่วมเดินทางแล้ว
         </span>
         <span class="inline-flex items-center gap-1.5">
-          <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">verified_user</span>
-          จองปลอดภัย ตรวจสลิปอัตโนมัติ
+          <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">sell</span>
+          ราคาที่แสดงเป็นราคาเริ่มต้นต่อคน
         </span>
       </div>
     </header>
@@ -149,7 +149,8 @@
             <span class="text-sm font-bold text-[var(--color-text-muted)]">เรียงโดย:</span>
             <div class="relative">
               <select
-                v-model="sortOrder"
+                v-model="tripsStore.filters.sort"
+                @change="tripsStore.fetchTrips()"
                 class="appearance-none bg-white pl-5 pr-10 py-2.5 rounded-full border border-gray-100 text-sm font-bold text-[var(--color-text-dark)] cursor-pointer hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20"
               >
                 <option value="popular">ทริปยอดนิยม</option>
@@ -166,7 +167,7 @@
           <div class="inline-block relative">
             <div class="w-16 h-16 border-4 border-[var(--color-sand)] border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
-          <p class="text-[var(--color-text-dark)] font-bold mt-6 text-lg tracking-wide">กำลังค้นหาทริปที่ดีที่สุดให้คุณ...</p>
+          <p class="text-[var(--color-text-dark)] font-bold mt-6 text-lg tracking-wide">กำลังโหลดทริป...</p>
         </div>
 
         <!-- Empty State -->
@@ -187,7 +188,7 @@
         <div v-else>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
             <TripCard
-              v-for="(trip, index) in sortedTrips"
+              v-for="(trip, index) in tripsStore.trips"
               :key="trip.id"
               :trip="trip"
               class="animate-fade-in-up"
@@ -237,7 +238,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import TripCard from '../components/TripCard.vue';
 import { useTripsStore } from '../stores/trips';
@@ -258,23 +259,9 @@ const difficulties = [
   { value: 'hard', label: 'ระดับท้าทาย (Hard)' },
 ];
 
-const sortOrder = ref('popular');
-
 const hasFilters = computed(() =>
   tripsStore.filters.type || tripsStore.filters.difficulty || tripsStore.filters.search
 );
-
-const sortedTrips = computed(() => {
-  const list = [...tripsStore.trips];
-  if (sortOrder.value === 'price_asc') {
-    return list.sort((a, b) => Number(a.price_per_person) - Number(b.price_per_person));
-  }
-  if (sortOrder.value === 'price_desc') {
-    return list.sort((a, b) => Number(b.price_per_person) - Number(a.price_per_person));
-  }
-  // ทริปยอดนิยม = เรียงตามจำนวนคนจองมากไปน้อย
-  return list.sort((a, b) => (b.booked_passengers_count || 0) - (a.booked_passengers_count || 0));
-});
 
 const totalConfirmedParticipants = computed(() => {
   return tripsStore.trips.reduce((sum, trip) => sum + (trip.confirmed_passengers_count || 0), 0);
@@ -313,7 +300,6 @@ function toggleDifficulty(value) {
 
 function clearAndFetch() {
   tripsStore.clearFilters();
-  sortOrder.value = 'popular';
   tripsStore.fetchTrips();
 }
 

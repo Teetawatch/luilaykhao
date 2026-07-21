@@ -15,6 +15,7 @@ export const useTripsStore = defineStore('trips', {
       date: '',
       min_days: '',
       max_days: '',
+      sort: 'popular',
     },
   }),
 
@@ -29,6 +30,8 @@ export const useTripsStore = defineStore('trips', {
         if (this.filters.date) params.date = this.filters.date;
         if (this.filters.min_days) params.min_days = this.filters.min_days;
         if (this.filters.max_days) params.max_days = this.filters.max_days;
+        // ส่งไปให้ backend เรียง เพื่อให้การเรียงครอบคลุมทุกหน้า ไม่ใช่แค่หน้าที่กำลังดู
+        if (this.filters.sort) params.sort = this.filters.sort;
 
         const res = await api.get('/trips', { params });
         this.trips = res.data.data;
@@ -84,7 +87,7 @@ export const useTripsStore = defineStore('trips', {
     },
 
     clearFilters() {
-      this.filters = { type: '', difficulty: '', search: '', date: '', min_days: '', max_days: '' };
+      this.filters = { type: '', difficulty: '', search: '', date: '', min_days: '', max_days: '', sort: 'popular' };
     },
   },
 });
