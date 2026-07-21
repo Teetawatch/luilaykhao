@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\BookingSeat;
+use App\Models\LoyaltyAccount;
 use App\Models\TripSchedule;
+use App\Support\LoyaltyTier;
 use Illuminate\Support\Facades\Redis;
 
 class SeatLockService
@@ -12,9 +14,20 @@ class SeatLockService
 
     private const LOCK_TTL_PER_SEAT = 300; // +5 minutes per additional seat
 
-    public static function lockTtlSeconds(int $seatCount = 1): int
+    /**
+     * เวลาที่ล็อกที่นั่งได้ — ฐาน 10 นาที บวกเพิ่มตามจำนวนที่นั่ง และบวกโบนัส
+     * ตามระดับสมาชิกถ้าระบุผู้จองมาด้วย (สมาชิกระดับสูงมีเวลากรอกข้อมูลนานขึ้น)
+     */
+    public static function lockTtlSeconds(int $seatCount = 1, ?int $userId = null): int
     {
-        return self::LOCK_TTL + (max(1, $seatCount) - 1) * self::LOCK_TTL_PER_SEAT;
+        $ttl = self::LOCK_TTL + (max(1, $seatCount) - 1) * self::LOCK_TTL_PER_SEAT;
+
+        $bonusMinutes = (int) LoyaltyTier::perk(
+            LoyaltyAccount::tierForUser($userId),
+            'seat_lock_bonus_minutes',
+        );
+
+        return $ttl + $bonusMinutes * 60;
     }
 
     private function redisAvailable(): bool

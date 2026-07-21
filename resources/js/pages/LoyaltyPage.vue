@@ -27,8 +27,9 @@
               <div>
                 <p class="text-white/80 text-[13px] font-bold uppercase tracking-wide mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ระดับสมาชิก</p>
                 <p class="text-3xl font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.tier_label }}</p>
+                <p v-if="account?.tier_tagline" class="text-white/75 text-sm mt-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account.tier_tagline }}</p>
               </div>
-              <span class="material-symbols-rounded text-[48px] opacity-90" style="font-variation-settings:'FILL' 1;">{{ tierIcon }}</span>
+              <span class="material-symbols-rounded text-[48px] opacity-90" style="font-variation-settings:'FILL' 1;">landscape</span>
             </div>
             
             <div class="flex flex-wrap gap-8 mb-4">
@@ -46,7 +47,7 @@
             <div v-if="account?.next_tier" class="mt-6 bg-black/10 rounded-[16px] p-4 backdrop-blur-sm">
               <div class="flex justify-between text-[13px] font-bold text-white mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span>{{ account.tier_label }}</span>
-                <span>{{ account.next_tier.tier }} ({{ account.next_tier.at.toLocaleString() }} แต้ม)</span>
+                <span>{{ account.next_tier.label }} ({{ account.next_tier.at.toLocaleString() }} แต้ม)</span>
               </div>
               <div class="h-2.5 bg-black/20 rounded-full overflow-hidden">
                 <div
@@ -54,7 +55,7 @@
                   :style="{ width: tierProgress + '%' }"></div>
               </div>
               <p class="text-[12px] text-white/90 mt-2 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                ต้องสะสมอีก {{ account.next_tier.points_needed.toLocaleString() }} แต้ม เพื่อเลื่อนระดับเป็น {{ account.next_tier.tier }}
+                ต้องสะสมอีก {{ account.next_tier.points_needed.toLocaleString() }} แต้ม เพื่อเลื่อนระดับเป็น {{ account.next_tier.label }}
               </p>
             </div>
             <div v-else class="mt-6">
@@ -64,6 +65,40 @@
             </div>
           </div>
         </div>
+
+        <!-- สิทธิ์ที่ได้ตอนนี้ + บันไดระดับ — ทั้งชื่อและเกณฑ์มาจาก API ทั้งหมด
+             เพื่อให้เว็บกับแอปพูดตรงกันเสมอ -->
+        <section v-if="account?.perks?.length" class="mb-8 bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6">
+          <h2 class="text-[13px] font-bold text-[#505E5E] mb-4">สิทธิ์ที่คุณได้ตอนนี้</h2>
+          <ul class="grid sm:grid-cols-2 gap-2.5">
+            <li v-for="perk in account.perks" :key="perk.key" class="flex items-start gap-2.5 text-sm font-medium text-[#1a1c1c]">
+              <span class="material-symbols-rounded text-[18px] text-[#0F6B5C] mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1">check_circle</span>
+              {{ perk.label }}
+            </li>
+          </ul>
+        </section>
+
+        <section v-if="account?.tiers?.length" class="mb-8 bg-white rounded-[20px] border border-[#E8EEEF] overflow-hidden">
+          <h2 class="text-[13px] font-bold text-[#505E5E] px-5 sm:px-6 pt-5 pb-3">ระดับสมาชิกทั้งหมด</h2>
+          <div v-for="step in account.tiers" :key="step.code"
+            class="px-5 sm:px-6 py-4 border-t border-[#F0F4F4]"
+            :class="step.code === account.tier ? 'bg-[#F4F7F6]' : ''">
+            <div class="flex items-center justify-between gap-3 mb-1">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-bold text-[#1a1c1c]">{{ step.label }}</span>
+                <TierBadge v-if="step.code === account.tier" :tier="step.code" label="ระดับของคุณ" size="sm" />
+              </div>
+              <span class="text-xs font-bold text-[#889696] shrink-0">
+                {{ step.min_points === 0 ? 'เริ่มต้น' : `${step.min_points.toLocaleString()} แต้ม` }}
+              </span>
+            </div>
+            <p class="text-xs text-[#505E5E] mb-2">{{ step.tagline }}</p>
+            <p v-if="step.perks.length" class="text-xs text-[#505E5E]">
+              {{ step.perks.map(p => p.label).join(' · ') }}
+            </p>
+            <p v-else class="text-xs text-[#889696]">เริ่มสะสมแต้มจากทริปแรกได้เลย</p>
+          </div>
+        </section>
 
         <!-- Tabs -->
         <div class="flex gap-2 mb-8 bg-[#E8EEEF] p-1.5 rounded-[16px] w-fit">
@@ -236,6 +271,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import TierBadge from '../components/TierBadge.vue';
 import api from '../lib/axios';
 
 const loading = ref(true);
@@ -252,26 +288,28 @@ const tabs = [
   { key: 'history', label: 'ประวัติแต้ม' },
 ];
 
-const tierBg = computed(() => {
-  if (!account.value) return 'bg-[#006565]';
-  return {
-    gold: 'bg-[#D97706]',
-    silver: 'bg-[#64748B]',
-    regular: 'bg-[#006565]',
-  }[account.value.tier] || 'bg-[#006565]';
-});
+const tierBg = computed(() => ({
+  frequent: 'bg-[#0F6B5C]',
+  comrade: 'bg-[#1D4E86]',
+  insider: 'bg-[#8A5A12]',
+}[account.value?.tier] || 'bg-[#006565]'));
 
-const tierIcon = computed(() => {
-  const map = { gold: 'emoji_events', silver: 'military_tech', regular: 'spa' };
-  return map[account.value?.tier] || 'spa';
-});
-
+/**
+ * ความคืบหน้าไปยังระดับถัดไป — วัดจากช่วงระหว่างเกณฑ์ของระดับปัจจุบันกับระดับถัดไป
+ * เกณฑ์ทั้งหมดมาจาก API (data.tiers) จึงไม่ต้องฮาร์ดโค้ดตัวเลขซ้ำฝั่งนี้
+ */
 const tierProgress = computed(() => {
-  if (!account.value?.next_tier) return 100;
-  const { at, points_needed } = account.value.next_tier;
-  const earned = at - points_needed;
-  const prev = account.value.tier === 'regular' ? 0 : 1500;
-  return Math.min(100, Math.max(0, ((earned - prev) / (at - prev)) * 100));
+  const next = account.value?.next_tier;
+  if (!next) return 100;
+
+  const current = (account.value.tiers || []).find(t => t.code === account.value.tier);
+  const floor = current?.min_points ?? 0;
+  const span = next.at - floor;
+
+  if (span <= 0) return 100;
+
+  const earned = (account.value.lifetime_points ?? 0) - floor;
+  return Math.min(100, Math.max(0, (earned / span) * 100));
 });
 
 async function loadData() {

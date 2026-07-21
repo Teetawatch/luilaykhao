@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class WaitlistEntry extends Model
 {
     protected $fillable = [
-        'user_id', 'schedule_id', 'seat_count', 'status', 'offered_at', 'expires_at',
+        'user_id', 'schedule_id', 'seat_count', 'priority', 'status', 'offered_at', 'expires_at',
     ];
 
     protected function casts(): array

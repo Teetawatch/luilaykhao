@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyTransaction;
+use App\Support\LoyaltyTier;
 use Illuminate\Support\Facades\DB;
 
 class LoyaltyService
@@ -21,12 +22,22 @@ class LoyaltyService
         }
 
         $rate = max(1, (int) config('loyalty.baht_per_point', 100));
-        $points = (int) floor((float) $booking->total_amount / $rate);
-        if ($points <= 0) {
+        $basePoints = (int) floor((float) $booking->total_amount / $rate);
+        if ($basePoints <= 0) {
             return;
         }
 
-        DB::transaction(function () use ($booking, $points) {
+        // ตัวคูณคิดจากระดับ ณ ตอนที่ได้แต้ม — คนที่เพิ่งขึ้นระดับจะได้ตัวคูณใหม่
+        // ตั้งแต่ทริปถัดไป ไม่ย้อนหลังให้ทริปที่จ่ายไปแล้ว
+        $multiplier = (float) LoyaltyTier::perk(
+            LoyaltyAccount::tierForUser($booking->user_id),
+            'point_multiplier',
+        );
+
+        $points = max($basePoints, (int) floor($basePoints * $multiplier));
+        $bonus = $points - $basePoints;
+
+        DB::transaction(function () use ($booking, $points, $bonus) {
             $alreadyEarned = LoyaltyTransaction::where('reference_type', Booking::class)
                 ->where('reference_id', $booking->id)
                 ->where('type', 'earn')
@@ -47,7 +58,8 @@ class LoyaltyService
                 'user_id' => $booking->user_id,
                 'type' => 'earn',
                 'points' => $points,
-                'description' => 'สะสมแต้มจากการจอง '.$booking->booking_ref,
+                'description' => 'สะสมแต้มจากการจอง '.$booking->booking_ref
+                    .($bonus > 0 ? ' (รวมโบนัสระดับสมาชิก +'.$bonus.')' : ''),
                 'reference_type' => Booking::class,
                 'reference_id' => $booking->id,
                 'balance_after' => $account->points,

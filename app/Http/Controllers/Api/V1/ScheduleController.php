@@ -64,7 +64,9 @@ class ScheduleController extends Controller
             'seats' => $seats,
             'total_seats' => $schedule->total_seats,
             'available_seats' => $schedule->available_seats,
-            'lock_ttl_seconds' => SeatLockService::lockTtlSeconds(),
+            // บอกเวลาที่ผู้ใช้คนนี้จะได้จริง (รวมโบนัสระดับสมาชิก) ไม่งั้นหน้าจอ
+            // จะนับถอยหลังคนละเลขกับที่ล็อกจริง
+            'lock_ttl_seconds' => SeatLockService::lockTtlSeconds(1, $request->user()?->id),
             'front_seat' => $layout['front_seat'] ?? null,
             'last_row_center' => $layout['last_row_center'] ?? [],
             'front_label' => $layout['front_label'] ?? 'หน้ารถ',

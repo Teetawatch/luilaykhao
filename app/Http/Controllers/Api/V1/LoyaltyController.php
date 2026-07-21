@@ -7,6 +7,7 @@ use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
+use App\Support\LoyaltyTier;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,12 +32,25 @@ class LoyaltyController extends Controller
                 'created_at' => $t->created_at?->toISOString(),
             ]);
 
+        $tier = LoyaltyTier::find($account->tier);
+
         return $this->success([
             'points' => $account->points,
             'lifetime_points' => $account->lifetime_points,
             'tier' => $account->tier,
-            'tier_label' => $this->tierLabel($account->tier),
-            'next_tier' => $this->nextTier($account->tier, $account->lifetime_points),
+            'tier_label' => $tier['label'],
+            'tier_tagline' => $tier['tagline'],
+            'perks' => $this->perksFor($tier),
+            'next_tier' => LoyaltyTier::next($account->tier, (int) $account->lifetime_points),
+            // ส่งบันไดทั้งชุดไปด้วย เพื่อให้เว็บและแอปวาดตารางระดับได้เองโดยไม่ต้อง
+            // ฮาร์ดโค้ดชื่อหรือเกณฑ์ซ้ำอีกฝั่ง (ต้นเหตุที่เคยเรียกชื่อไม่ตรงกัน)
+            'tiers' => collect(LoyaltyTier::all())->map(fn ($t) => [
+                'code' => $t['code'],
+                'label' => $t['label'],
+                'tagline' => $t['tagline'],
+                'min_points' => $t['min_points'],
+                'perks' => $this->perksFor($t),
+            ])->all(),
             'transactions' => $transactions,
         ]);
     }
@@ -128,22 +142,51 @@ class LoyaltyController extends Controller
         return $this->success($redemptions);
     }
 
-    private function tierLabel(string $tier): string
+    /**
+     * สิทธิ์ของระดับในรูปแบบที่หน้าจอเอาไปแสดงได้เลย — ส่งทั้งค่าดิบ (ให้เอาไป
+     * คำนวณต่อ) และข้อความไทย (ให้แสดงตรง ๆ โดยไม่ต้องเขียนคำซ้ำทั้งเว็บและแอป)
+     *
+     * แสดงเฉพาะสิทธิ์ที่ "มีโค้ดบังคับใช้จริงแล้ว" เท่านั้น — early_access_hours
+     * กับ birthday_coupon_baht ตั้งค่าไว้ใน LoyaltyTier แล้วแต่ยังไม่มีอะไรไป
+     * บังคับใช้ จึงยังไม่ประกาศออกไป ไม่งั้นจะเป็นการสัญญาสิ่งที่ระบบยังทำไม่ได้
+     */
+    private function perksFor(array $tier): array
     {
-        return match ($tier) {
-            'silver' => 'Silver Member',
-            'gold' => 'Gold Member',
-            default => 'Regular Member',
-        };
-    }
+        $perks = [];
 
-    private function nextTier(string $tier, int $lifetimePoints): ?array
-    {
-        return match ($tier) {
-            'regular' => ['tier' => 'Silver', 'points_needed' => 1500 - $lifetimePoints, 'at' => 1500],
-            'silver' => ['tier' => 'Gold', 'points_needed' => 5000 - $lifetimePoints, 'at' => 5000],
-            default => null,
-        };
+        if ($tier['point_multiplier'] > 1) {
+            $perks[] = [
+                'key' => 'point_multiplier',
+                'value' => $tier['point_multiplier'],
+                'label' => 'สะสมแต้ม ×'.rtrim(rtrim(number_format($tier['point_multiplier'], 2), '0'), '.'),
+            ];
+        }
+
+        if ($tier['seat_lock_bonus_minutes'] > 0) {
+            $perks[] = [
+                'key' => 'seat_lock_bonus_minutes',
+                'value' => $tier['seat_lock_bonus_minutes'],
+                'label' => 'จองที่นั่งได้นานขึ้น '.$tier['seat_lock_bonus_minutes'].' นาที',
+            ];
+        }
+
+        if ($tier['deposit_discount_percent'] > 0) {
+            $perks[] = [
+                'key' => 'deposit_discount_percent',
+                'value' => $tier['deposit_discount_percent'],
+                'label' => 'มัดจำน้อยลง '.$tier['deposit_discount_percent'].'%',
+            ];
+        }
+
+        if ($tier['code'] !== LoyaltyTier::FRIEND) {
+            $perks[] = [
+                'key' => 'waitlist_priority',
+                'value' => 1,
+                'label' => 'ได้คิวรอที่นั่งก่อน',
+            ];
+        }
+
+        return $perks;
     }
 
     private function formatReward(LoyaltyReward $r): array

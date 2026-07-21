@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Jobs\ProcessWaitlistJob;
 use App\Models\Booking;
+use App\Models\LoyaltyAccount;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\WaitlistEntry;
+use App\Support\LoyaltyTier;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -55,6 +57,9 @@ class WaitlistService
                 'user_id' => $userId,
                 'schedule_id' => $scheduleId,
                 'seat_count' => $seatCount,
+                // ล็อกลำดับไว้ตอนเข้าคิว — คนที่ต่อคิวไปแล้วจะไม่ถูกแซงเพราะ
+                // อีกคนเพิ่งขึ้นระดับทีหลัง
+                'priority' => LoyaltyTier::rank(LoyaltyAccount::tierForUser($userId)),
                 'status' => 'waiting',
             ]);
 
@@ -118,7 +123,9 @@ class WaitlistService
 
             $waitingEntries = WaitlistEntry::where('schedule_id', $scheduleId)
                 ->where('status', 'waiting')
+                ->orderByDesc('priority')
                 ->orderBy('created_at')
+                ->orderBy('id')
                 ->get();
 
             $notified = 0;
@@ -217,9 +224,23 @@ class WaitlistService
             return 0;
         }
 
+        // นับคนที่อยู่หน้าเรา: ระดับสูงกว่า หรือระดับเท่ากันแต่ต่อคิวก่อน
+        // ถ้าต่อคิววินาทีเดียวกันเป๊ะ ใช้ id ตัดสิน ไม่งั้นทั้งคู่จะได้ลำดับที่ 1
         return WaitlistEntry::where('schedule_id', $entry->schedule_id)
             ->where('status', 'waiting')
-            ->where('created_at', '<', $entry->created_at)
+            ->where(function ($q) use ($entry) {
+                $q->where('priority', '>', $entry->priority)
+                    ->orWhere(function ($same) use ($entry) {
+                        $same->where('priority', $entry->priority)
+                            ->where(function ($earlier) use ($entry) {
+                                $earlier->where('created_at', '<', $entry->created_at)
+                                    ->orWhere(function ($tie) use ($entry) {
+                                        $tie->where('created_at', $entry->created_at)
+                                            ->where('id', '<', $entry->id);
+                                    });
+                            });
+                    });
+            })
             ->count() + 1;
     }
 

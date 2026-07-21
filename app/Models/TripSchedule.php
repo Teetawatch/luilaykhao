@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Jobs\SendDriverAssignmentPushJob;
+use App\Support\LoyaltyTier;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -204,7 +205,13 @@ class TripSchedule extends Model
      * For 'amount' type, the configured value is per-person and is multiplied by passengerCount.
      * Returns null when deposit is not enabled or amount cannot be determined.
      */
-    public function resolveDepositAmount(float $totalAmount, int $passengerCount = 1): ?float
+    /**
+     * ยอดมัดจำของรอบนี้
+     *
+     * ระบุ $userId มาด้วยจะได้ส่วนลดมัดจำตามระดับสมาชิก — ลดเฉพาะ "ยอดที่ต้องวาง
+     * ก่อน" ไม่ได้ลดราคาทริป ส่วนที่เหลือไปรวมกับยอดคงค้างตามเดิม
+     */
+    public function resolveDepositAmount(float $totalAmount, int $passengerCount = 1, ?int $userId = null): ?float
     {
         if (! $this->deposit_enabled) {
             return null;
@@ -216,6 +223,15 @@ class TripSchedule extends Model
             $deposit = round((float) $this->deposit_amount * max(1, $passengerCount), 2);
         } else {
             return null;
+        }
+
+        $discountPercent = (int) LoyaltyTier::perk(
+            LoyaltyAccount::tierForUser($userId),
+            'deposit_discount_percent',
+        );
+
+        if ($discountPercent > 0) {
+            $deposit = round($deposit * (100 - $discountPercent) / 100, 2);
         }
 
         // Cap deposit at total amount, ensure positive
