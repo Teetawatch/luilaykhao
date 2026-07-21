@@ -207,43 +207,17 @@
               </div>
             </section>
 
-            <!-- Women-Only Benefits Section -->
-            <section v-if="trip.is_women_only" class="women-only-benefits bg-gradient-to-br from-pink-50 to-white px-8 md:px-12 py-10 rounded-[2.5rem] border border-pink-100 relative overflow-hidden">
-              <div class="absolute -right-16 -top-16 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl opacity-30"></div>
-              <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl opacity-30"></div>
-              <div class="relative z-10">
-                <div class="flex flex-col md:flex-row md:items-center gap-6 mb-10">
-                  <div class="w-20 h-20 rounded-3xl bg-pink-600 flex items-center justify-center text-white shrink-0">
-                    <span class="material-symbols-rounded text-5xl" style="font-variation-settings:'FILL' 1">female</span>
-                  </div>
-                  <div>
-                    <h3 class="text-3xl md:text-4xl font-extrabold text-pink-700 tracking-tight mb-2">เพื่อความอุ่นใจและปลอดภัยสูงสุดสำหรับผู้หญิง</h3>
-                    <p class="text-pink-600/80 font-bold text-lg">ทริปนี้พิเศษสำหรับคุณ (Women-Only Trip)</p>
-                  </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 transition-all hover:bg-white hover:-translate-y-1">
-                    <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
-                      <span class="material-symbols-rounded text-2xl">group</span>
-                    </div>
-                    <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">เพื่อนร่วมทริปหญิงล้วน</h4>
-                    <p class="text-sm text-gray-600 leading-relaxed font-bold">เดินทางร่วมกับกลุ่มผู้หญิงที่มีความชอบเหมือนกัน สบายใจได้ตลอดทั้งทริป</p>
-                  </div>
-                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 transition-all hover:bg-white hover:-translate-y-1">
-                    <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
-                      <span class="material-symbols-rounded text-2xl">verified_user</span>
-                    </div>
-                    <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">พื้นที่ส่วนตัวและปลอดภัย</h4>
-                    <p class="text-sm text-gray-600 leading-relaxed font-bold">ทุกรายละเอียดจัดการโดยเน้นความเป็นส่วนตัว (Privacy) สูงสุดสำหรับผู้หญิง</p>
-                  </div>
-                  <div class="bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-pink-100/50 transition-all hover:bg-white hover:-translate-y-1">
-                    <div class="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 mb-4 border border-pink-100">
-                      <span class="material-symbols-rounded text-2xl">favorite</span>
-                    </div>
-                    <h4 class="font-extrabold text-gray-900 text-lg mb-2 text-pink-700">มิตรภาพและรอยยิ้ม</h4>
-                    <p class="text-sm text-gray-600 leading-relaxed font-bold">แบ่งปันช่วงเวลาดีๆ ร่วมกับเพื่อนใหม่ในสังคมที่ดูแลกันอย่างอบอุ่นและใกล้ชิด</p>
-                  </div>
-                </div>
+            <!--
+              ทริปหญิงล้วน — บอกกติกาการรับสมัครของทริป ไม่ใช่คำโฆษณา
+              เดิมเป็นบล็อกไล่สี 3 การ์ด ("ปลอดภัยสูงสุด" / "มิตรภาพและรอยยิ้ม") ที่ผู้จัดไม่ได้เขียนเอง
+            -->
+            <section v-if="trip.is_women_only" class="flex items-start gap-3.5 bg-pink-50 px-6 py-5 rounded-[1.5rem] border border-pink-100">
+              <span class="material-symbols-rounded text-[22px] text-pink-600 shrink-0 mt-px" style="font-variation-settings:'FILL' 1">female</span>
+              <div>
+                <p class="font-extrabold text-pink-800 leading-snug">ทริปนี้รับเฉพาะผู้ร่วมทริปผู้หญิง</p>
+                <p class="text-sm font-medium text-pink-700/80 mt-1 leading-relaxed">
+                  ทุกที่นั่งในรอบนี้สงวนไว้สำหรับผู้หญิง หากมีเงื่อนไขอื่นของทริป ผู้จัดจะระบุไว้ในหัวข้อด้านล่าง
+                </p>
               </div>
             </section>
 
@@ -593,18 +567,17 @@
 
               <!-- Price Card -->
               <div id="booking-section" class="bg-white p-8 rounded-[2rem] border border-gray-100 relative overflow-hidden z-10">
-                <!-- Flash Sale banner -->
-                <div v-if="flashSchedule" class="mb-4 -mx-3 -mt-3 px-4 py-3 rounded-[1.25rem] bg-gradient-to-r from-[#EA580C] to-[#F97316] text-white">
+                <!-- ราคาลดตามช่วงเวลา — แบนเนอร์เรียบ ไม่ไล่สี ไม่ตะโกน นับถอยหลังเป็นข้อมูลว่าหมดเมื่อไร -->
+                <div v-if="flashSchedule" class="mb-4 px-3.5 py-2.5 rounded-[1rem] bg-[var(--color-sand)] border border-gray-200">
                   <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-1.5 font-black text-sm">
-                      <span class="material-symbols-rounded" style="font-size:18px;">bolt</span>
-                      Flash Sale
-                      <span v-if="flashSchedule.flash_sale.discount_percent > 0" class="ml-1 bg-white/25 rounded-md px-1.5 py-0.5 text-[11px]">
+                    <div class="flex items-center gap-1.5 text-[13px] font-extrabold text-[var(--color-text-dark)]">
+                      ราคาลดช่วงนี้
+                      <span v-if="flashSchedule.flash_sale.discount_percent > 0" class="text-[var(--color-text-muted)] font-bold">
                         -{{ flashSchedule.flash_sale.discount_percent }}%
                       </span>
                     </div>
-                    <div v-if="flashSchedule.flash_sale.ends_at" class="font-mono font-black text-sm tabular-nums tracking-tight">
-                      {{ flashCountdown(flashSchedule.flash_sale.ends_at) }}
+                    <div v-if="flashSchedule.flash_sale.ends_at" class="text-[12px] font-bold tabular-nums text-[var(--color-text-muted)]">
+                      ถึงอีก {{ flashCountdown(flashSchedule.flash_sale.ends_at) }}
                     </div>
                   </div>
                 </div>
@@ -623,7 +596,7 @@
                 </div>
 
                 <!-- Starting price -->
-                <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-1">เริ่มต้นเพียง</p>
+                <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-1">เริ่มต้น / ท่าน</p>
                 <div class="flex items-end gap-2 mb-2">
                   <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
                   <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-gray-400 text-xl pb-1.5 font-bold line-through decoration-2">
@@ -745,10 +718,10 @@
                         </label>
                       </div>
                       <p class="text-sm font-bold text-[var(--color-text-muted)] mt-1 leading-relaxed">
-                        เลือกเดินทางเอง ไม่ต้องเลือกที่นั่งบนผัง จ่ายเงินแล้วรอรับ QR Code เพื่อเช็คอินได้ทันที
+                        เลือกเดินทางเอง ไม่ต้องเลือกที่นั่งบนผัง จะได้ QR Code สำหรับเช็คอินหลังทีมงานยืนยันการชำระเงิน
                       </p>
                       <div class="mt-3 flex items-center gap-2">
-                        <span class="text-[11px] font-black uppercase text-gray-400">ราคาพิเศษ:</span>
+                        <span class="text-[11px] font-black uppercase text-gray-400">ราคา:</span>
                         <span class="text-xl font-black text-emerald-600">฿{{ Number(selectedSchedule.join_trip_price || selectedSchedule.price || trip.price_per_person).toLocaleString() }}</span>
                       </div>
                     </div>
@@ -899,42 +872,47 @@
                   <p class="text-sm font-bold text-gray-500">{{ isTrekking ? (selectedRegion ? 'โปรดเลือกวันเดินทาง' : 'โปรดเลือกภูมิภาคก่อน') : 'โปรดเลือกวันเดินทางเพื่อจอง' }}</p>
                 </div>
 
-                <!-- Trust badges -->
-                <div class="mt-6 pt-6 border-t border-gray-100 grid grid-cols-3 gap-2 text-center">
-                  <div class="flex flex-col items-center gap-1.5">
-                    <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]">bolt</span>
-                    <span class="text-[11px] font-black text-[var(--color-text-mid)] leading-tight">ยืนยันทันที</span>
+                <!--
+                  วิธีจ่ายจริงของระบบ ไม่ใช่ตรารับรอง
+                  — เดิมตรงนี้เขียน "ยืนยันทันที" (ที่จริง booking เป็น pending รอตรวจสลิป),
+                    "ชำระปลอดภัย" (ไม่มี gateway มีแต่โอนบัญชี) และ "มีประกันเดินทาง"
+                    (ไม่มีข้อมูลประกันในระบบเลย) — ทั้งสามอันไม่ตรงกับที่ระบบทำได้
+                -->
+                <div class="mt-6 pt-6 border-t border-gray-100 space-y-2.5">
+                  <div class="flex items-start gap-2.5">
+                    <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)] mt-px">qr_code_2</span>
+                    <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug">จ่ายด้วย PromptPay แล้วอัปโหลดสลิป</span>
                   </div>
-                  <div class="flex flex-col items-center gap-1.5">
-                    <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]">encrypted</span>
-                    <span class="text-[11px] font-black text-[var(--color-text-mid)] leading-tight">ชำระปลอดภัย</span>
+                  <div class="flex items-start gap-2.5">
+                    <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)] mt-px">fact_check</span>
+                    <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug">ที่นั่งยืนยันหลังทีมงานตรวจสลิป ไม่ใช่ทันทีที่กดจอง</span>
                   </div>
-                  <div class="flex flex-col items-center gap-1.5">
-                    <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]">health_and_safety</span>
-                    <span class="text-[11px] font-black text-[var(--color-text-mid)] leading-tight">มีประกันเดินทาง</span>
-                  </div>
+                  <button
+                    type="button"
+                    @click="scrollToPageSection('included')"
+                    class="flex items-start gap-2.5 text-left w-full group"
+                  >
+                    <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)] mt-px">policy</span>
+                    <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug group-hover:text-[var(--color-accent)] transition-colors">
+                      อ่านสิ่งที่รวม/ไม่รวม และเงื่อนไขการยกเลิกก่อนจอง
+                    </span>
+                  </button>
                 </div>
               </div>
 
-              <!-- Urgency Card — แสดงเฉพาะรอบที่ใกล้จะถึงที่สุด -->
-              <div
-                v-if="urgentSchedule"
-                class="relative overflow-hidden bg-[#FFF8EE] p-5 rounded-[1.5rem] border border-[#C8963E]/30 animate-fade-in-up"
-              >
-                <div class="flex items-center gap-4">
-                  <div class="w-12 h-12 rounded-full bg-[#C8963E] flex items-center justify-center text-white shrink-0">
-                    <span class="material-symbols-rounded text-[24px]">local_fire_department</span>
-                  </div>
+              <!--
+                ที่นั่งคงเหลือของรอบที่ใกล้ที่สุด — บอกเป็นข้อเท็จจริงเฉย ๆ
+                เดิมเป็นการ์ด "จองด่วน!" ไอคอนไฟ + "ที่นั่งสุดท้าย" ซึ่งเป็นการเร่ง ไม่ใช่การบอกข้อมูล
+              -->
+              <div v-if="urgentSchedule" class="p-5 rounded-[1.5rem] border border-gray-100 bg-white">
+                <div class="flex items-center gap-3.5">
+                  <span class="material-symbols-rounded text-[22px] text-[var(--color-text-muted)] shrink-0">event_seat</span>
                   <div class="min-w-0">
-                    <div class="flex items-center gap-2 mb-0.5">
-                      <p class="font-extrabold text-[var(--color-text-dark)] text-base leading-none">จองด่วน!</p>
-                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#C8963E]/15 text-[11px] font-bold text-[#A87830]">
-                        <span class="material-symbols-rounded text-[12px]">calendar_today</span>
-                        {{ formatDate(urgentSchedule.departure_date) }}
-                      </span>
-                    </div>
-                    <p class="text-sm font-bold text-[#A87830]">
-                      เหลือเพียง {{ urgentSchedule.available_seats }} ที่นั่งสุดท้าย
+                    <p class="text-sm font-extrabold text-[var(--color-text-dark)] leading-snug">
+                      รอบ {{ formatDate(urgentSchedule.departure_date) }} เหลือ {{ urgentSchedule.available_seats }} ที่นั่ง
+                    </p>
+                    <p class="text-xs font-medium text-[var(--color-text-muted)] mt-0.5">
+                      ถ้าเต็มก่อน เข้าคิวรอที่นั่งได้ ไม่ต้องจ่ายล่วงหน้า
                     </p>
                   </div>
                 </div>
