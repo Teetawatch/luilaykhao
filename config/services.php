@@ -91,6 +91,10 @@ return [
 
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
+        // รุ่นที่ใช้ตอบคำถาม "ทริปไหนเหมาะกับฉัน" — เลือก haiku เพราะงานนี้เป็นการ
+        // จับคู่คำถามกับแคตตาล็อกที่ส่งไปให้แล้ว ไม่ต้องใช้การให้เหตุผลระดับ opus
+        // ยกระดับเป็น claude-sonnet-5 ได้ถ้าพบว่าคำแนะนำยังไม่ตรงพอ
+        'concierge_model' => env('ANTHROPIC_CONCIERGE_MODEL', 'claude-haiku-4-5'),
     ],
 
     'thaibulksms' => [

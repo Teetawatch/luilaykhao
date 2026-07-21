@@ -74,6 +74,13 @@ return Application::configure(basePath: dirname(__DIR__))
             return Limit::perMinute(30)->by($key);
         });
 
+        // AI ผู้ช่วยวางทริป — ทุกคำถามเสียเงินค่า API จริง จึงคุมให้แน่นกว่าปกติ
+        RateLimiter::for('concierge', function (Request $request) {
+            $key = ($request->user()?->id ?? $request->ip());
+
+            return Limit::perMinute(6)->by($key);
+        });
+
         // General API — fallback สำหรับ public endpoints
         RateLimiter::for('api', function (Request $request) {
             return $request->user()

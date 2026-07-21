@@ -6,6 +6,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicPaymentController;
+use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\SlipController;
 use App\Models\Article;
@@ -40,6 +41,17 @@ Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
 Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+
+// โปรไฟล์นักเดินทางสาธารณะ — server-rendered เพื่อให้บ็อตแชร์อ่าน OG meta ได้
+// (ต้องมาก่อน SPA catch-all) การ์ด OG ลงท้าย .png จึงจดก่อนตัว {handle}
+Route::get('/u/{handle}/og.png', [PublicProfileController::class, 'ogImage'])
+    ->where('handle', '[a-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('public.profile.og');
+Route::get('/u/{handle}', [PublicProfileController::class, 'show'])
+    ->where('handle', '[a-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('public.profile.show');
 
 // Live Share Link — standalone tracking page (must be before the SPA catch-all)
 Route::get('/track/{token}', function (string $token) {

@@ -40,6 +40,26 @@ const routes = [
     }
   },
   {
+    path: '/assistant',
+    name: 'assistant',
+    component: () => import('../pages/AssistantPage.vue'),
+    meta: {
+      title: 'ถามหาทริปที่ใช่ | ผู้ช่วยวางทริปลุยเลเขา',
+      description: 'บอกงบ จำนวนวัน และระดับที่ไหว แล้วให้ผู้ช่วยหาทริปที่เปิดจองอยู่จริงมาให้',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/explore',
+    name: 'explore-map',
+    component: () => import('../pages/ExploreMapPage.vue'),
+    meta: {
+      title: 'สำรวจทริปบนแผนที่ | ดูว่าทริปไหนอยู่ตรงไหนของไทย',
+      description: 'เลือกทริปจากตำแหน่งจริงบนแผนที่ประเทศไทย กรองตามภูมิภาค ระดับความยาก และเดือนที่อยากไป',
+      ogType: 'website'
+    }
+  },
+  {
     path: '/trips/:slug',
     name: 'trip-detail',
     component: () => import('../pages/TripDetailPage.vue'),

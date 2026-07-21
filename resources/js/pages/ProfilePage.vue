@@ -622,6 +622,67 @@
             </div>
           </div>
 
+          <!-- ─── TAB: โปรไฟล์สาธารณะ ─── -->
+          <div v-if="activeTab === 'public'" class="bg-white p-8 md:p-12 rounded-[2.5rem] border border-gray-100">
+            <div class="mb-10 pb-8 border-b border-gray-100">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-primary)]">
+                  <span class="material-symbols-rounded text-[24px]">public</span>
+                </div>
+                <h2 class="text-3xl font-black text-[var(--color-text-dark)] tracking-tight">โปรไฟล์สาธารณะ</h2>
+              </div>
+              <p class="text-[var(--color-text-muted)] font-medium ml-13">
+                เปลี่ยนสถิติการเดินทางของคุณให้เป็นหน้าเว็บที่แชร์ให้เพื่อนดูได้ — ทริปที่เดินจบ ระยะทางสะสม ตราที่ปลดล็อก และรูปจากรีวิวของคุณ
+              </p>
+            </div>
+
+            <div class="max-w-xl space-y-6">
+              <label class="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer transition-colors"
+                     :class="publicProfile.enabled ? 'border-[var(--color-primary)] bg-[var(--color-sand)]' : 'border-gray-200'">
+                <input type="checkbox" v-model="publicProfile.enabled" class="mt-1 w-5 h-5 accent-[var(--color-primary)]">
+                <span>
+                  <span class="block font-bold text-[var(--color-text-dark)]">เปิดให้คนอื่นดูโปรไฟล์ได้</span>
+                  <span class="block text-sm text-[var(--color-text-muted)] mt-1">
+                    ปิดอยู่ = ไม่มีใครเปิดลิงก์ได้เลย ข้อมูลส่วนตัวอย่างอีเมล เบอร์โทร และการจองจะไม่ถูกแสดงไม่ว่ากรณีใด
+                  </span>
+                </span>
+              </label>
+
+              <div>
+                <label class="block text-sm font-bold text-[var(--color-text-dark)] mb-2">แนะนำตัวสั้น ๆ</label>
+                <input
+                  v-model="publicProfile.bio"
+                  type="text"
+                  maxlength="160"
+                  placeholder="เช่น เดินป่ามา 3 ปี ยังไม่เข็ด"
+                  class="w-full px-5 py-3.5 rounded-2xl border border-gray-200 focus:border-[var(--color-primary)] outline-none font-medium"
+                >
+                <p class="text-xs text-[var(--color-text-muted)] mt-2">{{ (publicProfile.bio || '').length }}/160</p>
+              </div>
+
+              <div v-if="publicProfile.url" class="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                <p class="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)] mb-2">ลิงก์โปรไฟล์ของคุณ</p>
+                <div class="flex items-center gap-3 flex-wrap">
+                  <a :href="publicProfile.url" target="_blank" rel="noopener"
+                     class="font-bold text-[var(--color-primary)] break-all">{{ publicProfile.url }}</a>
+                  <button type="button" @click="copyPublicUrl"
+                          class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-bold shrink-0">
+                    {{ copiedPublicUrl ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์' }}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                @click="savePublicProfile"
+                :disabled="savingPublicProfile"
+                class="px-8 py-3.5 rounded-2xl bg-[var(--color-primary)] text-white font-bold disabled:opacity-60"
+              >
+                {{ savingPublicProfile ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}
+              </button>
+            </div>
+          </div>
+
           <!-- ─── TAB: ความปลอดภัย ─── -->
           <div v-if="activeTab === 'security'" class="bg-white p-8 md:p-12 rounded-[2.5rem] border border-gray-100">
             <div class="mb-12 pb-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -785,9 +846,14 @@ const showPasswordConfirm = ref(false);
 
 const tabs = [
   { key: 'info',     label: 'ข้อมูลส่วนตัว', icon: 'person'   },
+  { key: 'public',   label: 'โปรไฟล์สาธารณะ', icon: 'public'   },
   { key: 'security', label: 'ความปลอดภัย',   icon: 'security' },
   { key: 'logout',   label: 'ออกจากระบบ',    icon: 'logout'   },
 ];
+
+const publicProfile = ref({ enabled: false, handle: null, bio: '', url: null });
+const savingPublicProfile = ref(false);
+const copiedPublicUrl = ref(false);
 
 const loyaltyPoints   = ref(null);
 const loyaltyTierLabel = ref('');
@@ -992,12 +1058,47 @@ async function fetchLoyalty() {
   } catch {}
 }
 
+async function fetchPublicProfile() {
+  try {
+    const res = await api.get('/me/public-profile');
+    const data = res.data?.data;
+    if (data) publicProfile.value = { ...publicProfile.value, ...data };
+  } catch {}
+}
+
+async function savePublicProfile() {
+  savingPublicProfile.value = true;
+  error.value = '';
+  success.value = '';
+  try {
+    const res = await api.put('/me/public-profile', {
+      enabled: publicProfile.value.enabled,
+      bio: publicProfile.value.bio || null,
+    });
+    publicProfile.value = { ...publicProfile.value, ...(res.data?.data || {}) };
+    success.value = res.data?.message || 'บันทึกแล้ว';
+  } catch (e) {
+    error.value = e?.response?.data?.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่';
+  } finally {
+    savingPublicProfile.value = false;
+  }
+}
+
+async function copyPublicUrl() {
+  try {
+    await navigator.clipboard.writeText(publicProfile.value.url);
+    copiedPublicUrl.value = true;
+    setTimeout(() => { copiedPublicUrl.value = false; }, 2000);
+  } catch {}
+}
+
 onMounted(() => {
   if (!auth.isLoggedIn) {
     router.push('/login');
     return;
   }
   fetchLoyalty();
+  fetchPublicProfile();
 });
 </script>
 

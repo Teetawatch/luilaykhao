@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatController;
+use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
@@ -28,10 +29,12 @@ use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\Api\V1\PublicArticleController;
+use App\Http\Controllers\Api\V1\PublicProfileSettingsController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleItineraryController;
+use App\Http\Controllers\Api\V1\ScheduleRallyController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
@@ -39,10 +42,9 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
-use App\Http\Controllers\Api\V1\ScheduleRallyController;
+use App\Http\Controllers\Api\V1\TripPostController;
 use App\Http\Controllers\Api\V1\TripProgressController;
 use App\Http\Controllers\Api\V1\TripReadinessController;
-use App\Http\Controllers\Api\V1\TripPostController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\WaitlistController;
 use Illuminate\Support\Facades\Broadcast;
@@ -78,6 +80,8 @@ Route::prefix('v1')->group(function () {
     Route::middleware('throttle:api')->group(function () {
         Route::get('trips', [TripController::class, 'index']);
         Route::get('trips/featured', [TripController::class, 'featured']);
+        // หมุดทุกทริปสำหรับหน้าแผนที่สำรวจ (โหลดครั้งเดียว ไม่แบ่งหน้า)
+        Route::get('trips/map', [TripController::class, 'map']);
         Route::get('trips/almost-full', [TripController::class, 'almostFull']);
         Route::get('trips/flash-sale', [TripController::class, 'flashSale']);
         Route::get('trips/urgent-popup', [TripController::class, 'urgentPopup']);
@@ -105,6 +109,9 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/{slug}/posts', [TripPostController::class, 'tripIndex']);
         Route::get('trip-posts/{postId}/comments', [TripPostController::class, 'comments']);
     });
+
+    // AI ผู้ช่วยวางทริป — ถามเป็นภาษาคนแล้วได้ทริปจริงที่เปิดจองอยู่
+    Route::post('concierge', [ConciergeController::class, 'ask'])->middleware('throttle:concierge');
 
     // Categories (public)
     Route::get('categories', [CategoryController::class, 'index']);
@@ -139,6 +146,10 @@ Route::prefix('v1')->group(function () {
 
         // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
         Route::get('me/passport', [PassportController::class, 'show']);
+
+        // โปรไฟล์นักเดินทางสาธารณะ — เจ้าตัวเปิด/ปิดและตั้งคำแนะนำตัวเอง
+        Route::get('me/public-profile', [PublicProfileSettingsController::class, 'show']);
+        Route::put('me/public-profile', [PublicProfileSettingsController::class, 'update']);
 
         // ค่าอ้างอิงที่ผู้ใช้กรอกเอง สำหรับประเมิน "ทริปนี้ไหวไหม" ก่อนมีประวัติ
         Route::post('me/hiking-baseline', [TripReadinessController::class, 'updateBaseline']);

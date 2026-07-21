@@ -8,6 +8,8 @@ use App\Http\Resources\TripScheduleResource;
 use App\Models\BookingPassenger;
 use App\Models\Trip;
 use App\Services\WeatherService;
+use App\Support\MediaDisk;
+use App\Support\ThaiDate;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -80,6 +82,62 @@ class TripController extends Controller
         $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->paginated($trips->through(fn ($trip) => new TripResource($trip)));
+    }
+
+    /**
+     * ทริปทั้งหมดที่ปักหมุดบนแผนที่ได้ — payload บางกว่า index() มาก เพราะหน้าแผนที่
+     * ต้องโหลดทุกหมุดพร้อมกันในครั้งเดียว ไม่ได้แบ่งหน้า จึงคืนเฉพาะสิ่งที่ป้ายหมุด
+     * และการ์ดสรุปต้องใช้จริง ๆ. ทริปที่ยังไม่มีพิกัดถูกตัดออก เพราะปักไม่ได้อยู่ดี.
+     */
+    public function map(): JsonResponse
+    {
+        $trips = Cache::remember('trips-map', now()->addMinutes(10), function () {
+            return Trip::where('status', 'active')
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->with(['schedules' => function ($q) {
+                    $q->where('status', 'open')
+                        ->where('departure_date', '>=', now('Asia/Bangkok')->startOfDay())
+                        ->orderBy('departure_date');
+                }])
+                ->get()
+                ->map(function (Trip $trip) {
+                    $upcoming = $trip->schedules;
+                    $next = $upcoming->first();
+
+                    return [
+                        'id' => $trip->id,
+                        'title' => $trip->title,
+                        'slug' => $trip->slug,
+                        'location' => $trip->location,
+                        'region' => $trip->region,
+                        'type' => $trip->type,
+                        'difficulty' => $trip->difficulty,
+                        'duration_days' => $trip->duration_days,
+                        'cover_image' => MediaDisk::url($trip->thumbnail_image ?: $trip->cover_image),
+                        'latitude' => (float) $trip->latitude,
+                        'longitude' => (float) $trip->longitude,
+                        // ราคาที่โชว์บนหมุดคือราคาถูกที่สุดที่จองได้จริงในรอบข้างหน้า
+                        'price_from' => (float) ($upcoming
+                            ->map(fn ($schedule) => $schedule->effective_price)
+                            ->min() ?? $trip->price_per_person),
+                        'upcoming_count' => $upcoming->count(),
+                        'next_departure' => $next?->departure_date?->toDateString(),
+                        'next_departure_label' => $next?->departure_date
+                            ? ThaiDate::short($next->departure_date)
+                            : null,
+                        // เดือนที่มีรอบเปิด (1–12) ใช้กรอง "ไปเดือนไหนดี" ฝั่งหน้าเว็บ
+                        'months' => $upcoming
+                            ->map(fn ($schedule) => (int) $schedule->departure_date->format('n'))
+                            ->unique()
+                            ->values()
+                            ->all(),
+                    ];
+                })
+                ->values();
+        });
+
+        return $this->success($trips);
     }
 
     public function featured(): JsonResponse
