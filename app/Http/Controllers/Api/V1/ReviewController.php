@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Review;
 use App\Support\MediaDisk;
+use App\Support\ThaiDate;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,9 @@ use Illuminate\Support\Str;
 class ReviewController extends Controller
 {
     use ApiResponse;
+
+    /** เพดานจำนวนรีวิวที่ดึงมาแตกเป็นรูป — flatMap ทำในหน่วยความจำ จึงต้องมีขอบ */
+    private const PHOTO_REVIEW_LIMIT = 500;
 
     public function index(Request $request): JsonResponse
     {
@@ -81,26 +85,50 @@ class ReviewController extends Controller
     public function photos(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'trip_id' => ['required', 'integer', 'exists:trips,id'],
+            // ไม่บังคับ trip_id — ถ้าไม่ส่งมาคือดึงรูปจริงจากทุกทริป (กำแพงรูปหน้า /gallery)
+            'trip_id' => ['nullable', 'integer', 'exists:trips,id'],
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:60'],
         ]);
 
-        $reviews = Review::with('user')
-            ->where('trip_id', $validated['trip_id'])
+        $reviews = Review::with(['user', 'trip:id,title,slug,location', 'booking.schedule:id,departure_date'])
             ->where('is_approved', true)
             ->whereNotNull('images')
+            ->when(isset($validated['trip_id']), fn ($q) => $q->where('trip_id', $validated['trip_id']))
             ->orderByDesc('created_at')
+            ->limit(self::PHOTO_REVIEW_LIMIT)
             ->get();
 
-        $photos = $reviews->flatMap(fn (Review $r) => collect($r->images ?? [])->map(fn ($url) => [
-            'url' => $url,
-            'review_id' => $r->id,
-            'rating' => $r->rating,
-            'user_name' => $r->user?->name ?? 'ไม่ระบุชื่อ',
-            'user_avatar' => $r->user?->avatar_url,
-            'created_at' => $r->created_at?->toISOString(),
-        ]))->values();
+        // เดือนที่ "ไปจริง" คือวันออกเดินทางของรอบที่จอง ไม่ใช่วันที่เขียนรีวิว
+        $travelDateOf = fn (Review $r) => $r->booking?->schedule?->departure_date ?? $r->created_at;
+
+        if (isset($validated['month'])) {
+            $reviews = $reviews->filter(fn (Review $r) => (int) $travelDateOf($r)?->month === (int) $validated['month']);
+        }
+
+        $photos = $reviews
+            ->sortByDesc(fn (Review $r) => $travelDateOf($r))
+            ->flatMap(function (Review $r) use ($travelDateOf) {
+                $travelDate = $travelDateOf($r);
+
+                return collect($r->images ?? [])->map(fn ($url) => [
+                    'url' => $url,
+                    'review_id' => $r->id,
+                    'rating' => $r->rating,
+                    'user_name' => $r->user?->name ?? 'ไม่ระบุชื่อ',
+                    'user_avatar' => $r->user?->avatar_url,
+                    'created_at' => $r->created_at?->toISOString(),
+                    'trip_id' => $r->trip_id,
+                    'trip_title' => $r->trip?->title,
+                    'trip_slug' => $r->trip?->slug,
+                    'location' => $r->trip?->location,
+                    'travel_date' => $travelDate?->toDateString(),
+                    'travel_month' => $travelDate ? (int) $travelDate->month : null,
+                    'travel_month_label' => $travelDate ? ThaiDate::monthYear($travelDate) : null,
+                ]);
+            })
+            ->values();
 
         $perPage = (int) ($validated['per_page'] ?? 24);
         $page = (int) ($validated['page'] ?? 1);

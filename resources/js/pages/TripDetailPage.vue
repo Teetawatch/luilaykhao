@@ -832,6 +832,39 @@
                 <!-- พยากรณ์อากาศวันเดินทาง (แสดงเมื่อ backend แนบมากับรอบที่เลือก) -->
                 <WeatherBadge v-if="selectedSchedule?.weather" :weather="selectedSchedule.weather" class="mb-8" />
 
+                <!--
+                  รูปจริงจากรอบที่ไป "เดือนเดียวกัน" กับรอบที่เลือก
+                  — ตอบคำถามที่รูปโปรโมทตอบไม่ได้: เดือนนี้ฟ้าเป็นยังไง คนเยอะไหม ใส่อะไรกัน
+                -->
+                <div v-if="monthPhotos.length" class="mb-8 p-5 rounded-[1.25rem] border border-gray-100 bg-[var(--color-sand)]">
+                  <div class="flex items-start gap-2.5 mb-4">
+                    <span class="material-symbols-rounded text-[var(--color-text-muted)] text-[18px] mt-0.5">calendar_month</span>
+                    <div>
+                      <p class="text-sm font-extrabold text-[var(--color-text-dark)] leading-tight">
+                        เดือน{{ selectedScheduleMonthName }}ที่ผ่านมา ที่นี่เป็นแบบนี้
+                      </p>
+                      <p class="text-xs font-medium text-[var(--color-text-muted)] mt-0.5">
+                        รูปจากคนที่ไปรอบเดือนเดียวกัน ไม่ได้ผ่านการคัดของทีมงาน
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="flex gap-2.5 overflow-x-auto -mx-1 px-1 pb-1 snap-x">
+                    <button
+                      v-for="(photo, idx) in monthPhotos"
+                      :key="`month-${photo.review_id}-${idx}`"
+                      type="button"
+                      @click="openMonthImage(idx)"
+                      class="relative shrink-0 w-28 h-28 rounded-2xl overflow-hidden border border-gray-200 snap-start active:scale-95 transition-transform"
+                    >
+                      <img :src="photo.url" loading="lazy" class="w-full h-full object-cover" />
+                      <span class="absolute inset-x-0 bottom-0 bg-black/55 text-white text-[10px] font-bold py-1 px-1.5 truncate text-left">
+                        {{ photo.travel_month_label }}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <!-- ── Book Now ── -->
                 <div v-if="selectedSchedule">
                   <router-link
@@ -1681,7 +1714,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
@@ -1873,6 +1906,8 @@ const albumLoadingMore = ref(false);
 const ALBUM_PER_PAGE = 24;
 const ALBUM_INITIAL_VISIBLE = 12;
 const visibleAlbumCount = ref(ALBUM_INITIAL_VISIBLE);
+const monthPhotos = ref([]);
+const MONTH_PHOTOS_LIMIT = 12;
 const showReviewImageModal = ref(false);
 const reviewImageModalImages = ref([]);
 const reviewImageModalIndex = ref(0);
@@ -2387,6 +2422,9 @@ function selectSchedule(s) {
   }
 }
 
+// รอบถูกเลือกได้หลายทาง (กด / auto-select) จึงเฝ้าที่ค่าวันเดินทางแทนการเรียกใน selectSchedule
+watch(() => selectedSchedule.value?.departure_date, fetchMonthPhotos);
+
 function selectPickup(pt) {
   selectedPickup.value = selectedPickup.value?.id === pt.id ? null : pt;
 }
@@ -2557,6 +2595,37 @@ const albumCanShowMore = computed(
 
 function openAlbumImage(index) {
   openReviewImage(albumPhotos.value.map((p) => p.url), index);
+}
+
+// ชื่อเดือนมาจาก label ที่ backend ส่งมา ("กรกฎาคม 2568") จะได้ไม่ต้องมีตารางเดือนไทยซ้ำอีกชุด
+const selectedScheduleMonthName = computed(
+  () => monthPhotos.value[0]?.travel_month_label?.split(' ')[0] || '',
+);
+
+function openMonthImage(index) {
+  openReviewImage(monthPhotos.value.map((p) => p.url), index);
+}
+
+async function fetchMonthPhotos() {
+  const departure = selectedSchedule.value?.departure_date;
+  if (!trip.value?.id || !departure) {
+    monthPhotos.value = [];
+    return;
+  }
+  const month = Number(String(departure).slice(5, 7));
+  if (!month) {
+    monthPhotos.value = [];
+    return;
+  }
+  try {
+    const res = await api.get('/reviews/photos', {
+      params: { trip_id: trip.value.id, month, per_page: MONTH_PHOTOS_LIMIT },
+    });
+    monthPhotos.value = res.data.data?.photos || [];
+  } catch (error) {
+    console.error('Failed to fetch same-month review photos:', error);
+    monthPhotos.value = [];
+  }
 }
 
 function openReviewImage(images, index) {

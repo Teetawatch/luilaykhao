@@ -3,16 +3,16 @@
     <!-- Hero -->
     <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
       <div class="absolute inset-0">
-        <img src="/images/landscape.webp" alt="ภาพประทับใจ" class="w-full h-full object-cover" />
+        <img src="/images/landscape.webp" alt="รูปจากคนที่ไปมาแล้ว" class="w-full h-full object-cover" />
         <div class="absolute inset-0 bg-black/40"></div>
       </div>
       <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
         <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
         <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
-          ภาพประทับใจ
+          รูปจากคนที่ไปมาแล้ว
         </h1>
         <p class="text-lg md:text-xl text-white/80 font-bold max-w-2xl mx-auto tracking-wide">
-          เก็บทุกช่วงเวลาความประทับใจจากการเดินทางไปกับลุยเลเขา
+          ทุกรูปในหน้านี้ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว ทีมงานไม่ได้คัดออก
         </p>
       </div>
     </section>
@@ -23,7 +23,7 @@
         <!-- Loading -->
         <div v-if="loading" class="text-center py-24">
           <div class="w-14 h-14 border-4 border-white border-t-[var(--color-accent)] rounded-full animate-spin mx-auto"></div>
-          <p class="mt-6 text-[var(--color-text-dark)] font-extrabold">กำลังโหลดภาพประทับใจ...</p>
+          <p class="mt-6 text-[var(--color-text-dark)] font-extrabold">กำลังโหลดรูป...</p>
         </div>
 
         <!-- Error -->
@@ -40,40 +40,52 @@
         <!-- Empty -->
         <div v-else-if="images.length === 0" class="text-center py-20 bg-white rounded-[2rem] border border-dashed border-[var(--color-sand-dark)]">
           <span class="material-symbols-rounded text-5xl text-[var(--color-text-muted)] mb-4">photo_library</span>
-          <h3 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-2">ยังไม่มีภาพในแกลเลอรี</h3>
-          <p class="text-[var(--color-text-muted)] font-medium">เรากำลังคัดสรรภาพความประทับใจมาให้ชมเร็วๆ นี้</p>
+          <h3 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-2">ยังไม่มีรูปจากผู้ร่วมทริป</h3>
+          <p class="text-[var(--color-text-muted)] font-medium">รูปจะขึ้นที่นี่เมื่อมีคนกลับจากทริปแล้วรีวิวพร้อมแนบรูป</p>
         </div>
 
-        <!-- Masonry grid -->
-        <div v-else class="gallery-masonry">
-          <button
-            v-for="(image, index) in images"
-            :key="image.id"
-            type="button"
-            class="gallery-item group"
-            @click="openLightbox(index)"
-          >
-            <img
-              :src="image.image_url"
-              :alt="image.caption || 'ภาพประทับใจลุยเลเขา'"
-              loading="lazy"
-              class="gallery-img block transition-transform duration-500 group-hover:scale-[1.04]"
-            />
-            <div
-              v-if="image.caption || image.location"
-              class="gallery-caption"
+        <template v-else>
+          <!-- ที่มาของรูป — บอกตรง ๆ ว่านี่ไม่ใช่รูปที่ทีมงานคัดมา -->
+          <p class="text-center text-sm font-bold text-[var(--color-text-muted)] mb-8">
+            {{ total.toLocaleString() }} รูป จากรีวิวของผู้ร่วมทริป · เรียงตามวันที่ไปล่าสุด
+          </p>
+
+          <!-- Justified rows -->
+          <div class="gallery-masonry">
+            <button
+              v-for="(image, index) in images"
+              :key="`${image.review_id}-${index}`"
+              type="button"
+              class="gallery-item group"
+              @click="openLightbox(index)"
             >
-              <p v-if="image.caption" class="text-white font-extrabold text-sm leading-snug">{{ image.caption }}</p>
-              <p v-if="image.location" class="text-white/85 text-xs font-bold flex items-center gap-1 mt-0.5">
-                <span class="material-symbols-rounded text-[14px]">location_on</span>
-                {{ image.location }}
-              </p>
-            </div>
-            <span class="gallery-zoom">
-              <span class="material-symbols-rounded text-[18px]">zoom_in</span>
-            </span>
-          </button>
-        </div>
+              <img
+                :src="image.url"
+                :alt="`รูปจาก ${image.user_name} ทริป${image.trip_title}`"
+                loading="lazy"
+                class="gallery-img block transition-transform duration-500 group-hover:scale-[1.04]"
+              />
+              <div class="gallery-caption">
+                <p class="text-white font-extrabold text-sm leading-snug truncate">{{ image.trip_title }}</p>
+                <p class="text-white/85 text-xs font-bold mt-0.5 truncate">
+                  {{ image.user_name }} · ไปเมื่อ {{ image.travel_month_label }}
+                </p>
+              </div>
+            </button>
+          </div>
+
+          <div v-if="hasMore" class="mt-10 text-center">
+            <button
+              @click="loadMore"
+              :disabled="loadingMore"
+              class="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-[var(--color-accent)]/25 text-[var(--color-accent)] font-extrabold text-sm hover:bg-[var(--color-accent)] hover:text-white hover:border-[var(--color-accent)] transition-all disabled:opacity-50 active:scale-95"
+            >
+              <span v-if="loadingMore" class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+              <span v-else class="material-symbols-rounded text-[18px]">expand_more</span>
+              {{ loadingMore ? 'กำลังโหลด...' : 'ดูรูปเพิ่ม' }}
+            </button>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -88,13 +100,20 @@
         </button>
 
         <figure class="lightbox-figure">
-          <img :src="currentImage.image_url" :alt="currentImage.caption || 'ภาพประทับใจ'" class="lightbox-img" />
-          <figcaption v-if="currentImage.caption || currentImage.location" class="lightbox-caption">
-            <p v-if="currentImage.caption" class="text-white font-extrabold text-base">{{ currentImage.caption }}</p>
-            <p v-if="currentImage.location" class="text-white/80 text-sm font-bold flex items-center justify-center gap-1 mt-1">
-              <span class="material-symbols-rounded text-[16px]">location_on</span>
-              {{ currentImage.location }}
+          <img :src="currentImage.url" :alt="`รูปจาก ${currentImage.user_name}`" class="lightbox-img" />
+          <figcaption class="lightbox-caption">
+            <p class="text-white font-extrabold text-base">
+              {{ currentImage.user_name }} · ไปเมื่อ {{ currentImage.travel_month_label }}
             </p>
+            <router-link
+              v-if="currentImage.trip_slug"
+              :to="`/trips/${currentImage.trip_slug}`"
+              class="inline-flex items-center gap-1 text-white/80 text-sm font-bold mt-1 hover:text-white"
+              @click="closeLightbox"
+            >
+              <span class="material-symbols-rounded text-[16px]">location_on</span>
+              {{ currentImage.trip_title }}<span v-if="currentImage.location"> · {{ currentImage.location }}</span>
+            </router-link>
           </figcaption>
         </figure>
 
@@ -112,23 +131,54 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import api from '../lib/axios';
 
+const PER_PAGE = 48;
+
 const images = ref([]);
+const total = ref(0);
+const page = ref(1);
+const hasMore = ref(false);
 const loading = ref(true);
+const loadingMore = ref(false);
 const error = ref('');
 const lightboxIndex = ref(null);
 
-const currentImage = computed(() => (lightboxIndex.value !== null ? images.value[lightboxIndex.value] : {}));
+const currentImage = computed(() => (lightboxIndex.value !== null ? images.value[lightboxIndex.value] ?? {} : {}));
+
+// ไม่ส่ง trip_id = ขอรูปรีวิวจริงจากทุกทริป
+const fetchPage = async (target) => {
+  const res = await api.get('/reviews/photos', { params: { page: target, per_page: PER_PAGE } });
+  return res.data.data ?? {};
+};
 
 const fetchImages = async () => {
   loading.value = true;
   error.value = '';
+  page.value = 1;
   try {
-    const res = await api.get('/gallery');
-    images.value = res.data.data ?? res.data ?? [];
+    const payload = await fetchPage(1);
+    images.value = payload.photos ?? [];
+    total.value = payload.total ?? images.value.length;
+    hasMore.value = Boolean(payload.has_more);
   } catch (e) {
     error.value = e.response?.data?.message ?? 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
   } finally {
     loading.value = false;
+  }
+};
+
+const loadMore = async () => {
+  if (loadingMore.value || !hasMore.value) return;
+  loadingMore.value = true;
+  try {
+    const next = page.value + 1;
+    const payload = await fetchPage(next);
+    images.value = [...images.value, ...(payload.photos ?? [])];
+    page.value = next;
+    hasMore.value = Boolean(payload.has_more);
+  } catch (e) {
+    console.error('Failed to load more review photos:', e);
+  } finally {
+    loadingMore.value = false;
   }
 };
 
@@ -185,13 +235,12 @@ onBeforeUnmount(() => {
   max-width: 100%;
   flex: 0 0 auto;
   padding: 0;
-  border: none;
+  border: 1px solid var(--color-sand-dark);
   border-radius: 0.85rem;
   overflow: hidden;
   cursor: pointer;
   background: var(--color-sand-dark);
-  box-shadow: 0 2px 10px rgba(13, 43, 30, 0.05);
-  transition: box-shadow 0.35s ease, transform 0.35s ease;
+  transition: transform 0.35s ease;
 }
 @media (min-width: 640px) { .gallery-item { height: 300px; } }
 @media (min-width: 1024px) { .gallery-item { height: 360px; } }
@@ -202,20 +251,9 @@ onBeforeUnmount(() => {
   width: auto;
   max-width: 100%;
 }
-.gallery-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 40px rgba(13, 43, 30, 0.18);
-}
-/* เคลือบเงาบางๆ ให้ขอบภาพดูคมและทันสมัยขึ้น */
-.gallery-item::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  pointer-events: none;
-}
+.gallery-item:hover { transform: translateY(-3px); }
 
+/* เครดิตติดทุกรูป — รูปมาจากคน ไม่ใช่จากแบรนด์ */
 .gallery-caption {
   position: absolute;
   inset: auto 0 0 0;
@@ -227,26 +265,10 @@ onBeforeUnmount(() => {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 .gallery-item:hover .gallery-caption { opacity: 1; transform: translateY(0); }
-
-.gallery-zoom {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+/* จอสัมผัสไม่มี hover — โชว์เครดิตค้างไว้เลย */
+@media (hover: none) {
+  .gallery-caption { opacity: 1; transform: none; }
 }
-.gallery-item:hover .gallery-zoom { opacity: 1; transform: scale(1); }
-.gallery-zoom .material-symbols-rounded { font-size: 18px; }
 
 /* Lightbox */
 .lightbox {
@@ -273,7 +295,6 @@ onBeforeUnmount(() => {
   max-height: 78vh;
   object-fit: contain;
   border-radius: 0.75rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 .lightbox-caption { margin-top: 16px; text-align: center; }
 

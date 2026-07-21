@@ -40,11 +40,11 @@ class ReviewPhotoAlbumTest extends TestCase
         ]);
     }
 
-    private function makeBooking(Trip $trip, User $user): Booking
+    private function makeBooking(Trip $trip, User $user, string $departureDate = '2026-05-08'): Booking
     {
         $schedule = TripSchedule::create([
             'trip_id' => $trip->id,
-            'departure_date' => '2026-05-08',
+            'departure_date' => $departureDate,
             'return_date' => '2026-05-08',
             'total_seats' => 8,
             'booked_seats' => 1,
@@ -63,11 +63,11 @@ class ReviewPhotoAlbumTest extends TestCase
     }
 
     /** @param  list<string>  $images */
-    private function makeReview(Trip $trip, User $user, array $images, bool $approved = true, ?string $at = null): Review
+    private function makeReview(Trip $trip, User $user, array $images, bool $approved = true, ?string $at = null, string $departureDate = '2026-05-08'): Review
     {
         $review = Review::create([
             'user_id' => $user->id,
-            'booking_id' => $this->makeBooking($trip, $user)->id,
+            'booking_id' => $this->makeBooking($trip, $user, $departureDate)->id,
             'trip_id' => $trip->id,
             'rating' => 5,
             'comment' => 'ดีมาก',
@@ -137,9 +137,43 @@ class ReviewPhotoAlbumTest extends TestCase
         $this->assertFalse($second['has_more']);
     }
 
-    public function test_album_requires_an_existing_trip(): void
+    public function test_album_rejects_a_trip_that_does_not_exist(): void
     {
-        $this->getJson('/api/v1/reviews/photos')->assertStatus(422);
         $this->getJson('/api/v1/reviews/photos?trip_id=999999')->assertStatus(422);
+    }
+
+    public function test_album_without_trip_id_returns_photos_from_every_trip_with_their_credit(): void
+    {
+        $trip = $this->makeTrip();
+        $otherTrip = $this->makeTrip('other-album-trip');
+        $user = User::factory()->create(['name' => 'สมชาย']);
+
+        $this->makeReview($trip, $user, ['here.jpg'], at: '2026-05-20 10:00:00');
+        $this->makeReview($otherTrip, $user, ['elsewhere.jpg'], at: '2026-05-21 10:00:00', departureDate: '2026-11-02');
+
+        $data = $this->getJson('/api/v1/reviews/photos')->assertOk()->json('data');
+
+        $this->assertSame(2, $data['total']);
+        // เรียงตามวันที่ "ไปจริง" ไม่ใช่วันเขียนรีวิว — รอบ พ.ย. จึงมาก่อนรอบ พ.ค.
+        $this->assertSame(['elsewhere.jpg', 'here.jpg'], array_column($data['photos'], 'url'));
+        $this->assertSame('Album Trip', $data['photos'][0]['trip_title']);
+        $this->assertSame('other-album-trip', $data['photos'][0]['trip_slug']);
+        $this->assertSame('Nan', $data['photos'][0]['location']);
+    }
+
+    public function test_album_can_be_filtered_to_the_month_people_actually_travelled(): void
+    {
+        $trip = $this->makeTrip();
+        $user = User::factory()->create();
+
+        $this->makeReview($trip, $user, ['rainy.jpg'], departureDate: '2025-07-12');
+        $this->makeReview($trip, $user, ['cool.jpg'], departureDate: '2025-12-06');
+
+        $data = $this->getJson('/api/v1/reviews/photos?trip_id='.$trip->id.'&month=7')->assertOk()->json('data');
+
+        $this->assertSame(['rainy.jpg'], array_column($data['photos'], 'url'));
+        $this->assertSame(7, $data['photos'][0]['travel_month']);
+        $this->assertSame('2025-07-12', $data['photos'][0]['travel_date']);
+        $this->assertSame('กรกฎาคม 2568', $data['photos'][0]['travel_month_label']);
     }
 }

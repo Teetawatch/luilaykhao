@@ -747,11 +747,11 @@ const navLinks = [
   },
   { to: '/trips', icon: 'explore', label: 'กิจกรรม' },
   {
-    label: 'ภาพประทับใจ',
+    label: 'รูปและบทความ',
     icon: 'auto_awesome',
     to: '/gallery',
     children: [
-      { to: '/gallery', icon: 'photo_library', label: 'ภาพประทับใจ', desc: 'อัลบั้มภาพจากทริปจริง' },
+      { to: '/gallery', icon: 'photo_library', label: 'รูปจากคนที่ไปมาแล้ว', desc: 'รูปที่ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว' },
       // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
       { to: '/blog', icon: 'article', label: 'บทความ', desc: 'ไอเดียและคู่มือการเดินทาง', external: true },
     ],
