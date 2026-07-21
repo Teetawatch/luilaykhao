@@ -125,8 +125,25 @@ class BookingController extends Controller
         }
     }
 
+    /** สถานะที่ถือว่า "กำลังจะมาถึง" และ "ผ่านมาแล้ว" — ต้องตรงกับแท็บบนหน้าเว็บ. */
+    private const UPCOMING_STATUSES = ['pending', 'confirmed'];
+
+    private const PAST_STATUSES = ['cancelled', 'refunded', 'completed'];
+
+    /**
+     * รายการจองของผู้ใช้
+     *
+     * ค่าเริ่มต้นคืนทั้งหมดในครั้งเดียว เพราะแอปมือถือที่ปล่อยไปแล้วเก็บผลลัพธ์ลง
+     * offline cache ทั้งก้อน — ถ้าเปลี่ยนไปแบ่งหน้าโดยปริยาย แอปจะเห็นแค่หน้าแรก
+     * เงียบ ๆ. เว็บที่ต้องการแบ่งหน้าให้ส่ง per_page มาเอง
+     */
     public function index(Request $request): JsonResponse
     {
+        $data = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'scope' => ['nullable', 'string', 'in:upcoming,past'],
+        ]);
+
         $userId = $request->user()->id;
 
         // การจองที่ผู้ใช้เป็นเจ้าของ หรือถูกเชิญเข้าร่วมในฐานะเพื่อน (companion)
@@ -134,10 +151,21 @@ class BookingController extends Controller
             ->where('status', BookingMember::STATUS_ACTIVE)
             ->pluck('booking_id');
 
-        $bookings = Booking::where(function ($q) use ($userId, $memberBookingIds) {
-            $q->where('user_id', $userId)
+        // สร้างใหม่ทุกครั้งแทนการ clone เพื่อให้แน่ใจว่า query นับจำนวนไม่ติดเงื่อนไข
+        // scope หรือ eager load ของ query หลักมาด้วย
+        $mine = fn () => Booking::query()->where(function ($inner) use ($userId, $memberBookingIds) {
+            $inner->where('user_id', $userId)
                 ->orWhereIn('id', $memberBookingIds);
-        })
+        });
+
+        $query = $mine()
+            ->when(
+                isset($data['scope']),
+                fn ($q) => $q->whereIn(
+                    'status',
+                    $data['scope'] === 'upcoming' ? self::UPCOMING_STATUSES : self::PAST_STATUSES,
+                ),
+            )
             ->with([
                 'user',
                 'schedule.trip',
@@ -156,10 +184,30 @@ class BookingController extends Controller
                 'review' => fn ($q) => $q->where('user_id', $userId),
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
             ])
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('created_at');
 
-        return $this->success($bookings->map(fn ($b) => new BookingResource($b))->values());
+        // จำนวนของแต่ละแท็บต้องนับจากการจองทั้งหมดของผู้ใช้ ไม่ใช่จากหน้าที่กำลังดู
+        // หรือจาก scope ที่กรองอยู่ ไม่งั้นตัวเลขบนแท็บจะเปลี่ยนไปมาตามหน้า
+        $meta = [
+            'upcoming_count' => $mine()->whereIn('status', self::UPCOMING_STATUSES)->count(),
+            'past_count' => $mine()->whereIn('status', self::PAST_STATUSES)->count(),
+        ];
+
+        if (! isset($data['per_page'])) {
+            $bookings = $query->get();
+
+            return $this->success(
+                $bookings->map(fn ($b) => new BookingResource($b))->values(),
+                meta: $meta,
+            );
+        }
+
+        $bookings = $query->paginate($data['per_page']);
+
+        return $this->paginated(
+            $bookings->through(fn ($b) => new BookingResource($b)),
+            meta: $meta,
+        );
     }
 
     public function cancel(CancelBookingRequest $request, string $ref): JsonResponse

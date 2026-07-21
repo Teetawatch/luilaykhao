@@ -1,26 +1,22 @@
 <template>
   <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32 font-anuphan relative overflow-hidden">
 
-    <!-- Background Decor -->
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[420px] bg-gradient-to-b from-[#E3F2F2]/70 to-transparent -z-0 pointer-events-none"></div>
-    <div class="absolute -top-24 -right-32 w-96 h-96 bg-[#006565]/5 rounded-full blur-3xl -z-0 pointer-events-none"></div>
-
     <div class="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
 
       <!-- Page Header -->
       <section class="mb-8">
         <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-[18px] bg-[#006565] flex items-center justify-center shrink-0 shadow-lg/25">
+          <div class="w-14 h-14 rounded-[18px] bg-[#006565] flex items-center justify-center shrink-0">
             <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">luggage</span>
           </div>
           <div>
-            <p class="text-[11px] font-bold text-[#008080] uppercase tracking-[0.18em] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แผนการเดินทางของคุณ</p>
-            <h1 class="text-3xl md:text-4xl font-bold text-[#1a1c1c] tracking-tight leading-none" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+            <p class="text-[11px] font-bold text-[#008080] uppercase tracking-[0.18em] mb-1">แผนการเดินทางของคุณ</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-[#1a1c1c] tracking-tight leading-none">
               การจองของฉัน
             </h1>
           </div>
         </div>
-        <p class="text-[#505E5E] text-sm mt-3.5 ml-[4.5rem]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+        <p class="text-[#505E5E] text-sm mt-3.5 ml-[4.5rem]">
           จัดการแผนการเดินทางที่แสนพิเศษของคุณได้ที่นี่
         </p>
       </section>
@@ -34,9 +30,8 @@
           @click="activeTab = 'upcoming'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'upcoming'
-            ? 'bg-[#006565] text-white shadow-md/20'
-            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'"
-          style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
+            ? 'bg-[#006565] text-white'
+            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'upcoming' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">event_upcoming</span>
           ที่กำลังจะมาถึง
           <span v-if="upcomingCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
@@ -46,9 +41,8 @@
           @click="activeTab = 'past'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'past'
-            ? 'bg-[#006565] text-white shadow-md/20'
-            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'"
-          style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
+            ? 'bg-[#006565] text-white'
+            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'past' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">history</span>
           ที่ผ่านมาแล้ว
           <span v-if="pastCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
@@ -59,27 +53,25 @@
       <!-- Loading -->
       <div v-if="bookingStore.loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">กำลังโหลดข้อมูลการจอง...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดข้อมูลการจอง...</p>
       </div>
 
       <!-- Empty State -->
       <div v-else-if="filteredBookings.length === 0" class="text-center py-20 bg-white rounded-[28px] border border-[#E8EEEF] relative overflow-hidden">
-        <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#E3F2F2]/40 rounded-full blur-3xl"></div>
         <div class="relative z-10 flex flex-col items-center px-4">
-          <div class="w-24 h-24 bg-gradient-to-br from-[#F4F7F6] to-[#E8EEEF] rounded-full flex items-center justify-center mb-5 border border-[#E8EEEF]">
+          <div class="w-24 h-24 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5 border border-[#E8EEEF]">
             <span class="material-symbols-rounded text-[44px] text-[#8FA5A5]">
               {{ activeTab === 'upcoming' ? 'event_busy' : 'history_toggle_off' }}
             </span>
           </div>
-          <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">ยังไม่มีการจอง</h3>
-          <p class="text-[#505E5E] text-sm mb-6 max-w-sm mx-auto" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
+          <h3 class="text-lg font-bold text-[#1a1c1c] mb-2">ยังไม่มีการจอง</h3>
+          <p class="text-[#505E5E] text-sm mb-6 max-w-sm mx-auto">
             {{ activeTab === 'upcoming' 
                 ? 'คุณยังไม่มีแผนการเดินทางที่กำลังจะมาถึง เริ่มค้นหาประสบการณ์ใหม่ๆ ได้เลย!' 
                 : 'คุณยังไม่เคยเดินทางกับเรามาก่อน ลองดูทริปที่น่าสนใจสิ' }}
           </p>
           <router-link to="/trips"
-             class="inline-flex items-center gap-2 bg-[#006565] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#004f4f] transition-all"
-             style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
+             class="inline-flex items-center gap-2 bg-[#006565] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#004f4f] transition-all">
             <span class="material-symbols-rounded text-[20px]">explore</span>
             เริ่มค้นหากิจกรรม
             <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
@@ -92,7 +84,7 @@
         <article
           v-for="b in filteredBookings"
           :key="b.id"
-          class="bg-white rounded-[24px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] transition-all duration-300 hover:shadow-xl/5 hover:border-[#006565]/25 hover:-translate-y-0.5 relative"
+          class="bg-white rounded-[24px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] transition-all duration-300 hover:border-[#006565]/25 hover:-translate-y-0.5 relative"
           :class="{ 'opacity-80': b.status === 'cancelled' || b.status === 'refunded' }">
 
           <div class="absolute top-0 left-0 w-1.5 h-full bg-[#006565] z-20" v-if="b.status === 'confirmed'"></div>
@@ -109,12 +101,12 @@
 
             <!-- Date Badge on Image -->
             <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-[14px] flex flex-col items-center leading-none">
-              <span class="text-[10px] font-bold text-[#008080] uppercase tracking-wide mb-0.5" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">{{ getMonthShort(b.schedule?.departure_date) }}</span>
+              <span class="text-[10px] font-bold text-[#008080] uppercase tracking-wide mb-0.5">{{ getMonthShort(b.schedule?.departure_date) }}</span>
               <span class="text-xl font-extrabold text-[#1a1c1c]">{{ getDay(b.schedule?.departure_date) }}</span>
             </div>
 
             <!-- Title overlay (mobile) -->
-            <h2 class="absolute bottom-4 left-4 right-4 md:hidden text-white text-lg font-bold leading-snug line-clamp-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+            <h2 class="absolute bottom-4 left-4 right-4 md:hidden text-white text-lg font-bold leading-snug line-clamp-2">
               {{ b.schedule?.trip?.title || 'การจอง' }}
             </h2>
           </div>
@@ -122,13 +114,12 @@
           <!-- Content -->
           <div class="p-5 md:p-6 flex-1 flex flex-col relative w-full">
             <div class="flex flex-col sm:flex-row justify-between items-start mb-3 gap-3">
-              <h2 class="hidden md:block text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              <h2 class="hidden md:block text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]">
                 {{ b.schedule?.trip?.title || 'การจอง' }}
               </h2>
               <div class="flex flex-col items-start sm:items-end gap-2 shrink-0 w-full sm:w-auto">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] flex items-center gap-1.5 whitespace-nowrap"
-                  :class="statusClass(b.status)"
-                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                  :class="statusClass(b.status)">
                   <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(b.status)"></span>
                   {{ statusLabel(b.status) }}
                 </span>
@@ -142,13 +133,13 @@
 
             <div class="space-y-3 mb-5 bg-[#F9FAFA] p-3.5 rounded-[16px] border border-[#E8EEEF]">
               <div class="flex items-center justify-between text-[13px] text-[#505E5E]">
-                <div class="flex items-center gap-2.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                <div class="flex items-center gap-2.5">
                   <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-[#E8EEEF] shrink-0">
                     <span class="material-symbols-rounded text-[16px] text-[#006565]">calendar_month</span>
                   </div>
                   <span class="font-medium text-[#1a1c1c]">{{ formatDate(b.schedule?.departure_date) }}</span>
                 </div>
-                <div class="text-right shrink-0" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                <div class="text-right shrink-0">
                   <span class="text-[10px] text-[#889696] font-bold block mb-0.5 uppercase tracking-wider">หมายเลขการจอง</span>
                   <span class="font-bold text-[#1a1c1c] font-mono">{{ b.booking_ref }}</span>
                 </div>
@@ -157,7 +148,7 @@
 
             <!-- Price & Installment Info -->
             <div class="mb-5">
-              <div class="flex justify-between items-end" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              <div class="flex justify-between items-end">
                 <div class="text-[11px] font-bold text-[#889696] uppercase tracking-wide">ยอดชำระ</div>
                 <div class="text-xl md:text-2xl font-bold text-[#006565] tracking-tight">
                   <span class="text-sm text-[#006565] mr-0.5">฿</span>{{ Number(b.total_amount).toLocaleString() }}
@@ -165,7 +156,7 @@
               </div>
 
               <!-- ── Installment Tracker ── -->
-              <div v-if="b.payment_type === 'installment' && b.installment_payments?.length" class="mt-4 p-4 bg-gradient-to-br from-amber-50 to-orange-50/30 rounded-[16px] border border-amber-100 space-y-4">
+              <div v-if="b.payment_type === 'installment' && b.installment_payments?.length" class="mt-4 p-4 bg-amber-50 rounded-[16px] border border-amber-100 space-y-4">
                 
                 <!-- Header -->
                 <div class="flex items-center justify-between">
@@ -184,7 +175,7 @@
                 <div class="relative">
                   <div class="h-2.5 bg-amber-100 rounded-full overflow-hidden">
                     <div 
-                      class="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-700 ease-out"
+                      class="h-full bg-amber-500 rounded-full transition-all duration-700 ease-out"
                       :style="{ width: (getPaidInstallments(b).length / b.installment_count * 100) + '%' }"
                     ></div>
                   </div>
@@ -282,8 +273,7 @@
               <router-link
                 v-if="b.status !== 'pending'"
                 :to="`/confirmation/${b.booking_ref}`"
-                class="flex-1 text-center bg-[#006565] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#004f4f] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                class="flex-1 text-center bg-[#006565] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#004f4f] transition-all flex items-center justify-center gap-1.5">
                 <span v-if="b.status === 'confirmed'" class="material-symbols-rounded text-[18px]">confirmation_number</span>
                 <span v-else class="material-symbols-rounded text-[18px]">visibility</span>
                 {{ b.status === 'confirmed' ? 'ดาวน์โหลดตั๋ว' : 'ดูรายละเอียด' }}
@@ -292,26 +282,25 @@
               <router-link
                 v-if="b.status === 'pending'"
                 :to="`/payment/${b.booking_ref}`"
-                class="flex-1 text-center bg-[#D97706] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all flex items-center justify-center gap-1.5 animate-pulse"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                class="flex-1 text-center bg-[#D97706] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all flex items-center justify-center gap-1.5 animate-pulse">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">payments</span>
                 ชำระเงิน
               </router-link>
 
-              <button
-                v-if="b.status === 'confirmed' || b.status === 'pending'"
-                @click="$router.push(`/confirmation/${b.booking_ref}`)"
-                class="flex-1 bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              <!-- เฉพาะสถานะ pending: ปุ่มหลักคือ "ชำระเงิน" จึงต้องมีทางไปดูรายละเอียด
+                   แยกไว้ ส่วนสถานะอื่นปุ่มหลักพาไปหน้าเดียวกันนี้อยู่แล้ว -->
+              <router-link
+                v-if="b.status === 'pending'"
+                :to="`/confirmation/${b.booking_ref}`"
+                class="flex-1 text-center bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">info</span>
                 รายละเอียด
-              </button>
-              
+              </router-link>
+
               <router-link
                 v-if="activeTab === 'past' && b.status === 'completed'"
                 to="/my-reviews"
-                class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">star</span>
                 เขียนรีวิว
               </router-link>
@@ -319,8 +308,7 @@
               <router-link
                 v-if="b.status === 'confirmed'"
                 :to="{ name: 'trip-chat', params: { scheduleId: b.schedule.id }, query: { title: b.schedule?.trip?.title, date: b.schedule?.departure_date } }"
-                class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">chat</span>
                 แชท
               </router-link>
@@ -328,8 +316,7 @@
               <button
                 v-if="canReviewStaff(b)"
                 @click="openStaffReviewModal(b)"
-                class="flex-1 text-center border-2 border-[#0C4A6E] text-[#0C4A6E] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E0F2FE] transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                class="flex-1 text-center border-2 border-[#0C4A6E] text-[#0C4A6E] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E0F2FE] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">badge</span>
                 รีวิวสตาฟ
               </button>
@@ -337,16 +324,30 @@
               <button
                 v-if="b.status === 'pending'"
                 @click="handleCancel(b)"
-                class="flex-1 sm:flex-none border border-[#FCA5A5] text-[#DC2626] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#FEF2F2] hover:border-[#F87171] transition-all"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                class="flex-1 sm:flex-none border border-[#FCA5A5] text-[#DC2626] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#FEF2F2] hover:border-[#F87171] transition-all">
                 ยกเลิก
+              </button>
+
+              <button
+                v-if="b.status === 'confirmed'"
+                @click="addToCalendar(b)"
+                class="flex-1 sm:flex-none bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]">event</span>
+                เพิ่มลงปฏิทิน
+              </button>
+
+              <button
+                v-if="canShareTracking(b)"
+                @click="openShareTracking(b)"
+                class="flex-1 sm:flex-none bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]">share_location</span>
+                แชร์ให้ที่บ้านติดตาม
               </button>
 
               <button
                 v-if="isOngoingTrip(b)"
                 @click="openSosModal(b)"
-                class="flex-1 sm:flex-none bg-red-600 text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-1.5"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                class="flex-1 sm:flex-none bg-red-600 text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">sos</span>
                 SOS
               </button>
@@ -355,19 +356,37 @@
         </article>
 
         <!-- Pagination -->
-        <div v-if="bookingStore.meta && bookingStore.meta.last_page > 1" class="flex justify-center mt-8 gap-2">
+        <nav v-if="lastPage > 1" class="flex justify-center items-center mt-8 gap-2" aria-label="หน้าของรายการจอง">
           <button
-            v-for="page in bookingStore.meta.last_page"
-            :key="page"
-            @click="bookingStore.fetchMyBookings(page)"
-            class="w-9 h-9 rounded-[10px] text-sm font-bold transition-all duration-300"
-            :class="page === bookingStore.meta.current_page
-              ? 'bg-[#006565] text-white'
-              : 'bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA]'"
-            style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
-            {{ page }}
+            :disabled="currentPage === 1"
+            @click="load(currentPage - 1)"
+            class="w-9 h-9 rounded-[10px] bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA] disabled:opacity-40 disabled:hover:bg-white flex items-center justify-center"
+            aria-label="หน้าก่อนหน้า">
+            <span class="material-symbols-rounded text-[18px]">chevron_left</span>
           </button>
-        </div>
+
+          <template v-for="(page, i) in pageNumbers" :key="`${page}-${i}`">
+            <span v-if="page === '…'" class="w-6 text-center text-[#889696] font-bold">…</span>
+            <button
+              v-else
+              @click="load(page)"
+              :aria-current="page === currentPage ? 'page' : undefined"
+              class="w-9 h-9 rounded-[10px] text-sm font-bold transition-all"
+              :class="page === currentPage
+                ? 'bg-[#006565] text-white'
+                : 'bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA]'">
+              {{ page }}
+            </button>
+          </template>
+
+          <button
+            :disabled="currentPage === lastPage"
+            @click="load(currentPage + 1)"
+            class="w-9 h-9 rounded-[10px] bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA] disabled:opacity-40 disabled:hover:bg-white flex items-center justify-center"
+            aria-label="หน้าถัดไป">
+            <span class="material-symbols-rounded text-[18px]">chevron_right</span>
+          </button>
+        </nav>
       </div>
 
       <!-- Staff Review Modal -->
@@ -375,8 +394,8 @@
         <div class="bg-white w-full max-w-lg rounded-2xl border border-[#E8EEEF] overflow-hidden">
           <div class="px-5 py-4 border-b border-[#E8EEEF] flex items-center justify-between">
             <div>
-              <h3 class="text-lg font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">รีวิวสตาฟประจำทริป</h3>
-              <p class="text-xs text-[#6b7280] mt-0.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ reviewingBooking?.schedule?.trip?.title || '-' }}</p>
+              <h3 class="text-lg font-bold text-[#1a1c1c]">รีวิวสตาฟประจำทริป</h3>
+              <p class="text-xs text-[#6b7280] mt-0.5">{{ reviewingBooking?.schedule?.trip?.title || '-' }}</p>
             </div>
             <button @click="showStaffReviewModal = false" class="w-8 h-8 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] inline-flex items-center justify-center">
               <span class="material-symbols-rounded text-[18px]">close</span>
@@ -385,8 +404,8 @@
 
           <div class="p-5 space-y-4">
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">เลือกสตาฟ</label>
-              <select v-model.number="staffReviewForm.staff_user_id" @change="hydrateStaffReviewForm" class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              <label class="block text-sm font-semibold text-[#334155] mb-1">เลือกสตาฟ</label>
+              <select v-model.number="staffReviewForm.staff_user_id" @change="hydrateStaffReviewForm" class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm">
                 <option :value="0" disabled>-- เลือกสตาฟ --</option>
                 <option v-for="staff in reviewingBooking?.assigned_staff || []" :key="staff.id" :value="staff.id">
                   {{ staff.name }}
@@ -395,7 +414,7 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">คะแนนความพึงพอใจ</label>
+              <label class="block text-sm font-semibold text-[#334155] mb-1">คะแนนความพึงพอใจ</label>
               <div class="grid grid-cols-5 gap-2">
                 <button
                   v-for="score in [1,2,3,4,5]"
@@ -404,7 +423,6 @@
                   @click="staffReviewForm.rating = score"
                   class="h-10 rounded-xl border text-sm font-bold transition"
                   :class="staffReviewForm.rating === score ? 'bg-[#006565] text-white border-[#006565]' : 'bg-white text-[#475569] border-[#D7E0E1] hover:bg-[#F8FAFC]'"
-                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
                 >
                   {{ score }} ★
                 </button>
@@ -412,28 +430,26 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ความคิดเห็น (ไม่บังคับ)</label>
+              <label class="block text-sm font-semibold text-[#334155] mb-1">ความคิดเห็น (ไม่บังคับ)</label>
               <textarea
                 v-model="staffReviewForm.comment"
                 rows="4"
                 class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm"
                 placeholder="เล่าประสบการณ์การดูแลของสตาฟคนนี้"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
               ></textarea>
             </div>
 
-            <div v-if="selectedStaffReview" class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-xs text-[#475569]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+            <div v-if="selectedStaffReview" class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-xs text-[#475569]">
               คุณเคยรีวิวสตาฟคนนี้แล้ว ระบบจะอัปเดตรีวิวเดิม
             </div>
           </div>
 
           <div class="px-5 py-4 border-t border-[#E8EEEF] flex justify-end gap-2">
-            <button @click="showStaffReviewModal = false" class="px-4 py-2.5 rounded-xl border border-[#D7E0E1] text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยกเลิก</button>
+            <button @click="showStaffReviewModal = false" class="px-4 py-2.5 rounded-xl border border-[#D7E0E1] text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC]">ยกเลิก</button>
             <button
               @click="submitStaffReview"
               :disabled="reviewSubmitting || !staffReviewForm.staff_user_id"
               class="px-4 py-2.5 rounded-xl bg-[#006565] text-white text-sm font-bold hover:bg-[#004f4f] disabled:opacity-60"
-              style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
             >
               {{ selectedStaffReview ? 'อัปเดตรีวิวสตาฟ' : 'ส่งรีวิวสตาฟ' }}
             </button>
@@ -453,8 +469,8 @@
               <span class="material-symbols-rounded text-white text-[22px]" style="font-variation-settings:'FILL' 1">sos</span>
             </div>
             <div class="flex-1">
-              <h3 class="text-white font-black text-base" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ขอความช่วยเหลือ SOS</h3>
-              <p class="text-red-100 text-xs" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ sosBooking?.schedule?.trip?.title }}</p>
+              <h3 class="text-white font-black text-base">ขอความช่วยเหลือ SOS</h3>
+              <p class="text-red-100 text-xs">{{ sosBooking?.schedule?.trip?.title }}</p>
             </div>
             <button @click="showSosModal = false" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
               <span class="material-symbols-rounded text-white text-[18px]">close</span>
@@ -462,7 +478,7 @@
           </div>
 
           <div class="p-5 space-y-4">
-            <p class="text-sm text-[#505E5E]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">เลือกข้อความที่ต้องการส่งให้สตาฟและผู้ร่วมทริป</p>
+            <p class="text-sm text-[#505E5E]">เลือกข้อความที่ต้องการส่งให้สตาฟและผู้ร่วมทริป</p>
 
             <!-- Predefined options -->
             <div class="grid grid-cols-2 gap-2">
@@ -473,8 +489,7 @@
                 class="py-3 px-4 rounded-[14px] text-sm font-bold border-2 transition-all active:scale-95 text-left"
                 :class="sosSelectedOption === opt.value
                   ? 'bg-red-50 border-red-500 text-red-700'
-                  : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#1a1c1c] hover:border-red-300 hover:bg-red-50/50'"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                  : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#1a1c1c] hover:border-red-300 hover:bg-red-50/50'">
                 <span class="block text-lg mb-0.5">{{ opt.emoji }}</span>
                 {{ opt.label }}
               </button>
@@ -482,30 +497,28 @@
 
             <!-- Custom message (shown when "อื่น ๆ" selected) -->
             <div v-if="sosSelectedOption === 'other'" class="space-y-1.5">
-              <label class="text-xs font-bold text-[#505E5E] uppercase tracking-wide" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ระบุเพิ่มเติม</label>
+              <label class="text-xs font-bold text-[#505E5E] uppercase tracking-wide">ระบุเพิ่มเติม</label>
               <textarea
                 v-model="sosCustomMessage"
                 rows="3"
                 maxlength="255"
                 placeholder="อธิบายสถานการณ์โดยย่อ..."
                 class="w-full rounded-[14px] border-2 border-[#E8EEEF] focus:border-red-400 focus:outline-none px-3.5 py-2.5 text-sm resize-none"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
               ></textarea>
             </div>
 
-            <p class="text-xs text-[#889696] bg-[#F4F7F6] p-3 rounded-[12px]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+            <p class="text-xs text-[#889696] bg-[#F4F7F6] p-3 rounded-[12px]">
               <span class="material-symbols-rounded text-[14px] align-middle mr-1" style="font-variation-settings:'FILL' 1">info</span>
               สตาฟและผู้โดยสารในทริปจะได้รับการแจ้งเตือนทันที
             </p>
           </div>
 
           <div class="px-5 pb-5 flex gap-2">
-            <button @click="showSosModal = false" class="flex-1 py-3 rounded-[14px] border-2 border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6] transition-all" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยกเลิก</button>
+            <button @click="showSosModal = false" class="flex-1 py-3 rounded-[14px] border-2 border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6] transition-all">ยกเลิก</button>
             <button
               @click="submitSos"
               :disabled="!sosSelectedOption || sosSubmitting || (sosSelectedOption === 'other' && !sosCustomMessage.trim())"
-              class="flex-1 py-3 rounded-[14px] bg-red-600 text-white font-black text-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              class="flex-1 py-3 rounded-[14px] bg-red-600 text-white font-black text-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
               <span v-if="sosSubmitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
               <span class="material-symbols-rounded text-[18px]" v-else style="font-variation-settings:'FILL' 1">sos</span>
               {{ sosSubmitting ? 'กำลังส่ง...' : 'ส่งสัญญาณ SOS' }}
@@ -519,16 +532,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
 import api from '../lib/axios';
+import { useSwal } from '../lib/swal';
+import { useToast } from '../lib/toast';
+import { bangkokToday, daysUntil } from '../lib/bangkokDate';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import MyWaitlist from '../components/MyWaitlist.vue';
 import SplitPaymentPanel from '../components/SplitPaymentPanel.vue';
 
 const router = useRouter();
+const swal = useSwal();
+const toast = useToast();
+
+/** จำนวนการจองต่อหน้า — การ์ดสูงพอสมควร 8 ใบกำลังพอดีหนึ่งหน้าจอเลื่อน */
+const PER_PAGE = 8;
 
 const bookingStore = useBookingStore();
 const seatsStore = useSeatsStore();
@@ -578,23 +599,46 @@ function isPendingWithTimer(b) {
     && seatsStore.countdownSeconds > 0;
 }
 
-const upcomingStatuses = ['pending', 'confirmed'];
-const pastStatuses = ['cancelled', 'refunded', 'completed'];
+// การกรองและการนับย้ายไปฝั่งเซิร์ฟเวอร์แล้ว หน้านี้จึงแสดงสิ่งที่ได้มาตรง ๆ
+const filteredBookings = computed(() => bookingStore.bookings);
 
-const filteredBookings = computed(() => {
-  return bookingStore.bookings.filter(b =>
-    activeTab.value === 'upcoming'
-      ? upcomingStatuses.includes(b.status)
-      : pastStatuses.includes(b.status)
-  );
+const upcomingCount = computed(() => bookingStore.meta?.upcoming_count ?? 0);
+const pastCount = computed(() => bookingStore.meta?.past_count ?? 0);
+
+const currentPage = computed(() => bookingStore.meta?.current_page ?? 1);
+const lastPage = computed(() => bookingStore.meta?.last_page ?? 1);
+
+/**
+ * เลขหน้าที่จะแสดง — ย่อเป็นช่วงรอบหน้าปัจจุบันพร้อม … เมื่อมีหลายหน้า
+ * ไม่งั้น 20 หน้าก็จะได้ปุ่ม 20 ปุ่มเรียงกัน
+ */
+const pageNumbers = computed(() => {
+  const total = lastPage.value;
+  const current = currentPage.value;
+
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages = new Set([1, total, current]);
+  if (current - 1 > 1) pages.add(current - 1);
+  if (current + 1 < total) pages.add(current + 1);
+
+  const sorted = [...pages].sort((a, b) => a - b);
+  const withGaps = [];
+
+  sorted.forEach((page, i) => {
+    if (i > 0 && page - sorted[i - 1] > 1) withGaps.push('…');
+    withGaps.push(page);
+  });
+
+  return withGaps;
 });
 
-const upcomingCount = computed(() =>
-  bookingStore.bookings.filter(b => upcomingStatuses.includes(b.status)).length
-);
-const pastCount = computed(() =>
-  bookingStore.bookings.filter(b => pastStatuses.includes(b.status)).length
-);
+function load(page = 1) {
+  return bookingStore.fetchMyBookings({ page, perPage: PER_PAGE, scope: activeTab.value });
+}
+
+// สลับแท็บ = ถามเซิร์ฟเวอร์ใหม่ และกลับไปหน้าแรกเสมอ
+watch(activeTab, () => load(1));
 
 const statusMap = {
   pending:   'รอชำระเงิน',
@@ -652,31 +696,28 @@ function isNextDue(b, inst) {
   return next && next.installment_no === inst.installment_no;
 }
 
+// กำหนดชำระเป็นวันที่ตามปฏิทินไทย จึงนับเป็น "วัน" ล้วน ๆ ไม่เอาเวลาของเบราว์เซอร์มาปน
 function isOverdue(inst) {
-  if (!inst?.due_date) return false;
-  const due = new Date(inst.due_date);
-  due.setHours(23, 59, 59);
-  return new Date() > due;
+  const days = daysUntil(inst?.due_date);
+
+  return days !== null && days < 0;
 }
 
 function isDueSoon(inst) {
-  if (!inst?.due_date) return false;
-  const due = new Date(inst.due_date);
-  const now = new Date();
-  const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-  return diffDays <= 7 && diffDays >= 0;
+  const days = daysUntil(inst?.due_date);
+
+  return days !== null && days >= 0 && days <= 7;
 }
 
 function getDaysUntil(dateStr) {
-  if (!dateStr) return '';
-  const due = new Date(dateStr);
-  const now = new Date();
-  const diffMs = due - now;
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'เลยกำหนด';
-  if (diffDays === 0) return 'วันนี้!';
-  if (diffDays === 1) return 'พรุ่งนี้';
-  return `อีก ${diffDays} วัน`;
+  const days = daysUntil(dateStr);
+
+  if (days === null) return '';
+  if (days < 0) return 'เลยกำหนด';
+  if (days === 0) return 'วันนี้!';
+  if (days === 1) return 'พรุ่งนี้';
+
+  return `อีก ${days} วัน`;
 }
 
 function goToInstallmentPayment(b) {
@@ -737,10 +778,10 @@ async function submitStaffReview() {
     });
 
     showStaffReviewModal.value = false;
-    await bookingStore.fetchMyBookings(bookingStore.meta?.current_page || 1);
-    alert('บันทึกรีวิวสตาฟเรียบร้อยแล้ว');
+    await load(currentPage.value);
+    toast.success('บันทึกรีวิวสตาฟเรียบร้อยแล้ว');
   } catch (e) {
-    alert(e?.response?.data?.message || 'ส่งรีวิวสตาฟไม่สำเร็จ');
+    toast.error(e?.response?.data?.message || 'ส่งรีวิวสตาฟไม่สำเร็จ');
   } finally {
     reviewSubmitting.value = false;
   }
@@ -751,9 +792,98 @@ function isOngoingTrip(b) {
   const departure = b.schedule?.departure_date;
   const returnDate = b.schedule?.return_date;
   if (!departure) return false;
-  const today = new Date().toISOString().split('T')[0];
+  // ต้องเทียบด้วยวันที่ไทย ไม่ใช่ UTC ไม่งั้นตี 5 ของวันออกเดินทาง (= เมื่อวานตาม UTC)
+  // ปุ่ม SOS จะยังไม่ขึ้น ทั้งที่เป็นช่วงที่คนกำลังเดินทางจริง
+  const today = bangkokToday();
   const end = returnDate || departure;
   return today >= departure && today <= end;
+}
+
+/**
+ * ลิงก์ติดตามใช้ได้เฉพาะช่วงใกล้เดินทางจริง — โชว์ตั้งแต่ 2 วันก่อนออกเดินทาง
+ * จนถึงวันสุดท้ายของทริป ไม่งั้นคนที่บ้านจะเปิดไปเจอแผนที่เปล่า ๆ
+ */
+function canShareTracking(b) {
+  if (b.status !== 'confirmed') return false;
+
+  const days = daysUntil(b.schedule?.departure_date);
+  if (days === null) return false;
+
+  const end = b.schedule?.return_date || b.schedule?.departure_date;
+
+  return days <= 2 && bangkokToday() <= end;
+}
+
+async function openShareTracking(b) {
+  try {
+    // token ถูกสร้างฝั่งเซิร์ฟเวอร์เมื่อเรียกครั้งแรก จึงต้องถามทุกครั้งแทนการเดา URL เอง
+    const res = await api.get(`/bookings/${b.booking_ref}/tracking`);
+    const url = res.data?.data?.share_url;
+
+    if (!url) {
+      toast.error('ยังไม่มีลิงก์ติดตามสำหรับการจองนี้');
+      return;
+    }
+
+    const { isConfirmed } = await swal.confirm({
+      title: 'แชร์ให้ที่บ้านติดตาม',
+      html: `<p style="margin-bottom:8px">ส่งลิงก์นี้ให้คนที่บ้านดูตำแหน่งรถได้แบบไม่ต้องล็อกอิน</p>
+             <code style="word-break:break-all;font-size:13px">${url}</code>`,
+      icon: 'info',
+      confirmText: 'คัดลอกลิงก์',
+      cancelText: 'ปิด',
+    });
+
+    if (!isConfirmed) return;
+
+    await navigator.clipboard.writeText(url);
+    toast.success('คัดลอกลิงก์แล้ว');
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'ขอลิงก์ติดตามไม่สำเร็จ');
+  }
+}
+
+/**
+ * ไฟล์ .ics ดาวน์โหลดฝั่งเบราว์เซอร์ ไม่ต้องผ่านเซิร์ฟเวอร์
+ * ใช้ DTSTART/DTEND แบบ VALUE=DATE (all-day) เพราะเรารู้แค่วันที่ ไม่รู้เวลาออกเดินทางแน่นอน
+ */
+function addToCalendar(b) {
+  const start = b.schedule?.departure_date;
+
+  if (!start) {
+    toast.error('การจองนี้ยังไม่มีวันเดินทาง');
+    return;
+  }
+
+  const compact = (d) => d.replaceAll('-', '');
+  // DTEND ของ all-day event เป็นแบบ exclusive จึงต้องบวกอีกหนึ่งวัน
+  const endDate = new Date(`${b.schedule?.return_date || start}T00:00:00Z`);
+  endDate.setUTCDate(endDate.getUTCDate() + 1);
+
+  const escape = (text) => String(text || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//luilaykhao//booking//TH',
+    'BEGIN:VEVENT',
+    `UID:${b.booking_ref}@luilaykhao.com`,
+    `DTSTART;VALUE=DATE:${compact(start)}`,
+    `DTEND;VALUE=DATE:${compact(endDate.toISOString().slice(0, 10))}`,
+    `SUMMARY:${escape(b.schedule?.trip?.title || 'ทริปลุยเลเขา')}`,
+    `LOCATION:${escape(b.schedule?.trip?.location)}`,
+    `DESCRIPTION:${escape(`หมายเลขการจอง ${b.booking_ref}`)}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  link.download = `${b.booking_ref}.ics`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+
+  toast.success('ดาวน์โหลดไฟล์ปฏิทินแล้ว');
 }
 
 function openSosModal(b) {
@@ -782,25 +912,34 @@ async function submitSos() {
       message,
     });
     showSosModal.value = false;
-    alert('ส่งสัญญาณ SOS เรียบร้อยแล้ว สตาฟและผู้ร่วมทริปได้รับแจ้งเตือนแล้ว');
+    // SOS ต้องยืนยันแบบที่ผู้ใช้ต้องกดรับรู้ ไม่ใช่ toast ที่หายไปเอง
+    await swal.success('ส่งสัญญาณ SOS แล้ว', 'สตาฟและผู้ร่วมทริปได้รับการแจ้งเตือนแล้ว');
   } catch (e) {
-    alert(e?.response?.data?.message || 'ส่ง SOS ไม่สำเร็จ กรุณาลองใหม่');
+    swal.error('ส่ง SOS ไม่สำเร็จ', e?.response?.data?.message || 'กรุณาลองใหม่อีกครั้ง');
   } finally {
     sosSubmitting.value = false;
   }
 }
 
 async function handleCancel(b) {
-  if (!confirm('ต้องการยกเลิกการจองนี้หรือไม่?')) return;
+  const { isConfirmed } = await swal.confirm({
+    title: 'ยกเลิกการจองนี้?',
+    text: `${b.schedule?.trip?.title || 'การจอง'} · ${b.booking_ref}`,
+    icon: 'warning',
+    confirmText: 'ยกเลิกการจอง',
+    cancelText: 'ไม่ใช่ตอนนี้',
+  });
+
+  if (!isConfirmed) return;
+
   try {
     await bookingStore.cancelBooking(b.booking_ref, 'ยกเลิกโดยลูกค้า');
-    await bookingStore.fetchMyBookings();
+    await load(currentPage.value);
+    toast.success('ยกเลิกการจองแล้ว');
   } catch (e) {
-    alert(e?.response?.data?.message || 'ยกเลิกไม่สำเร็จ');
+    toast.error(e?.response?.data?.message || 'ยกเลิกไม่สำเร็จ');
   }
 }
 
-onMounted(() => {
-  bookingStore.fetchMyBookings();
-});
+onMounted(() => load(1));
 </script>

@@ -14,7 +14,7 @@ trait ApiResponse
             'message' => $message,
         ];
 
-        if (!empty($meta)) {
+        if (! empty($meta)) {
             $response['meta'] = $meta;
         }
 
@@ -36,18 +36,22 @@ trait ApiResponse
         return response()->json($response, $code);
     }
 
-    protected function paginated($paginator, string $message = 'สำเร็จ'): JsonResponse
+    /**
+     * @param  array  $meta  ค่าเพิ่มเติมที่ผสมเข้ากับ meta ของ paginator (เช่นยอดรวม
+     *                       แยกตามสถานะที่ต้องนับจากทั้งชุด ไม่ใช่แค่หน้าปัจจุบัน)
+     */
+    protected function paginated($paginator, string $message = 'สำเร็จ', array $meta = []): JsonResponse
     {
         return response()->json([
             'success' => true,
             'data' => $paginator->items(),
             'message' => $message,
-            'meta' => [
+            'meta' => array_merge([
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
-            ],
+            ], $meta),
         ]);
     }
 }

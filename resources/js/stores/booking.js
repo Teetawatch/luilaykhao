@@ -32,12 +32,21 @@ export const useBookingStore = defineStore('booking', {
       }
     },
 
-    async fetchMyBookings(page = 1) {
+    /**
+     * เรียกโดยไม่ส่งอะไร = ได้การจองทั้งหมดในครั้งเดียว (MyReviewsPage ใช้แบบนี้)
+     * ส่ง perPage มาด้วยจึงจะเปลี่ยนเป็นแบบแบ่งหน้า — ให้ตรงกับฝั่ง API ที่คงพฤติกรรม
+     * เดิมไว้เป็นค่าเริ่มต้นเพื่อไม่ให้แอปมือถือที่ปล่อยไปแล้วได้แค่หน้าแรก
+     */
+    async fetchMyBookings({ page = 1, perPage = null, scope = null } = {}) {
       this.loading = true;
       try {
-        const res = await api.get('/bookings', { params: { page } });
+        const params = { page };
+        if (perPage) params.per_page = perPage;
+        if (scope) params.scope = scope;
+
+        const res = await api.get('/bookings', { params });
         this.bookings = res.data.data;
-        this.meta = res.data.meta;
+        this.meta = res.data.meta ?? null;
       } finally {
         this.loading = false;
       }
