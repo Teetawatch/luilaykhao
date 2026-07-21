@@ -407,6 +407,7 @@ class ChatController extends Controller
                     'name' => $u->name,
                     'nickname' => $u->nickname,
                     'avatar_url' => $u->avatar_url,
+                    ...$u->tierBadge(),
                     'role' => $m['role'],
                     'phone' => $isStaff ? $u->phone : null,
                     'is_me' => $u->id === $user->id,
