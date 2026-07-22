@@ -21,42 +21,40 @@
         <span class="text-gray-700 font-bold bg-gray-100 px-3 py-1 rounded-full">จองกิจกรรม</span>
       </nav>
 
-      <!-- Title Hero -->
-      <div class="mb-10 bg-white rounded-3xl border border-gray-100 relative overflow-hidden">
-        <!-- Hero Image -->
-        <div v-if="schedule.trip?.cover_image" class="relative w-full h-64 md:h-80">
-          <img :src="schedule.trip.thumbnail_image || schedule.trip.cover_image" :alt="schedule.trip.title"
-            class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent"></div>
-        </div>
-        <!-- Content -->
-        <div class="p-6 md:p-8 relative" :class="schedule.trip?.cover_image ? '-mt-20 md:-mt-24 relative z-10' : ''">
-          <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-gray-100/50">
-            <h1 class="font-anuphan text-2xl md:text-4xl font-extrabold text-gray-900 mb-4">
-              {{ schedule.trip?.title }}
-            </h1>
-            <div class="flex flex-wrap gap-4 text-sm font-medium">
-              <div class="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-gray-700 border border-gray-200/60">
-                <span class="material-symbols-rounded text-teal-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">calendar_month</span>
-                <span>
-                  {{ formatDate(schedule.departure_date) }}
-                  <template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
-                </span>
-              </div>
-              <div class="flex items-center gap-2 px-4 py-2 rounded-xl border font-bold" :class="scheduleAvailabilityPillClass">
-                <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
-                <span v-if="isJoinTrip">ว่าง {{ schedule.available_seats }} ที่</span>
-                <span v-else>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
-              </div>
-              <div v-if="isJoinTrip" class="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl text-emerald-700 border border-emerald-200 font-bold">
-                <span class="material-symbols-rounded text-emerald-600 text-[20px]">confirmation_number</span>
-                <span>Enjoy Trip (Join Trip)</span>
-              </div>
-              <div v-if="schedule.trip?.is_women_only" class="flex items-center gap-2 bg-pink-50 px-4 py-2 rounded-xl text-pink-700 border border-pink-200 animate-pulse">
-                <span class="material-symbols-rounded text-pink-600 text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">female</span>
-                <span class="font-bold">ทริปสำหรับผู้หญิงเท่านั้น</span>
-              </div>
-            </div>
+      <!-- Trip strip — the trip is already chosen; this is a reminder, not a pitch -->
+      <div class="mb-8 bg-white rounded-3xl border border-gray-100 p-4 md:p-5 flex items-start gap-4">
+        <img v-if="schedule.trip?.cover_image"
+          :src="schedule.trip.thumbnail_image || schedule.trip.cover_image" :alt="schedule.trip.title"
+          class="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover shrink-0" />
+        <div class="min-w-0 flex-1">
+          <h1 class="font-anuphan text-lg md:text-2xl font-extrabold text-gray-900 leading-tight">
+            {{ schedule.trip?.title }}
+          </h1>
+          <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 font-medium">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-rounded text-gray-400 text-[18px]">calendar_month</span>
+              {{ formatDate(schedule.departure_date) }}<template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
+            </span>
+            <span class="text-gray-200">·</span>
+            <span class="flex items-center gap-1.5" :class="Number(schedule.available_seats) < 3 ? 'text-gray-900 font-bold' : ''">
+              <span class="material-symbols-rounded text-gray-400 text-[18px]">event_seat</span>
+              <span v-if="isJoinTrip">ว่าง {{ schedule.available_seats }} ที่</span>
+              <span v-else>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
+            </span>
+            <template v-if="isJoinTrip">
+              <span class="text-gray-200">·</span>
+              <span class="flex items-center gap-1.5">
+                <span class="material-symbols-rounded text-gray-400 text-[18px]">confirmation_number</span>
+                จอยทริป (ไปเจอกันที่จุดนัดพบ)
+              </span>
+            </template>
+            <template v-if="schedule.trip?.is_women_only">
+              <span class="text-gray-200">·</span>
+              <span class="flex items-center gap-1.5 text-pink-700">
+                <span class="material-symbols-rounded text-pink-400 text-[18px]" style="font-variation-settings:'FILL' 1">female</span>
+                รับเฉพาะผู้หญิง
+              </span>
+            </template>
           </div>
         </div>
       </div>
@@ -153,9 +151,6 @@
                       :class="selectedPickup?.id === pt.id ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-teal-50 group-hover:text-teal-700'">
                       {{ pt.region_label }}
                     </span>
-                    <span v-if="pt.id % 3 === 0" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-100">
-                      <span class="material-symbols-rounded text-[14px]">stars</span> จุดขึ้นยอดนิยม
-                    </span>
                     <span v-if="pt.pickup_location.includes('BTS') || pt.pickup_location.includes('MRT')" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
                       <span class="material-symbols-rounded text-[14px]">train</span> ใกล้รถไฟฟ้า
                     </span>
@@ -189,8 +184,6 @@
                 </span>
               </div>
 
-              <!-- Decorative Background element -->
-              <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl transition-all duration-500 group-hover:bg-teal-500/10 group-hover:scale-150"></div>
             </div>
           </div>
 
@@ -240,8 +233,8 @@
               </button>
             </div>
           </div>
-          <p v-if="!selectedPickup && !customPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-red-500 font-bold animate-pulse">
-            * กรุณาเลือกจุดขึ้นรถก่อนเดินทางต่อ
+          <p v-if="!selectedPickup && !customPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-gray-500 font-medium">
+            เลือกจุดขึ้นรถก่อน จึงจะไปขั้นตอนถัดไปได้
           </p>
         </div>
 
@@ -296,7 +289,7 @@
                     </span>
                   </div>
                 </div>
-                <p class="text-[10px] text-gray-400 text-right">* ราคานี้รวมค่าหัวและประกันภัยแล้ว</p>
+                <p class="text-[11px] text-gray-400 text-right font-medium">รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว</p>
               </div>
             </div>
 
@@ -347,11 +340,6 @@
                   </div>
                   <span class="text-[11px] font-bold text-gray-400 shrink-0">จองแล้ว {{ seatsStore.seatMap.booked_seats }}/{{ seatsStore.seatMap.total_seats }}</span>
                 </div>
-                <p v-if="seatsStore.seatMap.available_seats > 0 && seatsStore.seatMap.available_seats <= 3"
-                  class="mt-2 text-[11px] font-black text-amber-600 flex items-center gap-1">
-                  <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">warning</span>
-                  เหลือเพียง {{ seatsStore.seatMap.available_seats }} ที่นั่ง — จองด่วน!
-                </p>
               </div>
             </div>
 
@@ -649,11 +637,23 @@
                   <span class="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center text-base font-bold border border-gray-200">{{ i + 1 }}</span>
                   ผู้เดินทางคนที่ {{ i + 1 }}
                 </h3>
-                <div class="flex flex-wrap items-center gap-3">
-                  <button v-if="i === 0 && authStore.isLoggedIn && bookingFor === 'self'" type="button" @click="autoFillFromProfile(i)"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 text-teal-700 text-sm font-bold border border-gray-200 hover:bg-teal-50 hover:border-teal-100 transition-all active:scale-95">
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- กรอกจาก: โปรไฟล์ตัวเอง / สมุดผู้ร่วมเดินทาง — เปิดให้ทุกคน ไม่ใช่แค่คนที่ 1 -->
+                  <button v-if="authStore.isLoggedIn" type="button" @click="autoFillFromProfile(i)"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-sm font-bold border border-gray-200 hover:bg-gray-100 transition-all active:scale-95">
                     <span class="material-symbols-rounded text-[18px]">account_circle</span>
-                    ดึงข้อมูลจากโปรไฟล์
+                    ข้อมูลของฉัน
+                  </button>
+                  <button v-if="authStore.isLoggedIn" type="button" @click="openTravellerPicker(i)"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-sm font-bold border border-gray-200 hover:bg-gray-100 transition-all active:scale-95">
+                    <span class="material-symbols-rounded text-[18px]">contacts</span>
+                    สมุดผู้ร่วมเดินทาง
+                  </button>
+                  <button v-if="i > 0" type="button" @click="copyFromFirst(i)"
+                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-sm font-bold border border-gray-200 hover:bg-gray-100 transition-all active:scale-95"
+                    title="คัดลอกผู้ติดต่อฉุกเฉิน จุดขึ้นรถ และอาหารฮาลาล จากคนที่ 1">
+                    <span class="material-symbols-rounded text-[18px]">content_copy</span>
+                    เหมือนคนที่ 1
                   </button>
                   <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
                     class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-bold w-fit">
@@ -704,7 +704,7 @@
                 <div class="md:col-span-2 grid grid-cols-12 gap-5">
                   <div class="col-span-12 md:col-span-3">
                     <label class="block text-sm font-bold text-gray-700 mb-2">คำนำหน้า <span class="text-red-500">*</span></label>
-                    <select v-model="p.title" required
+                    <select v-model="p.title" required :autocomplete="`section-traveller${i} honorific-prefix`"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'title') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
                       <option value="" disabled>เลือก...</option>
@@ -718,7 +718,7 @@
                   </div>
                   <div class="col-span-12 md:col-span-9">
                     <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
-                    <input v-model="p.name" type="text" required placeholder="กรอกชื่อ-นามสกุล"
+                    <input v-model="p.name" type="text" required placeholder="กรอกชื่อ-นามสกุล" :autocomplete="`section-traveller${i} name`"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'name') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                     <p v-if="showErr(i, 'name')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -783,6 +783,7 @@
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
                   <input v-model="p.phone" type="tel" required placeholder="0XXXXXXXXX"
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
+                    :autocomplete="`section-traveller${i} tel-national`"
                     @input="limitDigits(p, 'phone', 10)"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'phone') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
@@ -792,7 +793,7 @@
                 </div>
                 <div v-if="bookingFor === 'friend' && i === 0">
                   <label class="block text-sm font-bold text-gray-700 mb-2">อีเมลสำหรับแจ้งสถานะการจอง <span class="text-red-500">*</span></label>
-                  <input v-model.trim="p.email" type="email" required placeholder="friend@example.com"
+                  <input v-model.trim="p.email" type="email" required placeholder="friend@example.com" autocomplete="email"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'email') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                   <p v-if="showErr(i, 'email')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -863,8 +864,15 @@
                 </div>
 
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">การแพ้อาหาร / อื่นๆ <span class="text-red-500">*</span></label>
-                  <input v-model="p.allergies" type="text" required placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ หรือ ไม่มี"
+                  <div class="flex items-center justify-between gap-3 text-sm font-bold text-gray-700 mb-2">
+                    <label :for="`allergies-${i}`">การแพ้อาหาร / อื่นๆ <span class="text-red-500">*</span></label>
+                    <button type="button" @click="p.allergies = 'ไม่มี'"
+                      class="px-3 py-1 rounded-lg text-xs font-bold border transition-all active:scale-95"
+                      :class="p.allergies === 'ไม่มี' ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'">
+                      ไม่มี
+                    </button>
+                  </div>
+                  <input :id="`allergies-${i}`" v-model="p.allergies" type="text" required placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ หรือ ไม่มี"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'allergies') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                   <p v-if="showErr(i, 'allergies')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -873,8 +881,15 @@
                 </div>
 
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุสุขภาพ <span class="text-red-500">*</span></label>
-                  <textarea v-model="p.health_notes" rows="2" required placeholder="แพ้ยา, โรคประจำตัว หรือ ไม่มี"
+                  <div class="flex items-center justify-between gap-3 text-sm font-bold text-gray-700 mb-2">
+                    <label :for="`health-notes-${i}`">หมายเหตุสุขภาพ <span class="text-red-500">*</span></label>
+                    <button type="button" @click="p.health_notes = 'ไม่มี'"
+                      class="px-3 py-1 rounded-lg text-xs font-bold border transition-all active:scale-95"
+                      :class="p.health_notes === 'ไม่มี' ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'">
+                      ไม่มี
+                    </button>
+                  </div>
+                  <textarea :id="`health-notes-${i}`" v-model="p.health_notes" rows="2" required placeholder="แพ้ยา, โรคประจำตัว หรือ ไม่มี"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white resize-none"
                     :class="showErr(i, 'health_notes') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'"></textarea>
                   <p v-if="showErr(i, 'health_notes')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -1008,44 +1023,40 @@
               </div>
 
               <!-- Price Card -->
-              <div class="bg-teal-700 text-white rounded-[2rem] p-6 md:p-8 relative overflow-hidden flex flex-col justify-between">
-                <!-- Background Decoration -->
-                <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-                <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-teal-500/20 rounded-full blur-2xl"></div>
-
-                <div class="relative z-10">
-                  <h3 class="font-bold text-white/90 text-lg mb-6 flex items-center gap-3">
-                    <span class="material-symbols-rounded">payments</span>
+              <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 flex flex-col justify-between">
+                <div>
+                  <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
+                    <span class="material-symbols-rounded text-teal-600">payments</span>
                     สรุปค่าใช้จ่าย
                   </h3>
-                  
+
                   <div class="space-y-3 mb-8">
                     <template v-if="!hasVariedPickupPrices">
                       <div class="flex justify-between text-sm">
-                        <span class="text-white/70">ราคาต่อที่นั่ง</span>
-                        <span class="font-bold">฿{{ Number(effectivePrice).toLocaleString() }}</span>
+                        <span class="text-gray-500 font-medium">ราคาต่อที่นั่ง</span>
+                        <span class="font-bold text-gray-900">฿{{ Number(effectivePrice).toLocaleString() }}</span>
                       </div>
                       <div class="flex justify-between text-sm">
-                        <span class="text-white/70">จำนวนผู้เดินทาง</span>
-                        <span class="font-bold">{{ passengers.length }} คน</span>
+                        <span class="text-gray-500 font-medium">จำนวนผู้เดินทาง</span>
+                        <span class="font-bold text-gray-900">{{ passengers.length }} คน</span>
                       </div>
                     </template>
                     <template v-else>
                       <div v-for="(p, i) in passengers" :key="i" class="flex justify-between text-sm">
-                        <span class="text-white/70">คนที่ {{ i + 1 }}{{ p.nickname ? ` (${p.nickname})` : '' }}</span>
-                        <span class="font-bold">฿{{ passengerTicketPrice(p).toLocaleString() }}</span>
+                        <span class="text-gray-500 font-medium">คนที่ {{ i + 1 }}{{ p.nickname ? ` (${p.nickname})` : '' }}</span>
+                        <span class="font-bold text-gray-900">฿{{ passengerTicketPrice(p).toLocaleString() }}</span>
                       </div>
                     </template>
-                    <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-100">
+                    <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
                       <span class="flex items-center gap-2 min-w-0">
-                        <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-white/20" />
+                        <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-amber-100" />
                         <span v-else class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
                         <span class="truncate">{{ addon.name }}</span>
                       </span>
                       <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
                     </div>
-                    <div v-if="promotionData" class="flex justify-between text-sm text-teal-200 pt-2 border-t border-white/20">
-                      <span class="flex items-center gap-1">
+                    <div v-if="promotionData" class="flex justify-between text-sm text-teal-700 pt-2 border-t border-gray-100">
+                      <span class="flex items-center gap-1 font-medium">
                         <span class="material-symbols-rounded text-[16px]">local_offer</span>
                         ส่วนลด ({{ promotionCode }})
                       </span>
@@ -1054,12 +1065,13 @@
                   </div>
                 </div>
 
-                <div class="relative z-10 pt-6 border-t border-white/10">
-                  <p class="text-xs text-white/60 font-bold uppercase tracking-widest mb-1">ยอดรวมสุทธิ</p>
-                  <div class="flex items-baseline gap-1">
-                    <span class="text-xl font-bold">฿</span>
-                    <span class="text-5xl font-black font-anuphan tracking-tighter">{{ totalAmount.toLocaleString() }}</span>
+                <div class="pt-6 border-t border-gray-100">
+                  <p class="text-sm font-bold text-gray-500 mb-1">ยอดรวมสุทธิ</p>
+                  <div class="flex items-baseline gap-1 text-teal-700">
+                    <span class="text-lg font-bold">฿</span>
+                    <span class="text-3xl font-extrabold font-anuphan tracking-tight">{{ totalAmount.toLocaleString() }}</span>
                   </div>
+                  <p class="mt-2 text-[11px] text-gray-400 font-medium">รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว</p>
                 </div>
               </div>
             </div>
@@ -1100,10 +1112,10 @@
               </button>
               <button @click="createBooking"
                 :disabled="bookingLoading"
-                class="flex-1 flex items-center justify-center gap-3 bg-emerald-600 text-white px-8 py-5 rounded-2xl font-black text-xl hover:bg-emerald-700 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 group">
+                class="flex-1 flex items-center justify-center gap-3 bg-emerald-600 text-white px-8 py-4 rounded-2xl font-extrabold text-lg hover:bg-emerald-700 active:scale-[0.99] transition-all disabled:opacity-50">
                 <span v-if="bookingLoading" class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 <template v-else>
-                  <span class="material-symbols-rounded text-2xl group-hover:rotate-12 transition-transform">verified</span>
+                  <span class="material-symbols-rounded text-[22px]">verified</span>
                   <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
                 </template>
               </button>
@@ -1197,7 +1209,7 @@
                     </span>
                   </div>
                 </div>
-                <p class="text-[10px] text-gray-400 text-right font-medium">รวมภาษีและค่าบริการแล้ว</p>
+                <p class="text-[11px] text-gray-400 text-right font-medium">รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว</p>
               </div>
             </div>
 
@@ -1255,7 +1267,7 @@
                 :class="{ 'opacity-60': attempted && !isPassengerValid }">
                 <span class="material-symbols-rounded">fact_check</span>
                 <span>ดูสรุปการจอง</span>
-                <span class="material-symbols-rounded animate-bounce-x">arrow_forward</span>
+                <span class="material-symbols-rounded">arrow_forward</span>
               </button>
 
               <!-- Final confirmation button -->
@@ -1275,9 +1287,11 @@
               กรุณาเลือกที่นั่งในแผนผังเพื่อดำเนินการต่อ
             </div>
 
-            <div class="mt-6 flex items-center justify-center gap-2 text-gray-400 group">
-              <span class="material-symbols-rounded text-sm">verified_user</span>
-              <span class="text-[11px] font-bold group-hover:text-teal-600 transition-colors tracking-wide uppercase">การชำระเงินที่ปลอดภัยและการเข้ารหัส SSL</span>
+            <div class="mt-6 flex items-start justify-center gap-2 text-gray-400">
+              <span class="material-symbols-rounded text-[16px] mt-px">info</span>
+              <span class="text-[11px] font-medium leading-relaxed">
+                ยังไม่มีการตัดเงินในขั้นตอนนี้ · ขั้นถัดไปคือโอนผ่าน PromptPay แล้วแนบสลิป
+              </span>
             </div>
           </div>
         </aside>
@@ -1294,6 +1308,63 @@
       </router-link>
     </div>
     
+    <!-- สมุดผู้ร่วมเดินทาง — เลือกคนที่เคยจองไว้แล้วมากรอกให้อัตโนมัติ -->
+    <Teleport to="body">
+      <div v-if="showTravellerPicker" class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6"
+        role="dialog" aria-modal="true" aria-labelledby="traveller-picker-title">
+        <div class="absolute inset-0 bg-black/45" @click="showTravellerPicker = false"></div>
+
+        <div class="bg-white rounded-t-[1.5rem] sm:rounded-[1.5rem] w-full max-w-md max-h-[85vh] relative z-10 flex flex-col overflow-hidden border border-gray-100">
+          <header class="shrink-0 px-5 pt-4 pb-4 sm:px-6 sm:pt-6 border-b border-gray-100">
+            <div class="sm:hidden w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
+            <div class="flex items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <h3 id="traveller-picker-title" class="text-lg font-extrabold text-gray-900 leading-tight">สมุดผู้ร่วมเดินทาง</h3>
+                <p class="mt-1 text-sm text-gray-500 font-medium">เลือกคนที่เคยเดินทางด้วยกัน เพื่อกรอกเป็นผู้เดินทางคนที่ {{ travellerPickerIndex + 1 }}</p>
+              </div>
+              <button @click="showTravellerPicker = false" class="w-9 h-9 -mt-1 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors active:scale-95 shrink-0" aria-label="ปิด">
+                <span class="material-symbols-rounded text-gray-500 text-[21px]">close</span>
+              </button>
+            </div>
+          </header>
+
+          <div class="px-5 py-4 sm:px-6 overflow-y-auto">
+            <div v-if="savedTravellersLoading" class="py-10 flex justify-center">
+              <div class="w-8 h-8 rounded-full border-4 border-gray-100 border-t-teal-600 animate-spin"></div>
+            </div>
+
+            <div v-else-if="!savedTravellers.length" class="py-10 text-center">
+              <span class="material-symbols-rounded text-gray-300 text-5xl">contacts</span>
+              <p class="mt-3 font-bold text-gray-700">ยังไม่มีใครในสมุด</p>
+              <p class="mt-1 text-sm text-gray-500 font-medium leading-relaxed">
+                หลังจองเสร็จ ระบบจะถามว่าจะเก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหม<br />เก็บไว้แล้วครั้งต่อไปเลือกได้เลย ไม่ต้องกรอกใหม่
+              </p>
+            </div>
+
+            <ul v-else class="divide-y divide-gray-100">
+              <li v-for="t in savedTravellers" :key="t.id">
+                <button type="button" @click="applySavedTraveller(t)"
+                  class="w-full text-left py-3.5 px-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold shrink-0">
+                    {{ (t.nickname || t.name || '?').charAt(0) }}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="font-bold text-gray-900 text-sm truncate">
+                      {{ t.name }}<span v-if="t.nickname" class="text-gray-400 font-medium"> ({{ t.nickname }})</span>
+                    </p>
+                    <p class="text-xs text-gray-500 font-medium truncate">
+                      {{ t.phone || 'ไม่มีเบอร์โทร' }}<span v-if="t.times_used"> · เคยใช้ {{ t.times_used }} ครั้ง</span>
+                    </p>
+                  </div>
+                  <span class="material-symbols-rounded text-gray-300 text-[20px] shrink-0">chevron_right</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Insurance Detail Modal -->
     <Teleport to="body">
       <div v-if="showInsuranceModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1380,13 +1451,22 @@
     <!-- Sticky Mobile Bottom Bar -->
     <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe z-50 animate-in slide-in-from-bottom duration-500">
       <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
-        <div @click="step === (isTrekking ? 3 : 2) ? null : window.scrollTo({top: 0, behavior: 'smooth'})" class="cursor-pointer">
+        <!-- ในขั้นกรอกข้อมูล สิ่งที่คนอยากรู้คือเหลืออีกกี่ช่อง ไม่ใช่ยอดเงิน -->
+        <button v-if="isPassengerStep && missingFieldCount > 0" type="button"
+          @click="jumpToMissing" class="text-left shrink-0">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ยังกรอกไม่ครบ</p>
+          <p class="text-sm font-extrabold text-gray-900 flex items-center gap-1">
+            เหลือ {{ missingFieldCount }} ช่อง
+            <span class="material-symbols-rounded text-[16px] text-gray-400">arrow_downward</span>
+          </p>
+        </button>
+        <div v-else @click="step === (isTrekking ? 3 : 2) ? null : window.scrollTo({top: 0, behavior: 'smooth'})" class="cursor-pointer">
           <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ยอดรวมสุทธิ</p>
-          <p class="text-xl font-black text-teal-700 font-anuphan tracking-tighter">
+          <p class="text-xl font-extrabold text-teal-700 font-anuphan tracking-tight">
             <span class="text-sm mr-0.5">฿</span>{{ totalAmount.toLocaleString() }}
           </p>
         </div>
-        
+
         <button v-if="step === (isTrekking ? 1 : 0) && hasSeatMap"
           @click="lockAndNext"
           :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
@@ -1506,12 +1586,6 @@ const hasSeatMap = computed(() => {
 });
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value);
-const scheduleAvailabilityPillClass = computed(() => {
-  if (Number(schedule.value?.available_seats || 0) < 3) {
-    return 'bg-red-50 text-red-600 border-red-200';
-  }
-  return 'bg-gray-50 text-gray-700 border-gray-200';
-});
 const maxPassengers = computed(() => {
   if (isJoinTrip.value) return 50; // Allow more for join trip
   return Math.min(schedule.value?.available_seats || 10, 10);
@@ -1612,35 +1686,109 @@ function saveFormData() {
     selectedAddons: selectedAddons.value,
   };
   sessionStorage.setItem(FORM_SESSION_KEY.value, JSON.stringify(data));
+  saveDraft(data);
+}
+
+// ── ร่างการจองข้ามการปิดแท็บ ────────────────────────────────────────────
+// sessionStorage ด้านบนตายเมื่อปิดแท็บ ร่างนี้อยู่ได้ 7 วัน เพื่อให้คนที่ปิดไป
+// หาข้อมูลเพื่อนกลับมากรอกต่อได้ — แต่ "ไม่เก็บเลขบัตรประชาชน" ลง localStorage
+// เพราะมันอยู่ยาวข้ามเซสชันบนเครื่องที่อาจใช้ร่วมกัน
+const DRAFT_KEY = computed(() => `booking_draft_${route.params.scheduleId}${preselectedRegion ? `_${preselectedRegion}` : ''}`);
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function saveDraft(data) {
+  try {
+    localStorage.setItem(DRAFT_KEY.value, JSON.stringify({
+      savedAt: Date.now(),
+      data: {
+        ...data,
+        passengers: data.passengers.map(({ id_card, ...rest }) => rest),
+      },
+    }));
+  } catch {}
+}
+
+function readDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY.value);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft?.savedAt || Date.now() - draft.savedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(DRAFT_KEY.value);
+      return null;
+    }
+    // ร่างที่ยังไม่ได้พิมพ์อะไรเลยไม่ต้องเสนอ
+    const hasContent = (draft.data?.passengers || []).some(p => hasText(p.name) || hasText(p.nickname) || hasText(p.phone));
+    return hasContent ? draft : null;
+  } catch {
+    return null;
+  }
+}
+
+// เสนอครั้งเดียวด้วยคำถาม ไม่คืนค่าเงียบ ๆ — คนอาจตั้งใจเริ่มใหม่
+async function offerDraftRestore() {
+  const draft = readDraft();
+  if (!draft) return;
+
+  const { isConfirmed } = await Swal.fire({
+    title: 'กรอกต่อจากที่ค้างไว้ไหมครับ',
+    text: `พบข้อมูลที่กรอกค้างไว้ของทริปนี้ (${draft.data.passengers.length} คน) จะดึงกลับมาให้ไหมครับ ยกเว้นเลขบัตรประชาชนที่ต้องกรอกใหม่`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'กรอกต่อ',
+    cancelButtonText: 'เริ่มใหม่',
+    customClass: {
+      popup: 'swal-popup',
+      confirmButton: 'swal-btn-confirm',
+      cancelButton: 'swal-btn-cancel',
+      title: 'swal-title',
+      htmlContainer: 'swal-html',
+    },
+    buttonsStyling: false,
+    reverseButtons: true,
+  });
+
+  if (!isConfirmed) {
+    localStorage.removeItem(DRAFT_KEY.value);
+    return;
+  }
+  applyFormData(draft.data);
+  toast.success('ดึงข้อมูลที่กรอกค้างไว้กลับมาแล้ว');
 }
 
 function restoreFormData() {
   const raw = sessionStorage.getItem(FORM_SESSION_KEY.value);
   if (!raw) return;
   try {
-    const data = JSON.parse(raw);
-    if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
-      passengers.value = data.passengers;
-      passengers.value.forEach(syncBirthParts);
-      passengerCount.value = data.passengerCount ?? data.passengers.length;
-    }
-    bookingFor.value = data.bookingFor || 'self';
-    isGroup.value = data.isGroup ?? false;
-    groupName.value = data.groupName ?? '';
-    groupNotes.value = data.groupNotes ?? '';
-    promotionCode.value = data.promotionCode ?? '';
-    promotionInput.value = data.promotionCode ?? '';
-    promotionData.value = data.promotionData ?? null;
-    selectedAddons.value = Array.isArray(data.selectedAddons) ? data.selectedAddons : [];
-    if (data.selectedPickupId != null && pickupPoints.value.length > 0) {
-      const pt = pickupPoints.value.find(p => p.id === data.selectedPickupId);
-      if (pt) selectedPickup.value = pt;
-    }
+    applyFormData(JSON.parse(raw));
   } catch {}
 }
 
-function clearFormData() {
+function applyFormData(data) {
+  if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
+    // ร่างจาก localStorage ไม่มี id_card — เติมช่องว่างไว้ให้ครบรูปทรงเดิม
+    passengers.value = data.passengers.map(p => ({ id_card: '', ...p }));
+    passengers.value.forEach(syncBirthParts);
+    passengerCount.value = data.passengerCount ?? data.passengers.length;
+  }
+  bookingFor.value = data.bookingFor || 'self';
+  isGroup.value = data.isGroup ?? false;
+  groupName.value = data.groupName ?? '';
+  groupNotes.value = data.groupNotes ?? '';
+  promotionCode.value = data.promotionCode ?? '';
+  promotionInput.value = data.promotionCode ?? '';
+  promotionData.value = data.promotionData ?? null;
+  selectedAddons.value = Array.isArray(data.selectedAddons) ? data.selectedAddons : [];
+  if (data.selectedPickupId != null && pickupPoints.value.length > 0) {
+    const pt = pickupPoints.value.find(p => p.id === data.selectedPickupId);
+    if (pt) selectedPickup.value = pt;
+  }
+}
+
+function clearFormData({ keepDraft = false } = {}) {
   sessionStorage.removeItem(FORM_SESSION_KEY.value);
+  if (keepDraft) return;
+  try { localStorage.removeItem(DRAFT_KEY.value); } catch {}
 }
 
 watch(step, (newStep) => {
@@ -1708,6 +1856,79 @@ function autoFillFromProfile(index) {
   }
 }
 
+// ครอบครัว/คู่เดินทางมักใช้ผู้ติดต่อฉุกเฉิน จุดขึ้นรถ และตัวเลือกอาหารชุดเดียวกัน
+// คัดลอกเฉพาะช่องที่ "ใช้ร่วมกันได้จริง" — ไม่แตะชื่อ/เลขบัตร/เบอร์ส่วนตัว
+function copyFromFirst(index) {
+  const first = passengers.value[0];
+  if (!first || index === 0) return;
+
+  passengers.value[index] = {
+    ...passengers.value[index],
+    emergency_contact: first.emergency_contact || '',
+    emergency_phone: first.emergency_phone || '',
+    halal_food: first.halal_food,
+    pickup_point_id: first.pickup_point_id ?? passengers.value[index].pickup_point_id,
+  };
+  toast.success('คัดลอกข้อมูลที่ใช้ร่วมกันจากคนที่ 1 แล้ว');
+}
+
+// ── สมุดผู้ร่วมเดินทาง ────────────────────────────────────────────────
+const showTravellerPicker = ref(false);
+const travellerPickerIndex = ref(0);
+const savedTravellers = ref([]);
+const savedTravellersLoading = ref(false);
+
+async function openTravellerPicker(index) {
+  travellerPickerIndex.value = index;
+  showTravellerPicker.value = true;
+  if (savedTravellers.value.length) return;
+
+  savedTravellersLoading.value = true;
+  try {
+    const res = await api.get('/saved-travellers');
+    savedTravellers.value = res.data.data || [];
+  } catch {
+    savedTravellers.value = [];
+    toast.error('โหลดสมุดผู้ร่วมเดินทางไม่สำเร็จ');
+  } finally {
+    savedTravellersLoading.value = false;
+  }
+}
+
+function applySavedTraveller(traveller) {
+  const index = travellerPickerIndex.value;
+  const isFemaleTrip = schedule.value?.trip?.is_women_only;
+  const titleAllowed = !(isFemaleTrip && traveller.title === 'นาย');
+
+  passengers.value[index] = {
+    ...passengers.value[index],
+    title: titleAllowed ? (traveller.title || '') : '',
+    name: traveller.name || '',
+    nickname: traveller.nickname || '',
+    id_card: traveller.id_card || '',
+    birth_date: traveller.birth_date || '',
+    phone: traveller.phone || '',
+    email: traveller.email || passengers.value[index].email || '',
+    blood_group: traveller.blood_group || '',
+    emergency_contact: traveller.emergency_contact || '',
+    emergency_phone: traveller.emergency_phone || '',
+    allergies: traveller.allergies || '',
+    health_notes: traveller.health_notes || '',
+    halal_food: traveller.halal_food ?? passengers.value[index].halal_food,
+  };
+  syncBirthParts(passengers.value[index]);
+  showTravellerPicker.value = false;
+
+  // จัดลำดับ "ใช้ล่าสุดอยู่บนสุด" ครั้งถัดไป — ล้มเหลวได้โดยไม่กระทบการจอง
+  api.post(`/saved-travellers/${traveller.id}/used`).catch(() => {});
+
+  if (!titleAllowed) {
+    toast.warning('ทริปนี้รับเฉพาะผู้หญิง กรุณาเลือกคำนำหน้าอีกครั้ง');
+  } else {
+    toast.success(`กรอกข้อมูลของ ${traveller.nickname || traveller.name} แล้ว`);
+  }
+}
+
 // Today's date as a local YYYY-MM-DD string — caps the birth-date picker and
 // rejects future dates (matches the backend's before:today rule).
 const todayDate = (() => {
@@ -1760,6 +1981,16 @@ function limitDigits(passenger, field, length) {
   passenger[field] = digitsOnly(passenger[field]).slice(0, length);
 }
 
+// เลขบัตรประชาชนไทยมีหลักตรวจสอบ (หลักที่ 13) — เช็คตอนกรอกได้เลย
+// แทนที่จะปล่อยให้พิมพ์ผิดไปโผล่ตอนกดยืนยัน หรือไปโผล่ที่กรมธรรม์ประกัน
+function isValidThaiId(value) {
+  const digits = digitsOnly(value);
+  if (digits.length !== 13) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += Number(digits[i]) * (13 - i);
+  return (11 - (sum % 11)) % 10 === Number(digits[12]);
+}
+
 // Per-passenger validation: returns { field: 'thai error message' } for every
 // field that is missing or malformed. Drives both isPassengerValid and the
 // inline error UI so they can never drift apart.
@@ -1771,6 +2002,7 @@ function computePassengerErrors(p, i) {
   if (!hasText(p.name)) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
   if (!hasText(p.nickname)) errors.nickname = 'กรุณากรอกชื่อเล่น';
   if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
+  else if (!isValidThaiId(p.id_card)) errors.id_card = 'เลขบัตรประชาชนไม่ถูกต้อง ลองตรวจสอบอีกครั้งครับ';
   if (!hasText(p.birth_date)) errors.birth_date = 'กรุณาเลือกวัน/เดือน/ปีเกิด';
   else if (p.birth_date >= todayDate) errors.birth_date = 'วัน/เดือน/ปีเกิดไม่ถูกต้อง';
   if (!hasExactDigits(p.phone, 10)) errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก';
@@ -1789,6 +2021,12 @@ function computePassengerErrors(p, i) {
 const passengerErrors = computed(() => passengers.value.map((p, i) => computePassengerErrors(p, i)));
 const isPassengerValid = computed(() => passengerErrors.value.every(e => Object.keys(e).length === 0));
 const firstInvalidPassenger = computed(() => passengerErrors.value.findIndex(e => Object.keys(e).length > 0));
+const isPassengerStep = computed(() =>
+  (step.value === (isTrekking.value ? 1 : 0) && !hasSeatMap.value) || step.value === (isTrekking.value ? 2 : 1)
+);
+const missingFieldCount = computed(() =>
+  passengerErrors.value.reduce((sum, e) => sum + Object.keys(e).length, 0)
+);
 const incompletePassengers = computed(() =>
   passengerErrors.value
     .map((e, i) => ({ index: i, count: Object.keys(e).length }))
@@ -1954,6 +2192,12 @@ function scrollToPassenger(index) {
   });
 }
 
+// แถบล่างบนมือถือ: พาไปช่องแรกที่ยังขาด และเปิดไฮไลต์สีแดงให้เห็นว่าขาดตรงไหน
+function jumpToMissing() {
+  attempted.value = true;
+  scrollToPassenger(Math.max(firstInvalidPassenger.value, 0));
+}
+
 function goToSummary() {
   if (!isPassengerValid.value) {
     attempted.value = true;
@@ -1964,6 +2208,39 @@ function goToSummary() {
     return;
   }
   step.value = isTrekking.value ? 3 : 2;
+}
+
+// ถามหลังจองเสร็จว่าจะเก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหม — ข้อมูลบัตร/สุขภาพ
+// ของคนอื่น เก็บได้ต่อเมื่อเจ้าของการจองกดยืนยันเท่านั้น ไม่เก็บเงียบ ๆ
+// ถามเฉพาะการจองที่มีมากกว่า 1 คน เพราะคนจองเดี่ยวมีปุ่ม "ข้อมูลของฉัน" อยู่แล้ว
+async function offerToSaveTravellers(bookingRef) {
+  if (!authStore.isLoggedIn || passengers.value.length < 2) return;
+
+  const { isConfirmed } = await Swal.fire({
+    title: 'เก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหมครับ',
+    text: `ครั้งหน้าเลือกจากสมุดได้เลย ไม่ต้องกรอกใหม่ทั้ง ${passengers.value.length} คน`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'เก็บไว้',
+    cancelButtonText: 'ไม่ต้อง',
+    customClass: {
+      popup: 'swal-popup',
+      confirmButton: 'swal-btn-confirm',
+      cancelButton: 'swal-btn-cancel',
+      title: 'swal-title',
+      htmlContainer: 'swal-html',
+    },
+    buttonsStyling: false,
+    reverseButtons: true,
+  });
+  if (!isConfirmed) return;
+
+  try {
+    const res = await api.post(`/bookings/${bookingRef}/save-travellers`);
+    toast.success(res.data.message || 'เก็บเข้าสมุดผู้ร่วมเดินทางแล้ว');
+  } catch {
+    toast.error('เก็บเข้าสมุดไม่สำเร็จ แต่การจองของคุณเรียบร้อยแล้วครับ');
+  }
 }
 
 async function createBooking() {
@@ -2069,6 +2346,7 @@ async function createBooking() {
     seatsStore.clearSelection();
     clearFormData();
     toast.success('สร้างการจองสำเร็จ! กำลังไปยังหน้าชำระเงิน...');
+    await offerToSaveTravellers(res.data.booking_ref);
     router.push(`/payment/${res.data.booking_ref}`);
   } catch (e) {
     bookingError.value = e?.response?.data?.message || 'ไม่สามารถสร้างการจองได้';
@@ -2082,7 +2360,8 @@ function handleExpiry() {
   // Read the minutes BEFORE clearing — clearSelection wipes activeBookingInfo
   const minutes = seatsStore.bookingTotalMinutes;
   seatsStore.clearSelection();
-  clearFormData();
+  // เก็บร่างไว้ — คนที่หมดเวลาต้องจองใหม่ ไม่ควรต้องพิมพ์ข้อมูลทุกคนซ้ำ
+  clearFormData({ keepDraft: true });
 
   swal.error(
     'หมดเวลาการจองแล้ว!',
@@ -2125,7 +2404,9 @@ onMounted(async () => {
     const isSameRegion = (seatsStore.activeBookingInfo?.region || null) === (preselectedRegion || null);
     const savedStep = seatsStore.activeBookingInfo?.step;
 
+    let restoredFromSession = false;
     if (hasValidSession && isSameSchedule && isSameRegion) {
+      restoredFromSession = true;
       restoreFormData();
       if (savedStep != null && savedStep > 0) {
         step.value = savedStep;
@@ -2144,6 +2425,11 @@ onMounted(async () => {
       if (isJoinTrip.value) {
         step.value = 0; // Info Step
       }
+    }
+
+    if (!restoredFromSession) {
+      loading.value = false; // ให้เห็นหน้าจองอยู่เบื้องหลังก่อนถามเรื่องร่างที่ค้าง
+      await offerDraftRestore();
     }
   } catch (e) {
     console.error(e);
