@@ -1,13 +1,24 @@
 <template>
   <div class="contact-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     
-    <!-- Header -->
-    <section class="pt-12 md:pt-16 px-6 md:px-8">
-      <div class="max-w-7xl mx-auto">
-        <h1 class="text-2xl md:text-4xl font-extrabold text-[var(--color-text-dark)]">ติดต่อทีมงาน</h1>
-        <p class="mt-3 text-base text-text-muted max-w-2xl leading-relaxed">
-          เรื่องด่วนหรือเรื่องวันเดินทาง โทรหรือทัก LINE จะเร็วที่สุด
-          ส่วนเรื่องที่ต้องมีรายละเอียดยาว ๆ ส่งผ่านฟอร์มด้านล่างได้ครับ
+    <!-- Hero Section -->
+    <section class="relative py-16 md:py-24 bg-[#0D2B1E] overflow-hidden">
+      <div class="absolute inset-0">
+        <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E] via-[#1A3A2E] to-[#2D5A3D] opacity-90"></div>
+        <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-[var(--color-accent)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4"></div>
+      </div>
+
+      <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-8 text-center">
+        <div class="inline-flex items-center gap-3 justify-center text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-6">
+          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
+          พร้อมดูแลคุณตลอดการเดินทาง
+          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
+        </div>
+        <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-5">
+          มีคำถามเกี่ยวกับทริป?<br />เราพร้อมช่วยคุณวางแผน
+        </h1>
+        <p class="text-base md:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
+          ทักมาหาเราได้เลย ทีมงาน "ลุยเลเขา" สแตนด์บายรอช่วยเหลือคุณอยู่ ไม่ว่าจะเป็นการเลือกทริปที่ใช่ หรือสอบถามสิ่งที่สงสัย เรายินดีให้คำปรึกษาฟรีครับ
         </p>
       </div>
     </section>
