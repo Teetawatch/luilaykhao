@@ -1191,86 +1191,84 @@
 
     <!-- Must Know Modal Popup -->
     <Teleport to="body">
-      <div v-if="showMustKnowModal && hasMustKnowContent" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
-        <!-- Backdrop -->
-        <div class="fixed inset-0 bg-black/65 backdrop-blur-md transition-opacity" @click="showMustKnowModal = false"></div>
-        
-        <!-- Modal Content -->
-        <div class="bg-white rounded-[1.5rem] sm:rounded-[2rem] w-full max-w-3xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] relative z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col">
-          <!-- Close Button -->
-          <button @click="showMustKnowModal = false" class="absolute top-3 right-3 sm:top-5 sm:right-5 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/95 hover:bg-white flex items-center justify-center transition-all active:scale-95 z-20 border border-white/60" aria-label="ปิดหน้าต่างข้อควรรู้">
-            <span class="material-symbols-rounded text-gray-600 text-[21px] sm:text-2xl">close</span>
-          </button>
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showMustKnowModal && hasMustKnowContent"
+          class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="must-know-title"
+        >
+          <!-- Backdrop -->
+          <div class="absolute inset-0 bg-black/45" @click="closeMustKnow"></div>
 
-          <!-- Top Banner -->
-          <div class="bg-gradient-to-br from-amber-500 to-[#D78A16] px-5 py-6 sm:p-8 text-white relative overflow-hidden shrink-0">
-            <div class="absolute -right-10 -bottom-12 w-36 h-36 bg-white/10 rounded-full blur-2xl"></div>
-            <div class="flex items-start gap-4 pr-10 sm:pr-12 relative z-10">
-              <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/20 flex items-center justify-center border border-white/20 shrink-0">
-                <span class="material-symbols-rounded text-3xl sm:text-4xl" style="font-variation-settings:'FILL' 1">campaign</span>
-              </div>
-              <div>
-                <p class="text-[11px] sm:text-xs font-black uppercase tracking-[0.18em] text-white/75 mb-1">Important trip details</p>
-                <h3 class="text-2xl sm:text-3xl font-black tracking-tight leading-tight">ข้อควรรู้สำหรับทริปนี้</h3>
-                <p class="mt-2 text-sm sm:text-base font-bold text-white/90 leading-relaxed">ตรวจสอบรายการเสริมและหมายเหตุก่อนเริ่มจอง เพื่อให้เตรียมตัวได้ครบถ้วน</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="p-5 sm:p-7 space-y-5 sm:space-y-6 overflow-y-auto custom-scrollbar">
-            <!-- Items Selection / Info -->
-            <section v-if="mustKnowItems.length" class="space-y-3">
-              <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
-                <div>
-                  <p class="text-[11px] font-black text-amber-600 uppercase tracking-[0.16em]">ตัวเลือกเพิ่มเติม</p>
-                  <h4 class="text-lg sm:text-xl font-black text-[var(--color-text-dark)] leading-tight">รายการที่สามารถเลือกเพิ่มได้</h4>
-                </div>
-                <span class="text-xs font-extrabold text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-full w-fit">
-                  {{ mustKnowItems.length }} รายการ
-                </span>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div v-for="(item, idx) in mustKnowItems" :key="idx" 
-                  class="rounded-2xl bg-white border border-gray-100 p-4 sm:p-5 transition-all hover:border-amber-200">
-                  <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-100 shrink-0">
-                      <span class="material-symbols-rounded text-xl text-amber-600">tips_and_updates</span>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <p class="font-black text-gray-900 text-sm sm:text-base leading-snug break-words">{{ item.name }}</p>
-                      <p class="mt-1 text-xs sm:text-sm font-bold text-gray-500">คิดราคา{{ item.priceTypeLabel }}</p>
-                    </div>
-                    <div class="text-right shrink-0">
-                      <div class="font-black text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-100 text-sm sm:text-base">
-                        {{ item.priceLabel }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Notes / Remarks -->
-            <section v-if="mustKnowRemarks" class="rounded-2xl bg-amber-50 border border-amber-100 p-4 sm:p-5 relative overflow-hidden">
-              <div class="absolute -right-10 -bottom-10 w-24 h-24 bg-amber-200/30 rounded-full blur-2xl"></div>
-              <div class="flex items-start gap-3 relative z-10">
-                <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-amber-100 shrink-0">
-                  <span class="material-symbols-rounded text-amber-600 text-xl" style="font-variation-settings:'FILL' 1">info</span>
+          <!-- Modal Content -->
+          <div class="bg-white rounded-t-[1.5rem] sm:rounded-[1.5rem] w-full max-w-lg max-h-[88vh] sm:max-h-[calc(100vh-3rem)] relative z-10 overflow-hidden flex flex-col border border-gray-100">
+            <!-- Header -->
+            <header class="shrink-0 px-5 pt-4 pb-4 sm:px-7 sm:pt-6 border-b border-gray-100">
+              <div class="sm:hidden w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-rounded text-amber-600 text-[20px]" style="font-variation-settings:'FILL' 1">info</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-[11px] font-black text-amber-700 uppercase tracking-[0.16em] mb-1">หมายเหตุเพิ่มเติม</p>
-                  <p class="text-sm sm:text-base text-gray-800 leading-relaxed font-bold whitespace-pre-line break-words">{{ mustKnowRemarks }}</p>
+                  <h3 id="must-know-title" class="text-lg sm:text-xl font-extrabold text-[var(--color-text-dark)] leading-tight">ข้อควรรู้ก่อนจองทริปนี้</h3>
+                  <p class="mt-1 text-sm text-[var(--color-text-muted)] font-medium leading-relaxed">อ่านรายละเอียดสั้น ๆ ด้านล่างก่อนเลือกวันเดินทางครับ</p>
                 </div>
+                <button @click="closeMustKnow" class="w-9 h-9 -mt-1 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors active:scale-95 shrink-0" aria-label="ปิดหน้าต่างข้อควรรู้">
+                  <span class="material-symbols-rounded text-gray-500 text-[21px]">close</span>
+                </button>
               </div>
-            </section>
+            </header>
 
-            <button @click="showMustKnowModal = false" class="w-full bg-[var(--color-primary)] text-white font-extrabold py-3.5 sm:py-4 rounded-xl hover:bg-[var(--color-accent)] active:scale-[0.98] transition-all text-sm sm:text-base">
-              เข้าใจแล้ว เริ่มจองทริปกันเลยครับ
-            </button>
+            <!-- Body -->
+            <div class="px-5 py-5 sm:px-7 sm:py-6 space-y-6 overflow-y-auto custom-scrollbar">
+              <!-- Optional add-ons -->
+              <section v-if="mustKnowItems.length" class="space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                  <h4 class="text-[13px] font-bold text-[var(--color-text-muted)]">รายการเสริมที่เลือกเพิ่มได้</h4>
+                  <span class="text-xs font-bold text-gray-400 shrink-0">{{ mustKnowItems.length }} รายการ</span>
+                </div>
+
+                <ul class="rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+                  <li v-for="(item, idx) in mustKnowItems" :key="idx" class="flex items-center gap-4 px-4 py-3.5">
+                    <div class="min-w-0 flex-1">
+                      <p class="font-bold text-gray-900 text-sm leading-snug break-words">{{ item.name }}</p>
+                      <p class="mt-0.5 text-xs text-[var(--color-text-muted)] font-medium">คิดราคา{{ item.priceTypeLabel }}</p>
+                    </div>
+                    <p class="font-extrabold text-gray-900 text-sm shrink-0 tabular-nums">{{ item.priceLabel }}</p>
+                  </li>
+                </ul>
+                <p class="text-xs text-[var(--color-text-muted)] font-medium leading-relaxed">
+                  รายการเสริมเป็นตัวเลือก ไม่บังคับ เลือกได้อีกครั้งในขั้นตอนการจอง
+                </p>
+              </section>
+
+              <!-- Notes / Remarks -->
+              <section v-if="mustKnowRemarks" class="space-y-2">
+                <h4 class="text-[13px] font-bold text-[var(--color-text-muted)]">หมายเหตุเพิ่มเติม</h4>
+                <div class="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3.5">
+                  <p class="text-sm text-gray-800 leading-relaxed font-medium whitespace-pre-line break-words">{{ mustKnowRemarks }}</p>
+                </div>
+              </section>
+            </div>
+
+            <!-- Footer -->
+            <footer class="shrink-0 px-5 py-4 sm:px-7 border-t border-gray-100 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <button @click="closeMustKnow" class="w-full bg-[var(--color-primary)] text-white font-extrabold py-3.5 rounded-xl hover:bg-[var(--color-accent)] active:scale-[0.99] transition-all text-sm sm:text-base">
+                เข้าใจแล้ว ดูวันเดินทาง
+              </button>
+            </footer>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
 
     <!-- Gallery Lightbox Modal -->
@@ -1890,6 +1888,18 @@ const showReviewImageModal = ref(false);
 const reviewImageModalImages = ref([]);
 const reviewImageModalIndex = ref(0);
 const showMustKnowModal = ref(false);
+let mustKnowTimer = null;
+
+function openMustKnow() {
+  showMustKnowModal.value = true;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMustKnow() {
+  showMustKnowModal.value = false;
+  document.body.style.overflow = '';
+}
+
 const distanceLoading = ref(false);
 const distanceData = ref([]);
 const showGalleryModal = ref(false);
@@ -2429,6 +2439,10 @@ function prevGalleryImage() {
 }
 
 const handleKeyDown = (e) => {
+  if (showMustKnowModal.value && e.key === 'Escape') {
+    closeMustKnow();
+    return;
+  }
   if (!showGalleryModal.value) return;
   if (e.key === 'Escape') closeGallery();
   if (e.key === 'ArrowRight') nextGalleryImage();
@@ -2499,8 +2513,8 @@ onMounted(async () => {
 
     // Show must know modal if exists
     if (hasMustKnowContent.value) {
-      setTimeout(() => {
-        showMustKnowModal.value = true;
+      mustKnowTimer = setTimeout(() => {
+        openMustKnow();
       }, 500);
     }
 
@@ -2527,6 +2541,7 @@ onUnmounted(() => {
   if (schedulePoll) clearInterval(schedulePoll);
   if (flashTimer) clearInterval(flashTimer);
   clearTimeout(shareCopiedTimer);
+  clearTimeout(mustKnowTimer);
   document.body.style.overflow = '';
 });
 
