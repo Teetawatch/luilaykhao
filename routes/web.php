@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicGiftController;
+use App\Http\Controllers\PublicPassengerFillController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PublicSharePaymentController;
@@ -119,6 +120,15 @@ Route::get('/album/{token}/download/{photoId}', [PublicAlbumController::class, '
     ->name('album.download-one');
 
 // Public birth-date page — ลูกค้ากรอกวัน/เดือน/ปีเกิดเองจากลิงก์เฉพาะคน (ไม่ต้องล็อกอิน)
+// เพื่อนร่วมทางกรอกข้อมูลของตัวเองผ่านลิงก์เฉพาะคน (ไม่ต้องล็อกอิน ไม่ต้องมีแอป)
+Route::get('/p/{token}', [PublicPassengerFillController::class, 'show'])
+    ->name('public.passenger-fill.show');
+Route::post('/p/{token}', [PublicPassengerFillController::class, 'submit'])
+    ->middleware('throttle:20,60')
+    ->name('public.passenger-fill.submit');
+Route::get('/p-done', [PublicPassengerFillController::class, 'done'])
+    ->name('public.passenger-fill.done');
+
 Route::get('/birthdate/{token}', [PublicBirthdateController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:30,1')

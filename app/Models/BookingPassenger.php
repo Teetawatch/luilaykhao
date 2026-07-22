@@ -14,6 +14,7 @@ class BookingPassenger extends Model
         'emergency_contact', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
         'blood_group', 'allergies', 'halal_food', 'pickup_point_id',
+        'self_fill_token', 'self_fill_expires_at', 'self_filled_at',
     ];
 
     protected function casts(): array
@@ -25,6 +26,8 @@ class BookingPassenger extends Model
             'id_card' => 'encrypted',
             'allergies' => 'encrypted',
             'halal_food' => 'boolean',
+            'self_fill_expires_at' => 'datetime',
+            'self_filled_at' => 'datetime',
         ];
     }
 

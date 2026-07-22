@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\Api\V1\PublicArticleController;
 use App\Http\Controllers\Api\V1\PublicProfileSettingsController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
+use App\Http\Controllers\Api\V1\SavedTravellerController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleItineraryController;
 use App\Http\Controllers\Api\V1\ScheduleRallyController;
@@ -144,6 +146,18 @@ Route::prefix('v1')->group(function () {
 
         // "ช่วยกันเปิดรอบ" — ชวนเพื่อนมาเติมให้รอบที่ยังไม่การันตีได้ออกเดินทาง
         Route::get('schedules/{id}/rally', [ScheduleRallyController::class, 'show']);
+
+        // ลิงก์ให้เพื่อนร่วมทางกรอกข้อมูลของตัวเอง (คนจองไม่ต้องรู้เลขบัตรเพื่อน)
+        Route::post('bookings/{ref}/passengers/{passengerId}/invite', [PassengerInviteController::class, 'store']);
+        Route::delete('bookings/{ref}/passengers/{passengerId}/invite', [PassengerInviteController::class, 'destroy']);
+
+        // สมุดผู้ร่วมเดินทาง — เก็บคนที่พาไปบ่อยไว้กรอกซ้ำ ไม่ต้องพิมพ์ใหม่ทุกรอบ
+        Route::get('saved-travellers', [SavedTravellerController::class, 'index']);
+        Route::post('saved-travellers', [SavedTravellerController::class, 'store']);
+        Route::put('saved-travellers/{id}', [SavedTravellerController::class, 'update']);
+        Route::delete('saved-travellers/{id}', [SavedTravellerController::class, 'destroy']);
+        Route::post('saved-travellers/{id}/used', [SavedTravellerController::class, 'markUsed']);
+        Route::post('bookings/{ref}/save-travellers', [SavedTravellerController::class, 'importFromBooking']);
 
         // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
         Route::get('me/passport', [PassportController::class, 'show']);
