@@ -21,8 +21,8 @@
   <div class="email-header {{ $headerClass }}">
     <span class="email-brand">Luilaykhao</span>
     <div class="header-emoji">{{ $statusEmoji }}</div>
-    <h1 class="header-title">สถานะการจองอัปเดต</h1>
-    <p class="header-subtitle">มีการเปลี่ยนแปลงสถานะการจองของท่าน</p>
+    <h1 class="header-title">อัปเดตสถานะการจอง</h1>
+    <p class="header-subtitle">แจ้งให้ทราบว่าการจองของคุณมีการเปลี่ยนแปลงครับ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -31,8 +31,9 @@
 
     <div class="greeting">
       สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
-      สถานะการจองของท่านได้เปลี่ยนเป็น
-      <strong class="{{ $accentClass }}">{{ $statusLabel }}</strong> แล้ว
+      ขออนุญาตแจ้งว่าสถานะการจองของคุณเปลี่ยนเป็น
+      <strong class="{{ $accentClass }}">{{ $statusLabel }}</strong> แล้วนะครับ
+      หากมีอะไรไม่ตรงกับที่เข้าใจ ทักมาบอกทีมงานได้เลยครับ
     </div>
 
     <div class="status-box {{ $boxClass }}">
@@ -101,7 +102,7 @@
     </div>
 
     <div class="contact-bar">
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
+      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>
@@ -112,7 +113,7 @@
     <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
+      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
       &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>

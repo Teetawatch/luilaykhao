@@ -1,15 +1,15 @@
-<x-emails.partials.base subject="✅ ชำระเงินสำเร็จ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="🎉 ยืนยันการจองเรียบร้อยแล้วครับ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">✅</div>
-    <h1 class="header-title">ชำระเงินสำเร็จแล้ว</h1>
+    <div class="header-emoji">🎉</div>
+    <h1 class="header-title">ที่นั่งของคุณยืนยันแล้วครับ</h1>
     <p class="header-subtitle">
       @if($paymentType === 'installment')
-        งวดแรกได้รับการบันทึกเรียบร้อย
+        ได้รับงวดแรกเรียบร้อยแล้วครับ
       @else
-        การชำระเงินเสร็จสมบูรณ์ &mdash; ท่านพร้อมออกเดินทาง
+        ชำระครบเรียบร้อย เตรียมตัวไปเที่ยวกันได้เลยครับ
       @endif
     </p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -19,8 +19,9 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
-      ขอบคุณสำหรับการชำระเงิน การจองของท่านได้รับการยืนยันแล้ว
+      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong> 💚<br />
+      ขอบคุณมาก ๆ นะครับ ทีมงานได้รับเงินเรียบร้อยแล้ว
+      การจองของคุณยืนยันสมบูรณ์ อีกไม่นานเราจะได้เจอกันแล้วครับ
     </div>
 
     <div class="highlight-box hl-green">
@@ -140,22 +141,22 @@
       <div class="step-item">
         <div class="step-num step-green">1</div>
         <div class="step-content">
-          <p class="step-title">เก็บอีเมลนี้ไว้เป็นหลักฐาน</p>
-          <p class="step-desc">ใช้สำหรับการยืนยันตัวตนในวันเดินทาง</p>
+          <p class="step-title">เก็บอีเมลฉบับนี้ไว้นะครับ</p>
+          <p class="step-desc">ใช้ยืนยันตัวตนตอนขึ้นรถในวันเดินทางได้เลยครับ</p>
         </div>
       </div>
       <div class="step-item">
         <div class="step-num step-green">2</div>
         <div class="step-content">
-          <p class="step-title">รอรับข้อมูลรายละเอียดการเดินทาง</p>
-          <p class="step-desc">ทีมงานจะแจ้งข้อมูลนัดหมายก่อนวันเดินทาง</p>
+          <p class="step-title">รอรับรายละเอียดนัดหมายจากทีมงาน</p>
+          <p class="step-desc">เราจะส่งจุดนัดพบและเวลาให้ก่อนวันเดินทางครับ ไม่ต้องกังวลเลย</p>
         </div>
       </div>
       <div class="step-item">
         <div class="step-num step-green">3</div>
         <div class="step-content">
-          <p class="step-title">เตรียมตัวตามรายการที่แนะนำ</p>
-          <p class="step-desc">ตรวจสอบรายการสิ่งของจำเป็นในหน้าทริป</p>
+          <p class="step-title">เตรียมของตามเช็กลิสต์ได้เลย</p>
+          <p class="step-desc">ดูรายการสิ่งของที่ควรพกได้ในหน้าทริปครับ</p>
         </div>
       </div>
       @if($paymentType === 'installment')
@@ -163,14 +164,14 @@
         <div class="step-num step-green">4</div>
         <div class="step-content">
           <p class="step-title">ชำระงวดถัดไปตามกำหนด</p>
-          <p class="step-desc">เพื่อรักษาสิทธิ์การเดินทางของท่าน</p>
+          <p class="step-desc">ใกล้ถึงกำหนดเราจะส่งอีเมลเตือนให้อีกทีครับ</p>
         </div>
       </div>
       @endif
     </div>
 
     <div class="contact-bar">
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
+      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>
@@ -181,7 +182,7 @@
     <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
+      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
       &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>

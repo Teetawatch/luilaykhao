@@ -116,6 +116,15 @@
     }
     .greeting strong { color: #e8edf5; font-weight: 700; }
 
+    /* Plain paragraph inside the body */
+    .body-text {
+      font-size: 14px;
+      line-height: 1.75;
+      color: #a9b8cd;
+      margin: 0 0 24px;
+    }
+    .body-text strong { color: #e8edf5; font-weight: 700; }
+
     /* Section label — underline via border, not a pseudo-element (Gmail strips those) */
     .section-label {
       font-size: 10px;

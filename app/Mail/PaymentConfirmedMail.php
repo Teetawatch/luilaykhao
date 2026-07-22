@@ -20,8 +20,9 @@ class PaymentConfirmedMail extends QueuedMail
     public function envelope(): Envelope
     {
         $typeLabel = $this->paymentType === 'installment' ? ' (งวดแรก)' : '';
+
         return new Envelope(
-            subject: "ชำระเงินสำเร็จ{$typeLabel} #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "ยืนยันการจองเรียบร้อยแล้วครับ 🎉{$typeLabel} #{$this->booking->booking_ref} - Luilaykhao",
         );
     }
 

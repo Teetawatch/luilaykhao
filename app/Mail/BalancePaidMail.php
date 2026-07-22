@@ -19,7 +19,7 @@ class BalancePaidMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "รับชำระเงินครบถ้วน #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "ได้รับเงินครบแล้วครับ ขอบคุณมาก ๆ 💚 #{$this->booking->booking_ref} - Luilaykhao",
         );
     }
 

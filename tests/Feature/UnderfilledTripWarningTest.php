@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * 5 days before departure, warn customers whose round hasn't reached the 8-seat
+ * 7 days before departure, warn customers whose round hasn't reached the 8-seat
  * minimum that the trip may be cancelled. Time is frozen so the target date is
  * deterministic.
  */
@@ -27,7 +27,7 @@ class UnderfilledTripWarningTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // 2026-07-05 03:00 UTC = 10:00 Asia/Bangkok → target date = 2026-07-10.
+        // 2026-07-05 03:00 UTC = 10:00 Asia/Bangkok → target date = 2026-07-12.
         Carbon::setTestNow(Carbon::parse('2026-07-05 03:00:00', 'UTC'));
         Mail::fake();
     }
@@ -38,7 +38,7 @@ class UnderfilledTripWarningTest extends TestCase
         parent::tearDown();
     }
 
-    private function booking(int $bookedSeats, string $status = 'open', string $departureDate = '2026-07-10'): Booking
+    private function booking(int $bookedSeats, string $status = 'open', string $departureDate = '2026-07-12'): Booking
     {
         $trip = Trip::create([
             'title' => 'Dawn Trek', 'slug' => 'dawn-'.uniqid(), 'type' => 'trekking',
@@ -68,7 +68,7 @@ class UnderfilledTripWarningTest extends TestCase
             ->where('data->booking_ref', $b->booking_ref);
     }
 
-    public function test_warns_when_round_is_underfilled_five_days_out(): void
+    public function test_warns_when_round_is_underfilled_seven_days_out(): void
     {
         $b = $this->booking(bookedSeats: 3);
 
@@ -96,9 +96,9 @@ class UnderfilledTripWarningTest extends TestCase
         Mail::assertNothingQueued();
     }
 
-    public function test_no_warning_when_departure_is_not_five_days_out(): void
+    public function test_no_warning_when_departure_is_not_seven_days_out(): void
     {
-        $this->booking(bookedSeats: 3, departureDate: '2026-07-12'); // 7 days out
+        $this->booking(bookedSeats: 3, departureDate: '2026-07-10'); // 5 days out
 
         (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
 
@@ -119,10 +119,12 @@ class UnderfilledTripWarningTest extends TestCase
     {
         $b = $this->booking(bookedSeats: 3);
 
-        $html = (new TripUnderfilledWarningMail($b, 5, 3, 8))->render();
+        $html = (new TripUnderfilledWarningMail($b, 7, 3, 8))->render();
 
-        $this->assertStringContainsString('ทริปอาจถูกยกเลิก', $html);
+        $this->assertStringContainsString('ข้อมูลการยืนยันรอบเดินทาง', $html);
         $this->assertStringContainsString('Dawn Trek', $html);
-        $this->assertStringContainsString('5 ท่าน', $html); // 8 minimum − 3 booked
+        $this->assertStringContainsString('3 / 8 ท่าน', $html);
+        $this->assertStringContainsString('อีกเพียง 5 ท่าน', $html); // 8 minimum − 3 booked
+        $this->assertStringContainsString('อย่างน้อย 7 วันก่อนวันเดินทาง', $html);
     }
 }

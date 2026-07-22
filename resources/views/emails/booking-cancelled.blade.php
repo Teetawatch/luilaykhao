@@ -1,11 +1,11 @@
-<x-emails.partials.base subject="❌ ยกเลิกการจอง {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="ยืนยันการยกเลิกการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
-  <div class="email-header hdr-red">
+  <div class="email-header hdr-slate">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">❌</div>
-    <h1 class="header-title">ยกเลิกการจองแล้ว</h1>
-    <p class="header-subtitle">การจองของท่านถูกยกเลิกเรียบร้อยแล้ว</p>
+    <div class="header-emoji">🌾</div>
+    <h1 class="header-title">ยืนยันการยกเลิกการจอง</h1>
+    <p class="header-subtitle">ไว้เจอกันใหม่ในทริปหน้านะครับ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -14,7 +14,8 @@
 
     <div class="greeting">
       สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
-      เราขอแจ้งให้ทราบว่าการจองของท่านได้ถูกยกเลิกแล้ว
+      ทีมงานได้ยกเลิกการจองนี้ให้เรียบร้อยแล้วครับ เสียดายที่ครั้งนี้ยังไม่ได้เดินทางด้วยกัน
+      แต่พวกเราหวังว่าจะได้ดูแลคุณในทริปหน้านะครับ 🌿
     </div>
 
     <p class="section-label">รายละเอียดการจองที่ยกเลิก</p>
@@ -71,7 +72,7 @@
 
     @if($reason)
     <div class="alert-box alert-amber">
-      <p class="alert-title">📝 เหตุผลการยกเลิก</p>
+      <p class="alert-title">📝 เหตุผลการยกเลิกที่บันทึกไว้</p>
       <p class="alert-text">{{ $reason }}</p>
     </div>
     @endif
@@ -80,12 +81,12 @@
     <div class="highlight-box hl-green">
       <div class="amount-label">💸 ยอดคืนเงิน</div>
       <div class="amount">฿{{ number_format($booking->refund_amount, 0) }}</div>
-      <div class="amount-note">จะดำเนินการคืนเงินภายใน 3&ndash;7 วันทำการ</div>
+      <div class="amount-note">ทีมงานจะโอนคืนให้ภายใน 3&ndash;7 วันทำการครับ ไม่ต้องทำอะไรเพิ่มเลย</div>
     </div>
     @endif
 
-    <div class="alert-box alert-red">
-      <p class="alert-title">📋 นโยบายการคืนเงิน</p>
+    <div class="alert-box alert-neutral">
+      <p class="alert-title">📋 นโยบายการคืนเงิน (ขออนุญาตแจ้งไว้เป็นข้อมูลครับ)</p>
       <p class="alert-text">
         ยกเลิกก่อนเดินทาง 7+ วัน: คืน 80%&nbsp;&middot;&nbsp;ยกเลิก 3&ndash;6 วัน: คืน 50%&nbsp;&middot;&nbsp;น้อยกว่า 3 วัน: ไม่คืนเงิน<br />
         มัดจำ: ไม่คืนทุกกรณี
@@ -93,7 +94,7 @@
     </div>
 
     <div class="contact-bar">
-      หากต้องการจองใหม่หรือมีข้อสงสัย ติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
+      อยากจองรอบใหม่หรือมีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>
@@ -104,7 +105,7 @@
     <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
+      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
       &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>

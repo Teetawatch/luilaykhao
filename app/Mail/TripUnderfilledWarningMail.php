@@ -10,8 +10,9 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Heads-up sent a few days before departure when a round still has fewer than
- * the guaranteed minimum number of booked seats and therefore risks being
- * cancelled. It is a courtesy notice — no payment action is required.
+ * the guaranteed minimum number of booked seats. Framed as a warm courtesy
+ * note about how the round gets confirmed — not an alarm — and no payment
+ * action is required.
  */
 class TripUnderfilledWarningMail extends QueuedMail
 {
@@ -29,7 +30,7 @@ class TripUnderfilledWarningMail extends QueuedMail
         $title = $this->booking->schedule->trip->title ?? 'ทริป';
 
         return new Envelope(
-            subject: "แจ้งเตือนสำคัญ: ทริป{$title} อาจถูกยกเลิก #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "ข้อมูลเพิ่มเติมสำหรับการเดินทางและการยืนยันรอบทริป {$title} 🌿 #{$this->booking->booking_ref}",
         );
     }
 

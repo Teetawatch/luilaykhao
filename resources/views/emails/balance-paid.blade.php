@@ -1,11 +1,11 @@
-<x-emails.partials.base subject="✅ ชำระเงินครบถ้วนแล้ว — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="💚 ได้รับเงินครบแล้วครับ ขอบคุณมาก ๆ — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">✅</div>
-    <h1 class="header-title">ชำระเงินครบถ้วนแล้ว</h1>
-    <p class="header-subtitle">ท่านพร้อมออกเดินทางแล้ว ขอบคุณค่ะ</p>
+    <div class="header-emoji">💚</div>
+    <h1 class="header-title">ได้รับเงินครบแล้วครับ</h1>
+    <p class="header-subtitle">เตรียมตัวไปเที่ยวอย่างเดียวเลยครับ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -13,14 +13,15 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong><br />
-      ขอบคุณที่ชำระเงินส่วนที่เหลือเรียบร้อยแล้ว การชำระเงินของท่านครบถ้วนสมบูรณ์
+      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong> 💚<br />
+      ขอบคุณมาก ๆ นะครับ ได้รับยอดส่วนที่เหลือเรียบร้อยแล้ว
+      ตอนนี้การชำระเงินของคุณครบถ้วนสมบูรณ์ พร้อมออกเดินทางแล้วครับ
     </div>
 
     <div class="highlight-box hl-green" style="text-align:center;">
       <div class="amount-label">💵 ยอดรวมที่ชำระทั้งหมด</div>
       <div class="amount">฿{{ number_format($booking->paid_amount, 0) }}</div>
-      <div class="amount-note">ชำระครบถ้วนสมบูรณ์</div>
+      <div class="amount-note">ครบถ้วนสมบูรณ์แล้วครับ ขอบคุณที่ไว้ใจพวกเรานะครับ</div>
     </div>
 
     <p class="section-label">สรุปการชำระเงิน</p>
@@ -72,10 +73,10 @@
     </div>
 
     <div class="alert-box alert-teal">
-      <p class="alert-title">🧭 ขั้นตอนถัดไป</p>
+      <p class="alert-title">🧭 จากนี้ไม่ต้องทำอะไรแล้วครับ</p>
       <p class="alert-text">
-        ทีมงานจะแจ้งรายละเอียดนัดหมายและข้อมูลการเดินทางก่อนวันเดินทางอีกครั้ง<br />
-        กรุณาเก็บอีเมลนี้ไว้เป็นหลักฐานการชำระเงิน
+        ทีมงานจะส่งรายละเอียดนัดหมายและข้อมูลการเดินทางให้ก่อนวันเดินทางอีกครั้งครับ<br />
+        เก็บอีเมลฉบับนี้ไว้เป็นหลักฐานการชำระเงินได้เลยนะครับ
       </p>
     </div>
 
@@ -87,7 +88,7 @@
     </div>
 
     <div class="contact-bar">
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
+      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>
@@ -98,7 +99,7 @@
     <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
+      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
       &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>

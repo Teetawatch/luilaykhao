@@ -1,11 +1,11 @@
-<x-emails.partials.base subject="💰 ชำระเงินมัดจำสำเร็จ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="💚 ได้รับมัดจำแล้วครับ ที่นั่งเป็นของคุณแล้ว — {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-teal">
     <span class="email-brand">Luilaykhao</span>
     <div class="header-emoji">💰</div>
-    <h1 class="header-title">ชำระเงินมัดจำสำเร็จ</h1>
-    <p class="header-subtitle">ที่นั่งของท่านได้รับการยืนยันแล้ว</p>
+    <h1 class="header-title">ได้รับเงินมัดจำแล้วครับ</h1>
+    <p class="header-subtitle">ที่นั่งของคุณถูกจองไว้เรียบร้อยแล้วครับ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -13,8 +13,8 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong><br />
-      ขอบคุณที่ชำระเงินมัดจำสำหรับทริปนี้ ที่นั่งของท่านได้รับการจองเรียบร้อยแล้ว
+      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong> 💚<br />
+      ขอบคุณมาก ๆ นะครับที่ชำระมัดจำเข้ามา ทีมงานกันที่นั่งให้คุณเรียบร้อยแล้วครับ
     </div>
 
     <div class="highlight-box hl-teal">
@@ -83,19 +83,20 @@
     </div>
 
     <div class="alert-box alert-amber">
-      <p class="alert-title">⏰ กรุณาชำระส่วนที่เหลือก่อนครบกำหนด</p>
+      <p class="alert-title">⏰ เหลืออีกนิดเดียวครับ</p>
       <p class="alert-text">
-        ท่านมียอดค้างชำระ <strong>฿{{ number_format($booking->balance_amount, 0) }}</strong>
-        กรุณาชำระภายในวันที่ <strong>{{ \App\Support\ThaiDate::full($booking->balance_due_at) }}</strong>
-        เพื่อยืนยันสิทธิ์การเดินทาง
+        ยังเหลือยอดอีก <strong>฿{{ number_format($booking->balance_amount, 0) }}</strong>
+        ชำระภายในวันที่ <strong>{{ \App\Support\ThaiDate::full($booking->balance_due_at) }}</strong>
+        ก็เรียบร้อยครับ ใกล้ถึงกำหนดเราจะส่งอีเมลเตือนให้อีกที ไม่ต้องกลัวลืมนะครับ
       </p>
     </div>
 
     <div class="alert-box alert-red">
-      <p class="alert-title">⚠️ เงื่อนไขการยกเลิก</p>
+      <p class="alert-title">📋 เรื่องเงินมัดจำ ขออนุญาตแจ้งไว้นะครับ</p>
       <p class="alert-text">
-        กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ไม่คืนเงินมัดจำทุกกรณี
-        เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้าแล้ว
+        หากขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ไม่คืนเงินมัดจำครับ
+        เพราะเรานำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้าให้แล้ว
+        หากมีเหตุจำเป็นจริง ๆ ทักมาคุยกับทีมงานก่อนได้เสมอครับ
       </p>
     </div>
 
@@ -107,7 +108,7 @@
     </div>
 
     <div class="contact-bar">
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong>062-612-6006</strong> (08:00&ndash;20:00)
+      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
     </div>
 
   </div>
@@ -118,7 +119,7 @@
     <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
+      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
       &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>

@@ -4,8 +4,8 @@
   <div class="email-header hdr-teal">
     <span class="email-brand">Luilaykhao</span>
     <div class="header-emoji">🎉</div>
-    <h1 class="header-title">การจองสำเร็จแล้ว</h1>
-    <p class="header-subtitle">กรุณาชำระเงินเพื่อยืนยันสิทธิ์ที่นั่งของท่าน</p>
+    <h1 class="header-title">รับการจองของคุณแล้วครับ</h1>
+    <p class="header-subtitle">อีกนิดเดียว ชำระเงินแล้วที่นั่งเป็นของคุณเลยครับ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -13,8 +13,9 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
-      การจองของท่านได้รับการบันทึกเรียบร้อยแล้ว กรุณาชำระเงินภายในเวลาที่กำหนดเพื่อยืนยันสิทธิ์ที่นั่ง
+      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong> 👋<br />
+      ขอบคุณที่เลือกเดินทางไปกับพวกเรานะครับ ทีมงานบันทึกการจองของคุณเรียบร้อยแล้ว
+      เหลืออีกขั้นเดียวคือชำระเงินภายในเวลาที่กำหนด ที่นั่งก็จะเป็นของคุณอย่างสมบูรณ์ครับ
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
@@ -117,7 +118,7 @@
     @endif
 
     <div class="alert-box alert-amber">
-      <p class="alert-title">⚠️ เงื่อนไขสำคัญที่ท่านยอมรับแล้ว</p>
+      <p class="alert-title">📋 เงื่อนไขที่คุณได้ยอมรับไว้ ขออนุญาตทวนอีกครั้งนะครับ</p>
       <p class="alert-text">
         1.&nbsp;เมื่อยืนยันสิทธิ์แล้ว ขอสงวนสิทธิ์ในการคืนเงินมัดจำทุกกรณี<br />
         2.&nbsp;สามารถแจ้งเลื่อนได้ 1 ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย 45 วัน<br />
@@ -140,8 +141,8 @@
     <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
     <div class="footer-divider"></div>
     <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติ กรุณาอย่าตอบกลับโดยตรง<br />
-      หากมีข้อสงสัย กรุณาติดต่อทีมงาน <strong class="t-muted">062-612-6006</strong> (08:00&ndash;20:00)<br />
+      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
+      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong class="t-muted">062-612-6006</strong> (08:00&ndash;20:00)<br />
       &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
     </div>
   </div>

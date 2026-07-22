@@ -26,7 +26,7 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
     public int $backoff = 60;
 
     /** How many days before departure the warning is sent. */
-    private const DAYS_BEFORE = 5;
+    private const DAYS_BEFORE = 7;
 
     /** Minimum booked seats that guarantees the round runs. */
     private const MIN_SEATS = 8;
@@ -74,8 +74,8 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
                     SmartNotification::send(
                         $booking->user_id,
                         'trip_underfilled_warning',
-                        'ทริปอาจถูกยกเลิก',
-                        "ทริป{$schedule->trip->title} เหลือเวลาอีก ".self::DAYS_BEFORE.' วัน แต่ยังมีผู้จองไม่ถึง '.self::MIN_SEATS.' ที่นั่ง หากไม่ครบทริปอาจถูกยกเลิกและคืนเงินเต็มจำนวน',
+                        'อัปเดตการยืนยันรอบเดินทาง',
+                        "ทริป{$schedule->trip->title} ตอนนี้มีผู้ร่วมทริป {$schedule->booked_seats}/".self::MIN_SEATS.' ท่าน หากครบจำนวนรอบนี้จะออกเดินทางตามกำหนด ทีมงานจะแจ้งอัปเดตล่วงหน้าอย่างน้อย '.self::DAYS_BEFORE.' วัน และหากไม่ได้ออกเดินทางเราคืนเงินเต็มจำนวนครับ',
                         ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
                     );
                 }

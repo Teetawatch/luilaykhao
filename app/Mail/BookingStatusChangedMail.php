@@ -21,9 +21,9 @@ class BookingStatusChangedMail extends QueuedMail
         $this->statusLabel = match ($newStatus) {
             'confirmed' => 'ยืนยันแล้ว',
             'cancelled' => 'ยกเลิกแล้ว',
-            'refunded'  => 'คืนเงินแล้ว',
-            'pending'   => 'รอดำเนินการ',
-            default     => $newStatus,
+            'refunded' => 'คืนเงินแล้ว',
+            'pending' => 'รอดำเนินการ',
+            default => $newStatus,
         };
     }
 

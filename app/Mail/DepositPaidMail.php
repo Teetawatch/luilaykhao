@@ -19,7 +19,7 @@ class DepositPaidMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "รับชำระเงินมัดจำสำเร็จ #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "ได้รับมัดจำแล้วครับ ที่นั่งเป็นของคุณแล้ว 💚 #{$this->booking->booking_ref} - Luilaykhao",
         );
     }
 

@@ -98,7 +98,7 @@ class EmailTemplatesRenderTest extends TestCase
             'status-cancelled' => [fn ($t) => new BookingStatusChangedMail($t->booking, 'cancelled')],
             'status-refunded' => [fn ($t) => new BookingStatusChangedMail($t->booking, 'refunded')],
             'status-pending' => [fn ($t) => new BookingStatusChangedMail($t->booking, 'pending')],
-            'underfilled' => [fn ($t) => new TripUnderfilledWarningMail($t->booking, 5, 3, 8)],
+            'underfilled' => [fn ($t) => new TripUnderfilledWarningMail($t->booking, 7, 3, 8)],
             'welcome' => [fn ($t) => new WelcomeRegistrationMail($t->booking->user)],
             'admin-new-booking' => [fn ($t) => new AdminNewBookingMail($t->booking)],
             'admin-payment-received' => [fn ($t) => new AdminPaymentReceivedMail($t->booking, 'deposit')],

@@ -21,7 +21,7 @@ class InstallmentPaidMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "ชำระงวดที่ {$this->installment->installment_no} สำเร็จ #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "ได้รับค่างวดที่ {$this->installment->installment_no} แล้วครับ 💚 #{$this->booking->booking_ref} - Luilaykhao",
         );
     }
 
