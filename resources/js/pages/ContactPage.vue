@@ -1,44 +1,48 @@
 <template>
   <div class="contact-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     
-    <!-- Hero Section -->
-    <section class="relative py-16 md:py-24 bg-[#0D2B1E] overflow-hidden">
-      <div class="absolute inset-0">
-        <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E] via-[#1A3A2E] to-[#2D5A3D] opacity-90"></div>
-        <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-[var(--color-accent)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4"></div>
-      </div>
-      
-      <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-8 text-center">
-        <div class="inline-flex items-center gap-3 justify-center text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-6">
-          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
-          พร้อมดูแลคุณตลอดการเดินทาง
-          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
-        </div>
-        <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-5">
-          มีคำถามเกี่ยวกับทริป?<br />เราพร้อมช่วยคุณวางแผน
-        </h1>
-        <p class="text-base md:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
-          ทักมาหาเราได้เลย ทีมงาน "ลุยเลเขา" สแตนด์บายรอช่วยเหลือคุณอยู่ ไม่ว่าจะเป็นการเลือกทริปที่ใช่ หรือสอบถามสิ่งที่สงสัย เรายินดีให้คำปรึกษาฟรีครับ
+    <!-- Header -->
+    <section class="pt-12 md:pt-16 px-6 md:px-8">
+      <div class="max-w-7xl mx-auto">
+        <h1 class="text-2xl md:text-4xl font-extrabold text-[var(--color-text-dark)]">ติดต่อทีมงาน</h1>
+        <p class="mt-3 text-base text-text-muted max-w-2xl leading-relaxed">
+          เรื่องด่วนหรือเรื่องวันเดินทาง โทรหรือทัก LINE จะเร็วที่สุด
+          ส่วนเรื่องที่ต้องมีรายละเอียดยาว ๆ ส่งผ่านฟอร์มด้านล่างได้ครับ
         </p>
       </div>
     </section>
 
     <!-- Contact Info & Form -->
-    <section class="py-16 md:py-24 px-6 md:px-8">
+    <section class="py-10 md:py-16 px-6 md:px-8">
       <div class="max-w-7xl mx-auto">
         <!-- Quick Contact Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 mb-16 justify-center lg:justify-start">
-          <a href="https://line.me/ti/p/@luilaykhao" target="_blank" 
-             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-[#06C755] text-white rounded-2xl font-bold text-lg hover:bg-[#05b34c] hover:-translate-y-1 transition-all duration-300">
+        <div class="flex flex-col sm:flex-row gap-3 mb-12 justify-center lg:justify-start">
+          <a href="https://line.me/ti/p/@luilaykhao" target="_blank"
+             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-[#06C755] text-white rounded-2xl font-bold text-lg hover:bg-[#05b34c] active:scale-[0.98] transition-all">
             <i class="fab fa-line text-2xl"></i>
             แชทผ่าน LINE
           </a>
-          <a href="tel:0626126006" 
-             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid hover:-translate-y-1 transition-all duration-300">
+          <a href="tel:0626126006"
+             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid active:scale-[0.98] transition-all">
             <span class="material-symbols-rounded">call</span>
-            โทรหาเราเลย
+            โทร 062-612-6006
           </a>
         </div>
+
+        <!-- คนที่ล็อกอินแล้วมีเธรดช่วยเหลือที่ทีมงานเห็นประวัติการจอง — ดีกว่าอีเมลกล่องรวม -->
+        <router-link v-if="auth.isLoggedIn" to="/support"
+          class="mb-12 flex items-start gap-4 p-5 md:p-6 bg-white rounded-[2rem] border border-primary/20 hover:border-primary transition-colors">
+          <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+            <span class="material-symbols-rounded text-primary">support_agent</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="font-bold text-text-dark">มีเรื่องเกี่ยวกับการจองของคุณ? คุยในศูนย์ช่วยเหลือ</p>
+            <p class="mt-1 text-sm text-text-muted leading-relaxed">
+              ทีมงานเห็นประวัติการจองของคุณอยู่แล้ว ไม่ต้องเล่าใหม่ และข้อความอยู่ในเธรดเดียวกันทั้งหมด
+            </p>
+          </div>
+          <span class="material-symbols-rounded text-text-muted shrink-0">chevron_right</span>
+        </router-link>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
           
@@ -59,16 +63,16 @@
                     <i class="fab fa-line text-2xl text-white"></i>
                   </div>
                   <div>
-                    <p class="text-sm font-bold text-[#06C755] uppercase tracking-widest mb-1">LINE Official (เร็วที่สุด)</p>
+                    <p class="text-sm font-bold text-[#06C755] mb-1">LINE Official</p>
                     <a href="https://line.me/R/ti/p/@luilaykhao" target="_blank" class="text-xl font-bold text-text-dark hover:text-[#06C755] transition-colors">@luilaykhao</a>
-                    <p class="text-sm text-text-muted mt-1">สอบถามได้ตลอด 24 ชม. ตอบกลับไวมาก</p>
+                    <p class="text-sm text-text-muted mt-1">ทักไว้ได้ตลอด ทีมงานตอบในเวลาทำการ</p>
                   </div>
                 </div>
 
                 <!-- Phone -->
                 <div class="flex gap-5 group px-6">
-                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
-                    <span class="material-symbols-rounded text-primary group-hover:text-white transition-colors">call</span>
+                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-rounded text-primary">call</span>
                   </div>
                   <div>
                     <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">เบอร์โทรศัพท์</p>
@@ -79,8 +83,8 @@
 
                 <!-- Email -->
                 <div class="flex gap-5 group px-6">
-                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
-                    <span class="material-symbols-rounded text-primary group-hover:text-white transition-colors">mail</span>
+                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-rounded text-primary">mail</span>
                   </div>
                   <div>
                     <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">อีเมล</p>
@@ -90,8 +94,8 @@
 
                 <!-- Location -->
                 <div class="flex gap-5 group px-6">
-                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:border-primary transition-all duration-300">
-                    <span class="material-symbols-rounded text-primary group-hover:text-white transition-colors">location_on</span>
+                  <div class="w-14 h-14 bg-white rounded-2xl border border-sand-dark/50 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-rounded text-primary">location_on</span>
                   </div>
                   <div>
                     <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">ที่ตั้งสำนักงาน</p>
@@ -117,51 +121,36 @@
 
           <!-- Contact Form -->
           <div class="lg:col-span-7">
-            <div class="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sand-dark/30 border border-sand-dark/20 relative overflow-hidden">
-              <!-- Background Accent -->
-              <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-              
-              <div class="relative z-10">
+            <div class="bg-white rounded-[2.5rem] p-8 md:p-12 border border-sand-dark/20">
+              <div>
                 <h3 class="text-2xl font-bold text-text-dark mb-2">ส่งข้อความหาเรา</h3>
-                <p class="text-text-muted mb-10">เล่ารายละเอียดที่คุณต้องการให้เราช่วย ทีมงานจะติดต่อกลับหาคุณโดยเร็วที่สุด</p>
-                
+                <p class="text-text-muted mb-10">เขียนรายละเอียดที่ต้องการให้ช่วย ทีมงานจะติดต่อกลับทางอีเมลหรือเบอร์ที่ให้ไว้</p>
+
                 <!-- Success Message -->
-                <div v-if="submitted" 
-                     class="mb-8 p-6 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-4 animate-in fade-in zoom-in duration-300">
-                  <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shrink-0">
-                    <span class="material-symbols-rounded text-white">check</span>
+                <div v-if="submitted"
+                     class="mb-8 p-6 bg-green-50 border border-green-100 rounded-2xl">
+                  <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center shrink-0">
+                      <span class="material-symbols-rounded text-white">check</span>
+                    </div>
+                    <div>
+                      <p class="font-bold text-green-800">ส่งข้อความเรียบร้อยแล้ว</p>
+                      <p class="text-sm text-green-700">ทีมงานจะติดต่อกลับทาง {{ form.email }} ในเวลาทำการครับ</p>
+                    </div>
                   </div>
-                  <div>
-                    <p class="font-bold text-green-800">ส่งข้อความเรียบร้อยแล้ว!</p>
-                    <p class="text-sm text-green-700">เราได้รับข้อมูลของคุณแล้ว ทีมงานจะติดต่อกลับภายใน 24 ชม.</p>
-                  </div>
+                  <button type="button" @click="resetForm"
+                    class="mt-4 text-sm font-bold text-primary underline underline-offset-4">
+                    ส่งอีกข้อความ
+                  </button>
                 </div>
 
                 <form v-else @submit.prevent="handleSubmit" class="space-y-6">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="group space-y-2">
-                      <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">ชื่อ-นามสกุล</label>
-                      <input v-model="form.name" type="text" required placeholder="เช่น สมชาย ใจดี" 
-                        class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-300" />
-                    </div>
-                    <div class="group space-y-2">
-                      <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">เบอร์โทรศัพท์ (ถ้ามี)</label>
-                      <input v-model="form.phone" type="tel" placeholder="08x-xxx-xxxx" 
-                        class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-300" />
-                    </div>
-                  </div>
-                  
-                  <div class="group space-y-2">
-                    <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">อีเมลที่ใช้ติดต่อ</label>
-                    <input v-model="form.email" type="email" required placeholder="example@mail.com" 
-                      class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-300" />
-                  </div>
-
-                  <div v-if="showOptionalFields" class="space-y-2 animate-in fade-in duration-300">
-                    <label class="text-sm font-bold text-text-dark ml-1">เรื่องที่ต้องการติดต่อ (ระบุถ้าต้องการให้เจาะจง)</label>
-                    <select v-model="form.subject" 
-                      class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary bg-white transition-all appearance-none cursor-pointer">
-                      <option value="">เลือกหัวข้อติดต่อ (ไม่ระบุก็ได้)</option>
+                  <!-- หัวข้อมาก่อน เพราะเป็นสิ่งที่ทีมงานใช้คัดแยกเรื่อง และเป็นตัวกำหนดช่องที่เหลือ -->
+                  <div class="space-y-2">
+                    <label for="contact-subject" class="text-sm font-bold text-text-dark ml-1">เรื่องที่ต้องการติดต่อ</label>
+                    <select id="contact-subject" v-model="form.subject"
+                      class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors appearance-none cursor-pointer">
+                      <option value="">เลือกหัวข้อ (ไม่ระบุก็ได้)</option>
                       <option value="booking">สอบถามเรื่องการจองทริป</option>
                       <option value="payment">ปัญหาการชำระเงิน</option>
                       <option value="partnership">ร่วมเป็นพาร์ทเนอร์</option>
@@ -170,8 +159,27 @@
                     </select>
                   </div>
 
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                      <label for="contact-name" class="text-sm font-bold text-text-dark ml-1">ชื่อ-นามสกุล</label>
+                      <input id="contact-name" v-model="form.name" type="text" required placeholder="เช่น สมชาย ใจดี" autocomplete="name"
+                        class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors" />
+                    </div>
+                    <div class="space-y-2">
+                      <label for="contact-phone" class="text-sm font-bold text-text-dark ml-1">เบอร์โทรศัพท์ (ถ้ามี)</label>
+                      <input id="contact-phone" v-model="form.phone" type="tel" placeholder="08x-xxx-xxxx" autocomplete="tel-national"
+                        class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors" />
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label for="contact-email" class="text-sm font-bold text-text-dark ml-1">อีเมลที่ใช้ติดต่อกลับ</label>
+                    <input id="contact-email" v-model.trim="form.email" type="email" required placeholder="example@mail.com" autocomplete="email"
+                      class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors" />
+                  </div>
+
                   <!-- Partnership Details -->
-                  <div v-if="showOptionalFields && form.subject === 'partnership'"
+                  <div v-if="form.subject === 'partnership'"
                        class="space-y-6 p-6 bg-primary/5 border border-primary/15 rounded-3xl animate-in fade-in duration-300">
                     <div class="flex items-center gap-2 text-primary font-bold">
                       <span class="material-symbols-rounded">handshake</span>
@@ -205,47 +213,28 @@
                     </div>
                   </div>
 
-                  <div class="group space-y-2">
-                    <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">เล่าให้เราฟังว่าคุณอยากไปเที่ยวแบบไหน...</label>
-                    <textarea v-model="form.message" rows="5" required placeholder="เช่น อยากไปเดินป่าช่วงหน้าหนาว, สนใจทริปไหนเป็นพิเศษ หรือมีคำถามเพิ่มเติม..." 
-                      class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white transition-all duration-300 resize-none"></textarea>
+                  <div class="space-y-2">
+                    <label for="contact-message" class="text-sm font-bold text-text-dark ml-1">รายละเอียด</label>
+                    <textarea id="contact-message" v-model="form.message" rows="5" required
+                      :placeholder="messagePlaceholder"
+                      class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors resize-none"></textarea>
+                    <p v-if="form.subject === 'booking' || form.subject === 'payment'" class="text-xs text-text-muted ml-1">
+                      ถ้ามีเลขที่จอง (LLK-...) ใส่มาด้วยจะช่วยให้ตรวจสอบได้เร็วขึ้นครับ
+                    </p>
                   </div>
 
-                  <div class="pt-4">
+                  <div class="pt-2">
                     <button type="submit" :disabled="submitting"
-                      class="w-full py-5 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid transition-all duration-300 shadow-primary/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed group">
-                      <span v-if="submitting" class="flex items-center justify-center gap-2">
-                        <i class="fas fa-circle-notch fa-spin"></i> กำลังส่งข้อมูล...
-                      </span>
-                      <span v-else class="flex items-center justify-center gap-2 group-hover:gap-4 transition-all">
-                        ให้เราช่วยวางแผนทริป
-                        <span class="material-symbols-rounded">arrow_forward</span>
-                      </span>
+                      class="w-full py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      <span v-if="submitting" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      {{ submitting ? 'กำลังส่ง...' : 'ส่งข้อความ' }}
                     </button>
-                    
-                    <!-- Trust Signals -->
-                    <div class="mt-8 flex flex-wrap justify-between items-center gap-4 px-2">
-                      <div class="flex items-center gap-2 text-xs text-text-muted">
-                        <span class="material-symbols-rounded text-green-500 text-lg">check_circle</span>
-                        ตอบกลับภายใน 24 ชั่วโมง
-                      </div>
-                      <div class="flex items-center gap-2 text-xs text-text-muted">
-                        <span class="material-symbols-rounded text-blue-500 text-lg">security</span>
-                        ไม่มีสแปม & รักษาความเป็นส่วนตัว
-                      </div>
-                      <div class="flex items-center gap-2 text-xs text-text-muted">
-                        <span class="material-symbols-rounded text-amber-500 text-lg">support_agent</span>
-                        ทีมงานคนจริง พร้อมช่วยแก้ปัญหา
-                      </div>
-                    </div>
+
+                    <p class="mt-4 text-xs text-text-muted text-center leading-relaxed">
+                      ข้อมูลที่ส่งมาใช้เพื่อติดต่อกลับเท่านั้น · เรื่องด่วนแนะนำให้โทรหรือทัก LINE
+                    </p>
                   </div>
                 </form>
-
-                <div v-if="!submitted" class="mt-6 text-center">
-                  <button @click="showOptionalFields = !showOptionalFields" class="text-sm font-semibold text-text-muted hover:text-primary transition-colors underline underline-offset-4">
-                    {{ showOptionalFields ? 'ซ่อนตัวเลือกเสริม' : 'เพิ่มข้อมูลเพิ่มเติม (หัวข้อติดต่อ/พาร์ทเนอร์)' }}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -253,32 +242,46 @@
       </div>
     </section>
 
-    <!-- Map Section -->
-    <section class="h-[500px] w-full bg-sand-dark overflow-hidden relative group">
-       <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1142.796759501285!2d100.58578633819413!3d13.667300090214399!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sth!2sth!4v1775908057144!5m2!1sth!2sth" 
-        width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-        class="grayscale group-hover:grayscale-0 transition-all duration-700"></iframe>
-       
-       <!-- Map Overlay Button -->
-       <div class="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-100 transition-opacity">
-         <a href="https://maps.google.com/?q=บางนา+กรุงเทพ" target="_blank" 
-            class="pointer-events-auto bg-white/90 backdrop-blur-sm text-text-dark px-8 py-3 rounded-full font-bold border border-sand-dark/20 hover:bg-white hover:scale-110 transition-all flex items-center gap-2">
-           <span class="material-symbols-rounded text-primary">map</span>
-           เปิดใน Google Maps
-         </a>
-       </div>
+    <!-- Map — โหลด iframe ของ Google เมื่อกดเท่านั้น ไม่ลากผู้ใช้ไปให้ Google ทุกครั้งที่เปิดหน้า -->
+    <section class="h-[360px] w-full bg-sand-dark overflow-hidden relative">
+      <iframe v-if="mapLoaded"
+        src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d1142.796759501285!2d100.58578633819413!3d13.667300090214399!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sth!2sth!4v1775908057144!5m2!1sth!2sth"
+        width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+
+      <div v-else class="h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <span class="material-symbols-rounded text-4xl text-primary">map</span>
+        <p class="font-bold text-text-dark leading-snug">
+          ถนนทางรถไฟเก่า แขวงบางนาใต้<br />เขตบางนา กรุงเทพมหานคร 10260
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <button type="button" @click="mapLoaded = true"
+            class="bg-white text-text-dark px-6 py-3 rounded-full font-bold border border-sand-dark/40 hover:border-primary transition-colors">
+            แสดงแผนที่
+          </button>
+          <a href="https://maps.google.com/?q=บางนา+กรุงเทพ" target="_blank" rel="noopener"
+            class="bg-primary text-white px-6 py-3 rounded-full font-bold hover:bg-primary-mid transition-colors flex items-center gap-2">
+            <span class="material-symbols-rounded text-[20px]">open_in_new</span>
+            เปิดใน Google Maps
+          </a>
+        </div>
+      </div>
     </section>
 
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import axios from 'axios'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import api from '../lib/axios'
+import { useAuthStore } from '../stores/auth'
+import { useToast } from '../lib/toast'
+
+const auth = useAuthStore()
+const toast = useToast()
 
 const submitting = ref(false)
 const submitted = ref(false)
-const showOptionalFields = ref(false)
+const mapLoaded = ref(false)
 
 const form = reactive({
   name: '',
@@ -288,6 +291,13 @@ const form = reactive({
   message: '',
   forests_hiked: ''
 })
+
+// คำใบ้เปลี่ยนตามเรื่องที่เลือก เพื่อให้คนเขียนสิ่งที่ทีมงานต้องใช้จริงมาตั้งแต่แรก
+const messagePlaceholder = computed(() => ({
+  booking: 'เช่น สนใจทริปไหน วันที่เท่าไหร่ ไปกี่คน หรือมีอะไรที่อยากถามก่อนจอง',
+  payment: 'เล่าสิ่งที่เกิดขึ้น เช่น โอนเมื่อไหร่ ยอดเท่าไหร่ และสถานะที่เห็นในระบบตอนนี้',
+  partnership: 'เล่าประสบการณ์และสิ่งที่อยากร่วมงานกับเรา',
+}[form.subject] || 'เขียนเรื่องที่อยากให้ช่วยได้เลยครับ'))
 
 const images = ref([])
 const imagePreviews = ref([])
@@ -315,7 +325,7 @@ const socials = [
 
 async function handleSubmit() {
   submitting.value = true
-  
+
   try {
     const formData = new FormData()
     formData.append('name', form.name)
@@ -330,17 +340,41 @@ async function handleSubmit() {
       images.value.forEach((file) => formData.append('images[]', file))
     }
 
-    await axios.post('/api/v1/contacts', formData)
+    await api.post('/contacts', formData)
 
     submitted.value = true
-    
   } catch (error) {
-    console.error('Submit error:', error)
-    alert('เกิดข้อผิดพลาดในการส่งข้อความ กรุณาลองใหม่อีกครั้ง')
+    // 429 = ส่งถี่เกินไป (rate limiter 'contact') — บอกให้ชัดว่าให้รอ ไม่ใช่ "เกิดข้อผิดพลาด"
+    const message = error.response?.status === 429
+      ? 'ส่งข้อความถี่เกินไป รบกวนรอสักครู่แล้วลองใหม่อีกครั้งครับ'
+      : error.response?.data?.message || 'ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+    toast.error(message)
   } finally {
     submitting.value = false
   }
 }
+
+function resetForm() {
+  form.subject = ''
+  form.message = ''
+  form.forests_hiked = ''
+  imagePreviews.value.forEach((url) => URL.revokeObjectURL(url))
+  images.value = []
+  imagePreviews.value = []
+  submitted.value = false
+}
+
+// คนที่ล็อกอินแล้วไม่ต้องพิมพ์ชื่อ/อีเมล/เบอร์ซ้ำ
+onMounted(() => {
+  if (!auth.isLoggedIn || !auth.user) return
+  form.name = form.name || auth.user.name || ''
+  form.email = form.email || auth.user.email || ''
+  form.phone = form.phone || auth.user.phone || ''
+})
+
+onBeforeUnmount(() => {
+  imagePreviews.value.forEach((url) => URL.revokeObjectURL(url))
+})
 </script>
 
 <style scoped>

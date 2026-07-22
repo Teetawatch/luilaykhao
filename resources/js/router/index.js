@@ -179,6 +179,7 @@ const routes = [
     }
   },
   { path: '/profile', name: 'profile', component: () => import('../pages/ProfilePage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/support', name: 'support', component: () => import('../pages/SupportPage.vue'), meta: { requiresAuth: true, title: 'ศูนย์ช่วยเหลือ', robots: 'noindex, nofollow' } },
   { path: '/auth/social/callback', name: 'social-callback', component: () => import('../pages/SocialCallbackPage.vue'), meta: { robots: 'noindex, nofollow' } },
 
 

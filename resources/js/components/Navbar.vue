@@ -417,6 +417,13 @@
                     <span class="material-symbols-rounded text-[20px]">reviews</span>
                     รีวิวของฉัน
                   </router-link>
+                  <router-link to="/support" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">support_agent</span>
+                    ศูนย์ช่วยเหลือ
+                    <span v-if="supportUnread" class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                      {{ supportUnread > 9 ? '9+' : supportUnread }}
+                    </span>
+                  </router-link>
 
                   <p class="menu-caption">สิทธิพิเศษ</p>
                   <router-link to="/loyalty" class="menu-row" @click="userDropdownOpen = false">
@@ -589,6 +596,16 @@
                 </router-link>
               </div>
 
+              <div v-if="auth.isLoggedIn" class="sheet-item mt-3" :style="{ '--i': navLinks.length + 2 }">
+                <router-link to="/support" class="flex items-center gap-3 rounded-2xl border border-sand-dark bg-sand py-3.5 px-4 text-[15px] font-bold text-text-dark transition active:scale-[0.98]" @click="closeSheets">
+                  <span class="material-symbols-rounded text-[20px] text-primary">support_agent</span>
+                  ศูนย์ช่วยเหลือ
+                  <span v-if="supportUnread" class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                    {{ supportUnread > 9 ? '9+' : supportUnread }}
+                  </span>
+                </router-link>
+              </div>
+
               <div v-if="!auth.isLoggedIn" class="sheet-item mt-3 grid grid-cols-2 gap-2" :style="{ '--i': navLinks.length + 2 }">
                 <router-link to="/login" class="flex items-center justify-center gap-2 rounded-2xl border border-sand-dark bg-sand py-3.5 text-[15px] font-bold text-primary transition active:scale-[0.98]" @click="closeSheets">
                   <span class="material-symbols-rounded text-[20px]">login</span>
@@ -710,6 +727,7 @@ const mobileOpen = ref(false);
 const mobileAccountOpen = ref(false);
 const searchQuery = ref('');
 const unreadNotifications = ref(0);
+const supportUnread = ref(0);
 const isScrolled = ref(false);
 const openNavDropdown = ref(null);
 const mobileNavDropdownOpen = ref(null);
@@ -921,11 +939,16 @@ function doSearch() {
 async function fetchUnreadCount() {
   if (!auth.isLoggedIn) {
     unreadNotifications.value = 0;
+    supportUnread.value = 0;
     return;
   }
   try {
     const res = await api.get('/notifications/unread-count');
     unreadNotifications.value = res.data.data.count;
+  } catch {}
+  try {
+    const res = await api.get('/support/unread-count');
+    supportUnread.value = res.data.data.count;
   } catch {}
 }
 
