@@ -34,6 +34,7 @@ use App\Models\VehiclePickupPoint;
 use App\Services\BookingService;
 use App\Services\DriverLoginCodeService;
 use App\Services\MailService;
+use App\Services\RouteTrackService;
 use App\Services\ScheduleSeatNotifier;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
@@ -255,6 +256,60 @@ class AdminController extends Controller
         $trip->delete();
 
         return $this->success(null, 'ลบทริปสำเร็จ');
+    }
+
+    /**
+     * อัปโหลดไฟล์ GPX ของเส้นทางเดิน — แปลงเป็นโปรไฟล์ความชันเก็บไว้ที่ทริป
+     * และเติมระยะทาง/ความสูงสะสมให้อัตโนมัติถ้ายังไม่ได้กรอกไว้ เพราะค่าที่วัด
+     * จากเส้นทางจริงแม่นกว่าที่คนกรอกเอง
+     */
+    public function uploadTripRouteTrack(int $id, Request $request, RouteTrackService $routeTracks): JsonResponse
+    {
+        $request->validate([
+            // GPX เป็น XML — บาง OS ส่ง mime เป็น text/xml, application/xml หรือ
+            // application/octet-stream จึงตรวจที่นามสกุลแทน
+            'gpx' => ['required', 'file', 'max:10240'],
+        ]);
+
+        $file = $request->file('gpx');
+
+        if (strtolower($file->getClientOriginalExtension()) !== 'gpx') {
+            return $this->error('รองรับเฉพาะไฟล์ .gpx เท่านั้น', 422);
+        }
+
+        $trip = Trip::findOrFail($id);
+
+        try {
+            $track = $routeTracks->fromGpx((string) file_get_contents($file->getRealPath()));
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        $trip->route_track = $track;
+
+        if ($trip->distance_km === null && $track['distance_km'] > 0) {
+            $trip->distance_km = $track['distance_km'];
+        }
+        if ($trip->elevation_gain_m === null && $track['elevation_gain_m'] > 0) {
+            $trip->elevation_gain_m = $track['elevation_gain_m'];
+        }
+
+        $trip->save();
+
+        return $this->success([
+            'route_track' => $track,
+            'distance_km' => (float) $trip->distance_km,
+            'elevation_gain_m' => $trip->elevation_gain_m,
+        ], 'อัปโหลดเส้นทางสำเร็จ');
+    }
+
+    public function deleteTripRouteTrack(int $id): JsonResponse
+    {
+        $trip = Trip::findOrFail($id);
+        $trip->route_track = null;
+        $trip->save();
+
+        return $this->success(null, 'ลบเส้นทางสำเร็จ');
     }
 
     // ─── Schedules ────────────────────────────────────────────

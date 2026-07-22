@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Services\ConquestMapService;
 use App\Services\PassportService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -27,5 +28,13 @@ class PassportController extends Controller
             'badges_earned_count' => $earned,
             'badges_total' => count($data['badges']),
         ]));
+    }
+
+    /**
+     * แผนที่พิชิต — ทริปที่เดินจบแล้ววางบนแผนที่ + ความลึกรายภาค.
+     */
+    public function map(Request $request, ConquestMapService $conquest): JsonResponse
+    {
+        return $this->success($conquest->forUser($request->user()->id));
     }
 }

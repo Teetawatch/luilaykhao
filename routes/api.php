@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripPostController;
 use App\Http\Controllers\Api\V1\TripProgressController;
 use App\Http\Controllers\Api\V1\TripReadinessController;
+use App\Http\Controllers\Api\V1\TripTrackController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\WaitlistController;
 use Illuminate\Support\Facades\Broadcast;
@@ -146,6 +147,8 @@ Route::prefix('v1')->group(function () {
 
         // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
         Route::get('me/passport', [PassportController::class, 'show']);
+        // แผนที่พิชิต — ทริปที่เดินจบแล้ว + ความลึกรายภาค
+        Route::get('me/passport/map', [PassportController::class, 'map']);
 
         // โปรไฟล์นักเดินทางสาธารณะ — เจ้าตัวเปิด/ปิดและตั้งคำแนะนำตัวเอง
         Route::get('me/public-profile', [PublicProfileSettingsController::class, 'show']);
@@ -163,6 +166,10 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
         Route::get('bookings/{ref}/recap', [BookingController::class, 'recap']);
+        // แทร็ก GPS ที่ลูกค้าบันทึกเองระหว่างเดิน — สถิติของตัวเองจริง ๆ
+        Route::get('bookings/{ref}/track', [TripTrackController::class, 'show']);
+        Route::post('bookings/{ref}/track', [TripTrackController::class, 'store']);
+        Route::get('me/tracks', [TripTrackController::class, 'index']);
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
         // ความคืบหน้าตามกำหนดการที่ทีมงานกดยืนยัน (ไม่ใช้ GPS ลูกค้า)
         Route::get('bookings/{ref}/progress', [TripProgressController::class, 'show']);
@@ -412,6 +419,9 @@ Route::prefix('v1')->group(function () {
         Route::put('trips/{id}', [AdminController::class, 'updateTrip']);
         Route::patch('trips/bulk-update-field', [AdminController::class, 'bulkUpdateTripField']);
         Route::delete('trips/{id}', [AdminController::class, 'deleteTrip']);
+        // เส้นทางเดิน (GPX) → โปรไฟล์ความชันบนหน้าทริป
+        Route::post('trips/{id}/route-track', [AdminController::class, 'uploadTripRouteTrack']);
+        Route::delete('trips/{id}/route-track', [AdminController::class, 'deleteTripRouteTrack']);
 
         // Blog articles CRUD + publishing
         Route::get('articles', [AdminArticleController::class, 'index']);

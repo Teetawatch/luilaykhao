@@ -27,6 +27,7 @@ class Trip extends Model
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items',
+        'route_track',
     ];
 
     protected function casts(): array
@@ -36,6 +37,7 @@ class Trip extends Model
             'duration_days' => 'integer',
             'distance_km' => 'decimal:2',
             'elevation_gain_m' => 'integer',
+            'route_track' => 'array',
             'max_participants' => 'integer',
             'latitude' => 'float',
             'longitude' => 'float',

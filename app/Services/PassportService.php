@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\Trip;
+use App\Models\TripTrack;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -51,6 +52,9 @@ class PassportService
                 'regions_count' => $regions->count(),
                 'regions' => $regions->all(),
             ],
+            // สถิติจาก GPS ที่ผู้ใช้บันทึกเอง — แยกจากตัวเลขข้างบนซึ่งเป็นค่าของ
+            // "เส้นทาง" ที่แอดมินกรอกไว้ ตัวนี้คือระยะที่เดินจริงของคนนี้
+            'recorded' => $this->recordedStats($userId),
             'highlights' => [
                 'doi_inthanon_m' => self::DOI_INTHANON_M,
                 // ความสูงสะสมเป็นกี่เท่าของดอยอินทนนท์ (ปัดทศนิยม 1 ตำแหน่ง)
@@ -59,6 +63,29 @@ class PassportService
                     : 0.0,
             ],
             'badges' => $this->badges($trips),
+        ];
+    }
+
+    /**
+     * ระยะ/ความสูงที่วัดได้จริงจากแทร็ก GPS ของผู้ใช้ พร้อมความเร็วเฉลี่ยตอนเดิน
+     * — คืน tracks_count = 0 เมื่อยังไม่เคยบันทึก เพื่อให้ฝั่งแอปซ่อนบล็อกนี้ไป
+     */
+    private function recordedStats(int $userId): array
+    {
+        $tracks = TripTrack::where('user_id', $userId)->get();
+
+        $movingSeconds = (int) $tracks->sum('moving_seconds');
+        $distance = round((float) $tracks->sum(fn (TripTrack $t) => (float) $t->distance_km), 1);
+
+        return [
+            'tracks_count' => $tracks->count(),
+            'distance_km' => $distance,
+            'elevation_gain_m' => (int) $tracks->sum('elevation_gain_m'),
+            'moving_seconds' => $movingSeconds,
+            'average_pace_kmh' => $movingSeconds > 0
+                ? round($distance / ($movingSeconds / 3600), 2)
+                : null,
+            'highest_point_m' => $tracks->max('max_elevation_m'),
         ];
     }
 

@@ -43,6 +43,8 @@ class TripResource extends JsonResource
             'duration_days' => $this->duration_days,
             'distance_km' => $this->distance_km !== null ? (float) $this->distance_km : null,
             'elevation_gain_m' => $this->elevation_gain_m,
+            // เส้นทางจริงจาก GPX (ลดรูปแล้ว) — ใช้วาดกราฟความชันบนหน้าทริป
+            'route_track' => $this->route_track,
             'max_participants' => $this->max_participants,
             'price_per_person' => $this->price_per_person,
             'min_price' => $prices->min(),
