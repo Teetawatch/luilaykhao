@@ -1,14 +1,9 @@
 <template>
   <div class="contact-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     
-    <!-- Hero Section -->
-    <section class="relative py-16 md:py-24 bg-[#0D2B1E] overflow-hidden">
-      <div class="absolute inset-0">
-        <div class="absolute inset-0 bg-gradient-to-br from-[#0D2B1E] via-[#1A3A2E] to-[#2D5A3D] opacity-90"></div>
-        <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-[var(--color-accent)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4"></div>
-      </div>
-
-      <div class="relative z-10 max-w-7xl mx-auto px-6 md:px-8 text-center">
+    <!-- Hero Section — พื้นเขียวทึบสีเดียว (Dark Pine) ไม่ไล่เฉด ไม่มีแสงเบลอ -->
+    <section class="py-16 md:py-24 bg-[var(--color-primary-mid)]">
+      <div class="max-w-7xl mx-auto px-6 md:px-8 text-center">
         <div class="inline-flex items-center gap-3 justify-center text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-6">
           <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
           พร้อมดูแลคุณตลอดการเดินทาง
