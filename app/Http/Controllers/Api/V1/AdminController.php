@@ -347,7 +347,13 @@ class AdminController extends Controller
             $query->whereDate('departure_date', '<=', $request->to);
         }
 
-        $schedules = $query->orderByDesc('departure_date')->paginate($request->get('per_page', 15));
+        // เรียงตามวันเดินทางใหม่→เก่า และตัดสินเสมอด้วย id เพื่อให้ลำดับคงที่
+        // ข้ามหน้า (หลายรอบมีวันเดินทางวันเดียวกันได้ ถ้าไม่มีตัวตัดสิน แถวเดิม
+        // อาจโผล่ซ้ำหรือหายไปเมื่อไล่ดูทีละหน้า)
+        $schedules = $query
+            ->orderByDesc('departure_date')
+            ->orderByDesc('id')
+            ->paginate($request->get('per_page', 15));
         $schedules->getCollection()->each->syncBookedSeats();
 
         return $this->paginated($schedules->through(fn ($s) => new TripScheduleResource($s)));

@@ -60,6 +60,12 @@ class TripScheduleResource extends JsonResource
                 isset($this->photos_count),
                 fn () => (int) $this->photos_count
             ),
+            // มีลิงก์อัลบั้มสาธารณะเปิดอยู่หรือไม่ — เฉพาะฝั่งแอดมินเท่านั้น
+            // (ส่งแค่สถานะ ไม่ส่งตัว token)
+            'photos_shared' => $this->when(
+                (bool) $request->user()?->hasAnyRole(['admin', 'operator']),
+                fn () => filled($this->photo_token)
+            ),
             'transport_type' => $this->transport_type,
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,
