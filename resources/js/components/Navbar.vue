@@ -50,11 +50,11 @@
           <!-- Desktop Nav (left-adjacent to brand, with gliding pill indicator) -->
           <div
             ref="navDropdownRef"
-            class="hidden md:flex flex-1 items-center min-w-0"
+            class="hidden lg:flex flex-1 items-center min-w-0"
           >
             <div
               ref="navListRef"
-              class="relative flex items-center ml-2 lg:ml-6"
+              class="relative flex items-center ml-1 xl:ml-6"
               @mouseleave="hoveredNavLabel = null"
             >
               <!-- Gliding pill -->
@@ -64,7 +64,7 @@
                 :style="{ left: `${indicator.left}px`, width: `${indicator.width}px`, opacity: indicator.opacity }"
               ></span>
 
-              <template v-for="link in navLinks" :key="link.label">
+              <template v-for="link in desktopNavLinks" :key="link.label">
                 <!-- Dropdown / Mega menu -->
                 <div
                   v-if="link.children"
@@ -75,7 +75,7 @@
                   <button
                     type="button"
                     :ref="el => setNavItemRef(link.label, el)"
-                    class="nav-link relative z-10 flex items-center gap-1 px-3.5 lg:px-4 py-2 rounded-full text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 cursor-pointer focus-ring"
+                    class="nav-link relative z-10 flex items-center gap-0.5 px-2.5 xl:px-4 py-2 rounded-full text-[14px] xl:text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 cursor-pointer focus-ring"
                     :class="{ 'is-active': activeNavLabel === link.label }"
                     :aria-expanded="openNavDropdown === link.label"
                     aria-haspopup="true"
@@ -137,7 +137,7 @@
                   v-else-if="link.external"
                   :ref="el => setNavItemRef(link.label, el)"
                   :href="link.to"
-                  class="nav-link relative z-10 px-3.5 lg:px-4 py-2 rounded-full text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
+                  class="nav-link relative z-10 px-2.5 xl:px-4 py-2 rounded-full text-[14px] xl:text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
                   :class="{ 'is-active': activeNavLabel === link.label }"
                   @mouseenter="onNavItemHover(link.label)"
                 >{{ link.label }}</a>
@@ -147,7 +147,7 @@
                   v-else
                   :ref="el => setNavItemRef(link.label, el)"
                   :to="link.to"
-                  class="nav-link relative z-10 px-3.5 lg:px-4 py-2 rounded-full text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
+                  class="nav-link relative z-10 px-2.5 xl:px-4 py-2 rounded-full text-[14px] xl:text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
                   :class="{ 'is-active': activeNavLabel === link.label }"
                   @mouseenter="onNavItemHover(link.label)"
                 >{{ link.label }}</router-link>
@@ -156,7 +156,7 @@
           </div>
 
           <!-- Desktop Actions -->
-          <div class="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
+          <div class="hidden lg:flex items-center gap-1.5 lg:gap-2 shrink-0">
             <!-- Search -->
             <div ref="desktopSearchRef" class="relative flex items-center">
               <button
@@ -392,7 +392,8 @@
                   <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
                   <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                 </div>
-                <span class="text-[13px] font-bold text-text-dark hidden lg:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
+                <!-- ชื่อผู้ใช้กินได้ถึง 9rem — โผล่ตอน xl ขึ้นไปเท่านั้น ไม่งั้นเบียดแถบเมนูที่ lg -->
+                <span class="text-[13px] font-bold text-text-dark hidden xl:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
                 <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
               </button>
 
@@ -488,7 +489,7 @@
           </div>
 
           <!-- Mobile Actions -->
-          <div class="md:hidden flex items-center gap-0.5 ml-auto">
+          <div class="lg:hidden flex items-center gap-0.5 ml-auto">
             <template v-if="auth.isLoggedIn">
               <router-link to="/notifications" class="icon-btn w-10 h-10" aria-label="การแจ้งเตือน">
                 <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
@@ -527,7 +528,7 @@
     <!-- ── Mobile: full-screen navigation sheet ─────────────────── -->
     <Teleport to="body">
       <Transition name="sheet">
-        <div v-if="mobileOpen" class="md:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="เมนูหลัก">
+        <div v-if="mobileOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="เมนูหลัก">
           <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
             <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
               <router-link to="/" class="flex items-center gap-2.5" @click="closeSheets">
@@ -655,7 +656,7 @@
     <!-- ── Mobile: full-screen account sheet ────────────────────── -->
     <Teleport to="body">
       <Transition name="sheet">
-        <div v-if="mobileAccountOpen" class="md:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="บัญชีของฉัน">
+        <div v-if="mobileAccountOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="บัญชีของฉัน">
           <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
             <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
               <div class="flex items-center gap-3">
@@ -761,22 +762,14 @@ const desktopSearchRef = ref(null);
 const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
 
+/*
+   แถบเมนูบนเดสก์ท็อปรับได้ประมาณ 5 กลุ่ม — มากกว่านั้นจะเบียดกับโลโก้และปุ่ม
+   ด้านขวาจนล้น เพิ่มหัวข้อใหม่เมื่อไหร่ให้ยุบของเดิมเข้าด้วยกัน อย่าต่อท้ายเฉย ๆ
+
+   `mobileOnly` = โผล่เฉพาะในชีตมือถือซึ่งเป็นลิสต์แนวตั้ง มีที่เหลือเฟือ
+*/
 const navLinks = [
-  { to: '/', icon: 'home', label: 'หน้าแรก' },
-  {
-    label: 'เกี่ยวกับเรา',
-    icon: 'info',
-    to: '/about',
-    children: [
-      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
-      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
-      { to: '/reviews', icon: 'reviews', label: 'รีวิวลูกค้า', desc: 'เสียงจริงจากผู้ร่วมทริป' },
-      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
-      { to: '/faq', icon: 'quiz', label: 'FAQ', desc: 'คำถามที่พบบ่อย' },
-      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
-      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
-    ],
-  },
+  { to: '/', icon: 'home', label: 'หน้าแรก', mobileOnly: true },
   {
     label: 'กิจกรรม',
     icon: 'explore',
@@ -800,18 +793,35 @@ const navLinks = [
     ],
   },
   {
-    label: 'รูปและบทความ',
-    icon: 'auto_awesome',
-    to: '/gallery',
+    label: 'ชุมชน',
+    icon: 'diversity_3',
+    to: '/feed',
     children: [
       { to: '/feed', icon: 'dynamic_feed', label: 'ฟีดจากนักเดินทาง', desc: 'รูปที่คนไปมาแล้วโพสต์เอง' },
       { to: '/gallery', icon: 'photo_library', label: 'รูปจากคนที่ไปมาแล้ว', desc: 'รูปที่ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว' },
+      { to: '/reviews', icon: 'reviews', label: 'รีวิวลูกค้า', desc: 'เสียงจริงจากผู้ร่วมทริป' },
       // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
       { to: '/blog', icon: 'article', label: 'บทความ', desc: 'ไอเดียและคู่มือการเดินทาง', external: true },
     ],
   },
+  {
+    label: 'เกี่ยวกับเรา',
+    icon: 'info',
+    to: '/about',
+    children: [
+      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
+      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
+      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
+      { to: '/faq', icon: 'quiz', label: 'FAQ', desc: 'คำถามที่พบบ่อย' },
+      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
+      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
+    ],
+  },
   { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
 ];
+
+/** เมนูที่ขึ้นบนแถบเดสก์ท็อป — โลโก้ทำหน้าที่ลิงก์กลับหน้าแรกอยู่แล้ว */
+const desktopNavLinks = navLinks.filter(link => !link.mobileOnly);
 
 /* ── Gliding pill indicator ──────────────────────────────────────
    The pill tracks whichever nav item is hovered, has an open
@@ -837,6 +847,8 @@ function isMegaMenu(link) {
 
 const activeNavLabel = computed(() => {
   const path = route.path;
+  // ไล่จาก navLinks ทั้งชุด เพราะชีตมือถือใช้ค่านี้ไฮไลต์ "หน้าแรก" ด้วย
+  // ฝั่งเดสก์ท็อปไม่พังเพราะ syncIndicator หา element ไม่เจอก็ซ่อน pill ไปเอง
   for (const link of navLinks) {
     if (link.children) {
       if (link.children.some(child => child.to === path)) return link.label;
