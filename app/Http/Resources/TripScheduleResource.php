@@ -46,7 +46,7 @@ class TripScheduleResource extends JsonResource
             // "ขาดอีก X ที่นั่ง" ได้เองโดยไม่ต้อง hardcode
             'departure_status' => $this->departureStatus(),
             'seats_to_guarantee' => $this->seatsToGuarantee(),
-            'guarantee_min_seats' => TripSchedule::GUARANTEE_MIN_SEATS,
+            'guarantee_min_seats' => TripSchedule::guaranteeMinSeats(),
             'almost_ready_min_seats' => TripSchedule::ALMOST_READY_MIN_SEATS,
             'active_bookings_count' => $this->when(
                 isset($this->active_bookings_count),

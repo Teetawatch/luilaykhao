@@ -1,10 +1,16 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminActionQueueController;
 use App\Http\Controllers\Api\V1\AdminArticleController;
+use App\Http\Controllers\Api\V1\AdminBroadcastController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
+use App\Http\Controllers\Api\V1\AdminRentalController;
+use App\Http\Controllers\Api\V1\AdminSettingsController;
+use App\Http\Controllers\Api\V1\AdminSosController;
+use App\Http\Controllers\Api\V1\AdminStaffReviewController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AppVersionController;
@@ -502,6 +508,30 @@ Route::prefix('v1')->group(function () {
         // On-trip incident reports (accident / injury) — ops view + close case
         Route::get('incidents', [IncidentController::class, 'adminIndex']);
         Route::post('incidents/{id}/resolve', [IncidentController::class, 'resolve']);
+
+        // ศูนย์เฝ้าระวัง SOS — ทีมงานออฟฟิศเห็นทุกเคสจากส่วนกลาง
+        Route::get('sos', [AdminSosController::class, 'index']);
+        Route::get('sos/active-count', [AdminSosController::class, 'activeCount']);
+        Route::post('sos/{id}/resolve', [AdminSosController::class, 'resolve'])->whereNumber('id');
+
+        // "สิ่งที่รอคุณ" — รวมงานค้างจากทุกหน้าไว้ที่เดียว
+        Route::get('action-queue', [AdminActionQueueController::class, 'index']);
+
+        // แจ้งเตือน/ประกาศถึงลูกค้าที่ทีมงานเขียนเอง + ประวัติการส่ง
+        Route::get('broadcasts', [AdminBroadcastController::class, 'index']);
+        Route::get('broadcasts/audiences', [AdminBroadcastController::class, 'audiences']);
+        Route::post('broadcasts', [AdminBroadcastController::class, 'store'])->middleware('throttle:20,1');
+
+        // คะแนนรีวิวทีมงานจากลูกค้า (ภาพรวมทั้งทีม)
+        Route::get('staff-reviews', [AdminStaffReviewController::class, 'index']);
+
+        // ใบรวมอุปกรณ์เช่าที่ต้องเตรียมต่อรอบเดินทาง
+        Route::get('rentals/schedules', [AdminRentalController::class, 'schedules']);
+        Route::get('rentals/schedules/{id}', [AdminRentalController::class, 'show'])->whereNumber('id');
+
+        // ตั้งค่าระบบทั่วไป (เกณฑ์ที่นั่ง/ช่วงเวลางดรบกวน/ข้อมูลติดต่อ)
+        Route::get('settings/site', [AdminSettingsController::class, 'show']);
+        Route::put('settings/site', [AdminSettingsController::class, 'update']);
 
         // Outstanding payments — ติดตาม/ส่งลิงก์ชำระเงินให้ลูกค้าที่ยังค้างจ่าย
         Route::get('payments/outstanding', [AdminPaymentController::class, 'outstanding']);

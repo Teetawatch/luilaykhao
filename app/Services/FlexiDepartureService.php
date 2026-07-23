@@ -306,7 +306,7 @@ class FlexiDepartureService
             ->where('is_charter', false)
             ->where('status', '!=', 'cancelled')
             ->whereDate('departure_date', '>=', $today)
-            ->where('booked_seats', '<', TripSchedule::GUARANTEE_MIN_SEATS)
+            ->where('booked_seats', '<', TripSchedule::guaranteeMinSeats())
             ->orderBy('departure_date')
             ->get()
             ->filter(fn (TripSchedule $s) => $this->activeOffer($s) === null)

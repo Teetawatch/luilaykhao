@@ -74,7 +74,7 @@ class ScheduleRallyService
             'seats_needed' => min($seatsNeeded, $available),
             'seats_available' => $available,
             'days_left' => $daysLeft,
-            'guarantee_min_seats' => TripSchedule::GUARANTEE_MIN_SEATS,
+            'guarantee_min_seats' => TripSchedule::guaranteeMinSeats(),
             'booked_seats' => (int) $schedule->booked_seats,
             'headline' => $this->headline($seatsNeeded, $daysLeft),
             'share_url' => $this->shareUrl($schedule, $user),

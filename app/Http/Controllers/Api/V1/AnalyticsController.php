@@ -9,6 +9,7 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\CommunityStatsService;
+use App\Support\SiteSettings;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -166,11 +167,12 @@ class AnalyticsController extends Controller
             'total_customers' => $totalCustomers,
             // สถิติจริงของชุมชน (ระยะทาง/ความสูงสะสม) — ใช้แทนตัวเลขโฆษณาบนหน้าแรก
             'community' => $communityStats->get(),
+            // ข้อมูลติดต่อ — แอดมินแก้ได้ที่หน้าตั้งค่าระบบ ถ้าเว้นว่างจะใช้ค่าจาก .env
             'contact' => [
-                'phone' => config('app.support_phone'),
-                'line' => config('app.support_line_id'),
+                'phone' => SiteSettings::supportPhone(),
+                'line' => SiteSettings::get('support_line') ?: config('app.support_line_id'),
                 'line_url' => config('app.support_line_url'),
-                'email' => config('app.support_email'),
+                'email' => SiteSettings::get('support_email') ?: config('app.support_email'),
             ],
         ]);
     }

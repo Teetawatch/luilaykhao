@@ -411,6 +411,93 @@
           </div>
         </div>
 
+        <!-- Equipment rentals — ของที่ลูกค้าเช่าเพิ่มตอนจอง (คนละส่วนกับตัวเลือกเสริม) -->
+        <div class="card section-card">
+          <div class="section-header-flex">
+            <h3 class="section-title text-sky-600">
+              <span class="material-symbols-rounded">backpack</span> อุปกรณ์ให้เช่า
+            </h3>
+            <div class="section-actions-mini">
+              <button type="button" @click="copySection('rental_items')" title="คัดลอกส่วนนี้">
+                <span class="material-symbols-rounded">content_copy</span>
+              </button>
+              <button type="button" @click="pasteSection('rental_items')" title="วางข้อมูล">
+                <span class="material-symbols-rounded">content_paste</span>
+              </button>
+            </div>
+          </div>
+          <div class="rental-editor bg-sky-50 p-6 rounded-[2rem] border border-sky-100 space-y-4">
+            <p class="text-sm font-bold text-sky-700 pl-1">
+              ลูกค้าเลือกจำนวนเองได้ตอนจอง (เช่น ถุงนอน 2 ใบ) — ราคาคิดต่อชิ้น
+              ดูยอดรวมที่ต้องเตรียมแต่ละรอบได้ที่เมนู "อุปกรณ์เช่าที่ต้องเตรียม"
+            </p>
+
+            <div class="space-y-3">
+              <div v-for="(item, idx) in form.rental_items" :key="idx" class="flex gap-3 items-start bg-white rounded-2xl border border-sky-100 p-3">
+                <!-- รูปอุปกรณ์: อัปโหลดใหม่หรือหยิบจากคลังรูปเดิม -->
+                <div class="shrink-0 w-16">
+                  <div class="relative w-16 h-16 rounded-xl overflow-hidden border border-sky-200 bg-sky-50 flex items-center justify-center">
+                    <img v-if="item.image_url" :src="item.image_url" alt="" class="w-full h-full object-cover" />
+                    <span v-else class="material-symbols-rounded text-sky-300" style="font-size:26px;">backpack</span>
+                    <button v-if="item.image_url" type="button" @click="removeRentalImage(idx)" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/55 text-white flex items-center justify-center" title="ลบรูป">
+                      <span class="material-symbols-rounded" style="font-size:13px;">close</span>
+                    </button>
+                  </div>
+                  <div class="flex gap-1 mt-1">
+                    <button type="button" @click="triggerRentalImage(idx)" :disabled="rentalImageUploading" class="flex-1 py-1 rounded-lg text-sky-600 hover:text-sky-700 hover:bg-sky-50" title="อัปโหลดรูปใหม่">
+                      <span class="material-symbols-rounded align-middle" style="font-size:16px;">{{ rentalImageUploading && rentalImageTargetIdx === idx ? 'hourglass_top' : 'upload' }}</span>
+                    </button>
+                    <button type="button" @click="openRentalLibrary(idx)" class="flex-1 py-1 rounded-lg text-sky-600 hover:text-sky-700 hover:bg-sky-50" title="เลือกจากคลังรูป">
+                      <span class="material-symbols-rounded align-middle" style="font-size:16px;">photo_library</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="flex-1 space-y-2 min-w-0">
+                  <input v-model="item.name" placeholder="ชื่ออุปกรณ์ (เช่น ถุงนอน, เต็นท์ 2 คน)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-sky-500/20" />
+                  <input v-model="item.description" placeholder="รายละเอียดสั้น ๆ (ไม่บังคับ เช่น กันหนาวถึง 0°C)" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-sky-500/20 text-sm" />
+                  <div class="flex items-center gap-2">
+                    <span class="text-gray-400 font-bold">฿</span>
+                    <input v-model.number="item.price" type="number" min="0" placeholder="ราคาต่อชิ้น" class="w-32 px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-sky-500/20" />
+                    <span class="text-gray-400 text-sm font-bold">/ ชิ้น</span>
+                  </div>
+                </div>
+
+                <button type="button" @click="removeItem('rental_items', idx)" class="text-red-400 hover:text-red-600 p-2 mt-1">
+                  <span class="material-symbols-rounded">delete</span>
+                </button>
+              </div>
+
+              <button type="button" @click="addItem('rental_items')" class="w-full py-4 border-2 border-dashed border-sky-200 rounded-2xl text-sky-600 font-bold hover:bg-white hover:border-sky-400 transition-all flex items-center justify-center gap-2 group">
+                <span class="material-symbols-rounded group-hover:scale-110 transition-transform">add_circle</span> เพิ่มอุปกรณ์ให้เช่า
+              </button>
+            </div>
+
+            <input ref="rentalImageInput" type="file" accept="image/*" class="hidden-file-input" @change="handleRentalImageSelect" />
+          </div>
+
+          <div v-if="showRentalLibrary" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showRentalLibrary = false">
+            <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <h3 class="font-black text-gray-800">เลือกรูปจากคลัง</h3>
+                <button type="button" @click="showRentalLibrary = false" class="text-gray-400 hover:text-gray-600">
+                  <span class="material-symbols-rounded">close</span>
+                </button>
+              </div>
+              <div class="p-6 overflow-y-auto">
+                <div v-if="rentalLibraryLoading" class="text-center text-gray-400 py-12 font-bold">กำลังโหลด...</div>
+                <div v-else-if="!rentalLibrary.length" class="text-center text-gray-400 py-12 font-bold">ยังไม่มีรูปในคลัง — อัปโหลดรูปแรกได้เลย</div>
+                <div v-else class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  <button v-for="(img, i) in rentalLibrary" :key="i" type="button" @click="pickRentalLibrary(img.url)" class="relative rounded-xl overflow-hidden border border-gray-200 hover:border-sky-400 aspect-square">
+                    <img :src="img.url" alt="" class="w-full h-full object-cover" />
+                    <span v-if="img.label" class="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[10px] font-bold px-1.5 py-1 truncate text-left">{{ img.label }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Gallery -->
         <div class="card section-card">
           <div class="section-header-flex">
@@ -846,6 +933,7 @@ const form = reactive({
   gallery: [], videos: [], inclusions: [], exclusions: [],
   highlights: [],
   must_know: { items: [], remarks: '' },
+  rental_items: [],
   itinerary: [],
   preparations: [],
   faqs: [],
@@ -943,6 +1031,14 @@ const buildTripPayload = () => {
         .filter((item) => item.name),
       remarks: String(form.must_know?.remarks || '').trim(),
     },
+    rental_items: normalizeArray(form.rental_items)
+      .map((item) => ({
+        name: String(item?.name || '').trim(),
+        price: Number(item?.price || 0),
+        description: String(item?.description || '').trim(),
+        image_url: String(item?.image_url || '').trim(),
+      }))
+      .filter((item) => item.name),
     itinerary: normalizeArray(form.itinerary)
       .map((sector) => ({
         sector: String(sector?.sector || '').trim(),
@@ -1057,6 +1153,69 @@ const pickMustKnowLibrary = (url) => {
   showMustKnowLibrary.value = false;
 };
 
+// ─── Equipment rental images ───────────────────────────────
+// เดินตามรูปแบบเดียวกับ must-know ด้านบน (อัปโหลดใหม่ หรือหยิบจากคลังรูปเดิม)
+const rentalImageInput = ref(null);
+const rentalImageTargetIdx = ref(null);
+const rentalImageUploading = ref(false);
+const showRentalLibrary = ref(false);
+const rentalLibrary = ref([]);
+const rentalLibraryLoading = ref(false);
+const rentalLibraryTargetIdx = ref(null);
+
+const triggerRentalImage = (idx) => {
+  rentalImageTargetIdx.value = idx;
+  rentalImageInput.value?.click();
+};
+
+const handleRentalImageSelect = async (event) => {
+  const file = event.target.files?.[0];
+  const idx = rentalImageTargetIdx.value;
+  if (!file || idx == null) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('ไฟล์มีขนาดเกิน 10MB');
+    if (rentalImageInput.value) rentalImageInput.value.value = '';
+    return;
+  }
+  rentalImageUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/upload-image', formData);
+    if (form.rental_items[idx]) form.rental_items[idx].image_url = res.data.data.url;
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    rentalImageUploading.value = false;
+    rentalImageTargetIdx.value = null;
+    if (rentalImageInput.value) rentalImageInput.value.value = '';
+  }
+};
+
+const removeRentalImage = (idx) => {
+  if (form.rental_items[idx]) form.rental_items[idx].image_url = '';
+};
+
+const openRentalLibrary = async (idx) => {
+  rentalLibraryTargetIdx.value = idx;
+  showRentalLibrary.value = true;
+  rentalLibraryLoading.value = true;
+  try {
+    const res = await api.get('/admin/must-know/images');
+    rentalLibrary.value = res.data.data || [];
+  } catch (e) {
+    rentalLibrary.value = [];
+  } finally {
+    rentalLibraryLoading.value = false;
+  }
+};
+
+const pickRentalLibrary = (url) => {
+  const idx = rentalLibraryTargetIdx.value;
+  if (idx != null && form.rental_items[idx]) form.rental_items[idx].image_url = url;
+  showRentalLibrary.value = false;
+};
+
 // Bulk Copy state
 const showCopyModal = ref(false);
 const allTrips = ref([]);
@@ -1110,6 +1269,9 @@ const addItem = (field, extra = null) => {
   } else if (field === 'must_know_items') {
     if (!form.must_know.items) form.must_know.items = [];
     form.must_know.items.push({ name: '', price: 0, price_type: 'per_booking', image_url: '' });
+  } else if (field === 'rental_items') {
+    if (!form.rental_items) form.rental_items = [];
+    form.rental_items.push({ name: '', price: 0, description: '', image_url: '' });
   } else {
     if (!form[field]) form[field] = [];
     form[field].push('');
@@ -1472,6 +1634,12 @@ const initData = async () => {
 
       form.preparations = normalizeArray(trip.preparations);
       form.faqs = normalizeArray(trip.faqs);
+      form.rental_items = normalizeArray(trip.rental_items).map((item) => ({
+        name: item?.name || '',
+        price: Number(item?.price || 0),
+        description: item?.description || '',
+        image_url: item?.image_url || '',
+      }));
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
       router.push({ name: backRouteName.value });

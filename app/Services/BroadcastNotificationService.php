@@ -6,6 +6,7 @@ use App\Jobs\SendBroadcastNotificationJob;
 use App\Models\BroadcastDispatch;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
@@ -28,7 +29,11 @@ class BroadcastNotificationService
     /** …or after midnight until this hour — held messages flush at this time. */
     public const QUIET_END_HOUR = 8;
 
-    /** Seats at or below this (and above zero) trigger an "almost sold out" blast. */
+    /**
+     * Seats at or below this (and above zero) trigger an "almost sold out" blast.
+     * Default only — read it through [lowSeatThreshold()], which honours the
+     * admin-editable site settings.
+     */
     public const LOW_SEAT_THRESHOLD = 3;
 
     /**
@@ -158,7 +163,7 @@ class BroadcastNotificationService
         $available = $schedule->available_seats;
 
         // Only the low band above zero blasts (a full round is handled elsewhere).
-        if ($available <= 0 || $available > self::LOW_SEAT_THRESHOLD) {
+        if ($available <= 0 || $available > self::lowSeatThreshold()) {
             return;
         }
 
@@ -363,15 +368,20 @@ class BroadcastNotificationService
         // Atomically claim the key — a unique index makes a duplicate insert
         // throw, which we treat as "already sent" and swallow.
         try {
-            BroadcastDispatch::create([
+            $dispatch = BroadcastDispatch::create([
                 'event_type' => $eventType,
                 'dedupe_key' => $dedupeKey,
+                'title' => $title,
+                'body' => $body,
+                'data' => $data,
+                'audience' => BroadcastDispatch::AUDIENCE_ALL,
+                'audience_label' => 'ลูกค้าทั้งหมด',
             ]);
         } catch (QueryException $e) {
             return false;
         }
 
-        $job = new SendBroadcastNotificationJob($eventType, $title, $body, $data);
+        $job = new SendBroadcastNotificationJob($eventType, $title, $body, $data, $dispatch->id);
 
         // Urgency pushes (flash sale, low seats, sold out) lose all their value if
         // held overnight — the round can sell out or the sale end before morning —
@@ -390,26 +400,47 @@ class BroadcastNotificationService
      */
     public function quietHoursDelay(?CarbonImmutable $now = null): ?CarbonImmutable
     {
-        // Quiet hours can be switched off entirely (send immediately, any hour).
-        if (! config('services.broadcast_notifications.quiet_hours', true)) {
+        // Quiet hours can be switched off entirely (send immediately, any hour) —
+        // either at deploy time via config, or at runtime from the settings page.
+        if (! config('services.broadcast_notifications.quiet_hours', true)
+            || ! SiteSettings::bool('quiet_hours_enabled')) {
             return null;
         }
+
+        $startHour = self::quietStartHour();
+        $endHour = self::quietEndHour();
 
         $now = $now ?? CarbonImmutable::now(self::TIMEZONE);
         $hour = $now->hour;
 
-        $inQuietHours = $hour >= self::QUIET_START_HOUR || $hour < self::QUIET_END_HOUR;
+        $inQuietHours = $hour >= $startHour || $hour < $endHour;
         if (! $inQuietHours) {
             return null;
         }
 
-        // Next QUIET_END_HOUR — today if we're past midnight, tomorrow if it's
+        // Next quiet-end hour — today if we're past midnight, tomorrow if it's
         // still the late-evening window.
-        $target = $now->setTime(self::QUIET_END_HOUR, 0);
-        if ($hour >= self::QUIET_START_HOUR) {
+        $target = $now->setTime($endHour, 0);
+        if ($hour >= $startHour) {
             $target = $target->addDay();
         }
 
         return $target;
+    }
+
+    /** ที่นั่งเหลือเท่าไหร่จึงยิง "ใกล้เต็ม" — แอดมินปรับได้ที่หน้าตั้งค่าระบบ */
+    public static function lowSeatThreshold(): int
+    {
+        return max(1, SiteSettings::int('low_seat_threshold'));
+    }
+
+    public static function quietStartHour(): int
+    {
+        return min(23, max(0, SiteSettings::int('quiet_start_hour')));
+    }
+
+    public static function quietEndHour(): int
+    {
+        return min(23, max(0, SiteSettings::int('quiet_end_hour')));
     }
 }

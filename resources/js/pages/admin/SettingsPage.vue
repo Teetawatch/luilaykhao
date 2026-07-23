@@ -1,0 +1,239 @@
+<template>
+  <div class="admin-page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title"><span class="material-symbols-rounded">tune</span> ตั้งค่าระบบ</h1>
+        <p class="page-subtitle">ตัวเลขที่เคยต้องแก้ในโค้ด ปรับได้จากที่นี่ มีผลทันทีทั่วทั้งเว็บและแอป</p>
+      </div>
+      <button class="btn-primary" :disabled="saving || loading" @click="save">
+        <span class="material-symbols-rounded">{{ saving ? 'hourglass_top' : 'save' }}</span>
+        {{ saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}
+      </button>
+    </div>
+
+    <div v-if="loading" class="loading-state"><div class="spinner"></div></div>
+
+    <div v-else class="settings-grid">
+      <!-- ── เกณฑ์ที่นั่ง ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">event_seat</span>
+          <div>
+            <h2>เกณฑ์ที่นั่งของรอบเดินทาง</h2>
+            <p>กำหนดว่ารอบไหน "การันตีออก" และรอบไหนควรเร่งการจอง</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>ที่นั่งขั้นต่ำที่การันตีออกเดินทาง</label>
+          <div class="input-row">
+            <input v-model.number="form.guarantee_min_seats" type="number" min="1" max="50" />
+            <span class="unit">ที่นั่ง</span>
+            <button v-if="isChanged('guarantee_min_seats')" class="reset-link" @click="reset('guarantee_min_seats')">
+              คืนค่าเดิม ({{ defaults.guarantee_min_seats }})
+            </button>
+          </div>
+          <span class="help">
+            จองครบเท่านี้ = ป้าย 🟢 การันตีออกเดินทาง และมีผลกับข้อความ "ขาดอีกกี่ที่นั่ง" ทุกที่ในระบบ
+          </span>
+        </div>
+
+        <div class="field">
+          <label>เหลือกี่ที่นั่งจึงแจ้งเตือน "ใกล้เต็ม"</label>
+          <div class="input-row">
+            <input v-model.number="form.low_seat_threshold" type="number" min="1" max="20" />
+            <span class="unit">ที่นั่ง</span>
+            <button v-if="isChanged('low_seat_threshold')" class="reset-link" @click="reset('low_seat_threshold')">
+              คืนค่าเดิม ({{ defaults.low_seat_threshold }})
+            </button>
+          </div>
+          <span class="help">ระบบยิง push เร่งการจองเมื่อที่นั่งเหลือเท่านี้หรือน้อยกว่า</span>
+        </div>
+
+        <div class="field">
+          <label>รอบที่จองน้อยกว่านี้ = เสี่ยงไม่ออก</label>
+          <div class="input-row">
+            <input v-model.number="form.underfilled_min_seats" type="number" min="1" max="50" />
+            <span class="unit">ที่นั่ง</span>
+            <button v-if="isChanged('underfilled_min_seats')" class="reset-link" @click="reset('underfilled_min_seats')">
+              คืนค่าเดิม ({{ defaults.underfilled_min_seats }})
+            </button>
+          </div>
+          <span class="help">ใช้ส่งอีเมลเตือนลูกค้าล่วงหน้า 7 วันก่อนเดินทางเมื่อคนยังไม่ครบ</span>
+        </div>
+      </section>
+
+      <!-- ── ช่วงเวลางดรบกวน ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">bedtime</span>
+          <div>
+            <h2>ช่วงเวลางดรบกวน</h2>
+            <p>กันไม่ให้ push การตลาดไปปลุกลูกค้าตอนดึก</p>
+          </div>
+        </div>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.quiet_hours_enabled" />
+          <span class="switch"></span>
+          <span>เปิดใช้ช่วงเวลางดรบกวน</span>
+        </label>
+
+        <div class="field" :class="{ disabled: !form.quiet_hours_enabled }">
+          <label>ช่วงเวลาที่งดส่ง</label>
+          <div class="input-row">
+            <input v-model.number="form.quiet_start_hour" type="number" min="0" max="23" :disabled="!form.quiet_hours_enabled" />
+            <span class="unit">น. ถึง</span>
+            <input v-model.number="form.quiet_end_hour" type="number" min="0" max="23" :disabled="!form.quiet_hours_enabled" />
+            <span class="unit">น.</span>
+          </div>
+          <span class="help">
+            ข้อความที่ตกในช่วงนี้จะถูกพักไว้ส่งตอน {{ form.quiet_end_hour }}:00 น. แทน
+            — ยกเว้นเรื่องเร่งด่วน (Flash Sale, ที่นั่งใกล้เต็ม, ที่นั่งเต็ม)
+            และข้อความที่ทีมงานกดส่งเอง ซึ่งไปถึงทันทีเสมอ
+          </span>
+        </div>
+      </section>
+
+      <!-- ── ข้อมูลติดต่อ ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">contact_support</span>
+          <div>
+            <h2>ข้อมูลติดต่อที่แสดงให้ลูกค้า</h2>
+            <p>เว้นว่างไว้ = ใช้ค่าที่ตั้งไว้ตอนติดตั้งระบบ</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>เบอร์โทรติดต่อ</label>
+          <input v-model="form.support_phone" class="wide" placeholder="เช่น 062-612-6006" />
+        </div>
+        <div class="field">
+          <label>LINE ID</label>
+          <input v-model="form.support_line" class="wide" placeholder="เช่น @luilaykhao" />
+        </div>
+        <div class="field">
+          <label>อีเมล</label>
+          <input v-model="form.support_email" class="wide" type="email" placeholder="เช่น hello@luilaykhao.com" />
+        </div>
+      </section>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, reactive, ref } from 'vue';
+import api from '../../lib/axios';
+import { useToast } from '../../lib/toast';
+import './admin-shared.css';
+
+const toast = useToast();
+
+const form = reactive({
+  guarantee_min_seats: 8,
+  low_seat_threshold: 3,
+  underfilled_min_seats: 8,
+  quiet_hours_enabled: true,
+  quiet_start_hour: 21,
+  quiet_end_hour: 8,
+  support_phone: '',
+  support_line: '',
+  support_email: '',
+});
+
+const defaults = ref({});
+const loading = ref(false);
+const saving = ref(false);
+
+function isChanged(key) {
+  return form[key] !== defaults.value[key];
+}
+
+function reset(key) {
+  form[key] = defaults.value[key];
+}
+
+async function load() {
+  loading.value = true;
+  try {
+    const res = await api.get('/admin/settings/site');
+    defaults.value = res.data.data.defaults || {};
+    Object.assign(form, res.data.data.settings || {});
+    // ช่องข้อความว่างมาเป็น null จาก API — แปลงเป็นสตริงว่างให้ input ผูกค่าได้
+    ['support_phone', 'support_line', 'support_email'].forEach((k) => {
+      form[k] = form[k] ?? '';
+    });
+  } catch {
+    toast.error('โหลดการตั้งค่าไม่สำเร็จ');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function save() {
+  saving.value = true;
+  try {
+    await api.put('/admin/settings/site', {
+      ...form,
+      support_phone: form.support_phone?.trim() || null,
+      support_line: form.support_line?.trim() || null,
+      support_email: form.support_email?.trim() || null,
+    });
+    toast.success('บันทึกการตั้งค่าแล้ว — มีผลทันที');
+  } catch (e) {
+    const errors = e.response?.data?.errors;
+    toast.error(
+      errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || 'บันทึกไม่สำเร็จ'),
+    );
+  } finally {
+    saving.value = false;
+  }
+}
+
+onMounted(load);
+</script>
+
+<style scoped>
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
+
+.setting-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 22px 24px; }
+.card-head { display: flex; gap: 13px; padding-bottom: 16px; border-bottom: 1px solid #f3f4f6; }
+.card-head .material-symbols-rounded { font-size: 26px !important; color: var(--color-accent); }
+.card-head h2 { margin: 0; font-size: 15.5px; font-weight: 700; color: #111827; }
+.card-head p { margin: 2px 0 0; font-size: 12.5px; color: #6b7280; }
+
+.field { margin-top: 18px; }
+.field.disabled { opacity: 0.5; }
+.field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 7px; }
+
+.input-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.input-row input {
+  width: 88px; padding: 9px 13px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 14px; font-weight: 600; color: #1f2937; text-align: center; font-family: inherit;
+}
+.field input.wide {
+  width: 100%; padding: 9px 13px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 14px; color: #1f2937; font-family: inherit;
+}
+.input-row input:focus, .field input.wide:focus { outline: none; border-color: var(--color-accent); }
+.unit { font-size: 13px; color: #6b7280; }
+.reset-link {
+  background: none; border: none; cursor: pointer; margin-left: auto;
+  font-size: 12px; color: #2563eb; text-decoration: underline;
+}
+.help { display: block; margin-top: 7px; font-size: 12px; color: #9ca3af; line-height: 1.6; }
+
+.switch-row { display: flex; align-items: center; gap: 10px; margin-top: 18px; cursor: pointer; font-size: 13.5px; color: #374151; }
+.switch-row input { display: none; }
+.switch {
+  width: 40px; height: 22px; border-radius: 999px; background: #d1d5db;
+  position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.switch::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.2s;
+}
+.switch-row input:checked + .switch { background: var(--color-accent); }
+.switch-row input:checked + .switch::after { transform: translateX(18px); }
+</style>

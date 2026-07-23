@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Jobs\SendDriverAssignmentPushJob;
 use App\Support\LoyaltyTier;
+use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +30,9 @@ class TripSchedule extends Model
      *   1-4  → waiting       🔴 ยังขาดเพื่อนร่วมทาง
      *   5-7  → almost_ready  🟡 ขาดอีกนิดเดียว รถตู้ออกชัวร์
      *   8+   → guaranteed    🟢 คอนเฟิร์มรถออกแน่นอน 100%
+     *
+     * ค่านี้เป็นค่าตั้งต้น — แอดมินปรับได้ที่หน้าตั้งค่าระบบ ใช้ผ่าน
+     * [guaranteeMinSeats()] เสมอ อย่าอ่าน const ตรง ๆ
      */
     public const GUARANTEE_MIN_SEATS = 8;
 
@@ -538,6 +542,14 @@ class TripSchedule extends Model
      * คืน null สำหรับทริปเหมาคัน (is_charter) เพราะออกเดินทางแน่นอนอยู่แล้ว
      * ไม่ต้องพึ่งจำนวนผู้ร่วมทาง
      */
+    /**
+     * ที่นั่งขั้นต่ำที่การันตีออกเดินทาง — แอดมินปรับได้ที่หน้าตั้งค่าระบบ
+     */
+    public static function guaranteeMinSeats(): int
+    {
+        return max(1, SiteSettings::int('guarantee_min_seats'));
+    }
+
     public function departureStatus(): ?string
     {
         if ($this->is_charter) {
@@ -546,7 +558,7 @@ class TripSchedule extends Model
 
         $booked = (int) $this->booked_seats;
 
-        if ($booked >= self::GUARANTEE_MIN_SEATS) {
+        if ($booked >= self::guaranteeMinSeats()) {
             return self::STATUS_GUARANTEED;
         }
 
@@ -562,7 +574,7 @@ class TripSchedule extends Model
      */
     public function seatsToGuarantee(): int
     {
-        return max(0, self::GUARANTEE_MIN_SEATS - (int) $this->booked_seats);
+        return max(0, self::guaranteeMinSeats() - (int) $this->booked_seats);
     }
 
     /**

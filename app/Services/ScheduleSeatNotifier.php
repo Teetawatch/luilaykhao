@@ -86,7 +86,7 @@ class ScheduleSeatNotifier
     private function notifyDepartureStatusCrossing(TripSchedule $schedule, int $before, int $after): void
     {
         try {
-            $guarantee = TripSchedule::GUARANTEE_MIN_SEATS;
+            $guarantee = TripSchedule::guaranteeMinSeats();
             $almost = TripSchedule::ALMOST_READY_MIN_SEATS;
 
             if ($before < $guarantee && $after >= $guarantee) {

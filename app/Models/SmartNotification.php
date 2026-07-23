@@ -11,6 +11,7 @@ class SmartNotification extends Model
 {
     protected $fillable = [
         'user_id', 'type', 'title', 'body', 'data', 'is_read', 'read_at',
+        'broadcast_dispatch_id',
     ];
 
     protected function casts(): array
@@ -27,14 +28,26 @@ class SmartNotification extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function send(int $userId, string $type, string $title, string $body, array $data = []): self
-    {
+    /**
+     * @param  int|null  $dispatchId  Blast this notification belongs to, when it
+     *                                came from a broadcast — lets the admin page
+     *                                count exactly how many recipients read it.
+     */
+    public static function send(
+        int $userId,
+        string $type,
+        string $title,
+        string $body,
+        array $data = [],
+        ?int $dispatchId = null,
+    ): self {
         $notification = static::create([
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
             'body' => $body,
             'data' => $data,
+            'broadcast_dispatch_id' => $dispatchId,
         ]);
 
         try {

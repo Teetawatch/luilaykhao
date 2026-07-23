@@ -35,6 +35,7 @@
             >
               <i :class="item.icon"></i>
               <span>{{ item.label }}</span>
+              <span v-if="item.badge === 'sos' && sosCount" class="nav-badge">{{ sosCount }}</span>
             </router-link>
           </div>
 
@@ -49,6 +50,7 @@
               :class="{ active: item.to === '/admin' ? $route.path === '/admin' : $route.path.startsWith(item.to) }"
             >
               <i :class="item.icon"></i>
+              <span v-if="item.badge === 'sos' && sosCount" class="nav-badge collapsed-badge">{{ sosCount }}</span>
             </router-link>
           </div>
         </div>
@@ -95,13 +97,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import api from '../lib/axios';
 
 const router = useRouter();
 const auth = useAuthStore();
 const sidebarCollapsed = ref(false);
+
+// จำนวนเคส SOS ที่ยังไม่ปิด — ติดไว้บนเมนูเพื่อให้เห็นได้จากทุกหน้าในหลังบ้าน
+// ไม่ใช่เฉพาะตอนเปิดหน้า SOS ค้างไว้
+const sosCount = ref(0);
+let sosTimer = null;
+
+const loadSosCount = async () => {
+  try {
+    const res = await api.get('/admin/sos/active-count');
+    sosCount.value = res.data.data.count || 0;
+  } catch {
+    // เน็ตสะดุด/สิทธิ์ไม่พอ — ไม่ต้องรบกวนผู้ใช้ รอบหน้าค่อยลองใหม่
+  }
+};
 
 const menuGroups = ref([
   {
@@ -110,6 +127,7 @@ const menuGroups = ref([
     icon: 'fas fa-home',
     items: [
       { to: '/admin', icon: 'fas fa-tachometer-alt', label: 'แดชบอร์ด' },
+      { to: '/admin/action-queue', icon: 'fas fa-list-check', label: 'สิ่งที่รอคุณ' },
       { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
       { to: '/admin/reports', icon: 'fas fa-chart-line', label: 'รายงาน' },
       { to: '/admin/finance', icon: 'fas fa-money-bill-wave', label: 'สรุปกำไร/ค่าใช้จ่าย' },
@@ -163,6 +181,7 @@ const menuGroups = ref([
     label: 'การตลาด',
     icon: 'fas fa-bullhorn',
     items: [
+      { to: '/admin/broadcasts', icon: 'fas fa-bullhorn', label: 'ส่งข้อความถึงลูกค้า' },
       { to: '/admin/articles', icon: 'fas fa-pen-nib', label: 'บทความ/บล็อก' },
       { to: '/admin/promotions', icon: 'fas fa-percent', label: 'โปรโมชั่น/ส่วนลด' },
       { to: '/admin/urgent-popup', icon: 'fas fa-fire', label: 'ป๊อปอัพทริปด่วน' },
@@ -175,9 +194,12 @@ const menuGroups = ref([
     label: 'ปฏิบัติงาน',
     icon: 'fas fa-clipboard-check',
     items: [
+      { to: '/admin/sos', icon: 'fas fa-tower-broadcast', label: 'ศูนย์เฝ้าระวัง SOS', badge: 'sos' },
       { to: '/admin/check-in', icon: 'fas fa-qrcode', label: 'เช็คอิน QR' },
       { to: '/admin/incidents', icon: 'fas fa-triangle-exclamation', label: 'แจ้งเหตุ/อุบัติเหตุ' },
+      { to: '/admin/rentals', icon: 'fas fa-suitcase-rolling', label: 'อุปกรณ์เช่าที่ต้องเตรียม' },
       { to: '/admin/staff-assignments', icon: 'fas fa-user-check', label: 'มอบหมายสตาฟ' },
+      { to: '/admin/staff-reviews', icon: 'fas fa-award', label: 'คะแนนรีวิวทีมงาน' },
       { to: '/admin/chat', icon: 'fas fa-comments', label: 'แชทกลุ่มทริป' },
       { to: '/admin/support', icon: 'fas fa-headset', label: 'ศูนย์ช่วยเหลือ' },
       { to: '/admin/announcements', icon: 'fas fa-bullhorn', label: 'ประกาศจากผู้จัด' },
@@ -191,6 +213,7 @@ const menuGroups = ref([
     label: 'ตั้งค่าระบบ',
     icon: 'fas fa-cog',
     items: [
+      { to: '/admin/settings', icon: 'fas fa-sliders', label: 'ตั้งค่าระบบทั่วไป' },
       { to: '/admin/users', icon: 'fas fa-users-cog', label: 'ผู้ใช้งานระบบ' },
       { to: '/admin/hero-slides', icon: 'fas fa-images', label: 'สไลด์หน้าแรก' },
       { to: '/admin/gallery', icon: 'fas fa-photo-film', label: 'ภาพประทับใจ' },
@@ -221,6 +244,13 @@ onMounted(() => {
       group.isOpen = true;
     }
   });
+
+  loadSosCount();
+  sosTimer = setInterval(loadSosCount, 30000);
+});
+
+onBeforeUnmount(() => {
+  if (sosTimer) clearInterval(sosTimer);
 });
 
 const handleLogout = async () => {
@@ -418,6 +448,36 @@ const handleLogout = async () => {
   padding: 10px 0;
   width: 100%;
   justify-content: center;
+}
+
+/* ─── SOS badge ───────────────────────── */
+.nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  animation: badge-pulse 1.6s ease-in-out infinite;
+}
+
+.collapsed-badge {
+  position: absolute;
+  top: 4px;
+  right: 12px;
+  margin-left: 0;
+}
+
+.collapsed-sub-item {
+  position: relative;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 .sidebar-footer {
