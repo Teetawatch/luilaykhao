@@ -3,12 +3,22 @@
 namespace App\Models;
 
 use App\Jobs\DeleteMediaFilesJob;
+use App\Jobs\PurgeExpiredSchedulePhotosJob;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 
 class SchedulePhoto extends Model
 {
+    /**
+     * รูปประจำรอบเดินทางเก็บไว้กี่วันนับจากวันที่อัปโหลด — พ้นกำหนดแล้ว
+     * {@see PurgeExpiredSchedulePhotosJob} จะลบทั้งแถวและไฟล์บน R2 ทิ้ง
+     * ลูกค้าจึงต้องดาวน์โหลดภายในกรอบเวลานี้ (แจ้งไว้ทั้งในแอปและหน้าอัลบั้ม)
+     */
+    public const RETENTION_DAYS = 4;
+
     protected $fillable = [
         'disk', 'path', 'thumb_path', 'url', 'thumb_url', 'original_name',
         'mime', 'size', 'width', 'height',
@@ -31,6 +41,18 @@ class SchedulePhoto extends Model
             DeleteMediaFilesJob::dispatch($photo->storageDisk(), $photo->mediaPaths())
                 ->afterCommit();
         });
+    }
+
+    /** เวลาที่รูปนี้จะถูกลบอัตโนมัติ (อัปโหลด + RETENTION_DAYS) */
+    public function expiresAt(): ?Carbon
+    {
+        return $this->created_at?->copy()->addDays(self::RETENTION_DAYS);
+    }
+
+    /** รูปที่เลยกำหนดเก็บแล้ว — พร้อมให้กวาดทิ้ง */
+    public function scopeExpired(Builder $query): Builder
+    {
+        return $query->where('created_at', '<=', now()->subDays(self::RETENTION_DAYS));
     }
 
     /** The disk this photo's files live on. */

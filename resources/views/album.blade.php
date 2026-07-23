@@ -89,6 +89,16 @@
         }
         .toolbar .count .icon { width: 17px; height: 17px; color: var(--brand); }
 
+        /* แจ้งเตือนวันหมดอายุของอัลบั้ม — รูปถูกลบอัตโนมัติหลังอัปโหลดครบกำหนด */
+        .notice {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: #FFF7E6; border: 1px solid #F5D89B; border-radius: var(--radius);
+            padding: 12px 14px; margin-bottom: 16px;
+            font-size: 14px; line-height: 1.5; color: #7A4E00;
+        }
+        .notice .icon { width: 18px; height: 18px; color: #B4791A; flex: none; margin-top: 1px; }
+        .notice strong { font-weight: 800; }
+
         .btn {
             display: inline-flex; align-items: center; justify-content: center; gap: 8px;
             border: none; border-radius: 11px;
@@ -242,6 +252,7 @@
         <symbol id="i-image-off" viewBox="0 0 24 24"><path d="M10.4 4H19a2 2 0 0 1 2 2v8.6M21 16v3a2 2 0 0 1-2 2H6.4M3 3l18 18M3 7.8V18a2 2 0 0 0 2 2h10.2M3 16l4-4 2 2"/></symbol>
         <symbol id="i-unplug" viewBox="0 0 24 24"><path d="m19 5 3-3M2 22l3-3M6.3 20.3a2.4 2.4 0 0 1-3.4 0l-1.2-1.2a2.4 2.4 0 0 1 0-3.4L5 12.4l4.6 4.6ZM18.7 3.7a2.4 2.4 0 0 1 3.4 0l1.2 1.2a2.4 2.4 0 0 1 0 3.4L19 11.6 14.4 7Z"/></symbol>
         <symbol id="i-mountain" viewBox="0 0 24 24"><path d="m8 3 4 8 5-5 5 14H2L8 3z"/></symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     </svg>
 
     <header>
@@ -271,6 +282,10 @@
         </div>
 
         <div id="content" class="hidden">
+            <div id="expiryNotice" class="notice hidden">
+                <svg class="icon"><use href="#i-clock"/></svg>
+                <span id="expiryText"></span>
+            </div>
             <div class="toolbar">
                 <span class="count" id="photoCount"><svg class="icon"><use href="#i-images"/></svg></span>
                 <a class="btn btn-primary" id="downloadAll" href="#">
@@ -309,6 +324,16 @@
             const d = new Date(iso);
             if (isNaN(d)) return '';
             return d.getDate() + ' ' + months[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+        }
+
+        // เวลาไทยแบบ "12 ก.ค. 2569 เวลา 14:30 น." สำหรับบอกเส้นตายดาวน์โหลด
+        function thaiDateTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            if (isNaN(d)) return '';
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return thaiDate(iso) + ' เวลา ' + hh + ':' + mm + ' น.';
         }
 
         function show(id) { document.getElementById(id).classList.remove('hidden'); }
@@ -386,6 +411,17 @@
                 document.getElementById('photoCount').innerHTML =
                     '<svg class="icon"><use href="#i-images"/></svg> ทั้งหมด ' + photoList.length + ' รูป';
                 document.getElementById('downloadAll').href = DL_ALL;
+
+                // รูปถูกลบอัตโนมัติหลังอัปโหลดครบกำหนด — บอกเส้นตายให้ชัดก่อนของหาย
+                const deadline = thaiDateTime(data.expires_at);
+                if (deadline) {
+                    const days = data.retention_days || 0;
+                    document.getElementById('expiryText').innerHTML =
+                        'ระบบจะลบรูปอัตโนมัติหลังอัปโหลด ' + days + ' วัน — ' +
+                        'อัลบั้มนี้จะเริ่มถูกลบ <strong>' + deadline + '</strong> ' +
+                        'กรุณาดาวน์โหลดเก็บไว้ก่อนถึงเวลาดังกล่าวนะครับ';
+                    show('expiryNotice');
+                }
 
                 const grid = document.getElementById('grid');
                 grid.innerHTML = photoList.map((p, i) => `

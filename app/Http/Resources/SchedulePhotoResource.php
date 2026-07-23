@@ -21,6 +21,10 @@ class SchedulePhotoResource extends JsonResource
             'width' => $this->width,
             'height' => $this->height,
             'sort_order' => $this->pivot?->sort_order ?? 0,
+            // รูปถูกลบอัตโนมัติหลังอัปโหลดครบกำหนด — ส่งเวลาหมดอายุไปด้วยเพื่อให้
+            // แอป/หน้าอัลบั้มเตือนลูกค้าให้ดาวน์โหลดทัน
+            'uploaded_at' => $this->created_at?->toISOString(),
+            'expires_at' => $this->expiresAt()?->toISOString(),
         ];
     }
 }

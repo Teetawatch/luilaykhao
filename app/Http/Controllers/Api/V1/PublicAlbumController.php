@@ -33,11 +33,19 @@ class PublicAlbumController extends Controller
     {
         $schedule = $this->resolveSchedule($token);
 
+        // รูปชุดแรกที่จะหมดอายุ คือเส้นตายที่ต้องเตือนให้ดาวน์โหลด
+        $expiresAt = $schedule->photos
+            ->map(fn (SchedulePhoto $photo) => $photo->expiresAt())
+            ->filter()
+            ->min();
+
         return $this->success([
             'trip_title' => $schedule->trip?->title,
             'departure_date' => optional($schedule->departure_date)->toDateString(),
             'return_date' => optional($schedule->return_date)->toDateString(),
             'count' => $schedule->photos->count(),
+            'retention_days' => SchedulePhoto::RETENTION_DAYS,
+            'expires_at' => $expiresAt?->toISOString(),
             'photos' => SchedulePhotoResource::collection($schedule->photos),
         ]);
     }

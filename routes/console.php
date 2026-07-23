@@ -10,6 +10,7 @@ use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\IssueBirthdayCouponsJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
+use App\Jobs\PurgeExpiredSchedulePhotosJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
 use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
@@ -63,6 +64,9 @@ Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping()
 Schedule::job(new ExpireFlexiOffersJob)->everyFiveMinutes()->withoutOverlapping();
 // Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.
 Schedule::job(new PurgeEndedTripChatsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
+// ลบรูปให้ลูกค้าโหลด 4 วันหลังอัปโหลด (ทั้งแถวและไฟล์บน R2) — รายชั่วโมงเพื่อให้
+// ลบใกล้เวลาครบกำหนดจริง ไม่ต้องรอรอบกลางคืน
+Schedule::job(new PurgeExpiredSchedulePhotosJob)->hourly()->withoutOverlapping();
 // คืนรหัสส่ง GPS (PIN) ของรถที่รอบเดินทางจบไปแล้ว เพื่อให้แอดมินตั้งรหัสเดิมซ้ำได้
 // โดยไม่ชนกับ PIN ที่ค้างอยู่กับรอบเก่า
 Schedule::job(new ClearEndedTripDriverPinsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
