@@ -125,6 +125,9 @@
         </div>
         <div class="flex gap-6 text-sm font-medium text-text-muted">
           <a href="/blog" class="hover:text-accent transition-colors">บทความ</a>
+          <router-link to="/places" class="hover:text-accent transition-colors">สถานที่ธรรมชาติ</router-link>
+          <router-link to="/seasons" class="hover:text-accent transition-colors">เดือนไหนไปไหนดี</router-link>
+          <router-link to="/checklist" class="hover:text-accent transition-colors">เช็คลิสต์ของที่ต้องเตรียม</router-link>
           <router-link to="/gallery" class="hover:text-accent transition-colors">รูปจากคนที่ไปมาแล้ว</router-link>
           <router-link to="/terms" class="hover:text-accent transition-colors">เงื่อนไขการให้บริการ</router-link>
           <router-link to="/privacy" class="hover:text-accent transition-colors">นโยบายความเป็นส่วนตัว</router-link>

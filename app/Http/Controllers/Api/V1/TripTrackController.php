@@ -104,12 +104,14 @@ class TripTrackController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tracks = TripTrack::where('user_id', $request->user()->id)
-            ->with('schedule.trip')
+            ->with(['schedule.trip', 'booking'])
             ->orderByDesc('started_at')
             ->get()
             ->map(fn (TripTrack $track) => [
                 'id' => $track->id,
                 'schedule_id' => $track->schedule_id,
+                // ต้องมี ref ไว้เปิดหน้ารายละเอียดแทร็ก ซึ่ง endpoint คีย์ด้วย booking_ref
+                'booking_ref' => $track->booking?->booking_ref,
                 'trip_title' => $track->schedule?->trip?->title,
                 'distance_km' => (float) $track->distance_km,
                 'elevation_gain_m' => $track->elevation_gain_m,

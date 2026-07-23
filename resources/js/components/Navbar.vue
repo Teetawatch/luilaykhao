@@ -417,12 +417,26 @@
                     <span class="material-symbols-rounded text-[20px]">reviews</span>
                     รีวิวของฉัน
                   </router-link>
+                  <router-link to="/group-plans" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">groups</span>
+                    กลุ่มไปด้วยกัน
+                  </router-link>
                   <router-link to="/support" class="menu-row" @click="userDropdownOpen = false">
                     <span class="material-symbols-rounded text-[20px]">support_agent</span>
                     ศูนย์ช่วยเหลือ
                     <span v-if="supportUnread" class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
                       {{ supportUnread > 9 ? '9+' : supportUnread }}
                     </span>
+                  </router-link>
+
+                  <p class="menu-caption">สถิติของฉัน</p>
+                  <router-link to="/passport" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">hiking</span>
+                    สมุดสะสมการเดินทาง
+                  </router-link>
+                  <router-link to="/my-tracks" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">route</span>
+                    บันทึกการเดินของฉัน
                   </router-link>
 
                   <p class="menu-caption">สิทธิพิเศษ</p>
@@ -775,10 +789,22 @@ const navLinks = [
     ],
   },
   {
+    label: 'ข้อมูลก่อนไป',
+    icon: 'menu_book',
+    to: '/places',
+    children: [
+      { to: '/places', icon: 'landscape', label: 'สถานที่ธรรมชาติ', desc: 'ความสูง ระยะเดิน และช่วงที่ควรไปของแต่ละที่' },
+      { to: '/seasons', icon: 'calendar_month', label: 'เดือนไหนไปไหนดี', desc: 'ปฏิทินธรรมชาติไทยทั้ง 12 เดือน' },
+      { to: '/difficulty', icon: 'trending_up', label: 'ระดับความยาก', desc: 'สายชิล ปานกลาง สายโหด ต่างกันยังไง' },
+      { to: '/checklist', icon: 'checklist', label: 'เช็คลิสต์ของที่ต้องเตรียม', desc: 'ติ๊กได้ ปรินต์ได้ ใช้ฟรี' },
+    ],
+  },
+  {
     label: 'รูปและบทความ',
     icon: 'auto_awesome',
     to: '/gallery',
     children: [
+      { to: '/feed', icon: 'dynamic_feed', label: 'ฟีดจากนักเดินทาง', desc: 'รูปที่คนไปมาแล้วโพสต์เอง' },
       { to: '/gallery', icon: 'photo_library', label: 'รูปจากคนที่ไปมาแล้ว', desc: 'รูปที่ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว' },
       // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
       { to: '/blog', icon: 'article', label: 'บทความ', desc: 'ไอเดียและคู่มือการเดินทาง', external: true },

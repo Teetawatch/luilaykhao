@@ -105,6 +105,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import api from '../lib/axios';
+import { loadLeaflet } from '../lib/leaflet';
 
 // กึ่งกลางประเทศไทย ใช้เป็นมุมกล้องตั้งต้นก่อนจะซูมให้พอดีกับหมุดที่มีจริง
 const THAILAND_CENTER = [13.5, 100.9];
@@ -164,20 +165,6 @@ function clearSelection() {
   selected.value = null;
 }
 
-function loadLeaflet() {
-  if (window.L) { L = window.L; return Promise.resolve(); }
-  return new Promise((resolve) => {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => { L = window.L; resolve(); };
-    document.head.appendChild(script);
-  });
-}
-
 /** ป้ายราคาแทนหมุดกลม — บอกได้ทั้งตำแหน่งและราคาโดยไม่ต้องกดดู */
 function priceMarker(trip, isSelected) {
   const price = Math.round(Number(trip.price_from) || 0).toLocaleString('th-TH');
@@ -215,7 +202,7 @@ function fitToMarkers() {
 }
 
 async function init() {
-  await loadLeaflet();
+  L = await loadLeaflet();
 
   map = L.map(mapEl.value, { zoomControl: false, attributionControl: true })
     .setView(THAILAND_CENTER, THAILAND_ZOOM);

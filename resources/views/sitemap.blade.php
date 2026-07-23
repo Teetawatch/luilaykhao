@@ -53,6 +53,47 @@
         <priority>0.4</priority>
     </url>
 
+    {{-- ═══ Reference / คู่มือ ═══ --}}
+    <url>
+        <loc>{{ url('/places') }}</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>{{ url('/seasons') }}</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>{{ url('/difficulty') }}</loc>
+        <changefreq>yearly</changefreq>
+        <priority>0.6</priority>
+    </url>
+    <url>
+        <loc>{{ url('/checklist') }}</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    <url>
+        <loc>{{ url('/feed') }}</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.6</priority>
+    </url>
+    @foreach (($places ?? []) as $place)
+        <url>
+            <loc>{{ url('/places/' . $place->slug) }}</loc>
+            <lastmod>{{ $place->updated_at->toAtomString() }}</lastmod>
+            <changefreq>monthly</changefreq>
+            <priority>0.7</priority>
+            @if($place->coverUrl())
+            <image:image>
+                <image:loc>{{ $place->coverUrl() }}</image:loc>
+                <image:title>{{ $place->name }} - ลุยเลเขา</image:title>
+            </image:image>
+            @endif
+        </url>
+    @endforeach
+
     {{-- ═══ Blog ═══ --}}
     <url>
         <loc>{{ url('/blog') }}</loc>

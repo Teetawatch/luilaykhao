@@ -178,6 +178,73 @@ const routes = [
       ogType: 'website'
     }
   },
+  // ── สถานที่ + ฤดูกาล + คู่มือ (เนื้อหา ไม่ใช่หน้าขาย) ──
+  {
+    path: '/places',
+    name: 'places',
+    component: () => import('../pages/PlacesPage.vue'),
+    meta: {
+      title: 'สถานที่ธรรมชาติในไทย | ภูเขา เกาะ อุทยาน',
+      description: 'ข้อมูลภูเขา เกาะ น้ำตก และอุทยานทั่วไทย ความสูง ระยะเดิน ระดับความยาก ช่วงที่ควรไปและช่วงที่ปิด อ่านได้แม้ยังไม่มีรอบเปิดจอง',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/places/:slug',
+    name: 'place-detail',
+    component: () => import('../pages/PlaceDetailPage.vue'),
+    meta: { ogType: 'article' }
+  },
+  {
+    path: '/seasons',
+    name: 'seasons',
+    component: () => import('../pages/SeasonsPage.vue'),
+    meta: {
+      title: 'เดือนไหนไปไหนดี | ปฏิทินธรรมชาติไทยทั้งปี',
+      description: 'ปฏิทิน 12 เดือนของธรรมชาติไทย เดือนนี้ที่ไหนอยู่ในช่วงพีค ที่ไหนปิดฟื้นฟู ใช้วางแผนเที่ยวล่วงหน้าได้ทั้งปี',
+      ogType: 'article'
+    }
+  },
+  {
+    path: '/difficulty',
+    name: 'difficulty',
+    component: () => import('../pages/DifficultyPage.vue'),
+    meta: {
+      title: 'ระดับความยากเดินป่าหมายถึงอะไร',
+      description: 'อธิบายเกณฑ์ระดับความยากของทริปเดินป่า สายชิล ปานกลาง สายโหด ต่างกันยังไง ใช้ระยะทางและความสูงที่ต้องไต่เท่าไหร่ และจะรู้ได้ยังไงว่าเราไหว',
+      ogType: 'article'
+    }
+  },
+  {
+    path: '/checklist',
+    name: 'checklist',
+    component: () => import('../pages/ChecklistPage.vue'),
+    meta: {
+      title: 'เช็คลิสต์ของที่ต้องเตรียม | เดินป่า ทะเล แคมป์ปิ้ง',
+      description: 'เช็คลิสต์อุปกรณ์เดินป่า ดำน้ำตื้น และแคมป์ปิ้ง แยกตามฤดูและจำนวนวัน ติ๊กได้ ปรินต์ได้ ใช้ฟรีแม้ไม่ได้จองทริปกับเรา',
+      ogType: 'article'
+    }
+  },
+  {
+    path: '/feed',
+    name: 'feed',
+    component: () => import('../pages/FeedPage.vue'),
+    meta: {
+      title: 'ฟีดจากนักเดินทาง | รูปจริงจากคนที่ไปมาแล้ว',
+      description: 'รูปที่ผู้ร่วมทริปโพสต์เองหลังกลับจากทริป ไม่ผ่านการคัดของทีมงาน ดูบรรยากาศจริงก่อนตัดสินใจ',
+      ogType: 'website'
+    }
+  },
+
+  // ── ของสะสม/สถิติส่วนตัว ──
+  { path: '/passport', name: 'passport', component: () => import('../pages/PassportPage.vue'), meta: { requiresAuth: true, title: 'สมุดสะสมการเดินทาง', robots: 'noindex, nofollow' } },
+  { path: '/my-tracks', name: 'my-tracks', component: () => import('../pages/MyTracksPage.vue'), meta: { requiresAuth: true, title: 'บันทึกการเดินของฉัน', robots: 'noindex, nofollow' } },
+  { path: '/recap/:ref', name: 'recap', component: () => import('../pages/RecapPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+
+  // ── ไปด้วยกัน (group plans) ──
+  { path: '/group-plans', name: 'group-plans', component: () => import('../pages/MyGroupPlansPage.vue'), meta: { requiresAuth: true, title: 'กลุ่มไปด้วยกัน', robots: 'noindex, nofollow' } },
+  { path: '/group/:code', name: 'group-plan', component: () => import('../pages/GroupPlanPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+
   { path: '/profile', name: 'profile', component: () => import('../pages/ProfilePage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/support', name: 'support', component: () => import('../pages/SupportPage.vue'), meta: { requiresAuth: true, title: 'ศูนย์ช่วยเหลือ', robots: 'noindex, nofollow' } },
   { path: '/auth/social/callback', name: 'social-callback', component: () => import('../pages/SocialCallbackPage.vue'), meta: { robots: 'noindex, nofollow' } },
@@ -236,6 +303,7 @@ const routes = [
       { path: 'hero-slides', name: 'admin-hero-slides', component: () => import('../pages/admin/HeroSlidesPage.vue') },
       { path: 'gallery', name: 'admin-gallery', component: () => import('../pages/admin/GalleryPage.vue') },
       { path: 'schedule-photos', name: 'admin-schedule-photos', component: () => import('../pages/admin/SchedulePhotosPage.vue') },
+      { path: 'places', name: 'admin-places', component: () => import('../pages/admin/PlacesPage.vue') },
       { path: 'articles', name: 'admin-articles', component: () => import('../pages/admin/ArticlesPage.vue') },
       { path: 'articles/create', name: 'admin-article-create', component: () => import('../pages/admin/ArticleEditPage.vue') },
       { path: 'articles/:id/edit', name: 'admin-article-edit', component: () => import('../pages/admin/ArticleEditPage.vue') },

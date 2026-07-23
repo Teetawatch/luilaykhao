@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Article;
 use App\Models\Tag;
+use App\Support\ThaiSlug;
 use Illuminate\Support\Str;
 use Mews\Purifier\Facades\Purifier;
 
@@ -106,7 +107,7 @@ class ArticleService
             ->filter()
             ->unique()
             ->map(function (string $name) {
-                $slug = $this->slugify($name) ?: Str::lower(Str::random(6));
+                $slug = ThaiSlug::make($name) ?: Str::lower(Str::random(6));
                 $tag = Tag::firstOrCreate(['slug' => $slug], ['name' => $name]);
 
                 return $tag->id;
@@ -117,33 +118,13 @@ class ArticleService
 
     private function uniqueSlug(string $source, ?int $ignoreId): string
     {
-        $base = $this->slugify($source);
-        if ($base === '') {
-            $base = 'article-'.Str::lower(Str::random(5));
-        }
-
-        $slug = $base;
-        $suffix = 2;
-        while (Article::where('slug', $slug)
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->exists()) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
-    }
-
-    /**
-     * Unicode-aware slug that preserves Thai (Str::slug drops it). \p{M} keeps
-     * Thai vowel/tone marks (สระ/วรรณยุกต์), which are combining marks, not letters.
-     */
-    private function slugify(string $value): string
-    {
-        $value = trim(mb_strtolower($value));
-        $value = preg_replace('/[^\p{L}\p{N}\p{M}]+/u', '-', $value) ?? '';
-
-        return trim($value, '-');
+        return ThaiSlug::unique(
+            $source,
+            fn (string $slug) => Article::where('slug', $slug)
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                ->exists(),
+            'article',
+        );
     }
 
     /** ~400 readable characters per minute — works for spaceless Thai text too. */

@@ -183,6 +183,7 @@ const menuGroups = ref([
     items: [
       { to: '/admin/broadcasts', icon: 'fas fa-bullhorn', label: 'ส่งข้อความถึงลูกค้า' },
       { to: '/admin/articles', icon: 'fas fa-pen-nib', label: 'บทความ/บล็อก' },
+      { to: '/admin/places', icon: 'fas fa-mountain', label: 'สถานที่/ฤดูกาล' },
       { to: '/admin/promotions', icon: 'fas fa-percent', label: 'โปรโมชั่น/ส่วนลด' },
       { to: '/admin/urgent-popup', icon: 'fas fa-fire', label: 'ป๊อปอัพทริปด่วน' },
       { to: '/admin/loyalty', icon: 'fas fa-coins', label: 'ระบบสะสมแต้ม' },

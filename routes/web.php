@@ -12,6 +12,7 @@ use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\SlipController;
 use App\Models\Article;
 use App\Models\ArticleCategory;
+use App\Models\Place;
 use App\Models\Tag;
 use App\Models\Trip;
 use App\Support\MediaDisk;
@@ -30,6 +31,7 @@ Route::get('/sitemap.xml', function () {
 
     return response()->view('sitemap', [
         'trips' => $trips,
+        'places' => Place::published()->orderBy('name')->get(),
         'articles' => Article::published()->orderByDesc('published_at')->get(),
         'articleCategories' => ArticleCategory::whereHas('articles', fn ($q) => $q->published())->get(),
         'articleTags' => Tag::whereHas('articles', fn ($q) => $q->published())->get(),

@@ -867,6 +867,13 @@
                     v-if="!selectedSchedule.is_charter && !hasAvailableSeats(selectedSchedule) && !selectedSchedule.join_trip_enabled"
                     :schedule-id="selectedSchedule.id"
                     class="mt-4" />
+
+                  <!-- ตั้งกลุ่มไปด้วยกัน — เฉพาะรอบที่ยังจองได้ตามปกติ -->
+                  <GroupPlanCreateCard
+                    v-if="canBookSelectedSchedule() && !selectedSchedule.is_charter"
+                    :schedule-id="selectedSchedule.id"
+                    :available-seats="selectedSchedule.available_seats ?? 20"
+                    class="mt-4" />
                 </div>
                 <div v-else class="text-center py-4 bg-gray-50 rounded-[1.25rem] border border-dashed border-gray-300">
                   <p class="text-sm font-bold text-gray-500">{{ isTrekking ? (selectedRegion ? 'โปรดเลือกวันเดินทาง' : 'โปรดเลือกภูมิภาคก่อน') : 'โปรดเลือกวันเดินทางเพื่อจอง' }}</p>
@@ -1700,6 +1707,7 @@ import TripPostsFeed from '../components/TripPostsFeed.vue';
 import TripCard from '../components/TripCard.vue';
 import WeatherBadge from '../components/WeatherBadge.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
+import GroupPlanCreateCard from '../components/GroupPlanCreateCard.vue';
 import { useWishlistStore } from '../stores/wishlist';
 import {
   hasAvailableSeats,

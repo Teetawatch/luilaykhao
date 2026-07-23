@@ -199,6 +199,15 @@
                 รายละเอียด
               </router-link>
 
+              <!-- สรุปทริป — ขึ้นเฉพาะรอบที่จบแล้ว เพราะ recap ต้องรอวันสุดท้ายผ่านไป -->
+              <router-link
+                v-if="activeTab === 'past' && (b.status === 'completed' || b.status === 'confirmed')"
+                :to="`/recap/${b.booking_ref}`"
+                class="flex-1 text-center border-2 border-[#0F3D3E] text-[#0F3D3E] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]">auto_awesome</span>
+                สรุปทริป
+              </router-link>
+
               <router-link
                 v-if="activeTab === 'past' && b.status === 'completed'"
                 to="/my-reviews"

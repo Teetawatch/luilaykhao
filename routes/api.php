@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
+use App\Http\Controllers\Api\V1\AdminPlaceController;
 use App\Http\Controllers\Api\V1\AdminRentalController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
 use App\Http\Controllers\Api\V1\AdminSosController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
+use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\Api\V1\PublicArticleController;
@@ -118,6 +120,11 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/{slug}/posts', [TripPostController::class, 'tripIndex']);
         Route::get('trip-posts/{postId}/comments', [TripPostController::class, 'comments']);
     });
+
+    // สถานที่ + ปฏิทินฤดูกาล (public read) — ข้อมูลของ "ที่นั่น" ไม่ผูกกับรอบที่เปิดขาย
+    Route::get('places', [PlaceController::class, 'index']);
+    Route::get('places/seasons', [PlaceController::class, 'seasons']);
+    Route::get('places/{slug}', [PlaceController::class, 'show']);
 
     // AI ผู้ช่วยวางทริป — ถามเป็นภาษาคนแล้วได้ทริปจริงที่เปิดจองอยู่
     Route::post('concierge', [ConciergeController::class, 'ask'])->middleware('throttle:concierge');
@@ -419,6 +426,14 @@ Route::prefix('v1')->group(function () {
         Route::post('trip-posts/{postId}/hide', [TripPostController::class, 'adminHide']);
         Route::post('trip-posts/{postId}/unhide', [TripPostController::class, 'adminUnhide']);
         Route::delete('trip-posts/{postId}', [TripPostController::class, 'adminDestroy']);
+
+        // สถานที่ (ภูเขา/เกาะ/อุทยาน) — เนื้อหาที่อยู่ต่อได้แม้ทริปปิดขาย
+        Route::get('places', [AdminPlaceController::class, 'index']);
+        Route::post('places', [AdminPlaceController::class, 'store']);
+        Route::post('places/reorder', [AdminPlaceController::class, 'reorder']);
+        Route::get('places/{id}', [AdminPlaceController::class, 'show']);
+        Route::put('places/{id}', [AdminPlaceController::class, 'update']);
+        Route::delete('places/{id}', [AdminPlaceController::class, 'destroy']);
 
         // Group chat — list active conversations
         Route::get('chat/conversations', [ChatController::class, 'adminConversations']);
