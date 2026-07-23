@@ -33,18 +33,14 @@
           :class="isScrolled ? 'h-16' : 'h-20'"
           style="will-change: height; transition: height 0.4s ease;"
         >
-          <!-- Brand -->
-          <router-link to="/" class="flex items-center gap-2.5 shrink-0 group rounded-2xl focus-ring">
+          <!-- Brand — โลโก้อย่างเดียว ชื่อร้านอยู่ในโลโก้แล้ว และที่ตรงนี้ยกให้แถบเมนู -->
+          <router-link to="/" class="flex items-center shrink-0 group rounded-2xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
             <img
               src="/images/logo.png?v=2"
               alt="ลุยเลเขา"
               class="object-contain transition-transform duration-500 group-hover:scale-105"
               :class="isScrolled ? 'w-11 h-11' : 'w-13 h-13'"
             />
-            <span class="hidden sm:flex flex-col leading-none">
-              <span class="text-[19px] font-black tracking-tight text-primary">ลุยเลเขา</span>
-              <span class="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-text-muted">Trip &amp; Travel</span>
-            </span>
           </router-link>
 
           <!-- Desktop Nav (left-adjacent to brand, with gliding pill indicator) -->
@@ -64,7 +60,7 @@
                 :style="{ left: `${indicator.left}px`, width: `${indicator.width}px`, opacity: indicator.opacity }"
               ></span>
 
-              <template v-for="link in desktopNavLinks" :key="link.label">
+              <template v-for="link in navLinks" :key="link.label">
                 <!-- Dropdown / Mega menu -->
                 <div
                   v-if="link.children"
@@ -763,13 +759,24 @@ const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
 
 /*
-   แถบเมนูบนเดสก์ท็อปรับได้ประมาณ 5 กลุ่ม — มากกว่านั้นจะเบียดกับโลโก้และปุ่ม
-   ด้านขวาจนล้น เพิ่มหัวข้อใหม่เมื่อไหร่ให้ยุบของเดิมเข้าด้วยกัน อย่าต่อท้ายเฉย ๆ
-
-   `mobileOnly` = โผล่เฉพาะในชีตมือถือซึ่งเป็นลิสต์แนวตั้ง มีที่เหลือเฟือ
+   แถบเมนูรับได้ 6 หัวข้อพอดีหลังจากเอาข้อความ "ลุยเลเขา / TRIP & TRAVEL"
+   ข้างโลโก้ออก — จะเพิ่มหัวข้อที่ 7 ต้องหาที่ตัดก่อน อย่าต่อท้ายเฉย ๆ
 */
 const navLinks = [
-  { to: '/', icon: 'home', label: 'หน้าแรก', mobileOnly: true },
+  { to: '/', icon: 'home', label: 'หน้าแรก' },
+  {
+    label: 'เกี่ยวกับเรา',
+    icon: 'info',
+    to: '/about',
+    children: [
+      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
+      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
+      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
+      { to: '/faq', icon: 'quiz', label: 'FAQ', desc: 'คำถามที่พบบ่อย' },
+      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
+      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
+    ],
+  },
   {
     label: 'กิจกรรม',
     icon: 'explore',
@@ -804,24 +811,8 @@ const navLinks = [
       { to: '/blog', icon: 'article', label: 'บทความ', desc: 'ไอเดียและคู่มือการเดินทาง', external: true },
     ],
   },
-  {
-    label: 'เกี่ยวกับเรา',
-    icon: 'info',
-    to: '/about',
-    children: [
-      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
-      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
-      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
-      { to: '/faq', icon: 'quiz', label: 'FAQ', desc: 'คำถามที่พบบ่อย' },
-      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
-      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
-    ],
-  },
   { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
 ];
-
-/** เมนูที่ขึ้นบนแถบเดสก์ท็อป — โลโก้ทำหน้าที่ลิงก์กลับหน้าแรกอยู่แล้ว */
-const desktopNavLinks = navLinks.filter(link => !link.mobileOnly);
 
 /* ── Gliding pill indicator ──────────────────────────────────────
    The pill tracks whichever nav item is hovered, has an open
@@ -847,8 +838,6 @@ function isMegaMenu(link) {
 
 const activeNavLabel = computed(() => {
   const path = route.path;
-  // ไล่จาก navLinks ทั้งชุด เพราะชีตมือถือใช้ค่านี้ไฮไลต์ "หน้าแรก" ด้วย
-  // ฝั่งเดสก์ท็อปไม่พังเพราะ syncIndicator หา element ไม่เจอก็ซ่อน pill ไปเอง
   for (const link of navLinks) {
     if (link.children) {
       if (link.children.some(child => child.to === path)) return link.label;
