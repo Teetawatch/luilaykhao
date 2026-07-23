@@ -13,6 +13,38 @@ class CreateBookingRequest extends FormRequest
         return true;
     }
 
+    /**
+     * รายการเสริมส่งได้ทั้งแบบเก่า (index เปล่า ๆ จากเว็บ/LIFF) และแบบใหม่ที่มี
+     * จำนวนต่อรายการ — แปลงให้เป็นรูป {index, quantity} รูปเดียวก่อนตรวจ
+     */
+    protected function prepareForValidation(): void
+    {
+        $addons = $this->input('selected_addons');
+        if (! is_array($addons)) {
+            return;
+        }
+
+        $this->merge([
+            'selected_addons' => array_values(array_map(function ($addon) {
+                if (is_array($addon)) {
+                    return [
+                        'index' => isset($addon['index']) && is_numeric($addon['index'])
+                            ? (int) $addon['index']
+                            : null,
+                        'quantity' => isset($addon['quantity']) && is_numeric($addon['quantity'])
+                            ? (int) $addon['quantity']
+                            : null,
+                    ];
+                }
+
+                return [
+                    'index' => is_numeric($addon) ? (int) $addon : null,
+                    'quantity' => null,
+                ];
+            }, $addons)),
+        ]);
+    }
+
     public function rules(): array
     {
         // ซื้อเป็นของขวัญ: ผู้ให้รู้แค่ชื่อผู้รับ — ข้อมูลผู้เดินทางที่เหลือ
@@ -60,7 +92,8 @@ class CreateBookingRequest extends FormRequest
             'gift_message' => ['nullable', 'string', 'max:500'],
             'booking_for' => ['nullable', 'in:self,friend'],
             'selected_addons' => ['nullable', 'array'],
-            'selected_addons.*' => ['integer', 'min:0'],
+            'selected_addons.*.index' => ['required', 'integer', 'min:0'],
+            'selected_addons.*.quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'selected_rentals' => ['nullable', 'array'],
             'selected_rentals.*.index' => ['required', 'integer', 'min:0'],
             'selected_rentals.*.quantity' => ['required', 'integer', 'min:1', 'max:20'],

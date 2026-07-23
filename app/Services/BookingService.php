@@ -178,16 +178,29 @@ class BookingService
                 $pricePerPerson = $defaultPrice; // kept for join-trip path compatibility
             }
 
-            $addonIndexes = collect($selectedAddons)
-                ->map(fn ($index) => (int) $index)
-                ->unique()
+            // รายการเสริมเลือกได้เป็นจำนวน (เช่น ไป 4 คน แต่เช่าเสื่อแค่ 2 ผืน)
+            // payload เก่าที่ส่งมาเป็น index เปล่า ๆ ยังใช้ได้ และคิดจำนวนตามชนิด
+            // ราคาเหมือนเดิม: ต่อคน = จำนวนผู้เดินทาง, ต่อการจอง = 1
+            $addonSelections = collect($selectedAddons)
+                ->map(function ($addon) {
+                    if (is_array($addon)) {
+                        return [
+                            'index' => (int) ($addon['index'] ?? -1),
+                            'quantity' => isset($addon['quantity']) ? (int) $addon['quantity'] : null,
+                        ];
+                    }
+
+                    return ['index' => (int) $addon, 'quantity' => null];
+                })
+                ->filter(fn ($addon) => $addon['quantity'] === null || $addon['quantity'] > 0)
+                ->keyBy('index')
                 ->values();
             $addonOptions = collect($schedule->trip?->must_know['items'] ?? [])->values();
             $selectedAddonSnapshots = [];
             $addonsTotal = 0;
 
-            foreach ($addonIndexes as $addonIndex) {
-                $option = $addonOptions->get($addonIndex);
+            foreach ($addonSelections as $selection) {
+                $option = $addonOptions->get($selection['index']);
                 if (! $option || ! is_array($option) || empty($option['name'])) {
                     throw new \Exception('รายการเสริมที่เลือกไม่ถูกต้อง');
                 }
@@ -196,7 +209,13 @@ class BookingService
                 $priceType = ($option['price_type'] ?? 'per_booking') === 'per_person'
                     ? 'per_person'
                     : 'per_booking';
-                $quantity = $priceType === 'per_person' ? $participantCount : 1;
+                $quantity = $selection['quantity']
+                    ?? ($priceType === 'per_person' ? $participantCount : 1);
+
+                if ($priceType === 'per_person' && $quantity > $participantCount) {
+                    throw new \Exception('จำนวนรายการเสริมต่อคนมากกว่าจำนวนผู้เดินทาง');
+                }
+
                 $totalPrice = $unitPrice * $quantity;
                 $addonsTotal += $totalPrice;
 
