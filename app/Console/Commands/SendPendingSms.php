@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class SendPendingSms extends Command
 {
     protected $signature = 'sms:send-pending {--limit=100}';
+
     protected $description = 'Send pending SMS logs through the configured SMS provider.';
 
     public function handle(): int

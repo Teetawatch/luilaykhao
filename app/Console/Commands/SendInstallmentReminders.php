@@ -7,7 +7,8 @@ use Illuminate\Console\Command;
 
 class SendInstallmentReminders extends Command
 {
-    protected $signature   = 'installment:remind';
+    protected $signature = 'installment:remind';
+
     protected $description = 'แจ้งเตือนผ่อนชำระที่ใกล้ครบกำหนด และทำเครื่องหมาย overdue';
 
     public function handle(): void

@@ -16,11 +16,11 @@ class InstallmentPayment extends Model
     protected function casts(): array
     {
         return [
-            'amount'     => 'decimal:2',
-            'due_date'   => 'date',
-            'paid_at'             => 'datetime',
-            'transfer_datetime'   => 'datetime',
-            'slip_ocr_result'     => 'array',
+            'amount' => 'decimal:2',
+            'due_date' => 'date',
+            'paid_at' => 'datetime',
+            'transfer_datetime' => 'datetime',
+            'slip_ocr_result' => 'array',
         ];
     }
 

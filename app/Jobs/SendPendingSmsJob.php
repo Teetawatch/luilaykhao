@@ -12,6 +12,7 @@ class SendPendingSmsJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
     public int $backoff = 30;
 
     public function __construct(private int $limit = 100) {}

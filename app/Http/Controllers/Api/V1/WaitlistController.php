@@ -43,7 +43,7 @@ class WaitlistController extends Controller
     {
         $left = $this->waitlistService->leave($request->user()->id, $scheduleId);
 
-        if (!$left) {
+        if (! $left) {
             return $this->error('ไม่พบรายการคิวรอของคุณ', 404);
         }
 
@@ -63,7 +63,7 @@ class WaitlistController extends Controller
     {
         $entry = $this->waitlistService->entryForSchedule($request->user()->id, $scheduleId);
 
-        if (!$entry) {
+        if (! $entry) {
             return $this->success(['in_waitlist' => false]);
         }
 

@@ -15,6 +15,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
     public int $backoff = 60;
 
     private const DUE_SOON_DAYS = 2;
@@ -33,9 +34,9 @@ class SendInstallmentRemindersJob implements ShouldQueue
         foreach ($overdue as $ip) {
             $ip->update(['status' => 'overdue']);
             Log::warning('Installment overdue', [
-                'booking_ref'    => $ip->booking->booking_ref ?? null,
+                'booking_ref' => $ip->booking->booking_ref ?? null,
                 'installment_no' => $ip->installment_no,
-                'due_date'       => $ip->due_date?->toDateString(),
+                'due_date' => $ip->due_date?->toDateString(),
             ]);
 
             if ($ip->booking?->user_id) {
@@ -66,7 +67,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
                     $ip->booking->user_id,
                     'installment_due_soon',
                     'ใกล้ถึงกำหนดชำระค่างวด',
-                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} จะครบกำหนดในอีก " . self::DUE_SOON_DAYS . " วัน",
+                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} จะครบกำหนดในอีก ".self::DUE_SOON_DAYS.' วัน',
                     ['booking_ref' => $ip->booking->booking_ref, 'installment_no' => $ip->installment_no, 'days_before' => self::DUE_SOON_DAYS, 'route' => 'booking'],
                 );
             }
@@ -94,9 +95,9 @@ class SendInstallmentRemindersJob implements ShouldQueue
         }
 
         Log::info('SendInstallmentRemindersJob completed', [
-            'overdue'   => $overdue->count(),
+            'overdue' => $overdue->count(),
             'due_today' => $dueToday->count(),
-            'upcoming'  => $upcoming->count(),
+            'upcoming' => $upcoming->count(),
         ]);
     }
 

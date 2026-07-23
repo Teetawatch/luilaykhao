@@ -19,14 +19,14 @@ class NotificationController extends Controller
             ->orderByDesc('created_at')
             ->paginate($request->get('per_page', 20));
 
-        return $this->paginated($notifications->through(fn($n) => [
-            'id'         => $n->id,
-            'type'       => $n->type,
-            'title'      => $n->title,
-            'body'       => $n->body,
-            'data'       => $n->data,
-            'is_read'    => $n->is_read,
-            'read_at'    => $n->read_at?->toISOString(),
+        return $this->paginated($notifications->through(fn ($n) => [
+            'id' => $n->id,
+            'type' => $n->type,
+            'title' => $n->title,
+            'body' => $n->body,
+            'data' => $n->data,
+            'is_read' => $n->is_read,
+            'read_at' => $n->read_at?->toISOString(),
             'created_at' => $n->created_at?->toISOString(),
         ]));
     }

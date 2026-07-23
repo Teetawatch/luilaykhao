@@ -12,6 +12,7 @@ class ExpireWaitlistOffersJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+
     public int $backoff = 30;
 
     public function handle(WaitlistService $waitlistService): void
