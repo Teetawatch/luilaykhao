@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>{{ $receipt ? 'ใบเสร็จ '.$receipt->receipt_no.' | ลุยลายเขา' : 'ไม่พบใบเสร็จ | ลุยลายเขา' }}</title>
+    <title>{{ $receipt ? 'ใบเสร็จ '.$receipt->receipt_no.' | ลุยเลเขา' : 'ไม่พบใบเสร็จ | ลุยเลเขา' }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
