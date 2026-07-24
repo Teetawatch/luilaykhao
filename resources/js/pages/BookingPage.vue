@@ -1846,19 +1846,6 @@ watch(passengers, saveFormData, { deep: true });
 watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData], saveFormData);
 watch(addonQuantities, saveFormData, { deep: true });
 
-// จำนวนผู้เดินทางเปลี่ยน → ตัดจำนวนรายการเสริมแบบ "ต่อคน" ไม่ให้เกินจำนวนคน
-watch(seatCount, () => {
-  const next = { ...addonQuantities.value };
-  let changed = false;
-  for (const item of optionalAddons.value) {
-    const q = next[item.index];
-    if (!q) continue;
-    const max = addonMaxQty(item);
-    if (q > max) { next[item.index] = max; changed = true; }
-  }
-  if (changed) addonQuantities.value = next;
-});
-
 // When global pickup is auto-set (e.g. single-point trip on load), propagate to passengers that have no pickup chosen yet
 watch(selectedPickup, (newPickup) => {
   if (!newPickup) return;
@@ -2109,6 +2096,20 @@ function showErr(i, field) {
   return '';
 }
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
+
+// จำนวนผู้เดินทางเปลี่ยน → ตัดจำนวนรายการเสริมแบบ "ต่อคน" ไม่ให้เกินจำนวนคน
+// (ประกาศหลัง seatCount เพื่อเลี่ยง temporal dead zone ตอน setup)
+watch(seatCount, () => {
+  const next = { ...addonQuantities.value };
+  let changed = false;
+  for (const item of optionalAddons.value) {
+    const q = next[item.index];
+    if (!q) continue;
+    const max = addonMaxQty(item);
+    if (q > max) { next[item.index] = max; changed = true; }
+  }
+  if (changed) addonQuantities.value = next;
+});
 
 const selectedAddonItems = computed(() => optionalAddons.value
   .filter((item) => addonQty(item.index) > 0)
