@@ -557,7 +557,7 @@
             <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
                <span class="material-symbols-rounded text-amber-500 text-xl font-bold">info</span>
                <p class="text-xs text-amber-800 font-medium leading-relaxed">
-                  กรุณาโอนยอด <strong class="text-amber-900">฿{{ currentPayAmount.toLocaleString() }}</strong> ให้ครบถ้วน แล้วระบุวันและเวลาโอนตามจริงในสลิป
+                  กรุณาโอนยอด <strong class="text-amber-900">฿{{ currentPayAmount.toLocaleString() }}</strong> ให้ครบถ้วน แล้วอัปโหลดสลิป ระบบจะตรวจยอดและยืนยันให้อัตโนมัติ
                </p>
             </div>
           </div>
@@ -621,38 +621,37 @@
             
             <input ref="slipInputRef" type="file" accept="image/*" required class="hidden" @change="onSlipChange" />
 
-            <!-- Datetime Inputs with Premium Feel -->
-            <div class="space-y-3 bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
-              <!-- Auto-detect status -->
-              <div class="flex items-center justify-between gap-2 px-1 min-h-[20px]">
-                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest">วันและเวลาที่โอน (ตามสลิป)</p>
-                <span v-if="scanningSlip" class="text-xs font-bold text-teal-600 flex items-center gap-1.5 shrink-0">
-                  <span class="w-3.5 h-3.5 border-2 border-teal-600/30 border-t-teal-600 rounded-full animate-spin"></span>
-                  กำลังอ่านข้อมูลจากสลิป...
-                </span>
-                <span v-else-if="slipAutoDetected" class="text-xs font-bold text-teal-600 flex items-center gap-1 shrink-0">
-                  <span class="material-symbols-rounded text-base" style="font-variation-settings:'FILL' 1">auto_awesome</span>
-                  กรอกอัตโนมัติแล้ว ตรวจสอบอีกครั้ง
-                </span>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div class="space-y-2">
-                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">วันที่โอน (ตามสลิป)</label>
-                <div class="relative">
-                   <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">calendar_today</span>
-                   <input v-model="transferDate" type="date" required
-                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
+            <!-- Auto slip check status — ตรวจยอดจากสลิปให้อัตโนมัติ ไม่ต้องกรอกวัน/เวลาเอง -->
+            <div v-if="slipFile" class="rounded-3xl p-5 border flex items-start gap-3 transition-colors"
+              :class="scanningSlip
+                ? 'bg-gray-50/50 border-gray-100'
+                : slipAmountMatched
+                  ? 'bg-teal-50 border-teal-100'
+                  : 'bg-amber-50 border-amber-100'">
+              <template v-if="scanningSlip">
+                <span class="w-6 h-6 border-2 border-teal-600/30 border-t-teal-600 rounded-full animate-spin shrink-0 mt-0.5"></span>
+                <div>
+                  <p class="text-sm font-black text-gray-900">กำลังตรวจสอบสลิปและยอดเงิน...</p>
+                  <p class="text-xs text-gray-500 font-medium mt-0.5">ระบบกำลังอ่านสลิปให้อัตโนมัติ รอสักครู่</p>
                 </div>
-              </div>
-              <div class="space-y-2">
-                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">เวลาที่โอน (ตามสลิป)</label>
-                <div class="relative">
-                   <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">schedule</span>
-                   <input v-model="transferTime" type="time" required
-                    class="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-gray-100 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/5 transition-all" />
+              </template>
+              <template v-else-if="slipAmountMatched">
+                <span class="material-symbols-rounded text-teal-600 shrink-0" style="font-variation-settings:'FILL' 1">verified</span>
+                <div>
+                  <p class="text-sm font-black text-teal-900">ยอดเงินถูกต้อง — กำลังยืนยันอัตโนมัติ</p>
+                  <p class="text-xs text-teal-700 font-medium mt-0.5">ไม่ต้องกดยืนยัน ระบบดำเนินการให้เรียบร้อย</p>
                 </div>
-              </div>
-              </div>
+              </template>
+              <template v-else-if="slipChecked">
+                <span class="material-symbols-rounded text-amber-500 shrink-0" style="font-variation-settings:'FILL' 1">info</span>
+                <div>
+                  <p class="text-sm font-black text-amber-900">
+                    <template v-if="slipDetectedAmount !== null">ยอดในสลิป (฿{{ slipDetectedAmount.toLocaleString() }}) ไม่ตรงกับยอดที่ต้องชำระ</template>
+                    <template v-else>ตรวจยอดจากสลิปอัตโนมัติไม่สำเร็จ</template>
+                  </p>
+                  <p class="text-xs text-amber-700 font-medium mt-0.5">กดปุ่มยืนยันด้านล่างเพื่อส่งให้เจ้าหน้าที่ตรวจสอบและยืนยันการจอง</p>
+                </div>
+              </template>
             </div>
           </div>
         </section>
@@ -796,7 +795,7 @@
             <!-- Main CTA Button -->
             <div class="space-y-4">
               <button @click="processPayment"
-                :disabled="paying || !slipFile"
+                :disabled="paying || scanningSlip || !slipFile"
                 class="group w-full py-5 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden relative disabled: disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 :class="[
                   paymentType === 'installment'
@@ -806,15 +805,16 @@
                       : 'bg-emerald-600 text-white hover:bg-emerald-700'
                 ]">
                 <!-- Loading State overlay -->
-                <div v-if="paying" class="absolute inset-0 bg-inherit flex items-center justify-center z-10">
+                <div v-if="paying || scanningSlip" class="absolute inset-0 bg-inherit flex items-center justify-center gap-3 z-10 text-sm">
                    <div class="w-6 h-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                   <span v-if="scanningSlip" class="text-white/90">กำลังตรวจสอบสลิป...</span>
                 </div>
 
-                <div class="flex items-center gap-2.5 transition-transform group-hover:scale-105" :class="paying ? 'opacity-0' : 'opacity-100'">
+                <div class="flex items-center gap-2.5 transition-transform group-hover:scale-105" :class="paying || scanningSlip ? 'opacity-0' : 'opacity-100'">
                   <span class="material-symbols-rounded text-xl" style="font-variation-settings:'FILL' 1">verified_user</span>
                   <span>ยืนยันและส่งหลักฐานการชำระเงิน</span>
                 </div>
-                <div class="text-[10px] opacity-70 tracking-widest uppercase font-bold" :class="paying ? 'opacity-0' : 'opacity-70'">
+                <div class="text-[10px] opacity-70 tracking-widest uppercase font-bold" :class="paying || scanningSlip ? 'opacity-0' : 'opacity-70'">
                    เข้ารหัส SSL ที่ปลอดภัย
                 </div>
               </button>
@@ -847,10 +847,10 @@
         <!-- Sticky Mobile Button (Only visible on mobile via class) -->
         <div class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100] translate-y-0 transition-transform duration-500"
           :class="!loading && booking ? 'translate-y-0' : 'translate-y-full'">
-            <button @click="processPayment" 
-              :disabled="paying || !slipFile"
+            <button @click="processPayment"
+              :disabled="paying || scanningSlip || !slipFile"
               class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
-              <template v-if="!paying">
+              <template v-if="!paying && !scanningSlip">
                 <span>ยืนยันการชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
                 <span class="material-symbols-rounded text-lg">arrow_forward</span>
               </template>
@@ -903,7 +903,11 @@ const slipPreview = ref(null);
 const slipInputRef = ref(null);
 const isDragging = ref(false);
 const scanningSlip = ref(false);
-const slipAutoDetected = ref(false);
+// ผลตรวจสลิปอัตโนมัติ: ตรวจแล้วหรือยัง และยอดเงินตรงไหม
+const slipChecked = ref(false);
+const slipAmountMatched = ref(false);
+// เผื่อลูกค้าโอนไม่ครบ — เก็บยอดที่ OCR อ่านได้ไว้บอก
+const slipDetectedAmount = ref(null);
 
 function handleDrop(e) {
   isDragging.value = false;
@@ -922,12 +926,17 @@ function setFile(file) {
   scanSlipOcr(file);
 }
 
-// Read the slip with OCR and auto-fill the transfer date/time. Best-effort:
-// any failure is silent — the fields stay editable for manual entry.
+// อ่านสลิปด้วย OCR: เก็บวัน/เวลาโอนไว้เงียบ ๆ (ไม่ให้ลูกค้ากรอกเอง) และตรวจยอดเงิน
+// ถ้ายอดตรง (สถานะสำเร็จ + ต่างไม่เกิน 2 บาท เท่ากับที่ backend ใช้) → ยืนยันให้อัตโนมัติ
+// เลยโดยไม่ต้องกดปุ่ม ถ้าอ่านไม่ได้หรือยอดไม่ตรง ก็ปล่อยให้กดปุ่มยืนยันเองตามเดิม
+const AMOUNT_TOLERANCE = 2;
 async function scanSlipOcr(file) {
   if (!file || !file.type?.startsWith('image/')) return;
   scanningSlip.value = true;
-  slipAutoDetected.value = false;
+  slipChecked.value = false;
+  slipAmountMatched.value = false;
+  slipDetectedAmount.value = null;
+  let matched = false;
   try {
     const res = await bookingStore.scanSlip((() => {
       const fd = new FormData();
@@ -937,11 +946,22 @@ async function scanSlipOcr(file) {
     const data = res?.data || {};
     if (data.date) transferDate.value = data.date;
     if (data.time) transferTime.value = data.time;
-    slipAutoDetected.value = !!(data.date || data.time);
+    const amount = Number(data.amount);
+    if (Number.isFinite(amount)) slipDetectedAmount.value = amount;
+    matched = data.status === 'success'
+      && Number.isFinite(amount)
+      && Math.abs(amount - currentPayAmount.value) <= AMOUNT_TOLERANCE;
+    slipAmountMatched.value = matched;
   } catch (e) {
-    // Silent — customer can still fill in the date/time by hand.
+    // เงียบ — ตกไปใช้การกดปุ่มยืนยันเอง แล้วเจ้าหน้าที่ตรวจสอบ
   } finally {
+    slipChecked.value = true;
     scanningSlip.value = false;
+  }
+
+  // ยอดตรง → ยืนยันอัตโนมัติทันที (backend ยืนยันการจองให้อยู่แล้ว)
+  if (matched) {
+    await processPayment();
   }
 }
 
@@ -1227,7 +1247,11 @@ function onSlipChange(e) {
 function removeSlip() {
   slipFile.value = null;
   slipPreview.value = null;
-  slipAutoDetected.value = false;
+  slipChecked.value = false;
+  slipAmountMatched.value = false;
+  slipDetectedAmount.value = null;
+  transferDate.value = '';
+  transferTime.value = '';
   if (slipInputRef.value) slipInputRef.value.value = '';
 }
 
@@ -1296,6 +1320,7 @@ async function handlePaymentExpiry() {
 }
 
 async function processPayment() {
+  if (paying.value) return; // กันกดซ้ำ / ชนกับการยืนยันอัตโนมัติ
   if (seatsStore.countdownSeconds <= 0) {
     paymentError.value = 'หมดเวลาชำระเงินแล้ว ระบบได้ยกเลิกการจองอัตโนมัติ';
     return;
@@ -1308,14 +1333,6 @@ async function processPayment() {
 
   if (!slipFile.value) {
     paymentError.value = 'กรุณาอัปโหลดสลิปการโอนเงินก่อนกดชำระ';
-    return;
-  }
-  if (!transferDate.value) {
-    paymentError.value = 'กรุณาระบุวันที่โอนเงิน';
-    return;
-  }
-  if (!transferTime.value) {
-    paymentError.value = 'กรุณาระบุเวลาที่โอนเงิน';
     return;
   }
   paying.value = true;

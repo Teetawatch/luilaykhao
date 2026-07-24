@@ -46,15 +46,16 @@
               'text-red-700': booking.status === 'cancelled',
               'text-blue-700': booking.status === 'refunded',
             }">
-            {{ { confirmed: 'การจองเสร็จสมบูรณ์!', pending: 'รอการยืนยัน', cancelled: 'การจองถูกยกเลิก', refunded: 'คืนเงินเรียบร้อย' }[booking.status] ?? booking.status }}
+            {{ { confirmed: 'การจองเสร็จสมบูรณ์!', under_review: 'กำลังตรวจสอบการชำระเงิน', pending: 'รอการยืนยัน', cancelled: 'การจองถูกยกเลิก', refunded: 'คืนเงินเรียบร้อย' }[displayStatus] ?? booking.status }}
           </h1>
           <p class="text-gray-500 text-lg md:text-xl max-w-xl mx-auto font-bold leading-relaxed">
             {{ {
               confirmed: 'ยินดีด้วย! เราได้รับการจองของคุณเรียบร้อยแล้ว เตรียมตัวออกไปลุยกันได้เลย',
+              under_review: 'เราได้รับสลิปของคุณแล้ว ทีมงานกำลังตรวจสอบยอดโอนและจะยืนยันการจองให้เร็วที่สุด ที่นั่งของคุณถูกกันไว้แล้ว',
               pending: 'เราได้รับคำขอจองของคุณแล้ว กรุณาดำเนินการชำระเงินเพื่อยืนยันสิทธิ์',
               cancelled: 'การจองนี้ถูกยกเลิกแล้ว หากคุณต้องการจองใหม่หรือมีข้อสงสัย โปรดติดต่อเรา',
               refunded: 'ดำเนินการคืนเงินเสร็จสิ้น ยอดเงินจะกลับเข้าบัญชีของคุณภายในระยะเวลาที่กำหนด',
-            }[booking.status] ?? '' }}
+            }[displayStatus] ?? '' }}
           </p>
         </div>
 
@@ -99,7 +100,7 @@
                         'bg-blue-50 text-blue-600 border-blue-100': booking.status === 'refunded',
                       }">
                       <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">
-                        {{ { confirmed: 'verified', pending: 'schedule', cancelled: 'cancel', refunded: 'currency_exchange' }[booking.status] ?? 'info' }}
+                        {{ { confirmed: 'verified', under_review: 'hourglass_top', pending: 'schedule', cancelled: 'cancel', refunded: 'currency_exchange' }[displayStatus] ?? 'info' }}
                       </span>
                       <span class="text-sm uppercase tracking-wide">{{ statusLabel }}</span>
                     </div>
@@ -487,8 +488,13 @@ const loading = ref(true);
 const loadError = ref(null);
 const qrCanvas = ref(null);
 
-const statusMap = { pending: 'รอชำระเงิน', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิกแล้ว', refunded: 'คืนเงินแล้ว' };
-const statusLabel = computed(() => statusMap[booking.value?.status] || booking.value?.status);
+// "รอตรวจสอบยอด" = จองที่ส่งสลิปแล้วแต่ยอดไม่ตรง ระบบกันไว้ให้แอดมินยืนยัน (status ยัง pending)
+const isUnderReview = computed(() =>
+  booking.value?.status === 'pending' && !!booking.value?.slip_ocr_status);
+const displayStatus = computed(() => isUnderReview.value ? 'under_review' : booking.value?.status);
+
+const statusMap = { pending: 'รอชำระเงิน', under_review: 'กำลังตรวจสอบยอด', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิกแล้ว', refunded: 'คืนเงินแล้ว' };
+const statusLabel = computed(() => statusMap[displayStatus.value] || booking.value?.status);
 
 const pickupLabel = computed(() => {
   const pt = booking.value?.pickup_point;

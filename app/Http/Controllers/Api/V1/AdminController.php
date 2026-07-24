@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\PaymentConfirmed;
+use App\Events\SeatBooked;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreScheduleRequest;
 use App\Http\Requests\Admin\StoreTripRequest;
@@ -3330,6 +3332,14 @@ class AdminController extends Controller
         $col = $type === 'balance' ? 'balance_slip_ocr_status' : 'slip_ocr_status';
         $booking->update([$col => SlipOcrService::STATUS_APPROVED]);
 
+        // ถ้าเป็นสลิปหลักของการจองที่ถูก "กันไว้รอตรวจ" (ยอดไม่ตรงตอนชำระ) — การอนุมัติ
+        // คือการยืนยันการจองจริง: confirm + ส่งอีเมล/SMS ยืนยัน + broadcast
+        if ($type === 'main' && $booking->status === 'pending') {
+            $this->confirmHeldBooking($booking);
+
+            return $this->success(null, 'อนุมัติและยืนยันการจองสำเร็จ');
+        }
+
         SmartNotification::send(
             $booking->user_id,
             'slip_approved',
@@ -3339,6 +3349,75 @@ class AdminController extends Controller
         );
 
         return $this->success(null, 'อนุมัติสลิปสำเร็จ');
+    }
+
+    /**
+     * ยืนยันการจองที่ถูกกันไว้รอตรวจ (status = pending + ส่งสลิปแล้ว) หลังแอดมินอนุมัติ
+     * — เดินตาม tail เดียวกับตอนชำระเงินสำเร็จ: confirm ตามชนิดการชำระ + แจ้งลูกค้า
+     */
+    private function confirmHeldBooking(Booking $booking): void
+    {
+        $type = $booking->payment_type ?: 'full';
+        $method = $booking->payment_method ?: 'promptpay';
+        $ref = $booking->payment_ref ?: ('PAY-'.strtoupper(uniqid()));
+        $isSplit = $booking->splitShares()->exists();
+
+        $amount = match ($type) {
+            'installment' => (float) optional(
+                $booking->installmentPayments()->where('installment_no', 1)->first()
+            )->amount,
+            'deposit' => (float) $booking->deposit_amount,
+            default => (float) $booking->total_amount,
+        };
+
+        $booking = $this->bookingService->confirmBooking($booking->fresh(), $method, $ref, $amount ?: null);
+        $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);
+
+        try {
+            foreach ($booking->seats as $seat) {
+                broadcast(new SeatBooked($booking->schedule_id, $seat->seat_id, $booking->schedule->available_seats));
+            }
+            broadcast(new PaymentConfirmed(
+                $booking->user_id,
+                $booking->booking_ref,
+                'confirmed',
+                $booking->seats->pluck('seat_id')->toArray(),
+            ));
+        } catch (\Exception $e) {
+            \Log::warning('confirmHeldBooking broadcast failed: '.$e->getMessage());
+        }
+
+        $sms = app(SmsService::class);
+
+        if ($type === 'deposit') {
+            $this->mailService->sendDepositPaidEmail($booking);
+            if (! $isSplit) {
+                $sms->sendDepositPaid($booking);
+            }
+            $balanceDueText = ThaiDate::full($booking->balance_due_at);
+            SmartNotification::send(
+                $booking->user_id,
+                $isSplit ? 'split_started' : 'deposit_paid',
+                $isSplit ? 'รับชำระส่วนของคุณแล้ว' : 'รับชำระเงินมัดจำแล้ว',
+                $isSplit
+                    ? "ทีมงานยืนยันส่วนของคุณสำหรับเลขการจอง {$booking->booking_ref} แล้ว แบ่งยอดที่เหลือให้เพื่อนช่วยจ่ายได้เลย"
+                    : "รับชำระมัดจำเลขการจอง {$booking->booking_ref} แล้ว กรุณาชำระยอดส่วนที่เหลือภายในวันที่ {$balanceDueText}",
+                ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+            );
+
+            return;
+        }
+
+        $variant = $type === 'installment' ? 'installment' : 'full';
+        $this->mailService->sendPaymentConfirmedEmail($booking, $variant);
+        $sms->sendPaymentConfirmed($booking, $variant);
+        SmartNotification::send(
+            $booking->user_id,
+            'payment_confirmed',
+            'ยืนยันการชำระเงินแล้ว',
+            "ทีมงานยืนยันการชำระเงินของเลขการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
+            ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+        );
     }
 
     /**

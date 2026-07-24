@@ -11,6 +11,7 @@ use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
+use App\Models\User;
 use App\Services\BalancePaymentService;
 use App\Services\BookingService;
 use App\Services\InstallmentPaymentService;
@@ -42,7 +43,73 @@ class PaymentController extends Controller
         private InstallmentPaymentService $installmentPaymentService,
         private BalancePaymentService $balancePaymentService,
         private SplitPaymentService $splitPaymentService,
+        private SlipOcrService $slipOcrService,
     ) {}
+
+    /**
+     * "กันกลาง": ตรวจสลิปแบบซิงโครนัสเพื่อตัดสินใจว่าต้องส่งให้แอดมินตรวจก่อนไหม
+     * คืน hold=true เฉพาะเมื่อ OCR อ่านสลิปได้จริงแล้วพบว่า "ยอดไม่ตรง" หรือสลิปเป็น
+     * รายการที่ล้มเหลว เท่านั้น กรณีอ่านไม่ได้/ไม่ชัดเจน (เช่น ไม่มี API key, timeout)
+     * คืน hold=false เพื่อคงพฤติกรรมเดิม — ยืนยันทันทีแล้ว flag ให้แอดมินผ่าน VerifySlipJob
+     *
+     * @return array{hold: bool, raw: array|null}
+     */
+    private function slipNeedsReview(?string $slipPath, float $expectedAmount): array
+    {
+        if (! $slipPath) {
+            return ['hold' => false, 'raw' => null];
+        }
+
+        $result = $this->slipOcrService->verify($slipPath, $expectedAmount);
+        $hold = in_array($result['reason'] ?? '', ['amount_mismatch', 'slip_status_failed'], true);
+
+        return ['hold' => $hold, 'raw' => $result['raw'] ?? null];
+    }
+
+    /**
+     * ค้าง booking ไว้ให้แอดมินตรวจสอบ — สถานะยังเป็น pending (ที่นั่งยังถูก hold และ
+     * timer ยกเลิกอัตโนมัติจะข้ามให้เพราะ slip_ocr_status ถูกตั้งค่าแล้ว) ไม่ยืนยันการจอง
+     * และไม่ส่งอีเมล/SMS "ยืนยันแล้ว" — แจ้งแอดมินให้ตรวจ และแจ้งลูกค้าว่ากำลังตรวจสอบ
+     */
+    private function holdBookingForReview(Booking $booking, ?array $ocrRaw): JsonResponse
+    {
+        $booking->update([
+            'slip_ocr_status' => SlipOcrService::STATUS_FAILED,
+            'slip_ocr_result' => $ocrRaw,
+        ]);
+
+        $this->notifySlipReviewAdmins($booking->booking_ref, 'amount_mismatch');
+
+        SmartNotification::send(
+            $booking->user_id,
+            'payment_under_review',
+            'กำลังตรวจสอบการชำระเงิน',
+            "ได้รับสลิปของเลขการจอง {$booking->booking_ref} แล้ว ทีมงานกำลังตรวจสอบยอดโอนและจะยืนยันการจองให้โดยเร็ว",
+            ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+        );
+
+        return $this->success([
+            'status' => 'pending_review',
+            'booking' => new BookingResource($booking->fresh()->load(['seats', 'schedule.trip', 'passengers'])),
+        ], 'ได้รับสลิปแล้ว — อยู่ระหว่างตรวจสอบยอดโอน ทีมงานจะยืนยันการจองให้เร็วที่สุด');
+    }
+
+    private function notifySlipReviewAdmins(string $bookingRef, string $reason): void
+    {
+        try {
+            User::role(['admin', 'operator'])->each(function (User $admin) use ($bookingRef, $reason) {
+                SmartNotification::send(
+                    $admin->id,
+                    'slip_ocr_failed',
+                    'สลิปต้องตรวจสอบ',
+                    "ยอดโอนไม่ตรงอัตโนมัติ: {$bookingRef} (สาเหตุ: {$reason}) กรุณาตรวจสอบและอนุมัติด้วยตนเอง",
+                    ['booking_ref' => $bookingRef, 'route' => 'admin.bookings'],
+                );
+            });
+        } catch (\Exception $e) {
+            Log::warning('notifySlipReviewAdmins failed — '.$e->getMessage());
+        }
+    }
 
     public function charge(ChargeRequest $request): JsonResponse
     {
@@ -79,11 +146,14 @@ class PaymentController extends Controller
                 $totalAmount = (float) $booking->total_amount;
                 $perInstallment = round($totalAmount / $installmentCount, 2);
 
+                // ตรวจยอดงวดแรกก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน
+                $review = $this->slipNeedsReview($slipPath, (float) $perInstallment);
+                $paymentRef = 'PAY-INST-'.strtoupper(uniqid());
+
                 DB::transaction(function () use (
                     $booking, $installmentCount, $installmentIntervalDays,
-                    $perInstallment, $totalAmount, $paymentMethod, $slipPath, $transferDt
+                    $perInstallment, $totalAmount, $paymentMethod, $slipPath, $transferDt, $review, $paymentRef
                 ) {
-                    $paymentRef = 'PAY-INST-'.strtoupper(uniqid());
                     $now = now();
 
                     $booking->update([
@@ -96,6 +166,9 @@ class PaymentController extends Controller
                         'transfer_datetime' => $transferDt,
                         'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
                     ]);
+
+                    // ล้างงวดเดิม (กรณีอัปสลิปซ้ำหลังโดนกัน) แล้วสร้างใหม่ ไม่ให้ซ้ำ
+                    $booking->installmentPayments()->delete();
 
                     for ($i = 1; $i <= $installmentCount; $i++) {
                         $dueDate = $now->copy()->addDays(($i - 1) * $installmentIntervalDays);
@@ -118,8 +191,14 @@ class PaymentController extends Controller
                     }
 
                     // For installment, paid_amount at this step is only the first installment
-                    $this->bookingService->confirmBooking($booking->fresh(), $paymentMethod, $paymentRef, $perInstallment);
+                    if (! $review['hold']) {
+                        $this->bookingService->confirmBooking($booking->fresh(), $paymentMethod, $paymentRef, $perInstallment);
+                    }
                 });
+
+                if ($review['hold']) {
+                    return $this->holdBookingForReview($booking, $review['raw']);
+                }
 
                 if ($slipPath) {
                     $firstInstallment = $booking->fresh()->installmentPayments()->where('installment_no', 1)->first();
@@ -196,9 +275,12 @@ class PaymentController extends Controller
 
                 $paymentRef = 'PAY-SPLIT-'.strtoupper(uniqid());
 
+                // ตรวจยอดส่วนของเจ้าของก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน
+                $review = $this->slipNeedsReview($slipPath, (float) $ownerShare);
+
                 DB::transaction(function () use (
                     $booking, $ownerShare, $balanceAmount, $balanceDueAt,
-                    $paymentMethod, $paymentRef, $slipPath, $transferDt, $passengerCount
+                    $paymentMethod, $paymentRef, $slipPath, $transferDt, $passengerCount, $review
                 ) {
                     $booking->update([
                         'payment_type' => 'deposit',
@@ -212,19 +294,28 @@ class PaymentController extends Controller
                         'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
                     ]);
 
-                    $this->bookingService->confirmBooking(
-                        $booking->fresh(),
-                        $paymentMethod,
-                        $paymentRef,
-                        $ownerShare,
-                    );
+                    // ล้างส่วนแบ่งเดิม (กรณีอัปสลิปซ้ำหลังโดนกัน) แล้วสร้างใหม่ ไม่ให้ซ้ำ
+                    $booking->splitShares()->delete();
 
                     $this->splitPaymentService->createSharesForRemainder(
                         $booking->fresh(),
                         $balanceAmount,
                         $passengerCount - 1,
                     );
+
+                    if (! $review['hold']) {
+                        $this->bookingService->confirmBooking(
+                            $booking->fresh(),
+                            $paymentMethod,
+                            $paymentRef,
+                            $ownerShare,
+                        );
+                    }
                 });
+
+                if ($review['hold']) {
+                    return $this->holdBookingForReview($booking, $review['raw']);
+                }
 
                 if ($slipPath) {
                     VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $ownerShare);
@@ -297,9 +388,12 @@ class PaymentController extends Controller
 
                 $paymentRef = 'PAY-DEP-'.strtoupper(uniqid());
 
+                // ตรวจยอดมัดจำก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน
+                $review = $this->slipNeedsReview($slipPath, (float) $depositAmount);
+
                 DB::transaction(function () use (
                     $booking, $depositAmount, $balanceAmount, $balanceDueAt,
-                    $paymentMethod, $paymentRef, $slipPath, $transferDt
+                    $paymentMethod, $paymentRef, $slipPath, $transferDt, $review
                 ) {
                     $booking->update([
                         'payment_type' => 'deposit',
@@ -313,13 +407,19 @@ class PaymentController extends Controller
                         'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
                     ]);
 
-                    $this->bookingService->confirmBooking(
-                        $booking->fresh(),
-                        $paymentMethod,
-                        $paymentRef,
-                        $depositAmount,
-                    );
+                    if (! $review['hold']) {
+                        $this->bookingService->confirmBooking(
+                            $booking->fresh(),
+                            $paymentMethod,
+                            $paymentRef,
+                            $depositAmount,
+                        );
+                    }
                 });
+
+                if ($review['hold']) {
+                    return $this->holdBookingForReview($booking, $review['raw']);
+                }
 
                 if ($slipPath) {
                     VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $depositAmount);
@@ -370,18 +470,26 @@ class PaymentController extends Controller
             // ── Full payment ─────────────────────────────────────────
             $paymentRef = 'PAY-'.strtoupper(uniqid());
 
-            $booking = $this->bookingService->confirmBooking(
-                $booking,
-                $paymentMethod,
-                $paymentRef,
-            );
-
+            // เก็บสลิป + ข้อมูลการชำระไว้ก่อน แล้วตรวจยอด — ถ้ายอดไม่ตรงให้ค้างรอแอดมิน
             $booking->update([
                 'payment_type' => 'full',
+                'payment_method' => $paymentMethod,
+                'payment_ref' => $paymentRef,
                 'slip_path' => $slipPath,
                 'transfer_datetime' => $transferDt,
                 'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
             ]);
+
+            $review = $this->slipNeedsReview($slipPath, (float) $booking->total_amount);
+            if ($review['hold']) {
+                return $this->holdBookingForReview($booking, $review['raw']);
+            }
+
+            $booking = $this->bookingService->confirmBooking(
+                $booking->fresh(),
+                $paymentMethod,
+                $paymentRef,
+            );
 
             if ($slipPath) {
                 VerifySlipJob::dispatch('booking', $booking->id, $slipPath, (float) $booking->total_amount);

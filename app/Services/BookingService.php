@@ -460,7 +460,10 @@ class BookingService
     {
         $threshold = now()->subMinutes(Booking::PENDING_TTL_MINUTES);
 
+        // ยกเว้นรายการที่ส่งสลิปแล้วแต่กำลัง "รอตรวจสอบยอด" (slip_ocr_status ถูกตั้งค่า):
+        // ลูกค้าจ่ายมาแล้ว รอแอดมินอนุมัติ ต้อง hold ที่นั่งไว้ ไม่ให้ timer ยกเลิกทิ้ง
         $candidateIds = Booking::where('status', 'pending')
+            ->whereNull('slip_ocr_status')
             ->where('created_at', '<=', $threshold)
             ->pluck('id');
 
@@ -471,7 +474,7 @@ class BookingService
                 $booking = Booking::with('seats')->lockForUpdate()->find($bookingId);
 
                 // ตรวจซ้ำใต้ lock — ลูกค้าอาจเพิ่งชำระเงินไประหว่างนี้ (สถานะเปลี่ยนเป็น confirmed)
-                if (! $booking || $booking->status !== 'pending' || $booking->created_at->gt($threshold)) {
+                if (! $booking || $booking->status !== 'pending' || $booking->slip_ocr_status !== null || $booking->created_at->gt($threshold)) {
                     return null;
                 }
 

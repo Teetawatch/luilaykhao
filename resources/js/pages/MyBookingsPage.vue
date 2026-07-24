@@ -121,7 +121,7 @@
                 <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] flex items-center gap-1.5 whitespace-nowrap"
                   :class="statusClass(b.status)">
                   <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(b.status)"></span>
-                  {{ statusLabel(b.status) }}
+                  {{ displayStatusLabel(b) }}
                 </span>
                 <CountdownTimer
                   v-if="isPendingWithTimer(b)"
@@ -181,12 +181,14 @@
                 {{ b.status === 'confirmed' ? 'ดาวน์โหลดตั๋ว' : 'ดูรายละเอียด' }}
               </router-link>
 
+              <!-- ปุ่มจ่ายเงินขึ้นเฉพาะ pending ที่ยังไม่ได้ส่งสลิป หรือถูกปฏิเสธให้ส่งใหม่
+                   — ไม่ขึ้นสำหรับรายการที่ "กำลังตรวจสอบยอด" (จ่ายมาแล้ว รอแอดมินยืนยัน) -->
               <router-link
-                v-if="b.status === 'pending'"
+                v-if="b.status === 'pending' && reviewState(b) !== 'under_review'"
                 :to="`/payment/${b.booking_ref}`"
                 class="flex-1 text-center bg-[#D97706] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all flex items-center justify-center gap-1.5 animate-pulse">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">payments</span>
-                ชำระเงิน
+                {{ reviewState(b) === 'rejected' ? 'ส่งสลิปใหม่' : 'ชำระเงิน' }}
               </router-link>
 
               <!-- เฉพาะสถานะ pending: ปุ่มหลักคือ "ชำระเงิน" จึงต้องมีทางไปดูรายละเอียด
@@ -505,8 +507,22 @@ const selectedStaffReview = computed(() => {
 
 function isPendingWithTimer(b) {
   return b.status === 'pending'
+    && !b.slip_ocr_status // ส่งสลิปแล้ว = ไม่อยู่บนนาฬิกาจ่ายเงินอีกต่อไป
     && seatsStore.activeBookingInfo?.scheduleId == b.schedule?.id
     && seatsStore.countdownSeconds > 0;
+}
+
+// การจองที่ส่งสลิปแล้วแต่ยอดไม่ตรง (status ยัง pending): 'under_review' รอแอดมินยืนยัน,
+// 'rejected' ถูกปฏิเสธต้องส่งสลิปใหม่, null = pending ปกติที่ยังไม่จ่าย
+function reviewState(b) {
+  if (b.status !== 'pending' || !b.slip_ocr_status) return null;
+  return b.slip_ocr_status === 'rejected' ? 'rejected' : 'under_review';
+}
+function displayStatusLabel(b) {
+  const rs = reviewState(b);
+  if (rs === 'under_review') return 'กำลังตรวจสอบยอด';
+  if (rs === 'rejected') return 'ต้องส่งสลิปใหม่';
+  return statusLabel(b.status);
 }
 
 // การกรองและการนับย้ายไปฝั่งเซิร์ฟเวอร์แล้ว หน้านี้จึงแสดงสิ่งที่ได้มาตรง ๆ
