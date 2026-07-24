@@ -573,12 +573,11 @@
                 <div
                   v-for="addon in optionalAddons"
                   :key="addon.index"
-                  @click="toggleAddon(addon.index)"
-                  class="relative rounded-2xl border-2 cursor-pointer transition-all overflow-hidden"
-                  :class="selectedAddons.includes(addon.index) ? 'border-amber-500 ring-2 ring-amber-200' : 'border-gray-100 hover:border-amber-200'"
+                  class="relative rounded-2xl border-2 transition-all overflow-hidden flex flex-col"
+                  :class="addonQty(addon.index) > 0 ? 'border-amber-500 ring-2 ring-amber-200' : 'border-gray-100'"
                 >
                   <!-- image / placeholder -->
-                  <div class="relative h-28" :class="addon.image_url ? 'bg-gray-100' : 'bg-amber-50 flex items-center justify-center'">
+                  <div class="relative h-28 shrink-0" :class="addon.image_url ? 'bg-gray-100' : 'bg-amber-50 flex items-center justify-center'">
                     <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-full h-full object-cover" loading="lazy" />
                     <span v-else class="material-symbols-rounded text-amber-300" style="font-size:34px;">add_task</span>
                     <button
@@ -591,18 +590,41 @@
                       <span class="material-symbols-rounded" style="font-size:16px;">zoom_in</span>
                     </button>
                     <div
-                      v-if="selectedAddons.includes(addon.index)"
-                      class="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shadow"
+                      v-if="addonQty(addon.index) > 0"
+                      class="absolute top-1.5 left-1.5 min-w-[24px] h-6 px-1.5 rounded-full bg-amber-500 text-white text-xs font-black flex items-center justify-center shadow"
                     >
-                      <span class="material-symbols-rounded" style="font-size:16px;">check</span>
+                      ×{{ addonQty(addon.index) }}
                     </div>
                   </div>
                   <!-- info -->
-                  <div class="p-3" :class="selectedAddons.includes(addon.index) ? 'bg-amber-50/60' : 'bg-white'">
+                  <div class="p-3 flex-1 flex flex-col" :class="addonQty(addon.index) > 0 ? 'bg-amber-50/60' : 'bg-white'">
                     <p class="font-black text-gray-900 text-sm leading-tight line-clamp-2">{{ addon.name }}</p>
                     <p class="text-[11px] font-bold text-amber-600 mt-1">
                       ฿{{ addon.price.toLocaleString() }} {{ addonPriceTypeLabel(addon) }}
                     </p>
+                    <!-- quantity stepper -->
+                    <div class="mt-3 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        @click="decAddon(addon)"
+                        :disabled="addonQty(addon.index) <= 0"
+                        class="w-8 h-8 rounded-full border flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        :class="addonQty(addon.index) > 0 ? 'border-amber-300 text-amber-600 hover:bg-amber-50' : 'border-gray-200 text-gray-400'"
+                      >
+                        <span class="material-symbols-rounded" style="font-size:18px;">remove</span>
+                      </button>
+                      <span class="text-sm font-black tabular-nums" :class="addonQty(addon.index) > 0 ? 'text-amber-700' : 'text-gray-400'">
+                        {{ addonQty(addon.index) }}
+                      </span>
+                      <button
+                        type="button"
+                        @click="incAddon(addon)"
+                        :disabled="addonQty(addon.index) >= addonMaxQty(addon)"
+                        class="w-8 h-8 rounded-full border border-amber-300 text-amber-600 flex items-center justify-center transition-colors hover:bg-amber-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1052,6 +1074,7 @@
                         <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-amber-100" />
                         <span v-else class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
                         <span class="truncate">{{ addon.name }}</span>
+                        <span class="shrink-0 text-amber-500 font-bold">×{{ addon.quantity }}</span>
                       </span>
                       <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
                     </div>
@@ -1188,6 +1211,7 @@
                   <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-amber-100" />
                   <span v-else class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
                   <span class="truncate">{{ addon.name }}</span>
+                  <span class="shrink-0 text-amber-500 font-bold">×{{ addon.quantity }}</span>
                 </span>
                 <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
               </div>
@@ -1565,14 +1589,27 @@ const isGroup = ref(false);
 const groupName = ref('');
 const groupNotes = ref('');
 const showInsuranceModal = ref(false);
-const selectedAddons = ref([]);
+// index -> จำนวนที่เลือก (>0 = เลือกอยู่) เพื่อให้กด +/- ได้ทีละชิ้น
+const addonQuantities = ref({});
 const addonZoomImage = ref(null);
 
-const toggleAddon = (index) => {
-  selectedAddons.value = selectedAddons.value.includes(index)
-    ? selectedAddons.value.filter((i) => i !== index)
-    : [...selectedAddons.value, index];
+// แบบ "ต่อคน" เลือกได้ไม่เกินจำนวนผู้เดินทาง ส่วนแบบต่อชิ้นได้ถึง 20 เหมือนของเช่า
+const addonMaxQty = (item) => item.price_type === 'per_person'
+  ? Math.max(1, seatCount.value)
+  : 20;
+
+const addonQty = (index) => addonQuantities.value[index] || 0;
+
+const setAddonQty = (item, qty) => {
+  const clamped = Math.max(0, Math.min(qty, addonMaxQty(item)));
+  const next = { ...addonQuantities.value };
+  if (clamped > 0) next[item.index] = clamped;
+  else delete next[item.index];
+  addonQuantities.value = next;
 };
+
+const incAddon = (item) => setAddonQty(item, addonQty(item.index) + 1);
+const decAddon = (item) => setAddonQty(item, addonQty(item.index) - 1);
 
 const promotionCode = ref('');
 const promotionInput = ref('');
@@ -1683,7 +1720,7 @@ function saveFormData() {
     selectedPickupId: selectedPickup.value?.id ?? null,
     promotionCode: promotionCode.value,
     promotionData: promotionData.value,
-    selectedAddons: selectedAddons.value,
+    addonQuantities: addonQuantities.value,
   };
   sessionStorage.setItem(FORM_SESSION_KEY.value, JSON.stringify(data));
   saveDraft(data);
@@ -1778,7 +1815,17 @@ function applyFormData(data) {
   promotionCode.value = data.promotionCode ?? '';
   promotionInput.value = data.promotionCode ?? '';
   promotionData.value = data.promotionData ?? null;
-  selectedAddons.value = Array.isArray(data.selectedAddons) ? data.selectedAddons : [];
+  if (data.addonQuantities && typeof data.addonQuantities === 'object' && !Array.isArray(data.addonQuantities)) {
+    addonQuantities.value = { ...data.addonQuantities };
+  } else if (Array.isArray(data.selectedAddons)) {
+    // ร่างเก่า: เก็บเป็นรายการดัชนีที่เลือก → ตั้งจำนวนเริ่มต้นตามชนิดราคา
+    const map = {};
+    for (const idx of data.selectedAddons) {
+      const item = optionalAddons.value.find((a) => a.index === idx);
+      map[idx] = item?.price_type === 'per_person' ? Math.max(1, seatCount.value) : 1;
+    }
+    addonQuantities.value = map;
+  }
   if (data.selectedPickupId != null && pickupPoints.value.length > 0) {
     const pt = pickupPoints.value.find(p => p.id === data.selectedPickupId);
     if (pt) selectedPickup.value = pt;
@@ -1796,8 +1843,21 @@ watch(step, (newStep) => {
 });
 
 watch(passengers, saveFormData, { deep: true });
-watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData, selectedAddons], saveFormData);
-watch(selectedAddons, saveFormData, { deep: true });
+watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData], saveFormData);
+watch(addonQuantities, saveFormData, { deep: true });
+
+// จำนวนผู้เดินทางเปลี่ยน → ตัดจำนวนรายการเสริมแบบ "ต่อคน" ไม่ให้เกินจำนวนคน
+watch(seatCount, () => {
+  const next = { ...addonQuantities.value };
+  let changed = false;
+  for (const item of optionalAddons.value) {
+    const q = next[item.index];
+    if (!q) continue;
+    const max = addonMaxQty(item);
+    if (q > max) { next[item.index] = max; changed = true; }
+  }
+  if (changed) addonQuantities.value = next;
+});
 
 // When global pickup is auto-set (e.g. single-point trip on load), propagate to passengers that have no pickup chosen yet
 watch(selectedPickup, (newPickup) => {
@@ -2050,13 +2110,15 @@ function showErr(i, field) {
 }
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
 
-const selectedAddonItems = computed(() => optionalAddons.value.filter((item) => selectedAddons.value.includes(item.index)));
+const selectedAddonItems = computed(() => optionalAddons.value
+  .filter((item) => addonQty(item.index) > 0)
+  .map((item) => ({ ...item, quantity: addonQty(item.index) })));
 
-const addonLineTotal = (item) => item.price * (item.price_type === 'per_person' ? seatCount.value : 1);
+const addonLineTotal = (item) => item.price * (item.quantity ?? addonQty(item.index));
 
 const addonsTotal = computed(() => selectedAddonItems.value.reduce((sum, item) => sum + addonLineTotal(item), 0));
 
-const addonPriceTypeLabel = (item) => item.price_type === 'per_person' ? 'ต่อคน' : 'ครั้งเดียว';
+const addonPriceTypeLabel = (item) => item.price_type === 'per_person' ? 'ต่อคน' : 'ต่อชิ้น';
 
 const passengerTicketPrice = (p) => {
   if (pickupPoints.value.length && p.pickup_point_id) {
@@ -2337,8 +2399,11 @@ async function createBooking() {
     if (isJoinTrip.value) {
       data.is_join_trip = true;
     }
-    if (selectedAddons.value.length) {
-      data.selected_addons = selectedAddons.value;
+    if (selectedAddonItems.value.length) {
+      data.selected_addons = selectedAddonItems.value.map((item) => ({
+        index: item.index,
+        quantity: item.quantity,
+      }));
     }
     if (hasSeatMap.value) data.seat_ids = seatsStore.selectedSeatIds;
 
