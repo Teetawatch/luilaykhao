@@ -33,6 +33,12 @@
       </div>
     </div>
 
+    @if($receipt ?? null)
+    <div class="cta-wrap">
+      <a href="{{ url('/receipt/'.$receipt->verify_token) }}" class="cta-btn cta-teal">🧾 ดูใบเสร็จรับเงิน (Digital Travel Receipt)</a>
+    </div>
+    @endif
+
     <p class="section-label">รายละเอียดการเดินทาง</p>
     <div class="info-card">
       <div class="info-card-header">

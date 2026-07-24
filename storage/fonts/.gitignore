@@ -1,0 +1,7 @@
+# Track only the source Sarabun TTFs used by the receipt PDF (OFL-licensed).
+# dompdf regenerates its own font cache (*.ufm, *.json, hashed *.ttf) here at runtime.
+*
+!.gitignore
+!Sarabun-Regular.ttf
+!Sarabun-Bold.ttf
+!Sarabun-SemiBold.ttf

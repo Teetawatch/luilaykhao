@@ -8,6 +8,7 @@ use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicPassengerFillController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\PublicProfileController;
+use App\Http\Controllers\PublicReceiptController;
 use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\SlipController;
 use App\Models\Article;
@@ -65,6 +66,16 @@ Route::get('/track/{token}', function (string $token) {
 Route::get('/driver/track', function () {
     return view('driver-track');
 });
+
+// Digital Travel Receipt — หน้าตรวจสอบใบเสร็จสาธารณะจาก QR / ลิงก์ในอีเมล
+Route::get('/receipt/{token}/pdf', [PublicReceiptController::class, 'pdf'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('public.receipt.pdf');
+Route::get('/receipt/{token}', [PublicReceiptController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('public.receipt.show');
 
 // Gift reveal — หน้า "เปิดของขวัญ" สาธารณะจากลิงก์ที่ผู้ให้ส่งให้ผู้รับ
 Route::get('/gift/{code}', [PublicGiftController::class, 'show'])

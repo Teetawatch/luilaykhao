@@ -19,12 +19,33 @@ use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
+use App\Models\Receipt;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class MailService
 {
+    public function __construct(private ReceiptService $receipts) {}
+
+    /**
+     * ออกใบเสร็จให้การจอง (idempotent) แบบไม่ให้ล้มอีเมลถ้าออกใบเสร็จพลาด
+     */
+    private function issueReceipt(Booking $booking, string $kind, ?float $amount = null): ?Receipt
+    {
+        try {
+            return $this->receipts->issueForBooking($booking, $kind, $amount);
+        } catch (\Throwable $e) {
+            Log::error('Failed to issue receipt', [
+                'booking_ref' => $booking->booking_ref,
+                'kind' => $kind,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     /**
      * Get admin email addresses for notifications.
      */
@@ -169,9 +190,13 @@ class MailService
     {
         $booking->load(['user', 'schedule.trip', 'passengers', 'installmentPayments']);
 
+        // ใบเสร็จ: งวดแรก = ยอดงวดแรก, เต็มจำนวน = ยอดที่ชำระ
+        $kind = $paymentType === 'installment' ? 'installment' : 'full';
+        $receipt = $this->issueReceipt($booking, $kind, (float) $booking->paid_amount);
+
         try {
             // Customer email
-            $this->sendToCustomerEmails($booking, fn () => new PaymentConfirmedMail($booking, $paymentType));
+            $this->sendToCustomerEmails($booking, fn () => new PaymentConfirmedMail($booking, $paymentType, $receipt));
         } catch (\Throwable $e) {
             Log::error('Failed to send payment confirmed email', [
                 'booking_ref' => $booking->booking_ref,
@@ -251,10 +276,14 @@ class MailService
      */
     public function sendDepositPaidEmail(Booking $booking): void
     {
-        $booking->load(['user', 'schedule.trip', 'passengers', 'seats']);
+        $booking->load(['user', 'schedule.trip', 'passengers', 'seats', 'splitShares']);
+
+        // จ่ายแบบแบ่งกลุ่มเก็บ payment_type เป็น deposit — แยกด้วยการมีส่วนแบ่ง
+        $kind = $booking->splitShares()->exists() ? 'split' : 'deposit';
+        $receipt = $this->issueReceipt($booking, $kind, (float) $booking->deposit_amount);
 
         try {
-            $this->sendToCustomerEmails($booking, fn () => new DepositPaidMail($booking));
+            $this->sendToCustomerEmails($booking, fn () => new DepositPaidMail($booking, $receipt));
         } catch (\Throwable $e) {
             Log::error('Failed to send deposit paid email', [
                 'booking_ref' => $booking->booking_ref,
@@ -341,8 +370,10 @@ class MailService
     {
         $booking->load(['user', 'schedule.trip', 'passengers']);
 
+        $receipt = $this->issueReceipt($booking, 'balance', (float) $booking->balance_amount);
+
         try {
-            $this->sendToCustomerEmails($booking, fn () => new BalancePaidMail($booking));
+            $this->sendToCustomerEmails($booking, fn () => new BalancePaidMail($booking, $receipt));
         } catch (\Throwable $e) {
             Log::error('Failed to send balance paid email', [
                 'booking_ref' => $booking->booking_ref,

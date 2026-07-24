@@ -3,6 +3,8 @@
 namespace App\Mail;
 
 use App\Models\Booking;
+use App\Models\Receipt;
+use App\Support\ReceiptAttachment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -15,7 +17,13 @@ class PaymentConfirmedMail extends QueuedMail
     public function __construct(
         public Booking $booking,
         public string $paymentType = 'full',
+        public ?Receipt $receipt = null,
     ) {}
+
+    public function attachments(): array
+    {
+        return ReceiptAttachment::for($this->receipt);
+    }
 
     public function envelope(): Envelope
     {
