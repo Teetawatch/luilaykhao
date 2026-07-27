@@ -836,10 +836,25 @@ class BookingService
                 throw new \Exception('จุดรับที่เลือกไม่อยู่ในรอบเดินทางนี้');
             }
 
+            $previousPointId = $booking->pickup_point_id ? (int) $booking->pickup_point_id : null;
+
             $booking->update([
                 'pickup_point_id' => $pickupPoint->id,
                 'pickup_region' => $pickupPoint->region,
             ]);
+
+            // จุดรับรายคนมาก่อนจุดระดับการจองในหน้าสตาฟ/คนขับ — คนที่ยังยืนจุดเดิม
+            // ต้องย้ายตาม ส่วนคนที่เลือกจุดของตัวเองไว้ต่างหากคงไว้ตามเดิม
+            if ($previousPointId !== (int) $pickupPoint->id) {
+                $booking->passengers()
+                    ->where(function ($query) use ($previousPointId) {
+                        $query->whereNull('pickup_point_id');
+                        if ($previousPointId) {
+                            $query->orWhere('pickup_point_id', $previousPointId);
+                        }
+                    })
+                    ->update(['pickup_point_id' => $pickupPoint->id]);
+            }
 
             return $booking->fresh(['passengers', 'seats', 'schedule.trip', 'pickupPoint']);
         });

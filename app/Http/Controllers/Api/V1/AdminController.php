@@ -1327,6 +1327,19 @@ class AdminController extends Controller
             DB::transaction(function () use ($request, $data, $booking) {
                 $oldSchedule = $booking->schedule;
 
+                // จุดรับรายคนมาก่อนจุดระดับการจองเสมอ (สตาฟ/คนขับจัดกลุ่มจากรายคน)
+                // จำไว้ว่าใคร "ยืนจุดเดียวกับหัวการจอง" ก่อนแก้ เพื่อย้ายตามเมื่อแอดมิน
+                // เปลี่ยนจุดรับ — คนที่เลือกจุดของตัวเองไว้ต่างหากจะไม่ถูกทับ
+                $originalPickupPointId = $booking->pickup_point_id ? (int) $booking->pickup_point_id : null;
+                $pickupFollowerIds = $booking->passengers
+                    ->filter(function ($passenger) use ($originalPickupPointId) {
+                        $own = $passenger->pickup_point_id ? (int) $passenger->pickup_point_id : null;
+
+                        return $own === null || $own === $originalPickupPointId;
+                    })
+                    ->pluck('id')
+                    ->all();
+
                 if ($booking->user && isset($data['user'])) {
                     $booking->user->update(array_filter([
                         'name' => $data['user']['name'] ?? null,
@@ -1483,6 +1496,15 @@ class AdminController extends Controller
                 // ไม่งั้นหน้าสตาฟจะจัดกลุ่มผู้โดยสารเข้าจุดเก่าแทนหมุด
                 if ($customPickupSet) {
                     $booking->passengers()->update(['pickup_point_id' => null]);
+                } elseif (array_key_exists('pickup_point_id', $data)) {
+                    // เปลี่ยนจุดรับระดับการจอง — ผู้โดยสารที่ยังยืนจุดเดิมต้องย้ายตามด้วย
+                    // ไม่งั้นหน้าสตาฟ/คนขับที่อ่านจุดรายคนก่อนจะยังเห็นจุดเก่า
+                    $newPickupPointId = $data['pickup_point_id'] ? (int) $data['pickup_point_id'] : null;
+                    if ($newPickupPointId !== $originalPickupPointId && $pickupFollowerIds) {
+                        $booking->passengers()
+                            ->whereKey($pickupFollowerIds)
+                            ->update(['pickup_point_id' => $newPickupPointId]);
+                    }
                 }
 
                 if (array_key_exists('seat_ids', $data)) {
