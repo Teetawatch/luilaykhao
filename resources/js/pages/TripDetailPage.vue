@@ -160,50 +160,71 @@
           <!-- Left Column: Details -->
           <div class="lg:col-span-8 space-y-20">
 
-            <!-- Gallery Bento Grid -->
-            <section v-if="trip.gallery && trip.gallery.length > 0" class="gallery-section stagger-in">
-              <div class="grid grid-cols-1 md:grid-cols-4 grid-rows-1 md:grid-rows-2 gap-4 h-auto md:h-[500px]">
-                <!-- Main Large Image -->
-                <div 
-                  @click="openGallery(0)"
-                  class="md:col-span-2 md:row-span-2 h-[300px] md:h-full overflow-hidden rounded-[2rem] md:rounded-[3rem] group relative cursor-pointer"
-                >
-                  <img :src="trip.gallery[0]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
-                  <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
-                  <div class="absolute bottom-6 left-6 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center gap-2">
-                    <span class="material-symbols-rounded text-sm">zoom_in</span>
-                    คลิกเพื่อขยาย
-                  </div>
+            <!--
+              แกลเลอรี — รูปและวิดีโอของทริปอยู่ในชุดเดียวกัน กดแล้วเปิดดูเต็มจอต่อกันได้
+              เลย์เอาต์ปรับตามจำนวนสื่อ (1–5 ช่อง) จึงไม่มีช่องว่างเวลามีรูปน้อย
+            -->
+            <section v-if="galleryMedia.length" class="gallery-section stagger-in">
+              <div class="gallery-bar">
+                <div class="gallery-counts">
+                  <span v-if="galleryPhotoCount" class="gallery-count">
+                    <span class="material-symbols-rounded">photo_camera</span>{{ galleryPhotoCount }} ภาพ
+                  </span>
+                  <span v-if="galleryVideoCount" class="gallery-count">
+                    <span class="material-symbols-rounded">play_circle</span>{{ galleryVideoCount }} วิดีโอ
+                  </span>
                 </div>
+                <button type="button" class="gallery-all" @click="openGallery(0)">
+                  <span class="material-symbols-rounded">grid_view</span>
+                  ดูทั้งหมด
+                </button>
+              </div>
 
-                <!-- Secondary Image (Top Right) -->
-                <div v-if="trip.gallery[1]" 
-                  @click="openGallery(1)"
-                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] group relative cursor-pointer"
+              <div class="media-grid" :class="`media-grid--${galleryTiles.length}`">
+                <button
+                  v-for="(item, idx) in galleryTiles"
+                  :key="item.url"
+                  type="button"
+                  class="media-tile"
+                  :aria-label="`เปิดดู${item.type === 'video' ? 'วิดีโอ' : 'ภาพ'}ของ${trip.title}`"
+                  @click="openGallery(idx)"
+                  @mouseenter="previewVideo($event, true)"
+                  @mouseleave="previewVideo($event, false)"
                 >
-                  <img :src="trip.gallery[1]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
-                  <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
-                </div>
+                  <img
+                    v-if="item.type === 'image'"
+                    :src="item.url"
+                    :alt="`${trip.title} ภาพที่ ${idx + 1}`"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <video
+                    v-else
+                    :src="item.url"
+                    muted
+                    playsinline
+                    loop
+                    preload="metadata"
+                    @loadedmetadata="rememberDuration(item.url, $event)"
+                  ></video>
 
-                <!-- Third Image + Overlay (Bottom Right) -->
-                <div v-if="trip.gallery[2]" 
-                  @click="openGallery(2)"
-                  class="md:col-span-2 md:row-span-1 h-[200px] md:h-full overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] relative group cursor-pointer"
-                >
-                  <img :src="trip.gallery[2]" :alt="trip.title" class="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110" />
-                  
-                  <!-- Overlay for more images -->
-                  <div v-if="trip.gallery.length > 3" class="absolute inset-0 bg-black/40 flex items-center justify-center text-white backdrop-blur-sm transition-all duration-500 group-hover:bg-black/60 group-hover:backdrop-blur-[2px]">
-                    <div class="text-center transform transition-transform duration-500 group-hover:scale-110">
-                      <div class="w-14 h-14 rounded-3xl bg-white/20 flex items-center justify-center mx-auto mb-3 border border-white/30">
-                        <span class="material-symbols-rounded text-3xl">photo_library</span>
-                      </div>
-                      <div class="font-black text-xl tracking-tight uppercase">+{{ trip.gallery.length - 3 }} รูปภาพ</div>
-                      <p class="text-[10px] font-bold text-white/70 mt-1 uppercase tracking-widest">ดูทั้งหมด</p>
-                    </div>
-                  </div>
-                  <div v-else class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
-                </div>
+                  <!-- วิดีโอ: ปุ่มเล่น + ความยาว เพื่อให้แยกออกจากรูปนิ่งได้ทันที -->
+                  <span v-if="item.type === 'video'" class="media-play">
+                    <span class="material-symbols-rounded">play_arrow</span>
+                  </span>
+                  <span v-if="item.type === 'video' && videoDurations[item.url]" class="media-duration">
+                    {{ videoDurations[item.url] }}
+                  </span>
+
+                  <!-- ช่องสุดท้าย: บอกว่ายังมีสื่ออีกกี่ชิ้น -->
+                  <span v-if="idx === galleryTiles.length - 1 && hiddenMediaCount" class="media-more">
+                    <span class="material-symbols-rounded">add</span>{{ hiddenMediaCount }}
+                  </span>
+                  <!-- ช่องรูปนิ่งไม่มีปุ่มเล่น จึงบอกด้วยแว่นขยายว่ากดดูใหญ่ได้ -->
+                  <span v-else-if="item.type === 'image'" class="media-zoom">
+                    <span class="material-symbols-rounded">zoom_in</span>
+                  </span>
+                </button>
               </div>
             </section>
 
@@ -1295,15 +1316,19 @@
           </button>
 
           <!-- Navigation Buttons -->
-          <button v-if="trip.gallery.length > 1" @click="prevGalleryImage" class="absolute left-6 z-[210] w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 hidden md:flex border border-white/10">
+          <button v-if="galleryMedia.length > 1" @click="prevGalleryImage" class="absolute left-6 z-[210] w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 hidden md:flex border border-white/10">
             <span class="material-symbols-rounded text-4xl">chevron_left</span>
           </button>
-          <button v-if="trip.gallery.length > 1" @click="nextGalleryImage" class="absolute right-6 z-[210] w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 hidden md:flex border border-white/10">
+          <button v-if="galleryMedia.length > 1" @click="nextGalleryImage" class="absolute right-6 z-[210] w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 hidden md:flex border border-white/10">
             <span class="material-symbols-rounded text-4xl">chevron_right</span>
           </button>
 
-          <!-- Main Image Container -->
-          <div class="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-12 lg:p-20 overflow-hidden">
+          <!-- Main Media Container — ปัดซ้าย/ขวาบนมือถือเพื่อเปลี่ยนสื่อ -->
+          <div
+            class="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-12 lg:p-20 overflow-hidden"
+            @touchstart.passive="onGalleryTouchStart"
+            @touchend.passive="onGalleryTouchEnd"
+          >
             <div class="relative max-w-6xl w-full h-full flex items-center justify-center">
               <Transition 
                 mode="out-in"
@@ -1314,36 +1339,52 @@
                 leave-from-class="opacity-100 scale-100"
                 leave-to-class="opacity-0 scale-105"
               >
-                <img 
-                  :key="activeGalleryIndex"
-                  :src="trip.gallery[activeGalleryIndex]" 
+                <img
+                  v-if="activeMedia?.type === 'image'"
+                  :key="`img-${activeGalleryIndex}`"
+                  :src="activeMedia.url"
+                  :alt="`${trip.title} ภาพที่ ${activeGalleryIndex + 1}`"
                   class="max-w-full max-h-full object-contain rounded-2xl"
                 />
+                <video
+                  v-else-if="activeMedia"
+                  :key="`vid-${activeGalleryIndex}`"
+                  :src="activeMedia.url"
+                  class="w-full h-full object-contain rounded-2xl bg-black"
+                  controls
+                  autoplay
+                  playsinline
+                ></video>
               </Transition>
             </div>
-            
+
             <!-- Caption / Counter / Thumbnails Container -->
             <div class="mt-8 w-full max-w-4xl animate-fade-in-up">
               <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
                 <div class="text-white">
                   <p class="font-black text-2xl md:text-3xl mb-1 tracking-tight">{{ trip.title }}</p>
                   <p class="text-white/50 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs flex items-center gap-2">
-                    <span class="material-symbols-rounded text-sm">photo_camera</span>
-                    ภาพที่ {{ activeGalleryIndex + 1 }} จาก {{ trip.gallery.length }}
+                    <span class="material-symbols-rounded text-sm">{{ activeMedia?.type === 'video' ? 'movie' : 'photo_camera' }}</span>
+                    {{ activeMedia?.type === 'video' ? 'วิดีโอ' : 'ภาพ' }}ที่ {{ activeGalleryIndex + 1 }} จาก {{ galleryMedia.length }}
                   </p>
                 </div>
 
                 <!-- Thumbnails -->
                 <div class="flex gap-3 overflow-x-auto pb-4 custom-scrollbar max-w-full md:max-w-md">
-                  <div 
-                    v-for="(img, idx) in trip.gallery" 
-                    :key="idx"
+                  <button
+                    v-for="(item, idx) in galleryMedia"
+                    :key="item.url"
+                    type="button"
                     @click="activeGalleryIndex = idx"
-                    class="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shrink-0"
+                    class="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shrink-0"
                     :class="activeGalleryIndex === idx ? 'border-[var(--color-accent)] scale-110' : 'border-white/10 opacity-30 hover:opacity-100 hover:border-white/30'"
                   >
-                    <img :src="img" class="w-full h-full object-cover" />
-                  </div>
+                    <img v-if="item.type === 'image'" :src="item.url" class="w-full h-full object-cover" />
+                    <video v-else :src="item.url" muted playsinline preload="metadata" class="w-full h-full object-cover"></video>
+                    <span v-if="item.type === 'video'" class="lb-thumb-play">
+                      <span class="material-symbols-rounded">play_arrow</span>
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -2166,6 +2207,69 @@ const hasRating = computed(() => Number(trip.value?.review_count || 0) > 0);
 const galleryList = computed(() =>
   Array.isArray(trip.value?.gallery) ? trip.value.gallery.filter(Boolean) : []
 );
+
+// ─── แกลเลอรี: รูป + วิดีโอในชุดเดียว ─────────────────────
+// วิดีโอวางไว้หลังภาพเปิด เพื่อให้เห็นตั้งแต่ช่องแรก ๆ โดยไม่แย่งภาพหลัก
+const galleryMedia = computed(() => {
+  const images = galleryList.value.map((url) => ({ type: 'image', url: absoluteMediaUrl(url) }));
+  const videos = (Array.isArray(trip.value?.videos) ? trip.value.videos : [])
+    .filter(Boolean)
+    .map((url) => ({ type: 'video', url: absoluteMediaUrl(url) }));
+
+  const ordered = images.length ? [images[0], ...videos, ...images.slice(1)] : videos;
+
+  return ordered.filter((item) => item.url);
+});
+const galleryPhotoCount = computed(() => galleryMedia.value.filter((m) => m.type === 'image').length);
+const galleryVideoCount = computed(() => galleryMedia.value.filter((m) => m.type === 'video').length);
+// โชว์ได้สูงสุด 5 ช่อง — เลย์เอาต์ปรับตามจำนวนจริงเพื่อไม่ให้เหลือช่องว่าง
+const galleryTiles = computed(() => galleryMedia.value.slice(0, 5));
+const hiddenMediaCount = computed(() => Math.max(0, galleryMedia.value.length - galleryTiles.value.length));
+const activeMedia = computed(() => galleryMedia.value[activeGalleryIndex.value] || null);
+
+function absoluteMediaUrl(value) {
+  const raw = String(value || '');
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return raw.startsWith('/') ? `${window.location.origin}${raw}` : `${window.location.origin}/${raw}`;
+}
+
+// เล่นตัวอย่างวิดีโอแบบเงียบตอนชี้เมาส์ — ช่วยให้รู้ว่าคลิปมีอะไรก่อนกดเปิด
+function previewVideo(event, play) {
+  const video = event.currentTarget?.querySelector('video');
+  if (!video) return;
+  if (play) {
+    video.play().catch(() => {});
+  } else {
+    video.pause();
+    video.currentTime = 0;
+  }
+}
+
+const videoDurations = ref({});
+function rememberDuration(url, event) {
+  const seconds = Number(event.target?.duration);
+  if (!Number.isFinite(seconds) || seconds <= 0) return;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  videoDurations.value = {
+    ...videoDurations.value,
+    [url]: `${mins}:${String(secs).padStart(2, '0')}`,
+  };
+}
+
+// ปัดเปลี่ยนสื่อบนมือถือ — เกณฑ์ 50px กันการปัดพลาดตอนเลื่อนหน้าจอ
+let galleryTouchX = null;
+function onGalleryTouchStart(e) {
+  galleryTouchX = e.changedTouches?.[0]?.clientX ?? null;
+}
+function onGalleryTouchEnd(e) {
+  if (galleryTouchX === null) return;
+  const delta = (e.changedTouches?.[0]?.clientX ?? galleryTouchX) - galleryTouchX;
+  galleryTouchX = null;
+  if (Math.abs(delta) < 50) return;
+  delta < 0 ? nextGalleryImage() : prevGalleryImage();
+}
 // Pick a gallery photo for a section; clamp so small galleries still resolve.
 function sectionImage(idx) {
   const g = galleryList.value;
@@ -2437,13 +2541,15 @@ function closeGallery() {
 }
 
 function nextGalleryImage() {
-  if (!trip.value?.gallery?.length) return;
-  activeGalleryIndex.value = (activeGalleryIndex.value + 1) % trip.value.gallery.length;
+  const total = galleryMedia.value.length;
+  if (!total) return;
+  activeGalleryIndex.value = (activeGalleryIndex.value + 1) % total;
 }
 
 function prevGalleryImage() {
-  if (!trip.value?.gallery?.length) return;
-  activeGalleryIndex.value = (activeGalleryIndex.value - 1 + trip.value.gallery.length) % trip.value.gallery.length;
+  const total = galleryMedia.value.length;
+  if (!total) return;
+  activeGalleryIndex.value = (activeGalleryIndex.value - 1 + total) % total;
 }
 
 const handleKeyDown = (e) => {
@@ -2737,6 +2843,210 @@ async function fetchAlbumPhotos() {
 </script>
 
 <style scoped>
+/* ── แกลเลอรีรูป + วิดีโอ ─────────────────────────────────── */
+.gallery-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+.gallery-counts {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.gallery-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #6b7280;
+}
+.gallery-count .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--color-accent);
+}
+.gallery-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background-color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--color-text-dark);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.gallery-all:hover {
+  border-color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 8%, #fff);
+}
+.gallery-all .material-symbols-rounded { font-size: 18px; }
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 7.25rem;
+  gap: 0.5rem;
+}
+.media-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background-color: #f3f4f6;
+  cursor: pointer;
+  isolation: isolate;
+}
+/* ช่องแรกเป็นภาพเปิดเสมอ — ใหญ่กว่าช่องอื่นสองเท่า */
+.media-tile:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.media-grid--2 .media-tile:nth-child(2),
+.media-grid--4 .media-tile:nth-child(2) {
+  grid-column: span 2;
+}
+.media-tile img,
+.media-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.media-tile:hover img,
+.media-tile:hover video {
+  transform: scale(1.06);
+}
+.media-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.media-tile:hover::after { opacity: 1; }
+
+/* ปุ่มเล่นบนช่องวิดีโอ — ต้องอ่านออกทั้งบนภาพสว่างและภาพมืด */
+.media-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+}
+.media-play .material-symbols-rounded {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  font-size: 30px;
+  font-variation-settings: 'FILL' 1;
+  transition: background-color 0.25s ease, transform 0.25s ease;
+}
+.media-tile:hover .media-play .material-symbols-rounded {
+  background-color: var(--color-accent);
+  transform: scale(1.08);
+}
+.media-duration,
+.media-zoom,
+.media-more {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+.media-duration {
+  left: 0.75rem;
+  bottom: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.6rem;
+  background-color: rgba(0, 0, 0, 0.6);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+}
+.media-zoom {
+  right: 0.75rem;
+  bottom: 0.75rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  justify-content: center;
+  border-radius: 999px;
+  background-color: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.media-zoom .material-symbols-rounded { font-size: 18px; }
+.media-tile:hover .media-zoom {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* ช่องสุดท้ายบอกจำนวนสื่อที่เหลือ — คลุมทั้งช่องให้กดง่าย */
+.media-more {
+  inset: 0;
+  justify-content: center;
+  background-color: rgba(17, 24, 39, 0.55);
+  backdrop-filter: blur(2px);
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  transition: background-color 0.3s ease;
+}
+.media-more .material-symbols-rounded { font-size: 24px; }
+.media-tile:hover .media-more { background-color: rgba(17, 24, 39, 0.68); }
+
+@media (min-width: 768px) {
+  .media-grid {
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 10.5rem;
+    gap: 0.75rem;
+  }
+  .media-tile { border-radius: 1.5rem; }
+  .media-tile:first-child { border-radius: 2rem; }
+  .media-grid--1 .media-tile:first-child { grid-column: span 4; }
+  .media-grid--2 .media-tile { grid-column: span 2; grid-row: span 2; }
+  .media-grid--3 .media-tile:not(:first-child) { grid-column: span 2; }
+  .media-grid--4 .media-tile:nth-child(2) { grid-column: span 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-tile img,
+  .media-tile video,
+  .media-zoom { transition: none !important; transform: none !important; }
+}
+
+/* ป้ายเล่นบนภาพย่อวิดีโอในไลต์บ็อกซ์ (ไอคอนต้องกำหนดขนาดด้วย CSS ไม่ใช่ util class) */
+.lb-thumb-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.35);
+  color: #fff;
+}
+.lb-thumb-play .material-symbols-rounded {
+  font-size: 20px;
+  font-variation-settings: 'FILL' 1;
+}
+
 /* ── Editorial section headers ───────────────────────────── */
 .ed-head {
   display: flex;
