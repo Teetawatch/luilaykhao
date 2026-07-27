@@ -651,7 +651,7 @@ const isPast = (sch) => (sch?.departure_date ?? '') <= bangkokToday();
 // ─── อายุการเก็บรูป ────────────────────────────────────────
 // ต้องตรงกับ SchedulePhoto::RETENTION_DAYS ฝั่ง Laravel (ใช้แค่ตอนอัลบั้มยังว่าง
 // อยู่ — พอมีรูปแล้วเราอ่านเวลาหมดอายุจริงจาก expires_at ของแต่ละรูป)
-const RETENTION_DAYS = 4;
+const RETENTION_DAYS = 7;
 
 const HOUR_MS = 60 * 60 * 1000;
 

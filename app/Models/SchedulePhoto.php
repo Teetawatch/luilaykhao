@@ -17,7 +17,7 @@ class SchedulePhoto extends Model
      * {@see PurgeExpiredSchedulePhotosJob} จะลบทั้งแถวและไฟล์บน R2 ทิ้ง
      * ลูกค้าจึงต้องดาวน์โหลดภายในกรอบเวลานี้ (แจ้งไว้ทั้งในแอปและหน้าอัลบั้ม)
      */
-    public const RETENTION_DAYS = 4;
+    public const RETENTION_DAYS = 7;
 
     protected $fillable = [
         'disk', 'path', 'thumb_path', 'url', 'thumb_url', 'original_name',
