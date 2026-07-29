@@ -11,9 +11,12 @@ use App\Events\ChatTyping;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
+use App\Models\ChatPoll;
 use App\Models\ChatRead;
 use App\Models\TripSchedule;
+use App\Services\ChatPollService;
 use App\Services\ChatService;
+use App\Services\TripFactsService;
 use App\Services\WeatherService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
@@ -27,6 +30,8 @@ class ChatController extends Controller
 
     public function __construct(
         private ChatService $chatService,
+        private ChatPollService $pollService,
+        private TripFactsService $tripFacts,
         private WeatherService $weatherService,
     ) {}
 
@@ -86,6 +91,8 @@ class ChatController extends Controller
             'user:id,name,nickname,avatar',
             'replyTo.user:id,name,nickname,avatar',
             'reactions:id,message_id,user_id,emoji',
+            'poll.options',
+            'poll.votes',
         ];
     }
 
@@ -275,6 +282,158 @@ class ChatController extends Controller
             'message_id' => $message->id,
             'reactions' => $reactions,
         ], 'อัปเดตรีแอกชันแล้ว');
+    }
+
+    /**
+     * "ข้อมูลการเดินทางของฉัน" — คำตอบของคำถามที่ถูกถามซ้ำที่สุดในห้อง
+     * (ขึ้นรถกี่โมง / รอที่ไหน / ทะเบียนรถ / เบอร์คนขับ-สตาฟ)
+     *
+     * ตอบเป็นรายบุคคล เพราะจุดรับของแต่ละคนในรอบเดียวกันไม่เหมือนกัน
+     */
+    public function tripInfo(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        return $this->success($this->tripFacts->forUser($user, $schedule));
+    }
+
+    /**
+     * สตาฟ/แอดมินกดโพสต์สรุปการเดินทางเข้าห้องด้วยปุ่มเดียว — ตอบทุกคนพร้อมกัน
+     * แทนการพิมพ์ตอบทีละคนทุกทริป
+     */
+    public function postTripSummary(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canModerate($user, $schedule)) {
+            return $this->error('เฉพาะสตาฟหรือทีมงานเท่านั้นที่ส่งสรุปการเดินทางได้', 403);
+        }
+
+        $message = $this->chatService->postSystem(
+            $schedule,
+            $this->tripFacts->roundSummaryText($schedule),
+        );
+
+        $message->load($this->messageRelations());
+
+        return $this->success(
+            $this->chatService->presentMessage($message, $user->id),
+            'ส่งสรุปการเดินทางเข้าห้องแล้ว',
+            201,
+        );
+    }
+
+    /**
+     * สร้างโพลในห้อง — ใครก็ได้ที่อยู่ในห้อง (ทริปกลุ่มต้องตัดสินใจร่วมกัน)
+     */
+    public function createPoll(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'question' => ['required', 'string', 'max:200'],
+            'options' => ['required', 'array', 'min:'.ChatPoll::MIN_OPTIONS, 'max:'.ChatPoll::MAX_OPTIONS],
+            'options.*' => ['required', 'string', 'max:100'],
+            'allow_multiple' => ['nullable', 'boolean'],
+            // ปิดโหวตอัตโนมัติหลังผ่านไปกี่ชั่วโมง (ไม่ส่ง = เปิดจนกว่าจะปิดเอง)
+            'duration_hours' => ['nullable', 'integer', 'min:1', 'max:168'],
+        ]);
+
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์ส่งข้อความในห้องนี้', 403);
+        }
+
+        try {
+            $poll = $this->pollService->create(
+                $user,
+                $schedule,
+                trim($validated['question']),
+                $validated['options'],
+                (bool) ($validated['allow_multiple'] ?? false),
+                $validated['duration_hours'] ?? null,
+            );
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        $message = ChatMessage::with($this->messageRelations())->find($poll->message_id);
+
+        // ผู้สร้างถือว่าอ่านถึงข้อความล่าสุดแล้ว + แจ้งเตือนสมาชิกเหมือนข้อความปกติ
+        if ($message) {
+            $this->chatService->markRead($user, $schedule, $message->id);
+            SendChatPushJob::dispatch($message->id, $user->id, []);
+        }
+
+        return $this->success(
+            $message ? $this->chatService->presentMessage($message, $user->id) : null,
+            'สร้างโพลแล้ว',
+            201,
+        );
+    }
+
+    /**
+     * ลงคะแนน — ส่ง option_ids ว่างมาได้ = ถอนโหวตของตัวเองทั้งหมด
+     */
+    public function votePoll(Request $request, int $scheduleId, int $pollId): JsonResponse
+    {
+        $validated = $request->validate([
+            'option_ids' => ['present', 'array', 'max:'.ChatPoll::MAX_OPTIONS],
+            'option_ids.*' => ['integer'],
+        ]);
+
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        $poll = ChatPoll::where('schedule_id', $scheduleId)->findOrFail($pollId);
+
+        try {
+            $poll = $this->pollService->vote($user, $poll, $validated['option_ids']);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success([
+            'message_id' => (int) $poll->message_id,
+            'poll' => $this->pollService->present($poll, $user->id),
+        ], 'บันทึกคะแนนแล้ว');
+    }
+
+    /**
+     * ปิดโหวต — เฉพาะคนสร้างโพล หรือสตาฟ/แอดมินประจำรอบ
+     */
+    public function closePoll(Request $request, int $scheduleId, int $pollId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        $poll = ChatPoll::where('schedule_id', $scheduleId)->findOrFail($pollId);
+
+        if ((int) $poll->created_by_id !== (int) $user->id
+            && ! $this->chatService->canModerate($user, $schedule)) {
+            return $this->error('ปิดโพลได้เฉพาะผู้สร้างโพลหรือทีมงาน', 403);
+        }
+
+        $poll = $this->pollService->close($poll);
+
+        return $this->success([
+            'message_id' => (int) $poll->message_id,
+            'poll' => $this->pollService->present($poll, $user->id),
+        ], 'ปิดโพลแล้ว');
     }
 
     public function typing(Request $request, int $scheduleId): JsonResponse

@@ -44,6 +44,8 @@ class BookingResource extends JsonResource
                     'region' => $this->pickupPoint->region,
                     'pickup_location' => $this->pickupPoint->pickup_location,
                     'region_label' => $this->pickupPoint->region_label,
+                    // เวลาขึ้นรถ — ก่อนหน้านี้ client ต้องไปไล่หาเองใน schedule.pickup_points
+                    'pickup_time' => $this->pickupPoint->pickup_time,
                     'map_url' => $this->pickupPoint->map_url,
                     'image_url' => $this->pickupPoint->image_url,
                     'notes' => $this->pickupPoint->notes,

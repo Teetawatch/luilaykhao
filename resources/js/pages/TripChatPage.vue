@@ -56,9 +56,18 @@
             <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีข้อความ เริ่มสนทนากับสตาฟได้เลย!</p>
           </div>
 
+          <!-- ข้อความอัตโนมัติจากระบบ (ไทม์ไลน์ทริป) — การ์ดเต็มความกว้าง อ่านเป็นย่อหน้า -->
+          <template v-for="m in messages" :key="m.id">
+          <div v-if="m.sender_role === 'system'" class="rounded-2xl border border-[#006565]/20 bg-[#006565]/[0.06] px-4 py-3">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[10px] font-black tracking-wide text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ข้อความจากทีมงาน</span>
+              <span class="text-[10px] text-[#A0B0B0]">{{ formatTime(m.created_at) }}</span>
+            </div>
+            <p class="text-sm text-[#1a1c1c] leading-relaxed whitespace-pre-line" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ m.body }}</p>
+          </div>
+
           <div
-            v-for="m in messages"
-            :key="m.id"
+            v-else
             class="flex gap-2"
             :class="m.is_mine ? 'flex-row-reverse' : 'flex-row'"
           >
@@ -83,8 +92,42 @@
                 </span>
               </div>
 
+              <!-- โพล — การ์ดโหวตแทนบับเบิลข้อความ -->
+              <div v-if="m.poll" class="w-full bg-white border border-[#E8EEEF] rounded-2xl px-3.5 py-3"
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                <div class="flex items-start gap-1.5 mb-1">
+                  <span class="material-symbols-rounded text-[18px] text-[#006565] shrink-0">bar_chart</span>
+                  <p class="text-sm font-bold text-[#1a1c1c] leading-snug">{{ m.poll.question }}</p>
+                </div>
+                <p class="text-[11px] text-[#889696] mb-2.5">{{ pollMeta(m.poll) }}</p>
+
+                <button
+                  v-for="opt in m.poll.options"
+                  :key="opt.id"
+                  @click="votePoll(m, opt)"
+                  :disabled="m.poll.is_closed || votingPollId === m.poll.id"
+                  class="relative w-full mb-1.5 overflow-hidden rounded-xl border text-left transition-all disabled:cursor-default"
+                  :class="opt.voted_by_me ? 'border-[#006565]' : 'border-[#E8EEEF] hover:border-[#006565]/40'"
+                >
+                  <span class="absolute inset-y-0 left-0 bg-[#006565]/10"
+                    :style="{ width: pollPercent(m.poll, opt) + '%' }"></span>
+                  <span class="relative flex items-center gap-2 px-3 py-2.5">
+                    <span v-if="opt.voted_by_me" class="material-symbols-rounded text-[15px] text-[#006565]">check_circle</span>
+                    <span class="flex-1 text-[13px] text-[#1a1c1c]" :class="opt.voted_by_me ? 'font-bold' : 'font-medium'">{{ opt.label }}</span>
+                    <span class="text-[11px] font-bold text-[#889696]">
+                      {{ opt.vote_count === 0 ? '—' : opt.vote_count + ' · ' + pollPercent(m.poll, opt) + '%' }}
+                    </span>
+                  </span>
+                </button>
+
+                <button v-if="canClosePoll(m.poll) && !m.poll.is_closed" @click="closePoll(m)"
+                  class="mt-1 flex items-center gap-1 text-[11px] font-bold text-[#889696] hover:text-[#006565]">
+                  <span class="material-symbols-rounded text-[14px]">lock</span> ปิดโหวต
+                </button>
+              </div>
+
               <!-- Bubble -->
-              <div class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed"
+              <div v-else class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-line"
                 :class="m.is_mine
                   ? 'bg-[#006565] text-white rounded-tr-sm'
                   : 'bg-white text-[#1a1c1c] border border-[#E8EEEF] rounded-tl-sm'"
@@ -100,6 +143,7 @@
               <span class="text-[10px] text-[#A0B0B0] px-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ formatTime(m.created_at) }}</span>
             </div>
           </div>
+          </template>
         </template>
       </div>
 
@@ -158,9 +202,12 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import TierBadge from '../components/TierBadge.vue';
+import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
+const auth = useAuthStore();
 const scheduleId = route.params.scheduleId;
+const votingPollId = ref(null);
 
 const tripTitle = ref(route.query.title || '');
 const departureDate = ref(route.query.date || '');
@@ -257,6 +304,60 @@ async function send() {
 
 function markRead() {
   api.post(`/schedules/${scheduleId}/chat/read`).catch(() => {});
+}
+
+// ── โพลในห้อง ────────────────────────────────────────────────────────────────
+// สร้างโพลทำได้จากแอป ส่วนบนเว็บโหวต/ดูผล/ปิดโหวตได้ครบ
+
+function pollMeta(poll) {
+  const parts = [];
+  if (poll.allow_multiple) parts.push('เลือกได้หลายข้อ');
+  parts.push(poll.voter_count > 0 ? `โหวตแล้ว ${poll.voter_count} คน` : 'ยังไม่มีใครโหวต');
+  if (poll.is_closed) parts.push('ปิดโหวตแล้ว');
+  return parts.join(' · ');
+}
+
+function pollPercent(poll, option) {
+  if (!poll.voter_count) return 0;
+  return Math.round((option.vote_count / poll.voter_count) * 100);
+}
+
+function canClosePoll(poll) {
+  const myId = auth.user?.id;
+  return !!myId && Number(poll.created_by_id) === Number(myId);
+}
+
+async function votePoll(message, option) {
+  const poll = message.poll;
+  if (!poll || poll.is_closed || votingPollId.value) return;
+
+  const current = poll.my_option_ids || [];
+  const chosen = poll.allow_multiple
+    ? (current.includes(option.id) ? current.filter(id => id !== option.id) : [...current, option.id])
+    : (current.includes(option.id) ? [] : [option.id]);
+
+  votingPollId.value = poll.id;
+  try {
+    const res = await api.post(`/schedules/${scheduleId}/chat/polls/${poll.id}/vote`, {
+      option_ids: chosen,
+    });
+    message.poll = res.data.data.poll;
+  } catch (e) {
+    alert(e?.response?.data?.message || 'บันทึกคะแนนไม่สำเร็จ');
+  } finally {
+    votingPollId.value = null;
+  }
+}
+
+async function closePoll(message) {
+  const poll = message.poll;
+  if (!poll) return;
+  try {
+    const res = await api.post(`/schedules/${scheduleId}/chat/polls/${poll.id}/close`);
+    message.poll = res.data.data.poll;
+  } catch (e) {
+    alert(e?.response?.data?.message || 'ปิดโพลไม่สำเร็จ');
+  }
 }
 
 function subscribe() {

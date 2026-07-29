@@ -245,6 +245,13 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'pin']);
         Route::delete('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'unpin']);
         Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
+        // คำถามด่วน "ขึ้นรถกี่โมง/รอที่ไหน/ทะเบียนรถ/เบอร์ติดต่อ" + ปุ่มสรุปของสตาฟ
+        Route::get('schedules/{id}/chat/trip-info', [ChatController::class, 'tripInfo']);
+        Route::post('schedules/{id}/chat/trip-summary', [ChatController::class, 'postTripSummary']);
+        // โพลในห้องแชท — สร้าง/โหวต/ปิดโหวต
+        Route::post('schedules/{id}/chat/polls', [ChatController::class, 'createPoll'])->middleware('throttle:chat');
+        Route::post('schedules/{id}/chat/polls/{pollId}/vote', [ChatController::class, 'votePoll']);
+        Route::post('schedules/{id}/chat/polls/{pollId}/close', [ChatController::class, 'closePoll']);
         Route::post('schedules/{id}/chat/typing', [ChatController::class, 'typing'])->middleware('throttle:60,1');
         Route::post('schedules/{id}/chat/joined', [ChatController::class, 'joined'])->middleware('throttle:20,1');
 

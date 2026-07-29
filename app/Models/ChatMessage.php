@@ -6,11 +6,12 @@ use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ChatMessage extends Model
 {
     protected $fillable = [
-        'schedule_id', 'user_id', 'reply_to_id', 'sender_role', 'body', 'image_path',
+        'schedule_id', 'user_id', 'reply_to_id', 'sender_role', 'system_key', 'body', 'image_path',
         'pinned_at', 'pinned_by_id', 'edited_at', 'is_deleted', 'mentions',
     ];
 
@@ -52,5 +53,13 @@ class ChatMessage extends Model
     public function reactions(): HasMany
     {
         return $this->hasMany(ChatReaction::class, 'message_id');
+    }
+
+    /**
+     * โพลที่แนบมากับข้อความนี้ — ข้อความที่มีโพลจะเรนเดอร์เป็นการ์ดโหวตแทนบับเบิลปกติ
+     */
+    public function poll(): HasOne
+    {
+        return $this->hasOne(ChatPoll::class, 'message_id');
     }
 }

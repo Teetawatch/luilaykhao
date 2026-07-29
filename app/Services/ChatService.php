@@ -204,13 +204,17 @@ class ChatService
 
     /**
      * โพสต์ข้อความระบบเข้าห้อง (เช่น "คนขับออกเดินทางแล้ว") แล้วกระจายเรียลไทม์
+     *
+     * $systemKey = คีย์ของข้อความอัตโนมัติตามไทม์ไลน์ (unique ต่อห้อง) ปล่อยว่าง
+     * ได้สำหรับข้อความระบบทั่วไปที่โพสต์ซ้ำได้
      */
-    public function postSystem(TripSchedule $schedule, string $body): ChatMessage
+    public function postSystem(TripSchedule $schedule, string $body, ?string $systemKey = null): ChatMessage
     {
         $message = ChatMessage::create([
             'schedule_id' => $schedule->id,
             'user_id' => null,
             'sender_role' => 'system',
+            'system_key' => $systemKey,
             'body' => $body,
         ]);
 
@@ -410,9 +414,26 @@ class ChatService
             ] : null,
             'reply_to' => $this->presentReplyExcerpt($message->replyTo),
             'reactions' => $this->aggregateReactions($message),
+            'poll' => $this->presentPoll($message, $currentUserId),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];
+    }
+
+    /**
+     * โพลที่แนบกับข้อความ (ถ้ามี) — ข้อความที่ถูกลบไม่ต้องส่งโพลไปด้วย
+     *
+     * @return array<string, mixed>|null
+     */
+    private function presentPoll(ChatMessage $message, ?int $currentUserId): ?array
+    {
+        if ($message->is_deleted) {
+            return null;
+        }
+
+        $poll = $message->relationLoaded('poll') ? $message->poll : $message->poll()->first();
+
+        return $poll ? app(ChatPollService::class)->present($poll, $currentUserId) : null;
     }
 
     /**

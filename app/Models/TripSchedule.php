@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\NotifyTripCrewAssignedJob;
 use App\Jobs\SendDriverAssignmentPushJob;
 use App\Support\LoyaltyTier;
 use App\Support\SiteSettings;
@@ -104,6 +105,13 @@ class TripSchedule extends Model
                 SendDriverAssignmentPushJob::dispatch(
                     $schedule->id,
                     (int) $schedule->vehicle_id,
+                );
+
+                // ลูกค้าก็ต้องรู้ด้วย — "ทะเบียนรถอะไร เบอร์คนขับ" คือคำถามยอดฮิต
+                // ในห้องแชท และก่อนหน้านี้ไม่มีอะไรบอกเขาว่าข้อมูลมาแล้ว
+                NotifyTripCrewAssignedJob::dispatch(
+                    $schedule->id,
+                    NotifyTripCrewAssignedJob::KIND_VEHICLE,
                 );
             }
         });

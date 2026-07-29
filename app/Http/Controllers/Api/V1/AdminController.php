@@ -14,6 +14,7 @@ use App\Http\Resources\SchedulePickupPointResource;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Http\Resources\VehicleResource;
+use App\Jobs\NotifyTripCrewAssignedJob;
 use App\Jobs\SendStaffAssignmentPushJob;
 use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
@@ -883,6 +884,12 @@ class AdminController extends Controller
                 $schedule->id,
                 $newStaffIds->all(),
                 $request->user()->id,
+            );
+
+            // ลูกค้าในรอบก็ควรรู้ว่ามีสตาฟประจำรอบแล้ว (พร้อมเบอร์ในใบจอง)
+            NotifyTripCrewAssignedJob::dispatch(
+                $schedule->id,
+                NotifyTripCrewAssignedJob::KIND_STAFF,
             );
         }
         $schedule->load(['trip', 'vehicle']);

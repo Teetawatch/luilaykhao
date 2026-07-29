@@ -8,6 +8,7 @@ use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\IssueBirthdayCouponsJob;
+use App\Jobs\PostTripChatTimelineJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\PurgeExpiredSchedulePhotosJob;
@@ -62,6 +63,10 @@ Schedule::job(new AbandonedBookingWinbackJob)->hourly()->withoutOverlapping();
 Schedule::job(new ProcessTripAlertsJob)->everyThirtyMinutes()->withoutOverlapping();
 Schedule::job(new ExpireGroupPlansJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpireFlexiOffersJob)->everyFiveMinutes()->withoutOverlapping();
+// ข้อความอัตโนมัติในห้องแชทตามไทม์ไลน์ทริป (นับถอยหลัง → เตรียมของ → อากาศ →
+// จุดรับคืนก่อนเดินทาง → เช้าวันเดินทาง → ปิดทริป → เตือนเซฟรูปก่อนห้องถูกลบ)
+// ทุก 15 นาที เพราะข้อความ "ก่อนรถออก 3 ชม." ต้องละเอียดระดับชั่วโมง
+Schedule::job(new PostTripChatTimelineJob)->everyFifteenMinutes()->withoutOverlapping();
 // Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.
 Schedule::job(new PurgeEndedTripChatsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // ลบรูปให้ลูกค้าโหลด 4 วันหลังอัปโหลด (ทั้งแถวและไฟล์บน R2) — รายชั่วโมงเพื่อให้
