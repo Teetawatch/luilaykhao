@@ -561,6 +561,16 @@ class DriverController extends Controller
                 ->filter(fn ($addon) => $addon['name'] !== '')
                 ->values();
 
+            // อุปกรณ์ที่เช่ามาด้วย — สตาฟต้องแจกก่อนออกเดินทางและไล่รับคืนตอนจบทริป
+            // (ใบแจกเต็ม ๆ พร้อมสถานะแจก/คืน อยู่ที่ staff/schedules/{id}/rentals)
+            $rentals = collect($booking->selected_rentals ?? [])
+                ->map(fn ($rental) => [
+                    'name' => (string) ($rental['name'] ?? ''),
+                    'quantity' => (int) ($rental['quantity'] ?? 1),
+                ])
+                ->filter(fn ($rental) => $rental['name'] !== '')
+                ->values();
+
             $bookingPoint = $this->pointOnSchedule($booking->pickupPoint, $booking);
 
             return [
@@ -583,6 +593,7 @@ class DriverController extends Controller
                 'passenger_count' => $passengers->count(),
                 'passengers' => $passengers,
                 'selected_addons' => $addons,
+                'selected_rentals' => $rentals,
             ];
         })->values();
 

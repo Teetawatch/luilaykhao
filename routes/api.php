@@ -306,6 +306,9 @@ Route::prefix('v1')->group(function () {
 
         // ยอดค้างชำระของรอบที่สตาฟรับผิดชอบ (ทวง + ให้ลูกค้าสแกนจ่ายหน้างาน)
         Route::get('staff/schedules/{id}/outstanding', [StaffController::class, 'outstanding']);
+        // ใบแจกอุปกรณ์เช่าหน้างาน — ดูรายการ + ติ๊กแจก/รับคืน
+        Route::get('staff/schedules/{id}/rentals', [StaffController::class, 'rentals']);
+        Route::post('staff/schedules/{id}/rentals/mark', [StaffController::class, 'markRental']);
         Route::post('staff/schedules/{id}/outstanding/{ref}/send-link', [StaffController::class, 'sendPaymentLink'])
             ->middleware('throttle:payment');
 

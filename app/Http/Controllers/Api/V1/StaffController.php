@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\StaffReview;
 use App\Models\TripSchedule;
 use App\Services\OutstandingPaymentService;
+use App\Services\RentalHandoutService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class StaffController extends Controller
 
     public function __construct(
         private OutstandingPaymentService $outstandingPaymentService,
+        private RentalHandoutService $rentalHandoutService,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -158,6 +160,72 @@ class StaffController extends Controller
             'total_due' => round((float) $rows->sum('amount_due'), 2),
             'items' => $rows->values()->all(),
         ]);
+    }
+
+    /**
+     * ใบแจกอุปกรณ์เช่าของรอบ — ยอดรวมต่อชิ้น + รายการรายการจอง พร้อมสถานะแจก/รับคืน
+     */
+    public function rentals(Request $request, int $scheduleId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        return $this->success($this->rentalHandoutService->forSchedule($schedule));
+    }
+
+    /**
+     * ติ๊ก "แจกแล้ว" / "รับคืนแล้ว" ของอุปกรณ์หนึ่งชิ้น (ติ๊กซ้ำ = ยกเลิก)
+     */
+    public function markRental(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'booking_ref' => ['required', 'string'],
+            'item_name' => ['required', 'string', 'max:255'],
+            'action' => ['required', 'in:handout,return'],
+            'done' => ['required', 'boolean'],
+        ]);
+
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $booking = Booking::where('schedule_id', $schedule->id)
+            ->where('booking_ref', $validated['booking_ref'])
+            ->first();
+
+        if (! $booking) {
+            return $this->error('ไม่พบการจองนี้ในรอบเดินทาง', 404);
+        }
+
+        try {
+            $this->rentalHandoutService->mark(
+                $request->user(),
+                $booking,
+                $validated['item_name'],
+                $validated['action'],
+                $validated['done'],
+            );
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            $this->rentalHandoutService->forSchedule($schedule),
+            $validated['action'] === 'handout' ? 'บันทึกการแจกอุปกรณ์แล้ว' : 'บันทึกการรับคืนแล้ว',
+        );
     }
 
     /**
