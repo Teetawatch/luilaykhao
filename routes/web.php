@@ -13,6 +13,7 @@ use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\SlipController;
 use App\Models\Article;
 use App\Models\ArticleCategory;
+use App\Models\FaceSearchConsent;
 use App\Models\Place;
 use App\Models\Tag;
 use App\Models\Trip;
@@ -119,7 +120,11 @@ Route::get('/.well-known/assetlinks.json', function () {
 
 // Public photo album — ดาวน์โหลดรูปประจำรอบจากลิงก์สาธารณะ (ไม่ต้องล็อกอิน)
 Route::get('/album/{token}', function (string $token) {
-    return response()->view('album', ['token' => $token]);
+    return response()->view('album', [
+        'token' => $token,
+        // เวอร์ชันข้อความขอความยินยอมค้นหาด้วยใบหน้า — ขยับเมื่อไหร่ ลูกค้าถูกถามใหม่
+        'consentVersion' => FaceSearchConsent::CURRENT_VERSION,
+    ]);
 })->where('token', '[A-Za-z0-9]+')->middleware('throttle:120,1');
 
 Route::get('/album/{token}/download', [PublicAlbumController::class, 'downloadAll'])
@@ -131,6 +136,12 @@ Route::get('/album/{token}/download/{photoId}', [PublicAlbumController::class, '
     ->where(['token' => '[A-Za-z0-9]+', 'photoId' => '[0-9]+'])
     ->middleware('throttle:120,1')
     ->name('album.download-one');
+
+// รูปแบบ inline จากโดเมนเดียวกัน — ใช้ตอนสแกนใบหน้าเมื่ออ่านรูปจาก R2 ตรง ๆ ไม่ได้
+Route::get('/album/{token}/photo/{photoId}', [PublicAlbumController::class, 'photoFile'])
+    ->where(['token' => '[A-Za-z0-9]+', 'photoId' => '[0-9]+'])
+    ->middleware('throttle:600,1')
+    ->name('album.photo');
 
 // Public birth-date page — ลูกค้ากรอกวัน/เดือน/ปีเกิดเองจากลิงก์เฉพาะคน (ไม่ต้องล็อกอิน)
 // เพื่อนร่วมทางกรอกข้อมูลของตัวเองผ่านลิงก์เฉพาะคน (ไม่ต้องล็อกอิน ไม่ต้องมีแอป)

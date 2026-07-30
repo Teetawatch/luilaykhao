@@ -394,6 +394,9 @@ Route::prefix('v1')->group(function () {
 
     // Public photo album: ดาวน์โหลดรูปประจำรอบผ่านลิงก์สาธารณะ (ไม่ต้องล็อกอิน)
     Route::get('album/{token}/photos', [PublicAlbumController::class, 'photos'])->middleware('throttle:120,1');
+    // ค้นหารูปตัวเองด้วยใบหน้า — บันทึก/ถอนความยินยอม PDPA (ไม่มีการส่งภาพใบหน้ามาที่นี่)
+    Route::post('album/{token}/face-consent', [PublicAlbumController::class, 'storeFaceConsent'])->middleware('throttle:20,1');
+    Route::delete('album/{token}/face-consent', [PublicAlbumController::class, 'revokeFaceConsent'])->middleware('throttle:20,1');
 
     // Customer Tracking is authenticated above; booking refs are not public lookup keys.
 
