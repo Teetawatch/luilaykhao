@@ -13,10 +13,10 @@
       <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
         <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
         <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
-          คำถามที่พบบ่อย
+          {{ content.hero_title }}
         </h1>
         <p class="text-lg md:text-xl text-white/80 font-bold max-w-2xl mx-auto tracking-wide">
-          รวบรวมคำตอบสำหรับข้อสงสัย เพื่อให้คุณเตรียมพร้อมสำหรับทริปสุดพิเศษ
+          {{ content.hero_subtitle }}
         </p>
       </div>
     </section>
@@ -26,9 +26,9 @@
       <div class="max-w-4xl mx-auto px-6 md:px-8">
         <div class="bg-white rounded-[2.5rem] p-8 md:p-12 border border-[var(--color-sand-dark)] space-y-12">
           
-          <div v-for="(group, gIndex) in faqGroups" :key="gIndex" class="space-y-6">
+          <div v-for="(group, gIndex) in content.groups" :key="gIndex" class="space-y-6">
             <h2 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] flex items-center gap-3">
-              <span class="w-2 h-8 rounded-full" :class="group.color"></span>
+              <span class="w-2 h-8 rounded-full" :class="TONE_CLASSES[group.tone] || TONE_CLASSES.primary"></span>
               {{ group.title }}
             </h2>
             
@@ -49,10 +49,10 @@
           </div>
 
           <div class="pt-8 border-t border-[var(--color-sand-dark)] text-center">
-            <p class="text-[var(--color-text-muted)] font-medium mb-6">หากยังมีข้อสงสัยด้านอื่นๆ สามารถสอบถามเราได้โดยตรง</p>
+            <p class="text-[var(--color-text-muted)] font-medium mb-6">{{ content.footer_text }}</p>
              <router-link to="/contact" class="inline-flex items-center gap-2 px-8 py-3.5 border-2 border-[var(--color-primary)] text-[var(--color-primary)] rounded-full font-bold hover:bg-[var(--color-primary)] hover:text-white transition-all">
               <span class="material-symbols-rounded text-[20px]">chat</span>
-              ติดต่อเจ้าหน้าที่
+              {{ content.footer_cta }}
             </router-link>
           </div>
         </div>
@@ -64,38 +64,28 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { useHead } from '@unhead/vue';
+import { usePageContent } from '../lib/pageContent';
 
-const faqGroups = [
-  {
-    title: 'การจองและชำระเงิน',
-    color: 'bg-[var(--color-primary)]',
-    questions: [
-      { q: 'ต้องชำระเงินมัดจำเท่าไหร่?', a: 'โดยปกติเราให้ชำระเงินเต็มจำนวนเพื่อเป็นการยืนยันที่นั่งและดำเนินการจองที่พัก/ตั๋วเครื่องบินในทันที ยกเว้นทริปพิเศษเป็นกรณีไป' },
-      { q: 'สามารถออกใบกำกับภาษีได้หรือไม่?', a: 'ได้ครับ หากท่านจองในนามนิติบุคคล โปรดแจ้งข้อมูลทาง LINE @luilaykhao หลังจากจองสำเร็จ' },
-    ]
-  },
-  {
-    title: 'การเตรียมตัวเดินทาง',
-    color: 'bg-[var(--color-accent)]',
-    questions: [
-      { q: 'ต้องเตรียมอุปกรณ์อะไรไปบ้างในทริปเดินป่า?', a: 'แต่ละทริปจะมี "สิ่งที่ต้องเตรียม" ระบุไว้ในหน้ารายละเอียดทริปครับ เบื้องต้นควรมีรองเท้าเดินป่า เสื้อผ้าแห้งไว และขวดน้ำส่วนตัว' },
-      { q: 'กรณีแพ้อาหารต้องแจ้งตอนไหน?', a: 'สามารถระบุได้ในขั้นตอนการจองในส่วนของ "หมายเหตุ" หรือแจ้งทีมงานทันทีหลังจากจองสำเร็จครับ' },
-    ]
-  },
-  {
-    title: 'นโยบายการเปลี่ยนแปลง',
-    color: 'bg-[var(--color-gold)]',
-    questions: [
-      { q: 'หากติดธุระด่วนสามารถส่งต่อที่นั่งให้เพื่อนได้ไหม?', a: 'สามารถทำได้ครับ แต่ต้องแจ้งทีมงานล่วงหน้าอย่างน้อย 3-7 วันเพื่อเปลี่ยนชื่อผู้ทำประกันและประสานงานจุดนัดพบ' },
-      { q: 'ถ้าฝนตกหนักทริปจะยกเลิกไหม?', a: 'เรายึดถือความปลอดภัยเป็นสำคัญ หากสภาพอากาศไม่เอื้ออำนวย ไกด์ผู้เชี่ยวชาญจะประเมินหน้างาน หรือหากจำเป็นต้องยกเลิกทริป เรายินดีคืนเงินเต็มจำนวนครับ' },
-    ]
-  }
-];
+/** แอดมินเลือกได้แค่ "โทน" ส่วนคลาสจริงคุมไว้ที่นี่ */
+const TONE_CLASSES = {
+  primary: 'bg-[var(--color-primary)]',
+  accent: 'bg-[var(--color-accent)]',
+  gold: 'bg-[var(--color-gold)]',
+  teal: 'bg-teal-500',
+};
+
+const { content } = usePageContent('faq', {
+  hero_title: '',
+  hero_subtitle: '',
+  groups: [],
+  footer_text: '',
+  footer_cta: '',
+});
 
 // Generate FAQ JSON-LD for Google rich results
 const faqJsonLd = computed(() => {
-  const allQuestions = faqGroups.flatMap(group =>
-    group.questions.map(item => ({
+  const allQuestions = (content.value.groups || []).flatMap(group =>
+    (group.questions || []).map(item => ({
       '@type': 'Question',
       name: item.q,
       acceptedAnswer: {

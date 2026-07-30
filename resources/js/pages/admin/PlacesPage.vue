@@ -12,12 +12,30 @@
       </button>
     </div>
 
+    <!-- อธิบายให้ชัดว่ากรอกตรงนี้แล้วไปโผล่ที่ไหน เพราะความเชื่อมโยงไม่เห็นจากหน้านี้ -->
+    <div class="table-card guide-card">
+      <h3><span class="material-symbols-rounded">tips_and_updates</span> ข้อมูลตรงนี้ไปขึ้นที่ปฏิทิน "เดือนไหนไปไหนดี"</h3>
+      <ol>
+        <li>กด <strong>เพิ่มสถานที่</strong> แล้วกรอกชื่อ ภูมิภาค และคำสรุปสั้น</li>
+        <li>ติ๊ก <strong>เดือนที่ควรไป</strong> — เดือนที่ติ๊กไว้คือเดือนที่สถานที่นี้จะไปโผล่ในปฏิทิน</li>
+        <li>ถ้าอุทยานปิดบางช่วง ติ๊ก <strong>เดือนที่ปิด</strong> ด้วย จะไปอยู่หัวข้อ "ปิดในเดือนนี้" และถูกตัดออกจากช่วงที่ควรไปอัตโนมัติ</li>
+        <li>ตั้งสถานะเป็น <strong>เผยแพร่</strong> — ฉบับร่างจะไม่ขึ้นหน้าเว็บ</li>
+      </ol>
+      <p class="guide-foot">
+        ดูผลลัพธ์ได้ที่ <a href="/seasons" target="_blank">/seasons</a>
+        และ <a href="/places" target="_blank">/places</a>
+      </p>
+    </div>
+
     <div class="table-card">
       <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
 
       <div class="empty-state" v-else-if="!places.length">
         <span class="material-symbols-rounded">landscape</span>
-        <p>ยังไม่มีสถานที่ — เพิ่มที่แรกเพื่อให้หน้า "เดือนไหนไปไหนดี" มีข้อมูลแสดง</p>
+        <p>ยังไม่มีสถานที่ — หน้า "เดือนไหนไปไหนดี" จะยังว่างอยู่จนกว่าจะเพิ่มที่แรก</p>
+        <button class="btn-primary" @click="openCreate">
+          <span class="material-symbols-rounded">add</span> เพิ่มสถานที่แรก
+        </button>
       </div>
 
       <div class="table-container" v-else>
@@ -46,7 +64,13 @@
                 </div>
               </td>
               <td>{{ regionLabel(place.region) }}</td>
-              <td>{{ monthsLabel(place.best_months) }}</td>
+              <td>
+                <template v-if="place.best_months?.length">{{ monthsLabel(place.best_months) }}</template>
+                <!-- ไม่ติ๊กเดือนเลย = เผยแพร่แล้วก็ยังไม่โผล่ในปฏิทิน ต้องเตือนให้เห็น -->
+                <span v-else class="warn-pill" title="ยังไม่ได้ติ๊กเดือนที่ควรไป จึงไม่ขึ้นในปฏิทิน /seasons">
+                  <span class="material-symbols-rounded">warning</span> ยังไม่ได้เลือกเดือน
+                </span>
+              </td>
               <td>{{ place.trips_count ?? 0 }}</td>
               <td>
                 <span class="status-badge" :class="place.status === 'published' ? 'status-active' : 'status-inactive'">
@@ -464,6 +488,74 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.guide-card {
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.guide-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 10px;
+}
+
+.guide-card h3 .material-symbols-rounded {
+  color: #006565;
+}
+
+.guide-card ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.guide-card li {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.guide-card strong {
+  color: #111827;
+}
+
+.guide-foot {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 12px 0 0;
+}
+
+.guide-foot a {
+  color: #006565;
+  font-weight: 700;
+}
+
+.warn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b54708;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.warn-pill .material-symbols-rounded {
+  font-size: 14px;
+}
+
+.empty-state .btn-primary {
+  margin-top: 12px;
+}
+
 .month-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));

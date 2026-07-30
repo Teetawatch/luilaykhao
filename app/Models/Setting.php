@@ -34,4 +34,10 @@ class Setting extends Model
         static::updateOrCreate(['key' => $key], ['value' => $value]);
         Cache::forget("setting:{$key}");
     }
+
+    /** ล้างแคชของคีย์หนึ่ง — ใช้เมื่อลบแถวทิ้งตรง ๆ โดยไม่ผ่าน put() */
+    public static function forget(string $key): void
+    {
+        Cache::forget("setting:{$key}");
+    }
 }

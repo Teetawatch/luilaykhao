@@ -3,11 +3,8 @@
     <div class="max-w-3xl mx-auto px-4 sm:px-6">
 
       <section class="mb-6 print:mb-4">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2">เช็คลิสต์ของที่ต้องเตรียม</h1>
-        <p class="text-[#505E5E] text-sm print:hidden">
-          เลือกแบบทริปที่จะไป แล้วได้รายการที่ตรงกับสถานการณ์จริง
-          ติ๊กแล้วระบบจำไว้ให้ ปรินต์หรือเปิดค้างไว้ตอนจัดของก็ได้
-        </p>
+        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2">{{ content.title }}</h1>
+        <p class="text-[#505E5E] text-sm print:hidden">{{ content.intro }}</p>
         <p class="hidden print:block text-sm text-[#505E5E]">
           {{ activeTypeLabel }} · {{ activeSeasonLabel }} · {{ activeNightsLabel }}
         </p>
@@ -20,7 +17,7 @@
             <p class="text-[12px] font-bold text-[#505E5E] mb-2">แบบทริป</p>
             <div class="flex flex-wrap gap-2">
               <button
-                v-for="type in TRIP_TYPES"
+                v-for="type in content.trip_types"
                 :key="type.key"
                 type="button"
                 class="chip"
@@ -34,7 +31,7 @@
             <p class="text-[12px] font-bold text-[#505E5E] mb-2">ช่วงเวลา</p>
             <div class="flex flex-wrap gap-2">
               <button
-                v-for="season in SEASONS"
+                v-for="season in content.seasons"
                 :key="season.key"
                 type="button"
                 class="chip"
@@ -48,7 +45,7 @@
             <p class="text-[12px] font-bold text-[#505E5E] mb-2">ระยะเวลา</p>
             <div class="flex flex-wrap gap-2">
               <button
-                v-for="night in NIGHTS"
+                v-for="night in content.nights"
                 :key="night.key"
                 type="button"
                 class="chip"
@@ -110,8 +107,8 @@
         </ul>
       </section>
 
-      <p class="text-center text-[13px] text-[#8A9A9A] mt-6 print:hidden">
-        รายการนี้เป็นพื้นฐานทั่วไป — ทริปที่จองกับเราจะมีรายการเฉพาะของทริปนั้นแจ้งอีกที
+      <p v-if="content.footnote" class="text-center text-[13px] text-[#8A9A9A] mt-6 print:hidden">
+        {{ content.footnote }}
       </p>
     </div>
   </div>
@@ -119,15 +116,39 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
-import { CATEGORIES, NIGHTS, SEASONS, TRIP_TYPES, filterItems } from '../lib/packingList';
+import { usePageContent } from '../lib/pageContent';
 
 const STORAGE_KEY = 'packing_checklist';
 
-const options = reactive({ tripType: 'hiking', season: 'winter', nights: 'day' });
+const { content } = usePageContent('checklist', {
+  title: '',
+  intro: '',
+  footnote: '',
+  trip_types: [],
+  seasons: [],
+  nights: [],
+  categories: [],
+});
+
+const options = reactive({ tripType: '', season: '', nights: '' });
 const checked = ref(loadChecked());
 
-const visibleCategories = computed(() => CATEGORIES
-  .map(category => ({ ...category, items: filterItems(category.items, options) }))
+/**
+ * รายการที่ตรงกับเงื่อนไขที่เลือก
+ *
+ * เงื่อนไขที่ "ว่าง" แปลว่าใช้ได้ทุกกรณี — ต้องเช็ค length ไม่ใช่แค่ความมีอยู่ของ array
+ * เพราะฝั่งแอดมินส่ง [] มาเสมอเมื่อไม่ได้เลือกอะไร
+ */
+function matches(item) {
+  if (item.trips?.length && !item.trips.includes(options.tripType)) return false;
+  if (item.seasons?.length && !item.seasons.includes(options.season)) return false;
+  if (item.overnight && options.nights !== 'overnight') return false;
+
+  return true;
+}
+
+const visibleCategories = computed(() => (content.value.categories || [])
+  .map(category => ({ ...category, items: (category.items || []).filter(matches) }))
   .filter(category => category.items.length > 0));
 
 const allItems = computed(() => visibleCategories.value.flatMap(c => c.items));
@@ -135,9 +156,25 @@ const totalCount = computed(() => allItems.value.length);
 const checkedCount = computed(() => allItems.value.filter(item => checked.value[item.label]).length);
 const progress = computed(() => (totalCount.value ? Math.round((checkedCount.value / totalCount.value) * 100) : 0));
 
-const activeTypeLabel = computed(() => TRIP_TYPES.find(t => t.key === options.tripType)?.label || '');
-const activeSeasonLabel = computed(() => SEASONS.find(s => s.key === options.season)?.label || '');
-const activeNightsLabel = computed(() => NIGHTS.find(n => n.key === options.nights)?.label || '');
+const activeTypeLabel = computed(() => labelOf(content.value.trip_types, options.tripType));
+const activeSeasonLabel = computed(() => labelOf(content.value.seasons, options.season));
+const activeNightsLabel = computed(() => labelOf(content.value.nights, options.nights));
+
+function labelOf(list, key) {
+  return (list || []).find(o => o.key === key)?.label || '';
+}
+
+/**
+ * ตัวเลือกมาจากหลังบ้าน จึงเลือกค่าเริ่มต้นได้ก็ต่อเมื่อโหลดเสร็จ
+ * และถ้าแอดมินลบ/เปลี่ยนคีย์ที่ผู้ใช้ค้างไว้ ต้องเด้งกลับไปตัวแรกแทนที่จะได้รายการว่าง
+ */
+watch(content, (value) => {
+  const pick = (list, current) => ((list || []).some(o => o.key === current) ? current : (list?.[0]?.key || ''));
+
+  options.tripType = pick(value.trip_types, options.tripType);
+  options.season = pick(value.seasons, options.season);
+  options.nights = pick(value.nights, options.nights);
+}, { immediate: true });
 
 /**
  * เก็บสถานะติ๊กด้วยชื่อรายการ ไม่ใช่ index — สลับแบบทริปแล้วรายการเปลี่ยนลำดับ

@@ -20,10 +20,10 @@
       <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-24 md:py-32">
         <div class="text-center max-w-4xl mt-10">
           <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-7xl font-extrabold text-white leading-tight mb-8">
-            อุปสรรคของการเดินทาง
+            {{ content.hero_title }}
           </h1>
           <p class="text-xl md:text-2xl lg:text-3xl text-white/90 font-medium leading-relaxed max-w-3xl mx-auto">
-            สิ่งที่เราอยากแก้ไข เพื่อให้ทุกคนได้ออกไปเที่ยวอย่างแท้จริง
+            {{ content.hero_subtitle }}
           </p>
         </div>
       </div>
@@ -47,14 +47,14 @@
         <div class="text-center mb-16 md:mb-20 reveal-section">
           <div class="inline-flex items-center gap-3 justify-center text-[var(--color-accent)] font-bold tracking-wider uppercase text-xs mb-4">
             <span class="w-8 h-[2px] bg-[var(--color-accent)]"></span>
-            ปัญหาที่พบเจอและอยากแก้ไข
+            {{ content.section_eyebrow }}
             <span class="w-8 h-[2px] bg-[var(--color-accent)]"></span>
           </div>
-          <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)]">ปัญหาที่หลายคนต้องเจอ</h2>
+          <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)]">{{ content.section_title }}</h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          <div v-for="(problem, index) in problems" :key="index" class="bg-white rounded-[2rem] p-8 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] transition-all duration-300 transform hover:-translate-y-2 reveal-section group">
+          <div v-for="(problem, index) in content.problems" :key="index" class="bg-white rounded-[2rem] p-8 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] transition-all duration-300 transform hover:-translate-y-2 reveal-section group">
             <div class="w-16 h-16 bg-[var(--color-sand)] rounded-2xl flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110" :style="`color: ${problem.color}`">
               <span class="material-symbols-rounded text-3xl">{{ problem.icon }}</span>
             </div>
@@ -74,11 +74,11 @@
       <div class="max-w-4xl mx-auto px-6 md:px-8 text-center space-y-10 reveal-section">
         <div class="inline-flex items-center gap-3 justify-center text-[var(--color-gold)] font-bold tracking-wider uppercase text-xs">
           <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
-          บทสรุปของปัญหา
+          {{ content.quote_eyebrow }}
           <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
         </div>
         <h2 class="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[var(--color-text-dark)] leading-tight">
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent)] to-[#2D5A3D]">“ลูกค้าอยากไป…แต่ไปไม่ได้ เพราะระบบยังไม่เอื้อ”</span>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent)] to-[#2D5A3D]">{{ content.quote }}</span>
         </h2>
         <div class="pt-6">
           <router-link
@@ -86,7 +86,7 @@
             class="inline-flex items-center gap-3 bg-[var(--color-accent)] text-white px-10 py-5 rounded-2xl text-lg font-bold hover:bg-[#3D8F66] hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[var(--color-accent)]/30"
           >
             <span class="material-symbols-rounded text-2xl">arrow_forward</span>
-            ดูเป้าหมายของเรา
+            {{ content.cta_label }}
           </router-link>
         </div>
       </div>
@@ -96,57 +96,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { nextTick, onMounted, watch } from 'vue'
+import { usePageContent } from '../lib/pageContent';
 
-const problems = ref([
-  { 
-    icon: 'chat', 
-    title: 'การสอบถามที่ยุ่งยาก', 
-    desc: 'ต้องทัก LINE / Facebook เพื่อสอบถาม', 
-    color: '#007B8F' 
-  },
-  { 
-    icon: 'hourglass_empty', 
-    title: 'รอการตอบกลับนาน', 
-    desc: 'รอแอดมินตอบ (บางครั้งนาน)', 
-    color: '#C8963E' 
-  },
-  { 
-    icon: 'event_busy', 
-    title: 'สถานะทริปไม่ชัดเจน', 
-    desc: 'ไม่รู้ว่าทริปว่างหรือเต็ม', 
-    color: '#E53935' 
-  },
-  { 
-    icon: 'category', 
-    title: 'ข้อมูลไม่รวมศูนย์', 
-    desc: 'ข้อมูลกระจัดกระจาย', 
-    color: '#66C291' 
-  },
-  { 
-    icon: 'airline_seat_recline_extra', 
-    title: 'ปัญหาการจองที่นั่ง', 
-    desc: 'จองที่นั่งได้ตามไม่ต้องการ (จองก่อนได้นั่งข้างหลัง การจองค่อนข้างยุ่งยาก)', 
-    color: '#4CAF7D' 
-  },
-  { 
-    icon: 'calendar_today', 
-    title: 'ข้อจำกัดเรื่องเวลา', 
-    desc: 'อยากไป “วันนี้” แต่หาทริปไม่ได้', 
-    color: '#FF9800' 
-  },
-  { 
-    icon: 'directions_bus', 
-    title: 'จุดขึ้นรถไม่สะดวก', 
-    desc: 'อยู่ต่างจังหวัดแต่ต้องไปขึ้นรถที่กรุงเทพ', 
-    color: '#9C27B0' 
-  }
-])
+const { content } = usePageContent('problem', {
+  hero_title: '',
+  hero_subtitle: '',
+  section_eyebrow: '',
+  section_title: '',
+  problems: [],
+  quote_eyebrow: '',
+  quote: '',
+  cta_label: '',
+})
+
+let observer = null
+
+function observeReveals() {
+  if (!observer) return
+
+  document.querySelectorAll('.reveal-section:not(.is-visible)').forEach((el) => observer.observe(el))
+}
 
 onMounted(() => {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-  const observer = new IntersectionObserver(
+  observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -158,8 +133,11 @@ onMounted(() => {
     { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
   )
 
-  document.querySelectorAll('.reveal-section').forEach((el) => observer.observe(el))
+  observeReveals()
 })
+
+/** การ์ดปัญหาเพิ่งมีตัวตนหลังโหลดเนื้อหาเสร็จ ต้องสั่ง observe ซ้ำ ไม่งั้นค้างที่ opacity 0 */
+watch(content, () => nextTick(observeReveals))
 </script>
 
 <style scoped>
