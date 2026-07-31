@@ -3,11 +3,10 @@
 namespace App\Services;
 
 use App\Models\Trip;
+use App\Support\ClaudeJson;
 use App\Support\ThaiDate;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * AI ผู้ช่วยวางทริป — ตอบคำถามแบบภาษาคน ("งบ 3000 ไปเหนือ 2 วัน มือใหม่ไหวไหม")
@@ -132,111 +131,31 @@ class TripConciergeService
 
         $messages[] = ['role' => 'user', 'content' => $question];
 
-        $model = config('services.anthropic.concierge_model');
-
-        $payload = [
-            'model' => $model,
-            'max_tokens' => 2048,
-            // แคตตาล็อกเปลี่ยนไม่บ่อย จึงแคช prefix ไว้ให้คำถามถัด ๆ ไปถูกลง
-            'system' => [
-                [
-                    'type' => 'text',
-                    'text' => $this->systemPrompt($catalog),
-                    'cache_control' => ['type' => 'ephemeral'],
-                ],
-            ],
-            // บังคับรูปแบบคำตอบ เพื่อให้หน้าเว็บแยก "ข้อความ" กับ "ทริปที่แนะนำ"
-            // ออกจากกันได้โดยไม่ต้องเดาจากข้อความเปล่า
-            'output_config' => [
-                'format' => [
-                    'type' => 'json_schema',
-                    'schema' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'reply' => [
-                                'type' => 'string',
-                                'description' => 'คำตอบภาษาไทยแบบเป็นกันเอง 2-4 ประโยค',
-                            ],
-                            'trip_slugs' => [
-                                'type' => 'array',
-                                'items' => ['type' => 'string'],
-                                'description' => 'slug ของทริปที่แนะนำ เรียงจากเหมาะที่สุด สูงสุด 4 รายการ',
-                            ],
-                        ],
-                        'required' => ['reply', 'trip_slugs'],
-                        'additionalProperties' => false,
+        // งานนี้คือจับคู่คำถามกับรายการที่ให้ไว้ ไม่ต้องคิดลึก จึงสั่ง effort ต่ำ
+        // (ประหยัดโทเคนและตอบไวขึ้น)
+        return ClaudeJson::ask(
+            apiKey: $apiKey,
+            model: config('services.anthropic.concierge_model'),
+            systemPrompt: $this->systemPrompt($catalog),
+            messages: $messages,
+            schema: [
+                'type' => 'object',
+                'properties' => [
+                    'reply' => [
+                        'type' => 'string',
+                        'description' => 'คำตอบภาษาไทยแบบเป็นกันเอง 2-4 ประโยค',
+                    ],
+                    'trip_slugs' => [
+                        'type' => 'array',
+                        'items' => ['type' => 'string'],
+                        'description' => 'slug ของทริปที่แนะนำ เรียงจากเหมาะที่สุด สูงสุด 4 รายการ',
                     ],
                 ],
+                'required' => ['reply', 'trip_slugs'],
+                'additionalProperties' => false,
             ],
-            'messages' => $messages,
-        ];
-
-        // งานนี้คือจับคู่คำถามกับรายการที่ให้ไว้ ไม่ต้องคิดลึก จึงไม่เปิด thinking เลย
-        // (ประหยัดโทเคนและตอบไวขึ้น) เหลือแค่บอก effort ต่ำในรุ่นที่รองรับ — รุ่นที่
-        // ไม่รองรับจะตอบ 400 ถ้าส่งไป จึงต้องเช็คก่อน
-        if ($this->supportsEffort($model)) {
-            $payload['output_config']['effort'] = 'low';
-        }
-
-        try {
-            $response = Http::timeout(60)
-                ->withHeaders([
-                    'x-api-key' => $apiKey,
-                    'anthropic-version' => '2023-06-01',
-                    'content-type' => 'application/json',
-                ])
-                ->post('https://api.anthropic.com/v1/messages', $payload);
-        } catch (\Throwable $e) {
-            Log::error('TripConciergeService: request failed', ['message' => $e->getMessage()]);
-
-            throw new \Exception('ตอนนี้ผู้ช่วยตอบไม่ได้ ลองใหม่อีกครั้งในสักครู่');
-        }
-
-        if (! $response->successful()) {
-            Log::error('TripConciergeService: API error', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            throw new \Exception('ตอนนี้ผู้ช่วยตอบไม่ได้ ลองใหม่อีกครั้งในสักครู่');
-        }
-
-        // safety classifier ปฏิเสธคำถาม — ต้องเช็คก่อนอ่าน content เพราะ content ว่าง
-        if ($response->json('stop_reason') === 'refusal') {
-            throw new \Exception('ขอโทษครับ คำถามนี้ผู้ช่วยตอบให้ไม่ได้ ลองถามเรื่องทริปแทนนะครับ');
-        }
-
-        $text = collect($response->json('content', []))
-            ->firstWhere('type', 'text')['text'] ?? '';
-
-        $parsed = json_decode($text, true);
-
-        if (! is_array($parsed)) {
-            Log::warning('TripConciergeService: unparseable response', ['text' => $text]);
-
-            throw new \Exception('ตอนนี้ผู้ช่วยตอบไม่ได้ ลองใหม่อีกครั้งในสักครู่');
-        }
-
-        return $parsed;
-    }
-
-    /**
-     * รุ่นที่รับพารามิเตอร์ effort ได้ — Haiku 4.5 และรุ่นเก่ากว่านั้นจะตอบ 400
-     * ถ้าส่งไป จึงต้องคัดออกก่อน ไม่ใช่ส่งเผื่อไว้
-     *
-     * เก็บเป็น prefix เพราะ config อาจใส่ชื่อเต็มพร้อมวันที่ (เช่น
-     * claude-haiku-4-5-20251001) แบบเดียวกับที่ SlipOcrService ใช้
-     */
-    private function supportsEffort(string $model): bool
-    {
-        foreach (['claude-opus-4-5', 'claude-opus-4-6', 'claude-opus-4-7', 'claude-opus-4-8',
-            'claude-sonnet-4-6', 'claude-sonnet-5', 'claude-fable-5'] as $prefix) {
-            if (str_starts_with($model, $prefix)) {
-                return true;
-            }
-        }
-
-        return false;
+            context: 'TripConciergeService',
+        );
     }
 
     /**

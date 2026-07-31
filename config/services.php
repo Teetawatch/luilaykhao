@@ -95,6 +95,9 @@ return [
         // จับคู่คำถามกับแคตตาล็อกที่ส่งไปให้แล้ว ไม่ต้องใช้การให้เหตุผลระดับ opus
         // ยกระดับเป็น claude-sonnet-5 ได้ถ้าพบว่าคำแนะนำยังไม่ตรงพอ
         'concierge_model' => env('ANTHROPIC_CONCIERGE_MODEL', 'claude-haiku-4-5'),
+        // รุ่นที่ใช้ตอบคำถาม "การจองของฉัน" — ใช้รุ่นแรงกว่า concierge เพราะคำตอบ
+        // ผูกกับเงินและกำหนดการจริงของลูกค้า ตอบผิดแล้วเสียหายกว่าการแนะนำทริปผิด
+        'assistant_model' => env('ANTHROPIC_ASSISTANT_MODEL', 'claude-opus-5'),
     ],
 
     'thaibulksms' => [

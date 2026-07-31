@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\V1\GiftController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
+use App\Http\Controllers\Api\V1\MyTripAssistantController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
@@ -189,6 +190,11 @@ Route::prefix('v1')->group(function () {
 
         // ค่าอ้างอิงที่ผู้ใช้กรอกเอง สำหรับประเมิน "ทริปนี้ไหวไหม" ก่อนมีประวัติ
         Route::post('me/hiking-baseline', [TripReadinessController::class, 'updateBaseline']);
+
+        // AI ผู้ช่วยส่วนตัว — ถามเรื่องการจองของตัวเอง (คนละตัวกับ /concierge ที่แนะนำทริป)
+        Route::get('me/assistant/suggestions', [MyTripAssistantController::class, 'suggestions']);
+        Route::post('me/assistant', [MyTripAssistantController::class, 'ask'])
+            ->middleware('throttle:concierge');
 
         // Bookings
         Route::post('bookings', [BookingController::class, 'store']);
