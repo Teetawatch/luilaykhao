@@ -63,6 +63,20 @@
           <span class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
+      <!-- รถที่ไม่เหลือรอบข้างหน้าแล้วถูกซ่อนอัตโนมัติไว้ในแท็บ "เลิกใช้แล้ว" -->
+      <div class="type-tabs">
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.value"
+          class="type-tab"
+          :class="{ active: statusFilter === tab.value, 'tab-retired': tab.value === 'retired' && statusFilter === 'retired' }"
+          @click="statusFilter = tab.value"
+        >
+          <span class="material-symbols-rounded">{{ tab.icon }}</span>
+          {{ tab.label }}
+          <span class="tab-count">{{ tab.count }}</span>
+        </button>
+      </div>
       <div class="view-toggle">
         <button class="view-toggle-btn" :class="{ active: viewMode === 'vehicle' }" @click="viewMode = 'vehicle'">
           <span class="material-symbols-rounded">directions_car</span> ตามคันรถ
@@ -76,204 +90,121 @@
     <!-- Content -->
     <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
     <template v-else-if="viewMode === 'vehicle'">
-      <!-- Grouped by type when showing all -->
-      <template v-if="!filters.type">
-        <template v-for="group in vehicleGroups" :key="group.type">
-          <div class="type-section" v-if="group.vehicles.length">
-            <div class="type-section-header">
-              <span class="material-symbols-rounded">{{ group.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-              <span>{{ group.label }}</span>
-              <span class="section-count">{{ group.vehicles.length }} คัน</span>
-            </div>
-            <div class="vehicles-grid">
-              <div class="vehicle-card" v-for="v in group.vehicles" :key="v.id">
-                <div class="vc-top" :class="'vtype-bg-' + v.type">
-                  <div class="vc-type-icon">
-                    <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-                  </div>
-                  <div class="vc-header-info">
-                    <h3>{{ v.name }}</h3>
-                    <div class="vc-badges">
-                      <span class="type-tag" :class="'type-' + (v.type === 'van' ? 'trekking' : 'diving')">
-                        {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
-                      </span>
-                      <span class="capacity-chip">
-                        <span class="material-symbols-rounded">groups</span> {{ v.capacity }} ที่นั่ง
-                      </span>
-                      <span class="plate-chip" v-if="v.license_plate">{{ v.license_plate }}</span>
-                    </div>
-                  </div>
-                  <div class="vc-actions">
-                    <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
-                    <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded">grid_view</span></button>
-                    <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded">location_on</span></button>
-                    <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
+      <!-- จัดกลุ่มตามประเภทเสมอ — ถ้ากรองประเภทไว้ ก็จะเหลือกลุ่มเดียวเอง -->
+      <template v-for="group in vehicleGroups" :key="group.type">
+        <div class="type-section" v-if="group.vehicles.length">
+          <div class="type-section-header">
+            <span class="material-symbols-rounded">{{ group.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+            <span>{{ group.label }}</span>
+            <span class="section-count">{{ group.vehicles.length }} คัน</span>
+          </div>
+          <div class="vehicles-grid">
+            <div class="vehicle-card" :class="{ 'vc-retired': v.is_retired }" v-for="v in group.vehicles" :key="v.id">
+              <div class="vc-top" :class="'vtype-bg-' + v.type">
+                <div class="vc-type-icon">
+                  <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                </div>
+                <div class="vc-header-info">
+                  <h3>{{ v.name }}</h3>
+                  <div class="vc-badges">
+                    <span class="type-tag" :class="'type-' + (v.type === 'van' ? 'trekking' : 'diving')">
+                      {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
+                    </span>
+                    <span class="capacity-chip">
+                      <span class="material-symbols-rounded">groups</span> {{ v.capacity }} ที่นั่ง
+                    </span>
+                    <span class="plate-chip" v-if="v.license_plate">{{ v.license_plate }}</span>
                   </div>
                 </div>
-                <div class="vc-body">
-                  <div class="driver-row" v-if="v.driver_name">
-                    <div class="driver-avatar" v-if="v.driver_photo"><img :src="v.driver_photo" /></div>
-                    <div class="driver-placeholder" v-else><span class="material-symbols-rounded">person</span></div>
-                    <div class="driver-info">
-                      <span class="driver-name">{{ v.driver_name }}</span>
-                      <span class="driver-phone" v-if="v.driver_phone">
-                        <span class="material-symbols-rounded">phone</span> {{ v.driver_phone }}
-                      </span>
-                      <span class="gps-pin-badge" :class="v.has_driver_pin ? 'on' : 'off'">
-                        <span class="material-symbols-rounded">my_location</span>
-                        {{ v.has_driver_pin ? 'รหัส GPS พร้อม' : 'ยังไม่ตั้งรหัส GPS' }}
-                      </span>
-                    </div>
-                    <div class="color-dot" v-if="v.color"
-                      :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
-                      :title="v.color"
-                    ></div>
+                <div class="vc-actions">
+                  <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
+                  <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded">grid_view</span></button>
+                  <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded">location_on</span></button>
+                  <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบถาวร"><span class="material-symbols-rounded">delete</span></button>
+                </div>
+              </div>
+              <div class="vc-body">
+                <div class="driver-row" v-if="v.driver_name">
+                  <div class="driver-avatar" v-if="v.driver_photo"><img :src="v.driver_photo" /></div>
+                  <div class="driver-placeholder" v-else><span class="material-symbols-rounded">person</span></div>
+                  <div class="driver-info">
+                    <span class="driver-name">{{ v.driver_name }}</span>
+                    <span class="driver-phone" v-if="v.driver_phone">
+                      <span class="material-symbols-rounded">phone</span> {{ v.driver_phone }}
+                    </span>
+                    <span class="gps-pin-badge" :class="v.has_driver_pin ? 'on' : 'off'">
+                      <span class="material-symbols-rounded">my_location</span>
+                      {{ v.has_driver_pin ? 'รหัส GPS พร้อม' : 'ยังไม่ตั้งรหัส GPS' }}
+                    </span>
                   </div>
-                  <div class="schedule-section" v-if="vehicleSchedules(v.id).length">
-                    <div class="schedule-section-title">
-                      <span class="material-symbols-rounded">event</span>
-                      รอบที่กำลังจะมาถึง
-                      <span class="schedule-count-badge">{{ vehicleSchedules(v.id).length }}</span>
-                    </div>
-                    <div class="schedule-list">
-                      <div class="schedule-item" v-for="s in vehicleSchedules(v.id).slice(0, 3)" :key="s.id">
-                        <div class="s-date-box">
-                          <span class="s-month">{{ formatMonth(s.departure_date) }}</span>
-                          <span class="s-day">{{ formatDay(s.departure_date) }}</span>
-                        </div>
-                        <div class="s-detail">
-                          <span class="s-trip-name">{{ s.trip?.title || '—' }}</span>
-                          <div class="s-meta">
-                            <span class="s-seats" :class="seatClass(s)">
-                              <span class="material-symbols-rounded">chair</span>
-                              {{ s.booked_seats }}/{{ s.total_seats }}
-                            </span>
-                            <span class="s-status-badge" :class="'s-status-' + s.status">
-                              {{ statusLabels[s.status] || s.status }}
-                            </span>
-                          </div>
+                  <div class="color-dot" v-if="v.color"
+                    :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
+                    :title="v.color"
+                  ></div>
+                </div>
+                <div class="schedule-section" v-if="vehicleSchedules(v.id).length">
+                  <div class="schedule-section-title">
+                    <span class="material-symbols-rounded">event</span>
+                    รอบที่กำลังจะมาถึง
+                    <span class="schedule-count-badge">{{ vehicleSchedules(v.id).length }}</span>
+                  </div>
+                  <div class="schedule-list">
+                    <div class="schedule-item" v-for="s in vehicleSchedules(v.id).slice(0, 3)" :key="s.id">
+                      <div class="s-date-box">
+                        <span class="s-month">{{ formatMonth(s.departure_date) }}</span>
+                        <span class="s-day">{{ formatDay(s.departure_date) }}</span>
+                      </div>
+                      <div class="s-detail">
+                        <span class="s-trip-name">{{ s.trip?.title || '—' }}</span>
+                        <div class="s-meta">
+                          <span class="s-seats" :class="seatClass(s)">
+                            <span class="material-symbols-rounded">chair</span>
+                            {{ s.booked_seats }}/{{ s.total_seats }}
+                          </span>
+                          <span class="s-status-badge" :class="'s-status-' + s.status">
+                            {{ statusLabels[s.status] || s.status }}
+                          </span>
                         </div>
                       </div>
-                      <div class="schedule-more" v-if="vehicleSchedules(v.id).length > 3">
-                        <span class="material-symbols-rounded">more_horiz</span>
-                        อีก {{ vehicleSchedules(v.id).length - 3 }} รอบ
-                      </div>
                     </div>
-                  </div>
-                  <div class="no-schedule" v-else>
-                    <span class="material-symbols-rounded">event_available</span>
-                    ยังไม่มีรอบที่กำลังจะมาถึง
-                  </div>
-                  <div class="vc-footer">
-                    <div class="footer-chip" v-if="v.pickup_points?.length" @click="openPickupManager(v)">
-                      <span class="material-symbols-rounded">location_on</span>
-                      {{ v.pickup_points.length }} จุดรับ
-                    </div>
-                    <div class="footer-chip" v-if="v.seat_layout" @click="openLayoutEditor(v)">
-                      <span class="material-symbols-rounded">grid_view</span>
-                      {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่
+                    <div class="schedule-more" v-if="vehicleSchedules(v.id).length > 3">
+                      <span class="material-symbols-rounded">more_horiz</span>
+                      อีก {{ vehicleSchedules(v.id).length - 3 }} รอบ
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </template>
-      </template>
-
-      <!-- Flat grid when type is filtered -->
-      <div class="vehicles-grid" v-else>
-        <div class="vehicle-card" v-for="v in filteredVehicles" :key="v.id">
-          <div class="vc-top" :class="'vtype-bg-' + v.type">
-            <div class="vc-type-icon">
-              <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-            </div>
-            <div class="vc-header-info">
-              <h3>{{ v.name }}</h3>
-              <div class="vc-badges">
-                <span class="type-tag" :class="'type-' + (v.type === 'van' ? 'trekking' : 'diving')">
-                  {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
-                </span>
-                <span class="capacity-chip">
-                  <span class="material-symbols-rounded">groups</span> {{ v.capacity }} ที่นั่ง
-                </span>
-                <span class="plate-chip" v-if="v.license_plate">{{ v.license_plate }}</span>
-              </div>
-            </div>
-            <div class="vc-actions">
-              <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
-              <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded">grid_view</span></button>
-              <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded">location_on</span></button>
-              <button class="btn-icon btn-delete" @click="confirmDelete(v)" title="ลบ"><span class="material-symbols-rounded">delete</span></button>
-            </div>
-          </div>
-          <div class="vc-body">
-            <div class="driver-row" v-if="v.driver_name">
-              <div class="driver-avatar" v-if="v.driver_photo"><img :src="v.driver_photo" /></div>
-              <div class="driver-placeholder" v-else><span class="material-symbols-rounded">person</span></div>
-              <div class="driver-info">
-                <span class="driver-name">{{ v.driver_name }}</span>
-                <span class="driver-phone" v-if="v.driver_phone">
-                  <span class="material-symbols-rounded">phone</span> {{ v.driver_phone }}
-                </span>
-              </div>
-              <div class="color-dot" v-if="v.color"
-                :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
-                :title="v.color"
-              ></div>
-            </div>
-            <div class="schedule-section" v-if="vehicleSchedules(v.id).length">
-              <div class="schedule-section-title">
-                <span class="material-symbols-rounded">event</span>
-                รอบที่กำลังจะมาถึง
-                <span class="schedule-count-badge">{{ vehicleSchedules(v.id).length }}</span>
-              </div>
-              <div class="schedule-list">
-                <div class="schedule-item" v-for="s in vehicleSchedules(v.id).slice(0, 3)" :key="s.id">
-                  <div class="s-date-box">
-                    <span class="s-month">{{ formatMonth(s.departure_date) }}</span>
-                    <span class="s-day">{{ formatDay(s.departure_date) }}</span>
-                  </div>
-                  <div class="s-detail">
-                    <span class="s-trip-name">{{ s.trip?.title || '—' }}</span>
-                    <div class="s-meta">
-                      <span class="s-seats" :class="seatClass(s)">
-                        <span class="material-symbols-rounded">chair</span>
-                        {{ s.booked_seats }}/{{ s.total_seats }}
-                      </span>
-                      <span class="s-status-badge" :class="'s-status-' + s.status">
-                        {{ statusLabels[s.status] || s.status }}
-                      </span>
-                    </div>
+                <div class="retired-note" v-else-if="v.is_retired">
+                  <span class="material-symbols-rounded">history</span>
+                  <div class="retired-text">
+                    <span class="retired-title">เลิกใช้แล้ว — ไม่มีรอบข้างหน้า</span>
+                    <span class="retired-meta">
+                      ใช้ครั้งสุดท้าย {{ thaiDate(v.last_departure_date) }} · เคยวิ่ง {{ v.schedules_count }} รอบ
+                    </span>
                   </div>
                 </div>
-                <div class="schedule-more" v-if="vehicleSchedules(v.id).length > 3">
-                  <span class="material-symbols-rounded">more_horiz</span>
-                  อีก {{ vehicleSchedules(v.id).length - 3 }} รอบ
+                <div class="no-schedule" v-else>
+                  <span class="material-symbols-rounded">event_available</span>
+                  ยังไม่มีรอบที่กำลังจะมาถึง
                 </div>
-              </div>
-            </div>
-            <div class="no-schedule" v-else>
-              <span class="material-symbols-rounded">event_available</span>
-              ยังไม่มีรอบที่กำลังจะมาถึง
-            </div>
-            <div class="vc-footer">
-              <div class="footer-chip" v-if="v.pickup_points?.length" @click="openPickupManager(v)">
-                <span class="material-symbols-rounded">location_on</span>
-                {{ v.pickup_points.length }} จุดรับ
-              </div>
-              <div class="footer-chip" v-if="v.seat_layout" @click="openLayoutEditor(v)">
-                <span class="material-symbols-rounded">grid_view</span>
-                {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่
+                <div class="vc-footer">
+                  <div class="footer-chip" v-if="v.pickup_points?.length" @click="openPickupManager(v)">
+                    <span class="material-symbols-rounded">location_on</span>
+                    {{ v.pickup_points.length }} จุดรับ
+                  </div>
+                  <div class="footer-chip" v-if="v.seat_layout" @click="openLayoutEditor(v)">
+                    <span class="material-symbols-rounded">grid_view</span>
+                    {{ v.seat_layout.rows }} แถว · {{ v.seat_layout.seats?.length || 0 }} ที่
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
 
       <div class="empty-state-card" v-if="filteredVehicles.length === 0">
-        <span class="material-symbols-rounded">directions_car</span>
-        <p>ไม่พบยานพาหนะ</p>
+        <span class="material-symbols-rounded">{{ statusFilter === 'retired' ? 'inventory_2' : 'directions_car' }}</span>
+        <p>{{ statusFilter === 'retired' ? 'ไม่มีรถที่เลิกใช้แล้ว' : 'ไม่พบยานพาหนะ' }}</p>
       </div>
     </template>
 
@@ -682,6 +613,12 @@
             <span class="material-symbols-rounded" style="color:var(--color-gold);">warning</span>
             การดำเนินการนี้ไม่สามารถย้อนกลับได้
           </p>
+          <!-- บอกให้ชัดว่าลบถาวรแล้วเสียอะไรบ้าง — ถ้าแค่อยากให้พ้นสายตา แท็บ "เลิกใช้แล้ว" ซ่อนให้อยู่แล้ว -->
+          <ul class="delete-impact" v-if="deleting?.schedules_count">
+            <li>รอบที่ผ่านมา {{ deleting.schedules_count }} รอบ จะไม่เหลือข้อมูลว่าใช้รถคันนี้ (มีผลกับรายงานย้อนหลัง)</li>
+            <li v-if="deleting.pickup_points?.length">จุดรับผู้โดยสาร {{ deleting.pickup_points.length }} จุดของรถคันนี้จะถูกลบด้วย</li>
+            <li>ประวัติพิกัด GPS และประวัติซ่อมบำรุงของรถคันนี้จะถูกลบด้วย</li>
+          </ul>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showDeleteConfirm = false">ยกเลิก</button>
@@ -760,6 +697,7 @@ import { colorHex } from '../../lib/vehicleDisplay';
 
 const admin = useAdminStore();
 const filters = reactive({ type: '' });
+const statusFilter = ref('active'); // 'active' | 'retired' — รถที่เลิกใช้แล้วถูกซ่อนไว้เป็นค่าตั้งต้น
 const searchQuery = ref('');
 const viewMode = ref('vehicle'); // 'vehicle' | 'trip'
 const showForm = ref(false);
@@ -853,21 +791,28 @@ const statusLabels = {
   open: 'รับสมัคร', full: 'เต็ม', closed: 'ปิด', cancelled: 'ยกเลิก', completed: 'จบแล้ว',
 };
 
+// ตรงกับ Vehicle::DORMANT_SCHEDULE_STATUSES ฝั่ง backend ที่ใช้ตัดสินว่ารถเลิกใช้แล้ว
+const DORMANT_STATUSES = ['cancelled', 'completed'];
+
 const allVehicles = computed(() => admin.vehicles.data || []);
 
-const filteredVehicles = computed(() => {
-  let data = allVehicles.value;
-  if (filters.type) data = data.filter(v => v.type === filters.type);
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
-    data = data.filter(v =>
-      v.name.toLowerCase().includes(q) ||
-      (v.license_plate || '').toLowerCase().includes(q) ||
-      (v.driver_name || '').toLowerCase().includes(q)
-    );
-  }
-  return data;
+// รถ "เลิกใช้แล้ว" = เคยมีรอบ แต่ไม่เหลือรอบข้างหน้าแล้ว (backend ตัดสินให้ใน is_retired)
+const isRetired = (v) => v.is_retired === true;
+
+const searchedVehicles = computed(() => {
+  if (!searchQuery.value) return allVehicles.value;
+  const q = searchQuery.value.toLowerCase();
+  return allVehicles.value.filter(v =>
+    v.name.toLowerCase().includes(q) ||
+    (v.license_plate || '').toLowerCase().includes(q) ||
+    (v.driver_name || '').toLowerCase().includes(q)
+  );
 });
+
+const byType = (list) => (filters.type ? list.filter(v => v.type === filters.type) : list);
+const byStatus = (list) => list.filter(v => isRetired(v) === (statusFilter.value === 'retired'));
+
+const filteredVehicles = computed(() => byStatus(byType(searchedVehicles.value)));
 
 const vehicleGroups = computed(() => [
   { type: 'van', label: 'รถตู้', vehicles: filteredVehicles.value.filter(v => v.type === 'van') },
@@ -915,11 +860,23 @@ const tripGroups = computed(() => {
 // รถบนรอบทริปเป็น resource แบบย่อ — ดึงข้อมูลรถฉบับเต็ม (จุดรับ/ผังที่นั่ง) มาใช้กับปุ่มจัดการ
 const findVehicle = (id) => allVehicles.value.find(v => v.id === id) || null;
 
-const typeTabs = computed(() => [
-  { value: '', icon: 'directions_car', label: 'ทั้งหมด', count: allVehicles.value.length },
-  { value: 'van', icon: 'airport_shuttle', label: 'รถตู้', count: allVehicles.value.filter(v => v.type === 'van').length },
-  { value: 'boat', icon: 'directions_boat', label: 'เรือ', count: allVehicles.value.filter(v => v.type === 'boat').length },
-]);
+// ตัวเลขบนแท็บนับเฉพาะรถที่มองเห็นได้จากแท็บอีกฝั่ง เพื่อให้ยอดตรงกับการ์ดที่แสดงจริง
+const typeTabs = computed(() => {
+  const data = byStatus(searchedVehicles.value);
+  return [
+    { value: '', icon: 'directions_car', label: 'ทั้งหมด', count: data.length },
+    { value: 'van', icon: 'airport_shuttle', label: 'รถตู้', count: data.filter(v => v.type === 'van').length },
+    { value: 'boat', icon: 'directions_boat', label: 'เรือ', count: data.filter(v => v.type === 'boat').length },
+  ];
+});
+
+const statusTabs = computed(() => {
+  const data = byType(searchedVehicles.value);
+  return [
+    { value: 'active', icon: 'check_circle', label: 'ใช้งานอยู่', count: data.filter(v => !isRetired(v)).length },
+    { value: 'retired', icon: 'inventory_2', label: 'เลิกใช้แล้ว', count: data.filter(isRetired).length },
+  ];
+});
 
 const vehicleSchedulesMap = computed(() => {
   const map = {};
@@ -948,6 +905,11 @@ const groupedPickups = (points) => {
 const MONTHS_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const formatMonth = (d) => MONTHS_TH[new Date(d).getMonth()];
 const formatDay = (d) => new Date(d).getDate();
+const thaiDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return `${dt.getDate()} ${MONTHS_TH[dt.getMonth()]} ${dt.getFullYear() + 543}`;
+};
 
 const seatClass = (s) => {
   const ratio = s.booked_seats / (s.total_seats || 1);
@@ -990,7 +952,8 @@ const fetchUpcomingSchedules = async () => {
     const res = await api.get('/admin/schedules', {
       params: { per_page: 200, upcoming: 1 },
     });
-    const data = res.data.data || [];
+    // รอบที่ยกเลิก/จบแล้วไม่ต้องรกหน้านี้ — หน้านี้ดูเพื่อวางแผนรถรอบข้างหน้าเท่านั้น
+    const data = (res.data.data || []).filter(s => !DORMANT_STATUSES.includes(s.status));
     upcomingSchedules.value = data.sort((a, b) =>
       new Date(a.departure_date) - new Date(b.departure_date)
     );
@@ -1734,6 +1697,32 @@ onMounted(() => fetchData());
   margin-bottom: 12px;
 }
 .no-schedule .material-symbols-rounded { font-size: 16px; }
+
+/* ─── รถที่เลิกใช้แล้ว ─────────────────────────────── */
+.retired-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px; background: var(--color-sand);
+  border-radius: 8px; border: 1px dashed var(--color-sand-dark);
+  margin-bottom: 12px;
+}
+.retired-note .material-symbols-rounded { font-size: 16px; color: var(--color-text-muted); }
+.retired-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.retired-title { font-size: 12px; font-weight: 700; color: var(--color-text-mid); }
+.retired-meta { font-size: 11px; color: var(--color-text-muted); }
+
+.vc-retired { opacity: 0.78; }
+.vc-retired:hover { opacity: 1; }
+.vc-retired .vc-top { filter: grayscale(0.6); }
+
+.type-tab.tab-retired {
+  background: var(--color-text-mid);
+  border-color: var(--color-text-mid);
+}
+
+.delete-impact {
+  margin: 10px 0 0; padding-left: 18px;
+  font-size: 12px; line-height: 1.7; color: var(--color-text-mid);
+}
 
 /* Footer chips */
 .vc-footer {

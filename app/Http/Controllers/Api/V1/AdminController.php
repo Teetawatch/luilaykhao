@@ -2090,10 +2090,22 @@ class AdminController extends Controller
 
     public function vehicles(Request $request): JsonResponse
     {
-        $query = Vehicle::withCount('schedules')->with(['pickupPoints', 'driverUser', 'driver']);
+        $query = Vehicle::withCount(['schedules', 'upcomingSchedules'])
+            ->withMax('schedules', 'departure_date')
+            ->with(['pickupPoints', 'driverUser', 'driver']);
 
         if ($request->filled('type')) {
             $query->where('type', $request->type);
+        }
+
+        // รถที่ "เลิกใช้แล้ว" = เคยมีรอบ แต่ไม่เหลือรอบข้างหน้าแล้ว
+        // (หน้าจัดการยานพาหนะกรองฝั่งหน้าเว็บอยู่แล้ว พารามิเตอร์นี้ไว้ให้ผู้เรียกอื่นเลือกได้)
+        if ($request->filled('status')) {
+            $query->when(
+                $request->status === 'retired',
+                fn ($q) => $q->has('schedules')->doesntHave('upcomingSchedules'),
+                fn ($q) => $q->where(fn ($w) => $w->has('upcomingSchedules')->orDoesntHave('schedules')),
+            );
         }
 
         $vehicles = $query->orderBy('name')->paginate($request->get('per_page', 15));
@@ -2192,11 +2204,7 @@ class AdminController extends Controller
     {
         $vehicle = Vehicle::findOrFail($id);
 
-        $hasSchedules = $vehicle->schedules()
-            ->where('departure_date', '>=', now())
-            ->exists();
-
-        if ($hasSchedules) {
+        if ($vehicle->upcomingSchedules()->exists()) {
             return $this->error('ไม่สามารถลบยานพาหนะที่มีรอบเดินทางอยู่', 422);
         }
 

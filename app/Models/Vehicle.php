@@ -12,6 +12,11 @@ class Vehicle extends Model
 {
     use HasFactory;
 
+    /**
+     * รอบที่ไม่นับว่ารถ "ยังมีงาน" — รอบที่ยกเลิกหรือจบไปแล้ว
+     */
+    public const DORMANT_SCHEDULE_STATUSES = ['cancelled', 'completed'];
+
     protected $fillable = [
         'name', 'type', 'capacity', 'seat_layout',
         'license_plate', 'color', 'driver_id', 'driver_name', 'driver_phone', 'driver_user_id', 'images',
@@ -30,6 +35,20 @@ class Vehicle extends Model
     public function schedules(): HasMany
     {
         return $this->hasMany(TripSchedule::class);
+    }
+
+    /**
+     * รอบข้างหน้าที่ยังมีชีวิต — เกณฑ์เดียวที่ใช้ตัดสินว่ารถคันนี้ "ยังใช้งานอยู่"
+     * หรือ "เลิกใช้แล้ว" (หน้าจัดการยานพาหนะซ่อนคันที่เลิกใช้ และการลบถาวร
+     * ก็ยึดเกณฑ์เดียวกันนี้ ไม่งั้นรถที่ถูกซ่อนอาจลบไม่ได้)
+     *
+     * ใช้วันตามเวลาไทย เพราะ departure_date เป็นวันที่แบบ wall-clock ไทย
+     */
+    public function upcomingSchedules(): HasMany
+    {
+        return $this->schedules()
+            ->whereDate('departure_date', '>=', now('Asia/Bangkok')->toDateString())
+            ->whereNotIn('status', self::DORMANT_SCHEDULE_STATUSES);
     }
 
     /**

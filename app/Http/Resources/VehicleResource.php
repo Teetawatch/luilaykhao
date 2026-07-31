@@ -46,6 +46,13 @@ class VehicleResource extends JsonResource
             ])
             ),
             'schedules_count' => $this->whenCounted('schedules'),
+            'upcoming_schedules_count' => $this->whenCounted('upcomingSchedules'),
+            'last_departure_date' => $this->schedules_max_departure_date ?? null,
+            // เคยมีรอบ แต่ไม่เหลือรอบข้างหน้าแล้ว → หน้าจัดการยานพาหนะซ่อนไว้ในแท็บ "เลิกใช้แล้ว"
+            'is_retired' => $this->when(
+                isset($this->schedules_count, $this->upcoming_schedules_count),
+                fn () => $this->schedules_count > 0 && $this->upcoming_schedules_count === 0,
+            ),
         ];
     }
 }
