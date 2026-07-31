@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AdminActionQueueController;
 use App\Http\Controllers\Api\V1\AdminArticleController;
+use App\Http\Controllers\Api\V1\AdminAtRiskScheduleController;
 use App\Http\Controllers\Api\V1\AdminBroadcastController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
@@ -505,6 +506,10 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);
         Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);
         Route::post('schedules/{id}/staff/release', [AdminController::class, 'releaseScheduleStaff']);
+
+        // เรดาร์รอบเสี่ยงไม่ออก — รวมรอบที่คนยังไม่ครบขั้นต่ำไว้พร้อมปุ่มลงมือแก้
+        Route::get('schedules/at-risk', [AdminAtRiskScheduleController::class, 'index']);
+        Route::post('schedules/{id}/rally-nudge', [AdminAtRiskScheduleController::class, 'nudge']);
 
         // Flexi-Price (Go Together) — ผู้จัดยื่นข้อเสนอส่วนต่างค่ารถให้รอบที่คนไม่ครบ
         Route::get('flexi-offers', [FlexiDepartureController::class, 'adminIndex']);

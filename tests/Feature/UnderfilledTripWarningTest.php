@@ -127,4 +127,41 @@ class UnderfilledTripWarningTest extends TestCase
         $this->assertStringContainsString('อีกเพียง 5 ท่าน', $html); // 8 minimum − 3 booked
         $this->assertStringContainsString('อย่างน้อย 7 วันก่อนวันเดินทาง', $html);
     }
+
+    /**
+     * เมลนี้เคยบอกแค่ว่าคนยังไม่ครบแล้วจบ ตอนนี้ต้องมี "ทางออก" ให้กดจริง —
+     * ลิงก์ชวนเพื่อนของผู้จองคนนั้น และรอบอื่นที่ยังจองได้
+     */
+    public function test_email_offers_an_invite_link_and_other_rounds(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+
+        // รอบอื่นของทริปเดียวกันที่ยังเปิดขายและมีที่นั่งว่าง
+        TripSchedule::create([
+            'trip_id' => $b->schedule->trip_id,
+            'departure_date' => '2026-08-15',
+            'return_date' => '2026-08-15',
+            'total_seats' => 12, 'booked_seats' => 9,
+            'transport_type' => 'van', 'status' => 'open',
+        ]);
+
+        $html = (new TripUnderfilledWarningMail($b, 7, 3, 8))->render();
+
+        $this->assertStringContainsString('ส่งลิงก์ชวนเพื่อนมาร่วมทริป', $html);
+        $this->assertStringContainsString('?schedule='.$b->schedule_id, $html);
+        $this->assertStringContainsString('รอบอื่นของทริปนี้ที่ยังจองได้', $html);
+        $this->assertStringContainsString('9 ท่านแล้ว', $html);
+    }
+
+    public function test_push_tells_the_customer_what_they_can_do(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+
+        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+
+        $body = $this->warnings($b)->first()->body;
+
+        $this->assertStringContainsString('ขาดอีก 5 ท่าน', $body);
+        $this->assertStringContainsString('ชวนเพื่อน', $body);
+    }
 }

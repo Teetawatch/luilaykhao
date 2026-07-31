@@ -87,10 +87,52 @@
     <div class="alert-box alert-green">
       <p class="alert-title">🤝 ชวนเพื่อนมาเดินด้วยกันได้นะครับ</p>
       <p class="alert-text">
-        หากคุณมีเพื่อนหรือครอบครัวที่สนใจ ลองชวนมาร่วมทริปกันได้เลย
-        ครบจำนวนเมื่อไหร่ รอบนี้ก็ออกเดินทางตามกำหนดแน่นอนครับ
-        และหากรอบนี้ไม่ได้ออกเดินทาง ทางเราจะ<strong>คืนเงินเต็มจำนวน</strong>
-        ที่คุณชำระมาทั้งหมด ตอนนี้ยังไม่ต้องดำเนินการอะไรเลยครับ
+        @if($seatsShort > 0)
+          วิธีที่เร็วที่สุดที่จะทำให้รอบนี้ได้ออกเดินทาง คือชวนคนที่คุณรู้จักมาร่วมทางอีก
+          <strong>{{ $seatsShort }} ท่าน</strong> ครับ ลองส่งลิงก์ด้านล่างให้เพื่อนหรือครอบครัวดูได้เลย
+          และถ้าเพื่อนของคุณเป็นลูกค้าใหม่ ทั้งคุณและเพื่อนจะได้รับแต้มสะสมตามโปรแกรมแนะนำเพื่อนด้วยนะครับ
+        @else
+          ครบจำนวนออกเดินทางแล้วครับ ไม่ต้องดำเนินการอะไรเพิ่มเติมเลย
+        @endif
+      </p>
+    </div>
+
+    @if($shareUrl && $seatsShort > 0)
+    <div class="cta-wrap">
+      <a href="{{ $shareUrl }}" class="cta-btn cta-green">ส่งลิงก์ชวนเพื่อนมาร่วมทริป</a>
+    </div>
+    @endif
+
+    @if(!empty($alternatives))
+    <p class="section-label">หรือจะย้ายไปรอบอื่นก็ได้ครับ</p>
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="info-card-title">รอบอื่นของทริปนี้ที่ยังจองได้</span>
+      </div>
+      @foreach($alternatives as $alt)
+      <div class="info-row">
+        <span class="info-label">
+          <a href="{{ $alt['url'] }}">{{ $alt['departure_label'] }}</a>
+        </span>
+        <span class="info-value">
+          {{ $alt['booked_seats'] }} ท่านแล้ว
+          @if($alt['guaranteed']) · ออกแน่นอน @endif
+        </span>
+      </div>
+      @endforeach
+    </div>
+    <p class="body-text">
+      ถ้าอยากย้ายไปรอบไหน ทักบอกทีมงานได้เลยครับ เราย้ายให้โดย<strong>ไม่มีค่าใช้จ่ายเพิ่ม</strong>
+      และยอดที่คุณชำระมาแล้วจะถูกโอนไปรอบใหม่ให้ทั้งหมด
+    </p>
+    @endif
+
+    <div class="alert-box alert-blue">
+      <p class="alert-title">💙 ไม่ว่าจะทางไหน คุณไม่เสียอะไรแน่นอน</p>
+      <p class="alert-text">
+        หากสุดท้ายรอบนี้ไม่ได้ออกเดินทาง ทางเราจะ<strong>คืนเงินเต็มจำนวน</strong>
+        ที่คุณชำระมาทั้งหมดครับ ตอนนี้ยังไม่ต้องดำเนินการอะไรเลย
+        จะรอดูอีกสักพักก่อนก็ได้เช่นกันนะครับ
       </p>
     </div>
 

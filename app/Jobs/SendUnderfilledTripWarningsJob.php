@@ -79,11 +79,18 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
                 }
 
                 if ($booking->user_id) {
+                    // บอกด้วยว่า "ทำอะไรได้บ้าง" ไม่ใช่แค่แจ้งว่าคนยังไม่ครบ —
+                    // ในใบจองมีการ์ดช่วยกันเปิดรอบพร้อมลิงก์ชวนเพื่อนรออยู่แล้ว
+                    $seatsShort = max(0, $minSeats - (int) $schedule->booked_seats);
+
                     SmartNotification::send(
                         $booking->user_id,
                         'trip_underfilled_warning',
                         'อัปเดตการยืนยันรอบเดินทาง',
-                        "ทริป{$schedule->trip->title} ตอนนี้มีผู้ร่วมทริป {$schedule->booked_seats}/".$minSeats.' ท่าน หากครบจำนวนรอบนี้จะออกเดินทางตามกำหนด ทีมงานจะแจ้งอัปเดตล่วงหน้าอย่างน้อย '.self::DAYS_BEFORE.' วัน และหากไม่ได้ออกเดินทางเราคืนเงินเต็มจำนวนครับ',
+                        "ทริป{$schedule->trip->title} ตอนนี้มีผู้ร่วมทริป {$schedule->booked_seats}/{$minSeats} ท่าน "
+                            ."ขาดอีก {$seatsShort} ท่านก็ออกเดินทางตามกำหนดครับ "
+                            .'เปิดใบจองเพื่อส่งลิงก์ชวนเพื่อนมาร่วมทาง หรือทักทีมงานเพื่อย้ายไปรอบอื่นได้เลย '
+                            .'และหากรอบนี้ไม่ได้ออกเดินทาง เราคืนเงินเต็มจำนวนครับ',
                         ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
                     );
                 }

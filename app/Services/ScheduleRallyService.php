@@ -106,10 +106,46 @@ class ScheduleRallyService
     }
 
     /**
+     * รอบอื่นของทริปเดียวกันที่ยังจองได้ — เสนอเป็นทางเลือกให้ลูกค้าย้ายไปเอง
+     * เมื่อรอบของเขาเสี่ยงไม่ออก เรียงรอบที่คนจองเยอะสุดก่อน (ใกล้ออกแน่นอนที่สุด)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function alternativeSchedules(TripSchedule $schedule, int $limit = 3): array
+    {
+        if ($schedule->trip_id === null) {
+            return [];
+        }
+
+        $today = Carbon::now('Asia/Bangkok')->startOfDay();
+
+        return TripSchedule::query()
+            ->where('trip_id', $schedule->trip_id)
+            ->where('id', '!=', $schedule->id)
+            ->whereNotNull('departure_date')
+            ->whereDate('departure_date', '>', $today->toDateString())
+            ->where('status', 'open')
+            ->whereColumn('booked_seats', '<', 'total_seats')
+            ->orderByDesc('booked_seats')
+            ->orderBy('departure_date')
+            ->limit($limit)
+            ->get()
+            ->map(fn (TripSchedule $s) => [
+                'id' => $s->id,
+                'departure_label' => $s->departureLabelThai(),
+                'booked_seats' => (int) $s->booked_seats,
+                'seats_free' => max(0, (int) $s->total_seats - (int) $s->booked_seats),
+                'guaranteed' => $s->departureStatus() === TripSchedule::STATUS_GUARANTEED,
+                'url' => $this->shareUrl($s, null),
+            ])
+            ->all();
+    }
+
+    /**
      * ลิงก์ชวนเพื่อน — พาไปที่หน้าทริปพร้อมระบุรอบ และแนบโค้ดแนะนำเพื่อนของ
      * ผู้ชวนไว้ ถ้าเพื่อนเป็นลูกค้าใหม่ทั้งคู่จะได้แต้มตามโปรแกรมเดิม
      */
-    private function shareUrl(TripSchedule $schedule, ?User $user): string
+    public function shareUrl(TripSchedule $schedule, ?User $user): string
     {
         $base = rtrim((string) config('app.frontend_url', config('app.url')), '/');
         $slug = $schedule->trip?->slug ?? '';

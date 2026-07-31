@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Booking;
+use App\Services\ScheduleRallyService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -36,12 +37,19 @@ class TripUnderfilledWarningMail extends QueuedMail
 
     public function content(): Content
     {
+        $rally = app(ScheduleRallyService::class);
+        $schedule = $this->booking->schedule;
+
         return new Content(
             view: 'emails.trip-underfilled-warning',
             with: [
                 'daysBefore' => $this->daysBefore,
                 'bookedSeats' => $this->bookedSeats,
                 'minSeats' => $this->minSeats,
+                // ลิงก์ชวนเพื่อนของผู้จองคนนี้ (พ่วงโค้ดแนะนำเพื่อนของเขาไปด้วย)
+                // และรอบอื่นที่ยังจองได้ เผื่อเขาอยากย้ายไปรอบที่คนแน่นกว่า
+                'shareUrl' => $schedule ? $rally->shareUrl($schedule, $this->booking->user) : null,
+                'alternatives' => $schedule ? $rally->alternativeSchedules($schedule) : [],
             ],
         );
     }

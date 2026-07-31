@@ -11,6 +11,7 @@ use App\Models\Review;
 use App\Models\SosAlert;
 use App\Models\SupportConversation;
 use App\Models\TripPost;
+use App\Services\AtRiskScheduleService;
 use App\Services\SlipOcrService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +40,7 @@ class AdminActionQueueController extends Controller
         $groups = [
             $this->sosGroup(),
             $this->incidentGroup(),
+            $this->atRiskScheduleGroup(),
             $this->slipGroup(),
             $this->customPickupGroup(),
             $this->supportGroup(),
@@ -94,6 +96,32 @@ class AdminActionQueueController extends Controller
                 'title' => $i->schedule?->trip?->title ?? 'ทริป',
                 'detail' => Str::limit((string) $i->description, 60),
                 'at' => $i->created_at?->toISOString(),
+            ])->values(),
+        );
+    }
+
+    /**
+     * รอบที่ใกล้วันเดินทางแต่ยังจองไม่ถึงขั้นต่ำที่รถออก — ถ้าไม่มีใครลงมือ
+     * รอบจะล่มและต้องคืนเงินลูกค้าที่จองไว้แล้ว
+     *
+     * นับเฉพาะรอบที่มีคนจองแล้ว เพราะรอบว่างเปล่ายกเลิกได้โดยไม่มีใครเสียหาย
+     * (หน้าเรดาร์แสดงครบทุกรอบ ที่นี่เอาเฉพาะที่ต้องตัดสินใจจริง)
+     */
+    private function atRiskScheduleGroup(): array
+    {
+        $rows = app(AtRiskScheduleService::class)
+            ->atRisk()
+            ->where('booked_seats', '>', 0);
+
+        return $this->group(
+            'at_risk_schedules', 'รอบเสี่ยงไม่ได้ออกเดินทาง', 'group_off', 'high',
+            $rows->count(),
+            '/admin/at-risk',
+            $rows->take(5)->map(fn (array $row) => [
+                'title' => $row['trip_title'],
+                'detail' => "{$row['departure_label']} · {$row['booked_seats']}/{$row['min_seats']} ท่าน"
+                    ." · เหลือ {$row['days_left']} วัน",
+                'at' => null,
             ])->values(),
         );
     }

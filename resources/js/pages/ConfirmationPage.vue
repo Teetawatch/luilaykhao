@@ -62,7 +62,13 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <!-- Left Column: Summary & Travelers -->
           <div class="lg:col-span-7 space-y-8 animate-in fade-in slide-in-from-left-8 duration-700 delay-300 fill-mode-both">
-            
+
+            <!-- ช่วยกันเปิดรอบ — ขึ้นบนสุดเมื่อรอบยังไม่ครบขั้นต่ำและใกล้ถึงวันเดินทาง
+                 การ์ดซ่อนตัวเองเมื่อไม่เข้าเงื่อนไข -->
+            <RallyCard
+              v-if="booking.status === 'confirmed' && booking.schedule?.id"
+              :schedule-id="booking.schedule.id" />
+
             <!-- Booking Summary Card -->
             <section class="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden transition-all">
               <div class="flex flex-col">
@@ -481,6 +487,7 @@ import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import QRCode from 'qrcode';
 import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
+import RallyCard from '../components/RallyCard.vue';
 
 const route = useRoute();
 const booking = ref(null);
