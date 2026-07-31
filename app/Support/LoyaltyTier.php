@@ -9,9 +9,10 @@ namespace App\Support;
  * "ระดับเงิน") คนเดียวกันเปิดสองที่จึงเห็นคนละชื่อ ทุกอย่างที่เกี่ยวกับระดับ
  * จึงมารวมไว้ที่นี่ที่เดียว แล้วให้ทุกฝั่งอ่านจาก API
  *
- * เกณฑ์เดิม (1,500 / 5,000 แต้ม) สูงจนไปไม่ถึง — ที่ 100 บาท = 1 แต้ม และทริป
- * เฉลี่ยราว 3,500 บาท ต้องเดินทาง ~43 ทริปถึงจะขึ้นระดับแรก ระบบจึงไม่เคยทำงาน
- * เกณฑ์ชุดนี้ตั้งให้ขาประจำจริง ๆ ไปถึงได้ในเวลาที่สมเหตุสมผล
+ * ระดับนับจาก "จำนวนทริปที่ไปด้วยกัน" ไม่ใช่ยอดเงิน — คำว่าขาประจำหมายถึงคนที่
+ * กลับมาบ่อย ไม่ใช่คนที่จ่ายแพง เกณฑ์แบบยอดเงินเดิมยังลำเอียงเข้าข้างคนที่จอง
+ * ทริปราคาสูงหรือจองให้คนทั้งกลุ่มด้วย ส่วนแต้ม (points) ยังคิดจากยอดเงินเหมือน
+ * เดิม เพราะมันคือสกุลเงินไว้แลกของรางวัล คนละเรื่องกับระดับความสนิท
  */
 class LoyaltyTier
 {
@@ -35,7 +36,7 @@ class LoyaltyTier
                 'code' => self::FRIEND,
                 'label' => 'เพื่อนร่วมทาง',
                 'tagline' => 'ยินดีที่ได้ออกเดินทางด้วยกัน',
-                'min_points' => 0,
+                'min_trips' => 0,
                 'point_multiplier' => 1.0,
                 'seat_lock_bonus_minutes' => 0,
                 'early_access_hours' => 0,
@@ -46,7 +47,7 @@ class LoyaltyTier
                 'code' => self::FREQUENT,
                 'label' => 'ขาประจำ',
                 'tagline' => 'กลับมาอีกแล้ว ดีใจที่ได้เจอกัน',
-                'min_points' => 100,
+                'min_trips' => 2,
                 'point_multiplier' => 1.1,
                 'seat_lock_bonus_minutes' => 5,
                 'early_access_hours' => 0,
@@ -57,7 +58,7 @@ class LoyaltyTier
                 'code' => self::COMRADE,
                 'label' => 'สหายนักเดิน',
                 'tagline' => 'ไปด้วยกันมาหลายเส้นทางแล้ว',
-                'min_points' => 300,
+                'min_trips' => 5,
                 'point_multiplier' => 1.25,
                 'seat_lock_bonus_minutes' => 10,
                 'early_access_hours' => 12,
@@ -68,7 +69,7 @@ class LoyaltyTier
                 'code' => self::INSIDER,
                 'label' => 'คนกันเอง',
                 'tagline' => 'สนิทกับเราจนเป็นครอบครัวเดียวกัน',
-                'min_points' => 700,
+                'min_trips' => 10,
                 'point_multiplier' => 1.5,
                 'seat_lock_bonus_minutes' => 15,
                 'early_access_hours' => 24,
@@ -85,12 +86,12 @@ class LoyaltyTier
     }
 
     /**
-     * ระดับที่ควรอยู่ตามแต้มสะสมตลอดชีพ — ไล่จากสูงลงต่ำ เจออันแรกที่ถึงเกณฑ์
+     * ระดับที่ควรอยู่ตามจำนวนทริปที่เดินทางด้วยกัน — ไล่จากสูงลงต่ำ เจออันแรกที่ถึงเกณฑ์
      */
-    public static function forLifetimePoints(int $lifetimePoints): string
+    public static function forTrips(int $trips): string
     {
         foreach (array_reverse(self::all()) as $tier) {
-            if ($lifetimePoints >= $tier['min_points']) {
+            if ($trips >= $tier['min_trips']) {
                 return $tier['code'];
             }
         }
@@ -136,9 +137,9 @@ class LoyaltyTier
     }
 
     /**
-     * ระดับถัดไปพร้อมระยะที่เหลือ — คืน null เมื่ออยู่ระดับสูงสุดแล้ว
+     * ระดับถัดไปพร้อมระยะที่เหลือ (นับเป็นจำนวนทริป) — คืน null เมื่ออยู่ระดับสูงสุดแล้ว
      */
-    public static function next(?string $code, int $lifetimePoints): ?array
+    public static function next(?string $code, int $trips): ?array
     {
         $tiers = self::all();
         $currentIndex = null;
@@ -159,8 +160,8 @@ class LoyaltyTier
         return [
             'tier' => $next['code'],
             'label' => $next['label'],
-            'at' => $next['min_points'],
-            'points_needed' => max(0, $next['min_points'] - $lifetimePoints),
+            'at' => $next['min_trips'],
+            'trips_needed' => max(0, $next['min_trips'] - $trips),
         ];
     }
 }

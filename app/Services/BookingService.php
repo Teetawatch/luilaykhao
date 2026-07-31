@@ -26,7 +26,6 @@ class BookingService
         private SmsService $smsService,
         private WaitlistService $waitlistService,
         private ReferralService $referralService,
-        private LoyaltyService $loyaltyService,
         private BroadcastNotificationService $broadcastService,
         private TripAlertService $tripAlertService,
         private ScheduleSeatNotifier $seatNotifier,
@@ -618,8 +617,8 @@ class BookingService
                 }
             }
 
-            // Award loyalty points for the trip (100 THB = 1 point).
-            $this->loyaltyService->awardForBooking($booking);
+            // แต้มและจำนวนทริปสะสมถูกบันทึกโดย BookingObserver ตอน status เปลี่ยน
+            // เป็น confirmed ด้านบนแล้ว — ครอบคลุมทางที่แอดมินยืนยันใบจองเองด้วย
 
             // Reward the referrer + friend on the friend's first paid booking.
             $this->referralService->qualifyFromBooking($booking);

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LoyaltyAccount extends Model
 {
-    protected $fillable = ['user_id', 'points', 'lifetime_points', 'tier'];
+    protected $fillable = ['user_id', 'points', 'lifetime_points', 'lifetime_trips', 'tier'];
 
     public function user(): BelongsTo
     {
@@ -21,9 +21,10 @@ class LoyaltyAccount extends Model
         return $this->hasMany(LoyaltyTransaction::class, 'user_id', 'user_id');
     }
 
+    /** ระดับมาจากจำนวนทริปที่เดินทางด้วยกัน ไม่ใช่ยอดเงิน (ดู LoyaltyTier). */
     public function updateTier(): void
     {
-        $this->tier = LoyaltyTier::forLifetimePoints((int) $this->lifetime_points);
+        $this->tier = LoyaltyTier::forTrips((int) $this->lifetime_trips);
         $this->save();
     }
 
@@ -38,6 +39,7 @@ class LoyaltyAccount extends Model
         return static::firstOrCreate(['user_id' => $userId], [
             'points' => 0,
             'lifetime_points' => 0,
+            'lifetime_trips' => 0,
             'tier' => LoyaltyTier::FRIEND,
         ]);
     }

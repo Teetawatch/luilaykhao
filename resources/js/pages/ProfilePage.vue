@@ -587,17 +587,17 @@
 
                   <template v-if="loyaltyPoints !== null && loyaltyNextTier">
                     <p class="text-white/80 text-sm font-bold mb-5">
-                      อีก <span class="text-white text-lg px-1">{{ loyaltyNextTier.points_needed.toLocaleString() }}</span> แต้ม เพื่อเลื่อนระดับเป็น
-                      <strong class="text-[var(--color-accent-light)] font-black uppercase tracking-wider ml-1">{{ loyaltyNextTier.tier }}</strong>
+                      ไปด้วยกันอีก <span class="text-white text-lg px-1">{{ loyaltyNextTier.trips_needed.toLocaleString() }}</span> ทริป เพื่อเลื่อนระดับเป็น
+                      <strong class="text-[var(--color-accent-light)] font-black ml-1">{{ loyaltyNextTier.label }}</strong>
                     </p>
                     <div class="relative w-full h-3 bg-white/20 rounded-full overflow-hidden mb-2">
                       <div
                         class="absolute top-0 left-0 h-full bg-gradient-to-r from-[var(--color-accent-light)] to-white rounded-full transition-all duration-1000"
-                        :style="{ width: Math.min(100, (loyaltyPoints / (loyaltyPoints + loyaltyNextTier.points_needed)) * 100) + '%' }"
+                        :style="{ width: Math.min(100, (loyaltyTrips / (loyaltyTrips + loyaltyNextTier.trips_needed)) * 100) + '%' }"
                       ></div>
                     </div>
                     <div class="flex justify-between text-[10px] font-black text-white/60 uppercase tracking-widest">
-                      <span>{{ loyaltyPoints.toLocaleString() }} แต้มปัจจุบัน</span>
+                      <span>ไปด้วยกันมาแล้ว {{ loyaltyTrips.toLocaleString() }} ทริป</span>
                       <span>ระดับถัดไป</span>
                     </div>
                   </template>
@@ -856,6 +856,7 @@ const savingPublicProfile = ref(false);
 const copiedPublicUrl = ref(false);
 
 const loyaltyPoints   = ref(null);
+const loyaltyTrips    = ref(0);
 const loyaltyTierLabel = ref('');
 const loyaltyNextTier  = ref(null);
 
@@ -1052,6 +1053,7 @@ async function fetchLoyalty() {
     const account = res.data?.data;
     if (account) {
       loyaltyPoints.value    = account.points   ?? null;
+      loyaltyTrips.value     = account.lifetime_trips ?? 0;
       loyaltyTierLabel.value = account.tier_label || '';
       loyaltyNextTier.value  = account.next_tier  || null;
     }

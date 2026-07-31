@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Booking;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Observers\BookingObserver;
 use App\Observers\TripObserver;
 use App\Observers\TripScheduleObserver;
 use Illuminate\Support\Facades\Event;
@@ -32,5 +34,6 @@ class AppServiceProvider extends ServiceProvider
 
         TripSchedule::observe(TripScheduleObserver::class);
         Trip::observe(TripObserver::class);
+        Booking::observe(BookingObserver::class);
     }
 }

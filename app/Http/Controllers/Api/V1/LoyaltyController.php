@@ -37,18 +37,20 @@ class LoyaltyController extends Controller
         return $this->success([
             'points' => $account->points,
             'lifetime_points' => $account->lifetime_points,
+            // จำนวนทริปสะสม — ตัวเลขที่ใช้ตัดสินระดับ (แต้มมีไว้แลกของรางวัลเท่านั้น)
+            'lifetime_trips' => (int) $account->lifetime_trips,
             'tier' => $account->tier,
             'tier_label' => $tier['label'],
             'tier_tagline' => $tier['tagline'],
             'perks' => $this->perksFor($tier),
-            'next_tier' => LoyaltyTier::next($account->tier, (int) $account->lifetime_points),
+            'next_tier' => LoyaltyTier::next($account->tier, (int) $account->lifetime_trips),
             // ส่งบันไดทั้งชุดไปด้วย เพื่อให้เว็บและแอปวาดตารางระดับได้เองโดยไม่ต้อง
             // ฮาร์ดโค้ดชื่อหรือเกณฑ์ซ้ำอีกฝั่ง (ต้นเหตุที่เคยเรียกชื่อไม่ตรงกัน)
             'tiers' => collect(LoyaltyTier::all())->map(fn ($t) => [
                 'code' => $t['code'],
                 'label' => $t['label'],
                 'tagline' => $t['tagline'],
-                'min_points' => $t['min_points'],
+                'min_trips' => $t['min_trips'],
                 'perks' => $this->perksFor($t),
             ])->all(),
             'transactions' => $transactions,

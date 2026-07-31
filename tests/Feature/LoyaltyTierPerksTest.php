@@ -21,7 +21,7 @@ class LoyaltyTierPerksTest extends TestCase
 
     private int $refSeq = 0;
 
-    private function userAtTier(string $tier, int $lifetimePoints): User
+    private function userAtTier(string $tier, int $lifetimePoints, int $trips = 0): User
     {
         $user = User::factory()->create();
 
@@ -29,6 +29,7 @@ class LoyaltyTierPerksTest extends TestCase
             'user_id' => $user->id,
             'points' => $lifetimePoints,
             'lifetime_points' => $lifetimePoints,
+            'lifetime_trips' => $trips,
             'tier' => $tier,
         ]);
 
@@ -74,14 +75,28 @@ class LoyaltyTierPerksTest extends TestCase
 
     // ── ระดับและเกณฑ์ ──
 
-    public function test_tier_follows_lifetime_points(): void
+    public function test_tier_follows_the_number_of_trips_travelled(): void
     {
-        $this->assertSame(LoyaltyTier::FRIEND, LoyaltyTier::forLifetimePoints(0));
-        $this->assertSame(LoyaltyTier::FRIEND, LoyaltyTier::forLifetimePoints(99));
-        $this->assertSame(LoyaltyTier::FREQUENT, LoyaltyTier::forLifetimePoints(100));
-        $this->assertSame(LoyaltyTier::COMRADE, LoyaltyTier::forLifetimePoints(300));
-        $this->assertSame(LoyaltyTier::INSIDER, LoyaltyTier::forLifetimePoints(700));
-        $this->assertSame(LoyaltyTier::INSIDER, LoyaltyTier::forLifetimePoints(99999));
+        $this->assertSame(LoyaltyTier::FRIEND, LoyaltyTier::forTrips(0));
+        $this->assertSame(LoyaltyTier::FRIEND, LoyaltyTier::forTrips(1));
+        $this->assertSame(LoyaltyTier::FREQUENT, LoyaltyTier::forTrips(2));
+        $this->assertSame(LoyaltyTier::COMRADE, LoyaltyTier::forTrips(5));
+        $this->assertSame(LoyaltyTier::INSIDER, LoyaltyTier::forTrips(10));
+        $this->assertSame(LoyaltyTier::INSIDER, LoyaltyTier::forTrips(99));
+    }
+
+    public function test_a_big_spender_on_one_trip_is_not_a_regular(): void
+    {
+        // เกณฑ์เดิมคิดจากยอดเงิน คนที่จองทริปแพงให้ทั้งกลุ่มครั้งเดียวจึงกลายเป็น
+        // ขาประจำทันที ทั้งที่ยังไม่เคยกลับมาอีกเลย
+        $schedule = $this->makeSchedule();
+        $user = $this->userAtTier(LoyaltyTier::FRIEND, 0);
+
+        app(LoyaltyService::class)->awardForBooking($this->makeBooking($user, $schedule, 50000));
+
+        $account = LoyaltyAccount::forUser($user->id);
+        $this->assertSame(500, $account->points);
+        $this->assertSame(LoyaltyTier::FRIEND, $account->tier);
     }
 
     public function test_every_tier_name_is_thai(): void
@@ -104,15 +119,17 @@ class LoyaltyTierPerksTest extends TestCase
 
     public function test_api_serves_one_label_for_web_and_app(): void
     {
-        $user = $this->userAtTier(LoyaltyTier::COMRADE, 350);
+        $user = $this->userAtTier(LoyaltyTier::COMRADE, 350, trips: 6);
 
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/loyalty/account')
             ->assertOk()
             ->assertJsonPath('data.tier', 'comrade')
             ->assertJsonPath('data.tier_label', 'สหายนักเดิน')
+            ->assertJsonPath('data.lifetime_trips', 6)
             ->assertJsonPath('data.next_tier.label', 'คนกันเอง')
-            ->assertJsonPath('data.next_tier.points_needed', 350);
+            // เหลืออีก 4 ทริปถึงจะครบ 10 ทริปของระดับคนกันเอง
+            ->assertJsonPath('data.next_tier.trips_needed', 4);
 
         // ส่งบันไดทั้งชุดไปด้วย เพื่อให้ทั้งสองฝั่งไม่ต้องฮาร์ดโค้ดชื่อเอง
         $this->assertCount(4, $response->json('data.tiers'));
@@ -270,10 +287,10 @@ class LoyaltyTierPerksTest extends TestCase
         $this->assertSame(2, $service->positionInQueue($laterEntry->fresh()));
     }
 
-    public function test_migration_retiers_existing_accounts_by_points(): void
+    public function test_accounts_stuck_on_a_legacy_tier_are_recalculated(): void
     {
         // บัญชีที่ค้างระดับเก่าไว้ ต้องถูกคำนวณใหม่เมื่อมีการอัปเดตระดับ
-        $user = $this->userAtTier('silver', 350);
+        $user = $this->userAtTier('silver', 350, trips: 6);
 
         $account = LoyaltyAccount::forUser($user->id);
         $account->updateTier();

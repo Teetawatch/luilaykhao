@@ -41,13 +41,17 @@
                 <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แต้มสะสมตลอดกาล</p>
                 <p class="text-2xl font-bold mt-2 tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.lifetime_points?.toLocaleString() }}</p>
               </div>
+              <div>
+                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ไปด้วยกันมาแล้ว</p>
+                <p class="text-2xl font-bold mt-2 tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ (account?.lifetime_trips ?? 0).toLocaleString() }} ทริป</p>
+              </div>
             </div>
 
             <!-- Progress to next tier -->
             <div v-if="account?.next_tier" class="mt-6 bg-black/10 rounded-[16px] p-4 backdrop-blur-sm">
               <div class="flex justify-between text-[13px] font-bold text-white mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span>{{ account.tier_label }}</span>
-                <span>{{ account.next_tier.label }} ({{ account.next_tier.at.toLocaleString() }} แต้ม)</span>
+                <span>{{ account.next_tier.label }} ({{ account.next_tier.at.toLocaleString() }} ทริป)</span>
               </div>
               <div class="h-2.5 bg-black/20 rounded-full overflow-hidden">
                 <div
@@ -55,7 +59,7 @@
                   :style="{ width: tierProgress + '%' }"></div>
               </div>
               <p class="text-[12px] text-white/90 mt-2 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                ต้องสะสมอีก {{ account.next_tier.points_needed.toLocaleString() }} แต้ม เพื่อเลื่อนระดับเป็น {{ account.next_tier.label }}
+                ไปด้วยกันอีก {{ account.next_tier.trips_needed.toLocaleString() }} ทริป เพื่อเลื่อนระดับเป็น {{ account.next_tier.label }}
               </p>
             </div>
             <div v-else class="mt-6">
@@ -89,7 +93,7 @@
                 <TierBadge v-if="step.code === account.tier" :tier="step.code" label="ระดับของคุณ" size="sm" />
               </div>
               <span class="text-xs font-bold text-[#889696] shrink-0">
-                {{ step.min_points === 0 ? 'เริ่มต้น' : `${step.min_points.toLocaleString()} แต้ม` }}
+                {{ step.min_trips === 0 ? 'เริ่มต้น' : `${step.min_trips.toLocaleString()} ทริป` }}
               </span>
             </div>
             <p class="text-xs text-[#505E5E] mb-2">{{ step.tagline }}</p>
@@ -295,21 +299,21 @@ const tierBg = computed(() => ({
 }[account.value?.tier] || 'bg-[#006565]'));
 
 /**
- * ความคืบหน้าไปยังระดับถัดไป — วัดจากช่วงระหว่างเกณฑ์ของระดับปัจจุบันกับระดับถัดไป
- * เกณฑ์ทั้งหมดมาจาก API (data.tiers) จึงไม่ต้องฮาร์ดโค้ดตัวเลขซ้ำฝั่งนี้
+ * ความคืบหน้าไปยังระดับถัดไป — วัดจากจำนวนทริประหว่างเกณฑ์ของระดับปัจจุบันกับ
+ * ระดับถัดไป เกณฑ์ทั้งหมดมาจาก API (data.tiers) จึงไม่ต้องฮาร์ดโค้ดตัวเลขซ้ำฝั่งนี้
  */
 const tierProgress = computed(() => {
   const next = account.value?.next_tier;
   if (!next) return 100;
 
   const current = (account.value.tiers || []).find(t => t.code === account.value.tier);
-  const floor = current?.min_points ?? 0;
+  const floor = current?.min_trips ?? 0;
   const span = next.at - floor;
 
   if (span <= 0) return 100;
 
-  const earned = (account.value.lifetime_points ?? 0) - floor;
-  return Math.min(100, Math.max(0, (earned / span) * 100));
+  const travelled = (account.value.lifetime_trips ?? 0) - floor;
+  return Math.min(100, Math.max(0, (travelled / span) * 100));
 });
 
 async function loadData() {

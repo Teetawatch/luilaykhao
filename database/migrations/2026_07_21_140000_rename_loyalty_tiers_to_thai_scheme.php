@@ -21,10 +21,13 @@ return new class extends Migration
             $table->string('tier', 20)->default(LoyaltyTier::FRIEND)->change();
         });
 
-        foreach (LoyaltyTier::all() as $tier) {
+        // เกณฑ์แต้ม ณ วันที่ย้าย — เขียนตายตัวไว้ตรงนี้เพราะ migration ต้องให้ผล
+        // เหมือนเดิมเสมอ ภายหลังระดับถูกเปลี่ยนไปนับจากจำนวนทริปแทนแล้ว
+        // (ดู migration ที่เพิ่ม lifetime_trips)
+        foreach ([0 => 'friend', 100 => 'frequent', 300 => 'comrade', 700 => 'insider'] as $minPoints => $code) {
             DB::table('loyalty_accounts')
-                ->where('lifetime_points', '>=', $tier['min_points'])
-                ->update(['tier' => $tier['code']]);
+                ->where('lifetime_points', '>=', $minPoints)
+                ->update(['tier' => $code]);
         }
     }
 
