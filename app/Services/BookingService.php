@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
 use App\Models\LoyaltyRedemption;
+use App\Models\LoyaltyReward;
 use App\Models\Promotion;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
@@ -290,7 +291,17 @@ class BookingService
                     throw new \Exception('คูปองนี้ใช้ไม่ได้ (อาจถูกใช้ไปแล้ว หมดอายุ หรือไม่ใช่ของบัญชีนี้)');
                 }
 
-                $discountAmount = min($redemption->discountBaht(), $totalAmount);
+                // ส่งยอดค่าเช่าอุปกรณ์ไปด้วย เพราะคูปองเช่าฟรีหักได้เฉพาะส่วนนั้น
+                $discountAmount = $redemption->discountFor($totalAmount, $rentalsTotal);
+
+                if ($discountAmount <= 0) {
+                    throw new \Exception(
+                        $redemption->rewardType() === LoyaltyReward::TYPE_FREE_RENTAL
+                            ? 'คูปองนี้ใช้กับค่าเช่าอุปกรณ์ กรุณาเลือกอุปกรณ์ที่ต้องการเช่าก่อน'
+                            : 'คูปองนี้ไม่มีส่วนลดเหลืออยู่'
+                    );
+                }
+
                 $totalAmount -= $discountAmount;
             } elseif ($promotionCode) {
                 $promotion = Promotion::where('code', $promotionCode)->where('is_active', true)->lockForUpdate()->first();

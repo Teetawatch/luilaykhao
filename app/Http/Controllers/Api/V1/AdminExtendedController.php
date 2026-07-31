@@ -20,6 +20,7 @@ use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AdminExtendedController extends Controller
 {
@@ -889,7 +890,9 @@ class AdminExtendedController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'type' => ['required', 'in:discount_percent,discount_fixed,free_item'],
+            // free_item เดิมสร้างได้แต่ใช้ไม่ได้จริง (ไม่มี flow ส่งมอบของ) จึงตัดออก
+            // จนกว่าจะมีระบบให้สตาฟยืนยันการส่งมอบที่จุดขึ้นรถ
+            'type' => ['required', Rule::in(LoyaltyReward::TYPES)],
             'points_required' => ['required', 'integer', 'min:1'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
@@ -908,7 +911,7 @@ class AdminExtendedController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'type' => ['sometimes', 'in:discount_percent,discount_fixed,free_item'],
+            'type' => ['sometimes', Rule::in(LoyaltyReward::TYPES)],
             'points_required' => ['sometimes', 'integer', 'min:1'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],

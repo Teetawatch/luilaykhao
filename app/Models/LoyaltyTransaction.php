@@ -8,9 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class LoyaltyTransaction extends Model
 {
     protected $fillable = [
-        'user_id', 'type', 'points', 'description',
-        'reference_type', 'reference_id', 'balance_after',
+        'user_id', 'type', 'points', 'points_remaining', 'description',
+        'reference_type', 'reference_id', 'balance_after', 'expires_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'expires_at' => 'datetime',
+        ];
+    }
 
     public function user(): BelongsTo
     {

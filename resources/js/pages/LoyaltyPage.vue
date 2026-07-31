@@ -36,6 +36,10 @@
               <div>
                 <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แต้มคงเหลือ</p>
                 <p class="text-4xl font-extrabold tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.points?.toLocaleString() }}</p>
+                <p v-if="account?.expiring_points" class="text-[12px] font-bold text-white/90 mt-1.5 flex items-center gap-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                  <span class="material-symbols-rounded text-[14px]">schedule</span>
+                  {{ account.expiring_points.toLocaleString() }} แต้มหมดอายุ {{ thaiShort(account.expiring_at) }}
+                </p>
               </div>
               <div>
                 <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แต้มสะสมตลอดกาล</p>
@@ -277,6 +281,7 @@
 import { ref, computed, onMounted } from 'vue';
 import TierBadge from '../components/TierBadge.vue';
 import api from '../lib/axios';
+import { thaiShort } from '../lib/thaiDate';
 
 const loading = ref(true);
 const account = ref(null);
@@ -347,13 +352,17 @@ async function redeemReward(reward) {
 }
 
 function rewardIcon(type) {
-  return { discount_percent: 'local_offer', discount_fixed: 'payments', free_item: 'card_giftcard' }[type] || 'card_giftcard';
+  return {
+    discount_percent: 'local_offer',
+    discount_fixed: 'payments',
+    free_rental: 'backpack',
+    free_item: 'card_giftcard',
+  }[type] || 'card_giftcard';
 }
 
+/** ข้อความมูลค่ามาจาก API (`value_label`) — ความหมายของ discount_value ต่างกันตามชนิด */
 function rewardValue(r) {
-  if (r.type === 'discount_percent') return `ส่วนลด ${r.discount_value}%`;
-  if (r.type === 'discount_fixed') return `ส่วนลด ฿${Number(r.discount_value).toLocaleString()}`;
-  return 'ของรางวัลพิเศษ';
+  return r.value_label || r.name;
 }
 
 function isExpired(date) {

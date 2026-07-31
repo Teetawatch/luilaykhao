@@ -7,14 +7,18 @@ use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
+use App\Services\LoyaltyService;
 use App\Support\LoyaltyTier;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LoyaltyController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private LoyaltyService $loyaltyService) {}
 
     public function account(Request $request): JsonResponse
     {
@@ -29,16 +33,22 @@ class LoyaltyController extends Controller
                 'points' => $t->points,
                 'description' => $t->description,
                 'balance_after' => $t->balance_after,
+                'expires_at' => $t->expires_at?->toISOString(),
                 'created_at' => $t->created_at?->toISOString(),
             ]);
 
         $tier = LoyaltyTier::find($account->tier);
+        $expiring = $this->loyaltyService->expiringSoon($request->user()->id);
 
         return $this->success([
             'points' => $account->points,
             'lifetime_points' => $account->lifetime_points,
             // จำนวนทริปสะสม — ตัวเลขที่ใช้ตัดสินระดับ (แต้มมีไว้แลกของรางวัลเท่านั้น)
             'lifetime_trips' => (int) $account->lifetime_trips,
+            // แต้มมีอายุ 24 เดือน — บอกก้อนที่ใกล้หมดอายุเพื่อให้หน้าจอเตือนได้เอง
+            'points_valid_months' => LoyaltyService::POINTS_VALID_MONTHS,
+            'expiring_points' => $expiring['points'],
+            'expiring_at' => $expiring['at']?->toISOString(),
             'tier' => $account->tier,
             'tier_label' => $tier['label'],
             'tier_tagline' => $tier['tagline'],
@@ -88,38 +98,46 @@ class LoyaltyController extends Controller
             return $this->error('แต้มไม่เพียงพอ (ต้องการ '.$reward->points_required.' แต้ม)', 422);
         }
 
-        $account->points -= $reward->points_required;
-        $account->save();
+        try {
+            // ตัดสต๊อก แลกแต้ม และออกคูปอง ในธุรกรรมเดียว — ของชิ้นสุดท้ายที่มีคน
+            // กดพร้อมกันจะมีคนเดียวที่ได้ อีกคนไม่เสียแต้มฟรี
+            $redemption = DB::transaction(function () use ($request, $reward) {
+                $locked = LoyaltyReward::whereKey($reward->id)->lockForUpdate()->first();
 
-        if ($reward->stock !== null) {
-            $reward->decrement('stock');
+                if ($locked->stock !== null) {
+                    if ($locked->stock <= 0) {
+                        throw new \Exception('ของรางวัลหมดแล้ว');
+                    }
+                    $locked->decrement('stock');
+                }
+
+                $redemption = LoyaltyRedemption::create([
+                    'user_id' => $request->user()->id,
+                    'reward_id' => $locked->id,
+                    'source' => LoyaltyRedemption::SOURCE_REWARD,
+                    'points_used' => $locked->points_required,
+                    'coupon_code' => LoyaltyRedemption::generateCoupon(),
+                    'expires_at' => now()->addDays(90),
+                ]);
+
+                $this->loyaltyService->spend(
+                    $request->user()->id,
+                    (int) $locked->points_required,
+                    'แลกรับ: '.$locked->name,
+                    $redemption,
+                );
+
+                return $redemption;
+            });
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
         }
 
-        $coupon = LoyaltyRedemption::generateCoupon();
-
-        $redemption = LoyaltyRedemption::create([
-            'user_id' => $request->user()->id,
-            'reward_id' => $reward->id,
-            'points_used' => $reward->points_required,
-            'coupon_code' => $coupon,
-            'expires_at' => now()->addDays(90),
-        ]);
-
-        LoyaltyTransaction::create([
-            'user_id' => $request->user()->id,
-            'type' => 'redeem',
-            'points' => -$reward->points_required,
-            'description' => 'แลกรับ: '.$reward->name,
-            'reference_type' => LoyaltyRedemption::class,
-            'reference_id' => $redemption->id,
-            'balance_after' => $account->points,
-        ]);
-
         return $this->success([
-            'coupon_code' => $coupon,
-            'reward' => $this->formatReward($reward),
+            'coupon_code' => $redemption->coupon_code,
+            'reward' => $this->formatReward($reward->fresh()),
             'expires_at' => $redemption->expires_at?->toISOString(),
-            'points_remaining' => $account->points,
+            'points_remaining' => LoyaltyAccount::forUser($request->user()->id)->points,
         ], 'แลกของรางวัลสำเร็จ', 201);
     }
 
@@ -213,10 +231,26 @@ class LoyaltyController extends Controller
             'name' => $r->name,
             'description' => $r->description,
             'type' => $r->type,
+            // ข้อความอธิบายมูลค่า — ความหมายของ discount_value ต่างกันตามชนิด
+            // เขียนที่นี่ที่เดียวเพื่อไม่ให้เว็บกับแอปตีความเองแล้วพูดไม่ตรงกัน
+            'value_label' => $this->rewardValueLabel($r),
             'points_required' => $r->points_required,
             'discount_value' => $r->discount_value,
             'is_active' => $r->is_active,
             'stock' => $r->stock,
         ];
+    }
+
+    private function rewardValueLabel(LoyaltyReward $r): string
+    {
+        $value = (float) $r->discount_value;
+
+        return match ($r->type) {
+            LoyaltyReward::TYPE_DISCOUNT_PERCENT => 'ลด '.rtrim(rtrim(number_format($value, 2), '0'), '.').'%',
+            LoyaltyReward::TYPE_FREE_RENTAL => $value > 0
+                ? 'เช่าอุปกรณ์ฟรี มูลค่าไม่เกิน '.number_format($value).' บาท'
+                : 'เช่าอุปกรณ์ฟรีทั้งหมดในการจองนี้',
+            default => 'ลด '.number_format($value).' บาท',
+        };
     }
 }

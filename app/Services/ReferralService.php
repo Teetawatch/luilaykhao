@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use App\Models\Booking;
-use App\Models\LoyaltyAccount;
-use App\Models\LoyaltyTransaction;
 use App\Models\Referral;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -145,21 +143,9 @@ class ReferralService
             return;
         }
 
-        $account = LoyaltyAccount::forUser($userId);
-        $account->points += $points;
-        $account->lifetime_points += $points;
-        $account->save();
-        $account->updateTier();
-
-        LoyaltyTransaction::create([
-            'user_id' => $userId,
-            'type' => 'earn',
-            'points' => $points,
-            'description' => $description,
-            'reference_type' => Referral::class,
-            'reference_id' => $referral->id,
-            'balance_after' => $account->points,
-        ]);
+        // ผ่าน LoyaltyService เสมอ เพื่อให้แต้มก้อนนี้มีวันหมดอายุและถูกตัดตามลำดับ
+        // เหมือนแต้มจากการจอง (ระดับสมาชิกนับจากจำนวนทริป แต้มแนะนำเพื่อนจึงไม่เลื่อนระดับ)
+        app(LoyaltyService::class)->credit($userId, $points, $description, $referral);
     }
 
     private function generateUniqueCode(): string

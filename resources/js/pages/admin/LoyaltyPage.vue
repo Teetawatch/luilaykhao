@@ -141,18 +141,20 @@
             <div class="form-group">
               <label>ประเภท *</label>
               <select v-model="form.type" class="form-input">
-                <option value="discount_percent">ส่วนลด %</option>
                 <option value="discount_fixed">ส่วนลดคงที่ (บาท)</option>
-                <option value="free_item">ของรางวัลพิเศษ</option>
+                <option value="discount_percent">ส่วนลด %</option>
+                <option value="free_rental">เช่าอุปกรณ์ฟรี</option>
               </select>
             </div>
             <div class="form-group">
               <label>แต้มที่ต้องใช้ *</label>
               <input v-model.number="form.points_required" type="number" min="1" class="form-input" />
+              <p class="field-hint">ลูกค้าได้ราว 35 แต้มต่อทริป — ตั้งสูงเกินไปจะไม่มีใครแลกได้</p>
             </div>
             <div class="form-group">
-              <label>มูลค่าส่วนลด</label>
+              <label>{{ valueFieldLabel }}</label>
               <input v-model.number="form.discount_value" type="number" min="0" step="0.01" class="form-input" />
+              <p class="field-hint">{{ valueFieldHint }}</p>
             </div>
             <div class="form-group">
               <label>สต็อก (ว่างไว้ = ไม่จำกัด)</label>
@@ -179,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import api from '../../lib/axios';
 
 const rewards = ref([]);
@@ -190,14 +192,16 @@ const saving = ref(false);
 const editingId = ref(null);
 
 const form = reactive({
-  name: '', description: '', type: 'discount_percent',
-  points_required: 500, discount_value: null, stock: null, is_active: true,
+  name: '', description: '', type: 'discount_fixed',
+  points_required: 100, discount_value: null, stock: null, is_active: true,
 });
 
 const typeLabels = {
   discount_percent: 'ส่วนลด %',
   discount_fixed: 'ส่วนลดคงที่',
-  free_item: 'ของรางวัล',
+  free_rental: 'เช่าอุปกรณ์ฟรี',
+  // ของรางวัลที่ต้องส่งมอบของยังไม่มี flow รองรับ — เหลือไว้อ่านข้อมูลเก่าเท่านั้น
+  free_item: 'ของรางวัล (ยังใช้ไม่ได้)',
 };
 
 const tierList = [
@@ -215,8 +219,22 @@ function getTierPercent(key) {
 function rewardValue(r) {
   if (r.type === 'discount_percent') return r.discount_value ? `${r.discount_value}%` : '-';
   if (r.type === 'discount_fixed') return r.discount_value ? `฿${Number(r.discount_value).toLocaleString()}` : '-';
+  if (r.type === 'free_rental') {
+    return r.discount_value ? `ค่าเช่าไม่เกิน ฿${Number(r.discount_value).toLocaleString()}` : 'ค่าเช่าทั้งหมด';
+  }
   return '-';
 }
+
+/** ช่อง "มูลค่า" มีความหมายต่างกันตามประเภท — บอกให้ชัดว่ากรอกอะไรอยู่ */
+const valueFieldLabel = computed(() => ({
+  discount_percent: 'ส่วนลด (%)',
+  free_rental: 'เพดานค่าเช่าที่ยกเว้น (บาท)',
+}[form.type] || 'มูลค่าส่วนลด (บาท)'));
+
+const valueFieldHint = computed(() => ({
+  discount_percent: 'คิดเป็นเปอร์เซ็นต์ของยอดจองทั้งใบ',
+  free_rental: 'หักเฉพาะค่าเช่าอุปกรณ์ ไม่ลดค่าทริป — ใส่ 0 = ฟรีทั้งหมด',
+}[form.type] || 'หักออกจากยอดจองตรง ๆ'));
 
 async function loadData() {
   loading.value = true;
@@ -234,7 +252,7 @@ async function loadData() {
 
 function openCreate() {
   editingId.value = null;
-  Object.assign(form, { name: '', description: '', type: 'discount_percent', points_required: 500, discount_value: null, stock: null, is_active: true });
+  Object.assign(form, { name: '', description: '', type: 'discount_fixed', points_required: 100, discount_value: null, stock: null, is_active: true });
   showModal.value = true;
 }
 
@@ -414,7 +432,10 @@ onMounted(loadData);
 
 .type-discount_percent { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
 .type-discount_fixed   { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
+.type-free_rental      { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
 .type-free_item        { background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff; }
+
+.field-hint { font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.4; }
 
 /* ─── Shared ─── */
 .table-card {

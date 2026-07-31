@@ -5,6 +5,7 @@ use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ClearEndedTripDriverPinsJob;
 use App\Jobs\ExpireFlexiOffersJob;
 use App\Jobs\ExpireGroupPlansJob;
+use App\Jobs\ExpireLoyaltyPointsJob;
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\IssueBirthdayCouponsJob;
@@ -22,6 +23,7 @@ use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Jobs\SendWeatherAlertsJob;
 use App\Jobs\StartScheduledFlashSalesJob;
+use App\Jobs\WarnExpiringLoyaltyPointsJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -49,6 +51,9 @@ Schedule::job(new SendUnderfilledTripWarningsJob)->dailyAt('09:00')->timezone('A
 
 // ของขวัญวันเกิดตามระดับสมาชิก — เช้าพอที่จะเห็นตั้งแต่ต้นวันเกิด
 Schedule::job(new IssueBirthdayCouponsJob)->dailyAt('07:30')->timezone('Asia/Bangkok')->withoutOverlapping();
+// แต้มมีอายุ 24 เดือน — เตือนล่วงหน้า 30 วันก่อน แล้วค่อยล้างของที่หมดอายุจริง
+Schedule::job(new WarnExpiringLoyaltyPointsJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+Schedule::job(new ExpireLoyaltyPointsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // Review window opens at 20:00 (Asia/Bangkok) on the trip's last day — invite exactly then.
 Schedule::job(new SendReviewInvitesJob)->dailyAt('20:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // 15 นาทีหลังชวนรีวิว — ส่งข้อความอวยพรเดินทางกลับโดยสวัสดิภาพให้ผู้ร่วมทริปวันนี้

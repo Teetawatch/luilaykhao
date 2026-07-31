@@ -126,6 +126,8 @@ class BackfillLoyalty extends Command
             }
         }
 
+        $reconciled = $this->reconcilePointLots($dryRun, $userId);
+
         $prefix = $dryRun ? '[dry-run] ' : '';
 
         foreach ($promoted as $line) {
@@ -134,11 +136,67 @@ class BackfillLoyalty extends Command
 
         $this->info("{$prefix}ให้แต้มย้อนหลัง {$credited} การจอง (ข้ามที่เคยได้แล้ว {$skipped} การจอง)");
         $this->info("{$prefix}เปลี่ยนระดับสมาชิก ".count($promoted).' บัญชี');
+        $this->info("{$prefix}ตั้งวันหมดอายุให้แต้มก้อนเก่า {$reconciled} ก้อน");
 
         if ($dryRun) {
             $this->comment('ยังไม่ได้บันทึกอะไร — ตัดตัวเลือก --dry-run ออกเพื่อบันทึกจริง');
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * เกลี่ยแต้มคงเหลือของแต่ละคนลงล็อต แล้วตั้งวันหมดอายุให้แต้มยุคก่อนมีระบบล็อต
+     *
+     * แต้มที่ลูกค้าแลกไปแล้วในอดีตไม่มีร่องรอยว่าตัดจากก้อนไหน จึงเกลี่ยจากก้อนใหม่
+     * สุดย้อนลงไปจนครบยอดคงเหลือ (ก้อนเก่าที่เหลือถือว่าถูกใช้ไปแล้ว) วิธีนี้เข้าข้าง
+     * ลูกค้าเพราะแต้มที่ยังอยู่จะเป็นก้อนใหม่ที่มีอายุยาวกว่า
+     *
+     * วันหมดอายุมีระยะผ่อนผันอย่างน้อย 90 วันนับจากวันนี้ — ไม่มีใครตื่นมาแล้วพบว่า
+     * แต้มหายไปเพราะเราเพิ่งประกาศกติกาเมื่อคืน
+     */
+    private function reconcilePointLots(bool $dryRun, ?int $userId): int
+    {
+        $touched = 0;
+        $floor = now()->addDays(90);
+
+        LoyaltyAccount::query()
+            ->when($userId, fn ($query) => $query->where('user_id', $userId))
+            ->chunkById(200, function ($accounts) use ($dryRun, $floor, &$touched) {
+                foreach ($accounts as $account) {
+                    $lots = LoyaltyTransaction::where('user_id', $account->user_id)
+                        ->where('type', 'earn')
+                        ->whereNull('expires_at')
+                        ->orderByDesc('id')
+                        ->get();
+
+                    if ($lots->isEmpty()) {
+                        continue;
+                    }
+
+                    $budget = (int) $account->points;
+
+                    foreach ($lots as $lot) {
+                        $remaining = min($budget, max(0, (int) $lot->points));
+                        $budget -= $remaining;
+                        $touched++;
+
+                        if ($dryRun) {
+                            continue;
+                        }
+
+                        $expiresAt = $lot->created_at
+                            ? $lot->created_at->copy()->addMonths(LoyaltyService::POINTS_VALID_MONTHS)
+                            : $floor;
+
+                        $lot->update([
+                            'points_remaining' => $remaining,
+                            'expires_at' => $expiresAt->lt($floor) ? $floor : $expiresAt,
+                        ]);
+                    }
+                }
+            });
+
+        return $touched;
     }
 }
