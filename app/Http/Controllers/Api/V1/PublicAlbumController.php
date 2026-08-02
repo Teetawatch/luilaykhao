@@ -163,6 +163,10 @@ class PublicAlbumController extends Controller
 
         return response()->streamDownload(function () use ($photos, $schedule) {
             $tmp = tempnam(sys_get_temp_dir(), 'album');
+            // กันไฟล์ zip ค้างเมื่อ request ตายกลางคัน (timeout / fatal) — โค้ดหลัง
+            // จุดที่ตายจะไม่ถูกรัน แต่ shutdown function ยังทำงาน
+            register_shutdown_function(fn () => @unlink($tmp));
+
             $zip = new \ZipArchive;
             $zip->open($tmp, \ZipArchive::OVERWRITE);
 
@@ -177,8 +181,17 @@ class PublicAlbumController extends Controller
             }
 
             $zip->close();
-            readfile($tmp);
+
+            // เปิดไฟล์แล้วลบทิ้งทันทีก่อนเริ่มส่ง — ข้อมูลยังอ่านได้จาก fd ที่ถือไว้
+            // แต่พื้นที่ถูกคืนทันทีที่สตรีมจบ "หรือ" ลูกค้ากดยกเลิกกลางทาง ซึ่งเดิม
+            // ทำให้ไฟล์ก้อนละ ~100MB ค้างใน /tmp เพราะ PHP หยุดสคริปต์ตอน abort
+            $handle = fopen($tmp, 'rb');
             @unlink($tmp);
+
+            if ($handle !== false) {
+                fpassthru($handle);
+                fclose($handle);
+            }
         }, $zipName, [
             'Content-Type' => 'application/zip',
         ]);

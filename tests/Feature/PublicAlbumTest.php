@@ -156,6 +156,21 @@ class PublicAlbumTest extends TestCase
         @unlink($tmp);
     }
 
+    public function test_zip_download_leaves_no_temp_file_behind(): void
+    {
+        // ไฟล์ zip ชั่วคราวก้อนละ ~100MB เคยค้างใน /tmp จนดิสก์ VPS เกือบเต็ม
+        // (ลูกค้ากดยกเลิกกลางคัน → บรรทัด unlink เดิมไม่ถูกรัน)
+        $schedule = $this->makeScheduleWithPhotos(2);
+        $token = $schedule->ensurePhotoToken();
+
+        $before = glob(sys_get_temp_dir().'/album*') ?: [];
+
+        $this->get("/album/{$token}/download")->assertOk()->streamedContent();
+
+        $after = glob(sys_get_temp_dir().'/album*') ?: [];
+        $this->assertSame($before, $after);
+    }
+
     public function test_download_requires_a_valid_token(): void
     {
         $this->get('/album/nope/download')->assertNotFound();
