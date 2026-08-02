@@ -170,4 +170,140 @@ class PickupPointChangeSyncTest extends TestCase
         $this->assertSame($new->id, (int) $passengers[0]->pickup_point_id);
         $this->assertSame($ownChoice->id, (int) $passengers[1]->pickup_point_id);
     }
+
+    /** แอดมินตั้งจุดรับให้แต่ละคนคนละจุดจากหน้าจัดการการจอง */
+    public function test_admin_can_set_a_different_pickup_point_per_passenger(): void
+    {
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $old = $this->makePickup($schedule, 'bangkok', 'BTS หมอชิต', 1);
+        $other = $this->makePickup($schedule, 'nonthaburi', 'เซ็นทรัล รัตนาธิเบศร์', 2);
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengers(2),
+            pickupPointId: $old->id,
+        );
+
+        $existing = $booking->passengers->sortBy('id')->values();
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", [
+                'passengers' => [
+                    ['id' => $existing[0]->id, 'name' => $existing[0]->name, 'pickup_point_id' => $old->id],
+                    ['id' => $existing[1]->id, 'name' => $existing[1]->name, 'pickup_point_id' => $other->id],
+                ],
+            ])
+            ->assertOk();
+
+        $passengers = $booking->fresh()->passengers->sortBy('id')->values();
+        $this->assertSame($old->id, (int) $passengers[0]->pickup_point_id);
+        $this->assertSame($other->id, (int) $passengers[1]->pickup_point_id);
+    }
+
+    /**
+     * ส่งจุดรายคนมาพร้อมกับเปลี่ยนจุดของการจอง — ค่ารายคนต้องเป็นใหญ่
+     * ไม่งั้นการย้ายตามจุดของการจองจะทับสิ่งที่แอดมินเพิ่งเลือกให้ทีละคน
+     */
+    public function test_explicit_per_passenger_pickup_wins_over_the_booking_level_move(): void
+    {
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $old = $this->makePickup($schedule, 'bangkok', 'BTS หมอชิต', 1);
+        $new = $this->makePickup($schedule, 'bangkok', 'อนุสาวรีย์ชัยฯ', 2);
+        $other = $this->makePickup($schedule, 'nonthaburi', 'เซ็นทรัล รัตนาธิเบศร์', 3);
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengers(2),
+            pickupPointId: $old->id,
+        );
+
+        $existing = $booking->passengers->sortBy('id')->values();
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", [
+                'pickup_point_id' => $new->id,
+                'passengers' => [
+                    ['id' => $existing[0]->id, 'name' => $existing[0]->name, 'pickup_point_id' => $new->id],
+                    ['id' => $existing[1]->id, 'name' => $existing[1]->name, 'pickup_point_id' => $other->id],
+                ],
+            ])
+            ->assertOk();
+
+        $booking->refresh();
+        $this->assertSame($new->id, $booking->pickup_point_id);
+
+        $passengers = $booking->passengers->sortBy('id')->values();
+        $this->assertSame($new->id, (int) $passengers[0]->pickup_point_id);
+        $this->assertSame($other->id, (int) $passengers[1]->pickup_point_id);
+    }
+
+    /** เว้นว่าง = กลับไปใช้จุดของการจอง */
+    public function test_blank_per_passenger_pickup_clears_the_passengers_own_point(): void
+    {
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $old = $this->makePickup($schedule, 'bangkok', 'BTS หมอชิต', 1);
+        $ownChoice = $this->makePickup($schedule, 'nonthaburi', 'เซ็นทรัล รัตนาธิเบศร์', 2);
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengers(2, $ownChoice->id),
+            pickupPointId: $old->id,
+        );
+
+        $existing = $booking->passengers->sortBy('id')->values();
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", [
+                'passengers' => [
+                    ['id' => $existing[0]->id, 'name' => $existing[0]->name, 'pickup_point_id' => $old->id],
+                    ['id' => $existing[1]->id, 'name' => $existing[1]->name, 'pickup_point_id' => ''],
+                ],
+            ])
+            ->assertOk();
+
+        $passengers = $booking->fresh()->passengers->sortBy('id')->values();
+        $this->assertSame($old->id, (int) $passengers[0]->pickup_point_id);
+        $this->assertNull($passengers[1]->pickup_point_id);
+    }
+
+    /**
+     * ที่นั่งส่งมาเรียงตามผู้โดยสาร คนที่ยังไม่มีที่นั่งจะเว้นช่องว่างไว้ —
+     * ชื่อบนที่นั่งต้องไม่เลื่อนไปเป็นคนถัดไป
+     */
+    public function test_a_blank_seat_in_the_middle_does_not_shift_the_names(): void
+    {
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $point = $this->makePickup($schedule, 'bangkok', 'BTS หมอชิต', 1);
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengers(3),
+            pickupPointId: $point->id,
+        );
+
+        $existing = $booking->passengers->sortBy('id')->values();
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", [
+                'seat_ids' => ['A1', '', 'A3'],
+                'passengers' => $existing->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->all(),
+            ])
+            ->assertOk();
+
+        $seats = $booking->fresh()->seats->sortBy('seat_id')->values();
+        $this->assertCount(2, $seats);
+        $this->assertSame('A1', $seats[0]->seat_id);
+        $this->assertSame($existing[0]->name, $seats[0]->passenger_name);
+        $this->assertSame('A3', $seats[1]->seat_id);
+        // คนที่สาม ไม่ใช่คนที่สอง
+        $this->assertSame($existing[2]->name, $seats[1]->passenger_name);
+    }
 }

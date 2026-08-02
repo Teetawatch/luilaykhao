@@ -660,6 +660,7 @@
                   <span v-else-if="passenger.halal_food === false" class="food-badge">ไม่ฮาลาล</span>
                 </div>
                 <div class="passenger-info-grid">
+                  <InfoItem label="จุดรับ" :value="passengerPickupLabel(passenger)" />
                   <InfoItem label="โทร" :value="passenger.phone || '-'" />
                   <InfoItem label="อีเมล" :value="passenger.email || '-'" />
                   <InfoItem label="บัตรประชาชน" :value="passenger.id_card || '-'" />
@@ -1003,7 +1004,7 @@
             </div>
             <div class="form-grid">
               <div class="form-group">
-                <label>จุดรับ</label>
+                <label>จุดรับของการจอง</label>
                 <select v-model.number="editForm.pickup_point_id" @change="onEditPickupChange" :disabled="!editPickupPoints.length">
                   <option value="">— ไม่ระบุจุดรับ —</option>
                   <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
@@ -1011,18 +1012,12 @@
                   </option>
                 </select>
                 <small v-if="!editPickupPoints.length" class="field-hint">รอบเดินทางนี้ยังไม่มีจุดรับให้เลือก</small>
+                <small v-else class="field-hint">ใช้กับคนที่ไม่ได้ระบุจุดของตัวเองไว้ด้านล่าง</small>
               </div>
               <div class="form-group" v-if="editForm.is_join_trip">
                 <label>ภูมิภาคจุดรับ (จอยทริป)</label>
                 <input v-model.trim="editForm.pickup_region" type="text" placeholder="เช่น กรุงเทพฯ" />
                 <small class="field-hint">ใช้กรณีจอยทริปที่ระบุเฉพาะภูมิภาค ไม่มีจุดรับตายตัว</small>
-              </div>
-              <div class="form-group full-span">
-                <label>ที่นั่ง</label>
-                <input v-model.trim="editForm.seat_ids_text" type="text" placeholder="A1, A2, B1" :disabled="editForm.is_join_trip" />
-                <small class="field-hint">
-                  {{ editForm.is_join_trip ? 'จอยทริปไม่ต้องระบุที่นั่ง' : 'พิมพ์รหัสที่นั่งคั่นด้วยเครื่องหมายจุลภาค จำนวนต้องเท่ากับผู้โดยสาร' }}
-                </small>
               </div>
 
               <!-- จุดรับปักหมุดเอง — แอดมินปักหมุด/แก้ไข/ลบจากแผนที่ได้ -->
@@ -1051,6 +1046,77 @@
                 </button>
                 <small class="field-hint">ลูกค้าปักหมุดเองในหน้าจอง แอดมินปักหมุด/แก้ไขได้จากที่นี่</small>
               </div>
+            </div>
+
+            <!-- จุดรับ/ที่นั่งรายคน — คนในกลุ่มเดียวกันขึ้นคนละจุดได้
+                 สตาฟกับคนขับอ่านจุดรายคนก่อนจุดของการจองเสมอ -->
+            <div class="pax-pickup">
+              <div class="pax-pickup-head">
+                <strong>จุดรับและที่นั่งรายคน</strong>
+                <button
+                  v-if="editForm.passengers.length && editForm.pickup_point_id && !editCustomPickup"
+                  type="button"
+                  class="btn-secondary compact"
+                  @click="applyBookingPickupToAll"
+                >
+                  <span class="material-symbols-rounded">group</span>
+                  ใช้จุดของการจองกับทุกคน
+                </button>
+              </div>
+
+              <p v-if="editCustomPickup" class="pax-pickup-note">
+                <span class="material-symbols-rounded">info</span>
+                การจองนี้ใช้หมุดที่ปักเอง — จุดรับรายคนจะถูกล้างทั้งหมดเมื่อบันทึก
+              </p>
+
+              <div v-if="!editForm.passengers.length" class="pax-pickup-empty">
+                ยังไม่มีผู้โดยสารในการจองนี้ — เพิ่มผู้โดยสารในหัวข้อถัดไปก่อน
+              </div>
+
+              <div v-else class="pax-pickup-list">
+                <div v-for="(passenger, index) in editForm.passengers" :key="passenger.local_key" class="pax-pickup-row">
+                  <div class="pax-pickup-who">
+                    <span class="pax-pickup-no">{{ index + 1 }}</span>
+                    <span class="pax-pickup-name">
+                      {{ passenger.name || `ผู้โดยสาร ${index + 1}` }}
+                      <small v-if="passenger.nickname">({{ passenger.nickname }})</small>
+                    </span>
+                  </div>
+
+                  <div class="form-group">
+                    <label>จุดรับ</label>
+                    <select
+                      v-model.number="passenger.pickup_point_id"
+                      :disabled="!editPickupPoints.length || Boolean(editCustomPickup)"
+                    >
+                      <option value="">— ตามจุดของการจอง —</option>
+                      <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
+                        {{ point.region_label || point.region }} · {{ point.pickup_location }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div class="form-group pax-pickup-seat">
+                    <label>ที่นั่ง</label>
+                    <input
+                      v-model.trim="passenger.seat_id"
+                      type="text"
+                      placeholder="A1"
+                      :disabled="editForm.is_join_trip"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <small class="field-hint">
+                {{ editForm.is_join_trip
+                  ? 'จอยทริปไม่ต้องระบุที่นั่ง — ระบุเฉพาะจุดรับรายคนได้'
+                  : 'เว้นที่นั่งว่างไว้ได้ถ้ายังไม่ได้จัดผัง' }}
+              </small>
+              <small v-if="editSeatDuplicateWarning" class="pax-pickup-warning">
+                <span class="material-symbols-rounded">warning</span>
+                {{ editSeatDuplicateWarning }}
+              </small>
             </div>
           </section>
 
@@ -1816,7 +1882,6 @@ const editForm = reactive({
   cancellation_reason: '',
   pickup_point_id: '',
   pickup_region: '',
-  seat_ids_text: '',
   user: { name: '', email: '', phone: '' },
   total_amount: 0,
   paid_amount: 0,
@@ -1843,6 +1908,9 @@ const editForm = reactive({
   installments: [],
   rentals: [],
 });
+
+// จุดรับของการจองก่อนถูกแก้ — ใช้ดูว่าใคร "ยืนจุดเดียวกับหัวการจอง" อยู่
+const editPickupPrevious = ref('');
 
 // ค่าเช่าอุปกรณ์ล่าสุดที่สะท้อนอยู่ในช่องยอดรวมแล้ว — ใช้คิดส่วนต่างเวลาแอดมินแก้
 const rentalsBaseline = ref(0);
@@ -1892,6 +1960,14 @@ const editRentalCatalog = computed(() => {
       price: moneyNumber(item.price),
       image_url: item.image_url || '',
     }));
+});
+
+// เตือนที่นั่งซ้ำก่อนกดบันทึก — server ก็ปฏิเสธให้ แต่เห็นตั้งแต่ตอนพิมพ์ดีกว่า
+const editSeatDuplicateWarning = computed(() => {
+  const seats = editForm.passengers.map((p) => (p.seat_id || '').trim()).filter(Boolean);
+  const duplicates = [...new Set(seats.filter((seat, index) => seats.indexOf(seat) !== index))];
+
+  return duplicates.length ? `ที่นั่งซ้ำกัน: ${duplicates.join(', ')}` : '';
 });
 
 const editRentalsTotal = computed(() => editForm.rentals.reduce(
@@ -2076,6 +2152,14 @@ function onEditScheduleChange() {
     editForm.pickup_point_id = '';
     editForm.pickup_region = '';
   }
+
+  // จุดรับเป็นของรอบเดินทาง — ย้ายรอบแล้วจุดของรอบเดิมใช้ไม่ได้อีก
+  // (ฝั่ง server มี remapPassengerPickupPoints จับคู่จุดที่ชื่อตรงกันให้อยู่แล้ว)
+  editForm.passengers.forEach((passenger) => {
+    if (!editPickupPoints.value.some((p) => p.id === passenger.pickup_point_id)) {
+      passenger.pickup_point_id = '';
+    }
+  });
 }
 
 // เมื่อเลือกจุดรับจาก dropdown: เติม region ให้อัตโนมัติ
@@ -2084,6 +2168,17 @@ function onEditPickupChange() {
   editForm.pickup_region = point?.region || '';
   // จุดรับตายตัวกับหมุดของลูกค้าใช้ร่วมกันไม่ได้ — เลือกจุดตายตัวแล้วล้างหมุดออก
   if (editForm.pickup_point_id) editCustomPickup.value = null;
+
+  // คนที่ยังยืนจุดเดียวกับหัวการจอง (หรือยังไม่ได้เลือกเอง) ย้ายตามให้เลย —
+  // เป็นพฤติกรรมเดิมที่ backend เคยทำให้เงียบ ๆ ตอนนี้เห็นผลก่อนกดบันทึก
+  // ส่วนคนที่เลือกจุดของตัวเองไว้ต่างหากจะไม่ถูกแตะ
+  editForm.passengers.forEach((passenger) => {
+    if (!passenger.pickup_point_id || passenger.pickup_point_id === editPickupPrevious.value) {
+      passenger.pickup_point_id = editForm.pickup_point_id;
+    }
+  });
+
+  editPickupPrevious.value = editForm.pickup_point_id;
 }
 
 // ── จุดรับปักหมุดเอง (ปักหมุดจากแผนที่) ──
@@ -2112,6 +2207,7 @@ function closeEditModal() {
 
 function resetEditForm() {
   editCustomPickup.value = null;
+  editPickupPrevious.value = '';
   showEditCustomPickupModal.value = false;
   // fillEditForm() เติมค่าต่อทันทีแบบ synchronous — กันไม่ให้ยอดรวมถูกปรับ
   // ตามค่าอุปกรณ์ที่โหลดมาตั้งต้น (จะปรับเฉพาะตอนแอดมินแก้เองเท่านั้น)
@@ -2133,7 +2229,6 @@ function resetEditForm() {
     cancellation_reason: '',
     pickup_point_id: '',
     pickup_region: '',
-    seat_ids_text: '',
     user: { name: '', email: '', phone: '' },
     total_amount: 0,
     paid_amount: 0,
@@ -2164,6 +2259,7 @@ function resetEditForm() {
 
 function fillEditForm(booking) {
   resetEditForm();
+  editPickupPrevious.value = booking.pickup_point?.id || '';
   editCustomPickup.value = booking.custom_pickup
     ? {
         label: booking.custom_pickup.label,
@@ -2185,7 +2281,6 @@ function fillEditForm(booking) {
     cancellation_reason: booking.cancellation_reason || '',
     pickup_point_id: booking.pickup_point?.id || '',
     pickup_region: booking.pickup_region || booking.pickup_point?.region || '',
-    seat_ids_text: seatLabels(booking),
     user: {
       name: booking.user?.name || '',
       email: booking.user?.email || '',
@@ -2212,16 +2307,25 @@ function fillEditForm(booking) {
     current_slip_url: booking.slip_url || '',
     delete_slip: false,
     slip_image: null,
-    passengers: (booking.passengers || []).map(mapPassengerToForm),
+    // ที่นั่งผูกกับผู้โดยสารตามลำดับ (ฝั่ง server จับคู่ด้วย index เหมือนกัน)
+    passengers: (booking.passengers || []).map(
+      (passenger, index) => mapPassengerToForm(passenger, seatIdAt(booking, index)),
+    ),
     installments: (booking.installment_payments || []).map(mapInstallmentToForm),
     rentals: (booking.selected_rentals || []).map(mapRentalToForm),
   });
 }
 
-function mapPassengerToForm(passenger = {}) {
+function seatIdAt(booking, index) {
+  return (booking?.seats || [])[index]?.seat_id || '';
+}
+
+function mapPassengerToForm(passenger = {}, seatId = '') {
   return {
     local_key: passenger.id || `new-${Date.now()}-${Math.random()}`,
     id: passenger.id || '',
+    pickup_point_id: passenger.pickup_point_id || '',
+    seat_id: seatId,
     title: passenger.title || '',
     name: passenger.name || '',
     nickname: passenger.nickname || '',
@@ -2328,15 +2432,15 @@ function addPassenger() {
 }
 
 function removePassenger(index) {
+  // ที่นั่งกับจุดรับเดินทางไปกับผู้โดยสารแล้ว ลบแถวเดียวจึงปล่อยที่นั่งคืนไปด้วย
   editForm.passengers.splice(index, 1);
+}
 
-  // ที่นั่งผูกกับผู้โดยสารตามลำดับ — ปล่อยที่นั่งของคนที่ถูกลบคืนด้วย
-  // ไม่งั้นช่องที่นั่งจะยังค้างเบอร์เดิมไว้ทั้งที่ไม่มีคนนั่งแล้ว
-  const seats = editForm.seat_ids_text.split(',').map((s) => s.trim()).filter(Boolean);
-  if (index < seats.length) {
-    seats.splice(index, 1);
-    editForm.seat_ids_text = seats.join(', ');
-  }
+// เซ็ตจุดรับของการจองให้ทุกคนรวดเดียว — กรณีปกติที่ทั้งกลุ่มขึ้นจุดเดียวกัน
+function applyBookingPickupToAll() {
+  editForm.passengers.forEach((passenger) => {
+    passenger.pickup_point_id = editForm.pickup_point_id;
+  });
 }
 
 function addInstallment() {
@@ -2442,19 +2546,17 @@ function buildEditFormData() {
     if (editForm.balance_slip_image) fd.append('balance_slip_image', editForm.balance_slip_image);
   }
 
-  const seatIds = editForm.seat_ids_text
-    .split(',')
-    .map((seat) => seat.trim())
-    .filter(Boolean);
-  if (seatIds.length) {
-    seatIds.forEach((seat) => fd.append('seat_ids[]', seat));
+  // ที่นั่งส่งเรียงตามผู้โดยสาร รวมช่องว่างด้วย เพื่อให้ index ตรงกันทั้งสองฝั่ง
+  // (ต้องมีอย่างน้อยหนึ่งค่าเสมอ ไม่งั้น server จะถือว่าไม่ได้ส่ง seat_ids มา)
+  if (editForm.passengers.length) {
+    editForm.passengers.forEach((passenger) => fd.append('seat_ids[]', passenger.seat_id || ''));
   } else {
     fd.append('seat_ids[]', '');
   }
 
   editForm.passengers.forEach((passenger, index) => {
     Object.entries(passenger).forEach(([key, value]) => {
-      if (key === 'local_key') return;
+      if (['local_key', 'seat_id'].includes(key)) return;
       appendForm(fd, `passengers[${index}][${key}]`, value);
     });
   });
@@ -2646,6 +2748,14 @@ function resetManualForm() {
 
 function passengerCount(booking) {
   return Array.isArray(booking?.passengers) ? booking.passengers.length : 0;
+}
+
+// จุดรับของผู้โดยสารคนนี้ — ไม่ได้ระบุไว้เอง = ใช้จุดของการจอง
+function passengerPickupLabel(passenger) {
+  const point = passenger?.pickup_point;
+  if (!point) return 'ตามจุดของการจอง';
+
+  return [point.region_label || point.region, point.pickup_location].filter(Boolean).join(' · ');
 }
 
 function seatLabels(booking) {
@@ -4399,6 +4509,135 @@ async function reverifySlip(bookingRef, slipType) {
 .section-heading.with-action {
   justify-content: space-between;
   flex-wrap: wrap;
+}
+
+/* จุดรับ/ที่นั่งรายคน */
+.pax-pickup {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-sand-dark);
+}
+
+.pax-pickup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pax-pickup-head strong {
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pax-pickup-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-sand);
+  color: var(--color-text-mid);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.pax-pickup-note .material-symbols-rounded {
+  font-size: 16px !important;
+  color: var(--color-text-muted);
+}
+
+.pax-pickup-empty {
+  padding: 14px;
+  border: 1px dashed var(--color-sand-dark);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.pax-pickup-list {
+  display: grid;
+  gap: 10px;
+}
+
+.pax-pickup-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) 110px;
+  align-items: end;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+}
+
+.pax-pickup-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.pax-pickup-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-sand);
+  color: var(--color-text-mid);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.pax-pickup-name {
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pax-pickup-name small {
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.pax-pickup-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pax-pickup-warning .material-symbols-rounded {
+  font-size: 16px !important;
+}
+
+@media (max-width: 720px) {
+  .pax-pickup-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .pax-pickup-who {
+    padding-bottom: 0;
+  }
 }
 
 /* อุปกรณ์เช่าในฟอร์มแก้ไขการจอง */

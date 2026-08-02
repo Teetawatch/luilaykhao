@@ -1054,7 +1054,8 @@ class AdminController extends Controller
             'schedule.pickupPoints',
             'schedule.staff',
             'user',
-            'passengers',
+            // จุดรับรายคน — แสดงและแก้ได้ทีละคนในหน้าจัดการการจอง
+            'passengers.pickupPoint',
             'seats',
             'installmentPayments',
             'pickupPoint',
@@ -1317,6 +1318,8 @@ class AdminController extends Controller
             'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
             'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],
             'passengers.*.halal_food' => ['nullable', 'boolean'],
+            // จุดรับรายคน — คนในกลุ่มเดียวกันขึ้นคนละจุดได้ (ว่าง = ตามจุดของการจอง)
+            'passengers.*.pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
             'installments' => ['nullable', 'array'],
             'installments.*.id' => ['nullable', 'integer', 'exists:installment_payments,id'],
             'installments.*.installment_no' => ['required_with:installments', 'integer', 'min:1', 'max:12'],
@@ -1536,6 +1539,11 @@ class AdminController extends Controller
                             'halal_food' => array_key_exists('halal_food', $passengerData) ? (bool) $passengerData['halal_food'] : null,
                         ];
 
+                        // แอดมินระบุจุดรับให้คนนี้เอง — ค่าว่างแปลว่า "ตามจุดของการจอง"
+                        if (array_key_exists('pickup_point_id', $passengerData)) {
+                            $payload['pickup_point_id'] = $passengerData['pickup_point_id'] ?: null;
+                        }
+
                         $passenger = $passengerId
                             ? $booking->passengers()->whereKey($passengerId)->first()
                             : null;
@@ -1553,9 +1561,14 @@ class AdminController extends Controller
 
                 // ปักหมุดเองเป็นระดับการจอง — ล้างจุดรับรายคนที่ค้างจากจุดตายตัวเดิม
                 // ไม่งั้นหน้าสตาฟจะจัดกลุ่มผู้โดยสารเข้าจุดเก่าแทนหมุด
+                // แอดมินส่งจุดรับรายคนมาเอง = ค่าที่ตั้งไว้ต่อคนเป็นใหญ่ อย่าให้การ
+                // ย้ายตามจุดของการจองด้านล่างมาทับสิ่งที่เพิ่งเลือกให้แต่ละคน
+                $explicitPassengerPickup = collect($data['passengers'] ?? [])
+                    ->contains(fn ($passengerData) => array_key_exists('pickup_point_id', $passengerData));
+
                 if ($customPickupSet) {
                     $booking->passengers()->update(['pickup_point_id' => null]);
-                } elseif (array_key_exists('pickup_point_id', $data)) {
+                } elseif (! $explicitPassengerPickup && array_key_exists('pickup_point_id', $data)) {
                     // เปลี่ยนจุดรับระดับการจอง — ผู้โดยสารที่ยังยืนจุดเดิมต้องย้ายตามด้วย
                     // ไม่งั้นหน้าสตาฟ/คนขับที่อ่านจุดรายคนก่อนจะยังเห็นจุดเก่า
                     $newPickupPointId = $data['pickup_point_id'] ? (int) $data['pickup_point_id'] : null;
@@ -1571,7 +1584,10 @@ class AdminController extends Controller
                     TripSchedule::lockForUpdate()->find($booking->schedule_id);
                     $booking->seats()->delete();
                     if (! ($booking->fresh()->is_join_trip)) {
-                        $newSeatIds = array_values(array_filter($data['seat_ids'] ?? []));
+                        // ที่นั่งส่งมาเรียงตามผู้โดยสาร ช่องที่เว้นว่างคือคนที่ยังไม่ระบุที่นั่ง
+                        // จึงต้องคงลำดับเดิมไว้ ไม่งั้นชื่อบนที่นั่งจะเลื่อนไปคนถัดไป
+                        $seatInputs = $data['seat_ids'] ?? [];
+                        $newSeatIds = array_values(array_filter($seatInputs, fn ($seatId) => filled($seatId)));
 
                         // กันที่นั่งซ้ำภายในคำขอเดียว ก่อนตรวจกับแถวอื่น
                         $duplicateSeatIds = collect($newSeatIds)->duplicates()->unique()->values();
@@ -1590,11 +1606,17 @@ class AdminController extends Controller
                             throw new \RuntimeException('ที่นั่ง '.$occupied->join(', ').' ถูกจองแล้ว');
                         }
 
-                        foreach ($newSeatIds as $index => $seatId) {
+                        $seatPassengers = $booking->passengers()->orderBy('id')->get();
+
+                        foreach ($seatInputs as $index => $seatId) {
+                            if (! filled($seatId)) {
+                                continue;
+                            }
+
                             $booking->seats()->create([
                                 'schedule_id' => $booking->schedule_id,
                                 'seat_id' => $seatId,
-                                'passenger_name' => $booking->passengers()->skip($index)->first()?->name,
+                                'passenger_name' => $seatPassengers->get($index)?->name,
                             ]);
                         }
                     }
@@ -1627,7 +1649,13 @@ class AdminController extends Controller
                 // ที่นั่งบนผังผูกกับผู้โดยสารแบบ 1:1 — ลบผู้โดยสารแล้วต้องปล่อยที่นั่งคืนด้วย
                 // ไม่งั้นแถวที่นั่งค้างไว้ทำให้คนอื่นจองเบอร์นั้นซ้ำไม่ได้ (unique schedule_id+seat_id)
                 // แม้ booked_seats จะลดลงแล้วก็ตาม
-                $this->syncSeatRowsToPassengers($booking->fresh(['passengers', 'seats']));
+                // ถ้าคำขอนี้ส่งที่นั่งมาเอง แถวที่นั่งเพิ่งถูกสร้างพร้อมชื่อที่ถูกต้อง
+                // ตามช่องของแต่ละคนแล้ว การจับคู่ใหม่ตามลำดับจะทำให้ชื่อเพี้ยน
+                // เมื่อมีคนเว้นที่นั่งว่างไว้ตรงกลาง
+                $this->syncSeatRowsToPassengers(
+                    $booking->fresh(['passengers', 'seats']),
+                    relabel: ! array_key_exists('seat_ids', $data),
+                );
 
                 $effectiveType = $data['payment_type'] ?? $booking->payment_type;
                 if ($effectiveType !== 'installment') {
@@ -1736,7 +1764,11 @@ class AdminController extends Controller
      *
      * ต้องรับ booking ที่โหลด passengers + seats มาแล้ว
      */
-    private function syncSeatRowsToPassengers(Booking $booking): void
+    /**
+     * @param  bool  $relabel  จับคู่ชื่อบนแถวที่นั่งกับผู้โดยสารตามลำดับใหม่ ใช้ได้เฉพาะ
+     *                         ตอนที่ที่นั่งเรียงชิดกันตั้งแต่คนแรก (ไม่มีช่องเว้นกลาง)
+     */
+    private function syncSeatRowsToPassengers(Booking $booking, bool $relabel = true): void
     {
         if ($booking->is_join_trip) {
             return;
@@ -1754,6 +1786,10 @@ class AdminController extends Controller
             $surplus = $seats->slice($passengers->count());
             BookingSeat::whereKey($surplus->pluck('id'))->delete();
             $seats = $seats->take($passengers->count());
+        }
+
+        if (! $relabel) {
+            return;
         }
 
         foreach ($seats as $index => $seat) {
