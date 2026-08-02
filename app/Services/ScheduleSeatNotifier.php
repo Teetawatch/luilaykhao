@@ -8,8 +8,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 /**
- * แจ้งเตือนเมื่อจำนวนที่นั่งที่ถูกจองของรอบเดินทางเพิ่มขึ้นจนข้ามเกณฑ์สำคัญ
- * (เต็ม / เหลือน้อย / ข้ามแถบสถานะการันตีออกเดินทาง)
+ * แจ้งเตือนเมื่อจำนวนที่นั่งของรอบเดินทางข้ามเกณฑ์สำคัญ — ทั้งขาขึ้น
+ * (เต็ม / เหลือน้อย / ข้ามแถบสถานะการันตีออกเดินทาง) และขาลง (ที่นั่งว่างคืนมา)
  *
  * เดิมตรรกะนี้อยู่ใน BookingService และยิงเฉพาะตอนลูกค้าจองเอง ทำให้การที่แอดมิน
  * ย้ายผู้โดยสารเข้ามาจนรอบเต็มไม่มีการแจ้งเตือนใด ๆ เลย — แยกออกมาเพื่อให้ทุกทาง
@@ -21,6 +21,7 @@ class ScheduleSeatNotifier
     public function __construct(
         private BroadcastNotificationService $broadcast,
         private TripAlertService $tripAlerts,
+        private WaitlistService $waitlist,
     ) {}
 
     /**
@@ -45,11 +46,46 @@ class ScheduleSeatNotifier
         if ($schedule->available_seats <= 0) {
             $this->notifyStaffScheduleFull($schedule, $bookingRef);
             $this->notifySoldOut($schedule);
-        } elseif ($schedule->available_seats <= BroadcastNotificationService::LOW_SEAT_THRESHOLD) {
+        } elseif ($schedule->available_seats <= BroadcastNotificationService::lowSeatThreshold()) {
             $this->notifyLowSeats($schedule);
         }
 
         $this->notifyDepartureStatusCrossing($schedule, $bookedBefore, $bookedAfter);
+    }
+
+    /**
+     * เรียกหลัง commit เมื่อที่นั่งของรอบ "ว่างคืนมา" (ยกเลิก / ลบการจอง /
+     * ย้ายผู้โดยสารออก / หมดเวลาชำระเงิน) — ประกาศให้คนที่พลาดรอบนี้ไปรู้ว่า
+     * มีที่ว่างแล้ว ยิงเฉพาะรอบที่ยังตึงอยู่ (เหลือไม่เกินเกณฑ์ "ใกล้เต็ม")
+     * เพราะรอบที่ว่างเยอะอยู่แล้วการยกเลิกไม่ใช่ข่าว
+     *
+     * @param  int|null  $bookedBefore  booked_seats ก่อนคืนที่นั่ง
+     * @param  int|null  $bookedAfter  booked_seats หลังคืนที่นั่ง
+     */
+    public function seatsFreed(int $scheduleId, ?int $bookedBefore, ?int $bookedAfter): void
+    {
+        if ($bookedBefore === null || $bookedAfter === null || $bookedAfter >= $bookedBefore) {
+            return;
+        }
+
+        $schedule = TripSchedule::with('trip')->find($scheduleId);
+        if (! $schedule) {
+            return;
+        }
+
+        // คนในคิวรอมีสิทธิ์ก่อน — ProcessWaitlistJob จองที่ให้เขา 15 นาที
+        // ถ้าประกาศให้ทุกคนตอนนี้ คิวที่รอมาก่อนจะโดนแซง จึงเงียบไว้
+        // (คิวว่างเมื่อไหร่ offer หมดอายุ ที่นั่งค่อยกลับสู่สาธารณะเอง)
+        if ($this->waitlist->scheduleWaitlistCount($scheduleId) > 0) {
+            return;
+        }
+
+        try {
+            $this->broadcast->broadcastSeatsFreed($schedule);
+            $this->tripAlerts->notifySeatsFreed($schedule);
+        } catch (\Throwable $e) {
+            Log::warning('ScheduleSeatNotifier: seats-freed notification failed — '.$e->getMessage());
+        }
     }
 
     /**

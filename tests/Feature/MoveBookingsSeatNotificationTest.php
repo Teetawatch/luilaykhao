@@ -169,7 +169,7 @@ class MoveBookingsSeatNotificationTest extends TestCase
         ]);
     }
 
-    public function test_moving_passengers_away_does_not_blast_anything(): void
+    public function test_moving_passengers_away_announces_freed_seats_not_urgency(): void
     {
         Mail::fake();
         Queue::fake();
@@ -190,8 +190,14 @@ class MoveBookingsSeatNotificationTest extends TestCase
             ])
             ->assertOk();
 
-        // รอบต้นทางว่างลง ไม่ใช่เหตุการณ์ที่ต้องแจ้งเตือนกลุ่มนี้
+        // รอบต้นทางว่างลง ไม่ใช่เหตุการณ์ "เร่งให้รีบจอง"
         $this->assertSame(0, BroadcastDispatch::where('event_type', 'sold_out')->count());
         $this->assertSame(0, BroadcastDispatch::where('event_type', 'low_seats')->count());
+
+        // แต่รอบต้นทางเคยเต็มและเพิ่งได้ที่นั่งคืน — ประกาศที่ว่างแทน
+        $this->assertDatabaseHas('broadcast_dispatches', [
+            'event_type' => 'seats_freed',
+            'dedupe_key' => "seats_freed:{$source->id}:2",
+        ]);
     }
 }

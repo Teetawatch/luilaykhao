@@ -161,6 +161,50 @@ class TripAlertService
             });
     }
 
+    /**
+     * ที่นั่งว่างคืนมา (ยกเลิก/ลบการจอง) ในรอบที่ยังตึงอยู่ — บอกคนที่ติดตามทริปนี้
+     * ใช้แฟล็กเดียวกับ low-seats เพราะเป็นเรื่อง "ความว่างของที่นั่ง" เหมือนกัน
+     * และ dedupe แยกตามจำนวนที่ว่าง เพื่อไม่ยิงซ้ำเวลาลบหลายรายการติดกัน
+     */
+    public function notifySeatsFreed(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || ! $this->isBookable($schedule)) {
+            return;
+        }
+
+        $available = $schedule->available_seats;
+        if ($available <= 0) {
+            return;
+        }
+
+        TripAlert::where('trip_id', $trip->id)
+            ->where('alert_low_seats', true)
+            ->each(function (TripAlert $alert) use ($schedule, $trip, $available) {
+                // เคารพเกณฑ์ที่ผู้ใช้ตั้งเอง — รอบที่ว่างเยอะไม่ใช่ข่าวด่วนสำหรับเขา
+                if ($available > ($alert->low_seat_threshold ?: 5)) {
+                    return;
+                }
+
+                $dedupeType = "seats_freed:{$available}";
+                if ($this->alreadyDispatched($alert, $schedule->id, $dedupeType)) {
+                    return;
+                }
+
+                $this->dispatch(
+                    $alert,
+                    $schedule->id,
+                    'seats_freed',
+                    "มีที่นั่งว่าง: {$trip->title}",
+                    'รอบวันที่ '.ThaiDate::full($schedule->departure_date)
+                        ." มีคนสละสิทธิ์ เหลือที่ว่าง {$available} ที่นั่ง รีบจองก่อนเต็มอีกรอบ!",
+                    $trip,
+                    $schedule->id,
+                    $dedupeType,
+                );
+            });
+    }
+
     private function processLowSeats(TripAlert $alert): void
     {
         if (! $alert->alert_low_seats) {

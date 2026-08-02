@@ -264,6 +264,7 @@ class AdminBroadcastController extends Controller
             'flash_sale' => 'Flash Sale',
             'low_seats' => 'ที่นั่งใกล้เต็ม',
             'sold_out' => 'ที่นั่งเต็ม',
+            'seats_freed' => 'มีที่นั่งว่างคืน',
             'almost_ready' => 'ใกล้การันตีออก',
             'guaranteed' => 'การันตีออกเดินทาง',
             default => $type,

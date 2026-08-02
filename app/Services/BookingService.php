@@ -493,9 +493,11 @@ class BookingService
             ->pluck('id');
 
         $expiredBookings = [];
+        // booked_seats ของแต่ละรอบ "ก่อน" คืนที่นั่งรายการแรก — ใช้เทียบตอนแจ้งเตือนที่ว่าง
+        $bookedBefore = [];
 
         foreach ($candidateIds as $bookingId) {
-            $expired = DB::transaction(function () use ($bookingId, $threshold) {
+            $expired = DB::transaction(function () use ($bookingId, $threshold, &$bookedBefore) {
                 $booking = Booking::with('seats')->lockForUpdate()->find($bookingId);
 
                 // ตรวจซ้ำใต้ lock — ลูกค้าอาจเพิ่งชำระเงินไประหว่างนี้ (สถานะเปลี่ยนเป็น confirmed)
@@ -511,6 +513,9 @@ class BookingService
                 ]);
 
                 $schedule = $booking->schedule()->lockForUpdate()->first();
+                if ($schedule) {
+                    $bookedBefore[$schedule->id] ??= (int) $schedule->booked_seats;
+                }
 
                 // ปล่อย soft lock ที่นั่งและลบ booking seats แล้วปรับตัวนับที่นั่งให้ตรง
                 foreach ($booking->seats as $seat) {
@@ -548,8 +553,14 @@ class BookingService
         }
 
         // ปล่อยที่นั่งคืน — เสนอให้คนใน waitlist ของรอบที่ได้ที่นั่งคืน
+        // แล้วประกาศที่ว่างให้คนทั่วไป (เงียบเองถ้ายังมีคิวรออยู่)
         foreach (array_keys($scheduleIds) as $scheduleId) {
             ProcessWaitlistJob::dispatch($scheduleId);
+            $this->seatNotifier->seatsFreed(
+                $scheduleId,
+                $bookedBefore[$scheduleId] ?? null,
+                (int) (TripSchedule::find($scheduleId)?->booked_seats ?? 0),
+            );
         }
 
         return count($expiredBookings);
@@ -655,7 +666,9 @@ class BookingService
 
     public function cancelBooking(Booking $booking, ?string $reason = null): Booking
     {
-        $cancelled = DB::transaction(function () use ($booking, $reason) {
+        $bookedBefore = null;
+
+        $cancelled = DB::transaction(function () use ($booking, $reason, &$bookedBefore) {
             $booking->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,
@@ -664,6 +677,7 @@ class BookingService
 
             // Keep the cached counter aligned with active, non-join-trip bookings.
             $schedule = $booking->schedule()->lockForUpdate()->first();
+            $bookedBefore = $schedule ? (int) $schedule->booked_seats : null;
             $schedule?->syncBookedSeats();
 
             // Release seat locks & delete booking seats
@@ -691,6 +705,13 @@ class BookingService
 
         // Notify next users in the waitlist now that seats are freed
         ProcessWaitlistJob::dispatch($cancelled->schedule_id);
+
+        // ไม่มีคิวรอ = ที่นั่งที่คืนมากลับสู่สาธารณะ ประกาศให้คนที่พลาดรอบนี้รู้
+        $this->seatNotifier->seatsFreed(
+            $cancelled->schedule_id,
+            $bookedBefore,
+            (int) ($cancelled->schedule?->booked_seats ?? 0),
+        );
 
         return $cancelled;
     }

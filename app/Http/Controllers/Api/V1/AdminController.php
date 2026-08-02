@@ -15,6 +15,7 @@ use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Http\Resources\VehicleResource;
 use App\Jobs\NotifyTripCrewAssignedJob;
+use App\Jobs\ProcessWaitlistJob;
 use App\Jobs\SendStaffAssignmentPushJob;
 use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
@@ -523,6 +524,7 @@ class AdminController extends Controller
         $source->syncBookedSeats();
         $target->syncBookedSeats();
         $bookedBeforeMove = (int) $target->booked_seats;
+        $sourceBookedBeforeMove = (int) $source->booked_seats;
 
         $bookings = $source->bookings->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES);
         $selectedPassengerIds = collect($request->input('passenger_ids', []))
@@ -668,6 +670,14 @@ class AdminController extends Controller
                 $target->id,
                 $bookedBeforeMove,
                 (int) $target->fresh()->booked_seats,
+            );
+
+            // ...และรอบต้นทางก็ได้ที่นั่งคืนมาเหมือนมีคนยกเลิก
+            ProcessWaitlistJob::dispatch($source->id);
+            $this->seatNotifier->seatsFreed(
+                $source->id,
+                $sourceBookedBeforeMove,
+                (int) $source->fresh()->booked_seats,
             );
         }
 
@@ -2037,6 +2047,7 @@ class AdminController extends Controller
     {
         $booking = Booking::with(['seats', 'schedule', 'installmentPayments'])->where('booking_ref', $ref)->firstOrFail();
         $schedule = $booking->schedule;
+        $bookedBefore = $schedule ? (int) $schedule->booked_seats : null;
 
         // 1. Delete associated files
         if ($booking->slip_path) {
@@ -2056,6 +2067,17 @@ class AdminController extends Controller
         $booking->installmentPayments()->delete();
         $booking->delete();
         $schedule?->syncBookedSeats();
+
+        if ($schedule) {
+            // ที่นั่งว่างคืนมา — เสนอให้คนในคิวรอก่อน แล้วค่อยประกาศให้คนทั่วไป
+            // (seatsFreed เงียบเองถ้ายังมีคิวรออยู่ ไม่ให้แซงคิว)
+            ProcessWaitlistJob::dispatch($schedule->id);
+            $this->seatNotifier->seatsFreed(
+                $schedule->id,
+                $bookedBefore,
+                (int) $schedule->fresh()->booked_seats,
+            );
+        }
 
         return $this->success(null, 'ลบการจองสำเร็จ');
     }

@@ -51,7 +51,7 @@ class BroadcastNotificationService
      * exempt from quiet-hours deferral (a held flash-sale/last-seats push is
      * useless once the round fills up or the sale ends overnight).
      */
-    public const URGENT_EVENTS = ['flash_sale', 'low_seats', 'sold_out'];
+    public const URGENT_EVENTS = ['flash_sale', 'low_seats', 'sold_out', 'seats_freed'];
 
     /**
      * Announce a newly published trip to everyone.
@@ -173,6 +173,46 @@ class BroadcastNotificationService
             'ที่นั่งใกล้เต็มแล้ว! ⏳',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
                 ." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนเต็มนะ!",
+            [
+                'route' => 'trip',
+                'trip_slug' => $trip->slug,
+                'trip_id' => $trip->id,
+                'schedule_id' => $schedule->id,
+            ],
+        );
+    }
+
+    /**
+     * ตรงข้ามกับ [broadcastLowSeats] — รอบที่ตึงอยู่แล้ว (เต็มหรือเหลือไม่กี่ที่)
+     * เพิ่งได้ที่นั่งคืนมาจากการยกเลิก/ลบการจอง จึงประกาศให้คนที่พลาดรอบนี้ไป
+     * รู้ว่ามีที่ว่างแล้ว ยิงครั้งเดียวต่อ "จำนวนที่ว่าง" หนึ่งระดับ (…:1 / …:2)
+     * เพื่อกันสแปมเวลาแอดมินลบหลายรายการติดกัน self-guarding
+     */
+    public function broadcastSeatsFreed(TripSchedule $schedule): void
+    {
+        $trip = $schedule->trip;
+        if (! $trip || $schedule->departure_date === null || $schedule->status !== 'open') {
+            return;
+        }
+
+        // รอบที่ผ่านไปแล้วไม่ต้องประกาศ
+        if ($schedule->departure_date->lt(now(self::TIMEZONE)->startOfDay())) {
+            return;
+        }
+
+        $available = $schedule->available_seats;
+
+        // ประกาศเฉพาะรอบที่ยัง "หายาก" อยู่ — รอบที่ว่างเยอะไม่ใช่ข่าว
+        if ($available <= 0 || $available > self::lowSeatThreshold()) {
+            return;
+        }
+
+        $this->broadcast(
+            'seats_freed',
+            "seats_freed:{$schedule->id}:{$available}",
+            'มีที่นั่งว่างแล้ว! 🎟️',
+            "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
+                ." มีคนสละสิทธิ์ เหลือที่ว่าง {$available} ที่นั่ง ใครพลาดรอบนี้ไปรีบจองเลย!",
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
