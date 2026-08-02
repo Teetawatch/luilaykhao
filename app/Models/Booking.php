@@ -141,6 +141,12 @@ class Booking extends Model
         return $this->hasMany(BookingSeat::class);
     }
 
+    /** สถานะแจก/รับคืนอุปกรณ์เช่า — ผูกกับ selected_rentals ด้วยชื่อรายการ */
+    public function rentalHandouts(): HasMany
+    {
+        return $this->hasMany(BookingRentalHandout::class);
+    }
+
     public function passengers(): HasMany
     {
         return $this->hasMany(BookingPassenger::class);

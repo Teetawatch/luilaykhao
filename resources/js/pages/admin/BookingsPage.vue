@@ -482,6 +482,32 @@
             </div>
           </section>
 
+          <section v-if="detailBooking.selected_rentals?.length" class="detail-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">camping</span>
+              อุปกรณ์เช่า ({{ detailBooking.selected_rentals.length }})
+            </div>
+            <div class="addon-list">
+              <div v-for="(rental, idx) in detailBooking.selected_rentals" :key="idx" class="addon-row">
+                <span class="addon-icon">
+                  <span class="material-symbols-rounded">backpack</span>
+                </span>
+                <div class="addon-info">
+                  <strong>{{ rental.name }}</strong>
+                  <span class="addon-meta">
+                    {{ formatMoney(rental.unit_price) }} / ชิ้น
+                    <span v-if="rental.quantity > 1"> × {{ rental.quantity }}</span>
+                  </span>
+                </div>
+                <strong class="addon-total">{{ formatMoney(rental.total_price) }}</strong>
+              </div>
+              <div class="addon-summary">
+                <span>รวมค่าเช่าอุปกรณ์</span>
+                <strong>{{ formatMoney(detailBooking.rentals_total) }}</strong>
+              </div>
+            </div>
+          </section>
+
           <section class="detail-section">
             <div class="section-heading">
               <span class="material-symbols-rounded">payments</span>
@@ -897,6 +923,77 @@
                 </div>
               </div>
             </div>
+          </section>
+
+          <!-- อุปกรณ์เช่า — แอดมินเพิ่มของที่ลูกค้าขอเช่าทีหลังได้ (เต็นท์ ถุงนอน หมอน) -->
+          <section class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">camping</span>
+              อุปกรณ์เช่า
+            </div>
+
+            <div v-if="editRentalCatalog.length" class="rental-picker">
+              <button
+                v-for="item in editRentalCatalog"
+                :key="item.key"
+                type="button"
+                class="rental-chip"
+                @click="addRentalFromCatalog(item)"
+              >
+                <span class="material-symbols-rounded">add</span>
+                {{ item.name }}
+                <span class="rental-chip-price">{{ formatMoney(item.price) }}</span>
+              </button>
+            </div>
+            <p v-else class="field-hint">ทริปนี้ยังไม่ได้ตั้งรายการอุปกรณ์ให้เช่า — เพิ่มรายการเองได้ด้านล่าง</p>
+
+            <div v-if="editForm.rentals.length" class="rental-rows">
+              <div v-for="(rental, index) in editForm.rentals" :key="rental.local_key" class="rental-row">
+                <img v-if="rental.image_url" :src="rental.image_url" :alt="rental.name" class="rental-thumb" />
+                <span v-else class="rental-thumb placeholder">
+                  <span class="material-symbols-rounded">backpack</span>
+                </span>
+
+                <div class="rental-fields">
+                  <input v-model.trim="rental.name" type="text" placeholder="ชื่ออุปกรณ์ เช่น เต็นท์ 2 คน" />
+                  <div class="rental-price">
+                    <label>ราคา/ชิ้น</label>
+                    <input v-model.number="rental.unit_price" type="number" min="0" step="1" />
+                  </div>
+                </div>
+
+                <div class="rental-qty">
+                  <button type="button" @click="stepRental(index, -1)" :disabled="moneyNumber(rental.quantity) <= 1">
+                    <span class="material-symbols-rounded">remove</span>
+                  </button>
+                  <input v-model.number="rental.quantity" type="number" min="1" max="50" />
+                  <button type="button" @click="stepRental(index, 1)">
+                    <span class="material-symbols-rounded">add</span>
+                  </button>
+                </div>
+
+                <strong class="rental-line-total">
+                  {{ formatMoney(moneyNumber(rental.unit_price) * moneyNumber(rental.quantity)) }}
+                </strong>
+
+                <button type="button" class="rental-remove" @click="removeRental(index)">
+                  <span class="material-symbols-rounded">close</span>
+                </button>
+              </div>
+            </div>
+            <p v-else class="rental-empty">ยังไม่มีอุปกรณ์เช่าในการจองนี้</p>
+
+            <div class="rental-footer">
+              <button type="button" class="btn-secondary compact" @click="addCustomRental">
+                <span class="material-symbols-rounded">add</span>
+                เพิ่มรายการเอง
+              </button>
+              <div class="rental-total">
+                <span>รวมค่าเช่าอุปกรณ์</span>
+                <strong>{{ formatMoney(editRentalsTotal) }}</strong>
+              </div>
+            </div>
+            <small class="field-hint">แก้จำนวนหรือเพิ่มรายการแล้ว ยอดรวม (และยอดคงเหลือกรณีมัดจำ) จะปรับให้อัตโนมัติ</small>
           </section>
 
           <section class="edit-section">
@@ -1744,7 +1841,12 @@ const editForm = reactive({
   slip_image: null,
   passengers: [],
   installments: [],
+  rentals: [],
 });
+
+// ค่าเช่าอุปกรณ์ล่าสุดที่สะท้อนอยู่ในช่องยอดรวมแล้ว — ใช้คิดส่วนต่างเวลาแอดมินแก้
+const rentalsBaseline = ref(0);
+const suppressRentalTotalSync = ref(false);
 
 const allTrips = ref([]);
 const availableSchedules = ref([]);
@@ -1776,6 +1878,26 @@ const editRemaining = computed(() => {
   const paid = moneyNumber(editForm.paid_amount);
   return Math.max(total - paid, 0);
 });
+
+// รายการอุปกรณ์ให้เช่าของทริปนี้ (catalog) — ใช้เป็นปุ่มลัดเพิ่มเข้าการจอง
+const editRentalCatalog = computed(() => {
+  const items = editBooking.value?.schedule?.trip?.rental_items;
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .filter((item) => item && item.name)
+    .map((item, index) => ({
+      key: `${index}-${item.name}`,
+      name: item.name,
+      price: moneyNumber(item.price),
+      image_url: item.image_url || '',
+    }));
+});
+
+const editRentalsTotal = computed(() => editForm.rentals.reduce(
+  (sum, rental) => sum + moneyNumber(rental.unit_price) * moneyNumber(rental.quantity),
+  0,
+));
 
 // รอบเดินทางที่เลือกได้ใน modal แก้ไข — รวมรอบปัจจุบันของการจองไว้เสมอ
 // แม้จะเป็นรอบในอดีตที่ไม่ถูกดึงมาในรายการ
@@ -1991,6 +2113,13 @@ function closeEditModal() {
 function resetEditForm() {
   editCustomPickup.value = null;
   showEditCustomPickupModal.value = false;
+  // fillEditForm() เติมค่าต่อทันทีแบบ synchronous — กันไม่ให้ยอดรวมถูกปรับ
+  // ตามค่าอุปกรณ์ที่โหลดมาตั้งต้น (จะปรับเฉพาะตอนแอดมินแก้เองเท่านั้น)
+  suppressRentalTotalSync.value = true;
+  nextTick(() => {
+    suppressRentalTotalSync.value = false;
+    rentalsBaseline.value = editRentalsTotal.value;
+  });
   Object.assign(editForm, {
     status: 'pending',
     schedule_id: '',
@@ -2029,6 +2158,7 @@ function resetEditForm() {
     slip_image: null,
     passengers: [],
     installments: [],
+    rentals: [],
   });
 }
 
@@ -2084,6 +2214,7 @@ function fillEditForm(booking) {
     slip_image: null,
     passengers: (booking.passengers || []).map(mapPassengerToForm),
     installments: (booking.installment_payments || []).map(mapInstallmentToForm),
+    rentals: (booking.selected_rentals || []).map(mapRentalToForm),
   });
 }
 
@@ -2125,6 +2256,71 @@ function mapInstallmentToForm(payment = {}) {
     delete_slip: false,
     slip_image: null,
   };
+}
+
+function mapRentalToForm(rental = {}) {
+  return {
+    local_key: `rental-${Date.now()}-${Math.random()}`,
+    name: rental.name || '',
+    unit_price: moneyNumber(rental.unit_price),
+    quantity: Math.max(1, Math.round(moneyNumber(rental.quantity)) || 1),
+    image_url: rental.image_url || '',
+  };
+}
+
+// เพิ่มจาก catalog ของทริป — ถ้ามีรายการชื่อเดียวกันอยู่แล้วให้บวกจำนวนแทนแถวซ้ำ
+// (ใบแจกอุปกรณ์ของสตาฟอ้างด้วยชื่อ ชื่อซ้ำสองแถวจะทำให้ติ๊กแจกสับสน)
+function addRentalFromCatalog(item) {
+  const existing = editForm.rentals.find((rental) => rental.name === item.name);
+  if (existing) {
+    existing.quantity = Math.min(50, Math.max(1, Math.round(moneyNumber(existing.quantity))) + 1);
+    return;
+  }
+
+  editForm.rentals.push(mapRentalToForm({
+    name: item.name,
+    unit_price: item.price,
+    quantity: 1,
+    image_url: item.image_url,
+  }));
+}
+
+function addCustomRental() {
+  editForm.rentals.push(mapRentalToForm());
+}
+
+function stepRental(index, delta) {
+  const rental = editForm.rentals[index];
+  if (!rental) return;
+
+  const next = Math.round(moneyNumber(rental.quantity)) + delta;
+  rental.quantity = Math.min(50, Math.max(1, next));
+}
+
+function removeRental(index) {
+  editForm.rentals.splice(index, 1);
+}
+
+// ค่าเช่าอุปกรณ์เป็นส่วนหนึ่งของยอดรวม — แอดมินเพิ่ม/ลดของ ยอดที่ต้องเก็บก็ต้องขยับตาม
+// ปรับเป็นส่วนต่างเพื่อไม่ทับยอดที่แอดมินพิมพ์เองไว้ในช่องยอดรวม
+watch(editRentalsTotal, (next) => {
+  if (suppressRentalTotalSync.value) {
+    rentalsBaseline.value = next;
+    return;
+  }
+
+  const delta = round2(next - rentalsBaseline.value);
+  rentalsBaseline.value = next;
+  if (!delta) return;
+
+  editForm.total_amount = Math.max(round2(moneyNumber(editForm.total_amount) + delta), 0);
+  if (editForm.payment_type === 'deposit' && editForm.balance_amount !== '') {
+    editForm.balance_amount = Math.max(round2(moneyNumber(editForm.balance_amount) + delta), 0);
+  }
+});
+
+function round2(value) {
+  return Math.round(value * 100) / 100;
 }
 
 function addPassenger() {
@@ -2262,6 +2458,17 @@ function buildEditFormData() {
       appendForm(fd, `passengers[${index}][${key}]`, value);
     });
   });
+
+  // ส่งชุดอุปกรณ์เช่าทั้งชุดเสมอ (ชุดว่าง = ลบทั้งหมด) — ฝั่ง server คิดยอดรวมใหม่เอง
+  appendForm(fd, 'sync_rentals', 1);
+  editForm.rentals
+    .filter((rental) => rental.name && moneyNumber(rental.quantity) >= 1)
+    .forEach((rental, index) => {
+      appendForm(fd, `selected_rentals[${index}][name]`, rental.name);
+      appendForm(fd, `selected_rentals[${index}][unit_price]`, moneyNumber(rental.unit_price));
+      appendForm(fd, `selected_rentals[${index}][quantity]`, Math.round(moneyNumber(rental.quantity)));
+      appendForm(fd, `selected_rentals[${index}][image_url]`, rental.image_url || '');
+    });
 
   if (editForm.payment_type === 'installment') {
     editForm.installments.forEach((payment, index) => {
@@ -4192,6 +4399,214 @@ async function reverifySlip(bookingRef, slipType) {
 .section-heading.with-action {
   justify-content: space-between;
   flex-wrap: wrap;
+}
+
+/* อุปกรณ์เช่าในฟอร์มแก้ไขการจอง */
+.rental-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rental-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-text-mid);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rental-chip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.rental-chip .material-symbols-rounded {
+  font-size: 16px !important;
+}
+
+.rental-chip-price {
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.rental-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.rental-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  background: var(--color-white);
+}
+
+.rental-thumb {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--color-sand);
+}
+
+.rental-thumb.placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.rental-fields {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rental-fields > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.rental-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rental-price label {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rental-price input {
+  width: 90px;
+}
+
+.rental-qty {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rental-qty button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 32px;
+  border: 0;
+  background: var(--color-sand);
+  color: var(--color-text-mid);
+  cursor: pointer;
+}
+
+.rental-qty button:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.rental-qty .material-symbols-rounded {
+  font-size: 16px !important;
+}
+
+.rental-qty input {
+  width: 46px;
+  height: 32px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  text-align: center;
+  font-weight: 800;
+}
+
+.rental-line-total {
+  flex-shrink: 0;
+  min-width: 82px;
+  text-align: right;
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.rental-remove {
+  flex-shrink: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.rental-remove:hover {
+  color: #dc2626;
+}
+
+.rental-empty {
+  padding: 14px;
+  border: 1px dashed var(--color-sand-dark);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.rental-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.rental-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rental-total strong {
+  color: var(--color-text-dark);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+@media (max-width: 640px) {
+  .rental-row {
+    flex-wrap: wrap;
+  }
+
+  .rental-fields {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .rental-line-total {
+    flex: 1;
+    text-align: left;
+  }
 }
 
 .edit-list {

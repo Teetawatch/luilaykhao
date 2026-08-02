@@ -1329,6 +1329,13 @@ class AdminController extends Controller
             'installments.*.transfer_datetime' => ['nullable', 'date'],
             'installments.*.delete_slip' => ['nullable', 'boolean'],
             'installments.*.slip_image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            // อุปกรณ์เช่าเพิ่มเติม — ส่ง sync_rentals=1 เพื่อเขียนทับทั้งชุด (ชุดว่าง = ลบทั้งหมด)
+            'sync_rentals' => ['nullable', 'boolean'],
+            'selected_rentals' => ['nullable', 'array'],
+            'selected_rentals.*.name' => ['required_with:selected_rentals', 'string', 'max:255'],
+            'selected_rentals.*.unit_price' => ['required_with:selected_rentals', 'numeric', 'min:0'],
+            'selected_rentals.*.quantity' => ['required_with:selected_rentals', 'integer', 'min:1', 'max:50'],
+            'selected_rentals.*.image_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $booking = Booking::with(['user', 'passengers', 'seats', 'installmentPayments', 'schedule'])
@@ -1384,6 +1391,33 @@ class AdminController extends Controller
                 }
                 if (array_key_exists('is_group', $data)) {
                     $bookingUpdates['is_group'] = (bool) $data['is_group'];
+                }
+
+                // อุปกรณ์เช่า — แอดมินเพิ่ม/แก้จำนวนให้ลูกค้าที่ขอทีหลังได้ (เต็นท์ ถุงนอน หมอน)
+                // เก็บเป็น snapshot เหมือนตอนจอง เพราะ catalog ของทริปแก้ราคาทีหลังได้
+                $rentalNames = null;
+                if ($request->boolean('sync_rentals')) {
+                    $rentalSnapshots = [];
+                    $rentalsTotal = 0.0;
+
+                    foreach ($data['selected_rentals'] ?? [] as $rental) {
+                        $quantity = (int) $rental['quantity'];
+                        $unitPrice = (float) $rental['unit_price'];
+                        $linePrice = $unitPrice * $quantity;
+                        $rentalsTotal += $linePrice;
+
+                        $rentalSnapshots[] = [
+                            'name' => trim($rental['name']),
+                            'unit_price' => $unitPrice,
+                            'quantity' => $quantity,
+                            'total_price' => $linePrice,
+                            'image_url' => (string) ($rental['image_url'] ?? ''),
+                        ];
+                    }
+
+                    $bookingUpdates['selected_rentals'] = $rentalSnapshots;
+                    $bookingUpdates['rentals_total'] = $rentalsTotal;
+                    $rentalNames = array_column($rentalSnapshots, 'name');
                 }
 
                 // จุดรับที่ปักหมุดเอง — แอดมินปักหมุด/แก้ไข/ลบได้จากหน้าแก้ไขการจอง
@@ -1470,6 +1504,14 @@ class AdminController extends Controller
 
                 if ($bookingUpdates) {
                     $booking->update($bookingUpdates);
+                }
+
+                // ใบแจกอุปกรณ์อ้างด้วยชื่อ — รายการที่ถูกลบ/เปลี่ยนชื่อจึงต้องเก็บกวาด
+                // ไม่งั้นหน้าสตาฟจะค้างสถานะแจก/คืนของอุปกรณ์ที่ไม่มีอยู่แล้ว
+                if ($rentalNames !== null) {
+                    $booking->rentalHandouts()
+                        ->when($rentalNames, fn ($query) => $query->whereNotIn('item_name', $rentalNames))
+                        ->delete();
                 }
 
                 if (array_key_exists('passengers', $data)) {
