@@ -205,6 +205,132 @@ class CustomPickupTest extends TestCase
             ->assertJsonValidationErrors(['custom_pickup_lng', 'custom_pickup_label']);
     }
 
+    /** จุดรับสองโซน: กรุงเทพฯ ราคาเท่าราคารอบ, ปากช่อง แพงกว่า */
+    private function makeZonedPickupPoints(TripSchedule $schedule): void
+    {
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'BTS หมอชิต',
+            'price' => 1500,
+            'latitude' => 13.8022,
+            'longitude' => 100.5540,
+            'sort_order' => 1,
+        ]);
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'korat',
+            'region_label' => 'นครราชสีมา',
+            'pickup_location' => 'ปากช่อง',
+            'price' => 1900,
+            'latitude' => 14.7080,
+            'longitude' => 101.4160,
+            'sort_order' => 2,
+        ]);
+    }
+
+    public function test_custom_pin_is_priced_like_the_nearest_pickup_point(): void
+    {
+        // หมุดอยู่แถวเขาใหญ่ = ใกล้จุดปากช่อง (1,900) มากกว่าหมอชิต (1,500)
+        // เดิมการปักหมุดเองล้างจุดรับทิ้ง ราคาจึงร่วงกลับไปเป็นราคารอบ (1,500)
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $this->makeZonedPickupPoints($schedule);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengerPayload(),
+                'custom_pickup_label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+                'custom_pickup_lat' => 14.4521,
+                'custom_pickup_lng' => 101.3721,
+            ])
+            ->assertCreated();
+
+        $booking = Booking::first();
+        $this->assertSame('approved', $booking->custom_pickup_status);
+        $this->assertEquals(1900, (float) $booking->total_amount);
+        // ราคาโซนถูกคิดรวมในค่าทริปแล้ว จึงไม่มีค่าบริการหมุดแยกอีกก้อน
+        $this->assertEquals(0, (float) $booking->custom_pickup_price);
+    }
+
+    public function test_custom_pin_never_prices_below_the_round_price(): void
+    {
+        // หมุดอยู่ในกรุงเทพฯ = ใกล้จุดหมอชิตที่ราคาเท่าราคารอบพอดี
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $this->makeZonedPickupPoints($schedule);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengerPayload(),
+                'custom_pickup_label' => 'หน้าหมู่บ้าน',
+                'custom_pickup_lat' => 13.7563,
+                'custom_pickup_lng' => 100.5018,
+            ])
+            ->assertCreated();
+
+        $this->assertEquals(1500, (float) Booking::first()->total_amount);
+    }
+
+    public function test_custom_pin_zone_price_applies_to_every_passenger(): void
+    {
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $this->makeZonedPickupPoints($schedule);
+
+        $passengers = [
+            $this->passengerPayload()[0],
+            [...$this->passengerPayload()[0], 'name' => 'สมหญิง ใจดี', 'id_card' => '9876543210123'],
+        ];
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $passengers,
+            customPickup: [
+                'label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+                'lat' => 14.4521,
+                'lng' => 101.3721,
+                'note' => null,
+            ],
+        );
+
+        $this->assertEquals(3800, (float) $booking->total_amount);
+    }
+
+    public function test_custom_pin_falls_back_to_round_price_when_points_have_no_coordinates(): void
+    {
+        // จุดรับที่ยังไม่มีพิกัด (แอดมินยังไม่ได้ใส่ลิงก์แผนที่) วัดระยะไม่ได้
+        // → คิดราคารอบตามเดิม ดีกว่าเดาโซนผิด
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'korat',
+            'region_label' => 'นครราชสีมา',
+            'pickup_location' => 'ปากช่อง',
+            'price' => 1900,
+            'sort_order' => 1,
+        ]);
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passengerPayload(),
+            customPickup: [
+                'label' => 'ปั๊ม ปตท. ทางเข้าเขาใหญ่',
+                'lat' => 14.4521,
+                'lng' => 101.3721,
+                'note' => null,
+            ],
+        );
+
+        $this->assertEquals(1500, (float) $booking->total_amount);
+    }
+
     public function test_predefined_pickup_point_takes_precedence_over_custom(): void
     {
         $user = User::factory()->create();

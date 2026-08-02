@@ -200,7 +200,10 @@
                 <p v-if="customPickup.note" class="text-sm text-gray-500 mt-0.5">{{ customPickup.note }}</p>
                 <p class="text-xs text-amber-700 mt-2 flex items-center gap-1">
                   <span class="material-symbols-rounded text-[15px]">info</span>
-                  จุดรับนี้จะถูกบันทึกในการจอง · ไม่มีค่าบริการเพิ่ม
+                  <span v-if="customPickupMatchesZone">
+                    คิดราคาเท่าจุดรับ {{ nearestPickupPoint.pickup_location }} ที่ใกล้หมุดที่สุด · ฿{{ customPickupPrice.toLocaleString() }} / คน
+                  </span>
+                  <span v-else>ใช้ราคาเดียวกับรอบเดินทาง · ฿{{ customPickupPrice.toLocaleString() }} / คน</span>
                 </p>
                 <div class="flex gap-3 mt-3">
                   <button @click="openCustomPickup" class="text-xs font-bold text-teal-600 hover:text-teal-700">แก้ไขจุด</button>
@@ -275,9 +278,9 @@
                 <span class="text-gray-500 font-medium">ราคาเริ่มต้น</span>
                 <span class="text-gray-900 font-bold">฿{{ Number(schedule.price).toLocaleString() }}</span>
               </div>
-              <div v-if="selectedPickup && Number(selectedPickup.price) !== Number(schedule.price)" class="flex justify-between items-center text-sm text-emerald-700">
+              <div v-if="Number(effectivePrice) !== Number(schedule.price)" class="flex justify-between items-center text-sm text-emerald-700">
                 <span class="font-medium">ส่วนต่างภูมิภาค</span>
-                <span class="font-bold">+฿{{ (Number(selectedPickup.price) - Number(schedule.price)).toLocaleString() }}</span>
+                <span class="font-bold">+฿{{ (Number(effectivePrice) - Number(schedule.price)).toLocaleString() }}</span>
               </div>
               
               <div class="pt-4 border-t border-dashed border-gray-300 flex flex-col gap-1">
@@ -285,7 +288,7 @@
                   <span class="text-sm font-bold text-gray-500 mb-1">ราคาต่อคน</span>
                   <div class="text-right">
                     <span class="text-3xl font-extrabold text-teal-700 font-anuphan tracking-tight">
-                      <span class="text-lg text-teal-600 mr-0.5">฿</span>{{ (selectedPickup ? Number(selectedPickup.price) : Number(schedule.price)).toLocaleString() }}
+                      <span class="text-lg text-teal-600 mr-0.5">฿</span>{{ Number(effectivePrice).toLocaleString() }}
                     </span>
                   </div>
                 </div>
@@ -693,7 +696,10 @@
                   <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
                   <p class="text-xs text-amber-700 mt-1 flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]">info</span>
-                    จุดรับนี้จะถูกบันทึกในการจอง · ไม่มีค่าบริการเพิ่ม
+                    <span v-if="customPickupMatchesZone">
+                      คิดราคาเท่าจุดรับ {{ nearestPickupPoint.pickup_location }} ที่ใกล้หมุดที่สุด · ฿{{ customPickupPrice.toLocaleString() }} / คน
+                    </span>
+                    <span v-else>ใช้ราคาเดียวกับรอบเดินทาง · ฿{{ customPickupPrice.toLocaleString() }} / คน</span>
                   </p>
                 </div>
               </div>
@@ -1675,12 +1681,55 @@ const steps = computed(() => {
   return ['ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
 });
 
+// ระยะทางเส้นตรง (กม.) — ใช้แค่จัดอันดับว่าจุดรับไหนใกล้หมุดกว่ากัน
+function distanceKm(lat1, lng1, lat2, lng2) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
+ * จุดรับที่ใกล้หมุดที่ลูกค้าปักที่สุด — คู่กับ CustomPickupPricing ฝั่ง Laravel
+ * ซึ่งเป็นตัวคิดราคาจริงตอนสร้างการจอง แก้กติกาที่นั่นต้องตามมาแก้ที่นี่
+ */
+const nearestPickupPoint = computed(() => {
+  const cp = customPickup.value;
+  if (!cp || cp.lat == null || cp.lng == null) return null;
+  let nearest = null;
+  let nearestDistance = null;
+  for (const pt of pickupPoints.value) {
+    if (pt.latitude == null || pt.longitude == null) continue;
+    const d = distanceKm(Number(cp.lat), Number(cp.lng), Number(pt.latitude), Number(pt.longitude));
+    if (nearestDistance === null || d < nearestDistance) {
+      nearest = pt;
+      nearestDistance = d;
+    }
+  }
+  return nearest;
+});
+
+const basePrice = computed(() => Number(schedule.value?.price || 0));
+
+// ปักหมุดเอง = ไม่มีจุดรับตายตัว จึงคิดเท่าราคาโซนที่ใกล้ที่สุด (ขั้นต่ำ = ราคารอบ)
+const customPickupPrice = computed(() => Math.max(
+  basePrice.value,
+  Number(nearestPickupPoint.value?.price || 0),
+));
+
+const customPickupMatchesZone = computed(() => Boolean(
+  customPickup.value && Number(nearestPickupPoint.value?.price || 0) > basePrice.value,
+));
+
 const effectivePrice = computed(() => {
   if (isJoinTrip.value && schedule.value?.join_trip_enabled) {
     return Number(schedule.value.join_trip_price || schedule.value.price || 0);
   }
   if (selectedPickup.value) return Number(selectedPickup.value.price);
-  return Number(schedule.value?.price || 0);
+  if (customPickup.value) return customPickupPrice.value;
+  return basePrice.value;
 });
 
 const optionalAddons = computed(() => {

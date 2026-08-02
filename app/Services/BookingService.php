@@ -13,6 +13,7 @@ use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\CustomPickupPricing;
 use App\Support\ThaiDate;
 use App\Traits\RemapsBookingPickup;
 use Illuminate\Support\Facades\DB;
@@ -159,6 +160,15 @@ class BookingService
                 if ($pickupPoint) {
                     $defaultPrice = $pickupPoint->price;
                     $pickupRegion = $pickupPoint->region;
+                } elseif (self::hasCustomPin($customPickup)) {
+                    // หมุดที่ปักเองไม่มีราคาของตัวเอง ราคาจึงเคยร่วงกลับไปเป็นราคาฐาน
+                    // ของรอบ — คิดเท่าจุดรับที่ใกล้หมุดที่สุดแทน (ขั้นต่ำ = ราคารอบ)
+                    $defaultPrice = CustomPickupPricing::resolvePrice(
+                        (float) $schedule->effective_price,
+                        $schedule->pickupPoints,
+                        (float) $customPickup['lat'],
+                        (float) $customPickup['lng'],
+                    );
                 }
 
                 // Resolve per-passenger pickup points; fall back to booking-level pickup
@@ -343,12 +353,10 @@ class BookingService
             }
 
             // จุดรับแบบ custom (ลูกค้าปักหมุดเอง) จะถูกใช้ก็ต่อเมื่อไม่ได้เลือกจุดที่กำหนดไว้
-            // และไม่ใช่ join trip — รับอัตโนมัติทันที ไม่คิดค่าบริการเพิ่ม ลูกค้าชำระเงินได้เลย
+            // และไม่ใช่ join trip — รับอัตโนมัติทันที ลูกค้าชำระเงินได้เลย ไม่มีค่าบริการ
+            // แยกต่างหาก (custom_pickup_price) เพราะราคาโซนถูกคิดรวมในค่าทริปต่อคนแล้ว
             // (บันทึกตำแหน่งไว้ให้แอดมินเห็นเพื่อใช้จัดเส้นทางรับ)
-            $useCustomPickup = ! $isJoinTrip
-                && ! $pickupPoint
-                && $customPickup
-                && isset($customPickup['lat'], $customPickup['lng'], $customPickup['label']);
+            $useCustomPickup = ! $isJoinTrip && ! $pickupPoint && self::hasCustomPin($customPickup);
 
             $booking = Booking::create([
                 'booking_ref' => Booking::generateRef(),
@@ -460,6 +468,13 @@ class BookingService
         );
 
         return $booking;
+    }
+
+    /** payload หมุดที่ลูกค้าปักเองครบพอที่จะใช้งานได้หรือยัง (ต้องมีทั้งพิกัดและชื่อจุด) */
+    private static function hasCustomPin(?array $customPickup): bool
+    {
+        return $customPickup !== null
+            && isset($customPickup['lat'], $customPickup['lng'], $customPickup['label']);
     }
 
     /**
