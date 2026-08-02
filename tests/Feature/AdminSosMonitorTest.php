@@ -117,9 +117,9 @@ class AdminSosMonitorTest extends TestCase
         $this->assertSame('resolved', $alert->status);
         $this->assertSame($this->admin->id, $alert->resolved_by);
         $this->assertNotNull($alert->resolved_at);
-        // โน้ตของทีมงานถูกต่อท้ายข้อความเดิม ไม่ทับของลูกค้า
-        $this->assertStringContainsString('ขาแพลง เดินต่อไม่ไหว', $alert->message);
-        $this->assertStringContainsString('ประสานกู้ภัยรับตัวแล้ว', $alert->message);
+        // โน้ตของทีมงานเก็บแยกช่อง ไม่ปนกับข้อความที่ลูกค้าพิมพ์ตอนขอความช่วยเหลือ
+        $this->assertSame('ขาแพลง เดินต่อไม่ไหว', $alert->message);
+        $this->assertSame('ประสานกู้ภัยรับตัวแล้ว', $alert->admin_note);
     }
 
     public function test_closing_an_already_closed_case_is_a_no_op(): void

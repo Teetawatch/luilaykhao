@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\BroadcastSosAlert;
-use App\Models\Booking;
+use App\Jobs\BroadcastSosResolved;
 use App\Models\SosAlert;
 use App\Models\TripSchedule;
+use App\Services\SosParticipantService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,8 @@ use Illuminate\Http\Request;
 class SosController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private SosParticipantService $participants) {}
 
     public function trigger(Request $request): JsonResponse
     {
@@ -28,18 +31,13 @@ class SosController extends Controller
 
         $user = $request->user();
 
-        $booking = Booking::where('user_id', $user->id)
-            ->where('schedule_id', $validated['schedule_id'])
-            ->where('status', 'confirmed')
-            ->first();
+        $schedule = TripSchedule::with(['trip', 'vehicle'])->find($validated['schedule_id']);
 
-        if (! $booking) {
-            return $this->error('ไม่พบการจองที่ยืนยันแล้วในทริปนี้', 404);
+        if (! $schedule || ! $this->participants->includes($schedule, (int) $user->id)) {
+            return $this->error('ไม่พบการเดินทางนี้ในบัญชีของคุณ', 404);
         }
 
-        $schedule = TripSchedule::with('trip')->find($validated['schedule_id']);
-
-        if (! $schedule || ! $this->isWithinTripWindow($schedule)) {
+        if (! $this->isWithinTripWindow($schedule)) {
             return $this->error('ใช้ SOS ได้เฉพาะช่วงเวลาทริปเท่านั้น', 422);
         }
 
@@ -86,39 +84,40 @@ class SosController extends Controller
         return $this->success($this->presentAlert($alert->fresh('user')), 'ส่งสัญญาณ SOS แล้ว');
     }
 
+    /**
+     * เคสที่ยังเปิดอยู่ในทุกรอบที่ผู้ใช้เกี่ยวข้อง — แอปเรียกตอนเปิด/กลับเข้าแอป
+     * เพื่อกู้สัญญาณที่พลาดไปตอนเครื่องดับหรือเน็ตหลุด
+     *
+     * รวมเคสของตัวเองด้วย (ต่างจากเดิม) เพื่อให้คนที่กดแล้วแอปถูกปิด กลับมาเห็น
+     * ว่าเคสตัวเองยังเปิดอยู่และกดปิดได้เมื่อปลอดภัยแล้ว
+     */
     public function active(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        $scheduleIds = Booking::where('user_id', $user->id)
-            ->where('status', 'confirmed')
-            ->pluck('schedule_id')
-            ->unique()
-            ->values();
+        $scheduleIds = $this->participants->scheduleIdsFor((int) $user->id);
 
         $alerts = SosAlert::with('user')
             ->whereIn('schedule_id', $scheduleIds)
             ->where('status', 'active')
-            ->where('user_id', '!=', $user->id)
+            // เฉพาะเหตุที่ยังสด — เคสเก่าที่ไม่มีใครกดปิดไม่ควรเด้งไซเรนใส่คนที่
+            // เพิ่งเปิดแอปหลังเหตุการณ์จบไปนานแล้ว
+            ->where('created_at', '>=', now()->subDay())
             ->orderByDesc('created_at')
             ->get();
 
-        return $this->success($alerts->map(fn ($a) => $this->presentAlert($a))->values());
+        return $this->success(
+            $alerts->map(fn (SosAlert $a) => $this->presentAlert($a, (int) $user->id))->values()
+        );
     }
 
     public function resolve(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
 
-        $alert = SosAlert::findOrFail($id);
+        $alert = SosAlert::with('schedule.vehicle')->findOrFail($id);
 
-        $onSameSchedule = Booking::where('user_id', $user->id)
-            ->where('schedule_id', $alert->schedule_id)
-            ->where('status', 'confirmed')
-            ->exists()
-            || $alert->schedule->staff()->where('users.id', $user->id)->exists();
-
-        if (! $onSameSchedule) {
+        if (! $alert->schedule || ! $this->participants->includes($alert->schedule, (int) $user->id)) {
             return $this->error('คุณไม่มีสิทธิ์ปิดเคสนี้', 403);
         }
 
@@ -128,26 +127,42 @@ class SosController extends Controller
                 'resolved_by' => $user->id,
                 'resolved_at' => now(),
             ]);
+
+            // บอกทุกคนในรอบว่าเคสปิดแล้ว — ฝั่งแอปใช้สัญญาณนี้หยุดไซเรนที่ยัง
+            // ดังอยู่บนเครื่องที่ไม่ได้เปิดหน้า SOS
+            BroadcastSosResolved::dispatchAfterResponse($alert->id);
         }
 
-        return $this->success($this->presentAlert($alert->fresh('user')), 'ปิดเคส SOS แล้ว');
+        return $this->success($this->presentAlert($alert->fresh('user'), (int) $user->id), 'ปิดเคส SOS แล้ว');
     }
 
+    /**
+     * SOS เปิดตั้งแต่ 1 วันก่อนออกเดินทางจริง (นับ departs_at ถ้ารถออกคืนก่อน
+     * วันทริป) จนถึง 1 วันหลังวันกลับ
+     *
+     * ที่เผื่อท้ายไว้หนึ่งวันเพราะรถกลับดีเลย์ข้ามเที่ยงคืนเป็นเรื่องปกติ และนั่น
+     * คือช่วงที่คนบนรถต้องการ SOS มากที่สุด — เดิมระบบตัดตรงเที่ยงคืนของวันกลับพอดี
+     */
     private function isWithinTripWindow(TripSchedule $schedule): bool
     {
         $today = now(TripSchedule::REVIEW_AVAILABLE_TIMEZONE)->toDateString();
-        // เปิด SOS ตั้งแต่ 1 วันก่อนเดินทาง (ตรงกับฝั่งแอป) จนถึงวันเดินทางกลับ
-        $start = $schedule->departure_date?->copy()->subDay()->toDateString();
-        $end = ($schedule->return_date ?? $schedule->departure_date)?->toDateString();
 
-        if (! $start) {
+        $departure = $schedule->effectiveDepartureDate();
+
+        if (! $departure) {
             return false;
         }
+
+        $start = $departure->copy()->subDay()->toDateString();
+        $end = ($schedule->return_date ?? $schedule->departure_date)
+            ->copy()
+            ->addDay()
+            ->toDateString();
 
         return $today >= $start && $today <= $end;
     }
 
-    private function presentAlert(SosAlert $alert): array
+    private function presentAlert(SosAlert $alert, ?int $viewerId = null): array
     {
         return [
             'id' => $alert->id,
@@ -159,6 +174,7 @@ class SosController extends Controller
             'latitude' => $alert->latitude,
             'longitude' => $alert->longitude,
             'status' => $alert->status,
+            'is_mine' => $viewerId !== null && (int) $alert->user_id === $viewerId,
             'created_at' => $alert->created_at?->toISOString(),
             'resolved_at' => $alert->resolved_at?->toISOString(),
         ];

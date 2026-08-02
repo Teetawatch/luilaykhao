@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\BroadcastSosResolved;
 use App\Models\Booking;
 use App\Models\SosAlert;
 use App\Models\VehicleLocation;
@@ -76,10 +77,13 @@ class AdminSosController extends Controller
             'status' => 'resolved',
             'resolved_by' => $request->user()->id,
             'resolved_at' => now(),
-            'message' => $note !== ''
-                ? trim(($alert->message ?? '')."\n[ทีมงาน] ".$note)
-                : $alert->message,
+            // เก็บแยกจาก message เสมอ — ข้อความที่ลูกค้าพิมพ์ตอนขอความช่วยเหลือ
+            // เป็นหลักฐาน ห้ามถูกโน้ตภายในเขียนทับหรือปนกัน
+            'admin_note' => $note !== '' ? $note : $alert->admin_note,
         ]);
+
+        // บอกคนในรอบว่าเคสปิดแล้ว เพื่อให้เครื่องที่ไซเรนยังดังอยู่หยุดเสียง
+        BroadcastSosResolved::dispatchAfterResponse($alert->id);
 
         return $this->success(
             $this->present($alert->fresh(['user', 'schedule.trip', 'schedule.vehicle', 'resolver'])),
@@ -103,6 +107,7 @@ class AdminSosController extends Controller
             'id' => $alert->id,
             'status' => $alert->status,
             'message' => $alert->message,
+            'admin_note' => $alert->admin_note,
             'photo_url' => MediaDisk::url($alert->photo_path),
             'latitude' => $alert->latitude,
             'longitude' => $alert->longitude,

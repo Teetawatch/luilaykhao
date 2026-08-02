@@ -15,6 +15,7 @@ class SosAlert extends Model
         'message',
         'photo_path',
         'contact_phone',
+        'admin_note',
         'status',
         'resolved_by',
         'resolved_at',

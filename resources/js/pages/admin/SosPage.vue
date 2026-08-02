@@ -74,6 +74,12 @@
 
           <p v-if="a.message" class="sos-message">{{ a.message }}</p>
 
+          <!-- โน้ตของทีมงานตอนปิดเคส เก็บแยกจากข้อความที่ลูกค้าพิมพ์ -->
+          <p v-if="a.admin_note" class="admin-note">
+            <span class="material-symbols-rounded">edit_note</span>
+            <span><strong>บันทึกทีมงาน:</strong> {{ a.admin_note }}</span>
+          </p>
+
           <!-- ข้อมูลสุขภาพ: สำคัญที่สุดตอนประสานหน่วยกู้ภัย -->
           <div v-if="a.allergies || a.health_notes" class="health-box">
             <span class="material-symbols-rounded">medical_information</span>
@@ -371,6 +377,14 @@ onBeforeUnmount(() => {
   margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: #374151;
   white-space: pre-wrap; word-break: break-word;
 }
+
+.admin-note {
+  display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0;
+  background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 12px;
+  font-size: 13px; line-height: 1.6; color: #475569;
+  white-space: pre-wrap; word-break: break-word;
+}
+.admin-note .material-symbols-rounded { color: #94a3b8; font-size: 18px !important; }
 
 .health-box {
   display: flex; gap: 10px; margin-top: 12px;

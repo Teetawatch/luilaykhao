@@ -2,15 +2,22 @@
 
 namespace App\Jobs;
 
-use App\Events\SosTriggered;
-use App\Models\Booking;
-use App\Models\SmartNotification;
+use App\Mail\AdminSosAlertMail;
 use App\Models\SosAlert;
-use App\Support\MediaDisk;
+use App\Models\User;
+use App\Services\SosParticipantService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
+/**
+ * กระจายสัญญาณ SOS ให้ทุกคนที่ควรรู้
+ *
+ * งานนี้ทำหน้าที่ "หารายชื่อ" อย่างเดียวแล้วแตกเป็น [DeliverSosAlert] รายคน
+ * เพื่อให้ worker หลายตัวยิงขนานกัน — เวลาถึงเครื่องของคนท้ายแถวสำคัญพอ ๆ กับ
+ * คนแรกในสถานการณ์ฉุกเฉิน
+ */
 class BroadcastSosAlert implements ShouldQueue
 {
     use Queueable;
@@ -21,60 +28,53 @@ class BroadcastSosAlert implements ShouldQueue
 
     public function __construct(private int $sosAlertId) {}
 
-    public function handle(): void
+    public function handle(SosParticipantService $participants): void
     {
-        $alert = SosAlert::with(['user', 'schedule.trip'])->find($this->sosAlertId);
+        $alert = SosAlert::with(['user', 'schedule.trip', 'schedule.vehicle'])->find($this->sosAlertId);
 
         if (! $alert || ! $alert->schedule || ! $alert->user) {
             return;
         }
 
-        $schedule = $alert->schedule;
-        $sender = $alert->user;
+        $recipientIds = $participants->userIds($alert->schedule)
+            ->reject(fn (int $id) => $id === (int) $alert->user_id);
 
-        $staffIds = $schedule->staff()->pluck('users.id');
-        $travelerIds = Booking::where('schedule_id', $schedule->id)
-            ->where('status', 'confirmed')
-            ->pluck('user_id');
+        // ทีมงานออฟฟิศต้องรู้ทุกเคส แม้จะไม่ได้อยู่ในรอบนั้น — เดิมเห็นได้เฉพาะ
+        // ตอนเปิดหน้าศูนย์เฝ้าระวังไว้ (poll ทุก 30 วิ) ซึ่งกลางดึกไม่มีใครเปิด
+        $opsIds = User::role(['admin', 'operator'])
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
 
-        $recipientIds = $staffIds->merge($travelerIds)
+        $recipientIds->merge($opsIds)
             ->unique()
-            ->reject(fn ($id) => (int) $id === (int) $sender->id)
-            ->values();
+            ->reject(fn (int $id) => $id === (int) $alert->user_id)
+            ->each(fn (int $id) => DeliverSosAlert::dispatch($alert->id, $id));
 
-        $photoUrl = MediaDisk::url($alert->photo_path);
+        $this->emailOps($alert);
+    }
 
-        $tripTitle = $schedule->trip?->title ?? 'ทริป';
-        $title = '🆘 ขอความช่วยเหลือ SOS';
-        $body = $sender->name.' ขอความช่วยเหลือในทริป '.$tripTitle;
-        if ($alert->message) {
-            $body .= ' — '.$alert->message;
+    /**
+     * อีเมลถึงแอดมิน — ช่องทางที่ไปถึงคนเวรกลางดึกได้จริงแม้ไม่มีแอปในเครื่อง
+     */
+    private function emailOps(SosAlert $alert): void
+    {
+        $emails = User::role('admin')
+            ->whereNotNull('email')
+            ->pluck('email')
+            ->filter()
+            ->all();
+
+        if (empty($emails)) {
+            return;
         }
 
-        $data = [
-            'sos_id' => (string) $alert->id,
-            'schedule_id' => (string) $schedule->id,
-            'sos_user_name' => (string) $sender->name,
-            'contact_phone' => (string) ($alert->contact_phone ?? ''),
-            'latitude' => $alert->latitude !== null ? (string) $alert->latitude : '',
-            'longitude' => $alert->longitude !== null ? (string) $alert->longitude : '',
-            'sos_message' => (string) ($alert->message ?? ''),
-            'photo_url' => (string) ($photoUrl ?? ''),
-        ];
-
-        foreach ($recipientIds as $recipientId) {
-            SmartNotification::send((int) $recipientId, 'sos_alert', $title, $body, $data);
-            broadcast(new SosTriggered(
-                recipientUserId: (int) $recipientId,
-                sosId: $alert->id,
-                scheduleId: $schedule->id,
-                userName: $sender->name,
-                message: $alert->message,
-                contactPhone: $alert->contact_phone,
-                latitude: $alert->latitude,
-                longitude: $alert->longitude,
-                photoUrl: $photoUrl,
-            ));
+        try {
+            Mail::to($emails)->send(new AdminSosAlertMail($alert));
+        } catch (\Throwable $e) {
+            Log::error('Unable to email ops about SOS', [
+                'sos_alert_id' => $alert->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
