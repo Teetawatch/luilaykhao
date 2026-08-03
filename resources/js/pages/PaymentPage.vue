@@ -755,6 +755,22 @@
                    </div>
                  </div>
                </div>
+
+               <div v-if="booking.selected_rentals?.length" class="p-4 bg-sky-50/70 rounded-2xl border border-sky-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                 <div class="flex items-center gap-2 mb-3">
+                   <span class="material-symbols-rounded text-sky-600 text-xl">backpack</span>
+                   <p class="text-[10px] font-black text-sky-700 uppercase tracking-widest leading-none">อุปกรณ์เช่า</p>
+                 </div>
+                 <div class="space-y-2">
+                   <div v-for="(rental, idx) in booking.selected_rentals" :key="idx" class="flex justify-between gap-3 text-sm">
+                     <span class="font-bold text-gray-800">
+                       {{ rental.name }}
+                       <span v-if="Number(rental.quantity) > 1" class="text-sky-600">×{{ rental.quantity }}</span>
+                     </span>
+                     <span class="font-black text-sky-700">+฿{{ Number(rental.total_price || 0).toLocaleString() }}</span>
+                   </div>
+                 </div>
+               </div>
             </div>
 
             <!-- Price Summary -->

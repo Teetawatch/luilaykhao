@@ -236,6 +236,23 @@
                     </div>
                   </div>
 
+                  <div v-if="booking.selected_rentals?.length" class="p-5 bg-sky-50/70 rounded-3xl border border-sky-100">
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="material-symbols-rounded text-sky-600">backpack</span>
+                      <p class="text-[10px] font-black text-sky-700 uppercase tracking-widest">อุปกรณ์เช่า</p>
+                    </div>
+                    <div class="space-y-2">
+                      <div v-for="(rental, idx) in booking.selected_rentals" :key="idx" class="flex justify-between gap-3 text-sm">
+                        <span class="font-bold text-gray-800">
+                          {{ rental.name }}
+                          <span v-if="Number(rental.quantity) > 1" class="text-sky-600">×{{ rental.quantity }}</span>
+                        </span>
+                        <span class="font-black text-sky-700">+฿{{ Number(rental.total_price || 0).toLocaleString() }}</span>
+                      </div>
+                    </div>
+                    <p class="mt-3 text-[11px] font-bold text-sky-600">รับอุปกรณ์จากทีมงานในวันเดินทาง</p>
+                  </div>
+
                   <!-- Footer: Paid Timestamp -->
                   <div v-if="booking.paid_at" class="pt-6 border-t border-gray-100 flex items-center gap-2 text-gray-400">
                     <span class="material-symbols-rounded text-base">check_circle</span>

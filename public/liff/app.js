@@ -265,6 +265,7 @@ async function startBooking(trip, scheduleId) {
       selected: [],
       pickupId: null,
       addons: new Set(),
+      rentals: new Map(), // index ใน trip.rental_items -> จำนวนชิ้น
       promo: '',
       passengers: {}, // index -> passenger object
     };
@@ -404,10 +405,13 @@ function basePerPax() {
 function estimateTotal() {
   const n = bk.selected.length;
   let total = basePerPax() * n;
-  addonItems().forEach((item, idx) => {
-    if (!bk.addons.has(idx)) return;
+  addonItems().forEach((item) => {
+    if (!bk.addons.has(item.index)) return;
     const qty = (item.price_type === 'per_person') ? n : 1;
     total += Number(item.price || 0) * qty;
+  });
+  rentalItems().forEach((item) => {
+    total += Number(item.price || 0) * rentalQty(item.index);
   });
   return total;
 }
@@ -549,8 +553,33 @@ function collectPassengers() {
 function addonItems() {
   const items = bk.trip?.must_know?.items;
   if (!Array.isArray(items)) return [];
-  // Treat only priced entries as bookable add-ons (plain info rows have no price).
-  return items.filter((it) => it && it.name && Number(it.price) > 0);
+  // Treat only priced entries as bookable add-ons (plain info rows have no price),
+  // but keep each entry's ORIGINAL index — that's what the API validates against.
+  return items
+    .map((it, index) => ({ ...it, index }))
+    .filter((it) => it && it.name && Number(it.price) > 0);
+}
+
+// อุปกรณ์ให้เช่า (trip.rental_items) — คิดเป็นชิ้น เลือกจำนวนได้
+function rentalItems() {
+  const items = bk.trip?.rental_items;
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((it, index) => ({ ...it, index }))
+    .filter((it) => it && it.name);
+}
+
+const RENTAL_MAX_QTY = 20;
+
+function rentalQty(index) {
+  return bk.rentals.get(index) || 0;
+}
+
+function setRentalQty(index, qty) {
+  const clamped = Math.max(0, Math.min(qty, RENTAL_MAX_QTY));
+  if (clamped > 0) bk.rentals.set(index, clamped);
+  else bk.rentals.delete(index);
+  renderSummaryStep();
 }
 
 function openImageLightbox(url) {
@@ -570,7 +599,8 @@ function renderSummaryStep() {
   const addons = addonItems();
   if (addons.length) {
     content.appendChild(el(`<div class="section-heading">บริการเสริม</div>`));
-    addons.forEach((item, idx) => {
+    addons.forEach((item) => {
+      const idx = item.index;
       const checked = bk.addons.has(idx);
       const imageUrl = (item.image_url || '').toString().trim();
       const thumb = imageUrl
@@ -596,6 +626,41 @@ function renderSummaryStep() {
     });
   }
 
+  // อุปกรณ์ให้เช่า
+  const rentals = rentalItems();
+  if (rentals.length) {
+    content.appendChild(el(`<div class="section-heading">อุปกรณ์ให้เช่า</div>`));
+    rentals.forEach((item) => {
+      const idx = item.index;
+      const qty = rentalQty(idx);
+      const imageUrl = (item.image_url || '').toString().trim();
+      const thumb = imageUrl
+        ? `<div class="pick-thumb"><img src="${esc(imageUrl)}" alt="" loading="lazy"><button type="button" class="pick-zoom" aria-label="ดูรูปใหญ่">⤢</button></div>`
+        : '';
+      const row = el(`<div class="pick pick-rental ${qty > 0 ? 'on' : ''}">
+        ${thumb}
+        <div class="pick-body">
+          <div class="pick-name">${esc(item.name)}</div>
+          <div class="pick-sub">${baht(item.price)} / ชิ้น${item.description ? ' · ' + esc(item.description) : ''}</div>
+        </div>
+        <div class="qty">
+          <button type="button" class="qty-btn" data-step="-1" ${qty <= 0 ? 'disabled' : ''} aria-label="ลดจำนวน">−</button>
+          <span class="qty-num">${qty}</span>
+          <button type="button" class="qty-btn" data-step="1" ${qty >= RENTAL_MAX_QTY ? 'disabled' : ''} aria-label="เพิ่มจำนวน">+</button>
+        </div>
+      </div>`);
+      row.querySelectorAll('.qty-btn').forEach((btn) => {
+        btn.onclick = () => setRentalQty(idx, rentalQty(idx) + Number(btn.dataset.step));
+      });
+      const zoom = row.querySelector('.pick-zoom');
+      if (zoom) {
+        zoom.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openImageLightbox(imageUrl); };
+      }
+      content.appendChild(row);
+    });
+    content.appendChild(el(`<p class="muted">รับอุปกรณ์จากทีมงานในวันเดินทาง</p>`));
+  }
+
   // Promotion
   content.appendChild(el(`<div class="section-heading">โค้ดส่วนลด</div>`));
   const promo = el(`<input id="promo" placeholder="ใส่โค้ด (ถ้ามี)" value="${esc(bk.promo)}">`);
@@ -611,6 +676,7 @@ function renderSummaryStep() {
     <div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>
     <div class="kv"><span class="k">ค่าทริป (${n} คน)</span><span class="v">${baht(basePerPax() * n)}</span></div>
     ${addonLines()}
+    ${rentalLines()}
     <div class="kv total"><span class="k">ยอดประมาณ</span><span class="v price">${baht(estimateTotal())}</span></div>
   </div></div>`);
   content.appendChild(sum);
@@ -629,10 +695,18 @@ function renderSummaryStep() {
 
 function addonLines() {
   const n = bk.selected.length;
-  return addonItems().map((item, idx) => {
-    if (!bk.addons.has(idx)) return '';
+  return addonItems().map((item) => {
+    if (!bk.addons.has(item.index)) return '';
     const qty = item.price_type === 'per_person' ? n : 1;
     return `<div class="kv"><span class="k">${esc(item.name)}</span><span class="v">${baht(Number(item.price) * qty)}</span></div>`;
+  }).join('');
+}
+
+function rentalLines() {
+  return rentalItems().map((item) => {
+    const qty = rentalQty(item.index);
+    if (!qty) return '';
+    return `<div class="kv"><span class="k">${esc(item.name)} ×${qty}</span><span class="v">${baht(Number(item.price || 0) * qty)}</span></div>`;
   }).join('');
 }
 
@@ -654,8 +728,12 @@ async function submitBooking(banner, btn) {
   };
   if (bk.pickupId) payload.pickup_point_id = bk.pickupId;
   if (bk.promo) payload.promotion_code = bk.promo;
-  const addons = [...bk.addons];
+  const addons = [...bk.addons].map((index) => ({ index }));
   if (addons.length) payload.selected_addons = addons;
+  const rentals = [...bk.rentals.entries()]
+    .filter(([, quantity]) => quantity > 0)
+    .map(([index, quantity]) => ({ index, quantity }));
+  if (rentals.length) payload.selected_rentals = rentals;
 
   try {
     const res = await api('/bookings', { method: 'POST', body: payload });

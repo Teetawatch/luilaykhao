@@ -586,7 +586,7 @@
                     <button
                       v-if="addon.image_url"
                       type="button"
-                      @click.stop="addonZoomImage = addon.image_url"
+                      @click.stop="zoomImage = addon.image_url"
                       class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/65"
                       title="ดูรูปใหญ่"
                     >
@@ -633,17 +633,93 @@
               </div>
             </div>
 
-            <!-- Add-on image lightbox -->
+            <!-- อุปกรณ์เช่า — คนละชุดกับตัวเลือกเสริม (คิดเป็นชิ้น ไม่ใช่ต่อคน) -->
+            <div v-if="rentalOptions.length" class="mb-8 bg-white rounded-3xl border border-gray-100 p-6">
+              <div class="flex items-center justify-between gap-4 mb-5">
+                <label class="flex items-center gap-2 text-base font-bold text-gray-900">
+                  <span class="material-symbols-rounded text-sky-600">backpack</span>
+                  อุปกรณ์ให้เช่า
+                </label>
+                <span v-if="rentalsTotal > 0" class="text-sm font-black text-sky-700 bg-sky-50 border border-sky-100 px-3 py-1 rounded-full">
+                  +฿{{ rentalsTotal.toLocaleString() }}
+                </span>
+              </div>
+
+              <p class="text-xs text-gray-500 font-medium mb-4">เช่าได้ตามจำนวนที่ต้องการ รับอุปกรณ์จากทีมงานในวันเดินทาง</p>
+
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div
+                  v-for="item in rentalOptions"
+                  :key="item.index"
+                  class="relative rounded-2xl border-2 transition-all overflow-hidden flex flex-col"
+                  :class="rentalQty(item.index) > 0 ? 'border-sky-500 ring-2 ring-sky-200' : 'border-gray-100'"
+                >
+                  <!-- image / placeholder -->
+                  <div class="relative h-28 shrink-0" :class="item.image_url ? 'bg-gray-100' : 'bg-sky-50 flex items-center justify-center'">
+                    <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="w-full h-full object-cover" loading="lazy" />
+                    <span v-else class="material-symbols-rounded text-sky-300" style="font-size:34px;">backpack</span>
+                    <button
+                      v-if="item.image_url"
+                      type="button"
+                      @click.stop="zoomImage = item.image_url"
+                      class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/65"
+                      title="ดูรูปใหญ่"
+                    >
+                      <span class="material-symbols-rounded" style="font-size:16px;">zoom_in</span>
+                    </button>
+                    <div
+                      v-if="rentalQty(item.index) > 0"
+                      class="absolute top-1.5 left-1.5 min-w-[24px] h-6 px-1.5 rounded-full bg-sky-500 text-white text-xs font-black flex items-center justify-center"
+                    >
+                      ×{{ rentalQty(item.index) }}
+                    </div>
+                  </div>
+                  <!-- info -->
+                  <div class="p-3 flex-1 flex flex-col" :class="rentalQty(item.index) > 0 ? 'bg-sky-50/60' : 'bg-white'">
+                    <p class="font-black text-gray-900 text-sm leading-tight line-clamp-2">{{ item.name }}</p>
+                    <p v-if="item.description" class="text-[11px] text-gray-500 font-medium mt-1 line-clamp-2">{{ item.description }}</p>
+                    <p class="text-[11px] font-bold text-sky-600 mt-1">
+                      ฿{{ item.price.toLocaleString() }} ต่อชิ้น
+                    </p>
+                    <!-- quantity stepper -->
+                    <div class="mt-3 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        @click="decRental(item)"
+                        :disabled="rentalQty(item.index) <= 0"
+                        class="w-8 h-8 rounded-full border flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        :class="rentalQty(item.index) > 0 ? 'border-sky-300 text-sky-600 hover:bg-sky-50' : 'border-gray-200 text-gray-400'"
+                      >
+                        <span class="material-symbols-rounded" style="font-size:18px;">remove</span>
+                      </button>
+                      <span class="text-sm font-black tabular-nums" :class="rentalQty(item.index) > 0 ? 'text-sky-700' : 'text-gray-400'">
+                        {{ rentalQty(item.index) }}
+                      </span>
+                      <button
+                        type="button"
+                        @click="incRental(item)"
+                        :disabled="rentalQty(item.index) >= RENTAL_MAX_QTY"
+                        class="w-8 h-8 rounded-full border border-sky-300 text-sky-600 flex items-center justify-center transition-colors hover:bg-sky-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add-on / rental image lightbox -->
             <div
-              v-if="addonZoomImage"
+              v-if="zoomImage"
               class="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
-              @click="addonZoomImage = null"
+              @click="zoomImage = null"
             >
-              <img :src="addonZoomImage" alt="" class="max-w-full max-h-full object-contain rounded-xl" />
+              <img :src="zoomImage" alt="" class="max-w-full max-h-full object-contain rounded-xl" />
               <button
                 type="button"
                 class="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/50 text-white flex items-center justify-center"
-                @click="addonZoomImage = null"
+                @click="zoomImage = null"
               >
                 <span class="material-symbols-rounded">close</span>
               </button>
@@ -1084,6 +1160,15 @@
                       </span>
                       <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
                     </div>
+                    <div v-for="item in selectedRentalItems" :key="`rental-${item.index}`" class="flex justify-between items-center text-sm text-sky-700">
+                      <span class="flex items-center gap-2 min-w-0">
+                        <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-sky-100" />
+                        <span v-else class="material-symbols-rounded text-[16px] shrink-0">backpack</span>
+                        <span class="truncate">{{ item.name }}</span>
+                        <span class="shrink-0 text-sky-500 font-bold">×{{ item.quantity }}</span>
+                      </span>
+                      <span class="font-bold shrink-0">+฿{{ rentalLineTotal(item).toLocaleString() }}</span>
+                    </div>
                     <div v-if="promotionData" class="flex justify-between text-sm text-teal-700 pt-2 border-t border-gray-100">
                       <span class="flex items-center gap-1 font-medium">
                         <span class="material-symbols-rounded text-[16px]">local_offer</span>
@@ -1221,7 +1306,16 @@
                 </span>
                 <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
               </div>
-              
+              <div v-for="item in selectedRentalItems" :key="`rental-${item.index}`" class="flex justify-between items-center text-sm text-sky-700">
+                <span class="font-bold flex items-center gap-2 min-w-0">
+                  <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-sky-100" />
+                  <span v-else class="material-symbols-rounded text-[16px] shrink-0">backpack</span>
+                  <span class="truncate">{{ item.name }}</span>
+                  <span class="shrink-0 text-sky-500 font-bold">×{{ item.quantity }}</span>
+                </span>
+                <span class="font-bold shrink-0">+฿{{ rentalLineTotal(item).toLocaleString() }}</span>
+              </div>
+
               <div v-if="promotionData" class="flex justify-between items-center text-sm text-teal-600">
                 <span class="font-bold flex items-center gap-1">
                   <span class="material-symbols-rounded text-[16px]">local_offer</span>
@@ -1597,7 +1691,24 @@ const groupNotes = ref('');
 const showInsuranceModal = ref(false);
 // index -> จำนวนที่เลือก (>0 = เลือกอยู่) เพื่อให้กด +/- ได้ทีละชิ้น
 const addonQuantities = ref({});
-const addonZoomImage = ref(null);
+const zoomImage = ref(null);
+
+// อุปกรณ์เช่า: index ใน trip.rental_items -> จำนวนชิ้น (เพดานเท่ากับที่ backend รับ)
+const RENTAL_MAX_QTY = 20;
+const rentalQuantities = ref({});
+
+const rentalQty = (index) => rentalQuantities.value[index] || 0;
+
+const setRentalQty = (item, qty) => {
+  const clamped = Math.max(0, Math.min(qty, RENTAL_MAX_QTY));
+  const next = { ...rentalQuantities.value };
+  if (clamped > 0) next[item.index] = clamped;
+  else delete next[item.index];
+  rentalQuantities.value = next;
+};
+
+const incRental = (item) => setRentalQty(item, rentalQty(item.index) + 1);
+const decRental = (item) => setRentalQty(item, rentalQty(item.index) - 1);
 
 // แบบ "ต่อคน" เลือกได้ไม่เกินจำนวนผู้เดินทาง ส่วนแบบต่อชิ้นได้ถึง 20 เหมือนของเช่า
 const addonMaxQty = (item) => item.price_type === 'per_person'
@@ -1745,6 +1856,20 @@ const optionalAddons = computed(() => {
     .filter((item) => item.name);
 });
 
+// อุปกรณ์เช่าของทริป — ส่งกลับตาม index เดิม เพราะ BookingService ตรวจด้วย index
+const rentalOptions = computed(() => {
+  const items = schedule.value?.trip?.rental_items || [];
+  return items
+    .map((item, index) => ({
+      index,
+      name: String(item?.name || '').trim(),
+      price: Number(item?.price || 0),
+      description: String(item?.description || '').trim(),
+      image_url: String(item?.image_url || '').trim(),
+    }))
+    .filter((item) => item.name);
+});
+
 const passengers = ref([{
   title: '', name: '', nickname: '', id_card: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '',
@@ -1770,6 +1895,7 @@ function saveFormData() {
     promotionCode: promotionCode.value,
     promotionData: promotionData.value,
     addonQuantities: addonQuantities.value,
+    rentalQuantities: rentalQuantities.value,
   };
   sessionStorage.setItem(FORM_SESSION_KEY.value, JSON.stringify(data));
   saveDraft(data);
@@ -1875,6 +2001,9 @@ function applyFormData(data) {
     }
     addonQuantities.value = map;
   }
+  if (data.rentalQuantities && typeof data.rentalQuantities === 'object' && !Array.isArray(data.rentalQuantities)) {
+    rentalQuantities.value = { ...data.rentalQuantities };
+  }
   if (data.selectedPickupId != null && pickupPoints.value.length > 0) {
     const pt = pickupPoints.value.find(p => p.id === data.selectedPickupId);
     if (pt) selectedPickup.value = pt;
@@ -1894,6 +2023,7 @@ watch(step, (newStep) => {
 watch(passengers, saveFormData, { deep: true });
 watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData], saveFormData);
 watch(addonQuantities, saveFormData, { deep: true });
+watch(rentalQuantities, saveFormData, { deep: true });
 
 // When global pickup is auto-set (e.g. single-point trip on load), propagate to passengers that have no pickup chosen yet
 watch(selectedPickup, (newPickup) => {
@@ -2170,6 +2300,14 @@ const addonsTotal = computed(() => selectedAddonItems.value.reduce((sum, item) =
 
 const addonPriceTypeLabel = (item) => item.price_type === 'per_person' ? 'ต่อคน' : 'ต่อชิ้น';
 
+const selectedRentalItems = computed(() => rentalOptions.value
+  .filter((item) => rentalQty(item.index) > 0)
+  .map((item) => ({ ...item, quantity: rentalQty(item.index) })));
+
+const rentalLineTotal = (item) => item.price * (item.quantity ?? rentalQty(item.index));
+
+const rentalsTotal = computed(() => selectedRentalItems.value.reduce((sum, item) => sum + rentalLineTotal(item), 0));
+
 const passengerTicketPrice = (p) => {
   if (pickupPoints.value.length && p.pickup_point_id) {
     const pt = pickupPoints.value.find(pp => pp.id === p.pickup_point_id);
@@ -2189,7 +2327,7 @@ const hasVariedPickupPrices = computed(() => {
   return prices.some(price => price !== prices[0]);
 });
 
-const subtotalAmount = computed(() => passengersSubtotal.value + addonsTotal.value);
+const subtotalAmount = computed(() => passengersSubtotal.value + addonsTotal.value + rentalsTotal.value);
 
 const discountAmount = computed(() => {
   if (!promotionData.value) return 0;
@@ -2451,6 +2589,12 @@ async function createBooking() {
     }
     if (selectedAddonItems.value.length) {
       data.selected_addons = selectedAddonItems.value.map((item) => ({
+        index: item.index,
+        quantity: item.quantity,
+      }));
+    }
+    if (selectedRentalItems.value.length) {
+      data.selected_rentals = selectedRentalItems.value.map((item) => ({
         index: item.index,
         quantity: item.quantity,
       }));
