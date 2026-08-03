@@ -92,6 +92,12 @@ body {
     color: var(--color-text-mid) !important;
     font-size: 0.9rem !important;
 }
+/* buttonsStyling:false ทิ้งคลาส .swal2-styled ไปพร้อมกับ margin เริ่มต้นของปุ่ม
+   ระยะห่างจึงต้องมาจาก container — ใช้ gap เพราะ reverseButtons สลับลำดับปุ่ม
+   (ยกเลิก → ยืนยัน) ทำให้ margin ข้างเดียวไปอยู่ขอบนอกแทนที่จะคั่นกลาง */
+.swal2-actions {
+    gap: 0.75rem !important;
+}
 .swal-btn-confirm {
     background-color: var(--color-accent) !important;
     color: #fff !important;
@@ -100,7 +106,6 @@ body {
     font-weight: 700 !important;
     font-size: 0.875rem !important;
     transition: background-color 0.2s, transform 0.15s !important;
-    margin-right: 0.75rem !important;
 }
 .swal-btn-confirm:hover {
     background-color: var(--color-accent-mid) !important;
