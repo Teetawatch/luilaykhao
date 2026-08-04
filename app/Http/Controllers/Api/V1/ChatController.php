@@ -467,6 +467,7 @@ class ChatController extends Controller
             $scheduleId,
             $user->id,
             $user->nickname ?: $user->name ?: 'สมาชิก',
+            $this->chatService->senderRole($user, $schedule),
         ))->toOthers();
 
         return $this->success(['ok' => true]);

@@ -18,6 +18,8 @@ class ChatJoined implements ShouldBroadcast
         public int $scheduleId,
         public int $userId,
         public string $name,
+        /** staff|admin|customer — ห้องแสดงป้าย "ทีมงาน" ต่างจากเพื่อนร่วมทริป */
+        public string $role = 'customer',
     ) {}
 
     public function broadcastOn(): array
@@ -36,6 +38,7 @@ class ChatJoined implements ShouldBroadcast
             'schedule_id' => $this->scheduleId,
             'user_id' => $this->userId,
             'name' => $this->name,
+            'role' => $this->role,
         ];
     }
 }

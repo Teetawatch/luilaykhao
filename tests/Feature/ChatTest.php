@@ -610,9 +610,11 @@ class ChatTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data');
 
-        // Room with activity sorts first and reports the unread count.
+        // Room with activity sorts first and reports the unread count: the two
+        // messages above plus the two system notices the second booking seeds
+        // (welcome + "เพื่อนร่วมทริปเข้าร่วมแล้ว" — see ChatRoomEventService).
         $response->assertJsonPath('data.0.schedule_id', $withChat->id)
-            ->assertJsonPath('data.0.unread_count', 2)
+            ->assertJsonPath('data.0.unread_count', 4)
             ->assertJsonPath('data.1.schedule_id', $noChat->id)
             ->assertJsonPath('data.1.unread_count', 0);
     }

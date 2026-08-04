@@ -36,6 +36,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
 use App\Services\BookingService;
+use App\Services\ChatRoomEventService;
 use App\Services\DriverLoginCodeService;
 use App\Services\MailService;
 use App\Services\RouteTrackService;
@@ -901,6 +902,12 @@ class AdminController extends Controller
                 $schedule->id,
                 NotifyTripCrewAssignedJob::KIND_STAFF,
             );
+
+            // แนะนำตัวทีมงานในห้องแชทของรอบด้วย ลูกค้าจะได้รู้ว่าทักใครได้
+            $chatEvents = app(ChatRoomEventService::class);
+            foreach (User::whereIn('id', $newStaffIds->all())->get() as $staff) {
+                $chatEvents->staffAssigned($schedule, $staff);
+            }
         }
         $schedule->load(['trip', 'vehicle']);
         $schedule->loadCount([

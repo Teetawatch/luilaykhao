@@ -22,6 +22,7 @@ class ScheduleSeatNotifier
         private BroadcastNotificationService $broadcast,
         private TripAlertService $tripAlerts,
         private WaitlistService $waitlist,
+        private ChatRoomEventService $chatEvents,
     ) {}
 
     /**
@@ -110,6 +111,8 @@ class ScheduleSeatNotifier
         try {
             $this->broadcast->broadcastSoldOut($schedule);
             $this->tripAlerts->notifySoldOut($schedule);
+            // คนที่จองไว้แล้วไม่ได้รับ broadcast ข้างบน — บอกกันในห้องแทน
+            $this->chatEvents->soldOut($schedule);
         } catch (\Throwable $e) {
             Log::warning('ScheduleSeatNotifier: sold-out notification failed — '.$e->getMessage());
         }
@@ -127,6 +130,8 @@ class ScheduleSeatNotifier
 
             if ($before < $guarantee && $after >= $guarantee) {
                 $this->broadcast->broadcastGuaranteed($schedule);
+                // ข่าวดีที่สุดของคนที่จองไปแล้ว = รอบนี้ออกแน่ ประกาศในห้องด้วย
+                $this->chatEvents->departureGuaranteed($schedule);
             } elseif ($before < $almost && $after >= $almost && $after < $guarantee) {
                 $this->broadcast->broadcastAlmostReady($schedule);
             }

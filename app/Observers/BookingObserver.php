@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Jobs\AnnounceChatMemberJoinedJob;
 use App\Models\Booking;
 use App\Services\LoyaltyService;
 
@@ -36,6 +37,7 @@ class BookingObserver
         // การเปลี่ยนสถานะให้จับใน updated()
         if (in_array($booking->status, self::EARNING_STATUSES, true)) {
             $this->loyaltyService->awardForBooking($booking);
+            $this->announceInChat($booking);
         }
     }
 
@@ -47,6 +49,7 @@ class BookingObserver
 
         if (in_array($booking->status, self::EARNING_STATUSES, true)) {
             $this->loyaltyService->awardForBooking($booking);
+            $this->announceInChat($booking);
 
             return;
         }
@@ -55,5 +58,14 @@ class BookingObserver
         if (in_array($booking->status, self::REVERSING_STATUSES, true)) {
             $this->loyaltyService->reverseForBooking($booking);
         }
+    }
+
+    /**
+     * ประกาศในห้องแชทของรอบว่ามีเพื่อนร่วมทริปคนใหม่ — ทำหลัง commit เสมอ และ
+     * กันซ้ำด้วย system_key ในฝั่งบริการ จึงเรียกจากทุกทางที่ยืนยันการจองได้
+     */
+    private function announceInChat(Booking $booking): void
+    {
+        AnnounceChatMemberJoinedJob::dispatch($booking->id);
     }
 }

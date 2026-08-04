@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Booking;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
+use App\Services\ChatRoomEventService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -48,6 +49,11 @@ class NotifyTripCrewAssignedJob implements ShouldQueue
         $departsAt = $schedule->effectiveDepartsAt();
         if ($departsAt && $departsAt->isPast()) {
             return;
+        }
+
+        // ห้องแชทของรอบก็ควรมีบันทึกไว้ด้วย ไม่ใช่รู้กันเฉพาะคนที่เปิด noti ทัน
+        if ($this->kind === self::KIND_VEHICLE) {
+            app(ChatRoomEventService::class)->vehicleReady($schedule);
         }
 
         [$title, $body] = $this->message($schedule);
