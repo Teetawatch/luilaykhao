@@ -20,10 +20,10 @@ use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\SplitPaymentService;
 use App\Support\MediaDisk;
+use App\Support\PaymentQuote;
 use App\Support\ThaiDate;
 use App\Traits\ApiResponse;
 use App\Traits\ResolvesTransferDatetime;
-use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -111,6 +111,35 @@ class PaymentController extends Controller
         }
     }
 
+    /**
+     * เตือนเมื่อยอดที่ client แสดงให้ลูกค้าโอน ไม่ตรงกับยอดที่ระบบจะเรียกเก็บจริง
+     *
+     * ผ่อนชำระข้ามไป เพราะจำนวนงวดเป็นตัวเลือกของลูกค้า ยอดจึงต่างกันได้ตามงวดที่เลือก
+     */
+    private function warnOnQuoteMismatch(Booking $booking, string $paymentType, mixed $declaredAmount): void
+    {
+        if ($declaredAmount === null || $paymentType === 'installment') {
+            return;
+        }
+
+        $expected = match ($paymentType) {
+            'deposit' => PaymentQuote::deposit($booking)['amount'],
+            'split' => PaymentQuote::split($booking)['owner_share'],
+            default => (float) $booking->total_amount,
+        };
+
+        if ($expected === null || abs((float) $declaredAmount - (float) $expected) <= 0.01) {
+            return;
+        }
+
+        Log::warning('ยอดที่ client แจ้งมาไม่ตรงกับยอดที่ระบบเรียกเก็บ', [
+            'booking_ref' => $booking->booking_ref,
+            'payment_type' => $paymentType,
+            'declared_amount' => (float) $declaredAmount,
+            'expected_amount' => (float) $expected,
+        ]);
+    }
+
     public function charge(ChargeRequest $request): JsonResponse
     {
         try {
@@ -122,6 +151,11 @@ class PaymentController extends Controller
             $paymentType = $request->input('payment_type', 'full');
             $paymentMethod = $request->input('payment_method', 'promptpay');
             $transferDt = $this->resolveTransferDatetime($request);
+
+            // ยอดที่จะเรียกเก็บมาจาก PaymentQuote เสมอ ไม่เชื่อยอดที่ client ส่งมา —
+            // แต่ถ้าสองค่าไม่ตรงกันแปลว่า client ไปโชว์ยอดผิดให้ลูกค้าโอน (เช่นแอป
+            // เวอร์ชันเก่าที่ยังคำนวณมัดจำเอง) ต้องเห็นใน log ไม่ใช่รู้ตอนสลิปไม่ตรง
+            $this->warnOnQuoteMismatch($booking, $paymentType, $request->input('amount'));
 
             // Store slip image
             $slipPath = null;
@@ -144,7 +178,7 @@ class PaymentController extends Controller
                 }
                 $installmentIntervalDays = (int) $schedule->installment_interval_days;
                 $totalAmount = (float) $booking->total_amount;
-                $perInstallment = round($totalAmount / $installmentCount, 2);
+                $perInstallment = PaymentQuote::installmentAmounts($totalAmount, $installmentCount)['per_amount'];
 
                 // ตรวจยอดงวดแรกก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน
                 $review = $this->slipNeedsReview($slipPath, (float) $perInstallment);
@@ -170,11 +204,13 @@ class PaymentController extends Controller
                     // ล้างงวดเดิม (กรณีอัปสลิปซ้ำหลังโดนกัน) แล้วสร้างใหม่ ไม่ให้ซ้ำ
                     $booking->installmentPayments()->delete();
 
+                    $amounts = PaymentQuote::installmentAmounts($totalAmount, $installmentCount);
+
                     for ($i = 1; $i <= $installmentCount; $i++) {
                         $dueDate = $now->copy()->addDays(($i - 1) * $installmentIntervalDays);
-                        $amount = ($i === $installmentCount)
-                            ? round($totalAmount - ($perInstallment * ($installmentCount - 1)), 2)
-                            : $perInstallment;
+                        $amount = $i === $installmentCount
+                            ? $amounts['last_amount']
+                            : $amounts['per_amount'];
 
                         InstallmentPayment::create([
                             'booking_id' => $booking->id,
@@ -264,14 +300,13 @@ class PaymentController extends Controller
                     return $this->error('การแบ่งจ่ายต้องมีผู้เดินทางอย่างน้อย 2 คน', 422);
                 }
 
+                // ยอดชุดเดียวกับที่ลูกค้าเห็นบน QR (payment_options.split)
+                $split = PaymentQuote::split($booking);
                 $totalAmount = (float) $booking->total_amount;
-                $ownerShare = round($totalAmount / $passengerCount, 2);
-                $balanceAmount = round($totalAmount - $ownerShare, 2);
+                $ownerShare = (float) $split['owner_share'];
+                $balanceAmount = (float) $split['friends_total'];
 
-                $departureDate = $schedule->departure_date;
-                $balanceDueAt = $departureDate
-                    ? CarbonImmutable::parse($departureDate)->subDays(15)->startOfDay()
-                    : null;
+                $balanceDueAt = PaymentQuote::balanceDueAt($schedule);
 
                 $paymentRef = 'PAY-SPLIT-'.strtoupper(uniqid());
 
@@ -366,25 +401,22 @@ class PaymentController extends Controller
             if ($paymentType === 'deposit') {
                 $schedule = $booking->schedule;
 
-                if ($booking->is_join_trip || ! $schedule->deposit_enabled) {
-                    return $this->error('รอบเดินทางนี้ไม่รองรับการจ่ายมัดจำ', 422);
+                // ยอดชุดเดียวกับที่ลูกค้าเห็นบน QR (payment_options.deposit) — คิดมัดจำ
+                // ต่อคนและหักส่วนลดตามระดับสมาชิกให้เหมือนกันทั้งตอนแสดงและตอนรับเงิน
+                $deposit = PaymentQuote::deposit($booking);
+
+                if (! $deposit['available']) {
+                    return $this->error(match ($deposit['reason']) {
+                        'not_configured' => 'ผู้ดูแลระบบยังไม่ได้กำหนดยอดมัดจำสำหรับรอบเดินทางนี้',
+                        'exceeds_total' => 'ยอดมัดจำต้องน้อยกว่ายอดรวม กรุณาเลือกชำระเต็มจำนวน',
+                        default => 'รอบเดินทางนี้ไม่รองรับการจ่ายมัดจำ',
+                    }, 422);
                 }
 
                 $totalAmount = (float) $booking->total_amount;
-                $passengerCount = $booking->passengers()->count() ?: 1;
-                $depositAmount = $schedule->resolveDepositAmount($totalAmount, $passengerCount, $booking->user_id);
-                if ($depositAmount === null) {
-                    return $this->error('ผู้ดูแลระบบยังไม่ได้กำหนดยอดมัดจำสำหรับรอบเดินทางนี้', 422);
-                }
-                if ($depositAmount >= $totalAmount) {
-                    return $this->error('ยอดมัดจำต้องน้อยกว่ายอดรวม กรุณาเลือกชำระเต็มจำนวน', 422);
-                }
-
-                $balanceAmount = round($totalAmount - $depositAmount, 2);
-                $departureDate = $schedule->departure_date;
-                $balanceDueAt = $departureDate
-                    ? CarbonImmutable::parse($departureDate)->subDays(15)->startOfDay()
-                    : null;
+                $depositAmount = (float) $deposit['amount'];
+                $balanceAmount = (float) $deposit['balance'];
+                $balanceDueAt = PaymentQuote::balanceDueAt($schedule);
 
                 $paymentRef = 'PAY-DEP-'.strtoupper(uniqid());
 

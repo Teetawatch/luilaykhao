@@ -88,7 +88,7 @@
         </div>
 
         <!-- ── Payment Type Selection (show only if installment or deposit available) ── -->
-        <section v-if="installmentAvailable || depositAvailable" class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100">
+        <section v-if="installmentAvailable || installmentNotAvailable || depositAvailable" class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100">
           <!-- Section Header -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
             <div class="flex items-center gap-3">
@@ -202,7 +202,7 @@
             </button>
 
             <!-- Installment Payment -->
-            <button v-if="installmentAvailable" @click="!installmentNotAvailable && (paymentType = 'installment')"
+            <button v-if="installmentAvailable || installmentNotAvailable" @click="!installmentNotAvailable && (paymentType = 'installment')"
               class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
               :class="installmentNotAvailable
                 ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
@@ -886,6 +886,7 @@ import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import { useSwal } from '../lib/swal';
+import { toBangkokDate } from '../lib/bangkokDate';
 
 const route = useRoute();
 const router = useRouter();
@@ -996,51 +997,42 @@ function copyAccount() {
 const transferDate = ref('');
 const transferTime = ref('');
 
+// ── ยอดที่ต้องชำระ — มาจากหลังบ้านที่เดียว ────────────────────
+// เว็บกับแอปเคยคำนวณมัดจำ/งวดกันเอง สูตรไม่ตรงกับหลังบ้าน (มัดจำแบบยอดคงที่คิด
+// ต่อคน และมีส่วนลดมัดจำตามระดับสมาชิก) ลูกค้าจึงโอนมาไม่เท่ากันจนสลิปถูกกันไว้
+// ตรวจ ตอนนี้อ่านจาก booking.payment_options ตรง ๆ
+const quote = computed(() => booking.value?.payment_options || null);
+
 // ── Deposit helpers ──────────────────────────────────────────
-const depositAvailable = computed(() =>
-  !!booking.value?.schedule?.deposit_enabled && !booking.value?.is_join_trip
-);
-const depositAmount = computed(() => {
-  if (!booking.value?.schedule) return 0;
-  const schedule = booking.value.schedule;
-  const total = parseFloat(booking.value.total_amount);
-  const passengerCount = Math.max(1, booking.value.passengers?.length || 1);
-  if (schedule.deposit_type === 'percent' && schedule.deposit_percent) {
-    return Math.round(total * (schedule.deposit_percent / 100));
-  }
-  if (schedule.deposit_type === 'amount' && schedule.deposit_amount) {
-    return Math.min(Math.round(parseFloat(schedule.deposit_amount) * passengerCount), total);
-  }
-  return 0;
-});
-const balanceAmount = computed(() => {
-  if (!booking.value) return 0;
-  const total = parseFloat(booking.value.total_amount);
-  return Math.max(0, total - depositAmount.value);
-});
+const depositAvailable = computed(() => !!quote.value?.deposit?.available);
+const depositAmount = computed(() => Number(quote.value?.deposit?.amount || 0));
+const balanceAmount = computed(() => Number(quote.value?.deposit?.balance || 0));
 const balanceDueDateText = computed(() => {
-  if (!booking.value?.schedule?.departure_date) return '-';
-  const dep = new Date(booking.value.schedule.departure_date);
-  dep.setDate(dep.getDate() - 15);
-  return dep.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  const due = quote.value?.deposit?.balance_due_at;
+  if (!due) return '-';
+  return new Date(due).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 });
+const depositTierDiscountPercent = computed(() =>
+  Number(quote.value?.deposit?.tier_discount_percent || 0)
+);
 const depositPercentText = computed(() => {
-  if (!booking.value) return '';
-  const total = parseFloat(booking.value.total_amount);
-  if (!total) return '';
-  const pct = Math.round((depositAmount.value / total) * 100);
-  return `ประมาณ ${pct}% ของยอดรวม`;
+  const pct = quote.value?.deposit?.percent_of_total;
+  if (!pct) return '';
+  const base = `ประมาณ ${pct}% ของยอดรวม`;
+  return depositTierDiscountPercent.value > 0
+    ? `${base} · ลดให้แล้ว ${depositTierDiscountPercent.value}% ตามระดับสมาชิก`
+    : base;
 });
 
 // ── Installment helpers ──────────────────────────────────────
-const installmentAvailable = computed(() =>
-  !!booking.value?.schedule?.installment_enabled && !booking.value?.is_join_trip
-);
+// จำนวนงวดที่เลือกได้และยอดต่องวดมาจาก payment_options.installment ฝั่งเซิร์ฟเวอร์
+const installmentQuote = computed(() => quote.value?.installment || null);
+const installmentAvailable = computed(() => !!installmentQuote.value?.available);
 const maxInstallmentCount = computed(() =>
-  Math.min(booking.value?.schedule?.installment_count ?? 3, 6)
+  Math.max(installmentQuote.value?.max_count || 0, 2)
 );
 const installmentIntervalDays = computed(() =>
-  booking.value?.schedule?.installment_interval_days ?? 30
+  installmentQuote.value?.interval_days ?? 30
 );
 const selectedInstallmentCount = ref(3);
 
@@ -1054,55 +1046,46 @@ const daysUntilTrip = computed(() => {
   return Math.floor((dep - today) / (1000 * 60 * 60 * 24));
 });
 
-// Max installment count allowed given days remaining before trip
-// Need (n-1) * interval days to complete all installments before departure
-const maxAllowedInstallmentCount = computed(() => {
-  const days = daysUntilTrip.value;
-  const interval = installmentIntervalDays.value;
-  if (!isFinite(days) || days <= 0) return 1;
-  // งวดที่ 1 ชำระวันนี้ งวดที่ n ต้องครบก่อนวันเดินทาง
-  // (n-1) * interval <= days  →  n <= days/interval + 1
-  return Math.floor(days / interval) + 1;
-});
-
 // Installment options filtered by what's actually feasible
-const availableInstallmentOptions = computed(() => {
-  const max = Math.min(maxInstallmentCount.value, maxAllowedInstallmentCount.value);
-  const opts = [];
-  for (let i = 2; i <= max; i++) opts.push(i);
-  return opts;
-});
+const availableInstallmentOptions = computed(() =>
+  (installmentQuote.value?.options || []).map((option) => option.count)
+);
 
-// Warning when selected installment count exceeds allowed
+// รอบเปิดผ่อนไว้ แต่เหลือเวลาไม่พอจะผ่อนครบก่อนเดินทาง — ขึ้นการ์ดอธิบายแทนตัวเลือก
 const installmentNotAvailable = computed(() => {
-  if (!installmentAvailable.value) return false;
+  if (booking.value?.is_join_trip) return false;
+  if (!booking.value?.schedule?.installment_enabled) return false;
   return availableInstallmentOptions.value.length === 0;
 });
 
 const installmentWarningMessage = computed(() => {
   const days = daysUntilTrip.value;
   const interval = installmentIntervalDays.value;
-  if (!installmentAvailable.value) return '';
   if (installmentNotAvailable.value) {
     return `ไม่สามารถเลือกผ่อนชำระได้ เนื่องจากทริปจะเริ่มในอีก ${days} วัน (ต้องมีอย่างน้อย ${interval + 1} วันขึ้นไปจึงจะผ่อนได้ขั้นต่ำ 2 งวด)`;
   }
-  const maxFull = maxInstallmentCount.value;
-  const maxAllowed = maxAllowedInstallmentCount.value;
-  if (maxAllowed < maxFull) {
-    return `ทริปเริ่มในอีก ${days} วัน สามารถผ่อนได้สูงสุด ${Math.min(maxAllowed, maxFull)} งวดเท่านั้น (ทุก ${interval} วัน)`;
+  if (!installmentAvailable.value) return '';
+  const scheduleMax = Math.min(booking.value?.schedule?.installment_count ?? 0, 6);
+  const maxAllowed = maxInstallmentCount.value;
+  if (scheduleMax > maxAllowed) {
+    return `ทริปเริ่มในอีก ${days} วัน สามารถผ่อนได้สูงสุด ${maxAllowed} งวดเท่านั้น (ทุก ${interval} วัน)`;
   }
   return '';
 });
-const perInstallment = computed(() => {
-  if (!booking.value) return 0;
-  const total = parseFloat(booking.value.total_amount);
-  return Math.round((total / selectedInstallmentCount.value) * 100) / 100;
-});
+const selectedInstallmentOption = computed(() =>
+  (installmentQuote.value?.options || []).find(
+    (option) => option.count === selectedInstallmentCount.value
+  ) || null
+);
+const perInstallment = computed(() => Number(selectedInstallmentOption.value?.per_amount || 0));
 const currentPayAmount = computed(() => {
   if (!booking.value) return 0;
-  if (paymentType.value === 'installment') return perInstallment.value;
-  if (paymentType.value === 'deposit') return depositAmount.value;
-  return parseFloat(booking.value.total_amount);
+  const total = Number(quote.value?.full?.amount ?? booking.value.total_amount);
+  // ยอดของรูปแบบที่เลือกต้องมาจากเซิร์ฟเวอร์เสมอ — ถ้าไม่มี (เช่นรูปแบบนั้นใช้ไม่ได้
+  // แล้ว) ให้ตกกลับไปเป็นเต็มจำนวน ดีกว่าปล่อยให้ QR ขึ้นยอด 0
+  if (paymentType.value === 'installment') return perInstallment.value || total;
+  if (paymentType.value === 'deposit') return depositAmount.value || total;
+  return total;
 });
 
 const payOptionsCount = computed(() => {
@@ -1113,25 +1096,29 @@ const payOptionsCount = computed(() => {
 });
 
 const minPerInstallmentPreview = computed(() => {
-  if (!booking.value) return 0;
-  const total = parseFloat(booking.value.total_amount);
-  const maxN = maxInstallmentCount.value || 2;
-  return Math.round(total / maxN);
+  const options = installmentQuote.value?.options || [];
+  if (options.length) return Number(options[options.length - 1].per_amount || 0);
+  // ผ่อนไม่ได้แล้ว (ทริปใกล้เกินไป) — การ์ดที่จางลงยังโชว์ยอดคร่าว ๆ ตามจำนวนงวดของรอบ
+  const total = Number(booking.value?.total_amount || 0);
+  const scheduleMax = Math.min(booking.value?.schedule?.installment_count || 2, 6);
+  return Math.round(total / Math.max(2, scheduleMax));
 });
 
 const installmentSchedule = computed(() => {
-  if (!booking.value) return [];
-  const total = parseFloat(booking.value.total_amount);
-  const n = selectedInstallmentCount.value;
+  const option = selectedInstallmentOption.value;
+  if (!option) return [];
+  const n = option.count;
   const interval = installmentIntervalDays.value;
-  const per = Math.round((total / n) * 100) / 100;
   const rows = [];
   const now = new Date();
   for (let i = 1; i <= n; i++) {
     const dueDate = new Date(now);
     dueDate.setDate(dueDate.getDate() + (i - 1) * interval);
-    const amount = i === n ? Math.round((total - per * (n - 1)) * 100) / 100 : per;
-    rows.push({ no: i, dueDate: dueDate.toISOString().split('T')[0], amount });
+    rows.push({
+      no: i,
+      dueDate: toBangkokDate(dueDate),
+      amount: i === n ? Number(option.last_amount) : Number(option.per_amount),
+    });
   }
   return rows;
 });
@@ -1139,6 +1126,13 @@ const installmentSchedule = computed(() => {
 // Reset to 'full' if installment is selected but becomes unavailable
 watch(installmentNotAvailable, (notAvailable) => {
   if (notAvailable && paymentType.value === 'installment') {
+    paymentType.value = 'full';
+  }
+});
+
+// เช่นเดียวกับมัดจำ — รูปแบบที่เซิร์ฟเวอร์บอกว่าใช้ไม่ได้ ต้องไม่ค้างเป็นตัวเลือกที่เลือกอยู่
+watch(depositAvailable, (available) => {
+  if (!available && paymentType.value === 'deposit') {
     paymentType.value = 'full';
   }
 });
@@ -1382,9 +1376,9 @@ onMounted(async () => {
 
   try {
     booking.value = await bookingStore.fetchBooking(route.params.bookingRef);
-    // Set default installment count from schedule
-    if (booking.value?.schedule?.installment_count) {
-      selectedInstallmentCount.value = Math.min(booking.value.schedule.installment_count, 6);
+    // จำนวนงวดตั้งต้น = งวดสูงสุดที่ผ่อนได้จริงตามที่เซิร์ฟเวอร์คำนวณมา
+    if (installmentQuote.value?.default_count) {
+      selectedInstallmentCount.value = installmentQuote.value.default_count;
     }
     initPaymentCountdown();
   } catch (e) {

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Booking;
 use App\Support\MediaDisk;
+use App\Support\PaymentQuote;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -112,6 +113,13 @@ class BookingResource extends JsonResource
                 : null,
             'rescheduled_at' => $this->rescheduled_at?->toISOString(),
             'total_amount' => $this->total_amount,
+            // ยอดที่ต้องโอน "ตอนนี้" ของแต่ละรูปแบบการชำระ คำนวณจากหลังบ้านที่เดียว
+            // (เว็บ/แอปเคยคำนวณเองคนละสูตร ลูกค้าจึงโอนมาไม่เท่ากัน) ส่งเฉพาะรายการ
+            // ที่ยังรอชำระ เพราะรายการที่ยืนยันแล้วอ่านยอดจริงจากฟิลด์ที่บันทึกไว้
+            'payment_options' => $this->when(
+                $this->status === 'pending' && $this->relationLoaded('schedule') && $this->schedule,
+                fn () => PaymentQuote::forBooking($this->resource),
+            ),
             // ส่วนต่าง Flexi-Price ที่ตกลงจ่ายเพิ่ม (เก็บวันเดินทาง) — null เมื่อไม่เข้าร่วม
             'flexi_surcharge' => $this->flexi_surcharge,
             'selected_addons' => $this->selected_addons ?? [],
