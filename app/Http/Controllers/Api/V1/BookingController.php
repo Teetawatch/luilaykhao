@@ -187,8 +187,12 @@ class BookingController extends Controller
                 'schedule.staff',
                 'schedule.vehicle',
                 // ผู้ร่วมเดินทางทั้งหมดในรอบ (ทุกการจองที่ยัง active) สำหรับแสดงอวาตาร์
-                'schedule.bookings' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
-                'schedule.bookings.passengers',
+                'schedule.bookings' => fn ($q) => $q->select('id', 'schedule_id', 'user_id', 'status')
+                    ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
+                // เอาเฉพาะคอลัมน์ที่ใช้แสดงชื่อ — ไม่ดึง id_card/allergies/health_notes
+                // ที่เข้ารหัสไว้ ไม่งั้นแค่เปิดหน้า "การจองของฉัน" ก็ต้องถอดรหัส
+                // 3 ฟิลด์ต่อผู้โดยสารทุกคนของทุกรอบที่เกี่ยวข้อง
+                'schedule.bookings.passengers' => fn ($q) => $q->select('id', 'booking_id', 'name', 'nickname'),
                 'pickupPoint',
                 'seats',
                 'passengers.pickupPoint',

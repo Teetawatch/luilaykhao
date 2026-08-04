@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Booking;
 use App\Support\MediaDisk;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -82,6 +83,12 @@ class BookingResource extends JsonResource
                 ];
             }),
             'qr_code' => $this->qr_code,
+            // เส้นตายที่ระบบจะยกเลิกการจองอัตโนมัติเพื่อคืนที่นั่ง — มีเฉพาะรายการที่
+            // ยังไม่ได้ส่งสลิป (ส่งแล้ว = ถือที่นั่งไว้รอแอดมินตรวจ ไม่มีเส้นตาย)
+            // ส่งมาให้ client นับถอยหลังเอง จะได้ไม่ต้อง hardcode TTL ไว้สองที่
+            'expires_at' => $this->status === 'pending' && $this->slip_ocr_status === null
+                ? $this->created_at?->addMinutes(Booking::PENDING_TTL_MINUTES)->toISOString()
+                : null,
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),
             'status' => $this->status,
