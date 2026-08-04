@@ -275,6 +275,8 @@ class TripController extends Controller
                 $q->where('status', 'open')
                     ->where('departure_date', '>=', now()->startOfDay())
                     ->with('pickupPoints')
+                    // ที่นั่งที่กันไว้ให้คิวรอต้องไม่ถูกนับเป็นของว่างบนหน้าจอง
+                    ->withHeldSeats()
                     ->orderBy('departure_date');
             }])
             ->firstOrFail();

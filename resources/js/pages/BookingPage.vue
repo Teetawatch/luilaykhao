@@ -36,10 +36,10 @@
               {{ formatDate(schedule.departure_date) }}<template v-if="schedule.return_date !== schedule.departure_date"> — {{ formatDate(schedule.return_date) }}</template>
             </span>
             <span class="text-gray-200">·</span>
-            <span class="flex items-center gap-1.5" :class="Number(schedule.available_seats) < 3 ? 'text-gray-900 font-bold' : ''">
+            <span class="flex items-center gap-1.5" :class="bookableSeats(schedule) < 3 ? 'text-gray-900 font-bold' : ''">
               <span class="material-symbols-rounded text-gray-400 text-[18px]">event_seat</span>
-              <span v-if="isJoinTrip">ว่าง {{ schedule.available_seats }} ที่</span>
-              <span v-else>ว่าง {{ schedule.available_seats }}/{{ schedule.total_seats }} ที่นั่ง</span>
+              <span v-if="isJoinTrip">ว่าง {{ bookableSeats(schedule) }} ที่</span>
+              <span v-else>ว่าง {{ bookableSeats(schedule) }}/{{ schedule.total_seats }} ที่นั่ง</span>
             </span>
             <template v-if="isJoinTrip">
               <span class="text-gray-200">·</span>
@@ -1649,6 +1649,7 @@ import CustomPickupModal from '../components/CustomPickupModal.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
+import { bookableSeats } from '../lib/scheduleHelpers';
 
 const route = useRoute();
 const router = useRouter();
@@ -1742,7 +1743,8 @@ const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value
 const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value);
 const maxPassengers = computed(() => {
   if (isJoinTrip.value) return 50; // Allow more for join trip
-  return Math.min(schedule.value?.available_seats || 10, 10);
+  // จำกัดด้วยที่นั่งที่จองได้จริง — ที่ที่กันไว้ให้คิวรอยังไม่ใช่ของคนที่กำลังจอง
+  return Math.min(bookableSeats(schedule.value) || 10, 10);
 });
 
 const preselectedRegion = route.query.region || null;

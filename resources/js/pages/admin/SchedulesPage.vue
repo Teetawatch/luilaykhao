@@ -148,6 +148,12 @@
                       </div>
                       <span class="seats-text">{{ sch.booked_seats || 0 }}/{{ sch.total_seats }}</span>
                     </div>
+                    <!-- คนที่รอที่นั่งอยู่ = ดีมานด์จริงของรอบนี้ ใช้ตัดสินใจเปิดรถเพิ่ม -->
+                    <button v-if="sch.waitlist_count > 0" class="waitlist-pill" @click="openWaitlist(sch)"
+                      :title="`ดูรายชื่อคิวรอที่นั่ง ${sch.waitlist_count} คน`">
+                      <span class="material-symbols-rounded icon-xs">hourglass_bottom</span>
+                      คิวรอ {{ sch.waitlist_count }}
+                    </button>
                   </td>
                   <td>
                     <div v-if="sch.pickup_points?.length" style="display:flex;flex-wrap:wrap;gap:3px;">
@@ -1079,6 +1085,57 @@
             <span class="material-symbols-rounded" :class="{ 'animate-spin': copyScheduleSubmitting }" v-if="copyScheduleSubmitting">sync</span>
             คัดลอกรอบ
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Waitlist Modal — ใครรอที่นั่งรอบนี้อยู่บ้าง -->
+    <div class="modal-overlay" v-if="showWaitlistModal">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">hourglass_bottom</span>คิวรอที่นั่ง</h2>
+            <p class="modal-subtitle" v-if="waitlistSchedule">
+              {{ waitlistSchedule.trip?.title }} — {{ waitlistSchedule.departure_date }}
+              · ที่นั่ง {{ waitlistSchedule.booked_seats || 0 }}/{{ waitlistSchedule.total_seats }}
+            </p>
+          </div>
+          <button class="modal-close" @click="showWaitlistModal = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <p v-if="waitlistLoading" class="text-muted-sm">กำลังโหลด…</p>
+          <p v-else-if="!waitlistEntries.length" class="text-muted-sm">ยังไม่มีใครรอคิวในรอบนี้</p>
+          <table v-else class="data-table">
+            <thead>
+              <tr>
+                <th style="width:56px;">คิว</th>
+                <th>ลูกค้า</th>
+                <th style="width:90px;">ที่นั่ง</th>
+                <th style="width:150px;">สถานะ</th>
+                <th style="width:150px;">เข้าคิวเมื่อ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="e in waitlistEntries" :key="e.id">
+                <td>{{ e.position ?? '—' }}</td>
+                <td>
+                  <div style="font-weight:700;">{{ e.user?.name || '—' }}</div>
+                  <div class="text-muted-sm">{{ e.user?.phone || e.user?.email || '' }}</div>
+                </td>
+                <td>{{ e.seat_count }}</td>
+                <td>
+                  <span class="status-badge" :class="waitlistStatusClass(e.status)">{{ waitlistStatusLabels[e.status] || e.status }}</span>
+                  <div v-if="e.status === 'offered' && e.expires_at" class="text-muted-sm">
+                    หมดเวลา {{ flashEndLabel(e.expires_at) }}
+                  </div>
+                </td>
+                <td class="text-muted-sm">{{ flashEndLabel(e.created_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showWaitlistModal = false">ปิด</button>
         </div>
       </div>
     </div>
@@ -2461,6 +2518,44 @@ const submitBatchForm = async () => {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
   } finally {
     batchSubmitting.value = false;
+  }
+};
+
+// ─── Waitlist (คิวรอที่นั่ง) ─────────────────────────────────
+// รอบที่มีคิวรอ = ดีมานด์ที่ยังขายไม่ได้ ทีมงานควรเห็นเพื่อตัดสินใจเปิดรถเพิ่ม
+// หรือติดต่อลูกค้าเองได้ ระบบแจกสิทธิ์อัตโนมัติอยู่แล้ว หน้านี้จึงเป็นแบบอ่านอย่างเดียว
+const showWaitlistModal = ref(false);
+const waitlistSchedule = ref(null);
+const waitlistEntries = ref([]);
+const waitlistLoading = ref(false);
+
+const waitlistStatusLabels = {
+  waiting: 'กำลังรอคิว',
+  offered: 'ได้รับสิทธิ์แล้ว',
+  booked: 'จองแล้ว',
+  expired: 'หมดเวลา',
+  cancelled: 'ออกจากคิว',
+};
+
+const waitlistStatusClass = (status) => {
+  if (status === 'offered') return 'status-open';
+  if (status === 'booked') return 'status-closed';
+  if (status === 'waiting') return 'status-full';
+  return 'status-cancelled';
+};
+
+const openWaitlist = async (sch) => {
+  waitlistSchedule.value = sch;
+  waitlistEntries.value = [];
+  waitlistLoading.value = true;
+  showWaitlistModal.value = true;
+  try {
+    const res = await api.get(`/admin/schedules/${sch.id}/waitlist`);
+    waitlistEntries.value = res.data.data || [];
+  } catch {
+    waitlistEntries.value = [];
+  } finally {
+    waitlistLoading.value = false;
   }
 };
 
@@ -4406,6 +4501,27 @@ onMounted(() => {
   padding: 1px 7px;
   margin-left: 6px;
   vertical-align: middle;
+}
+
+/* คิวรอที่นั่ง — กดเพื่อดูรายชื่อคนที่รออยู่ */
+.waitlist-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.waitlist-pill:hover {
+  background: #dbeafe;
 }
 
 /* Day-trip pill & toggle */

@@ -8,6 +8,7 @@ use App\Support\LoyaltyTier;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -370,6 +371,30 @@ class TripSchedule extends Model
     public function waitlistEntries(): HasMany
     {
         return $this->hasMany(WaitlistEntry::class, 'schedule_id');
+    }
+
+    /**
+     * เติม held_seats = ที่นั่งที่กันไว้ให้คนในคิวรอที่ได้รับสิทธิ์แล้วและยังไม่หมดเวลา
+     * ใช้ subquery ตัวเดียวเพื่อไม่ให้หน้าที่โหลดหลายรอบพร้อมกันยิงคิวรอบละครั้ง
+     * (ที่นั่งเหล่านี้ยังนับเป็น available_seats อยู่ แต่คนทั่วไปจองไม่ได้)
+     */
+    public function scopeWithHeldSeats(Builder $query): Builder
+    {
+        return $query->withSum(
+            ['waitlistEntries as held_seats' => fn ($q) => $q
+                ->where('status', 'offered')
+                ->where('expires_at', '>', now())],
+            'seat_count'
+        );
+    }
+
+    /**
+     * ที่นั่งที่ "จองได้จริง" ตอนนี้ — ว่างทั้งหมดหักที่ที่ถูกกันไว้ให้คิวรอ
+     * ต้องเรียกผ่าน scopeWithHeldSeats ก่อน ไม่งั้นจะถือว่าไม่มีที่นั่งถูกกันไว้
+     */
+    public function getBookableSeatsAttribute(): int
+    {
+        return max(0, $this->available_seats - (int) ($this->held_seats ?? 0));
     }
 
     public function photos(): BelongsToMany

@@ -22,7 +22,9 @@ class ScheduleController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $schedule = TripSchedule::with(['trip.photos', 'vehicle', 'pickupPoints'])->findOrFail($id);
+        $schedule = TripSchedule::with(['trip.photos', 'vehicle', 'pickupPoints'])
+            ->withHeldSeats()
+            ->findOrFail($id);
         $schedule->syncBookedSeats();
         $this->weatherService->attach($schedule);
 

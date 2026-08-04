@@ -1,8 +1,15 @@
 // Pure, framework-agnostic helpers for trip-schedule availability and display.
 // Shared between TripDetailPage.vue and ScheduleCalendar.vue.
 
+// ที่นั่งที่จองได้จริง — API หัก `bookable_seats` ที่กันไว้ให้คนในคิวรอที่ได้รับ
+// สิทธิ์แล้วออกไปให้ ถ้า payload ยังไม่มีค่านี้ก็ตกกลับไปใช้ available_seats
+export function bookableSeats(schedule) {
+  const held = schedule?.bookable_seats;
+  return Number((held ?? schedule?.available_seats) || 0);
+}
+
 export function hasAvailableSeats(schedule) {
-  return Number(schedule?.available_seats || 0) > 0;
+  return bookableSeats(schedule) > 0;
 }
 
 export function isScheduleBookable(schedule) {
@@ -15,31 +22,31 @@ export function scheduleAvailabilityBadgeClass(schedule) {
   if (!hasAvailableSeats(schedule)) {
     return 'bg-red-500 text-white border-red-600';
   }
-  if (Number(schedule?.available_seats || 0) <= 3) {
+  if (bookableSeats(schedule) <= 3) {
     return 'bg-red-50 text-red-600 border-red-200';
   }
-  if (Number(schedule?.available_seats || 0) <= 5) {
+  if (bookableSeats(schedule) <= 5) {
     return 'bg-amber-50 text-amber-600 border-amber-200';
   }
   return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
 }
 
 export function scheduleAvailabilityTextClass(schedule) {
-  if (Number(schedule?.available_seats || 0) < 3) return 'text-red-500';
+  if (bookableSeats(schedule) < 3) return 'text-red-500';
   return isScheduleBookable(schedule) ? 'text-[var(--color-accent)]' : 'text-red-500';
 }
 
 export function scheduleAvailabilityDotClass(schedule) {
-  if (Number(schedule?.available_seats || 0) < 3) return 'bg-red-500 animate-pulse';
+  if (bookableSeats(schedule) < 3) return 'bg-red-500 animate-pulse';
   return isScheduleBookable(schedule) ? 'bg-green-500 animate-pulse' : 'bg-red-500';
 }
 
 export function scheduleAvailabilityLabel(schedule) {
   if (schedule?.is_charter) return 'รอบเหมา';
   if (!hasAvailableSeats(schedule)) return 'เต็มแล้ว';
-  if (schedule?.join_trip_enabled) return `ว่าง ${schedule.available_seats} ที่`;
+  if (schedule?.join_trip_enabled) return `ว่าง ${bookableSeats(schedule)} ที่`;
   return hasAvailableSeats(schedule)
-    ? `ว่าง ${schedule.available_seats} ที่`
+    ? `ว่าง ${bookableSeats(schedule)} ที่`
     : 'เต็มแล้ว';
 }
 

@@ -41,6 +41,11 @@ class TripScheduleResource extends JsonResource
             'total_seats' => $this->total_seats,
             'booked_seats' => $this->booked_seats,
             'available_seats' => $this->available_seats,
+            // ที่นั่งที่จองได้จริงตอนนี้ = ว่างทั้งหมด − ที่กันไว้ให้คิวรอที่ได้รับสิทธิ์
+            // (เท่ากับ available_seats เสมอถ้าไม่มีใครถือสิทธิ์อยู่) UI ควรอ่านค่านี้
+            // เพื่อไม่ให้ลูกค้ากดจนถึงขั้นตอนสุดท้ายแล้วค่อยถูกปฏิเสธ
+            'bookable_seats' => $this->bookable_seats,
+            'held_seats' => (int) ($this->held_seats ?? 0),
             // ระบบสถานะการันตีออกเดินทาง — waiting / almost_ready / guaranteed
             // (null สำหรับทริปเหมาคัน) พร้อมเกณฑ์ที่นั่งเพื่อให้แอปเรนเดอร์
             // "ขาดอีก X ที่นั่ง" ได้เองโดยไม่ต้อง hardcode

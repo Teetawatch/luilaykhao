@@ -219,8 +219,8 @@
                 :class="scheduleAvailabilityBadgeClass(s)"
               >
                 <span class="material-symbols-rounded text-[12px]"
-                  :class="{ 'animate-pulse': !s.is_charter && (!hasAvailableSeats(s) || s.available_seats <= 3) }"
-                >{{ s.is_charter ? 'lock' : !hasAvailableSeats(s) ? 'block' : s.available_seats <= 3 ? 'warning' : 'event_seat' }}</span>
+                  :class="{ 'animate-pulse': !s.is_charter && (!hasAvailableSeats(s) || bookableSeats(s) <= 3) }"
+                >{{ s.is_charter ? 'lock' : !hasAvailableSeats(s) ? 'block' : bookableSeats(s) <= 3 ? 'warning' : 'event_seat' }}</span>
                 {{ scheduleAvailabilityLabel(s) }}
               </span>
             </div>
@@ -278,6 +278,7 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import {
+  bookableSeats,
   hasAvailableSeats,
   isScheduleBookable,
   scheduleAvailabilityBadgeClass,
@@ -421,7 +422,7 @@ const calendarCells = computed(() => {
     const daySchedules = schedulesByDate.value.get(dateKey) || [];
     const bookable = daySchedules.some(isScheduleBookable);
     const totalAvailable = daySchedules.reduce(
-      (sum, s) => sum + (s.is_charter ? 0 : Number(s.available_seats || 0)),
+      (sum, s) => sum + (s.is_charter ? 0 : bookableSeats(s)),
       0
     );
     const joinOnly = bookable && totalAvailable === 0 && daySchedules.some((s) => s.join_trip_enabled);

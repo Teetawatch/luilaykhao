@@ -90,8 +90,20 @@ class BookingService
             $participantCount = count($passengers);
 
             // Join trip allows unlimited bookings — skip seat availability check
-            if (! $isJoinTrip && $schedule->available_seats < $participantCount) {
-                throw new \Exception('ที่นั่งไม่เพียงพอ');
+            if (! $isJoinTrip) {
+                // ที่นั่งที่เพิ่งว่างและถูกเสนอให้คนในคิวรอ ถูกกันไว้ให้เขา 15 นาที
+                // มิฉะนั้นคำสัญญา "จองภายใน 15 นาที" ไม่มีอะไรรองรับ — คนที่เดิน
+                // เข้ามาพอดีจะจองตัดหน้าคนที่รอคิวมาทั้งอาทิตย์ได้
+                $heldForOthers = $this->waitlistService->heldSeats($scheduleId, exceptUserId: $userId);
+                $bookableSeats = max(0, $schedule->available_seats - $heldForOthers);
+
+                if ($bookableSeats < $participantCount) {
+                    throw new \Exception(
+                        $heldForOthers > 0 && $schedule->available_seats >= $participantCount
+                            ? 'ที่นั่งที่ว่างอยู่ถูกกันไว้ให้ผู้ที่รอคิวก่อนหน้า กรุณาลงชื่อรอที่นั่งว่าง'
+                            : 'ที่นั่งไม่เพียงพอ'
+                    );
+                }
             }
 
             // Verify seat locks if seat-based booking and NOT join trip
@@ -764,6 +776,15 @@ class BookingService
 
             if ($booking->is_join_trip && ! $target->join_trip_enabled) {
                 throw new \Exception('รอบเดินทางปลายทางไม่เปิดให้จองแบบ Join Trip');
+            }
+
+            // ย้ายรอบก็กินที่นั่งจากกองเดียวกัน — ห้ามแซงคนที่ถูกกันที่นั่งไว้ในคิวรอ
+            if (! $booking->is_join_trip) {
+                $heldForOthers = $this->waitlistService->heldSeats($target->id, exceptUserId: $booking->user_id);
+
+                if ($heldForOthers > 0 && $target->available_seats - $heldForOthers < $passengerCount) {
+                    throw new \Exception('ที่นั่งที่ว่างในรอบปลายทางถูกกันไว้ให้ผู้ที่รอคิวก่อนหน้า');
+                }
             }
 
             // ตรวจที่นั่งสำหรับการจองแบบเลือกที่นั่ง

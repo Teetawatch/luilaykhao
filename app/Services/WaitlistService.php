@@ -31,7 +31,11 @@ class WaitlistService
 
             $schedule->syncBookedSeats();
 
-            if ($schedule->available_seats >= $seatCount) {
+            // ที่นั่งที่ "ว่าง" แต่ถูกกันไว้ให้คนที่ได้รับสิทธิ์ไปแล้ว ยังจองไม่ได้จริง
+            // จึงต้องยอมให้คนใหม่ต่อคิวได้ ไม่งั้นจะตันทั้งสองทาง (จองก็ไม่ได้ ต่อคิวก็ไม่ได้)
+            $bookable = $schedule->available_seats - $this->heldSeats($scheduleId);
+
+            if ($bookable >= $seatCount) {
                 throw new \Exception('ยังมีที่นั่งว่างอยู่ กรุณาจองโดยตรงได้เลย');
             }
 
@@ -78,9 +82,30 @@ class WaitlistService
             return false;
         }
 
+        $wasOffered = $entry->status === 'offered';
+
         $entry->update(['status' => 'cancelled']);
 
+        // สละสิทธิ์ที่ได้รับมา = ที่นั่งที่กันไว้ถูกปล่อยทันที ต้องส่งต่อให้คนถัดไป
+        // เดี๋ยวนั้น ไม่ใช่รอจนกว่าจะมีคนยกเลิกการจองครั้งถัดไป
+        if ($wasOffered) {
+            ProcessWaitlistJob::dispatch($scheduleId);
+        }
+
         return true;
+    }
+
+    /**
+     * ที่นั่งที่ถูกกันไว้ให้คนในคิวที่ได้รับสิทธิ์แล้วและยังไม่หมดเวลา
+     * — คนอื่นจองที่นั่งเหล่านี้ไม่ได้จนกว่าสิทธิ์จะหมดอายุหรือถูกสละ
+     */
+    public function heldSeats(int $scheduleId, ?int $exceptUserId = null): int
+    {
+        return (int) WaitlistEntry::where('schedule_id', $scheduleId)
+            ->where('status', 'offered')
+            ->where('expires_at', '>', now())
+            ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId))
+            ->sum('seat_count');
     }
 
     public function markBooked(int $userId, int $scheduleId): void
@@ -97,28 +122,26 @@ class WaitlistService
      */
     public function processSchedule(int $scheduleId): int
     {
-        return DB::transaction(function () use ($scheduleId) {
+        // แจกสิทธิ์ในทรานแซกชัน (ล็อกแถวรอบไว้กันแจกซ้ำ) แล้วค่อยยิงแจ้งเตือน
+        // หลัง commit — FCM เป็น HTTP call ต่อคน ถ้าทำคาไว้ในล็อก คนอื่นจะจอง
+        // รอบนี้ไม่ได้เลยตลอดเวลาที่ยิง push
+        $offered = DB::transaction(function () use ($scheduleId) {
             $schedule = TripSchedule::lockForUpdate()->find($scheduleId);
             if (! $schedule) {
-                return 0;
+                return [];
             }
 
             $schedule->syncBookedSeats();
 
             $available = $schedule->available_seats;
             if ($available <= 0) {
-                return 0;
+                return [];
             }
 
             // หักที่นั่งที่ "offer" ไปแล้วแต่ยังไม่หมดเวลา (soft-hold)
-            $offeredSeats = WaitlistEntry::where('schedule_id', $scheduleId)
-                ->where('status', 'offered')
-                ->where('expires_at', '>', now())
-                ->sum('seat_count');
-
-            $remaining = max(0, $available - (int) $offeredSeats);
+            $remaining = max(0, $available - $this->heldSeats($scheduleId));
             if ($remaining <= 0) {
-                return 0;
+                return [];
             }
 
             $waitingEntries = WaitlistEntry::where('schedule_id', $scheduleId)
@@ -128,7 +151,7 @@ class WaitlistService
                 ->orderBy('id')
                 ->get();
 
-            $notified = 0;
+            $offered = [];
 
             foreach ($waitingEntries as $entry) {
                 if ($remaining <= 0) {
@@ -139,30 +162,36 @@ class WaitlistService
                     continue;
                 }
 
+                $expiresAt = now()->addMinutes(self::OFFER_TTL_MINUTES);
+
                 $entry->update([
                     'status' => 'offered',
                     'offered_at' => now(),
-                    'expires_at' => now()->addMinutes(self::OFFER_TTL_MINUTES),
+                    'expires_at' => $expiresAt,
                 ]);
 
-                SmartNotification::send(
-                    $entry->user_id,
-                    'waitlist_offered',
-                    'มีที่นั่งว่างแล้ว!',
-                    'มีที่นั่งว่างในทริปที่คุณรอคิวอยู่ กรุณาจองภายใน '.self::OFFER_TTL_MINUTES.' นาที',
-                    [
-                        'schedule_id' => (string) $scheduleId,
-                        'expires_at' => now()->addMinutes(self::OFFER_TTL_MINUTES)->toISOString(),
-                        'route' => 'waitlist',
-                    ],
-                );
-
+                $offered[] = ['user_id' => $entry->user_id, 'expires_at' => $expiresAt];
                 $remaining -= $entry->seat_count;
-                $notified++;
             }
 
-            return $notified;
+            return $offered;
         });
+
+        foreach ($offered as $offer) {
+            SmartNotification::send(
+                $offer['user_id'],
+                'waitlist_offered',
+                'มีที่นั่งว่างแล้ว!',
+                'มีที่นั่งว่างในทริปที่คุณรอคิวอยู่ กรุณาจองภายใน '.self::OFFER_TTL_MINUTES.' นาที',
+                [
+                    'schedule_id' => (string) $scheduleId,
+                    'expires_at' => $offer['expires_at']->toISOString(),
+                    'route' => 'waitlist',
+                ],
+            );
+        }
+
+        return count($offered);
     }
 
     /**
