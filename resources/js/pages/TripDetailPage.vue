@@ -1742,6 +1742,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
+import { viewTrip } from '../lib/analytics';
 import SeatMap from '../components/SeatMap.vue';
 import ScheduleCalendar from '../components/ScheduleCalendar.vue';
 import TripPostsFeed from '../components/TripPostsFeed.vue';
@@ -2586,6 +2587,7 @@ onMounted(async () => {
   try {
     const res = await api.get(`/trips/${route.params.slug}`);
     trip.value = res.data.data;
+    viewTrip(trip.value);
     typeLabel.value = typeMap[trip.value.type]?.label || trip.value.type;
 
     // Related trips — non-blocking, never breaks the page if it fails

@@ -1650,6 +1650,7 @@ import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
 import { bookableSeats } from '../lib/scheduleHelpers';
+import { beginCheckout } from '../lib/analytics';
 
 const route = useRoute();
 const router = useRouter();
@@ -2637,6 +2638,15 @@ onMounted(async () => {
   try {
     const res = await api.get(`/schedules/${route.params.scheduleId}`);
     schedule.value = res.data.data;
+    // Reaching this form is the start of checkout. Fired here rather than on
+    // submit so the drop-off between "opened the form" and "created a booking"
+    // is visible — that gap is the one worth watching.
+    beginCheckout({
+      trip: schedule.value?.trip,
+      scheduleId: route.params.scheduleId,
+      seats: passengerCount.value,
+      value: totalAmount.value,
+    });
     await seatsStore.fetchSeatMap(route.params.scheduleId);
     
     if (route.query.join_trip == 1 && schedule.value?.join_trip_enabled) {

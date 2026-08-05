@@ -503,6 +503,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import QRCode from 'qrcode';
+import { purchase } from '../lib/analytics';
 import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
 import RallyCard from '../components/RallyCard.vue';
 
@@ -639,6 +640,14 @@ onMounted(async () => {
   try {
     const res = await api.get(`/bookings/${route.params.bookingRef}`);
     booking.value = res.data.data;
+    // Safe on a refresh or a reopened link: transaction_id is the booking ref,
+    // which GA4 and Meta both de-duplicate on.
+    purchase({
+      bookingRef: booking.value?.booking_ref,
+      value: booking.value?.total_amount,
+      trip: booking.value?.schedule?.trip,
+      seats: booking.value?.passengers?.length || 1,
+    });
     if (booking.value?.qr_code) {
       renderQrCode();
     }

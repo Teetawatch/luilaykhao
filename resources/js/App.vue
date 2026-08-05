@@ -76,6 +76,7 @@
   <router-view v-else />
   <ToastNotification />
   <UrgentTripsPopup v-if="!isAdminRoute" />
+  <CookieConsentBanner v-if="!isAdminRoute" />
 
   <!-- Wishlist Toast (Teleported to body to avoid transform conflicts) -->
   <Teleport to="body">
@@ -121,6 +122,7 @@ import Navbar from './components/Navbar.vue';
 import Footer from './components/Footer.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import UrgentTripsPopup from './components/UrgentTripsPopup.vue';
+import CookieConsentBanner from './components/CookieConsentBanner.vue';
 import { useSeatsStore } from './stores/seats';
 import { useBookingStore } from './stores/booking';
 import { useWishlistStore } from './stores/wishlist';

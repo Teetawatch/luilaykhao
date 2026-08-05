@@ -887,6 +887,7 @@ import { useSeatsStore } from '../stores/seats';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import { useSwal } from '../lib/swal';
 import { toBangkokDate } from '../lib/bangkokDate';
+import { addPaymentInfo } from '../lib/analytics';
 
 const route = useRoute();
 const router = useRouter();
@@ -1376,6 +1377,11 @@ onMounted(async () => {
 
   try {
     booking.value = await bookingStore.fetchBooking(route.params.bookingRef);
+    addPaymentInfo({
+      bookingRef: booking.value?.booking_ref,
+      value: booking.value?.total_amount,
+      paymentType: booking.value?.payment_type,
+    });
     // จำนวนงวดตั้งต้น = งวดสูงสุดที่ผ่อนได้จริงตามที่เซิร์ฟเวอร์คำนวณมา
     if (installmentQuote.value?.default_count) {
       selectedInstallmentCount.value = installmentQuote.value.default_count;

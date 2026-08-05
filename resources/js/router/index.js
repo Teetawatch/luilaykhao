@@ -1,5 +1,7 @@
+import { nextTick } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { pageView } from '../lib/analytics';
 
 // Home stays eagerly bundled so the most common landing renders without a
 // second round-trip. Every other page is lazy-loaded (route-level code
@@ -343,6 +345,16 @@ router.beforeEach((to, from, next) => {
   }
 
   next();
+});
+
+// A single-page app navigates without ever reloading the document, so nothing
+// tells GA4 the page changed — every route change has to be reported by hand.
+// Sent from afterEach so the title the page set is already in place, and only
+// for customer-facing routes: /admin traffic is staff at work, not a funnel.
+router.afterEach((to) => {
+  if (to.path.startsWith('/admin')) return;
+
+  nextTick(() => pageView(to.fullPath, document.title));
 });
 
 export default router;

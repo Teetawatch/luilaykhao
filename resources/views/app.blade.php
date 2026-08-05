@@ -202,6 +202,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ลุยเลเขา">
 
+    @include('partials.analytics')
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-[var(--color-white)] text-[var(--color-text-mid)] antialiased" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
