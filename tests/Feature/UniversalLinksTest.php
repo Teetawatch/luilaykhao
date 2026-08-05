@@ -13,7 +13,7 @@ class UniversalLinksTest extends TestCase
         $this->get('/.well-known/apple-app-site-association')->assertNotFound();
     }
 
-    public function test_aasa_returns_gift_paths_when_configured(): void
+    public function test_aasa_returns_app_owned_paths_when_configured(): void
     {
         config(['app.ios_app_id' => 'ABCDE12345.com.luilaykhao.app']);
 
@@ -24,7 +24,9 @@ class UniversalLinksTest extends TestCase
                 'apps' => [],
                 'details' => [[
                     'appID' => 'ABCDE12345.com.luilaykhao.app',
-                    'paths' => ['/gift/*'],
+                    // /reset-password ต้องอยู่ในนี้ ไม่งั้นลิงก์ตั้งรหัสผ่านใหม่ที่เมล
+                    // ไปหาลูกค้าจะเปิดเบราว์เซอร์แทนที่จะเข้าแอปที่ติดตั้งอยู่
+                    'paths' => ['/gift/*', '/reset-password*'],
                 ]],
             ],
         ]);

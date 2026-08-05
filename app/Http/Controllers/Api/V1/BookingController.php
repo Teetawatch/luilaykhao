@@ -11,6 +11,7 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\SchedulePhotoResource;
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\SchedulePhoto;
 use App\Models\TripPost;
 use App\Models\TripSchedule;
 use App\Services\BookingService;
@@ -297,6 +298,39 @@ class BookingController extends Controller
         $photos = $booking->schedule?->photos ?? collect();
 
         return $this->success(SchedulePhotoResource::collection($photos));
+    }
+
+    /**
+     * ลิงก์อัลบั้มสาธารณะของรอบนี้ ถ้าทีมงานเปิดแชร์ไว้แล้ว
+     *
+     * แอปแสดงรูปเองได้อยู่แล้ว (photos ด้านบน) สิ่งที่ต้องพึ่งหน้าเว็บคือ
+     * "ค้นหารูปตัวเองด้วยใบหน้า" ซึ่งประมวลผลบนเครื่องผู้ใช้ในเบราว์เซอร์ทั้งหมด
+     *
+     * ตั้งใจไม่สร้าง token ให้เองเมื่อยังไม่มี — การเปิดลิงก์สาธารณะเป็นการ
+     * ตัดสินใจของทีมงาน ไม่ใช่ผลข้างเคียงของการที่ลูกค้ากดเปิดหน้าอัลบั้ม
+     */
+    public function album(Request $request, string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)
+            ->whereNotIn('status', ['cancelled'])
+            ->with('schedule.photos')
+            ->firstOrFail();
+
+        if (! $booking->isAccessibleByUser($request->user()->id)) {
+            return $this->error('ไม่พบการจองนี้', 404);
+        }
+
+        $schedule = $booking->schedule;
+        $photos = $schedule?->photos ?? collect();
+
+        return $this->success([
+            'album_url' => $schedule?->photoAlbumUrl(),
+            'count' => $photos->count(),
+            'expires_at' => $photos
+                ->map(fn (SchedulePhoto $photo) => $photo->expiresAt())
+                ->filter()
+                ->min()?->toISOString(),
+        ]);
     }
 
     /**

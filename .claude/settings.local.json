@@ -6,7 +6,8 @@
       "Bash(flutter analyze *)",
       "Bash(git push *)",
       "Bash(grep -E \"\\\\.dart$\")",
-      "Bash(php artisan *)"
+      "Bash(php artisan *)",
+      "Bash(git --no-pager log --oneline -15)"
     ]
   }
 }

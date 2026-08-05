@@ -105,4 +105,42 @@ class ReceiptTest extends TestCase
         $this->assertStringContainsString('application/pdf', $response->headers->get('content-type'));
         $this->assertStringStartsWith('%PDF', $response->getContent());
     }
+
+    public function test_app_lists_receipts_of_its_own_booking(): void
+    {
+        $booking = $this->makeConfirmedBooking(3000);
+        $receipt = app(ReceiptService::class)->issueForBooking($booking, 'full', 3000);
+
+        $response = $this->actingAs($booking->user, 'sanctum')
+            ->getJson('/api/v1/bookings/'.$booking->booking_ref.'/receipts');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.receipt_no', $receipt->receipt_no)
+            ->assertJsonPath('data.0.amount', 3000)
+            ->assertJsonPath('data.0.kind_label', 'ชำระเต็มจำนวน');
+
+        // ลิงก์ที่แอปเอาไปเปิดต้องเป็น URL เต็มของหน้าตรวจสอบ + PDF ของใบนั้น
+        $this->assertStringEndsWith('/receipt/'.$receipt->verify_token, $response->json('data.0.verify_url'));
+        $this->assertStringEndsWith('/receipt/'.$receipt->verify_token.'/pdf', $response->json('data.0.pdf_url'));
+    }
+
+    public function test_receipts_are_not_exposed_to_other_customers(): void
+    {
+        $booking = $this->makeConfirmedBooking(3000);
+        app(ReceiptService::class)->issueForBooking($booking, 'full', 3000);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->getJson('/api/v1/bookings/'.$booking->booking_ref.'/receipts')
+            ->assertForbidden();
+    }
+
+    public function test_booking_without_receipt_returns_an_empty_list(): void
+    {
+        $booking = $this->makeConfirmedBooking(3000);
+
+        $this->actingAs($booking->user, 'sanctum')
+            ->getJson('/api/v1/bookings/'.$booking->booking_ref.'/receipts')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
 }

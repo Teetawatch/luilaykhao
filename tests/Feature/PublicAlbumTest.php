@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -174,5 +175,58 @@ class PublicAlbumTest extends TestCase
     public function test_download_requires_a_valid_token(): void
     {
         $this->get('/album/nope/download')->assertNotFound();
+    }
+
+    public function test_app_gets_the_album_link_only_after_the_team_shares_it(): void
+    {
+        $schedule = $this->makeScheduleWithPhotos(2);
+        $customer = User::factory()->create();
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => $customer->id,
+            'schedule_id' => $schedule->id,
+            'qr_code' => Booking::generateQrCode(),
+            'status' => 'confirmed',
+            'total_amount' => 1000,
+            'paid_amount' => 1000,
+            'payment_type' => 'full',
+        ]);
+
+        // ยังไม่แชร์ = ไม่มีลิงก์ แอปจึงไม่ขึ้นปุ่มค้นหาใบหน้า
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/album")
+            ->assertOk()
+            ->assertJsonPath('data.album_url', null)
+            ->assertJsonPath('data.count', 2);
+
+        // การเรียกของลูกค้าต้องไม่สร้าง token ให้เอง — การเปิดลิงก์สาธารณะเป็นสิทธิ์ของทีมงาน
+        $this->assertNull($schedule->fresh()->photo_token);
+
+        $token = $schedule->ensurePhotoToken();
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/album")
+            ->assertOk()
+            ->assertJsonPath('data.album_url', url('/album/'.$token));
+    }
+
+    public function test_album_link_is_not_handed_to_someone_elses_booking(): void
+    {
+        $schedule = $this->makeScheduleWithPhotos(1);
+        $schedule->ensurePhotoToken();
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $schedule->id,
+            'qr_code' => Booking::generateQrCode(),
+            'status' => 'confirmed',
+            'total_amount' => 1000,
+            'paid_amount' => 1000,
+            'payment_type' => 'full',
+        ]);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/album")
+            ->assertNotFound();
     }
 }

@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\Api\V1\PublicArticleController;
 use App\Http\Controllers\Api\V1\PublicProfileSettingsController;
+use App\Http\Controllers\Api\V1\ReceiptController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SavedTravellerController;
@@ -213,7 +214,11 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
+        // ลิงก์อัลบั้มสาธารณะของรอบ (ถ้าทีมงานเปิดแชร์แล้ว) — ทางไปค้นหารูปด้วยใบหน้า
+        Route::get('bookings/{ref}/album', [BookingController::class, 'album']);
         Route::get('bookings/{ref}/recap', [BookingController::class, 'recap']);
+        // ใบเสร็จดิจิทัล — คืนลิงก์หน้าตรวจสอบ/PDF ของใบที่ออกไปแล้ว
+        Route::get('bookings/{ref}/receipts', [ReceiptController::class, 'index']);
         // แทร็ก GPS ที่ลูกค้าบันทึกเองระหว่างเดิน — สถิติของตัวเองจริง ๆ
         Route::get('bookings/{ref}/track', [TripTrackController::class, 'show']);
         Route::post('bookings/{ref}/track', [TripTrackController::class, 'store']);
