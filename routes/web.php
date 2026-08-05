@@ -19,6 +19,7 @@ use App\Models\Place;
 use App\Models\Tag;
 use App\Models\Trip;
 use App\Support\MediaDisk;
+use App\Support\SeoMeta;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -232,6 +233,13 @@ Route::get('/storage/{path}', function (string $path) {
 })->where('path', '.*');
 
 // SPA catch-all (must be last!)
-Route::get('/{any?}', function () {
-    return view('app');
+//
+// The shell is the same for every URL, but its <head> is not: SeoMeta resolves
+// the title, description and share image for the path being requested so a link
+// pasted into LINE or Facebook unfurls as the actual trip. Those crawlers never
+// execute the JavaScript that would otherwise set them.
+Route::get('/{any?}', function (?string $any = null) {
+    return view('app', [
+        'seo' => SeoMeta::for($any ?? '/'),
+    ]);
 })->where('any', '.*');

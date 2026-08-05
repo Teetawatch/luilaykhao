@@ -5,48 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-    <!-- Primary Meta Tags -->
-    <title>ลุยเลเขา | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว</title>
-    <meta name="title" content="ลุยเลเขา Luilaykhao | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว">
-    <meta name="description" content="ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติและการผจญภัย จองง่าย ปลอดภัย ใบอนุญาตนำเที่ยว 12/03773">
+    {{-- Per-page title / description / share card. Resolved server-side because
+         LINE, Facebook and Twitter never run the SPA's JavaScript — see
+         App\Support\SeoMeta. --}}
+    <title>{{ $seo['title'] }}</title>
+    <meta name="title" content="{{ $seo['title'] }}">
+    <meta name="description" content="{{ $seo['description'] }}">
     <meta name="keywords" content="ลุยเลเขา, Luilaykhao, จองทริป, จัดทริป, เที่ยวไทย, เดินป่า, ดำน้ำตื้น, เช่ารถตู้นำเที่ยว, ทริปเดินป่า, ทริปดำน้ำ, ทริปภูเขา, ทริปทะเล, เที่ยวธรรมชาติ, แพลตฟอร์มจองทริป, ทริปผจญภัย, ท่องเที่ยวทั่วไทย, จองทริปเที่ยว, รถตู้ VIP, ทริปภูกระดึง, ทริปภูสอยดาว, ทริปดำน้ำตื้น, ทริปเขาช้างเผือก, บริษัทนำเที่ยว, ทัวร์ธรรมชาติ, outdoor activities thailand">
     <meta name="author" content="ลุยเลเขา Luilaykhao">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="robots" content="{{ $seo['robots'] }}">
     <meta name="google-site-verification" content="6E_H_ur05qV8VIU5BXFa3-4sCSv-C9nQGDcMceZLVc8" />
-    <meta name="googlebot" content="index, follow">
-    <meta name="bingbot" content="index, follow">
     <meta name="language" content="Thai">
-    <meta name="revisit-after" content="3 days">
     <meta name="rating" content="general">
-    <meta name="distribution" content="global">
     <meta name="geo.region" content="TH">
     <meta name="geo.placename" content="Thailand">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="{{ url()->current() }}">
+    <link rel="canonical" href="{{ $seo['canonical'] }}">
 
     <!-- Language Alternatives -->
     <link rel="alternate" hreflang="th" href="{{ url('/') }}">
     <link rel="alternate" hreflang="x-default" href="{{ url('/') }}">
 
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="ลุยเลเขา Luilaykhao">
-    <meta property="og:title" content="ลุยเลเขา | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว">
-    <meta property="og:description" content="ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติและการผจญภัย จองง่าย ปลอดภัย">
-    <meta property="og:url" content="{{ url('/') }}">
-    <meta property="og:image" content="{{ asset('images/logo.png').'?v=2' }}">
+    <meta property="og:type" content="{{ $seo['type'] }}">
+    <meta property="og:site_name" content="{{ config('seo.site_name') }}">
+    <meta property="og:title" content="{{ $seo['og_title'] }}">
+    <meta property="og:description" content="{{ $seo['description'] }}">
+    <meta property="og:url" content="{{ $seo['canonical'] }}">
+    <meta property="og:image" content="{{ $seo['image'] }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="ลุยเลเขา Luilaykhao - แพลตฟอร์มจองทริปท่องเที่ยวทั่วไทย">
+    <meta property="og:image:alt" content="{{ $seo['image_alt'] }}">
     <meta property="og:locale" content="th_TH">
+    @foreach($seo['extra'] as $property => $content)
+    <meta property="{{ $property }}" content="{{ $content }}">
+    @endforeach
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="ลุยเลเขา | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว">
-    <meta name="twitter:description" content="ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติและการผจญภัย">
-    <meta name="twitter:image" content="{{ asset('images/logo.png').'?v=2' }}">
-    <meta name="twitter:image:alt" content="ลุยเลเขา Luilaykhao">
+    <meta name="twitter:title" content="{{ $seo['og_title'] }}">
+    <meta name="twitter:description" content="{{ $seo['description'] }}">
+    <meta name="twitter:image" content="{{ $seo['image'] }}">
+    <meta name="twitter:image:alt" content="{{ $seo['image_alt'] }}">
+
+    {{-- Page-specific structured data (trip offer, place, breadcrumb, FAQ). The
+         site-wide Organization / TravelAgency / WebSite blocks stay below. --}}
+    {{-- JSON_HEX_TAG is load-bearing, not cosmetic: without it a trip title
+         containing "</script>" would close this tag and everything after it
+         would be parsed as markup. --}}
+    @foreach($seo['json_ld'] as $block)
+    <script type="application/ld+json">{!! json_encode($block, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) !!}</script>
+    @endforeach
 
     <!-- JSON-LD Structured Data: Organization -->
     <script type="application/ld+json">
