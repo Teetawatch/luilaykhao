@@ -10,10 +10,12 @@ use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCreatedMail;
 use App\Mail\BookingStatusChangedMail;
 use App\Mail\DepositPaidMail;
+use App\Mail\EmailVerificationMail;
 use App\Mail\GiftClaimedMail;
 use App\Mail\GiftPurchasedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
+use App\Mail\PasswordResetMail;
 use App\Mail\PaymentConfirmedMail;
 use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
@@ -21,6 +23,7 @@ use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\Receipt;
 use App\Models\User;
+use App\Support\AccountLinks;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -90,13 +93,61 @@ class MailService
 
     /**
      * Send welcome email to newly registered user.
+     *
+     * The verification link rides along inside this email rather than going out
+     * as a second one — a signup that lands two emails in the same second reads
+     * as a glitch, and the one people actually need to act on is this one.
      */
-    public function sendWelcomeEmail(User $user): void
+    public function sendWelcomeEmail(User $user, ?string $verifyUrl = null): void
     {
         try {
-            Mail::to($user->email)->send(new WelcomeRegistrationMail($user));
+            Mail::to($user->email)->send(new WelcomeRegistrationMail($user, $verifyUrl));
         } catch (\Throwable $e) {
             Log::error('Failed to send welcome email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send the "choose a new password" link.
+     *
+     * Never lets a mail failure bubble: the forgot-password endpoint answers the
+     * same way whether or not the address exists, and an exception here would
+     * turn a 500 into an account-enumeration oracle.
+     */
+    public function sendPasswordResetEmail(User $user, string $token): void
+    {
+        try {
+            $expires = (int) config('auth.passwords.users.expire', 60);
+
+            Mail::to($user->email)->send(new PasswordResetMail(
+                $user,
+                AccountLinks::resetPassword($token, $user->email),
+                $expires,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send password reset email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send a standalone "verify your email" link — used by the resend button,
+     * when the one folded into the welcome email has aged out.
+     */
+    public function sendEmailVerificationEmail(User $user): void
+    {
+        try {
+            Mail::to($user->email)->send(new EmailVerificationMail(
+                $user,
+                AccountLinks::verifyEmail($user),
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send email verification email', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);

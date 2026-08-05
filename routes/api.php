@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
+use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\FlexiDepartureController;
 use App\Http\Controllers\Api\V1\GiftController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PlaceController;
@@ -72,6 +74,11 @@ Route::prefix('v1')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
 
+        // ลืมรหัสผ่าน — unauthenticated by nature; the token mailed to the
+        // address on the account is what stands in for being signed in.
+        Route::post('forgot-password', [PasswordResetController::class, 'forgot']);
+        Route::post('reset-password', [PasswordResetController::class, 'reset']);
+
         Route::get('{provider}/redirect', [AuthController::class, 'socialRedirect']);
         Route::get('{provider}/callback', [AuthController::class, 'socialCallback']);
         Route::post('apple/native', [AuthController::class, 'appleNativeLogin']);
@@ -82,6 +89,8 @@ Route::prefix('v1')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
             Route::post('profile', [AuthController::class, 'updateProfile']);
             Route::delete('account', [AuthController::class, 'deleteAccount']);
+            Route::post('email/resend-verification', [EmailVerificationController::class, 'resend'])
+                ->middleware('throttle:email-verify');
         });
     });
 

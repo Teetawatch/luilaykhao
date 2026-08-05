@@ -9,6 +9,7 @@ use App\Jobs\MirrorSocialAvatarJob;
 use App\Models\User;
 use App\Services\MailService;
 use App\Services\ReferralService;
+use App\Support\AccountLinks;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -55,8 +56,8 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
-        // Send welcome email
-        $this->mailService->sendWelcomeEmail($user);
+        // Welcome email doubles as the verification email — see MailService.
+        $this->mailService->sendWelcomeEmail($user, AccountLinks::verifyEmail($user));
 
         return $this->success([
             'user' => $this->formatUser($user),
@@ -381,6 +382,8 @@ class AuthController extends Controller
         }
 
         if (! $user) {
+            $isRealProviderEmail = (bool) $email;
+
             if (! $email) {
                 $sanitizedSocialId = preg_replace('/[^a-zA-Z0-9]/', '', $socialId) ?: Str::random(12);
                 $email = $provider.'_'.$sanitizedSocialId.'@social.local';
@@ -396,7 +399,18 @@ class AuthController extends Controller
             ]);
             $user->assignRole('customer');
 
-            // Send welcome email for new social users
+            // Google/LINE/Apple already proved the address belongs to whoever just
+            // signed in, so asking them to prove it again would be busywork. The
+            // synthesised …@social.local placeholder is not a real address and
+            // stays unverified, which is what keeps the resend endpoint from
+            // trying to mail it. (Set after create: email_verified_at is not mass
+            // assignable, by design.)
+            if ($isRealProviderEmail) {
+                $user->markEmailAsVerified();
+            }
+
+            // Send welcome email for new social users. No verification link:
+            // either the provider vouched for the address, or there isn't one.
             $this->mailService->sendWelcomeEmail($user);
         }
 
@@ -513,6 +527,12 @@ class AuthController extends Controller
             return $this->error('ไม่พบข้อมูลผู้ใช้จาก Apple', 401);
         }
 
+        // Apple only puts the address in the token on the very first sign-in, so
+        // a repeat login legitimately arrives without one. The placeholder we
+        // synthesise then merely looks like a relay address — nothing delivers
+        // to it — which is why it must never count as a verified address.
+        $isRealAppleEmail = (bool) $email;
+
         if (! $email) {
             $sanitized = preg_replace('/[^a-zA-Z0-9]/', '', $appleUserId) ?: Str::random(12);
             $email = 'apple_'.$sanitized.'@privaterelay.appleid.com';
@@ -540,6 +560,11 @@ class AuthController extends Controller
                     'password' => null,
                 ]);
                 $user->assignRole('customer');
+
+                if ($isRealAppleEmail) {
+                    $user->markEmailAsVerified();
+                }
+
                 $this->mailService->sendWelcomeEmail($user);
             }
         }
@@ -700,6 +725,7 @@ class AuthController extends Controller
             'roles' => $user->roles->pluck('name'),
             'social_provider' => $user->social_provider,
             'has_password' => ! is_null($user->password),
+            'email_verified' => $user->hasVerifiedEmail(),
             'created_at' => $user->created_at?->toISOString(),
         ];
     }

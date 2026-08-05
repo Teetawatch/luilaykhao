@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\MailService;
 use App\Support\LoyaltyTier;
 use App\Support\MediaDisk;
 use Database\Factories\UserFactory;
@@ -64,6 +65,19 @@ class User extends Authenticatable
     public function birthdateUrl(): string
     {
         return url('/birthdate/'.$this->ensureBirthdateToken());
+    }
+
+    /**
+     * Route the framework's password-reset broker through our own mail stack.
+     *
+     * Password::sendResetLink() calls this with the token it just stored, so the
+     * broker keeps owning token creation, hashing, expiry and the one-a-minute
+     * throttle — we only replace the plain Laravel notification with the Thai
+     * branded Mailable everything else in this app sends.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        app(MailService::class)->sendPasswordResetEmail($this, $token);
     }
 
     /**

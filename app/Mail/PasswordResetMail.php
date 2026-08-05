@@ -8,26 +8,27 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class WelcomeRegistrationMail extends QueuedMail
+class PasswordResetMail extends QueuedMail
 {
     use Queueable, SerializesModels;
 
     public function __construct(
         public User $user,
-        public ?string $verifyUrl = null,
+        public string $resetUrl,
+        public int $expiresMinutes,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ยินดีต้อนรับสู่ครอบครัวลุยเลเขา 🌿',
+            subject: 'ตั้งรหัสผ่านใหม่ของคุณ 🔑',
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.welcome-registration',
+            view: 'emails.password-reset',
         );
     }
 }

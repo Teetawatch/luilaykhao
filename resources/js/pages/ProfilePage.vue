@@ -144,6 +144,48 @@
     <!-- Main Layout -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
 
+      <!-- ─── Email verification ─── -->
+      <div
+        v-if="showVerifyBanner"
+        class="mb-6 bg-white border border-amber-200 rounded-[1.5rem] p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+      >
+        <div class="w-11 h-11 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
+          <span class="material-symbols-rounded text-amber-600 text-[22px]">mark_email_unread</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-black text-sm text-[var(--color-text-dark)] mb-0.5">ยังไม่ได้ยืนยันอีเมล</p>
+          <p class="text-xs text-[var(--color-text-muted)] leading-relaxed">
+            ยืนยัน <strong class="font-bold">{{ auth.user?.email }}</strong> ไว้สักครั้ง
+            เผื่อวันไหนลืมรหัสผ่าน เราจะช่วยกู้บัญชีคืนให้ได้ทันทีครับ
+          </p>
+        </div>
+        <button
+          @click="resendVerification"
+          :disabled="resendingVerification"
+          class="px-5 py-2.5 rounded-xl font-bold text-sm bg-[var(--color-primary)] text-white hover:opacity-90 transition-all active:scale-95 disabled:opacity-60 shrink-0 flex items-center gap-2"
+        >
+          <span v-if="resendingVerification" class="material-symbols-rounded animate-spin text-[16px]">refresh</span>
+          <span>{{ resendingVerification ? 'กำลังส่ง…' : 'ส่งลิงก์ยืนยัน' }}</span>
+        </button>
+      </div>
+
+      <div
+        v-if="verifyNotice"
+        class="mb-6 rounded-[1.5rem] p-5 flex items-center gap-4 border"
+        :class="verifyNotice.tone === 'good'
+          ? 'bg-white border-green-200'
+          : 'bg-white border-amber-200'"
+      >
+        <span
+          class="material-symbols-rounded text-[22px] shrink-0"
+          :class="verifyNotice.tone === 'good' ? 'text-green-600' : 'text-amber-600'"
+        >{{ verifyNotice.tone === 'good' ? 'verified' : 'link_off' }}</span>
+        <p class="text-sm font-bold text-[var(--color-text-dark)] flex-1">{{ verifyNotice.message }}</p>
+        <button @click="verifyNotice = null" class="text-[var(--color-text-muted)] shrink-0">
+          <span class="material-symbols-rounded text-[20px]">close</span>
+        </button>
+      </div>
+
       <!-- Mobile Tab Bar -->
       <div class="flex lg:hidden overflow-x-auto gap-2 pb-2 mb-6 scrollbar-none">
         <button
@@ -830,12 +872,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import api from '../lib/axios';
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 const saving = ref(false);
 const editMode = ref(false);
@@ -850,6 +893,62 @@ const tabs = [
   { key: 'security', label: 'ความปลอดภัย',   icon: 'security' },
   { key: 'logout',   label: 'ออกจากระบบ',    icon: 'logout'   },
 ];
+
+// ─── Email verification ───
+const resendingVerification = ref(false);
+const verifyNotice = ref(null);
+
+// Strictly `=== false`, never a falsy check: auth.user is rehydrated from
+// localStorage, and anyone signed in from before this field existed has it
+// undefined. Treating that as "unverified" would accuse verified customers.
+// onMounted refetches the user, at which point the real value arrives.
+//
+// Social sign-ups without a real address get a synthesised …@social.local one.
+// There is nothing to verify there, so nagging them would be a dead end.
+const showVerifyBanner = computed(() => {
+  const user = auth.user;
+  if (!user || user.email_verified !== false) return false;
+  return !String(user.email || '').toLowerCase().endsWith('@social.local');
+});
+
+const VERIFY_MESSAGES = {
+  success: { tone: 'good', message: 'ยืนยันอีเมลเรียบร้อยแล้วครับ ขอบคุณนะครับ' },
+  already: { tone: 'good', message: 'อีเมลนี้ยืนยันไปแล้วครับ' },
+  expired: { tone: 'warn', message: 'ลิงก์ยืนยันหมดอายุแล้วครับ กดปุ่มส่งลิงก์ยืนยันเพื่อขอใหม่ได้เลย' },
+  invalid: { tone: 'warn', message: 'ลิงก์ยืนยันนี้ใช้ไม่ได้แล้วครับ กดปุ่มส่งลิงก์ยืนยันเพื่อขอใหม่ได้เลย' },
+};
+
+// The backend bounces the customer back here with ?verified=… after they click
+// the link in their inbox. Read it, then strip it from the URL so a refresh or
+// a shared link does not replay the message.
+function readVerificationResult() {
+  const status = route.query.verified;
+  if (!status) return;
+
+  verifyNotice.value = VERIFY_MESSAGES[status] || null;
+  router.replace({ query: { ...route.query, verified: undefined } });
+
+  if (status === 'success' || status === 'already') {
+    auth.fetchUser();
+  }
+}
+
+async function resendVerification() {
+  resendingVerification.value = true;
+  try {
+    const res = await auth.resendVerification();
+    verifyNotice.value = { tone: 'good', message: res?.message || 'ส่งลิงก์ยืนยันไปที่อีเมลของคุณแล้วครับ' };
+  } catch (e) {
+    verifyNotice.value = {
+      tone: 'warn',
+      message: e?.response?.status === 429
+        ? 'ขอลิงก์ถี่เกินไปครับ รอสักครู่แล้วลองใหม่อีกครั้ง'
+        : (e?.response?.data?.message || 'ส่งลิงก์ไม่สำเร็จ กรุณาลองใหม่อีกครั้งครับ'),
+    };
+  } finally {
+    resendingVerification.value = false;
+  }
+}
 
 const publicProfile = ref({ enabled: false, handle: null, bio: '', url: null });
 const savingPublicProfile = ref(false);
@@ -1101,6 +1200,10 @@ onMounted(() => {
   }
   fetchLoyalty();
   fetchPublicProfile();
+  // The cached user in localStorage predates email_verified for anyone already
+  // signed in, and goes stale the moment they verify on another device.
+  auth.fetchUser();
+  readVerificationResult();
 });
 </script>
 

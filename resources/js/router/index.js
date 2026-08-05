@@ -72,6 +72,9 @@ const routes = [
   { path: '/confirmation/:bookingRef', name: 'confirmation', component: () => import('../pages/ConfirmationPage.vue'), meta: { robots: 'noindex, nofollow' } },
   { path: '/login', name: 'login', component: () => import('../pages/LoginPage.vue'), meta: { title: 'เข้าสู่ระบบ', description: 'เข้าสู่ระบบลุยเลเขา เพื่อจองทริปเดินป่า ดำน้ำตื้น และเช่ารถตู้นำเที่ยว', robots: 'noindex, follow' } },
   { path: '/register', name: 'register', component: () => import('../pages/RegisterPage.vue'), meta: { title: 'สมัครสมาชิก', description: 'สมัครสมาชิกลุยเลเขา เพื่อรับสิทธิพิเศษและจองทริปได้ง่ายขึ้น', robots: 'noindex, follow' } },
+  { path: '/forgot-password', name: 'forgot-password', component: () => import('../pages/ForgotPasswordPage.vue'), meta: { title: 'ลืมรหัสผ่าน', description: 'ขอลิงก์ตั้งรหัสผ่านใหม่สำหรับบัญชีลุยเลเขา', robots: 'noindex, follow' } },
+  // noindex + the token in the query string: this URL is personal to one inbox.
+  { path: '/reset-password', name: 'reset-password', component: () => import('../pages/ResetPasswordPage.vue'), meta: { title: 'ตั้งรหัสผ่านใหม่', robots: 'noindex, nofollow' } },
   { path: '/my-bookings', name: 'my-bookings', component: () => import('../pages/MyBookingsPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/installment-payment/:bookingRef', name: 'installment-payment', component: () => import('../pages/InstallmentPaymentPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/chat/schedule/:scheduleId', name: 'trip-chat', component: () => import('../pages/TripChatPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },

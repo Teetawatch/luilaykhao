@@ -10,10 +10,12 @@ use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCreatedMail;
 use App\Mail\BookingStatusChangedMail;
 use App\Mail\DepositPaidMail;
+use App\Mail\EmailVerificationMail;
 use App\Mail\GiftClaimedMail;
 use App\Mail\GiftPurchasedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
+use App\Mail\PasswordResetMail;
 use App\Mail\PaymentConfirmedMail;
 use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
@@ -100,6 +102,9 @@ class EmailTemplatesRenderTest extends TestCase
             'status-pending' => [fn ($t) => new BookingStatusChangedMail($t->booking, 'pending')],
             'underfilled' => [fn ($t) => new TripUnderfilledWarningMail($t->booking, 7, 3, 8)],
             'welcome' => [fn ($t) => new WelcomeRegistrationMail($t->booking->user)],
+            'welcome-with-verify' => [fn ($t) => new WelcomeRegistrationMail($t->booking->user, 'https://luilaykhao.test/verify-email/1/abc?signature=xyz')],
+            'password-reset' => [fn ($t) => new PasswordResetMail($t->booking->user, 'https://luilaykhao.test/reset-password?token=abc&email=a%40b.com', 60)],
+            'email-verification' => [fn ($t) => new EmailVerificationMail($t->booking->user, 'https://luilaykhao.test/verify-email/1/abc?signature=xyz')],
             'admin-new-booking' => [fn ($t) => new AdminNewBookingMail($t->booking)],
             'admin-payment-received' => [fn ($t) => new AdminPaymentReceivedMail($t->booking, 'deposit')],
             'gift-purchased' => [function ($t) {

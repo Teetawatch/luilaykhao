@@ -52,6 +52,37 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // Deliberately no setAuth: asking for a reset link neither creates nor
+    // consumes a session. The API answers the same way for an address with no
+    // account, so the caller must not read anything into a success here.
+    async forgotPassword(email) {
+      this.loading = true;
+      try {
+        const res = await api.post('/auth/forgot-password', { email });
+        return res.data;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async resetPassword(payload) {
+      this.loading = true;
+      try {
+        const res = await api.post('/auth/reset-password', payload);
+        // Every token on the account was just revoked server-side, so a stale
+        // one sitting in localStorage would only 401 on the next request.
+        this.clearAuth();
+        return res.data;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async resendVerification() {
+      const res = await api.post('/auth/email/resend-verification');
+      return res.data;
+    },
+
     async logout() {
       try {
         await api.post('/auth/logout');

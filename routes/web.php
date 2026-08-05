@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminPaymentWebController;
+use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PublicBirthdateController;
@@ -46,6 +47,14 @@ Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/category/{slug}', [BlogController::class, 'category'])->name('blog.category');
 Route::get('/blog/tag/{slug}', [BlogController::class, 'tag'])->name('blog.tag');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+
+// Email verification link. Lives on the web side, not under /api, because it is
+// clicked straight out of an inbox and has to answer with a redirect into the
+// SPA rather than JSON. The signature is what authenticates it.
+Route::get('/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->where('id', '[0-9]+')
+    ->middleware('throttle:auth')
+    ->name('verification.verify');
 
 // โปรไฟล์นักเดินทางสาธารณะ — server-rendered เพื่อให้บ็อตแชร์อ่าน OG meta ได้
 // (ต้องมาก่อน SPA catch-all) การ์ด OG ลงท้าย .png จึงจดก่อนตัว {handle}

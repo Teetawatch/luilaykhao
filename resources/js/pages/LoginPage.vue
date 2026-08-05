@@ -29,7 +29,7 @@
           <div class="space-y-1.5">
             <div class="flex items-center justify-between">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">รหัสผ่าน</label>
-              <a href="#" class="text-xs text-accent hover:text-accent-mid font-medium">ลืมรหัสผ่าน?</a>
+              <router-link to="/forgot-password" class="text-xs text-accent hover:text-accent-mid font-medium">ลืมรหัสผ่าน?</router-link>
             </div>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">

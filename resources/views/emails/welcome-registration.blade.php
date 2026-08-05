@@ -16,6 +16,25 @@
       บัญชีของคุณพร้อมใช้งานแล้วครับ เลือกดูทริปที่ถูกใจแล้วออกไปเดินด้วยกันได้เลยนะครับ
     </div>
 
+    @if($verifyUrl)
+      {{-- Verification comes first: it is the only thing in this email that
+           needs the reader to act, and it is what lets them recover the
+           account later if they forget the password. --}}
+      <div class="alert-box alert-teal">
+        <p class="alert-title">✉️ ยืนยันอีเมลอีกนิดเดียวครับ</p>
+        <p class="alert-text">
+          กดยืนยันสักครั้งเพื่อให้เราส่งใบยืนยันการจองและเรื่องสำคัญของทริปไปถูกที่
+          และถ้าวันไหนลืมรหัสผ่าน เราจะช่วยกู้บัญชีคืนให้ได้ทันทีครับ
+        </p>
+      </div>
+
+      <div class="cta-wrap">
+        <a href="{{ $verifyUrl }}" class="cta-btn cta-teal">
+          ยืนยันอีเมลของฉัน &rarr;
+        </a>
+      </div>
+    @endif
+
     <p class="section-label">สิ่งที่เราเตรียมไว้ให้คุณ</p>
     <div class="steps-wrap">
       <div class="step-item">
@@ -49,7 +68,9 @@
     </div>
 
     <div class="cta-wrap">
-      <a href="{{ config('app.url') }}" class="cta-btn cta-teal">
+      {{-- Demoted to the quiet variant when the verify button is above it, so
+           there is only ever one obvious thing to press. --}}
+      <a href="{{ config('app.url') }}" class="cta-btn {{ $verifyUrl ? 'cta-slate' : 'cta-teal' }}">
         ไปเลือกทริปแรกกันเลยครับ &rarr;
       </a>
     </div>

@@ -67,6 +67,12 @@ return Application::configure(basePath: dirname(__DIR__))
             return Limit::perMinute(3)->by($request->ip());
         });
 
+        // Resend verification — ทุกครั้งคืออีเมลจริงที่ส่งออกไป กันกดรัวจนกล่อง
+        // จดหมายของลูกค้าเต็ม (คิดตามผู้ใช้ ไม่ใช่ IP เพราะออฟฟิศใช้ IP ร่วมกัน)
+        RateLimiter::for('email-verify', function (Request $request) {
+            return Limit::perMinute(3)->by($request->user()?->id ?? $request->ip());
+        });
+
         // Chat — ป้องกันสแปมข้อความ
         RateLimiter::for('chat', function (Request $request) {
             $key = ($request->user()?->id ?? $request->ip());
