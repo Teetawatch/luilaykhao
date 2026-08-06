@@ -153,6 +153,26 @@ class UnderfilledTripWarningTest extends TestCase
         $this->assertStringContainsString('9 ท่านแล้ว', $html);
     }
 
+    /**
+     * ลูกค้าต้องรู้ว่าไม่ต้องรอให้เรายกเลิกก่อน — ระหว่างนี้ขอยกเลิกเองแล้วรับเงินคืน
+     * เต็มจำนวนได้ทันที และต้องมีช่องทางแจ้ง (LINE / โทร) อยู่ในย่อหน้าเดียวกัน
+     *
+     * และต้องกำกับว่าเป็นข้อยกเว้นเฉพาะรอบที่คนไม่ครบ ไม่ใช่นโยบายยกเลิกปกติ
+     * (นโยบายจริงใน config/payment.php คือน้อยกว่า 30 วันไม่คืนเงิน)
+     */
+    public function test_email_says_a_full_refund_is_available_on_request_right_now(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+
+        $html = (new TripUnderfilledWarningMail($b, 7, 3, 8))->render();
+
+        $this->assertStringContainsString('ระหว่าง 7 วันนี้', $html);
+        $this->assertStringContainsString('รับเงินคืนเต็มจำนวนได้ทันที', $html);
+        $this->assertStringContainsString('เฉพาะรอบที่ผู้ร่วมทริปยังไม่ครบตามกำหนดนี้', $html);
+        $this->assertStringContainsString(config('app.support_line_id'), $html);
+        $this->assertStringContainsString(config('company.phone'), $html);
+    }
+
     public function test_push_tells_the_customer_what_they_can_do(): void
     {
         $b = $this->booking(bookedSeats: 3);
