@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LiveActivityController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
+use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\MyTripAssistantController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PageContentController;
@@ -190,6 +191,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('saved-travellers/{id}', [SavedTravellerController::class, 'destroy']);
         Route::post('saved-travellers/{id}/used', [SavedTravellerController::class, 'markUsed']);
         Route::post('bookings/{ref}/save-travellers', [SavedTravellerController::class, 'importFromBooking']);
+
+        // ดูแลเนื้อหา (UGC) — รายงานเนื้อหาได้ทุกชนิด และบล็อกผู้ใช้ที่ก่อกวน
+        Route::get('moderation/reasons', [ModerationController::class, 'reasons']);
+        Route::post('reports', [ModerationController::class, 'report'])->middleware('throttle:20,60');
+        Route::get('me/blocks', [ModerationController::class, 'blocks']);
+        Route::post('me/blocks', [ModerationController::class, 'block'])->middleware('throttle:30,60');
+        Route::delete('me/blocks/{userId}', [ModerationController::class, 'unblock']);
 
         // Passport / สมุดสะสมการเดินทาง (สถิติตลอดชีพ + ตราสะสม)
         Route::get('me/passport', [PassportController::class, 'show']);
@@ -694,6 +702,12 @@ Route::prefix('v1')->group(function () {
         Route::post('maintenances', [AdminExtendedController::class, 'storeMaintenance']);
         Route::put('maintenances/{id}', [AdminExtendedController::class, 'updateMaintenance']);
         Route::delete('maintenances/{id}', [AdminExtendedController::class, 'deleteMaintenance']);
+
+        // คิวตรวจเนื้อหาที่ถูกรายงาน (แชท/รีวิว/ฟีด/ผู้ใช้)
+        // อยู่ใต้ moderation/ เพื่อไม่ปนกับ reports/* ที่เป็นรายงานยอดขาย
+        Route::get('moderation/reports', [ModerationController::class, 'adminIndex']);
+        Route::post('moderation/reports/{id}/resolve', [ModerationController::class, 'adminResolve']);
+        Route::get('moderation/users/{id}', [ModerationController::class, 'adminUserHistory']);
 
         // Reports
         Route::get('reports/bookings', [AdminExtendedController::class, 'reportBookings']);

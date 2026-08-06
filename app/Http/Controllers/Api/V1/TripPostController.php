@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Models\TripPost;
+use App\Services\ContentFilterService;
+use App\Services\ModerationService;
 use App\Services\TripPostService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +22,8 @@ class TripPostController extends Controller
 
     public function __construct(
         private TripPostService $posts,
+        private ModerationService $moderation,
+        private ContentFilterService $filter,
     ) {}
 
     /**
@@ -50,6 +54,10 @@ class TripPostController extends Controller
             'images.*' => ['image', 'max:8192'],
             'caption' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        if ($blocked = $this->filter->check($request->input('caption'))) {
+            return $this->error($blocked, 422);
+        }
 
         $trip = Trip::where('slug', $slug)->firstOrFail();
 
@@ -113,8 +121,11 @@ class TripPostController extends Controller
         $post = TripPost::published()->findOrFail($postId);
         $viewerId = auth('sanctum')->id();
 
+        $blocked = $this->moderation->hiddenAuthorIds(auth('sanctum')->user());
+
         $comments = $post->comments()
             ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier'])
+            ->when($blocked, fn ($q) => $q->whereNotIn('user_id', $blocked))
             ->paginate(min((int) $request->input('per_page', 30), 50));
 
         $comments->getCollection()->transform(
@@ -132,6 +143,10 @@ class TripPostController extends Controller
         $request->validate([
             'body' => ['required', 'string', 'max:500'],
         ]);
+
+        if ($blocked = $this->filter->check($request->input('body'))) {
+            return $this->error($blocked, 422);
+        }
 
         $post = TripPost::published()->findOrFail($postId);
 
@@ -257,9 +272,12 @@ class TripPostController extends Controller
         // เส้นทางอ่านเป็นสาธารณะ แต่ถ้าแนบ Bearer token มาก็รู้ว่าใครดู
         $viewer = auth('sanctum')->user();
 
+        $blocked = $this->moderation->hiddenAuthorIds($viewer);
+
         $query = TripPost::published()
             ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier', 'trip:id,slug,title'])
             ->when($trip, fn ($q) => $q->where('trip_id', $trip->id))
+            ->when($blocked, fn ($q) => $q->whereNotIn('user_id', $blocked))
             ->latest('id');
 
         if ($viewer) {

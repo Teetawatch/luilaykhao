@@ -16,6 +16,8 @@ use App\Models\ChatRead;
 use App\Models\TripSchedule;
 use App\Services\ChatPollService;
 use App\Services\ChatService;
+use App\Services\ContentFilterService;
+use App\Services\ModerationService;
 use App\Services\TripFactsService;
 use App\Services\WeatherService;
 use App\Support\MediaDisk;
@@ -33,6 +35,8 @@ class ChatController extends Controller
         private ChatPollService $pollService,
         private TripFactsService $tripFacts,
         private WeatherService $weatherService,
+        private ContentFilterService $filter,
+        private ModerationService $moderation,
     ) {}
 
     public function index(Request $request, int $scheduleId): JsonResponse
@@ -54,10 +58,15 @@ class ChatController extends Controller
             $this->chatService->ensureWelcome($schedule);
         }
 
+        // ข้อความของคนที่บล็อกกันไว้ และข้อความที่ถูกซ่อนจากการรายงาน
+        // ต้องไม่หลุดออกไปทุกเส้นทางที่อ่านห้องนี้
+        $visible = fn ($query) => $this->chatService->scopeVisibleTo($query, $user);
+
         // Polling for live updates: return messages newer than $afterId, oldest-first.
         if ($afterId > 0) {
             $messages = ChatMessage::where('schedule_id', $scheduleId)
                 ->with($this->messageRelations())
+                ->tap($visible)
                 ->where('id', '>', $afterId)
                 ->orderBy('id')
                 ->limit($perPage)
@@ -71,6 +80,7 @@ class ChatController extends Controller
 
         $messages = ChatMessage::where('schedule_id', $scheduleId)
             ->with($this->messageRelations())
+            ->tap($visible)
             ->when($beforeId > 0, fn ($q) => $q->where('id', '<', $beforeId))
             ->orderByDesc('id')
             ->limit($perPage)
@@ -116,6 +126,10 @@ class ChatController extends Controller
 
         if (! $this->chatService->canAccess($user, $schedule)) {
             return $this->error('คุณไม่มีสิทธิ์ส่งข้อความในห้องนี้', 403);
+        }
+
+        if ($rejected = $this->filter->check($validated['body'] ?? null)) {
+            return $this->error($rejected, 422);
         }
 
         $imagePath = $request->hasFile('image')
@@ -167,6 +181,11 @@ class ChatController extends Controller
         }
         if ($message->is_deleted || $message->sender_role === 'system' || $message->image_path) {
             return $this->error('ข้อความนี้แก้ไขไม่ได้', 422);
+        }
+
+        // ตัวกรองต้องดักตอนแก้ไขด้วย ไม่งั้นส่งข้อความสุภาพแล้วค่อยแก้เป็นคำหยาบก็รอด
+        if ($rejected = $this->filter->check($validated['body'])) {
+            return $this->error($rejected, 422);
         }
 
         $message->mentions = $this->chatService->sanitizeMentions($schedule, $validated['mentions'] ?? []) ?: null;
@@ -506,6 +525,7 @@ class ChatController extends Controller
 
         $members = $this->chatService->members($schedule);
         $memberIds = $members->map(fn ($m) => $m['user']->id);
+        $blockedIds = $this->moderation->blockedIds($user);
 
         // last_read_message_id ของสมาชิกแต่ละคน → ใช้คำนวณ "อ่านแล้ว N คน" ฝั่ง client
         $reads = ChatRead::where('schedule_id', $scheduleId)
@@ -554,7 +574,7 @@ class ChatController extends Controller
             'can_moderate' => $this->chatService->canModerate($user, $schedule),
             'reaction_emojis' => ChatService::REACTION_EMOJIS,
             'member_count' => $members->count(),
-            'members' => $members->map(function ($m) use ($reads, $user) {
+            'members' => $members->map(function ($m) use ($reads, $user, $blockedIds) {
                 $u = $m['user'];
 
                 // เปิดเบอร์เฉพาะสตาฟ/ทีมงาน เพื่อให้ลูกค้าติดต่อไกด์ประจำรอบได้
@@ -571,6 +591,8 @@ class ChatController extends Controller
                     'role' => $m['role'],
                     'phone' => $isStaff ? $u->phone : null,
                     'is_me' => $u->id === $user->id,
+                    // ให้แอปขึ้นป้าย "บล็อกแล้ว" และสลับปุ่มเป็น "เลิกบล็อก" ได้
+                    'is_blocked' => in_array($u->id, $blockedIds, true),
                     'last_read_message_id' => (int) ($reads[$u->id] ?? 0),
                 ];
             })->values()->all(),
@@ -599,6 +621,7 @@ class ChatController extends Controller
 
         $messagesBySchedule = ChatMessage::whereIn('schedule_id', $schedules->pluck('id'))
             ->with('user:id,name,nickname')
+            ->tap(fn ($q) => $this->chatService->scopeVisibleTo($q, $user))
             ->get()
             ->groupBy('schedule_id');
 

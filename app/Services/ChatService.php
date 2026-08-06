@@ -12,6 +12,7 @@ use App\Models\ChatRead;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -179,6 +180,31 @@ class ChatService
         }
     }
 
+    /**
+     * ข้อความที่ผู้ใช้คนนี้ควรเห็น — ตัดข้อความที่ถูกซ่อนจากการรายงาน
+     * และข้อความของคนที่บล็อกกันไว้ออก
+     *
+     * ใช้ผ่าน ->tap() ทุกที่ที่ดึงข้อความในห้อง เพื่อให้เงื่อนไขอยู่ที่เดียว
+     * ไม่ต้องไปจำว่าเส้นทางไหนกรองแล้วบ้าง
+     *
+     * @param  Builder<ChatMessage>  $query
+     */
+    public function scopeVisibleTo($query, ?User $user)
+    {
+        $query->whereNull('hidden_at');
+
+        $blocked = app(ModerationService::class)->hiddenAuthorIds($user);
+
+        if ($blocked !== []) {
+            $query->where(function ($q) use ($blocked) {
+                // ข้อความระบบไม่มีเจ้าของ (user_id เป็น null) ต้องไม่หายไปด้วย
+                $q->whereNull('user_id')->orWhereNotIn('user_id', $blocked);
+            });
+        }
+
+        return $query;
+    }
+
     public function unreadCount(User $user, TripSchedule $schedule): int
     {
         $lastRead = (int) ChatRead::where('schedule_id', $schedule->id)
@@ -186,6 +212,7 @@ class ChatService
             ->value('last_read_message_id');
 
         return ChatMessage::where('schedule_id', $schedule->id)
+            ->tap(fn ($q) => $this->scopeVisibleTo($q, $user))
             ->where('id', '>', $lastRead)
             ->when($user->exists, fn ($q) => $q->where(function ($w) use ($user) {
                 $w->whereNull('user_id')->orWhere('user_id', '!=', $user->id);
@@ -331,6 +358,7 @@ class ChatService
     public function pinnedMessage(TripSchedule $schedule): ?ChatMessage
     {
         return ChatMessage::where('schedule_id', $schedule->id)
+            ->whereNull('hidden_at')
             ->whereNotNull('pinned_at')
             ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier', 'pinnedBy:id,name,nickname'])
             ->latest('pinned_at')

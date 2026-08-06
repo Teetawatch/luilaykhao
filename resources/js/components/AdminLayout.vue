@@ -160,6 +160,7 @@ const menuGroups = ref([
       { to: '/admin/birthdate-followup', icon: 'fas fa-birthday-cake', label: 'ตามเก็บวันเกิด' },
       { to: '/admin/reviews', icon: 'fas fa-star', label: 'รีวิวจากลูกค้า' },
       { to: '/admin/trip-posts', icon: 'fas fa-images', label: 'ฟีดนักเดินทาง' },
+      { to: '/admin/content-reports', icon: 'fas fa-flag', label: 'เนื้อหาที่ถูกรายงาน' },
       { to: '/admin/inquiries', icon: 'fas fa-envelope', label: 'ข้อความติดต่อ' },
     ],
     isOpen: false

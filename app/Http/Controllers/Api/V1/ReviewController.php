@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Review;
+use App\Services\ContentFilterService;
+use App\Services\ModerationService;
 use App\Support\MediaDisk;
 use App\Support\ThaiDate;
 use App\Traits\ApiResponse;
@@ -19,10 +21,29 @@ class ReviewController extends Controller
     /** เพดานจำนวนรีวิวที่ดึงมาแตกเป็นรูป — flatMap ทำในหน่วยความจำ จึงต้องมีขอบ */
     private const PHOTO_REVIEW_LIMIT = 500;
 
+    public function __construct(
+        private ModerationService $moderation,
+        private ContentFilterService $filter,
+    ) {}
+
+    /**
+     * id ของคนที่ผู้อ่านคนนี้บล็อกไว้ (หรือถูกบล็อก) — เส้นทางรีวิวอ่านได้
+     * สาธารณะ จึงต้องหยิบผู้ใช้จาก guard เอง ไม่มีก็ไม่ต้องกรอง
+     *
+     * @return array<int, int>
+     */
+    private function blockedAuthorIds(): array
+    {
+        return $this->moderation->hiddenAuthorIds(auth('sanctum')->user());
+    }
+
     public function index(Request $request): JsonResponse
     {
+        $blocked = $this->blockedAuthorIds();
+
         $query = Review::with(['user.loyaltyAccount', 'trip', 'repliedBy'])
-            ->where('is_approved', true);
+            ->where('is_approved', true)
+            ->when($blocked, fn ($q) => $q->whereNotIn('user_id', $blocked));
 
         if ($request->filled('trip_id')) {
             $query->where('trip_id', $request->trip_id);
@@ -92,8 +113,11 @@ class ReviewController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:60'],
         ]);
 
+        $blocked = $this->blockedAuthorIds();
+
         $reviews = Review::with(['user.loyaltyAccount', 'trip:id,title,slug,location', 'booking.schedule:id,departure_date'])
             ->where('is_approved', true)
+            ->when($blocked, fn ($q) => $q->whereNotIn('user_id', $blocked))
             ->whereNotNull('images')
             ->when(isset($validated['trip_id']), fn ($q) => $q->where('trip_id', $validated['trip_id']))
             ->orderByDesc('created_at')
@@ -116,6 +140,8 @@ class ReviewController extends Controller
                     'url' => $url,
                     'review_id' => $r->id,
                     'rating' => $r->rating,
+                    // เจ้าของรูป — แอปใช้ผูกปุ่มรายงาน/บล็อกบนกำแพงรูป
+                    'user_id' => $r->user_id,
                     'user_name' => $r->user?->name ?? 'ไม่ระบุชื่อ',
                     'user_avatar' => $r->user?->avatar_url,
                     'created_at' => $r->created_at?->toISOString(),
@@ -168,6 +194,10 @@ class ReviewController extends Controller
             'videos' => ['nullable', 'array', 'max:2'],
             'videos.*' => ['string'],
         ]);
+
+        if ($rejected = $this->filter->check($validated['comment'] ?? null)) {
+            return $this->error($rejected, 422);
+        }
 
         $userId = $request->user()->id;
 
@@ -227,6 +257,10 @@ class ReviewController extends Controller
             'videos' => ['nullable', 'array', 'max:2'],
             'videos.*' => ['string'],
         ]);
+
+        if ($rejected = $this->filter->check($validated['comment'] ?? null)) {
+            return $this->error($rejected, 422);
+        }
 
         $review->update($validated);
 

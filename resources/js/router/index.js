@@ -296,6 +296,7 @@ const routes = [
       { path: 'settings', name: 'admin-settings', component: () => import('../pages/admin/SettingsPage.vue') },
       { path: 'reviews', name: 'admin-reviews', component: () => import('../pages/admin/ReviewsPage.vue') },
       { path: 'trip-posts', name: 'admin-trip-posts', component: () => import('../pages/admin/TripPostsModerationPage.vue') },
+      { path: 'content-reports', name: 'admin-content-reports', component: () => import('../pages/admin/ContentReportsPage.vue') },
       { path: 'loyalty', name: 'admin-loyalty', component: () => import('../pages/admin/LoyaltyPage.vue') },
       { path: 'analytics', name: 'admin-analytics', component: () => import('../pages/admin/AnalyticsPage.vue') },
       { path: 'tracking', name: 'admin-tracking', component: () => import('../pages/admin/TrackingPage.vue') },
