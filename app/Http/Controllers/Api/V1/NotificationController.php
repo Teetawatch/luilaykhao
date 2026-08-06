@@ -83,6 +83,9 @@ class NotificationController extends Controller
             'token' => ['required', 'string', 'max:512'],
             'platform' => ['nullable', 'string', 'max:32'],
             'device_id' => ['nullable', 'string', 'max:128'],
+            // iOS 17.2+ เท่านั้นที่มีค่านี้ — กุญแจที่ให้เซิร์ฟเวอร์เปิดการ์ด
+            // "วันเดินทาง" บนหน้าจอล็อกได้เองโดยลูกค้าไม่ต้องเปิดแอป
+            'live_activity_start_token' => ['nullable', 'string', 'max:200'],
         ]);
 
         FcmToken::updateOrCreate(
@@ -91,6 +94,9 @@ class NotificationController extends Controller
                 'user_id' => $request->user()->id,
                 'platform' => $validated['platform'] ?? null,
                 'device_id' => $validated['device_id'] ?? null,
+                ...array_filter([
+                    'live_activity_start_token' => $validated['live_activity_start_token'] ?? null,
+                ]),
                 'is_active' => true,
                 'last_used_at' => now(),
             ],

@@ -56,6 +56,27 @@ return [
         'service_account_path' => env('FCM_SERVICE_ACCOUNT_PATH', 'storage/app/firebase-service-account.json'),
     ],
 
+    /*
+     * APNs โดยตรง — ใช้เฉพาะ Live Activity ("รถถึงใน 8 นาที" บนหน้าจอล็อก)
+     *
+     * ทำไมไม่ยิงผ่าน FCM เหมือน push อื่น: การอัปเดต Live Activity ต้องส่งไปที่
+     * token ของตัว Activity เอง บน topic `<bundle>.push-type.liveactivity` ซึ่ง
+     * FCM ไม่ได้เปิดทางให้ตั้ง จึงต้องคุยกับ APNs ตรงด้วย auth key (.p8)
+     *
+     * ปล่อย key_id/team_id ว่างไว้ = ปิดฟีเจอร์ทั้งชุดโดยไม่พัง (แอปยังทำงานปกติ
+     * เพียงแต่ Live Activity จะไม่ขยับเอง)
+     */
+    'apns' => [
+        'key_id' => env('APNS_KEY_ID'),
+        'team_id' => env('APNS_TEAM_ID'),
+        'bundle_id' => env('APNS_BUNDLE_ID', 'com.luilaykhao.app'),
+        // ไฟล์ .p8 (path สัมพัทธ์กับ base_path) หรือวางเนื้อคีย์ทั้งก้อนใน env ก็ได้
+        'key_path' => env('APNS_KEY_PATH', 'storage/app/apns-auth-key.p8'),
+        'key_content' => env('APNS_KEY_CONTENT'),
+        // production = ยิงเข้า api.push.apple.com, false = sandbox (บิลด์ debug)
+        'production' => env('APNS_PRODUCTION', true),
+    ],
+
     'broadcast_notifications' => [
         // When true, marketing broadcasts created during quiet hours
         // (21:00–08:00) are held until morning. Set false to send immediately.

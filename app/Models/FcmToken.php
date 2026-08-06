@@ -10,6 +10,7 @@ class FcmToken extends Model
     protected $fillable = [
         'user_id',
         'token',
+        'live_activity_start_token',
         'platform',
         'device_id',
         'is_active',

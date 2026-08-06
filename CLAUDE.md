@@ -32,6 +32,9 @@ php artisan test tests/Feature/BookingController.php
 
 # Check SMS credits
 php artisan sms:credit
+
+# Verify the APNs auth key can reach Apple (Live Activity push) — no device needed
+php artisan apns:check
 ```
 
 ### Flutter apps
@@ -110,6 +113,18 @@ Deposit can be configured per-schedule as either `percent` or `amount` (per-pers
 
 Vehicle GPS is pushed to `/api/v1/tracking/update` (no auth, intended for device SDK) and stored in `vehicle_locations`. The `VehicleLocationUpdated` event broadcasts to `vehicle.{vehicleId}` channel. The Flutter customer app connects via `web_socket_channel` to Reverb using `--dart-define` config. The share-tracking feature gives unauthenticated public access via a 12-char random token stored on the Booking (`share_token`).
 
+**Trip member live location** — travellers can opt in to share their own position with the rest of their round (`trip_member_locations`, one row per user per schedule; deleting the row *is* stopping). Who may read/write is `SosParticipantService`, same as SOS, and only within the trip window. `TripMemberLocationUpdated` broadcasts on the **private** channel `trip-members.{scheduleId}` — vehicle position is company data, a person's position is not. Pins older than `TripMemberLocationService::STALE_MINUTES` are never handed out.
+
+### Live Activity ("วันเดินทาง" lock-screen card)
+
+`TripActivityService` is the single source of the card's Thai copy, stage, and ETA — the apps only draw. Stages: `countdown → preparing → enroute → approaching → arriving → arrived → onboard`.
+
+- **iOS** — the app starts the Activity once (`luilaykhao/live_activity` MethodChannel → `ios/Runner/LiveActivityChannel.swift`), posts its push token to `POST /api/v1/live-activities`, and from then on `ApnsLiveActivityService` pushes updates straight to APNs. This needs a **direct APNs auth key** (`.p8`, `APNS_*` in `.env`) because FCM cannot set the `<bundle>.push-type.liveactivity` topic. With `APNS_KEY_ID`/`APNS_TEAM_ID` unset the whole feature no-ops. On iOS 17.2+ the server can also *start* the card unprompted via the push-to-start token stored on `fcm_tokens.live_activity_start_token`.
+- **Android** — no ActivityKit; the same state ships as an FCM data message (`type: trip_activity`) that `TripActivityService` (Dart) renders as an ongoing notification on the `trip_activity` channel.
+- Driven by `trip-activity:sync` every minute, plus `SyncTripActivityJob` fired from `BookingObserver` on check-in/cancellation so the card flips instantly.
+- The widget extension target lives in `ios/LiveActivity/` and is wired into `Runner.xcodeproj` already; `ios/scripts/add_live_activity_target.rb` recreates it idempotently if the project file is ever regenerated. Its embed phase **must** stay ordered before Flutter's "Thin Binary" phase or the build fails with an opaque dependency cycle.
+- `departs_at` gotcha applies: it stores Thai wall-clock in a UTC-typed column, so comparisons go through `TripActivityService::nowThai()`, never `now()`.
+
 ### Flutter apps
 
 Both apps follow the same structure: `lib/{models,providers,screens,services,theme,widgets}`.  
@@ -129,3 +144,4 @@ Background jobs that run on a schedule (configured via `routes/console.php` or H
 - `SendBalanceDueRemindersJob` / `SendInstallmentRemindersJob` — payment reminders
 - `ExpireWaitlistOffersJob` — expires stale waitlist offers
 - `eta:notify-pickups` artisan command — ETA push notifications for today's schedules (run every few minutes)
+- `trip-activity:sync` artisan command — opens/updates/closes the lock-screen "วันเดินทาง" cards (every minute)

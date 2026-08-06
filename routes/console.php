@@ -61,6 +61,9 @@ Schedule::job(new SendReviewInvitesJob)->dailyAt('20:00')->timezone('Asia/Bangko
 Schedule::job(new SendSafeTravelsJob)->dailyAt('20:15')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
+// การ์ด "วันเดินทาง" บนหน้าจอล็อก / Dynamic Island — เปิดเอง อัปเดต ETA แล้วปิดเอง
+// ทุกนาที เพราะตัวเลข "อีก 8 นาที" ที่ช้าไป 5 นาทีคือตัวเลขที่ผิด
+Schedule::command('trip-activity:sync')->everyMinute()->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 // Win-back for abandoned (auto-expired) bookings — hourly, sends one nudge per

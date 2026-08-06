@@ -4,6 +4,7 @@ use App\Models\GroupPlan;
 use App\Models\SupportConversation;
 use App\Models\TripSchedule;
 use App\Services\ChatService;
+use App\Services\SosParticipantService;
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
@@ -47,6 +48,16 @@ Broadcast::channel('support.conversation.{conversationId}', function ($user, $co
 // กล่องข้อความรวมของทีมงาน — เฉพาะแอดมิน/ผู้ดูแล
 Broadcast::channel('support.admins', function ($user) {
     return $user->hasAnyRole(['admin', 'operator']);
+});
+
+// ตำแหน่งสดของเพื่อนร่วมทริป — เกณฑ์เดียวกับ SOS (ผู้เดินทาง + สตาฟ + คนขับของรอบ)
+// ต่างจากช่องตำแหน่งรถที่เป็น public โดยตั้งใจ: ตำแหน่งรถเป็นของบริษัท ตำแหน่งคน
+// เป็นของคนคนนั้น
+Broadcast::channel('trip-members.{scheduleId}', function ($user, $scheduleId) {
+    $schedule = TripSchedule::find($scheduleId);
+
+    return $schedule
+        && app(SosParticipantService::class)->includes($schedule, (int) $user->id);
 });
 
 Broadcast::channel('group.{code}', function ($user, $code) {

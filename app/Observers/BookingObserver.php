@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Jobs\AnnounceChatMemberJoinedJob;
+use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
 use App\Services\LoyaltyService;
 
@@ -43,8 +44,21 @@ class BookingObserver
 
     public function updated(Booking $booking): void
     {
+        // เช็คอินคือเหตุการณ์ที่ลูกค้ากำลังยืนดูหน้าจอล็อกอยู่ตรงนั้น — การ์ดวันเดินทาง
+        // ต้องพลิกเป็น "ขึ้นรถเรียบร้อยแล้ว" เดี๋ยวนั้น ไม่ใช่รอรอบซิงก์นาทีถัดไป
+        // (ผ่าน observer เพื่อให้ครอบคลุมทุกทางที่เช็คอินได้: แอปคนขับ, แอดมิน, แก้ใบจอง)
+        if ($booking->wasChanged('checked_in') && $booking->checked_in) {
+            SyncTripActivityJob::dispatch($booking->id);
+        }
+
         if (! $booking->wasChanged('status')) {
             return;
+        }
+
+        // ยกเลิกแล้วต้องเก็บการ์ดออกจากหน้าจอล็อกด้วย ไม่ใช่ค้างนับถอยหลังไปยัง
+        // ทริปที่ไม่มีอยู่แล้ว
+        if (in_array($booking->status, self::REVERSING_STATUSES, true)) {
+            SyncTripActivityJob::dispatch($booking->id);
         }
 
         if (in_array($booking->status, self::EARNING_STATUSES, true)) {

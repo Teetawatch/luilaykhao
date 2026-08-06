@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\V1\FlexiDepartureController;
 use App\Http\Controllers\Api\V1\GiftController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\IncidentController;
+use App\Http\Controllers\Api\V1\LiveActivityController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\MyTripAssistantController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -59,6 +60,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
+use App\Http\Controllers\Api\V1\TripMemberLocationController;
 use App\Http\Controllers\Api\V1\TripPostController;
 use App\Http\Controllers\Api\V1\TripProgressController;
 use App\Http\Controllers\Api\V1\TripReadinessController;
@@ -342,6 +344,18 @@ Route::prefix('v1')->group(function () {
         Route::post('sos', [SosController::class, 'trigger']);
         Route::get('sos/active', [SosController::class, 'active']);
         Route::post('sos/{id}/resolve', [SosController::class, 'resolve']);
+
+        // การ์ด "วันเดินทาง" บนหน้าจอล็อก / Dynamic Island (Live Activity)
+        Route::post('live-activities', [LiveActivityController::class, 'store']);
+        Route::delete('live-activities', [LiveActivityController::class, 'destroy']);
+        Route::get('bookings/{ref}/live-activity', [LiveActivityController::class, 'show']);
+
+        // ตำแหน่งสดของเพื่อนร่วมทริป — เปิด/ปิดเองได้ตลอด และเปิดได้เฉพาะช่วงทริป
+        Route::get('schedules/{id}/live-location', [TripMemberLocationController::class, 'index'])
+            ->middleware('throttle:120,1');
+        Route::post('schedules/{id}/live-location', [TripMemberLocationController::class, 'store'])
+            ->middleware('throttle:120,1');
+        Route::delete('schedules/{id}/live-location', [TripMemberLocationController::class, 'destroy']);
 
         // Waitlist
         Route::get('waitlist', [WaitlistController::class, 'myEntries']);

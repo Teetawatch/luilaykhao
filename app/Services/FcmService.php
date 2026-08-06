@@ -47,6 +47,55 @@ class FcmService
         }
     }
 
+    /**
+     * ส่ง data message ล้วน ๆ (ไม่มีแถบแจ้งเตือน) ให้ทุกเครื่องของผู้ใช้
+     *
+     * ใช้กับข้อมูลที่แอปต้องเอาไป "วาด" เอง ไม่ใช่ข้อความที่ต้องอ่าน — ตอนนี้คือ
+     * การ์ดวันเดินทางบนแถบแจ้งเตือนของ Android (ดู [TripActivityService]) ซึ่งถ้า
+     * ส่งเป็น notification ปกติ ระบบจะเด้งการ์ดใหม่ทุกนาทีแทนที่จะอัปเดตใบเดิม
+     */
+    public function sendDataToUser(int $userId, array $data, ?string $platform = null): void
+    {
+        $tokens = FcmToken::where('user_id', $userId)
+            ->where('is_active', true)
+            ->when($platform, fn ($query) => $query->where('platform', $platform))
+            ->pluck('token');
+
+        foreach ($tokens as $token) {
+            $this->sendDataToToken($token, $data);
+        }
+    }
+
+    private function sendDataToToken(string $token, array $data): void
+    {
+        $projectId = config('services.fcm.project_id');
+        if (! $projectId) {
+            return;
+        }
+
+        try {
+            $response = Http::withToken($this->accessToken())
+                ->acceptJson()
+                ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                    'message' => [
+                        'token' => $token,
+                        'data' => $this->stringData($data),
+                        'android' => ['priority' => 'HIGH'],
+                        'apns' => [
+                            'headers' => ['apns-push-type' => 'background', 'apns-priority' => '5'],
+                            'payload' => ['aps' => ['content-available' => 1]],
+                        ],
+                    ],
+                ]);
+
+            if (! $response->successful() && $this->isDeadToken($response->json())) {
+                FcmToken::where('token', $token)->update(['is_active' => false]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('FCM data send exception', ['message' => $e->getMessage()]);
+        }
+    }
+
     private function sendToToken(string $token, string $title, string $body, array $data = [], ?string $type = null): void
     {
         $projectId = config('services.fcm.project_id');
