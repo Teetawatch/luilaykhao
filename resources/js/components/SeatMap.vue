@@ -24,6 +24,23 @@
         <div class="w-5 h-5 rounded-lg bg-red-100 border-2 border-red-300"></div>
         <span class="text-[11px] font-bold text-gray-500">จองแล้ว</span>
       </div>
+      <div v-if="hasOwnSeats" class="flex items-center gap-1.5">
+        <div class="w-5 h-5 rounded-lg border-2 border-dashed"
+          :class="isWomenOnly ? 'bg-pink-50 border-[#db2777]' : 'bg-teal-50 border-[#006565]'"></div>
+        <span class="text-[11px] font-bold text-gray-500">ที่นั่งของคุณ</span>
+      </div>
+    </div>
+
+    <!-- ที่นั่งที่ตัวเองถืออยู่ — กันความเข้าใจผิดว่า "มีคนอื่นจองไปแล้ว" -->
+    <div v-if="hasOwnSeats" class="flex items-start gap-2 px-4 py-3 rounded-2xl border"
+      :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-teal-50/60 border-teal-100'">
+      <span class="material-symbols-rounded text-[18px] shrink-0 mt-px"
+        :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
+        style="font-variation-settings:'FILL' 1,'wght' 400">how_to_reg</span>
+      <span class="text-[11px] font-bold leading-relaxed" :class="isWomenOnly ? 'text-[#9d174d]' : 'text-[#0f5132]'">
+        ที่นั่ง {{ ownSeatIds.join(', ') }} เป็นของคุณอยู่แล้ว
+        <template v-if="ownLockedSeatIds.length">— แตะเพื่อเลือกอีกครั้ง หรือปล่อยไว้แล้วเลือกที่นั่งอื่นได้เลย</template>
+      </span>
     </div>
 
     <!-- Booking note -->
@@ -87,11 +104,11 @@
             <!-- Front passenger seat -->
             <button
               v-if="frontPassengerSeat"
-              :disabled="readonly || frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked'"
+              :disabled="readonly || isBlocked(frontPassengerSeat)"
               @click="handleSeatClick(frontPassengerSeat)"
               class="group flex flex-col items-center gap-1 transition-all duration-200 shrink-0"
-              :class="readonly ? 'cursor-default' : frontPassengerSeat.status === 'booked' || frontPassengerSeat.status === 'locked' ? 'cursor-not-allowed' : 'cursor-pointer'"
-              :title="readonly ? '' : frontPassengerSeat.status === 'booked' ? 'จองแล้ว' : frontPassengerSeat.status === 'locked' ? 'กำลังจอง...' : 'คลิกเพื่อเลือก'"
+              :class="readonly ? 'cursor-default' : isBlocked(frontPassengerSeat) ? 'cursor-not-allowed' : 'cursor-pointer'"
+              :title="seatTitle(frontPassengerSeat)"
             >
               <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2"
                 :class="seatBgClass(frontPassengerSeat)">
@@ -102,8 +119,10 @@
               <span class="text-[10px] font-extrabold leading-none transition-colors" :class="seatLabelClass(frontPassengerSeat)">
                 {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
               </span>
-              <span v-if="frontPassengerSeat.status === 'booked'" class="text-[9px] text-red-400 font-bold -mt-0.5">จองแล้ว</span>
-              <span v-else-if="frontPassengerSeat.status === 'locked'" class="text-[9px] text-amber-500 font-bold -mt-0.5">ล็อค</span>
+              <span v-if="seatStatusLabel(frontPassengerSeat)"
+                class="text-[9px] font-bold -mt-0.5" :class="seatStatusLabel(frontPassengerSeat).class">
+                {{ seatStatusLabel(frontPassengerSeat).text }}
+              </span>
             </button>
           </div>
 
@@ -228,14 +247,53 @@ const layoutConfig = computed(() => {
   };
 });
 
+// ─── Own seats ────────────────────────────────────────────────────
+// ที่นั่งที่ผู้ใช้คนนี้ถืออยู่เอง (ล็อกไว้ หรืออยู่ในใบจองของตัวเอง) — ต้องแยกให้ออก
+// จากที่นั่งของคนอื่น ไม่งั้นลูกค้าที่ล็อกที่นั่งไว้เองจะเห็นว่า "มีคนจองไปแล้ว"
+function isOwnLock(seat) {
+  if (props.readonly) return false;
+  return seat?.status === 'locked' && seat?.locked_by_current_user === true;
+}
+
+function isOwnBooking(seat) {
+  if (props.readonly) return false;
+  return seat?.status === 'booked' && seat?.booked_by_current_user === true;
+}
+
+function isBlocked(seat) {
+  if (!seat) return true;
+  if (isOwnLock(seat)) return false; // ล็อกของตัวเอง เลือกซ้ำได้
+  return seat.status === 'booked' || seat.status === 'locked';
+}
+
+const ownLockedSeatIds = computed(() =>
+  (props.seatMap?.seats || []).filter(isOwnLock).map(s => s.id)
+);
+
+const ownSeatIds = computed(() =>
+  (props.seatMap?.seats || []).filter(s => isOwnLock(s) || isOwnBooking(s)).map(s => s.id)
+);
+
+const hasOwnSeats = computed(() => !props.readonly && ownSeatIds.value.length > 0);
+
 // ─── Seat style helpers ───────────────────────────────────────────
 function seatBgClass(seat) {
   if (!seat) return 'bg-gray-50 border-gray-200';
+  if (isOwnBooking(seat)) {
+    return props.isWomenOnly
+      ? 'bg-pink-50 border-[#db2777] border-dashed'
+      : 'bg-teal-50 border-[#006565] border-dashed';
+  }
   if (seat.status === 'booked') return 'bg-red-100 border-red-300';
   if (isSelected(seat)) {
     return props.isWomenOnly
       ? 'bg-[#db2777] border-[#db2777] shadow-pink-200 scale-105'
       : 'bg-[#006565] border-[#006565] scale-105';
+  }
+  if (isOwnLock(seat)) {
+    return props.isWomenOnly
+      ? 'bg-pink-50 border-[#db2777] border-dashed group-hover:bg-pink-100'
+      : 'bg-teal-50 border-[#006565] border-dashed group-hover:bg-teal-100';
   }
   if (seat.status === 'locked') return 'bg-amber-50 border-amber-300';
   if (props.readonly) return 'bg-white border-gray-200';
@@ -246,8 +304,10 @@ function seatBgClass(seat) {
 
 function seatIconClass(seat) {
   if (!seat) return 'text-gray-300';
+  if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'booked') return 'text-red-400';
   if (isSelected(seat)) return 'text-white';
+  if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-400';
   if (props.readonly) return 'text-gray-300';
   return props.isWomenOnly
@@ -257,8 +317,10 @@ function seatIconClass(seat) {
 
 function seatLabelClass(seat) {
   if (!seat) return 'text-gray-400';
+  if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'booked') return 'text-red-400';
   if (isSelected(seat)) return props.isWomenOnly ? 'text-[#db2777] font-black' : 'text-[#006565] font-black';
+  if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-500';
   if (props.readonly) return 'text-gray-400';
   return props.isWomenOnly
@@ -314,21 +376,40 @@ function isSelected(seat) {
 
 function handleSeatClick(seat) {
   if (props.readonly) return;
-  if (!seat || seat.status === 'booked' || seat.status === 'locked') return;
+  if (isBlocked(seat)) return;
   seatsStore.toggleSeat(seat);
   emit('seat-click', seat);
+}
+
+function seatStatusLabel(seat) {
+  if (isOwnBooking(seat)) return { text: 'คุณจองแล้ว', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]' };
+  if (seat?.status === 'booked') return { text: 'จองแล้ว', class: 'text-red-400' };
+  if (isOwnLock(seat)) return { text: 'ของคุณ', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]' };
+  if (seat?.status === 'locked') return { text: 'ล็อค', class: 'text-amber-500' };
+  return null;
+}
+
+function seatTitle(seat) {
+  if (props.readonly) return '';
+  if (isOwnBooking(seat)) {
+    return seat.booking_ref ? `อยู่ในการจอง ${seat.booking_ref} ของคุณ` : 'อยู่ในการจองของคุณ';
+  }
+  if (seat?.status === 'booked') return 'จองแล้ว';
+  if (isOwnLock(seat)) return 'คุณล็อคที่นั่งนี้ไว้ — คลิกเพื่อเลือกอีกครั้ง';
+  if (seat?.status === 'locked') return 'มีผู้ใช้อื่นกำลังจอง...';
+  return 'คลิกเพื่อเลือก';
 }
 
 // ─── Inline SeatButton ────────────────────────────────────────────
 const SeatButton = (btnProps, { emit: btnEmit }) => {
   const seat = btnProps.seat;
   const seatId = btnProps.seatId;
-  const disabled = props.readonly || seat?.status === 'booked' || seat?.status === 'locked';
+  const disabled = props.readonly || isBlocked(seat);
 
   const statusText = () => {
-    if (seat?.status === 'booked') return h('span', { class: 'text-[9px] text-red-400 font-bold leading-none' }, 'จองแล้ว');
-    if (seat?.status === 'locked') return h('span', { class: 'text-[9px] text-amber-500 font-bold leading-none' }, 'ล็อค');
-    return null;
+    const label = seatStatusLabel(seat);
+    if (!label) return null;
+    return h('span', { class: ['text-[9px] font-bold leading-none', label.class] }, label.text);
   };
 
   return h('div', { class: 'relative group' }, [
@@ -339,7 +420,7 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
         'group flex flex-col items-center gap-1 transition-all duration-200',
         props.readonly ? 'cursor-default' : disabled ? 'cursor-not-allowed' : 'cursor-pointer',
       ],
-      title: props.readonly ? '' : seat?.status === 'booked' ? 'จองแล้ว' : seat?.status === 'locked' ? 'กำลังจอง...' : 'คลิกเพื่อเลือก',
+      title: seatTitle(seat),
     }, [
       h('div', {
         class: ['w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2', seatBgClass(seat)],

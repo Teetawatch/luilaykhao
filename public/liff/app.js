@@ -372,7 +372,18 @@ function seatAvailable(seat) {
 
 function seatCell(seat) {
   const usable = seatAvailable(seat);
-  const cell = el(`<button class="seat" ${usable ? '' : 'disabled'}>${esc(seat.label || seat.id)}</button>`);
+  // ที่นั่งที่ตัวเองถืออยู่ (ล็อกไว้ / อยู่ในใบจองของตัวเอง) ต้องไม่อ่านว่าเป็นของคนอื่น
+  const mine = seat.locked_by_current_user || seat.booked_by_current_user;
+  const title = seat.booked_by_current_user
+    ? `อยู่ในการจอง${seat.booking_ref ? ' ' + seat.booking_ref : ''} ของคุณ`
+    : seat.locked_by_current_user
+      ? 'คุณล็อคที่นั่งนี้ไว้'
+      : seat.status === 'booked'
+        ? 'จองแล้ว'
+        : seat.status === 'locked'
+          ? 'มีผู้ใช้อื่นกำลังจอง'
+          : 'แตะเพื่อเลือก';
+  const cell = el(`<button class="seat${mine ? ' mine' : ''}" title="${esc(title)}" ${usable ? '' : 'disabled'}>${esc(seat.label || seat.id)}</button>`);
   cell.dataset.id = seat.id;
   cell.onclick = () => toggleSeat(seat.id, cell);
   return cell;

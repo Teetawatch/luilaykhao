@@ -51,6 +51,8 @@ class ScheduleController extends Controller
                 'locked_ttl_seconds' => null,
                 'locked_until' => null,
                 'locked_by_current_user' => false,
+                'booked_by_current_user' => false,
+                'booking_ref' => null,
             ];
 
             return [

@@ -282,19 +282,27 @@ class SeatLockService
             ->whereHas('booking', fn ($query) => $query
                 ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
                 ->where('is_join_trip', false))
-            ->get(['seat_id', 'passenger_name'])
+            ->with('booking:id,user_id,booking_ref')
+            ->get(['id', 'booking_id', 'seat_id', 'passenger_name'])
             ->keyBy('seat_id');
 
         $redisUp = $this->redisAvailable();
 
         foreach ($allSeatIds as $seatId) {
             if ($bookedSeats->has($seatId)) {
+                $seat = $bookedSeats->get($seatId);
+                // ที่นั่งที่ "ตัวเองจองไว้แล้ว" ต้องบอกให้รู้ ไม่งั้นลูกค้าเห็นแค่ "จองแล้ว"
+                // แล้วเข้าใจว่ามีคนอื่นแย่งไป ทั้งที่เป็นใบจองของตัวเอง
+                $isOwnBooking = $userId !== null && (int) $seat->booking?->user_id === $userId;
+
                 $statuses[$seatId] = [
                     'status' => 'booked',
-                    'passenger_name' => $bookedSeats->get($seatId)->passenger_name,
+                    'passenger_name' => $seat->passenger_name,
                     'locked_ttl_seconds' => null,
                     'locked_until' => null,
                     'locked_by_current_user' => false,
+                    'booked_by_current_user' => $isOwnBooking,
+                    'booking_ref' => $isOwnBooking ? $seat->booking?->booking_ref : null,
                 ];
             } elseif ($redisUp && Redis::exists($this->seatKey($scheduleId, $seatId))) {
                 $key = $this->seatKey($scheduleId, $seatId);
@@ -306,6 +314,8 @@ class SeatLockService
                         'locked_ttl_seconds' => null,
                         'locked_until' => null,
                         'locked_by_current_user' => false,
+                        'booked_by_current_user' => false,
+                        'booking_ref' => null,
                     ];
 
                     continue;
@@ -318,6 +328,8 @@ class SeatLockService
                     'locked_ttl_seconds' => $ttl,
                     'locked_until' => now()->addSeconds($ttl)->toISOString(),
                     'locked_by_current_user' => $userId !== null && $lockedBy === $userId,
+                    'booked_by_current_user' => false,
+                    'booking_ref' => null,
                 ];
             } else {
                 $statuses[$seatId] = [
@@ -326,6 +338,8 @@ class SeatLockService
                     'locked_ttl_seconds' => null,
                     'locked_until' => null,
                     'locked_by_current_user' => false,
+                    'booked_by_current_user' => false,
+                    'booking_ref' => null,
                 ];
             }
         }

@@ -87,6 +87,9 @@ export const useSeatsStore = defineStore('seats', {
     countdownSeconds: 0,
     countdownTimer: null,
     activeBookingInfo: _saved?.activeBookingInfo ?? null,
+    // ที่นั่งที่หน้านี้ล็อกไว้กับเซิร์ฟเวอร์จริง ๆ (ไม่ใช่แค่ที่เลือกไว้) — ใช้ตามเก็บ
+    // ล็อกค้างเวลาผู้ใช้เปลี่ยนใจเลือกน้อยลง เพราะผังที่นั่งในมือยังไม่รู้ว่าล็อกไปแล้ว
+    lockedSeatIds: [],
     _onExpireCallbacks: [],
   }),
 
@@ -133,6 +136,10 @@ export const useSeatsStore = defineStore('seats', {
           this.activeBookingInfo = { ...(this.activeBookingInfo || {}), passengerCount: seatIds.length };
           saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
           this.startCountdown();
+          // ปล่อยที่นั่งที่ตัวเองเคยล็อกไว้แต่ไม่ได้เลือกแล้ว — ไม่งั้นคนที่เปลี่ยนใจ
+          // จาก 8 ที่เหลือ 1 ที่ จะแช่อีก 7 ที่ไว้จนหมด TTL (นานถึง 45 นาที)
+          await this.releaseStaleOwnLocks(scheduleId, seatIds);
+          this.lockedSeatIds = [...seatIds];
         }
         return res.data;
       } catch (err) {
@@ -140,11 +147,34 @@ export const useSeatsStore = defineStore('seats', {
       }
     },
 
+    /**
+     * ปลดล็อกที่นั่งที่ผู้ใช้คนนี้ถืออยู่ในรอบนี้ แต่ไม่ได้อยู่ในรายการที่เลือกไว้แล้ว
+     * รวมสองแหล่ง: ธงจากผังที่นั่ง (ล็อกที่ค้างมาจากรอบก่อน/แท็บอื่น) กับล็อกที่หน้านี้
+     * เพิ่งขอไปเอง — เงียบเสมอ ล้มเหลวก็ไม่ควรขวางการจอง
+     */
+    async releaseStaleOwnLocks(scheduleId, keepSeatIds = []) {
+      const keep = new Set(keepSeatIds);
+      const held = new Set(this.lockedSeatIds);
+      (this.seatMap?.seats || [])
+        .filter(seat => seat.locked_by_current_user && seat.status === 'locked')
+        .forEach(seat => held.add(seat.id));
+
+      const stale = [...held].filter(id => !keep.has(id));
+      if (stale.length === 0) return;
+
+      try {
+        await api.delete(`/seat-locks/${scheduleId}`, { data: { seat_ids: stale } });
+        stale.forEach(id => this.updateSeatStatus(id, 'available'));
+      } catch {}
+    },
+
     async unlockSeats(scheduleId) {
-      if (this.selectedSeats.length === 0) return;
+      // ปล่อยทั้งที่เลือกไว้และที่ล็อกไว้จริง — ทั้งสองชุดอาจต่างกันถ้าผู้ใช้เปลี่ยนใจ
+      const seatIds = [...new Set([...this.selectedSeatIds, ...this.lockedSeatIds])];
+      if (seatIds.length === 0) return;
       try {
         await api.delete(`/schedules/${scheduleId}/seats/lock`, {
-          data: { seat_ids: this.selectedSeatIds },
+          data: { seat_ids: seatIds },
         });
       } catch {}
       this.clearSelection();
@@ -212,11 +242,15 @@ export const useSeatsStore = defineStore('seats', {
     updateSeatStatus(seatId, status) {
       if (!this.seatMap?.seats) return;
       const seat = this.seatMap.seats.find(s => s.id === seatId);
-      if (seat) seat.status = status;
+      if (!seat) return;
+      seat.status = status;
+      // ที่นั่งที่กลับมาว่างไม่ใช่ล็อกของใครอีกต่อไป — ไม่งั้นธงเดิมค้างและยังโชว์ว่า "ของคุณ"
+      if (status !== 'locked') seat.locked_by_current_user = false;
     },
 
     clearSelection() {
       this.selectedSeats = [];
+      this.lockedSeatIds = [];
       this.lockExpiry = null;
       this.activeBookingInfo = null;
       // NOTE: do NOT reset _onExpireCallbacks here. Listeners are owned by the

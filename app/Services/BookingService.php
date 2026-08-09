@@ -134,16 +134,31 @@ class BookingService
                 // ตรวจกับ booking_seats ซึ่งเป็น source of truth จริง — Redis lock เป็นของชั่วคราว
                 // (TTL หมด/ล่ม/ถูก forceUnlock หลังจองสำเร็จ) จึงกันที่นั่งซ้ำไม่ได้เสมอ
                 // เราถือ lockForUpdate ของ schedule อยู่แล้ว การอ่านตรงนี้จึง race-safe กับการจองพร้อมกันบนรอบเดียวกัน
-                $alreadyBooked = BookingSeat::where('schedule_id', $scheduleId)
+                $alreadyBookedSeats = BookingSeat::where('schedule_id', $scheduleId)
                     ->whereIn('seat_id', $seatIds)
                     ->whereHas('booking', fn ($query) => $query
                         ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES))
-                    ->pluck('seat_id')
-                    ->unique()
-                    ->values();
+                    ->with('booking:id,user_id,booking_ref')
+                    ->get();
 
-                if ($alreadyBooked->isNotEmpty()) {
-                    throw new \Exception('ที่นั่ง '.$alreadyBooked->join(', ').' ถูกจองไปแล้ว กรุณาเลือกที่นั่งอื่น');
+                if ($alreadyBookedSeats->isNotEmpty()) {
+                    // ชนกับใบจองของตัวเองบ่อยกว่าชนกับคนอื่นมาก (กดยืนยันซ้ำ / ย้อนกลับ
+                    // มาจองรอบเดิมด้วยที่นั่งเดิม) — บอกไปตรง ๆ ว่าเป็นใบจองของเขาเอง
+                    // ไม่งั้นข้อความ "ถูกจองไปแล้ว" ทำให้เข้าใจว่ามีคนอื่นแย่งไป
+                    $ownBooking = $alreadyBookedSeats
+                        ->first(fn (BookingSeat $seat) => (int) $seat->booking?->user_id === (int) $userId)
+                        ?->booking;
+
+                    $seatLabels = $alreadyBookedSeats->pluck('seat_id')->unique()->values()->join(', ');
+
+                    if ($ownBooking && $alreadyBookedSeats->every(fn (BookingSeat $seat) => (int) $seat->booking?->user_id === (int) $userId)) {
+                        throw new \Exception(
+                            'ที่นั่ง '.$seatLabels.' อยู่ในการจอง '.$ownBooking->booking_ref
+                            .' ของคุณอยู่แล้ว หากต้องการเพิ่มผู้เดินทาง กรุณาเลือกที่นั่งอื่น'
+                        );
+                    }
+
+                    throw new \Exception('ที่นั่ง '.$seatLabels.' ถูกจองไปแล้ว กรุณาเลือกที่นั่งอื่น');
                 }
             }
 
