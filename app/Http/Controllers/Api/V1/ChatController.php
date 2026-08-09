@@ -18,6 +18,7 @@ use App\Services\ChatPollService;
 use App\Services\ChatService;
 use App\Services\ContentFilterService;
 use App\Services\ModerationService;
+use App\Services\ScheduleItineraryService;
 use App\Services\TripFactsService;
 use App\Services\WeatherService;
 use App\Support\MediaDisk;
@@ -37,6 +38,7 @@ class ChatController extends Controller
         private WeatherService $weatherService,
         private ContentFilterService $filter,
         private ModerationService $moderation,
+        private ScheduleItineraryService $itineraryService,
     ) {}
 
     public function index(Request $request, int $scheduleId): JsonResponse
@@ -557,7 +559,8 @@ class ChatController extends Controller
                 'driver_photo' => $vehicle->driver_photo ?: $vehicle->driver?->photo,
             ] : null,
             'weather' => $schedule->weather_forecast ?? null,
-            'has_itinerary' => $schedule->itineraryItems()->exists(),
+            // กำหนดการระดับทริปก็นับ — ปุ่มลัดจะได้ไม่หายไปทั้งที่มีแผนให้ดู
+            'has_itinerary' => $this->itineraryService->hasItinerary($schedule),
             'pickup_points' => $schedule->pickupPoints->map(fn ($p) => [
                 'id' => $p->id,
                 'region_label' => $p->region_label,

@@ -54,6 +54,245 @@ class ScheduleItineraryService
     }
 
     /**
+     * กำหนดการที่เอาไปแสดง — ถ้ารอบนี้ยังไม่มีกำหนดการเฉพาะรอบ ให้ถอยไปใช้
+     * กำหนดการระดับทริป (Trip::itinerary ที่แอดมินเขียนไว้ในหน้าแก้ไขทริป) แทน
+     * ลูกค้าจะได้ไม่เจอหน้าว่างทั้งที่ทริปมีแผนเขียนไว้อยู่แล้ว
+     *
+     * source = 'schedule' (ของรอบนี้ เช็คอินได้) หรือ 'trip' (อ่านอย่างเดียว)
+     *
+     * @return array{items: array<int, array<string, mixed>>, source: string}
+     */
+    public function payload(TripSchedule $schedule): array
+    {
+        $items = $this->list($schedule);
+
+        if ($items->isNotEmpty()) {
+            return [
+                'items' => $items->map(fn ($i) => $this->present($i))->all(),
+                'source' => 'schedule',
+            ];
+        }
+
+        $fromTrip = $this->fromTrip($schedule);
+
+        return [
+            'items' => $fromTrip,
+            'source' => $fromTrip === [] ? 'schedule' : 'trip',
+        ];
+    }
+
+    /**
+     * มีกำหนดการให้ดูไหม (ของรอบ หรือของทริปก็นับ) — ใช้ตัดสินปุ่มลัดในแชท
+     */
+    public function hasItinerary(TripSchedule $schedule): bool
+    {
+        return $schedule->itineraryItems()->exists() || $this->fromTrip($schedule) !== [];
+    }
+
+    /**
+     * แปลง Trip::itinerary (โครงสร้าง [{sector, items:[{day,title,description}]}]
+     * และรูปแบบเก่า: array แบน / string) ให้เป็นรายการหน้าตาเดียวกับกำหนดการของรอบ
+     * เพื่อให้ฝั่งแอปวาดด้วยโค้ดชุดเดิม — id = null เพราะไม่มีแถวจริงให้เช็คอิน
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function fromTrip(TripSchedule $schedule): array
+    {
+        $raw = $schedule->trip?->itinerary;
+
+        if (is_string($raw)) {
+            $raw = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $raw) ?: [])));
+        }
+
+        if (! is_array($raw) || $raw === []) {
+            return [];
+        }
+
+        $items = [];
+
+        foreach ($raw as $entry) {
+            if (is_string($entry)) {
+                $this->pushTripItem($items, $schedule, null, ['title' => $entry]);
+
+                continue;
+            }
+
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $children = $this->nestedTripItems($entry);
+
+            if ($children === []) {
+                $this->pushTripItem($items, $schedule, null, $entry);
+
+                continue;
+            }
+
+            $sector = $this->tripSectorLabel($entry);
+
+            foreach ($children as $child) {
+                $this->pushTripItem(
+                    $items,
+                    $schedule,
+                    $sector,
+                    is_array($child) ? $child : ['title' => (string) $child],
+                );
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * รายการย่อยของ "ภาค" — รองรับคีย์ที่เคยใช้มาก่อนหน้านี้ด้วย
+     *
+     * @param  array<string, mixed>  $entry
+     * @return array<int, mixed>
+     */
+    private function nestedTripItems(array $entry): array
+    {
+        foreach (['items', 'itinerary', 'days', 'program'] as $key) {
+            if (isset($entry[$key]) && is_array($entry[$key]) && $entry[$key] !== []) {
+                return array_values($entry[$key]);
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     */
+    private function tripSectorLabel(array $entry): ?string
+    {
+        foreach (['sector', 'sector_name', 'section', 'part', 'region_label', 'region', 'title', 'name'] as $key) {
+            $value = isset($entry[$key]) && is_scalar($entry[$key]) ? trim((string) $entry[$key]) : '';
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  array<string, mixed>  $data
+     */
+    private function pushTripItem(array &$items, TripSchedule $schedule, ?string $sector, array $data): void
+    {
+        $title = $this->firstFilled($data, ['title', 'name', 'activity']);
+        $detail = $this->firstFilled($data, ['description', 'desc', 'detail', 'content']);
+
+        if ($title === '' && $detail === '') {
+            return;
+        }
+
+        if ($title === '') {
+            $title = $detail;
+            $detail = '';
+        }
+
+        [$time, $title] = $this->splitLeadingTime($title);
+        $day = $this->tripDayNumber($data);
+
+        $items[] = [
+            'id' => null,
+            'source' => 'trip',
+            'group' => $sector ?? ($day !== null ? "วันที่ {$day}" : 'แผนการเดินทาง'),
+            'day' => $day,
+            'item_date' => $this->tripItemDate($schedule, $day),
+            'time' => $time,
+            'title' => $title,
+            'detail' => $detail !== '' ? $detail : null,
+            'link' => null,
+            'sort_order' => count($items),
+            'reached_at' => null,
+            'reached_by_name' => null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<int, string>  $keys
+     */
+    private function firstFilled(array $data, array $keys): string
+    {
+        foreach ($keys as $key) {
+            $value = isset($data[$key]) && is_scalar($data[$key]) ? trim((string) $data[$key]) : '';
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function tripDayNumber(array $data): ?int
+    {
+        foreach (['day', 'day_number', 'order'] as $key) {
+            if (! isset($data[$key]) || ! is_scalar($data[$key])) {
+                continue;
+            }
+            // "1", 1, "วันที่ 2" → 1, 1, 2
+            if (preg_match('/\d+/', (string) $data[$key], $m)) {
+                $day = (int) $m[0];
+
+                // ตัวแก้ไขทริปเริ่มนับวันที่ 0 ในบางทริป จึงยอมรับ 0 แล้วเลื่อนเป็นวันที่ 1
+                return $day >= 1 ? $day : 1;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * วันที่จริงของ "วันที่ N" ในรอบนี้ — ไม่คำนวณเมื่อเลยวันกลับของรอบ
+     * (ทริปเดียวกันอาจมีแผนยาวกว่ารอบนี้) ให้แอปแสดงแค่ "วันที่ N" แทน
+     */
+    private function tripItemDate(TripSchedule $schedule, ?int $day): ?string
+    {
+        if ($day === null || $schedule->departure_date === null) {
+            return null;
+        }
+
+        $date = $schedule->departure_date->copy()->addDays($day - 1);
+
+        if ($schedule->return_date !== null && $date->gt($schedule->return_date)) {
+            return null;
+        }
+
+        return $date->toDateString();
+    }
+
+    /**
+     * ดึงเวลานำหน้าหัวข้อออกมาเป็นฟิลด์เวลา ("08:00 ออกเดินทาง" → 08:00 + ออกเดินทาง)
+     * เพราะแอดมินมักพิมพ์เวลาไว้ในหัวข้อของกำหนดการระดับทริป
+     *
+     * @return array{0: ?string, 1: string}
+     */
+    private function splitLeadingTime(string $title): array
+    {
+        if (! preg_match('/^(\d{1,2})[:.](\d{2})\s*(?:น\.)?\s*[-–—]?\s*(.+)$/u', $title, $m)) {
+            return [null, $title];
+        }
+
+        $hour = (int) $m[1];
+        $minute = (int) $m[2];
+        $rest = trim($m[3]);
+
+        if ($hour > 23 || $minute > 59 || $rest === '') {
+            return [null, $title];
+        }
+
+        return [sprintf('%02d:%02d', $hour, $minute), $rest];
+    }
+
+    /**
      * เช็คอิน/ยกเลิกเช็คอินจุดกำหนดการ — แชร์ทั้งทีมของรอบนั้น (ใครกดก็เห็นเหมือนกัน)
      */
     public function setReached(ScheduleItineraryItem $item, User $user, bool $reached): ScheduleItineraryItem
@@ -121,6 +360,9 @@ class ScheduleItineraryService
     {
         return [
             'id' => $item->id,
+            'source' => 'schedule',
+            'group' => null,
+            'day' => null,
             'item_date' => $item->item_date?->toDateString(),
             'time' => $item->time,
             'title' => $item->title,

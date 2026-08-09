@@ -33,11 +33,36 @@ class ScheduleItineraryController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ดูกำหนดการของรอบนี้', 403);
         }
 
+        // รอบที่ยังไม่มีกำหนดการของตัวเองจะได้กำหนดการระดับทริปไปแสดงแทน
+        // (source = 'trip') ซึ่งอ่านอย่างเดียว เช็คอินไม่ได้เพราะไม่มีแถวจริง
+        $payload = $this->service->payload($schedule);
+
+        return $this->success([
+            'items' => $payload['items'],
+            'source' => $payload['source'],
+            'can_manage' => $this->service->canManage($user, $schedule),
+        ]);
+    }
+
+    /**
+     * รายการสำหรับหน้าจัดการของแอดมิน — เฉพาะกำหนดการของรอบนี้จริง ๆ ไม่ถอยไป
+     * ใช้กำหนดการระดับทริป เพราะรายการที่แก้/ลบไม่ได้จะทำให้หน้าจัดการเข้าใจผิด
+     */
+    public function adminIndex(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->service->canManage($user, $schedule)) {
+            return $this->error('เฉพาะทีมงานเท่านั้นที่จัดการกำหนดการได้', 403);
+        }
+
         return $this->success([
             'items' => $this->service->list($schedule)
                 ->map(fn ($i) => $this->service->present($i))
                 ->all(),
-            'can_manage' => $this->service->canManage($user, $schedule),
+            'source' => 'schedule',
+            'can_manage' => true,
         ]);
     }
 

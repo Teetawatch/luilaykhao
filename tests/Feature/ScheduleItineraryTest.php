@@ -168,6 +168,125 @@ class ScheduleItineraryTest extends TestCase
             ->assertJsonPath('data.items.0.title', 'อาหารเช้า');
     }
 
+    public function test_round_without_itinerary_falls_back_to_the_trip_plan(): void
+    {
+        $schedule = $this->makeSchedule();
+        $customer = $this->makeCustomer($schedule);
+
+        $schedule->trip->update([
+            'itinerary' => [
+                [
+                    'sector' => 'ภาคเหนือ (เชียงใหม่)',
+                    'items' => [
+                        ['day' => 1, 'title' => '06:00 ออกเดินทางจากกรุงเทพฯ', 'description' => 'นัดพบปั๊ม ปตท.'],
+                        ['day' => 2, 'title' => 'เดินขึ้นยอดดอย', 'description' => ''],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.source', 'trip')
+            ->assertJsonCount(2, 'data.items')
+            // เช็คอินไม่ได้ — ไม่ใช่จุดของรอบนี้ จึงไม่มี id จริง
+            ->assertJsonPath('data.items.0.id', null)
+            ->assertJsonPath('data.items.0.group', 'ภาคเหนือ (เชียงใหม่)')
+            // เวลานำหน้าหัวข้อถูกแยกออกมาเป็นฟิลด์เวลา
+            ->assertJsonPath('data.items.0.time', '06:00')
+            ->assertJsonPath('data.items.0.title', 'ออกเดินทางจากกรุงเทพฯ')
+            ->assertJsonPath('data.items.0.detail', 'นัดพบปั๊ม ปตท.')
+            // "วันที่ N" ถูกแปลงเป็นวันจริงของรอบนี้
+            ->assertJsonPath('data.items.0.item_date', $schedule->departure_date->toDateString())
+            ->assertJsonPath('data.items.1.item_date', $schedule->return_date->toDateString())
+            ->assertJsonPath('data.items.1.time', null);
+    }
+
+    public function test_admin_listing_never_shows_the_trip_plan(): void
+    {
+        $schedule = $this->makeSchedule();
+        $admin = $this->makeAdmin();
+
+        $schedule->trip->update([
+            'itinerary' => [
+                ['sector' => 'แผนกลางของทริป', 'items' => [
+                    ['day' => 1, 'title' => 'แผนระดับทริป'],
+                ]],
+            ],
+        ]);
+
+        // หน้าจัดการต้องเห็นว่ารอบนี้ "ยังว่าง" ไม่ใช่รายการที่แก้/ลบไม่ได้
+        $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/v1/admin/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.source', 'schedule')
+            ->assertJsonCount(0, 'data.items')
+            ->assertJsonPath('data.can_manage', true);
+    }
+
+    public function test_round_itinerary_wins_over_the_trip_plan(): void
+    {
+        $schedule = $this->makeSchedule();
+        $admin = $this->makeAdmin();
+        $customer = $this->makeCustomer($schedule);
+
+        $schedule->trip->update([
+            'itinerary' => [
+                ['sector' => 'แผนกลางของทริป', 'items' => [
+                    ['day' => 1, 'title' => 'แผนระดับทริป'],
+                ]],
+            ],
+        ]);
+        ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id, 'created_by' => $admin->id,
+            'item_date' => $schedule->departure_date->toDateString(),
+            'time' => '08:00', 'title' => 'กำหนดการของรอบนี้',
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.source', 'schedule')
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.title', 'กำหนดการของรอบนี้');
+    }
+
+    public function test_trip_plan_fallback_reads_legacy_flat_formats(): void
+    {
+        $schedule = $this->makeSchedule();
+        $customer = $this->makeCustomer($schedule);
+
+        // รูปแบบเก่า: array แบน ไม่มีภาค (และรายการที่เป็นข้อความล้วน)
+        $schedule->trip->update([
+            'itinerary' => [
+                ['day' => 1, 'title' => 'ถึงที่พัก', 'description' => 'เก็บของแล้วพัก'],
+                'อาหารเย็นร่วมกัน',
+            ],
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.source', 'trip')
+            ->assertJsonCount(2, 'data.items')
+            ->assertJsonPath('data.items.0.group', 'วันที่ 1')
+            ->assertJsonPath('data.items.1.group', 'แผนการเดินทาง')
+            ->assertJsonPath('data.items.1.title', 'อาหารเย็นร่วมกัน');
+    }
+
+    public function test_empty_trip_plan_still_reports_no_itinerary(): void
+    {
+        $schedule = $this->makeSchedule();
+        $customer = $this->makeCustomer($schedule);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.source', 'schedule')
+            ->assertJsonCount(0, 'data.items');
+    }
+
     public function test_non_member_cannot_read_itinerary(): void
     {
         $schedule = $this->makeSchedule();

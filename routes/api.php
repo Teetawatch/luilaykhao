@@ -570,7 +570,7 @@ Route::prefix('v1')->group(function () {
         Route::put('schedules/{id}/route', [AdminController::class, 'updateScheduleRoute']);
 
         // Schedule Itinerary (กำหนดการรอบเดินทาง) — แอดมิน/operator สร้าง/แก้/ลบ/จัดลำดับ
-        Route::get('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'index']);
+        Route::get('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'adminIndex']);
         Route::post('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'store']);
         Route::post('schedules/{id}/itinerary/reorder', [ScheduleItineraryController::class, 'reorder']);
         Route::put('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'update']);
