@@ -9,13 +9,18 @@ use App\Models\ExpenseTemplate;
 use App\Models\ScheduleExpense;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Services\ScheduleLedgerService;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AdminFinanceController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private ScheduleLedgerService $ledgerService) {}
 
     /**
      * Bookings ที่นับเป็นรายรับ — ตัด cancelled/expired ออก
@@ -58,12 +63,19 @@ class AdminFinanceController extends Controller
             ->groupBy('trip_schedules.trip_id')
             ->pluck('pax', 'trip_id');
 
-        // ค่าใช้จ่ายต่อทริป
+        // ค่าใช้จ่าย/รายรับหน้างานต่อทริป — แถวที่สตาฟจดว่าเป็นรายรับ (kind=income)
+        // ต้องไม่ถูกนับเป็นค่าใช้จ่าย ไม่งั้นกำไรจะเพี้ยนสองเท่าของยอดนั้น
         $expenses = $applyDate(
             ScheduleExpense::query()
                 ->join('trip_schedules', 'schedule_expenses.schedule_id', '=', 'trip_schedules.id')
         )
-            ->selectRaw('trip_schedules.trip_id as trip_id, SUM(schedule_expenses.amount) as expenses, COUNT(schedule_expenses.id) as items_count')
+            ->selectRaw(
+                'trip_schedules.trip_id as trip_id,
+                 SUM(CASE WHEN schedule_expenses.kind = ? THEN 0 ELSE schedule_expenses.amount END) as expenses,
+                 SUM(CASE WHEN schedule_expenses.kind = ? THEN schedule_expenses.amount ELSE 0 END) as onsite_income,
+                 COUNT(schedule_expenses.id) as items_count',
+                [ScheduleExpense::KIND_INCOME, ScheduleExpense::KIND_INCOME]
+            )
             ->groupBy('trip_schedules.trip_id')
             ->get()
             ->keyBy('trip_id');
@@ -77,7 +89,9 @@ class AdminFinanceController extends Controller
 
             $paidRevenue = round((float) ($rev->paid ?? 0) - (float) ($rev->refunded ?? 0), 2);
             $expenseTotal = round((float) ($exp->expenses ?? 0), 2);
-            $profit = round($paidRevenue - $expenseTotal, 2);
+            $onsiteIncome = round((float) ($exp->onsite_income ?? 0), 2);
+            $profit = round($paidRevenue + $onsiteIncome - $expenseTotal, 2);
+            $totalRevenue = round($paidRevenue + $onsiteIncome, 2);
 
             return [
                 'trip_id' => (int) $tripId,
@@ -86,10 +100,11 @@ class AdminFinanceController extends Controller
                 'bookings_count' => (int) ($rev->bookings_count ?? 0),
                 'passengers_count' => (int) ($pax->get($tripId) ?? 0),
                 'paid_revenue' => $paidRevenue,
+                'onsite_income' => $onsiteIncome,
                 'expense_total' => $expenseTotal,
                 'expense_items_count' => (int) ($exp->items_count ?? 0),
                 'profit' => $profit,
-                'margin_percent' => $paidRevenue > 0 ? round($profit / $paidRevenue * 100, 1) : null,
+                'margin_percent' => $totalRevenue > 0 ? round($profit / $totalRevenue * 100, 1) : null,
             ];
         })->sortByDesc('profit')->values();
 
@@ -97,6 +112,7 @@ class AdminFinanceController extends Controller
             'period' => $from || $to ? trim(($from ?? '…').' ถึง '.($to ?? '…')) : 'ทั้งหมด',
             'trips_count' => $rows->count(),
             'paid_revenue' => round($rows->sum('paid_revenue'), 2),
+            'onsite_income' => round($rows->sum('onsite_income'), 2),
             'expense_total' => round($rows->sum('expense_total'), 2),
             'profit' => round($rows->sum('profit'), 2),
         ];
@@ -139,8 +155,9 @@ class AdminFinanceController extends Controller
             $rev = $revenue->get($schedule->id);
 
             $paidRevenue = round((float) ($rev->paid ?? 0) - (float) ($rev->refunded ?? 0), 2);
-            $expenseTotal = round((float) $schedule->expenses->sum('amount'), 2);
-            $profit = round($paidRevenue - $expenseTotal, 2);
+            $ledger = $this->ledgerService->totals($schedule->expenses);
+            $profit = round($paidRevenue + $ledger['income_total'] - $ledger['expense_total'], 2);
+            $totalRevenue = round($paidRevenue + $ledger['income_total'], 2);
 
             return [
                 'schedule_id' => $schedule->id,
@@ -150,9 +167,10 @@ class AdminFinanceController extends Controller
                 'bookings_count' => (int) ($rev->bookings_count ?? 0),
                 'passengers_count' => (int) ($pax->get($schedule->id) ?? 0),
                 'paid_revenue' => $paidRevenue,
-                'expense_total' => $expenseTotal,
+                'onsite_income' => $ledger['income_total'],
+                'expense_total' => $ledger['expense_total'],
                 'profit' => $profit,
-                'margin_percent' => $paidRevenue > 0 ? round($profit / $paidRevenue * 100, 1) : null,
+                'margin_percent' => $totalRevenue > 0 ? round($profit / $totalRevenue * 100, 1) : null,
                 'expenses' => $schedule->expenses->map(fn (ScheduleExpense $e) => $this->expensePayload($e))->values(),
             ];
         })->values();
@@ -161,6 +179,7 @@ class AdminFinanceController extends Controller
             'trip' => ['id' => $trip->id, 'title' => $trip->title, 'type' => $trip->type],
             'totals' => [
                 'paid_revenue' => round($rows->sum('paid_revenue'), 2),
+                'onsite_income' => round($rows->sum('onsite_income'), 2),
                 'expense_total' => round($rows->sum('expense_total'), 2),
                 'profit' => round($rows->sum('profit'), 2),
             ],
@@ -238,6 +257,9 @@ class AdminFinanceController extends Controller
             'name' => ['required_without:expense_template_id', 'nullable', 'string', 'max:255'],
             'amount' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string'],
+            // แอดมินก็คีย์รายรับหน้างานได้ (เช่นเก็บเงินสดแล้วสตาฟลืมจด)
+            'kind' => ['sometimes', Rule::in(ScheduleExpense::KINDS)],
+            'spent_at' => ['nullable', 'date'],
         ]);
 
         $name = $validated['name'] ?? null;
@@ -255,9 +277,11 @@ class AdminFinanceController extends Controller
 
         $expense = $schedule->expenses()->create([
             'expense_template_id' => $templateId,
+            'kind' => $validated['kind'] ?? ScheduleExpense::KIND_EXPENSE,
             'name' => $name,
             'amount' => $amount ?? 0,
             'note' => $validated['note'] ?? null,
+            'spent_at' => $validated['spent_at'] ?? null,
             'created_by' => $request->user()?->id,
         ]);
 
@@ -344,6 +368,10 @@ class AdminFinanceController extends Controller
             foreach ($sourceExpenses as $expense) {
                 $target->expenses()->create([
                     'expense_template_id' => null,
+                    // คัดลอกฝั่งบัญชีและหมวดไปด้วย ไม่งั้นรายรับจะกลายเป็นรายจ่าย
+                    // ที่ปลายทาง (สลิปไม่คัดลอก — เป็นหลักฐานของครั้งนั้นครั้งเดียว)
+                    'kind' => $expense->kind ?: ScheduleExpense::KIND_EXPENSE,
+                    'category' => $expense->category,
                     'name' => $expense->name,
                     'amount' => $expense->amount,
                     'note' => $expense->note,
@@ -367,6 +395,8 @@ class AdminFinanceController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'amount' => ['sometimes', 'numeric', 'min:0'],
             'note' => ['nullable', 'string'],
+            'kind' => ['sometimes', Rule::in(ScheduleExpense::KINDS)],
+            'spent_at' => ['nullable', 'date'],
         ]);
 
         $expense->update($validated);
@@ -380,7 +410,8 @@ class AdminFinanceController extends Controller
     public function deleteExpense(int $scheduleId, int $id): JsonResponse
     {
         $expense = ScheduleExpense::where('schedule_id', $scheduleId)->findOrFail($id);
-        $expense->delete();
+        // ผ่าน service เพื่อให้สลิปที่สตาฟถ่ายไว้ถูกลบตามไปด้วย ไม่ค้างบน bucket
+        $this->ledgerService->delete($expense);
 
         return $this->success([
             'summary' => $this->scheduleSummary(TripSchedule::with('expenses')->find($scheduleId)),
@@ -394,9 +425,15 @@ class AdminFinanceController extends Controller
         return [
             'id' => $expense->id,
             'expense_template_id' => $expense->expense_template_id,
+            'kind' => $expense->kind ?: ScheduleExpense::KIND_EXPENSE,
+            'category' => $expense->category,
+            'category_label' => $expense->categoryLabel(),
             'name' => $expense->name,
             'amount' => (float) $expense->amount,
             'note' => $expense->note,
+            // สลิปที่สตาฟถ่ายหน้างาน — signed URL อายุสั้น เหมือนสลิปโอนเงิน
+            'slip_url' => MediaDisk::slipUrl($expense->slip_path),
+            'spent_at' => $expense->spent_at?->toDateString(),
             'created_by' => $expense->created_by,
             'created_by_name' => $expense->relationLoaded('creator') ? $expense->creator?->name : null,
             'created_at' => $expense->created_at?->toIso8601String(),
@@ -411,16 +448,18 @@ class AdminFinanceController extends Controller
             ->first();
 
         $paidRevenue = round((float) ($rev->paid ?? 0) - (float) ($rev->refunded ?? 0), 2);
-        $expenseTotal = round((float) $schedule->expenses->sum('amount'), 2);
-        $profit = round($paidRevenue - $expenseTotal, 2);
+        $ledger = $this->ledgerService->totals($schedule->expenses);
+        $profit = round($paidRevenue + $ledger['income_total'] - $ledger['expense_total'], 2);
+        $totalRevenue = round($paidRevenue + $ledger['income_total'], 2);
 
         return [
             'schedule_id' => $schedule->id,
             'bookings_count' => (int) ($rev->bookings_count ?? 0),
             'paid_revenue' => $paidRevenue,
-            'expense_total' => $expenseTotal,
+            'onsite_income' => $ledger['income_total'],
+            'expense_total' => $ledger['expense_total'],
             'profit' => $profit,
-            'margin_percent' => $paidRevenue > 0 ? round($profit / $paidRevenue * 100, 1) : null,
+            'margin_percent' => $totalRevenue > 0 ? round($profit / $totalRevenue * 100, 1) : null,
         ];
     }
 }

@@ -355,6 +355,11 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/schedules/{id}/rentals/mark', [StaffController::class, 'markRental']);
         Route::post('staff/schedules/{id}/outstanding/{ref}/send-link', [StaffController::class, 'sendPaymentLink'])
             ->middleware('throttle:payment');
+        // สมุดบัญชีหน้างาน — สตาฟจดรายรับ/รายจ่ายระหว่างทริปพร้อมถ่ายสลิป
+        Route::get('staff/schedules/{id}/ledger', [StaffController::class, 'ledger']);
+        Route::post('staff/schedules/{id}/ledger', [StaffController::class, 'storeLedgerEntry']);
+        Route::post('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'updateLedgerEntry']);
+        Route::delete('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'deleteLedgerEntry']);
 
         // SOS emergency alerts
         Route::post('sos', [SosController::class, 'trigger']);

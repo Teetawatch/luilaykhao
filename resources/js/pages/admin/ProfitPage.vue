@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title"><span class="material-symbols-rounded heading-icon">savings</span> สรุปกำไร/ค่าใช้จ่าย</h1>
-        <p class="page-subtitle">รายรับจริง − ค่าใช้จ่าย = กำไร ต่อทริปและต่อรอบเดินทาง</p>
+        <p class="page-subtitle">รายรับจริง + รับหน้างาน − ค่าใช้จ่าย = กำไร ต่อทริปและต่อรอบเดินทาง</p>
       </div>
     </div>
 
@@ -29,6 +29,10 @@
       <div class="sc-item">
         <span class="sc-label">รายรับจริง</span>
         <span class="sc-val money-green">{{ formatMoney(summary.paid_revenue) }}</span>
+      </div>
+      <div class="sc-item">
+        <span class="sc-label">รับหน้างาน</span>
+        <span class="sc-val money-green">{{ formatMoney(summary.onsite_income) }}</span>
       </div>
       <div class="sc-item">
         <span class="sc-label">ค่าใช้จ่ายรวม</span>
@@ -57,6 +61,7 @@
               <th class="num">จอง</th>
               <th class="num">ผู้เดินทาง</th>
               <th class="num">รายรับจริง</th>
+              <th class="num">รับหน้างาน</th>
               <th class="num">ค่าใช้จ่าย</th>
               <th class="num">กำไร</th>
               <th class="num">มาร์จิน</th>
@@ -71,6 +76,7 @@
                 <td class="num">{{ t.bookings_count }}</td>
                 <td class="num">{{ t.passengers_count }}</td>
                 <td class="num money-green">{{ formatMoney(t.paid_revenue) }}</td>
+                <td class="num money-green">{{ formatMoney(t.onsite_income) }}</td>
                 <td class="num money-orange">{{ formatMoney(t.expense_total) }}</td>
                 <td class="num" :class="profitClass(t.profit)">{{ formatMoney(t.profit) }}</td>
                 <td class="num">{{ t.margin_percent != null ? t.margin_percent + '%' : '-' }}</td>
@@ -83,7 +89,7 @@
 
               <!-- Expanded: schedules -->
               <tr v-if="expanded === t.trip_id" class="detail-row">
-                <td :colspan="9">
+                <td :colspan="10">
                   <div class="schedule-loading" v-if="detailLoading"><div class="spinner spinner-sm"></div></div>
                   <div v-else-if="detail" class="schedule-list">
                     <div v-if="!detail.schedules.length" class="empty-state">
@@ -109,6 +115,7 @@
                           </div>
                           <div class="sched-figures">
                             <span>รายรับจริง <b class="money-green">{{ formatMoney(s.paid_revenue) }}</b></span>
+                            <span v-if="s.onsite_income">รับหน้างาน <b class="money-green">{{ formatMoney(s.onsite_income) }}</b></span>
                             <span>ค่าใช้จ่าย <b class="money-orange">{{ formatMoney(s.expense_total) }}</b></span>
                             <span>กำไร <b :class="profitClass(s.profit)">{{ formatMoney(s.profit) }}</b></span>
                             <span class="sched-pax">{{ s.passengers_count }} คน · {{ s.bookings_count }} จอง</span>
@@ -140,6 +147,7 @@
         <div class="modal-body">
           <div class="exp-summary" v-if="expSummary">
             <span>รายรับจริง <b class="money-green">{{ formatMoney(expSummary.paid_revenue) }}</b></span>
+            <span>รับหน้างาน <b class="money-green">{{ formatMoney(expSummary.onsite_income) }}</b></span>
             <span>ค่าใช้จ่าย <b class="money-orange">{{ formatMoney(expSummary.expense_total) }}</b></span>
             <span>กำไร <b :class="profitClass(expSummary.profit)">{{ formatMoney(expSummary.profit) }}</b></span>
           </div>
@@ -160,7 +168,7 @@
             <thead>
               <tr>
                 <th class="check-col"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" :disabled="!expenses.length" /></th>
-                <th>รายการ</th><th class="num">จำนวนเงิน</th><th>หมายเหตุ</th><th></th>
+                <th>รายการ</th><th class="num">จำนวนเงิน</th><th>หมายเหตุ</th><th>สลิป</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -168,16 +176,31 @@
                 <td class="check-col"><input type="checkbox" :value="e.id" v-model="selectedIds" /></td>
                 <td>
                   {{ e.name }}
+                  <span v-if="e.kind === 'income'" class="tmpl-chip chip-income" title="รายรับหน้างาน">รายรับ</span>
                   <span v-if="e.expense_template_id" class="tmpl-chip" title="มาจากรายการประจำ">ประจำ</span>
+                  <span v-if="e.category_label" class="tmpl-chip">{{ e.category_label }}</span>
+                  <!-- สตาฟจดจากหน้างาน: บอกวันที่ใช้เงินกับคนจด เพื่อไล่ที่มาได้ -->
+                  <small v-if="e.spent_at || e.created_by_name" class="exp-meta">
+                    {{ [e.spent_at, e.created_by_name].filter(Boolean).join(' · ') }}
+                  </small>
                 </td>
-                <td class="num money-orange">{{ formatMoney(e.amount) }}</td>
+                <td class="num" :class="e.kind === 'income' ? 'money-green' : 'money-orange'">
+                  {{ e.kind === 'income' ? '+' : '−' }}{{ formatMoney(e.amount) }}
+                </td>
                 <td class="exp-note">{{ e.note || '-' }}</td>
+                <td>
+                  <!-- signed URL อายุสั้น เปิดแท็บใหม่ไปดูรูปเต็ม -->
+                  <a v-if="e.slip_url" :href="e.slip_url" target="_blank" rel="noopener" class="btn-icon" title="ดูสลิป">
+                    <span class="material-symbols-rounded" style="font-size:16px;">receipt_long</span>
+                  </a>
+                  <span v-else class="exp-note">-</span>
+                </td>
                 <td class="action-btns">
                   <button class="btn-icon btn-edit" title="แก้ไข" @click="startEdit(e)"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
                   <button class="btn-icon btn-delete" title="ลบ" @click="removeExpense(e)"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
                 </td>
               </tr>
-              <tr v-if="!expenses.length"><td colspan="5" class="exp-empty">ยังไม่มีรายการค่าใช้จ่าย</td></tr>
+              <tr v-if="!expenses.length"><td colspan="6" class="exp-empty">ยังไม่มีรายการค่าใช้จ่าย</td></tr>
             </tbody>
           </table>
 
@@ -186,6 +209,13 @@
             <div class="form-group">
               <label>{{ expForm.id ? 'แก้ไขรายการ' : 'เพิ่มรายการ' }}</label>
               <input v-model="expForm.name" placeholder="เช่น ค่าน้ำมัน" required />
+            </div>
+            <div class="form-group exp-kind">
+              <label>ประเภท</label>
+              <select v-model="expForm.kind">
+                <option value="expense">รายจ่าย</option>
+                <option value="income">รายรับหน้างาน</option>
+              </select>
             </div>
             <div class="form-group exp-amount">
               <label>จำนวนเงิน (บาท)</label>
@@ -325,7 +355,7 @@ const expenses = ref([]);
 const expSummary = ref(null);
 const expLoading = ref(false);
 const expBusy = ref(false);
-const expForm = reactive({ id: null, name: '', amount: null, note: '' });
+const expForm = reactive({ id: null, name: '', amount: null, note: '', kind: 'expense' });
 
 // row selection + copy-to-other-rounds state
 const selectedIds = ref([]);
@@ -472,12 +502,14 @@ function resetExpForm() {
   expForm.name = '';
   expForm.amount = null;
   expForm.note = '';
+  expForm.kind = 'expense';
 }
 function startEdit(e) {
   expForm.id = e.id;
   expForm.name = e.name;
   expForm.amount = e.amount;
   expForm.note = e.note || '';
+  expForm.kind = e.kind || 'expense';
 }
 
 async function submitExpense() {
@@ -485,10 +517,10 @@ async function submitExpense() {
   try {
     const id = activeSchedule.value.schedule_id;
     if (expForm.id) {
-      const data = await admin.updateScheduleExpense(id, expForm.id, { name: expForm.name, amount: expForm.amount, note: expForm.note || null });
+      const data = await admin.updateScheduleExpense(id, expForm.id, { name: expForm.name, amount: expForm.amount, note: expForm.note || null, kind: expForm.kind });
       expSummary.value = data.summary;
     } else {
-      const data = await admin.createScheduleExpense(id, { name: expForm.name, amount: expForm.amount, note: expForm.note || null });
+      const data = await admin.createScheduleExpense(id, { name: expForm.name, amount: expForm.amount, note: expForm.note || null, kind: expForm.kind });
       expSummary.value = data.summary;
     }
     resetExpForm();
@@ -638,10 +670,14 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .exp-note { color: #8b909a; max-width: 220px; }
 .exp-empty { text-align: center; color: #9aa0aa; padding: 16px; }
 .tmpl-chip { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; color: #2563eb; background: #eff6ff; border-radius: 6px; padding: 1px 6px; }
+.chip-income { color: #047857; background: #ecfdf5; }
+/* บรรทัดเล็กใต้ชื่อรายการ — วันที่ใช้เงิน + คนจด (มาจากสตาฟหน้างาน) */
+.exp-meta { display: block; margin-top: 2px; font-size: 11px; color: #94a3b8; }
 
 .exp-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #e5e7eb; }
 .exp-form .form-group { flex: 1; min-width: 140px; margin: 0; }
 .exp-form .exp-amount { flex: 0 0 140px; }
+.exp-form .exp-kind { flex: 0 0 150px; }
 .exp-form-actions { display: flex; gap: 8px; }
 
 .check-col { width: 36px; text-align: center; }

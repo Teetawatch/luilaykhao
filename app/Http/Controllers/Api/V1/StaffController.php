@@ -4,13 +4,16 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\ScheduleExpense;
 use App\Models\StaffReview;
 use App\Models\TripSchedule;
 use App\Services\OutstandingPaymentService;
 use App\Services\RentalHandoutService;
+use App\Services\ScheduleLedgerService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
@@ -19,6 +22,7 @@ class StaffController extends Controller
     public function __construct(
         private OutstandingPaymentService $outstandingPaymentService,
         private RentalHandoutService $rentalHandoutService,
+        private ScheduleLedgerService $ledgerService,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -226,6 +230,143 @@ class StaffController extends Controller
             $this->rentalHandoutService->forSchedule($schedule),
             $validated['action'] === 'handout' ? 'บันทึกการแจกอุปกรณ์แล้ว' : 'บันทึกการรับคืนแล้ว',
         );
+    }
+
+    /**
+     * สมุดบัญชีหน้างานของรอบ — รายรับ/รายจ่ายที่เกิดจริงระหว่างทริป + ยอดสรุป
+     */
+    public function ledger(Request $request, int $scheduleId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        return $this->success($this->ledgerService->forSchedule($schedule, $request->user()->id));
+    }
+
+    /**
+     * สตาฟบันทึกหนึ่งรายการ — ซื้ออะไร กี่บาท เมื่อไหร่ พร้อมรูปสลิป/ใบเสร็จ
+     */
+    public function storeLedgerEntry(Request $request, int $scheduleId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $validated = $request->validate($this->ledgerRules() + [
+            'kind' => ['required', Rule::in(ScheduleExpense::KINDS)],
+            'name' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'min:0', 'max:9999999'],
+        ]);
+
+        $entry = $this->ledgerService->record(
+            $schedule,
+            $request->user(),
+            $validated,
+            $request->file('slip'),
+        );
+
+        return $this->success([
+            'entry' => $this->ledgerService->present($entry->load('creator:id,name'), $request->user()->id),
+            'ledger' => $this->ledgerService->forSchedule($schedule, $request->user()->id),
+        ], 'บันทึกรายการแล้ว', 201);
+    }
+
+    /**
+     * แก้รายการที่ตัวเองบันทึกไว้ (พิมพ์ยอดผิด/ถ่ายสลิปใหม่) — ของคนอื่นแก้ไม่ได้
+     */
+    public function updateLedgerEntry(Request $request, int $scheduleId, int $entryId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $entry = $this->ownLedgerEntry($request, $schedule, $entryId);
+
+        if (! $entry) {
+            return $this->error('แก้ไขได้เฉพาะรายการที่คุณบันทึกเอง', 403);
+        }
+
+        $validated = $request->validate($this->ledgerRules() + [
+            'kind' => ['sometimes', Rule::in(ScheduleExpense::KINDS)],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'amount' => ['sometimes', 'numeric', 'min:0', 'max:9999999'],
+            'remove_slip' => ['sometimes', 'boolean'],
+        ]);
+
+        $updated = $this->ledgerService->update($entry, $validated, $request->file('slip'));
+
+        return $this->success([
+            'entry' => $this->ledgerService->present($updated, $request->user()->id),
+            'ledger' => $this->ledgerService->forSchedule($schedule, $request->user()->id),
+        ], 'แก้ไขรายการแล้ว');
+    }
+
+    public function deleteLedgerEntry(Request $request, int $scheduleId, int $entryId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $entry = $this->ownLedgerEntry($request, $schedule, $entryId);
+
+        if (! $entry) {
+            return $this->error('ลบได้เฉพาะรายการที่คุณบันทึกเอง', 403);
+        }
+
+        $this->ledgerService->delete($entry);
+
+        return $this->success(
+            $this->ledgerService->forSchedule($schedule, $request->user()->id),
+            'ลบรายการแล้ว',
+        );
+    }
+
+    /** กติกาที่ใช้ร่วมกันระหว่างเพิ่มและแก้ไขรายการในสมุดบัญชี */
+    private function ledgerRules(): array
+    {
+        return [
+            'category' => ['nullable', 'string', 'max:32'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'spent_at' => ['nullable', 'date'],
+            'slip' => ['nullable', 'image', 'max:5120'],
+        ];
+    }
+
+    /**
+     * รายการในรอบนี้ที่ "สตาฟคนนี้" เป็นคนบันทึก — รายการของแอดมินหรือของสตาฟ
+     * คนอื่นถือว่าไม่ใช่ของตัวเอง แก้/ลบไม่ได้
+     */
+    private function ownLedgerEntry(Request $request, TripSchedule $schedule, int $entryId): ?ScheduleExpense
+    {
+        return ScheduleExpense::with('creator:id,name')
+            ->where('schedule_id', $schedule->id)
+            ->where('created_by', $request->user()->id)
+            ->find($entryId);
     }
 
     /**
