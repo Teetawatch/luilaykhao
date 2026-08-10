@@ -363,6 +363,65 @@ class BeamPaymentTest extends TestCase
         );
     }
 
+    public function test_a_longer_expiry_from_beam_does_not_stretch_the_seat_hold(): void
+    {
+        // Beam ตอบว่า QR อยู่ได้อีกชั่วโมง — ยาวกว่าเวลาที่ที่นั่งเหลือ
+        Http::fake(['*/api/v1/charges' => Http::response([
+            'chargeId' => 'ch_long_expiry',
+            'actionRequired' => 'ENCODED_IMAGE',
+            'encodedImage' => [
+                'imageBase64Encoded' => 'iVBORw0KGgo=',
+                'expiry' => now()->addHour()->toIso8601ZuluString(),
+            ],
+        ], 200)]);
+
+        $booking = $this->pendingBooking();
+        $seatDeadline = $booking->created_at->copy()->addMinutes(Booking::PENDING_TTL_MINUTES);
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+            ])
+            ->assertStatus(201);
+
+        $payment = Payment::latest('id')->first();
+        $this->assertTrue(
+            $payment->expires_at->lt($seatDeadline),
+            'อายุ QR ที่ Beam ส่งมาต้องยืดเกินเพดานของเราไม่ได้',
+        );
+    }
+
+    public function test_an_expiry_without_a_timezone_is_read_as_thai_time(): void
+    {
+        // ไม่มี Z ไม่มี +07:00 — ถ้าอ่านเป็น UTC จะกลายเป็นบวกไปอีกเจ็ดชั่วโมง
+        Http::fake(['*/api/v1/charges' => Http::response([
+            'chargeId' => 'ch_naive_expiry',
+            'actionRequired' => 'ENCODED_IMAGE',
+            'encodedImage' => [
+                'imageBase64Encoded' => 'iVBORw0KGgo=',
+                'expiry' => now('Asia/Bangkok')->addMinutes(5)->format('Y-m-d\TH:i:s'),
+            ],
+        ], 200)]);
+
+        $booking = $this->pendingBooking();
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+            ])
+            ->assertStatus(201);
+
+        $payment = Payment::latest('id')->first();
+        $this->assertEqualsWithDelta(
+            5 * 60,
+            now()->diffInSeconds($payment->expires_at),
+            60,
+            'QR ต้องเหลืออีกราวๆ 5 นาที ไม่ใช่เจ็ดชั่วโมงกว่า',
+        );
+    }
+
     public function test_status_is_readable_by_the_owner_and_closed_to_everyone_else(): void
     {
         $this->fakeBeamOk();

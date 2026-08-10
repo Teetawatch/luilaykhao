@@ -113,8 +113,7 @@ class BeamPaymentService
         $payment->update([
             'provider_charge_id' => $response['chargeId'] ?? null,
             'raw_response' => $response,
-            // Beam กำหนดวันหมดอายุ QR เองได้ ยึดของ Beam ถ้ามี เพราะฝั่งนั้นคือคนตัดจริง
-            'expires_at' => $this->parseExpiry(data_get($response, 'encodedImage.expiry')) ?? $expiresAt,
+            'expires_at' => $this->resolveExpiry(data_get($response, 'encodedImage.expiry'), $expiresAt),
         ]);
 
         return $payment->fresh();
@@ -496,6 +495,31 @@ class BeamPaymentService
         return $payload;
     }
 
+    /**
+     * เวลาหมดอายุที่จะยึดจริง เมื่อ Beam ตอบกลับมาแล้ว
+     *
+     * Beam เป็นคนตัด QR จริง จึงยอมให้ "หด" อายุลงได้ แต่ต้องไม่ยอมให้ "ยืด" เกิน
+     * ที่เราขอ เพราะเพดานของเราคือเวลาที่ที่นั่งจะถูกคืน (ดู expiryFor) — QR ที่ยัง
+     * นับถอยหลังอยู่ทั้งที่ที่นั่งหลุดไปแล้ว คือการชวนลูกค้าจ่ายเงินเข้าที่นั่งที่ไม่มีอยู่
+     */
+    private function resolveExpiry(mixed $value, Carbon $fallback): Carbon
+    {
+        $parsed = $this->parseExpiry($value);
+
+        if ($parsed === null || $parsed->isPast()) {
+            return $fallback;
+        }
+
+        return $parsed->lt($fallback) ? $parsed : $fallback;
+    }
+
+    /**
+     * เวลาที่ไม่มีโซนติดมาคือเวลาไทย ไม่ใช่ UTC
+     *
+     * เอกสารบอกว่าส่ง ISO8601 ลงท้ายด้วย Z แต่ถ้าวันไหนตอบเป็น "2026-08-10 21:29:00"
+     * เปล่าๆ มา การอ่านเป็น UTC จะได้เวลาที่บวกไปอีกเจ็ดชั่วโมง แล้วหน้าเว็บจะขึ้นว่า
+     * QR หมดอายุใน 449 นาที
+     */
     private function parseExpiry(mixed $value): ?Carbon
     {
         if (! is_string($value) || $value === '') {
@@ -503,7 +527,9 @@ class BeamPaymentService
         }
 
         try {
-            return Carbon::parse($value);
+            $hasZone = (bool) preg_match('/(Z|[+-]\d{2}:?\d{2})$/i', trim($value));
+
+            return Carbon::parse($value, $hasZone ? null : 'Asia/Bangkok')->utc();
         } catch (\Throwable) {
             return null;
         }
