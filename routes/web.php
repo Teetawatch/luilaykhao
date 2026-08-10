@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminPaymentWebController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicPassengerFillController;
@@ -193,6 +194,15 @@ Route::post('/pay/{token}', [PublicPaymentController::class, 'pay'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:payment')
     ->name('public.pay.submit');
+
+// Beam returnUrl — ปลายทางหลังลูกค้าจ่ายผ่านแอปธนาคารแล้วเด้งกลับ (ไม่ต้องล็อกอิน
+// เพราะเบราว์เซอร์บนมือถืออาจกลับมาโดยไม่มี session เดิม) หน้านี้แค่รอผลจาก webhook
+Route::get('/payment/return', PaymentReturnController::class)
+    ->middleware('throttle:60,1')
+    ->name('payment.return');
+Route::get('/payment/return/{payment}/status', [PaymentReturnController::class, 'status'])
+    ->middleware('throttle:120,1')
+    ->name('payment.return.status');
 
 // Public split-share payment — เพื่อนร่วมทริปจ่ายส่วนของตัวเองจากลิงก์ (ไม่ต้องล็อกอิน)
 Route::get('/pay-share/{token}', [PublicSharePaymentController::class, 'show'])

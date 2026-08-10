@@ -202,6 +202,12 @@ class Booking extends Model
         return $this->hasMany(BookingSplitShare::class)->orderBy('id');
     }
 
+    /** รายการชำระเงินผ่านเกตเวย์ (Beam) — หลายแถวได้ เพราะจ่ายกันคนละยอดคนละเวลา. */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest('id');
+    }
+
     public function review(): HasOne
     {
         return $this->hasOne(Review::class);

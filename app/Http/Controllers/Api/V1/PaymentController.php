@@ -2,26 +2,21 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Events\PaymentConfirmed;
-use App\Events\SeatBooked;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\ChargeRequest;
 use App\Http\Resources\BookingResource;
 use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
-use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
 use App\Models\User;
 use App\Services\BalancePaymentService;
 use App\Services\BookingService;
+use App\Services\BookingSettlementService;
 use App\Services\InstallmentPaymentService;
-use App\Services\MailService;
+use App\Services\PaymentNotAvailableException;
 use App\Services\SlipOcrService;
-use App\Services\SmsService;
-use App\Services\SplitPaymentService;
 use App\Support\MediaDisk;
 use App\Support\PaymentQuote;
-use App\Support\ThaiDate;
 use App\Traits\ApiResponse;
 use App\Traits\ResolvesTransferDatetime;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -38,11 +33,8 @@ class PaymentController extends Controller
 
     public function __construct(
         private BookingService $bookingService,
-        private MailService $mailService,
-        private SmsService $smsService,
         private InstallmentPaymentService $installmentPaymentService,
         private BalancePaymentService $balancePaymentService,
-        private SplitPaymentService $splitPaymentService,
         private SlipOcrService $slipOcrService,
     ) {}
 
@@ -140,7 +132,15 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function charge(ChargeRequest $request): JsonResponse
+    /**
+     * Slip-upload payment (วิธีเดิม): ลูกค้าโอนเองแล้วส่งรูปสลิปมา
+     *
+     * ตรรกะว่า "รับเงินแล้วต้องเกิดอะไรขึ้นกับการจอง" อยู่ใน BookingSettlementService
+     * เพราะทาง Beam ต้องทำให้เกิดผลเหมือนกันเป๊ะตอน webhook เข้า ที่นี่เหลือแค่ส่วนที่
+     * เป็นของ "ทางสลิป" จริงๆ: เก็บรูป ตรวจยอดด้วย OCR และตัดสินใจว่าจะกันไว้ให้
+     * แอดมินตรวจไหม
+     */
+    public function charge(ChargeRequest $request, BookingSettlementService $settlement): JsonResponse
     {
         try {
             $booking = Booking::where('booking_ref', $request->booking_ref)
@@ -157,413 +157,81 @@ class PaymentController extends Controller
             // เวอร์ชันเก่าที่ยังคำนวณมัดจำเอง) ต้องเห็นใน log ไม่ใช่รู้ตอนสลิปไม่ตรง
             $this->warnOnQuoteMismatch($booking, $paymentType, $request->input('amount'));
 
+            $installmentCount = $request->input('installment_count') !== null
+                ? (int) $request->input('installment_count')
+                : null;
+
+            // ยอดที่ต้องโอนตอนนี้ + ตรวจว่ารอบนี้จ่ายแบบนี้ได้จริงไหม (โยน 422 ถ้าไม่ได้)
+            $dueNow = $settlement->quote($booking, $paymentType, ['installment_count' => $installmentCount]);
+
             // Store slip image
             $slipPath = null;
             if ($request->hasFile('slip_image')) {
                 $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
             }
 
-            // ── Installment payment ──────────────────────────────────
-            if ($paymentType === 'installment') {
-                $schedule = $booking->schedule;
+            $paymentRef = match ($paymentType) {
+                'installment' => 'PAY-INST-'.strtoupper(uniqid()),
+                'split' => 'PAY-SPLIT-'.strtoupper(uniqid()),
+                'deposit' => 'PAY-DEP-'.strtoupper(uniqid()),
+                default => 'PAY-'.strtoupper(uniqid()),
+            };
 
-                if (! $schedule->installment_enabled) {
-                    return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
-                }
-
-                $installmentCount = (int) ($request->input('installment_count') ?? $schedule->installment_count);
-                $maxAllowed = (int) $schedule->installment_count;
-                if ($installmentCount < 2 || $installmentCount > min($maxAllowed, 6)) {
-                    return $this->error("จำนวนงวดต้องอยู่ระหว่าง 2-{$maxAllowed} งวด", 422);
-                }
-                $installmentIntervalDays = (int) $schedule->installment_interval_days;
-                $totalAmount = (float) $booking->total_amount;
-                $perInstallment = PaymentQuote::installmentAmounts($totalAmount, $installmentCount)['per_amount'];
-
-                // ตรวจยอดงวดแรกก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน
-                $review = $this->slipNeedsReview($slipPath, (float) $perInstallment);
-                $paymentRef = 'PAY-INST-'.strtoupper(uniqid());
-
-                DB::transaction(function () use (
-                    $booking, $installmentCount, $installmentIntervalDays,
-                    $perInstallment, $totalAmount, $paymentMethod, $slipPath, $transferDt, $review, $paymentRef
-                ) {
-                    $now = now();
-
-                    $booking->update([
-                        'payment_type' => 'installment',
-                        'installment_count' => $installmentCount,
-                        'installment_interval_days' => $installmentIntervalDays,
-                        'payment_method' => $paymentMethod,
-                        'payment_ref' => $paymentRef,
-                        'slip_path' => $slipPath,
-                        'transfer_datetime' => $transferDt,
-                        'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
-                    ]);
-
-                    // ล้างงวดเดิม (กรณีอัปสลิปซ้ำหลังโดนกัน) แล้วสร้างใหม่ ไม่ให้ซ้ำ
-                    $booking->installmentPayments()->delete();
-
-                    $amounts = PaymentQuote::installmentAmounts($totalAmount, $installmentCount);
-
-                    for ($i = 1; $i <= $installmentCount; $i++) {
-                        $dueDate = $now->copy()->addDays(($i - 1) * $installmentIntervalDays);
-                        $amount = $i === $installmentCount
-                            ? $amounts['last_amount']
-                            : $amounts['per_amount'];
-
-                        InstallmentPayment::create([
-                            'booking_id' => $booking->id,
-                            'installment_no' => $i,
-                            'amount' => $amount,
-                            'due_date' => $dueDate->toDateString(),
-                            'status' => $i === 1 ? 'paid' : 'pending',
-                            'payment_method' => $i === 1 ? $paymentMethod : null,
-                            'payment_ref' => $i === 1 ? $paymentRef : null,
-                            'paid_at' => $i === 1 ? $now : null,
-                            'slip_path' => $i === 1 ? $slipPath : null,
-                            'transfer_datetime' => $i === 1 ? $transferDt : null,
-                        ]);
-                    }
-
-                    // For installment, paid_amount at this step is only the first installment
-                    if (! $review['hold']) {
-                        $this->bookingService->confirmBooking($booking->fresh(), $paymentMethod, $paymentRef, $perInstallment);
-                    }
-                });
-
-                if ($review['hold']) {
-                    return $this->holdBookingForReview($booking, $review['raw']);
-                }
-
-                if ($slipPath) {
-                    $firstInstallment = $booking->fresh()->installmentPayments()->where('installment_no', 1)->first();
-                    if ($firstInstallment) {
-                        VerifySlipJob::dispatch('installment', $firstInstallment->id, $slipPath, $perInstallment);
-                    }
-                }
-
-                $booking = $booking->fresh()->load(['seats', 'installmentPayments']);
-
-                try {
-                    foreach ($booking->seats as $seat) {
-                        broadcast(new SeatBooked(
-                            $booking->schedule_id,
-                            $seat->seat_id,
-                            $booking->schedule->available_seats,
-                        ));
-                    }
-
-                    broadcast(new PaymentConfirmed(
-                        $booking->user_id,
-                        $booking->booking_ref,
-                        'confirmed',
-                        $booking->seats->pluck('seat_id')->toArray(),
-                    ));
-                } catch (\Exception $e) {
-                    Log::warning('Broadcast failed: '.$e->getMessage());
-                }
-
-                // Send payment confirmation email (installment)
-                $this->mailService->sendPaymentConfirmedEmail($booking, 'installment');
-                $this->smsService->sendPaymentConfirmed($booking, 'installment');
-                SmartNotification::send(
-                    $booking->user_id,
-                    'payment_confirmed',
-                    'ยืนยันการชำระเงินแล้ว',
-                    "รับชำระงวดแรกของเลขการจอง {$booking->booking_ref} แล้ว",
-                    [
-                        'booking_ref' => $booking->booking_ref,
-                        'route' => 'booking',
-                    ],
-                );
-
-                return $this->success([
-                    'status' => 'confirmed',
-                    'booking' => new BookingResource($booking),
-                ], 'ชำระงวดแรกสำเร็จ กรุณาชำระงวดถัดไปตามกำหนด');
-            }
-
-            // ── Split payment (จ่ายเต็มแบบแบ่งจ่ายกลุ่ม) ─────────────
-            // เจ้าของชำระ "ส่วนของตัวเอง" ตอนนี้ ที่นั่งยืนยันทันที
-            // ยอดที่เหลือแบ่งให้เพื่อนร่วมทริปช่วยจ่ายผ่านแอป/ลิงก์
-            // ใช้กลไก balance ของมัดจำ (deposit_amount = ส่วนเจ้าของ)
-            if ($paymentType === 'split') {
-                $schedule = $booking->schedule;
-                $passengerCount = $booking->passengers()->count();
-
-                if ($booking->is_join_trip) {
-                    return $this->error('การจองแบบจอยทริปไม่รองรับการแบ่งจ่าย', 422);
-                }
-
-                if ($passengerCount < 2) {
-                    return $this->error('การแบ่งจ่ายต้องมีผู้เดินทางอย่างน้อย 2 คน', 422);
-                }
-
-                // ยอดชุดเดียวกับที่ลูกค้าเห็นบน QR (payment_options.split)
-                $split = PaymentQuote::split($booking);
-                $totalAmount = (float) $booking->total_amount;
-                $ownerShare = (float) $split['owner_share'];
-                $balanceAmount = (float) $split['friends_total'];
-
-                $balanceDueAt = PaymentQuote::balanceDueAt($schedule);
-
-                $paymentRef = 'PAY-SPLIT-'.strtoupper(uniqid());
-
-                // ตรวจยอดส่วนของเจ้าของก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน
-                $review = $this->slipNeedsReview($slipPath, (float) $ownerShare);
-
-                DB::transaction(function () use (
-                    $booking, $ownerShare, $balanceAmount, $balanceDueAt,
-                    $paymentMethod, $paymentRef, $slipPath, $transferDt, $passengerCount, $review
-                ) {
-                    $booking->update([
-                        'payment_type' => 'deposit',
-                        'deposit_amount' => $ownerShare,
-                        'balance_amount' => $balanceAmount,
-                        'balance_due_at' => $balanceDueAt,
-                        'payment_method' => $paymentMethod,
-                        'payment_ref' => $paymentRef,
-                        'slip_path' => $slipPath,
-                        'transfer_datetime' => $transferDt,
-                        'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
-                    ]);
-
-                    // ล้างส่วนแบ่งเดิม (กรณีอัปสลิปซ้ำหลังโดนกัน) แล้วสร้างใหม่ ไม่ให้ซ้ำ
-                    $booking->splitShares()->delete();
-
-                    $this->splitPaymentService->createSharesForRemainder(
-                        $booking->fresh(),
-                        $balanceAmount,
-                        $passengerCount - 1,
-                    );
-
-                    if (! $review['hold']) {
-                        $this->bookingService->confirmBooking(
-                            $booking->fresh(),
-                            $paymentMethod,
-                            $paymentRef,
-                            $ownerShare,
-                        );
-                    }
-                });
-
-                if ($review['hold']) {
-                    return $this->holdBookingForReview($booking, $review['raw']);
-                }
-
-                if ($slipPath) {
-                    VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $ownerShare);
-                }
-
-                $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers', 'splitShares']);
-
-                try {
-                    foreach ($booking->seats as $seat) {
-                        broadcast(new SeatBooked(
-                            $booking->schedule_id,
-                            $seat->seat_id,
-                            $booking->schedule->available_seats,
-                        ));
-                    }
-
-                    broadcast(new PaymentConfirmed(
-                        $booking->user_id,
-                        $booking->booking_ref,
-                        'confirmed',
-                        $booking->seats->pluck('seat_id')->toArray(),
-                    ));
-                } catch (\Exception $e) {
-                    Log::warning('Broadcast failed: '.$e->getMessage());
-                }
-
-                $this->mailService->sendDepositPaidEmail($booking);
-
-                $shareCount = $passengerCount - 1;
-                SmartNotification::send(
-                    $booking->user_id,
-                    'split_started',
-                    'รับชำระส่วนของคุณแล้ว',
-                    "รับชำระส่วนของคุณสำหรับเลขการจอง {$booking->booking_ref} แล้ว แบ่งยอดที่เหลือให้เพื่อนอีก {$shareCount} คน — เชิญเพื่อนเข้าการจองหรือส่งลิงก์ชำระเงินได้เลย",
-                    [
-                        'booking_ref' => $booking->booking_ref,
-                        'route' => 'booking',
-                    ],
-                );
-
-                return $this->success([
-                    'status' => 'confirmed',
-                    'booking' => new BookingResource($booking),
-                ], 'ชำระส่วนของคุณสำเร็จ ส่งลิงก์ให้เพื่อนช่วยจ่ายส่วนที่เหลือได้เลย');
-            }
-
-            // ── Deposit payment ──────────────────────────────────────
-            if ($paymentType === 'deposit') {
-                $schedule = $booking->schedule;
-
-                // ยอดชุดเดียวกับที่ลูกค้าเห็นบน QR (payment_options.deposit) — คิดมัดจำ
-                // ต่อคนและหักส่วนลดตามระดับสมาชิกให้เหมือนกันทั้งตอนแสดงและตอนรับเงิน
-                $deposit = PaymentQuote::deposit($booking);
-
-                if (! $deposit['available']) {
-                    return $this->error(match ($deposit['reason']) {
-                        'not_configured' => 'ผู้ดูแลระบบยังไม่ได้กำหนดยอดมัดจำสำหรับรอบเดินทางนี้',
-                        'exceeds_total' => 'ยอดมัดจำต้องน้อยกว่ายอดรวม กรุณาเลือกชำระเต็มจำนวน',
-                        default => 'รอบเดินทางนี้ไม่รองรับการจ่ายมัดจำ',
-                    }, 422);
-                }
-
-                $totalAmount = (float) $booking->total_amount;
-                $depositAmount = (float) $deposit['amount'];
-                $balanceAmount = (float) $deposit['balance'];
-                $balanceDueAt = PaymentQuote::balanceDueAt($schedule);
-
-                $paymentRef = 'PAY-DEP-'.strtoupper(uniqid());
-
-                // ตรวจยอดมัดจำก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน
-                $review = $this->slipNeedsReview($slipPath, (float) $depositAmount);
-
-                DB::transaction(function () use (
-                    $booking, $depositAmount, $balanceAmount, $balanceDueAt,
-                    $paymentMethod, $paymentRef, $slipPath, $transferDt, $review
-                ) {
-                    $booking->update([
-                        'payment_type' => 'deposit',
-                        'deposit_amount' => $depositAmount,
-                        'balance_amount' => $balanceAmount,
-                        'balance_due_at' => $balanceDueAt,
-                        'payment_method' => $paymentMethod,
-                        'payment_ref' => $paymentRef,
-                        'slip_path' => $slipPath,
-                        'transfer_datetime' => $transferDt,
-                        'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
-                    ]);
-
-                    if (! $review['hold']) {
-                        $this->bookingService->confirmBooking(
-                            $booking->fresh(),
-                            $paymentMethod,
-                            $paymentRef,
-                            $depositAmount,
-                        );
-                    }
-                });
-
-                if ($review['hold']) {
-                    return $this->holdBookingForReview($booking, $review['raw']);
-                }
-
-                if ($slipPath) {
-                    VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $depositAmount);
-                }
-
-                $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);
-
-                try {
-                    foreach ($booking->seats as $seat) {
-                        broadcast(new SeatBooked(
-                            $booking->schedule_id,
-                            $seat->seat_id,
-                            $booking->schedule->available_seats,
-                        ));
-                    }
-
-                    broadcast(new PaymentConfirmed(
-                        $booking->user_id,
-                        $booking->booking_ref,
-                        'confirmed',
-                        $booking->seats->pluck('seat_id')->toArray(),
-                    ));
-                } catch (\Exception $e) {
-                    Log::warning('Broadcast failed: '.$e->getMessage());
-                }
-
-                $this->mailService->sendDepositPaidEmail($booking);
-                $this->smsService->sendDepositPaid($booking);
-
-                $balanceDueText = ThaiDate::full($balanceDueAt);
-                SmartNotification::send(
-                    $booking->user_id,
-                    'deposit_paid',
-                    'รับชำระเงินมัดจำแล้ว',
-                    "รับชำระมัดจำเลขการจอง {$booking->booking_ref} แล้ว กรุณาชำระยอดส่วนที่เหลือภายในวันที่ {$balanceDueText}",
-                    [
-                        'booking_ref' => $booking->booking_ref,
-                        'route' => 'booking',
-                    ],
-                );
-
-                return $this->success([
-                    'status' => 'confirmed',
-                    'booking' => new BookingResource($booking),
-                ], 'ชำระเงินมัดจำสำเร็จ กรุณาชำระยอดส่วนที่เหลือก่อนเดินทาง 15 วัน');
-            }
-
-            // ── Full payment ─────────────────────────────────────────
-            $paymentRef = 'PAY-'.strtoupper(uniqid());
-
-            // เก็บสลิป + ข้อมูลการชำระไว้ก่อน แล้วตรวจยอด — ถ้ายอดไม่ตรงให้ค้างรอแอดมิน
-            $booking->update([
-                'payment_type' => 'full',
+            $recordOpts = [
+                'installment_count' => $installmentCount,
                 'payment_method' => $paymentMethod,
                 'payment_ref' => $paymentRef,
                 'slip_path' => $slipPath,
                 'transfer_datetime' => $transferDt,
                 'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
-            ]);
+            ];
 
-            $review = $this->slipNeedsReview($slipPath, (float) $booking->total_amount);
+            // ตรวจยอดก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน ไม่ยืนยันที่นั่ง
+            $review = $this->slipNeedsReview($slipPath, $dueNow);
+
+            DB::transaction(function () use ($settlement, $booking, $paymentType, $recordOpts, $review, $paymentMethod, $paymentRef, $dueNow) {
+                $settlement->record($booking, $paymentType, $recordOpts);
+
+                if (! $review['hold']) {
+                    $settlement->confirm($booking, $paymentType, $paymentMethod, $paymentRef, $dueNow);
+                }
+            });
+
             if ($review['hold']) {
                 return $this->holdBookingForReview($booking, $review['raw']);
             }
 
-            $booking = $this->bookingService->confirmBooking(
-                $booking->fresh(),
-                $paymentMethod,
-                $paymentRef,
-            );
-
             if ($slipPath) {
-                VerifySlipJob::dispatch('booking', $booking->id, $slipPath, (float) $booking->total_amount);
-            }
-
-            try {
-                foreach ($booking->seats as $seat) {
-                    broadcast(new SeatBooked(
-                        $booking->schedule_id,
-                        $seat->seat_id,
-                        $booking->schedule->available_seats,
-                    ));
+                // งวดผ่อนตรวจสลิปที่ระดับ "งวด" ไม่ใช่ระดับการจอง
+                if ($paymentType === 'installment') {
+                    $firstInstallment = $booking->fresh()->installmentPayments()->where('installment_no', 1)->first();
+                    if ($firstInstallment) {
+                        VerifySlipJob::dispatch('installment', $firstInstallment->id, $slipPath, $dueNow);
+                    }
+                } else {
+                    VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $dueNow);
                 }
-
-                broadcast(new PaymentConfirmed(
-                    $booking->user_id,
-                    $booking->booking_ref,
-                    'confirmed',
-                    $booking->seats->pluck('seat_id')->toArray(),
-                ));
-            } catch (\Exception $e) {
-                Log::warning('Broadcast failed: '.$e->getMessage());
             }
 
-            // Send payment confirmation email (full)
-            $this->mailService->sendPaymentConfirmedEmail($booking, 'full');
-            $this->smsService->sendPaymentConfirmed($booking, 'full');
-            SmartNotification::send(
-                $booking->user_id,
-                'payment_confirmed',
-                'ยืนยันการชำระเงินแล้ว',
-                "รับชำระเงินเลขการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
-                [
-                    'booking_ref' => $booking->booking_ref,
-                    'route' => 'booking',
-                ],
-            );
+            $settlement->announce($booking, $paymentType);
+
+            $booking = $booking->fresh()->load(match ($paymentType) {
+                'installment' => ['seats', 'installmentPayments'],
+                'split' => ['seats', 'schedule.trip', 'passengers', 'splitShares'],
+                default => ['seats', 'schedule.trip', 'passengers'],
+            });
 
             return $this->success([
                 'status' => 'confirmed',
                 'booking' => new BookingResource($booking),
-            ], 'ชำระเงินสำเร็จ');
+            ], match ($paymentType) {
+                'installment' => 'ชำระงวดแรกสำเร็จ กรุณาชำระงวดถัดไปตามกำหนด',
+                'split' => 'ชำระส่วนของคุณสำเร็จ ส่งลิงก์ให้เพื่อนช่วยจ่ายส่วนที่เหลือได้เลย',
+                'deposit' => 'ชำระเงินมัดจำสำเร็จ กรุณาชำระยอดส่วนที่เหลือก่อนเดินทาง 15 วัน',
+                default => 'ชำระเงินสำเร็จ',
+            });
+        } catch (PaymentNotAvailableException $e) {
+            return $this->error($e->getMessage(), 422);
         } catch (ValidationException $e) {
             return $this->error($e->validator->errors()->first(), 422);
         } catch (ModelNotFoundException $e) {

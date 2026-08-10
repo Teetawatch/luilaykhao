@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AppVersionController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BeamPaymentController;
+use App\Http\Controllers\Api\V1\BeamWebhookController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -323,6 +325,12 @@ Route::prefix('v1')->group(function () {
         Route::post('payments/charge-installment', [PaymentController::class, 'chargeInstallment'])->middleware('throttle:payment');
         Route::post('payments/charge-balance', [PaymentController::class, 'chargeBalance'])->middleware('throttle:payment');
         Route::post('payments/scan-slip', [PaymentController::class, 'scanSlip'])->middleware('throttle:slip-scan');
+
+        // Beam Checkout — ออก QR/ลิงก์จ่าย แล้วให้ webhook เป็นคนยืนยันการจอง
+        // ต้องประกาศก่อน payments/{booking_ref} ไม่งั้น 'beam' จะถูกอ่านเป็นเลขการจอง
+        Route::post('payments/beam/charge', [BeamPaymentController::class, 'charge'])->middleware('throttle:payment');
+        Route::get('payments/beam/{payment}', [BeamPaymentController::class, 'status']);
+
         Route::get('payments/{booking_ref}', [PaymentController::class, 'status']);
 
         // Reviews (authenticated)
@@ -429,6 +437,9 @@ Route::prefix('v1')->group(function () {
 
     // Payment webhook (no auth, verify signature)
     Route::post('payments/webhook', [PaymentController::class, 'webhook']);
+
+    // Beam callback — คนละสเปกลายเซ็นกับอันบน (base64 + X-Beam-Signature) จึงแยก endpoint
+    Route::post('payments/beam/webhook', BeamWebhookController::class);
 
     // Guest booking lookup: ยืนยันตัวตนด้วย booking_ref + เบอร์โทร (ไม่ต้องล็อกอิน)
     Route::post('bookings/guest-lookup', [VehicleTrackingController::class, 'guestLookup'])->middleware('throttle:20,1');

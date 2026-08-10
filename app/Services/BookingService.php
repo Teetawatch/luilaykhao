@@ -8,6 +8,7 @@ use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
+use App\Models\Payment;
 use App\Models\Promotion;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
@@ -514,9 +515,16 @@ class BookingService
 
         // ยกเว้นรายการที่ส่งสลิปแล้วแต่กำลัง "รอตรวจสอบยอด" (slip_ocr_status ถูกตั้งค่า):
         // ลูกค้าจ่ายมาแล้ว รอแอดมินอนุมัติ ต้อง hold ที่นั่งไว้ ไม่ให้ timer ยกเลิกทิ้ง
+        //
+        // และยกเว้นรายการที่มี QR ของเกตเวย์ค้างอยู่และยังไม่หมดอายุ: ลูกค้าอาจกำลัง
+        // สแกนจ่ายอยู่พอดี ถ้าคืนที่นั่งตอนนี้แล้ว webhook ตามมาอีกสิบวินาที เราจะรับเงิน
+        // ไว้ทั้งที่ที่นั่งถูกปล่อยให้คนอื่นไปแล้ว
         $candidateIds = Booking::where('status', 'pending')
             ->whereNull('slip_ocr_status')
             ->where('created_at', '<=', $threshold)
+            ->whereDoesntHave('payments', fn ($q) => $q
+                ->where('status', Payment::STATUS_PENDING)
+                ->where('expires_at', '>', now()))
             ->pluck('id');
 
         $expiredBookings = [];

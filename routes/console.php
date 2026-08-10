@@ -14,6 +14,7 @@ use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PruneSosPhotosJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\PurgeExpiredSchedulePhotosJob;
+use App\Jobs\ReconcileBeamChargesJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
 use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
@@ -66,6 +67,9 @@ Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 Schedule::command('trip-activity:sync')->everyMinute()->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
+// ตาข่ายรับ webhook ของ Beam ที่หายไป — ถามเกตเวย์เองว่า charge ที่ค้างอยู่จบยังไง
+// no-op ทั้งหมดเมื่อ PAYMENT_PROVIDER ยังไม่ใช่ beam
+Schedule::job(new ReconcileBeamChargesJob)->everyFiveMinutes()->withoutOverlapping();
 // Win-back for abandoned (auto-expired) bookings — hourly, sends one nudge per
 // booking a couple of hours after it lapsed.
 Schedule::job(new AbandonedBookingWinbackJob)->hourly()->withoutOverlapping();

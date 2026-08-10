@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Booking;
 use App\Support\MediaDisk;
+use App\Support\PaymentGateway;
 use App\Support\PaymentQuote;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -120,6 +121,9 @@ class BookingResource extends JsonResource
                 $this->status === 'pending' && $this->relationLoaded('schedule') && $this->schedule,
                 fn () => PaymentQuote::forBooking($this->resource),
             ),
+            // รับเงินด้วยเกตเวย์หรือให้ลูกค้าโอนเอง+แนบสลิป — client ต้องรู้ก่อนวาดหน้าจ่าย
+            // ส่งเสมอ ไม่ผูกกับ status เพราะยอดคงเหลือ/ค่างวดจ่ายตอนการจอง confirmed แล้ว
+            'payment_gateway' => PaymentGateway::publicConfig(),
             // ส่วนต่าง Flexi-Price ที่ตกลงจ่ายเพิ่ม (เก็บวันเดินทาง) — null เมื่อไม่เข้าร่วม
             'flexi_surcharge' => $this->flexi_surcharge,
             'selected_addons' => $this->selected_addons ?? [],

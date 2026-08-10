@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Services\BalancePaymentService;
+use App\Services\BeamPaymentService;
 use App\Services\InstallmentPaymentService;
 use App\Services\PromptPayService;
 use App\Support\MediaDisk;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
@@ -23,6 +26,7 @@ class PublicPaymentController extends Controller
         private InstallmentPaymentService $installmentPaymentService,
         private BalancePaymentService $balancePaymentService,
         private PromptPayService $promptPayService,
+        private BeamPaymentService $beamPayments,
     ) {}
 
     public function show(string $token): View
@@ -89,6 +93,7 @@ class PublicPaymentController extends Controller
             'booking' => $booking,
             'installment' => $installment,
             'qrDataUri' => $this->qrFor((float) $installment->amount),
+            'beamPayment' => $this->beamChargeFor($booking, Payment::PURPOSE_INSTALLMENT_DUE, $installment->id),
         ]);
     }
 
@@ -101,7 +106,35 @@ class PublicPaymentController extends Controller
         return view('payment.balance-pay', [
             'booking' => $booking,
             'qrDataUri' => $this->qrFor((float) $booking->balance_amount),
+            'beamPayment' => $this->beamChargeFor($booking, Payment::PURPOSE_BALANCE),
         ]);
+    }
+
+    /**
+     * QR ของเกตเวย์สำหรับหน้านี้ — null เมื่อยังใช้วิธีโอนเอง หรือเมื่อเกตเวย์ล่ม
+     *
+     * ล้มแล้วต้องไม่ทำให้หน้าพัง: ลูกค้าเปิดลิงก์จากอีเมลมาเพื่อจ่ายเงิน หน้า error
+     * แปลว่าเราไม่ได้เงิน — ตกกลับไปโชว์ QR ที่เราสร้างเอง + ช่องแนบสลิปแทน
+     */
+    private function beamChargeFor(Booking $booking, string $purpose, ?int $purposeId = null): ?Payment
+    {
+        if (! $this->beamPayments->enabled()) {
+            return null;
+        }
+
+        try {
+            return $this->beamPayments->ensureCharge($booking, $purpose, 'QR_PROMPT_PAY', [
+                'purpose_id' => $purposeId,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Public payment page could not create a Beam charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => $purpose,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     private function qrFor(float $amount): string

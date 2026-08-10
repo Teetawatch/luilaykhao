@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\BookingSplitShare;
+use App\Models\Payment;
+use App\Services\BeamPaymentService;
 use App\Services\PromptPayService;
 use App\Services\SplitPaymentService;
 use App\Support\MediaDisk;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
@@ -21,6 +24,7 @@ class PublicSharePaymentController extends Controller
     public function __construct(
         private SplitPaymentService $splitPayments,
         private PromptPayService $promptPayService,
+        private BeamPaymentService $beamPayments,
     ) {}
 
     public function show(string $token): View
@@ -41,7 +45,37 @@ class PublicSharePaymentController extends Controller
             'share' => $share,
             'booking' => $booking,
             'qrDataUri' => $this->promptPayService->qrDataUri($payload),
+            'beamPayment' => $this->beamChargeFor($share),
         ]);
+    }
+
+    /**
+     * QR ของเกตเวย์สำหรับส่วนแบ่งนี้ — null เมื่อยังใช้วิธีโอนเอง หรือเมื่อเกตเวย์ล่ม
+     *
+     * ล้มแล้วต้องไม่ทำให้หน้าพัง เพื่อนที่เปิดลิงก์มาจ่ายต้องจ่ายได้เสมอ แม้จะต้อง
+     * ตกกลับไปทาง QR ของเราเอง + แนบสลิป
+     */
+    private function beamChargeFor(BookingSplitShare $share): ?Payment
+    {
+        if (! $this->beamPayments->enabled() || ! $share->booking) {
+            return null;
+        }
+
+        try {
+            return $this->beamPayments->ensureCharge(
+                $share->booking,
+                Payment::PURPOSE_SPLIT_SHARE,
+                'QR_PROMPT_PAY',
+                ['purpose_id' => $share->id],
+            );
+        } catch (\Exception $e) {
+            Log::error('Public share payment page could not create a Beam charge', [
+                'share_id' => $share->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     public function pay(Request $request, string $token): RedirectResponse

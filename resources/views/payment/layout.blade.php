@@ -69,5 +69,6 @@
         </div>
     </div>
     @yield('scripts')
+    @stack('beam-scripts')
 </body>
 </html>

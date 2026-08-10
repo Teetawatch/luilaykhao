@@ -3,6 +3,55 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Payment provider
+    |--------------------------------------------------------------------------
+    |
+    | 'manual' — วิธีเดิม: เราสร้าง PromptPay QR เอง ลูกค้าโอนแล้วอัปสลิป และ
+    |            SlipOcrService ตัดสินว่ายอดตรงไหม (คนต้องคอยตรวจที่ตกค้าง)
+    | 'beam'   — Beam Checkout เป็นคนออก QR และบอกเราว่าเงินเข้าจริงแล้วผ่าน
+    |            webhook charge.succeeded ไม่มีสลิป ไม่มีการตรวจด้วยมือ
+    |
+    | สวิตช์นี้มีไว้เพื่อกลับไปทาง 'manual' ได้ทันทีถ้า Beam ล่ม โดยไม่ต้องดีพลอย
+    | โค้ดฝั่งสลิปจึงยังอยู่ครบและยังต้องผ่านเทสต์
+    |
+    */
+
+    'provider' => env('PAYMENT_PROVIDER', 'manual'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Beam Checkout
+    |--------------------------------------------------------------------------
+    |
+    | https://docs.beamcheckout.com — auth เป็น HTTP Basic ด้วย merchant id + api key
+    | ปล่อย merchant_id หรือ api_key ว่างไว้ = ปิดฟีเจอร์ทั้งก้อน (BeamClient::enabled()
+    | คืน false และ provider จะถูกบังคับกลับไปเป็น manual) แบบเดียวกับที่ Live Activity
+    | no-op เมื่อ APNS_* ไม่ได้ตั้ง — ตั้งครึ่งๆ กลางๆ แล้วเงียบคือสิ่งที่แย่ที่สุด
+    |
+    | webhook_secret คือ HMAC key จาก Beam Lighthouse ซึ่ง "เป็น base64 อยู่แล้ว"
+    | ต้อง base64_decode ก่อนเอาไปใช้เซ็น ไม่ใช่ใช้สตริงตรงๆ
+    |
+    */
+
+    'beam' => [
+        'base_url' => env('BEAM_BASE_URL', 'https://playground.api.beamcheckout.com'),
+        'merchant_id' => env('BEAM_MERCHANT_ID'),
+        'api_key' => env('BEAM_API_KEY'),
+        'webhook_secret' => env('BEAM_WEBHOOK_SECRET'),
+
+        // QR มีอายุกี่นาที — ถูกตัดให้สั้นลงอัตโนมัติถ้าการจองเหลือเวลาน้อยกว่านี้
+        'qr_ttl_minutes' => (int) env('BEAM_QR_TTL_MINUTES', 15),
+
+        // ปลายทางที่ Beam เด้งกลับหลังจ่ายผ่านแอปธนาคาร (REDIRECT flow)
+        // luilaykhao.com เป็น app-link ของแอปอยู่แล้ว มือถือจึงกลับเข้าแอปได้เลย
+        'return_url' => env('BEAM_RETURN_URL', env('APP_URL').'/payment/return'),
+
+        // ช่องทางที่เปิดรับ เรียงตามที่อยากให้ลูกค้าเห็น
+        'methods' => ['QR_PROMPT_PAY', 'KPLUS', 'SCB_EASY', 'KRUNGSRI_APP', 'BANGKOK_BANK_APP'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | PromptPay / bank transfer details
     |--------------------------------------------------------------------------
     |

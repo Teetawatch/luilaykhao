@@ -118,7 +118,7 @@
         </div>
 
         <!-- Payment Method -->
-        <div class="mb-6">
+        <div v-if="!useBeam" class="mb-6">
           <label class="text-sm font-black text-gray-700 mb-3 block">เลือกช่องทางชำระ</label>
           <div class="grid grid-cols-2 gap-3">
             <button @click="paymentMethod = 'promptpay'"
@@ -134,8 +134,40 @@
           </div>
         </div>
 
+        <!-- QR จากเกตเวย์ — จ่ายแล้วระบบตัดงวดให้เอง ไม่ต้องแนบสลิป -->
+        <div v-if="useBeam" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
+          <p class="text-sm font-bold text-gray-700">สแกน QR เพื่อชำระ ฿{{ Number(nextInstallment.amount).toLocaleString() }}</p>
+
+          <div class="relative p-2 bg-white rounded-2xl border border-gray-100 min-h-[260px] min-w-[260px] flex items-center justify-center">
+            <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
+              class="block rounded-xl w-full max-w-[260px] h-auto mx-auto" />
+
+            <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
+              <div class="w-9 h-9 rounded-full border-4 border-amber-100 border-t-amber-500 animate-spin"></div>
+            </div>
+
+            <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-2xl px-6 text-center">
+              <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+              <button @click="createBeamCharge()"
+                class="px-5 py-2.5 bg-amber-500 text-white text-xs font-black rounded-xl hover:bg-amber-600 active:scale-95 transition-all">
+                สร้าง QR ใหม่
+              </button>
+            </div>
+          </div>
+
+          <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+            <p class="text-xs font-bold text-gray-600">
+              รอชำระ · QR หมดอายุใน <span class="text-amber-600 tabular-nums">{{ beamCountdownText }}</span>
+            </p>
+          </div>
+
+          <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
+          <p class="text-xs font-bold text-gray-400 px-6 text-center">จ่ายแล้วระบบจะตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป</p>
+        </div>
+
         <!-- QR Code -->
-        <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
+        <div v-else-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
           <p class="text-sm font-bold text-gray-700">สแกน QR เพื่อชำระ ฿{{ Number(nextInstallment.amount).toLocaleString() }}</p>
           <div class="relative p-2 bg-white rounded-2xl border border-gray-100">
             <canvas ref="qrCanvas" class="block rounded-xl w-full max-w-[280px] h-auto mx-auto"></canvas>
@@ -165,8 +197,8 @@
           </div>
         </div>
 
-        <!-- Slip Upload -->
-        <div class="space-y-4 mb-6">
+        <!-- Slip Upload — โหมดเกตเวย์ไม่ต้องใช้ -->
+        <div v-if="!useBeam" class="space-y-4 mb-6">
           <label class="block text-sm font-black text-gray-700">อัปโหลดสลิป <span class="text-red-500">*</span></label>
           <div @click="slipInputRef?.click()"
             class="flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-2xl py-10 px-6 cursor-pointer transition-all"
@@ -187,7 +219,7 @@
         </div>
 
         <!-- Transfer Date/Time -->
-        <div class="grid grid-cols-2 gap-4 mb-8">
+        <div v-if="!useBeam" class="grid grid-cols-2 gap-4 mb-8">
           <div>
             <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 block">วันที่โอน</label>
             <input v-model="transferDate" type="date" class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-white text-sm font-bold focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 outline-none" />
@@ -198,8 +230,8 @@
           </div>
         </div>
 
-        <!-- Submit -->
-        <button @click="processPayment" :disabled="paying || !slipFile || !transferDate || !transferTime"
+        <!-- Submit — โหมดเกตเวย์จบที่แอปธนาคาร ไม่มีอะไรให้กดยืนยันที่นี่ -->
+        <button v-if="!useBeam" @click="processPayment" :disabled="paying || !slipFile || !transferDate || !transferTime"
           class="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled: disabled:cursor-not-allowed bg-amber-500 text-white hover:bg-amber-600 active:scale-[0.98]">
           <template v-if="!paying">
             <span class="material-symbols-rounded text-xl">verified_user</span>
@@ -233,6 +265,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import QRCode from 'qrcode';
 import api from '../lib/axios';
+import { useBeamCharge } from '../composables/useBeamCharge';
 
 const route = useRoute();
 const router = useRouter();
@@ -252,6 +285,36 @@ const qrCanvas = ref(null);
 const installments = computed(() => booking.value?.installment_payments || []);
 const paidCount = computed(() => installments.value.filter(i => i.status === 'paid').length);
 const nextInstallment = computed(() => installments.value.find(i => i.status !== 'paid'));
+
+// ── Beam Checkout ────────────────────────────────────────────
+const gateway = computed(() => booking.value?.payment_gateway || { provider: 'manual' });
+const useBeam = computed(() => gateway.value.provider === 'beam');
+
+const {
+  payment: beamPayment,
+  loading: beamLoading,
+  error: beamError,
+  qrSrc: beamQrSrc,
+  expired: beamExpired,
+  countdownText: beamCountdownText,
+  create: createBeamPayment,
+} = useBeamCharge(async () => {
+  // จ่ายงวดนี้แล้ว โหลดการจองใหม่เพื่อเลื่อนไปงวดถัดไป (หรือขึ้นหน้า "ครบแล้ว")
+  const res = await api.get(`/bookings/${booking.value.booking_ref}`);
+  booking.value = res.data.data;
+  if (nextInstallment.value) createBeamCharge();
+});
+
+function createBeamCharge() {
+  if (!booking.value || !nextInstallment.value) return;
+
+  return createBeamPayment({
+    booking_ref: booking.value.booking_ref,
+    purpose: 'installment_due',
+    installment_id: nextInstallment.value.id,
+    payment_method_type: 'QR_PROMPT_PAY',
+  });
+}
 
 function isNextDue(inst) {
   return nextInstallment.value?.installment_no === inst.installment_no;
@@ -400,9 +463,9 @@ async function processPayment() {
 }
 
 watch([paymentMethod, nextInstallment, loading], ([method, installment, isLoading]) => {
-  if (!isLoading && method === 'promptpay' && installment) {
-    generateQR();
-  }
+  if (isLoading || method !== 'promptpay' || !installment) return;
+  // โหมดเกตเวย์ออก QR ตอน mount ครั้งเดียว ไม่ต้องออกใหม่ทุกครั้งที่ watcher ยิง
+  if (!useBeam.value) generateQR();
 }, { flush: 'post' });
 
 onMounted(async () => {
@@ -414,5 +477,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+
+  if (useBeam.value && nextInstallment.value) createBeamCharge();
 });
 </script>

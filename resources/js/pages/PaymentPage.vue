@@ -453,8 +453,8 @@
                 <img src="/images/pay_bank.webp" alt="โมบายแบงก์กิ้ง" class="h-12 w-auto object-contain" />
               </div>
               <div class="text-center">
-                <p class="font-black text-gray-900 tracking-tight">โอนผ่านบัญชีธนาคาร</p>
-                <p class="text-[11px] text-gray-500 font-medium tracking-tight">แนบสลิปผ่านทางหน้านี้</p>
+                <p class="font-black text-gray-900 tracking-tight">{{ useBeam ? 'เปิดแอปธนาคาร' : 'โอนผ่านบัญชีธนาคาร' }}</p>
+                <p class="text-[11px] text-gray-500 font-medium tracking-tight">{{ useBeam ? 'เด้งเข้าแอปธนาคารของคุณโดยตรง' : 'แนบสลิปผ่านทางหน้านี้' }}</p>
               </div>
             </button>
           </div>
@@ -468,10 +468,45 @@
 
              <div class="text-center space-y-1">
                 <p class="text-base font-bold text-gray-900">เปิดแอปธนาคารแล้วสแกน QR นี้</p>
-                <p class="text-xs text-gray-500 px-4">ระบบจะคำนวณยอดชำระเบื้องต้นให้โดยอัตโนมัติ</p>
+                <p class="text-xs text-gray-500 px-4">
+                  {{ useBeam ? 'จ่ายแล้วระบบจะยืนยันที่นั่งให้อัตโนมัติ ไม่ต้องแนบสลิป' : 'ระบบจะคำนวณยอดชำระเบื้องต้นให้โดยอัตโนมัติ' }}
+                </p>
              </div>
 
-            <div class="relative group">
+            <!-- QR จากเกตเวย์ — เงินเข้าแล้วรู้ทันที ไม่ต้องให้ใครมาตรวจสลิป -->
+            <template v-if="useBeam">
+              <div class="relative group">
+                <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden min-h-[280px] min-w-[280px] flex items-center justify-center">
+                  <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
+                    class="block rounded-2xl w-full max-w-[280px] h-auto mx-auto" />
+
+                  <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-3xl">
+                    <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
+                  </div>
+
+                  <!-- QR หมดอายุก่อนที่นั่งจะถูกคืน ลูกค้าจึงยังกดออกใบใหม่ได้ -->
+                  <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-3xl px-6 text-center">
+                    <span class="material-symbols-rounded text-4xl text-gray-300">qr_code_2</span>
+                    <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+                    <button @click="createBeamCharge('QR_PROMPT_PAY')"
+                      class="px-5 py-2.5 bg-teal-600 text-white text-xs font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
+                      สร้าง QR ใหม่
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-teal-100">
+                <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
+                <p class="text-xs font-bold text-gray-700">
+                  กำลังรอการชำระเงิน · QR หมดอายุใน <span class="text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
+                </p>
+              </div>
+
+              <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
+            </template>
+
+            <div v-else class="relative group">
                <div class="absolute -inset-4 bg-teal-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden">
                 <canvas ref="qrCanvas" class="block rounded-2xl w-full max-w-[320px] h-auto mx-auto"></canvas>
@@ -484,7 +519,7 @@
             <div class="flex flex-col items-center gap-4 w-full px-6 mt-6">
                 <!-- Save QR Button moved up -->
                 <div class="flex items-center gap-3">
-                  <button v-if="qrGenerated" @click="saveQR"
+                  <button v-if="qrGenerated && !useBeam" @click="saveQR"
                     class="flex items-center gap-2.5 px-6 py-3 bg-teal-600 text-white text-sm font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
                     <span class="material-symbols-rounded text-[18px]">download</span> บันทึก QR Code
                   </button>
@@ -507,6 +542,32 @@
                 <span class="material-symbols-rounded text-teal-600 text-sm" style="font-variation-settings:'FILL' 1">verified_user</span>
                 <p class="text-[11px] text-gray-500 font-bold">e-Wallet: <span class="text-gray-900">004-99923936-2071</span></p>
              </div>
+          </div>
+
+          <!-- โหมดเกตเวย์: เด้งเข้าแอปธนาคารโดยตรง ไม่ต้องจดเลขบัญชีหรือแนบสลิป -->
+          <div v-else-if="useBeam" class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100">
+            <p class="text-sm font-black text-teal-900 flex items-center gap-2">
+              <span class="material-symbols-rounded text-teal-600 text-[20px]">smartphone</span>
+              เลือกแอปธนาคารของคุณ
+            </p>
+            <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
+              ระบบจะพาไปที่แอปธนาคารพร้อมยอด ฿{{ currentPayAmount.toLocaleString() }} จ่ายเสร็จแล้วกลับมาหน้านี้ได้เลย ที่นั่งจะถูกยืนยันให้อัตโนมัติ
+            </p>
+
+            <div class="grid grid-cols-2 gap-3">
+              <button v-for="app in bankApps" :key="app.type"
+                @click="createBeamCharge(app.type)"
+                :disabled="beamLoading"
+                class="flex flex-col items-start gap-1 p-4 bg-white rounded-2xl border border-teal-100/50 hover:border-teal-600 transition-colors text-left active:scale-95 disabled:opacity-50">
+                <span class="text-sm font-black text-gray-900">{{ app.label }}</span>
+                <span class="text-[11px] text-gray-500 font-medium">{{ app.bank }}</span>
+              </button>
+            </div>
+
+            <p v-if="!bankApps.length" class="text-xs font-bold text-gray-500">
+              ยังไม่เปิดรับการจ่ายผ่านแอปธนาคาร กรุณาใช้ QR PromptPay
+            </p>
+            <p v-if="beamError" class="text-xs font-bold text-red-600">{{ beamError }}</p>
           </div>
 
           <!-- Bank Transfer info -->
@@ -563,14 +624,14 @@
           </div>
 
           <!-- Divider -->
-          <div class="flex items-center gap-4 my-10">
+          <div v-if="!useBeam" class="flex items-center gap-4 my-10">
             <div class="flex-1 h-[2px] bg-gray-50"></div>
             <span class="text-[11px] text-gray-400 font-black uppercase tracking-[0.2em]">หลักฐานการโอนเงิน</span>
             <div class="flex-1 h-[2px] bg-gray-50"></div>
           </div>
 
-          <!-- Slip Upload -->
-          <div class="space-y-6">
+          <!-- Slip Upload — โหมดเกตเวย์ไม่ต้องใช้ เงินเข้าแล้วระบบรู้เอง -->
+          <div v-if="!useBeam" class="space-y-6">
             <div class="flex items-center justify-between">
                <label class="block text-sm font-black text-gray-900">อัปโหลดสลิปการโอนเงินที่นี่ <span class="text-red-500 font-normal">*</span></label>
                <span v-if="slipFile" class="text-xs font-bold text-teal-600 flex items-center gap-1">
@@ -808,8 +869,21 @@
                </template>
             </div>
 
+            <!-- โหมดเกตเวย์: ไม่มีปุ่ม "ยืนยัน" เพราะการจ่ายจบที่แอปธนาคาร ไม่ใช่ที่นี่ -->
+            <div v-if="useBeam" class="space-y-4">
+              <div class="rounded-2xl p-5 bg-teal-50 border border-teal-100 flex items-start gap-3">
+                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse mt-1.5 shrink-0"></div>
+                <div class="space-y-1">
+                  <p class="text-sm font-black text-teal-900">สแกน QR แล้วรอสักครู่</p>
+                  <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
+                    ระบบจะยืนยันที่นั่งให้อัตโนมัติทันทีที่เงินเข้า ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <!-- Main CTA Button -->
-            <div class="space-y-4">
+            <div v-else class="space-y-4">
               <button @click="processPayment"
                 :disabled="paying || scanningSlip || !slipFile"
                 class="group w-full py-5 rounded-2xl font-black text-base flex flex-col items-center justify-center gap-1 transition-all duration-500 overflow-hidden relative disabled: disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
@@ -852,9 +926,13 @@
             <div class="mt-8 pt-6 border-t border-gray-50">
                <div class="flex items-center gap-3">
                   <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-rounded text-teal-600 text-base" style="font-variation-settings:'FILL' 1">av_timer</span>
+                    <span class="material-symbols-rounded text-teal-600 text-base" style="font-variation-settings:'FILL' 1">{{ useBeam ? 'bolt' : 'av_timer' }}</span>
                   </div>
-                  <p class="text-xs text-gray-500 font-medium">เจ้าหน้าที่จะตรวจสอบยอดโอนและยืนยันการจอง ภายใน 10-15 นาที</p>
+                  <p class="text-xs text-gray-500 font-medium">
+                    {{ useBeam
+                      ? 'ระบบยืนยันการจองให้อัตโนมัติภายในไม่กี่วินาทีหลังเงินเข้า'
+                      : 'เจ้าหน้าที่จะตรวจสอบยอดโอนและยืนยันการจอง ภายใน 10-15 นาที' }}
+                  </p>
                </div>
             </div>
           </div>
@@ -863,7 +941,14 @@
         <!-- Sticky Mobile Button (Only visible on mobile via class) -->
         <div class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100] translate-y-0 transition-transform duration-500"
           :class="!loading && booking ? 'translate-y-0' : 'translate-y-full'">
-            <button @click="processPayment"
+            <!-- โหมดเกตเวย์ไม่มีอะไรให้กดยืนยัน — บอกสถานะแทน -->
+            <div v-if="useBeam" class="w-full py-4 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center gap-2 text-sm">
+              <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
+              <span class="font-black text-teal-900">รอชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
+              <span v-if="beamPayment && !beamExpired" class="text-xs font-bold text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
+            </div>
+
+            <button v-else @click="processPayment"
               :disabled="paying || scanningSlip || !slipFile"
               class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying && !scanningSlip">
@@ -888,6 +973,7 @@ import CountdownTimer from '../components/CountdownTimer.vue';
 import { useSwal } from '../lib/swal';
 import { toBangkokDate } from '../lib/bangkokDate';
 import { addPaymentInfo } from '../lib/analytics';
+import { useBeamCharge } from '../composables/useBeamCharge';
 
 const route = useRoute();
 const router = useRouter();
@@ -1003,6 +1089,58 @@ const transferTime = ref('');
 // ต่อคน และมีส่วนลดมัดจำตามระดับสมาชิก) ลูกค้าจึงโอนมาไม่เท่ากันจนสลิปถูกกันไว้
 // ตรวจ ตอนนี้อ่านจาก booking.payment_options ตรง ๆ
 const quote = computed(() => booking.value?.payment_options || null);
+
+// ── Beam Checkout ────────────────────────────────────────────
+// provider มาจากเซิร์ฟเวอร์ (booking.payment_gateway) ไม่ใช่ env ฝั่งเว็บ — สลับ
+// โหมดแล้วทุกหน้าต้องเปลี่ยนพร้อมกัน ไม่ใช่รอ build ใหม่
+const gateway = computed(() => booking.value?.payment_gateway || { provider: 'manual', methods: [] });
+const useBeam = computed(() => gateway.value.provider === 'beam');
+
+// แอปธนาคารที่เปิดรับ — กรองด้วยรายการที่เซิร์ฟเวอร์บอกมา ไม่ hardcode
+const ALL_BANK_APPS = [
+  { type: 'KPLUS', label: 'K PLUS', bank: 'กสิกรไทย' },
+  { type: 'SCB_EASY', label: 'SCB EASY', bank: 'ไทยพาณิชย์' },
+  { type: 'KRUNGSRI_APP', label: 'Krungsri', bank: 'กรุงศรีอยุธยา' },
+  { type: 'BANGKOK_BANK_APP', label: 'Bualuang', bank: 'กรุงเทพ' },
+];
+const bankApps = computed(() =>
+  ALL_BANK_APPS.filter((app) => gateway.value.methods?.includes(app.type))
+);
+
+// เงินเข้าแล้ว: ปลดนาฬิกาถอยหลังของที่นั่งก่อน ไม่งั้น handlePaymentExpiry จะยิง
+// ยกเลิกการจองที่เพิ่งจ่ายไปหมาดๆ
+const {
+  payment: beamPayment,
+  loading: beamLoading,
+  error: beamError,
+  qrSrc: beamQrSrc,
+  expired: beamExpired,
+  countdownText: beamCountdownText,
+  stop: stopBeamTimers,
+  create: createBeamPayment,
+} = useBeamCharge(() => {
+  seatsStore.offExpire(handlePaymentExpiry);
+  seatsStore.clearSelection();
+  router.push(`/confirmation/${booking.value.booking_ref}`);
+});
+
+/**
+ * ออก QR ใบใหม่ — ยอดคำนวณที่เซิร์ฟเวอร์ทั้งหมด เราส่งไปแค่ "จ่ายแบบไหน"
+ */
+function createBeamCharge(methodType = 'QR_PROMPT_PAY') {
+  if (!booking.value) return;
+
+  const payload = {
+    booking_ref: booking.value.booking_ref,
+    purpose: paymentType.value,
+    payment_method_type: methodType,
+  };
+  if (paymentType.value === 'installment') {
+    payload.installment_count = selectedInstallmentCount.value;
+  }
+
+  return createBeamPayment(payload);
+}
 
 // ── Deposit helpers ──────────────────────────────────────────
 const depositAvailable = computed(() => !!quote.value?.deposit?.available);
@@ -1146,8 +1284,14 @@ watch(availableInstallmentOptions, (opts) => {
 });
 
 // ── QR regenerates when paymentType, paymentMethod, or installment count changes ─
+// ยอดเปลี่ยน = QR ใบเดิมใช้ไม่ได้แล้ว ต้องออกใบใหม่ทั้งสองโหมด
 watch([paymentType, paymentMethod, selectedInstallmentCount], ([, method]) => {
-  if (method === 'promptpay') nextTick(generateQR);
+  if (method !== 'promptpay') return;
+  if (useBeam.value) {
+    createBeamCharge('QR_PROMPT_PAY');
+  } else {
+    nextTick(generateQR);
+  }
 });
 
 // ── PromptPay QR ─────────────────────────────────────────────
@@ -1393,13 +1537,18 @@ onMounted(async () => {
     loading.value = false;
   }
   if (paymentMethod.value === 'promptpay') {
-    await nextTick();
-    generateQR();
+    if (useBeam.value) {
+      await createBeamCharge('QR_PROMPT_PAY');
+    } else {
+      await nextTick();
+      generateQR();
+    }
   }
 });
 
 onBeforeUnmount(() => {
   seatsStore.offExpire(handlePaymentExpiry);
+  stopBeamTimers();
 });
 </script>
 

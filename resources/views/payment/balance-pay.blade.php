@@ -46,10 +46,14 @@
             @endif
         </div>
 
-        <div class="qr-wrap">
-            <img src="{{ $qrDataUri }}" alt="PromptPay QR">
-            <div class="amount-sub" style="margin-top:8px;">สแกนจ่ายผ่านแอปธนาคาร · PromptPay</div>
-        </div>
+        @if ($beamPayment)
+            @include('payment.partials.gateway-qr')
+        @else
+            <div class="qr-wrap">
+                <img src="{{ $qrDataUri }}" alt="PromptPay QR">
+                <div class="amount-sub" style="margin-top:8px;">สแกนจ่ายผ่านแอปธนาคาร · PromptPay</div>
+            </div>
+        @endif
 
         <div class="info-list">
             <div class="info-row copy-row">
@@ -80,6 +84,8 @@
             </div>
         </div>
 
+        {{-- โหมดเกตเวย์ไม่ต้องแนบสลิป เงินเข้าแล้วระบบรู้เอง --}}
+        @unless ($beamPayment)
         <p class="section-label">โอนแล้ว? แนบสลิปที่นี่</p>
         <form method="POST" action="{{ route('public.pay.submit', $booking->payment_token) }}" enctype="multipart/form-data">
             @csrf
@@ -100,6 +106,9 @@
         </form>
 
         <p class="note">ระบบจะตรวจสอบสลิปอัตโนมัติ และส่งอีเมลยืนยันเมื่อรับชำระเรียบร้อย</p>
+        @else
+        <p class="note">ระบบจะยืนยันและส่งอีเมลให้ทันทีที่เงินเข้า ไม่ต้องแนบสลิป</p>
+        @endunless
     </div>
 </div>
 @endsection
