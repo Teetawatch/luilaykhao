@@ -55,7 +55,9 @@ export function useBeamCharge(onPaid) {
         const res = await api.get(`/payments/beam/${id}`);
         const fresh = res.data?.data;
 
-        if (fresh?.status === 'succeeded' || fresh?.booking_status === 'confirmed') {
+        // สถานะของใบชำระเงินใบนี้เท่านั้น — สถานะการจองใช้ไม่ได้ เพราะยอดคงเหลือ/งวด
+        // ที่ 2+/ส่วนแบ่งกลุ่ม จ่ายบนการจองที่ confirmed อยู่ก่อนแล้ว
+        if (fresh?.status === 'succeeded') {
           stop();
           onPaid?.(fresh);
         } else if (fresh?.status === 'failed' || fresh?.status === 'expired') {

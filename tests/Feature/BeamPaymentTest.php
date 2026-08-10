@@ -438,11 +438,46 @@ class BeamPaymentTest extends TestCase
         $this->actingAs($booking->user)
             ->getJson('/api/v1/payments/beam/'.$payment->id)
             ->assertOk()
-            ->assertJsonPath('data.status', Payment::STATUS_PENDING)
-            ->assertJsonPath('data.booking_status', 'pending');
+            ->assertJsonPath('data.status', Payment::STATUS_PENDING);
 
         $this->actingAs(User::factory()->create())
             ->getJson('/api/v1/payments/beam/'.$payment->id)
             ->assertStatus(403);
+    }
+
+    /**
+     * เคยมีบั๊ก: หน้าจ่ายเงินเด้งไป "ชำระเงินเรียบร้อยแล้ว" เองตั้งแต่ poll รอบแรก
+     * ทั้งที่ลูกค้ายังไม่ได้สแกน QR เลย เพราะ client เห็น booking_status = confirmed
+     * ที่แถมมากับ payload — ส่วนแบ่งกลุ่ม/ยอดคงเหลือ/งวดที่ 2+ จ่ายบนการจองที่ยืนยัน
+     * ไปแล้วเสมอ สถานะการจองจึงไม่มีทางบอกได้ว่าใบนี้จ่ายหรือยัง
+     */
+    public function test_status_of_a_charge_on_a_confirmed_booking_does_not_look_paid(): void
+    {
+        $this->fakeBeamOk();
+        $booking = $this->pendingBooking(passengers: 2);
+        $booking->update(['status' => 'confirmed', 'balance_amount' => 2000]);
+
+        $share = BookingSplitShare::create([
+            'booking_id' => $booking->id,
+            'label' => 'เพื่อน',
+            'amount' => 2000,
+            'status' => BookingSplitShare::STATUS_PENDING,
+            'pay_token' => Str::random(32),
+        ]);
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'split_share',
+                'share_id' => $share->id,
+            ])->assertStatus(201);
+
+        $payment = Payment::latest('id')->first();
+
+        $this->actingAs($booking->user)
+            ->getJson('/api/v1/payments/beam/'.$payment->id)
+            ->assertOk()
+            ->assertJsonPath('data.status', Payment::STATUS_PENDING)
+            ->assertJsonMissingPath('data.booking_status');
     }
 }

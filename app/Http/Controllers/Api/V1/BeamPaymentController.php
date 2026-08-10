@@ -100,6 +100,10 @@ class BeamPaymentController extends Controller
      * GET /payments/beam/{payment}
      *
      * ไว้ให้ client poll เผื่อ websocket หลุด — ตัว settle ทำโดย webhook เท่านั้น
+     *
+     * ตอบเฉพาะสถานะของ "ใบชำระเงินใบนี้" ไม่แนบสถานะการจองมาด้วย เพราะเคยมีบั๊กที่
+     * client เห็น booking.status = confirmed แล้วสรุปเองว่าจ่ายแล้ว — ทั้งที่ยอดคงเหลือ
+     * งวดที่ 2+ และส่วนแบ่งกลุ่ม จ่ายบนการจองที่ confirmed อยู่ก่อนหน้าเสมอ
      */
     public function status(Request $request, Payment $payment): JsonResponse
     {
@@ -109,9 +113,7 @@ class BeamPaymentController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ดูรายการชำระเงินนี้', 403);
         }
 
-        return $this->success($this->present($payment) + [
-            'booking_status' => $booking->status,
-        ]);
+        return $this->success($this->present($payment));
     }
 
     private function canPayShare(Booking $booking, ?int $shareId): bool

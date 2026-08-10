@@ -31,12 +31,14 @@ class PaymentReturnController extends Controller
 
     /**
      * สถานะแบบ JSON ให้หน้าข้างบน poll — ตอบเท่าที่จำเป็น ไม่หลุดข้อมูลการจอง
+     *
+     * ไม่แนบสถานะการจอง: การจองที่จ่ายยอดคงเหลือ/งวดถัดไป/ส่วนแบ่งกลุ่ม เป็น confirmed
+     * อยู่ก่อนแล้ว ถ้าส่งออกไปหน้าเว็บจะอ่านว่า "จ่ายสำเร็จ" ทั้งที่เงินยังไม่เข้า
      */
     public function status(Payment $payment): array
     {
         return [
             'status' => $payment->status,
-            'booking_status' => $payment->booking?->status,
             'booking_ref' => $payment->booking?->booking_ref,
         ];
     }

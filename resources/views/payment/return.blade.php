@@ -74,7 +74,9 @@
                 if (!res.ok) return;
                 var data = await res.json();
 
-                if (data.status === 'succeeded' || data.booking_status === 'confirmed') {
+                // ดูสถานะของใบชำระเงินใบนี้เท่านั้น — การจองอาจ confirmed อยู่ก่อนแล้ว
+                // (จ่ายยอดคงเหลือ/งวดถัดไป/ส่วนแบ่งกลุ่ม) ซึ่งไม่ได้แปลว่ารายการนี้จ่ายแล้ว
+                if (data.status === 'succeeded') {
                     clearInterval(timer);
                     document.getElementById('headline').textContent = 'ชำระเงินสำเร็จ';
                     document.getElementById('pending-state').style.display = 'none';
