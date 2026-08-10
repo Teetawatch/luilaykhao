@@ -10,6 +10,7 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -91,6 +92,36 @@ class BeamPaymentTest extends TestCase
         }
 
         return $booking->fresh();
+    }
+
+    /**
+     * .env.example เว้น BEAM_RETURN_URL ไว้ว่าง และ env() ถือว่าสตริงว่าง = "ตั้งค่าแล้ว"
+     * ไม่ใช้ค่า default ให้ ถ้า config ไม่กัน returnUrl จะกลายเป็น "?payment=123"
+     * ซึ่งพาลูกค้าที่จ่ายผ่านแอปธนาคารกลับมาไม่ได้ — และจะรู้ตัวตอนมีคนจ่ายจริงเท่านั้น
+     */
+    public function test_an_empty_return_url_still_resolves_to_an_absolute_url(): void
+    {
+        $repository = Env::getRepository();
+        $keys = ['BEAM_RETURN_URL', 'BEAM_BASE_URL', 'BEAM_QR_TTL_MINUTES', 'APP_URL'];
+        $restore = array_combine($keys, array_map(fn ($k) => $repository->get($k), $keys));
+
+        // เลียนแบบ .env ที่มีบรรทัดเหล่านี้อยู่จริงแต่เว้นค่าไว้ว่าง
+        $repository->set('BEAM_RETURN_URL', '');
+        $repository->set('BEAM_BASE_URL', '');
+        $repository->set('BEAM_QR_TTL_MINUTES', '');
+        $repository->set('APP_URL', 'https://luilaykhao.com/');
+
+        try {
+            $config = require config_path('payment.php');
+
+            $this->assertSame('https://luilaykhao.com/payment/return', $config['beam']['return_url']);
+            $this->assertSame('https://playground.api.beamcheckout.com', $config['beam']['base_url']);
+            $this->assertSame(15, $config['beam']['qr_ttl_minutes']);
+        } finally {
+            foreach ($restore as $key => $value) {
+                $value === null ? $repository->clear($key) : $repository->set($key, $value);
+            }
+        }
     }
 
     public function test_full_charge_uses_the_booking_total_and_leaves_the_seat_unconfirmed(): void

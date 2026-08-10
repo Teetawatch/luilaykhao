@@ -31,20 +31,26 @@ return [
     | webhook_secret คือ HMAC key จาก Beam Lighthouse ซึ่ง "เป็น base64 อยู่แล้ว"
     | ต้อง base64_decode ก่อนเอาไปใช้เซ็น ไม่ใช่ใช้สตริงตรงๆ
     |
+    | ค่าที่มี fallback ใช้ ?: ไม่ใช่พารามิเตอร์ตัวที่สองของ env() เพราะบรรทัดที่เขียน
+    | ว่า BEAM_RETURN_URL= เฉยๆ ให้ค่าเป็นสตริงว่าง ไม่ใช่ null — env() จึงถือว่า
+    | "ตั้งแล้ว" และไม่ใช้ค่า default ให้ ผลคือ returnUrl กลายเป็น "?payment=123"
+    | ที่พาลูกค้าไปไหนไม่ได้ ทั้งที่ .env.example เองก็เว้นบรรทัดนั้นว่างไว้
+    |
     */
 
     'beam' => [
-        'base_url' => env('BEAM_BASE_URL', 'https://playground.api.beamcheckout.com'),
+        'base_url' => env('BEAM_BASE_URL') ?: 'https://playground.api.beamcheckout.com',
         'merchant_id' => env('BEAM_MERCHANT_ID'),
         'api_key' => env('BEAM_API_KEY'),
         'webhook_secret' => env('BEAM_WEBHOOK_SECRET'),
 
         // QR มีอายุกี่นาที — ถูกตัดให้สั้นลงอัตโนมัติถ้าการจองเหลือเวลาน้อยกว่านี้
-        'qr_ttl_minutes' => (int) env('BEAM_QR_TTL_MINUTES', 15),
+        'qr_ttl_minutes' => (int) (env('BEAM_QR_TTL_MINUTES') ?: 15),
 
         // ปลายทางที่ Beam เด้งกลับหลังจ่ายผ่านแอปธนาคาร (REDIRECT flow)
         // luilaykhao.com เป็น app-link ของแอปอยู่แล้ว มือถือจึงกลับเข้าแอปได้เลย
-        'return_url' => env('BEAM_RETURN_URL', env('APP_URL').'/payment/return'),
+        'return_url' => env('BEAM_RETURN_URL')
+            ?: rtrim((string) env('APP_URL'), '/').'/payment/return',
 
         // ช่องทางที่เปิดรับ เรียงตามที่อยากให้ลูกค้าเห็น
         'methods' => ['QR_PROMPT_PAY', 'KPLUS', 'SCB_EASY', 'KRUNGSRI_APP', 'BANGKOK_BANK_APP'],
