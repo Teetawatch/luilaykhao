@@ -492,6 +492,8 @@ function renderPassengerStep() {
 }
 
 function passengerForm(seatId, idx, womenOnly) {
+  // ทริปต่างประเทศต้องเก็บเอกสารเดินทางเพิ่ม ไม่งั้น API ตีกลับตอนกดจอง
+  const international = !!bk.trip?.is_international;
   const titleOpts = womenOnly ? ['นาง', 'นางสาว'] : ['นาย', 'นาง', 'นางสาว'];
   const saved = bk.passengers[idx] || {};
   const prefillName = idx === 0 ? (saved.name || state.profile?.displayName || '') : (saved.name || '');
@@ -507,6 +509,15 @@ function passengerForm(seatId, idx, womenOnly) {
       <input name="nickname" required value="${esc(saved.nickname || '')}" placeholder="ชื่อเล่น"></label>
     <label class="field"><span>เลขบัตรประชาชน (13 หลัก)</span>
       <input name="id_card" required inputmode="numeric" maxlength="13" value="${esc(saved.id_card || '')}"></label>
+    ${international ? `
+    <div class="pax-head">เอกสารเดินทาง</div>
+    <label class="field"><span>ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)</span>
+      <input name="name_en" required maxlength="255" style="text-transform:uppercase" placeholder="SOMCHAI JAIDEE" value="${esc(saved.name_en || '')}"></label>
+    <label class="field"><span>เลขที่พาสปอร์ต</span>
+      <input name="passport_no" required maxlength="20" style="text-transform:uppercase" placeholder="AA1234567" value="${esc(saved.passport_no || '')}"></label>
+    <label class="field"><span>วันหมดอายุพาสปอร์ต</span>
+      <input name="passport_expires_at" type="date" required value="${esc(saved.passport_expires_at || '')}"></label>
+    ` : ''}
     <div class="row2">
       <label class="field"><span>เบอร์โทร</span>
         <input name="phone" required inputmode="numeric" maxlength="10" value="${esc(saved.phone || '')}"></label>
@@ -552,6 +563,11 @@ function collectPassengers() {
       emergency_phone: fd.get('emergency_phone'),
       allergies: fd.get('allergies') || null,
     };
+    if (bk.trip?.is_international) {
+      p.name_en = String(fd.get('name_en') || '').trim().toUpperCase();
+      p.passport_no = String(fd.get('passport_no') || '').trim().toUpperCase();
+      p.passport_expires_at = fd.get('passport_expires_at') || null;
+    }
     const bd = fd.get('birth_date');
     if (bd) p.birth_date = bd;
     bk.passengers[idx] = p;

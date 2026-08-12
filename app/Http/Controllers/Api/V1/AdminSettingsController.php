@@ -25,6 +25,10 @@ class AdminSettingsController extends Controller
         return $this->success([
             'settings' => SiteSettings::all(),
             'defaults' => SiteSettings::DEFAULTS,
+            // URL ที่ใช้จริงตอนนี้ — ต่างจาก settings.licence_image ตรงที่เผื่อ
+            // กรณียังไม่เคยอัปโหลด แล้วระบบถอยไปใช้ไฟล์เดิม แอดมินจะได้เห็นว่า
+            // ลูกค้ากำลังเห็นรูปไหนอยู่ ไม่ใช่ช่องว่าง
+            'licence_image_url' => SiteSettings::licenceImageUrl(),
         ]);
     }
 
@@ -40,6 +44,9 @@ class AdminSettingsController extends Controller
             'support_phone' => ['nullable', 'string', 'max:40'],
             'support_line' => ['nullable', 'string', 'max:80'],
             'support_email' => ['nullable', 'email', 'max:120'],
+            // เลขที่ใบอนุญาตเป็นเอกสารราชการ รูปแบบคือ เลขกลุ่ม/เลขลำดับ
+            'licence_no' => ['required', 'string', 'regex:/^[0-9]{1,3}\/[0-9]{3,8}$/'],
+            'licence_image' => ['nullable', 'string', 'max:2048'],
         ]);
 
         if ($data['quiet_start_hour'] === $data['quiet_end_hour']) {
@@ -48,6 +55,9 @@ class AdminSettingsController extends Controller
 
         Setting::put(SiteSettings::KEY, $data);
 
-        return $this->success(SiteSettings::all(), 'บันทึกการตั้งค่าระบบแล้ว');
+        return $this->success([
+            ...SiteSettings::all(),
+            'licence_image_url' => SiteSettings::licenceImageUrl(),
+        ], 'บันทึกการตั้งค่าระบบแล้ว');
     }
 }

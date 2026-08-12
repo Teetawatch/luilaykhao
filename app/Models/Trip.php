@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Countries;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,10 +21,12 @@ class Trip extends Model
     protected $attributes = [
         'status' => 'active',
         'views_count' => 0,
+        'destination_type' => 'domestic',
     ];
 
     protected $fillable = [
         'title', 'slug', 'type', 'location', 'region', 'description',
+        'destination_type', 'country_code', 'timezone',
         'difficulty', 'duration_days', 'distance_km', 'elevation_gain_m', 'max_participants',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
@@ -61,6 +64,38 @@ class Trip extends Model
     public function schedules(): HasMany
     {
         return $this->hasMany(TripSchedule::class);
+    }
+
+    /**
+     * ทริปนี้ออกนอกประเทศไหม — ตัวตัดสินใจเดียวที่ทุกที่ควรถาม
+     *
+     * ผูกกับ `destination_type` ไม่ใช่ `country_code` เพราะรอบที่แอดมินยังไม่ได้
+     * เลือกประเทศก็ยังต้องบังคับเก็บพาสปอร์ตอยู่ดี ปลอดภัยกว่าเดาจากรหัสว่าง
+     */
+    public function isInternational(): bool
+    {
+        return $this->destination_type === 'international';
+    }
+
+    /** "🇳🇵 เนปาล" สำหรับติดป้ายบนการ์ดทริป; null เมื่อเป็นทริปในประเทศ */
+    public function countryLabel(): ?string
+    {
+        return $this->isInternational() ? Countries::label($this->country_code) : null;
+    }
+
+    /**
+     * เขตเวลาปลายทาง ใช้กำกับกำหนดการรายวันว่าเป็นเวลาท้องถิ่น
+     *
+     * ค่าที่แอดมินกรอกเองมาก่อน แล้วค่อยถอยไปใช้เขตเวลามาตรฐานของประเทศ
+     * ประเทศกว้าง ๆ อย่างสหรัฐฯ จึงแก้ให้ตรงรัฐได้โดยไม่ต้องแตะทะเบียนประเทศ
+     */
+    public function destinationTimezone(): ?string
+    {
+        if (! $this->isInternational()) {
+            return null;
+        }
+
+        return $this->timezone ?: Countries::timezone($this->country_code);
     }
 
     /** สถานที่ที่ทริปนี้พาไป — ข้อมูลของสถานที่อยู่ต่อได้แม้ทริปนี้จะปิดขาย */

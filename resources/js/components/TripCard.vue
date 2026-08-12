@@ -29,6 +29,11 @@
           <span class="material-symbols-rounded text-[14px]">female</span>
           หญิงล้วน
         </span>
+        <!-- ป้ายประเทศติดเฉพาะทริปต่างประเทศ ทริปในประเทศไม่ต้องบอกว่า "ไทย" -->
+        <span v-if="trip.country_label" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md bg-sky-600 text-white flex items-center gap-1">
+          <span class="material-symbols-rounded text-[14px]">flight_takeoff</span>
+          {{ trip.country_label }}
+        </span>
       </div>
       
       <!-- Favorite button -->

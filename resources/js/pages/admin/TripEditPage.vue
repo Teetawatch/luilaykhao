@@ -48,10 +48,18 @@
           <h3 class="section-title"><span class="material-symbols-rounded">location_on</span> สถานที่และจุดนัดพบ</h3>
           <div class="form-grid pt-2">
             <div class="form-group">
+              <label>ปลายทาง *</label>
+              <select v-model="form.destination_type">
+                <option value="domestic">ในประเทศ</option>
+                <option value="international">ต่างประเทศ</option>
+              </select>
+              <p class="field-hint">ทริปต่างประเทศจะบังคับเก็บพาสปอร์ตตอนจอง และข้ามขั้นตอนเลือกจุดขึ้นรถ</p>
+            </div>
+            <div class="form-group">
               <label>สถานที่ *</label>
               <input v-model.trim="form.location" required placeholder="เช่น เชียงใหม่" data-required-field="location" />
             </div>
-            <div class="form-group">
+            <div class="form-group" v-if="!isInternational">
               <label>ภูมิภาค (ภาค) *</label>
               <select v-model="form.region" required data-required-field="region">
                 <option value="" disabled>เลือกภาค</option>
@@ -64,6 +72,20 @@
                 <option value="west">ภาคตะวันตก</option>
               </select>
             </div>
+            <template v-else>
+              <div class="form-group">
+                <label>ประเทศ *</label>
+                <select v-model="form.country_code" required data-required-field="country_code" @change="applyCountryTimezone">
+                  <option value="" disabled>เลือกประเทศ</option>
+                  <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.flag }} {{ c.name }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>เขตเวลาปลายทาง</label>
+                <input v-model.trim="form.timezone" placeholder="เช่น Asia/Kathmandu" />
+                <p class="field-hint">เว้นไว้ได้ ระบบจะใช้เขตเวลามาตรฐานของประเทศที่เลือก — กรอกเองเมื่อประเทศนั้นมีหลายเขตเวลา</p>
+              </div>
+            </template>
             <div class="form-group">
               <label>จุดขึ้นรถ/เรือ</label>
               <input v-model="form.departure_point" placeholder="เช่น ประตูท่าแพ เชียงใหม่" />
@@ -927,6 +949,7 @@ const handleMediaSelect = (data) => {
 
 const form = reactive({
   title: '', type: 'trekking', location: '', region: '', description: '',
+  destination_type: 'domestic', country_code: '', timezone: '',
   difficulty: 'medium', duration_days: 1, distance_km: null, elevation_gain_m: null, max_participants: 10,
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
   latitude: null, longitude: null, is_featured: false, is_women_only: false,
@@ -955,15 +978,36 @@ const normalizeArray = (value) => {
   return [];
 };
 
-const requiredFieldLabels = {
+const isInternational = computed(() => form.destination_type === 'international');
+
+// ทะเบียนประเทศมาจาก backend เพื่อให้แอดมิน เว็บ และแอปเห็นรายการเดียวกัน
+const countries = ref([]);
+const loadCountries = async () => {
+  try {
+    const res = await api.get('/countries');
+    countries.value = res.data.data || [];
+  } catch {
+    countries.value = []; // เลือกประเทศไม่ได้ชั่วคราว ดีกว่าหน้าพัง
+  }
+};
+
+// ทริปต่างประเทศไม่มี "ภาค" ให้เลือก — บังคับประเทศแทน ไม่งั้นฟอร์มจะฟ้องหา
+// ช่องที่ซ่อนอยู่แล้วผู้ใช้หาไม่เจอว่าต้องกรอกอะไร
+const requiredFieldLabels = computed(() => ({
   title: 'ชื่อทริป',
   type: 'ประเภท',
   location: 'สถานที่',
-  region: 'ภูมิภาค',
+  ...(isInternational.value ? { country_code: 'ประเทศ' } : { region: 'ภูมิภาค' }),
   difficulty: 'ระดับความยาก',
   duration_days: 'จำนวนวัน',
   max_participants: 'จำนวนคนสูงสุด',
   price_per_person: 'ราคาต่อคน',
+}));
+
+// เลือกประเทศแล้วเติมเขตเวลาให้อัตโนมัติ แต่ไม่ทับค่าที่แอดมินตั้งเอง
+const applyCountryTimezone = () => {
+  const picked = countries.value.find((c) => c.code === form.country_code);
+  if (picked && !form.timezone) form.timezone = picked.timezone;
 };
 
 const hasRequiredValue = (value) => {
@@ -972,13 +1016,13 @@ const hasRequiredValue = (value) => {
 };
 
 const getClientValidationErrors = (payload) => {
-  return Object.keys(requiredFieldLabels)
+  return Object.keys(requiredFieldLabels.value)
     .filter((field) => !hasRequiredValue(payload[field]))
-    .map((field) => requiredFieldLabels[field]);
+    .map((field) => requiredFieldLabels.value[field]);
 };
 
 const focusFirstMissingField = (payload) => {
-  const field = Object.keys(requiredFieldLabels).find((key) => !hasRequiredValue(payload[key]));
+  const field = Object.keys(requiredFieldLabels.value).find((key) => !hasRequiredValue(payload[key]));
   if (!field) return;
 
   const el = document.querySelector(`[data-required-field="${field}"]`);
@@ -997,7 +1041,11 @@ const buildTripPayload = () => {
     ...form,
     title: String(form.title || '').trim(),
     location: String(form.location || '').trim(),
-    region: String(form.region || '').trim(),
+    // ส่งเฉพาะฝั่งที่ตรงกับปลายทาง ไม่งั้นค่าที่ค้างจากการสลับตัวเลือกจะติดไปด้วย
+    // แล้วทริปต่างประเทศจะโผล่ในตัวกรอง "ภาคเหนือ" ของหน้าเว็บ
+    region: isInternational.value ? '' : String(form.region || '').trim(),
+    country_code: isInternational.value ? String(form.country_code || '').trim() : '',
+    timezone: isInternational.value ? String(form.timezone || '').trim() : '',
     description: form.description ?? '',
     departure_point: String(form.departure_point || '').trim(),
     cover_image: form.cover_image || '',
@@ -1608,6 +1656,11 @@ const initData = async () => {
       const res = await api.get(`/admin/trips/${route.params.id}`);
       const trip = res.data.data;
       Object.assign(form, { ...trip });
+      // ทริปที่สร้างก่อนมีฟีเจอร์นี้ไม่มีสามค่านี้ — เติมค่าเริ่มต้นให้ v-model
+      // ไม่ผูกกับ undefined ซึ่งจะทำให้ select ว่างเปล่าแทนที่จะเป็น "ในประเทศ"
+      form.destination_type = trip.destination_type || 'domestic';
+      form.country_code = trip.country_code || '';
+      form.timezone = trip.timezone || '';
       form.latitude = trip.latitude || null;
       form.longitude = trip.longitude || null;
       form.gallery = normalizeArray(trip.gallery);
@@ -1657,6 +1710,7 @@ onMounted(() => {
     form.type = 'climbing';
   }
   initData();
+  loadCountries();
   categoriesStore.fetchAdminCategories();
 });
 </script>
@@ -1666,6 +1720,13 @@ onMounted(() => {
 
 .edit-trip-page {
   padding-bottom: 80px;
+}
+
+.field-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7280;
 }
 
 .header-left {

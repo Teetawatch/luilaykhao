@@ -173,4 +173,85 @@ class PassportTest extends TestCase
     {
         $this->getJson('/api/v1/me/passport')->assertUnauthorized();
     }
+
+    public function test_passport_counts_countries_visited(): void
+    {
+        $user = User::factory()->create();
+        // ทริปในประเทศนับเป็นไทย ทริปนอกนับตามรหัสประเทศ ไปเนปาลสองครั้งนับหนึ่ง
+        $this->makeCompletedBooking($user, ['region' => 'north']);
+        $this->makeCompletedBooking($user, [
+            'destination_type' => 'international',
+            'country_code' => 'NP',
+            'region' => null,
+        ]);
+        $this->makeCompletedBooking($user, [
+            'destination_type' => 'international',
+            'country_code' => 'NP',
+            'region' => null,
+        ]);
+        $this->makeCompletedBooking($user, [
+            'destination_type' => 'international',
+            'country_code' => 'JP',
+            'region' => null,
+        ]);
+
+        $stats = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/me/passport')
+            ->assertOk()
+            ->json('data.stats');
+
+        $this->assertSame(3, $stats['countries_count']);
+        $this->assertEqualsCanonicalizing(
+            ['TH', 'NP', 'JP'],
+            array_column($stats['countries'], 'code'),
+        );
+
+        $nepal = collect($stats['countries'])->firstWhere('code', 'NP');
+        $this->assertSame('เนปาล', $nepal['name']);
+        $this->assertSame('🇳🇵', $nepal['flag']);
+    }
+
+    public function test_a_domestic_only_traveller_counts_one_country(): void
+    {
+        $user = User::factory()->create();
+        $this->makeCompletedBooking($user, ['region' => 'north']);
+        $this->makeCompletedBooking($user, ['region' => 'south']);
+
+        $stats = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/me/passport')
+            ->assertOk()
+            ->json('data.stats');
+
+        $this->assertSame(1, $stats['countries_count']);
+        $this->assertSame('TH', $stats['countries'][0]['code']);
+    }
+
+    public function test_international_badges_unlock_on_foreign_countries_only(): void
+    {
+        $user = User::factory()->create();
+        $this->makeCompletedBooking($user, ['region' => 'north']);
+
+        $badgeFor = function (User $user, string $key) {
+            $badges = $this->actingAs($user, 'sanctum')
+                ->getJson('/api/v1/me/passport')
+                ->assertOk()
+                ->json('data.badges');
+
+            return collect($badges)->firstWhere('key', $key);
+        };
+
+        // ไทยล้วน — ตราต่างประเทศต้องยังไม่ปลด
+        $this->assertFalse($badgeFor($user, 'passport_stamp')['earned']);
+
+        $this->makeCompletedBooking($user, [
+            'destination_type' => 'international',
+            'country_code' => 'NP',
+            'region' => null,
+        ]);
+
+        $stamp = $badgeFor($user, 'passport_stamp');
+        $this->assertTrue($stamp['earned']);
+        $this->assertNotNull($stamp['earned_at']);
+        $this->assertFalse($badgeFor($user, 'country_3')['earned']);
+    }
 }

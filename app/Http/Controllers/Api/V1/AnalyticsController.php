@@ -174,6 +174,12 @@ class AnalyticsController extends Controller
                 'line_url' => config('app.support_line_url'),
                 'email' => SiteSettings::get('support_email') ?: config('app.support_email'),
             ],
+            // ใบอนุญาตนำเที่ยว — แอดมินแก้เลขและอัปโหลดรูปใบใหม่ได้ที่หน้าตั้งค่า
+            // เว็บกับแอปอ่านจากตรงนี้ ไม่ต้อง deploy ใหม่ตอนต่ออายุหรือเปลี่ยนใบ
+            'licence' => [
+                'no' => SiteSettings::licenceNo(),
+                'image_url' => SiteSettings::licenceImageUrl(),
+            ],
         ]);
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\BroadcastNotificationService;
+use App\Support\SeoMeta;
 use App\Support\SiteSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -180,6 +181,7 @@ class AdminStaffReviewAndSettingsTest extends TestCase
                 'support_phone' => '062-612-6006',
                 'support_line' => null,
                 'support_email' => null,
+                'licence_no' => '11/13855',
             ])
             ->assertOk();
 
@@ -242,5 +244,138 @@ class AdminStaffReviewAndSettingsTest extends TestCase
         $this->actingAs($customer, 'sanctum')
             ->getJson('/api/v1/admin/staff-reviews')
             ->assertForbidden();
+    }
+
+    // ── ใบอนุญาตนำเที่ยว ─────────────────────────────────────────────
+
+    public function test_licence_defaults_to_the_number_the_code_used_to_hardcode(): void
+    {
+        $this->assertSame('11/13855', SiteSettings::licenceNo());
+
+        // ยังไม่เคยอัปโหลด = ใช้ไฟล์เดิม แอปเวอร์ชันเก่าจึงไม่เห็นรูปหาย
+        $this->assertStringEndsWith('/images/cer.jpg', SiteSettings::licenceImageUrl());
+    }
+
+    public function test_admin_can_change_the_licence_number_and_image(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                'licence_no' => '11/99999',
+                'licence_image' => 'https://media.example.com/licences/new-cer.jpg',
+            ]))
+            ->assertOk()
+            ->assertJsonPath('data.licence_no', '11/99999')
+            ->assertJsonPath('data.licence_image_url', 'https://media.example.com/licences/new-cer.jpg');
+
+        $this->assertSame('11/99999', SiteSettings::licenceNo());
+    }
+
+    public function test_the_new_licence_reaches_the_public_stats_endpoint(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                'licence_no' => '11/24680',
+                'licence_image' => 'https://media.example.com/licences/cer-2027.jpg',
+            ]))
+            ->assertOk();
+
+        // เว็บและแอปอ่านจากตรงนี้ — เปลี่ยนแล้วต้องมีผลโดยไม่ต้อง deploy
+        $this->getJson('/api/v1/stats')
+            ->assertOk()
+            ->assertJsonPath('data.licence.no', '11/24680')
+            ->assertJsonPath('data.licence.image_url', 'https://media.example.com/licences/cer-2027.jpg');
+    }
+
+    public function test_the_new_licence_number_reaches_the_server_rendered_shell(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                'licence_no' => '11/13579',
+            ]))
+            ->assertOk();
+
+        // แถบ Navbar และ JSON-LD อ่านเลขจาก shell ที่เสิร์ฟมา ไม่ได้ยิง API แยก
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('11/13579', false);
+    }
+
+    public function test_seo_description_substitutes_the_licence_placeholder(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                'licence_no' => '11/11111',
+            ]))
+            ->assertOk();
+
+        $meta = SeoMeta::for('/');
+
+        // `:licence` ถูกแทนตอน request — config ถูก cache ไว้จึงแทนที่นั่นไม่ได้
+        $this->assertStringNotContainsString(':licence', $meta['description']);
+        $this->assertStringContainsString('11/11111', $meta['description']);
+    }
+
+    public function test_a_malformed_licence_number_is_refused(): void
+    {
+        foreach (['abc', '11-13855', '11/', '/13855', ''] as $bad) {
+            $this->actingAs($this->admin, 'sanctum')
+                ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                    'licence_no' => $bad,
+                ]))
+                ->assertStatus(422)
+                ->assertJsonValidationErrors(['licence_no']);
+        }
+
+        // ของเดิมต้องไม่ถูกแตะ
+        $this->assertSame('11/13855', SiteSettings::licenceNo());
+    }
+
+    public function test_clearing_the_image_falls_back_to_the_original_file(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                'licence_image' => 'https://media.example.com/licences/new-cer.jpg',
+            ]))
+            ->assertOk();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                'licence_image' => null,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('data.licence_image', null);
+
+        $this->assertStringEndsWith('/images/cer.jpg', SiteSettings::licenceImageUrl());
+    }
+
+    public function test_customers_cannot_change_the_licence(): void
+    {
+        $customer = User::factory()->create();
+
+        $this->actingAs($customer, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->settingsPayload([
+                'licence_no' => '11/00000',
+            ]))
+            ->assertForbidden();
+
+        $this->assertSame('11/13855', SiteSettings::licenceNo());
+    }
+
+    /** payload เต็มของ endpoint ตั้งค่า — มันเขียนทับทั้งก้อน จึงต้องส่งครบทุกครั้ง */
+    private function settingsPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'guarantee_min_seats' => 8,
+            'low_seat_threshold' => 3,
+            'underfilled_min_seats' => 8,
+            'quiet_hours_enabled' => true,
+            'quiet_start_hour' => 21,
+            'quiet_end_hour' => 8,
+            'support_phone' => null,
+            'support_line' => null,
+            'support_email' => null,
+            'licence_no' => '11/13855',
+            'licence_image' => null,
+        ], $overrides);
     }
 }

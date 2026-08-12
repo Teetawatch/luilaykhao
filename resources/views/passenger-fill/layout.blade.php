@@ -41,6 +41,7 @@
             font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;
             letter-spacing: .4px; margin: 6px 0 12px;
         }
+        .hint { font-size: 12px; color: #64748b; margin: -12px 0 18px; line-height: 1.5; }
         .btn {
             display: block; width: 100%; border: none; border-radius: 12px; padding: 15px;
             background: #0B6E5F; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;

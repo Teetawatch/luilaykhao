@@ -11,7 +11,7 @@
     <title>{{ $seo['title'] }}</title>
     <meta name="title" content="{{ $seo['title'] }}">
     <meta name="description" content="{{ $seo['description'] }}">
-    <meta name="keywords" content="ลุยเลเขา, Luilaykhao, จองทริป, จัดทริป, เที่ยวไทย, เดินป่า, ดำน้ำตื้น, เช่ารถตู้นำเที่ยว, ทริปเดินป่า, ทริปดำน้ำ, ทริปภูเขา, ทริปทะเล, เที่ยวธรรมชาติ, แพลตฟอร์มจองทริป, ทริปผจญภัย, ท่องเที่ยวทั่วไทย, จองทริปเที่ยว, รถตู้ VIP, ทริปภูกระดึง, ทริปภูสอยดาว, ทริปดำน้ำตื้น, ทริปเขาช้างเผือก, บริษัทนำเที่ยว, ทัวร์ธรรมชาติ, outdoor activities thailand">
+    <meta name="keywords" content="ลุยเลเขา, Luilaykhao, จองทริป, จัดทริป, เที่ยวไทย, เดินป่า, ดำน้ำตื้น, เช่ารถตู้นำเที่ยว, ทริปเดินป่า, ทริปดำน้ำ, ทริปภูเขา, ทริปทะเล, เที่ยวธรรมชาติ, แพลตฟอร์มจองทริป, ทริปผจญภัย, ท่องเที่ยวทั่วไทย, จองทริปเที่ยว, รถตู้ VIP, ทริปภูกระดึง, ทริปภูสอยดาว, ทริปดำน้ำตื้น, ทริปเขาช้างเผือก, บริษัทนำเที่ยว, ทัวร์ธรรมชาติ, ทริปต่างประเทศ, เทรกกิ้งต่างประเทศ, ทัวร์ต่างประเทศ, outdoor activities thailand">
     <meta name="author" content="ลุยเลเขา Luilaykhao">
     <meta name="robots" content="{{ $seo['robots'] }}">
     <meta name="google-site-verification" content="6E_H_ur05qV8VIU5BXFa3-4sCSv-C9nQGDcMceZLVc8" />
@@ -19,6 +19,11 @@
     <meta name="rating" content="general">
     <meta name="geo.region" content="TH">
     <meta name="geo.placename" content="Thailand">
+
+    {{-- ใบอนุญาตส่งมากับ shell ไม่ใช่ยิง API แยก — แถบบนสุดของ Navbar แสดง
+         เลขนี้ทุกหน้า ถ้ารอ API จะเห็นแถบว่างวาบหนึ่งก่อนทุกครั้ง --}}
+    <meta name="llk:licence-no" content="{{ \App\Support\SiteSettings::licenceNo() }}">
+    <meta name="llk:licence-image" content="{{ \App\Support\SiteSettings::licenceImageUrl() }}">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ $seo['canonical'] }}">
@@ -67,12 +72,13 @@
         "alternateName": "Luilaykhao",
         "url": "{{ url('/') }}",
         "logo": "{{ asset('images/logo.png').'?v=2' }}",
-        "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว",
+        "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว",
         "contactPoint": {
             "@@type": "ContactPoint",
             "telephone": "+66-62-612-6006",
             "contactType": "customer service",
             "areaServed": "TH",
+            "serviceArea": { "@@type": "Place", "name": "Worldwide" },
             "availableLanguage": ["Thai"]
         },
         "sameAs": []
@@ -88,13 +94,17 @@
         "url": "{{ url('/') }}",
         "logo": "{{ asset('images/logo.png').'?v=2' }}",
         "image": "{{ asset('images/logo.png').'?v=2' }}",
-        "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ใบอนุญาตนำเที่ยวเลขที่ 12/03773",
+        "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ใบอนุญาตนำเที่ยวเลขที่ {{ \App\Support\SiteSettings::licenceNo() }} นำเที่ยวได้ทั้งในและต่างประเทศ",
         "telephone": "+66-62-612-6006",
         "email": "luilaykhao.info@@gmail.com",
         "address": {
             "@@type": "PostalAddress",
             "addressCountry": "TH"
         },
+        "areaServed": [
+            { "@@type": "Country", "name": "Thailand" },
+            { "@@type": "Place", "name": "Worldwide" }
+        ],
         "priceRange": "฿฿",
         "openingHoursSpecification": {
             "@@type": "OpeningHoursSpecification",

@@ -33,14 +33,32 @@ class SiteSettings
         'support_phone' => null,
         'support_line' => null,
         'support_email' => null,
+        // ใบอนุญาตประกอบธุรกิจนำเที่ยว — เลขที่และรูปใบจริงที่ลูกค้ากดดูได้
+        // เลข 11 ขึ้นต้น = นำเที่ยวได้ทั้งในและต่างประเทศ
+        'licence_no' => '11/13855',
+        'licence_image' => null,
     ];
 
     /**
      * @return array<string, mixed>
      */
+    /**
+     * ค่าที่ใช้จริง = ค่าตั้งต้น ทับด้วยค่าที่แอดมินบันทึกไว้
+     *
+     * อ่านที่เก็บไม่ได้ (ยังไม่ migrate, ฐานข้อมูลสะดุด) ให้ถอยไปใช้ค่าตั้งต้น
+     * แทนที่จะโยน exception — ตั้งแต่เลขที่ใบอนุญาตย้ายมาอยู่ที่นี่ ทุกหน้าเว็บ
+     * ก็อ่านค่าชุดนี้ตอนเรนเดอร์ การล้มตรงนี้จึงหมายถึงทั้งเว็บ 500 เพราะเรื่อง
+     * ที่แค่แสดงผลเพี้ยนก็พอ
+     *
+     * @return array<string, mixed>
+     */
     public static function all(): array
     {
-        $stored = Setting::get(self::KEY, []);
+        try {
+            $stored = Setting::get(self::KEY, []);
+        } catch (\Throwable) {
+            return self::DEFAULTS;
+        }
 
         return array_merge(self::DEFAULTS, is_array($stored) ? $stored : []);
     }
@@ -67,4 +85,36 @@ class SiteSettings
     {
         return (string) (self::get('support_phone') ?: config('app.support_phone'));
     }
+
+    /**
+     * เลขที่ใบอนุญาตนำเที่ยว — แหล่งเดียวของทั้งเว็บ แอป และ structured data
+     *
+     * เคยฮาร์ดโค้ดไว้ 13 ที่ ทำให้ตอนเปลี่ยนใบต้องไล่แก้ทีละไฟล์แล้ว deploy ใหม่
+     */
+    public static function licenceNo(): string
+    {
+        return (string) (self::get('licence_no') ?: self::DEFAULTS['licence_no']);
+    }
+
+    /**
+     * รูปใบอนุญาตที่ลูกค้ากดดูได้ — คืน URL เต็มเสมอ
+     *
+     * ยังไม่เคยอัปโหลดทับ = ใช้ไฟล์เดิมที่ /images/cer.jpg ต่อไป แอปเวอร์ชันที่
+     * ยังไม่ได้อัปเดตจึงไม่เห็นรูปหาย
+     */
+    public static function licenceImageUrl(): string
+    {
+        $stored = (string) (self::get('licence_image') ?: '');
+
+        // ไฟล์เดิมอยู่ใน public/ ไม่ได้อยู่บน media disk จึงต้องใช้ url() ตรง ๆ
+        if ($stored === '') {
+            return url(self::LEGACY_LICENCE_IMAGE);
+        }
+
+        // ค่าที่อัปโหลดใหม่เป็น URL เต็มจาก R2 อยู่แล้ว ส่วน local dev ได้ path
+        return MediaDisk::url($stored) ?: url($stored);
+    }
+
+    /** รูปใบอนุญาตชุดเดิมก่อนมีหน้าอัปโหลดในแอดมิน */
+    private const LEGACY_LICENCE_IMAGE = '/images/cer.jpg';
 }

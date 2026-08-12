@@ -2,12 +2,19 @@
 
 namespace App\Http\Requests\Booking;
 
+use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Support\Countries;
+use App\Support\ThaiDate;
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 class CreateBookingRequest extends FormRequest
 {
+    /** เกณฑ์อายุพาสปอร์ตคงเหลือขั้นต่ำที่สายการบินส่วนใหญ่ใช้ */
+    private const PASSPORT_VALIDITY_MONTHS = 6;
+
     public function authorize(): bool
     {
         return true;
@@ -19,6 +26,8 @@ class CreateBookingRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        $this->normalisePassengerNationality();
+
         $addons = $this->input('selected_addons');
         if (! is_array($addons)) {
             return;
@@ -45,11 +54,71 @@ class CreateBookingRequest extends FormRequest
         ]);
     }
 
+    /**
+     * เติมสัญชาติ 'TH' ให้ผู้โดยสารที่ไม่ได้ส่งมา
+     *
+     * ทุกช่องทางที่มีอยู่ก่อนหน้านี้ (แอป, LIFF, ลิงก์กรอกเอง) ไม่รู้จักฟิลด์นี้
+     * การเติมค่าเริ่มต้นตรงนี้ทำให้กฎที่อ้าง `required_if:...nationality,TH`
+     * ทำงานได้จริง แทนที่จะเงียบไปเพราะฟิลด์หายทั้งช่อง
+     */
+    private function normalisePassengerNationality(): void
+    {
+        $passengers = $this->input('passengers');
+        if (! is_array($passengers)) {
+            return;
+        }
+
+        $this->merge([
+            'passengers' => array_map(function ($passenger) {
+                if (! is_array($passenger)) {
+                    return $passenger;
+                }
+
+                $nationality = $passenger['nationality'] ?? null;
+                $passenger['nationality'] = filled($nationality)
+                    ? strtoupper((string) $nationality)
+                    : Countries::HOME;
+
+                return $passenger;
+            }, $passengers),
+        ]);
+    }
+
+    /**
+     * ทริปของรอบที่กำลังจอง — อ่านครั้งเดียวแล้วใช้ซ้ำ เพราะทั้ง rules() และ
+     * withValidator() ต้องรู้ว่าทริปนี้ออกนอกประเทศไหม
+     */
+    private function trip(): ?Trip
+    {
+        if ($this->resolvedTrip !== false) {
+            return $this->resolvedTrip;
+        }
+
+        $scheduleId = $this->input('schedule_id');
+        $schedule = $scheduleId ? TripSchedule::with('trip')->find($scheduleId) : null;
+
+        return $this->resolvedTrip = $schedule?->trip;
+    }
+
+    /** false = ยังไม่ได้หา, null = หาแล้วไม่เจอ */
+    private Trip|null|false $resolvedTrip = false;
+
+    private function isInternational(): bool
+    {
+        return (bool) $this->trip()?->isInternational();
+    }
+
     public function rules(): array
     {
         // ซื้อเป็นของขวัญ: ผู้ให้รู้แค่ชื่อผู้รับ — ข้อมูลผู้เดินทางที่เหลือ
         // จะถูกเติมจากโปรไฟล์ผู้รับตอนกดรับของขวัญ (GiftService::claim)
         $passengerRequired = $this->boolean('is_gift') ? 'nullable' : 'required';
+
+        // เอกสารเดินทางบังคับเฉพาะทริปต่างประเทศ และเฉพาะการจองที่รู้ตัวผู้เดินทาง
+        // แล้ว — ของขวัญยังไม่รู้ว่าใครไป จึงไปเก็บตอนผู้รับกดรับแทน
+        $passportRequired = $this->isInternational() && ! $this->boolean('is_gift')
+            ? 'required'
+            : 'nullable';
 
         return [
             'schedule_id' => ['required', 'exists:trip_schedules,id'],
@@ -65,11 +134,23 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.title' => [$passengerRequired, 'string', 'max:50'],
             'passengers.*.name' => ['required', 'string', 'max:255'],
             'passengers.*.nickname' => [$passengerRequired, 'string', 'max:100'],
-            'passengers.*.id_card' => [$passengerRequired, 'digits:13'],
+            // เลขบัตรประชาชนบังคับเฉพาะคนสัญชาติไทย — ชาวต่างชาติที่ร่วมทริป
+            // ยืนยันตัวด้วยพาสปอร์ตแทน (prepareForValidation เติม TH ให้เสมอ
+            // เมื่อไม่ได้ส่งมา ค่าเดิมของทุกช่องทางจึงยังบังคับเหมือนเดิม)
+            'passengers.*.id_card' => $this->boolean('is_gift')
+                ? ['nullable', 'digits:13']
+                : ['required_if:passengers.*.nationality,TH', 'nullable', 'digits:13'],
+            'passengers.*.nationality' => ['required', 'string', 'size:2'],
+            // ต้องสะกดตรงหน้าพาสปอร์ต จึงรับเฉพาะอักษรละติน
+            'passengers.*.name_en' => [$passportRequired, 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
+            'passengers.*.passport_no' => [$passportRequired, 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],
+            'passengers.*.passport_expires_at' => [$passportRequired, 'nullable', 'date', 'after:today'],
             // Temporarily optional: the production mobile app does not send
             // birth_date yet. Revert to 'required' once the app ships.
             'passengers.*.birth_date' => ['nullable', 'date', 'before:today'],
-            'passengers.*.phone' => [$passengerRequired, 'digits:10'],
+            // เบอร์ไทยยังบังคับ 10 หลักเท่าเดิม (ตรวจใน withValidator) ส่วน
+            // เบอร์ต่างประเทศยาวไม่เท่ากันและมีรหัสประเทศนำหน้า
+            'passengers.*.phone' => [$passengerRequired, 'string', 'max:20', 'regex:/^\+?[0-9][0-9 -]{7,19}$/'],
             'passengers.*.email' => ['nullable', 'email', 'max:255'],
             'passengers.0.email' => ['required_if:booking_for,friend', 'nullable', 'email', 'max:255'],
             'passengers.*.blood_group' => [$passengerRequired, 'in:A,B,O,AB'],
@@ -77,7 +158,7 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.halal_food' => [$passengerRequired, 'boolean'],
             'passengers.*.health_notes' => ['nullable', 'string'],
             'passengers.*.emergency_contact' => [$passengerRequired, 'string', 'max:255'],
-            'passengers.*.emergency_phone' => [$passengerRequired, 'digits:10'],
+            'passengers.*.emergency_phone' => [$passengerRequired, 'string', 'max:20', 'regex:/^\+?[0-9][0-9 -]{7,19}$/'],
             'passengers.*.pickup_point_id' => ['nullable', 'integer', 'exists:schedule_pickup_points,id'],
             'passengers.*.dive_cert_level' => ['nullable', 'string'],
             'passengers.*.cert_number' => ['nullable', 'string'],
@@ -105,6 +186,15 @@ class CreateBookingRequest extends FormRequest
         return [
             'passengers.*.birth_date.required' => 'กรุณาระบุวัน/เดือน/ปีเกิดของผู้เดินทาง',
             'passengers.*.birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
+            'passengers.*.id_card.required_if' => 'กรุณากรอกเลขบัตรประชาชน 13 หลัก',
+            'passengers.*.name_en.required' => 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต',
+            'passengers.*.name_en.regex' => 'ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
+            'passengers.*.passport_no.required' => 'กรุณากรอกเลขที่พาสปอร์ต',
+            'passengers.*.passport_no.regex' => 'เลขที่พาสปอร์ตไม่ถูกต้อง',
+            'passengers.*.passport_expires_at.required' => 'กรุณาระบุวันหมดอายุพาสปอร์ต',
+            'passengers.*.passport_expires_at.after' => 'พาสปอร์ตหมดอายุแล้ว',
+            'passengers.*.phone.regex' => 'เบอร์โทรศัพท์ไม่ถูกต้อง',
+            'passengers.*.emergency_phone.regex' => 'เบอร์โทรผู้ติดต่อฉุกเฉินไม่ถูกต้อง',
             'custom_pickup_label.required_with' => 'กรุณาระบุชื่อจุดรับที่ปักหมุด',
             'custom_pickup_lat.required_with' => 'กรุณาปักหมุดตำแหน่งจุดรับบนแผนที่',
             'custom_pickup_lng.required_with' => 'กรุณาปักหมุดตำแหน่งจุดรับบนแผนที่',
@@ -124,10 +214,16 @@ class CreateBookingRequest extends FormRequest
                 return;
             }
 
+            $this->validateThaiPhones($validator);
+            $this->validatePassportValidity($validator, $schedule);
+
             // บังคับระบุจุดรับสำหรับการจองปกติ เมื่อรอบมีจุดขึ้นรถตั้งไว้ — กันทุกช่องทาง
             // ที่ยิงเข้ามาไม่ให้เกิดการจองที่ไม่มีจุดรับ (join trip ยกเว้น; รอบที่ไม่มีจุด
             // ตั้งไว้ก็ยกเว้นฝั่ง backend เพราะบางช่องทาง เช่น LIFF ไม่มีปุ่มปักหมุดเอง)
-            if (! $this->boolean('is_join_trip') && $schedule->pickupPoints()->exists()) {
+            // ทริปต่างประเทศยกเว้นด้วย — นัดเจอกันที่สนามบิน ไม่มีรถตู้วิ่งรับตามภาค
+            if (! $this->boolean('is_join_trip')
+                && ! $schedule->trip->isInternational()
+                && $schedule->pickupPoints()->exists()) {
                 $hasBookingPickup = filled($this->input('pickup_point_id'));
                 $hasPassengerPickup = collect($this->input('passengers', []))
                     ->contains(fn ($p) => filled($p['pickup_point_id'] ?? null));
@@ -165,5 +261,71 @@ class CreateBookingRequest extends FormRequest
                 }
             }
         });
+    }
+
+    /**
+     * เบอร์ของคนสัญชาติไทยยังต้องเป็น 10 หลักเท่าเดิม
+     *
+     * กฎในตาราง rules() ผ่อนให้รองรับเบอร์ต่างประเทศ (มี + และความยาวไม่คงที่)
+     * การรัดกลับเฉพาะสัญชาติไทยตรงนี้ทำให้ลูกค้าไทยพิมพ์เบอร์ผิดแล้วยังเจอ
+     * ข้อความเดิม ไม่ใช่ปล่อยผ่านไปเป็นเบอร์ที่โทรไม่ติดตอนวันเดินทาง
+     */
+    private function validateThaiPhones(Validator $validator): void
+    {
+        foreach ($this->input('passengers', []) as $index => $passenger) {
+            if (($passenger['nationality'] ?? Countries::HOME) !== Countries::HOME) {
+                continue;
+            }
+
+            foreach (['phone' => 'เบอร์โทรศัพท์', 'emergency_phone' => 'เบอร์โทรผู้ติดต่อฉุกเฉิน'] as $field => $label) {
+                $value = $passenger[$field] ?? null;
+                if (blank($value)) {
+                    continue; // ความจำเป็นของช่องนี้ให้ rules() ตัดสิน
+                }
+
+                if (! preg_match('/^[0-9]{10}$/', (string) $value)) {
+                    $validator->errors()->add(
+                        "passengers.{$index}.{$field}",
+                        "{$label}ต้องเป็นตัวเลข 10 หลัก"
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง
+     *
+     * เป็นเกณฑ์ที่สายการบินและด่านตรวจคนเข้าเมืองส่วนใหญ่ใช้ ถ้าปล่อยผ่านตอนจอง
+     * ลูกค้าจะไปรู้ตัวเอาที่เคาน์เตอร์เช็คอิน ซึ่งแก้อะไรไม่ทันแล้ว
+     */
+    private function validatePassportValidity(Validator $validator, TripSchedule $schedule): void
+    {
+        if (! $schedule->trip?->isInternational() || ! $schedule->departure_date) {
+            return;
+        }
+
+        $minimumExpiry = $schedule->departure_date->copy()->addMonths(self::PASSPORT_VALIDITY_MONTHS);
+
+        foreach ($this->input('passengers', []) as $index => $passenger) {
+            $expiresAt = $passenger['passport_expires_at'] ?? null;
+            if (blank($expiresAt)) {
+                continue; // ความจำเป็นของช่องนี้ให้ rules() ตัดสิน
+            }
+
+            try {
+                $expiry = Carbon::parse($expiresAt);
+            } catch (\Throwable) {
+                continue; // รูปแบบวันที่ผิด — กฎ 'date' รายงานไปแล้ว
+            }
+
+            if ($expiry->lt($minimumExpiry)) {
+                $validator->errors()->add(
+                    "passengers.{$index}.passport_expires_at",
+                    'พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง '
+                        .'(หมดอายุหลัง '.ThaiDate::short($minimumExpiry).')'
+                );
+            }
+        }
     }
 }

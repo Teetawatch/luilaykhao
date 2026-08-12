@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BookingPassenger;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -36,12 +37,20 @@ class PublicPassengerFillController extends Controller
     {
         $passenger = $this->resolve($token);
 
+        // ทริปต่างประเทศต้องได้เอกสารเดินทางจากเพื่อนด้วย ไม่งั้นคนจองต้องไปไล่
+        // ถามเลขพาสปอร์ตทางแชทอยู่ดี ซึ่งเป็นปัญหาเดิมที่หน้านี้ตั้งใจแก้
+        $isInternational = (bool) $passenger->booking?->schedule?->trip?->isInternational();
+        $passportRequired = $isInternational ? 'required' : 'nullable';
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'nickname' => ['nullable', 'string', 'max:50'],
             'phone' => ['required', 'string', 'max:20'],
             'email' => ['nullable', 'email', 'max:120'],
             'id_card' => ['nullable', 'string', 'max:20'],
+            'name_en' => [$passportRequired, 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
+            'passport_no' => [$passportRequired, 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],
+            'passport_expires_at' => [$passportRequired, 'nullable', 'date', 'after:today'],
             'birth_date' => ['nullable', 'date', 'before:today'],
             'blood_group' => ['nullable', Rule::in(['A', 'B', 'AB', 'O', ''])],
             'emergency_contact' => ['nullable', 'string', 'max:120'],
@@ -53,7 +62,23 @@ class PublicPassengerFillController extends Controller
             'name.required' => 'กรุณากรอกชื่อ-นามสกุล',
             'phone.required' => 'กรุณากรอกเบอร์โทรศัพท์',
             'birth_date.before' => 'วันเกิดต้องเป็นวันในอดีต',
+            'name_en.required' => 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต',
+            'name_en.regex' => 'ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
+            'passport_no.required' => 'กรุณากรอกเลขที่พาสปอร์ต',
+            'passport_no.regex' => 'เลขที่พาสปอร์ตไม่ถูกต้อง',
+            'passport_expires_at.required' => 'กรุณาระบุวันหมดอายุพาสปอร์ต',
+            'passport_expires_at.after' => 'พาสปอร์ตหมดอายุแล้ว',
         ]);
+
+        // เกณฑ์ 6 เดือนเหมือนตอนจอง — เพื่อนที่กรอกทีหลังต้องผ่านด่านเดียวกัน
+        if ($isInternational && filled($data['passport_expires_at'] ?? null)) {
+            $departure = $passenger->booking?->schedule?->departure_date;
+            if ($departure && Carbon::parse($data['passport_expires_at'])->lt($departure->copy()->addMonths(6))) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['passport_expires_at' => 'พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง']);
+            }
+        }
 
         $passenger->fill([
             ...$data,

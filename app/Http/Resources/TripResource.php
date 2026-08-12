@@ -38,6 +38,12 @@ class TripResource extends JsonResource
             'type' => $this->type,
             'location' => $this->location,
             'region' => $this->region,
+            // ปลายทาง — ทริปเก่าทุกทริปเป็น 'domestic' โดยค่าเริ่มต้น
+            'destination_type' => $this->destination_type,
+            'is_international' => $this->isInternational(),
+            'country_code' => $this->country_code,
+            'country_label' => $this->countryLabel(),
+            'destination_timezone' => $this->destinationTimezone(),
             'description' => $this->description,
             'difficulty' => $this->difficulty,
             'duration_days' => $this->duration_days,

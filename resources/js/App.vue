@@ -126,6 +126,7 @@ import CookieConsentBanner from './components/CookieConsentBanner.vue';
 import { useSeatsStore } from './stores/seats';
 import { useBookingStore } from './stores/booking';
 import { useWishlistStore } from './stores/wishlist';
+import { withLicence } from './lib/licence';
 import { useSwal } from './lib/swal';
 import { useHead } from '@unhead/vue';
 
@@ -145,14 +146,14 @@ const wishlistStore = useWishlistStore();
 const swal = useSwal();
 
 useHead({
-  title: computed(() => route.meta.title || 'แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว'),
+  title: computed(() => route.meta.title || 'แพลตฟอร์มจองและจัดทริปเที่ยว ทั้งในไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว'),
   titleTemplate: '%s | ลุยเลเขา Luilaykhao',
   link: [
     { rel: 'canonical', href: computed(() => `${window.location.origin}${route.path}`) }
   ],
   meta: [
     // Primary SEO
-    { name: 'description', content: computed(() => route.meta.description || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย') },
+    { name: 'description', content: computed(() => withLicence(route.meta.description) || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย') },
     { name: 'robots', content: computed(() => route.meta.robots || 'index, follow, max-image-preview:large, max-snippet:-1') },
 
     // Open Graph
@@ -160,17 +161,17 @@ useHead({
     { property: 'og:type', content: computed(() => route.meta.ogType || 'website') },
     { property: 'og:locale', content: 'th_TH' },
     { property: 'og:url', content: computed(() => `${window.location.origin}${route.path}`) },
-    { property: 'og:title', content: computed(() => (route.meta.title ? `${route.meta.title} | ลุยเลเขา` : 'ลุยเลเขา | แพลตฟอร์มจองและจัดทริปเที่ยวทั่วไทย เดินป่า ดำน้ำตื้น เช่ารถตู้')) },
-    { property: 'og:description', content: computed(() => route.meta.description || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย') },
+    { property: 'og:title', content: computed(() => (route.meta.title ? `${route.meta.title} | ลุยเลเขา` : 'ลุยเลเขา | จองและจัดทริปเที่ยวในไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้')) },
+    { property: 'og:description', content: computed(() => withLicence(route.meta.description) || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย') },
     { property: 'og:image', content: computed(() => `${window.location.origin}/images/logo.png?v=2`) },
     { property: 'og:image:width', content: '512' },
     { property: 'og:image:height', content: '512' },
-    { property: 'og:image:alt', content: 'ลุยเลเขา Luilaykhao - แพลตฟอร์มจองทริปท่องเที่ยวทั่วไทย' },
+    { property: 'og:image:alt', content: 'ลุยเลเขา Luilaykhao - แพลตฟอร์มจองทริปท่องเที่ยวในไทยและต่างประเทศ' },
 
     // Twitter Card
     { name: 'twitter:card', content: 'summary_large_image' },
-    { name: 'twitter:title', content: computed(() => (route.meta.title ? `${route.meta.title} | ลุยเลเขา` : 'ลุยเลเขา | แพลตฟอร์มจองทริปเที่ยวทั่วไทย')) },
-    { name: 'twitter:description', content: computed(() => route.meta.description || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทย') },
+    { name: 'twitter:title', content: computed(() => (route.meta.title ? `${route.meta.title} | ลุยเลเขา` : 'ลุยเลเขา | แพลตฟอร์มจองทริปเที่ยวในไทยและต่างประเทศ')) },
+    { name: 'twitter:description', content: computed(() => withLicence(route.meta.description) || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ') },
     { name: 'twitter:image', content: computed(() => `${window.location.origin}/images/logo.png?v=2`) },
     { name: 'twitter:image:alt', content: 'ลุยเลเขา Luilaykhao' }
   ]

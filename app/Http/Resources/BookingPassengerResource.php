@@ -15,6 +15,11 @@ class BookingPassengerResource extends JsonResource
             'name' => $this->name,
             'nickname' => $this->nickname,
             'id_card' => $this->id_card,
+            // เอกสารเดินทาง — ว่างทั้งชุดสำหรับทริปในประเทศ
+            'name_en' => $this->name_en,
+            'nationality' => $this->nationality,
+            'passport_no' => $this->passport_no,
+            'passport_expires_at' => $this->passport_expires_at?->toDateString(),
             'phone' => $this->phone,
             'email' => $this->email,
             'blood_group' => $this->blood_group,

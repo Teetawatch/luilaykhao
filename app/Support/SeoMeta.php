@@ -183,6 +183,14 @@ class SeoMeta
         return false;
     }
 
+    /** แทน `:licence` ในข้อความ SEO ด้วยเลขที่ใบอนุญาตปัจจุบัน */
+    private static function withLicence(string $text): string
+    {
+        return str_contains($text, ':licence')
+            ? str_replace(':licence', SiteSettings::licenceNo(), $text)
+            : $text;
+    }
+
     private static function assemble(array $parts): array
     {
         $default = config('seo.default');
@@ -191,7 +199,10 @@ class SeoMeta
         return [
             'title' => $title.config('seo.title_suffix'),
             'og_title' => $title.config('seo.og_title_suffix'),
-            'description' => $parts['description'] ?: $default['description'],
+            // `:licence` ถูกแทนตอน request ไม่ใช่ตอนอ่าน config เพราะ config
+            // ถูก cache ไว้ (config:cache) การอ่านฐานข้อมูลตรงนั้นจะแช่ค่าเก่าไว้
+            // จนกว่าจะ deploy ใหม่ ซึ่งคือปัญหาเดิมที่หน้าตั้งค่าตั้งใจแก้
+            'description' => self::withLicence($parts['description'] ?: $default['description']),
             'robots' => $parts['robots'] ?? $default['robots'],
             'canonical' => $parts['canonical'],
             'image' => $parts['image'],

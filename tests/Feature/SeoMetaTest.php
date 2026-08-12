@@ -8,6 +8,7 @@ use App\Models\Review;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -260,14 +261,14 @@ class SeoMetaTest extends TestCase
         $html = $this->get('/faq')->assertOk()->getContent();
 
         $this->assertStringContainsString('คำถามที่พบบ่อย (FAQ) | ลุยเลเขา Luilaykhao', $html);
-        $this->assertSame(config('seo.pages./faq.description'), $this->meta($html, 'name', 'description'));
+        $this->assertSame($this->expectedDescription('/faq'), $this->meta($html, 'name', 'description'));
     }
 
     public function test_the_homepage_keeps_the_site_default_copy(): void
     {
         $html = $this->get('/')->assertOk()->getContent();
 
-        $this->assertSame(config('seo.pages./.description'), $this->meta($html, 'name', 'description'));
+        $this->assertSame($this->expectedDescription('/'), $this->meta($html, 'name', 'description'));
         $this->assertSame(url('/'), $this->meta($html, 'property', 'og:url'));
     }
 
@@ -325,5 +326,20 @@ class SeoMetaTest extends TestCase
 
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
         $this->assertStringContainsString('&quot;', $html);
+    }
+
+    /**
+     * คำโปรยของหน้าตาม config หลังแทน `:licence` แล้ว
+     *
+     * เลขที่ใบอนุญาตย้ายไปอยู่ในหน้าตั้งค่าของแอดมิน ตัว config จึงเก็บเป็น
+     * placeholder ไว้ เพราะมันถูก cache (config:cache) และอ่านฐานข้อมูลไม่ได้
+     */
+    private function expectedDescription(string $path): string
+    {
+        return str_replace(
+            ':licence',
+            SiteSettings::licenceNo(),
+            config("seo.pages.{$path}.description"),
+        );
     }
 }

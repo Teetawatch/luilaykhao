@@ -18,6 +18,7 @@ class SavedTraveller extends Model
         'user_id', 'label', 'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'emergency_contact',
         'emergency_phone', 'allergies', 'health_notes', 'halal_food',
+        'name_en', 'nationality', 'passport_no', 'passport_expires_at',
         'last_used_at', 'times_used',
     ];
 
@@ -25,6 +26,8 @@ class SavedTraveller extends Model
     {
         return [
             'id_card' => 'encrypted',
+            'passport_no' => 'encrypted',
+            'passport_expires_at' => 'date',
             'allergies' => 'encrypted',
             'health_notes' => 'encrypted',
             'birth_date' => 'date',
@@ -49,6 +52,10 @@ class SavedTraveller extends Model
             'phone' => $this->phone,
             'email' => $this->email,
             'id_card' => $this->id_card,
+            'name_en' => $this->name_en,
+            'nationality' => $this->nationality,
+            'passport_no' => $this->passport_no,
+            'passport_expires_at' => $this->passport_expires_at?->toDateString(),
             'birth_date' => $this->birth_date?->toDateString(),
             'blood_group' => $this->blood_group,
             'emergency_contact' => $this->emergency_contact,

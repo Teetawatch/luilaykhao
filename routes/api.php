@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
+use App\Http\Controllers\Api\V1\CountryController;
 use App\Http\Controllers\Api\V1\DistanceController;
 use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
@@ -153,6 +154,9 @@ Route::prefix('v1')->group(function () {
 
     // Categories (public)
     Route::get('categories', [CategoryController::class, 'index']);
+
+    // ประเทศปลายทางที่รองรับ — แอดมินใช้เติม dropdown, ฟอร์มจองใช้เลือกสัญชาติ
+    Route::get('countries', [CountryController::class, 'index']);
 
     // Articles / blog (public read — same content the app shows)
     Route::middleware('throttle:api')->group(function () {

@@ -11,6 +11,7 @@ class BookingPassenger extends Model
 
     protected $fillable = [
         'booking_id', 'title', 'name', 'nickname', 'id_card', 'birth_date', 'phone', 'email', 'health_notes',
+        'name_en', 'nationality', 'passport_no', 'passport_expires_at',
         'emergency_contact', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
         'blood_group', 'allergies', 'halal_food', 'pickup_point_id',
@@ -24,6 +25,8 @@ class BookingPassenger extends Model
             'birth_date' => 'date',
             'health_notes' => 'encrypted',
             'id_card' => 'encrypted',
+            'passport_no' => 'encrypted',
+            'passport_expires_at' => 'date',
             'allergies' => 'encrypted',
             'halal_food' => 'boolean',
             'self_fill_expires_at' => 'datetime',

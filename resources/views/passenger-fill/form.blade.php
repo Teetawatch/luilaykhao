@@ -55,6 +55,27 @@
             <input type="email" id="email" name="email" autocomplete="email"
                    value="{{ old('email', $passenger->email) }}">
 
+            @if ($trip?->isInternational())
+                {{-- ทริปต่างประเทศ: ข้อมูลชุดนี้เอาไปออกตั๋วเครื่องบินตรง ๆ --}}
+                <div class="section-label">เอกสารเดินทาง</div>
+                <p class="hint">กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน</p>
+
+                <label class="field" for="name_en">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)</label>
+                <input type="text" id="name_en" name="name_en" required maxlength="255"
+                       placeholder="SOMCHAI JAIDEE" style="text-transform: uppercase"
+                       value="{{ old('name_en', $passenger->name_en) }}">
+
+                <label class="field" for="passport_no">เลขที่พาสปอร์ต</label>
+                <input type="text" id="passport_no" name="passport_no" required maxlength="20"
+                       placeholder="AA1234567" style="text-transform: uppercase"
+                       value="{{ old('passport_no', $passenger->passport_no) }}">
+
+                <label class="field" for="passport_expires_at">วันหมดอายุพาสปอร์ต</label>
+                <input type="date" id="passport_expires_at" name="passport_expires_at" required
+                       value="{{ old('passport_expires_at', $passenger->passport_expires_at?->toDateString()) }}">
+                <p class="hint">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
+            @endif
+
             <div class="section-label">ข้อมูลสำหรับประกันการเดินทาง</div>
 
             <label class="field" for="id_card">เลขบัตรประชาชน</label>

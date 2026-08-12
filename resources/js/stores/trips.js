@@ -10,6 +10,8 @@ export const useTripsStore = defineStore('trips', {
     meta: null,
     filters: {
       type: '',
+      // '' = ทุกที่, 'domestic' = ในประเทศ, 'international' = ต่างประเทศ
+      destination: '',
       difficulty: '',
       search: '',
       date: '',
@@ -25,6 +27,7 @@ export const useTripsStore = defineStore('trips', {
       try {
         const params = { page, per_page: 12 };
         if (this.filters.type) params.type = this.filters.type;
+        if (this.filters.destination) params.destination = this.filters.destination;
         if (this.filters.difficulty) params.difficulty = this.filters.difficulty;
         if (this.filters.search) params.search = this.filters.search;
         if (this.filters.date) params.date = this.filters.date;
@@ -87,7 +90,7 @@ export const useTripsStore = defineStore('trips', {
     },
 
     clearFilters() {
-      this.filters = { type: '', difficulty: '', search: '', date: '', min_days: '', max_days: '', sort: 'popular' };
+      this.filters = { type: '', destination: '', difficulty: '', search: '', date: '', min_days: '', max_days: '', sort: 'popular' };
     },
   },
 });

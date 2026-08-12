@@ -839,7 +839,17 @@
                     <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'nickname') }}
                   </p>
                 </div>
-                <div>
+                <!-- สัญชาติเลือกได้เฉพาะทริปต่างประเทศ — ทริปในประเทศทุกคนเป็นไทย
+                     โดยปริยาย ไม่ต้องเพิ่มช่องให้กรอกเปล่า ๆ -->
+                <div v-if="isInternational">
+                  <label class="block text-sm font-bold text-gray-700 mb-2">สัญชาติ <span class="text-red-500">*</span></label>
+                  <select v-model="p.nationality"
+                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white">
+                    <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.flag }} {{ c.name }}</option>
+                  </select>
+                </div>
+
+                <div v-if="!isInternational || p.nationality === 'TH'">
                   <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
                     <span>เลขที่บัตรประชาชน (สำหรับประกัน) <span class="text-red-500">*</span></span>
                     <button type="button" @click="showInsuranceModal = true" class="text-teal-600 hover:text-teal-700 flex items-center gap-1 text-[11px] font-bold bg-teal-50 px-2 py-1 rounded-lg border border-teal-100 transition-all active:scale-95">
@@ -856,6 +866,52 @@
                   <p v-if="showErr(i, 'id_card')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'id_card') }}
                   </p>
+                </div>
+
+                <!-- เอกสารเดินทาง — ข้อมูลชุดนี้เอาไปออกตั๋วเครื่องบินตรง ๆ
+                     สะกดผิดแม้ตัวเดียวคือขึ้นเครื่องไม่ได้ จึงแยกกล่องให้เห็นชัด -->
+                <div v-if="isInternational" class="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 space-y-4">
+                  <div class="flex items-start gap-2">
+                    <span class="material-symbols-rounded text-[20px] text-amber-600">flight_takeoff</span>
+                    <div>
+                      <p class="text-sm font-bold text-gray-900">เอกสารเดินทาง</p>
+                      <p class="text-xs text-gray-600 mt-0.5">กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต) <span class="text-red-500">*</span></label>
+                    <input v-model="p.name_en" type="text" required placeholder="SOMCHAI JAIDEE"
+                      @input="p.name_en = p.name_en.toUpperCase()"
+                      class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 uppercase focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-white"
+                      :class="showErr(i, 'name_en') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                    <p v-if="showErr(i, 'name_en')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'name_en') }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">เลขที่พาสปอร์ต <span class="text-red-500">*</span></label>
+                    <input v-model="p.passport_no" type="text" required placeholder="AA1234567"
+                      maxlength="20"
+                      @input="p.passport_no = p.passport_no.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+                      class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 uppercase tracking-wider focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-white"
+                      :class="showErr(i, 'passport_no') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                    <p v-if="showErr(i, 'passport_no')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'passport_no') }}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">วันหมดอายุพาสปอร์ต <span class="text-red-500">*</span></label>
+                    <input v-model="p.passport_expires_at" type="date" required :min="minPassportExpiry"
+                      class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all bg-white"
+                      :class="showErr(i, 'passport_expires_at') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                    <p v-if="showErr(i, 'passport_expires_at')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'passport_expires_at') }}
+                    </p>
+                    <p v-else class="text-xs text-gray-500 mt-2">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
+                  </div>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">วัน/เดือน/ปีเกิด (พ.ศ.) <span class="text-red-500">*</span></label>
@@ -1650,6 +1706,7 @@ import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
 import { bookableSeats } from '../lib/scheduleHelpers';
+import { toBangkokDate } from '../lib/bangkokDate';
 import { beginCheckout } from '../lib/analytics';
 
 const route = useRoute();
@@ -1741,7 +1798,28 @@ const hasSeatMap = computed(() => {
   return seatsStore.seatMap?.has_seat_map ?? false;
 });
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
-const isTrekking = computed(() => schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value);
+const isInternational = computed(() => schedule.value?.trip?.is_international === true);
+// ทริปต่างประเทศนัดเจอกันที่สนามบิน ไม่มีรถตู้วิ่งรับตามภาค — ขั้นตอนเลือกจุดรับ
+// จึงไม่มีอะไรให้เลือกและต้องข้ามไป (backend ยกเว้นให้ตรงกัน)
+const isTrekking = computed(() =>
+  schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value && !isInternational.value);
+
+// วันหมดอายุพาสปอร์ตที่เร็วที่สุดที่ยังใช้เดินทางรอบนี้ได้ = วันเดินทาง + 6 เดือน
+//
+// คำนวณเป็นเที่ยงคืน UTC ล้วน ๆ ผลจึงไม่ขยับตาม timezone ของเบราว์เซอร์ และหด
+// วันที่ให้พอดีปลายเดือนแบบเดียวกับ Carbon::addMonths ฝั่ง backend — ไม่งั้น
+// 31 ส.ค. จะกลายเป็น 3 มี.ค. แล้วปฏิทินจะบล็อกวันที่ backend ยอมรับจริง
+const minPassportExpiry = computed(() => {
+  const departure = toBangkokDate(schedule.value?.departure_date);
+  if (!departure) return '';
+
+  const [year, month, day] = departure.split('-').map(Number);
+  const target = new Date(Date.UTC(year, month - 1 + 6, 1));
+  const lastDayOfTargetMonth = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDayOfTargetMonth));
+
+  return target.toISOString().slice(0, 10);
+});
 const maxPassengers = computed(() => {
   if (isJoinTrip.value) return 50; // Allow more for join trip
   // จำกัดด้วยที่นั่งที่จองได้จริง — ที่ที่กันไว้ให้คิวรอยังไม่ใช่ของคนที่กำลังจอง
@@ -1874,7 +1952,7 @@ const rentalOptions = computed(() => {
 });
 
 const passengers = ref([{
-  title: '', name: '', nickname: '', id_card: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+  title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '',
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
@@ -1906,8 +1984,8 @@ function saveFormData() {
 
 // ── ร่างการจองข้ามการปิดแท็บ ────────────────────────────────────────────
 // sessionStorage ด้านบนตายเมื่อปิดแท็บ ร่างนี้อยู่ได้ 7 วัน เพื่อให้คนที่ปิดไป
-// หาข้อมูลเพื่อนกลับมากรอกต่อได้ — แต่ "ไม่เก็บเลขบัตรประชาชน" ลง localStorage
-// เพราะมันอยู่ยาวข้ามเซสชันบนเครื่องที่อาจใช้ร่วมกัน
+// หาข้อมูลเพื่อนกลับมากรอกต่อได้ — แต่ "ไม่เก็บเลขบัตรประชาชนและเลขพาสปอร์ต"
+// ลง localStorage เพราะมันอยู่ยาวข้ามเซสชันบนเครื่องที่อาจใช้ร่วมกัน
 const DRAFT_KEY = computed(() => `booking_draft_${route.params.scheduleId}${preselectedRegion ? `_${preselectedRegion}` : ''}`);
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -1917,7 +1995,7 @@ function saveDraft(data) {
       savedAt: Date.now(),
       data: {
         ...data,
-        passengers: data.passengers.map(({ id_card, ...rest }) => rest),
+        passengers: data.passengers.map(({ id_card, passport_no, ...rest }) => rest),
       },
     }));
   } catch {}
@@ -1947,7 +2025,7 @@ async function offerDraftRestore() {
 
   const { isConfirmed } = await Swal.fire({
     title: 'กรอกต่อจากที่ค้างไว้ไหมครับ',
-    text: `พบข้อมูลที่กรอกค้างไว้ของทริปนี้ (${draft.data.passengers.length} คน) จะดึงกลับมาให้ไหมครับ ยกเว้นเลขบัตรประชาชนที่ต้องกรอกใหม่`,
+    text: `พบข้อมูลที่กรอกค้างไว้ของทริปนี้ (${draft.data.passengers.length} คน) จะดึงกลับมาให้ไหมครับ ยกเว้นเลขบัตรประชาชนและเลขพาสปอร์ตที่ต้องกรอกใหม่`,
     icon: 'question',
     showCancelButton: true,
     confirmButtonText: 'กรอกต่อ',
@@ -1981,8 +2059,8 @@ function restoreFormData() {
 
 function applyFormData(data) {
   if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
-    // ร่างจาก localStorage ไม่มี id_card — เติมช่องว่างไว้ให้ครบรูปทรงเดิม
-    passengers.value = data.passengers.map(p => ({ id_card: '', ...p }));
+    // ร่างจาก localStorage ไม่มีเลขบัตร/เลขพาสปอร์ต — เติมช่องว่างให้ครบรูปทรงเดิม
+    passengers.value = data.passengers.map(p => ({ id_card: '', passport_no: '', ...p }));
     passengers.value.forEach(syncBirthParts);
     passengerCount.value = data.passengerCount ?? data.passengers.length;
   }
@@ -2040,7 +2118,7 @@ watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({
-      title: '', name: '', nickname: '', id_card: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+      title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_phone: '',
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
       pickup_point_id: selectedPickup.value?.id ?? null
@@ -2069,6 +2147,10 @@ function autoFillFromProfile(index) {
     name: user.name || '',
     nickname: user.nickname || '',
     id_card: user.id_card || '',
+    name_en: user.name_en || '',
+    nationality: user.nationality || 'TH',
+    passport_no: user.passport_no || '',
+    passport_expires_at: user.passport_expires_at || '',
     birth_date: user.birth_date || '',
     phone: user.phone || '',
     email: user.email || '',
@@ -2104,6 +2186,18 @@ function copyFromFirst(index) {
 // ── สมุดผู้ร่วมเดินทาง ────────────────────────────────────────────────
 const showTravellerPicker = ref(false);
 const travellerPickerIndex = ref(0);
+// ทะเบียนประเทศจาก backend — ใช้เป็นตัวเลือกสัญชาติในทริปต่างประเทศ
+const countries = ref([]);
+async function loadCountries() {
+  try {
+    const res = await api.get('/countries');
+    countries.value = res.data.data || [];
+  } catch {
+    // เลือกสัญชาติอื่นไม่ได้ชั่วคราว — ค่าเริ่มต้น 'TH' ยังจองได้ตามปกติ
+    countries.value = [{ code: 'TH', name: 'ไทย', flag: '🇹🇭' }];
+  }
+}
+
 const savedTravellers = ref([]);
 const savedTravellersLoading = ref(false);
 
@@ -2135,6 +2229,10 @@ function applySavedTraveller(traveller) {
     name: traveller.name || '',
     nickname: traveller.nickname || '',
     id_card: traveller.id_card || '',
+    name_en: traveller.name_en || '',
+    nationality: traveller.nationality || 'TH',
+    passport_no: traveller.passport_no || '',
+    passport_expires_at: traveller.passport_expires_at || '',
     birth_date: traveller.birth_date || '',
     phone: traveller.phone || '',
     email: traveller.email || passengers.value[index].email || '',
@@ -2220,6 +2318,12 @@ function isValidThaiId(value) {
   return (11 - (sum % 11)) % 10 === Number(digits[12]);
 }
 
+// คนไทยกรอกเบอร์/เลขบัตรแบบไทย ส่วนคนต่างชาติในทริปต่างประเทศใช้รูปแบบสากล
+// ทริปในประเทศถือว่าเป็นคนไทยทั้งหมดเสมอ — ฟอร์มไม่มีช่องสัญชาติให้เลือกด้วยซ้ำ
+function isThaiTraveller(p) {
+  return !isInternational.value || p.nationality === 'TH';
+}
+
 // Per-passenger validation: returns { field: 'thai error message' } for every
 // field that is missing or malformed. Drives both isPassengerValid and the
 // inline error UI so they can never drift apart.
@@ -2230,16 +2334,38 @@ function computePassengerErrors(p, i) {
   else if (womenOnly && !['นาง', 'นางสาว'].includes(p.title)) errors.title = 'ทริปนี้สำหรับผู้หญิงเท่านั้น';
   if (!hasText(p.name)) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
   if (!hasText(p.nickname)) errors.nickname = 'กรุณากรอกชื่อเล่น';
-  if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
-  else if (!isValidThaiId(p.id_card)) errors.id_card = 'เลขบัตรประชาชนไม่ถูกต้อง ลองตรวจสอบอีกครั้งครับ';
+  // ชาวต่างชาติที่ร่วมทริปต่างประเทศยืนยันตัวด้วยพาสปอร์ตแทนบัตรประชาชนไทย
+  const isThai = isThaiTraveller(p);
+  if (isThai) {
+    if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
+    else if (!isValidThaiId(p.id_card)) errors.id_card = 'เลขบัตรประชาชนไม่ถูกต้อง ลองตรวจสอบอีกครั้งครับ';
+  }
+  if (isInternational.value) {
+    if (!hasText(p.name_en)) errors.name_en = 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษตามพาสปอร์ต';
+    else if (!/^[A-Za-z\s.'-]+$/.test(p.name_en)) errors.name_en = 'กรอกได้เฉพาะตัวอักษรภาษาอังกฤษ';
+    if (!hasText(p.passport_no)) errors.passport_no = 'กรุณากรอกเลขที่พาสปอร์ต';
+    else if (!/^[A-Za-z0-9]{5,20}$/.test(p.passport_no)) errors.passport_no = 'เลขที่พาสปอร์ตไม่ถูกต้อง';
+    if (!hasText(p.passport_expires_at)) errors.passport_expires_at = 'กรุณาระบุวันหมดอายุพาสปอร์ต';
+    else if (minPassportExpiry.value && p.passport_expires_at < minPassportExpiry.value) {
+      errors.passport_expires_at = 'พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง';
+    }
+  }
   if (!hasText(p.birth_date)) errors.birth_date = 'กรุณาเลือกวัน/เดือน/ปีเกิด';
   else if (p.birth_date >= todayDate) errors.birth_date = 'วัน/เดือน/ปีเกิดไม่ถูกต้อง';
-  if (!hasExactDigits(p.phone, 10)) errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก';
+  if (isThai) {
+    if (!hasExactDigits(p.phone, 10)) errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก';
+  } else if (!/^\+?[0-9][0-9 -]{7,19}$/.test(String(p.phone || ''))) {
+    errors.phone = 'กรุณากรอกเบอร์โทรศัพท์พร้อมรหัสประเทศ';
+  }
   if (bookingFor.value === 'friend' && i === 0 && !isValidEmail(p.email)) errors.email = 'กรุณากรอกอีเมลของเพื่อนให้ถูกต้อง';
   if (!p.blood_group) errors.blood_group = 'กรุณาเลือกกรุ๊ปเลือด';
   if (p.halal_food === null || p.halal_food === undefined) errors.halal_food = 'กรุณาเลือกตัวเลือกอาหารฮาลาล';
   if (!hasText(p.emergency_contact)) errors.emergency_contact = 'กรุณากรอกผู้ติดต่อฉุกเฉิน';
-  if (!hasExactDigits(p.emergency_phone, 10)) errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก';
+  if (isThai) {
+    if (!hasExactDigits(p.emergency_phone, 10)) errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก';
+  } else if (!/^\+?[0-9][0-9 -]{7,19}$/.test(String(p.emergency_phone || ''))) {
+    errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉินพร้อมรหัสประเทศ';
+  }
   if (!hasText(p.allergies)) errors.allergies = 'กรุณากรอกข้อมูลการแพ้อาหาร (หากไม่มีให้พิมพ์ "ไม่มี")';
   if (!hasText(p.health_notes)) errors.health_notes = 'กรุณากรอกหมายเหตุสุขภาพ (หากไม่มีให้พิมพ์ "ไม่มี")';
   // เมื่อผู้ใช้ปักหมุดจุดรับเอง (customPickup) ถือว่าเลือกจุดรับแล้ว ไม่ต้องบังคับจุดที่กำหนดไว้
@@ -2560,16 +2686,21 @@ async function createBooking() {
         title: p.title || null,
         name: String(p.name || '').trim(),
         nickname: String(p.nickname || '').trim(),
-        id_card: digitsOnly(p.id_card),
+        // digitsOnly ใช้ได้เฉพาะกับเบอร์ไทย — เบอร์ต่างประเทศมี + นำหน้าที่ตัดทิ้งไม่ได้
+        id_card: isThaiTraveller(p) ? digitsOnly(p.id_card) : null,
+        name_en: isInternational.value ? String(p.name_en || '').trim().toUpperCase() : null,
+        nationality: isInternational.value ? (p.nationality || 'TH') : 'TH',
+        passport_no: isInternational.value ? String(p.passport_no || '').trim().toUpperCase() : null,
+        passport_expires_at: isInternational.value ? (p.passport_expires_at || null) : null,
         birth_date: p.birth_date || null,
-        phone: digitsOnly(p.phone),
+        phone: isThaiTraveller(p) ? digitsOnly(p.phone) : String(p.phone || '').trim(),
         email: p.email ? String(p.email).trim() : null,
         blood_group: p.blood_group || null,
         allergies: String(p.allergies || '').trim(),
         halal_food: p.halal_food,
         health_notes: String(p.health_notes || '').trim(),
         emergency_contact: String(p.emergency_contact || '').trim(),
-        emergency_phone: digitsOnly(p.emergency_phone),
+        emergency_phone: isThaiTraveller(p) ? digitsOnly(p.emergency_phone) : String(p.emergency_phone || '').trim(),
         dive_cert_level: p.dive_cert_level || null,
         cert_number: p.cert_number || null,
         weight: p.weight || null,
@@ -2648,7 +2779,10 @@ onMounted(async () => {
       value: totalAmount.value,
     });
     await seatsStore.fetchSeatMap(route.params.scheduleId);
-    
+
+    // ตัวเลือกสัญชาติโหลดเฉพาะทริปต่างประเทศ — ทริปในประเทศไม่มีช่องนี้ให้กรอก
+    if (isInternational.value) loadCountries();
+
     if (route.query.join_trip == 1 && schedule.value?.join_trip_enabled) {
       isJoinTrip.value = true;
     }

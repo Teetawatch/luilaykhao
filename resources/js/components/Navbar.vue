@@ -9,13 +9,15 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-4 animate-trust-bar">
         <div class="flex items-center gap-2 text-[12px] md:text-[13px] font-semibold tracking-wide">
           <span class="material-symbols-rounded text-[18px] text-accent-light filled-icon">verified_user</span>
-          <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ 12/03773</span>
-          <span class="sm:hidden">ใบอนุญาต 12/03773</span>
+          <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}</span>
+          <span class="sm:hidden">ใบอนุญาต {{ licence }}</span>
         </div>
 
-        <div class="hidden lg:flex items-center gap-1.5 text-white/70">
-          <span class="material-symbols-rounded text-[15px]">verified</span>
-          <span class="text-[10px] uppercase tracking-[0.18em] font-bold">ใบอนุญาตประกอบธุรกิจนำเที่ยว กรมการท่องเที่ยว</span>
+        <!-- ใบ 11 นำเที่ยวได้ทั้งในและต่างประเทศ — ประโยคนี้คือสิ่งที่ใบอนุญาต
+             ใหม่ให้สิทธิ์ และเป็นจุดขายที่คุ้มที่สุดเพราะเห็นได้ทุกหน้า -->
+        <div class="hidden md:flex items-center gap-1.5 text-white/80">
+          <span class="material-symbols-rounded text-[15px]">flight_takeoff</span>
+          <span class="text-[11px] tracking-wide font-bold">นำเที่ยวได้ทั้งในและต่างประเทศ</span>
         </div>
       </div>
     </div>
@@ -640,7 +642,7 @@
                 </a>
                 <p class="mt-4 flex items-center gap-1.5 text-[11px] font-semibold text-text-muted">
                   <span class="material-symbols-rounded text-[15px] text-accent filled-icon">verified_user</span>
-                  ใบอนุญาตนำเที่ยวเลขที่ 12/03773
+                  ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}
                 </p>
               </div>
             </div>
@@ -728,6 +730,10 @@ import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useWishlistStore } from '../stores/wishlist';
 import api from '../lib/axios';
+import { licenceNo } from '../lib/licence';
+
+// อ่านครั้งเดียวตอนสร้างคอมโพเนนต์ — ค่ามากับ shell แล้ว ไม่เปลี่ยนระหว่างหน้า
+const licence = licenceNo();
 
 const auth = useAuthStore();
 const wishlistStore = useWishlistStore();

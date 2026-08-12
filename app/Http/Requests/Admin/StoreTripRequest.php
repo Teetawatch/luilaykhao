@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\KnownCountry;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTripRequest extends FormRequest
@@ -17,7 +18,17 @@ class StoreTripRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'type' => ['required', 'exists:categories,slug'],
             'location' => ['required', 'string', 'max:255'],
-            'region' => ['required', 'string', 'max:50'],
+            // ภาคเป็นของประเทศไทย — ทริปต่างประเทศระบุประเทศแทน
+            'region' => ['required_if:destination_type,domestic', 'nullable', 'string', 'max:50'],
+            'destination_type' => ['nullable', 'in:domestic,international'],
+            'country_code' => [
+                'required_if:destination_type,international',
+                'nullable',
+                'string',
+                'size:2',
+                new KnownCountry,
+            ],
+            'timezone' => ['nullable', 'string', 'max:64', 'timezone'],
             'description' => ['nullable', 'string'],
             'difficulty' => ['required', 'in:easy,medium,hard'],
             'duration_days' => ['required', 'integer', 'min:1'],

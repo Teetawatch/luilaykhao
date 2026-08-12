@@ -109,7 +109,7 @@
 
     <footer class="site-footer">
         <div class="wrap">
-            <div>© {{ date('Y') }} ลุยเลเขา · ใบอนุญาตนำเที่ยว 12/03773</div>
+            <div>© {{ date('Y') }} ลุยเลเขา · ใบอนุญาตนำเที่ยว {{ \App\Support\SiteSettings::licenceNo() }}</div>
             <a href="{{ url('/trips') }}" class="cta">ดูทริปทั้งหมด →</a>
         </div>
     </footer>

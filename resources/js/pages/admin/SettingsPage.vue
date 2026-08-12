@@ -118,6 +118,59 @@
           <input v-model="form.support_email" class="wide" type="email" placeholder="เช่น hello@luilaykhao.com" />
         </div>
       </section>
+
+      <!-- ── ใบอนุญาตนำเที่ยว ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">verified_user</span>
+          <div>
+            <h2>ใบอนุญาตนำเที่ยว</h2>
+            <p>เลขที่และรูปใบจริงที่แสดงบนเว็บ ในแอป และใน structured data ของ Google</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>เลขที่ใบอนุญาต</label>
+          <div class="input-row">
+            <input v-model="form.licence_no" placeholder="เช่น 11/13855" />
+            <button v-if="isChanged('licence_no')" class="reset-link" @click="reset('licence_no')">
+              คืนค่าเดิม ({{ defaults.licence_no }})
+            </button>
+          </div>
+          <span class="help">
+            เลขขึ้นต้นด้วย 11 = นำเที่ยวได้ทั้งในและต่างประเทศ · 12 = เฉพาะในประเทศ
+          </span>
+        </div>
+
+        <div class="field">
+          <label>รูปใบอนุญาต</label>
+
+          <div class="licence-preview">
+            <img v-if="licenceImageUrl" :src="licenceImageUrl" alt="ใบอนุญาตนำเที่ยว" />
+            <div v-else class="licence-empty">
+              <span class="material-symbols-rounded">image_not_supported</span>
+              ยังไม่มีรูป
+            </div>
+          </div>
+
+          <div class="licence-actions">
+            <label class="upload-btn" :class="{ 'is-busy': uploading }">
+              <span class="material-symbols-rounded">{{ uploading ? 'hourglass_top' : 'upload' }}</span>
+              {{ uploading ? `กำลังอัปโหลด ${uploadPercent}%` : 'เลือกรูปใบอนุญาต' }}
+              <input type="file" accept="image/jpeg,image/png,image/webp" :disabled="uploading" @change="onPickLicence" />
+            </label>
+            <button v-if="form.licence_image" class="reset-link" :disabled="uploading" @click="clearLicenceImage">
+              กลับไปใช้รูปเดิม
+            </button>
+          </div>
+
+          <span class="help">
+            รูปที่ลูกค้ากดดูได้จากแถบ "ผู้ประกอบการนำเที่ยวจดทะเบียน" ในแอป —
+            ถ่ายให้อ่านเลขที่และวันหมดอายุออก ไฟล์ JPG/PNG/WebP ไม่เกิน 8 MB
+            <br />อัปโหลดแล้วต้องกด "บันทึกการตั้งค่า" ถึงจะมีผล
+          </span>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -126,6 +179,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
+import { uploadMedia } from '../../lib/mediaUpload';
 import './admin-shared.css';
 
 const toast = useToast();
@@ -140,11 +194,61 @@ const form = reactive({
   support_phone: '',
   support_line: '',
   support_email: '',
+  licence_no: '',
+  licence_image: '',
 });
 
 const defaults = ref({});
 const loading = ref(false);
 const saving = ref(false);
+
+// URL ที่ลูกค้าเห็นอยู่จริง — ต่างจาก form.licence_image ตรงที่เผื่อกรณียังไม่เคย
+// อัปโหลดแล้วระบบถอยไปใช้ไฟล์เดิม แอดมินจะได้เห็นรูปที่ใช้อยู่ ไม่ใช่กรอบว่าง
+const licenceImageUrl = ref('');
+const uploading = ref(false);
+const uploadPercent = ref(0);
+
+/** 8 MB — รูปใบอนุญาตคือภาพถ่ายเอกสารหน้าเดียว ใหญ่กว่านี้แปลว่าถ่ายเกินจำเป็น */
+const MAX_LICENCE_BYTES = 8 * 1024 * 1024;
+
+async function onPickLicence(event) {
+  const file = event.target.files?.[0];
+  // เคลียร์ input ทันทีเพื่อให้เลือกไฟล์เดิมซ้ำได้หลังอัปโหลดพลาด
+  event.target.value = '';
+  if (!file) return;
+
+  if (file.size > MAX_LICENCE_BYTES) {
+    toast.error('ไฟล์ใหญ่เกิน 8 MB กรุณาย่อรูปก่อนอัปโหลด');
+    return;
+  }
+
+  uploading.value = true;
+  uploadPercent.value = 0;
+  try {
+    const url = await uploadMedia(file, (loaded, total) => {
+      uploadPercent.value = total ? Math.round((loaded / total) * 100) : 0;
+    });
+    form.licence_image = url;
+    licenceImageUrl.value = url;
+    toast.success('อัปโหลดรูปแล้ว — กด "บันทึกการตั้งค่า" เพื่อให้มีผล');
+  } catch (e) {
+    toast.error(e.response?.data?.message || e.message || 'อัปโหลดไม่สำเร็จ');
+  } finally {
+    uploading.value = false;
+  }
+}
+
+/**
+ * ล้างค่าที่เก็บไว้ ไม่ได้ลบไฟล์บน R2
+ *
+ * ตั้งใจ — ถ้าเผลอกดแล้วอยากได้รูปเดิมคืน ยังกู้จาก R2 ได้ และการลบไฟล์ที่หน้าอื่น
+ * อาจอ้างอยู่คือความเสียหายที่ย้อนไม่ได้
+ */
+function clearLicenceImage() {
+  form.licence_image = '';
+  licenceImageUrl.value = '';
+  toast.info('จะกลับไปใช้รูปเดิมเมื่อกดบันทึก');
+}
 
 function isChanged(key) {
   return form[key] !== defaults.value[key];
@@ -160,8 +264,9 @@ async function load() {
     const res = await api.get('/admin/settings/site');
     defaults.value = res.data.data.defaults || {};
     Object.assign(form, res.data.data.settings || {});
+    licenceImageUrl.value = res.data.data.licence_image_url || '';
     // ช่องข้อความว่างมาเป็น null จาก API — แปลงเป็นสตริงว่างให้ input ผูกค่าได้
-    ['support_phone', 'support_line', 'support_email'].forEach((k) => {
+    ['support_phone', 'support_line', 'support_email', 'licence_image'].forEach((k) => {
       form[k] = form[k] ?? '';
     });
   } catch {
@@ -174,12 +279,16 @@ async function load() {
 async function save() {
   saving.value = true;
   try {
-    await api.put('/admin/settings/site', {
+    const res = await api.put('/admin/settings/site', {
       ...form,
       support_phone: form.support_phone?.trim() || null,
       support_line: form.support_line?.trim() || null,
       support_email: form.support_email?.trim() || null,
+      licence_no: form.licence_no?.trim(),
+      licence_image: form.licence_image?.trim() || null,
     });
+    // เซิร์ฟเวอร์คืน URL ที่ใช้จริงหลังบันทึก — รวมกรณีถอยไปใช้รูปเดิม
+    licenceImageUrl.value = res.data.data?.licence_image_url || '';
     toast.success('บันทึกการตั้งค่าแล้ว — มีผลทันที');
   } catch (e) {
     const errors = e.response?.data?.errors;
@@ -198,6 +307,33 @@ onMounted(load);
 .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
 
 .setting-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 22px 24px; }
+
+.licence-preview {
+  margin: 4px 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  overflow: hidden;
+}
+.licence-preview img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
+.licence-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  height: 160px; color: #9ca3af; font-size: 13px; font-weight: 600;
+}
+.licence-empty .material-symbols-rounded { font-size: 32px; }
+
+.licence-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+
+.upload-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 10px; cursor: pointer;
+  border: 1px solid #d1d5db; background: #fff;
+  font-size: 13px; font-weight: 700; color: #374151;
+  transition: background .15s, border-color .15s;
+}
+.upload-btn:hover { background: #f9fafb; border-color: #9ca3af; }
+.upload-btn.is-busy { cursor: progress; opacity: .7; }
+.upload-btn input[type="file"] { display: none; }
 .card-head { display: flex; gap: 13px; padding-bottom: 16px; border-bottom: 1px solid #f3f4f6; }
 .card-head .material-symbols-rounded { font-size: 26px !important; color: var(--color-accent); }
 .card-head h2 { margin: 0; font-size: 15.5px; font-weight: 700; color: #111827; }

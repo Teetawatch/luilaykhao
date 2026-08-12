@@ -16,9 +16,14 @@
           </div>
 
           <div class="flex gap-2 overflow-x-auto scrollbar-none">
-            <select v-model="filters.region" class="filter-select">
-              <option value="">ทุกภูมิภาค</option>
-              <option v-for="r in regionOptions" :key="r" :value="r">{{ regionLabel(r) }}</option>
+            <select v-model="filters.area" class="filter-select">
+              <option value="">ทุกพื้นที่</option>
+              <optgroup v-if="regionOptions.length" label="ในประเทศ">
+                <option v-for="r in regionOptions" :key="r" :value="`region:${r}`">{{ regionLabel(r) }}</option>
+              </optgroup>
+              <optgroup v-if="countryOptions.length" label="ต่างประเทศ">
+                <option v-for="c in countryOptions" :key="c.code" :value="`country:${c.code}`">{{ c.label }}</option>
+              </optgroup>
             </select>
 
             <select v-model="filters.difficulty" class="filter-select">
@@ -129,7 +134,7 @@ const mapEl = ref(null);
 const trips = ref([]);
 const loading = ref(true);
 const selected = ref(null);
-const filters = ref({ region: '', difficulty: '', month: 0 });
+const filters = ref({ area: '', difficulty: '', month: 0 });
 
 let L = null;
 let map = null;
@@ -142,12 +147,26 @@ const regionOptions = computed(() => {
   return [...known, ...seen.filter(r => !(r in regionLabels))];
 });
 
+// ทริปต่างประเทศไม่มี "ภาค" — จึงกรองด้วยประเทศแทน ตัวเลือกทั้งสองแบบอยู่ใน
+// dropdown เดียวกันเพราะคนเลือกคิดว่า "จะไปแถวไหน" ไม่ได้คิดแยกเป็นสองระบบ
+const countryOptions = computed(() => {
+  const seen = new Map();
+  for (const trip of trips.value) {
+    if (trip.country_code && trip.country_label && !seen.has(trip.country_code)) {
+      seen.set(trip.country_code, { code: trip.country_code, label: trip.country_label });
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label, 'th'));
+});
+
 const hasFilters = computed(
-  () => filters.value.region !== '' || filters.value.difficulty !== '' || filters.value.month !== 0,
+  () => filters.value.area !== '' || filters.value.difficulty !== '' || filters.value.month !== 0,
 );
 
 const filteredTrips = computed(() => trips.value.filter((trip) => {
-  if (filters.value.region && trip.region !== filters.value.region) return false;
+  const [areaKind, areaValue] = filters.value.area ? filters.value.area.split(':') : [];
+  if (areaKind === 'region' && trip.region !== areaValue) return false;
+  if (areaKind === 'country' && trip.country_code !== areaValue) return false;
   if (filters.value.difficulty && trip.difficulty !== filters.value.difficulty) return false;
   if (filters.value.month && !(trip.months || []).includes(filters.value.month)) return false;
   return true;
@@ -158,7 +177,7 @@ function regionLabel(region) {
 }
 
 function resetFilters() {
-  filters.value = { region: '', difficulty: '', month: 0 };
+  filters.value = { area: '', difficulty: '', month: 0 };
 }
 
 function clearSelection() {

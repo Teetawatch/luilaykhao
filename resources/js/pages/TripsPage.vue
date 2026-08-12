@@ -30,6 +30,21 @@
       </div>
     </header>
 
+    <!-- ในประเทศ / ต่างประเทศ — แท็บหลัก อยู่นอกแถบตัวกรองด้านซ้ายเพราะเป็น
+         การแบ่งที่ใหญ่กว่าประเภทกิจกรรม และต้องเห็นได้ทันทีบนมือถือ -->
+    <nav class="mb-8 flex flex-wrap gap-2" aria-label="ปลายทาง">
+      <button v-for="tab in destinationTabs" :key="tab.value" type="button"
+        @click="selectDestination(tab.value)"
+        :aria-pressed="tripsStore.filters.destination === tab.value"
+        class="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all duration-300 border"
+        :class="tripsStore.filters.destination === tab.value
+          ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
+          : 'bg-white border-gray-200 text-[var(--color-text-mid)] hover:border-[var(--color-accent)]/50'">
+        <span class="material-symbols-rounded text-[18px]">{{ tab.icon }}</span>
+        {{ tab.label }}
+      </button>
+    </nav>
+
     <div class="flex flex-col lg:flex-row gap-10 lg:gap-14">
       <!-- Filter Sidebar -->
       <aside class="lg:w-80 shrink-0 relative z-20">
@@ -289,6 +304,20 @@ const paginationPages = computed(() => {
   return pages;
 });
 
+const destinationTabs = [
+  { value: '', label: 'ทั้งหมด', icon: 'public' },
+  { value: 'domestic', label: 'ในประเทศ', icon: 'landscape' },
+  { value: 'international', label: 'ต่างประเทศ', icon: 'flight_takeoff' },
+];
+
+// แท็บปลายทางดึงข้อมูลใหม่ทันที ต่างจากตัวกรองด้านซ้ายที่รอกดค้นหา — เพราะมัน
+// เปลี่ยนทั้งชุดผลลัพธ์ ไม่ใช่การกรองผลที่กำลังดูอยู่ให้แคบลง
+function selectDestination(value) {
+  if (tripsStore.filters.destination === value) return;
+  tripsStore.filters.destination = value;
+  tripsStore.fetchTrips();
+}
+
 function toggleType(value) {
   tripsStore.filters.type = tripsStore.filters.type === value ? '' : value;
   // auto fetch on toggle is optional, if removed user clicks "Search" button
@@ -307,6 +336,9 @@ onMounted(() => {
   categoriesStore.fetchCategories();
   if (route.query.type) tripsStore.filters.type = route.query.type;
   if (route.query.date) tripsStore.filters.date = route.query.date;
+  if (['domestic', 'international'].includes(route.query.destination)) {
+    tripsStore.filters.destination = route.query.destination;
+  }
   tripsStore.fetchTrips();
 });
 </script>

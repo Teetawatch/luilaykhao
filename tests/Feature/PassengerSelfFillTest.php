@@ -16,9 +16,9 @@ class PassengerSelfFillTest extends TestCase
 
     private int $refSeq = 0;
 
-    private function booking(User $user, string $status = 'confirmed'): Booking
+    private function booking(User $user, string $status = 'confirmed', array $tripOverrides = []): Booking
     {
-        $trip = Trip::create([
+        $trip = Trip::create(array_merge([
             'title' => 'ดอยหลวงเชียงดาว',
             'slug' => 'doi-'.uniqid(),
             'type' => 'trekking',
@@ -29,7 +29,7 @@ class PassengerSelfFillTest extends TestCase
             'max_participants' => 10,
             'price_per_person' => 4500,
             'status' => 'active',
-        ]);
+        ], $tripOverrides));
 
         $schedule = TripSchedule::create([
             'trip_id' => $trip->id,
@@ -240,5 +240,80 @@ class PassengerSelfFillTest extends TestCase
 
         // ล้มเหลวแล้วลิงก์ต้องยังใช้ได้ ไม่งั้นเพื่อนพิมพ์ผิดครั้งเดียวก็จบ
         $this->assertNotNull($passenger->fresh()->self_fill_token);
+    }
+
+    public function test_international_trip_asks_the_friend_for_travel_documents(): void
+    {
+        $owner = User::factory()->create();
+        $booking = $this->booking($owner, 'confirmed', [
+            'destination_type' => 'international',
+            'country_code' => 'JP',
+        ]);
+        $passenger = $this->passenger($booking);
+        $passenger->forceFill([
+            'self_fill_token' => 'passport-token',
+            'self_fill_expires_at' => now()->addDays(14),
+        ])->save();
+
+        $this->get('/p/passport-token')
+            ->assertOk()
+            ->assertSee('เอกสารเดินทาง')
+            ->assertSee('เลขที่พาสปอร์ต');
+
+        // ไม่กรอกเอกสารเดินทาง = ส่งไม่ผ่าน ไม่งั้นคนจองต้องไปไล่ถามทางแชทอยู่ดี
+        $this->post('/p/passport-token', $this->validForm())
+            ->assertSessionHasErrors(['name_en', 'passport_no', 'passport_expires_at']);
+
+        $this->post('/p/passport-token', $this->validForm([
+            'name_en' => 'SOMYING JAIDEE',
+            'passport_no' => 'BB7654321',
+            'passport_expires_at' => now('Asia/Bangkok')->addYears(4)->toDateString(),
+        ]))->assertRedirect(route('public.passenger-fill.done'));
+
+        $passenger->refresh();
+        $this->assertSame('SOMYING JAIDEE', $passenger->name_en);
+        $this->assertSame('BB7654321', $passenger->passport_no);
+    }
+
+    public function test_friend_passport_must_also_clear_the_six_month_rule(): void
+    {
+        $owner = User::factory()->create();
+        $booking = $this->booking($owner, 'confirmed', [
+            'destination_type' => 'international',
+            'country_code' => 'JP',
+        ]);
+        $passenger = $this->passenger($booking);
+        $passenger->forceFill([
+            'self_fill_token' => 'expiry-token',
+            'self_fill_expires_at' => now()->addDays(14),
+        ])->save();
+
+        $departure = $booking->schedule->departure_date;
+
+        $this->post('/p/expiry-token', $this->validForm([
+            'name_en' => 'SOMYING JAIDEE',
+            'passport_no' => 'BB7654321',
+            'passport_expires_at' => $departure->copy()->addMonths(3)->toDateString(),
+        ]))->assertSessionHasErrors(['passport_expires_at']);
+
+        // ล้มเหลวแล้วลิงก์ต้องยังใช้ได้
+        $this->assertNotNull($passenger->fresh()->self_fill_token);
+    }
+
+    public function test_domestic_trip_does_not_ask_for_travel_documents(): void
+    {
+        $owner = User::factory()->create();
+        $passenger = $this->passenger($this->booking($owner));
+        $passenger->forceFill([
+            'self_fill_token' => 'domestic-token',
+            'self_fill_expires_at' => now()->addDays(14),
+        ])->save();
+
+        $this->get('/p/domestic-token')
+            ->assertOk()
+            ->assertDontSee('เลขที่พาสปอร์ต');
+
+        $this->post('/p/domestic-token', $this->validForm())
+            ->assertRedirect(route('public.passenger-fill.done'));
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\Trip;
 use App\Models\TripTrack;
+use App\Support\Countries;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -43,6 +44,16 @@ class PassportService
             ->unique()
             ->values();
 
+        // ประเทศที่เคยไป — นับไทยรวมด้วยเมื่อเคยไปทริปในประเทศ เพื่อให้ตัวเลขนี้
+        // อ่านได้ตรงตัวว่า "ไปมาแล้วกี่ประเทศ" ไม่ใช่ "กี่ประเทศนอกจากไทย"
+        $countries = $trips
+            ->map(fn (array $t) => $t['trip']->isInternational()
+                ? $t['trip']->country_code
+                : Countries::HOME)
+            ->filter()
+            ->unique()
+            ->values();
+
         return [
             'stats' => [
                 'trips_count' => $tripsCount,
@@ -51,6 +62,14 @@ class PassportService
                 'total_days' => $totalDays,
                 'regions_count' => $regions->count(),
                 'regions' => $regions->all(),
+                'countries_count' => $countries->count(),
+                'countries' => $countries
+                    ->map(fn (string $code) => [
+                        'code' => $code,
+                        'name' => Countries::name($code) ?? $code,
+                        'flag' => Countries::flag($code),
+                    ])
+                    ->all(),
             ],
             // สถิติจาก GPS ที่ผู้ใช้บันทึกเอง — แยกจากตัวเลขข้างบนซึ่งเป็นค่าของ
             // "เส้นทาง" ที่แอดมินกรอกไว้ ตัวนี้คือระยะที่เดินจริงของคนนี้
@@ -171,6 +190,13 @@ class PassportService
             ->filter()
             ->unique()
             ->count();
+        // ตราชุดต่างประเทศวัดจากจำนวนประเทศนอกไทย ไทยจึงไม่ถูกนับรวมตรงนี้
+        $foreignCountriesCount = $chron
+            ->filter(fn (array $t) => $t['trip']->isInternational())
+            ->map(fn (array $t) => $t['trip']->country_code)
+            ->filter()
+            ->unique()
+            ->count();
 
         // ตราแบบสะสมยอด: ไล่บวกทีละทริป คืนวันที่ยอดสะสมแตะเป้าครั้งแรก
         $reach = function (callable $metric, float $target) use ($chron): ?string {
@@ -195,6 +221,21 @@ class PassportService
                 $region = $t['trip']->region;
                 if ($region) {
                     $seen[$region] = true;
+                }
+                if (count($seen) >= $target) {
+                    return $t['departure']->toDateString();
+                }
+            }
+
+            return null;
+        };
+
+        // ตราประเทศ: นับเฉพาะประเทศนอกไทย เพราะ "ข้ามแดน" คือสิ่งที่ตราชุดนี้ฉลอง
+        $reachCountries = function (int $target) use ($chron): ?string {
+            $seen = [];
+            foreach ($chron as $t) {
+                if ($t['trip']->isInternational() && $t['trip']->country_code) {
+                    $seen[$t['trip']->country_code] = true;
                 }
                 if (count($seen) >= $target) {
                     return $t['departure']->toDateString();
@@ -261,6 +302,11 @@ class PassportService
             // ภูมิภาค
             $threshold('region_3', 'นักสะสมภูมิภาค', 'เดินทางครบ 3 ภูมิภาค', '🗺️', $regionsCount, 3, $reachRegions(3)),
             $threshold('region_5', 'ทั่วไทย', 'เดินทางครบ 5 ภูมิภาค', '🇹🇭', $regionsCount, 5, $reachRegions(5)),
+
+            // ต่างประเทศ
+            $threshold('passport_stamp', 'ประทับตราแรก', 'จบทริปต่างประเทศทริปแรก', '🛂', $foreignCountriesCount, 1, $reachCountries(1)),
+            $threshold('country_3', 'ข้ามพรมแดน', 'เดินทางครบ 3 ประเทศ', '✈️', $foreignCountriesCount, 3, $reachCountries(3)),
+            $threshold('country_5', 'นักเดินทางโลก', 'เดินทางครบ 5 ประเทศ', '🌏', $foreignCountriesCount, 5, $reachCountries(5)),
 
             // พิเศษ
             $flag('hardcore', 'สายโหด', 'จบทริประดับความยากสูงสุด', '🔥', $firstMatch(fn (array $t) => $t['trip']->difficulty === 'hard')),

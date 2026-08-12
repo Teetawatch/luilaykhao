@@ -36,6 +36,13 @@ class TripController extends Controller
         if ($request->filled('difficulty')) {
             $query->where('difficulty', $request->difficulty);
         }
+        // ในประเทศ / ต่างประเทศ — แท็บหลักของหน้ารวมทริป
+        if (in_array($request->input('destination'), ['domestic', 'international'], true)) {
+            $query->where('destination_type', $request->input('destination'));
+        }
+        if ($request->filled('country')) {
+            $query->where('country_code', strtoupper($request->country));
+        }
         if ($request->filled('min_days')) {
             $query->where('duration_days', '>=', (int) $request->min_days);
         }
@@ -111,6 +118,9 @@ class TripController extends Controller
                         'slug' => $trip->slug,
                         'location' => $trip->location,
                         'region' => $trip->region,
+                        'destination_type' => $trip->destination_type,
+                        'country_code' => $trip->country_code,
+                        'country_label' => $trip->countryLabel(),
                         'type' => $trip->type,
                         'difficulty' => $trip->difficulty,
                         'duration_days' => $trip->duration_days,
