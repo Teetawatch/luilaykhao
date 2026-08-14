@@ -16,6 +16,11 @@
       
       <!-- Badges -->
       <div class="absolute top-4 left-4 flex flex-col gap-2">
+        <!-- ป้ายประเทศติดเฉพาะทริปต่างประเทศ ทริปในประเทศไม่ต้องบอกว่า "ไทย"
+             และอยู่บนสุดเพราะเป็นสิ่งแรกที่ทำให้การ์ดใบนี้ต่างจากใบอื่น -->
+        <span v-if="trip.country_label" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md bg-white text-[var(--color-primary)]">
+          {{ trip.country_label }}
+        </span>
         <span v-if="scarcity" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md flex items-center gap-1"
           :class="scarcity.level === 'last' ? 'bg-red-500 text-white animate-pulse' : 'bg-amber-400 text-amber-950'">
           <span class="material-symbols-rounded text-[14px]">local_fire_department</span>
@@ -28,11 +33,6 @@
         <span v-if="trip.is_women_only" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md bg-pink-500 text-white flex items-center gap-1">
           <span class="material-symbols-rounded text-[14px]">female</span>
           หญิงล้วน
-        </span>
-        <!-- ป้ายประเทศติดเฉพาะทริปต่างประเทศ ทริปในประเทศไม่ต้องบอกว่า "ไทย" -->
-        <span v-if="trip.country_label" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md bg-sky-600 text-white flex items-center gap-1">
-          <span class="material-symbols-rounded text-[14px]">flight_takeoff</span>
-          {{ trip.country_label }}
         </span>
       </div>
       

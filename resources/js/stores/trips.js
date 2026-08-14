@@ -8,10 +8,14 @@ export const useTripsStore = defineStore('trips', {
     schedules: [],
     loading: false,
     meta: null,
+    destinations: null,
     filters: {
       type: '',
       // '' = ทุกที่, 'domestic' = ในประเทศ, 'international' = ต่างประเทศ
       destination: '',
+      // ปลายทางย่อยใต้แท็บด้านบน — ภาคไทยคู่กับ domestic, รหัสประเทศคู่กับ international
+      region: '',
+      country: '',
       difficulty: '',
       search: '',
       date: '',
@@ -28,6 +32,8 @@ export const useTripsStore = defineStore('trips', {
         const params = { page, per_page: 12 };
         if (this.filters.type) params.type = this.filters.type;
         if (this.filters.destination) params.destination = this.filters.destination;
+        if (this.filters.region) params.region = this.filters.region;
+        if (this.filters.country) params.country = this.filters.country;
         if (this.filters.difficulty) params.difficulty = this.filters.difficulty;
         if (this.filters.search) params.search = this.filters.search;
         if (this.filters.date) params.date = this.filters.date;
@@ -53,6 +59,13 @@ export const useTripsStore = defineStore('trips', {
       }
       const res = await api.get('/trips', { params: clean });
       return res.data.data;
+    },
+
+    // ภาค/ประเทศที่มีทริปอยู่จริงพร้อมจำนวน — เติมแถบเลือกปลายทางหน้ารวมทริป
+    async fetchDestinations() {
+      const res = await api.get('/trips/destinations');
+      this.destinations = res.data.data;
+      return this.destinations;
     },
 
     // Trips with an open upcoming round that's almost full (powers the home rail).
@@ -90,7 +103,7 @@ export const useTripsStore = defineStore('trips', {
     },
 
     clearFilters() {
-      this.filters = { type: '', destination: '', difficulty: '', search: '', date: '', min_days: '', max_days: '', sort: 'popular' };
+      this.filters = { type: '', destination: '', region: '', country: '', difficulty: '', search: '', date: '', min_days: '', max_days: '', sort: 'popular' };
     },
   },
 });

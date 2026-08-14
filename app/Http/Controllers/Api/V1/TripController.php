@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Models\BookingPassenger;
+use App\Models\Place;
 use App\Models\Trip;
 use App\Services\WeatherService;
+use App\Support\Countries;
 use App\Support\MediaDisk;
 use App\Support\ThaiDate;
 use App\Support\UrgentPopupSettings;
@@ -42,6 +44,10 @@ class TripController extends Controller
         }
         if ($request->filled('country')) {
             $query->where('country_code', strtoupper($request->country));
+        }
+        // ภาคของไทย — คู่ขนานกับ country สำหรับทริปในประเทศ
+        if ($request->filled('region')) {
+            $query->where('region', $request->region);
         }
         if ($request->filled('min_days')) {
             $query->where('duration_days', '>=', (int) $request->min_days);
@@ -89,6 +95,68 @@ class TripController extends Controller
         $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->paginated($trips->through(fn ($trip) => new TripResource($trip)));
+    }
+
+    /**
+     * ตัวเลือกปลายทางพร้อมจำนวนทริปจริงในแต่ละอัน — ใช้เติมแถบเลือกปลายทาง
+     * บนหน้ารวมทริป: ในประเทศแยกตามภาค ต่างประเทศแยกตามประเทศ
+     *
+     * นับจากทริปที่เปิดขายเท่านั้น และคืนเฉพาะภาค/ประเทศที่มีทริปอยู่จริง
+     * เพื่อไม่ให้ผู้ใช้กดปุ่มที่พาไปหน้าว่าง
+     *
+     * สิ่งที่เก็บลงแคชต้องเป็น array ล้วน — Collection ที่ถูก serialize ลง
+     * cache driver แล้วอ่านกลับมาจะกลายเป็นออบเจ็กต์ ไม่ใช่ลิสต์ใน JSON
+     */
+    public function destinations(): JsonResponse
+    {
+        $facets = Cache::remember('trips-destinations', now()->addMinutes(10), function () {
+            $counts = Trip::query()
+                ->where('status', 'active')
+                ->selectRaw('destination_type, region, country_code, count(*) as total')
+                ->groupBy('destination_type', 'region', 'country_code')
+                ->get();
+
+            $domestic = $counts->where('destination_type', '!=', 'international');
+            $international = $counts->where('destination_type', 'international');
+
+            $regions = collect(Place::REGIONS)
+                ->map(fn ($label, $key) => [
+                    'key' => $key,
+                    'label' => $label,
+                    'count' => (int) $domestic->where('region', $key)->sum('total'),
+                ])
+                ->filter(fn ($region) => $region['count'] > 0)
+                ->values()
+                ->all();
+
+            $countries = $international
+                ->groupBy('country_code')
+                ->map(fn ($rows, $code) => [
+                    'code' => $code,
+                    'name' => Countries::name($code),
+                    'flag' => Countries::flag($code),
+                    'count' => (int) $rows->sum('total'),
+                ])
+                // ประเทศที่ถูกถอดออกจากทะเบียนแล้วยังค้างอยู่บนทริปเก่า แสดงไม่ได้
+                ->filter(fn ($country) => $country['name'] !== null)
+                ->sortByDesc('count')
+                ->values()
+                ->all();
+
+            return [
+                'total' => (int) $counts->sum('total'),
+                'domestic' => [
+                    'count' => (int) $domestic->sum('total'),
+                    'regions' => $regions,
+                ],
+                'international' => [
+                    'count' => (int) $international->sum('total'),
+                    'countries' => $countries,
+                ],
+            ];
+        });
+
+        return $this->success($facets);
     }
 
     /**

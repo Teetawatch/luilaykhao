@@ -113,6 +113,8 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/featured', [TripController::class, 'featured']);
         // หมุดทุกทริปสำหรับหน้าแผนที่สำรวจ (โหลดครั้งเดียว ไม่แบ่งหน้า)
         Route::get('trips/map', [TripController::class, 'map']);
+        // ภาค/ประเทศที่มีทริปอยู่จริง พร้อมจำนวน — แถบเลือกปลายทางหน้ารวมทริป
+        Route::get('trips/destinations', [TripController::class, 'destinations']);
         Route::get('trips/almost-full', [TripController::class, 'almostFull']);
         Route::get('trips/flash-sale', [TripController::class, 'flashSale']);
         Route::get('trips/urgent-popup', [TripController::class, 'urgentPopup']);
