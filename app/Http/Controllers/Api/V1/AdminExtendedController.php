@@ -383,6 +383,46 @@ class AdminExtendedController extends Controller
         return $this->success($bookings);
     }
 
+    /**
+     * ตามเก็บเอกสารเดินทางของทริปต่างประเทศ
+     *
+     * การจองที่เข้ามาจากแอปรุ่นก่อนที่จะมีช่องกรอกพาสปอร์ตจะไม่มีข้อมูลชุดนี้เลย
+     * หน้านี้คือรายการที่ทีมงานต้องไล่ตาม พร้อมลิงก์ที่ส่งให้ลูกค้ากรอกเองได้
+     */
+    public function passportFollowup(Request $request): JsonResponse
+    {
+        $bookings = Booking::query()
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->whereHas('schedule', fn ($s) => $s->whereDate('departure_date', '>=', now()->toDateString())
+                ->whereHas('trip', fn ($t) => $t->where('destination_type', 'international')))
+            ->with(['user', 'schedule.trip', 'passengers'])
+            ->get()
+            ->filter(fn ($b) => $b->needsPassportInfo())
+            ->sortBy(fn ($b) => $b->schedule?->departure_date)
+            ->map(function ($b) {
+                $total = $b->passengers->count();
+                $missing = $b->passengersMissingPassport()->count();
+
+                return [
+                    'booking_id' => $b->id,
+                    'booking_ref' => $b->booking_ref,
+                    'customer_name' => $b->user?->name,
+                    'customer_phone' => $b->user?->phone,
+                    'trip_title' => $b->schedule?->trip?->title,
+                    'country_label' => $b->schedule?->trip?->countryLabel(),
+                    'departure_date' => $b->schedule?->departure_date?->format('Y-m-d'),
+                    'total_passengers' => $total,
+                    'filled_count' => $total - $missing,
+                    'missing_count' => $missing,
+                    'missing_names' => $b->passengersMissingPassport()->pluck('name')->values(),
+                    'link' => $b->passportUrl(), // lazily mints the token
+                ];
+            })
+            ->values();
+
+        return $this->success($bookings);
+    }
+
     // ─── Customer Management ───────────────────────────────────
 
     public function customers(Request $request): JsonResponse

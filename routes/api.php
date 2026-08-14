@@ -713,6 +713,9 @@ Route::prefix('v1')->group(function () {
         // Birth-date follow-up — upcoming bookings missing DOB + ready links to send
         Route::get('birthdate-followup', [AdminExtendedController::class, 'birthdateFollowup']);
 
+        // Passport follow-up — ทริปต่างประเทศที่ยังขาดเอกสารเดินทาง + ลิงก์ให้ลูกค้ากรอกเอง
+        Route::get('passport-followup', [AdminExtendedController::class, 'passportFollowup']);
+
         // Customers
         Route::get('customers', [AdminExtendedController::class, 'customers']);
         Route::get('customers/{id}', [AdminExtendedController::class, 'customerDetail']);

@@ -174,6 +174,12 @@ class BookingResource extends JsonResource
             ),
             'seats' => BookingSeatResource::collection($this->whenLoaded('seats')),
             'passengers' => BookingPassengerResource::collection($this->whenLoaded('passengers')),
+            // ทริปต่างประเทศที่ยังขาดเอกสารเดินทางของใครสักคน — ให้หน้าจอที่แสดง
+            // ผู้เดินทางอยู่แล้วเตือนได้ โดยไม่ต้องไล่เช็คทีละคนเอง
+            'needs_passport_info' => $this->when(
+                $this->relationLoaded('passengers') && $this->relationLoaded('schedule'),
+                fn () => $this->needsPassportInfo(),
+            ),
             'staff_reviews' => $this->when(
                 $this->relationLoaded('staffReviews'),
                 fn () => $this->staffReviews->map(fn ($review) => [

@@ -1,4 +1,4 @@
-@extends('birthdate.layout')
+@extends('public.form-layout')
 
 @section('title', 'กรอกวัน/เดือน/ปีเกิด')
 

@@ -279,6 +279,7 @@ const routes = [
       { path: 'calendar', name: 'admin-calendar', component: () => import('../pages/admin/CalendarPage.vue') },
       { path: 'customers', name: 'admin-customers', component: () => import('../pages/admin/CustomersPage.vue') },
       { path: 'birthdate-followup', name: 'admin-birthdate-followup', component: () => import('../pages/admin/BirthdateFollowupPage.vue') },
+      { path: 'passport-followup', name: 'admin-passport-followup', component: () => import('../pages/admin/PassportFollowupPage.vue') },
       { path: 'maintenance', name: 'admin-maintenance', component: () => import('../pages/admin/MaintenancePage.vue') },
       { path: 'reports', name: 'admin-reports', component: () => import('../pages/admin/ReportsPage.vue') },
       { path: 'finance', name: 'admin-finance', component: () => import('../pages/admin/ProfitPage.vue') },

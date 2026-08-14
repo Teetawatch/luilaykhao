@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class Booking extends Model
@@ -35,7 +36,7 @@ class Booking extends Model
         'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
         'custom_pickup_status', 'custom_pickup_price', 'custom_pickup_reject_reason', 'custom_pickup_resolved_at',
         'is_group', 'group_name', 'group_notes',
-        'qr_code', 'share_token', 'payment_token', 'birthdate_token', 'checked_in', 'checked_in_at',
+        'qr_code', 'share_token', 'payment_token', 'birthdate_token', 'passport_token', 'checked_in', 'checked_in_at',
         'total_amount', 'selected_addons', 'addons_total', 'selected_rentals', 'rentals_total', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
         'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_paid_at',
@@ -337,6 +338,50 @@ class Booking extends Model
     public function birthdateUrl(): string
     {
         return url('/booking-birthdate/'.$this->ensureBirthdateToken());
+    }
+
+    /**
+     * คืนค่า token สำหรับลิงก์กรอกเอกสารเดินทางของผู้เดินทางทั้งการจอง
+     * ใช้กับการจองทริปต่างประเทศที่เข้ามาจากช่องทางที่ยังถามพาสปอร์ตไม่ได้
+     */
+    public function ensurePassportToken(): string
+    {
+        if (empty($this->passport_token)) {
+            do {
+                $token = Str::lower(Str::random(16));
+            } while (static::where('passport_token', $token)->exists());
+
+            $this->forceFill(['passport_token' => $token])->save();
+        }
+
+        return $this->passport_token;
+    }
+
+    public function passportUrl(): string
+    {
+        return url('/booking-passport/'.$this->ensurePassportToken());
+    }
+
+    /**
+     * ผู้เดินทางที่ยังขาดเอกสารเดินทาง — ว่างเสมอสำหรับทริปในประเทศ
+     *
+     * ครบ = มีทั้งชื่อภาษาอังกฤษ เลขพาสปอร์ต และวันหมดอายุ ขาดอย่างใดอย่างหนึ่ง
+     * ก็ออกตั๋วไม่ได้ จึงนับว่ายังไม่ครบทั้งคน
+     */
+    public function passengersMissingPassport(): Collection
+    {
+        if (! $this->schedule?->trip?->isInternational()) {
+            return collect();
+        }
+
+        return $this->passengers->filter(fn ($passenger) => blank($passenger->name_en)
+            || blank($passenger->passport_no)
+            || blank($passenger->passport_expires_at));
+    }
+
+    public function needsPassportInfo(): bool
+    {
+        return $this->passengersMissingPassport()->isNotEmpty();
     }
 
     /**

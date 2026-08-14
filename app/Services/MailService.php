@@ -15,6 +15,7 @@ use App\Mail\GiftClaimedMail;
 use App\Mail\GiftPurchasedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
+use App\Mail\PassportInfoNeededMail;
 use App\Mail\PasswordResetMail;
 use App\Mail\PaymentConfirmedMail;
 use App\Mail\TripUnderfilledWarningMail;
@@ -184,6 +185,33 @@ class MailService
             }
         } catch (\Throwable $e) {
             Log::error('Failed to send admin new booking email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * ขอข้อมูลพาสปอร์ตที่ยังขาดของทริปต่างประเทศ
+     *
+     * ใช้กับการจองที่เข้ามาจากช่องทางที่ยังไม่มีช่องให้กรอก — แอปรุ่นก่อนหน้าที่
+     * ลูกค้าอีกจำนวนหนึ่งยังใช้อยู่ ลิงก์ในอีเมลจึงเป็นทางเดียวที่คนกลุ่มนี้กรอกได้
+     * โดยไม่ต้องรออัปเดตแอป
+     */
+    public function sendPassportInfoNeededEmail(Booking $booking): void
+    {
+        $booking->loadMissing(['user', 'schedule.trip', 'passengers']);
+
+        if (! $booking->needsPassportInfo()) {
+            return;
+        }
+
+        try {
+            $url = $booking->passportUrl();
+
+            $this->sendToCustomerEmails($booking, fn () => new PassportInfoNeededMail($booking, $url));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send passport info needed email', [
                 'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
             ]);

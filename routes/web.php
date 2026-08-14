@@ -8,6 +8,7 @@ use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicPassengerFillController;
+use App\Http\Controllers\PublicPassportController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PublicReceiptController;
@@ -184,6 +185,17 @@ Route::post('/booking-birthdate/{token}', [PublicBirthdateController::class, 'su
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:20,1')
     ->name('public.birthdate.booking.submit');
+
+// Public passport page — ตามเก็บเอกสารเดินทางของทริปต่างประเทศ เมื่อการจองเข้ามา
+// จากช่องทางที่ยังไม่มีช่องกรอก (แอปรุ่นก่อนหน้าที่ลูกค้าอีกส่วนยังใช้อยู่)
+Route::get('/booking-passport/{token}', [PublicPassportController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:30,1')
+    ->name('public.passport.show');
+Route::post('/booking-passport/{token}', [PublicPassportController::class, 'submit'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.passport.submit');
 
 // Public payment page — ชำระค่างวด/ยอดส่วนที่เหลือ จากลิงก์ในอีเมล (ไม่ต้องล็อกอิน)
 Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])

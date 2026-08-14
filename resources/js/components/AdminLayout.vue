@@ -158,6 +158,7 @@ const menuGroups = ref([
       { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
       { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },
       { to: '/admin/birthdate-followup', icon: 'fas fa-birthday-cake', label: 'ตามเก็บวันเกิด' },
+      { to: '/admin/passport-followup', icon: 'fas fa-passport', label: 'ตามเก็บพาสปอร์ต' },
       { to: '/admin/reviews', icon: 'fas fa-star', label: 'รีวิวจากลูกค้า' },
       { to: '/admin/trip-posts', icon: 'fas fa-images', label: 'ฟีดนักเดินทาง' },
       { to: '/admin/content-reports', icon: 'fas fa-flag', label: 'เนื้อหาที่ถูกรายงาน' },

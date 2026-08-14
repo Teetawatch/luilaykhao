@@ -472,6 +472,9 @@ class BookingService
 
         // Send emails outside of DB transaction
         $this->mailService->sendBookingCreatedEmail($booking);
+        // ทริปต่างประเทศที่จองจากช่องทางที่ยังไม่มีช่องกรอกพาสปอร์ต (แอปรุ่นก่อนหน้า)
+        // — ส่งลิงก์ให้มากรอกบนเว็บทีหลัง ตัวเมธอดเงียบเองเมื่อข้อมูลครบอยู่แล้ว
+        $this->mailService->sendPassportInfoNeededEmail($booking);
         SmartNotification::send(
             $booking->user_id,
             'booking_created',

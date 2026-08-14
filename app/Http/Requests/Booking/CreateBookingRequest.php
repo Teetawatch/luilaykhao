@@ -108,6 +108,35 @@ class CreateBookingRequest extends FormRequest
         return (bool) $this->trip()?->isInternational();
     }
 
+    /**
+     * ผู้ส่งคำขอนี้รู้จักช่องเอกสารเดินทางไหม
+     *
+     * แอปที่ลูกค้าติดตั้งอยู่ก่อนรุ่นที่รองรับทริปต่างประเทศไม่มีช่องพวกนี้เลย
+     * ถ้าบังคับกับทุกคำขอ ลูกค้ากลุ่มนั้นจะจองไม่ได้จนกว่าจะอัปเดตแอป ซึ่งกินเวลา
+     * เป็นสัปดาห์และมีคนที่ไม่อัปเดตเลย จึงถือว่า "ไม่ส่งคีย์มาเลย" = จองผ่านช่องทาง
+     * ที่ยังถามไม่ได้ ให้จองไปก่อนแล้วตามเก็บทีหลัง (PublicPassportController +
+     * อีเมลตามเก็บ + หน้า /admin/passport-followup)
+     *
+     * ต่างจาก "ส่งคีย์มาแต่ปล่อยว่าง" ซึ่งแปลว่าเว็บ/LIFF/แอปรุ่นใหม่ถามแล้วแต่
+     * ลูกค้าไม่กรอก — กรณีนั้นยังต้องเตือนที่หน้าจองเหมือนเดิม
+     */
+    private function clientKnowsPassportFields(): bool
+    {
+        foreach ($this->input('passengers', []) as $passenger) {
+            if (! is_array($passenger)) {
+                continue;
+            }
+
+            foreach (['name_en', 'passport_no', 'passport_expires_at'] as $field) {
+                if (array_key_exists($field, $passenger)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public function rules(): array
     {
         // ซื้อเป็นของขวัญ: ผู้ให้รู้แค่ชื่อผู้รับ — ข้อมูลผู้เดินทางที่เหลือ
@@ -116,7 +145,10 @@ class CreateBookingRequest extends FormRequest
 
         // เอกสารเดินทางบังคับเฉพาะทริปต่างประเทศ และเฉพาะการจองที่รู้ตัวผู้เดินทาง
         // แล้ว — ของขวัญยังไม่รู้ว่าใครไป จึงไปเก็บตอนผู้รับกดรับแทน
-        $passportRequired = $this->isInternational() && ! $this->boolean('is_gift')
+        // แอปเวอร์ชันเก่ายังไม่มีช่องให้กรอก จึงบังคับไม่ได้ (ดู clientKnowsPassportFields)
+        $passportRequired = $this->isInternational()
+            && ! $this->boolean('is_gift')
+            && $this->clientKnowsPassportFields()
             ? 'required'
             : 'nullable';
 
