@@ -7,55 +7,53 @@
            แท็บในประเทศ/ต่างประเทศอยู่ที่นี่ ไม่ใช่ในแถบตัวกรอง เพราะเป็นการแบ่งที่
            ใหญ่กว่าประเภทกิจกรรม และต้องเห็นได้ทันทีทั้งบนจอเล็กและจอใหญ่
       ══════════════════════════════════════════ -->
-      <section class="relative overflow-hidden rounded-[1.75rem] md:rounded-[2.5rem] bg-[var(--color-primary)] px-6 py-9 md:px-12 md:py-12">
-        <!-- แสงพื้นหลัง ไม่ใช่รูปภาพ จะได้ไม่ต้องโหลดอะไรเพิ่ม -->
-        <div class="hero-glow" aria-hidden="true"></div>
+      <section class="rounded-[1.5rem] sm:rounded-[1.75rem] md:rounded-[2.5rem] bg-[var(--color-primary)] px-5 py-7 sm:px-8 sm:py-9 md:px-12 md:py-12">
+        <p class="text-[var(--color-accent-light)] text-[11px] md:text-sm font-extrabold tracking-[0.12em] md:tracking-[0.18em] uppercase mb-2.5 md:mb-3">
+          {{ heroCopy.eyebrow }}
+        </p>
 
-        <div class="relative z-10">
-          <p class="text-[var(--color-accent-light)] text-xs md:text-sm font-extrabold tracking-[0.18em] uppercase mb-3">
-            {{ heroCopy.eyebrow }}
-          </p>
+        <h1 class="text-white text-[1.65rem] sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.25] mb-3 md:mb-4 max-w-3xl">
+          {{ heroCopy.title }}
+        </h1>
 
-          <h1 class="text-white text-[1.9rem] sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.2] mb-4 max-w-3xl">
-            {{ heroCopy.title }}
-          </h1>
+        <p class="text-white/75 text-[15px] md:text-lg font-medium leading-relaxed max-w-2xl mb-6 md:mb-8">
+          {{ heroCopy.subtitle }}
+        </p>
 
-          <p class="text-white/75 text-sm md:text-lg font-medium leading-relaxed max-w-2xl mb-8">
-            {{ heroCopy.subtitle }}
-          </p>
-
-          <!-- แท็บปลายทาง + ช่องค้นหา -->
-          <div class="flex flex-col xl:flex-row xl:items-center gap-4">
-            <nav class="inline-flex bg-white/10 rounded-full p-1.5 w-full sm:w-max" aria-label="ปลายทาง">
-              <button v-for="tab in destinationTabs" :key="tab.value" type="button"
-                @click="selectDestination(tab.value)"
-                :aria-pressed="tripsStore.filters.destination === tab.value"
-                class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-full px-4 sm:px-6 py-2.5 text-sm font-extrabold transition-colors duration-300 cursor-pointer"
+        <!-- แท็บปลายทาง + ช่องค้นหา
+             บนมือถือแท็บเป็นสามช่องเท่ากันเต็มกว้าง ไอคอนซ่อนไว้เพราะพื้นที่พอ
+             ให้ตัวหนังสือกับตัวเลขเท่านั้น และชื่อยาว ๆ ตัดท้ายได้ ไม่ให้ล้นออกนอกกรอบ -->
+        <div class="flex flex-col xl:flex-row xl:items-center gap-3 md:gap-4">
+          <nav class="grid grid-cols-3 sm:inline-flex bg-white/10 rounded-full p-1.5 w-full sm:w-max" aria-label="ปลายทาง">
+            <button v-for="tab in destinationTabs" :key="tab.value" type="button"
+              @click="selectDestination(tab.value)"
+              :aria-pressed="tripsStore.filters.destination === tab.value"
+              class="min-w-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-6 py-2.5 text-[13px] sm:text-sm font-extrabold transition-colors duration-300 cursor-pointer"
+              :class="tripsStore.filters.destination === tab.value
+                ? 'bg-white text-[var(--color-primary)]'
+                : 'text-white/70 hover:text-white'">
+              <span class="material-symbols-rounded text-[19px] hidden sm:inline">{{ tab.icon }}</span>
+              <span class="truncate">{{ tab.label }}</span>
+              <span v-if="tabCount(tab.value) !== null"
+                class="shrink-0 text-[10px] sm:text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-full"
                 :class="tripsStore.filters.destination === tab.value
-                  ? 'bg-white text-[var(--color-primary)]'
-                  : 'text-white/70 hover:text-white'">
-                <span class="material-symbols-rounded text-[19px]">{{ tab.icon }}</span>
-                <span>{{ tab.label }}</span>
-                <span v-if="tabCount(tab.value) !== null"
-                  class="text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-full"
-                  :class="tripsStore.filters.destination === tab.value
-                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                    : 'bg-white/10 text-white/60'">
-                  {{ tabCount(tab.value) }}
-                </span>
-              </button>
-            </nav>
+                  ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                  : 'bg-white/10 text-white/60'">
+                {{ tabCount(tab.value) }}
+              </span>
+            </button>
+          </nav>
 
-            <div class="relative flex-1 xl:max-w-md">
-              <span class="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
-              <input v-model="searchTerm" type="text" placeholder="ค้นหาชื่อทริปหรือสถานที่..."
-                aria-label="ค้นหาทริป"
-                class="w-full bg-white rounded-full pl-[3.25rem] pr-11 py-3.5 text-base font-medium text-[var(--color-text-dark)] placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-white/20 transition-all" />
-              <button v-if="searchTerm" type="button" @click="clearSearch" aria-label="ล้างคำค้นหา"
-                class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors">
-                <span class="material-symbols-rounded text-[16px]">close</span>
-              </button>
-            </div>
+          <div class="relative flex-1 xl:max-w-md">
+            <span class="material-symbols-rounded absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
+            <!-- text-base ไว้เท่าเดิม ถ้าเล็กกว่า 16px ซาฟารีบน iOS จะซูมหน้าจอตอนกดพิมพ์ -->
+            <input v-model="searchTerm" type="text" placeholder="ค้นหาชื่อทริปหรือสถานที่..."
+              aria-label="ค้นหาทริป"
+              class="w-full bg-white rounded-full pl-12 sm:pl-[3.25rem] pr-11 py-3 sm:py-3.5 text-base font-medium text-[var(--color-text-dark)] placeholder:text-gray-400 outline-none focus:ring-4 focus:ring-white/20 transition-all" />
+            <button v-if="searchTerm" type="button" @click="clearSearch" aria-label="ล้างคำค้นหา"
+              class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors">
+              <span class="material-symbols-rounded text-[16px]">close</span>
+            </button>
           </div>
         </div>
       </section>
@@ -605,14 +603,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.hero-glow {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(60% 90% at 12% 0%, rgba(76, 175, 125, 0.35), transparent 60%),
-    radial-gradient(50% 80% at 92% 110%, rgba(45, 122, 79, 0.45), transparent 65%);
-}
-
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
