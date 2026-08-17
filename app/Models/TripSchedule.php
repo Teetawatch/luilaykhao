@@ -23,6 +23,14 @@ class TripSchedule extends Model
 
     public const ACTIVE_BOOKING_STATUSES = ['pending', 'confirmed'];
 
+    /**
+     * พาหนะที่รับได้ — ค่านี้คือแหล่งเดียวที่ validation ทุกที่อ้างถึง
+     * (คอลัมน์ในฐานข้อมูลเป็น VARCHAR แล้ว ไม่ได้บังคับค่าให้)
+     */
+    public const TRANSPORT_TYPES = ['van', 'boat', 'bus', 'flight'];
+
+    public const TRANSPORT_FLIGHT = 'flight';
+
     public const REVIEW_AVAILABLE_TIMEZONE = 'Asia/Bangkok';
 
     /**
@@ -514,6 +522,24 @@ class TripSchedule extends Model
             ->where(function ($q) {
                 $q->whereNull('flash_sale_ends_at')->orWhere('flash_sale_ends_at', '>', now());
             });
+    }
+
+    /** รอบนี้บินไปไหม. */
+    public function isFlight(): bool
+    {
+        return $this->transport_type === self::TRANSPORT_FLIGHT;
+    }
+
+    /**
+     * ลูกค้าเลือกที่นั่งเองได้ไหม
+     *
+     * ที่นั่งบนเครื่องบินสายการบินเป็นคนจัดตอนออกตั๋ว ผังของเราจึงไม่มีความหมาย
+     * และการปล่อยให้ลูกค้าเลือกจะกลายเป็นคำสัญญาที่เราทำตามไม่ได้ — รอบแบบนี้
+     * ทีมงานเป็นคนกรอกเลขที่นั่งจริงกลับเข้าไปในการจองทีหลัง (หน้าแก้ไขการจอง)
+     */
+    public function allowsSeatSelection(): bool
+    {
+        return ! $this->isFlight();
     }
 
     /**

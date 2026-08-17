@@ -1290,6 +1290,7 @@ const transportLabels = {
   van: 'รถตู้',
   boat: 'เรือ',
   bus: 'รถบัส',
+  flight: 'เครื่องบิน',
 };
 
 const regionLabels = {
@@ -2135,6 +2136,7 @@ function transportIcon(type) {
   if (type === 'van') return 'airport_shuttle';
   if (type === 'boat') return 'directions_boat';
   if (type === 'bus') return 'directions_bus';
+  if (type === 'flight') return 'flight';
   return 'commute';
 }
 

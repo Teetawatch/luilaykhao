@@ -137,8 +137,8 @@
                   </td>
                   <td>
                     <span class="type-tag" :class="`type-${sch.transport_type === 'van' ? 'trekking' : 'diving'}`">
-                      <span class="material-symbols-rounded" style="font-size:14px;">{{ sch.transport_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
-                      {{ sch.vehicle?.name || sch.transport_type }}
+                      <span class="material-symbols-rounded" style="font-size:14px;">{{ transportIcon(sch.transport_type) }}</span>
+                      {{ sch.vehicle?.name || transportLabels[sch.transport_type] || sch.transport_type }}
                     </span>
                   </td>
                   <td>
@@ -283,7 +283,12 @@
                 <option value="van">รถตู้</option>
                 <option value="boat">เรือ</option>
                 <option value="bus">รถบัส</option>
+                <option value="flight">เครื่องบิน</option>
               </select>
+              <p v-if="form.transport_type === 'flight'" class="form-toggle-hint" style="margin:8px 0 0;">
+                <span class="material-symbols-rounded hint-icon">flight</span>
+                รอบเครื่องบินจะไม่มีผังที่นั่งให้ลูกค้าเลือก — กรอกเลขที่นั่งจริงให้แต่ละคนได้ที่หน้าแก้ไขการจอง
+              </p>
             </div>
             <div class="form-group">
               <label>ยานพาหนะ</label>
@@ -854,6 +859,7 @@
                   <option value="van">รถตู้</option>
                   <option value="boat">เรือ</option>
                   <option value="bus">รถบัส</option>
+                  <option value="flight">เครื่องบิน</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1232,7 +1238,13 @@
              ย้ายเฉพาะผู้โดยสารที่เลือก หากเลือกไม่ครบทั้งใบจอง ระบบจะแยกรายการจองใหม่ให้อัตโนมัติ กรณีย้ายข้ามทริป ระบบจะจับคู่จุดรับที่ชื่อตรงกันให้ หากไม่มีจุดตรงกันจะล้างจุดรับเดิมออกเพื่อไม่ให้ข้อมูลค้าง
           </div>
 
-          <div v-if="moveTargetId && selectedMoveSeatPassengers.length" class="apply-section move-seat-section">
+          <div v-if="moveTargetId && selectedMoveSeatPassengers.length && moveTargetHasNoSeatMap"
+            style="margin-top:16px;padding:12px;background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;font-size:13px;color:#1e40af;">
+            <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle;margin-right:4px;">flight</span>
+            รอบปลายทางเดินทางโดยเครื่องบิน ไม่มีผังที่นั่งให้เลือก — ที่นั่งเดิมจะถูกปล่อยคืน แล้วค่อยกรอกเลขที่นั่งจากสายการบินให้ทีหลังที่หน้าแก้ไขการจอง
+          </div>
+
+          <div v-if="moveTargetId && selectedMoveSeatPassengers.length && !moveTargetHasNoSeatMap" class="apply-section move-seat-section">
             <div class="move-selection-head">
               <div class="apply-section-title"><span class="material-symbols-rounded">airline_seat_recline_normal</span> เลือกที่นั่งปลายทาง</div>
               <div v-if="moveSeatMapLoading" class="text-muted-sm">กำลังโหลดที่นั่ง...</div>
@@ -1858,10 +1870,19 @@ const departsTimeLabel = (sch) => {
   return `ออกรถ ${time} น.${nightBefore ? ' (คืนก่อนวันทริป)' : ''}`;
 };
 
-const statusLabels = { 
+const statusLabels = {
   open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก',
   pending: 'รอยืนยัน', confirmed: 'ยืนยันแล้ว', refunded: 'คืนเงินแล้ว'
 };
+
+const transportLabels = { van: 'รถตู้', boat: 'เรือ', bus: 'รถบัส', flight: 'เครื่องบิน' };
+
+function transportIcon(type) {
+  if (type === 'van') return 'airport_shuttle';
+  if (type === 'bus') return 'directions_bus';
+  if (type === 'flight') return 'flight';
+  return 'directions_boat';
+}
 
 let debounceTimer = null;
 const debouncedFetch = () => {
@@ -2128,9 +2149,14 @@ const moveSeatCells = computed(() => {
 
   return cells;
 });
+// รอบปลายทางที่บินไปไม่มีผังที่นั่ง — ข้ามขั้นตอนเลือกที่นั่งทั้งก้อน ไม่งั้น
+// ปุ่มยืนยันจะค้างอยู่ที่ "เลือกที่นั่งให้ครบ" ทั้งที่ไม่มีอะไรให้เลือก
+const moveTargetHasNoSeatMap = computed(() => moveTargetSeatMap.value?.has_seat_map === false);
+
 const moveSeatAssignmentError = computed(() => {
   if (!moveTargetId.value || !selectedMoveSeatPassengers.value.length) return '';
   if (moveSeatMapLoading.value) return 'กำลังโหลดข้อมูลที่นั่งปลายทาง';
+  if (moveTargetHasNoSeatMap.value) return '';
   if (moveSeatMapError.value) return moveSeatMapError.value;
 
   const assignedSeats = selectedMoveSeatPassengers.value.map((p) => moveSeatAssignments[p.id]).filter(Boolean);

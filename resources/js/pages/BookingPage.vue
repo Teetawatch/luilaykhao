@@ -471,6 +471,17 @@
               <p class="text-gray-500">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการเดินทาง</p>
             </div>
 
+            <!-- รอบที่บินไปไม่มีผังที่นั่งให้เลือก — บอกไว้ตรงนี้ ไม่งั้นลูกค้าที่เคยจอง
+                 ทริปในประเทศจะสงสัยว่าขั้นตอนเลือกที่นั่งหายไปไหน -->
+            <div v-if="seatSelectionDisabledReason"
+              class="mb-6 flex items-start gap-3 p-5 rounded-3xl bg-sky-50 border border-sky-100">
+              <span class="material-symbols-rounded text-sky-600 shrink-0">flight</span>
+              <div>
+                <p class="font-bold text-sky-900">ทริปนี้ไม่ต้องเลือกที่นั่ง</p>
+                <p class="text-sm text-sky-800 mt-0.5">{{ seatSelectionDisabledReason }}</p>
+              </div>
+            </div>
+
             <!-- Countdown -->
             <CountdownTimer v-if="seatsStore.countdownSeconds > 0"
               :seconds="seatsStore.countdownSeconds" class="mb-6" />
@@ -1797,6 +1808,10 @@ const hasSeatMap = computed(() => {
   if (isJoinTrip.value) return false;
   return seatsStore.seatMap?.has_seat_map ?? false;
 });
+// เหตุผลที่รอบนี้ไม่มีผังที่นั่ง (เช่น บินไป สายการบินจัดที่นั่งเอง) — ว่างไว้
+// สำหรับรอบที่ไม่มีผังด้วยเหตุอื่น เช่น จอยทริป
+const seatSelectionDisabledReason = computed(() =>
+  isJoinTrip.value ? '' : (seatsStore.seatMap?.seat_selection_disabled_reason || ''));
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isInternational = computed(() => schedule.value?.trip?.is_international === true);
 // ทริปต่างประเทศนัดเจอกันที่สนามบิน ไม่มีรถตู้วิ่งรับตามภาค — ขั้นตอนเลือกจุดรับ

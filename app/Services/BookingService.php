@@ -88,6 +88,13 @@ class BookingService
                 throw new \Exception('รอบเดินทางนี้ไม่เปิดให้จองแบบ Join Trip');
             }
 
+            // รอบที่บินไปไม่มีผังที่นั่งของเรา — ที่นั่งที่ส่งมาได้อย่างเดียวคือของค้าง
+            // จากแอปรุ่นเก่า ทิ้งไปเงียบ ๆ ดีกว่าทำให้จองไม่ผ่าน แล้วให้ทีมงานกรอก
+            // เลขที่นั่งจริงจากสายการบินทีหลัง
+            if (! $schedule->allowsSeatSelection()) {
+                $seatIds = [];
+            }
+
             $participantCount = count($passengers);
 
             // Join trip allows unlimited bookings — skip seat availability check
@@ -798,7 +805,12 @@ class BookingService
             $target->syncBookedSeats();
 
             $passengerCount = $booking->passengers->count();
-            $usesSeats = ! $booking->is_join_trip && $booking->seats->isNotEmpty();
+            // รอบปลายทางที่บินไปไม่มีผังที่นั่ง — ไม่ต้องเลือกที่นั่งใหม่ และเบอร์ที่นั่ง
+            // บนรถของรอบเดิมก็ใช้ไม่ได้ ต้องปล่อยคืนแทนการลากข้ามไป
+            $targetUsesSeatMap = $target->allowsSeatSelection();
+            $usesSeats = ! $booking->is_join_trip
+                && $booking->seats->isNotEmpty()
+                && $targetUsesSeatMap;
 
             if ($booking->is_join_trip && ! $target->join_trip_enabled) {
                 throw new \Exception('รอบเดินทางปลายทางไม่เปิดให้จองแบบ Join Trip');
@@ -872,6 +884,13 @@ class BookingService
                         'passenger_name' => $passengerNames->get($index),
                     ]);
                 }
+            } elseif (! $targetUsesSeatMap) {
+                // ย้ายไปรอบที่บินไป — คืนที่นั่งเดิมให้รอบต้นทาง แล้วรอทีมงานกรอก
+                // เลขที่นั่งจากสายการบินให้ใหม่
+                foreach ($booking->seats as $seat) {
+                    $this->seatLockService->forceUnlock($source->id, $seat->seat_id);
+                }
+                $booking->seats()->delete();
             }
 
             // จุดรับผูกกับรอบ — จุดรับรายคนที่ค้างจากรอบเดิมต้องย้ายตาม (จับคู่จากชื่อจุด)

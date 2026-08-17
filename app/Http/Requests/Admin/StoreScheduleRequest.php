@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\TripSchedule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 class StoreScheduleRequest extends FormRequest
 {
@@ -33,7 +35,7 @@ class StoreScheduleRequest extends FormRequest
             }],
             'return_date' => ['required', 'date', 'after_or_equal:departure_date'],
             'total_seats' => ['required', 'integer', 'min:1'],
-            'transport_type' => ['required', 'in:van,boat,bus'],
+            'transport_type' => ['required', Rule::in(TripSchedule::TRANSPORT_TYPES)],
             'vehicle_id' => ['nullable', 'exists:vehicles,id'],
             'status' => ['nullable', 'in:open,closed,full,cancelled'],
             'price_override' => ['nullable', 'numeric', 'min:0'],

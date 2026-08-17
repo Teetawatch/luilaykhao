@@ -72,6 +72,9 @@ class TripScheduleResource extends JsonResource
                 fn () => filled($this->photo_token)
             ),
             'transport_type' => $this->transport_type,
+            // รอบที่บินไปไม่มีผังที่นั่งให้เลือก — สายการบินจัดที่นั่งเอง แล้วทีมงาน
+            // ค่อยกรอกเลขที่นั่งจริงกลับเข้าการจอง
+            'allows_seat_selection' => $this->allowsSeatSelection(),
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,
             'price' => $this->effective_price,

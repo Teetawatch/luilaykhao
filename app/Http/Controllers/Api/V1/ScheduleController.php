@@ -35,6 +35,24 @@ class ScheduleController extends Controller
     {
         $schedule = TripSchedule::with('vehicle')->findOrFail($id);
         $schedule->syncBookedSeats(); // Sync real-time data to ensure accuracy
+
+        // รอบที่บินไป ไม่มีผังให้เลือก — สายการบินเป็นคนจัดที่นั่ง ทีมงานกรอกเลข
+        // ที่นั่งจริงกลับเข้าการจองทีหลัง คืนผังเปล่าไปเลยดีกว่าคืนผังรถตู้ปลอม ๆ
+        // ที่ทุกหน้าจอจะเอาไปวาดเป็นตัวเลือก
+        if (! $schedule->allowsSeatSelection()) {
+            return $this->success([
+                'has_seat_map' => false,
+                'seat_selection_disabled_reason' => 'ที่นั่งบนเครื่องบินจัดโดยสายการบิน ทีมงานจะแจ้งเลขที่นั่งให้ก่อนวันเดินทาง',
+                'rows' => 0,
+                'columns' => [],
+                'seats' => [],
+                'total_seats' => $schedule->total_seats,
+                'available_seats' => $schedule->available_seats,
+                'booking_opens_at' => $schedule->bookingOpensAtFor($request->user()?->id)?->toISOString(),
+                'is_bookable_now' => $schedule->isBookableBy($request->user()?->id),
+            ]);
+        }
+
         $layout = $schedule->resolveSeatLayout();
 
         $allSeatIds = collect($layout['seats'])->pluck('id')->toArray();

@@ -229,6 +229,12 @@
             <span>{{ seatError }}</span>
             <button class="btn-secondary btn-small" type="button" @click="fetchSeatMap">โหลดผังที่นั่งอีกครั้ง</button>
           </div>
+          <div v-else-if="seatMap && seatMap.has_seat_map === false" class="seat-empty-state">
+            <span class="material-symbols-rounded">flight</span>
+            <strong>รอบนี้เดินทางโดยเครื่องบิน</strong>
+            <p>{{ seatMap.seat_selection_disabled_reason || 'ที่นั่งจัดโดยสายการบิน ไม่ต้องเลือกที่นั่งในขั้นตอนนี้' }}</p>
+            <p>สร้างการจองได้เลย แล้วค่อยกรอกเลขที่นั่งจริงให้แต่ละคนที่หน้าแก้ไขการจอง</p>
+          </div>
           <div v-else-if="seatMap" class="seat-picker">
             <div class="seat-legend">
               <span><i class="legend-box available"></i>ว่าง</span>
@@ -449,7 +455,7 @@
           </div>
           <div class="summary-row">
             <span>ที่นั่ง</span>
-            <strong>{{ form.is_join_trip ? 'ไม่ต้องเลือก' : selectedSeatIds.join(', ') || '-' }}</strong>
+            <strong>{{ seatSelectionRequired ? (selectedSeatIds.join(', ') || '-') : 'ไม่ต้องเลือก' }}</strong>
           </div>
           <div class="summary-row">
             <span>การจ่าย</span>
@@ -643,10 +649,16 @@ const seatCells = computed(() => {
   }
   return cells;
 });
+// รอบที่บินไปไม่มีผังที่นั่งให้เลือก (สายการบินจัดที่นั่งเอง) — ถ้ายังบังคับอยู่
+// จะสร้างการจองให้ลูกค้าไม่ได้เลย
+const seatSelectionRequired = computed(
+  () => !form.is_join_trip && seatMap.value?.has_seat_map !== false,
+);
+
 const canSubmit = computed(() => {
   if (!form.schedule_id || !form.customer_name || !form.email || !form.phone) return false;
   if (passengers.value.some((passenger) => !isPassengerComplete(passenger))) return false;
-  if (!form.is_join_trip && selectedSeatIds.value.length !== passengers.value.length) return false;
+  if (seatSelectionRequired.value && selectedSeatIds.value.length !== passengers.value.length) return false;
   if (form.payment_type === 'installment' && !installmentAllowed.value) return false;
   if (form.payment_type === 'deposit' && !depositAllowed.value) return false;
   if (paymentEvidenceRequired.value && (!slipFile.value || !form.transfer_date || !form.transfer_time)) return false;
@@ -658,7 +670,7 @@ const submitHint = computed(() => {
   if (passengers.value.some((passenger) => !isPassengerComplete(passenger))) return 'กรอกข้อมูลผู้เดินทางที่มี * ให้ครบ';
   if (!form.is_join_trip && seatsLoading.value) return 'กำลังโหลดผังที่นั่ง';
   if (!form.is_join_trip && !seatMap.value) return 'โหลดผังที่นั่งก่อน';
-  if (!form.is_join_trip && selectedSeatIds.value.length !== passengers.value.length) {
+  if (seatSelectionRequired.value && selectedSeatIds.value.length !== passengers.value.length) {
     return `เลือกที่นั่ง ${selectedSeatIds.value.length}/${passengers.value.length}`;
   }
   if (form.payment_type === 'installment' && !installmentAllowed.value) return 'รอบนี้ยังไม่เปิดผ่อนชำระ';

@@ -1097,11 +1097,11 @@
                   </div>
 
                   <div class="form-group pax-pickup-seat">
-                    <label>ที่นั่ง</label>
+                    <label>{{ editScheduleIsFlight ? 'ที่นั่งบนเครื่อง' : 'ที่นั่ง' }}</label>
                     <input
                       v-model.trim="passenger.seat_id"
                       type="text"
-                      placeholder="A1"
+                      :placeholder="editScheduleIsFlight ? '12A' : 'A1'"
                       :disabled="editForm.is_join_trip"
                     />
                   </div>
@@ -1111,7 +1111,9 @@
               <small class="field-hint">
                 {{ editForm.is_join_trip
                   ? 'จอยทริปไม่ต้องระบุที่นั่ง — ระบุเฉพาะจุดรับรายคนได้'
-                  : 'เว้นที่นั่งว่างไว้ได้ถ้ายังไม่ได้จัดผัง' }}
+                  : editScheduleIsFlight
+                    ? 'รอบนี้บินไป ลูกค้าเลือกที่นั่งเองไม่ได้ — กรอกเลขที่นั่งจากสายการบินให้ทีละคน แล้วลูกค้าจะเห็นในแอป'
+                    : 'เว้นที่นั่งว่างไว้ได้ถ้ายังไม่ได้จัดผัง' }}
               </small>
               <small v-if="editSeatDuplicateWarning" class="pax-pickup-warning">
                 <span class="material-symbols-rounded">warning</span>
@@ -1622,7 +1624,18 @@
             </div>
           </section>
 
-          <section v-if="splitTargetId && splitSeatRows.length" class="edit-section">
+          <section v-if="splitTargetId && splitSeatRows.length && splitTargetHasNoSeatMap" class="edit-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">flight</span>
+              ที่นั่งในรอบปลายทาง
+            </div>
+            <p class="field-hint">
+              รอบปลายทางเดินทางโดยเครื่องบิน ไม่มีผังที่นั่งให้จัด — ที่นั่งเดิมจะถูกปล่อยคืนรอบต้นทาง
+              แล้วค่อยกรอกเลขที่นั่งจากสายการบินให้ทีหลังที่หน้าแก้ไขการจอง
+            </p>
+          </section>
+
+          <section v-if="splitTargetId && splitSeatRows.length && !splitTargetHasNoSeatMap" class="edit-section">
             <div class="section-heading">
               <span class="material-symbols-rounded">airline_seat_recline_normal</span>
               ที่นั่งในรอบปลายทาง
@@ -1831,7 +1844,13 @@ const splitSeatCells = computed(() => {
 const activeSplitPassenger = computed(
   () => splitSeatRows.value.find((row) => row.passenger.id === activeSplitPassengerId.value)?.passenger || null,
 );
+// รอบปลายทางที่บินไปไม่มีผังที่นั่ง — ข้ามขั้นตอนจัดที่นั่งไปเลย ไม่งั้นปุ่มยืนยัน
+// จะติดอยู่ที่ "ที่นั่งเดิมไม่ว่างในรอบปลายทาง" ทั้งที่ไม่มีผังให้ชนกัน
+const splitTargetHasNoSeatMap = computed(() => splitSeatMap.value?.has_seat_map === false);
+
 const splitSeatError = computed(() => {
+  if (splitTargetHasNoSeatMap.value) return '';
+
   const assigned = splitSeatRows.value
     .map((row) => splitSeatAssignments[row.passenger.id])
     .filter(Boolean);
@@ -1984,6 +2003,13 @@ const editScheduleOptions = computed(() => {
     list.unshift(current);
   }
   return list;
+});
+
+// รอบที่กำลังแก้อยู่บินไปไหม — ที่นั่งเครื่องบินไม่ได้อยู่บนผังของเรา ทีมงาน
+// กรอกเลขจริงจากสายการบิน (เช่น 12A) ให้ทีละคนตรงนี้
+const editScheduleIsFlight = computed(() => {
+  const schedule = editScheduleOptions.value.find((s) => s.id === editForm.schedule_id);
+  return (schedule || editBooking.value?.schedule)?.transport_type === 'flight';
 });
 
 // จุดรับของรอบเดินทางที่กำลังเลือกอยู่ใน modal แก้ไข

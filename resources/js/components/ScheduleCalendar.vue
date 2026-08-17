@@ -226,8 +226,9 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
               <span class="text-[11px] font-black text-[var(--color-text-dark)]">฿{{ Number(s.price ?? 0).toLocaleString() }}</span>
+              <!-- รอบที่บินไปไม่มีผังที่นั่งให้ดู (allows_seat_selection = false) -->
               <button
-                v-if="s.total_seats > 0"
+                v-if="s.total_seats > 0 && s.allows_seat_selection !== false"
                 @click.stop="emit('preview-seats', s)"
                 class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors px-1.5 py-1 rounded-lg hover:bg-[var(--color-accent)]/8"
               >

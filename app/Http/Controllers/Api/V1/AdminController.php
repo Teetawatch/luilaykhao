@@ -450,7 +450,7 @@ class AdminController extends Controller
             'departs_at' => ['sometimes', 'nullable', 'date'],
             'return_date' => ['sometimes', 'date'],
             'total_seats' => ['sometimes', 'integer', 'min:1'],
-            'transport_type' => ['sometimes', 'in:van,boat,bus'],
+            'transport_type' => ['sometimes', Rule::in(TripSchedule::TRANSPORT_TYPES)],
             'vehicle_id' => ['nullable', 'exists:vehicles,id'],
             'status' => ['sometimes', 'in:open,closed,full,cancelled'],
             'price_override' => ['nullable', 'numeric', 'min:0'],
@@ -544,6 +544,14 @@ class AdminController extends Controller
             ->mapWithKeys(fn ($seatId, $passengerId) => [(int) $passengerId => trim((string) $seatId)])
             ->filter(fn ($seatId, $passengerId) => $seatId !== '' && $selectedPassengerIds->contains((int) $passengerId));
 
+        // รอบปลายทางที่บินไปไม่มีผังที่นั่งของเรา — เบอร์ที่นั่งบนรถตู้ไม่มีความหมาย
+        // บนเครื่อง ปล่อยคืนไปเลยดีกว่าลากตัวเลขเดิมข้ามไปให้ลูกค้าเห็นผิด ๆ
+        // แล้วทีมงานค่อยกรอกเลขที่นั่งจริงจากสายการบินให้ทีหลัง
+        $dropSeats = ! $sameSchedule && ! $target->allowsSeatSelection();
+        if ($dropSeats) {
+            $seatAssignments = collect();
+        }
+
         $bookings = $bookings
             ->filter(fn ($booking) => $booking->passengers->pluck('id')->intersect($selectedPassengerIds)->isNotEmpty())
             ->values();
@@ -570,9 +578,11 @@ class AdminController extends Controller
         // Prepare pickup point mapping
         $pickupMap = $this->pickupPointMap($source, $target);
 
-        $seatMoves = $bookings
-            ->flatMap(fn ($booking) => $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments))
-            ->values();
+        $seatMoves = $dropSeats
+            ? collect()
+            : $bookings
+                ->flatMap(fn ($booking) => $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments))
+                ->values();
 
         $seatIdsToMove = $seatMoves
             ->pluck('target_seat_id')
@@ -610,12 +620,18 @@ class AdminController extends Controller
             }
         }
 
-        DB::transaction(function () use ($source, $target, $sameSchedule, $bookings, $pickupMap, $selectedPassengerIds, $seatAssignments) {
+        DB::transaction(function () use ($source, $target, $sameSchedule, $bookings, $pickupMap, $selectedPassengerIds, $seatAssignments, $dropSeats) {
             foreach ($bookings as $booking) {
                 $selectedInBooking = $booking->passengers
                     ->whereIn('id', $selectedPassengerIds->all())
                     ->values();
                 $seatMoves = $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments);
+
+                if ($dropSeats) {
+                    // ย้ายไปรอบที่บินไป — คืนที่นั่งเดิมให้รอบต้นทาง ไม่ลากไปด้วย
+                    $seatMoves->each(fn ($move) => $move['seat']->delete());
+                    $seatMoves = collect();
+                }
 
                 if ($sameSchedule) {
                     $seatMoves->each(fn ($move) => $move['seat']->update([

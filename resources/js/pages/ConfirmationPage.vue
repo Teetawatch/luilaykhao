@@ -194,11 +194,22 @@
 
                     <div v-if="booking.seats?.length" class="flex items-center gap-4 group">
                       <div class="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0 border border-teal-100 transition-colors group-hover:bg-teal-100 group-hover:scale-110 duration-300">
-                        <span class="material-symbols-rounded text-teal-600 text-[24px]">event_seat</span>
+                        <span class="material-symbols-rounded text-teal-600 text-[24px]">{{ isFlightSchedule ? 'flight' : 'event_seat' }}</span>
                       </div>
                       <div>
-                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">ตำแหน่งที่นั่ง</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ isFlightSchedule ? 'ที่นั่งบนเครื่อง' : 'ตำแหน่งที่นั่ง' }}</p>
                         <p class="font-black text-base text-gray-900 leading-tight">{{ booking.seats.map(s => s.seat_id).join(', ') }}</p>
+                      </div>
+                    </div>
+
+                    <!-- รอบที่บินไป แต่ทีมงานยังไม่ได้กรอกเลขที่นั่งจากสายการบิน -->
+                    <div v-else-if="isFlightSchedule" class="flex items-center gap-4 group">
+                      <div class="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center shrink-0 border border-sky-100">
+                        <span class="material-symbols-rounded text-sky-600 text-[24px]">flight</span>
+                      </div>
+                      <div>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">ที่นั่งบนเครื่อง</p>
+                        <p class="font-bold text-sm text-gray-600 leading-tight">สายการบินเป็นผู้จัดที่นั่ง — ทีมงานจะแจ้งเลขที่นั่งให้ก่อนวันเดินทาง</p>
                       </div>
                     </div>
 
@@ -517,6 +528,10 @@ const qrCanvas = ref(null);
 const isUnderReview = computed(() =>
   booking.value?.status === 'pending' && !!booking.value?.slip_ocr_status);
 const displayStatus = computed(() => isUnderReview.value ? 'under_review' : booking.value?.status);
+
+// รอบที่บินไป — ที่นั่งมาจากสายการบิน ทีมงานกรอกให้ทีหลัง ไม่ใช่ผังรถของเรา
+const isFlightSchedule = computed(() =>
+  booking.value?.schedule?.transport_type === 'flight');
 
 const statusMap = { pending: 'รอชำระเงิน', under_review: 'กำลังตรวจสอบยอด', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิกแล้ว', refunded: 'คืนเงินแล้ว' };
 const statusLabel = computed(() => statusMap[displayStatus.value] || booking.value?.status);

@@ -263,6 +263,7 @@ async function startBooking(trip, scheduleId) {
       schedule,
       seatData,
       selected: [],
+      count: seatData.has_seat_map === false ? 1 : 0,
       pickupId: null,
       addons: new Set(),
       rentals: new Map(), // index ใน trip.rental_items -> จำนวนชิ้น
@@ -280,24 +281,39 @@ function maxSelectable() {
   return avail == null ? 9 : Math.min(avail, 9);
 }
 
+// รอบที่บินไปไม่มีผังที่นั่ง — สายการบินจัดที่นั่งเอง แล้วทีมงานกรอกเลขที่นั่ง
+// จริงกลับเข้าการจองทีหลัง รอบแบบนี้จึงถามแค่ "ไปกี่คน"
+function hasSeatMap() {
+  return bk.seatData.has_seat_map !== false;
+}
+
+// จำนวนผู้เดินทางของการจองนี้ — มาจากจำนวนที่นั่งที่เลือก หรือจากตัวนับเมื่อไม่มีผัง
+function paxCount() {
+  return hasSeatMap() ? bk.selected.length : bk.count;
+}
+
 /* --------- step 1: seat map + pickup point --------- */
 
 function renderSeatStep() {
   const node = el(`<div></div>`);
-  node.appendChild(appbar('เลือกที่นั่ง', () => showTrip(bk.trip.slug)));
+  node.appendChild(appbar(hasSeatMap() ? 'เลือกที่นั่ง' : 'จำนวนผู้เดินทาง', () => showTrip(bk.trip.slug)));
   const content = el(`<div class="content"></div>`);
 
   content.appendChild(el(`<div class="step-dots"><span class="on"></span><span></span><span></span></div>`));
 
-  // Seat map
-  content.appendChild(buildSeatMap());
+  if (hasSeatMap()) {
+    // Seat map
+    content.appendChild(buildSeatMap());
 
-  // Legend
-  content.appendChild(el(`<div class="legend">
-    <span><i class="sw avail"></i> ว่าง</span>
-    <span><i class="sw sel"></i> ที่เลือก</span>
-    <span><i class="sw taken"></i> ไม่ว่าง</span>
-  </div>`));
+    // Legend
+    content.appendChild(el(`<div class="legend">
+      <span><i class="sw avail"></i> ว่าง</span>
+      <span><i class="sw sel"></i> ที่เลือก</span>
+      <span><i class="sw taken"></i> ไม่ว่าง</span>
+    </div>`));
+  } else {
+    content.appendChild(buildPaxStepper());
+  }
 
   // Pickup points
   const points = bk.schedule.pickup_points || [];
@@ -414,7 +430,7 @@ function basePerPax() {
 }
 
 function estimateTotal() {
-  const n = bk.selected.length;
+  const n = paxCount();
   let total = basePerPax() * n;
   addonItems().forEach((item) => {
     if (!bk.addons.has(item.index)) return;
@@ -428,13 +444,49 @@ function estimateTotal() {
 }
 
 function refreshSeatStep() {
-  const n = bk.selected.length;
+  const n = paxCount();
   const count = document.getElementById('selCount');
   const est = document.getElementById('estTotal');
   const next = document.getElementById('next');
-  if (count) count.textContent = n ? `เลือกแล้ว ${n} ที่ (${bk.selected.join(', ')})` : 'ยังไม่ได้เลือกที่นั่ง';
+  if (count) {
+    count.textContent = !n
+      ? (hasSeatMap() ? 'ยังไม่ได้เลือกที่นั่ง' : 'ยังไม่ได้ระบุจำนวน')
+      : hasSeatMap()
+        ? `เลือกแล้ว ${n} ที่ (${bk.selected.join(', ')})`
+        : `ผู้เดินทาง ${n} คน`;
+  }
   if (est) est.textContent = n ? baht(estimateTotal()) : '';
   if (next) next.disabled = n === 0;
+}
+
+// ตัวนับจำนวนผู้เดินทางสำหรับรอบที่ไม่มีผังที่นั่ง
+function buildPaxStepper() {
+  const wrap = el(`<div class="card"><div class="body">
+    <p class="muted" id="noSeatNote"></p>
+    <div class="cta-row" style="margin-top:10px">
+      <strong id="paxLabel"></strong>
+      <span>
+        <button class="btn secondary" id="paxMinus" style="width:auto;padding:6px 14px">−</button>
+        <button class="btn secondary" id="paxPlus" style="width:auto;padding:6px 14px">+</button>
+      </span>
+    </div>
+  </div></div>`);
+
+  wrap.querySelector('#noSeatNote').textContent = bk.seatData.seat_selection_disabled_reason
+    || 'รอบนี้ไม่ต้องเลือกที่นั่ง';
+
+  const label = wrap.querySelector('#paxLabel');
+  const sync = () => { label.textContent = `${bk.count} คน`; refreshSeatStep(); };
+  wrap.querySelector('#paxMinus').onclick = () => {
+    bk.count = Math.max(1, bk.count - 1);
+    sync();
+  };
+  wrap.querySelector('#paxPlus').onclick = () => {
+    bk.count = Math.min(maxSelectable(), bk.count + 1);
+    sync();
+  };
+  sync();
+  return wrap;
 }
 
 function pickupOption(id, label, price, time) {
@@ -453,6 +505,13 @@ function pickupOption(id, label, price, time) {
 
 async function proceedToPassengers() {
   const next = document.getElementById('next');
+
+  // ไม่มีผังที่นั่ง = ไม่มีอะไรให้ล็อก ข้ามไปกรอกข้อมูลผู้เดินทางได้เลย
+  if (!hasSeatMap()) {
+    renderPassengerStep();
+    return;
+  }
+
   next.disabled = true;
   next.textContent = 'กำลังจองที่นั่ง…';
   try {
@@ -476,9 +535,9 @@ function renderPassengerStep() {
   content.appendChild(el(`<div class="step-dots"><span></span><span class="on"></span><span></span></div>`));
 
   const womenOnly = !!bk.trip.is_women_only;
-  bk.selected.forEach((seatId, idx) => {
-    content.appendChild(passengerForm(seatId, idx, womenOnly));
-  });
+  for (let idx = 0; idx < paxCount(); idx += 1) {
+    content.appendChild(passengerForm(bk.selected[idx] || null, idx, womenOnly));
+  }
 
   node.appendChild(content);
   const cta = el(`<div class="sticky-cta"><button class="btn" id="toSummary">ถัดไป</button></div>`);
@@ -499,7 +558,7 @@ function passengerForm(seatId, idx, womenOnly) {
   const prefillName = idx === 0 ? (saved.name || state.profile?.displayName || '') : (saved.name || '');
   const card = el(`<form class="card pax" data-idx="${idx}"><div class="body"></div></form>`);
   card.querySelector('.body').innerHTML = `
-    <div class="pax-head">ผู้เดินทางคนที่ ${idx + 1} <span class="tag">ที่นั่ง ${esc(seatId)}</span></div>
+    <div class="pax-head">ผู้เดินทางคนที่ ${idx + 1}${seatId ? ` <span class="tag">ที่นั่ง ${esc(seatId)}</span>` : ''}</div>
     <label class="field"><span>คำนำหน้า</span>
       <select name="title">${titleOpts.map((t) => `<option ${saved.title === t ? 'selected' : ''}>${t}</option>`).join('')}</select>
     </label>
@@ -695,12 +754,12 @@ function renderSummaryStep() {
   content.appendChild(promo);
 
   // Price summary
-  const n = bk.selected.length;
+  const n = paxCount();
   content.appendChild(el(`<div class="section-heading">สรุปการจอง</div>`));
   const sum = el(`<div class="card"><div class="body">
     <div class="kv"><span class="k">ทริป</span><span class="v">${esc(bk.trip.title)}</span></div>
     <div class="kv"><span class="k">วันเดินทาง</span><span class="v">${thaiDate(bk.schedule.departure_date)}</span></div>
-    <div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>
+    ${bk.selected.length ? `<div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>` : ''}
     <div class="kv"><span class="k">ค่าทริป (${n} คน)</span><span class="v">${baht(basePerPax() * n)}</span></div>
     ${addonLines()}
     ${rentalLines()}
@@ -721,7 +780,7 @@ function renderSummaryStep() {
 }
 
 function addonLines() {
-  const n = bk.selected.length;
+  const n = paxCount();
   return addonItems().map((item) => {
     if (!bk.addons.has(item.index)) return '';
     const qty = item.price_type === 'per_person' ? n : 1;
@@ -742,7 +801,7 @@ async function submitBooking(banner, btn) {
   btn.disabled = true;
   btn.textContent = 'กำลังจอง…';
 
-  const passengers = bk.selected.map((_, idx) => ({
+  const passengers = Array.from({ length: paxCount() }, (_, idx) => ({
     ...bk.passengers[idx],
     pickup_point_id: bk.pickupId || undefined,
   }));
@@ -785,7 +844,7 @@ function showConfirmation(booking) {
   content.appendChild(el(`<div class="card"><div class="body">
     <div class="kv"><span class="k">ทริป</span><span class="v">${esc(bk.trip.title)}</span></div>
     <div class="kv"><span class="k">วันเดินทาง</span><span class="v">${thaiDate(bk.schedule.departure_date)}</span></div>
-    <div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>
+    ${bk.selected.length ? `<div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>` : ''}
     <div class="kv"><span class="k">เลขที่จอง</span><span class="v">${esc(ref)}</span></div>
     <div class="kv total"><span class="k">ยอดที่ต้องชำระ</span><span class="v price">${baht(total)}</span></div>
   </div></div>`));

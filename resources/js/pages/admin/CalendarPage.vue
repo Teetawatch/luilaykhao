@@ -161,7 +161,7 @@ const filters = reactive({ trip_id: '' });
 const dayNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 
 const statusLabels = { open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก' };
-const transportLabels = { van: 'รถตู้', boat: 'เรือ', bus: 'รถบัส' };
+const transportLabels = { van: 'รถตู้', boat: 'เรือ', bus: 'รถบัส', flight: 'เครื่องบิน' };
 
 const monthLabel = computed(() => {
   return currentDate.value.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
