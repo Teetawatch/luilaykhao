@@ -15,6 +15,7 @@ use App\Mail\GiftClaimedMail;
 use App\Mail\GiftPurchasedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
+use App\Mail\PassportExpiringMail;
 use App\Mail\PassportInfoNeededMail;
 use App\Mail\PasswordResetMail;
 use App\Mail\PaymentConfirmedMail;
@@ -212,6 +213,35 @@ class MailService
             $this->sendToCustomerEmails($booking, fn () => new PassportInfoNeededMail($booking, $url));
         } catch (\Throwable $e) {
             Log::error('Failed to send passport info needed email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * เตือนว่าพาสปอร์ตที่กรอกไว้แล้วจะหมดอายุเร็วกว่าเกณฑ์ 6 เดือน
+     *
+     * ต่างจาก sendPassportInfoNeededEmail ที่ทวงของที่ยังไม่ได้กรอก — ฉบับนี้
+     * ของครบแล้วแต่เล่มใช้ไม่ได้ ต้องบอกให้ทันไปต่อเล่ม
+     */
+    public function sendPassportExpiringEmail(Booking $booking, int $daysUntilDeparture): void
+    {
+        $booking->loadMissing(['user', 'schedule.trip', 'passengers']);
+
+        if (app(TravelDocumentService::class)->expiringTooSoon($booking)->isEmpty()) {
+            return;
+        }
+
+        try {
+            $url = $booking->passportUrl();
+
+            $this->sendToCustomerEmails(
+                $booking,
+                fn () => new PassportExpiringMail($booking, $url, $daysUntilDeparture),
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to send passport expiring email', [
                 'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
             ]);

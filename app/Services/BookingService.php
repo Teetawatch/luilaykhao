@@ -978,11 +978,54 @@ class BookingService
         // นับถอยหลังจากวันออกรถจริง (อาจเป็นคืนก่อนวันทริป)
         $daysUntilDeparture = now()->diffInDays($schedule->effectiveDepartureDate(), false);
 
+        // ทริปต่างประเทศใช้บันไดคนละชุด — ตั๋วเครื่องบินออกเป็นชื่อผู้เดินทางและ
+        // สายการบินไม่คืนเงิน ยกเลิกก่อนเดินทาง 10 วันจึงคืน 80% ไม่ได้ เพราะเงิน
+        // ก้อนนั้นจ่ายออกไปแล้วและเราเอาคืนไม่ได้
+        if ($schedule?->trip?->isInternational()) {
+            return $this->internationalRefundPercent($daysUntilDeparture);
+        }
+
         if ($daysUntilDeparture >= 7) {
             return 80;
         }
         if ($daysUntilDeparture >= 3) {
             return 50;
+        }
+
+        return 0;
+    }
+
+    /**
+     * บันไดคืนเงินของทริปต่างประเทศ — อ่านเส้นแบ่งจาก config ที่หน้าทริปใช้แสดง
+     * ตัวเดียวกัน (payment.cancellation_policy_international) ตัวเลขที่ลูกค้าเห็น
+     * ตอนจองกับตัวเลขที่ระบบคืนจริงจะได้ไม่หลุดจากกัน
+     */
+    /** คำอธิบายยอดคืนของทริปต่างประเทศ — ต้องบอกด้วยว่าทำไม ไม่ใช่แค่กี่เปอร์เซ็นต์ */
+    private function internationalPolicyNote(int $percent): string
+    {
+        $policy = config('payment.cancellation_policy_international');
+        $free = (int) ($policy['free_change_days'] ?? 60);
+        $partial = (int) ($policy['partial_refund_days'] ?? 45);
+
+        return match (true) {
+            $percent === 100 => "ยกเลิกก่อนเดินทาง {$free}+ วัน (ยังไม่ออกตั๋ว) คืนเต็มจำนวน",
+            $percent > 0 => "ยกเลิกก่อนเดินทาง {$partial}–{$free} วัน คืน {$percent}% "
+                .'(หักค่าตั๋วเครื่องบินและมัดจำที่ปลายทางซึ่งคืนไม่ได้)',
+            default => "ยกเลิกก่อนเดินทางน้อยกว่า {$partial} วัน ไม่คืนเงิน "
+                .'เพราะตั๋วเครื่องบินและค่าธรรมเนียมวีซ่าคืนไม่ได้',
+        };
+    }
+
+    private function internationalRefundPercent(int $daysUntilDeparture): int
+    {
+        $policy = config('payment.cancellation_policy_international');
+
+        if ($daysUntilDeparture >= (int) ($policy['free_change_days'] ?? 60)) {
+            return 100;
+        }
+
+        if ($daysUntilDeparture >= (int) ($policy['partial_refund_days'] ?? 45)) {
+            return (int) ($policy['partial_refund_percent'] ?? 50);
         }
 
         return 0;
@@ -1018,11 +1061,13 @@ class BookingService
             'refund_percent' => $percent,
             'refund_amount' => $refundAmount,
             'paid_amount' => $paidAmount,
-            'policy_note' => match (true) {
-                $percent === 80 => 'ยกเลิกก่อนเดินทาง 7+ วัน คืน 80%',
-                $percent === 50 => 'ยกเลิกก่อนเดินทาง 3–6 วัน คืน 50%',
-                default => 'ยกเลิกก่อนเดินทางน้อยกว่า 3 วัน ไม่คืนเงิน',
-            },
+            'policy_note' => $booking->schedule?->trip?->isInternational()
+                ? $this->internationalPolicyNote($percent)
+                : match (true) {
+                    $percent === 80 => 'ยกเลิกก่อนเดินทาง 7+ วัน คืน 80%',
+                    $percent === 50 => 'ยกเลิกก่อนเดินทาง 3–6 วัน คืน 50%',
+                    default => 'ยกเลิกก่อนเดินทางน้อยกว่า 3 วัน ไม่คืนเงิน',
+                },
         ];
     }
 

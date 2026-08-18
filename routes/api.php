@@ -62,6 +62,7 @@ use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
+use App\Http\Controllers\Api\V1\TravelDocumentController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripMemberLocationController;
@@ -199,6 +200,11 @@ Route::prefix('v1')->group(function () {
         Route::delete('saved-travellers/{id}', [SavedTravellerController::class, 'destroy']);
         Route::post('saved-travellers/{id}/used', [SavedTravellerController::class, 'markUsed']);
         Route::post('bookings/{ref}/save-travellers', [SavedTravellerController::class, 'importFromBooking']);
+
+        // เอกสารเดินทางของทริปต่างประเทศ — กรอก/แก้พาสปอร์ตหลังจองแล้ว ช่องทางในแอป
+        // ของลิงก์ /booking-passport/{token} ที่ส่งไปทางอีเมล
+        Route::get('bookings/{ref}/travel-documents', [TravelDocumentController::class, 'show']);
+        Route::post('bookings/{ref}/travel-documents', [TravelDocumentController::class, 'store']);
 
         // ดูแลเนื้อหา (UGC) — รายงานเนื้อหาได้ทุกชนิด และบล็อกผู้ใช้ที่ก่อกวน
         Route::get('moderation/reasons', [ModerationController::class, 'reasons']);

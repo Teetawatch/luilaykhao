@@ -98,6 +98,34 @@ class Trip extends Model
         return $this->timezone ?: Countries::timezone($this->country_code);
     }
 
+    /**
+     * ปลายทางเวลาต่างจากไทยกี่นาที (บวก = ปลายทางเร็วกว่าไทย)
+     *
+     * คิดจาก "ตอนนี้" เพราะประเทศที่มี DST (ยุโรป/สหรัฐฯ) ต่างจากไทยไม่เท่ากัน
+     * ทั้งปี — ค่าที่ hardcode ไว้จะผิดครึ่งปี
+     *
+     * มีไว้ให้ฝั่งแอปโดยเฉพาะ: แอปไม่ได้ลงฐานข้อมูลเขตเวลา IANA จึงแปลงจากชื่อ
+     * เขตเวลาเองไม่ได้ ส่งเป็นนาทีให้บวกลบตรง ๆ
+     */
+    public function destinationOffsetMinutes(): ?int
+    {
+        $timezone = $this->destinationTimezone();
+        if (! $timezone) {
+            return null;
+        }
+
+        try {
+            $now = now();
+            $home = $now->copy()->setTimezone(Countries::timezone(Countries::HOME));
+            $there = $now->copy()->setTimezone($timezone);
+
+            return (int) round(($there->getOffset() - $home->getOffset()) / 60);
+        } catch (\Throwable) {
+            // เขตเวลาที่แอดมินกรอกผิด ไม่ควรทำให้หน้าทริปพัง
+            return null;
+        }
+    }
+
     /** สถานที่ที่ทริปนี้พาไป — ข้อมูลของสถานที่อยู่ต่อได้แม้ทริปนี้จะปิดขาย */
     public function places(): BelongsToMany
     {

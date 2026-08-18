@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Booking;
+use App\Services\TravelDocumentService;
 use App\Support\MediaDisk;
 use App\Support\PaymentGateway;
 use App\Support\PaymentQuote;
@@ -179,6 +180,13 @@ class BookingResource extends JsonResource
             'needs_passport_info' => $this->when(
                 $this->relationLoaded('passengers') && $this->relationLoaded('schedule'),
                 fn () => $this->needsPassportInfo(),
+            ),
+            // สถานะเอกสารเดินทางแบบละเอียด — ให้หน้าจอเตือนได้ทั้งกรณี "ยังไม่กรอก"
+            // และ "กรอกแล้วแต่เล่มจะหมดอายุก่อนเกณฑ์" ซึ่งเป็นคนละเรื่องกัน และ
+            // เรื่องหลังโผล่ขึ้นมาเองเมื่อเวลาผ่านไป ไม่ได้ผิดตั้งแต่วันจอง
+            'passport' => $this->when(
+                $this->relationLoaded('passengers') && $this->relationLoaded('schedule'),
+                fn () => app(TravelDocumentService::class)->summary($this->resource),
             ),
             'staff_reviews' => $this->when(
                 $this->relationLoaded('staffReviews'),

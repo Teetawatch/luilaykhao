@@ -45,7 +45,7 @@ class TripActivityService
     private const HEARTBEAT_MINUTES = 20;
 
     /** ขั้นที่ควรทำให้เครื่องสั่น/เด้ง ไม่ใช่แค่เปลี่ยนตัวเลขเงียบ ๆ */
-    private const ALERTING_STAGES = ['arriving', 'arrived', 'onboard'];
+    private const ALERTING_STAGES = ['arriving', 'arrived', 'onboard', 'meetup', 'boarding'];
 
     private const TIMEZONE = 'Asia/Bangkok';
 
@@ -120,6 +120,15 @@ class TripActivityService
         }
 
         $departsAt = $schedule->effectiveDepartsAt();
+
+        // รอบที่บินไปไม่มีทั้งจุดรับและ GPS รถ ขั้นที่ขับเคลื่อนด้วยตำแหน่งรถ
+        // (enroute/approaching/arriving/arrived) จึงไม่มีทางเกิดขึ้นเลย การ์ดเคย
+        // ค้างอยู่ที่ "อีก N ชั่วโมงออกเดินทาง · จุดรับของคุณ" แล้วกระโดดไป onboard
+        // — ไทม์ไลน์ของสนามบินเดินด้วยเวลานัดพบกับเวลาเครื่องออกแทน
+        if ($schedule->isFlight()) {
+            return $this->flightStateFor($booking, $schedule, $departsAt);
+        }
+
         $pickup = $booking->pickupPoint;
         $pickupName = $this->pickupName($booking);
         $location = $schedule->vehicle_id ? $this->vehicleLocation((int) $schedule->vehicle_id) : null;
@@ -158,6 +167,175 @@ class TripActivityService
             'vehicle_label' => $this->vehicleLabel($schedule),
             'updated_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * state ของรอบที่บินไป — ไทม์ไลน์สนามบินแทนไทม์ไลน์รถตู้
+     *
+     * ขั้น: countdown → preparing → meetup → boarding → onboard
+     * เดินด้วย "เวลานัดพบ" (M) กับ "เวลาเครื่องออก" (D) ล้วน ๆ ไม่มี GPS เข้ามาเกี่ยว
+     * ซึ่งเหมาะกว่า เพราะคำถามของคนที่กำลังจะบินไม่ใช่ "รถถึงไหนแล้ว" แต่เป็น
+     * "ต้องไปถึงสนามบินกี่โมง" กับ "เครื่องออกกี่โมง"
+     *
+     * ใช้คีย์ชุดเดิมทุกคี่ย์ (รวม pickup_name/vehicle_label) เพื่อให้ทั้ง widget ฝั่ง
+     * iOS และ ongoing notification ฝั่ง Android วาดได้เลยโดยไม่ต้องรู้ว่านี่คือ
+     * รอบบิน — pickup_name ใส่จุดนัดพบ, vehicle_label ใส่เที่ยวบิน
+     *
+     * @return array<string, mixed>
+     */
+    private function flightStateFor(Booking $booking, TripSchedule $schedule, ?Carbon $departsAt): array
+    {
+        $meetingAt = $schedule->meetingAt();
+        $meetingPoint = trim((string) $schedule->meeting_point) ?: null;
+        $flightLabel = $this->flightLabel($schedule);
+
+        $stage = $this->flightStage($booking, $meetingAt, $departsAt);
+
+        // นับถอยหลังไปหา "สิ่งที่ต้องทำอันถัดไป" — ก่อนเจอทีมงานคือเวลานัดพบ
+        // หลังจากนั้นคือเวลาเครื่องออก ตัวเลขบนการ์ดจึงเป็นตัวเลขที่ยังต้องรออยู่จริง
+        $target = in_array($stage, ['boarding', 'onboard'], true)
+            ? $departsAt
+            : ($meetingAt ?? $departsAt);
+        $etaMinutes = $target
+            ? max(0, (int) ceil($this->nowThai()->diffInMinutes($target, false)))
+            : null;
+
+        $copy = $this->flightCopy($stage, $meetingAt, $departsAt, $etaMinutes, $meetingPoint, $flightLabel);
+
+        return [
+            'stage' => $stage,
+            'headline' => $copy['headline'],
+            'detail' => $copy['detail'],
+            'eta_minutes' => $etaMinutes,
+            'distance_km' => null,
+            'progress' => $this->flightProgress($stage, $meetingAt),
+            'departs_at' => $departsAt?->toIso8601String(),
+            'pickup_name' => $meetingPoint,
+            'trip_title' => $schedule->trip?->title ?? 'ทริปของคุณ',
+            'booking_ref' => $booking->booking_ref,
+            'schedule_id' => (int) $schedule->id,
+            'vehicle_label' => $flightLabel,
+            'updated_at' => now()->toIso8601String(),
+        ];
+    }
+
+    /** เจอทีมงานเมื่อไหร่ / ขึ้นเครื่องเมื่อไหร่ — เกณฑ์เวลาของรอบบิน (นาที) */
+    private const FLIGHT_MEETUP_MINUTES = 30;
+
+    private const FLIGHT_BOARDING_MINUTES = 60;
+
+    private const FLIGHT_PREPARING_HOURS = 6;
+
+    private function flightStage(Booking $booking, ?Carbon $meetingAt, ?Carbon $departsAt): string
+    {
+        if ($booking->checked_in) {
+            return 'onboard';
+        }
+
+        $now = $this->nowThai();
+
+        if ($departsAt && $now->gte($departsAt->copy()->subMinutes(self::FLIGHT_BOARDING_MINUTES))) {
+            return 'boarding';
+        }
+
+        // ไม่ได้ตั้งเวลานัดพบไว้ ก็ยังบอกอะไรได้อยู่จากเวลาเครื่องออก อย่าเงียบ
+        $anchor = $meetingAt ?? $departsAt;
+        if (! $anchor) {
+            return 'countdown';
+        }
+
+        if ($now->gte($anchor->copy()->subMinutes(self::FLIGHT_MEETUP_MINUTES))) {
+            return 'meetup';
+        }
+
+        if ($now->gte($anchor->copy()->subHours(self::FLIGHT_PREPARING_HOURS))) {
+            return 'preparing';
+        }
+
+        return 'countdown';
+    }
+
+    /**
+     * @return array{headline: string, detail: string}
+     */
+    private function flightCopy(
+        string $stage,
+        ?Carbon $meetingAt,
+        ?Carbon $departsAt,
+        ?int $etaMinutes,
+        ?string $meetingPoint,
+        ?string $flightLabel,
+    ): array {
+        $place = $meetingPoint ?: 'จุดนัดพบที่สนามบิน';
+        $meetingTime = $meetingAt ? $meetingAt->format('H:i').' น.' : null;
+        $departTime = $departsAt ? $departsAt->format('H:i').' น.' : null;
+        $flight = $flightLabel ? "เที่ยวบิน $flightLabel" : 'เที่ยวบินของคุณ';
+
+        return match ($stage) {
+            'onboard' => [
+                'headline' => 'เช็คอินกับทีมงานแล้ว',
+                'detail' => $departTime
+                    ? "$flight ออก $departTime · เดินทางปลอดภัย ✈️"
+                    : 'เดินทางปลอดภัย แล้วเจอกันที่ปลายทาง ✈️',
+            ],
+            'boarding' => [
+                'headline' => $departTime ? "เครื่องออก $departTime" : 'ใกล้เวลาขึ้นเครื่อง',
+                'detail' => $etaMinutes !== null && $etaMinutes > 0
+                    ? "อีก {$etaMinutes} นาทีเครื่องออก · ไปที่ประตูขึ้นเครื่องได้เลย"
+                    : 'ไปที่ประตูขึ้นเครื่องได้เลย',
+            ],
+            'meetup' => [
+                'headline' => $etaMinutes !== null && $etaMinutes > 0
+                    ? "อีก {$etaMinutes} นาทีเจอทีมงาน"
+                    : 'ถึงเวลาเจอทีมงานแล้ว',
+                'detail' => "ทีมงานรออยู่ที่$place".($departTime ? " · เครื่องออก $departTime" : ''),
+            ],
+            'preparing' => [
+                'headline' => $meetingTime ? "เจอกัน $meetingTime" : 'ใกล้ถึงเวลาเดินทาง',
+                'detail' => "ไปที่$place".($departTime ? " · เครื่องออก $departTime" : ''),
+            ],
+            default => [
+                'headline' => $this->countdownLabel($meetingAt ?? $departsAt),
+                'detail' => $meetingTime
+                    ? "เจอกัน $meetingTime ที่$place"
+                    : $place,
+            ],
+        };
+    }
+
+    /**
+     * แถบความคืบหน้าของรอบบิน — ไม่มี ETA รถให้อ้าง จึงวัดจาก "ใกล้เวลานัดพบแค่ไหน"
+     */
+    private function flightProgress(string $stage, ?Carbon $meetingAt): float
+    {
+        return match ($stage) {
+            'onboard' => 1.0,
+            'boarding' => 0.9,
+            'meetup' => $meetingAt
+                ? round(
+                    0.5 + 0.35 * (1 - min(
+                        max(0, $this->nowThai()->diffInMinutes($meetingAt, false)) / self::FLIGHT_MEETUP_MINUTES,
+                        1,
+                    )),
+                    2,
+                )
+                : 0.6,
+            'preparing' => 0.25,
+            default => 0.0,
+        };
+    }
+
+    /** "TG319" หรือ "Thai Airways TG319" — ป้ายเที่ยวบินขาไป */
+    private function flightLabel(TripSchedule $schedule): ?string
+    {
+        $outbound = $schedule->flightLegs()['outbound'][0] ?? null;
+        if (! $outbound) {
+            return null;
+        }
+
+        $label = trim(($outbound['airline'] ?? '').' '.($outbound['flight_no'] ?? ''));
+
+        return $label !== '' ? $label : null;
     }
 
     /**

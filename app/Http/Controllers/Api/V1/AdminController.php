@@ -468,6 +468,9 @@ class AdminController extends Controller
             'flash_sale_price' => ['nullable', 'numeric', 'min:0', 'required_if:flash_sale_enabled,true'],
             'flash_sale_starts_at' => ['nullable', 'date'],
             'flash_sale_ends_at' => ['nullable', 'date', 'after:now', 'after:flash_sale_starts_at'],
+            // ข้อมูลเที่ยวบินมักถูกกรอกที่หน้านี้ ไม่ใช่ตอนสร้างรอบ (กว่าจะออกตั๋วจริง
+            // ก็เปิดขายไปแล้วหลายสัปดาห์) — กฎเดียวกับตอนสร้าง
+            ...StoreScheduleRequest::flightPlanRules(),
         ]);
 
         $schedule->update($validated);

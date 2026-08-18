@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\TripSchedule;
+use App\Support\Countries;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -44,6 +45,17 @@ class TripResource extends JsonResource
             'country_code' => $this->country_code,
             'country_label' => $this->countryLabel(),
             'destination_timezone' => $this->destinationTimezone(),
+            // ต่างจากไทยกี่นาที (บวก = ปลายทางเร็วกว่า) — แอปไม่มีฐานข้อมูล
+            // เขตเวลา IANA ติดมาด้วย (ไม่ได้ลง package timezone) จะคำนวณจากชื่อ
+            // เขตเวลาเองไม่ได้ ส่งตัวเลขไปให้เลยดีกว่า แล้วแอปแค่บวกลบ
+            'destination_offset_minutes' => $this->destinationOffsetMinutes(),
+            // วีซ่า + เบอร์ฉุกเฉินท้องถิ่นของปลายทาง (null/ว่างสำหรับทริปในประเทศ)
+            // — "ต้องขอวีซ่าไหม" เป็นคำถามแรกที่ลูกค้าถามก่อนตัดสินใจจอง และ 191
+            // ของไทยใช้ที่ต่างประเทศไม่ได้
+            'visa' => $this->isInternational() ? Countries::visa($this->country_code) : null,
+            'emergency_numbers' => $this->isInternational()
+                ? Countries::emergency($this->country_code)
+                : [],
             'description' => $this->description,
             'difficulty' => $this->difficulty,
             'duration_days' => $this->duration_days,
@@ -71,7 +83,13 @@ class TripResource extends JsonResource
             'views_count' => (int) $this->views_count,
             'is_women_only' => (bool) $this->is_women_only,
             'must_know' => $this->must_know ?? null,
-            'cancellation_policy' => config('payment.cancellation_policy'),
+            // ทริปต่างประเทศใช้นโยบายยกเลิกคนละชุด — ตั๋วเครื่องบินคืนเงินไม่ได้
+            // และเปลี่ยนชื่อบนตั๋วไม่ได้ ต่างจากทริปในประเทศที่เลื่อนรอบได้จริง
+            // ส่งมาที่คีย์เดิม เพื่อให้ทุกหน้าจอที่วาดนโยบายอยู่แล้วถูกต้องทันที
+            // โดยไม่ต้องรอปล่อยแอปรุ่นใหม่
+            'cancellation_policy' => $this->isInternational()
+                ? config('payment.cancellation_policy_international')
+                : config('payment.cancellation_policy'),
             'itinerary' => $this->itinerary ?? [],
             'preparations' => $this->preparations ?? [],
             'faqs' => $this->faqs ?? [],

@@ -8,6 +8,7 @@ use App\Jobs\BroadcastSosResolved;
 use App\Models\SosAlert;
 use App\Models\TripSchedule;
 use App\Services\SosParticipantService;
+use App\Support\Countries;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -63,7 +64,7 @@ class SosController extends Controller
                 BroadcastSosAlert::dispatchAfterResponse($recentAlert->id);
             }
 
-            return $this->success($this->presentAlert($recentAlert->fresh('user')), 'ส่งสัญญาณ SOS แล้ว');
+            return $this->success($this->presentAlert($recentAlert->fresh(['user', 'schedule.trip'])), 'ส่งสัญญาณ SOS แล้ว');
         }
 
         $alert = SosAlert::create([
@@ -81,7 +82,7 @@ class SosController extends Controller
         // never holds up the sender — critical on weak (3G) connections.
         BroadcastSosAlert::dispatchAfterResponse($alert->id);
 
-        return $this->success($this->presentAlert($alert->fresh('user')), 'ส่งสัญญาณ SOS แล้ว');
+        return $this->success($this->presentAlert($alert->fresh(['user', 'schedule.trip'])), 'ส่งสัญญาณ SOS แล้ว');
     }
 
     /**
@@ -97,7 +98,7 @@ class SosController extends Controller
 
         $scheduleIds = $this->participants->scheduleIdsFor((int) $user->id);
 
-        $alerts = SosAlert::with('user')
+        $alerts = SosAlert::with(['user', 'schedule.trip'])
             ->whereIn('schedule_id', $scheduleIds)
             ->where('status', 'active')
             // เฉพาะเหตุที่ยังสด — เคสเก่าที่ไม่มีใครกดปิดไม่ควรเด้งไซเรนใส่คนที่
@@ -133,7 +134,7 @@ class SosController extends Controller
             BroadcastSosResolved::dispatchAfterResponse($alert->id);
         }
 
-        return $this->success($this->presentAlert($alert->fresh('user'), (int) $user->id), 'ปิดเคส SOS แล้ว');
+        return $this->success($this->presentAlert($alert->fresh(['user', 'schedule.trip']), (int) $user->id), 'ปิดเคส SOS แล้ว');
     }
 
     /**
@@ -175,6 +176,14 @@ class SosController extends Controller
             'longitude' => $alert->longitude,
             'status' => $alert->status,
             'is_mine' => $viewerId !== null && (int) $alert->user_id === $viewerId,
+            // เบอร์ฉุกเฉินของประเทศที่รอบนี้ไปอยู่ — SOS เรียกทีมงานของเราได้
+            // แต่เรียกรถพยาบาลของประเทศนั้นแทนลูกค้าไม่ได้ หน้าจอที่เปิดอยู่ตอน
+            // เกิดเหตุจึงต้องมีเบอร์นั้นติดมาด้วย ไม่ใช่ให้ไปหาในเบราว์เซอร์เอง
+            'emergency_numbers' => Countries::emergency(
+                $alert->schedule?->trip?->isInternational()
+                    ? $alert->schedule->trip->country_code
+                    : null,
+            ),
             'created_at' => $alert->created_at?->toISOString(),
             'resolved_at' => $alert->resolved_at?->toISOString(),
         ];

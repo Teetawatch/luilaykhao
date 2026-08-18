@@ -522,9 +522,29 @@ class VehicleTrackingController extends Controller
             'driver_phone' => $vehicle?->driver_phone,
             'license_plate' => $vehicle?->license_plate,
             'share_url' => $booking->shareUrl(),
+            // รอบที่บินไปไม่มีรถให้ติดตามและไม่มีจุดขึ้นรถ — หน้าจอที่เคยขึ้นว่า
+            // "ยังไม่มีสัญญาณรถ" ต้องรู้ว่าให้พูดถึงจุดนัดพบที่สนามบินแทน
+            'transport_type' => $schedule?->transport_type,
+            'meeting_point' => $schedule?->meeting_point,
+            'meeting_map_url' => $schedule?->meeting_map_url,
+            'meeting_at' => $schedule?->meetingAt()?->format('Y-m-d H:i:s'),
+            'flight_label' => $this->outboundFlightLabel($schedule),
         ];
 
         return $this->success($data, 'ข้อมูลการจองสำหรับติดตาม');
+    }
+
+    /** "Thai Airways TG319" — ป้ายเที่ยวบินขาไปของรอบ; null เมื่อยังไม่ได้กรอก */
+    private function outboundFlightLabel(?TripSchedule $schedule): ?string
+    {
+        $outbound = $schedule?->flightLegs()['outbound'][0] ?? null;
+        if (! $outbound) {
+            return null;
+        }
+
+        $label = trim(($outbound['airline'] ?? '').' '.($outbound['flight_no'] ?? ''));
+
+        return $label !== '' ? $label : null;
     }
 
     /**

@@ -74,6 +74,8 @@ class TripSchedule extends Model
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',
         'is_charter', 'photo_token', 'custom_route',
+        // รอบที่บินไป — จุดนัดพบที่สนามบิน + ขาบิน + น้ำหนักกระเป๋า
+        'meeting_point', 'meeting_map_url', 'meeting_time', 'baggage_allowance', 'flights',
     ];
 
     protected function casts(): array
@@ -102,6 +104,7 @@ class TripSchedule extends Model
             'driver_pin_cleared_at' => 'datetime',
             'rally_nudged_at' => 'datetime',
             'custom_route' => 'array',
+            'flights' => 'array',
         ];
     }
 
@@ -528,6 +531,56 @@ class TripSchedule extends Model
     public function isFlight(): bool
     {
         return $this->transport_type === self::TRANSPORT_FLIGHT;
+    }
+
+    /**
+     * เวลานัดพบที่สนามบิน เป็นเวลาไทย (wall-clock เหมือน departs_at)
+     *
+     * ผูกกับ "วันของเวลาออกเดินทางจริง" ไม่ใช่ departure_date เพราะไฟลต์ดึก
+     * (ออก 00:30 ของวันที่ 5) นัดเจอกันตั้งแต่ 21:30 ของวันที่ 4 — ถ้าเอา
+     * meeting_time ไปต่อกับ departure_date ตรง ๆ จะได้เวลานัดพบ *หลัง* เครื่องออก
+     * กฎที่ใช้: ต่อกับวันของ departs_at ก่อน แล้วถ้าออกมาเลยเวลาเครื่องออกไปแล้ว
+     * ให้ถอยหนึ่งวัน
+     *
+     * ดู [reference-departs-at-timezone] — คอลัมน์เก็บเวลาไทยในชนิด UTC
+     */
+    public function meetingAt(): ?Carbon
+    {
+        if (blank($this->meeting_time)) {
+            return null;
+        }
+
+        [$hour, $minute] = array_pad(explode(':', (string) $this->meeting_time), 2, '0');
+
+        $anchor = $this->departs_at ?? $this->departure_date;
+        if (! $anchor) {
+            return null;
+        }
+
+        $meeting = $anchor->copy()->setTime((int) $hour, (int) $minute);
+
+        if ($this->departs_at && $meeting->gt($this->departs_at)) {
+            $meeting->subDay();
+        }
+
+        return $meeting;
+    }
+
+    /**
+     * ขาบินของรอบนี้ แยกเป็นขาไป/ขากลับ ในรูปที่ client เอาไปวาดได้เลย
+     *
+     * @return array{outbound: array<int, array<string, mixed>>, return: array<int, array<string, mixed>>}
+     */
+    public function flightLegs(): array
+    {
+        $legs = collect($this->flights ?? [])
+            ->filter(fn ($leg) => is_array($leg))
+            ->values();
+
+        return [
+            'outbound' => $legs->where('direction', '!=', 'return')->values()->all(),
+            'return' => $legs->where('direction', 'return')->values()->all(),
+        ];
     }
 
     /**

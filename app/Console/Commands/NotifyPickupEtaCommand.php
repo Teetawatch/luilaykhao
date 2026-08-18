@@ -33,6 +33,10 @@ class NotifyPickupEtaCommand extends Command
             // เทียบกับวันออกรถจริง — รอบที่รถออกคืนก่อนวันทริปจะรับลูกค้าในวันก่อนหน้า
             ->departingOn(today())
             ->whereNotNull('vehicle_id')
+            // รอบที่บินไปไม่มีจุดขึ้นรถให้คิด ETA — ปกติหลุดตัวกรองอยู่แล้วเพราะไม่มี
+            // pickup_point_id แต่กันไว้ให้ชัด: ถ้าวันหนึ่งมีคนเผลอผูกรถกับรอบบิน
+            // ลูกค้าจะได้รับ push "รถถึงใน 8 นาที" ของทริปที่เจอกันที่สนามบิน
+            ->where('transport_type', '!=', TripSchedule::TRANSPORT_FLIGHT)
             ->whereNotIn('status', ['cancelled', 'completed'])
             ->get();
 

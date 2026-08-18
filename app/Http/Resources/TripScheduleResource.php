@@ -75,6 +75,21 @@ class TripScheduleResource extends JsonResource
             // รอบที่บินไปไม่มีผังที่นั่งให้เลือก — สายการบินจัดที่นั่งเอง แล้วทีมงาน
             // ค่อยกรอกเลขที่นั่งจริงกลับเข้าการจอง
             'allows_seat_selection' => $this->allowsSeatSelection(),
+            // รอบที่บินไปไม่มีจุดขึ้นรถ — จุดนัดพบที่สนามบิน + ขาบินคือสิ่งที่มาแทน
+            // ส่งเป็นก้อนเดียวเพื่อให้ client เช็คที่เดียวว่ามีข้อมูลนี้ไหม
+            'flight_plan' => $this->when(
+                $this->isFlight(),
+                fn () => [
+                    'meeting_point' => $this->meeting_point,
+                    'meeting_map_url' => $this->meeting_map_url,
+                    'meeting_time' => $this->meeting_time,
+                    // เวลานัดพบเต็มรูปแบบ (เวลาไทย) — client ไม่ต้องเดาว่า meeting_time
+                    // อยู่วันไหนเมื่อไฟลต์ออกหลังเที่ยงคืน
+                    'meeting_at' => $this->meetingAt()?->format('Y-m-d H:i:s'),
+                    'baggage_allowance' => $this->baggage_allowance,
+                    'legs' => $this->flightLegs(),
+                ],
+            ),
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,
             'price' => $this->effective_price,

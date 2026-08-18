@@ -513,6 +513,77 @@
               </div>
             </section>
 
+            <!--
+              เอกสารและข้อควรรู้ของทริปต่างประเทศ — วีซ่า พาสปอร์ต ประกัน เบอร์ฉุกเฉิน
+              "ต้องขอวีซ่าไหม" คือคำถามแรกที่ตัดสินว่าลูกค้าจองรอบนี้ทันหรือไม่ และเป็น
+              คำถามที่หน้านี้เคยไม่ตอบเลย ทีมงานจึงต้องตอบซ้ำในแชททุกคน
+            -->
+            <section v-if="trip.is_international" class="bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
+              <header class="ed-head mb-2">
+                <span class="ed-kicker">ก่อนตัดสินใจ</span>
+                <h3 class="ed-title">เอกสารและข้อควรรู้</h3>
+              </header>
+              <p class="text-[var(--color-text-muted)] font-medium mb-8">
+                {{ trip.country_label ? `${trip.country_label} · ` : '' }}สำหรับผู้ถือพาสปอร์ตไทย
+              </p>
+
+              <div class="space-y-3">
+                <div v-if="trip.visa" class="flex items-start gap-4 p-4 md:p-5 rounded-2xl border border-gray-200 bg-gray-50">
+                  <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0 mt-0.5">approval</span>
+                  <div class="min-w-0">
+                    <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
+                      {{ trip.visa.label }}<template v-if="trip.visa.days"> · พำนักได้ {{ trip.visa.days }} วัน</template>
+                    </p>
+                    <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">{{ trip.visa.note }}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 md:p-5 rounded-2xl border border-gray-200 bg-gray-50">
+                  <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0 mt-0.5">menu_book</span>
+                  <div class="min-w-0">
+                    <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
+                      พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง
+                    </p>
+                    <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
+                      กรอกเลขพาสปอร์ตตอนจอง หรือกรอกเพิ่มทีหลังจากลิงก์ที่เราส่งให้ทางอีเมลได้
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 md:p-5 rounded-2xl border border-gray-200 bg-gray-50">
+                  <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0 mt-0.5">health_and_safety</span>
+                  <div class="min-w-0">
+                    <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
+                      ประกันการเดินทางต่างประเทศ
+                    </p>
+                    <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
+                      ดูรายการ "สิ่งที่รวมในทริป" ว่ารอบนี้รวมประกันให้แล้วหรือยัง ถ้ายังไม่รวม แนะนำให้ทำก่อนเดินทาง
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  v-if="emergencyNumbers.length"
+                  class="flex items-start gap-4 p-4 md:p-5 rounded-2xl border border-[#C8963E]/25 bg-[#FFF8EE]"
+                >
+                  <span class="material-symbols-rounded text-[22px] text-[#C8963E] shrink-0 mt-0.5">emergency</span>
+                  <div class="min-w-0">
+                    <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
+                      เบอร์ฉุกเฉินที่ปลายทาง
+                    </p>
+                    <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
+                      191 และ 1669 ใช้ที่นั่นไม่ได้ — {{ emergencyNumbers.map((n) => `${n.label} ${n.number}`).join(' · ') }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p v-if="trip.visa?.disclaimer" class="flex items-start gap-2 text-sm font-medium text-[var(--color-text-muted)] mt-6 pt-6 border-t border-gray-100">
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)] shrink-0 mt-0.5">info</span>
+                {{ trip.visa.disclaimer }}<template v-if="visaCheckedAtLabel"> (ข้อมูลอัปเดต {{ visaCheckedAtLabel }})</template>
+              </p>
+            </section>
+
             <!-- Cancellation / refund policy -->
             <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
@@ -520,7 +591,12 @@
                 <h3 class="ed-title">นโยบายการยกเลิกและคืนเงิน</h3>
               </header>
               <p class="text-[var(--color-text-muted)] font-medium mb-8">
-                เปลี่ยนแผนได้อย่างสบายใจ — เงื่อนไขการคืนเงินคำนวณจากจำนวนวันก่อนออกเดินทาง
+                <template v-if="trip.is_international">
+                  ทริปต่างประเทศมีเงื่อนไขต่างจากทริปในประเทศ เพราะตั๋วเครื่องบินออกเป็นชื่อผู้เดินทางและคืนเงินไม่ได้
+                </template>
+                <template v-else>
+                  เปลี่ยนแผนได้อย่างสบายใจ — เงื่อนไขการคืนเงินคำนวณจากจำนวนวันก่อนออกเดินทาง
+                </template>
               </p>
 
               <div class="space-y-3">
@@ -1761,10 +1837,25 @@ import {
   formatDate,
   getSortedPickupPoints,
 } from '../lib/scheduleHelpers';
+import { thaiShort } from '../lib/thaiDate';
 
 const route = useRoute();
 const trip = ref(null);
 const relatedTrips = ref([]);
+
+// เบอร์ฉุกเฉินของประเทศปลายทาง — backend ส่งมาเป็น object {ป้าย: เบอร์}
+// แปลงเป็นอาเรย์เพื่อให้ template วนได้แน่นอน (ลำดับคีย์ของ object ไม่การันตี)
+const emergencyNumbers = computed(() => {
+  const numbers = trip.value?.emergency_numbers;
+  if (!numbers || typeof numbers !== 'object') return [];
+  return Object.entries(numbers).map(([label, number]) => ({ label, number }));
+});
+
+// วันที่ทีมงานทบทวนข้อมูลวีซ่าครั้งล่าสุด — กฎวีซ่าเปลี่ยนเร็ว ต้องบอกว่าข้อมูลเก่าแค่ไหน
+const visaCheckedAtLabel = computed(() => {
+  const checkedAt = trip.value?.visa?.checked_at;
+  return checkedAt ? thaiShort(checkedAt) : '';
+});
 
 useHead({
   title: computed(() => trip.value ? `${trip.value.title} - ทริป${trip.value.type === 'trekking' ? 'เดินป่า' : trip.value.type === 'snorkeling' ? 'ดำน้ำตื้น' : 'เช่ารถตู้'}` : 'รายละเอียดทริป'),

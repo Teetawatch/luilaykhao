@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\SosTriggered;
 use App\Models\SmartNotification;
 use App\Models\SosAlert;
+use App\Support\Countries;
 use App\Support\MediaDisk;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -39,6 +40,15 @@ class DeliverSosAlert implements ShouldQueue
         $tripTitle = $alert->schedule->trip?->title ?? 'ทริป';
         $photoUrl = MediaDisk::url($alert->photo_path);
 
+        // เบอร์ฉุกเฉินท้องถิ่นเดินทางไปกับสัญญาณด้วย — คนที่ได้รับ SOS ที่เนปาล
+        // ต้องเห็นเบอร์รถพยาบาลของเนปาล ไม่ใช่ 1669 FCM ส่งได้แต่สตริง จึงเข้ารหัส
+        // เป็น JSON ก้อนเดียว (ฝั่งแอปถอดกลับใน SosAlert.fromNotificationData)
+        $emergency = Countries::emergency(
+            $alert->schedule->trip?->isInternational()
+                ? $alert->schedule->trip->country_code
+                : null,
+        );
+
         $title = '🆘 ขอความช่วยเหลือ SOS';
         $body = $sender->name.' ขอความช่วยเหลือในทริป '.$tripTitle;
         if ($alert->message) {
@@ -54,6 +64,9 @@ class DeliverSosAlert implements ShouldQueue
             'longitude' => $alert->longitude !== null ? (string) $alert->longitude : '',
             'sos_message' => (string) ($alert->message ?? ''),
             'photo_url' => (string) ($photoUrl ?? ''),
+            'emergency_numbers' => $emergency
+                ? json_encode($emergency, JSON_UNESCAPED_UNICODE)
+                : '',
         ]);
 
         broadcast(new SosTriggered(

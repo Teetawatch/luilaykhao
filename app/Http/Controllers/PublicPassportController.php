@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
-use Carbon\Carbon;
+use App\Services\TravelDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,11 +18,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *
  * ไม่ต้องล็อกอิน ไม่ต้องมีแอป เปิดจากลิงก์ในอีเมลได้เลย และกรอกซ้ำ/แก้ได้จนกว่า
  * จะถึงวันเดินทาง เพราะพาสปอร์ตเล่มใหม่ระหว่างรอเดินทางเป็นเรื่องปกติ
+ *
+ * กฎการตรวจอยู่ที่ TravelDocumentService — หน้านี้กับ API ของแอปใช้ตัวเดียวกัน
  */
 class PublicPassportController extends Controller
 {
-    /** เกณฑ์เดียวกับตอนจอง — สายการบินและ ตม. ส่วนใหญ่ใช้ 6 เดือน */
-    private const PASSPORT_VALIDITY_MONTHS = 6;
+    public function __construct(private readonly TravelDocumentService $documents) {}
 
     public function show(string $token): View
     {
@@ -30,7 +31,7 @@ class PublicPassportController extends Controller
 
         return view('passport.booking', [
             'booking' => $booking,
-            'minExpiry' => $this->minimumExpiry($booking)?->toDateString(),
+            'minExpiry' => $this->documents->minimumExpiry($booking)?->toDateString(),
         ]);
     }
 
@@ -38,114 +39,42 @@ class PublicPassportController extends Controller
     {
         $booking = $this->resolveBooking($token);
 
-        $namesEn = $request->input('name_en', []);
-        $passportNos = $request->input('passport_no', []);
-        $expiries = $request->input('passport_expires_at', []);
-        $minimumExpiry = $this->minimumExpiry($booking);
+        $result = $this->documents->apply($booking, $this->rowsFrom($request));
 
-        $updates = [];
-
-        // เขียนได้เฉพาะผู้เดินทางที่อยู่ในการจองนี้จริง ๆ — คีย์ที่ส่งมาเกินมาถูกทิ้ง
-        foreach ($booking->passengers as $passenger) {
-            $nameEn = trim((string) ($namesEn[$passenger->id] ?? ''));
-            $passportNo = trim((string) ($passportNos[$passenger->id] ?? ''));
-            $expiresAt = trim((string) ($expiries[$passenger->id] ?? ''));
-
-            // เว้นว่างทั้งแถว = ยังไม่พร้อมกรอกของคนนี้ ปล่อยไว้ก่อน
-            if ($nameEn === '' && $passportNo === '' && $expiresAt === '') {
-                continue;
-            }
-
-            $error = $this->validateRow($nameEn, $passportNo, $expiresAt, $minimumExpiry);
-            if ($error) {
-                return back()->withInput()->withErrors([
-                    'passengers' => "{$passenger->name}: {$error}",
-                ]);
-            }
-
-            $updates[$passenger->id] = [
-                'name_en' => strtoupper($nameEn),
-                'passport_no' => strtoupper($passportNo),
-                'passport_expires_at' => $expiresAt,
-            ];
+        if ($result['errors']) {
+            return back()->withInput()->withErrors([
+                'passengers' => reset($result['errors']),
+            ]);
         }
-
-        foreach ($updates as $passengerId => $values) {
-            $booking->passengers->firstWhere('id', $passengerId)?->update($values);
-        }
-
-        $this->syncBookerProfile($booking->fresh('passengers'));
 
         return redirect()
             ->route('public.passport.show', $token)
             ->with('saved', true);
     }
 
-    /** คืนข้อความผิดพลาดภาษาไทยของแถวนี้ หรือ null เมื่อกรอกถูกต้อง */
-    private function validateRow(string $nameEn, string $passportNo, string $expiresAt, ?Carbon $minimumExpiry): ?string
-    {
-        if ($nameEn === '' || $passportNo === '' || $expiresAt === '') {
-            return 'กรุณากรอกให้ครบทั้งชื่อภาษาอังกฤษ เลขที่พาสปอร์ต และวันหมดอายุ';
-        }
-
-        if (! preg_match('/^[A-Za-z\s.\'-]+$/', $nameEn)) {
-            return 'ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น';
-        }
-
-        if (! preg_match('/^[A-Za-z0-9]{5,20}$/', $passportNo)) {
-            return 'เลขที่พาสปอร์ตไม่ถูกต้อง';
-        }
-
-        try {
-            $expiry = Carbon::parse($expiresAt);
-        } catch (\Throwable) {
-            return 'วันหมดอายุพาสปอร์ตไม่ถูกต้อง';
-        }
-
-        if ($minimumExpiry && $expiry->lt($minimumExpiry)) {
-            return 'พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง';
-        }
-
-        if ($expiry->lte(now())) {
-            return 'พาสปอร์ตหมดอายุแล้ว';
-        }
-
-        return null;
-    }
-
-    private function minimumExpiry(Booking $booking): ?Carbon
-    {
-        $departure = $booking->schedule?->departure_date;
-
-        return $departure?->copy()->addMonths(self::PASSPORT_VALIDITY_MONTHS);
-    }
-
     /**
-     * คัดลอกพาสปอร์ตของคนจองเอง (แถวที่จับคู่ได้ด้วยเลขบัตร ไม่งั้นชื่อตรงเป๊ะ)
-     * ขึ้นไปที่โปรไฟล์ เพื่อให้การจองครั้งหน้าเติมให้อัตโนมัติ
+     * ฟอร์มเว็บส่งมาเป็นอาเรย์แยกช่อง (name_en[id], passport_no[id], ...)
+     * สลับให้เป็นแถวต่อคนก่อนส่งเข้า service
+     *
+     * @return array<int|string, array<string, mixed>>
      */
-    private function syncBookerProfile(Booking $booking): void
+    private function rowsFrom(Request $request): array
     {
-        $user = $booking->user;
-        if (! $user) {
-            return;
+        $fields = ['name_en', 'passport_no', 'passport_expires_at'];
+        $rows = [];
+
+        foreach ($fields as $field) {
+            $values = $request->input($field, []);
+            if (! is_array($values)) {
+                continue;
+            }
+
+            foreach ($values as $passengerId => $value) {
+                $rows[$passengerId][$field] = $value;
+            }
         }
 
-        $own = $booking->passengers->first(function ($passenger) use ($user) {
-            return $user->id_card
-                ? $passenger->id_card === $user->id_card
-                : $passenger->name === $user->name;
-        });
-
-        if (! $own || blank($own->passport_no)) {
-            return;
-        }
-
-        $user->update([
-            'name_en' => $own->name_en,
-            'passport_no' => $own->passport_no,
-            'passport_expires_at' => $own->passport_expires_at?->toDateString(),
-        ]);
+        return $rows;
     }
 
     /**
@@ -158,7 +87,7 @@ class PublicPassportController extends Controller
             ->with(['passengers', 'schedule.trip', 'user'])
             ->first();
 
-        if (! $booking || $booking->status === 'cancelled' || ! $booking->schedule?->trip?->isInternational()) {
+        if (! $booking || $booking->status === 'cancelled' || ! $this->documents->isRequired($booking)) {
             throw new NotFoundHttpException('ลิงก์นี้ใช้ไม่ได้แล้ว');
         }
 

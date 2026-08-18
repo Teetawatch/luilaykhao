@@ -312,7 +312,94 @@
             </div>
           </div>
 
-          
+
+          <!-- แผนการบิน — รอบที่บินไปไม่มีจุดขึ้นรถ จุดนัดพบที่สนามบินคือสิ่งที่มาแทน -->
+          <div class="form-toggle-section" v-if="form.transport_type === 'flight'">
+            <div class="form-toggle-header">
+              <label class="form-toggle-label">
+                <span class="material-symbols-rounded hint-icon">flight_takeoff</span>
+                <span>จุดนัดพบและเที่ยวบิน</span>
+              </label>
+            </div>
+            <p class="form-toggle-hint" style="margin:0 0 12px;">
+              รอบที่บินไปไม่มีจุดขึ้นรถ ข้อมูลชุดนี้คือสิ่งที่ลูกค้าเห็นแทน — ทั้งบนใบจอง
+              ในการ์ด "วันเดินทาง" บนหน้าจอล็อก และในอีเมลก่อนเดินทาง
+              เว้นว่างได้ถ้ายังไม่ออกตั๋ว แล้วกลับมากรอกทีหลัง
+            </p>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>จุดนัดพบ</label>
+                <input v-model="form.meeting_point" type="text"
+                  placeholder="สนามบินสุวรรณภูมิ ชั้น 4 ประตู 3 เคาน์เตอร์ D" />
+              </div>
+              <div class="form-group">
+                <label>เวลานัดพบ</label>
+                <input v-model="form.meeting_time" type="time" />
+                <p class="form-toggle-hint" style="margin:6px 0 0;" v-if="form.meeting_time">
+                  เวลาไทย — ระบบจะจับวันให้เองแม้เครื่องออกหลังเที่ยงคืน
+                </p>
+              </div>
+              <div class="form-group">
+                <label>ลิงก์แผนที่จุดนัดพบ</label>
+                <input v-model="form.meeting_map_url" type="url" placeholder="https://maps.app.goo.gl/..." />
+              </div>
+              <div class="form-group">
+                <label>น้ำหนักกระเป๋าที่รวมในทริป</label>
+                <input v-model="form.baggage_allowance" type="text" placeholder="โหลด 20 กก. + ถือขึ้นเครื่อง 7 กก." />
+              </div>
+            </div>
+
+            <div class="flight-legs">
+              <div v-for="(leg, i) in form.flights" :key="i" class="flight-leg">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>ขา</label>
+                    <select v-model="leg.direction">
+                      <option value="outbound">ขาไป</option>
+                      <option value="return">ขากลับ</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>สายการบิน</label>
+                    <input v-model="leg.airline" type="text" placeholder="Thai Airways" />
+                  </div>
+                  <div class="form-group">
+                    <label>เที่ยวบิน</label>
+                    <input v-model="leg.flight_no" type="text" placeholder="TG319" />
+                  </div>
+                  <div class="form-group">
+                    <label>ต้นทาง</label>
+                    <input v-model="leg.from" type="text" placeholder="BKK" />
+                  </div>
+                  <div class="form-group">
+                    <label>ปลายทาง</label>
+                    <input v-model="leg.to" type="text" placeholder="KTM" />
+                  </div>
+                  <div class="form-group">
+                    <label>ออก</label>
+                    <input v-model="leg.depart_at_local" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label>ถึง (เวลาท้องถิ่นปลายทาง)</label>
+                    <input v-model="leg.arrive_at_local" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label>หมายเหตุ</label>
+                    <input v-model="leg.note" type="text" placeholder="ต่อเครื่องที่ KUL 2 ชม." />
+                  </div>
+                </div>
+                <button type="button" class="btn-ghost-sm" @click="removeFlightLeg(i)">
+                  <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
+                  ลบขานี้
+                </button>
+              </div>
+              <button type="button" class="btn-ghost-sm" @click="addFlightLeg">
+                <span class="material-symbols-rounded" style="font-size:16px;">add</span>
+                เพิ่มขาบิน
+              </button>
+            </div>
+          </div>
+
           <!-- Installment Settings -->
           <div class="form-toggle-section">
             <div class="form-toggle-header">
@@ -1829,6 +1916,8 @@ const form = reactive({
   join_trip_enabled: false, join_trip_price: null,
   is_charter: false,
   flash_sale_enabled: false, flash_sale_price: null, flash_sale_starts_at_local: '', flash_sale_ends_at_local: '',
+  // แผนการบิน (เฉพาะรอบ transport_type = flight)
+  meeting_point: '', meeting_map_url: '', meeting_time: '', baggage_allowance: '', flights: [],
 });
 
 // datetime-local (local time) → เก็บ/แสดงเทียบกับ ISO (UTC) ที่ backend ส่งมา
@@ -1862,6 +1951,34 @@ const buildDepartsAt = (departureDate, time, nightBefore) => {
   const date = nightBefore ? shiftDateStr(departureDate, -1) : departureDate;
   return `${date} ${time}:00`;
 };
+
+// ─── แผนการบิน ───────────────────────────────────────────────
+// เวลาในขาบินเก็บเป็น wall-clock ("2026-09-05 00:30:00") ไม่ใช่ ISO/UTC —
+// ช่อง datetime-local ต้องการรูป "2026-09-05T00:30" จึงแปลงตรง ๆ ด้วยการตัดสตริง
+// ห้ามผ่าน new Date() เพราะจะเลื่อนเวลาตาม timezone ของเบราว์เซอร์
+const flightsFromPlan = (plan) => {
+  const legs = [...(plan?.legs?.outbound || []), ...(plan?.legs?.return || [])];
+  return legs.map((leg) => ({
+    direction: leg.direction || 'outbound',
+    airline: leg.airline || '',
+    flight_no: leg.flight_no || '',
+    from: leg.from || '',
+    to: leg.to || '',
+    depart_at_local: (leg.depart_at || '').slice(0, 16).replace(' ', 'T'),
+    arrive_at_local: (leg.arrive_at || '').slice(0, 16).replace(' ', 'T'),
+    note: leg.note || '',
+  }));
+};
+
+const addFlightLeg = () => {
+  form.flights.push({
+    direction: form.flights.some((l) => l.direction === 'outbound') ? 'return' : 'outbound',
+    airline: '', flight_no: '', from: '', to: '',
+    depart_at_local: '', arrive_at_local: '', note: '',
+  });
+};
+
+const removeFlightLeg = (i) => form.flights.splice(i, 1);
 
 const departsTimeLabel = (sch) => {
   if (!sch.departs_at) return '';
@@ -1940,6 +2057,11 @@ const openForm = (item = null) => {
       flash_sale_price: item.flash_sale?.price || null,
       flash_sale_starts_at_local: toLocalInput(item.flash_sale?.starts_at),
       flash_sale_ends_at_local: toLocalInput(item.flash_sale?.ends_at),
+      meeting_point: item.flight_plan?.meeting_point || '',
+      meeting_map_url: item.flight_plan?.meeting_map_url || '',
+      meeting_time: item.flight_plan?.meeting_time || '',
+      baggage_allowance: item.flight_plan?.baggage_allowance || '',
+      flights: flightsFromPlan(item.flight_plan),
     });
   } else {
     Object.assign(form, {
@@ -1953,6 +2075,7 @@ const openForm = (item = null) => {
       join_trip_enabled: false, join_trip_price: null,
       is_charter: false,
       flash_sale_enabled: false, flash_sale_price: null, flash_sale_starts_at_local: '', flash_sale_ends_at_local: '',
+      meeting_point: '', meeting_map_url: '', meeting_time: '', baggage_allowance: '', flights: [],
     });
   }
   showForm.value = true;
@@ -1992,6 +2115,34 @@ const submitForm = async () => {
     }
     delete data.flash_sale_starts_at_local;
     delete data.flash_sale_ends_at_local;
+    // แผนการบิน: ส่งเฉพาะรอบที่บินไป รอบอื่นล้างทิ้งเพื่อไม่ให้ข้อมูลเก่าค้างอยู่
+    // เมื่อแอดมินเปลี่ยนพาหนะจากเครื่องบินเป็นรถตู้
+    if (data.transport_type === 'flight') {
+      data.meeting_point = data.meeting_point || null;
+      data.meeting_map_url = data.meeting_map_url || null;
+      data.meeting_time = data.meeting_time || null;
+      data.baggage_allowance = data.baggage_allowance || null;
+      data.flights = (data.flights || [])
+        .filter((leg) => leg.flight_no || leg.airline || leg.from || leg.to)
+        .map((leg) => ({
+          direction: leg.direction || 'outbound',
+          airline: leg.airline || null,
+          flight_no: leg.flight_no || null,
+          from: leg.from || null,
+          to: leg.to || null,
+          // เวลาที่แอดมินกรอกคือเวลาที่ลูกค้าต้องเห็น ส่งเป็น wall-clock ตรง ๆ
+          // ไม่ผ่าน toISOString() ที่จะเลื่อนเวลาไปตาม timezone ของเบราว์เซอร์
+          depart_at: leg.depart_at_local ? `${leg.depart_at_local.replace('T', ' ')}:00` : null,
+          arrive_at: leg.arrive_at_local ? `${leg.arrive_at_local.replace('T', ' ')}:00` : null,
+          note: leg.note || null,
+        }));
+    } else {
+      data.meeting_point = null;
+      data.meeting_map_url = null;
+      data.meeting_time = null;
+      data.baggage_allowance = null;
+      data.flights = null;
+    }
     if (editing.value) {
       await admin.updateSchedule(editing.value.id, data);
     } else {
@@ -5397,6 +5548,42 @@ onMounted(() => {
 .hint-join-trip { color: #0f766e; }
 .hint-flash-sale { color: #ea580c; }
 .hint-charter  { color: #7c3aed; }
+
+/* ── แผนการบิน (ขาบินซ้ำหลายแถว) ── */
+.flight-legs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: flex-start;
+}
+
+.flight-leg {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fafafa;
+}
+
+.btn-ghost-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-ghost-sm:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
 
 .form-group-hint-cell {
   display: flex;
