@@ -11,10 +11,12 @@ use App\Http\Resources\BookingResource;
 use App\Http\Resources\SchedulePhotoResource;
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\Review;
 use App\Models\SchedulePhoto;
 use App\Models\TripPost;
 use App\Models\TripSchedule;
 use App\Services\BookingService;
+use App\Services\ModerationService;
 use App\Services\WeatherService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +30,7 @@ class BookingController extends Controller
     public function __construct(
         private BookingService $bookingService,
         private WeatherService $weatherService,
+        private ModerationService $moderation,
     ) {}
 
     public function store(CreateBookingRequest $request): JsonResponse
@@ -380,6 +383,36 @@ class BookingController extends Controller
             ->values()
             ->all();
 
+        // รูปจากรีวิว — ใช้เป็นพื้นหลังของสไลด์สรุป แทนพื้นสีล้วน รูปของคนที่ไป
+        // "รอบเดียวกัน" มาก่อนเสมอ เพราะเป็นวิวเดียวกับที่เจ้าของ recap เห็นจริง
+        $blockedAuthors = $this->moderation->hiddenAuthorIds($request->user());
+
+        $reviews = Review::with(['user', 'booking:id,schedule_id'])
+            ->where('trip_id', $trip->id)
+            ->where('is_approved', true)
+            ->whereNotNull('images')
+            ->when($blockedAuthors, fn ($q) => $q->whereNotIn('user_id', $blockedAuthors))
+            ->orderByDesc('created_at')
+            ->limit(60)
+            ->get();
+
+        $sameRound = fn (Review $r) => $r->booking?->schedule_id === $schedule->id;
+
+        $reviewPhotos = $reviews->filter($sameRound)
+            ->concat($reviews->reject($sameRound))
+            ->flatMap(fn (Review $r) => collect($r->images ?? [])
+                ->filter()
+                ->map(fn ($url) => [
+                    'url' => $url,
+                    'user_name' => $r->user?->name ?? 'เพื่อนร่วมทาง',
+                    'user_avatar' => $r->user?->avatar_url,
+                    'rating' => $r->rating,
+                    'same_round' => $sameRound($r),
+                ]))
+            ->take(8)
+            ->values()
+            ->all();
+
         $difficultyLabels = [
             'easy' => 'สายชิล',
             'medium' => 'ปานกลาง',
@@ -411,6 +444,7 @@ class BookingController extends Controller
             'group_size' => $booking->passengers->count(),
             'total_travelers' => (int) $schedule->booked_seats,
             'photos' => $photos,
+            'review_photos' => $reviewPhotos,
             'has_reviewed' => $hasReviewed,
         ]);
     }

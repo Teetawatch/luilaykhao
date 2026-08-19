@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\Review;
 use App\Models\Trip;
 use App\Models\TripPost;
 use App\Models\TripSchedule;
@@ -107,6 +108,76 @@ class TripRecapTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.photos.0', 'https://cdn.test/b.jpg')
             ->assertJsonPath('data.photos.1', 'https://cdn.test/a.jpg');
+    }
+
+    public function test_recap_puts_same_round_review_photos_first(): void
+    {
+        $booking = $this->makeBooking();
+        $schedule = $booking->schedule;
+
+        // รีวิวจากรอบอื่นของทริปเดียวกัน — ยังใช้ได้ แต่ต้องอยู่ท้ายแถว
+        $otherSchedule = TripSchedule::create([
+            'trip_id' => $schedule->trip_id,
+            'departure_date' => now()->subDays(40)->toDateString(),
+            'return_date' => now()->subDays(40)->toDateString(),
+            'total_seats' => 10,
+            'booked_seats' => 0,
+            'transport_type' => 'van',
+            'status' => 'open',
+        ]);
+        $otherBooking = Booking::create([
+            'booking_ref' => 'LLK-TEST-0001',
+            'user_id' => User::factory()->create(['name' => 'ปีเก่า'])->id,
+            'schedule_id' => $otherSchedule->id,
+            'total_amount' => 2500,
+            'status' => 'confirmed',
+        ]);
+        Review::create([
+            'user_id' => $otherBooking->user_id,
+            'booking_id' => $otherBooking->id,
+            'trip_id' => $schedule->trip_id,
+            'rating' => 5,
+            'images' => ['https://cdn.test/old.jpg'],
+            'is_approved' => true,
+        ]);
+
+        $reviewer = User::factory()->create(['name' => 'พี่หมี']);
+        Review::create([
+            'user_id' => $reviewer->id,
+            'booking_id' => $booking->id,
+            'trip_id' => $schedule->trip_id,
+            'rating' => 5,
+            'images' => ['https://cdn.test/mine.jpg'],
+            'is_approved' => true,
+        ]);
+
+        $this->actingAs($booking->user, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/recap")
+            ->assertOk()
+            ->assertJsonPath('data.review_photos.0.url', 'https://cdn.test/mine.jpg')
+            ->assertJsonPath('data.review_photos.0.user_name', 'พี่หมี')
+            ->assertJsonPath('data.review_photos.0.same_round', true)
+            ->assertJsonPath('data.review_photos.1.url', 'https://cdn.test/old.jpg')
+            ->assertJsonPath('data.review_photos.1.same_round', false);
+    }
+
+    public function test_recap_skips_unapproved_review_photos(): void
+    {
+        $booking = $this->makeBooking();
+
+        Review::create([
+            'user_id' => User::factory()->create()->id,
+            'booking_id' => $booking->id,
+            'trip_id' => $booking->schedule->trip_id,
+            'rating' => 5,
+            'images' => ['https://cdn.test/pending.jpg'],
+            'is_approved' => false,
+        ]);
+
+        $this->actingAs($booking->user, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/recap")
+            ->assertOk()
+            ->assertJsonPath('data.review_photos', []);
     }
 
     public function test_recap_flags_upcoming_trip_as_not_completed(): void
