@@ -315,8 +315,21 @@ function renderSeatStep() {
     content.appendChild(buildPaxStepper());
   }
 
-  // Pickup points
-  const points = bk.schedule.pickup_points || [];
+  // Pickup points — รอบที่บินไปไม่มีรถวิ่งรับ จุดนัดพบที่สนามบินมาแทน
+  // (จุดรับที่ค้างไว้จากตอนรอบยังเป็นรถตู้ถูกมองข้าม backend ก็ทิ้งเหมือนกัน)
+  const isFlightRound = bk.schedule.transport_type === 'flight';
+  const points = isFlightRound ? [] : (bk.schedule.pickup_points || []);
+  if (isFlightRound) {
+    const plan = bk.schedule.flight_plan || {};
+    const meetingPoint = (plan.meeting_point || '').trim();
+    const meetingTime = (plan.meeting_time || '').trim();
+    content.appendChild(el(`<div class="section-heading">จุดนัดพบ</div>`));
+    content.appendChild(el(`<p class="muted">${esc(
+      meetingPoint
+        ? `${meetingTime ? `นัดพบ ${meetingTime} น. · ` : ''}${meetingPoint}`
+        : 'รอบนี้เดินทางโดยเครื่องบิน ทีมงานจะแจ้งจุดนัดพบและเวลาที่สนามบินให้ก่อนวันเดินทาง'
+    )}</p>`));
+  }
   if (points.length) {
     content.appendChild(el(`<div class="section-heading">จุดรับ</div>`));
     const list = el(`<div></div>`);

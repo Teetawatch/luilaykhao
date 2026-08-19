@@ -1814,10 +1814,16 @@ const seatSelectionDisabledReason = computed(() =>
   isJoinTrip.value ? '' : (seatsStore.seatMap?.seat_selection_disabled_reason || ''));
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isInternational = computed(() => schedule.value?.trip?.is_international === true);
+// รอบที่บินไปไม่มีรถวิ่งรับเช่นกัน — การบินเป็นคุณสมบัติของ "รอบ" ไม่ใช่ของทริป
+// (ทริปในประเทศก็บินได้) จึงต้องเช็คแยกจาก is_international
+const isFlightSchedule = computed(() => schedule.value?.transport_type === 'flight');
 // ทริปต่างประเทศนัดเจอกันที่สนามบิน ไม่มีรถตู้วิ่งรับตามภาค — ขั้นตอนเลือกจุดรับ
 // จึงไม่มีอะไรให้เลือกและต้องข้ามไป (backend ยกเว้นให้ตรงกัน)
 const isTrekking = computed(() =>
-  schedule.value?.trip?.type === 'trekking' && !isJoinTrip.value && !isInternational.value);
+  schedule.value?.trip?.type === 'trekking'
+  && !isJoinTrip.value
+  && !isInternational.value
+  && !isFlightSchedule.value);
 
 // วันหมดอายุพาสปอร์ตที่เร็วที่สุดที่ยังใช้เดินทางรอบนี้ได้ = วันเดินทาง + 6 เดือน
 //
@@ -1847,6 +1853,8 @@ const pickupPoints = computed(() => {
   // arrange their own way to the meeting spot — so expose none. This cascades
   // to the picker UI, per-passenger selector, validation, and pricing.
   if (isJoinTrip.value) return [];
+  // รอบที่บินไปไม่มีจุดขึ้นรถ แม้จะเคยตั้งไว้ตอนรอบยังเป็นรถตู้ก็ตาม
+  if (isFlightSchedule.value) return [];
   const all = schedule.value?.pickup_points || [];
   if (!preselectedRegion) return all;
   const filtered = all.filter(pt => pt.region === preselectedRegion);

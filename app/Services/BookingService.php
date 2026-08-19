@@ -176,6 +176,17 @@ class BookingService
                 $pickupPoint = null;
                 $pickupRegion = null; // Join trip might not need pickup region if they meet at destination?
                 // But user didn't specify. I'll keep pickup logic if they provided it.
+            } elseif ($schedule->isFlight()) {
+                // รอบที่บินไปไม่มีรถวิ่งรับ — จุดรับที่หลุดมาจากรอบเดิมหรือจากไคลเอนต์
+                // เก่าถูกทิ้งทั้งหมด รวมถึงหมุดที่ปักเอง ไม่งั้นการจองจะพกจุดขึ้นรถ
+                // (และราคาโซนของจุดนั้น) ติดไปกับทริปที่นัดเจอกันที่สนามบิน
+                $pickupPoint = null;
+                $pickupRegion = null;
+                $customPickup = null;
+                $passengerPickupPoints = array_fill(0, count($passengers), null);
+                // ทุกคนจ่ายราคารอบเท่ากัน ไม่มีราคาโซนของจุดรับมาแทนที่
+                $defaultPrice = $schedule->effective_price;
+                $pricePerPerson = $defaultPrice;
             } else {
                 $defaultPrice = $schedule->effective_price;
                 $pickupPoint = null;

@@ -253,8 +253,11 @@ class CreateBookingRequest extends FormRequest
             // ที่ยิงเข้ามาไม่ให้เกิดการจองที่ไม่มีจุดรับ (join trip ยกเว้น; รอบที่ไม่มีจุด
             // ตั้งไว้ก็ยกเว้นฝั่ง backend เพราะบางช่องทาง เช่น LIFF ไม่มีปุ่มปักหมุดเอง)
             // ทริปต่างประเทศยกเว้นด้วย — นัดเจอกันที่สนามบิน ไม่มีรถตู้วิ่งรับตามภาค
+            // รอบที่บินไปก็เช่นกัน แม้ทริปจะอยู่ในประเทศ (บินไปเชียงราย) — การบิน
+            // เป็นคุณสมบัติของรอบ ไม่ใช่ของทริป
             if (! $this->boolean('is_join_trip')
                 && ! $schedule->trip->isInternational()
+                && ! $schedule->isFlight()
                 && $schedule->pickupPoints()->exists()) {
                 $hasBookingPickup = filled($this->input('pickup_point_id'));
                 $hasPassengerPickup = collect($this->input('passengers', []))
