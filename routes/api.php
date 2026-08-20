@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\FlexiDepartureController;
 use App\Http\Controllers\Api\V1\GiftController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
+use App\Http\Controllers\Api\V1\HomeWidgetController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LiveActivityController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
@@ -224,6 +225,9 @@ Route::prefix('v1')->group(function () {
 
         // ค่าอ้างอิงที่ผู้ใช้กรอกเอง สำหรับประเมิน "ทริปนี้ไหวไหม" ก่อนมีประวัติ
         Route::post('me/hiking-baseline', [TripReadinessController::class, 'updateBaseline']);
+
+        // วิดเจ็ตหน้าโฮม — ทริปถัดไป + ยอดที่ต้องจ่ายงวดหน้า (แอปเขียนต่อให้ฝั่ง native)
+        Route::get('me/home-widget', [HomeWidgetController::class, 'show']);
 
         // AI ผู้ช่วยส่วนตัว — ถามเรื่องการจองของตัวเอง (คนละตัวกับ /concierge ที่แนะนำทริป)
         Route::get('me/assistant/suggestions', [MyTripAssistantController::class, 'suggestions']);

@@ -125,6 +125,16 @@ Vehicle GPS is pushed to `/api/v1/tracking/update` (no auth, intended for device
 - The widget extension target lives in `ios/LiveActivity/` and is wired into `Runner.xcodeproj` already; `ios/scripts/add_live_activity_target.rb` recreates it idempotently if the project file is ever regenerated. Its embed phase **must** stay ordered before Flutter's "Thin Binary" phase or the build fails with an opaque dependency cycle.
 - `departs_at` gotcha applies: it stores Thai wall-clock in a UTC-typed column, so comparisons go through `TripActivityService::nowThai()`, never `now()`.
 
+### Home-screen widget ("ทริปถัดไป")
+
+The Live Activity covers trip day; this covers the other 364. `HomeWidgetService` (PHP) owns the copy and serves one snapshot at `GET /api/v1/me/home-widget` — the next trip's countdown plus the next payment due. Inside the Live Activity window it returns `TripActivityService::stateFor()` verbatim (`is_live: true`) so the lock-screen card and the widget never disagree on the same screen.
+
+- The widgets never reach the network. `HomeWidgetService` (Dart) fetches the snapshot and writes it where the widget can read: **iOS** App Group `group.com.luilaykhao.app` + `WidgetCenter` reload; **Android** SharedPreferences + a direct `AppWidgetManager` update. Both via the `luilaykhao/home_widget` MethodChannel. Refreshed on app resume (2-min floor) and forced after `loadAccountData()`; cleared in `_clearLocalSession()`.
+- **iOS** — `TripCountdownWidget` lives in the *existing* `LiveActivityExtension` target (`ios/LiveActivity/`), registered alongside the Live Activity in `LiveActivityBundle`. The App Group must be enabled in the Apple Developer portal for both `com.luilaykhao.app` and `com.luilaykhao.app.LiveActivity`, or `UserDefaults(suiteName:)` silently returns nil and the widget just shows its empty state.
+- **Android** — a classic `AppWidgetProvider` + `RemoteViews` (`TripCountdownWidget.kt`), deliberately **not** Glance: Glance would pull in the whole Compose toolchain to draw four lines of text. The payment column is hidden below 250dp wide.
+- **The one place native computes anything**: the "อีก N วัน" number, recomputed from `departure_date` on every draw so the count is right after days without the app being opened. Its wording (`อีก N วัน` / `พรุ่งนี้` / `วันนี้`, and the three relative due-date phrases) is therefore duplicated in PHP, Swift, and Kotlin and **must stay in sync**. Thai month names and ฯพ.ศ. dates stay server-side. Both native clocks pin a Gregorian calendar and `Asia/Bangkok` explicitly — a Thai device's Buddhist-era default would otherwise misparse `2026-09-05`.
+- `valid_until` (the round's return date) is what lets the widget retire a finished trip on its own; `version` lets an older build refuse a snapshot shape it does not understand instead of guessing.
+
 ### Flutter apps
 
 Both apps follow the same structure: `lib/{models,providers,screens,services,theme,widgets}`.  
