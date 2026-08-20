@@ -475,33 +475,75 @@
 
             <!-- QR จากเกตเวย์ — เงินเข้าแล้วรู้ทันที ไม่ต้องให้ใครมาตรวจสลิป -->
             <template v-if="useBeam">
-              <div class="relative group">
-                <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden min-h-[280px] min-w-[280px] flex items-center justify-center">
-                  <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
-                    class="block rounded-2xl w-full max-w-[280px] h-auto mx-auto" />
-
-                  <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-3xl">
-                    <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
-                  </div>
-
-                  <!-- QR หมดอายุก่อนที่นั่งจะถูกคืน ลูกค้าจึงยังกดออกใบใหม่ได้ -->
-                  <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-3xl px-6 text-center">
-                    <span class="material-symbols-rounded text-4xl text-gray-300">qr_code_2</span>
-                    <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
-                    <button @click="createBeamCharge('QR_PROMPT_PAY')"
-                      class="px-5 py-2.5 bg-teal-600 text-white text-xs font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
-                      สร้าง QR ใหม่
-                    </button>
-                  </div>
+              <!-- ธนาคารตอบว่าไม่ผ่าน — บอกให้ชัดแทนที่จะปล่อยให้ QR ใบตายค้างอยู่ -->
+              <div v-if="beamFailed" class="w-full max-w-sm px-4">
+                <div class="rounded-3xl border border-red-100 bg-red-50/60 p-7 text-center">
+                  <span class="material-symbols-rounded text-red-500 text-4xl">credit_card_off</span>
+                  <p class="mt-3 text-base font-black text-gray-900">การชำระเงินไม่สำเร็จ</p>
+                  <p class="mt-1.5 text-xs text-gray-500 font-medium leading-relaxed">
+                    ธนาคารแจ้งว่ารายการนี้ไม่ผ่าน ยังไม่มีการตัดเงิน · สร้างรายการใหม่แล้วลองอีกครั้งได้เลย
+                  </p>
+                  <button @click="createBeamCharge('QR_PROMPT_PAY')"
+                    class="mt-5 px-5 py-2.5 bg-teal-600 text-white text-xs font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
+                    สร้าง QR ใหม่
+                  </button>
                 </div>
               </div>
 
-              <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-teal-100">
-                <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
-                <p class="text-xs font-bold text-gray-700">
-                  กำลังรอการชำระเงิน · QR หมดอายุใน <span class="text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
-                </p>
+              <!--
+                จ่ายแล้วแต่ webhook ยังไม่มา — เดิมช่วงนี้หน้าจอค้างอยู่กับ QR ใบเดิม
+                จนลูกค้าไม่แน่ใจว่าจ่ายผ่านไหม เอา QR ออกไปเลยระหว่างนี้ กันจ่ายซ้ำ
+              -->
+              <div v-else-if="beamSettling" class="w-full max-w-sm px-4">
+                <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow">
+                  <template #actions>
+                    <button @click="resumeBeamWaiting"
+                      class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
+                      ยังไม่ได้จ่าย · กลับไปสแกน QR
+                    </button>
+                  </template>
+                </PaymentSettlingPanel>
               </div>
+
+              <template v-else>
+                <div class="relative group">
+                  <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden min-h-[280px] min-w-[280px] flex items-center justify-center">
+                    <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
+                      class="block rounded-2xl w-full max-w-[280px] h-auto mx-auto" />
+
+                    <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-3xl">
+                      <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
+                    </div>
+
+                    <!-- QR หมดอายุก่อนที่นั่งจะถูกคืน ลูกค้าจึงยังกดออกใบใหม่ได้ -->
+                    <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-3xl px-6 text-center">
+                      <span class="material-symbols-rounded text-4xl text-gray-300">qr_code_2</span>
+                      <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+                      <button @click="createBeamCharge('QR_PROMPT_PAY')"
+                        class="px-5 py-2.5 bg-teal-600 text-white text-xs font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
+                        สร้าง QR ใหม่
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-teal-100">
+                  <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
+                  <p class="text-xs font-bold text-gray-700">
+                    กำลังรอการชำระเงิน · QR หมดอายุใน <span class="text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
+                  </p>
+                </div>
+
+                <!--
+                  เราไม่มีทางรู้เองว่าลูกค้าสแกนไปแล้วหรือยัง ปุ่มนี้คือสัญญาณเดียวที่บอกเราได้
+                  กดแล้วหน้าจอเปลี่ยนเป็นโหมดรอผล และเริ่มถาม Beam ตรงๆ แทนที่จะรอ webhook
+                -->
+                <button v-if="beamPayment && !beamExpired" @click="markBeamSettling"
+                  class="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-teal-600 text-white text-xs font-black hover:bg-teal-700 active:scale-95 transition-all">
+                  <span class="material-symbols-rounded text-[18px]">task_alt</span>
+                  จ่ายเงินแล้ว · ตรวจสอบให้ฉัน
+                </button>
+              </template>
 
               <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
             </template>
@@ -871,12 +913,19 @@
 
             <!-- โหมดเกตเวย์: ไม่มีปุ่ม "ยืนยัน" เพราะการจ่ายจบที่แอปธนาคาร ไม่ใช่ที่นี่ -->
             <div v-if="useBeam" class="space-y-4">
-              <div class="rounded-2xl p-5 bg-teal-50 border border-teal-100 flex items-start gap-3">
-                <div class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse mt-1.5 shrink-0"></div>
+              <div class="rounded-2xl p-5 border flex items-start gap-3"
+                :class="beamSettling ? 'bg-white border-teal-200' : 'bg-teal-50 border-teal-100'">
+                <div v-if="beamSettling"
+                  class="w-5 h-5 rounded-full border-[3px] border-teal-100 border-t-teal-600 animate-spin mt-0.5 shrink-0"></div>
+                <div v-else class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse mt-1.5 shrink-0"></div>
                 <div class="space-y-1">
-                  <p class="text-sm font-black text-teal-900">สแกน QR แล้วรอสักครู่</p>
+                  <p class="text-sm font-black text-teal-900">
+                    {{ beamSettling ? 'กำลังตรวจสอบการชำระเงิน' : 'สแกน QR แล้วรอสักครู่' }}
+                  </p>
                   <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
-                    ระบบจะยืนยันที่นั่งให้อัตโนมัติทันทีที่เงินเข้า ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ
+                    {{ beamSettling
+                      ? 'ระบบกำลังรอผลจากธนาคาร อย่าปิดหน้านี้และไม่ต้องจ่ายซ้ำ ที่นั่งจะถูกยืนยันให้เองทันทีที่เงินเข้า'
+                      : 'ระบบจะยืนยันที่นั่งให้อัตโนมัติทันทีที่เงินเข้า ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ' }}
                   </p>
                 </div>
               </div>
@@ -943,9 +992,16 @@
           :class="!loading && booking ? 'translate-y-0' : 'translate-y-full'">
             <!-- โหมดเกตเวย์ไม่มีอะไรให้กดยืนยัน — บอกสถานะแทน -->
             <div v-if="useBeam" class="w-full py-4 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center gap-2 text-sm">
-              <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
-              <span class="font-black text-teal-900">รอชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
-              <span v-if="beamPayment && !beamExpired" class="text-xs font-bold text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
+              <template v-if="beamSettling">
+                <div class="w-4 h-4 rounded-full border-2 border-teal-200 border-t-teal-600 animate-spin"></div>
+                <span class="font-black text-teal-900">กำลังตรวจสอบการชำระเงิน</span>
+                <span class="text-xs font-bold text-teal-600 tabular-nums">{{ beamSettlingSeconds }}s</span>
+              </template>
+              <template v-else>
+                <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
+                <span class="font-black text-teal-900">รอชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
+                <span v-if="beamPayment && !beamExpired" class="text-xs font-bold text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
+              </template>
             </div>
 
             <button v-else @click="processPayment"
@@ -970,6 +1026,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
 import CountdownTimer from '../components/CountdownTimer.vue';
+import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
 import { useSwal } from '../lib/swal';
 import { toBangkokDate } from '../lib/bangkokDate';
 import { addPaymentInfo } from '../lib/analytics';
@@ -1115,7 +1172,13 @@ const {
   error: beamError,
   qrSrc: beamQrSrc,
   expired: beamExpired,
+  failed: beamFailed,
+  settling: beamSettling,
+  settlingSeconds: beamSettlingSeconds,
+  slow: beamSlow,
   countdownText: beamCountdownText,
+  markSettling: markBeamSettling,
+  resumeWaiting: resumeBeamWaiting,
   stop: stopBeamTimers,
   create: createBeamPayment,
 } = useBeamCharge(() => {
@@ -1451,6 +1514,12 @@ function initPaymentCountdown() {
 
 async function handlePaymentExpiry() {
   if (autoCancelling.value) return;
+
+  // จ่ายไปแล้วแต่ผลยังไม่กลับมา — ห้ามยกเลิกการจองจากฝั่งเว็บเด็ดขาด ไม่งั้นเงินที่
+  // เข้ามาทีหลังจะไปตกที่การจองที่ถูกยกเลิกไปแล้ว (settle() ต้องไปตั้งธงรอคนคืนเงิน)
+  // ปล่อยให้หลังบ้านเป็นคนตัดสิน มันเห็นทั้ง webhook และ reconcile ที่เว็บไม่เห็น
+  if (beamSettling.value) return;
+
   autoCancelling.value = true;
 
   try {

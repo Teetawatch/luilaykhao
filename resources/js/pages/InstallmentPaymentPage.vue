@@ -135,7 +135,19 @@
         </div>
 
         <!-- QR จากเกตเวย์ — จ่ายแล้วระบบตัดงวดให้เอง ไม่ต้องแนบสลิป -->
-        <div v-if="useBeam" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
+        <!-- จ่ายแล้วแต่ผลยังไม่กลับมา — เก็บ QR ไปก่อน หน้าจอต้องบอกว่ากำลังรออะไรอยู่ -->
+        <div v-if="useBeam && beamSettling" class="mb-6">
+          <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow" final-step="ตัดงวดที่ชำระให้อัตโนมัติ">
+            <template #actions>
+              <button @click="resumeBeamWaiting"
+                class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
+                ยังไม่ได้จ่าย · กลับไปสแกน QR
+              </button>
+            </template>
+          </PaymentSettlingPanel>
+        </div>
+
+        <div v-else-if="useBeam" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
           <p class="text-sm font-bold text-gray-700">สแกน QR เพื่อชำระ ฿{{ Number(nextInstallment.amount).toLocaleString() }}</p>
 
           <div class="relative p-2 bg-white rounded-2xl border border-gray-100 min-h-[260px] min-w-[260px] flex items-center justify-center">
@@ -161,6 +173,13 @@
               รอชำระ · QR หมดอายุใน <span class="text-amber-600 tabular-nums">{{ beamCountdownText }}</span>
             </p>
           </div>
+
+          <!-- สัญญาณเดียวที่บอกเราได้ว่าลูกค้าสแกนไปแล้ว — ไม่มีปุ่มนี้ก็ได้แต่รอเงียบๆ -->
+          <button v-if="beamPayment && !beamExpired" @click="markBeamSettling"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 active:scale-95 transition-all">
+            <span class="material-symbols-rounded text-[18px]">task_alt</span>
+            จ่ายเงินแล้ว · ตรวจสอบให้ฉัน
+          </button>
 
           <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
           <p class="text-xs font-bold text-gray-400 px-6 text-center">จ่ายแล้วระบบจะตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป</p>
@@ -265,6 +284,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import QRCode from 'qrcode';
 import api from '../lib/axios';
+import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
 import { useBeamCharge } from '../composables/useBeamCharge';
 
 const route = useRoute();
@@ -296,7 +316,12 @@ const {
   error: beamError,
   qrSrc: beamQrSrc,
   expired: beamExpired,
+  settling: beamSettling,
+  settlingSeconds: beamSettlingSeconds,
+  slow: beamSlow,
   countdownText: beamCountdownText,
+  markSettling: markBeamSettling,
+  resumeWaiting: resumeBeamWaiting,
   create: createBeamPayment,
 } = useBeamCharge(async () => {
   // จ่ายงวดนี้แล้ว โหลดการจองใหม่เพื่อเลื่อนไปงวดถัดไป (หรือขึ้นหน้า "ครบแล้ว")

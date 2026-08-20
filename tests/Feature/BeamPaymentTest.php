@@ -480,4 +480,96 @@ class BeamPaymentTest extends TestCase
             ->assertJsonPath('data.status', Payment::STATUS_PENDING)
             ->assertJsonMissingPath('data.booking_status');
     }
+
+    /**
+     * หน้าจอที่ลูกค้ากด "จ่ายเงินแล้ว" ต้องได้คำตอบภายในไม่กี่วินาที ไม่ใช่รอ webhook
+     * อย่างเดียว — ตาข่ายที่มีอยู่ (ReconcileBeamChargesJob) แตะแถวหนึ่งก็ต่อเมื่อค้าง
+     * มาแล้ว 10 นาที ซึ่งไม่มีใครนั่งจ้องหน้าจอรอได้นานขนาดนั้น
+     */
+    public function test_a_watcher_can_ask_beam_directly_instead_of_waiting_for_the_webhook(): void
+    {
+        $this->fakeBeamOk();
+        $booking = $this->pendingBooking();
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+            ])->assertStatus(201);
+
+        $payment = Payment::latest('id')->first();
+
+        // ยังไม่ถาม = ยังเห็นสถานะเดิมในฐานข้อมูล
+        $this->actingAs($booking->user)
+            ->getJson('/api/v1/payments/beam/'.$payment->id)
+            ->assertJsonPath('data.status', Payment::STATUS_PENDING);
+
+        Http::fake([
+            '*/api/v1/charges/ch_test_1' => Http::response(['status' => 'SUCCEEDED'], 200),
+        ]);
+
+        $this->actingAs($booking->user)
+            ->getJson('/api/v1/payments/beam/'.$payment->id.'?sync=1')
+            ->assertOk()
+            ->assertJsonPath('data.status', Payment::STATUS_SUCCEEDED);
+
+        $this->assertSame('confirmed', $booking->fresh()->status, 'เงินเข้าแล้วที่นั่งต้องถูกยืนยัน เหมือนตอน webhook เข้า');
+    }
+
+    /**
+     * หน้าจอ poll ทุก 2 วินาที และเปิดซ้อนกันได้หลายแท็บ ถ้าปล่อยให้ทุกครั้งวิ่งออกไป
+     * หา Beam จริง ใบเดียวจะยิงเกตเวย์เป็นสิบครั้งต่อนาที
+     */
+    public function test_asking_beam_is_throttled_to_one_call_per_payment(): void
+    {
+        $this->fakeBeamOk();
+        $booking = $this->pendingBooking();
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+            ])->assertStatus(201);
+
+        $payment = Payment::latest('id')->first();
+
+        Http::fake([
+            '*/api/v1/charges/ch_test_1' => Http::response(['status' => 'PENDING'], 200),
+        ]);
+
+        foreach (range(1, 4) as $ignored) {
+            $this->actingAs($booking->user)
+                ->getJson('/api/v1/payments/beam/'.$payment->id.'?sync=1')
+                ->assertOk();
+        }
+
+        Http::assertSentCount(1);
+    }
+
+    /**
+     * Beam ล่มตอนที่ลูกค้ากำลังรออยู่ ไม่ใช่เรื่องที่ต้องเอาไปขึ้นหน้าจอเขา — poll รอบ
+     * หน้ายังมีอยู่ และ webhook + reconcile ก็ยังเป็นตาข่ายรับอยู่ข้างหลัง
+     */
+    public function test_a_beam_outage_while_watching_still_answers_with_the_stored_status(): void
+    {
+        $this->fakeBeamOk();
+        $booking = $this->pendingBooking();
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+            ])->assertStatus(201);
+
+        $payment = Payment::latest('id')->first();
+
+        Http::fake([
+            '*/api/v1/charges/ch_test_1' => Http::response(['message' => 'boom'], 500),
+        ]);
+
+        $this->actingAs($booking->user)
+            ->getJson('/api/v1/payments/beam/'.$payment->id.'?sync=1')
+            ->assertOk()
+            ->assertJsonPath('data.status', Payment::STATUS_PENDING);
+    }
 }

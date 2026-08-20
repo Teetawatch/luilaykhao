@@ -1,6 +1,13 @@
 import { ref, computed, onBeforeUnmount } from 'vue';
 import api from '../lib/axios';
 
+/** ถามถี่แค่ไหนตอนลูกค้ายังไม่ได้จ่าย / ตอนจ่ายแล้วและนั่งรออยู่หน้าจอ */
+const POLL_IDLE_MS = 3000;
+const POLL_SETTLING_MS = 2000;
+
+/** รอเกินกี่วินาทีถึงจะเริ่มบอกลูกค้าว่า "ช้ากว่าปกติ" แทนที่จะปล่อยให้เดาเอง */
+const SLOW_AFTER_SECONDS = 45;
+
 /**
  * ออกใบชำระเงินผ่าน Beam แล้วเฝ้าดูจนกว่าเงินจะเข้า
  *
@@ -11,6 +18,11 @@ import api from '../lib/axios';
  * ที่นี่ไม่มีการตัดสินว่า "จ่ายสำเร็จ" เอง — ถามเซิร์ฟเวอร์อย่างเดียว เพราะคนยืนยัน
  * จริงคือ webhook ของ Beam ที่เข้าหลังบ้าน
  *
+ * สถานะ "settling" คือช่วงที่ลูกค้าจ่ายไปแล้วแต่ webhook ยังไม่มาถึง — เป็นช่วงที่
+ * หน้าจอเคยนิ่งสนิทจนลูกค้าไม่รู้ว่าต้องจ่ายซ้ำไหม จับแยกไว้เพื่อให้หน้าจอมีอะไร
+ * ให้ดูระหว่างนั้น และเพื่อให้ poll เปลี่ยนพฤติกรรมสองอย่าง: ถี่ขึ้น และแนบ sync=1
+ * ให้เซิร์ฟเวอร์ถาม Beam ตรงๆ แทนที่จะรอ webhook อย่างเดียว
+ *
  * @param {(payment: object) => void} onPaid เรียกครั้งเดียวเมื่อเงินเข้าแล้ว
  */
 export function useBeamCharge(onPaid) {
@@ -18,6 +30,8 @@ export function useBeamCharge(onPaid) {
   const loading = ref(false);
   const error = ref('');
   const secondsLeft = ref(0);
+  const settling = ref(false);
+  const settlingSeconds = ref(0);
 
   let pollTimer = null;
   let expiryTimer = null;
@@ -25,7 +39,11 @@ export function useBeamCharge(onPaid) {
   const qrSrc = computed(() =>
     payment.value?.qr_image_base64 ? `data:image/png;base64,${payment.value.qr_image_base64}` : null
   );
-  const expired = computed(() => !!payment.value && secondsLeft.value <= 0);
+  // ระหว่าง settling ไม่ถือว่าหมดอายุ — เงินที่จ่ายวินาทีสุดท้ายก็ยังเข้าได้ ถ้าสลับ
+  // หน้าจอไปเป็น "QR หมดอายุแล้ว" ตอนนั้น ลูกค้าที่จ่ายไปแล้วจะกดจ่ายซ้ำอีกใบ
+  const expired = computed(() => !!payment.value && secondsLeft.value <= 0 && !settling.value);
+  const failed = computed(() => ['failed', 'expired'].includes(payment.value?.status));
+  const slow = computed(() => settling.value && settlingSeconds.value >= SLOW_AFTER_SECONDS);
   const countdownText = computed(() => {
     const s = Math.max(0, secondsLeft.value);
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -36,38 +54,78 @@ export function useBeamCharge(onPaid) {
     if (expiryTimer) { clearInterval(expiryTimer); expiryTimer = null; }
   }
 
+  async function pollOnce() {
+    const id = payment.value?.payment_id;
+    if (!id) return;
+
+    try {
+      const res = await api.get(`/payments/beam/${id}`, {
+        params: settling.value ? { sync: 1 } : {},
+      });
+      const fresh = res.data?.data;
+
+      // สถานะของใบชำระเงินใบนี้เท่านั้น — สถานะการจองใช้ไม่ได้ เพราะยอดคงเหลือ/งวด
+      // ที่ 2+/ส่วนแบ่งกลุ่ม จ่ายบนการจองที่ confirmed อยู่ก่อนแล้ว
+      if (fresh?.status === 'succeeded') {
+        stop();
+        settling.value = false;
+        payment.value = { ...payment.value, ...fresh };
+        onPaid?.(fresh);
+      } else if (fresh?.status === 'failed' || fresh?.status === 'expired') {
+        stop();
+        settling.value = false;
+        payment.value = { ...payment.value, status: fresh.status };
+      }
+    } catch {
+      // เน็ตสะดุดรอบเดียวไม่ใช่เรื่องต้องแจ้งลูกค้า รอบหน้าค่อยถามใหม่
+    }
+  }
+
+  function restartPolling(intervalMs) {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(pollOnce, intervalMs);
+  }
+
   function watchPayment() {
     const expiresAt = payment.value?.expires_at ? new Date(payment.value.expires_at).getTime() : 0;
 
     const tick = () => {
       secondsLeft.value = expiresAt ? Math.max(0, Math.round((expiresAt - Date.now()) / 1000)) : 0;
-      // QR หมดอายุแล้วก็ไม่ต้องถามต่อ ลูกค้าต้องกดออกใบใหม่อยู่ดี
-      if (secondsLeft.value <= 0) stop();
+      if (settling.value) settlingSeconds.value += 1;
+      // QR หมดอายุแล้วก็ไม่ต้องถามต่อ ลูกค้าต้องกดออกใบใหม่อยู่ดี — ยกเว้นตอนที่
+      // ลูกค้าบอกว่าจ่ายไปแล้ว ตอนนั้นยังต้องรอคำตอบว่าเงินใบนั้นเข้าหรือไม่
+      if (secondsLeft.value <= 0 && !settling.value) stop();
     };
     tick();
     expiryTimer = setInterval(tick, 1000);
 
-    pollTimer = setInterval(async () => {
-      const id = payment.value?.payment_id;
-      if (!id) return;
+    restartPolling(settling.value ? POLL_SETTLING_MS : POLL_IDLE_MS);
+  }
 
-      try {
-        const res = await api.get(`/payments/beam/${id}`);
-        const fresh = res.data?.data;
+  /**
+   * ลูกค้าจ่ายแล้ว (กดปุ่ม "จ่ายเงินแล้ว" หรือกลับมาจากแอปธนาคาร) — เปลี่ยนหน้าจอ
+   * เป็นโหมดรอผล แล้วเร่งจังหวะถาม
+   */
+  function markSettling() {
+    if (settling.value || !payment.value) return;
 
-        // สถานะของใบชำระเงินใบนี้เท่านั้น — สถานะการจองใช้ไม่ได้ เพราะยอดคงเหลือ/งวด
-        // ที่ 2+/ส่วนแบ่งกลุ่ม จ่ายบนการจองที่ confirmed อยู่ก่อนแล้ว
-        if (fresh?.status === 'succeeded') {
-          stop();
-          onPaid?.(fresh);
-        } else if (fresh?.status === 'failed' || fresh?.status === 'expired') {
-          stop();
-          payment.value = { ...payment.value, status: fresh.status };
-        }
-      } catch {
-        // เน็ตสะดุดรอบเดียวไม่ใช่เรื่องต้องแจ้งลูกค้า รอบหน้าอีก 3 วิค่อยถามใหม่
-      }
-    }, 3000);
+    settling.value = true;
+    settlingSeconds.value = 0;
+    restartPolling(POLL_SETTLING_MS);
+    pollOnce();
+  }
+
+  /**
+   * "ยังไม่ได้จ่าย" — ลูกค้ากดปุ่มไปก่อนเวลา พากลับไปหน้า QR ตามเดิม
+   *
+   * ถ้า QR หมดอายุไประหว่างที่รออยู่ tick รอบถัดไปจะพาไปหน้า "สร้าง QR ใหม่" เอง
+   */
+  function resumeWaiting() {
+    if (!settling.value) return;
+
+    settling.value = false;
+    settlingSeconds.value = 0;
+    restartPolling(POLL_IDLE_MS);
   }
 
   /**
@@ -81,6 +139,8 @@ export function useBeamCharge(onPaid) {
     loading.value = true;
     error.value = '';
     payment.value = null;
+    settling.value = false;
+    settlingSeconds.value = 0;
 
     try {
       const res = await api.post('/payments/beam/charge', payload);
@@ -103,5 +163,21 @@ export function useBeamCharge(onPaid) {
 
   onBeforeUnmount(stop);
 
-  return { payment, loading, error, secondsLeft, qrSrc, expired, countdownText, create, stop };
+  return {
+    payment,
+    loading,
+    error,
+    secondsLeft,
+    qrSrc,
+    expired,
+    failed,
+    settling,
+    settlingSeconds,
+    slow,
+    countdownText,
+    create,
+    markSettling,
+    resumeWaiting,
+    stop,
+  };
 }

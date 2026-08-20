@@ -70,6 +70,9 @@ const routes = [
     }
   },
   { path: '/booking/:scheduleId', name: 'booking', component: () => import('../pages/BookingPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  // NOTE: /payment/return ไม่ได้อยู่ที่นี่ — เป็นหน้า Blade (PaymentReturnController)
+  // ที่ routes/web.php จับไว้ก่อน catch-all ของ SPA เพราะธนาคารเด้งกลับมาแบบโหลดหน้าใหม่
+  // และบางเบราว์เซอร์บนมือถือกลับมาโดยไม่มี session เดิม
   { path: '/payment/:bookingRef', name: 'payment', component: () => import('../pages/PaymentPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/confirmation/:bookingRef', name: 'confirmation', component: () => import('../pages/ConfirmationPage.vue'), meta: { robots: 'noindex, nofollow' } },
   { path: '/login', name: 'login', component: () => import('../pages/LoginPage.vue'), meta: { title: 'เข้าสู่ระบบ', description: 'เข้าสู่ระบบลุยเลเขา เพื่อจองทริปเดินป่า ดำน้ำตื้น และเช่ารถตู้นำเที่ยว', robots: 'noindex, follow' } },

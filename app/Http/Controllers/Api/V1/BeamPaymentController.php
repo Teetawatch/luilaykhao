@@ -97,13 +97,17 @@ class BeamPaymentController extends Controller
     }
 
     /**
-     * GET /payments/beam/{payment}
+     * GET /payments/beam/{payment}[?sync=1]
      *
      * ไว้ให้ client poll เผื่อ websocket หลุด — ตัว settle ทำโดย webhook เท่านั้น
      *
      * ตอบเฉพาะสถานะของ "ใบชำระเงินใบนี้" ไม่แนบสถานะการจองมาด้วย เพราะเคยมีบั๊กที่
      * client เห็น booking.status = confirmed แล้วสรุปเองว่าจ่ายแล้ว — ทั้งที่ยอดคงเหลือ
      * งวดที่ 2+ และส่วนแบ่งกลุ่ม จ่ายบนการจองที่ confirmed อยู่ก่อนหน้าเสมอ
+     *
+     * sync=1 คือ "ลูกค้าบอกว่าจ่ายไปแล้ว และกำลังนั่งดูหน้าจอรออยู่" — ถามไปที่ Beam
+     * ตรงๆ แทนที่จะรอ webhook หรือรอ ReconcileBeamChargesJob ที่แตะแถวนี้ก็ต่อเมื่อ
+     * ค้างมาแล้ว 10 นาที ซึ่งนานเกินกว่าที่ใครจะนั่งรอหน้าจอไหว
      */
     public function status(Request $request, Payment $payment): JsonResponse
     {
@@ -111,6 +115,10 @@ class BeamPaymentController extends Controller
 
         if (! $booking || ! $booking->isAccessibleByUser($request->user()->id)) {
             return $this->error('คุณไม่มีสิทธิ์ดูรายการชำระเงินนี้', 403);
+        }
+
+        if ($request->boolean('sync')) {
+            $payment = $this->beamPayments->syncForWatcher($payment);
         }
 
         return $this->success($this->present($payment));

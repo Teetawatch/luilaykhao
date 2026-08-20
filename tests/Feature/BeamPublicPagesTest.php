@@ -262,4 +262,63 @@ class BeamPublicPagesTest extends TestCase
             ->assertOk()
             ->assertSee('ไม่พบรายการชำระเงินนี้');
     }
+
+    /**
+     * หน้ารอผลต้องบอกได้ว่า "ตอนนี้อยู่ตรงไหน" และรออะไรอยู่
+     *
+     * ก่อนหน้านี้มีแค่อีโมจิ ⏳ นิ่งๆ ซึ่งแยกไม่ออกจากหน้าที่ค้าง คนที่เพิ่งจ่ายเงิน
+     * หลักพันแล้วเห็นหน้าจอไม่ขยับจะสรุปเองว่าจ่ายไม่ผ่าน แล้วไปจ่ายซ้ำ
+     */
+    public function test_the_return_page_spells_out_what_it_is_waiting_for(): void
+    {
+        $booking = $this->confirmedBooking();
+
+        $payment = Payment::create([
+            'booking_id' => $booking->id,
+            'purpose' => Payment::PURPOSE_INSTALLMENT_DUE,
+            'provider' => 'beam',
+            'reference_id' => $booking->booking_ref.'-11',
+            'amount' => 1500,
+            'status' => Payment::STATUS_PENDING,
+            'payment_method_type' => 'KPLUS',
+        ]);
+
+        $this->get('/payment/return?payment='.$payment->id)
+            ->assertOk()
+            ->assertSee('ส่งรายการชำระเงินให้ธนาคารแล้ว')
+            ->assertSee('รอธนาคารยืนยันว่าเงินเข้า')
+            // บรรทัดสุดท้ายเปลี่ยนตามว่าจ่ายเพื่ออะไร — ค่างวดไม่ได้ยืนยันที่นั่งอะไรใหม่
+            ->assertSee('ตัดงวดที่ชำระให้อัตโนมัติ')
+            ->assertSee('ไม่ต้องจ่ายซ้ำ');
+    }
+
+    /**
+     * คนที่ poll หน้ารอผลคือคนที่เพิ่งกดจ่ายเสร็จและกำลังนั่งดูหน้าจอ — ถาม Beam ให้เลย
+     * ไม่ใช่รอ webhook หรือรอ reconcile ที่แตะแถวนี้ตอนค้างครบ 10 นาที
+     */
+    public function test_the_return_page_status_asks_beam_directly(): void
+    {
+        $booking = $this->confirmedBooking(['paid_amount' => 2000]);
+
+        $payment = Payment::create([
+            'booking_id' => $booking->id,
+            'purpose' => Payment::PURPOSE_BALANCE,
+            'provider' => 'beam',
+            'provider_charge_id' => 'ch_watch_1',
+            'reference_id' => $booking->booking_ref.'-12',
+            'amount' => 3000,
+            'status' => Payment::STATUS_PENDING,
+            'payment_method_type' => 'KPLUS',
+        ]);
+
+        Http::fake([
+            '*/api/v1/charges/ch_watch_1' => Http::response(['status' => 'SUCCEEDED'], 200),
+        ]);
+
+        $this->getJson('/payment/return/'.$payment->id.'/status')
+            ->assertOk()
+            ->assertJsonPath('status', Payment::STATUS_SUCCEEDED);
+
+        Http::assertSentCount(1);
+    }
 }

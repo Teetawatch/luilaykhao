@@ -12,6 +12,7 @@ use App\Services\Beam\BeamClient;
 use App\Services\Beam\BeamException;
 use App\Support\PaymentGateway;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -227,6 +228,46 @@ class BeamPaymentService
             'failure_code' => $payload['failureCode'] ?? null,
             'raw_webhook' => $payload ?: $payment->raw_webhook,
         ]);
+    }
+
+    /**
+     * ถาม Beam ให้ "คนที่นั่งดูหน้าจอรอผลอยู่ตอนนี้"
+     *
+     * ตาข่ายที่มีอยู่คือ ReconcileBeamChargesJob ซึ่งแตะใบหนึ่งก็ต่อเมื่อค้างมาแล้ว 10
+     * นาที — เป็นเวลาที่พอสำหรับกันการจองหลุด แต่ไม่มีใครนั่งจ้องหน้าจอรอได้นานขนาดนั้น
+     * ตัวนี้จึงเป็นทางลัดสำหรับหน้าจอที่ลูกค้าบอกแล้วว่า "จ่ายไปแล้วนะ"
+     *
+     * lock 5 วินาที/ใบ คือตัวคุมจังหวะ: หน้าจอ poll ทุก 2-3 วินาที เปิดซ้อนกันหลายแท็บ
+     * ได้ และหน้า return ก็ไม่ต้องล็อกอิน ถ้าไม่คุมไว้ ใบเดียวจะยิงหา Beam ได้เป็นสิบ
+     * ครั้งต่อนาที รอบที่ชนกันไม่เสียหายอะไร — ได้สถานะจากฐานข้อมูลไปตามปกติ
+     *
+     * ไม่ปล่อย lock ทิ้งเมื่อทำเสร็จ ให้มันหมดอายุเองตามเวลา เพราะตัว lock คือคาบเวลา
+     * ไม่ใช่การกันเข้าพร้อมกัน
+     */
+    public function syncForWatcher(Payment $payment): Payment
+    {
+        if ($payment->status !== Payment::STATUS_PENDING || ! $payment->provider_charge_id) {
+            return $payment;
+        }
+
+        if (! Cache::lock('beam-sync:'.$payment->id, 5)->get()) {
+            return $payment;
+        }
+
+        try {
+            $this->syncFromProvider($payment);
+
+            return $payment->refresh();
+        } catch (BeamException $e) {
+            // ถามไม่ได้รอบนี้ไม่ใช่เรื่องที่ต้องทำให้ลูกค้าเห็น error — poll รอบหน้ายังมี
+            // และ webhook + ReconcileBeamChargesJob ยังเป็นตาข่ายรับอยู่ข้างหลังเสมอ
+            Log::warning('Beam watcher sync could not read the charge', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $payment;
+        }
     }
 
     /**
