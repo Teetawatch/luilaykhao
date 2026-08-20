@@ -6,18 +6,48 @@
       :class="isScrolled ? 'h-0 max-h-0 opacity-0 border-none' : 'h-10 md:h-11 opacity-100 border-b border-white/5'"
       style="will-change: height, opacity; transition: height 0.4s ease, opacity 0.3s ease, max-height 0.4s ease;"
     >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-4 animate-trust-bar">
-        <div class="flex items-center gap-2 text-[12px] md:text-[13px] font-semibold tracking-wide">
-          <span class="material-symbols-rounded text-[18px] text-accent-light filled-icon">verified_user</span>
-          <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}</span>
-          <span class="sm:hidden">ใบอนุญาต {{ licence }}</span>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-3 animate-trust-bar">
+        <!-- ซ้าย: ความน่าเชื่อถือ -->
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="flex items-center gap-2 text-[12px] md:text-[13px] font-semibold tracking-wide">
+            <span class="material-symbols-rounded text-[18px] text-accent-light filled-icon">verified_user</span>
+            <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}</span>
+            <span class="sm:hidden">ใบอนุญาต {{ licence }}</span>
+          </div>
+
+          <!-- ใบ 11 นำเที่ยวได้ทั้งในและต่างประเทศ — ประโยคนี้คือสิ่งที่ใบอนุญาต
+               ใหม่ให้สิทธิ์ และเป็นจุดขายที่คุ้มที่สุดเพราะเห็นได้ทุกหน้า
+               ยอมหายไปก่อนเพื่อน (lg) เพราะฝั่งขวาเป็นช่องทางติดต่อที่กดได้จริง -->
+          <span aria-hidden="true" class="hidden lg:block h-4 w-px bg-white/25"></span>
+          <div class="hidden lg:flex items-center gap-1.5 text-white/80">
+            <span class="material-symbols-rounded text-[15px]">flight_takeoff</span>
+            <span class="text-[11px] tracking-wide font-bold">นำเที่ยวได้ทั้งในและต่างประเทศ</span>
+          </div>
         </div>
 
-        <!-- ใบ 11 นำเที่ยวได้ทั้งในและต่างประเทศ — ประโยคนี้คือสิ่งที่ใบอนุญาต
-             ใหม่ให้สิทธิ์ และเป็นจุดขายที่คุ้มที่สุดเพราะเห็นได้ทุกหน้า -->
-        <div class="hidden md:flex items-center gap-1.5 text-white/80">
-          <span class="material-symbols-rounded text-[15px]">flight_takeoff</span>
-          <span class="text-[11px] tracking-wide font-bold">นำเที่ยวได้ทั้งในและต่างประเทศ</span>
+        <!-- ขวา: ช่องทางติดต่อ — โซเชียลหายไปที่จอเล็ก แต่เบอร์โทรอยู่ทุกขนาด -->
+        <div class="flex items-center gap-1 shrink-0">
+          <div class="hidden md:flex items-center gap-1">
+            <a
+              v-for="social in socialLinks"
+              :key="social.label"
+              :href="social.href"
+              target="_blank"
+              rel="noopener"
+              class="social-dot focus-ring"
+              :title="social.label"
+              :aria-label="social.label"
+            >
+              <i :class="social.icon" aria-hidden="true"></i>
+            </a>
+          </div>
+
+          <span aria-hidden="true" class="hidden md:block h-4 w-px bg-white/25 mx-1.5"></span>
+
+          <a href="tel:0626126006" class="phone-chip focus-ring" aria-label="โทรหาเรา 062-612-6006">
+            <span class="material-symbols-rounded filled-icon">call</span>
+            <span>062-612-6006</span>
+          </a>
         </div>
       </div>
     </div>
@@ -640,6 +670,22 @@
                     <span class="text-[15px] font-bold text-text-dark">062-612-6006</span>
                   </span>
                 </a>
+
+                <!-- โซเชียลซ่อนอยู่บน trust bar ที่จอเล็ก — ยกมาไว้ตรงนี้แทน -->
+                <div class="mt-4 flex items-center gap-2">
+                  <a
+                    v-for="social in socialLinks"
+                    :key="social.label"
+                    :href="social.href"
+                    target="_blank"
+                    rel="noopener"
+                    class="sheet-social focus-ring"
+                    :aria-label="social.label"
+                  >
+                    <i :class="social.icon" aria-hidden="true"></i>
+                  </a>
+                </div>
+
                 <p class="mt-4 flex items-center gap-1.5 text-[11px] font-semibold text-text-muted">
                   <span class="material-symbols-rounded text-[15px] text-accent filled-icon">verified_user</span>
                   ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}
@@ -763,6 +809,16 @@ const desktopSearchInput = ref(null);
 const desktopSearchRef = ref(null);
 const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
+
+/*
+   บัญชีเดียวกับที่ Footer และหน้าติดต่อเราใช้ — แก้ที่นี่แล้วต้องแก้ที่นั่นด้วย
+*/
+const socialLinks = [
+  { label: 'LINE', icon: 'fa-brands fa-line', href: 'https://line.me/ti/p/@luilaykhao' },
+  { label: 'Facebook', icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/profile.php?id=61572124170207' },
+  { label: 'Instagram', icon: 'fa-brands fa-instagram', href: 'https://instagram.com/luilaykhao' },
+  { label: 'TikTok', icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@luilaykhao' },
+];
 
 /*
    แถบเมนูรับได้ 6 หัวข้อพอดีหลังจากเอาข้อความ "ลุยเลเขา / TRIP & TRAVEL"
@@ -1214,6 +1270,56 @@ async function handleLogout() {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
+/* ── Trust-bar contact cluster ──────────────────────────────────── */
+.social-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.social-dot i {
+  /* Font Awesome ปรับขนาดที่ตัว <i> เท่านั้น ตั้งที่นี่แทน utility class */
+  font-size: 12px;
+  line-height: 1;
+}
+.social-dot:hover {
+  background-color: #fff;
+  color: var(--color-primary);
+}
+
+.phone-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background-color: #fff;
+  color: var(--color-primary);
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+/* ชนะกฎ font-size 24px ของ .material-symbols-rounded ใน app.css ด้วยความเฉพาะเจาะจงที่สูงกว่า */
+.phone-chip .material-symbols-rounded {
+  font-size: 17px;
+}
+.phone-chip:hover {
+  background-color: var(--color-accent);
+  color: #fff;
+}
+
+@media (min-width: 768px) {
+  .phone-chip {
+    font-size: 13.5px;
+  }
+}
+
 .badge {
   position: absolute;
   top: 0.125rem;
@@ -1364,6 +1470,29 @@ async function handleLogout() {
 .sheet-row--danger:hover {
   color: #ef4444;
   background-color: #fef2f2;
+}
+
+.sheet-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background-color: var(--color-sand);
+  color: var(--color-text-mid);
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.sheet-social i {
+  font-size: 15px;
+  line-height: 1;
+}
+.sheet-social:hover {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+.sheet-social:active {
+  transform: scale(0.94);
 }
 
 /* Items cascade in each time the sheet mounts. `backwards` (not `both`) so the
