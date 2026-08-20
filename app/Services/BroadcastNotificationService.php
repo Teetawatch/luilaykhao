@@ -240,21 +240,18 @@ class BroadcastNotificationService
             return;
         }
 
-        // เปิดส่วนลดอัตโนมัติ (ถ้ายังไม่มีดีลอยู่) ก่อนแต่งข้อความ เพื่อให้ push
-        // โฆษณาราคาพิเศษได้ในครั้งเดียว
+        // เปิดส่วนลดอัตโนมัติ (ถ้ายังไม่มีดีลอยู่) — ราคาใหม่ไปโผล่ที่หน้าทริป
+        // เอง ไม่ต้องโฆษณาในข้อความ push
         $this->applyAlmostReadyDiscount($schedule);
 
         $seatsLeft = $schedule->seatsToGuarantee();
-        $dealClause = $schedule->flashSaleActive()
-            ? ' จองตอนนี้รับราคาพิเศษเพียง ฿'.number_format((float) $schedule->flash_sale_price).'/คน'
-            : '';
 
         $this->broadcast(
             'almost_ready',
             "almost_ready:{$schedule->id}",
             '🟡 อีกนิดเดียว รถตู้การันตีออก!',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
-                ." ขาดอีกเพียง {$seatsLeft} ที่นั่ง รถตู้ก็การันตีออกเดินทางทันที!".$dealClause,
+                ." ขาดอีกเพียง {$seatsLeft} ที่นั่ง รถตู้ก็การันตีออกเดินทางทันที!",
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
