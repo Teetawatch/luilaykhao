@@ -255,17 +255,17 @@
                   <div v-else class="max-h-64 overflow-y-auto">
                     <router-link
                       v-for="trip in wishlistStore.favorites"
-                      :key="typeof trip === 'object' ? trip.id : trip"
-                      :to="`/trips/${typeof trip === 'object' ? trip.id : trip}`"
+                      :key="favoriteKey(trip)"
+                      :to="favoriteLink(trip)"
                       class="flex items-center gap-3 px-4 py-2.5 hover:bg-sand transition-colors border-b border-sand-dark/40 last:border-0"
                       @click="wishlistDropdownOpen = false"
                     >
                       <div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-sand-dark">
-                        <img v-if="trip.thumbnail_image || trip.cover_image" :src="trip.thumbnail_image || trip.cover_image" class="w-full h-full object-cover" />
+                        <img v-if="favoriteThumb(trip)" :src="favoriteThumb(trip)" class="w-full h-full object-cover" />
                       </div>
                       <div class="flex-1 min-w-0">
-                        <p class="text-[12px] font-bold text-text-dark truncate">{{ typeof trip === 'object' ? trip.title : `ทริป #${trip}` }}</p>
-                        <p class="text-[10px] text-primary font-bold">฿{{ Number(trip.price || 0).toLocaleString() }}</p>
+                        <p class="text-[12px] font-bold text-text-dark truncate">{{ favoriteTitle(trip) }}</p>
+                        <p v-if="trip.price" class="text-[10px] text-primary font-bold">฿{{ Number(trip.price).toLocaleString() }}</p>
                       </div>
                     </router-link>
                   </div>
@@ -524,14 +524,14 @@
                 <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
               </router-link>
 
-              <router-link to="/trips" class="icon-btn w-10 h-10" aria-label="รายการโปรด">
+              <button type="button" class="icon-btn w-10 h-10" aria-label="รายการโปรด" @click.stop="openWishlistSheet">
                 <span
                   class="material-symbols-rounded text-[22px]"
                   :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
                   :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}"
                 >favorite</span>
                 <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
-              </router-link>
+              </button>
 
               <button type="button" class="icon-btn w-10 h-10" aria-label="บัญชีของฉัน" @click.stop="openAccountSheet">
                 <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
@@ -767,6 +767,85 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- ── Mobile: full-screen wishlist sheet ───────────────────────
+         เดสก์ท็อปมี dropdown อยู่แล้ว แต่มือถือเคยกดหัวใจแล้วเด้งไป /trips
+         ทั้งที่ป้ายบอกว่า "รายการโปรด" — ระบบไม่มีหน้ารายการโปรดให้ไป -->
+    <Teleport to="body">
+      <Transition name="sheet">
+        <div v-if="mobileWishlistOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="รายการโปรด">
+          <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
+            <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
+              <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+                  <span class="material-symbols-rounded text-[24px] text-red-500 filled-icon">favorite</span>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[16px] font-bold text-text-dark">รายการโปรด</p>
+                  <p class="text-[11px] font-semibold text-text-muted">
+                    {{ wishlistStore.favorites.length > 0 ? `บันทึกไว้ ${wishlistStore.favorites.length} ทริป` : 'ยังไม่ได้บันทึกทริปไหน' }}
+                  </p>
+                </div>
+              </div>
+              <button type="button" class="icon-btn w-11 h-11" aria-label="ปิด" @click="closeSheets">
+                <span class="material-symbols-rounded text-[26px] text-text-dark">close</span>
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+              <div v-if="wishlistStore.favorites.length === 0" class="sheet-item pt-10 text-center" :style="{ '--i': 0 }">
+                <span class="material-symbols-rounded text-[52px] text-sand-dark">favorite_border</span>
+                <p class="mt-3 text-[15px] font-bold text-text-dark">ยังไม่มีรายการโปรด</p>
+                <p class="mt-1 text-[12px] font-medium text-text-muted">กดรูปหัวใจบนทริปที่สนใจ แล้วกลับมาดูที่นี่ได้</p>
+                <router-link to="/trips" class="cta-btn mt-6 w-full justify-center py-3.5 text-[16px]" @click="closeSheets">
+                  <span class="cta-sheen" aria-hidden="true"></span>
+                  <span class="material-symbols-rounded relative text-[20px]">explore</span>
+                  <span class="relative">ดูทริปทั้งหมด</span>
+                </router-link>
+              </div>
+
+              <template v-else>
+                <div
+                  v-for="(trip, i) in wishlistStore.favorites"
+                  :key="favoriteKey(trip)"
+                  class="sheet-item mb-2 flex items-center gap-3 rounded-2xl border border-sand-dark bg-white p-2.5"
+                  :style="{ '--i': i }"
+                >
+                  <router-link :to="favoriteLink(trip)" class="flex min-w-0 flex-1 items-center gap-3" @click="closeSheets">
+                    <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-sand-dark">
+                      <img v-if="favoriteThumb(trip)" :src="favoriteThumb(trip)" alt="" class="h-full w-full object-cover" />
+                    </div>
+                    <div class="min-w-0">
+                      <p class="truncate text-[14px] font-bold text-text-dark">{{ favoriteTitle(trip) }}</p>
+                      <p v-if="trip.price" class="mt-0.5 text-[12px] font-bold text-primary">฿{{ Number(trip.price).toLocaleString() }}</p>
+                    </div>
+                  </router-link>
+
+                  <button
+                    type="button"
+                    class="icon-btn w-10 h-10 shrink-0"
+                    :aria-label="`เอา ${favoriteTitle(trip)} ออกจากรายการโปรด`"
+                    @click="wishlistStore.toggleFavorite(trip)"
+                  >
+                    <span class="material-symbols-rounded text-[21px] text-red-500" :style="wishlistFilledStyle">favorite</span>
+                  </button>
+                </div>
+
+                <router-link
+                  to="/trips"
+                  class="sheet-item mt-4 flex items-center justify-center gap-2 rounded-2xl border border-sand-dark bg-sand py-3.5 text-[15px] font-bold text-primary transition active:scale-[0.98]"
+                  :style="{ '--i': wishlistStore.favorites.length }"
+                  @click="closeSheets"
+                >
+                  <span class="material-symbols-rounded text-[20px]">explore</span>
+                  ดูทริปทั้งหมด
+                </router-link>
+              </template>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </header>
 </template>
 
@@ -788,6 +867,7 @@ const route = useRoute();
 
 const mobileOpen = ref(false);
 const mobileAccountOpen = ref(false);
+const mobileWishlistOpen = ref(false);
 const searchQuery = ref('');
 const unreadNotifications = ref(0);
 const supportUnread = ref(0);
@@ -809,6 +889,15 @@ const desktopSearchInput = ref(null);
 const desktopSearchRef = ref(null);
 const desktopSearchExpanded = ref(false);
 const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
+
+/* รายการโปรดเก็บอ็อบเจ็กต์ทริปทั้งก้อนลง localStorage แต่ของที่บันทึกไว้ตั้งแต่
+   เวอร์ชันเก่าอาจเหลือแค่ id — และหน้าทริปเปิดด้วย slug เท่านั้น (TripController
+   ::show ค้นจากคอลัมน์ slug ตรง ๆ) รายการที่ไม่มี slug จึงส่งไปหน้าทริปทั้งหมด
+   แทนที่จะพาไปชน 404 */
+const favoriteKey = (trip) => (typeof trip === 'object' ? trip.id : trip);
+const favoriteTitle = (trip) => (typeof trip === 'object' && trip.title ? trip.title : 'ทริปที่บันทึกไว้');
+const favoriteLink = (trip) => (typeof trip === 'object' && trip.slug ? `/trips/${trip.slug}` : '/trips');
+const favoriteThumb = (trip) => (typeof trip === 'object' ? trip.thumbnail_image || trip.cover_image : null);
 
 /*
    บัญชีเดียวกับที่ Footer และหน้าติดต่อเราใช้ — แก้ที่นี่แล้วต้องแก้ที่นั่นด้วย
@@ -835,6 +924,7 @@ const navLinks = [
       { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
       { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
       { to: '/faq', icon: 'quiz', label: 'FAQ', desc: 'คำถามที่พบบ่อย' },
+      { to: '/problem', icon: 'report', label: 'แจ้งปัญหาการใช้งาน', desc: 'จองไม่ได้ จ่ายไม่ผ่าน บอกเราได้เลย' },
       { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
       { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
     ],
@@ -898,12 +988,21 @@ function isMegaMenu(link) {
   return (link.children?.length ?? 0) > 3;
 }
 
+/* หน้าย่อยต้องไฮไลต์หัวข้อแม่ด้วย — /trips/doi-inthanon คือ "กิจกรรม" และ
+   /places/khao-luang คือ "ข้อมูลก่อนไป" ซึ่งเป็นหน้าที่คนอยู่นานที่สุดพอดี
+   เทียบขอบด้วย `/` ปิดท้าย ไม่ใช่ startsWith เปล่า ๆ ไม่งั้น /contact-us
+   จะไปปลุกหัวข้อ /contact */
+function matchesPath(to, path) {
+  if (to === '/') return path === '/';
+  return path === to || path.startsWith(`${to}/`);
+}
+
 const activeNavLabel = computed(() => {
   const path = route.path;
   for (const link of navLinks) {
     if (link.children) {
-      if (link.children.some(child => child.to === path)) return link.label;
-    } else if (link.to === '/' ? path === '/' : path.startsWith(link.to)) {
+      if (link.children.some(child => matchesPath(child.to, path))) return link.label;
+    } else if (matchesPath(link.to, path)) {
       return link.label;
     }
   }
@@ -944,26 +1043,25 @@ function onDropdownLeave() {
 }
 
 /* ── Sheets ─────────────────────────────────────────────────────── */
-function openNavSheet() {
-  mobileAccountOpen.value = false;
+// เปิดได้ทีละใบเท่านั้น — ทุกตัวเปิดผ่าน openSheet ตัวเดียว จะได้ไม่มีทางลืมปิดใบอื่น
+function openSheet(which) {
   mobileNavDropdownOpen.value = null;
-  mobileOpen.value = true;
+  mobileOpen.value = which === 'nav';
+  mobileAccountOpen.value = which === 'account';
+  mobileWishlistOpen.value = which === 'wishlist';
 }
 
-function openAccountSheet() {
-  mobileOpen.value = false;
-  mobileAccountOpen.value = true;
-}
+const openNavSheet = () => openSheet('nav');
+const openAccountSheet = () => openSheet('account');
+const openWishlistSheet = () => openSheet('wishlist');
 
 function closeSheets() {
-  mobileOpen.value = false;
-  mobileAccountOpen.value = false;
-  mobileNavDropdownOpen.value = null;
+  openSheet(null);
 }
 
 // A full-screen sheet must not let the page behind it scroll.
-watch([mobileOpen, mobileAccountOpen], ([nav, account]) => {
-  document.body.style.overflow = nav || account ? 'hidden' : '';
+watch([mobileOpen, mobileAccountOpen, mobileWishlistOpen], (sheets) => {
+  document.body.style.overflow = sheets.some(Boolean) ? 'hidden' : '';
 });
 
 function closeAllOverlays() {
