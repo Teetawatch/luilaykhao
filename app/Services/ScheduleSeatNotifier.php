@@ -74,7 +74,7 @@ class ScheduleSeatNotifier
             return;
         }
 
-        // คนในคิวรอมีสิทธิ์ก่อน — ProcessWaitlistJob จองที่ให้เขา 15 นาที
+        // คนในคิวรอมีสิทธิ์ก่อน — ProcessWaitlistJob กันที่ให้เขาตามเวลาที่ตั้งไว้
         // ถ้าประกาศให้ทุกคนตอนนี้ คิวที่รอมาก่อนจะโดนแซง จึงเงียบไว้
         // (คิวว่างเมื่อไหร่ offer หมดอายุ ที่นั่งค่อยกลับสู่สาธารณะเอง)
         if ($this->waitlist->scheduleWaitlistCount($scheduleId) > 0) {

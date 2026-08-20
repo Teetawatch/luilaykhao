@@ -6,6 +6,7 @@ use App\Jobs\ExpireWaitlistOffersJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\LoyaltyAccount;
+use App\Models\Setting;
 use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -14,6 +15,7 @@ use App\Models\WaitlistEntry;
 use App\Services\BookingService;
 use App\Services\WaitlistService;
 use App\Support\LoyaltyTier;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Role;
@@ -248,7 +250,7 @@ class WaitlistFlowTest extends TestCase
             ->json('data.0.expires_in_seconds');
         $this->assertNotNull($seconds, 'ต้องส่ง expires_in_seconds ให้แอปนับถอยหลัง');
         $this->assertGreaterThan(0, $seconds);
-        $this->assertLessThanOrEqual(WaitlistService::OFFER_TTL_MINUTES * 60, $seconds);
+        $this->assertLessThanOrEqual(WaitlistService::offerTtlMinutes() * 60, $seconds);
     }
 
     public function test_an_offered_seat_is_held_and_not_offered_twice(): void
@@ -292,7 +294,7 @@ class WaitlistFlowTest extends TestCase
         app(WaitlistService::class)->processSchedule($schedule->id);
 
         // เดินเวลาข้ามเส้นตาย 15 นาที แล้วให้ job กวาด
-        $this->travel(WaitlistService::OFFER_TTL_MINUTES + 1)->minutes();
+        $this->travel(WaitlistService::offerTtlMinutes() + 1)->minutes();
         (new ExpireWaitlistOffersJob)->handle(app(WaitlistService::class));
 
         $this->assertSame('expired', WaitlistEntry::where('user_id', $first->id)->value('status'));
@@ -303,6 +305,39 @@ class WaitlistFlowTest extends TestCase
             'user_id' => $first->id,
             'type' => 'waitlist_expired',
         ]);
+    }
+
+    /**
+     * เวลาจองหลังได้สิทธิ์เป็นค่าที่แอดมินปรับได้ ไม่ใช่ 15 นาทีตายตัวในโค้ด
+     * — ทั้ง expires_at และข้อความแจ้งเตือนต้องเดินตามค่าใหม่พร้อมกัน
+     */
+    public function test_admin_can_change_how_long_an_offer_lasts(): void
+    {
+        Setting::put(SiteSettings::KEY, ['waitlist_offer_ttl_minutes' => 45]);
+
+        $schedule = $this->makeSchedule($this->makeTrip(), 2);
+        $this->makeBooking($schedule, 2);
+
+        $queued = User::factory()->create();
+        $this->actingAs($queued, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/waitlist")->assertStatus(201);
+
+        BookingPassenger::query()->limit(1)->delete();
+        $schedule->syncBookedSeats();
+        app(WaitlistService::class)->processSchedule($schedule->id);
+
+        $entry = WaitlistEntry::where('user_id', $queued->id)->first();
+        $this->assertEqualsWithDelta(45, now()->diffInMinutes($entry->expires_at), 1);
+
+        $note = SmartNotification::where('user_id', $queued->id)
+            ->where('type', 'waitlist_offered')
+            ->first();
+        $this->assertStringContainsString('45 นาที', $note->body);
+
+        // เดินเวลาข้าม 15 นาทีเดิม — สิทธิ์ต้องยังอยู่ ไม่ใช่หมดตามค่าที่ฝังไว้เดิม
+        $this->travel(16)->minutes();
+        (new ExpireWaitlistOffersJob)->handle(app(WaitlistService::class));
+        $this->assertSame('offered', $entry->fresh()->status);
     }
 
     public function test_a_higher_tier_member_is_offered_the_seat_first(): void
@@ -408,7 +443,7 @@ class WaitlistFlowTest extends TestCase
         $schedule->syncBookedSeats();
         app(WaitlistService::class)->processSchedule($schedule->id);
 
-        $this->travel(WaitlistService::OFFER_TTL_MINUTES + 1)->minutes();
+        $this->travel(WaitlistService::offerTtlMinutes() + 1)->minutes();
 
         $booking = app(BookingService::class)->createBooking(
             userId: User::factory()->create()->id,
@@ -497,7 +532,7 @@ class WaitlistFlowTest extends TestCase
             ->assertJsonPath('data.bookable_seats', 0);
 
         // พอสิทธิ์หมดอายุ ที่นั่งต้องกลับมาให้คนทั่วไปเห็นตามปกติ
-        $this->travel(WaitlistService::OFFER_TTL_MINUTES + 1)->minutes();
+        $this->travel(WaitlistService::offerTtlMinutes() + 1)->minutes();
 
         $this->getJson("/api/v1/schedules/{$schedule->id}")
             ->assertOk()

@@ -9,12 +9,23 @@ use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\WaitlistEntry;
 use App\Support\LoyaltyTier;
+use App\Support\SiteSettings;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class WaitlistService
 {
-    public const OFFER_TTL_MINUTES = 15;
+    /**
+     * ได้สิทธิ์แล้วมีเวลาจองกี่นาที
+     *
+     * เคยเป็น const 15 นาทีตายตัว ตอนนี้แอดมินปรับได้ที่ /admin/settings —
+     * อ่านค่าทุกครั้งที่แจกสิทธิ์ ไม่ cache ไว้ในตัวแปร เพราะรอบที่แจกไปแล้ว
+     * ต้องยึดเวลาที่ตกลงไว้ตอนแจก (เก็บใน expires_at) ไม่ใช่ค่าใหม่ที่เพิ่งแก้
+     */
+    public static function offerTtlMinutes(): int
+    {
+        return max(1, SiteSettings::int('waitlist_offer_ttl_minutes'));
+    }
 
     public function join(int $userId, int $scheduleId, int $seatCount = 1): WaitlistEntry
     {
@@ -125,7 +136,9 @@ class WaitlistService
         // แจกสิทธิ์ในทรานแซกชัน (ล็อกแถวรอบไว้กันแจกซ้ำ) แล้วค่อยยิงแจ้งเตือน
         // หลัง commit — FCM เป็น HTTP call ต่อคน ถ้าทำคาไว้ในล็อก คนอื่นจะจอง
         // รอบนี้ไม่ได้เลยตลอดเวลาที่ยิง push
-        $offered = DB::transaction(function () use ($scheduleId) {
+        $ttlMinutes = self::offerTtlMinutes();
+
+        $offered = DB::transaction(function () use ($scheduleId, $ttlMinutes) {
             $schedule = TripSchedule::lockForUpdate()->find($scheduleId);
             if (! $schedule) {
                 return [];
@@ -162,7 +175,7 @@ class WaitlistService
                     continue;
                 }
 
-                $expiresAt = now()->addMinutes(self::OFFER_TTL_MINUTES);
+                $expiresAt = now()->addMinutes($ttlMinutes);
 
                 $entry->update([
                     'status' => 'offered',
@@ -182,7 +195,7 @@ class WaitlistService
                 $offer['user_id'],
                 'waitlist_offered',
                 'มีที่นั่งว่างแล้ว!',
-                'มีที่นั่งว่างในทริปที่คุณรอคิวอยู่ กรุณาจองภายใน '.self::OFFER_TTL_MINUTES.' นาที',
+                'มีที่นั่งว่างในทริปที่คุณรอคิวอยู่ กรุณาจองภายใน '.$ttlMinutes.' นาที',
                 [
                     'schedule_id' => (string) $scheduleId,
                     'expires_at' => $offer['expires_at']->toISOString(),

@@ -63,6 +63,37 @@
         </div>
       </section>
 
+      <!-- ── คิวรอที่นั่ง ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">hourglass_top</span>
+          <div>
+            <h2>คิวรอที่นั่ง</h2>
+            <p>เมื่อมีคนยกเลิก ที่นั่งจะถูกกันไว้ให้คนแรกในคิวก่อน</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>เวลาจองหลังได้รับสิทธิ์</label>
+          <div class="input-row">
+            <input v-model.number="form.waitlist_offer_ttl_minutes" type="number" min="5" max="180" />
+            <span class="unit">นาที</span>
+            <button
+              v-if="isChanged('waitlist_offer_ttl_minutes')"
+              class="reset-link"
+              @click="reset('waitlist_offer_ttl_minutes')"
+            >
+              คืนค่าเดิม ({{ defaults.waitlist_offer_ttl_minutes }})
+            </button>
+          </div>
+          <span class="help">
+            ช่วงเวลานี้คนอื่นจองที่นั่งนั้นไม่ได้ (เห็นข้อความ "ถูกกันไว้ให้ผู้ที่รอคิวก่อนหน้า")
+            หมดเวลาแล้วที่นั่งตกถึงคนถัดไปในคิวอัตโนมัติ
+            <br />ตั้งได้ 5–180 นาที · มีผลกับสิทธิ์ที่แจกหลังกดบันทึกเท่านั้น สิทธิ์ที่แจกไปแล้วยังนับตามเวลาเดิม
+          </span>
+        </div>
+      </section>
+
       <!-- ── ช่วงเวลางดรบกวน ── -->
       <section class="setting-card">
         <div class="card-head">
@@ -188,6 +219,7 @@ const form = reactive({
   guarantee_min_seats: 8,
   low_seat_threshold: 3,
   underfilled_min_seats: 8,
+  waitlist_offer_ttl_minutes: 15,
   quiet_hours_enabled: true,
   quiet_start_hour: 21,
   quiet_end_hour: 8,

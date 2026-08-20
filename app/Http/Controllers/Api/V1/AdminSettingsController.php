@@ -38,6 +38,8 @@ class AdminSettingsController extends Controller
             'guarantee_min_seats' => ['required', 'integer', 'min:1', 'max:50'],
             'low_seat_threshold' => ['required', 'integer', 'min:1', 'max:20'],
             'underfilled_min_seats' => ['required', 'integer', 'min:1', 'max:50'],
+            // สั้นกว่า 5 นาทีลูกค้าแทบไม่ทันเปิดแอป ยาวเกิน 3 ชั่วโมงที่นั่งก็จมอยู่กับคนเดียว
+            'waitlist_offer_ttl_minutes' => ['required', 'integer', 'min:5', 'max:180'],
             'quiet_hours_enabled' => ['required', 'boolean'],
             'quiet_start_hour' => ['required', 'integer', 'min:0', 'max:23'],
             'quiet_end_hour' => ['required', 'integer', 'min:0', 'max:23'],

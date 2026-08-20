@@ -99,8 +99,8 @@ class BookingService
 
             // Join trip allows unlimited bookings — skip seat availability check
             if (! $isJoinTrip) {
-                // ที่นั่งที่เพิ่งว่างและถูกเสนอให้คนในคิวรอ ถูกกันไว้ให้เขา 15 นาที
-                // มิฉะนั้นคำสัญญา "จองภายใน 15 นาที" ไม่มีอะไรรองรับ — คนที่เดิน
+                // ที่นั่งที่เพิ่งว่างและถูกเสนอให้คนในคิวรอ ถูกกันไว้ให้เขาจนหมดเวลา
+                // มิฉะนั้นคำสัญญา "จองภายใน N นาที" ไม่มีอะไรรองรับ — คนที่เดิน
                 // เข้ามาพอดีจะจองตัดหน้าคนที่รอคิวมาทั้งอาทิตย์ได้
                 $heldForOthers = $this->waitlistService->heldSeats($scheduleId, exceptUserId: $userId);
                 $bookableSeats = max(0, $schedule->available_seats - $heldForOthers);

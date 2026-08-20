@@ -77,7 +77,7 @@ Trip (slug-routed)
 - **Services** — contain all business logic and throw `\Exception` with Thai-language messages on failure:
   - `BookingService` — creates bookings inside a DB transaction, verifies seat locks, calculates pricing (addons, promotions, deposit), fires post-booking notifications
   - `SeatLockService` — Redis-backed soft locks (10 min base + 5 min/extra seat). Falls back to allowing the booking when Redis is unavailable.
-  - `WaitlistService` — manages queue; `ProcessWaitlistJob` offers seats when a cancellation frees them; offers expire after 15 minutes (`OFFER_TTL_MINUTES`)
+  - `WaitlistService` — manages queue; `ProcessWaitlistJob` offers seats when a cancellation frees them; offers expire after `WaitlistService::offerTtlMinutes()` (default 15, editable at `/admin/settings`)
   - `FcmService` — Firebase Cloud Messaging via service account JWT (cached 55 min); SOS alerts sent as high-priority FCM data messages
   - `SmsService` — ThaiBulkSMS integration; messages are queued via `SendPendingSmsJob` and deduplicated per booking/type
   - `MailService` — Brevo SMTP; triggered from `BookingService` and queue jobs

@@ -25,6 +25,8 @@ class SiteSettings
         'low_seat_threshold' => 3,
         // รอบที่จองน้อยกว่านี้ = เสี่ยงไม่ออก → เตือนทีมงานล่วงหน้า
         'underfilled_min_seats' => 8,
+        // ได้สิทธิ์จากคิวรอแล้วมีเวลาจองกี่นาที ก่อนที่นั่งจะตกถึงคนถัดไป
+        'waitlist_offer_ttl_minutes' => 15,
         // ช่วงเวลางดยิง push การตลาด (กันปลุกลูกค้าตอนดึก)
         'quiet_hours_enabled' => true,
         'quiet_start_hour' => 21,
