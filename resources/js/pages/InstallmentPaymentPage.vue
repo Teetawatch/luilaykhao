@@ -174,12 +174,10 @@
             </p>
           </div>
 
-          <!-- สัญญาณเดียวที่บอกเราได้ว่าลูกค้าสแกนไปแล้ว — ไม่มีปุ่มนี้ก็ได้แต่รอเงียบๆ -->
-          <button v-if="beamPayment && !beamExpired" @click="markBeamSettling"
-            class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 text-white text-xs font-black hover:bg-amber-600 active:scale-95 transition-all">
-            <span class="material-symbols-rounded text-[18px]">task_alt</span>
-            จ่ายเงินแล้ว · ตรวจสอบให้ฉัน
-          </button>
+          <!-- ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย แล้วเลื่อนไปขั้นถัดไปเองเมื่อลูกค้ากลับเข้ามา -->
+          <div v-if="beamPayment && !beamExpired" class="w-full px-4">
+            <PaymentSettlingPanel stage="waiting" final-step="ตัดงวดที่ชำระให้อัตโนมัติ" />
+          </div>
 
           <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
           <p class="text-xs font-bold text-gray-400 px-6 text-center">จ่ายแล้วระบบจะตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป</p>
@@ -320,7 +318,6 @@ const {
   settlingSeconds: beamSettlingSeconds,
   slow: beamSlow,
   countdownText: beamCountdownText,
-  markSettling: markBeamSettling,
   resumeWaiting: resumeBeamWaiting,
   create: createBeamPayment,
 } = useBeamCharge(async () => {

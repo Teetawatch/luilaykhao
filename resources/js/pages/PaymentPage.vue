@@ -535,14 +535,13 @@
                 </div>
 
                 <!--
-                  เราไม่มีทางรู้เองว่าลูกค้าสแกนไปแล้วหรือยัง ปุ่มนี้คือสัญญาณเดียวที่บอกเราได้
-                  กดแล้วหน้าจอเปลี่ยนเป็นโหมดรอผล และเริ่มถาม Beam ตรงๆ แทนที่จะรอ webhook
+                  ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย ไม่ต้องรอให้ใครกดปุ่มก่อน — แถวที่กำลัง
+                  ทำงานอยู่หมุนตลอด หน้าจอจึงไม่มีวินาทีไหนที่ดูเหมือนค้าง และพอลูกค้าออกไป
+                  จ่ายแล้วกลับเข้ามา การ์ดนี้จะเลื่อนไปขั้นถัดไปเอง
                 -->
-                <button v-if="beamPayment && !beamExpired" @click="markBeamSettling"
-                  class="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-teal-600 text-white text-xs font-black hover:bg-teal-700 active:scale-95 transition-all">
-                  <span class="material-symbols-rounded text-[18px]">task_alt</span>
-                  จ่ายเงินแล้ว · ตรวจสอบให้ฉัน
-                </button>
+                <div v-if="beamPayment && !beamExpired" class="w-full max-w-sm px-4">
+                  <PaymentSettlingPanel stage="waiting" />
+                </div>
               </template>
 
               <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
@@ -1177,7 +1176,6 @@ const {
   settlingSeconds: beamSettlingSeconds,
   slow: beamSlow,
   countdownText: beamCountdownText,
-  markSettling: markBeamSettling,
   resumeWaiting: resumeBeamWaiting,
   stop: stopBeamTimers,
   create: createBeamPayment,

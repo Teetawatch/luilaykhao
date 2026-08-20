@@ -24,11 +24,14 @@
     </div>
 
     {{--
-        เราไม่มีทางรู้เองว่าลูกค้าสแกนไปแล้วหรือยัง ปุ่มนี้คือสัญญาณเดียวที่บอกเราได้
-        กดแล้วหน้าจอเปลี่ยนเป็นโหมดรอผลที่ "ขยับ" ให้เห็นว่าระบบยังทำงานอยู่ แทนที่จะ
-        ปล่อยให้นั่งมอง QR ใบเดิมค้างจนคิดว่าจ่ายไม่ผ่านแล้วไปจ่ายซ้ำ
+        ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย ไม่ต้องรอให้ใครกดปุ่มก่อน แถวที่กำลังทำงาน
+        อยู่หมุนตลอด หน้าจอจึงไม่มีวินาทีไหนที่ดูเหมือนค้าง
     --}}
-    <button type="button" class="btn" id="beam-paid-btn">จ่ายเงินแล้ว · ตรวจสอบให้ฉัน</button>
+    <ol class="settle-steps">
+        <li><span class="settle-dot now"></span> สแกน QR ด้วยแอปธนาคาร</li>
+        <li class="todo"><span class="settle-dot todo"></span> รอธนาคารยืนยันว่าเงินเข้า</li>
+        <li class="todo"><span class="settle-dot todo"></span> บันทึกยอดที่ชำระให้อัตโนมัติ</li>
+    </ol>
 </div>
 
 <div id="beam-settling" style="display:none">
@@ -109,13 +112,31 @@
             setTimeout(function () { location.reload(); }, 2000);
         }
 
-        document.getElementById('beam-paid-btn').addEventListener('click', function () {
+        function enterSettling() {
+            if (settling) return;
             settling = true;
             seconds = 0;
             elapsedEl.textContent = '0 วินาที';
             liveEl.style.display = 'none';
             settlingEl.style.display = '';
             poll();
+        }
+
+        // ออกจากหน้านี้ไปนานพอ = ไปเปิดแอปธนาคารมา ขากลับคือสัญญาณที่ดีที่สุดที่เรามี
+        // ว่าลูกค้าเพิ่งจ่ายมา จึงไม่ต้องมีปุ่ม "จ่ายเงินแล้ว" ให้กด 3 วินาทีเป็นเกณฑ์
+        // ที่ปัดดู notification แวบเดียวแล้วไม่โดนสลับหน้าจอ
+        var awayAt = 0;
+        document.addEventListener('visibilitychange', function () {
+            if (settling) return;
+
+            if (document.hidden) {
+                awayAt = Date.now();
+                return;
+            }
+
+            var wasAway = awayAt && Date.now() - awayAt >= 3000;
+            awayAt = 0;
+            if (wasAway) enterSettling();
         });
 
         document.getElementById('beam-not-yet').addEventListener('click', function () {

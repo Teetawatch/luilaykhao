@@ -105,7 +105,10 @@ class BeamPublicPagesTest extends TestCase
             ->assertOk()
             ->assertSee('data:image/png;base64,iVBORw0KGgo=', false)
             ->assertSee('ไม่ต้องแนบสลิป')
-            ->assertDontSee('name="slip_image"', false);
+            ->assertDontSee('name="slip_image"', false)
+            // ขั้นตอนต้องอยู่บนหน้าตั้งแต่ยังไม่จ่าย ไม่ใช่รอให้ลูกค้ากดปุ่มก่อน
+            ->assertSee('สแกน QR ด้วยแอปธนาคาร')
+            ->assertSee('รอธนาคารยืนยันว่าเงินเข้า');
 
         $this->assertDatabaseHas('payments', [
             'booking_id' => $booking->id,

@@ -9,6 +9,15 @@ const POLL_SETTLING_MS = 2000;
 const SLOW_AFTER_SECONDS = 45;
 
 /**
+ * ออกจากหน้านี้ไปนานแค่ไหนถึงจะนับว่า "ไปจ่ายมา" ตอนกลับเข้ามา
+ *
+ * บนมือถือ การเปิดแอปธนาคาร/แอปกล้องเพื่อสแกน ทำให้แท็บนี้ถูกซ่อนเสมอ ขากลับจึงเป็น
+ * สัญญาณที่ดีที่สุดที่เรามีว่าลูกค้าเพิ่งจ่ายมา ตั้งเกณฑ์ไว้ 3 วินาทีเพื่อไม่ให้การ
+ * ปัดดู notification แวบเดียวไปสลับหน้าจอเขา
+ */
+const AWAY_LONG_ENOUGH_MS = 3000;
+
+/**
  * ออกใบชำระเงินผ่าน Beam แล้วเฝ้าดูจนกว่าเงินจะเข้า
  *
  * ทุกหน้าที่รับเงินต้องทำสามอย่างเหมือนกันเป๊ะ: ขอ QR, นับถอยหลังอายุ QR, และถาม
@@ -35,6 +44,7 @@ export function useBeamCharge(onPaid) {
 
   let pollTimer = null;
   let expiryTimer = null;
+  let awayAt = 0;
 
   const qrSrc = computed(() =>
     payment.value?.qr_image_base64 ? `data:image/png;base64,${payment.value.qr_image_base64}` : null
@@ -103,8 +113,8 @@ export function useBeamCharge(onPaid) {
   }
 
   /**
-   * ลูกค้าจ่ายแล้ว (กดปุ่ม "จ่ายเงินแล้ว" หรือกลับมาจากแอปธนาคาร) — เปลี่ยนหน้าจอ
-   * เป็นโหมดรอผล แล้วเร่งจังหวะถาม
+   * ลูกค้าจ่ายแล้ว (กลับเข้ามาจากแอปธนาคาร) — เปลี่ยนหน้าจอเป็นโหมดรอผล แล้วเร่ง
+   * จังหวะถาม
    */
   function markSettling() {
     if (settling.value || !payment.value) return;
@@ -116,7 +126,27 @@ export function useBeamCharge(onPaid) {
   }
 
   /**
-   * "ยังไม่ได้จ่าย" — ลูกค้ากดปุ่มไปก่อนเวลา พากลับไปหน้า QR ตามเดิม
+   * ออกไปนานพอที่จะเป็นการไปจ่ายเงินมา — สลับเป็นโหมดรอผลให้เอง
+   *
+   * นี่คือเหตุผลที่หน้าจอไม่มีปุ่ม "จ่ายเงินแล้ว" ให้กด: เราอ่านเอาเองได้จากการที่
+   * ลูกค้าออกจากหน้านี้ไปแล้วกลับมา ส่วนคนที่สแกนด้วยมือถืออีกเครื่อง (ไม่เคยออกจาก
+   * หน้านี้เลย) ก็ยังจบด้วย webhook ตามปกติ แค่ไม่เห็นจอ "กำลังตรวจสอบ" ระหว่างทาง
+   */
+  function onVisibilityChange() {
+    if (!payment.value || settling.value || expired.value) return;
+
+    if (document.hidden) {
+      awayAt = Date.now();
+      return;
+    }
+
+    const wasAway = awayAt && Date.now() - awayAt >= AWAY_LONG_ENOUGH_MS;
+    awayAt = 0;
+    if (wasAway) markSettling();
+  }
+
+  /**
+   * "ยังไม่ได้จ่าย" — เราเดาผิด (ลูกค้าออกไปทำอย่างอื่นแล้วกลับมา) พากลับไปหน้า QR
    *
    * ถ้า QR หมดอายุไประหว่างที่รออยู่ tick รอบถัดไปจะพาไปหน้า "สร้าง QR ใหม่" เอง
    */
@@ -161,7 +191,12 @@ export function useBeamCharge(onPaid) {
     }
   }
 
-  onBeforeUnmount(stop);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  onBeforeUnmount(() => {
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    stop();
+  });
 
   return {
     payment,
