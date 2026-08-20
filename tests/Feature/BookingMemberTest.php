@@ -160,6 +160,42 @@ class BookingMemberTest extends TestCase
             ->assertJsonPath('data.0.viewer_is_owner', false);
     }
 
+    public function test_roster_returns_pending_invite_link_to_owner_only(): void
+    {
+        $schedule = $this->makeSchedule();
+        $owner = User::factory()->create();
+        $booking = $this->bookOnto($owner, $schedule, [
+            ['name' => 'a'],
+            ['name' => 'b'],
+            ['name' => 'c'],
+        ]);
+
+        $token = $this->invite($owner, $booking, ['label' => 'บอม']);
+
+        // เจ้าของเห็นลิงก์ของคำเชิญที่ยังไม่ถูกรับ จึงส่งซ้ำได้โดยไม่ต้องสร้างใบใหม่
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/members")
+            ->assertOk()
+            ->assertJsonPath('data.viewer_is_owner', true)
+            ->assertJsonPath('data.max_members', 3)
+            ->assertJsonPath('data.remaining_slots', 1)
+            ->assertJsonPath('data.members.0.invite_token', $token)
+            ->assertJsonPath('data.members.0.invite_url', url('/join/'.$token));
+
+        // เพื่อนที่เข้าร่วมแล้วเห็นรายชื่อได้ แต่ไม่เห็นลิงก์คำเชิญของคนอื่น
+        $friendToken = $this->invite($owner, $booking);
+        $friend = User::factory()->create();
+        $this->actingAs($friend, 'sanctum')
+            ->postJson("/api/v1/booking-invites/{$friendToken}/accept")->assertOk();
+
+        $this->actingAs($friend, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/members")
+            ->assertOk()
+            ->assertJsonPath('data.viewer_is_owner', false)
+            ->assertJsonPath('data.members.0.invite_token', null)
+            ->assertJsonPath('data.members.0.invite_url', null);
+    }
+
     public function test_non_owner_cannot_invite_or_revoke(): void
     {
         $schedule = $this->makeSchedule();

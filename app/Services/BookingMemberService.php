@@ -117,9 +117,11 @@ class BookingMemberService
     /**
      * รายชื่อสมาชิกของการจอง: เจ้าของ + สมาชิก/คำเชิญทั้งหมด
      *
+     * $forOwner = ผู้เรียกเป็นเจ้าของการจอง จึงเห็นลิงก์ของคำเชิญที่ยังไม่ถูกใช้
+     *
      * @return array{owner: array, members: list<array>}
      */
-    public function roster(Booking $booking): array
+    public function roster(Booking $booking, bool $forOwner = false): array
     {
         $owner = $booking->relationLoaded('user') ? $booking->user : $booking->user()->first();
 
@@ -128,9 +130,12 @@ class BookingMemberService
             ->with(['user:id,name,nickname,avatar', 'passenger:id,name,nickname'])
             ->orderBy('id')
             ->get()
-            ->map(fn (BookingMember $m) => $this->presentMember($m))
+            ->map(fn (BookingMember $m) => $this->presentMember($m, $forOwner))
             ->values()
             ->all();
+
+        $max = $this->maxMembers($booking);
+        $occupied = $this->occupiedSlots($booking);
 
         return [
             'owner' => $owner ? [
@@ -140,12 +145,19 @@ class BookingMemberService
                 'avatar_url' => $owner->avatar_url,
             ] : null,
             'members' => $members,
-            'can_invite_more' => $this->occupiedSlots($booking) < $this->maxMembers($booking),
+            'can_invite_more' => $occupied < $max,
+            // จำนวนที่นั่งทั้งหมด/ที่ยังเชิญได้ — หน้าจอเชิญเพื่อนบอกผู้ใช้ตรง ๆ ว่า
+            // เหลืออีกกี่คน แทนที่จะให้ไปเดาเอาจากจำนวนผู้เดินทาง
+            'max_members' => $max,
+            'remaining_slots' => max(0, $max - $occupied),
+            'viewer_is_owner' => $forOwner,
         ];
     }
 
-    public function presentMember(BookingMember $m): array
+    public function presentMember(BookingMember $m, bool $forOwner = false): array
     {
+        $pendingToken = $forOwner && $m->isPending() ? $m->invite_token : null;
+
         return [
             'id' => $m->id,
             'status' => $m->status,
@@ -153,6 +165,10 @@ class BookingMemberService
             'invite_label' => $m->invite_label,
             'passenger_name' => $m->passenger?->nickname ?: $m->passenger?->name,
             'accepted_at' => $m->accepted_at?->toISOString(),
+            // คำเชิญที่ยังไม่ถูกรับ — เจ้าของส่งลิงก์เดิมซ้ำได้ ไม่ต้องสร้างใบใหม่
+            // (ใบใหม่กินสิทธิ์อีกหนึ่งที่นั่ง แล้วเชิญคนที่เหลือไม่ได้)
+            'invite_token' => $pendingToken,
+            'invite_url' => $pendingToken !== null ? url('/join/'.$pendingToken) : null,
             'user' => $m->user ? [
                 'id' => $m->user->id,
                 'name' => $m->user->name,

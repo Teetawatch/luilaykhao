@@ -54,6 +54,7 @@ return [
         '/chat/',
         '/recap/',
         '/group/',
+        '/join/',
     ],
 
     'pages' => [

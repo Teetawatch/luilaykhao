@@ -252,6 +252,9 @@ const routes = [
   // ── ไปด้วยกัน (group plans) ──
   { path: '/group-plans', name: 'group-plans', component: () => import('../pages/MyGroupPlansPage.vue'), meta: { requiresAuth: true, title: 'กลุ่มไปด้วยกัน', robots: 'noindex, nofollow' } },
   { path: '/group/:code', name: 'group-plan', component: () => import('../pages/GroupPlanPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  // ปลายทางของลิงก์ "เชิญเพื่อนร่วมทริป" ที่แอปแชร์ออกไป (url('/join/{token}'))
+  // requiresAuth พาไปล็อกอินแล้วเด้งกลับมาที่ลิงก์เดิมเอง
+  { path: '/join/:token', name: 'join-booking', component: () => import('../pages/JoinBookingPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
 
   { path: '/profile', name: 'profile', component: () => import('../pages/ProfilePage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/support', name: 'support', component: () => import('../pages/SupportPage.vue'), meta: { requiresAuth: true, title: 'ศูนย์ช่วยเหลือ', robots: 'noindex, nofollow' } },

@@ -30,7 +30,9 @@ class BookingMemberController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ดูสมาชิกของการจองนี้', 403);
         }
 
-        return $this->success($this->members->roster($booking));
+        return $this->success(
+            $this->members->roster($booking, $booking->user_id === $user->id),
+        );
     }
 
     /**

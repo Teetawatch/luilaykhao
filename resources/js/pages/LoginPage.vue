@@ -98,7 +98,7 @@
         <div class="mt-8 text-center border-t border-sand-dark/50 pt-6">
           <p class="text-sm text-text-muted">
             ยังไม่มีบัญชี?
-            <router-link to="/register" class="text-accent hover:text-accent-mid font-semibold inline-flex items-center gap-1 transition-colors">
+            <router-link :to="{ name: 'register', query: route.query.redirect ? { redirect: route.query.redirect } : {} }" class="text-accent hover:text-accent-mid font-semibold inline-flex items-center gap-1 transition-colors">
               สมัครสมาชิก
               <i class="fa-solid fa-arrow-right text-xs ml-0.5"></i>
             </router-link>

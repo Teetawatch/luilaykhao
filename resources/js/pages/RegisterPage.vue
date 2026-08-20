@@ -202,7 +202,7 @@
         <div class="mt-8 text-center lg:text-left border-t border-sand-dark/50 pt-6">
           <p class="text-sm text-text-muted">
             มีบัญชีอยู่แล้ว?
-            <router-link to="/login" class="text-accent hover:text-accent-mid font-semibold inline-flex items-center gap-1 transition-colors">
+            <router-link :to="{ name: 'login', query: route.query.redirect ? { redirect: route.query.redirect } : {} }" class="text-accent hover:text-accent-mid font-semibold inline-flex items-center gap-1 transition-colors">
               เข้าสู่ระบบเลย
               <i class="fa-solid fa-arrow-right-to-bracket text-xs ml-1"></i>
             </router-link>
@@ -215,11 +215,12 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const error = ref('');
 const emailError = ref('');
 
@@ -266,7 +267,8 @@ async function handleRegister() {
   if (!validateEmail()) return;
   try {
     await auth.register(form.value);
-    router.push('/');
+    // มาจากลิงก์ที่ต้องล็อกอินก่อน (เช่น คำเชิญร่วมทริป) — พากลับไปที่เดิม
+    router.push(route.query.redirect || '/');
   } catch (e) {
     const errors = e?.response?.data?.errors;
     if (errors) {
