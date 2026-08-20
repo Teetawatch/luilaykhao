@@ -8,6 +8,7 @@ use App\Models\LoyaltyAccount;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\BookingSettlementService;
 use App\Support\LoyaltyTier;
 use App\Support\PaymentQuote;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -216,5 +217,72 @@ class PaymentQuoteTest extends TestCase
         $this->assertSame($quoted['amount'], (float) $booking->deposit_amount);
         $this->assertSame($quoted['balance'], (float) $booking->balance_amount);
         $this->assertSame($quoted['amount'], (float) $booking->paid_amount);
+    }
+
+    public function test_the_chosen_payment_type_survives_until_the_customer_comes_back(): void
+    {
+        $schedule = $this->makeSchedule([
+            'deposit_enabled' => true,
+            'deposit_type' => 'amount',
+            'deposit_amount' => 1000,
+        ]);
+
+        $user = User::factory()->create();
+        $booking = $this->makeBooking($user, $schedule, 8000, passengers: 4);
+
+        // ออก QR มัดจำไว้แล้วยังไม่จ่าย — หน้าจ่ายเงินต้องกลับมาที่ "มัดจำ" ได้ตอนเปิดใหม่
+        app(BookingSettlementService::class)->record($booking, 'deposit');
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}")
+            ->assertOk()
+            ->assertJsonPath('data.payment_type', 'deposit')
+            ->assertJsonPath('data.payment_options.deposit.amount', 4000);
+    }
+
+    public function test_switching_back_to_full_clears_the_abandoned_deposit_plan(): void
+    {
+        $schedule = $this->makeSchedule([
+            'deposit_enabled' => true,
+            'deposit_type' => 'amount',
+            'deposit_amount' => 1000,
+        ]);
+
+        $booking = $this->makeBooking(User::factory()->create(), $schedule, 8000, passengers: 4);
+        $settlement = app(BookingSettlementService::class);
+
+        $settlement->record($booking, 'deposit');
+        $this->assertSame(4000.0, (float) $booking->fresh()->deposit_amount);
+
+        // เปลี่ยนใจไปจ่ายเต็มจำนวน — ยอดมัดจำ/ยอดคงเหลือของแผนที่ทิ้งแล้วต้องไม่ค้าง
+        $settlement->record($booking->fresh(), 'full');
+
+        $booking->refresh();
+        $this->assertSame('full', $booking->payment_type);
+        $this->assertNull($booking->deposit_amount);
+        $this->assertNull($booking->balance_amount);
+        $this->assertNull($booking->balance_due_at);
+    }
+
+    public function test_switching_away_from_installment_drops_the_old_schedule(): void
+    {
+        $schedule = $this->makeSchedule([
+            'installment_enabled' => true,
+            'installment_count' => 3,
+            'installment_interval_days' => 30,
+        ]);
+
+        $booking = $this->makeBooking(User::factory()->create(), $schedule, 9000);
+        $settlement = app(BookingSettlementService::class);
+
+        $settlement->record($booking, 'installment', ['installment_count' => 3]);
+        $this->assertSame(3, $booking->fresh()->installmentPayments()->count());
+
+        $settlement->record($booking->fresh()->load('schedule'), 'full');
+
+        $booking->refresh();
+        $this->assertSame('full', $booking->payment_type);
+        $this->assertNull($booking->installment_count);
+        $this->assertSame(0, $booking->installmentPayments()->count());
     }
 }

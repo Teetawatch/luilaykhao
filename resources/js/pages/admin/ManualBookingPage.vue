@@ -351,6 +351,9 @@
                 <strong>{{ formatCurrency(balanceAmount) }}</strong>
                 <small v-if="balanceDueDate">ครบกำหนด {{ formatDate(balanceDueDate) }}</small>
               </div>
+              <p class="deposit-note">
+                ยอดก่อนหักส่วนลดมัดจำตามระดับสมาชิก — ถ้าลูกค้าคนนี้มีสิทธิ์ ระบบจะหักให้ตอนบันทึก
+              </p>
             </div>
 
             <div class="payment-block">
@@ -1241,6 +1244,14 @@ function formatCurrency(value) {
   color: #78350f;
   font-size: 13px;
   font-weight: 900;
+}
+
+.deposit-note {
+  margin: 0;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .slip-uploader {

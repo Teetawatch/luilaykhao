@@ -44,7 +44,7 @@
           </div>
           <div>
             <h3 class="text-red-900 font-bold text-base md:text-lg">กรุณาชำระเงินเพื่อยืนยันสิทธิ์</h3>
-            <p class="text-red-700 text-sm">เราจะสำรองที่นั่งให้คุณเป็นเวลา {{ Math.floor(paymentTimeoutSeconds / 60) }} นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ</p>
+            <p class="text-red-700 text-sm">เราจะสำรองที่นั่งให้คุณเป็นเวลา {{ paymentWindowMinutes }} นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ</p>
           </div>
         </div>
         <div class="bg-white px-6 py-3 rounded-2xl border border-red-200">
@@ -1037,16 +1037,46 @@ const bookingStore = useBookingStore();
 const seatsStore = useSeatsStore();
 const swal = useSwal();
 
-const getPaymentTimeout = (passengerCount = 1) => {
-  return (10 * 60) + (Math.max(1, passengerCount) - 1) * (2 * 60);
-};
+// เวลาชำระเงินไม่ใช่เวลาล็อกที่นั่ง และไม่ได้ยาวขึ้นตามจำนวนคน — ExpirePendingBookingsJob
+// ยกเลิกการจองที่ค้างเกิน Booking::PENDING_TTL_MINUTES นับจาก created_at ทุกนาที เท่ากันหมด
+// หน้านี้จึงต้องเดินตาม expires_at ที่ API ส่งมา ไม่ตั้งเวลาของตัวเอง (สูตรเดิม 10 นาที
+// +2 นาที/คน ทำให้ผู้จองหลายคนเห็นนาฬิกาเดินต่ออีกหลายนาทีทั้งที่ที่นั่งถูกคืนไปแล้ว
+// และ QR ของเกตเวย์ก็หมดอายุไปก่อนหน้านั้นด้วยซ้ำ)
+const PENDING_TTL_SECONDS = 10 * 60; // fallback เท่านั้น — ต้องตรงกับ Booking::PENDING_TTL_MINUTES
 
-const paymentTimeoutSeconds = computed(() => {
-  return getPaymentTimeout(booking.value?.passengers?.length || 1);
+const paymentDeadline = computed(() => {
+  const b = booking.value;
+  if (!b || b.status !== 'pending') return null;
+  // ส่งสลิปแล้ว = ถือที่นั่งไว้รอแอดมินตรวจ ไม่มีเส้นตาย (หลังบ้านก็ข้ามรายการพวกนี้)
+  if (b.slip_ocr_status) return null;
+
+  const serverExpiry = b.expires_at ? new Date(b.expires_at) : null;
+  if (serverExpiry && !Number.isNaN(serverExpiry.getTime())) return serverExpiry;
+
+  const createdAtMs = b.created_at ? new Date(b.created_at).getTime() : Date.now();
+  const baseTimeMs = Number.isFinite(createdAtMs) ? createdAtMs : Date.now();
+
+  return new Date(baseTimeMs + PENDING_TTL_SECONDS * 1000);
 });
+
+/** ความยาวเต็มของหน้าต่างชำระเงิน (created_at → เส้นตาย) ใช้กับแถบความคืบหน้าและข้อความ */
+const paymentWindowSeconds = computed(() => {
+  const deadline = paymentDeadline.value;
+  const createdAtMs = booking.value?.created_at ? new Date(booking.value.created_at).getTime() : NaN;
+  if (!deadline || !Number.isFinite(createdAtMs)) return PENDING_TTL_SECONDS;
+
+  const seconds = Math.round((deadline.getTime() - createdAtMs) / 1000);
+
+  return seconds > 0 ? seconds : PENDING_TTL_SECONDS;
+});
+
+const paymentWindowMinutes = computed(() => Math.max(1, Math.round(paymentWindowSeconds.value / 60)));
 
 const booking = ref(null);
 const loading = ref(true);
+// จริงระหว่างที่ onMounted กำลังกู้รูปแบบการชำระของการจองนี้กลับมา — กัน watcher
+// ที่คอยออก QR ใหม่ทุกครั้งที่ยอดเปลี่ยน ไม่ให้เข้าใจผิดว่าลูกค้าเพิ่งกดเปลี่ยนเอง
+let restoringPlan = false;
 const paying = ref(false);
 const autoCancelling = ref(false);
 const paymentError = ref('');
@@ -1347,6 +1377,9 @@ watch(availableInstallmentOptions, (opts) => {
 // ── QR regenerates when paymentType, paymentMethod, or installment count changes ─
 // ยอดเปลี่ยน = QR ใบเดิมใช้ไม่ได้แล้ว ต้องออกใบใหม่ทั้งสองโหมด
 watch([paymentType, paymentMethod, selectedInstallmentCount], ([, method]) => {
+  // ตอนเปิดหน้ายังไม่ใช่ "ลูกค้าเปลี่ยนใจ" — onMounted เป็นคนออก QR ใบแรกเอง
+  // ไม่งั้นการกู้รูปแบบที่บันทึกไว้จะยิงสร้าง charge ซ้ำอีกใบทันทีที่โหลดหน้า
+  if (restoringPlan) return;
   if (method !== 'promptpay') return;
   if (useBeam.value) {
     createBeamCharge('QR_PROMPT_PAY');
@@ -1354,6 +1387,35 @@ watch([paymentType, paymentMethod, selectedInstallmentCount], ([, method]) => {
     nextTick(generateQR);
   }
 });
+
+/**
+ * กลับไปยังรูปแบบการชำระที่การจองนี้เลือกไว้แล้ว
+ *
+ * หลังบ้านบันทึก payment_type ตั้งแต่ตอนออก QR (BeamPaymentService) หรือตอนรับสลิป
+ * (PaymentController::charge) การจองที่ยังค้างอยู่ — ออก QR มัดจำแล้วยังไม่จ่าย หรือ
+ * ส่งสลิปมัดจำแล้วยอดไม่ตรงจนถูกกันไว้ตรวจ — เปิดหน้านี้ใหม่จึงต้องกลับมาที่ "จ่ายมัดจำ"
+ * ไม่ใช่เด้งกลับไป "ชำระเต็มจำนวน" แล้วโชว์ยอดเต็มให้ลูกค้าที่ตั้งใจจ่ายมัดจำโอนเกิน
+ *
+ * 'full' เป็นค่า default ของคอลัมน์ ไม่ใช่ตัวเลือกที่ลูกค้ากด จึงไม่ต้องกู้อะไร และ
+ * การแบ่งจ่ายกลุ่มยืม payment_type = 'deposit' ไปใช้ ต้องไม่ตีความว่าเป็นมัดจำธรรมดา
+ */
+function restorePaymentPlan() {
+  const recorded = booking.value?.payment_type;
+
+  if (recorded === 'installment' && installmentAvailable.value) {
+    paymentType.value = 'installment';
+    const recordedCount = Number(booking.value?.installment_count || 0);
+    if (availableInstallmentOptions.value.includes(recordedCount)) {
+      selectedInstallmentCount.value = recordedCount;
+    }
+
+    return;
+  }
+
+  if (recorded === 'deposit' && depositAvailable.value && !booking.value?.split?.enabled) {
+    paymentType.value = 'deposit';
+  }
+}
 
 // ── PromptPay QR ─────────────────────────────────────────────
 function buildPromptPayPayload(identifier, amount) {
@@ -1491,22 +1553,24 @@ function formatRegion(slug) {
 }
 
 function initPaymentCountdown() {
-  if (!booking.value || booking.value.status !== 'pending') {
+  const deadline = paymentDeadline.value;
+
+  // ไม่มีเส้นตาย = ไม่ต้องนับถอยหลัง (จ่ายแล้ว ยกเลิกแล้ว หรือส่งสลิปแล้วรอแอดมินตรวจ)
+  if (!deadline) {
     seatsStore.clearSelection();
     return;
   }
 
   const createdAtMs = booking.value.created_at ? new Date(booking.value.created_at).getTime() : Date.now();
-  const baseTimeMs = Number.isFinite(createdAtMs) ? createdAtMs : Date.now();
 
-  seatsStore.lockExpiry = new Date(baseTimeMs + paymentTimeoutSeconds.value * 1000).toISOString();
   seatsStore.setActiveBookingInfo({
     tripTitle: booking.value.schedule?.trip?.title || 'กิจกรรม',
     scheduleId: booking.value.schedule_id ?? booking.value.schedule?.id,
     bookingRef: booking.value.booking_ref,
     step: 'payment',
-    startedAt: baseTimeMs,
+    startedAt: Number.isFinite(createdAtMs) ? createdAtMs : Date.now(),
   });
+  seatsStore.setDeadline(deadline.toISOString(), paymentWindowSeconds.value);
   seatsStore.startCountdown();
 }
 
@@ -1518,13 +1582,16 @@ async function handlePaymentExpiry() {
   // ปล่อยให้หลังบ้านเป็นคนตัดสิน มันเห็นทั้ง webhook และ reconcile ที่เว็บไม่เห็น
   if (beamSettling.value) return;
 
+  // ส่งสลิปมาแล้วและรอแอดมินตรวจยอด — หลังบ้านกัน timer ไว้ให้ ฝั่งเว็บก็ต้องไม่ยกเลิกเอง
+  if (booking.value?.slip_ocr_status) return;
+
   autoCancelling.value = true;
 
   try {
     if (booking.value?.booking_ref && booking.value?.status === 'pending') {
       await bookingStore.cancelBooking(
         booking.value.booking_ref,
-        `หมดเวลาชำระเงินเกิน ${Math.floor(paymentTimeoutSeconds.value / 60)} นาที ระบบยกเลิกการจองอัตโนมัติ`
+        `หมดเวลาชำระเงินเกิน ${paymentWindowMinutes.value} นาที ระบบยกเลิกการจองอัตโนมัติ`
       );
       booking.value.status = 'cancelled';
     }
@@ -1536,14 +1603,16 @@ async function handlePaymentExpiry() {
 
   await swal.error(
     'หมดเวลาชำระเงินแล้ว',
-    `ครบกำหนด ${Math.floor(paymentTimeoutSeconds.value / 60)} นาที ระบบได้ยกเลิกการจองและคืนที่นั่งเรียบร้อยแล้ว กรุณาทำรายการใหม่อีกครั้ง`
+    `ครบกำหนด ${paymentWindowMinutes.value} นาที ระบบได้ยกเลิกการจองและคืนที่นั่งเรียบร้อยแล้ว กรุณาทำรายการใหม่อีกครั้ง`
   );
   router.push('/trips');
 }
 
 async function processPayment() {
   if (paying.value) return; // กันกดซ้ำ / ชนกับการยืนยันอัตโนมัติ
-  if (seatsStore.countdownSeconds <= 0) {
+  // เช็คเฉพาะรายการที่ยังมีเส้นตายอยู่จริง — สลิปที่ถูกตีกลับไม่มีนาฬิกาแล้ว
+  // แต่ยังต้องส่งใหม่ได้ ไม่ใช่โดนบล็อกว่า "หมดเวลา"
+  if (paymentDeadline.value && seatsStore.countdownSeconds <= 0) {
     paymentError.value = 'หมดเวลาชำระเงินแล้ว ระบบได้ยกเลิกการจองอัตโนมัติ';
     return;
   }
@@ -1587,6 +1656,7 @@ onMounted(async () => {
   seatsStore.onExpire(handlePaymentExpiry);
 
   try {
+    restoringPlan = true;
     booking.value = await bookingStore.fetchBooking(route.params.bookingRef);
     addPaymentInfo({
       bookingRef: booking.value?.booking_ref,
@@ -1597,11 +1667,15 @@ onMounted(async () => {
     if (installmentQuote.value?.default_count) {
       selectedInstallmentCount.value = installmentQuote.value.default_count;
     }
+    restorePaymentPlan();
     initPaymentCountdown();
   } catch (e) {
     console.error(e);
   } finally {
     loading.value = false;
+    // รอให้ watcher ที่ค้างอยู่จากการกู้ค่าข้างบน flush ไปก่อน แล้วค่อยปลดธง
+    await nextTick();
+    restoringPlan = false;
   }
   if (paymentMethod.value === 'promptpay') {
     if (useBeam.value) {

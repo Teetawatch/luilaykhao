@@ -84,6 +84,8 @@ class BookingSettlementService
             'slip_ocr_status' => $opts['slip_ocr_status'] ?? null,
         ];
 
+        $this->clearAbandonedPlan($booking, $purpose);
+
         match ($purpose) {
             'full' => $booking->update($common + ['payment_type' => 'full']),
             'deposit' => $this->recordDeposit($booking, $common),
@@ -200,6 +202,47 @@ class BookingSettlementService
     }
 
     // ── record helpers ───────────────────────────────────────────────
+
+    /**
+     * ลบร่องรอยของรูปแบบการชำระที่ลูกค้าเลิกเลือกไปแล้ว
+     *
+     * ลูกค้าเปลี่ยนใจกลางคันได้ (ออก QR มัดจำไว้แล้วย้อนกลับไปจ่ายเต็มจำนวน) แต่เดิม
+     * record() ของแต่ละแบบเขียนเฉพาะฟิลด์ของตัวเอง ยอดมัดจำ/ยอดคงเหลือ/กำหนดชำระ
+     * ของรอบก่อนจึงค้างอยู่บนการจองที่จ่ายเต็มไปแล้ว และฝั่งแอปที่อ่าน deposit_amount
+     * ที่บันทึกไว้ก่อน quote ก็หยิบยอดผีนั้นไปโชว์
+     *
+     * มัดจำกับแบ่งจ่ายกลุ่มใช้คู่ deposit_amount + balance_amount ร่วมกัน จึงล้างพร้อมกัน
+     */
+    private function clearAbandonedPlan(Booking $booking, string $purpose): void
+    {
+        $reset = [];
+
+        if (! in_array($purpose, ['deposit', 'split'], true)) {
+            $reset += [
+                'deposit_amount' => null,
+                'balance_amount' => null,
+                'balance_due_at' => null,
+            ];
+        }
+
+        if ($purpose !== 'installment') {
+            $reset += [
+                'installment_count' => null,
+                'installment_interval_days' => null,
+            ];
+
+            // งวดที่ตั้งไว้รอบก่อนต้องหายไปด้วย ไม่งั้นหน้าจอยังโชว์ตารางผ่อนของแผนที่ทิ้งแล้ว
+            $booking->installmentPayments()->delete();
+        }
+
+        if ($purpose !== 'split') {
+            $booking->splitShares()->delete();
+        }
+
+        if ($reset !== []) {
+            $booking->update($reset);
+        }
+    }
 
     /**
      * @param  array<string, mixed>  $common

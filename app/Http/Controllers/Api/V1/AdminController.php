@@ -1979,7 +1979,10 @@ class AdminController extends Controller
         }
 
         if ($paymentType === 'deposit') {
-            $depositAmount = $schedule->resolveDepositAmount($totalAmount, $participantCount);
+            // ส่ง user id ไปด้วยเสมอ — ส่วนลดมัดจำตามระดับสมาชิกเป็นสิทธิ์ของลูกค้าคนนี้
+            // และ PaymentQuote ฝั่งลูกค้าหักให้อยู่แล้ว ถ้าตรงนี้ไม่หัก ยอดมัดจำที่แอดมิน
+            // บันทึกไว้จะไม่ตรงกับยอดที่หน้าชำระเงินของลูกค้าเรียกเก็บจริง
+            $depositAmount = $schedule->resolveDepositAmount($totalAmount, $participantCount, $user->id);
             if (! $depositAmount || $depositAmount >= $totalAmount) {
                 return $this->error('ไม่สามารถคำนวณยอดมัดจำสำหรับรอบเดินทางนี้', 422);
             }

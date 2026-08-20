@@ -36,12 +36,17 @@ function clearActiveIndex() {
   sessionStorage.removeItem(ACTIVE_SESSION_INDEX_KEY);
 }
 
-function saveSession(lockExpiry, activeBookingInfo, selectedSeats) {
+function saveSession(lockExpiry, activeBookingInfo, selectedSeats, windowTotalSeconds = null) {
   if (lockExpiry && activeBookingInfo) {
     const scheduleId = activeBookingInfo.scheduleId;
     const region = activeBookingInfo.region;
     const key = buildSessionKey(scheduleId, region);
-    sessionStorage.setItem(key, JSON.stringify({ lockExpiry, activeBookingInfo, selectedSeats: selectedSeats ?? [] }));
+    sessionStorage.setItem(key, JSON.stringify({
+      lockExpiry,
+      activeBookingInfo,
+      selectedSeats: selectedSeats ?? [],
+      windowTotalSeconds,
+    }));
     saveActiveIndex(scheduleId, region);
   } else {
     // Clear the currently active session
@@ -84,6 +89,9 @@ export const useSeatsStore = defineStore('seats', {
     selectedSeats: _saved?.selectedSeats ?? [],
     loading: false,
     lockExpiry: _saved?.lockExpiry ?? null,
+    // ความยาวเต็มของช่วงเวลาที่กำลังนับถอยหลังอยู่ (วินาที) — มาจากเส้นตายจริงที่
+    // เซิร์ฟเวอร์ให้มา ไม่ใช่สูตรที่ฝั่งเว็บเดาเอง ใช้วาดแถบความคืบหน้าให้ตรงกับนาฬิกา
+    windowTotalSeconds: _saved?.windowTotalSeconds ?? null,
     countdownSeconds: 0,
     countdownTimer: null,
     activeBookingInfo: _saved?.activeBookingInfo ?? null,
@@ -97,13 +105,14 @@ export const useSeatsStore = defineStore('seats', {
     hasSelectedSeats: (state) => state.selectedSeats.length > 0,
     selectedSeatIds: (state) => state.selectedSeats.map(s => s.id),
     hasActiveBooking: (state) => state.activeBookingInfo !== null && state.countdownSeconds > 0,
-    // Total allotted seconds for the current booking (base + per-extra-passenger),
-    // derived from the same formula used to set lockExpiry so the progress bar and
-    // expiry messages stay in sync no matter how many passengers there are.
-    bookingTotalSeconds: (state) => calculateDuration(state.activeBookingInfo?.passengerCount),
-    bookingTotalMinutes: (state) => Math.round(calculateDuration(state.activeBookingInfo?.passengerCount) / 60),
+    // Total allotted seconds for the window currently being counted down. Prefer the
+    // real length handed to us by the server (seat-lock TTL, or the pending-booking TTL
+    // on the payment step) and only fall back to the local formula when we have none —
+    // the two are NOT the same number, so recomputing it here desynced the progress bar.
+    bookingTotalSeconds: (state) => state.windowTotalSeconds || calculateDuration(state.activeBookingInfo?.passengerCount),
+    bookingTotalMinutes: (state) => Math.round((state.windowTotalSeconds || calculateDuration(state.activeBookingInfo?.passengerCount)) / 60),
     countdownProgress: (state) => {
-      const total = calculateDuration(state.activeBookingInfo?.passengerCount);
+      const total = state.windowTotalSeconds || calculateDuration(state.activeBookingInfo?.passengerCount);
       if (!total) return 0;
       return Math.min(1, Math.max(0, state.countdownSeconds / total));
     },
@@ -127,14 +136,19 @@ export const useSeatsStore = defineStore('seats', {
           seat_ids: seatIds,
         });
         if (res.data.data?.locked) {
-          // Enforce 10-minute hard limit regardless of server expiry
+          // เส้นตายจริงคือ TTL ที่ SeatLockService ตั้งไว้ใน Redis — มันรวมโบนัสตามระดับ
+          // สมาชิกที่ฝั่งเว็บไม่รู้ด้วย เมื่อก่อนเราตัดให้เหลือตามสูตรของตัวเอง สมาชิกที่
+          // ได้เวลาเพิ่มจึงถูกไล่ออกจากฟอร์มก่อนที่ล็อกจะหมดจริง สูตรในไฟล์นี้เหลือไว้เป็น
+          // ทางถอยกรณีเซิร์ฟเวอร์ไม่ส่ง expires_at มาเท่านั้น
           const serverExpiry = res.data.data.expires_at ? new Date(res.data.data.expires_at) : null;
-          const duration = calculateDuration(seatIds.length);
-          const maxExpiry = new Date(Date.now() + duration * 1000);
-          this.lockExpiry = serverExpiry && serverExpiry < maxExpiry ? serverExpiry.toISOString() : maxExpiry.toISOString();
+          const expiry = serverExpiry && !Number.isNaN(serverExpiry.getTime())
+            ? serverExpiry
+            : new Date(Date.now() + calculateDuration(seatIds.length) * 1000);
+          this.lockExpiry = expiry.toISOString();
+          this.windowTotalSeconds = Math.max(1, Math.round((expiry.getTime() - Date.now()) / 1000));
           // Record passenger count so total-duration getters match this lock window
           this.activeBookingInfo = { ...(this.activeBookingInfo || {}), passengerCount: seatIds.length };
-          saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
+          saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats, this.windowTotalSeconds);
           this.startCountdown();
           // ปล่อยที่นั่งที่ตัวเองเคยล็อกไว้แต่ไม่ได้เลือกแล้ว — ไม่งั้นคนที่เปลี่ยนใจ
           // จาก 8 ที่เหลือ 1 ที่ จะแช่อีก 7 ที่ไว้จนหมด TTL (นานถึง 45 นาที)
@@ -182,27 +196,41 @@ export const useSeatsStore = defineStore('seats', {
 
     setActiveBookingInfo(info) {
       this.activeBookingInfo = info;
-      saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
+      saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats, this.windowTotalSeconds);
+    },
+
+    /**
+     * ตั้งเส้นตายของนาฬิกาให้ตรงกับที่เซิร์ฟเวอร์บอกมาตรง ๆ (เช่น expires_at ของการจอง
+     * ที่ยังไม่ชำระ) — ใช้แทนการคำนวณเวลาเองในหน้าที่ไม่ได้เป็นคนล็อกที่นั่ง
+     */
+    setDeadline(expiry, totalSeconds = null) {
+      const at = expiry ? new Date(expiry) : null;
+      if (!at || Number.isNaN(at.getTime())) return;
+
+      this.lockExpiry = at.toISOString();
+      this.windowTotalSeconds = totalSeconds > 0 ? Math.round(totalSeconds) : null;
+      saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats, this.windowTotalSeconds);
     },
 
     saveStep(step) {
       if (this.activeBookingInfo) {
         this.activeBookingInfo = { ...this.activeBookingInfo, step };
-        saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
+        saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats, this.windowTotalSeconds);
       }
     },
 
     updateBookingDuration(count) {
       if (!this.activeBookingInfo || !this.lockExpiry) return;
-      
+
       const startedAt = this.activeBookingInfo.startedAt || (new Date(this.lockExpiry).getTime() - calculateDuration(this.activeBookingInfo.passengerCount || 1) * 1000);
       const duration = calculateDuration(count);
       const newExpiry = new Date(startedAt + duration * 1000);
-      
+
       if (newExpiry > new Date(this.lockExpiry)) {
         this.lockExpiry = newExpiry.toISOString();
+        this.windowTotalSeconds = Math.max(1, Math.round((newExpiry.getTime() - startedAt) / 1000));
         this.activeBookingInfo.passengerCount = count;
-        saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
+        saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats, this.windowTotalSeconds);
       }
     },
 
@@ -218,6 +246,7 @@ export const useSeatsStore = defineStore('seats', {
       this.stopCountdown();
       this.activeBookingInfo = null;
       this.lockExpiry = null;
+      this.windowTotalSeconds = null;
       this._onExpireCallbacks = [];
     },
 
@@ -236,7 +265,7 @@ export const useSeatsStore = defineStore('seats', {
       } else {
         this.selectedSeats.push(seat);
       }
-      saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
+      saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats, this.windowTotalSeconds);
     },
 
     updateSeatStatus(seatId, status) {
@@ -252,6 +281,7 @@ export const useSeatsStore = defineStore('seats', {
       this.selectedSeats = [];
       this.lockedSeatIds = [];
       this.lockExpiry = null;
+      this.windowTotalSeconds = null;
       this.activeBookingInfo = null;
       // NOTE: do NOT reset _onExpireCallbacks here. Listeners are owned by the
       // components that registered them (via onExpire/offExpire on mount/unmount).
@@ -307,8 +337,9 @@ export const useSeatsStore = defineStore('seats', {
       this.stopCountdown();
       const duration = calculateDuration(passengerCount);
       this.lockExpiry = new Date(Date.now() + duration * 1000).toISOString();
+      this.windowTotalSeconds = duration;
       this.activeBookingInfo = { tripTitle, scheduleId, region, startedAt: Date.now(), passengerCount };
-      saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats);
+      saveSession(this.lockExpiry, this.activeBookingInfo, this.selectedSeats, this.windowTotalSeconds);
       this.startCountdown();
     },
   },

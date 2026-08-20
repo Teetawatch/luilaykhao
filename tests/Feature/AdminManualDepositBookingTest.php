@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\LoyaltyAccount;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\LoyaltyTier;
+use App\Support\PaymentQuote;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Role;
@@ -75,6 +78,46 @@ class AdminManualDepositBookingTest extends TestCase
         $this->assertSame(
             $schedule->departure_date->copy()->subDays(15)->toDateString(),
             $booking->balance_due_at->toDateString(),
+        );
+    }
+
+    public function test_manual_deposit_matches_what_the_customer_would_be_charged(): void
+    {
+        $schedule = $this->makeDepositSchedule();
+
+        $customer = User::factory()->create(['phone' => '0810000002']);
+        LoyaltyAccount::create([
+            'user_id' => $customer->id,
+            'points' => 0,
+            'lifetime_points' => 0,
+            'lifetime_trips' => 10,
+            'tier' => LoyaltyTier::INSIDER,
+        ]);
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/bookings/manual', [
+                'schedule_id' => $schedule->id,
+                'name' => 'ขาประจำ', 'surname' => 'ทดสอบ',
+                'phone' => $customer->phone,
+                'passenger_count' => 1,
+                'status' => 'pending',
+                'payment_type' => 'deposit',
+                'payment_method' => 'promptpay',
+                'send_email' => false,
+            ])
+            ->assertCreated();
+
+        $booking = Booking::where('booking_ref', $res->json('data.booking_ref'))
+            ->with(['schedule', 'passengers'])
+            ->firstOrFail();
+
+        // 30% ของ 5,000 = 1,500 · ลดมัดจำระดับคนกันเองอีก 15% = 1,275 — ยอดเดียวกับที่
+        // หน้าชำระเงินของลูกค้าจะเรียกเก็บ ไม่ใช่ยอดเต็มก่อนหักส่วนลด
+        $this->assertEquals(1275, (float) $booking->deposit_amount);
+        $this->assertEquals(3725, (float) $booking->balance_amount);
+        $this->assertSame(
+            PaymentQuote::deposit($booking)['amount'],
+            (float) $booking->deposit_amount,
         );
     }
 
