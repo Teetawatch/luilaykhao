@@ -9,6 +9,7 @@ use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
+use App\Support\GuestBookingPresenter;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -361,7 +362,7 @@ class VehicleTrackingController extends Controller
             return $this->error('กรุณากรอกรหัสการจองและเบอร์โทร', 422, $validator->errors());
         }
 
-        $booking = Booking::with(['schedule.trip', 'schedule.vehicle', 'passengers', 'pickupPoint'])
+        $booking = Booking::with(self::guestLookupRelations())
             ->where('booking_ref', strtoupper(trim($request->booking_ref)))
             ->first();
 
@@ -383,36 +384,40 @@ class VehicleTrackingController extends Controller
             return $this->error('เบอร์โทรไม่ตรงกับข้อมูลการจอง กรุณาตรวจสอบอีกครั้ง', 403);
         }
 
-        $schedule = $booking->schedule;
-        $trip = $schedule?->trip;
-        $vehicle = $schedule?->vehicle;
-
         [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
+        $trip = $booking->schedule?->trip;
 
-        return $this->success([
-            'booking_ref' => $booking->booking_ref,
-            'status' => $booking->status,
-            'qr_code' => $booking->qr_code,
-            'trip_title' => $trip?->title ?? '',
-            'departure_point' => $trip?->departure_point ?? '',
-            'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
-            'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
-            'schedule_id' => $booking->schedule_id,
-            'vehicle_id' => $schedule?->vehicle_id,
-            'driver_name' => $vehicle?->driver_name,
-            'driver_phone' => $vehicle?->driver_phone,
-            'license_plate' => $vehicle?->license_plate,
+        return $this->success(GuestBookingPresenter::present($booking, true) + [
             'pickup_lat' => $pickupLat,
             'pickup_lng' => $pickupLng,
             'destination_lat' => $trip?->latitude,
             'destination_lng' => $trip?->longitude,
-            'share_url' => $booking->shareUrl(),
         ], 'พบข้อมูลการจอง');
     }
 
     /**
+     * ทุกอย่างที่หน้า "ค้นหาการจอง" ของคนที่ยังไม่ล็อกอินต้องใช้ในคำขอเดียว
+     *
+     * @return list<string>
+     */
+    private static function guestLookupRelations(): array
+    {
+        return [
+            'schedule.trip',
+            'schedule.vehicle',
+            'schedule.activeStaff',
+            'schedule.itineraryItems',
+            'passengers.pickupPoint',
+            'seats',
+            'pickupPoint',
+            'installmentPayments',
+        ];
+    }
+
+    /**
      * Guest lookup by name: ค้นหาการจองด้วยชื่อผู้เดินทาง + เบอร์โทรเต็ม
-     * ไม่เปิดเผย booking_ref / qr_code / share_url เพื่อความปลอดภัย
+     * ไม่เปิดเผย booking_ref / qr_code / share_url และไม่บอกจำนวนเงิน เพราะชื่อ
+     * กับเบอร์เป็นสิ่งที่คนอื่นรู้ได้ (ดูกติกาเต็มใน GuestBookingPresenter)
      * POST /api/v1/bookings/guest-lookup-by-name  (public, no auth required)
      */
     public function guestLookupByName(Request $request): JsonResponse
@@ -429,18 +434,20 @@ class VehicleTrackingController extends Controller
         $inputName = trim($request->name);
         $inputDigits = preg_replace('/\D/', '', $request->phone);
 
-        $passengers = BookingPassenger::with([
-            'booking.schedule.trip',
-            'booking.schedule.vehicle',
-            'booking.pickupPoint',
-        ])
+        $passengers = BookingPassenger::with(
+            collect(self::guestLookupRelations())
+                ->map(fn (string $relation) => 'booking.'.$relation)
+                ->all()
+        )
             ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($inputName)])
             ->get()
             ->filter(function ($p) use ($inputDigits) {
                 $stored = preg_replace('/\D/', '', $p->phone ?? '');
 
                 return $stored !== '' && str_ends_with($stored, substr($inputDigits, -8));
-            });
+            })
+            // จองหมู่คณะที่กรอกชื่อเดียวกันสองแถวเคยได้การ์ดซ้ำสองใบของการจองเดียว
+            ->unique(fn ($p) => $p->booking_id);
 
         if ($passengers->isEmpty()) {
             return $this->error('ไม่พบข้อมูลการจองที่ตรงกับชื่อและเบอร์โทรนี้', 404);
@@ -448,29 +455,20 @@ class VehicleTrackingController extends Controller
 
         $results = $passengers->map(function ($p) {
             $booking = $p->booking;
-            $schedule = $booking?->schedule;
-            $trip = $schedule?->trip;
-            $vehicle = $schedule?->vehicle;
+
+            if (! $booking) {
+                return null;
+            }
 
             [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
 
-            return [
-                'status' => $booking?->status,
-                'trip_title' => $trip?->title ?? '',
-                'departure_point' => $trip?->departure_point ?? '',
-                'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
-                'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
-                'schedule_id' => $booking?->schedule_id,
-                'vehicle_id' => $schedule?->vehicle_id,
-                'driver_name' => $vehicle?->driver_name,
-                'driver_phone' => $vehicle?->driver_phone,
-                'license_plate' => $vehicle?->license_plate,
+            return GuestBookingPresenter::present($booking, false) + [
                 'pickup_lat' => $pickupLat,
                 'pickup_lng' => $pickupLng,
-                'destination_lat' => $trip?->latitude,
-                'destination_lng' => $trip?->longitude,
+                'destination_lat' => $booking->schedule?->trip?->latitude,
+                'destination_lng' => $booking->schedule?->trip?->longitude,
             ];
-        })->values()->all();
+        })->filter()->values()->all();
 
         return $this->success($results, 'พบข้อมูลการจอง');
     }
