@@ -86,6 +86,8 @@ class BookingController extends Controller
                 'pickupPoint',
                 'seats',
                 'passengers.pickupPoint',
+                // เอกสารแนบที่ทริปขอ — หน้ารายละเอียดคือที่ที่ลูกค้าตามมาแนบทีหลัง
+                'documents',
                 'installmentPayments',
                 'splitShares',
                 // เฉพาะรีวิวของผู้ที่กำลังดู (เจ้าของหรือเพื่อนร่วมเดินทาง) เพื่อให้ can_review เป็นรายคน

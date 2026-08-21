@@ -1067,6 +1067,55 @@
                     <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'health_notes') }}
                   </p>
                 </div>
+
+                <!-- เอกสารแนบที่ทริปนี้ขอ — รายการและข้อความ "ใช้สำหรับ..."
+                     มาจากที่แอดมินตั้งไว้บนทริป ไฟล์อัปโหลดจริงหลังสร้างการจอง -->
+                <div v-if="documentRequirements.length" class="md:col-span-2 rounded-2xl border-2 border-violet-200 bg-violet-50/50 p-4 space-y-4">
+                  <div class="flex items-start gap-2">
+                    <span class="material-symbols-rounded text-[20px] text-violet-600">attach_file</span>
+                    <div>
+                      <p class="text-sm font-bold text-gray-900">เอกสารที่ต้องแนบ</p>
+                      <p class="text-xs text-gray-600 mt-0.5">รองรับไฟล์รูปภาพและ PDF ขนาดไม่เกิน {{ MAX_DOC_MB }} MB ต่อไฟล์</p>
+                    </div>
+                  </div>
+
+                  <div v-for="doc in documentRequirements" :key="doc.key">
+                    <label class="block text-sm font-bold text-gray-700">
+                      {{ doc.label }}
+                      <span v-if="doc.required" class="text-red-500">*</span>
+                      <span v-else class="text-xs font-bold text-gray-400">(ไม่บังคับ)</span>
+                    </label>
+                    <p v-if="doc.note" class="text-xs text-gray-600 mt-1">{{ doc.note }}</p>
+
+                    <div v-if="docFiles(i, doc.key).length" class="mt-2 space-y-2">
+                      <div v-for="(file, fi) in docFiles(i, doc.key)" :key="fi"
+                        class="flex items-center gap-2 bg-white border-2 border-violet-100 rounded-2xl px-3 py-2.5">
+                        <span class="material-symbols-rounded text-[18px] text-violet-500 shrink-0">
+                          {{ file.type === 'application/pdf' ? 'picture_as_pdf' : 'image' }}
+                        </span>
+                        <span class="text-xs font-bold text-gray-700 truncate flex-1">{{ file.name }}</span>
+                        <span class="text-[11px] text-gray-400 font-bold shrink-0">{{ fileSizeLabel(file.size) }}</span>
+                        <button type="button" @click="removeDocFile(i, doc.key, fi)" title="เอาไฟล์นี้ออก"
+                          class="text-gray-400 hover:text-red-500 shrink-0">
+                          <span class="material-symbols-rounded text-[18px]">close</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <label v-if="docFiles(i, doc.key).length < MAX_DOC_FILES"
+                      class="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all font-bold text-sm"
+                      :class="showErr(i, `doc:${doc.key}`) ? 'border-red-300 text-red-500 bg-red-50/40' : 'border-violet-200 text-violet-600 bg-white hover:border-violet-400'">
+                      <span class="material-symbols-rounded text-[18px]">upload_file</span>
+                      {{ docFiles(i, doc.key).length ? 'แนบไฟล์เพิ่ม' : 'เลือกไฟล์' }}
+                      <input type="file" class="hidden" :accept="ACCEPTED_DOC_TYPES" multiple
+                        @change="addDocFiles(i, doc.key, $event)" />
+                    </label>
+
+                    <p v-if="showErr(i, `doc:${doc.key}`)" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, `doc:${doc.key}`) }}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2148,6 +2197,9 @@ watch(passengerCount, (n) => {
     });
   }
   if (passengers.value.length > n) passengers.value.length = n;
+  // ไฟล์ของคนที่ถูกตัดออกต้องหายไปด้วย ไม่งั้นเพิ่มคนกลับมาแล้วจะเจอเอกสาร
+  // ของคนก่อนหน้าค้างอยู่โดยไม่มีใครสั่ง
+  if (passengerDocs.value.length > n) passengerDocs.value = passengerDocs.value.slice(0, n);
 });
 
 function autoFillFromProfile(index) {
@@ -2347,6 +2399,100 @@ function isThaiTraveller(p) {
   return !isInternational.value || p.nationality === 'TH';
 }
 
+// ── เอกสารแนบที่ทริปขอ ───────────────────────────────────────────────────
+// รายการมาจากที่แอดมินตั้งไว้บนทริป (ชื่อเอกสาร + หมายเหตุ "ใช้สำหรับ...")
+// ไฟล์ถูกเก็บไว้ในหน้าจอก่อน แล้วอัปโหลดหลังการจองถูกสร้าง — ตอนกรอกฟอร์ม
+// ยังไม่มี booking_ref ให้ผูกไฟล์ด้วย
+const MAX_DOC_FILES = 5;
+const MAX_DOC_MB = 10;
+const ACCEPTED_DOC_TYPES = 'image/*,.pdf,application/pdf';
+
+const documentRequirements = computed(() => schedule.value?.trip?.document_requirements || []);
+
+// ไฟล์รอส่ง: index ของผู้เดินทาง → { requirement_key: File[] }
+// อยู่นอก passengers เพราะ File ลง sessionStorage (ร่างการจอง) ไม่ได้
+const passengerDocs = ref([]);
+
+function docFiles(i, key) {
+  return passengerDocs.value[i]?.[key] || [];
+}
+
+function fileSizeLabel(bytes) {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function addDocFiles(i, key, event) {
+  const picked = Array.from(event.target.files || []);
+  // ล้าง input ทันที ไม่งั้นเลือกไฟล์ชื่อเดิมซ้ำจะไม่ยิง change อีก
+  event.target.value = '';
+  if (!picked.length) return;
+
+  const current = [...docFiles(i, key)];
+  for (const file of picked) {
+    if (current.length >= MAX_DOC_FILES) {
+      toast.error(`แนบได้สูงสุด ${MAX_DOC_FILES} ไฟล์ต่อเอกสารหนึ่งรายการ`);
+      break;
+    }
+    if (file.size > MAX_DOC_MB * 1024 * 1024) {
+      toast.error(`"${file.name}" ใหญ่เกิน ${MAX_DOC_MB} MB`);
+      continue;
+    }
+    const isAllowed = file.type.startsWith('image/') || file.type === 'application/pdf';
+    if (!isAllowed) {
+      toast.error(`"${file.name}" ไม่ใช่ไฟล์รูปภาพหรือ PDF`);
+      continue;
+    }
+    current.push(file);
+  }
+
+  const next = [...passengerDocs.value];
+  next[i] = { ...(next[i] || {}), [key]: current };
+  passengerDocs.value = next;
+}
+
+function removeDocFile(i, key, index) {
+  const current = [...docFiles(i, key)];
+  current.splice(index, 1);
+  const next = [...passengerDocs.value];
+  next[i] = { ...(next[i] || {}), [key]: current };
+  passengerDocs.value = next;
+}
+
+/**
+ * ส่งไฟล์ขึ้นหลังการจองถูกสร้างแล้ว
+ *
+ * ล้มเหลวแล้วไม่ย้อนการจอง — ลูกค้าจ่ายเงินไปแล้วครึ่งทางไม่ควรเสียการจอง
+ * เพราะเน็ตหลุดตอนอัปโหลด ตามไปแนบใหม่ได้จากหน้ารายละเอียดการจอง
+ */
+async function uploadBookingDocuments(bookingRef, createdPassengers) {
+  if (!documentRequirements.value.length) return;
+
+  let failed = 0;
+  for (let i = 0; i < passengers.value.length; i++) {
+    const passengerId = createdPassengers?.[i]?.id;
+    if (!passengerId) continue;
+
+    for (const doc of documentRequirements.value) {
+      for (const file of docFiles(i, doc.key)) {
+        const form = new FormData();
+        form.append('passenger_id', passengerId);
+        form.append('requirement_key', doc.key);
+        form.append('file', file);
+        try {
+          await api.post(`/bookings/${bookingRef}/documents`, form);
+        } catch (e) {
+          failed++;
+        }
+      }
+    }
+  }
+
+  if (failed > 0) {
+    toast.error(`แนบเอกสารไม่สำเร็จ ${failed} ไฟล์ — แนบใหม่ได้ที่หน้ารายละเอียดการจอง`);
+  }
+}
+
 // Per-passenger validation: returns { field: 'thai error message' } for every
 // field that is missing or malformed. Drives both isPassengerValid and the
 // inline error UI so they can never drift apart.
@@ -2393,6 +2539,12 @@ function computePassengerErrors(p, i) {
   if (!hasText(p.health_notes)) errors.health_notes = 'กรุณากรอกหมายเหตุสุขภาพ (หากไม่มีให้พิมพ์ "ไม่มี")';
   // เมื่อผู้ใช้ปักหมุดจุดรับเอง (customPickup) ถือว่าเลือกจุดรับแล้ว ไม่ต้องบังคับจุดที่กำหนดไว้
   if (pickupPoints.value.length && !p.pickup_point_id && !customPickup.value) errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
+  // เอกสารที่แอดมินตั้งเป็น "บังคับแนบ" — นับเป็นช่องที่ยังกรอกไม่ครบเหมือนช่องอื่น
+  for (const doc of documentRequirements.value) {
+    if (doc.required && !docFiles(i, doc.key).length) {
+      errors[`doc:${doc.key}`] = `กรุณาแนบ${doc.label}`;
+    }
+  }
   return errors;
 }
 
@@ -2762,6 +2914,9 @@ async function createBooking() {
     seatsStore.clearSelection();
     clearFormData();
     toast.success('สร้างการจองสำเร็จ! กำลังไปยังหน้าชำระเงิน...');
+    // เอกสารแนบต้องมี booking_ref ก่อน จึงส่งตามหลังการจอง — ผู้เดินทางกลับมา
+    // ตามลำดับเดียวกับที่ส่งไป จึงจับคู่กับไฟล์ด้วยลำดับได้
+    await uploadBookingDocuments(res.data.booking_ref, res.data.passengers);
     await offerToSaveTravellers(res.data.booking_ref);
     router.push(`/payment/${res.data.booking_ref}`);
   } catch (e) {

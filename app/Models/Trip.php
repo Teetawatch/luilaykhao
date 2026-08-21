@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Countries;
+use App\Support\TripDocumentRequirements;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -31,6 +32,7 @@ class Trip extends Model
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items',
+        'document_requirements',
         'route_track',
     ];
 
@@ -58,7 +60,18 @@ class Trip extends Model
             'preparations' => 'array',
             'faqs' => 'array',
             'rental_items' => 'array',
+            'document_requirements' => 'array',
         ];
+    }
+
+    /**
+     * เอกสารที่ทริปนี้ขอให้ลูกค้าแนบ — จัดระเบียบแล้ว พร้อมส่งให้ทุกหน้าจอ
+     *
+     * @return array<int, array{key: string, label: string, note: string, required: bool}>
+     */
+    public function documentRequirements(): array
+    {
+        return TripDocumentRequirements::normalize($this->document_requirements);
     }
 
     public function schedules(): HasMany

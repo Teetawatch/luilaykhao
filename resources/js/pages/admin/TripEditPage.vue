@@ -520,6 +520,49 @@
           </div>
         </div>
 
+        <!-- เอกสารที่ต้องแนบ — ทริปไหนต้องใช้อะไร แอดมินกำหนดเองตรงนี้ -->
+        <div class="card section-card">
+          <div class="section-header-flex">
+            <h3 class="section-title text-violet-600">
+              <span class="material-symbols-rounded">attach_file</span> เอกสารที่ต้องแนบตอนจอง
+            </h3>
+            <div class="section-actions-mini">
+              <button type="button" @click="copySection('document_requirements')" title="คัดลอกส่วนนี้">
+                <span class="material-symbols-rounded">content_copy</span>
+              </button>
+              <button type="button" @click="pasteSection('document_requirements')" title="วางข้อมูล">
+                <span class="material-symbols-rounded">content_paste</span>
+              </button>
+            </div>
+          </div>
+          <div class="bg-violet-50 p-6 rounded-[2rem] border border-violet-100 space-y-4">
+            <p class="text-sm font-bold text-violet-700 pl-1">
+              เว้นว่างไว้ = ทริปนี้ไม่ต้องแนบเอกสาร · ลูกค้าจะเห็นช่องแนบไฟล์รายคนในหน้าจอง
+              ทั้งบนเว็บและในแอป และตามมาแนบทีหลังได้จากหน้ารายละเอียดการจอง
+            </p>
+
+            <div class="space-y-3">
+              <div v-for="(doc, idx) in form.document_requirements" :key="idx" class="bg-white rounded-2xl border border-violet-100 p-3 flex gap-3 items-start">
+                <div class="flex-1 space-y-2 min-w-0">
+                  <input v-model="doc.label" placeholder="ชื่อเอกสาร (เช่น ใบรับรองแพทย์, บัตรดำน้ำ)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-violet-500/20 font-bold" />
+                  <input v-model="doc.note" placeholder="หมายเหตุ เช่น ใช้สำหรับยื่นขออนุญาตเข้าเขตอุทยาน" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-violet-500/20 text-sm" />
+                  <label class="flex items-center gap-2 text-sm font-bold text-gray-600 pl-1 cursor-pointer select-none">
+                    <input type="checkbox" v-model="doc.required" class="w-4 h-4 accent-violet-600" />
+                    บังคับแนบ — ลูกค้าต้องแนบให้ครบทุกคนก่อนกดจอง
+                  </label>
+                </div>
+                <button type="button" @click="removeItem('document_requirements', idx)" class="text-red-400 hover:text-red-600 p-2 mt-1">
+                  <span class="material-symbols-rounded">delete</span>
+                </button>
+              </div>
+
+              <button type="button" @click="addItem('document_requirements')" class="w-full py-4 border-2 border-dashed border-violet-200 rounded-2xl text-violet-600 font-bold hover:bg-white hover:border-violet-400 transition-all flex items-center justify-center gap-2 group">
+                <span class="material-symbols-rounded group-hover:scale-110 transition-transform">add_circle</span> เพิ่มเอกสารที่ต้องแนบ
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Gallery -->
         <div class="card section-card">
           <div class="section-header-flex">
@@ -957,6 +1000,7 @@ const form = reactive({
   highlights: [],
   must_know: { items: [], remarks: '' },
   rental_items: [],
+  document_requirements: [],
   itinerary: [],
   preparations: [],
   faqs: [],
@@ -1087,6 +1131,16 @@ const buildTripPayload = () => {
         image_url: String(item?.image_url || '').trim(),
       }))
       .filter((item) => item.name),
+    // key เดิมต้องส่งกลับไปด้วยเสมอ — ไฟล์ที่ลูกค้าแนบไว้แล้วผูกกับ key ไม่ใช่ชื่อ
+    // เอกสาร แก้ชื่อแล้ว key หายเมื่อไหร่ ไฟล์เก่าจะหลุดจากช่องของมันทันที
+    document_requirements: normalizeArray(form.document_requirements)
+      .map((doc) => ({
+        key: String(doc?.key || '').trim(),
+        label: String(doc?.label || '').trim(),
+        note: String(doc?.note || '').trim(),
+        required: !!doc?.required,
+      }))
+      .filter((doc) => doc.label),
     itinerary: normalizeArray(form.itinerary)
       .map((sector) => ({
         sector: String(sector?.sector || '').trim(),
@@ -1320,6 +1374,10 @@ const addItem = (field, extra = null) => {
   } else if (field === 'rental_items') {
     if (!form.rental_items) form.rental_items = [];
     form.rental_items.push({ name: '', price: 0, description: '', image_url: '' });
+  } else if (field === 'document_requirements') {
+    if (!form.document_requirements) form.document_requirements = [];
+    // key ปล่อยว่าง — backend เป็นคนตั้งให้ตอนบันทึก แล้วส่งกลับมาคาไว้ในฟอร์ม
+    form.document_requirements.push({ key: '', label: '', note: '', required: false });
   } else {
     if (!form[field]) form[field] = [];
     form[field].push('');
@@ -1692,6 +1750,12 @@ const initData = async () => {
         price: Number(item?.price || 0),
         description: item?.description || '',
         image_url: item?.image_url || '',
+      }));
+      form.document_requirements = normalizeArray(trip.document_requirements).map((doc) => ({
+        key: doc?.key || '',
+        label: doc?.label || '',
+        note: doc?.note || '',
+        required: !!doc?.required,
       }));
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');

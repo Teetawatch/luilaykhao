@@ -59,20 +59,39 @@ class MediaDisk
     }
 
     /**
+     * The only folders on the private disk a link may ever be minted for.
+     * Everything private is uploaded into one of these, so anything else is a
+     * bad path (e.g. a "0" left behind by a failed upload that stored a falsy
+     * return value) or an attempt to reach somewhere it shouldn't.
+     */
+    public const PRIVATE_PREFIXES = ['slips/', 'booking-documents/'];
+
+    /**
      * A short-lived signed URL for a slip. R2 yields a native presigned URL;
      * disks without temporary-URL support (local dev) fall back to a signed
      * app route that streams the file. Never returns a directly-public URL.
      */
     public static function slipUrl(?string $path, int $ttlMinutes = self::SLIP_URL_TTL_MINUTES): ?string
     {
+        if ($path !== null && $path !== '' && ! str_starts_with($path, 'slips/')) {
+            return null;
+        }
+
+        return self::privateUrl($path, $ttlMinutes);
+    }
+
+    /**
+     * A short-lived signed URL for any file on the private disk — slips and the
+     * identity documents customers attach to a booking. Same mechanism as
+     * [self::slipUrl]; the folder allow-list is the guard.
+     */
+    public static function privateUrl(?string $path, int $ttlMinutes = self::SLIP_URL_TTL_MINUTES): ?string
+    {
         if ($path === null || $path === '') {
             return null;
         }
 
-        // Slips always live under slips/. A path that doesn't (e.g. a "0" left
-        // behind by a failed upload that stored a falsy return value) would only
-        // ever mint a link to a non-existent object, so don't.
-        if (! str_starts_with($path, 'slips/')) {
+        if (! self::isPrivatePath($path)) {
             return null;
         }
 
@@ -87,5 +106,17 @@ class MediaDisk
                 ['token' => Crypt::encryptString($path)],
             );
         }
+    }
+
+    /** ไฟล์นี้อยู่ในโฟลเดอร์ส่วนตัวที่อนุญาตไหม */
+    public static function isPrivatePath(string $path): bool
+    {
+        foreach (self::PRIVATE_PREFIXES as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

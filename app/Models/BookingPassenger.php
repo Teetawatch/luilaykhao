@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BookingPassenger extends Model
 {
@@ -48,5 +49,11 @@ class BookingPassenger extends Model
     public function pickupPoint(): BelongsTo
     {
         return $this->belongsTo(SchedulePickupPoint::class, 'pickup_point_id');
+    }
+
+    /** เอกสารที่ผู้เดินทางคนนี้แนบมา */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(BookingDocument::class, 'booking_passenger_id');
     }
 }

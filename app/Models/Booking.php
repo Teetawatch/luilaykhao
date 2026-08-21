@@ -153,6 +153,12 @@ class Booking extends Model
         return $this->hasMany(BookingPassenger::class);
     }
 
+    /** ไฟล์เอกสารที่ลูกค้าแนบมาตามที่ทริปขอ (ผูกรายผู้เดินทาง) */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(BookingDocument::class);
+    }
+
     public function members(): HasMany
     {
         return $this->hasMany(BookingMember::class);

@@ -672,6 +672,36 @@
                   <InfoItem label="การแพ้ / อาหาร" :value="passenger.allergies || '-'" wide />
                   <InfoItem label="หมายเหตุสุขภาพ" :value="passenger.health_notes || '-'" wide />
                 </div>
+
+                <!-- เอกสารที่คนนี้แนบมา ตามรายการที่ตั้งไว้บนทริป -->
+                <div v-if="passengerDocuments(passenger).length" class="doc-block">
+                  <div v-for="req in passengerDocuments(passenger)" :key="req.key" class="doc-req">
+                    <div class="doc-req-head">
+                      <span class="doc-req-label">{{ req.label }}</span>
+                      <span v-if="req.is_missing" class="doc-missing">ยังไม่แนบ</span>
+                      <span v-else-if="!req.files.length" class="doc-optional">ไม่บังคับ · ยังไม่แนบ</span>
+                    </div>
+                    <p v-if="req.note" class="doc-req-note">{{ req.note }}</p>
+                    <div v-if="req.files.length" class="doc-files">
+                      <div v-for="file in req.files" :key="file.id" class="doc-file">
+                        <span class="material-symbols-rounded">
+                          {{ file.is_image ? 'image' : 'picture_as_pdf' }}
+                        </span>
+                        <span class="doc-file-name" :title="file.original_name">{{ file.original_name }}</span>
+                        <a :href="file.url" target="_blank" rel="noopener" title="เปิดดู">
+                          <span class="material-symbols-rounded">visibility</span>
+                        </a>
+                        <a :href="file.url" :download="file.original_name" title="ดาวน์โหลด">
+                          <span class="material-symbols-rounded">download</span>
+                        </a>
+                        <button type="button" class="doc-file-delete" title="ลบไฟล์นี้"
+                          :disabled="deletingDocumentId === file.id" @click="deleteDocument(file)">
+                          <span class="material-symbols-rounded">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <div v-else class="empty-inline">ยังไม่มีข้อมูลผู้โดยสาร</div>
@@ -2885,6 +2915,39 @@ function certLabel(passenger) {
   return [passenger.dive_cert_level, passenger.cert_number].filter(Boolean).join(' / ');
 }
 
+// ── เอกสารแนบของการจอง ──────────────────────────────────────────────────
+// รายการที่ทริปขอ + ไฟล์ที่แต่ละคนส่งมา มาพร้อมกับ detail ของการจองอยู่แล้ว
+// (ลิงก์ไฟล์เป็น signed URL อายุสั้น — เปิดหน้านี้ค้างไว้นาน ๆ ต้องกดโหลดใหม่)
+const deletingDocumentId = ref(null);
+
+function passengerDocuments(passenger) {
+  const rows = detailBooking.value?.documents?.passengers || [];
+  const row = rows.find((item) => item.passenger_id === passenger?.id);
+  return row?.requirements || [];
+}
+
+async function deleteDocument(file) {
+  const bookingRef = detailBooking.value?.booking_ref;
+  if (!bookingRef || deletingDocumentId.value) return;
+
+  const confirmed = confirm(
+    `ลบเอกสาร "${file.original_name}" ใช่หรือไม่?\nลบแล้วกู้คืนไม่ได้ ลูกค้าจะต้องแนบมาใหม่`
+  );
+  if (!confirmed) return;
+
+  deletingDocumentId.value = file.id;
+  try {
+    const res = await api.delete(`/bookings/${bookingRef}/documents/${file.id}`);
+    // ตอบกลับมาเป็นผังเอกสารชุดใหม่ทั้งชุด — เขียนทับไปเลย ไม่ต้องโหลดการจองใหม่
+    detailBooking.value = { ...detailBooking.value, documents: res.data.data };
+    toast.success('ลบเอกสารแล้ว');
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'ลบเอกสารไม่สำเร็จ');
+  } finally {
+    deletingDocumentId.value = null;
+  }
+}
+
 function moneyNumber(amount) {
   const value = Number(amount);
   return Number.isFinite(value) ? value : 0;
@@ -4367,6 +4430,114 @@ async function reverifySlip(bookingRef, slipType) {
 .food-badge.halal {
   color: #059669;
   background: #ecfdf5;
+}
+
+/* เอกสารแนบรายคน */
+.doc-block {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doc-req-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.doc-req-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--color-text-dark);
+}
+
+.doc-missing,
+.doc-optional {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.doc-missing {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.doc-optional {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.doc-req-note {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.doc-files {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.doc-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #fafafa;
+}
+
+.doc-file .material-symbols-rounded {
+  font-size: 18px;
+  color: #7c3aed;
+}
+
+.doc-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+}
+
+.doc-file a,
+.doc-file-delete {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 2px;
+  color: var(--color-text-muted);
+}
+
+.doc-file a:hover .material-symbols-rounded {
+  color: #4338ca;
+}
+
+.doc-file-delete .material-symbols-rounded {
+  color: #9ca3af;
+}
+
+.doc-file-delete:hover .material-symbols-rounded {
+  color: #dc2626;
+}
+
+.doc-file-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .two-column {

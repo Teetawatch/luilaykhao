@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BeamPaymentController;
 use App\Http\Controllers\Api\V1\BeamWebhookController;
 use App\Http\Controllers\Api\V1\BookingController;
+use App\Http\Controllers\Api\V1\BookingDocumentController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatController;
@@ -206,6 +207,13 @@ Route::prefix('v1')->group(function () {
         // ของลิงก์ /booking-passport/{token} ที่ส่งไปทางอีเมล
         Route::get('bookings/{ref}/travel-documents', [TravelDocumentController::class, 'show']);
         Route::post('bookings/{ref}/travel-documents', [TravelDocumentController::class, 'store']);
+
+        // ไฟล์เอกสารแนบที่ทริปขอ (แอดมินกำหนดรายการเองต่อทริป) — แนบตอนจอง
+        // หรือตามมาแนบทีหลังก็ได้ อัปโหลดจำกัดจำนวนครั้งเพราะเป็นไฟล์ ไม่ใช่ JSON
+        Route::get('bookings/{ref}/documents', [BookingDocumentController::class, 'index']);
+        Route::post('bookings/{ref}/documents', [BookingDocumentController::class, 'store'])
+            ->middleware('throttle:40,60');
+        Route::delete('bookings/{ref}/documents/{documentId}', [BookingDocumentController::class, 'destroy']);
 
         // ดูแลเนื้อหา (UGC) — รายงานเนื้อหาได้ทุกชนิด และบล็อกผู้ใช้ที่ก่อกวน
         Route::get('moderation/reasons', [ModerationController::class, 'reasons']);

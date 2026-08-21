@@ -379,6 +379,14 @@
               </div>
             </section>
 
+            <!-- เอกสารแนบที่ทริปขอ — ที่ที่ลูกค้าตามมาแนบทีหลัง
+                 (component ซ่อนตัวเองเมื่อทริปไม่ได้ขอเอกสาร) -->
+            <BookingDocuments
+              :booking-ref="booking.booking_ref"
+              :documents="booking.documents || {}"
+              @updated="(payload) => (booking.documents = payload)"
+            />
+
             <!-- Support / Help Area -->
             <section class="bg-white rounded-[2rem] border border-gray-100 p-8 group">
               <div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
@@ -515,6 +523,7 @@ import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import QRCode from 'qrcode';
 import { purchase } from '../lib/analytics';
+import BookingDocuments from '../components/BookingDocuments.vue';
 import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
 import RallyCard from '../components/RallyCard.vue';
 

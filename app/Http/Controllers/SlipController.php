@@ -8,10 +8,11 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Streams a payment slip from the private disk for disks that can't mint their
- * own presigned URLs (e.g. the local disk in development). Reached only via a
- * temporary signed URL minted by [MediaDisk::slipUrl]; the 'signed' middleware
- * enforces the signature and expiry, and the path is carried encrypted.
+ * Streams a private file — a payment slip, or a document a customer attached to
+ * a booking — for disks that can't mint their own presigned URLs (e.g. the
+ * local disk in development). Reached only via a temporary signed URL minted by
+ * [MediaDisk::privateUrl]; the 'signed' middleware enforces the signature and
+ * expiry, and the path is carried encrypted.
  */
 class SlipController extends Controller
 {
@@ -23,8 +24,8 @@ class SlipController extends Controller
             abort(403);
         }
 
-        // Defence in depth: only ever serve out of the slips/ folder.
-        if (! str_starts_with($path, 'slips/')) {
+        // Defence in depth: only ever serve out of the private folders.
+        if (! MediaDisk::isPrivatePath($path)) {
             abort(403);
         }
 

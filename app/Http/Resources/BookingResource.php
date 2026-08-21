@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Booking;
+use App\Services\BookingDocumentService;
 use App\Services\TravelDocumentService;
 use App\Support\MediaDisk;
 use App\Support\PaymentGateway;
@@ -187,6 +188,14 @@ class BookingResource extends JsonResource
             'passport' => $this->when(
                 $this->relationLoaded('passengers') && $this->relationLoaded('schedule'),
                 fn () => app(TravelDocumentService::class)->summary($this->resource),
+            ),
+            // เอกสารแนบที่ทริปนี้ขอ + ไฟล์ที่แต่ละคนส่งมาแล้ว ส่งมาพร้อมการจอง
+            // เลย หน้ารายละเอียดจะได้ไม่ต้องยิงอีกรอบเพียงเพื่อรู้ว่ามีหรือไม่มี
+            'documents' => $this->when(
+                $this->relationLoaded('passengers')
+                    && $this->relationLoaded('documents')
+                    && $this->relationLoaded('schedule'),
+                fn () => app(BookingDocumentService::class)->payload($this->resource),
             ),
             'staff_reviews' => $this->when(
                 $this->relationLoaded('staffReviews'),

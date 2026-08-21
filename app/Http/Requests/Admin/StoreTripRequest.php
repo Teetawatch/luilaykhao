@@ -79,6 +79,13 @@ class StoreTripRequest extends FormRequest
             'rental_items.*.price' => ['required_with:rental_items', 'numeric', 'min:0'],
             'rental_items.*.image_url' => ['nullable', 'string', 'max:2048'],
             'rental_items.*.description' => ['nullable', 'string', 'max:500'],
+            // เอกสารที่ทริปนี้ขอให้ลูกค้าแนบ — `note` คือช่อง "ใช้สำหรับ..."
+            // ที่แอดมินพิมพ์เอง `key` มาจากของเดิมเมื่อแก้แถวที่มีไฟล์แนบแล้ว
+            'document_requirements' => ['nullable', 'array', 'max:20'],
+            'document_requirements.*.key' => ['nullable', 'string', 'max:64'],
+            'document_requirements.*.label' => ['required_with:document_requirements', 'string', 'max:255'],
+            'document_requirements.*.note' => ['nullable', 'string', 'max:500'],
+            'document_requirements.*.required' => ['nullable', 'boolean'],
         ];
     }
 }

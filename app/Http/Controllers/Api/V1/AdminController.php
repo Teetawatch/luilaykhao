@@ -47,6 +47,7 @@ use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
 use App\Support\Polyline;
 use App\Support\ThaiDate;
+use App\Support\TripDocumentRequirements;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
 use App\Traits\RemapsBookingPickup;
@@ -205,7 +206,7 @@ class AdminController extends Controller
 
     public function storeTrip(StoreTripRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        $data = $this->withNormalizedDocuments($request->validated());
         $slugBase = Str::slug($data['title']);
         if (empty($slugBase)) {
             $slugBase = 'trip-'.Str::random(3);
@@ -220,9 +221,24 @@ class AdminController extends Controller
     public function updateTrip(StoreTripRequest $request, int $id): JsonResponse
     {
         $trip = Trip::findOrFail($id);
-        $trip->update($request->validated());
+        $trip->update($this->withNormalizedDocuments($request->validated()));
 
         return $this->success(new TripResource($trip->fresh()), 'อัปเดตทริปสำเร็จ');
+    }
+
+    /**
+     * เขียน `key` ของเอกสารแนบลงฐานข้อมูลเสมอ
+     *
+     * key เป็นตัวผูกไฟล์ที่ลูกค้าส่งมาแล้วกับข้อกำหนด ถ้าปล่อยให้คำนวณจากชื่อ
+     * ตอนอ่าน วันที่แอดมินแก้ชื่อเอกสารคือวันที่ไฟล์เก่าทั้งกองหลุดจากช่องของมัน
+     */
+    private function withNormalizedDocuments(array $data): array
+    {
+        if (array_key_exists('document_requirements', $data)) {
+            $data['document_requirements'] = TripDocumentRequirements::normalize($data['document_requirements']);
+        }
+
+        return $data;
     }
 
     public function bulkUpdateTripField(Request $request): JsonResponse
@@ -1085,6 +1101,9 @@ class AdminController extends Controller
             'seats',
             'installmentPayments',
             'pickupPoint',
+            // เอกสารแนบ — เฉพาะหน้ารายละเอียด ไม่ใส่ในหน้ารายการ เพราะแต่ละไฟล์
+            // ต้อง mint ลิงก์ signed ใหม่ทุกครั้ง
+            'documents',
         ])
             ->where('booking_ref', $ref)
             ->firstOrFail();
