@@ -174,6 +174,7 @@ const menuGroups = ref([
       { to: '/admin/van-trips', icon: 'fas fa-shuttle-van', label: 'บริการรถตู้' },
       { to: '/admin/vehicles', icon: 'fas fa-car', label: 'จัดการยานพาหนะ' },
       { to: '/admin/drivers', icon: 'fas fa-id-card', label: 'ทะเบียนคนขับ' },
+      { to: '/admin/pickup-vehicles', icon: 'fas fa-car-side', label: 'รถรับ-ส่งจุดรับ' },
       { to: '/admin/tracking', icon: 'fas fa-map-marker-alt', label: 'ติดตามรถ GPS' },
       { to: '/admin/maintenance', icon: 'fas fa-tools', label: 'ประวัติบำรุงรักษา' },
     ],

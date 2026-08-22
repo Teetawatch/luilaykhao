@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PhotoController;
+use App\Http\Controllers\Api\V1\PickupVehicleClassController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
@@ -159,6 +160,9 @@ Route::prefix('v1')->group(function () {
 
     // Categories (public)
     Route::get('categories', [CategoryController::class, 'index']);
+
+    // ประเภทรถรับ-ส่งจากจุดรับต่างภูมิภาค — ไกด์ให้ลูกค้าเห็นว่าค่าจุดรับได้รถแบบไหน
+    Route::get('pickup-vehicle-classes', [PickupVehicleClassController::class, 'index']);
 
     // ประเทศปลายทางที่รองรับ — แอดมินใช้เติม dropdown, ฟอร์มจองใช้เลือกสัญชาติ
     Route::get('countries', [CountryController::class, 'index']);
@@ -796,6 +800,13 @@ Route::prefix('v1')->group(function () {
         Route::post('categories/reorder', [CategoryController::class, 'reorder']);
         Route::put('categories/{id}', [CategoryController::class, 'update']);
         Route::delete('categories/{id}', [CategoryController::class, 'destroy']);
+
+        // ประเภทรถรับ-ส่งจุดรับต่างภูมิภาค (รูปรถใช้ตัวอัปโหลดเดียวกับรูปจุดรับ)
+        Route::get('pickup-vehicle-classes', [PickupVehicleClassController::class, 'adminIndex']);
+        Route::post('pickup-vehicle-classes', [PickupVehicleClassController::class, 'store']);
+        Route::post('pickup-vehicle-classes/reorder', [PickupVehicleClassController::class, 'reorder']);
+        Route::put('pickup-vehicle-classes/{id}', [PickupVehicleClassController::class, 'update']);
+        Route::delete('pickup-vehicle-classes/{id}', [PickupVehicleClassController::class, 'destroy']);
 
         // Analytics Dashboard
         Route::get('analytics/overview', [AnalyticsController::class, 'overview']);

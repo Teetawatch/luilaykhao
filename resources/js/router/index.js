@@ -308,6 +308,7 @@ const routes = [
       { path: 'analytics', name: 'admin-analytics', component: () => import('../pages/admin/AnalyticsPage.vue') },
       { path: 'tracking', name: 'admin-tracking', component: () => import('../pages/admin/TrackingPage.vue') },
       { path: 'categories', name: 'admin-categories', component: () => import('../pages/admin/CategoriesPage.vue') },
+      { path: 'pickup-vehicles', name: 'admin-pickup-vehicles', component: () => import('../pages/admin/PickupVehiclesPage.vue') },
       { path: 'inquiries', name: 'admin-inquiries', component: () => import('../pages/admin/InquiriesPage.vue') },
       { path: 'promotions', name: 'admin-promotions', component: () => import('../pages/admin/PromotionsPage.vue') },
       { path: 'urgent-popup', name: 'admin-urgent-popup', component: () => import('../pages/admin/UrgentPopupPage.vue') },

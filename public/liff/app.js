@@ -338,6 +338,9 @@ function renderSeatStep() {
       pickupOption(p.id, p.pickup_location || p.region_label || 'จุดรับ', p.price, p.pickup_time)
     ));
     content.appendChild(list);
+    // ไกด์ประเภทรถรับ-ส่ง — เติมทีหลังเมื่อโหลดเสร็จ/เมื่อเปลี่ยนจุดรับ
+    content.appendChild(el(`<div id="pickupVehicleGuide"></div>`));
+    loadVehicleClasses().then(renderPickupVehicleGuide);
   }
 
   node.appendChild(content);
@@ -470,6 +473,8 @@ function refreshSeatStep() {
   }
   if (est) est.textContent = n ? baht(estimateTotal()) : '';
   if (next) next.disabled = n === 0;
+  // จุดรับและจำนวนคนเปลี่ยนได้ทั้งคู่ตรงนี้ ไกด์รถจึงวาดใหม่ทุกครั้ง
+  renderPickupVehicleGuide();
 }
 
 // ตัวนับจำนวนผู้เดินทางสำหรับรอบที่ไม่มีผังที่นั่ง
@@ -500,6 +505,72 @@ function buildPaxStepper() {
   };
   sync();
   return wrap;
+}
+
+/* --------- pickup vehicle guide (ไกด์ประเภทรถรับ-ส่ง) --------- */
+
+// โหลดครั้งเดียวต่อการเปิดแอป ล้มก็เงียบ ๆ (เป็นข้อมูลประกอบ ไม่ใช่ตัวจอง)
+let vehicleClasses = null;
+let vehicleClassesPending = null;
+
+function loadVehicleClasses() {
+  if (vehicleClasses) return Promise.resolve(vehicleClasses);
+  if (!vehicleClassesPending) {
+    vehicleClassesPending = api('/pickup-vehicle-classes', { auth: false })
+      .then((res) => { vehicleClasses = res.data || []; return vehicleClasses; })
+      .catch(() => { vehicleClassesPending = null; return []; });
+  }
+  return vehicleClassesPending;
+}
+
+/**
+ * จุดรับที่เลือกแพงกว่าราคารอบไหม
+ *
+ * `price` ของจุดรับคือราคาต่อคนเมื่อขึ้นจุดนั้น (ทับราคารอบ) ไม่ใช่ส่วนต่าง
+ * จุดที่เท่าราคารอบจึงไม่ได้จ่ายเพิ่ม และไม่ต้องอธิบายเรื่องรถรับ-ส่ง
+ */
+function pickupHasSurcharge() {
+  const point = selectedPickup();
+  if (!point) return false;
+  const price = Number(point.price || 0);
+  return price > 0 && price > Number(bk.schedule.price || 0);
+}
+
+function renderPickupVehicleGuide() {
+  const host = document.getElementById('pickupVehicleGuide');
+  if (!host) return;
+
+  host.innerHTML = '';
+  if (!pickupHasSurcharge() || !vehicleClasses || !vehicleClasses.length) return;
+
+  // ไฮไลต์ใบที่ตรงกับจำนวนคน แต่ยังโชว์ทั้งชุด — ตอนนี้ยังไม่รู้ว่าจุดนั้นจะมี
+  // คนรวมกี่คน การโชว์ใบเดียวจึงเป็นคำสัญญาที่ผิดได้เมื่อวันจริงถูกรวมกลุ่ม
+  const pax = paxCount();
+  const match = vehicleClasses.find(
+    (c) => pax >= c.min_pax && (c.max_pax === null || pax <= c.max_pax)
+  );
+
+  const wrap = el(`<div class="veh-guide">
+    <div class="veh-title">🚐 รถรับ-ส่งมาที่จุดขึ้นรถ</div>
+    ${match ? `<div class="veh-match">เดินทาง ${pax} ท่าน โดยประมาณจะใช้${esc(match.label)}</div>` : ''}
+    <div class="veh-row"></div>
+    <p class="veh-note">ค่าจุดรับที่จ่ายเพิ่มคือค่ารถรับ-ส่งมาที่จุดขึ้นรถจุดแรก ประเภทรถขึ้นกับจำนวนผู้โดยสารรวมที่จุดนั้นในวันเดินทาง</p>
+  </div>`);
+
+  const row = wrap.querySelector('.veh-row');
+  vehicleClasses.forEach((c) => {
+    row.appendChild(el(`<div class="veh-card${match && c.id === match.id ? ' on' : ''}">
+      ${c.image_url
+        ? `<img src="${esc(c.image_url)}" alt="${esc(c.label)}" loading="lazy">`
+        : '<div class="veh-thumb-empty">🚗</div>'}
+      <div class="veh-body">
+        <div class="veh-label">${esc(c.label)}</div>
+        <div class="veh-pax">${esc(c.pax_label || '')}</div>
+      </div>
+    </div>`));
+  });
+
+  host.appendChild(wrap);
 }
 
 function pickupOption(id, label, price, time) {

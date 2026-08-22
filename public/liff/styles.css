@@ -213,3 +213,32 @@ ul.bullets li { margin-bottom: 4px; }
 
 .cta-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
 .cta-row .price { font-size: 18px; font-weight: 800; }
+
+/* ---- Pickup vehicle guide (ไกด์ประเภทรถรับ-ส่งจุดรับต่างภูมิภาค) ---- */
+.veh-guide {
+  margin-top: 12px; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+}
+.veh-title { font-weight: 700; font-size: 14px; }
+.veh-match { font-size: 13px; font-weight: 700; color: var(--green); margin-top: 2px; }
+.veh-row {
+  display: flex; gap: 8px; margin-top: 10px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.veh-row::-webkit-scrollbar { display: none; }
+.veh-card {
+  flex: 0 0 128px; border: 1px solid var(--line); border-radius: 10px;
+  overflow: hidden; background: var(--bg);
+}
+.veh-card.on { border: 2px solid var(--green); background: #eaf4ee; }
+.veh-card img, .veh-thumb-empty {
+  width: 100%; height: 76px; object-fit: cover; display: block; background: var(--line);
+}
+.veh-thumb-empty {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; opacity: .45;
+}
+.veh-body { padding: 7px 9px 9px; }
+.veh-label { font-weight: 700; font-size: 13px; }
+.veh-pax { font-size: 12px; color: var(--muted); font-weight: 600; }
+.veh-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }

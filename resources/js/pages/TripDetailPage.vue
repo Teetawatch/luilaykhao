@@ -899,6 +899,9 @@
                   </div>
                 </div>
 
+                <!-- จุดรับที่แพงกว่าราคารอบ = มีรถวิ่งมารับถึงจุดขึ้นรถจุดแรก ให้เห็นว่าเป็นรถแบบไหน -->
+                <PickupVehicleGuide v-if="pickupHasSurcharge" has-surcharge class="mb-8" />
+
                 <!-- พยากรณ์อากาศวันเดินทาง (แสดงเมื่อ backend แนบมากับรอบที่เลือก) -->
                 <WeatherBadge v-if="selectedSchedule?.weather" :weather="selectedSchedule.weather" class="mb-8" />
 
@@ -1824,6 +1827,7 @@ import ScheduleCalendar from '../components/ScheduleCalendar.vue';
 import TripPostsFeed from '../components/TripPostsFeed.vue';
 import TripCard from '../components/TripCard.vue';
 import WeatherBadge from '../components/WeatherBadge.vue';
+import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
 import GroupPlanCreateCard from '../components/GroupPlanCreateCard.vue';
 import { useWishlistStore } from '../stores/wishlist';
@@ -2523,6 +2527,23 @@ const displayPrice = computed(() => {
   
   if (selectedSchedule.value?.price) return Number(selectedSchedule.value.price);
   return Number(trip.value?.price_per_person || 0);
+});
+
+/**
+ * จุดรับที่เลือกคิดเงินเพิ่มจากราคารอบไหม
+ *
+ * `price` ของจุดรับคือ "ราคาต่อคนเมื่อขึ้นจุดนี้" (ทับราคารอบ) ไม่ใช่ส่วนต่าง
+ * จุดที่ราคาเท่ารอบจึงไม่ได้จ่ายเพิ่ม และไม่ต้องอธิบายเรื่องรถรับ-ส่ง
+ */
+const pickupHasSurcharge = computed(() => {
+  if (!selectedPickup.value) return false;
+
+  const base = Number(
+    selectedSchedule.value?.price ?? trip.value?.price_per_person ?? 0,
+  );
+  const price = Number(selectedPickup.value.price || 0);
+
+  return price > 0 && price > base;
 });
 
 // ─── ผ่อนชำระ ──────────────────────────────────────────────

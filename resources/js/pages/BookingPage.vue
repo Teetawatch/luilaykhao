@@ -219,6 +219,11 @@
             </button>
           </div>
 
+          <!-- จุดรับที่แพงกว่าราคารอบ = มีรถวิ่งมารับถึงจุดขึ้นรถจุดแรก ให้เห็นว่าเป็นรถแบบไหน -->
+          <div v-if="pickupHasSurcharge" class="mt-6">
+            <PickupVehicleGuide :pax-count="passengers.length" has-surcharge />
+          </div>
+
           <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-6 rounded-[2rem] border border-gray-100">
             <button @click="$router.push('/trips')"
               class="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900 px-6 py-3 rounded-2xl font-bold transition-all">
@@ -1762,6 +1767,7 @@ import { useBookingStore } from '../stores/booking';
 import SeatMap from '../components/SeatMap.vue';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import CustomPickupModal from '../components/CustomPickupModal.vue';
+import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
@@ -1982,6 +1988,19 @@ const customPickupPrice = computed(() => Math.max(
   basePrice.value,
   Number(nearestPickupPoint.value?.price || 0),
 ));
+
+/**
+ * จุดรับที่เลือกคิดเงินเพิ่มจากราคารอบไหม
+ *
+ * `price` ของจุดรับคือ "ราคาต่อคนเมื่อขึ้นจุดนี้" (ทับราคารอบ) ไม่ใช่ส่วนต่าง
+ * จุดที่ราคาเท่ารอบจึงไม่ได้จ่ายเพิ่ม และไม่ต้องอธิบายเรื่องรถรับ-ส่ง
+ */
+const pickupHasSurcharge = computed(() => {
+  if (customPickup.value) return customPickupPrice.value > basePrice.value;
+
+  const price = Number(selectedPickup.value?.price || 0);
+  return price > 0 && price > basePrice.value;
+});
 
 const customPickupMatchesZone = computed(() => Boolean(
   customPickup.value && Number(nearestPickupPoint.value?.price || 0) > basePrice.value,
