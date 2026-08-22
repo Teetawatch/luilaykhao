@@ -585,6 +585,8 @@ class DriverController extends Controller
                 'contact_avatar_url' => $booking->user?->avatar ? $booking->user->avatar_url : null,
                 'is_group' => (bool) $booking->is_group,
                 'group_name' => $booking->group_name,
+                // จอยทริป = ลูกค้าไปเจอกันเองที่จุดนัด ไม่ได้ใช้รถของรอบ จึงไม่มีจุดขึ้นรถ
+                'is_join_trip' => (bool) $booking->is_join_trip,
                 'pickup_region' => $booking->pickup_region,
                 'pickup_location' => $bookingPoint?->pickup_location,
                 'pickup_region_label' => $bookingPoint?->region_label,
@@ -604,6 +606,14 @@ class DriverController extends Controller
                 'checked_in' => $bookings->where('checked_in', true)->count(),
                 'passengers' => $bookings->sum(fn (Booking $booking) => $booking->passengers->count()),
                 'checked_in_passengers' => $bookings->where('checked_in', true)
+                    ->sum(fn (Booking $booking) => $booking->passengers->count()),
+                // แยกหัวคนตามชนิดการจอง — สตาฟใช้เทียบว่าต้องรับขึ้นรถกี่คน
+                // และมีอีกกี่คนที่จะมาเจอกันเองหน้างาน
+                'join_trip_passengers' => $bookings
+                    ->filter(fn (Booking $booking) => (bool) $booking->is_join_trip)
+                    ->sum(fn (Booking $booking) => $booking->passengers->count()),
+                'regular_passengers' => $bookings
+                    ->reject(fn (Booking $booking) => (bool) $booking->is_join_trip)
                     ->sum(fn (Booking $booking) => $booking->passengers->count()),
                 'care_alerts' => $bookings->sum(
                     fn (Booking $booking) => $booking->passengers
@@ -715,11 +725,19 @@ class DriverController extends Controller
                     ? null
                     : ($this->pointOnSchedule($passenger->pickupPoint, $booking)
                         ?: $this->pointOnSchedule($booking->pickupPoint, $booking));
-                $key = $isCustom ? 'custom-'.$booking->id : ($point?->id ?? 0);
+                // จอยทริปไม่มีจุดขึ้นรถโดยธรรมชาติ (ลูกค้าเดินทางไปเจอกันเอง) จึงต้อง
+                // แยกกลุ่มของตัวเอง ไม่ปนกับ "ไม่ระบุจุดรับ" ซึ่งแปลว่าจองปกติแล้ว
+                // ข้อมูลจุดรับหาย — สองอย่างนี้สตาฟต้องจัดการคนละแบบ
+                $isJoinTrip = (bool) $booking->is_join_trip && ! $isCustom && ! $point;
+                $key = match (true) {
+                    $isCustom => 'custom-'.$booking->id,
+                    $isJoinTrip => 'join-trip',
+                    default => $point?->id ?? 0,
+                };
 
                 if (! isset($groups[$key])) {
-                    $groups[$key] = $isCustom
-                        ? [
+                    $groups[$key] = match (true) {
+                        $isCustom => [
                             'id' => null,
                             'label' => $booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง',
                             'region_label' => 'ลูกค้าปักหมุดเอง',
@@ -732,11 +750,26 @@ class DriverController extends Controller
                             ),
                             'notes' => $booking->custom_pickup_note,
                             'is_custom' => true,
+                            'is_join_trip' => false,
                             'sort_order' => 9000,
                             'completed_at' => null,
                             'passengers' => [],
-                        ]
-                        : [
+                        ],
+                        $isJoinTrip => [
+                            'id' => null,
+                            'label' => 'จอยทริป (ไม่มีจุดขึ้นรถ)',
+                            'region_label' => 'ไปเจอกันที่จุดนัดพบ',
+                            'lat' => null,
+                            'lng' => null,
+                            'map_url' => null,
+                            'notes' => null,
+                            'is_custom' => false,
+                            'is_join_trip' => true,
+                            'sort_order' => 9500,
+                            'completed_at' => null,
+                            'passengers' => [],
+                        ],
+                        default => [
                             'id' => $point?->id,
                             'label' => $point
                                 ? ($point->pickup_location ?: $point->region_label ?: 'จุดรับ')
@@ -747,10 +780,12 @@ class DriverController extends Controller
                             'map_url' => $point?->map_url,
                             'notes' => $point?->notes,
                             'is_custom' => false,
+                            'is_join_trip' => false,
                             'sort_order' => $point?->sort_order ?? 9999,
                             'completed_at' => $point?->completed_at?->toIso8601String(),
                             'passengers' => [],
-                        ];
+                        ],
+                    };
                 }
 
                 $groups[$key]['passengers'][] = [
@@ -758,6 +793,9 @@ class DriverController extends Controller
                     'name' => $passenger->name,
                     'full_name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
                     'nickname' => $passenger->nickname,
+                    // จอยทริป vs จองปกติ — ติดไว้รายคนด้วย เพราะกลุ่มจุดรับหนึ่งจุด
+                    // อาจมีทั้งสองแบบปนกันได้ (จอยทริปที่แอดมินใส่จุดรับให้)
+                    'is_join_trip' => (bool) $booking->is_join_trip,
                     'phone' => $passenger->phone ?: $booking->user?->phone,
                     'seat_label' => $seatByName->get(trim((string) $passenger->name))?->seat_id,
                     'checked_in' => (bool) $booking->checked_in,

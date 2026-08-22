@@ -58,7 +58,7 @@ class StaffController extends Controller
                 $bookings = Booking::where('schedule_id', $s->id)
                     ->whereIn('status', ['confirmed', 'completed'])
                     ->with(['passengers:id,booking_id,pickup_point_id,name,nickname,phone'])
-                    ->get(['id', 'pickup_point_id', 'checked_in']);
+                    ->get(['id', 'pickup_point_id', 'checked_in', 'is_join_trip']);
 
                 // Flatten each booking into per-passenger rows so headcount,
                 // per-pickup tallies and the per-point roster are all accurate.
@@ -70,6 +70,8 @@ class StaffController extends Controller
                         'checked_in' => (bool) $b->checked_in,
                         'name' => trim((string) ($p->nickname ?: $p->name)) ?: 'ผู้โดยสาร',
                         'phone' => $p->phone,
+                        // จอยทริป = ไปเจอกันเองหน้างาน ไม่ได้ขึ้นรถของรอบ
+                        'is_join_trip' => (bool) $b->is_join_trip,
                     ]);
                 });
 
@@ -83,6 +85,7 @@ class StaffController extends Controller
                         'name' => $r['name'],
                         'phone' => $r['phone'],
                         'checked_in' => $r['checked_in'],
+                        'is_join_trip' => $r['is_join_trip'],
                     ])
                     ->values();
 
@@ -101,7 +104,11 @@ class StaffController extends Controller
                     ->filter(fn ($p) => $p['passenger_count'] > 0)
                     ->values();
 
-                $noPickupRows = $passengerRows->whereNull('pickup_point_id');
+                // คนที่ไม่มีจุดรับมีสองแบบ แยกกันให้ชัด: จอยทริปคือไม่มีจุดรับโดยตั้งใจ
+                // ส่วน "ไม่ระบุจุดรับ" คือจองปกติแล้วข้อมูลจุดรับหาย ซึ่งต้องตามเก็บ
+                $pointlessRows = $passengerRows->whereNull('pickup_point_id');
+                $joinTripRows = $pointlessRows->where('is_join_trip', true);
+                $noPickupRows = $pointlessRows->where('is_join_trip', false);
                 $noPickupCount = $noPickupRows->count();
 
                 return [
@@ -128,6 +135,8 @@ class StaffController extends Controller
                     'pickup_breakdown' => $pickupBreakdown,
                     'no_pickup_count' => $noPickupCount,
                     'no_pickup_passengers' => $roster($noPickupRows),
+                    'join_trip_count' => $joinTripRows->count(),
+                    'join_trip_passengers' => $roster($joinTripRows),
                 ];
             })->values(),
         ]);
