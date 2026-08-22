@@ -393,6 +393,9 @@ Route::prefix('v1')->group(function () {
         Route::post('sos', [SosController::class, 'trigger']);
         Route::get('sos/active', [SosController::class, 'active']);
         Route::post('sos/{id}/resolve', [SosController::class, 'resolve']);
+        // เบอร์สำรองที่โทร/ส่ง SMS ได้เมื่อ SOS ในแอปส่งไม่ออก — แอปดึงเก็บไว้ล่วงหน้า
+        Route::get('schedules/{id}/emergency-contacts', [SosController::class, 'emergencyContacts'])
+            ->whereNumber('id');
 
         // การ์ด "วันเดินทาง" บนหน้าจอล็อก / Dynamic Island (Live Activity)
         Route::post('live-activities', [LiveActivityController::class, 'store']);

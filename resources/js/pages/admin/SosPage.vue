@@ -60,9 +60,23 @@
             <span class="status-pill" :class="a.status">
               {{ a.status === 'resolved' ? 'ปิดเคสแล้ว' : 'ยังไม่ปิดเคส' }}
             </span>
-            <span class="sos-time">{{ formatDateTime(a.created_at) }}</span>
-            <span v-if="a.status !== 'resolved'" class="sos-elapsed">{{ elapsed(a.created_at) }}</span>
+            <span class="sos-time">{{ formatDateTime(a.occurred_at || a.created_at) }}</span>
+            <span v-if="a.status !== 'resolved'" class="sos-elapsed">{{ elapsed(a.occurred_at || a.created_at) }}</span>
           </div>
+
+          <!--
+            เคสที่ค้างอยู่ในเครื่องลูกค้าเพราะไม่มีสัญญาณ แล้วเพิ่งส่งออกมาได้
+            ต้องบอกให้ชัด: พิกัดที่เห็นข้างล่างคือที่ที่เขา "เคยอยู่" ตอนกด
+            ไม่ใช่ที่ที่เขาอยู่ตอนนี้ — คนที่ออกไปค้นหาต้องรู้ข้อนี้ก่อนออกรถ
+          -->
+          <p v-if="a.source === 'offline_queue'" class="delayed-note">
+            <span class="material-symbols-rounded">cloud_off</span>
+            <span>
+              <strong>ส่งถึงระบบช้า {{ delayLabel(a.delay_minutes) }}</strong>
+              — ลูกค้ากดตอนไม่มีสัญญาณ พิกัดด้านล่างคือตำแหน่งตอนกด
+              (ระบบได้รับ {{ formatDateTime(a.created_at) }})
+            </span>
+          </p>
 
           <h3 class="sos-person">
             <span class="material-symbols-rounded">person_alert</span>
@@ -190,6 +204,15 @@ function formatDate(d) {
 function formatDateTime(d) {
   if (!d) return '';
   return new Date(d).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/** ช่องว่างระหว่างเวลาที่ลูกค้ากด กับเวลาที่ระบบได้รับ */
+function delayLabel(minutes) {
+  const mins = Number(minutes) || 0;
+  if (mins < 60) return `${mins} นาที`;
+  const hours = Math.floor(mins / 60);
+  const rest = mins % 60;
+  return rest ? `${hours} ชม. ${rest} นาที` : `${hours} ชม.`;
 }
 
 function elapsed(d) {
@@ -385,6 +408,15 @@ onBeforeUnmount(() => {
   white-space: pre-wrap; word-break: break-word;
 }
 .admin-note .material-symbols-rounded { color: #94a3b8; font-size: 18px !important; }
+
+/* เคสที่มาถึงช้าเพราะลูกค้าอยู่นอกสัญญาณ — สีเดียวกับกล่องข้อมูลสุขภาพ
+   เพราะเป็นข้อมูลที่ต้องอ่านก่อนออกรถเหมือนกัน ไม่ใช่โน้ตประกอบ */
+.delayed-note {
+  display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0;
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 8px 12px;
+  font-size: 13px; line-height: 1.6; color: #78350f;
+}
+.delayed-note .material-symbols-rounded { color: #b45309; font-size: 18px !important; }
 
 .health-box {
   display: flex; gap: 10px; margin-top: 12px;

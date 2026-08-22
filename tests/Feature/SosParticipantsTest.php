@@ -11,7 +11,6 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
-use App\Services\SosParticipantService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
@@ -173,7 +172,7 @@ class SosParticipantsTest extends TestCase
             'status' => 'active',
         ]);
 
-        (new BroadcastSosAlert($alert->id))->handle(app(SosParticipantService::class));
+        app()->call([new BroadcastSosAlert($alert->id), 'handle']);
 
         foreach ([$companion, $driver, $staff, $ops] as $recipient) {
             Bus::assertDispatched(
@@ -205,7 +204,7 @@ class SosParticipantsTest extends TestCase
             'status' => 'active',
         ]);
 
-        (new BroadcastSosAlert($alert->id))->handle(app(SosParticipantService::class));
+        app()->call([new BroadcastSosAlert($alert->id), 'handle']);
 
         Bus::assertNotDispatched(
             DeliverSosAlert::class,

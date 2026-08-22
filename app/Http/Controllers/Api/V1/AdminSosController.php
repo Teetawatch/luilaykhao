@@ -112,6 +112,12 @@ class AdminSosController extends Controller
             'latitude' => $alert->latitude,
             'longitude' => $alert->longitude,
             'created_at' => $alert->created_at?->toISOString(),
+            // เวลาที่ลูกค้ากด กับช่องว่างจนถึงเวลาที่ระบบได้รับ — เคสที่ค้างอยู่ใน
+            // เครื่องเพราะไม่มีสัญญาณจะมีสองค่านี้ต่างกันเป็นสิบนาทีถึงชั่วโมง
+            // แปลว่าพิกัดที่แสดงอยู่คือที่ที่เขา "เคยอยู่" ไม่ใช่ที่ที่เขาอยู่ตอนนี้
+            'occurred_at' => $alert->happenedAt()?->toISOString(),
+            'delay_minutes' => $alert->delayMinutes(),
+            'source' => $alert->source ?? SosAlert::SOURCE_APP,
             'resolved_at' => $alert->resolved_at?->toISOString(),
             'resolved_by_name' => $alert->resolver?->name,
 

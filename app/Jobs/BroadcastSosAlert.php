@@ -5,7 +5,9 @@ namespace App\Jobs;
 use App\Mail\AdminSosAlertMail;
 use App\Models\SosAlert;
 use App\Models\User;
+use App\Services\SosContactService;
 use App\Services\SosParticipantService;
+use App\Services\SosSmsService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -28,8 +30,11 @@ class BroadcastSosAlert implements ShouldQueue
 
     public function __construct(private int $sosAlertId) {}
 
-    public function handle(SosParticipantService $participants): void
-    {
+    public function handle(
+        SosParticipantService $participants,
+        SosContactService $contacts,
+        SosSmsService $sms,
+    ): void {
         $alert = SosAlert::with(['user', 'schedule.trip', 'schedule.vehicle'])->find($this->sosAlertId);
 
         if (! $alert || ! $alert->schedule || ! $alert->user) {
@@ -50,7 +55,28 @@ class BroadcastSosAlert implements ShouldQueue
             ->reject(fn (int $id) => $id === (int) $alert->user_id)
             ->each(fn (int $id) => DeliverSosAlert::dispatch($alert->id, $id));
 
+        $this->smsResponders($alert, $contacts, $sms);
         $this->emailOps($alert);
+    }
+
+    /**
+     * SMS ถึงสตาฟ คนขับ และทีมออฟฟิศ — ช่องทางเดียวที่ไม่ต้องใช้ data
+     *
+     * push กับ Reverb ไปถึงเฉพาะเครื่องที่ยังต่อเน็ตอยู่ ซึ่งบนดอยคือเครื่องที่
+     * ไม่มี แปลว่าสตาฟที่ยืนอยู่ห่างผู้ประสบเหตุ 300 เมตรอาจเป็นคนสุดท้ายที่รู้
+     * SMS วิ่งบนช่องสัญญาณเสียงจึงไปถึงตรงที่แอปไปไม่ถึง
+     */
+    private function smsResponders(
+        SosAlert $alert,
+        SosContactService $contacts,
+        SosSmsService $sms,
+    ): void {
+        if (! $sms->enabled()) {
+            return;
+        }
+
+        $contacts->notifiablePhones($alert)
+            ->each(fn (string $phone) => DeliverSosSms::dispatch($alert->id, $phone));
     }
 
     /**

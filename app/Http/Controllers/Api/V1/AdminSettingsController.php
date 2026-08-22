@@ -43,6 +43,9 @@ class AdminSettingsController extends Controller
             'quiet_hours_enabled' => ['required', 'boolean'],
             'quiet_start_hour' => ['required', 'integer', 'min:0', 'max:23'],
             'quiet_end_hour' => ['required', 'integer', 'min:0', 'max:23'],
+            // ไม่ required เพราะ Setting::put เขียนทับทั้งก้อน — ฟอร์มรุ่นก่อนที่ยัง
+            // ไม่มีช่องนี้จึงต้องบันทึกผ่านได้โดยไม่ปิดการยิง SMS ทิ้งไปเงียบ ๆ
+            'sos_sms_enabled' => ['nullable', 'boolean'],
             'support_phone' => ['nullable', 'string', 'max:40'],
             'support_line' => ['nullable', 'string', 'max:80'],
             'support_email' => ['nullable', 'email', 'max:120'],
@@ -54,6 +57,8 @@ class AdminSettingsController extends Controller
         if ($data['quiet_start_hour'] === $data['quiet_end_hour']) {
             return $this->error('ช่วงเวลางดรบกวนต้องไม่เริ่มและจบชั่วโมงเดียวกัน', 422);
         }
+
+        $data['sos_sms_enabled'] = (bool) ($data['sos_sms_enabled'] ?? SiteSettings::bool('sos_sms_enabled'));
 
         Setting::put(SiteSettings::KEY, $data);
 

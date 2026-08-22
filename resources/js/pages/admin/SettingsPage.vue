@@ -126,6 +126,29 @@
         </div>
       </section>
 
+      <!-- ── SOS ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">sos</span>
+          <div>
+            <h2>สัญญาณ SOS</h2>
+            <p>ช่องทางแจ้งเตือนตอนลูกค้ากดขอความช่วยเหลือ</p>
+          </div>
+        </div>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.sos_sms_enabled" />
+          <span class="switch"></span>
+          <span>ส่ง SMS หาสตาฟ คนขับ และทีมออฟฟิศ</span>
+        </label>
+
+        <span class="help">
+          push กับอีเมลไปถึงเฉพาะเครื่องที่ต่อเน็ตอยู่ ซึ่งบนดอยคือเครื่องที่ไม่มี
+          — SMS วิ่งบนช่องสัญญาณเสียงจึงไปถึงตรงที่แอปไปไม่ถึง
+          มีค่าใช้จ่ายต่อข้อความ ปิดได้เมื่อเครดิตหมดโดยไม่กระทบ push/อีเมล
+        </span>
+      </section>
+
       <!-- ── ข้อมูลติดต่อ ── -->
       <section class="setting-card">
         <div class="card-head">
@@ -223,6 +246,7 @@ const form = reactive({
   quiet_hours_enabled: true,
   quiet_start_hour: 21,
   quiet_end_hour: 8,
+  sos_sms_enabled: true,
   support_phone: '',
   support_line: '',
   support_email: '',

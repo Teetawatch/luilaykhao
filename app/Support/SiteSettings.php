@@ -31,6 +31,9 @@ class SiteSettings
         'quiet_hours_enabled' => true,
         'quiet_start_hour' => 21,
         'quiet_end_hour' => 8,
+        // ยิง SMS หาสตาฟ/คนขับ/ทีมออฟฟิศเมื่อมีเคส SOS — ช่องทางเดียวที่ไปถึง
+        // เครื่องที่ไม่มี data ปิดได้เมื่อเครดิต SMS หมดโดยไม่กระทบ push/อีเมล
+        'sos_sms_enabled' => true,
         // ข้อมูลติดต่อที่แสดงให้ลูกค้า
         'support_phone' => null,
         'support_line' => null,
