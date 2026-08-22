@@ -33,6 +33,10 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'email', 'unique:users,email', $this->allowedDomainRule()],
             'phone' => ['nullable', 'string', 'max:20'],
             'id_card' => ['nullable', 'string', 'digits:13'],
+            // วันเกิดใช้ต่อในขั้นตอนจอง (ประกันการเดินทาง/ตั๋วเครื่องบิน) เก็บตั้งแต่
+            // สมัครจะได้ไม่ต้องไล่ถามทีหลัง — ยังเป็น nullable เพราะช่องทางอื่น
+            // (LIFF, สมัครผ่านโซเชียล) ยังไม่มีช่องนี้
+            'birth_date' => ['nullable', 'date', 'before:today'],
             'emergency_contact' => ['nullable', 'string', 'max:255'],
             'emergency_phone' => ['nullable', 'string', 'max:20'],
             'allergies' => ['nullable', 'string'],

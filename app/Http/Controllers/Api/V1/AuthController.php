@@ -41,6 +41,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'id_card' => $request->id_card,
+            'birth_date' => $request->birth_date,
             'emergency_contact' => $request->emergency_contact,
             'emergency_phone' => $request->emergency_phone,
             'allergies' => $request->allergies,

@@ -70,7 +70,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
                 ชื่อเล่น
@@ -82,6 +82,20 @@
                 <input v-model="form.nickname" type="text"
                   class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
                   placeholder="น้องเอ" />
+              </div>
+            </div>
+            <!-- วันเกิดถูกใช้ต่อในขั้นตอนจอง (ประกันการเดินทาง/ออกตั๋ว)
+                 กรอกที่นี่ครั้งเดียวแล้วระบบเติมให้เองตอนจอง -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-text-dark flex items-center gap-2">
+                วัน/เดือน/ปีเกิด
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <i class="fa-solid fa-cake-candles text-text-muted/60"></i>
+                </div>
+                <input v-model="form.birth_date" type="date" :max="today"
+                  class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none" />
               </div>
             </div>
             <div class="space-y-1.5">
@@ -217,6 +231,7 @@
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { bangkokToday } from '../lib/bangkokDate';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -235,10 +250,15 @@ const ALLOWED_EMAIL_DOMAINS = [
   'proton.me', 'protonmail.com',
 ];
 
+// ห้ามเลือกวันในอนาคต — ฝั่ง API ก็ปฏิเสธด้วยกฎ before:today
+// ใช้วันที่ไทย ไม่ใช่ UTC ไม่งั้นช่วงเช้ามืดจะกันวันนี้ทิ้งไปด้วย
+const today = bangkokToday();
+
 const form = ref({
   title: '',
   name: '',
   nickname: '',
+  birth_date: '',
   blood_group: '',
   email: '',
   phone: '',
