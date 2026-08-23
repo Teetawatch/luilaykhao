@@ -45,6 +45,7 @@ use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
+use App\Support\PaymentQuote;
 use App\Support\Polyline;
 use App\Support\ThaiDate;
 use App\Support\TripDocumentRequirements;
@@ -470,9 +471,6 @@ class AdminController extends Controller
             'vehicle_id' => ['nullable', 'exists:vehicles,id'],
             'status' => ['sometimes', 'in:open,closed,full,cancelled'],
             'price_override' => ['nullable', 'numeric', 'min:0'],
-            'installment_enabled' => ['nullable', 'boolean'],
-            'installment_count' => ['nullable', 'integer', 'min:2', 'max:12'],
-            'installment_interval_days' => ['nullable', 'integer', 'min:1'],
             'deposit_enabled' => ['nullable', 'boolean'],
             'deposit_type' => ['nullable', 'in:amount,percent'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],
@@ -1914,8 +1912,16 @@ class AdminController extends Controller
             return $this->error('รอบเดินทางนี้ยังไม่ได้เปิดจอยทริป', 422);
         }
 
-        if ($paymentType === 'installment' && ($isJoinTrip || ! $schedule->installment_enabled)) {
-            return $this->error('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ', 422);
+        // ผ่อนชำระเปิดให้อัตโนมัติเมื่อเหลือเวลาพอ (PaymentQuote) ไม่มีสวิตช์ที่รอบแล้ว
+        $maxInstallmentCount = $isJoinTrip ? 0 : PaymentQuote::maxInstallmentCount($schedule);
+
+        if ($paymentType === 'installment' && $maxInstallmentCount < 2) {
+            return $this->error(
+                $isJoinTrip
+                    ? 'จอยทริปไม่รองรับการผ่อนชำระ'
+                    : 'รอบนี้ใกล้วันเดินทางเกินกว่าจะผ่อนชำระได้แล้ว',
+                422,
+            );
         }
 
         if ($paymentType === 'deposit' && ($isJoinTrip || ! $schedule->deposit_enabled)) {
@@ -1982,18 +1988,19 @@ class AdminController extends Controller
         $totalAmount = $pricePerPerson * $participantCount;
         $installmentCount = null;
         $installmentIntervalDays = null;
+        $installmentDueDates = [];
         $depositAmount = null;
         $balanceAmount = null;
         $balanceDueAt = null;
         $paidAmount = $isPaid ? $totalAmount : 0;
 
         if ($paymentType === 'installment') {
-            $maxAllowed = min((int) $schedule->installment_count, 6);
-            $installmentCount = (int) ($request->input('installment_count') ?: $schedule->installment_count);
-            if ($installmentCount < 2 || $installmentCount > $maxAllowed) {
-                return $this->error("จำนวนงวดต้องอยู่ระหว่าง 2-{$maxAllowed} งวด", 422);
+            $installmentCount = (int) ($request->input('installment_count') ?: $maxInstallmentCount);
+            if ($installmentCount < 2 || $installmentCount > $maxInstallmentCount) {
+                return $this->error("รอบนี้ผ่อนได้ 2-{$maxInstallmentCount} งวด", 422);
             }
-            $installmentIntervalDays = (int) $schedule->installment_interval_days;
+            $installmentDueDates = PaymentQuote::installmentDueDates($schedule, $installmentCount);
+            $installmentIntervalDays = PaymentQuote::installmentIntervalDays($schedule, $installmentCount);
             $paidAmount = $isPaid ? round($totalAmount / $installmentCount, 2) : 0;
         }
 
@@ -2115,7 +2122,7 @@ class AdminController extends Controller
                             'booking_id' => $booking->id,
                             'installment_no' => $i,
                             'amount' => $amount,
-                            'due_date' => now()->copy()->addDays(($i - 1) * $installmentIntervalDays)->toDateString(),
+                            'due_date' => $installmentDueDates[$i - 1],
                             'status' => $i === 1 ? 'paid' : 'pending',
                             'payment_method' => $i === 1 ? $booking->payment_method : null,
                             'payment_ref' => $i === 1 ? $paymentRef : null,

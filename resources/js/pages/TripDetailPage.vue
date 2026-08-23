@@ -2547,24 +2547,13 @@ const pickupHasSurcharge = computed(() => {
 });
 
 // ─── ผ่อนชำระ ──────────────────────────────────────────────
-// เงื่อนไขต้องตรงกับหน้าชำระเงิน (PaymentPage): เพดาน 6 งวด, ขั้นต่ำ 2 งวด และ
-// งวดสุดท้ายต้องครบก่อนวันเดินทาง → (n-1) * interval <= วันที่เหลือ
+// จำนวนงวดคิดจากวันเดินทางที่เซิร์ฟเวอร์ (PaymentQuote) และส่งมากับรอบแล้ว —
+// หน้านี้แค่หยิบมาโชว์ ไม่คำนวณเอง ไม่งั้นป้ายหน้าทริปกับหน้าชำระเงินจะไม่ตรงกัน
 const INSTALLMENT_CAP = 6;
 
 function feasibleInstallmentCount(s) {
-  if (!s?.installment_enabled || !s.departure_date) return 0;
-  const interval = s.installment_interval_days || 30;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const departure = new Date(s.departure_date);
-  departure.setHours(0, 0, 0, 0);
-  const days = Math.floor((departure - today) / 86400000);
-  if (days <= 0) return 0;
-  const count = Math.min(
-    s.installment_count || 3,
-    INSTALLMENT_CAP,
-    Math.floor(days / interval) + 1
-  );
+  if (!s?.installment_enabled) return 0;
+  const count = Math.min(Number(s.installment_count) || 0, INSTALLMENT_CAP);
   return count >= 2 ? count : 0;
 }
 

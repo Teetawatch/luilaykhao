@@ -400,22 +400,13 @@
             </div>
           </div>
 
-          <!-- Installment Settings -->
+          <!-- Installment: อัตโนมัติจากวันเดินทาง ไม่มีอะไรให้ตั้ง -->
           <div class="form-toggle-section">
-            <div class="form-toggle-header">
-              <label class="form-toggle-label">
-                <input type="checkbox" v-model="form.installment_enabled" class="check-installment" />
-                <span>เปิดใช้ระบบผ่อนชำระ</span>
-              </label>
-            </div>
-            <div v-if="form.installment_enabled" class="form-grid">
-              <div class="form-group">
-                <label>จำนวนงวดสูงสุด (2–6)</label>
-                <input v-model.number="form.installment_count" type="number" min="2" max="6" required />
-              </div>
-              <div class="form-group">
-                <label>ระยะห่างระหว่างงวด (วัน)</label>
-                <input v-model.number="form.installment_interval_days" type="number" min="1" required />
+            <div class="form-auto-note">
+              <span class="material-symbols-rounded" style="font-size:18px;">bolt</span>
+              <div>
+                <strong>ผ่อนชำระเปิดอัตโนมัติ</strong>
+                <p>ระบบแบ่งงวดให้เองจากวันที่ลูกค้าจองถึงวันเดินทาง งวดสุดท้ายปิดยอดก่อนเดินทาง 15 วัน — รอบที่ใกล้เกินไปจะซ่อนตัวเลือกให้เอง</p>
               </div>
             </div>
           </div>
@@ -989,18 +980,6 @@
                 <div v-if="batchForm.join_trip_enabled" class="batch-feature-input">
                   <span class="input-label-inline">ราคา ฿</span>
                   <input v-model.number="batchForm.join_trip_price" type="number" min="0" placeholder="ราคา" class="input-sm-100" />
-                </div>
-              </div>
-              <div class="batch-feature-item">
-                <label class="form-toggle-label form-toggle-label--sm">
-                  <input type="checkbox" v-model="batchForm.installment_enabled" class="check-installment" />
-                  <span>เปิดผ่อนชำระ</span>
-                </label>
-                <div v-if="batchForm.installment_enabled" class="batch-feature-input">
-                  <input v-model.number="batchForm.installment_count" type="number" min="2" max="6" placeholder="งวด" class="input-sm-60" />
-                  <span class="input-label-inline">งวด ·</span>
-                  <input v-model.number="batchForm.installment_interval_days" type="number" min="1" placeholder="วัน" class="input-sm-60" />
-                  <span class="input-label-inline">วัน</span>
                 </div>
               </div>
               <div class="batch-feature-item">
@@ -1911,7 +1890,6 @@ const form = reactive({
   departs_time: '', departs_night_before: false,
   total_seats: 10, transport_type: 'van', vehicle_id: null,
   price_override: null, status: 'open',
-  installment_enabled: false, installment_count: 2, installment_interval_days: 30,
   deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
   join_trip_enabled: false, join_trip_price: null,
   is_charter: false,
@@ -2043,9 +2021,6 @@ const openForm = (item = null) => {
       vehicle_id: item.vehicle?.id || null,
       price_override: item.price || null,
       status: item.status,
-      installment_enabled: !!item.installment_enabled,
-      installment_count: item.installment_count || 2,
-      installment_interval_days: item.installment_interval_days || 30,
       deposit_enabled: !!item.deposit_enabled,
       deposit_type: item.deposit_type || 'amount',
       deposit_amount: item.deposit_amount ? Number(item.deposit_amount) : null,
@@ -2070,7 +2045,6 @@ const openForm = (item = null) => {
       departs_time: '', departs_night_before: false,
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
-      installment_enabled: false, installment_count: 2, installment_interval_days: 30,
       deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
       join_trip_enabled: false, join_trip_price: null,
       is_charter: false,
@@ -2176,9 +2150,6 @@ const batchForm = reactive({
   pickups: [],
   join_trip_enabled: false,
   join_trip_price: null,
-  installment_enabled: false,
-  installment_count: 2,
-  installment_interval_days: 30,
   deposit_enabled: false,
   deposit_type: 'amount',
   deposit_amount: null,
@@ -2569,9 +2540,6 @@ const openBatchForm = (presetTripId = '') => {
     pickups: [],
     join_trip_enabled: false,
     join_trip_price: null,
-    installment_enabled: false,
-    installment_count: 2,
-    installment_interval_days: 30,
     deposit_enabled: false,
     deposit_type: 'amount',
     deposit_amount: null,
@@ -2664,9 +2632,6 @@ const submitBatchForm = async () => {
         status: 'open',
         join_trip_enabled: batchForm.join_trip_enabled || false,
         join_trip_price: batchForm.join_trip_enabled ? batchForm.join_trip_price : null,
-        installment_enabled: batchForm.installment_enabled || false,
-        installment_count: batchForm.installment_count || 2,
-        installment_interval_days: batchForm.installment_interval_days || 30,
         deposit_enabled: batchForm.deposit_enabled || false,
         deposit_type: batchForm.deposit_enabled ? batchForm.deposit_type : null,
         deposit_amount: batchForm.deposit_enabled && batchForm.deposit_type === 'amount' ? batchForm.deposit_amount : null,
@@ -2776,9 +2741,6 @@ const doCopySchedule = async () => {
       vehicle_id: src.vehicle?.id || null,
       price_override: src.price || null,
       status: 'open',
-      installment_enabled: src.installment_enabled || false,
-      installment_count: src.installment_count || 2,
-      installment_interval_days: src.installment_interval_days || 30,
       deposit_enabled: src.deposit_enabled || false,
       deposit_type: src.deposit_enabled ? (src.deposit_type || 'amount') : null,
       deposit_amount: src.deposit_enabled && src.deposit_type !== 'percent' ? (src.deposit_amount ? Number(src.deposit_amount) : null) : null,
@@ -5503,6 +5465,31 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
+/* ฟีเจอร์ที่ระบบคิดให้เอง — บอกว่ามันทำงานอยู่ ไม่ใช่ช่องให้กรอก */
+.form-auto-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  color: #0f766e;
+}
+
+.form-auto-note strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.form-auto-note p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #115e59;
+}
+
 .form-toggle-label {
   display: flex;
   align-items: center;
@@ -5527,7 +5514,6 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.check-installment { accent-color: #006565; }
 .check-deposit     { accent-color: #0d9488; }
 .check-join-trip   { accent-color: #0f766e; }
 .check-charter     { accent-color: #7c3aed; }

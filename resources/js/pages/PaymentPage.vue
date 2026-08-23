@@ -240,14 +240,14 @@
                   ฿{{ minPerInstallmentPreview.toLocaleString() }}
                 </p>
                 <p class="text-[11px] font-bold text-gray-500 mt-1.5">
-                  ทุก {{ installmentIntervalDays }} วัน · ไม่มีดอกเบี้ย
+                  ทุก ~{{ installmentIntervalDays }} วัน · ไม่มีดอกเบี้ย
                 </p>
               </div>
 
               <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
                 <li class="flex items-center gap-1.5">
                   <span class="material-symbols-rounded text-amber-500 text-[14px]">check_circle</span>
-                  เลือกจำนวนงวดเองได้
+                  ระบบแบ่งงวดให้จากวันเดินทาง
                 </li>
                 <li class="flex items-center gap-1.5">
                   <span class="material-symbols-rounded text-amber-500 text-[14px]">check_circle</span>
@@ -354,7 +354,7 @@
           <div v-if="paymentType === 'installment'" class="mt-6 p-5 bg-amber-50/50 border border-amber-100 rounded-2xl">
             <label class="block text-sm font-black text-amber-900 mb-3 flex items-center gap-2">
               <span class="material-symbols-rounded text-amber-500 text-lg">tune</span>
-              เลือกจำนวนงวดที่ต้องการ
+              แบ่งได้ถึง {{ maxInstallmentCount }} งวด — เลือกได้ตามสะดวก
             </label>
             <div class="flex gap-2">
               <button v-for="n in availableInstallmentOptions" :key="n" @click="selectedInstallmentCount = n"
@@ -365,9 +365,9 @@
                 {{ n }} งวด
               </button>
             </div>
-            <div class="mt-3 flex justify-between items-center text-xs text-amber-700">
+            <div class="mt-3 flex flex-wrap justify-between items-center gap-1 text-xs text-amber-700">
               <span>งวดละ <strong class="text-amber-900">฿{{ perInstallment.toLocaleString() }}</strong></span>
-              <span>ทุก <strong>{{ installmentIntervalDays }}</strong> วัน</span>
+              <span v-if="installmentFinalDueDate">ปิดยอด <strong>{{ formatDate(installmentFinalDueDate) }}</strong> (ก่อนเดินทาง {{ installmentLeadDays }} วัน)</span>
             </div>
           </div>
 
@@ -1027,7 +1027,6 @@ import { useSeatsStore } from '../stores/seats';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
 import { useSwal } from '../lib/swal';
-import { toBangkokDate } from '../lib/bangkokDate';
 import { addPaymentInfo } from '../lib/analytics';
 import { useBeamCharge } from '../composables/useBeamCharge';
 
@@ -1262,8 +1261,15 @@ const maxInstallmentCount = computed(() =>
   Math.max(installmentQuote.value?.max_count || 0, 2)
 );
 const installmentIntervalDays = computed(() =>
-  installmentQuote.value?.interval_days ?? 30
+  installmentQuote.value?.interval_days ?? 15
 );
+// ต้องปิดยอดก่อนเดินทางกี่วัน + งวดสุดท้ายตรงกับวันไหน (เซิร์ฟเวอร์เป็นคนกำหนด)
+const installmentLeadDays = computed(() => installmentQuote.value?.lead_days ?? 15);
+const installmentFinalDueDate = computed(() => {
+  const option = selectedInstallmentOption.value;
+  const dates = option?.due_dates || [];
+  return dates[dates.length - 1] || installmentQuote.value?.final_due_date || null;
+});
 const selectedInstallmentCount = ref(3);
 
 // Days from today to trip departure
@@ -1281,26 +1287,20 @@ const availableInstallmentOptions = computed(() =>
   (installmentQuote.value?.options || []).map((option) => option.count)
 );
 
-// รอบเปิดผ่อนไว้ แต่เหลือเวลาไม่พอจะผ่อนครบก่อนเดินทาง — ขึ้นการ์ดอธิบายแทนตัวเลือก
+// ผ่อนชำระเปิดให้ทุกรอบอัตโนมัติ เหลือเหตุผลเดียวที่เลือกไม่ได้คือทริปใกล้เกินไป
 const installmentNotAvailable = computed(() => {
-  if (booking.value?.is_join_trip) return false;
-  if (!booking.value?.schedule?.installment_enabled) return false;
+  if (!booking.value || booking.value.is_join_trip) return false;
   return availableInstallmentOptions.value.length === 0;
 });
 
 const installmentWarningMessage = computed(() => {
   const days = daysUntilTrip.value;
-  const interval = installmentIntervalDays.value;
+  const lead = installmentLeadDays.value;
   if (installmentNotAvailable.value) {
-    return `ไม่สามารถเลือกผ่อนชำระได้ เนื่องจากทริปจะเริ่มในอีก ${days} วัน (ต้องมีอย่างน้อย ${interval + 1} วันขึ้นไปจึงจะผ่อนได้ขั้นต่ำ 2 งวด)`;
+    return `ทริปนี้ออกเดินทางในอีก ${days} วัน และยอดผ่อนต้องปิดก่อนเดินทาง ${lead} วัน จึงเหลือเวลาไม่พอแบ่งงวดครับ`;
   }
   if (!installmentAvailable.value) return '';
-  const scheduleMax = Math.min(booking.value?.schedule?.installment_count ?? 0, 6);
-  const maxAllowed = maxInstallmentCount.value;
-  if (scheduleMax > maxAllowed) {
-    return `ทริปเริ่มในอีก ${days} วัน สามารถผ่อนได้สูงสุด ${maxAllowed} งวดเท่านั้น (ทุก ${interval} วัน)`;
-  }
-  return '';
+  return `ระบบแบ่งงวดให้อัตโนมัติจากเวลาที่เหลือ — ผ่อนได้สูงสุด ${maxInstallmentCount.value} งวด งวดสุดท้ายครบกำหนด ${formatDate(installmentFinalDueDate.value)}`;
 });
 const selectedInstallmentOption = computed(() =>
   (installmentQuote.value?.options || []).find(
@@ -1334,23 +1334,18 @@ const minPerInstallmentPreview = computed(() => {
   return Math.round(total / Math.max(2, scheduleMax));
 });
 
+// วันครบกำหนดมาจากเซิร์ฟเวอร์ (due_dates) ไม่คำนวณเองอีกแล้ว — งวดไม่ได้ห่างกัน
+// เท่ากันแบบเดินทีละ 30 วัน แต่ถูกหารจากเวลาที่เหลือถึงวันปิดยอด
 const installmentSchedule = computed(() => {
   const option = selectedInstallmentOption.value;
   if (!option) return [];
   const n = option.count;
-  const interval = installmentIntervalDays.value;
-  const rows = [];
-  const now = new Date();
-  for (let i = 1; i <= n; i++) {
-    const dueDate = new Date(now);
-    dueDate.setDate(dueDate.getDate() + (i - 1) * interval);
-    rows.push({
-      no: i,
-      dueDate: toBangkokDate(dueDate),
-      amount: i === n ? Number(option.last_amount) : Number(option.per_amount),
-    });
-  }
-  return rows;
+  const dueDates = option.due_dates || [];
+  return Array.from({ length: n }, (_, index) => ({
+    no: index + 1,
+    dueDate: dueDates[index] || null,
+    amount: index === n - 1 ? Number(option.last_amount) : Number(option.per_amount),
+  }));
 });
 
 // Reset to 'full' if installment is selected but becomes unavailable

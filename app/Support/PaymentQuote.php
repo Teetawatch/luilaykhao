@@ -25,8 +25,14 @@ class PaymentQuote
     /** ยอดคงเหลือของการจองแบบมัดจำครบกำหนดก่อนวันเดินทางกี่วัน. */
     public const BALANCE_DUE_LEAD_DAYS = 15;
 
-    /** ผ่อนได้มากที่สุดกี่งวด ไม่ว่ารอบจะตั้งไว้เท่าไร. */
+    /** ผ่อนได้มากที่สุดกี่งวด. */
     public const MAX_INSTALLMENT_COUNT = 6;
+
+    /** งวดสุดท้ายต้องครบกำหนดก่อนวันเดินทางกี่วัน — เท่ากับยอดคงเหลือของมัดจำ. */
+    public const INSTALLMENT_LEAD_DAYS = self::BALANCE_DUE_LEAD_DAYS;
+
+    /** ระยะห่างขั้นต่ำระหว่างงวด — ถี่กว่านี้ไม่เรียกว่าผ่อน. */
+    public const MIN_INSTALLMENT_GAP_DAYS = 14;
 
     /**
      * ยอดทุกรูปแบบของการจองนี้ — ก้อนเดียวที่ client เอาไปแสดง/สร้าง QR ได้เลย
@@ -106,43 +112,106 @@ class PaymentQuote
     }
 
     /**
-     * ผ่อนชำระ: จำนวนงวดที่เลือกได้จริง พร้อมยอดต่องวดของแต่ละตัวเลือก
+     * ผ่อนชำระ: คิดให้อัตโนมัติจาก "วันที่จอง → วันเดินทาง" ไม่มีสวิตช์ให้ตั้งรายรอบ
      *
-     * @return array{available: bool, interval_days: int, max_count: int, default_count: int|null, options: list<array{count: int, per_amount: float, last_amount: float}>}
+     * เดิมแอดมินต้องเปิดสวิตช์และกรอกจำนวนงวด/ระยะห่างเองทุกรอบ ซึ่งพลาดง่ายสองทาง:
+     * ลืมเปิดก็ขายเสียโอกาส เปิดไว้แบบเดิน 30 วันตายตัวก็ได้งวดสุดท้ายไปตกวันขึ้นรถ
+     * (ลูกค้าเดินทางทั้งที่ยังค้างเงินอยู่งวดหนึ่ง) และเวลาที่ลูกค้าจองล่วงหน้าไว้
+     * ก็เหลือเป็นช่องว่างท้ายแผนที่ไม่ได้ใช้
+     *
+     * ตอนนี้จึงคิดจากช่วงเวลาที่ผ่อนได้จริง = วันนี้ ถึง (วันเดินทาง - INSTALLMENT_LEAD_DAYS)
+     * แล้วหารช่วงนั้นให้เท่าๆ กันตามจำนวนงวด งวดแรกจ่ายวันนี้ งวดสุดท้ายตรงกับวันปิดยอดพอดี
+     *
+     * @return array{available: bool, auto: bool, interval_days: int, max_count: int, default_count: int|null, lead_days: int, final_due_date: string|null, options: list<array{count: int, per_amount: float, last_amount: float, interval_days: int, due_dates: list<string>}>}
      */
     public static function installment(Booking $booking): array
     {
         $schedule = $booking->schedule;
         $total = self::total($booking);
-        $interval = max(1, (int) ($schedule?->installment_interval_days ?: 30));
-
-        if (! $schedule || $booking->is_join_trip || ! $schedule->installment_enabled) {
-            return [
-                'available' => false,
-                'interval_days' => $interval,
-                'max_count' => 0,
-                'default_count' => null,
-                'options' => [],
-            ];
-        }
-
-        $maxCount = min((int) $schedule->installment_count, self::MAX_INSTALLMENT_COUNT);
-        // งวดแรกจ่ายวันนี้ งวดที่ n ต้องครบก่อนวันเดินทาง → (n-1) * interval <= วันที่เหลือ
-        $feasibleCount = (int) floor(self::daysUntilDeparture($schedule) / $interval) + 1;
-        $maxCount = min($maxCount, max(0, $feasibleCount));
+        $maxCount = $booking->is_join_trip ? 0 : self::maxInstallmentCount($schedule);
 
         $options = [];
         for ($count = 2; $count <= $maxCount; $count++) {
-            $options[] = ['count' => $count] + self::installmentAmounts($total, $count);
+            $options[] = ['count' => $count]
+                + self::installmentAmounts($total, $count)
+                + [
+                    'interval_days' => self::installmentIntervalDays($schedule, $count),
+                    'due_dates' => self::installmentDueDates($schedule, $count),
+                ];
         }
 
+        $default = $options !== [] ? $options[count($options) - 1] : null;
+
         return [
-            'available' => $options !== [],
-            'interval_days' => $interval,
-            'max_count' => $maxCount >= 2 ? $maxCount : 0,
-            'default_count' => $options !== [] ? end($options)['count'] : null,
+            'available' => $default !== null,
+            'auto' => true,
+            'interval_days' => $default['interval_days'] ?? self::MIN_INSTALLMENT_GAP_DAYS,
+            'max_count' => $default['count'] ?? 0,
+            'default_count' => $default['count'] ?? null,
+            'lead_days' => self::INSTALLMENT_LEAD_DAYS,
+            'final_due_date' => $default ? $default['due_dates'][$default['count'] - 1] : null,
             'options' => $options,
         ];
+    }
+
+    /**
+     * ช่วงเวลาที่ยังผ่อนได้ (วัน) — วันนี้ถึงวันปิดยอด ไม่ใช่ถึงวันเดินทาง
+     */
+    public static function installmentWindowDays(?TripSchedule $schedule): int
+    {
+        if (! $schedule || ! $schedule->departure_date) {
+            return 0;
+        }
+
+        return max(0, self::daysUntilDeparture($schedule) - self::INSTALLMENT_LEAD_DAYS);
+    }
+
+    /** รอบนี้ผ่อนได้มากสุดกี่งวด ณ วันนี้ — 0 เมื่อเวลาเหลือไม่พอ. */
+    public static function maxInstallmentCount(?TripSchedule $schedule): int
+    {
+        $window = self::installmentWindowDays($schedule);
+
+        if ($window < self::MIN_INSTALLMENT_GAP_DAYS) {
+            return 0;
+        }
+
+        return (int) min(
+            self::MAX_INSTALLMENT_COUNT,
+            (int) floor($window / self::MIN_INSTALLMENT_GAP_DAYS) + 1,
+        );
+    }
+
+    /**
+     * วันครบกำหนดของทุกงวด — งวดแรกวันนี้ งวดสุดท้ายคือวันปิดยอด ที่เหลือหารเท่าๆ กัน
+     *
+     * ตัวอย่างนี้ต้องเป็นตัวเดียวกับที่ BookingSettlementService เขียนลงตาราง
+     * ไม่งั้นตารางที่ลูกค้าเห็นตอนเลือกจะไม่ตรงกับงวดที่ระบบตั้งให้จริง
+     *
+     * @return list<string>
+     */
+    public static function installmentDueDates(?TripSchedule $schedule, int $count): array
+    {
+        $from = CarbonImmutable::now('Asia/Bangkok')->startOfDay();
+        $count = max(1, $count);
+        $window = self::installmentWindowDays($schedule);
+
+        $dates = [];
+        for ($i = 0; $i < $count; $i++) {
+            $offset = $count > 1 ? (int) round($i * $window / ($count - 1)) : 0;
+            $dates[] = $from->addDays($offset)->toDateString();
+        }
+
+        return $dates;
+    }
+
+    /** ระยะห่างเฉลี่ยระหว่างงวด (วัน) — ใช้บอกลูกค้าและเก็บไว้กับการจอง. */
+    public static function installmentIntervalDays(?TripSchedule $schedule, int $count): int
+    {
+        if ($count < 2) {
+            return 0;
+        }
+
+        return max(1, (int) round(self::installmentWindowDays($schedule) / ($count - 1)));
     }
 
     /**

@@ -70,6 +70,8 @@ class TripSchedule extends Model
         'total_seats', 'booked_seats', 'transport_type',
         'vehicle_id', 'status', 'booking_opens_at', 'price_override',
         'flash_sale_enabled', 'flash_sale_starts_at', 'flash_sale_price', 'flash_sale_ends_at',
+        // เลิกใช้แล้ว: แผนผ่อนชำระคิดจากวันเดินทางที่ PaymentQuote ไม่มีใครเขียนสามคอลัมน์นี้
+        // อีกแล้ว เหลือไว้เพื่อการจองเก่าที่อ้างอิงค่าตอนนั้น
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
         'join_trip_enabled', 'join_trip_price',

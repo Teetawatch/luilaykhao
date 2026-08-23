@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
+use App\Support\PaymentQuote;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -26,6 +27,10 @@ class TripScheduleResource extends JsonResource
 
     public function toArray(Request $request): array
     {
+        // ผ่อนชำระคิดอัตโนมัติจากวันเดินทาง ไม่มีค่าที่ตั้งไว้ที่รอบให้อ่านอีกแล้ว
+        // คอลัมน์ installment_* ยังอยู่เพื่อการจองเก่า แต่ไม่ใช่แหล่งความจริงแล้ว
+        $installmentCount = PaymentQuote::maxInstallmentCount($this->resource);
+
         return [
             'id' => $this->id,
             'trip_id' => $this->trip_id,
@@ -111,9 +116,15 @@ class TripScheduleResource extends JsonResource
                         : 0,
                 ]
             ),
-            'installment_enabled' => (bool) $this->installment_enabled,
-            'installment_count' => $this->installment_count,
-            'installment_interval_days' => $this->installment_interval_days,
+            'installment_enabled' => $installmentCount >= 2,
+            'installment_count' => $installmentCount,
+            'installment_interval_days' => PaymentQuote::installmentIntervalDays($this->resource, $installmentCount),
+            'installment_lead_days' => PaymentQuote::INSTALLMENT_LEAD_DAYS,
+            // วันที่งวดสุดท้ายครบกำหนด = วันเดินทาง - lead — หน้าจอที่มีแค่รอบ (ยังไม่มีการจอง)
+            // ใช้ค่านี้กระจายงวดเองให้ตรงกับที่เซิร์ฟเวอร์จะตั้งจริง
+            'installment_final_due_date' => $installmentCount >= 2
+                ? PaymentQuote::installmentDueDates($this->resource, $installmentCount)[$installmentCount - 1]
+                : null,
             'deposit_enabled' => (bool) $this->deposit_enabled,
             'deposit_type' => $this->deposit_type,
             'deposit_amount' => $this->deposit_amount,

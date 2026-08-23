@@ -183,19 +183,31 @@ class BookingSettlementService
         ];
     }
 
+    /**
+     * จำนวนงวดที่ยอมรับ — ยึดตัวเลือกที่ PaymentQuote คิดจากวันเดินทางเป็นหลัก
+     *
+     * เดิมด่านนี้เช็คแค่ค่าที่แอดมินตั้งไว้ที่รอบ ไม่ได้ดูว่าเหลือเวลาผ่อนจริงกี่วัน
+     * คนที่จองก่อนเดินทาง 3 วันจึงยังขอผ่อน 4 งวดได้ และได้ตารางที่ครบกำหนดหลังไปแล้ว
+     */
     private function installmentCount(Booking $booking, ?int $requested): int
     {
-        $schedule = $booking->schedule;
-
-        if (! $schedule?->installment_enabled) {
-            throw new PaymentNotAvailableException('รอบเดินทางนี้ไม่รองรับการผ่อนชำระ');
+        if ($booking->is_join_trip) {
+            throw new PaymentNotAvailableException('จอยทริปไม่รองรับการผ่อนชำระ');
         }
 
-        $maxAllowed = (int) $schedule->installment_count;
-        $count = (int) ($requested ?? $maxAllowed);
+        $quote = PaymentQuote::installment($booking);
 
-        if ($count < 2 || $count > min($maxAllowed, PaymentQuote::MAX_INSTALLMENT_COUNT)) {
-            throw new PaymentNotAvailableException("จำนวนงวดต้องอยู่ระหว่าง 2-{$maxAllowed} งวด");
+        if (! $quote['available']) {
+            throw new PaymentNotAvailableException(
+                'รอบนี้ใกล้วันเดินทางเกินกว่าจะผ่อนชำระได้แล้ว กรุณาเลือกวิธีชำระอื่น'
+            );
+        }
+
+        $maxAllowed = (int) $quote['max_count'];
+        $count = (int) ($requested ?: $quote['default_count']);
+
+        if ($count < 2 || $count > $maxAllowed) {
+            throw new PaymentNotAvailableException("รอบนี้ผ่อนได้ 2-{$maxAllowed} งวด");
         }
 
         return $count;
@@ -292,9 +304,11 @@ class BookingSettlementService
     private function recordInstallment(Booking $booking, int $count, array $common): void
     {
         $schedule = $booking->schedule;
-        $intervalDays = (int) $schedule->installment_interval_days;
         $totalAmount = (float) $booking->total_amount;
         $amounts = PaymentQuote::installmentAmounts($totalAmount, $count);
+        // วันครบกำหนดต้องมาจากที่เดียวกับตารางที่ลูกค้าเห็นตอนเลือก
+        $dueDates = PaymentQuote::installmentDueDates($schedule, $count);
+        $intervalDays = PaymentQuote::installmentIntervalDays($schedule, $count);
         $now = now();
 
         $booking->update($common + [
@@ -311,7 +325,7 @@ class BookingSettlementService
                 'booking_id' => $booking->id,
                 'installment_no' => $i,
                 'amount' => $i === $count ? $amounts['last_amount'] : $amounts['per_amount'],
-                'due_date' => $now->copy()->addDays(($i - 1) * $intervalDays)->toDateString(),
+                'due_date' => $dueDates[$i - 1],
                 'status' => $i === 1 ? 'paid' : 'pending',
                 'payment_method' => $i === 1 ? $common['payment_method'] : null,
                 'payment_ref' => $i === 1 ? $common['payment_ref'] : null,

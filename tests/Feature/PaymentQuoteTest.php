@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Resources\TripScheduleResource;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\LoyaltyAccount;
@@ -140,23 +141,148 @@ class PaymentQuoteTest extends TestCase
         $this->assertSame('exceeds_total', $quote['deposit']['reason']);
     }
 
-    public function test_installment_options_stop_where_the_trip_gets_too_close(): void
+    public function test_installment_plan_is_derived_from_the_departure_date_alone(): void
     {
+        // 45 วันข้างหน้า → ปิดยอดก่อนเดินทาง 15 วัน เหลือช่วงผ่อนจริง 30 วัน
+        // → ผ่อนได้มากสุด 3 งวด (ห่างกัน 15 วัน) โดยไม่ต้องตั้งค่าอะไรที่รอบเลย
         $schedule = $this->makeSchedule([
             'departure_date' => now('Asia/Bangkok')->addDays(45)->toDateString(),
-            'installment_enabled' => true,
-            'installment_count' => 4,
-            'installment_interval_days' => 30,
         ]);
 
         $quote = PaymentQuote::forBooking(
             $this->makeBooking(User::factory()->create(), $schedule, 3000)
-        );
+        )['installment'];
 
-        // เหลือ 45 วัน ทุก 30 วัน → ผ่อนได้มากสุด 2 งวด แม้รอบจะตั้งไว้ 4 งวด
-        $this->assertSame([2], array_column($quote['installment']['options'], 'count'));
-        $this->assertSame(2, $quote['installment']['default_count']);
-        $this->assertSame(1500.0, $quote['installment']['options'][0]['per_amount']);
+        $this->assertTrue($quote['available']);
+        $this->assertSame([2, 3], array_column($quote['options'], 'count'));
+        $this->assertSame(3, $quote['default_count']);
+        $this->assertSame(1000.0, $quote['options'][1]['per_amount']);
+        $this->assertSame(15, $quote['options'][1]['interval_days']);
+    }
+
+    public function test_the_last_instalment_falls_due_before_departure_not_on_it(): void
+    {
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(60)->toDateString(),
+        ]);
+
+        $quote = PaymentQuote::forBooking(
+            $this->makeBooking(User::factory()->create(), $schedule, 3000)
+        )['installment'];
+
+        $closing = now('Asia/Bangkok')->addDays(60 - PaymentQuote::INSTALLMENT_LEAD_DAYS)->toDateString();
+
+        $this->assertSame($closing, $quote['final_due_date']);
+        foreach ($quote['options'] as $option) {
+            $dueDates = $option['due_dates'];
+            $this->assertCount($option['count'], $dueDates);
+            $this->assertSame(now('Asia/Bangkok')->toDateString(), $dueDates[0]);
+            $this->assertSame($closing, $dueDates[$option['count'] - 1]);
+        }
+    }
+
+    public function test_installment_closes_when_the_trip_is_too_close_to_split_the_bill(): void
+    {
+        // เหลือ 20 วัน → ช่วงผ่อนจริง 5 วัน ซึ่งสั้นกว่าระยะห่างขั้นต่ำระหว่างงวด
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(20)->toDateString(),
+        ]);
+
+        $quote = PaymentQuote::forBooking(
+            $this->makeBooking(User::factory()->create(), $schedule, 3000)
+        )['installment'];
+
+        $this->assertFalse($quote['available']);
+        $this->assertSame(0, $quote['max_count']);
+        $this->assertSame([], $quote['options']);
+    }
+
+    public function test_charging_an_installment_writes_the_due_dates_the_customer_was_shown(): void
+    {
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(90)->toDateString(),
+        ]);
+
+        $user = User::factory()->create();
+        $booking = $this->makeBooking($user, $schedule, 6000);
+        $quoted = collect(PaymentQuote::installment($booking)['options'])
+            ->firstWhere('count', 3);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/payments/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'payment_type' => 'installment',
+                'installment_count' => 3,
+                'payment_method' => 'promptpay',
+                'amount' => $quoted['per_amount'],
+            ])
+            ->assertOk();
+
+        $booking->refresh()->load('installmentPayments');
+
+        $this->assertSame(3, $booking->installment_count);
+        $this->assertSame(
+            $quoted['due_dates'],
+            $booking->installmentPayments->sortBy('installment_no')
+                ->map(fn ($installment) => $installment->due_date->toDateString())
+                ->values()->all(),
+        );
+        $this->assertSame('paid', $booking->installmentPayments->firstWhere('installment_no', 1)->status);
+    }
+
+    public function test_more_instalments_than_the_remaining_time_allows_is_refused(): void
+    {
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(45)->toDateString(),
+        ]);
+
+        $user = User::factory()->create();
+        $booking = $this->makeBooking($user, $schedule, 3000);
+
+        // เหลือที่ 3 งวด — ขอ 6 งวดต้องถูกปฏิเสธ ไม่ใช่ได้ตารางที่ครบกำหนดหลังไปแล้ว
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/payments/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'payment_type' => 'installment',
+                'installment_count' => 6,
+                'payment_method' => 'promptpay',
+                'amount' => 500,
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame(0, $booking->fresh()->installmentPayments()->count());
+    }
+
+    public function test_schedule_payload_advertises_the_plan_without_any_admin_setup(): void
+    {
+        // หน้าทริปกับหน้าจองแอดมินมีแค่ "รอบ" ยังไม่มีการจอง จึงต้องอ่านจากตรงนี้ได้
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(60)->toDateString(),
+        ]);
+
+        $payload = (new TripScheduleResource($schedule))->toArray(request());
+
+        $this->assertTrue($payload['installment_enabled']);
+        $this->assertSame(4, $payload['installment_count']);
+        $this->assertSame(15, $payload['installment_interval_days']);
+        $this->assertSame(15, $payload['installment_lead_days']);
+        $this->assertSame(
+            now('Asia/Bangkok')->addDays(45)->toDateString(),
+            $payload['installment_final_due_date'],
+        );
+    }
+
+    public function test_a_round_that_is_too_close_advertises_no_plan(): void
+    {
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(20)->toDateString(),
+        ]);
+
+        $payload = (new TripScheduleResource($schedule))->toArray(request());
+
+        $this->assertFalse($payload['installment_enabled']);
+        $this->assertSame(0, $payload['installment_count']);
+        $this->assertNull($payload['installment_final_due_date']);
     }
 
     public function test_installment_amounts_always_add_up_to_the_total(): void

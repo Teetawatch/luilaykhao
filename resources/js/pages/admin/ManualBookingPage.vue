@@ -328,13 +328,13 @@
                   ผ่อนชำระ
                 </label>
               </div>
-              <p v-if="!depositAllowed && !installmentAllowed" class="field-note">รอบนี้รับชำระเต็มจำนวนเท่านั้น (ยังไม่เปิดมัดจำ/ผ่อน หรือเป็นจอยทริป)</p>
+              <p v-if="!depositAllowed && !installmentAllowed" class="field-note">รอบนี้รับชำระเต็มจำนวนเท่านั้น (ยังไม่เปิดมัดจำ หรือใกล้วันเดินทางเกินกว่าจะผ่อน)</p>
               <p v-else-if="!depositAllowed && form.payment_type !== 'installment'" class="field-note">รอบนี้ยังไม่เปิดมัดจำ หรือเป็นจอยทริป</p>
-              <p v-else-if="!installmentAllowed && form.payment_type !== 'deposit'" class="field-note">รอบนี้ยังไม่เปิดผ่อนชำระ หรือเป็นจอยทริป</p>
+              <p v-else-if="!installmentAllowed && form.payment_type !== 'deposit'" class="field-note">รอบนี้ใกล้วันเดินทางเกินกว่าจะผ่อนชำระได้ หรือเป็นจอยทริป</p>
             </div>
 
             <label v-if="form.payment_type === 'installment'" class="form-field">
-              <span>จำนวนงวด</span>
+              <span>จำนวนงวด (ระบบแบ่งให้ถึงวันปิดยอด)</span>
               <select v-model.number="form.installment_count">
                 <option v-for="count in installmentCountOptions" :key="count" :value="count">{{ count }} งวด</option>
               </select>
@@ -575,25 +575,34 @@ const pricePerPerson = computed(() => {
   return Number(selectedSchedule.value.price || 0);
 });
 const totalAmount = computed(() => pricePerPerson.value * passengers.value.length);
-const installmentIntervalDays = computed(() => Number(selectedSchedule.value?.installment_interval_days || 30));
-const installmentPlan = computed(() => {
-  const count = Number(form.installment_count || 2);
-  const perInstallment = Math.round((totalAmount.value / count) * 100) / 100;
+// งวดถูกหารจาก "วันนี้ → วันปิดยอด" (วันเดินทาง - 15 วัน) แบบเดียวกับ PaymentQuote
+// ฝั่งเซิร์ฟเวอร์ ไม่ใช่เดินทีละ 30 วันแล้วไปตกหลังวันเดินทาง
+const installmentDueDates = computed(() => {
+  const count = Math.max(1, Number(form.installment_count || 2));
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const closingRaw = selectedSchedule.value?.installment_final_due_date;
+  const closing = closingRaw ? new Date(`${closingRaw}T00:00:00`) : today;
+  const windowDays = Math.max(0, Math.round((closing - today) / 86400000));
 
   return Array.from({ length: count }, (_, index) => {
     const dueDate = new Date(today);
-    dueDate.setDate(today.getDate() + (index * installmentIntervalDays.value));
-    const amount = index === count - 1
-      ? Math.round((totalAmount.value - (perInstallment * (count - 1))) * 100) / 100
-      : perInstallment;
-
-    return {
-      no: index + 1,
-      amount,
-      due_date: formatInputDate(dueDate),
-    };
+    dueDate.setDate(today.getDate() + (count > 1 ? Math.round((index * windowDays) / (count - 1)) : 0));
+    return formatInputDate(dueDate);
   });
+});
+const installmentPlan = computed(() => {
+  const count = Number(form.installment_count || 2);
+  const perInstallment = Math.round((totalAmount.value / count) * 100) / 100;
+  const dueDates = installmentDueDates.value;
+
+  return Array.from({ length: count }, (_, index) => ({
+    no: index + 1,
+    amount: index === count - 1
+      ? Math.round((totalAmount.value - (perInstallment * (count - 1))) * 100) / 100
+      : perInstallment,
+    due_date: dueDates[index],
+  }));
 });
 // ยอดมัดจำ — คำนวณฝั่ง client ให้ตรงกับ TripSchedule::resolveDepositAmount() ฝั่งเซิร์ฟเวอร์
 const depositAmount = computed(() => {
@@ -676,7 +685,7 @@ const submitHint = computed(() => {
   if (seatSelectionRequired.value && selectedSeatIds.value.length !== passengers.value.length) {
     return `เลือกที่นั่ง ${selectedSeatIds.value.length}/${passengers.value.length}`;
   }
-  if (form.payment_type === 'installment' && !installmentAllowed.value) return 'รอบนี้ยังไม่เปิดผ่อนชำระ';
+  if (form.payment_type === 'installment' && !installmentAllowed.value) return 'รอบนี้ใกล้วันเดินทางเกินกว่าจะผ่อนชำระได้';
   if (form.payment_type === 'deposit' && !depositAllowed.value) return 'รอบนี้ยังไม่เปิดมัดจำ';
   if (paymentEvidenceRequired.value && !slipFile.value) return 'แนบไฟล์สลิปก่อน';
   if (paymentEvidenceRequired.value && (!form.transfer_date || !form.transfer_time)) return 'ระบุวันที่และเวลาที่โอน';
