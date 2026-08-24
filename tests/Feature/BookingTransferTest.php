@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyTransaction;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -148,6 +150,69 @@ class BookingTransferTest extends TestCase
                 'user_id' => $newOwner->id,
             ])
             ->assertStatus(422);
+    }
+
+    /**
+     * ใบจองที่ย้ายบัญชีต้องพาแต้มและจำนวนทริปสะสมไปด้วย — ลูกค้าที่เผลอจองด้วย
+     * บัญชีคนอื่นแล้วให้แอดมินย้ายให้ ไม่ควรเสียทริปสะสมไปกับบัญชีที่ไม่ได้ไปเที่ยว
+     */
+    public function test_transfer_moves_loyalty_credit_to_the_new_owner(): void
+    {
+        config(['loyalty.baht_per_point' => 100]);
+
+        $owner = User::factory()->create();
+        $newOwner = User::factory()->create();
+        $booking = $this->makeBooking($owner);
+        $booking->update(['status' => 'confirmed']);
+
+        $this->assertSame(1, (int) LoyaltyAccount::forUser($owner->id)->lifetime_trips);
+        $this->assertSame(10, (int) LoyaltyAccount::forUser($owner->id)->points);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/transfer", [
+                'user_id' => $newOwner->id,
+            ])
+            ->assertOk();
+
+        $before = LoyaltyAccount::forUser($owner->id);
+        $after = LoyaltyAccount::forUser($newOwner->id);
+
+        $this->assertSame(0, (int) $before->lifetime_trips);
+        $this->assertSame(0, (int) $before->points);
+        $this->assertSame(1, (int) $after->lifetime_trips);
+        $this->assertSame(10, (int) $after->points);
+
+        // ล็อตแต้มของใบจองนี้ย้ายไปอยู่ใต้บัญชีใหม่ ไม่ใช่ค้างสองที่
+        $this->assertSame(
+            [$newOwner->id],
+            LoyaltyTransaction::where('reference_type', Booking::class)
+                ->where('reference_id', $booking->id)
+                ->where('type', 'earn')
+                ->pluck('user_id')
+                ->all(),
+        );
+
+        // เจ้าของเดิมยังเห็นในประวัติว่าแต้มหายไปเพราะอะไร
+        $this->assertStringContainsString(
+            'ย้ายการจอง',
+            LoyaltyTransaction::where('user_id', $owner->id)->where('type', 'adjust')->value('description'),
+        );
+    }
+
+    public function test_transfer_of_an_unconfirmed_booking_credits_nobody(): void
+    {
+        $owner = User::factory()->create();
+        $newOwner = User::factory()->create();
+        $booking = $this->makeBooking($owner);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/transfer", [
+                'user_id' => $newOwner->id,
+            ])
+            ->assertOk();
+
+        $this->assertSame(0, (int) LoyaltyAccount::forUser($newOwner->id)->lifetime_trips);
+        $this->assertSame(0, LoyaltyTransaction::where('type', 'earn')->count());
     }
 
     public function test_non_admin_cannot_transfer_booking(): void

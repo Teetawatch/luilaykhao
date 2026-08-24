@@ -27,6 +27,9 @@ class LoyaltyService
     /** เตือนล่วงหน้ากี่วันก่อนแต้มก้อนหนึ่งจะหมดอายุ. */
     public const EXPIRY_WARNING_DAYS = 30;
 
+    /** สถานะการจองที่ถือว่า "ได้เดินทางกับเราแล้ว" — นับทริปและให้แต้ม. */
+    public const EARNING_STATUSES = ['confirmed', 'completed'];
+
     /**
      * บันทึกการจองที่ยืนยันแล้วเข้าบัญชีสมาชิก — นับเป็น 1 ทริป (ตัวตัดสินระดับ)
      * และให้แต้มตามยอดเงิน floor(total_amount / rate) ค่าเริ่มต้น 100 บาท = 1 แต้ม
@@ -158,13 +161,13 @@ class LoyaltyService
      * อ่านรู้เรื่องและเพื่อให้การจองกลับมายืนยันใหม่ได้แต้มใหม่ตามปกติ หักจากยอด
      * คงเหลือเฉพาะแต้มที่ยังไม่ถูกใช้ไป (แต้มที่แลกของรางวัลไปแล้วเรียกคืนไม่ได้)
      */
-    public function reverseForBooking(Booking $booking): void
+    public function reverseForBooking(Booking $booking, ?string $description = null): void
     {
-        if (! $booking->user_id || ! $booking->exists) {
+        if (! $booking->exists) {
             return;
         }
 
-        DB::transaction(function () use ($booking) {
+        DB::transaction(function () use ($booking, $description) {
             $earned = LoyaltyTransaction::where('reference_type', Booking::class)
                 ->where('reference_id', $booking->id)
                 ->where('type', 'earn')
@@ -175,7 +178,11 @@ class LoyaltyService
                 return; // ไม่เคยได้เครดิตจากการจองนี้ ไม่มีอะไรต้องถอน
             }
 
-            $account = LoyaltyAccount::forUser($booking->user_id);
+            // ถอนคืนจากบัญชีที่ "ได้รับแต้มไปจริง" ไม่ใช่เจ้าของใบจองในตอนนี้ —
+            // ใบจองเปลี่ยนมือได้ (แอดมินโอนให้ / ผู้รับกดรับของขวัญ) ถ้าอ่านจาก
+            // ใบจองจะไปหักบัญชีคนใหม่ที่ยังไม่เคยได้อะไรเลย
+            $creditedUserId = (int) $earned->user_id;
+            $account = LoyaltyAccount::forUser($creditedUserId);
             $points = (int) $earned->points;
             $stillUnspent = (int) $earned->points_remaining;
 
@@ -188,15 +195,47 @@ class LoyaltyService
             $earned->delete();
 
             LoyaltyTransaction::create([
-                'user_id' => $booking->user_id,
+                'user_id' => $creditedUserId,
                 'type' => 'adjust',
                 'points' => -$stillUnspent,
                 'points_remaining' => 0,
-                'description' => 'ยกเลิกการจอง '.$booking->booking_ref.' — ถอนแต้มและทริปสะสมคืน',
+                'description' => $description
+                    ?? 'ยกเลิกการจอง '.$booking->booking_ref.' — ถอนแต้มและทริปสะสมคืน',
                 'reference_type' => Booking::class,
                 'reference_id' => $booking->id,
                 'balance_after' => $account->points,
             ]);
+        });
+    }
+
+    /**
+     * ย้ายเครดิตของการจองไปตามเจ้าของใบจองคนใหม่
+     *
+     * เครดิตสะสมผูกกับ "ใบจอง" ไม่ใช่ "บัญชีที่กดจองครั้งแรก" ทั้งการโอนใบจอง
+     * ฝั่งแอดมิน (จองด้วยบัญชีคนอื่นแล้วย้ายทีหลัง) และการกดรับของขวัญ เปลี่ยนตัว
+     * คนที่ได้ไปเที่ยวจริง จำนวนทริปสะสมซึ่งเป็นตัวตัดสินระดับสมาชิกจึงต้องตามไป
+     * ด้วย ไม่ใช่ค้างอยู่กับบัญชีเดิม
+     *
+     * ทำเป็น "ถอนจากบัญชีเดิม แล้วให้ใหม่กับบัญชีปลายทาง" เหมือนเพิ่งยืนยันการจอง
+     * แต้มจึงถูกคิดด้วยตัวคูณระดับของเจ้าของใหม่และได้อายุแต้มก้อนใหม่ไปเลย
+     * แต้มที่เจ้าของเดิมแลกของรางวัลไปแล้วเรียกคืนไม่ได้ (เหมือนตอนยกเลิกการจอง)
+     */
+    public function transferForBooking(Booking $booking): void
+    {
+        if (! $booking->exists) {
+            return;
+        }
+
+        DB::transaction(function () use ($booking) {
+            $this->reverseForBooking(
+                $booking,
+                'ย้ายการจอง '.$booking->booking_ref.' ไปยังบัญชีอื่น — ถอนแต้มและทริปสะสมคืน',
+            );
+
+            // ใบจองที่ยังไม่ยืนยัน/ถูกยกเลิกไม่มีเครดิตให้ย้าย มีแค่ของเก่าที่ต้องถอน
+            if (in_array($booking->status, self::EARNING_STATUSES, true)) {
+                $this->awardForBooking($booking);
+            }
         });
     }
 

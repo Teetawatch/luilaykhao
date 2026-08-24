@@ -25,7 +25,7 @@ use App\Services\LoyaltyService;
 class BookingObserver
 {
     /** สถานะที่ถือว่า "ได้เดินทางกับเราแล้ว" — นับทริปและให้แต้ม. */
-    private const EARNING_STATUSES = ['confirmed', 'completed'];
+    private const EARNING_STATUSES = LoyaltyService::EARNING_STATUSES;
 
     /** สถานะที่แปลว่าไม่ได้ไป — ต้องถอนทริปและแต้มคืน. */
     private const REVERSING_STATUSES = ['cancelled', 'refunded'];
@@ -49,6 +49,13 @@ class BookingObserver
         // (ผ่าน observer เพื่อให้ครอบคลุมทุกทางที่เช็คอินได้: แอปคนขับ, แอดมิน, แก้ใบจอง)
         if ($booking->wasChanged('checked_in') && $booking->checked_in) {
             SyncTripActivityJob::dispatch($booking->id);
+        }
+
+        // ใบจองเปลี่ยนมือ (แอดมินโอนใบจอง / ผู้รับกดรับของขวัญ) — แต้มและจำนวน
+        // ทริปสะสมผูกกับใบจอง ไม่ใช่บัญชีที่กดจองครั้งแรก จึงต้องย้ายตามไปด้วย
+        // เช็คก่อนสถานะ เพราะการโอนใบจองไม่แตะ status เลย
+        if ($booking->wasChanged('user_id')) {
+            $this->loyaltyService->transferForBooking($booking);
         }
 
         if (! $booking->wasChanged('status')) {

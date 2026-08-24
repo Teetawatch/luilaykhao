@@ -7,6 +7,7 @@ use App\Mail\GiftPurchasedMail;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\BookingPassenger;
+use App\Models\LoyaltyAccount;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -180,6 +181,31 @@ class GiftBookingTest extends TestCase
         $this->assertFalse($buyerRefs->contains($booking->booking_ref));
 
         $this->assertTrue($response->json('data.gift.claimed'));
+    }
+
+    /**
+     * ของขวัญที่ถูกเปิดรับแล้ว คนที่ได้ไปเที่ยวคือผู้รับ ทริปสะสมและแต้มจึงย้าย
+     * ตามใบจองไป ไม่ค้างอยู่กับผู้ซื้อที่ไม่ได้ไป
+     */
+    public function test_claiming_a_gift_moves_loyalty_credit_to_the_recipient(): void
+    {
+        config(['loyalty.baht_per_point' => 100]);
+
+        $buyer = User::factory()->create();
+        $recipient = User::factory()->create();
+        $booking = $this->makeGiftBooking($buyer, $this->makeSchedule());
+
+        $this->assertSame(1, (int) LoyaltyAccount::forUser($buyer->id)->lifetime_trips);
+        $this->assertSame(20, (int) LoyaltyAccount::forUser($buyer->id)->points);
+
+        $this->actingAs($recipient, 'sanctum')
+            ->postJson("/api/v1/gifts/{$booking->gift_code}/claim")
+            ->assertOk();
+
+        $this->assertSame(0, (int) LoyaltyAccount::forUser($buyer->id)->lifetime_trips);
+        $this->assertSame(0, (int) LoyaltyAccount::forUser($buyer->id)->points);
+        $this->assertSame(1, (int) LoyaltyAccount::forUser($recipient->id)->lifetime_trips);
+        $this->assertSame(20, (int) LoyaltyAccount::forUser($recipient->id)->points);
     }
 
     public function test_cannot_claim_twice(): void
