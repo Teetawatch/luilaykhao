@@ -14,7 +14,47 @@ export function hasAvailableSeats(schedule) {
 
 export function isScheduleBookable(schedule) {
   if (schedule?.is_charter) return false;
-  return Boolean(schedule?.join_trip_enabled) || hasAvailableSeats(schedule);
+  if (hasAvailableSeats(schedule)) return true;
+  // ที่นั่งบนรถหมดแล้ว แต่ยังจอยทริปได้ถ้าโควตาจอยยังเหลือ
+  return Boolean(schedule?.join_trip_enabled) && !joinTripFull(schedule);
+}
+
+// ─── จอยทริป: โควตาแยกจากที่นั่งบนรถ ───
+// join_trip_seats = null คือแอดมินไม่ได้กำหนดเพดาน = รับไม่จำกัด
+// ซึ่งแปลว่าบอกได้แค่ "จอยแล้วกี่คน" ไม่มี "ว่างกี่ที่"
+
+export function joinTripSeats(schedule) {
+  const n = schedule?.join_trip_seats;
+  return n === null || n === undefined ? null : Number(n);
+}
+
+export function joinTripBookedSeats(schedule) {
+  return Number(schedule?.join_trip_booked_seats || 0);
+}
+
+export function joinTripAvailableSeats(schedule) {
+  const total = joinTripSeats(schedule);
+  if (total === null) return null;
+  const fromApi = schedule?.join_trip_available_seats;
+  return fromApi === null || fromApi === undefined
+    ? Math.max(0, total - joinTripBookedSeats(schedule))
+    : Number(fromApi);
+}
+
+export function joinTripFull(schedule) {
+  if (!schedule?.join_trip_enabled) return false;
+  const left = joinTripAvailableSeats(schedule);
+  return left !== null && left <= 0;
+}
+
+export function joinTripSeatLabel(schedule) {
+  const booked = joinTripBookedSeats(schedule);
+  const total = joinTripSeats(schedule);
+  if (total === null) return `จอยแล้ว ${booked} ท่าน`;
+  const left = joinTripAvailableSeats(schedule);
+  return left > 0
+    ? `จอยแล้ว ${booked}/${total} ท่าน · ว่าง ${left} ที่`
+    : 'จอยทริปเต็มแล้ว';
 }
 
 export function scheduleAvailabilityBadgeClass(schedule) {
@@ -43,11 +83,13 @@ export function scheduleAvailabilityDotClass(schedule) {
 
 export function scheduleAvailabilityLabel(schedule) {
   if (schedule?.is_charter) return 'รอบเหมา';
-  if (!hasAvailableSeats(schedule)) return 'เต็มแล้ว';
-  if (schedule?.join_trip_enabled) return `ว่าง ${bookableSeats(schedule)} ที่`;
-  return hasAvailableSeats(schedule)
-    ? `ว่าง ${bookableSeats(schedule)} ที่`
-    : 'เต็มแล้ว';
+  if (hasAvailableSeats(schedule)) return `ว่าง ${bookableSeats(schedule)} ที่`;
+  // ที่นั่งบนรถเต็ม แต่ถ้าจอยทริปยังเปิดและยังมีโควตาก็ยังจองได้อยู่
+  if (schedule?.join_trip_enabled && !joinTripFull(schedule)) {
+    const left = joinTripAvailableSeats(schedule);
+    return left === null ? 'จอยทริปได้' : `จอยทริปว่าง ${left} ที่`;
+  }
+  return 'เต็มแล้ว';
 }
 
 // ─── Trip-level scarcity (uses TripResource `seats_left`) ───

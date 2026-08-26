@@ -169,6 +169,7 @@
                       </span>
                       <span v-if="sch.join_trip_enabled" class="status-badge badge-join-trip">
                         <span class="material-symbols-rounded icon-xs">group_add</span> จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}
+                        · {{ joinTripSeatLabel(sch) }}
                       </span>
                       <span v-if="sch.flash_sale" class="status-badge badge-flash-sale" :class="{ 'badge-flash-inactive': !sch.flash_sale.active }">
                         <span class="material-symbols-rounded icon-xs">bolt</span>
@@ -455,10 +456,14 @@
                 <label>ราคาจอยทริป (฿) *</label>
                 <input v-model.number="form.join_trip_price" type="number" min="0" placeholder="ระบุราคาต่อท่าน" required />
               </div>
+              <div class="form-group">
+                <label>รับจอยได้กี่คน</label>
+                <input v-model.number="form.join_trip_seats" type="number" min="1" max="500" placeholder="เว้นว่าง = ไม่จำกัด" />
+              </div>
               <div class="form-group form-group-hint-cell">
                 <p class="form-toggle-hint">
                   <span class="material-symbols-rounded hint-icon hint-join-trip">info</span>
-                  ระบบจอยทริปจะข้ามการเลือกที่นั่งและไม่มีระบบผ่อนชำระ
+                  ระบบจอยทริปจะข้ามการเลือกที่นั่งและไม่มีระบบผ่อนชำระ · จำนวนที่รับจอยแยกจากที่นั่งบนรถ เว้นว่างไว้คือรับไม่จำกัด
                 </p>
               </div>
             </div>
@@ -780,7 +785,9 @@
               </div>
               <div class="ms-item ms-join">
                 <span class="ms-label">ผู้โดยสารจอยทริป</span>
-                <span class="ms-value">{{ manifestData.join_trip_passengers_count }}</span>
+                <span class="ms-value">
+                  {{ manifestData.join_trip_passengers_count }}<template v-if="manifestData.schedule?.join_trip_seats">/{{ manifestData.schedule.join_trip_seats }}</template>
+                </span>
               </div>
               <div class="ms-item ms-total">
                 <span class="ms-label">ทั้งหมด</span>
@@ -980,6 +987,9 @@
                 <div v-if="batchForm.join_trip_enabled" class="batch-feature-input">
                   <span class="input-label-inline">ราคา ฿</span>
                   <input v-model.number="batchForm.join_trip_price" type="number" min="0" placeholder="ราคา" class="input-sm-100" />
+                  <span class="input-label-inline">รับ</span>
+                  <input v-model.number="batchForm.join_trip_seats" type="number" min="1" max="500" placeholder="ไม่จำกัด" class="input-sm-80" />
+                  <span class="input-label-inline">คน</span>
                 </div>
               </div>
               <div class="batch-feature-item">
@@ -1722,6 +1732,10 @@
                 <label>ราคาจอยทริป (฿) *</label>
                 <input v-model.number="bulkJoinTripForm.price" type="number" min="0" placeholder="ราคาต่อท่าน" />
               </div>
+              <div class="form-group" v-if="bulkJoinTripForm.enabled">
+                <label>รับจอยได้กี่คน</label>
+                <input v-model.number="bulkJoinTripForm.seats" type="number" min="1" max="500" placeholder="เว้นว่าง = ไม่จำกัด" />
+              </div>
             </div>
           </div>
 
@@ -1746,7 +1760,7 @@
                     {{ sch.departure_date }}<span v-if="sch.return_date"> → {{ sch.return_date }}</span>
                     <span v-if="sch.vehicle?.license_plate" style="margin-left:8px; color:var(--color-accent); font-weight:700;">({{ sch.vehicle.license_plate }})</span>
                   </span>
-                  <span v-if="sch.join_trip_enabled" style="font-size:10px;font-weight:700;color:#059669;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 8px;border-radius:8px;">จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }}</span>
+                  <span v-if="sch.join_trip_enabled" style="font-size:10px;font-weight:700;color:#059669;background:#ecfdf5;border:1px solid #a7f3d0;padding:2px 8px;border-radius:8px;">จอยทริป ฿{{ Number(sch.join_trip_price || 0).toLocaleString() }} · {{ joinTripSeatLabel(sch) }}</span>
                   <span v-else style="font-size:10px;color:#9ca3af;">—</span>
                 </label>
               </div>
@@ -1891,7 +1905,7 @@ const form = reactive({
   total_seats: 10, transport_type: 'van', vehicle_id: null,
   price_override: null, status: 'open',
   deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
-  join_trip_enabled: false, join_trip_price: null,
+  join_trip_enabled: false, join_trip_price: null, join_trip_seats: null,
   is_charter: false,
   flash_sale_enabled: false, flash_sale_price: null, flash_sale_starts_at_local: '', flash_sale_ends_at_local: '',
   // แผนการบิน (เฉพาะรอบ transport_type = flight)
@@ -2027,6 +2041,7 @@ const openForm = (item = null) => {
       deposit_percent: item.deposit_percent || null,
       join_trip_enabled: !!item.join_trip_enabled,
       join_trip_price: item.join_trip_price || null,
+      join_trip_seats: item.join_trip_seats ?? null,
       is_charter: !!item.is_charter,
       flash_sale_enabled: !!item.flash_sale,
       flash_sale_price: item.flash_sale?.price || null,
@@ -2046,7 +2061,7 @@ const openForm = (item = null) => {
       total_seats: 10, transport_type: 'van', vehicle_id: null,
       price_override: null, status: 'open',
       deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
-      join_trip_enabled: false, join_trip_price: null,
+      join_trip_enabled: false, join_trip_price: null, join_trip_seats: null,
       is_charter: false,
       flash_sale_enabled: false, flash_sale_price: null, flash_sale_starts_at_local: '', flash_sale_ends_at_local: '',
       meeting_point: '', meeting_map_url: '', meeting_time: '', baggage_allowance: '', flights: [],
@@ -2073,6 +2088,14 @@ const submitForm = async () => {
       data.deposit_percent = null;
     } else if (data.deposit_type === 'percent') {
       data.deposit_amount = null;
+    }
+    // จอยทริป: ปิดแล้วต้องล้างราคา/โควตาทิ้ง ไม่งั้นค่าเก่าค้างอยู่ในรอบ
+    // ช่องโควตาที่เว้นว่างไว้ = ไม่จำกัด จึงส่ง null ไม่ใช่ ''
+    if (!data.join_trip_enabled) {
+      data.join_trip_price = null;
+      data.join_trip_seats = null;
+    } else if (!data.join_trip_seats) {
+      data.join_trip_seats = null;
     }
     // Flash sale: send start/end times as UTC ISO; clear all when turned off.
     if (data.flash_sale_enabled) {
@@ -2150,6 +2173,7 @@ const batchForm = reactive({
   pickups: [],
   join_trip_enabled: false,
   join_trip_price: null,
+  join_trip_seats: null,
   deposit_enabled: false,
   deposit_type: 'amount',
   deposit_amount: null,
@@ -2540,6 +2564,7 @@ const openBatchForm = (presetTripId = '') => {
     pickups: [],
     join_trip_enabled: false,
     join_trip_price: null,
+    join_trip_seats: null,
     deposit_enabled: false,
     deposit_type: 'amount',
     deposit_amount: null,
@@ -2632,6 +2657,7 @@ const submitBatchForm = async () => {
         status: 'open',
         join_trip_enabled: batchForm.join_trip_enabled || false,
         join_trip_price: batchForm.join_trip_enabled ? batchForm.join_trip_price : null,
+        join_trip_seats: batchForm.join_trip_enabled ? (batchForm.join_trip_seats || null) : null,
         deposit_enabled: batchForm.deposit_enabled || false,
         deposit_type: batchForm.deposit_enabled ? batchForm.deposit_type : null,
         deposit_amount: batchForm.deposit_enabled && batchForm.deposit_type === 'amount' ? batchForm.deposit_amount : null,
@@ -2747,6 +2773,7 @@ const doCopySchedule = async () => {
       deposit_percent: src.deposit_enabled && src.deposit_type === 'percent' ? src.deposit_percent : null,
       join_trip_enabled: src.join_trip_enabled || false,
       join_trip_price: src.join_trip_price || null,
+      join_trip_seats: src.join_trip_seats ?? null,
     });
     const newId = newScheduleRes.data.data.id;
     if (copyScheduleForm.include_pickups) {
@@ -3594,11 +3621,13 @@ const bulkJoinTripSelectedIds = ref([]);
 const bulkJoinTripForm = reactive({
   enabled: true,
   price: null,
+  seats: null,
 });
 
 const openBulkJoinTripModal = () => {
   bulkJoinTripForm.enabled = true;
   bulkJoinTripForm.price = null;
+  bulkJoinTripForm.seats = null;
   bulkJoinTripSelectedIds.value = [];
   showBulkJoinTrip.value = true;
 };
@@ -3629,6 +3658,7 @@ const doBulkJoinTrip = async () => {
     await admin.bulkUpdateSchedules(bulkJoinTripSelectedIds.value, {
       join_trip_enabled: bulkJoinTripForm.enabled,
       join_trip_price: bulkJoinTripForm.enabled ? bulkJoinTripForm.price : null,
+      join_trip_seats: bulkJoinTripForm.enabled ? (bulkJoinTripForm.seats || null) : null,
     });
     showBulkJoinTrip.value = false;
     fetchData();
@@ -3638,6 +3668,19 @@ const doBulkJoinTrip = async () => {
   } finally {
     bulkJoinTripSubmitting.value = false;
   }
+};
+
+/**
+ * ป้ายจำนวนคนจอย: "จองแล้ว 3 / 10 · ว่าง 7" หรือ "จองแล้ว 3 · ไม่จำกัด"
+ * เมื่อแอดมินยังไม่ได้กำหนดเพดาน (join_trip_seats = null)
+ */
+const joinTripSeatLabel = (sch) => {
+  const booked = Number(sch.join_trip_booked_seats || 0);
+  if (sch.join_trip_seats === null || sch.join_trip_seats === undefined) {
+    return `จองแล้ว ${booked} · ไม่จำกัด`;
+  }
+  const total = Number(sch.join_trip_seats);
+  return `จองแล้ว ${booked}/${total} · ว่าง ${Math.max(0, total - booked)}`;
 };
 
 const toggleJoinTrip = async (sch) => {

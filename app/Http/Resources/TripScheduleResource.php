@@ -131,6 +131,12 @@ class TripScheduleResource extends JsonResource
             'deposit_percent' => $this->deposit_percent,
             'join_trip_enabled' => (bool) $this->join_trip_enabled,
             'join_trip_price' => $this->join_trip_price,
+            // โควตาจอยทริปแยกจากที่นั่งบนรถคนละกอง — join_trip_seats = null
+            // แปลว่าแอดมินไม่ได้กำหนดเพดาน (รับได้ไม่จำกัด) UI ต้องเช็ค null
+            // ก่อนจะขึ้นข้อความ "ว่าง N ที่"
+            'join_trip_seats' => $this->join_trip_seats,
+            'join_trip_booked_seats' => (int) $this->join_trip_booked_seats,
+            'join_trip_available_seats' => $this->join_trip_available_seats,
             'is_charter' => (bool) $this->is_charter,
             'weather' => $this->when(
                 isset($this->weather_forecast),

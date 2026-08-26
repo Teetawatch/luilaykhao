@@ -45,6 +45,8 @@ class StoreScheduleRequest extends FormRequest
             'deposit_percent' => ['nullable', 'integer', 'min:1', 'max:99', 'required_if:deposit_type,percent'],
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
+            // เพดานคนจอยทริป — ไม่ส่ง/ส่ง null = ไม่จำกัด
+            'join_trip_seats' => ['nullable', 'integer', 'min:1', 'max:500'],
             'is_charter' => ['nullable', 'boolean'],
             'flash_sale_enabled' => ['nullable', 'boolean'],
             'flash_sale_price' => ['nullable', 'numeric', 'min:0', 'required_if:flash_sale_enabled,true'],

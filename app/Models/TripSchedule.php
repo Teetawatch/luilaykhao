@@ -74,7 +74,7 @@ class TripSchedule extends Model
         // อีกแล้ว เหลือไว้เพื่อการจองเก่าที่อ้างอิงค่าตอนนั้น
         'installment_enabled', 'installment_count', 'installment_interval_days',
         'deposit_enabled', 'deposit_type', 'deposit_amount', 'deposit_percent',
-        'join_trip_enabled', 'join_trip_price',
+        'join_trip_enabled', 'join_trip_price', 'join_trip_seats', 'join_trip_booked_seats',
         'is_charter', 'photo_token', 'custom_route',
         // รอบที่บินไป — จุดนัดพบที่สนามบิน + ขาบิน + น้ำหนักกระเป๋า
         'meeting_point', 'meeting_map_url', 'meeting_time', 'baggage_allowance', 'flights',
@@ -102,6 +102,8 @@ class TripSchedule extends Model
             'deposit_percent' => 'integer',
             'join_trip_enabled' => 'boolean',
             'join_trip_price' => 'decimal:2',
+            'join_trip_seats' => 'integer',
+            'join_trip_booked_seats' => 'integer',
             'is_charter' => 'boolean',
             'driver_pin_cleared_at' => 'datetime',
             'rally_nudged_at' => 'datetime',
@@ -450,6 +452,39 @@ class TripSchedule extends Model
         return max(0, (int) $this->total_seats - (int) $this->booked_seats);
     }
 
+    /**
+     * ที่จอยทริปที่ยังว่าง — คนจอยไม่กินที่นั่งรถ (booked_seats ไม่นับให้)
+     * จึงมีโควตาแยกของตัวเอง คืน null เมื่อแอดมินไม่ได้กำหนดเพดานไว้
+     * ซึ่งแปลว่า "ไม่จำกัด" (พฤติกรรมเดิมก่อนมีฟีเจอร์นี้)
+     */
+    public function getJoinTripAvailableSeatsAttribute(): ?int
+    {
+        if ($this->join_trip_seats === null) {
+            return null;
+        }
+
+        return max(0, (int) $this->join_trip_seats - (int) $this->join_trip_booked_seats);
+    }
+
+    /**
+     * จอยทริปเต็มหรือยัง — รอบที่ไม่ได้กำหนดเพดานไว้ไม่มีวันเต็ม
+     */
+    public function joinTripIsFull(): bool
+    {
+        return $this->join_trip_available_seats !== null
+            && $this->join_trip_available_seats <= 0;
+    }
+
+    /**
+     * รับคนจอยเพิ่มอีก $count คนได้ไหม — ใช้ก่อนสร้าง/ย้ายการจองแบบจอยทริป
+     */
+    public function canFitJoinTrip(int $count): bool
+    {
+        $available = $this->join_trip_available_seats;
+
+        return $available === null || $available >= $count;
+    }
+
     public function getEffectivePriceAttribute(): float
     {
         if ($this->flashSaleActive()) {
@@ -694,17 +729,30 @@ class TripSchedule extends Model
 
     /**
      * Recalculate and sync the booked_seats counter from actual bookings.
+     *
+     * นับสองตัวในคิวรีเดียว: ที่นั่งบนรถ (จองปกติ) กับที่จอยทริป — สองอย่างนี้
+     * แยกโควตากันคนละกอง แต่เปลี่ยนพร้อมกันเสมอ ทุกจุดที่เรียกเมธอดนี้อยู่แล้ว
+     * จึงได้ตัวนับจอยทริปที่ตรงไปด้วยโดยไม่ต้องแก้อะไร
+     *
+     * คืนค่าจำนวนที่นั่งบนรถเหมือนเดิม (ผู้เรียกเดิมยังใช้ค่านี้อยู่)
      */
     public function syncBookedSeats(): int
     {
-        $count = BookingPassenger::whereHas('booking', function ($q) {
-            $q->where('schedule_id', $this->id)
-                ->whereIn('status', self::ACTIVE_BOOKING_STATUSES)
-                ->where('is_join_trip', false);
-        })->count();
+        $activePassengers = fn () => BookingPassenger::query()
+            ->join('bookings', 'bookings.id', '=', 'booking_passengers.booking_id')
+            ->where('bookings.schedule_id', $this->id)
+            ->whereIn('bookings.status', self::ACTIVE_BOOKING_STATUSES);
 
-        $this->update(['booked_seats' => $count]);
+        $total = $activePassengers()->count();
+        $joinCount = $activePassengers()->where('bookings.is_join_trip', true)->count();
+        $count = $total - $joinCount;
+
+        $this->update([
+            'booked_seats' => $count,
+            'join_trip_booked_seats' => $joinCount,
+        ]);
         $this->booked_seats = $count;
+        $this->join_trip_booked_seats = $joinCount;
 
         return $count;
     }

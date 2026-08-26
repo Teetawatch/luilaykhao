@@ -282,6 +282,7 @@ import {
   bookableSeats,
   hasAvailableSeats,
   isScheduleBookable,
+  joinTripFull,
   scheduleAvailabilityBadgeClass,
   scheduleAvailabilityLabel,
   getSortedPickupPoints,
@@ -426,7 +427,8 @@ const calendarCells = computed(() => {
       (sum, s) => sum + (s.is_charter ? 0 : bookableSeats(s)),
       0
     );
-    const joinOnly = bookable && totalAvailable === 0 && daySchedules.some((s) => s.join_trip_enabled);
+    const joinOnly = bookable && totalAvailable === 0
+      && daySchedules.some((s) => s.join_trip_enabled && !joinTripFull(s));
 
     cells.push({
       key: dateKey,

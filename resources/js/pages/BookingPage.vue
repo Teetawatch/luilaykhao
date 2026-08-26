@@ -38,7 +38,7 @@
             <span class="text-gray-200">·</span>
             <span class="flex items-center gap-1.5" :class="bookableSeats(schedule) < 3 ? 'text-gray-900 font-bold' : ''">
               <span class="material-symbols-rounded text-gray-400 text-[18px]">event_seat</span>
-              <span v-if="isJoinTrip">ว่าง {{ bookableSeats(schedule) }} ที่</span>
+              <span v-if="isJoinTrip">{{ joinTripSeatLabel(schedule) }}</span>
               <span v-else>ว่าง {{ bookableSeats(schedule) }}/{{ schedule.total_seats }} ที่นั่ง</span>
             </span>
             <template v-if="isJoinTrip">
@@ -1771,7 +1771,7 @@ import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
-import { bookableSeats } from '../lib/scheduleHelpers';
+import { bookableSeats, joinTripAvailableSeats, joinTripFull, joinTripSeatLabel } from '../lib/scheduleHelpers';
 import { toBangkokDate } from '../lib/bangkokDate';
 import { beginCheckout } from '../lib/analytics';
 
@@ -1897,7 +1897,11 @@ const minPassportExpiry = computed(() => {
   return target.toISOString().slice(0, 10);
 });
 const maxPassengers = computed(() => {
-  if (isJoinTrip.value) return 50; // Allow more for join trip
+  if (isJoinTrip.value) {
+    // โควตาจอยทริปเป็นเพดานของตัวเอง — ไม่กำหนดไว้ = รับได้ยาว ๆ เหมือนเดิม
+    const left = joinTripAvailableSeats(schedule.value);
+    return left === null ? 50 : Math.max(1, Math.min(left, 50));
+  }
   // จำกัดด้วยที่นั่งที่จองได้จริง — ที่ที่กันไว้ให้คิวรอยังไม่ใช่ของคนที่กำลังจอง
   return Math.min(bookableSeats(schedule.value) || 10, 10);
 });
@@ -2980,7 +2984,11 @@ onMounted(async () => {
     // ตัวเลือกสัญชาติโหลดเฉพาะทริปต่างประเทศ — ทริปในประเทศไม่มีช่องนี้ให้กรอก
     if (isInternational.value) loadCountries();
 
-    if (route.query.join_trip == 1 && schedule.value?.join_trip_enabled) {
+    // จอยทริปที่โควตาเต็มแล้วเปิดโหมดจอยไม่ได้ — ปล่อยให้ลงเอยที่การจองปกติ
+    // แล้วเจอปุ่ม "เต็มแล้ว" ดีกว่าให้กรอกฟอร์มจนจบแล้วโดนเซิร์ฟเวอร์ปฏิเสธ
+    if (route.query.join_trip == 1
+      && schedule.value?.join_trip_enabled
+      && !joinTripFull(schedule.value)) {
       isJoinTrip.value = true;
     }
 

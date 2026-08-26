@@ -547,6 +547,7 @@
                   <dd v-if="selectedSchedule.join_trip_enabled">
                     เปิดรับ ·
                     {{ selectedSchedule.join_trip_price ? `${formatCurrency(selectedSchedule.join_trip_price)} / คน` : 'ใช้ราคาปกติ' }}
+                    · {{ joinTripSeatLabel(selectedSchedule) }}
                   </dd>
                   <dd v-else class="muted-value">ปิดรับ</dd>
                 </div>
@@ -1819,6 +1820,20 @@ function getJoinTripPassengers(sch) {
 
 function getJoinTripAmount(sch) {
   return safeNumber(sch?.join_trip_total_amount);
+}
+
+/**
+ * "จองแล้ว 3/10 · ว่าง 7" — join_trip_seats = null คือแอดมินยังไม่ได้กำหนดเพดาน
+ * (รับไม่จำกัด) จึงบอกได้แค่จำนวนที่จองมาแล้ว
+ */
+function joinTripSeatLabel(sch) {
+  const booked = getJoinTripPassengers(sch);
+  const total = sch?.join_trip_seats;
+  if (total === null || total === undefined) {
+    return `จองแล้ว ${booked} คน · ไม่จำกัด`;
+  }
+
+  return `จองแล้ว ${booked}/${total} · ว่าง ${Math.max(0, Number(total) - booked)}`;
 }
 
 function getTotalPassengers(sch) {

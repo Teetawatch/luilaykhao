@@ -810,17 +810,28 @@
                           <h4 class="font-black text-[var(--color-text-dark)] text-lg">Enjoy Trip (Join Trip)</h4>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" v-model="isJoinTrip" class="sr-only peer">
+                          <input type="checkbox" v-model="isJoinTrip" :disabled="joinTripFull(selectedSchedule)" class="sr-only peer disabled:cursor-not-allowed">
                           <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                       </div>
                       <p class="text-sm font-bold text-[var(--color-text-muted)] mt-1 leading-relaxed">
                         เลือกเดินทางเอง ไม่ต้องเลือกที่นั่งบนผัง จะได้ QR Code สำหรับเช็คอินหลังทีมงานยืนยันการชำระเงิน
                       </p>
-                      <div class="mt-3 flex items-center gap-2">
+                      <div class="mt-3 flex items-center gap-2 flex-wrap">
                         <span class="text-[11px] font-black uppercase text-gray-400">ราคา:</span>
                         <span class="text-xl font-black text-emerald-600">฿{{ Number(selectedSchedule.join_trip_price || selectedSchedule.price || trip.price_per_person).toLocaleString() }}</span>
+                        <span v-if="joinTripSeats(selectedSchedule) !== null"
+                          class="text-xs font-black px-2.5 py-1 rounded-full"
+                          :class="joinTripFull(selectedSchedule) ? 'bg-red-50 text-red-600' : 'bg-emerald-100 text-emerald-700'">
+                          {{ joinTripSeatLabel(selectedSchedule) }}
+                        </span>
+                        <span v-else class="text-xs font-bold text-gray-400">
+                          จอยแล้ว {{ Number(selectedSchedule.join_trip_booked_seats || 0) }} ท่าน
+                        </span>
                       </div>
+                      <p v-if="joinTripFull(selectedSchedule)" class="mt-2 text-xs font-bold text-red-600">
+                        โควตาจอยทริปรอบนี้เต็มแล้ว กรุณาเลือกรอบอื่น
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -955,7 +966,7 @@
                   </router-link>
                   <button v-else disabled
                     class="w-full py-4 rounded-full font-extrabold text-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center border border-gray-200">
-                    {{ selectedSchedule?.is_charter ? 'รอบเดินทางนี้เป็นรอบเหมา' : (!isScheduleBookable(selectedSchedule)) ? 'รอบเดินทางนี้เต็มแล้ว' : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? 'กรุณาเปิด Enjoy Trip' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
+                    {{ selectedSchedule?.is_charter ? 'รอบเดินทางนี้เป็นรอบเหมา' : (!isScheduleBookable(selectedSchedule)) ? 'รอบเดินทางนี้เต็มแล้ว' : joinTripFull(selectedSchedule) && !hasAvailableSeats(selectedSchedule) ? 'จอยทริปรอบนี้เต็มแล้ว' : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? 'กรุณาเปิด Enjoy Trip' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
@@ -964,7 +975,7 @@
 
                   <!-- คิวรอที่นั่ง — เฉพาะรอบที่เต็มจริง (ไม่ใช่รอบเหมา/Enjoy Trip) -->
                   <WaitlistJoinCard
-                    v-if="!selectedSchedule.is_charter && !hasAvailableSeats(selectedSchedule) && !selectedSchedule.join_trip_enabled"
+                    v-if="!selectedSchedule.is_charter && !hasAvailableSeats(selectedSchedule) && (!selectedSchedule.join_trip_enabled || joinTripFull(selectedSchedule))"
                     :schedule-id="selectedSchedule.id"
                     class="mt-4" />
 
@@ -1550,13 +1561,15 @@
                       <div class="flex items-center gap-3 mt-1">
                         <div class="flex items-center gap-1">
                           <span class="w-2 h-2 rounded-full" :class="scheduleAvailabilityDotClass(s)"></span>
-                          <span v-if="s.join_trip_enabled" class="text-xs md:text-sm font-bold" :class="scheduleAvailabilityTextClass(s)">
-                            {{ scheduleAvailabilityLabel(s) }}
-                          </span>
-                          <span v-else class="text-xs md:text-sm font-bold" :class="scheduleAvailabilityTextClass(s)">
+                          <span class="text-xs md:text-sm font-bold" :class="scheduleAvailabilityTextClass(s)">
                             {{ scheduleAvailabilityLabel(s) }}
                           </span>
                         </div>
+                        <span v-if="s.join_trip_enabled"
+                          class="text-[10px] md:text-[11px] font-black px-2 py-0.5 rounded-full"
+                          :class="joinTripFull(s) ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'">
+                          {{ joinTripSeatLabel(s) }}
+                        </span>
                         <span class="w-1 h-1 rounded-full bg-gray-300"></span>
                         <span class="text-xs md:text-sm font-black" :class="s.flash_sale?.active ? 'text-[#EA580C]' : 'text-[var(--color-text-dark)]'">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
                         <span v-if="s.flash_sale?.active" class="text-[11px] font-bold text-gray-400 line-through">฿{{ Number(s.original_price).toLocaleString() }}</span>
@@ -1576,7 +1589,7 @@
                   
                   <router-link 
                     v-if="isScheduleBookable(s)"
-                    :to="{ path: `/booking/${s.id}`, query: s.join_trip_enabled && !hasAvailableSeats(s) ? { join_trip: 1 } : {} }"
+                    :to="{ path: `/booking/${s.id}`, query: s.join_trip_enabled && !hasAvailableSeats(s) && !joinTripFull(s) ? { join_trip: 1 } : {} }"
                     @click="showAvailabilityModal = false"
                     class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all hover:-translate-y-0.5 text-center active:scale-95"
                   >
@@ -1724,7 +1737,7 @@
               <div class="px-6 py-4 bg-white border-t border-gray-100 shrink-0">
                 <router-link
                   v-if="seatMapPreviewSchedule && isScheduleBookable(seatMapPreviewSchedule)"
-                  :to="{ path: `/booking/${seatMapPreviewSchedule.id}`, query: seatMapPreviewSchedule.join_trip_enabled && !hasAvailableSeats(seatMapPreviewSchedule) ? { join_trip: 1 } : {} }"
+                  :to="{ path: `/booking/${seatMapPreviewSchedule.id}`, query: seatMapPreviewSchedule.join_trip_enabled && !hasAvailableSeats(seatMapPreviewSchedule) && !joinTripFull(seatMapPreviewSchedule) ? { join_trip: 1 } : {} }"
                   @click="showSeatMapModal = false"
                   class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white font-black text-sm transition-all active:scale-95"
                 >
@@ -1834,6 +1847,9 @@ import { useWishlistStore } from '../stores/wishlist';
 import {
   hasAvailableSeats,
   isScheduleBookable,
+  joinTripFull,
+  joinTripSeats,
+  joinTripSeatLabel,
   scheduleAvailabilityBadgeClass,
   scheduleAvailabilityTextClass,
   scheduleAvailabilityDotClass,
@@ -2486,7 +2502,9 @@ function canBookSelectedSchedule() {
   if (!selectedSchedule.value) return false;
   if (selectedSchedule.value.is_charter) return false;
   return hasAvailableSeats(selectedSchedule.value)
-    || (isJoinTrip.value && Boolean(selectedSchedule.value.join_trip_enabled));
+    || (isJoinTrip.value
+      && Boolean(selectedSchedule.value.join_trip_enabled)
+      && !joinTripFull(selectedSchedule.value));
 }
 
 function getPickupForRegion(schedule, region) {
@@ -2610,7 +2628,8 @@ function selectSchedule(s) {
     return;
   }
   selectedSchedule.value = s;
-  if (!s.join_trip_enabled) {
+  // โควตาจอยเต็มแล้วก็บังคับเปิดไม่ได้ ต้องปล่อยให้เห็นว่ารอบนี้เต็มจริง
+  if (!s.join_trip_enabled || joinTripFull(s)) {
     isJoinTrip.value = false;
   } else if (!hasAvailableSeats(s)) {
     isJoinTrip.value = true;

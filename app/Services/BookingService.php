@@ -97,7 +97,17 @@ class BookingService
 
             $participantCount = count($passengers);
 
-            // Join trip allows unlimited bookings — skip seat availability check
+            // จอยทริปไม่กินที่นั่งบนรถ แต่มีโควตาของตัวเองถ้าแอดมินกำหนดเพดานไว้
+            // (ไม่กำหนด = ไม่จำกัด เหมือนพฤติกรรมเดิม)
+            if ($isJoinTrip && ! $schedule->canFitJoinTrip($participantCount)) {
+                throw new \Exception(
+                    $schedule->join_trip_available_seats > 0
+                        ? 'จอยทริปรอบนี้เหลือ '.$schedule->join_trip_available_seats.' ที่ ไม่พอสำหรับ '.$participantCount.' ท่าน'
+                        : 'จอยทริปรอบนี้เต็มแล้ว'
+                );
+            }
+
+            // Join trip doesn't take van seats — skip the seat availability check
             if (! $isJoinTrip) {
                 // ที่นั่งที่เพิ่งว่างและถูกเสนอให้คนในคิวรอ ถูกกันไว้ให้เขาจนหมดเวลา
                 // มิฉะนั้นคำสัญญา "จองภายใน N นาที" ไม่มีอะไรรองรับ — คนที่เดิน
@@ -481,6 +491,10 @@ class BookingService
                 $scheduleBecameFull = $schedule->available_seats <= 0;
                 $availableAfterBooking = $schedule->available_seats;
                 $bookedAfterBooking = (int) $schedule->booked_seats;
+            } else {
+                // จอยทริปมีตัวนับของตัวเอง — ต้องขยับที่นี่เหมือน booked_seats
+                // ไม่งั้นโควตาจะดูว่างอยู่จนกว่าจะมีใครเรียก syncBookedSeats()
+                $schedule->increment('join_trip_booked_seats', $participantCount);
             }
 
             $booking->load(['passengers.pickupPoint', 'seats', 'schedule.trip']);
@@ -825,6 +839,11 @@ class BookingService
 
             if ($booking->is_join_trip && ! $target->join_trip_enabled) {
                 throw new \Exception('รอบเดินทางปลายทางไม่เปิดให้จองแบบ Join Trip');
+            }
+
+            // โควตาจอยทริปของรอบปลายทางต้องรับไหว — คนที่ย้ายมายังไม่ถูกนับในนั้น
+            if ($booking->is_join_trip && ! $target->canFitJoinTrip($passengerCount)) {
+                throw new \Exception("จอยทริปในรอบปลายทางไม่เพียงพอ (ต้องการ {$passengerCount}, ว่าง {$target->join_trip_available_seats})");
             }
 
             // ย้ายรอบก็กินที่นั่งจากกองเดียวกัน — ห้ามแซงคนที่ถูกกันที่นั่งไว้ในคิวรอ

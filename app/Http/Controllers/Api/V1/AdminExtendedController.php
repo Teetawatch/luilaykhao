@@ -180,6 +180,12 @@ class AdminExtendedController extends Controller
                 'join_trip_price' => $s->join_trip_price ? (float) $s->join_trip_price : null,
                 'join_trip_passengers_count' => $joinTripPassengersCount,
                 'join_trip_total_amount' => $joinTripTotalAmount,
+                // เพดานคนจอย (null = ไม่จำกัด) + ที่ว่างที่เหลือ ให้หน้าภาพรวม
+                // แสดงได้เหมือนที่นั่งบนรถ
+                'join_trip_seats' => $s->join_trip_seats,
+                'join_trip_available_seats' => $s->join_trip_seats === null
+                    ? null
+                    : max(0, (int) $s->join_trip_seats - $joinTripPassengersCount),
                 'total_passengers' => $regularPassengersCount + $joinTripPassengersCount,
                 'total_amount' => $regularTotalAmount + $joinTripTotalAmount,
                 'passenger_manifest' => $passengerManifest,

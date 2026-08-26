@@ -477,6 +477,8 @@ class AdminController extends Controller
             'deposit_percent' => ['nullable', 'integer', 'min:1', 'max:99'],
             'join_trip_enabled' => ['nullable', 'boolean'],
             'join_trip_price' => ['nullable', 'numeric', 'min:0'],
+            // เพดานคนจอยทริป — ไม่ส่ง/ส่ง null = ไม่จำกัด
+            'join_trip_seats' => ['nullable', 'integer', 'min:1', 'max:500'],
             'is_charter' => ['nullable', 'boolean'],
             'flash_sale_enabled' => ['sometimes', 'boolean'],
             'flash_sale_price' => ['nullable', 'numeric', 'min:0', 'required_if:flash_sale_enabled,true'],
@@ -1910,6 +1912,16 @@ class AdminController extends Controller
 
         if ($isJoinTrip && ! $schedule->join_trip_enabled) {
             return $this->error('รอบเดินทางนี้ยังไม่ได้เปิดจอยทริป', 422);
+        }
+
+        // จอยทริปมีโควตาแยกจากที่นั่งบนรถ (ไม่กำหนดเพดาน = ไม่จำกัด)
+        if ($isJoinTrip && ! $schedule->canFitJoinTrip($participantCount)) {
+            return $this->error(
+                $schedule->join_trip_available_seats > 0
+                    ? 'จอยทริปรอบนี้เหลือ '.$schedule->join_trip_available_seats.' ที่ ไม่พอสำหรับ '.$participantCount.' ท่าน'
+                    : 'จอยทริปรอบนี้เต็มแล้ว',
+                422,
+            );
         }
 
         // ผ่อนชำระเปิดให้อัตโนมัติเมื่อเหลือเวลาพอ (PaymentQuote) ไม่มีสวิตช์ที่รอบแล้ว
