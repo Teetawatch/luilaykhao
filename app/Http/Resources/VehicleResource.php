@@ -26,7 +26,9 @@ class VehicleResource extends JsonResource
             'driver_name' => $this->driver_name,
             'driver_phone' => $this->driver_phone,
             'driver_user_id' => $this->driver_user_id,
-            'has_driver_pin' => $this->whenLoaded('driverUser', fn () => ! empty($this->driverUser?->driver_pin_hash), false),
+            // whenLoaded() คืน null ทันทีที่ relation ถูกโหลดแล้วได้ค่าว่าง ทำให้ค่านี้เคยเป็น
+            // null แทน false ในรถที่ยังไม่มีบัญชีคนขับ — เช็คเองเพื่อให้เป็น boolean เสมอ
+            'has_driver_pin' => $this->relationLoaded('driverUser') && $this->hasDriverPin(),
             'driver_photo' => $this->driver_photo,
             'interior_video' => $this->interior_video,
             'images' => $this->images ?? [],

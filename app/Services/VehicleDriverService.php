@@ -110,6 +110,32 @@ class VehicleDriverService
     }
 
     /**
+     * รถเลิกผูกทะเบียนคนขับ (หรือย้ายไปคนอื่น) แต่ยังถือบัญชี PIN ที่ "ยืม" มาจากคนเดิม
+     *
+     * ต้องปล่อยทิ้ง ไม่งั้นคนขับคนเดิมยังเห็นรถคันนี้ในแอปและยังส่ง GPS แทนได้ต่อไป
+     * (แอปหางานจาก vehicles.driver_user_id) เรียกหลัง applyDriverSnapshot เสมอ —
+     * ถ้าคนขับคนใหม่มีบัญชีของตัวเอง snapshot จะทับให้แล้วและเมธอดนี้จะไม่ทำอะไร
+     */
+    public function detachInheritedPinAccount(Vehicle $vehicle, ?int $previousDriverId): void
+    {
+        if (! $previousDriverId || ! $vehicle->driver_user_id) {
+            return;
+        }
+
+        if ((int) $vehicle->driver_id === (int) $previousDriverId) {
+            return;
+        }
+
+        $inherited = Driver::where('id', $previousDriverId)
+            ->where('pin_user_id', $vehicle->driver_user_id)
+            ->exists();
+
+        if ($inherited) {
+            $vehicle->forceFill(['driver_user_id' => null]);
+        }
+    }
+
+    /**
      * ปล่อยบัญชี PIN ที่ไม่มีใครใช้แล้ว — เรียกหลังลบรถ หรือหลังย้ายรถไปใช้บัญชีอื่น
      *
      * บัญชีที่ยังเป็นของคนขับในทะเบียนต้องไม่ถูกแตะ แม้รถคันสุดท้ายของเขาจะถูกลบไป:

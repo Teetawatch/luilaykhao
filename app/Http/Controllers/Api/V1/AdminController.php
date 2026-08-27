@@ -2295,10 +2295,13 @@ class AdminController extends Controller
     {
         $vehicle = Vehicle::findOrFail($id);
         $previousPinAccountId = $vehicle->driver_user_id;
+        $previousDriverId = $vehicle->driver_id;
         $vehicle->fill($request->validated());
 
         // ถ้าเลือกคนขับจากทะเบียน ดึงชื่อ/เบอร์/รูป (และบัญชีรหัส GPS ของเขา) มาทับบนรถ
         $this->vehicleDriverService->applyDriverSnapshot($vehicle);
+        // เลิกผูก/เปลี่ยนคนขับแล้วต้องไม่ค้างบัญชีของคนเดิมไว้ ไม่งั้นเขายังเห็นรถคันนี้ในแอป
+        $this->vehicleDriverService->detachInheritedPinAccount($vehicle, $previousDriverId);
         $vehicle->save();
 
         // ย้ายไปใช้บัญชีของคนขับในทะเบียนแล้ว บัญชีเดิมของรถคันนี้อาจไม่เหลือใครใช้
@@ -2330,7 +2333,7 @@ class AdminController extends Controller
         }
 
         return $this->success(
-            new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser'])),
+            new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser', 'driver'])),
             'ตั้งรหัสส่ง GPS สำเร็จ',
         );
     }
@@ -2368,7 +2371,7 @@ class AdminController extends Controller
         $this->vehicleDriverService->clearPin($vehicle);
 
         return $this->success(
-            new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser'])),
+            new VehicleResource($vehicle->fresh()->load(['pickupPoints', 'driverUser', 'driver'])),
             'ลบรหัสส่ง GPS แล้ว',
         );
     }

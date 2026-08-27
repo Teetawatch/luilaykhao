@@ -275,6 +275,61 @@ class DriverProfileAndSharedPinTest extends TestCase
         $this->postJson('/api/v1/driver/pin-login', ['driver_pin' => '4521'])->assertOk();
     }
 
+    public function test_unlinking_a_driver_takes_the_van_out_of_their_app(): void
+    {
+        $driver = Driver::create(['name' => 'สมชาย', 'phone' => '081-111-2222']);
+        $kept = $this->makeVehicle($driver, 'รถตู้ 1');
+        $released = $this->makeVehicle($driver, 'รถตู้ 2');
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$kept->id}/driver-pin", ['driver_pin' => '4521'])
+            ->assertOk();
+
+        // ปลดรถคันที่สองออกจากทะเบียนคนขับ กลับไปเป็นคนขับที่กรอกเอง
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$released->id}", [
+                'name' => 'รถตู้ 2', 'type' => 'van', 'capacity' => 12,
+                // ฟอร์มแอดมินส่ง driver_id ว่างมาเมื่อกด "ยกเลิกการผูก"
+                'driver_id' => null,
+                'driver_name' => 'คนขับชั่วคราว', 'driver_phone' => '086-000-0000',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.has_driver_pin', false);
+
+        // รถที่ปลดแล้วต้องไม่ค้างอยู่กับบัญชีของสมชาย ไม่งั้นเขายังเห็นรถคันนี้ในแอป
+        $this->assertNull($released->fresh()->driver_user_id);
+        // ส่วนคันที่ยังผูกอยู่ต้องไม่ถูกกระทบ
+        $this->assertSame($driver->fresh()->pin_user_id, $kept->fresh()->driver_user_id);
+        $this->assertTrue($driver->fresh()->hasPin());
+    }
+
+    public function test_moving_a_van_to_another_driver_swaps_the_pin_account(): void
+    {
+        $first = Driver::create(['name' => 'สมชาย', 'phone' => '081-111-2222']);
+        $second = Driver::create(['name' => 'สมปอง', 'phone' => '082-222-3333']);
+
+        $van = $this->makeVehicle($first, 'รถตู้ 1');
+        $secondsVan = $this->makeVehicle($second, 'รถตู้ 2');
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$van->id}/driver-pin", ['driver_pin' => '1111'])
+            ->assertOk();
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$secondsVan->id}/driver-pin", ['driver_pin' => '2222'])
+            ->assertOk();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/admin/vehicles/{$van->id}", [
+                'name' => 'รถตู้ 1', 'type' => 'van', 'capacity' => 12, 'driver_id' => $second->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.driver_name', 'สมปอง');
+
+        $this->assertSame($second->fresh()->pin_user_id, $van->fresh()->driver_user_id);
+        // รหัสของคนขับคนเดิมยังใช้ได้กับรถของเขาที่เหลือ ไม่ถูกล้างไปด้วย
+        $this->assertTrue($first->fresh()->hasPin());
+    }
+
     public function test_a_vehicle_without_a_registry_driver_still_keeps_its_own_pin(): void
     {
         $standalone = Vehicle::create([
