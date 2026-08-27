@@ -18,13 +18,11 @@ class VehicleResource extends JsonResource
             'license_plate' => $this->license_plate,
             'color' => $this->color,
             'driver_id' => $this->driver_id,
-            'driver' => $this->whenLoaded('driver', fn () => $this->driver ? [
-                'id' => $this->driver->id,
-                'name' => $this->driver->name,
-                'phone' => $this->driver->phone,
-                'photo' => $this->driver->photo,
-                'license_number' => $this->driver->license_number,
-            ] : null),
+            // ข้อมูลคนขับทั้งใบจากทะเบียน — หน้ายานพาหนะจะได้แสดงครบโดยไม่ต้องยิงซ้ำ
+            // และไม่ต้องให้แอดมินกรอกอะไรของ "คน" ซ้ำอีกเลย
+            'driver' => $this->whenLoaded('driver', fn () => $this->driver
+                ? new DriverResource($this->driver)
+                : null),
             'driver_name' => $this->driver_name,
             'driver_phone' => $this->driver_phone,
             'driver_user_id' => $this->driver_user_id,

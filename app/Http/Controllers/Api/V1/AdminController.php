@@ -2294,11 +2294,17 @@ class AdminController extends Controller
     public function updateVehicle(StoreVehicleRequest $request, int $id): JsonResponse
     {
         $vehicle = Vehicle::findOrFail($id);
+        $previousPinAccountId = $vehicle->driver_user_id;
         $vehicle->fill($request->validated());
 
-        // ถ้าเลือกคนขับจากทะเบียน ดึงชื่อ/เบอร์/รูปมาทับ snapshot บนรถ
+        // ถ้าเลือกคนขับจากทะเบียน ดึงชื่อ/เบอร์/รูป (และบัญชีรหัส GPS ของเขา) มาทับบนรถ
         $this->vehicleDriverService->applyDriverSnapshot($vehicle);
         $vehicle->save();
+
+        // ย้ายไปใช้บัญชีของคนขับในทะเบียนแล้ว บัญชีเดิมของรถคันนี้อาจไม่เหลือใครใช้
+        if ($previousPinAccountId && $previousPinAccountId !== $vehicle->driver_user_id) {
+            $this->vehicleDriverService->releaseOrphanedPin($previousPinAccountId);
+        }
 
         // ซิงก์ชื่อ/เบอร์ของบัญชีคนขับที่ผูกไว้ ให้ตรงกับข้อมูลรถที่เพิ่งแก้
         $this->vehicleDriverService->syncDriverProfile($vehicle);
@@ -2375,10 +2381,13 @@ class AdminController extends Controller
             return $this->error('ไม่สามารถลบยานพาหนะที่มีรอบเดินทางอยู่', 422);
         }
 
-        // คืนรหัสก่อนลบ ไม่งั้นบัญชีคนขับจะกลายเป็นกำพร้าที่ล็อก PIN นั้นไว้ตลอดไป
-        app(VehicleDriverService::class)->clearPin($vehicle);
+        // คืนรหัสหลังลบ ถ้าไม่มีรถคันอื่นและไม่มีคนขับในทะเบียนใช้บัญชีนั้นแล้ว
+        // (ลบรถหนึ่งคันต้องไม่ไปล้างรหัสของคนขับที่ยังขับคันอื่นอยู่)
+        $pinAccountId = $vehicle->driver_user_id;
 
         $vehicle->delete();
+
+        app(VehicleDriverService::class)->releaseOrphanedPin($pinAccountId);
 
         return $this->success(null, 'ลบยานพาหนะสำเร็จ');
     }
@@ -2392,7 +2401,7 @@ class AdminController extends Controller
         // ดึงข้อมูลรถและการใช้งานมาให้ครบในรอบเดียว — หน้าทะเบียนคนขับต้องตอบได้ทันที
         // ว่าคนขับคนนี้ขับรถคันไหน ทะเบียนอะไร และยังถูกใช้งานอยู่หรือเปล่า
         $query = Driver::withCount('vehicles')
-            ->with(['vehicles' => fn ($q) => $q->orderBy('name')->with('driverUser')])
+            ->with(['pinUser', 'vehicles' => fn ($q) => $q->orderBy('name')->with('driverUser')])
             ->withMax(
                 ['schedules as last_trip_date' => fn ($q) => $q->whereDate('return_date', '<', $today)],
                 'return_date',
@@ -2425,7 +2434,11 @@ class AdminController extends Controller
     {
         $driver = Driver::create($this->validateDriver($request));
 
-        return $this->success(new DriverResource($driver->fresh()->loadCount('vehicles')), 'เพิ่มคนขับสำเร็จ', 201);
+        return $this->success(
+            new DriverResource($driver->fresh()->load('pinUser')->loadCount('vehicles')),
+            'เพิ่มคนขับสำเร็จ',
+            201,
+        );
     }
 
     public function updateDriver(Request $request, int $id): JsonResponse
@@ -2440,7 +2453,10 @@ class AdminController extends Controller
             $this->vehicleDriverService->syncDriverProfile($vehicle);
         });
 
-        return $this->success(new DriverResource($driver->fresh()->loadCount('vehicles')), 'อัปเดตคนขับสำเร็จ');
+        return $this->success(
+            new DriverResource($driver->fresh()->load('pinUser')->loadCount('vehicles')),
+            'อัปเดตคนขับสำเร็จ',
+        );
     }
 
     public function deleteDriver(int $id): JsonResponse
@@ -2451,9 +2467,56 @@ class AdminController extends Controller
             return $this->error('ไม่สามารถลบคนขับที่ยังผูกกับรถอยู่ กรุณาเปลี่ยนคนขับของรถก่อน', 422);
         }
 
+        // เอกสารประจำตัวไม่ควรค้างอยู่บนดิสก์หลังลบคนขับออกจากทะเบียนแล้ว
+        if ($driver->license_photo) {
+            Storage::disk(MediaDisk::slipDisk())->delete($driver->license_photo);
+        }
+
         $driver->delete();
 
         return $this->success(null, 'ลบคนขับสำเร็จ');
+    }
+
+    /**
+     * อัปโหลดรูปใบขับขี่ — เก็บบนดิสก์ส่วนตัวเหมือนสลิป ไม่ใช่คลังมีเดียสาธารณะ
+     * เพราะเป็นเอกสารประจำตัว ส่งกลับเป็นลิงก์เซ็นชื่ออายุสั้น
+     */
+    public function uploadDriverLicensePhoto(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'license_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+        ]);
+
+        $driver = Driver::findOrFail($id);
+
+        if ($driver->license_photo) {
+            Storage::disk(MediaDisk::slipDisk())->delete($driver->license_photo);
+        }
+
+        $path = $request->file('license_photo')
+            ->store(Driver::DOCUMENT_FOLDER.'/'.date('Y/m'), MediaDisk::slipDisk());
+
+        $driver->forceFill(['license_photo' => $path])->save();
+
+        return $this->success(
+            new DriverResource($driver->fresh()->load('pinUser')->loadCount('vehicles')),
+            'อัปโหลดรูปใบขับขี่สำเร็จ',
+        );
+    }
+
+    public function deleteDriverLicensePhoto(int $id): JsonResponse
+    {
+        $driver = Driver::findOrFail($id);
+
+        if ($driver->license_photo) {
+            Storage::disk(MediaDisk::slipDisk())->delete($driver->license_photo);
+            $driver->forceFill(['license_photo' => null])->save();
+        }
+
+        return $this->success(
+            new DriverResource($driver->fresh()->load('pinUser')->loadCount('vehicles')),
+            'ลบรูปใบขับขี่แล้ว',
+        );
     }
 
     private function validateDriver(Request $request): array
@@ -2462,9 +2525,22 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:20'],
             'photo' => ['nullable', 'string', 'max:500'],
-            'license_number' => ['nullable', 'string', 'max:50'],
+            'line_id' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:500'],
             'is_active' => ['nullable', 'boolean'],
+
+            'license_number' => ['nullable', 'string', 'max:50'],
+            'license_type' => ['nullable', 'string', 'max:50'],
+            // ใบที่หมดอายุไปแล้วยังบันทึกได้ — ต้องคีย์ของจริงเพื่อให้ระบบเตือนว่าขาดอายุ
+            'license_expires_at' => ['nullable', 'date'],
+
+            'id_card' => ['nullable', 'string', 'max:20'],
+            'birth_date' => ['nullable', 'date', 'before:today'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'emergency_contact' => ['nullable', 'string', 'max:100'],
+            'emergency_phone' => ['nullable', 'string', 'max:20'],
+        ], [
+            'birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
         ]);
     }
 

@@ -63,8 +63,11 @@ class MediaDisk
      * Everything private is uploaded into one of these, so anything else is a
      * bad path (e.g. a "0" left behind by a failed upload that stored a falsy
      * return value) or an attempt to reach somewhere it shouldn't.
+     *
+     * driver-documents/ holds scans of a driver's licence — an identity document,
+     * so it never goes near the public bucket the rest of the media library uses.
      */
-    public const PRIVATE_PREFIXES = ['slips/', 'booking-documents/'];
+    public const PRIVATE_PREFIXES = ['slips/', 'booking-documents/', 'driver-documents/'];
 
     /**
      * A short-lived signed URL for a slip. R2 yields a native presigned URL;

@@ -681,6 +681,9 @@ Route::prefix('v1')->group(function () {
         Route::post('drivers', [AdminController::class, 'storeDriver']);
         Route::put('drivers/{id}', [AdminController::class, 'updateDriver']);
         Route::delete('drivers/{id}', [AdminController::class, 'deleteDriver']);
+        // รูปใบขับขี่เก็บบนดิสก์ส่วนตัว จึงอัปโหลดผ่าน endpoint ของตัวเอง ไม่ผ่านคลังมีเดีย
+        Route::post('drivers/{id}/license-photo', [AdminController::class, 'uploadDriverLicensePhoto']);
+        Route::delete('drivers/{id}/license-photo', [AdminController::class, 'deleteDriverLicensePhoto']);
 
         // Vehicles CRUD
         Route::get('vehicles', [AdminController::class, 'vehicles']);

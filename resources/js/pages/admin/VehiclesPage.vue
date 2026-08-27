@@ -311,6 +311,9 @@
             <div class="form-group">
               <label>เลขทะเบียนรถ</label>
               <input v-model="form.license_plate" placeholder="เช่น กข 1234 กรุงเทพ" class="form-input" />
+              <small class="field-hint">
+                ป้ายทะเบียนของรถคันนี้ (ไม่บังคับ) — ลูกค้าเห็นตอนติดตามรถและในข้อความแจ้งเตือน
+              </small>
             </div>
             <div class="form-group">
               <label>สีรถ</label>
@@ -346,7 +349,41 @@
                   <span class="material-symbols-rounded">link_off</span> ยกเลิกการผูก
                 </button>
               </div>
-              <p class="registry-hint">แก้ไขชื่อ/เบอร์/รูป ได้ที่หน้าทะเบียนคนขับ (จะอัปเดตทุกคันที่ผูกไว้)</p>
+
+              <!-- ข้อมูลทั้งหมดมาจากทะเบียนคนขับ ไม่ต้องกรอกอะไรของ "คน" ซ้ำที่นี่อีก -->
+              <div class="driver-card" v-if="selectedRegistryDriver">
+                <div class="driver-card-photo">
+                  <img v-if="selectedRegistryDriver.photo" :src="selectedRegistryDriver.photo" :alt="selectedRegistryDriver.name" />
+                  <span v-else class="material-symbols-rounded">person</span>
+                </div>
+                <dl class="driver-card-facts">
+                  <dt>เบอร์โทร</dt>
+                  <dd>{{ selectedRegistryDriver.phone || '—' }}</dd>
+                  <dt v-if="selectedRegistryDriver.line_id">LINE</dt>
+                  <dd v-if="selectedRegistryDriver.line_id">{{ selectedRegistryDriver.line_id }}</dd>
+                  <dt>ใบขับขี่</dt>
+                  <dd>
+                    {{ selectedRegistryDriver.license_number || 'ยังไม่ได้กรอก' }}
+                    <span v-if="selectedRegistryDriver.license_type"> · {{ selectedRegistryDriver.license_type }}</span>
+                    <span class="licence-chip" v-if="driverLicenceWarning" :class="driverLicenceWarning.tone">
+                      {{ driverLicenceWarning.label }}
+                    </span>
+                  </dd>
+                  <dt v-if="selectedRegistryDriver.emergency_phone">ติดต่อฉุกเฉิน</dt>
+                  <dd v-if="selectedRegistryDriver.emergency_phone">
+                    {{ selectedRegistryDriver.emergency_contact || '—' }} · {{ selectedRegistryDriver.emergency_phone }}
+                  </dd>
+                  <dt>รหัสส่ง GPS</dt>
+                  <dd :class="{ 'text-warn': !selectedRegistryDriver.has_pin }">
+                    {{ selectedRegistryDriver.has_pin ? 'ตั้งไว้แล้ว — ใช้ได้กับรถทุกคันที่เขาขับ' : 'ยังไม่ได้ตั้ง' }}
+                  </dd>
+                </dl>
+              </div>
+
+              <p class="registry-hint">
+                ข้อมูลคนขับทั้งหมดมาจากทะเบียน แก้ที่หน้าทะเบียนคนขับแล้วอัปเดตทุกคันที่ผูกไว้ —
+                ส่วนทะเบียนรถกรอกที่นี่เสมอ เพราะคนขับหนึ่งคนสลับขับได้หลายคัน
+              </p>
             </div>
             <template v-else>
               <div class="form-group full-width">
@@ -394,6 +431,11 @@
                 คนขับนำรหัสนี้ไปกรอกที่หน้า
                 <a href="/driver/track" target="_blank" rel="noopener">/driver/track</a>
                 เพื่อส่งพิกัด GPS ของรถคันนี้ — รหัสคนขับแยกต่างหากจากบัญชีผู้ใช้งานระบบ
+              </p>
+              <p class="gps-pin-hint is-shared" v-if="form.driver_id">
+                <span class="material-symbols-rounded">group</span>
+                รหัสนี้เป็นของ <strong>{{ form.driver_name }}</strong> ไม่ใช่ของรถคันนี้ —
+                ตั้งครั้งเดียวใช้ได้กับรถทุกคันที่เขาขับ และถ้าลบก็หายไปจากทุกคันพร้อมกัน
               </p>
             </div>
             <div class="form-group full-width">
@@ -974,6 +1016,20 @@ const onDriverSelect = (e) => {
   }
 };
 
+// คนขับในทะเบียนที่เลือกอยู่ — ใช้แสดงข้อมูลเต็มใบในฟอร์มรถ
+const selectedRegistryDriver = computed(
+  () => registryDrivers.value.find(d => d.id == form.driver_id) || null,
+);
+
+const driverLicenceWarning = computed(() => {
+  const driver = selectedRegistryDriver.value;
+  if (!driver) return null;
+  return {
+    expired: { label: 'ใบขับขี่หมดอายุแล้ว', tone: 'is-expired' },
+    expiring: { label: `อีก ${driver.license_days_left} วันหมดอายุ`, tone: 'is-expiring' },
+  }[driver.license_status] || null;
+});
+
 // เลือกคนขับจากทะเบียน — ดึงชื่อ/เบอร์/รูปมาเติมให้อัตโนมัติ
 const onRegistryDriverSelect = () => {
   const d = registryDrivers.value.find(x => x.id == form.driver_id);
@@ -1045,7 +1101,11 @@ const submitForm = async () => {
 
 const clearDriverPin = async () => {
   if (!editing.value?.id) return;
-  if (!confirm('ลบรหัสส่ง GPS ของรถคันนี้?')) return;
+  // รถที่ผูกทะเบียนคนขับใช้รหัสร่วมกันทุกคัน ต้องบอกก่อนกด ไม่ใช่รู้ทีหลังตอนรถอีกคันส่ง GPS ไม่ได้
+  const message = form.driver_id
+    ? `ลบรหัสส่ง GPS ของ ${form.driver_name}? รถทุกคันที่เขาขับจะใช้รหัสนี้ไม่ได้อีก`
+    : 'ลบรหัสส่ง GPS ของรถคันนี้?';
+  if (!confirm(message)) return;
   pinBusy.value = true;
   try {
     await api.delete(`/admin/vehicles/${editing.value.id}/driver-pin`);
@@ -1265,6 +1325,71 @@ onMounted(() => fetchData());
 </script>
 
 <style scoped>
+.gps-pin-hint.is-shared {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #b45309;
+}
+
+.gps-pin-hint.is-shared .material-symbols-rounded { font-size: 15px; margin-top: 1px; }
+.driver-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.driver-card-photo {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: grid;
+  place-items: center;
+  color: #9ca3af;
+}
+
+.driver-card-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+.driver-card-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.driver-card-facts dt { color: #9ca3af; font-weight: 600; white-space: nowrap; }
+.driver-card-facts dd { margin: 0; color: #374151; }
+.driver-card-facts .text-warn { color: #b45309; font-weight: 700; }
+
+.licence-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.licence-chip.is-expiring { background: #fef3c7; color: #b45309; }
+.licence-chip.is-expired { background: #fee2e2; color: #b91c1c; }
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
 @import url('./admin-shared.css');
 
 /* ─── Stats ───────────────────────────────────────── */

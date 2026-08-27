@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Driver;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -13,10 +14,12 @@ use Illuminate\Support\Facades\Log;
 /**
  * ล้าง "รหัสส่ง GPS (PIN)" ของรถทุกคันที่รอบเดินทางจบไปแล้ว
  *
- * PIN ผูกกับบัญชีคนขับ *ต่อคันรถ* และต้องไม่ซ้ำกันทั้งระบบ (pinLogin ใช้ PIN
- * ตัวเดียวชี้ว่าเป็นคนขับคนไหน) พอ PIN เก่าค้างอยู่กับรถที่ไม่ได้วิ่งแล้ว
- * แอดมินจึงตั้งรหัสเดิมให้คนขับคนเดิมบนรถคันใหม่ไม่ได้ — job นี้เก็บกวาดให้
- * รหัสถูกปล่อยคืนหลังจบรอบ
+ * PIN ต้องไม่ซ้ำกันทั้งระบบ (pinLogin ใช้ PIN ตัวเดียวชี้ว่าเป็นคนขับคนไหน) พอ PIN
+ * เก่าค้างอยู่กับรถที่ไม่ได้วิ่งแล้ว แอดมินจึงตั้งรหัสเดิมให้คนขับคนเดิมบนรถคันใหม่
+ * ไม่ได้ — job นี้เก็บกวาดให้รหัสถูกปล่อยคืนหลังจบรอบ
+ *
+ * รถที่ผูกทะเบียนคนขับใช้บัญชีเดียวกันทุกคัน จึงปล่อยคืนเฉพาะตอนที่คนขับคนนั้น
+ * ไม่เหลือรอบข้างหน้าเลย (pinIsFreeToRelease)
  *
  * รอบที่ล้างแล้วถูกทำเครื่องหมายด้วย driver_pin_cleared_at เพื่อไม่ให้รอบเก่า
  * ย้อนกลับมาล้าง PIN ใหม่ที่แอดมินตั้งไว้สำหรับรอบถัดไปของรถคันเดียวกัน
@@ -70,7 +73,7 @@ class ClearEndedTripDriverPinsJob implements ShouldQueue
 
             // รถคันเดียวอาจมีหลายรอบที่จบแล้ว — clearPin เขียนทับ relation ที่โหลดไว้
             // ทำให้รอบถัดมาของรถคันเดิมเห็นว่าไม่มี PIN แล้วและข้ามไป
-            if ($vehicle && $vehicle->hasDriverPin()) {
+            if ($vehicle && $vehicle->hasDriverPin() && $this->pinIsFreeToRelease($vehicle)) {
                 $vehicleDrivers->clearPin($vehicle);
                 $cleared++;
             }
@@ -79,6 +82,31 @@ class ClearEndedTripDriverPinsJob implements ShouldQueue
         }
 
         return $cleared;
+    }
+
+    /**
+     * รหัสของรถคันนี้ปล่อยคืนได้หรือยัง
+     *
+     * รถที่ผูกทะเบียนคนขับใช้บัญชีเดียวร่วมกันทุกคัน (ดู VehicleDriverService) การล้าง
+     * รหัสเพราะ *รอบหนึ่ง* จบ จึงห้ามไปตัดรหัสที่คนขับคนเดียวกันยังต้องใช้กับรอบอื่น
+     * ที่ยังไม่ได้วิ่ง ไม่ว่าจะเป็นรถคันไหนของเขาก็ตาม
+     */
+    private function pinIsFreeToRelease(Vehicle $vehicle): bool
+    {
+        if (! $vehicle->driver_id) {
+            return true;
+        }
+
+        $driver = $vehicle->driver()->first();
+
+        if (! $driver) {
+            return true;
+        }
+
+        return ! $driver->schedules()
+            ->whereNotIn('trip_schedules.status', ['cancelled'])
+            ->whereDate('trip_schedules.departure_date', '>=', now(self::TIMEZONE)->toDateString())
+            ->exists();
     }
 
     /**
@@ -94,6 +122,9 @@ class ClearEndedTripDriverPinsJob implements ShouldQueue
             ->whereNotNull('driver_pin_hash')
             ->where('email', 'like', '%@gps.local')
             ->whereNotIn('id', Vehicle::whereNotNull('driver_user_id')->pluck('driver_user_id'))
+            // บัญชีที่ยังเป็นของคนขับในทะเบียนไม่ใช่บัญชีกำพร้า — รหัสเป็นของ *คน*
+            // ที่ยังอยู่ในระบบ ผูกรถคันใหม่พรุ่งนี้ก็ต้องใช้รหัสเดิมได้ทันที
+            ->whereNotIn('id', Driver::whereNotNull('pin_user_id')->pluck('pin_user_id'))
             ->get();
 
         foreach ($orphans as $orphan) {

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ClearEndedTripDriverPinsJob;
+use App\Models\Driver;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -142,6 +143,42 @@ class ClearEndedTripDriverPinsJobTest extends TestCase
         // หลังล้าง: รหัสเดิมกลับมาใช้กับรถคันใหม่ได้
         app(VehicleDriverService::class)->setPin($new, '4521');
         $this->assertTrue($new->refresh()->hasDriverPin());
+    }
+
+    public function test_keeps_the_pin_when_the_same_driver_still_has_an_upcoming_round_on_another_van(): void
+    {
+        $driver = Driver::create(['name' => 'สมชาย', 'phone' => '081-111-2222']);
+
+        $ended = $this->makeVehicle('รถตู้ 1');
+        $ended->forceFill(['driver_id' => $driver->id])->save();
+        $this->withPin($ended);
+
+        $upcoming = $this->makeVehicle('รถตู้ 2');
+        $upcoming->forceFill(['driver_id' => $driver->id, 'driver_user_id' => $ended->fresh()->driver_user_id])->save();
+
+        $this->schedule($ended, now('Asia/Bangkok')->subDays(3)->toDateString());
+        $this->schedule($upcoming, now('Asia/Bangkok')->addDays(5)->toDateString(), now('Asia/Bangkok')->addDays(4)->toDateString());
+
+        app(ClearEndedTripDriverPinsJob::class)->handle(app(VehicleDriverService::class));
+
+        // รอบของรถคันแรกจบแล้วก็จริง แต่สมชายยังมีงานอีกรอบกับรถอีกคัน — รหัสต้องอยู่
+        $this->assertTrue($driver->fresh()->hasPin());
+        $this->assertTrue($upcoming->fresh()->hasDriverPin());
+    }
+
+    public function test_releases_the_pin_once_the_driver_has_no_rounds_left_at_all(): void
+    {
+        $driver = Driver::create(['name' => 'สมชาย', 'phone' => '081-111-2222']);
+
+        $vehicle = $this->makeVehicle('รถตู้ 1');
+        $vehicle->forceFill(['driver_id' => $driver->id])->save();
+        $this->withPin($vehicle);
+
+        $this->schedule($vehicle, now('Asia/Bangkok')->subDays(3)->toDateString());
+
+        app(ClearEndedTripDriverPinsJob::class)->handle(app(VehicleDriverService::class));
+
+        $this->assertFalse($driver->fresh()->hasPin());
     }
 
     public function test_does_not_touch_a_staff_pin_that_is_not_a_vehicle_driver(): void

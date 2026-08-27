@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Driver;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\Hash;
@@ -9,11 +10,15 @@ use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 /**
- * จัดการ "รหัสส่ง GPS (PIN)" ของคนข้ับประจำรถ
+ * จัดการ "รหัสส่ง GPS (PIN)" ของคนขับประจำรถ
  *
  * แต่ละรถผูกกับบัญชีคนขับ (role: driver) ผ่าน vehicles.driver_user_id
  * บัญชีนี้ใช้แค่ PIN ล็อกอินที่ /driver/track เพื่อส่ง GPS เท่านั้น
  * จึงถูกซ่อนจากเมนู "ผู้ใช้งานระบบ" และจัดการได้จากหน้ายานพาหนะโดยตรง
+ *
+ * ถ้ารถผูกกับ "ทะเบียนคนขับ" (vehicles.driver_id) บัญชีนั้นเป็นของ *คน* ไม่ใช่ของ *รถ*:
+ * เก็บไว้ที่ drivers.pin_user_id แล้วแจกให้รถทุกคันที่คนขับคนนี้ผูกอยู่ ตั้ง PIN ครั้งเดียว
+ * ใช้ได้ทุกคัน — เดิมสร้างบัญชีใหม่ทุกคันและ PIN ห้ามซ้ำ คนที่ขับสามคันจึงต้องจำสามรหัส
  */
 class VehicleDriverService
 {
@@ -26,45 +31,107 @@ class VehicleDriverService
      */
     public function setPin(Vehicle $vehicle, string $pin): User
     {
-        $this->assertPinAvailable($pin, $vehicle->driver_user_id);
+        $registryDriver = $vehicle->driver_id ? $vehicle->driver()->first() : null;
 
-        $driver = $vehicle->driverUser;
+        // บัญชีที่ต้องใช้: ของคนขับในทะเบียนถ้ามี ไม่งั้นก็ของรถคันนี้เอง
+        $account = $registryDriver?->pinUser ?: $vehicle->driverUser;
 
-        if (! $driver) {
-            $driver = User::create([
-                'name' => $vehicle->driver_name ?: ('คนขับ '.$vehicle->name),
+        $this->assertPinAvailable($pin, $account?->id);
+
+        $displayName = $registryDriver?->name ?: $vehicle->driver_name;
+        $displayPhone = $registryDriver?->phone ?: $vehicle->driver_phone;
+
+        if (! $account) {
+            $account = User::create([
+                'name' => $displayName ?: ('คนขับ '.$vehicle->name),
                 'email' => 'driver-'.Str::lower(Str::random(12)).'@gps.local',
-                'phone' => $vehicle->driver_phone,
+                'phone' => $displayPhone,
                 'password' => Hash::make(Str::random(32)),
                 'driver_pin_hash' => Hash::make($pin),
             ]);
-
-            $vehicle->forceFill(['driver_user_id' => $driver->id])->save();
         } else {
-            $driver->forceFill([
-                'name' => $vehicle->driver_name ?: $driver->name,
-                'phone' => $vehicle->driver_phone ?: $driver->phone,
+            $account->forceFill([
+                'name' => $displayName ?: $account->name,
+                'phone' => $displayPhone ?: $account->phone,
                 'driver_pin_hash' => Hash::make($pin),
             ])->save();
         }
 
-        $driver->assignRole(Role::firstOrCreate([
+        $account->assignRole(Role::firstOrCreate([
             'name' => self::DRIVER_ROLE,
             'guard_name' => 'web',
         ]));
 
-        return $driver;
+        if ($registryDriver) {
+            $registryDriver->forceFill(['pin_user_id' => $account->id])->save();
+            $this->spreadPinAccount($registryDriver, $account->id);
+        } else {
+            $vehicle->forceFill(['driver_user_id' => $account->id])->save();
+        }
+
+        return $account;
     }
 
     /**
-     * ลบรหัสส่ง GPS ของรถ (ปิดการส่ง GPS ของคนขับคนนี้)
+     * ให้รถทุกคันของคนขับคนนี้ชี้ไปที่บัญชีเดียวกัน — แอปคนขับหาตารางงานจาก
+     * vehicles.driver_user_id ถ้าไม่แจกให้ครบ รถคันอื่นจะไม่โผล่ในแอปหลังล็อกอิน
+     */
+    private function spreadPinAccount(Driver $driver, int $accountId): void
+    {
+        // บัญชีเดิมของรถแต่ละคันกำลังจะถูกแทนที่ — จำไว้ก่อนเพื่อคืนรหัสที่ไม่มีใครใช้แล้ว
+        // ไม่งั้นเลข PIN เก่าจะยังล็อกอินได้ทั้งที่ไม่เหลือรถให้ส่ง GPS และยังจองเลขนั้นไว้
+        $replaced = $driver->vehicles()
+            ->whereNotNull('driver_user_id')
+            ->where('driver_user_id', '!=', $accountId)
+            ->pluck('driver_user_id')
+            ->unique();
+
+        $driver->vehicles()
+            ->where(fn ($query) => $query->whereNull('driver_user_id')->orWhere('driver_user_id', '!=', $accountId))
+            ->update(['driver_user_id' => $accountId]);
+
+        $replaced->each(fn (int $oldAccountId) => $this->releaseOrphanedPin($oldAccountId));
+    }
+
+    /**
+     * ลบรหัสส่ง GPS (ปิดการส่ง GPS ของคนขับคนนี้)
+     *
+     * รถที่ผูกทะเบียนคนขับใช้บัญชีร่วมกัน การลบจึงมีผลกับรถทุกคันที่เขาขับ —
+     * ฝั่งหน้าเว็บบอกไว้ก่อนกดแล้ว
      */
     public function clearPin(Vehicle $vehicle): void
     {
-        $driver = $vehicle->driverUser;
-        if ($driver) {
-            $driver->forceFill(['driver_pin_hash' => null])->save();
+        $registryDriver = $vehicle->driver_id ? $vehicle->driver()->first() : null;
+        $account = $registryDriver?->pinUser ?: $vehicle->driverUser;
+
+        if ($account) {
+            $account->forceFill(['driver_pin_hash' => null])->save();
         }
+    }
+
+    /**
+     * ปล่อยบัญชี PIN ที่ไม่มีใครใช้แล้ว — เรียกหลังลบรถ หรือหลังย้ายรถไปใช้บัญชีอื่น
+     *
+     * บัญชีที่ยังเป็นของคนขับในทะเบียนต้องไม่ถูกแตะ แม้รถคันสุดท้ายของเขาจะถูกลบไป:
+     * รหัสเป็นของ *คน* ที่ยังอยู่ในทะเบียน พรุ่งนี้ผูกรถคันใหม่ก็ต้องใช้รหัสเดิมได้เลย
+     * ส่วนบัญชีที่ถูกสร้างมาเพื่อรถคันเดียว (ไม่ได้ผูกทะเบียน) ต้องคืนรหัส ไม่งั้นเลข
+     * PIN นั้นจะถูกจองไว้ตลอดกาลโดยบัญชีที่ไม่มีใครใช้
+     */
+    public function releaseOrphanedPin(?int $accountId): void
+    {
+        if (! $accountId) {
+            return;
+        }
+
+        if (Vehicle::where('driver_user_id', $accountId)->exists()) {
+            return;
+        }
+
+        if (Driver::where('pin_user_id', $accountId)->exists()) {
+            return;
+        }
+
+        User::where('id', $accountId)->update(['driver_pin_hash' => null]);
     }
 
     /**
@@ -89,6 +156,11 @@ class VehicleDriverService
             'driver_phone' => $driver->phone,
             'driver_photo' => $driver->photo,
         ]);
+
+        // คนขับตั้ง PIN ไว้แล้ว รถคันที่เพิ่งผูกก็ใช้รหัสเดิมได้ทันที ไม่ต้องตั้งใหม่
+        if ($driver->pin_user_id) {
+            $vehicle->forceFill(['driver_user_id' => $driver->pin_user_id]);
+        }
     }
 
     /**
