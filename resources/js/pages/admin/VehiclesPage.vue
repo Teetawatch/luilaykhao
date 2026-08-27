@@ -136,11 +136,26 @@
                       <span class="material-symbols-rounded">my_location</span>
                       {{ v.has_driver_pin ? 'รหัส GPS พร้อม' : 'ยังไม่ตั้งรหัส GPS' }}
                     </span>
+                    <!-- คนขับที่พิมพ์ชื่อไว้เฉย ๆ ไม่ได้อยู่ในทะเบียน จะไม่ได้ประวัติ ใบขับขี่
+                         และรหัส GPS ที่ใช้ร่วมกันได้ ต้องมองออกจากหน้ารายการว่าคันไหนยังค้าง -->
+                    <span class="registry-warn" v-if="!v.driver_id">
+                      <span class="material-symbols-rounded">link_off</span> ยังไม่ได้ผูกทะเบียนคนขับ
+                    </span>
+                    <span class="licence-warn" v-else-if="licenceWarning(v)" :class="licenceWarning(v).tone">
+                      <span class="material-symbols-rounded">warning</span> {{ licenceWarning(v).label }}
+                    </span>
                   </div>
                   <div class="color-dot" v-if="v.color"
                     :style="{ background: colorHex(v.color), border: v.color === 'ขาว' ? '1px solid #d1d5db' : 'none' }"
                     :title="v.color"
                   ></div>
+                </div>
+                <div class="driver-row driver-row-empty" v-else>
+                  <div class="driver-placeholder"><span class="material-symbols-rounded">person_off</span></div>
+                  <div class="driver-info">
+                    <span class="driver-none">ยังไม่ได้กำหนดคนขับ</span>
+                    <button type="button" class="driver-assign" @click="openForm(v)">เลือกจากทะเบียนคนขับ</button>
+                  </div>
                 </div>
                 <div class="schedule-section" v-if="vehicleSchedules(v.id).length">
                   <div class="schedule-section-title">
@@ -412,6 +427,11 @@
                 <span class="material-symbols-rounded">my_location</span>
                 รหัสส่ง GPS (PIN) — สำหรับหน้า /driver/track
               </label>
+              <p class="gps-pin-inherited" v-if="!editing?.has_driver_pin && selectedRegistryDriver?.has_pin">
+                <span class="material-symbols-rounded">check_circle</span>
+                {{ selectedRegistryDriver.name }} มีรหัสส่ง GPS อยู่แล้ว — รถคันนี้จะใช้รหัสเดิมทันทีหลังบันทึก
+                ไม่ต้องตั้งใหม่ (กรอกด้านล่างเฉพาะตอนที่อยากเปลี่ยนรหัสของเขา)
+              </p>
               <div v-if="editing && editing.has_driver_pin" class="gps-pin-status">
                 <span class="pin-set"><span class="material-symbols-rounded">check_circle</span> ตั้งรหัสไว้แล้ว</span>
                 <button type="button" class="btn-login-qr" @click="openLoginQr" :disabled="qrBusy">
@@ -423,7 +443,7 @@
               <input
                 v-model="form.driver_pin"
                 type="text" inputmode="numeric" maxlength="8" autocomplete="off"
-                :placeholder="editing && editing.has_driver_pin ? 'กรอกรหัสใหม่เพื่อเปลี่ยน (เว้นว่างถ้าไม่เปลี่ยน)' : 'ตั้งรหัส 4-8 หลัก'"
+                :placeholder="pinPlaceholder"
                 class="form-input"
                 @input="form.driver_pin = form.driver_pin.replace(/\D/g, '')"
               />
@@ -1017,6 +1037,23 @@ const onDriverSelect = (e) => {
 };
 
 // คนขับในทะเบียนที่เลือกอยู่ — ใช้แสดงข้อมูลเต็มใบในฟอร์มรถ
+// ข้อความในช่องรหัส GPS ต่างกันสามกรณี: รถคันนี้มีรหัสแล้ว / คนขับมีรหัสอยู่แล้ว / ยังไม่มีเลย
+const pinPlaceholder = computed(() => {
+  if (editing.value?.has_driver_pin) return 'กรอกรหัสใหม่เพื่อเปลี่ยน (เว้นว่างถ้าไม่เปลี่ยน)';
+  if (selectedRegistryDriver.value?.has_pin) return 'เว้นว่างไว้เพื่อใช้รหัสเดิมของคนขับ';
+  return 'ตั้งรหัส 4-8 หลัก';
+});
+
+// ป้ายเตือนใบขับขี่บนการ์ดรถ — อ่านจากทะเบียนคนขับที่ผูกไว้ (VehicleResource ส่งมาให้ครบ)
+const licenceWarning = (vehicle) => {
+  const driver = vehicle?.driver;
+  if (!driver) return null;
+  return {
+    expired: { label: 'ใบขับขี่หมดอายุแล้ว', tone: 'is-expired' },
+    expiring: { label: `ใบขับขี่เหลืออีก ${driver.license_days_left} วัน`, tone: 'is-expiring' },
+  }[driver.license_status] || null;
+};
+
 const selectedRegistryDriver = computed(
   () => registryDrivers.value.find(d => d.id == form.driver_id) || null,
 );
@@ -1325,6 +1362,60 @@ onMounted(() => fetchData());
 </script>
 
 <style scoped>
+.registry-warn,
+.licence-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.registry-warn { background: #f1f5f9; color: #64748b; }
+.registry-warn .material-symbols-rounded,
+.licence-warn .material-symbols-rounded { font-size: 13px; }
+.licence-warn.is-expiring { background: #fef3c7; color: #b45309; }
+.licence-warn.is-expired { background: #fee2e2; color: #b91c1c; }
+
+.driver-row-empty .driver-none {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.driver-assign {
+  margin-top: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent, #2d7a4f);
+  cursor: pointer;
+  width: fit-content;
+}
+
+.driver-assign:hover { text-decoration: underline; }
+
+.gps-pin-inherited {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.gps-pin-inherited .material-symbols-rounded { font-size: 16px; margin-top: 1px; }
 .gps-pin-hint.is-shared {
   display: flex;
   align-items: flex-start;
