@@ -101,7 +101,9 @@ export function tripSeatsLeft(trip) {
   return typeof n === 'number' ? n : null;
 }
 
-// 'last' (≤2, red + pulse) | 'soon' (≤5, amber) | null
+// 'last' (≤2) | 'soon' (≤5) | null
+// การ์ดทริปในหน้ารวมใช้เฉพาะระดับ 'last' และแสดงเป็นตัวหนังสือเฉย ๆ ไม่กะพริบ
+// ส่วน 'soon' เหลือไว้ให้หน้าที่พูดถึงรอบเดียวเจาะจง (รายละเอียดทริป/ป๊อปอัพ)
 export function tripScarcityLevel(trip) {
   const n = tripSeatsLeft(trip);
   if (n === null || n <= 0) return null;

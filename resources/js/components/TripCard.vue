@@ -1,66 +1,42 @@
 <template>
   <router-link :to="`/trips/${trip.slug}`"
-    class="group flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100 hover:border-transparent transition-all duration-300 transform hover:-translate-y-2 h-full">
-    
-    <!-- Image Container -->
+    class="group flex flex-col bg-white rounded-[2rem] overflow-hidden border border-gray-100 hover:border-[var(--color-accent)]/40 transition-colors duration-300 h-full">
+
+    <!-- รูป — ไม่มีข้อความทับ จึงไม่ต้องมี gradient ดำคลุม ปล่อยให้เห็นสถานที่จริง -->
     <div class="relative overflow-hidden aspect-[4/5] m-2 rounded-[1.5rem] shrink-0">
       <img v-if="trip.thumbnail_image || trip.cover_image" :src="trip.thumbnail_image || trip.cover_image" :alt="trip.title"
-        class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        class="w-full h-full object-cover"
         @error="(e) => e.target.style.display='none'" />
       <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center">
         <span class="material-symbols-rounded text-gray-300 text-5xl">image</span>
       </div>
-      
-      <!-- Gradient Overlay -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
-      
-      <!-- Badges -->
+
+      <!-- ป้ายบนรูปมีได้มากสุดสองอัน: ปลายทางกับประเภทกิจกรรม
+           อย่างอื่น (ที่นั่งเหลือ, หญิงล้วน, ระยะเวลา, ระดับ) ย้ายลงไปเป็นข้อมูล
+           ในตัวการ์ด — รูปเป็นรูป ไม่ใช่กระดานติดป้าย -->
       <div class="absolute top-4 left-4 flex flex-col gap-2">
-        <!-- ป้ายประเทศติดเฉพาะทริปต่างประเทศ ทริปในประเทศไม่ต้องบอกว่า "ไทย"
-             และอยู่บนสุดเพราะเป็นสิ่งแรกที่ทำให้การ์ดใบนี้ต่างจากใบอื่น -->
         <span v-if="trip.country_label" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md bg-white text-[var(--color-primary)]">
           {{ trip.country_label }}
-        </span>
-        <span v-if="scarcity" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md flex items-center gap-1"
-          :class="scarcity.level === 'last' ? 'bg-red-500 text-white animate-pulse' : 'bg-amber-400 text-amber-950'">
-          <span class="material-symbols-rounded text-[14px]">local_fire_department</span>
-          {{ scarcity.label }}
         </span>
         <span class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md"
           :class="typeBadgeClass">
           {{ typeLabel }}
         </span>
-        <span v-if="trip.is_women_only" class="px-3 py-1.5 rounded-full text-xs font-black tracking-wide backdrop-blur-md bg-pink-500 text-white flex items-center gap-1">
-          <span class="material-symbols-rounded text-[14px]">female</span>
-          หญิงล้วน
-        </span>
       </div>
-      
+
       <!-- Favorite button -->
       <button @click.prevent="toggleFav" :aria-label="isFav ? 'นำออกจากรายการโปรด' : 'บันทึกรายการโปรด'"
-        class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center transition-all duration-300 rounded-full cursor-pointer z-10 backdrop-blur-md"
+        class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center transition-colors duration-300 rounded-full cursor-pointer z-10 backdrop-blur-md"
         :class="isFav ? 'bg-red-500/80 hover:bg-red-600/80 text-white' : 'bg-black/25 hover:bg-black/40 text-white hover:text-red-400'">
         <span class="material-symbols-rounded text-[20px] leading-none"
           :style="isFav ? 'font-variation-settings:\'FILL\' 1,\'wght\' 400' : 'font-variation-settings:\'FILL\' 0,\'wght\' 400'">favorite</span>
       </button>
-
-      <!-- Location / Duration indicator -->
-      <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center text-white">
-        <div class="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full">
-          <span class="material-symbols-rounded text-[14px]">schedule</span>
-          <span class="text-xs font-bold">{{ trip.duration_days || 1 }} วัน</span>
-        </div>
-        <div v-if="trip.difficulty" class="flex items-center gap-1.5 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full">
-          <span class="material-symbols-rounded text-[14px]">terrain</span>
-          <span class="text-xs font-bold">{{ difficultyLabel }}</span>
-        </div>
-      </div>
     </div>
 
     <!-- Content -->
     <div class="p-5 flex-1 flex flex-col">
       <!-- Rating -->
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between gap-2 mb-2">
         <div class="flex items-center gap-1.5">
           <div class="flex text-[#FFB020] gap-0.5">
             <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">star</span>
@@ -83,31 +59,51 @@
         {{ trip.title }}
       </h3>
 
-      <p v-if="trip.description" class="text-[var(--color-text-muted)] text-sm mb-4 line-clamp-2 font-medium leading-relaxed">
+      <p v-if="trip.description" class="text-[var(--color-text-muted)] text-sm mb-3 line-clamp-2 font-medium leading-relaxed">
         {{ trip.description }}
       </p>
-      <p v-else class="text-[var(--color-text-muted)] text-sm mb-4 flex items-center gap-1.5 font-medium">
+      <p v-else class="text-[var(--color-text-muted)] text-sm mb-3 flex items-center gap-1.5 font-medium">
         <span class="material-symbols-rounded text-[16px] text-[var(--color-accent)]">location_on</span>
         <span class="truncate">{{ trip.location }}</span>
+      </p>
+
+      <!-- ตัวเลขของเส้นทางจริง — ระยะทางกับความสูงสะสมโผล่เฉพาะทริปที่กรอกไว้จริง
+           ไม่มีก็เหลือแค่ระยะเวลากับระดับ ไม่เติมคำโฆษณาแทนช่องว่าง -->
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-bold text-[var(--color-text-muted)] mb-3">
+        <span v-for="fact in routeFacts" :key="fact.key" class="inline-flex items-center gap-1">
+          <span class="material-symbols-rounded text-[15px] text-[var(--color-accent)]">{{ fact.icon }}</span>
+          {{ fact.label }}
+        </span>
+      </div>
+
+      <!-- รอบถัดไป: บอกว่าไปกันวันไหน แทนที่จะบอกว่าเหลือน้อยแล้ว
+           จำนวนที่นั่งขึ้นต่อท้ายเฉพาะตอนเหลือน้อยจริง (≤2) และเป็นตัวหนังสือเฉย ๆ
+           ไม่กะพริบ ไม่มีไอคอนไฟ — ทั้งหน้ามีการ์ดหลายสิบใบ ถ้าทุกใบเร่งพร้อมกัน
+           มันไม่ได้แปลว่าด่วน มันแปลว่าเว็บกำลังตะโกน -->
+      <p v-if="nextDeparture || lastSeats" class="text-xs font-bold text-[var(--color-text-dark)] mb-3 flex items-center gap-1.5">
+        <span class="material-symbols-rounded text-[15px] text-[var(--color-accent)]">event</span>
+        <!-- บางหน้าส่งการ์ดมาโดยไม่มีรอบเดินทางแนบมาด้วย ที่นั่งเหลือน้อยจึงต้องยืนเองได้ -->
+        <template v-if="nextDeparture">รอบถัดไป {{ nextDeparture }}</template>
+        <span v-if="lastSeats" class="text-amber-700 font-bold">{{ nextDeparture ? '· ' : '' }}{{ lastSeats }}</span>
       </p>
 
       <!-- Footer -->
       <div class="mt-auto pt-4 flex justify-between items-end border-t border-gray-100">
         <div class="flex flex-col">
-          <span class="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider mb-0.5">
-            {{ Number(trip.min_price) != Number(trip.max_price) ? 'ช่วงราคา' : 'เริ่มต้น' }}
+          <span class="text-xs text-[var(--color-text-muted)] font-bold mb-0.5">
+            {{ hasPriceRange ? 'ช่วงราคาต่อคน' : 'ราคาต่อคน' }}
           </span>
           <div class="flex items-baseline gap-1">
-            <template v-if="Number(trip.min_price) != Number(trip.max_price)">
-              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}</span>
-            </template>
-            <template v-else>
-              <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ Number(trip.min_price).toLocaleString() }}</span>
-            </template>
+            <span class="text-base font-extrabold text-[var(--color-text-dark)] tabular-nums">
+              <template v-if="hasPriceRange">
+                ฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}
+              </template>
+              <template v-else>฿{{ Number(trip.min_price).toLocaleString() }}</template>
+            </span>
           </div>
         </div>
         <div class="w-10 h-10 rounded-full bg-[var(--color-sand)] flex items-center justify-center group-hover:bg-[var(--color-accent)] group-hover:text-white transition-colors duration-300">
-          <span class="material-symbols-rounded text-[20px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+          <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
         </div>
       </div>
     </div>
@@ -117,15 +113,11 @@
 <script setup>
 import { computed } from 'vue';
 import { useWishlistStore } from '../stores/wishlist';
-import { tripScarcityLabel, tripScarcityLevel } from '../lib/scheduleHelpers';
+import { tripSeatsLeft, tripScarcityLevel } from '../lib/scheduleHelpers';
+import { thaiDayMonth } from '../lib/thaiDate';
 
 const props = defineProps({
   trip: { type: Object, required: true },
-});
-
-const scarcity = computed(() => {
-  const label = tripScarcityLabel(props.trip);
-  return label ? { label, level: tripScarcityLevel(props.trip) } : null;
 });
 
 const wishlist = useWishlistStore();
@@ -147,6 +139,48 @@ const diffMap = { easy: 'ง่าย', medium: 'ปานกลาง', hard: '
 const typeLabel = computed(() => typeMap[props.trip.type]?.label || props.trip.type);
 const typeBadgeClass = computed(() => typeMap[props.trip.type]?.class || 'bg-[#6B8F7A] text-white');
 const difficultyLabel = computed(() => diffMap[props.trip.difficulty] || props.trip.difficulty);
+
+const hasPriceRange = computed(() => Number(props.trip.min_price) !== Number(props.trip.max_price));
+
+// ระยะเวลา/ระดับมีทุกทริป ส่วนระยะทาง/ความสูงสะสมมีเฉพาะทริปที่แอดมินกรอกไว้
+const routeFacts = computed(() => {
+  const facts = [
+    { key: 'days', icon: 'schedule', label: `${props.trip.duration_days || 1} วัน` },
+  ];
+
+  if (props.trip.is_women_only) {
+    facts.push({ key: 'women', icon: 'female', label: 'หญิงล้วน' });
+  }
+  if (props.trip.difficulty) {
+    facts.push({ key: 'difficulty', icon: 'terrain', label: difficultyLabel.value });
+  }
+  if (Number(props.trip.distance_km) > 0) {
+    facts.push({ key: 'distance', icon: 'straighten', label: `${Number(props.trip.distance_km).toLocaleString()} กม.` });
+  }
+  if (Number(props.trip.elevation_gain_m) > 0) {
+    facts.push({ key: 'elevation', icon: 'landscape', label: `+${Number(props.trip.elevation_gain_m).toLocaleString()} ม.` });
+  }
+
+  return facts;
+});
+
+// วันของรอบที่จะออกเดินทางเร็วที่สุดในบรรดารอบที่ยังเปิดรับ
+const nextDeparture = computed(() => {
+  const dates = (props.trip.schedules || [])
+    .filter((s) => s.status === 'open' && s.departure_date)
+    .map((s) => s.departure_date)
+    .sort();
+
+  return dates.length ? thaiDayMonth(dates[0]) : null;
+});
+
+// ที่นั่งเหลือน้อยจริงเท่านั้น (≤2) — ระดับ "ใกล้เต็ม เหลือ 5 ที่" ไม่ขึ้นบนหน้ารวมแล้ว
+const lastSeats = computed(() => {
+  if (tripScarcityLevel(props.trip) !== 'last') return null;
+  const left = tripSeatsLeft(props.trip);
+
+  return left ? `เหลือ ${left} ที่` : null;
+});
 </script>
 
 <style scoped>
