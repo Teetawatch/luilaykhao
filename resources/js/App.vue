@@ -69,7 +69,14 @@
     </Transition>
 
     <main class="flex-1">
-      <router-view />
+      <!--
+        key ผูกกับ path เพื่อให้เปลี่ยนพารามิเตอร์ในเส้นทางเดียวกัน (เช่นกดทริปใกล้เคียง
+        จาก /trips/a ไป /trips/b) สร้างหน้าใหม่จริง ไม่ใช่ใช้ instance เดิมที่ onMounted
+        ไม่ทำงานซ้ำ แล้วค้างข้อมูลของทริปเดิมไว้ทั้งหน้า
+
+        ใช้ path ไม่ใช่ fullPath ตั้งใจ — การเปลี่ยน query (เช่น ?schedule=) ต้องไม่รีเซ็ตหน้า
+      -->
+      <router-view :key="$route.path" />
     </main>
     <Footer />
   </div>
