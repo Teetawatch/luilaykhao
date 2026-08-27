@@ -1779,6 +1779,7 @@
 
 <script setup>
 import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import { useToast } from '../../lib/toast';
 import api from '../../lib/axios';
@@ -1786,6 +1787,7 @@ import CustomPickupModal from '../../components/CustomPickupModal.vue';
 
 const admin = useAdminStore();
 const toast = useToast();
+const route = useRoute();
 
 const filters = reactive({
   search: '',
@@ -3349,7 +3351,11 @@ watch(splitTargetSearch, () => {
   splitSearchTimer = setTimeout(fetchSplitTargets, 300);
 });
 
-onMounted(() => fetchData());
+onMounted(() => {
+  // เปิดมาจากหน้าอื่นพร้อมรหัสจองใน query (เช่นหน้าผ่อนชำระ) — กรองให้เลย
+  if (route.query.search) filters.search = String(route.query.search);
+  fetchData();
+});
 
 // ── Slip OCR ──────────────────────────────────────────────────────
 function ocrLabel(status) {

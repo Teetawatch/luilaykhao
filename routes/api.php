@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\AdminBroadcastController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
+use App\Http\Controllers\Api\V1\AdminInstallmentController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
@@ -665,6 +666,10 @@ Route::prefix('v1')->group(function () {
         // ตั้งค่าระบบทั่วไป (เกณฑ์ที่นั่ง/ช่วงเวลางดรบกวน/ข้อมูลติดต่อ)
         Route::get('settings/site', [AdminSettingsController::class, 'show']);
         Route::put('settings/site', [AdminSettingsController::class, 'update']);
+
+        // ภาพรวมการผ่อนชำระ — ใครจ่ายไปกี่งวด เหลือเท่าไหร่ พร้อมสลิปรายงวด
+        Route::get('installments', [AdminInstallmentController::class, 'index']);
+        Route::get('installments/{ref}', [AdminInstallmentController::class, 'show']);
 
         // Outstanding payments — ติดตาม/ส่งลิงก์ชำระเงินให้ลูกค้าที่ยังค้างจ่าย
         Route::get('payments/outstanding', [AdminPaymentController::class, 'outstanding']);
