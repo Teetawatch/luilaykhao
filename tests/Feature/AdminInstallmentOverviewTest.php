@@ -203,6 +203,63 @@ class AdminInstallmentOverviewTest extends TestCase
         $this->assertSame(1, $data['summary']['needs_review_bookings']);
     }
 
+    public function test_reads_a_double_encoded_ocr_result_instead_of_crashing(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->makeInstallmentBooking($schedule, [
+            [
+                'due_date' => now('Asia/Bangkok')->subDays(5)->toDateString(),
+                'status' => 'paid',
+                'paid_at' => now(),
+                'slip_path' => 'slips/2026/08/double.jpg',
+                'slip_ocr_status' => 'failed',
+                // แถวจริงบน production บางแถวเก็บ JSON ซ้อนสองชั้น: ส่งสตริงเข้าคอลัมน์ที่
+                // cast เป็น array มันจึงถูก encode ให้อีกชั้น พออ่านกลับได้สตริง ไม่ใช่ array
+                'slip_ocr_result' => json_encode([
+                    'status' => 'success',
+                    'amount' => 2800,
+                    'bank' => 'ไทยพาณิชย์',
+                ]),
+            ],
+            ['due_date' => now('Asia/Bangkok')->addDays(20)->toDateString()],
+        ]);
+
+        $installment = $this->actingAs($this->makeAdmin())
+            ->getJson('/api/v1/admin/installments')
+            ->assertOk()
+            ->json('data.items.0.installments.0');
+
+        $this->assertEquals(2800, $installment['slip_ocr']['amount']);
+        $this->assertEquals(-200, $installment['slip_ocr']['amount_diff']);
+        $this->assertSame('ไทยพาณิชย์', $installment['slip_ocr']['bank']);
+    }
+
+    public function test_a_slip_ocr_result_that_is_not_readable_is_skipped_quietly(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->makeInstallmentBooking($schedule, [
+            [
+                'due_date' => now('Asia/Bangkok')->subDays(5)->toDateString(),
+                'status' => 'paid',
+                'paid_at' => now(),
+                'slip_path' => 'slips/2026/08/junk.jpg',
+                'slip_ocr_status' => 'failed',
+                'slip_ocr_result' => 'ตรวจไม่ผ่าน',
+            ],
+            ['due_date' => now('Asia/Bangkok')->addDays(20)->toDateString()],
+        ]);
+
+        $installment = $this->actingAs($this->makeAdmin())
+            ->getJson('/api/v1/admin/installments')
+            ->assertOk()
+            ->json('data.items.0.installments.0');
+
+        $this->assertNull($installment['slip_ocr']);
+        // สลิปยังต้องเปิดดูได้และยังต้องถูกนับว่ารอตรวจอยู่
+        $this->assertNotNull($installment['slip_url']);
+        $this->assertTrue($installment['needs_review']);
+    }
+
     public function test_falls_back_to_the_booking_slip_for_the_first_installment(): void
     {
         $schedule = $this->makeSchedule();

@@ -77,7 +77,7 @@ class AdminInstallmentController extends Controller
             ->with(['user', 'schedule.trip', 'passengers', 'installmentPayments'])
             ->firstOrFail();
 
-        return $this->success($this->summarize($booking));
+        return $this->success($this->summarize($booking, withPayUrl: true));
     }
 
     /**
@@ -123,7 +123,7 @@ class AdminInstallmentController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function summarize(Booking $booking): array
+    private function summarize(Booking $booking, bool $withPayUrl = false): array
     {
         $today = $this->today();
 
@@ -180,7 +180,9 @@ class AdminInstallmentController extends Controller
                 'is_overdue' => $next['is_overdue'],
             ] : null,
 
-            'pay_url' => $unpaid->isNotEmpty() ? $booking->payUrl() : null,
+            // payUrl() สร้าง token ลงฐานข้อมูลถ้ายังไม่มี — ทำทีละใบตอนกางดูรายละเอียด
+            // ไม่ใช่เขียนทุกแถวทุกครั้งที่เปิดหน้ารายการ
+            'pay_url' => $withPayUrl && $unpaid->isNotEmpty() ? $booking->payUrl() : null,
             'installments' => $installments->all(),
         ];
     }
@@ -251,12 +253,20 @@ class AdminInstallmentController extends Controller
     /**
      * ผลอ่านสลิปที่ OCR ดึงได้ + ส่วนต่างจากยอดที่ต้องจ่าย
      *
-     * @param  array<string, mixed>|null  $raw
+     * รับเป็น mixed เพราะคอลัมน์ json ที่ cast เป็น array ไม่ได้คืน array เสมอ: แถวที่ถูก
+     * encode ซ้อนสองชั้น (เก็บสตริง JSON ลงในคอลัมน์ที่ encode ให้อีกที) จะ decode
+     * ออกมาเป็นสตริง แกะอีกชั้นให้แทนที่จะทิ้ง — ข้อมูลยังอ่านได้อยู่ และทั้งหน้า
+     * ไม่ควรล่มเพราะสลิปใบเดียวที่รูปร่างเพี้ยน
+     *
      * @return array<string, mixed>|null
      */
-    private function ocrDetail(?array $raw, float $expectedAmount): ?array
+    private function ocrDetail(mixed $raw, float $expectedAmount): ?array
     {
-        if (empty($raw)) {
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+
+        if (! is_array($raw) || $raw === []) {
             return null;
         }
 
