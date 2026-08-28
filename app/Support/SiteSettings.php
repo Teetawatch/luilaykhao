@@ -91,6 +91,39 @@ class SiteSettings
         return (string) (self::get('support_phone') ?: config('app.support_phone'));
     }
 
+    /** LINE ID ที่แสดงให้ลูกค้า เช่น `@luilaykhao` */
+    public static function supportLine(): string
+    {
+        return (string) (self::get('support_line') ?: config('app.support_line_id'));
+    }
+
+    /**
+     * ลิงก์เปิดแชท LINE — แอดมินกรอก LINE ID ไม่ใช่ URL จึงประกอบให้เอง
+     *
+     * ถ้าวาง URL เต็มมาก็ใช้ตามนั้น เพราะบัญชีบางแบบมีลิงก์เชิญเฉพาะของตัวเอง
+     * ที่ประกอบจาก ID ไม่ได้
+     */
+    public static function supportLineUrl(): string
+    {
+        $line = trim(self::supportLine());
+
+        if (str_starts_with($line, 'http://') || str_starts_with($line, 'https://')) {
+            return $line;
+        }
+
+        $id = ltrim($line, '@');
+
+        return $id === ''
+            ? (string) config('app.support_line_url')
+            : 'https://line.me/R/ti/p/@'.$id;
+    }
+
+    /** อีเมลติดต่อที่แสดงให้ลูกค้า */
+    public static function supportEmail(): string
+    {
+        return (string) (self::get('support_email') ?: config('app.support_email'));
+    }
+
     /**
      * เลขที่ใบอนุญาตนำเที่ยว — แหล่งเดียวของทั้งเว็บ แอป และ structured data
      *

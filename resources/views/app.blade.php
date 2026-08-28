@@ -25,6 +25,13 @@
     <meta name="llk:licence-no" content="{{ \App\Support\SiteSettings::licenceNo() }}">
     <meta name="llk:licence-image" content="{{ \App\Support\SiteSettings::licenceImageUrl() }}">
 
+    {{-- ข้อมูลติดต่อมาทางเดียวกับใบอนุญาต ด้วยเหตุผลเดียวกัน — เบอร์โทรอยู่บน
+         Navbar ทุกหน้า ถ้ารอ API จะเห็นช่องว่างวาบหนึ่งก่อนทุกครั้งที่เปลี่ยนหน้า --}}
+    <meta name="llk:support-phone" content="{{ \App\Support\SiteSettings::supportPhone() }}">
+    <meta name="llk:support-line" content="{{ \App\Support\SiteSettings::supportLine() }}">
+    <meta name="llk:support-line-url" content="{{ \App\Support\SiteSettings::supportLineUrl() }}">
+    <meta name="llk:support-email" content="{{ \App\Support\SiteSettings::supportEmail() }}">
+
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ $seo['canonical'] }}">
 

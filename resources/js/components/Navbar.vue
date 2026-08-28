@@ -44,9 +44,9 @@
 
           <span aria-hidden="true" class="hidden md:block h-4 w-px bg-white/25 mx-1.5"></span>
 
-          <a href="tel:0626126006" class="phone-chip focus-ring" aria-label="โทรหาเรา 062-612-6006">
+          <a :href="supportPhoneHref()" class="phone-chip focus-ring" :aria-label="`โทรหาเรา ${supportPhone()}`">
             <span class="material-symbols-rounded filled-icon">call</span>
-            <span>062-612-6006</span>
+            <span>{{ supportPhone() }}</span>
           </a>
         </div>
       </div>
@@ -661,13 +661,13 @@
               </div>
 
               <div class="sheet-item mt-6 border-t border-sand-dark pt-5" :style="{ '--i': navLinks.length + 3 }">
-                <a href="tel:0626126006" class="flex items-center gap-3 text-text-mid">
+                <a :href="supportPhoneHref()" class="flex items-center gap-3 text-text-mid">
                   <span class="flex h-10 w-10 items-center justify-center rounded-full bg-sand text-primary">
                     <span class="material-symbols-rounded text-[20px]">call</span>
                   </span>
                   <span class="flex flex-col leading-tight">
                     <span class="text-[11px] font-semibold text-text-muted">สอบถามเพิ่มเติม</span>
-                    <span class="text-[15px] font-bold text-text-dark">062-612-6006</span>
+                    <span class="text-[15px] font-bold text-text-dark">{{ supportPhone() }}</span>
                   </span>
                 </a>
 
@@ -856,6 +856,7 @@ import { useAuthStore } from '../stores/auth';
 import { useWishlistStore } from '../stores/wishlist';
 import api from '../lib/axios';
 import { licenceNo } from '../lib/licence';
+import { supportPhone, supportPhoneHref, supportLineUrl } from '../lib/contact';
 
 // อ่านครั้งเดียวตอนสร้างคอมโพเนนต์ — ค่ามากับ shell แล้ว ไม่เปลี่ยนระหว่างหน้า
 const licence = licenceNo();
@@ -903,7 +904,7 @@ const favoriteThumb = (trip) => (typeof trip === 'object' ? trip.thumbnail_image
    บัญชีเดียวกับที่ Footer และหน้าติดต่อเราใช้ — แก้ที่นี่แล้วต้องแก้ที่นั่นด้วย
 */
 const socialLinks = [
-  { label: 'LINE', icon: 'fa-brands fa-line', href: 'https://line.me/ti/p/@luilaykhao' },
+  { label: 'LINE', icon: 'fa-brands fa-line', href: supportLineUrl() },
   { label: 'Facebook', icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/profile.php?id=61572124170207' },
   { label: 'Instagram', icon: 'fa-brands fa-instagram', href: 'https://instagram.com/luilaykhao' },
   { label: 'TikTok', icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@luilaykhao' },

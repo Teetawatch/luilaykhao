@@ -24,7 +24,7 @@
             <a href="https://instagram.com/luilaykhao" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
               <i class="fa-brands fa-instagram"></i>
             </a>
-            <a href="https://line.me/ti/p/@luilaykhao" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
+            <a :href="supportLineUrl()" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
               <i class="fa-brands fa-line text-lg"></i>
             </a>
           </div>
@@ -62,35 +62,35 @@
           </h4>
           <ul class="space-y-4 text-sm text-text-muted">
             <li>
-              <a href="https://line.me/ti/p/@luilaykhao" target="_blank" class="flex items-start gap-3.5 group">
+              <a :href="supportLineUrl()" target="_blank" class="flex items-start gap-3.5 group">
                 <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
                   <i class="fa-brands fa-line text-lg"></i>
                 </div>
                 <div class="pt-1.5">
                   <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">LINE Official</p>
-                  <p>@luilaykhao</p>
+                  <p>{{ supportLine() }}</p>
                 </div>
               </a>
             </li>
             <li>
-              <a href="tel:0626126006" class="flex items-start gap-3.5 group">
+              <a :href="supportPhoneHref()" class="flex items-start gap-3.5 group">
                 <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
                   <span class="material-symbols-rounded text-[18px]">call</span>
                 </div>
                 <div class="pt-1.5">
                   <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">โทรศัพท์</p>
-                  <p>062-612-6006</p>
+                  <p>{{ supportPhone() }}</p>
                 </div>
               </a>
             </li>
             <li>
-              <a href="mailto:[EMAIL_ADDRESS]" class="flex items-start gap-3.5 group">
+              <a :href="supportEmailHref()" class="flex items-start gap-3.5 group">
                 <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
                   <span class="material-symbols-rounded text-[18px]">mail</span>
                 </div>
                 <div class="pt-1.5">
                   <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">อีเมล</p>
-                  <p>luilaykhao.info@gmail.com</p>
+                  <p>{{ supportEmail() }}</p>
                 </div>
               </a>
             </li>
@@ -141,6 +141,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
+import {
+  supportPhone, supportPhoneHref, supportLine, supportLineUrl, supportEmail, supportEmailHref,
+} from '../lib/contact';
 
 const categories = ref([]);
 const loading = ref(true);
