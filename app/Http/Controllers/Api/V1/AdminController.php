@@ -864,7 +864,9 @@ class AdminController extends Controller
     private function loadScheduleStaffRelations(TripSchedule $schedule): void
     {
         $withStats = function ($query) {
-            $query->withCount('assignedSchedules');
+            // roles come along so the payload can flag anyone on the round who no
+            // longer holds the staff role — otherwise they are invisible in the UI.
+            $query->with('roles')->withCount('assignedSchedules');
 
             if (Schema::hasTable('staff_reviews')) {
                 $query->withCount('staffReviewsReceived')
@@ -894,22 +896,37 @@ class AdminController extends Controller
 
         $staffIds = collect($validated['staff_ids'] ?? [])->values();
 
-        if ($staffIds->isNotEmpty()) {
-            $this->ensureRoleNameExists('staff');
-
-            $validStaffIds = $this->usersWithRoleName('staff')
-                ->whereIn('id', $staffIds)
-                ->pluck('id');
-
-            if ($validStaffIds->count() !== $staffIds->count()) {
-                return $this->error('พบผู้ใช้ที่ไม่ได้เป็นสิทธิ์ staff', 422);
-            }
-        }
-
         // Capture who was already on this round so we only push to the staff
         // who are *newly* assigned (not re-notifying existing ones or anyone removed).
         $existingStaffIds = $schedule->activeStaff()->pluck('users.id')->map(fn ($id) => (int) $id);
         $wantedStaffIds = $staffIds->map(fn ($id) => (int) $id);
+
+        // Only the people being *added* need the staff role. Someone already on the
+        // round whose role changed afterwards must not block every later edit of it —
+        // the admin can still see them on the round and take them off.
+        $addedStaffIds = $wantedStaffIds->diff($existingStaffIds)->values();
+
+        if ($addedStaffIds->isNotEmpty()) {
+            $this->ensureRoleNameExists('staff');
+
+            $validStaffIds = $this->usersWithRoleName('staff')
+                ->whereIn('id', $addedStaffIds)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id);
+
+            $missingRoleIds = $addedStaffIds->diff($validStaffIds);
+
+            if ($missingRoleIds->isNotEmpty()) {
+                $names = User::whereIn('id', $missingRoleIds)->pluck('name')->implode(', ');
+
+                return $this->error(
+                    $names !== ''
+                        ? "เพิ่ม {$names} ไม่ได้ เพราะบัญชีนี้ยังไม่ได้ตั้งสิทธิ์เป็นสตาฟ — แก้สิทธิ์ที่หน้าผู้ใช้งานก่อน"
+                        : 'พบผู้ใช้ที่ไม่ได้เป็นสิทธิ์ staff',
+                    422,
+                );
+            }
+        }
 
         // Detaching would drop the row a released assignment lives in, taking the
         // record of who worked the round with it — so only touch active rows here
@@ -999,6 +1016,9 @@ class AdminController extends Controller
             'assigned_schedules_count' => (int) ($user->assigned_schedules_count ?? 0),
             'total_staff_reviews' => (int) ($user->staff_reviews_received_count ?? 0),
             'avg_staff_rating' => $user->avg_staff_rating ? round((float) $user->avg_staff_rating, 2) : null,
+            'has_staff_role' => $user->relationLoaded('roles')
+                ? $user->roles->contains('name', 'staff')
+                : true,
             'assigned_at' => $user->pivot?->created_at?->toISOString(),
             'released_at' => $user->pivot?->released_at
                 ? Carbon::parse($user->pivot->released_at)->toISOString()

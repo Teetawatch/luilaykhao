@@ -217,6 +217,9 @@
                   <div v-else class="chip-avatar fallback">{{ staff.name?.charAt(0)?.toUpperCase() }}</div>
                   <div class="chip-info">
                     <span class="chip-name">{{ staff.name }}<span v-if="staff.nickname" class="chip-nick"> ({{ staff.nickname }})</span></span>
+                    <span v-if="staff.has_staff_role === false" class="chip-warn" title="บัญชีนี้ไม่ได้มีสิทธิ์สตาฟแล้ว — ตั้งสิทธิ์ใหม่ที่หน้าผู้ใช้งาน หรือนำออกจากรอบนี้">
+                      <span class="material-symbols-rounded">warning</span> ไม่มีสิทธิ์สตาฟแล้ว
+                    </span>
                     <a v-if="staff.phone" :href="`tel:${staff.phone}`" class="phone-link">
                       <span class="material-symbols-rounded">call</span>{{ staff.phone }}
                     </a>
@@ -424,6 +427,7 @@ const selectedScheduleMeta = ref(null);
 const selectedStaffIds = ref([]);
 const originalStaffIds = ref([]);
 const releasedStaff = ref([]);
+const assignedStaffDetails = ref([]);
 
 // Roster state
 const rosterLoading = ref(false);
@@ -553,7 +557,9 @@ const filteredStaff = computed(() => {
   });
 });
 
-const availableStaff = computed(() => filteredStaff.value.filter((staff) => !isStaffSelected(staff.id)));
+const availableStaff = computed(() => filteredStaff.value.filter(
+  (staff) => !isStaffSelected(staff.id) && staff.has_staff_role !== false,
+));
 
 const isDirty = computed(() => {
   const current = [...selectedStaffIds.value.map(Number)].sort((a, b) => a - b);
@@ -709,7 +715,8 @@ const applyStaffPayload = (payload) => {
   selectedStaffIds.value = (payload?.staff || []).map((s) => s.id);
   originalStaffIds.value = [...selectedStaffIds.value];
   releasedStaff.value = payload?.released_staff || [];
-  mergeAssignedStaffStats(payload?.staff || []);
+  assignedStaffDetails.value = payload?.staff || [];
+  mergeAssignedStaffStats(assignedStaffDetails.value);
 };
 
 const addStaff = (staffId) => {
@@ -727,13 +734,18 @@ const resetSelection = () => {
 
 const isStaffSelected = (staffId) => selectedStaffIds.value.map(Number).includes(Number(staffId));
 
+// Someone on the round who no longer holds the staff role is missing from the
+// staff list, so append them instead of dropping them: otherwise they are
+// invisible on screen yet still ride along in every save of this round.
 const mergeAssignedStaffStats = (assignedStaff = []) => {
   if (!assignedStaff.length) return;
   const statsById = new Map(assignedStaff.map((staff) => [Number(staff.id), staff]));
-  staffUsers.value = staffUsers.value.map((staff) => {
+  const merged = staffUsers.value.map((staff) => {
     const updated = statsById.get(Number(staff.id));
+    if (updated) statsById.delete(Number(staff.id));
     return updated ? { ...staff, ...updated } : staff;
   });
+  staffUsers.value = [...merged, ...statsById.values()];
 };
 
 const saveAssignments = async () => {
@@ -769,6 +781,7 @@ const releaseAllStaff = async () => {
 
 const refreshAfterStaffChange = async () => {
   await loadStaffUsers();
+  mergeAssignedStaffStats(assignedStaffDetails.value);
   await admin.fetchSchedules({ per_page: 500, ...(scheduleScope.value === 'upcoming' ? { upcoming: 1 } : {}) });
   schedules.value = admin.schedules.data || [];
   await attachTodayStaff();
@@ -799,6 +812,19 @@ onMounted(loadData);
 
 <style scoped>
 @import url('./admin-shared.css');
+
+.chip-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.chip-warn .material-symbols-rounded {
+  font-size: 14px;
+}
 
 /* ── Header ──────────────────────────────────────────────── */
 .header-actions {
