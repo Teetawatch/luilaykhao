@@ -295,7 +295,7 @@
               <label>ยานพาหนะ</label>
               <select v-model="form.vehicle_id">
                 <option :value="null">ไม่ระบุ</option>
-                <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
+                <option v-for="v in vehicleSelectOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
               </select>
             </div>
             <div class="form-group">
@@ -2008,18 +2008,33 @@ const fetchData = () => {
   admin.fetchSchedules(params);
 };
 
+// ขอมาให้ครบทุกคัน — backend แบ่งหน้าเสมอ และเรียงตามชื่อ รถที่เพิ่งเพิ่มเข้ามา
+// จึงไปตกอยู่หน้าหลังแล้วหายไปจากช่อง “ยานพาหนะ” เฉย ๆ ทั้งที่บันทึกสำเร็จแล้ว
+// (หน้าจัดการยานพาหนะเจอบั๊กเดียวกันนี้มาก่อน จึงขอ per_page สูงเหมือนกัน)
+// และแยกผลสองคำขอออกจากกัน ไม่ให้ฝั่งหนึ่งพังแล้วอีกฝั่งว่างตามไปแบบเงียบ ๆ
 const loadOptions = async () => {
-  try {
-    const [tripsRes, vehiclesRes] = await Promise.all([
-      api.get('/admin/trips', { params: { per_page: 100 } }),
-      api.get('/admin/vehicles', { params: { per_page: 100 } }),
-    ]);
-    tripOptions.value = tripsRes.data.data;
-    vehicleOptions.value = vehiclesRes.data.data;
-  } catch {}
+  const [tripsRes, vehiclesRes] = await Promise.allSettled([
+    api.get('/admin/trips', { params: { per_page: 500 } }),
+    api.get('/admin/vehicles', { params: { per_page: 500 } }),
+  ]);
+  if (tripsRes.status === 'fulfilled') tripOptions.value = tripsRes.value.data.data || [];
+  else console.error('Failed to fetch trips:', tripsRes.reason);
+  if (vehiclesRes.status === 'fulfilled') vehicleOptions.value = vehiclesRes.value.data.data || [];
+  else console.error('Failed to fetch vehicles:', vehiclesRes.reason);
 };
 
+// รถที่รอบนี้ผูกไว้ต้องอยู่ในตัวเลือกเสมอ ถ้ามันหลุดรายการ (เช่นถูกลบทิ้งไปแล้ว)
+// ช่องจะว่างและกดบันทึกครั้งเดียวรถก็หลุดจากรอบไปโดยไม่ได้ตั้งใจ
+const vehicleSelectOptions = computed(() => {
+  const current = editing.value?.vehicle;
+  if (!current?.id || vehicleOptions.value.some((v) => v.id === current.id)) return vehicleOptions.value;
+  return [...vehicleOptions.value, current].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'th'));
+});
+
 const openForm = (item = null) => {
+  // ดึงรายการทริป/รถใหม่ทุกครั้งที่เปิดฟอร์ม — เดิมโหลดครั้งเดียวตอนเปิดหน้า รถที่เพิ่ม
+  // ระหว่างที่หน้านี้ค้างอยู่ (หรือเพิ่มจากอีกแท็บ) จึงไม่ขึ้นจนกว่าจะรีเฟรชหน้า
+  loadOptions();
   // item can be a full schedule (edit) or { trip_id } (new schedule for trip)
   editing.value = item?.departure_date ? item : null;
   if (item?.departure_date) {
@@ -2551,6 +2566,7 @@ watch(moveSelectedPassengerIds, () => {
 }, { deep: true });
 
 const openBatchForm = (presetTripId = '') => {
+  loadOptions();
   Object.assign(batchForm, {
     trip_id: presetTripId || '',
     transport_type: 'van',
