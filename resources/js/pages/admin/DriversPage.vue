@@ -393,7 +393,6 @@ const formatDate = (date) => {
   return new Date(date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-
 function goPage(p) { fetchData(p); }
 
 function openForm(d = null) {
@@ -487,6 +486,11 @@ onMounted(() => fetchData());
 </script>
 
 <style scoped>
+/* บรรทัดนำเข้าไฟล์กลางต้องอยู่บนสุดของ style block เสมอ — ถ้ามีกฎ CSS อื่นนำหน้า
+   ตัว build จะทิ้งการนำเข้าไปเงียบ ๆ แล้วสไตล์กลางของหน้าแอดมิน (ปุ่ม ตาราง โมดัล)
+   จะหายไปทั้งหน้า หน้าจะยังโหลดขึ้นแต่กดปุ่มอะไรไม่ได้ */
+@import url('./admin-shared.css');
+
 .form-section-title {
   display: flex;
   align-items: center;
@@ -598,8 +602,6 @@ onMounted(() => fetchData());
 }
 
 .linked-hint.muted a { color: var(--color-accent, #2d7a4f); font-weight: 700; }
-
-@import url('./admin-shared.css');
 
 .driver-cell { display: flex; align-items: center; gap: 10px; }
 .driver-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: #eef2f7; display: flex; align-items: center; justify-content: center; }

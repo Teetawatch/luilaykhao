@@ -1362,6 +1362,11 @@ onMounted(() => fetchData());
 </script>
 
 <style scoped>
+/* บรรทัดนำเข้าไฟล์กลางต้องอยู่บนสุดของ style block เสมอ — ถ้ามีกฎ CSS อื่นนำหน้า
+   ตัว build จะทิ้งการนำเข้าไปเงียบ ๆ แล้วสไตล์กลางของหน้าแอดมิน (ปุ่ม ตาราง โมดัล)
+   จะหายไปทั้งหน้า หน้าจะยังโหลดขึ้นแต่กดปุ่มอะไรไม่ได้ */
+@import url('./admin-shared.css');
+
 .registry-warn,
 .licence-warn {
   display: inline-flex;
@@ -1480,8 +1485,6 @@ onMounted(() => fetchData());
   color: #9ca3af;
   line-height: 1.5;
 }
-
-@import url('./admin-shared.css');
 
 /* ─── Stats ───────────────────────────────────────── */
 .vehicle-stats {
