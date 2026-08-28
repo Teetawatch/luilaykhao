@@ -1330,7 +1330,8 @@ const minPerInstallmentPreview = computed(() => {
   if (options.length) return Number(options[options.length - 1].per_amount || 0);
   // ผ่อนไม่ได้แล้ว (ทริปใกล้เกินไป) — การ์ดที่จางลงยังโชว์ยอดคร่าว ๆ ตามจำนวนงวดของรอบ
   const total = Number(booking.value?.total_amount || 0);
-  const scheduleMax = Math.min(booking.value?.schedule?.installment_count || 2, 6);
+  // จำนวนงวดของรอบมาจากเซิร์ฟเวอร์แล้ว (ผ่านเพดานของ PaymentQuote) ไม่ต้องจำเลขซ้ำที่นี่
+  const scheduleMax = Number(booking.value?.schedule?.installment_count || 2);
   return Math.round(total / Math.max(2, scheduleMax));
 });
 

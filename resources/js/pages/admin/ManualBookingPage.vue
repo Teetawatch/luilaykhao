@@ -566,7 +566,9 @@ const selectedPickup = computed(() => pickupPoints.value.find((point) => point.i
 const requiresDiveInfo = computed(() => ['diving', 'snorkeling'].includes(selectedTrip.value?.type || selectedSchedule.value?.trip?.type));
 const installmentAllowed = computed(() => Boolean(selectedSchedule.value?.installment_enabled && !form.is_join_trip));
 const depositAllowed = computed(() => Boolean(selectedSchedule.value?.deposit_enabled && !form.is_join_trip));
-const maxInstallmentCount = computed(() => Math.min(Math.max(Number(selectedSchedule.value?.installment_count || 2), 2), 6));
+// เพดานมาจากเซิร์ฟเวอร์ (PaymentQuote::maxInstallmentCount) ไม่ต้องกำหนดซ้ำที่นี่
+// ไม่งั้นวันที่เจ้าของเปลี่ยนกติกา หน้านี้จะเป็นที่เดียวที่ยังจำเลขเก่า
+const maxInstallmentCount = computed(() => Math.max(Number(selectedSchedule.value?.installment_count || 2), 2));
 const installmentCountOptions = computed(() => Array.from({ length: maxInstallmentCount.value - 1 }, (_, index) => index + 2));
 const pricePerPerson = computed(() => {
   if (!selectedSchedule.value) return 0;

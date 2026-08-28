@@ -233,18 +233,20 @@ class PaymentQuoteTest extends TestCase
     public function test_more_instalments_than_the_remaining_time_allows_is_refused(): void
     {
         $schedule = $this->makeSchedule([
-            'departure_date' => now('Asia/Bangkok')->addDays(45)->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->addDays(30)->toDateString(),
         ]);
 
         $user = User::factory()->create();
         $booking = $this->makeBooking($user, $schedule, 3000);
 
-        // เหลือที่ 3 งวด — ขอ 6 งวดต้องถูกปฏิเสธ ไม่ใช่ได้ตารางที่ครบกำหนดหลังไปแล้ว
+        // เหลือเวลาพอแค่ 2 งวด — ขอ 3 งวดต้องถูกปฏิเสธ ไม่ใช่ได้ตารางที่ครบกำหนดหลังไปแล้ว
+        // (ขอเกินเพดาน 3 จะถูกปัดตกที่ validation ก่อน เทสต์นี้จึงต้องขอ "ไม่เกินเพดาน
+        //  แต่เกินเวลาที่เหลือ" ไม่งั้นจะไม่ได้พิสูจน์กฎเรื่องเวลาเลย)
         $this->actingAs($user, 'sanctum')
             ->postJson('/api/v1/payments/charge', [
                 'booking_ref' => $booking->booking_ref,
                 'payment_type' => 'installment',
-                'installment_count' => 6,
+                'installment_count' => 3,
                 'payment_method' => 'promptpay',
                 'amount' => 500,
             ])
@@ -263,13 +265,33 @@ class PaymentQuoteTest extends TestCase
         $payload = (new TripScheduleResource($schedule))->toArray(request());
 
         $this->assertTrue($payload['installment_enabled']);
-        $this->assertSame(4, $payload['installment_count']);
-        $this->assertSame(15, $payload['installment_interval_days']);
+        // เวลาเหลือ 45 วันพอสำหรับ 4 งวด แต่เพดานทางธุรกิจคือ 3 งวด
+        $this->assertSame(3, $payload['installment_count']);
+        $this->assertSame(23, $payload['installment_interval_days']);
         $this->assertSame(15, $payload['installment_lead_days']);
         $this->assertSame(
             now('Asia/Bangkok')->addDays(45)->toDateString(),
             $payload['installment_final_due_date'],
         );
+    }
+
+    public function test_the_plan_never_goes_past_three_instalments(): void
+    {
+        // จองล่วงหน้าครึ่งปี เวลาเหลือพอผ่อนได้สิบกว่างวดถ้าคิดตามระยะห่างขั้นต่ำ
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(200)->toDateString(),
+        ]);
+
+        $this->assertSame(3, PaymentQuote::maxInstallmentCount($schedule));
+
+        $payload = (new TripScheduleResource($schedule))->toArray(request());
+        $this->assertSame(3, $payload['installment_count']);
+
+        // และตัวเลือกที่เสนอลูกค้าต้องมีแค่ 2 กับ 3 งวด
+        $booking = $this->makeBooking(User::factory()->create(), $schedule, 3000);
+        $options = PaymentQuote::forBooking($booking)['installment']['options'];
+
+        $this->assertSame([2, 3], array_column($options, 'count'));
     }
 
     public function test_a_round_that_is_too_close_advertises_no_plan(): void

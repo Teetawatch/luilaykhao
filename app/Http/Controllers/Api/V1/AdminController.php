@@ -1880,7 +1880,7 @@ class AdminController extends Controller
             'status' => ['required', 'in:pending,confirmed'],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'payment_type' => ['nullable', 'in:full,deposit,installment'],
-            'installment_count' => ['nullable', 'integer', 'min:2', 'max:6'],
+            'installment_count' => ['nullable', 'integer', 'min:2', 'max:'.PaymentQuote::MAX_INSTALLMENT_COUNT],
             'slip_image' => ['nullable', 'image', 'max:5120'],
             'transfer_date' => ['nullable', 'date'],
             'transfer_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],

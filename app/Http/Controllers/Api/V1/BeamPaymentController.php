@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Services\Beam\BeamException;
 use App\Services\BeamPaymentService;
 use App\Services\PaymentNotAvailableException;
+use App\Support\PaymentQuote;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class BeamPaymentController extends Controller
             'booking_ref' => ['required', 'string', 'exists:bookings,booking_ref'],
             'purpose' => ['required', 'in:full,deposit,split,installment,installment_due,balance,split_share'],
             'payment_method_type' => ['nullable', 'string', 'max:40'],
-            'installment_count' => ['nullable', 'integer', 'min:2', 'max:6'],
+            'installment_count' => ['nullable', 'integer', 'min:2', 'max:'.PaymentQuote::MAX_INSTALLMENT_COUNT],
             // แถวปลายทางของ purpose ที่ชี้เฉพาะเจาะจง: ส่วนแบ่งของเพื่อน หรือ งวดที่ 2+
             'share_id' => ['nullable', 'integer'],
             'installment_id' => ['nullable', 'integer'],
