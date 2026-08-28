@@ -36,6 +36,7 @@
               <i :class="item.icon"></i>
               <span>{{ item.label }}</span>
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge">{{ sosCount }}</span>
+              <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm">{{ intakeCount }}</span>
             </router-link>
           </div>
 
@@ -51,6 +52,7 @@
             >
               <i :class="item.icon"></i>
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge collapsed-badge">{{ sosCount }}</span>
+              <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm collapsed-badge">{{ intakeCount }}</span>
             </router-link>
           </div>
         </div>
@@ -97,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import api from '../lib/axios';
@@ -115,6 +117,20 @@ const loadSosCount = async () => {
   try {
     const res = await api.get('/admin/sos/active-count');
     sosCount.value = res.data.data.count || 0;
+  } catch {
+    // เน็ตสะดุด/สิทธิ์ไม่พอ — ไม่ต้องรบกวนผู้ใช้ รอบหน้าค่อยลองใหม่
+  }
+};
+
+// จำนวนลูกค้าที่กรอกข้อมูลผ่านลิงก์เข้ามาแล้วยังไม่ได้เปิดการจองให้
+// ไม่เร่งด่วนเท่า SOS จึงถามถี่น้อยกว่ากันมาก
+const intakeCount = ref(0);
+let intakeTimer = null;
+
+const loadIntakeCount = async () => {
+  try {
+    const res = await api.get('/admin/intakes/summary');
+    intakeCount.value = res.data.data.new_count || 0;
   } catch {
     // เน็ตสะดุด/สิทธิ์ไม่พอ — ไม่ต้องรบกวนผู้ใช้ รอบหน้าค่อยลองใหม่
   }
@@ -154,7 +170,7 @@ const menuGroups = ref([
     label: 'การจองและลูกค้า',
     icon: 'fas fa-ticket-alt',
     items: [
-      { to: '/admin/intakes', icon: 'fas fa-address-card', label: 'ข้อมูลลูกค้าจากลิงก์' },
+      { to: '/admin/intakes', icon: 'fas fa-address-card', label: 'ข้อมูลลูกค้าจากลิงก์', badge: 'intake' },
       { to: '/admin/manual-booking', icon: 'fas fa-headset', label: 'จองแทนลูกค้า' },
       { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
       { to: '/admin/installments', icon: 'fas fa-calendar-check', label: 'ผ่อนชำระ' },
@@ -255,10 +271,22 @@ onMounted(() => {
 
   loadSosCount();
   sosTimer = setInterval(loadSosCount, 30000);
+
+  loadIntakeCount();
+  intakeTimer = setInterval(loadIntakeCount, 120000);
 });
 
 onBeforeUnmount(() => {
   if (sosTimer) clearInterval(sosTimer);
+  if (intakeTimer) clearInterval(intakeTimer);
+});
+
+// ออกจากหน้าข้อมูลลูกค้าแล้วนับใหม่ทันที ไม่ต้องรอรอบถัดไปสองนาที — คนที่เพิ่ง
+// กดดึงไปจองหรือเก็บเข้ากรุจะได้ไม่เห็นตัวเลขเดิมค้างอยู่บนเมนู
+watch(() => route.path, (to, from) => {
+  if (from === '/admin/intakes' && to !== from) {
+    loadIntakeCount();
+  }
 });
 
 const handleLogout = async () => {
@@ -481,6 +509,12 @@ const handleLogout = async () => {
 
 .collapsed-sub-item {
   position: relative;
+}
+
+/* ป้ายที่ไม่ใช่เรื่องฉุกเฉิน — แดงเหมือนกันแต่ไม่ต้องกะพริบเรียกร้องความสนใจ */
+.nav-badge.calm {
+  animation: none;
+  background: #dc2626;
 }
 
 @keyframes badge-pulse {
