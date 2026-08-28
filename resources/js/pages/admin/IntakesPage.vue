@@ -1,0 +1,497 @@
+<template>
+  <div class="admin-page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">
+          <span class="material-symbols-rounded heading-icon">contact_mail</span>
+          ข้อมูลลูกค้าจากลิงก์
+        </h1>
+        <p class="page-subtitle">
+          ลูกค้าที่ทักมาทางไลน์/เฟส/ไอจี กรอกข้อมูลเองผ่านลิงก์ แล้วดึงมาเปิดการจองได้เลย
+          ไม่ต้องพิมพ์ตามในแชท
+        </p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-secondary" :disabled="loading" @click="fetchAll">
+          <span class="material-symbols-rounded" :class="{ 'animate-spin': loading }">refresh</span>
+          {{ loading ? 'กำลังโหลด' : 'รีเฟรช' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── ลิงก์ที่ส่งให้ลูกค้า ─────────────────────────────────────── -->
+    <section class="panel">
+      <header class="panel-head">
+        <div>
+          <h2>ลิงก์สำหรับส่งให้ลูกค้า</h2>
+          <p>สร้างครั้งเดียว ใช้ซ้ำได้ไม่จำกัดคน แปะไว้ใน auto-reply ของไลน์หรือไบโอไอจีได้</p>
+        </div>
+        <button class="btn-primary btn-sm" @click="showLinkForm = !showLinkForm">
+          <span class="material-symbols-rounded" style="font-size:16px">{{ showLinkForm ? 'close' : 'add_link' }}</span>
+          {{ showLinkForm ? 'ปิด' : 'สร้างลิงก์ใหม่' }}
+        </button>
+      </header>
+
+      <div v-if="showLinkForm" class="link-form">
+        <div class="filter-field" style="flex:2;min-width:240px;">
+          <label>ผูกกับรอบเดินทาง</label>
+          <select v-model="newLink.trip_schedule_id">
+            <option value="">ลิงก์กลาง — ให้ลูกค้าเลือกรอบเอง</option>
+            <option v-for="option in scheduleOptions" :key="option.id" :value="option.id">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-field" style="flex:1;min-width:180px;">
+          <label>ป้ายกำกับ (ไว้ให้เรารู้เอง)</label>
+          <input v-model.trim="newLink.label" type="text" placeholder="เช่น ไลน์ OA, ไอจี" />
+        </div>
+        <button class="btn-primary" :disabled="creatingLink" @click="createLink">
+          {{ creatingLink ? 'กำลังสร้าง…' : 'สร้างลิงก์' }}
+        </button>
+      </div>
+
+      <div v-if="!links.length" class="empty-inline">ยังไม่มีลิงก์ — กด "สร้างลิงก์ใหม่" เพื่อเริ่ม</div>
+
+      <table v-else class="data-table">
+        <thead>
+          <tr>
+            <th>ลิงก์</th>
+            <th>รอบเดินทาง</th>
+            <th>ใช้ไปแล้ว</th>
+            <th style="text-align:right;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="link in links" :key="link.id" :class="{ inactive: !link.is_active }">
+            <td>
+              <strong>{{ link.label || 'ลิงก์เก็บข้อมูล' }}</strong>
+              <div class="cell-sub link-url">{{ link.url }}</div>
+            </td>
+            <td>{{ link.schedule_label || 'ลิงก์กลาง (ลูกค้าเลือกรอบเอง)' }}</td>
+            <td>
+              <span class="progress-pill">{{ link.intakes_count }} กลุ่ม</span>
+              <div class="cell-sub">{{ link.last_used_at ? formatDateTime(link.last_used_at) : 'ยังไม่มีใครกรอก' }}</div>
+            </td>
+            <td style="text-align:right;white-space:nowrap;">
+              <button class="btn-primary btn-sm" @click="copy(link.url, `link-${link.id}`)">
+                <span class="material-symbols-rounded" style="font-size:16px">
+                  {{ copiedKey === `link-${link.id}` ? 'check' : 'content_copy' }}
+                </span>
+                {{ copiedKey === `link-${link.id}` ? 'คัดลอกแล้ว' : 'คัดลอก' }}
+              </button>
+              <button class="btn-secondary btn-sm" @click="toggleLink(link)">
+                {{ link.is_active ? 'ปิดลิงก์' : 'เปิดลิงก์' }}
+              </button>
+              <button class="btn-danger btn-sm" @click="deleteLink(link)">
+                <span class="material-symbols-rounded" style="font-size:16px">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── ข้อมูลที่กรอกเข้ามา ──────────────────────────────────────── -->
+    <div class="filter-bar">
+      <div class="status-tabs">
+        <button
+          v-for="tab in statusTabs"
+          :key="tab.value"
+          class="status-tab"
+          :class="{ active: status === tab.value }"
+          @click="status = tab.value; fetchIntakes()"
+        >
+          {{ tab.label }}
+          <span v-if="tab.value === 'new' && newCount" class="tab-count">{{ newCount }}</span>
+        </button>
+      </div>
+      <div class="filter-field" style="flex:1;min-width:220px;">
+        <label>ค้นหา</label>
+        <input v-model.trim="search" type="text" placeholder="ชื่อลูกค้า / เบอร์โทร" @keyup.enter="fetchIntakes" />
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
+      <div v-else>
+        <div v-if="!intakes.length" class="empty-state">
+          <span class="material-symbols-rounded" style="font-size:48px;color:#d1d5db;display:block;margin-bottom:12px;">
+            inbox
+          </span>
+          ยังไม่มีข้อมูลลูกค้าในหมวดนี้
+        </div>
+
+        <table v-else class="data-table">
+          <thead>
+            <tr>
+              <th>ลูกค้า</th>
+              <th>ทริปที่สนใจ</th>
+              <th>กรอกแล้ว</th>
+              <th>เข้ามาเมื่อ</th>
+              <th style="text-align:right;">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="intake in intakes" :key="intake.id">
+              <td>
+                <strong>{{ intake.contact_name }}</strong>
+                <div class="cell-sub">
+                  {{ intake.contact_phone || 'ไม่มีเบอร์' }}
+                  <template v-if="intake.source"><span class="dot">·</span>{{ sourceLabel(intake.source) }}</template>
+                </div>
+                <div v-if="intake.note_excerpt" class="note-line">“{{ intake.note_excerpt }}”</div>
+              </td>
+              <td>
+                {{ intake.schedule_label || 'ยังไม่ระบุรอบ' }}
+                <div v-if="intake.link_label" class="cell-sub">มาจาก {{ intake.link_label }}</div>
+              </td>
+              <td>
+                <span class="progress-pill" :class="{ done: intake.filled_count >= intake.party_size }">
+                  {{ intake.filled_count }}/{{ intake.party_size }} คน
+                </span>
+                <div v-if="intake.filled_count < intake.party_size" class="cell-sub waiting">
+                  รอเพื่อนอีก {{ intake.party_size - intake.filled_count }} คน
+                </div>
+              </td>
+              <td>
+                {{ formatDateTime(intake.created_at) }}
+                <div v-if="intake.last_activity_at !== intake.created_at" class="cell-sub">
+                  อัปเดต {{ formatDateTime(intake.last_activity_at) }}
+                </div>
+              </td>
+              <td style="text-align:right;white-space:nowrap;">
+                <button class="btn-secondary btn-sm" @click="openDetail(intake)">
+                  <span class="material-symbols-rounded" style="font-size:16px">visibility</span>
+                  ดูข้อมูล
+                </button>
+                <button
+                  v-if="intake.status === 'new'"
+                  class="btn-primary btn-sm"
+                  @click="pullIntoBooking(intake)"
+                >
+                  <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
+                  ดึงไปจอง
+                </button>
+                <span v-else class="status-chip" :class="intake.status">
+                  {{ intake.status === 'booked' ? 'จองแล้ว' : 'เก็บเข้ากรุ' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── รายละเอียดกลุ่ม ──────────────────────────────────────────── -->
+    <div v-if="detail" class="drawer-backdrop" @click.self="detail = null">
+      <aside class="drawer">
+        <header class="drawer-head">
+          <div>
+            <h2>{{ detail.contact_name }}</h2>
+            <p>{{ detail.schedule_label || 'ยังไม่ระบุรอบ' }}</p>
+          </div>
+          <button class="btn-icon" @click="detail = null">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </header>
+
+        <div class="drawer-body">
+          <div class="drawer-row">
+            <label>ลิงก์ของกลุ่ม (ให้ลูกค้าส่งต่อให้เพื่อน)</label>
+            <div class="copy-row">
+              <input type="text" readonly :value="detail.group_url" @focus="$event.target.select()" />
+              <button class="btn-secondary btn-sm" @click="copy(detail.group_url, 'group')">
+                {{ copiedKey === 'group' ? 'คัดลอกแล้ว' : 'คัดลอก' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-if="detail.note" class="drawer-row">
+            <label>ลูกค้าฝากบอก</label>
+            <p class="note-box">{{ detail.note }}</p>
+          </div>
+
+          <div class="drawer-row">
+            <label>ผู้เดินทางที่กรอกแล้ว ({{ detail.people.length }}/{{ detail.party_size }})</label>
+            <ul class="people">
+              <li v-for="person in detail.people" :key="person.id">
+                <div>
+                  <strong>{{ person.name }}</strong>
+                  <span v-if="person.is_lead" class="lead-chip">คนติดต่อ</span>
+                  <div class="cell-sub">{{ person.phone || 'ไม่มีเบอร์' }}</div>
+                </div>
+                <button class="btn-danger btn-sm" @click="removePerson(person)">
+                  <span class="material-symbols-rounded" style="font-size:16px">delete</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <footer class="drawer-foot">
+          <button v-if="detail.status === 'new'" class="btn-primary" @click="pullIntoBooking(detail)">
+            <span class="material-symbols-rounded" style="font-size:18px">event_seat</span>
+            ดึงไปเปิดการจอง
+          </button>
+          <button v-if="detail.status === 'new'" class="btn-secondary" @click="archive(detail)">เก็บเข้ากรุ</button>
+          <button class="btn-danger" @click="destroy(detail)">ลบข้อมูลกลุ่มนี้</button>
+        </footer>
+      </aside>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import api from '../../lib/axios';
+
+const router = useRouter();
+
+const statusTabs = [
+  { value: 'new', label: 'ยังไม่ได้จอง' },
+  { value: 'booked', label: 'จองแล้ว' },
+  { value: 'archived', label: 'เก็บเข้ากรุ' },
+];
+
+const loading = ref(true);
+const links = ref([]);
+const intakes = ref([]);
+const scheduleOptions = ref([]);
+const detail = ref(null);
+const status = ref('new');
+const search = ref('');
+const newCount = ref(0);
+const copiedKey = ref(null);
+const showLinkForm = ref(false);
+const creatingLink = ref(false);
+const newLink = ref({ trip_schedule_id: '', label: '' });
+
+const fetchAll = async () => {
+  loading.value = true;
+  try {
+    await Promise.all([fetchLinks(), fetchIntakes(false), fetchSchedules()]);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const fetchLinks = async () => {
+  const res = await api.get('/admin/intake-links');
+  links.value = res.data?.data ?? [];
+};
+
+const fetchIntakes = async (toggleLoading = true) => {
+  if (toggleLoading) loading.value = true;
+  try {
+    const res = await api.get('/admin/intakes', {
+      params: { status: status.value, search: search.value || undefined },
+    });
+    intakes.value = res.data?.data ?? [];
+    newCount.value = res.data?.meta?.new_count ?? 0;
+  } catch (e) {
+    intakes.value = [];
+    alert(e.response?.data?.message ?? 'โหลดข้อมูลไม่สำเร็จ');
+  } finally {
+    if (toggleLoading) loading.value = false;
+  }
+};
+
+const fetchSchedules = async () => {
+  const res = await api.get('/admin/schedules', { params: { upcoming: 1, per_page: 200 } });
+  scheduleOptions.value = (res.data?.data ?? []).map((schedule) => ({
+    id: schedule.id,
+    label: `${schedule.trip?.title ?? 'ทริป'} · ${formatDate(schedule.departure_date)}`,
+  }));
+};
+
+const createLink = async () => {
+  creatingLink.value = true;
+  try {
+    const res = await api.post('/admin/intake-links', {
+      trip_schedule_id: newLink.value.trip_schedule_id || null,
+      label: newLink.value.label || null,
+    });
+    links.value.unshift(res.data.data);
+    newLink.value = { trip_schedule_id: '', label: '' };
+    showLinkForm.value = false;
+    // คัดลอกให้เลย เพราะสร้างเสร็จก็ต้องเอาไปวางในแชทอยู่ดี
+    await copy(res.data.data.url, `link-${res.data.data.id}`);
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'สร้างลิงก์ไม่สำเร็จ');
+  } finally {
+    creatingLink.value = false;
+  }
+};
+
+const toggleLink = async (link) => {
+  const res = await api.put(`/admin/intake-links/${link.id}`, { is_active: !link.is_active });
+  Object.assign(link, res.data.data);
+};
+
+const deleteLink = async (link) => {
+  if (!confirm('ลบลิงก์นี้? ข้อมูลลูกค้าที่กรอกมาแล้วจะยังอยู่ครบ')) return;
+  await api.delete(`/admin/intake-links/${link.id}`);
+  links.value = links.value.filter((row) => row.id !== link.id);
+};
+
+const openDetail = async (intake) => {
+  const res = await api.get(`/admin/intakes/${intake.id}`);
+  detail.value = res.data.data;
+};
+
+const removePerson = async (person) => {
+  if (!confirm(`ลบ ${person.name} ออกจากกลุ่มนี้?`)) return;
+  await api.delete(`/admin/intakes/${detail.value.id}/people/${person.id}`);
+  detail.value.people = detail.value.people.filter((row) => row.id !== person.id);
+  detail.value.passengers = detail.value.passengers.filter((row) => row.name !== person.name);
+  await fetchIntakes();
+};
+
+const archive = async (intake) => {
+  await api.put(`/admin/intakes/${intake.id}`, { status: 'archived' });
+  detail.value = null;
+  await fetchIntakes();
+};
+
+const destroy = async (intake) => {
+  if (!confirm('ลบข้อมูลลูกค้ากลุ่มนี้ทั้งหมด? กู้คืนไม่ได้')) return;
+  await api.delete(`/admin/intakes/${intake.id}`);
+  detail.value = null;
+  await fetchIntakes();
+};
+
+/**
+ * ส่งต่อไปหน้า "จองแทนลูกค้า" พร้อม id ของกลุ่ม — หน้านั้นดึงข้อมูลไปเติมฟอร์ม
+ * ผู้โดยสารเอง แล้วส่ง intake_id กลับมาตอนบันทึกเพื่อปิดกลุ่มนี้ให้อัตโนมัติ
+ */
+const pullIntoBooking = (intake) => {
+  router.push({ name: 'admin-manual-booking', query: { intake: intake.id } });
+};
+
+const copy = async (text, key) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    copiedKey.value = key;
+    setTimeout(() => {
+      if (copiedKey.value === key) copiedKey.value = null;
+    }, 1800);
+  } catch {
+    prompt('คัดลอกลิงก์นี้:', text);
+  }
+};
+
+const sourceLabel = (source) =>
+  ({ line: 'LINE', facebook: 'Facebook', instagram: 'Instagram', other: 'อื่น ๆ' }[source] ?? source);
+
+const formatDate = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return value;
+  }
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('th-TH', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  } catch {
+    return value;
+  }
+};
+
+onMounted(fetchAll);
+</script>
+
+<style scoped>
+@import url('./admin-shared.css');
+
+.heading-icon { color: var(--color-accent); font-size: 28px; }
+
+/* คลาสตารางชุดเดียวกับหน้าตามเก็บวันเกิด — ยังไม่ได้อยู่ใน admin-shared.css */
+.cell-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.cell-sub .dot, .dot { margin: 0 5px; color: #d1d5db; }
+.progress-pill {
+  display: inline-block; font-size: 12px; font-weight: 800;
+  color: #b45309; background: #fef3c7; padding: 3px 10px; border-radius: 999px;
+}
+.progress-pill.done { color: #065f46; background: #d1fae5; }
+.btn-sm { font-size: 13px; padding: 7px 12px; }
+.btn-secondary.btn-sm, .btn-danger.btn-sm, .btn-primary.btn-sm { margin-left: 6px; }
+
+.panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.panel-head h2 { font-size: 15px; font-weight: 700; }
+.panel-head p { font-size: 12.5px; color: #6b7280; margin-top: 2px; }
+
+.link-form {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;
+  padding: 14px; margin-bottom: 14px;
+}
+.link-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; word-break: break-all; }
+tr.inactive { opacity: .5; }
+
+.filter-bar {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px;
+}
+.filter-field { display: flex; flex-direction: column; gap: 4px; }
+.filter-field label { font-size: 11px; font-weight: 700; color: #6b7280; }
+
+.status-tabs { display: flex; gap: 6px; }
+.status-tab {
+  border: 1px solid #e5e7eb; background: #fff; border-radius: 999px;
+  padding: 7px 14px; font-size: 13px; font-weight: 600; color: #4b5563; cursor: pointer;
+}
+.status-tab.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+.tab-count {
+  display: inline-block; margin-left: 6px; background: #ef4444; color: #fff;
+  border-radius: 999px; padding: 0 6px; font-size: 11px;
+}
+
+.note-line { font-size: 12px; color: #6b7280; margin-top: 4px; font-style: italic; }
+.waiting { color: #b45309; }
+.status-chip { font-size: 12px; font-weight: 600; color: #6b7280; }
+.status-chip.booked { color: #047857; }
+.empty-inline { font-size: 13px; color: #9ca3af; padding: 12px 2px; }
+
+.drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, .45);
+  display: flex; justify-content: flex-end; z-index: 60;
+}
+.drawer { width: min(460px, 100%); background: #fff; display: flex; flex-direction: column; }
+.drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 18px; border-bottom: 1px solid #e5e7eb;
+}
+.drawer-head h2 { font-size: 17px; font-weight: 700; }
+.drawer-head p { font-size: 12.5px; color: #6b7280; margin-top: 2px; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 18px; }
+.drawer-row { margin-bottom: 20px; }
+.drawer-row > label { display: block; font-size: 11px; font-weight: 700; color: #6b7280; margin-bottom: 6px; }
+.copy-row { display: flex; gap: 8px; }
+.copy-row input { flex: 1; font-size: 12px; }
+.note-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; font-size: 13px; white-space: pre-wrap; }
+.people { list-style: none; }
+.people li {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid #f3f4f6;
+}
+.lead-chip {
+  margin-left: 6px; font-size: 10.5px; font-weight: 700; color: #047857;
+  background: #ecfdf5; border-radius: 999px; padding: 2px 7px;
+}
+.drawer-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 18px; border-top: 1px solid #e5e7eb; }
+</style>

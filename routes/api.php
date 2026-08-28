@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
 use App\Http\Controllers\Api\V1\AdminInstallmentController;
+use App\Http\Controllers\Api\V1\AdminIntakeController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
@@ -623,6 +624,18 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/itinerary/reorder', [ScheduleItineraryController::class, 'reorder']);
         Route::put('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'update']);
         Route::delete('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'destroy']);
+
+        // ลิงก์เก็บข้อมูลลูกค้า (ก่อนการจอง) — ลูกค้าที่ทักมาทางแชทกรอกเอง
+        Route::get('intake-links', [AdminIntakeController::class, 'links']);
+        Route::post('intake-links', [AdminIntakeController::class, 'storeLink']);
+        Route::put('intake-links/{id}', [AdminIntakeController::class, 'updateLink']);
+        Route::delete('intake-links/{id}', [AdminIntakeController::class, 'destroyLink']);
+        Route::get('intakes/summary', [AdminIntakeController::class, 'summary']);
+        Route::get('intakes', [AdminIntakeController::class, 'index']);
+        Route::get('intakes/{id}', [AdminIntakeController::class, 'show']);
+        Route::put('intakes/{id}', [AdminIntakeController::class, 'update']);
+        Route::delete('intakes/{id}', [AdminIntakeController::class, 'destroy']);
+        Route::delete('intakes/{id}/people/{personId}', [AdminIntakeController::class, 'destroyPerson']);
 
         // Bookings
         Route::get('bookings', [AdminController::class, 'bookings']);

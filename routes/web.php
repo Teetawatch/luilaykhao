@@ -7,6 +7,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicGiftController;
+use App\Http\Controllers\PublicIntakeController;
 use App\Http\Controllers\PublicPassengerFillController;
 use App\Http\Controllers\PublicPassportController;
 use App\Http\Controllers\PublicPaymentController;
@@ -166,6 +167,26 @@ Route::post('/p/{token}', [PublicPassengerFillController::class, 'submit'])
     ->name('public.passenger-fill.submit');
 Route::get('/p-done', [PublicPassengerFillController::class, 'done'])
     ->name('public.passenger-fill.done');
+
+// ลิงก์เก็บข้อมูลลูกค้าก่อนการจอง — แปะไว้ในไบโอไอจี / auto-reply ไลน์ได้
+// `/r/` คือลิงก์ของทีมงาน (ใช้ซ้ำได้) `/g/` คือลิงก์ของกลุ่มที่คนแรกส่งต่อให้เพื่อน
+Route::get('/r/{token}', [PublicIntakeController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.intake.show');
+Route::post('/r/{token}', [PublicIntakeController::class, 'submit'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:10,1')
+    ->name('public.intake.submit');
+
+Route::get('/g/{token}', [PublicIntakeController::class, 'groupShow'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.intake.group.show');
+Route::post('/g/{token}', [PublicIntakeController::class, 'groupSubmit'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:10,1')
+    ->name('public.intake.group.submit');
 
 Route::get('/birthdate/{token}', [PublicBirthdateController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')

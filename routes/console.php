@@ -14,6 +14,7 @@ use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PruneSosPhotosJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\PurgeExpiredSchedulePhotosJob;
+use App\Jobs\PurgeStaleCustomerIntakesJob;
 use App\Jobs\ReconcileBeamChargesJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
 use App\Jobs\SendCheckInRemindersJob;
@@ -69,6 +70,9 @@ Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 // การ์ด "วันเดินทาง" บนหน้าจอล็อก / Dynamic Island — เปิดเอง อัปเดต ETA แล้วปิดเอง
 // ทุกนาที เพราะตัวเลข "อีก 8 นาที" ที่ช้าไป 5 นาทีคือตัวเลขที่ผิด
 Schedule::command('trip-activity:sync')->everyMinute()->withoutOverlapping();
+// ลบข้อมูลลูกค้าที่กรอกผ่านลิงก์แล้วไม่ได้ถูกใช้ต่อ — ตารางนี้เก็บเลขบัตรประชาชน
+// ของคนที่ยังไม่ได้เป็นลูกค้าเราด้วยซ้ำ เก็บเกินจำเป็นคือความเสี่ยงล้วน ๆ
+Schedule::job(new PurgeStaleCustomerIntakesJob)->dailyAt('03:45')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 // ตาข่ายรับ webhook ของ Beam ที่หายไป — ถามเกตเวย์เองว่า charge ที่ค้างอยู่จบยังไง

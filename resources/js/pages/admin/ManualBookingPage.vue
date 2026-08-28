@@ -14,6 +14,21 @@
       </router-link>
     </div>
 
+    <div v-if="intakeSource" class="intake-banner">
+      <span class="material-symbols-rounded">contact_mail</span>
+      <div>
+        <strong>ดึงข้อมูลจากลิงก์ที่ลูกค้ากรอกเองมาแล้ว</strong>
+        <p>
+          {{ intakeSource.contact_name }} · กรอกครบ {{ intakeSource.people.length }}/{{ intakeSource.party_size }} คน
+          <template v-if="intakeSource.people.length < intakeSource.party_size">
+            — ยังรอเพื่อนอีก {{ intakeSource.party_size - intakeSource.people.length }} คน จองตอนนี้จะได้เท่าที่กรอกมา
+          </template>
+          · เมื่อบันทึกการจองแล้ว กลุ่มนี้จะถูกปิดโดยอัตโนมัติ
+        </p>
+      </div>
+      <router-link to="/admin/intakes" class="btn-secondary">กลับไปรายการ</router-link>
+    </div>
+
     <div class="manual-layout">
       <form class="booking-workspace" @submit.prevent="submitBooking">
         <section class="booking-section">
@@ -538,6 +553,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
 
@@ -611,6 +627,12 @@ const regionLabels = {
 };
 
 const holdQuickDays = ref(null);
+
+// ข้อมูลลูกค้าที่ถูกดึงมาจากลิงก์กรอกเอง — โชว์แถบบอกที่มา แล้วส่ง id กลับตอนบันทึก
+const intakeId = ref(null);
+const intakeSource = ref(null);
+
+const route = useRoute();
 
 const form = reactive({
   trip_id: '',
@@ -826,7 +848,10 @@ const submitHint = computed(() => {
   return '';
 });
 
-onMounted(fetchTrips);
+onMounted(async () => {
+  await fetchTrips();
+  await prefillFromIntake(route.query.intake);
+});
 
 watch(() => passengers.value.length, () => {
   selectedSeatIds.value = selectedSeatIds.value.slice(0, passengers.value.length);
@@ -872,6 +897,58 @@ function newPassenger() {
     weight: null,
     halal_food: null,
   };
+}
+
+/**
+ * เติมฟอร์มจากข้อมูลที่ลูกค้ากรอกมาเองผ่านลิงก์ (/admin/intakes)
+ *
+ * เดินตามลำดับเดียวกับที่แอดมินกดเอง — เลือกทริปก่อน แล้วรอรายการรอบโหลดเสร็จ
+ * ค่อยเลือกรอบ ไม่งั้น onTripChange จะล้าง schedule_id ที่เพิ่งตั้งไปทิ้ง
+ */
+async function prefillFromIntake(intakeParam) {
+  const id = Number(intakeParam);
+  if (!id) return;
+
+  try {
+    const res = await api.get(`/admin/intakes/${id}`);
+    const intake = res.data?.data;
+    if (!intake) return;
+
+    intakeId.value = id;
+    intakeSource.value = intake;
+
+    form.customer_name = intake.contact_name || '';
+    form.phone = intake.contact_phone || '';
+    form.email = intake.contact_email || '';
+
+    // ตัวเลขล้วน ไม่ใช่สตริง — select ผูกด้วย v-model.number และ :value เป็น id ตัวเลข
+    // ถ้าใส่เป็นสตริงช่องจะขึ้นว่างทั้งที่ค่าถูกตั้งไว้แล้ว
+    if (intake.trip_id) {
+      form.trip_id = Number(intake.trip_id);
+      await onTripChange();
+      if (intake.trip_schedule_id) {
+        form.schedule_id = Number(intake.trip_schedule_id);
+        await onScheduleChange();
+      }
+    }
+
+    const filled = (intake.passengers || []).map((passenger) => ({
+      ...newPassenger(),
+      ...passenger,
+      // ค่าที่เซิร์ฟเวอร์ส่งมาเป็น null ต้องกลายเป็นค่าว่าง ไม่งั้น input แสดง "null"
+      ...Object.fromEntries(
+        Object.entries(passenger).filter(([, value]) => value === null).map(([field]) => [field, '']),
+      ),
+      halal_food: passenger.halal_food ?? null,
+      weight: passenger.weight ?? null,
+    }));
+
+    if (filled.length) {
+      passengers.value = filled;
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'ดึงข้อมูลลูกค้าไม่สำเร็จ');
+  }
 }
 
 async function fetchTrips() {
@@ -1090,6 +1167,8 @@ function buildBookingPayload() {
   appendFormValue(fd, 'pickup_point_id', form.pickup_point_id || null);
   appendFormValue(fd, 'passenger_count', passengers.value.length);
   appendFormValue(fd, 'send_email', form.send_email);
+  // มาจากหน้า "ข้อมูลลูกค้าจากลิงก์" — เซิร์ฟเวอร์ปิดกลุ่มนั้นให้เองเมื่อจองสำเร็จ
+  appendFormValue(fd, 'intake_id', intakeId.value);
 
   if (isHoldMode.value && holdUntilDate.value) {
     // ส่งเป็น ISO ที่มีโซนเวลาติดไป เซิร์ฟเวอร์จะได้ไม่ต้องเดาว่าเป็นเวลาไทยหรือ UTC
@@ -1169,6 +1248,22 @@ function formatCurrency(value) {
 
 <style scoped>
 @import url('./admin-shared.css');
+
+.intake-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.intake-banner > div { flex: 1; }
+.intake-banner strong { font-size: 14px; color: #065f46; }
+.intake-banner p { font-size: 12.5px; color: #047857; margin-top: 2px; }
+.intake-banner .material-symbols-rounded { color: #059669; }
 
 .manual-layout {
   display: grid;

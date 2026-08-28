@@ -21,6 +21,7 @@ use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\CustomerIntake;
 use App\Models\Driver;
 use App\Models\GalleryImage;
 use App\Models\HeroSlide;
@@ -1908,6 +1909,8 @@ class AdminController extends Controller
             // ล็อกที่นั่งไว้ก่อน: ข้ามขั้นชำระเงิน แล้วกันที่นั่งไว้ให้ถึงเวลานี้
             'hold_until' => ['nullable', 'date'],
             'hold_note' => ['nullable', 'string', 'max:255'],
+            // มาจากหน้า "ข้อมูลลูกค้า" — ปิดกลุ่มนั้นทันทีที่เปิดการจองให้แล้ว
+            'intake_id' => ['nullable', 'exists:customer_intakes,id'],
         ]);
 
         $schedule = TripSchedule::with(['trip', 'pickupPoints'])->findOrFail($request->schedule_id);
@@ -2199,6 +2202,8 @@ class AdminController extends Controller
             app(SmsService::class)->sendPaymentConfirmed($booking, $paymentType);
         }
 
+        $this->markIntakeBooked($request->input('intake_id'), $booking);
+
         $message = match (true) {
             $holdUntil !== null => 'ล็อกที่นั่งให้ลูกค้าแล้ว ถึง '.ThaiDate::shortTime($holdUntil->setTimezone('Asia/Bangkok')).' น.',
             $request->boolean('send_email', true) => 'บันทึกการจองและส่งอีเมลสำเร็จ',
@@ -2206,6 +2211,27 @@ class AdminController extends Controller
         };
 
         return $this->success(new BookingResource($booking), $message, 201);
+    }
+
+    /**
+     * ปิดกลุ่มข้อมูลลูกค้าที่ถูกดึงมาเปิดการจอง
+     *
+     * ไม่ลบแถวทิ้งทันทีทั้งที่ข้อมูลไปอยู่บนการจองแล้ว เพราะการจองที่เพิ่งเปิด
+     * อาจถูกยกเลิกในไม่กี่ชั่วโมงถัดมา แล้วจะไม่เหลืออะไรให้ดึงกลับมาใช้เลย
+     * งานลบอัตโนมัติเก็บให้เองหลังจากนี้ {@see CustomerIntake::CONVERTED_RETENTION_DAYS} วัน
+     */
+    private function markIntakeBooked(mixed $intakeId, Booking $booking): void
+    {
+        if (blank($intakeId)) {
+            return;
+        }
+
+        CustomerIntake::where('id', $intakeId)->where('status', 'new')->update([
+            'status' => 'booked',
+            'booking_id' => $booking->id,
+            'converted_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**

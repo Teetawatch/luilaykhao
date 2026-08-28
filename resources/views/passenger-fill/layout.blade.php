@@ -58,6 +58,8 @@
         .done h1 { font-size: 21px; margin: 12px 0 8px; }
         .done p { font-size: 14px; color: #64748b; }
     </style>
+    {{-- หน้าอื่นที่ใช้เลย์เอาต์เดียวกันเติมสไตล์เฉพาะของตัวเองได้ --}}
+    @stack('styles')
 </head>
 <body>
     <div class="wrap">

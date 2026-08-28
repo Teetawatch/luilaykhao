@@ -154,6 +154,7 @@ const menuGroups = ref([
     label: 'การจองและลูกค้า',
     icon: 'fas fa-ticket-alt',
     items: [
+      { to: '/admin/intakes', icon: 'fas fa-address-card', label: 'ข้อมูลลูกค้าจากลิงก์' },
       { to: '/admin/manual-booking', icon: 'fas fa-headset', label: 'จองแทนลูกค้า' },
       { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
       { to: '/admin/installments', icon: 'fas fa-calendar-check', label: 'ผ่อนชำระ' },
