@@ -556,7 +556,13 @@ class BookingService
         // ไว้ทั้งที่ที่นั่งถูกปล่อยให้คนอื่นไปแล้ว
         $candidateIds = Booking::where('status', 'pending')
             ->whereNull('slip_ocr_status')
-            ->where('created_at', '<=', $threshold)
+            ->where(function ($query) use ($threshold) {
+                // การจองปกติ: ค้างเกินหน้าต่างชำระเงินนับจากตอนสร้าง
+                $query->where(fn ($q) => $q->whereNull('hold_until')->where('created_at', '<=', $threshold))
+                    // ที่ทีมงานล็อกที่นั่งไว้ให้ลูกค้า: เดินตามเส้นตายที่แอดมินตั้งไว้
+                    // ไม่ใช่สิบนาที ไม่งั้นล็อกที่นั่งให้ก็โดนยกเลิกก่อนลูกค้าจะรู้ตัว
+                    ->orWhere(fn ($q) => $q->whereNotNull('hold_until')->where('hold_until', '<=', now()));
+            })
             ->whereDoesntHave('payments', fn ($q) => $q
                 ->where('status', Payment::STATUS_PENDING)
                 ->where('expires_at', '>', now()))
@@ -571,15 +577,29 @@ class BookingService
                 $booking = Booking::with('seats')->lockForUpdate()->find($bookingId);
 
                 // ตรวจซ้ำใต้ lock — ลูกค้าอาจเพิ่งชำระเงินไประหว่างนี้ (สถานะเปลี่ยนเป็น confirmed)
-                if (! $booking || $booking->status !== 'pending' || $booking->slip_ocr_status !== null || $booking->created_at->gt($threshold)) {
+                // หรือแอดมินเพิ่งต่อเวลาล็อกที่นั่งให้ใบนี้
+                if (! $booking || $booking->status !== 'pending' || $booking->slip_ocr_status !== null) {
+                    return null;
+                }
+
+                $wasHold = $booking->hold_until !== null;
+                $dueForRelease = $wasHold
+                    ? $booking->hold_until->lte(now())
+                    : $booking->created_at->lte($threshold);
+
+                if (! $dueForRelease) {
                     return null;
                 }
 
                 $booking->update([
                     'status' => 'cancelled',
-                    'cancellation_reason' => 'หมดเวลาชำระเงิน — ระบบยกเลิกอัตโนมัติเพื่อคืนที่นั่งภายใน '.Booking::PENDING_TTL_MINUTES.' นาที',
+                    'cancellation_reason' => $wasHold
+                        ? 'หมดเวลาที่ทีมงานล็อกที่นั่งไว้ให้ — ระบบคืนที่นั่งอัตโนมัติ'
+                        : 'หมดเวลาชำระเงิน — ระบบยกเลิกอัตโนมัติเพื่อคืนที่นั่งภายใน '.Booking::PENDING_TTL_MINUTES.' นาที',
                     'cancelled_at' => now(),
-                    'was_auto_expired' => true,
+                    // ล็อกที่นั่งที่ทีมงานกันไว้แล้วหมดอายุ ไม่ใช่ "ลูกค้าทิ้งตะกร้า"
+                    // จึงไม่ตั้งธงนี้ ไม่งั้น win-back จะไปตามลูกค้าที่ยังไม่เคยกดจองเอง
+                    'was_auto_expired' => ! $wasHold,
                 ]);
 
                 $schedule = $booking->schedule()->lockForUpdate()->first();
@@ -613,8 +633,10 @@ class BookingService
             SmartNotification::send(
                 $expired->user_id,
                 'booking_expired',
-                'การจองหมดเวลา',
-                "เลขการจอง {$expired->booking_ref} ถูกยกเลิกอัตโนมัติ เนื่องจากไม่ได้ชำระเงินภายใน ".Booking::PENDING_TTL_MINUTES.' นาที ที่นั่งถูกปล่อยคืนแล้ว',
+                $expired->hold_until ? 'ที่นั่งที่กันไว้ให้หมดเวลาแล้ว' : 'การจองหมดเวลา',
+                $expired->hold_until
+                    ? "เลขการจอง {$expired->booking_ref} ที่ทีมงานกันที่นั่งไว้ให้ครบกำหนดแล้ว ที่นั่งถูกปล่อยคืนรอบเดินทาง"
+                    : "เลขการจอง {$expired->booking_ref} ถูกยกเลิกอัตโนมัติ เนื่องจากไม่ได้ชำระเงินภายใน ".Booking::PENDING_TTL_MINUTES.' นาที ที่นั่งถูกปล่อยคืนแล้ว',
                 [
                     'booking_ref' => $expired->booking_ref,
                     'route' => 'booking',

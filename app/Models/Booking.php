@@ -31,6 +31,12 @@ class Booking extends Model
     // การจองสถานะ pending ที่ยังไม่ชำระเงินจะถูกยกเลิกอัตโนมัติหลังกี่นาที เพื่อคืนที่นั่ง
     public const PENDING_TTL_MINUTES = 10;
 
+    // "ล็อกที่นั่งไว้ก่อน" ที่แอดมินกันไว้ให้ลูกค้า — นานกี่วันถ้าแอดมินไม่ระบุเอง
+    // และเพดานที่ยอมให้ล็อกได้ (กันที่นั่งจมโดยไม่มีใครกลับมาดู)
+    public const HOLD_DEFAULT_DAYS = 3;
+
+    public const HOLD_MAX_DAYS = 30;
+
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
@@ -46,6 +52,7 @@ class Booking extends Model
         'slip_ocr_status', 'slip_ocr_result',
         'cancellation_reason', 'cancelled_at', 'rescheduled_at',
         'was_auto_expired', 'winback_sent_at',
+        'hold_until', 'hold_note', 'hold_by_id',
         'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path',
         'promotion_id', 'promotion_code', 'discount_amount',
         'is_join_trip', 'flexi_surcharge',
@@ -66,6 +73,7 @@ class Booking extends Model
             'rescheduled_at' => 'datetime',
             'was_auto_expired' => 'boolean',
             'winback_sent_at' => 'datetime',
+            'hold_until' => 'datetime',
             'refund_amount' => 'decimal:2',
             'refunded_at' => 'datetime',
             'checked_in_at' => 'datetime',
@@ -102,6 +110,54 @@ class Booking extends Model
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    /**
+     * แอดมินที่กดล็อกที่นั่งใบนี้ไว้ให้ลูกค้า
+     */
+    public function holdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'hold_by_id');
+    }
+
+    /**
+     * ที่นั่งถูกทีมงานกันไว้ให้ ยังไม่ถึงเวลาปล่อย — ระหว่างนี้ ExpirePendingBookingsJob
+     * จะไม่แตะใบนี้ และหน้าชำระเงินก็ไม่ต้องนับถอยหลังสิบนาทีของตัวเอง
+     */
+    public function isOnHold(): bool
+    {
+        return $this->status === 'pending'
+            && $this->hold_until !== null
+            && $this->hold_until->isFuture();
+    }
+
+    /**
+     * เส้นตายเริ่มต้นของการล็อกที่นั่ง: HOLD_DEFAULT_DAYS วันนับจากนี้ แต่ไม่เลยเวลารถออก
+     */
+    public static function defaultHoldUntil(?TripSchedule $schedule = null): Carbon
+    {
+        return self::capHoldUntil(now()->addDays(self::HOLD_DEFAULT_DAYS), $schedule);
+    }
+
+    /**
+     * ตัดเส้นตายล็อกที่นั่งไม่ให้เลยเวลาออกเดินทาง (ล็อกข้ามวันเดินทางไม่มีความหมาย)
+     * และไม่ให้สั้นกว่าหนึ่งชั่วโมง เผื่อรอบที่กำลังจะออกเดินทางอยู่แล้ว
+     */
+    public static function capHoldUntil(Carbon|\DateTimeInterface|string $until, ?TripSchedule $schedule = null): Carbon
+    {
+        $until = $until instanceof Carbon ? $until->copy() : Carbon::parse($until);
+        $departsAt = $schedule?->effectiveDepartsAt();
+
+        // departs_at เก็บเวลานาฬิกาไทยไว้ในคอลัมน์ที่ระบบมองเป็น UTC — ต้องอ่านกลับ
+        // เป็นเวลาไทยก่อนถึงจะเทียบกับ hold_until ที่เป็นเวลาจริงได้
+        if ($departsAt) {
+            $departureInstant = Carbon::parse($departsAt->format('Y-m-d H:i:s'), 'Asia/Bangkok')->utc();
+            if ($departureInstant->lt($until)) {
+                $until = $departureInstant;
+            }
+        }
+
+        return $until->greaterThan(now()) ? $until : now()->addHour();
     }
 
     /**

@@ -164,6 +164,10 @@
                     <span v-if="booking.is_gift" class="mini-badge gift">
                       🎁 ของขวัญ{{ booking.gift?.claimed ? ' · รับแล้ว' : ' · รอรับ' }}
                     </span>
+                    <span v-if="holdState(booking)" class="mini-badge hold" :class="{ expired: holdState(booking).expired }">
+                      <span class="material-symbols-rounded">event_seat</span>
+                      {{ holdState(booking).label }}
+                    </span>
                   </div>
                 </div>
                 <div class="booking-card-status">
@@ -256,6 +260,7 @@
                   <span v-if="booking.cancelled_at">ยกเลิกเมื่อ {{ formatDateTime(booking.cancelled_at) }}</span>
                   <span v-if="booking.cancellation_reason">เหตุผลยกเลิก: {{ booking.cancellation_reason }}</span>
                   <span v-if="booking.installment_payments?.length">งวดชำระ {{ paidInstallmentCount(booking) }} / {{ booking.installment_payments.length }}</span>
+                  <span v-if="booking.hold_note">บันทึกล็อกที่นั่ง: {{ booking.hold_note }}</span>
                 </div>
                 <div class="action-btns">
                   <button class="btn-icon btn-view" title="รายละเอียด" @click="openDetail(booking)">
@@ -266,6 +271,14 @@
                   </button>
                   <button class="btn-icon btn-edit" title="เปลี่ยนสถานะ" @click="openStatusModal(booking)">
                     <span class="material-symbols-rounded">swap_horiz</span>
+                  </button>
+                  <button
+                    v-if="booking.status === 'pending'"
+                    class="btn-icon btn-hold"
+                    :title="booking.hold_until ? 'ต่อเวลาล็อกที่นั่ง' : 'ล็อกที่นั่งไว้ให้ลูกค้า'"
+                    @click="openHoldModal(booking)"
+                  >
+                    <span class="material-symbols-rounded">more_time</span>
                   </button>
                   <button
                     class="btn-icon btn-transfer"
@@ -382,6 +395,20 @@
               <template v-else>
                 <strong>ยังไม่ถูกกดรับ</strong> — ชื่อ/ข้อมูลผู้เดินทางจะถูกเติมเมื่อผู้รับกดรับในแอป
               </template>
+            </div>
+          </div>
+
+          <div v-if="holdState(detailBooking)" class="gift-note hold-note" :class="{ expired: holdState(detailBooking).expired }">
+            <span class="material-symbols-rounded">event_seat</span>
+            <div>
+              <template v-if="holdState(detailBooking).expired">
+                <strong>ล็อกที่นั่งหมดเวลาแล้ว</strong> — ระบบกำลังคืนที่นั่งให้รอบเดินทาง
+              </template>
+              <template v-else>
+                ทีมงานกันที่นั่งไว้ให้ถึง <strong>{{ formatDateTime(detailBooking.hold_until) }}</strong>
+                — ระหว่างนี้ระบบจะไม่ยกเลิกการจองอัตโนมัติ
+              </template>
+              <template v-if="detailBooking.hold_note"><br />บันทึกภายใน: {{ detailBooking.hold_note }}</template>
             </div>
           </div>
 
@@ -1379,6 +1406,52 @@
       </div>
     </div>
 
+    <div v-if="showHoldModal" class="modal-overlay" @click.self="showHoldModal = false">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <div>
+            <h2>{{ holdBooking?.hold_until ? 'ต่อเวลาล็อกที่นั่ง' : 'ล็อกที่นั่งไว้ให้ลูกค้า' }}</h2>
+            <p class="modal-subtitle">{{ holdBooking?.booking_ref }}</p>
+          </div>
+          <button class="modal-close" @click="showHoldModal = false">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>ล็อกถึงวันและเวลา</label>
+            <div class="hold-quick">
+              <button
+                v-for="days in [1, 3, 7]"
+                :key="days"
+                type="button"
+                class="hold-chip"
+                @click="setHoldDays(days)"
+              >
+                อีก {{ days }} วัน
+              </button>
+            </div>
+            <input v-model="holdForm.until" type="datetime-local" />
+            <p class="field-hint">
+              ระหว่างนี้ระบบจะไม่ยกเลิกการจองอัตโนมัติ เลยเวลานี้แล้วที่นั่งจะถูกคืนให้รอบเดินทาง
+            </p>
+          </div>
+          <div class="form-group">
+            <label>บันทึกภายใน (เห็นเฉพาะทีมงาน)</label>
+            <input v-model.trim="holdForm.note" maxlength="255" placeholder="เช่น ลูกค้าขอโอนวันศุกร์" />
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" @click="showHoldModal = false">ยกเลิก</button>
+            <button class="btn-primary" :disabled="submitting || !holdForm.until" @click="doUpdateHold">
+              <span v-if="submitting" class="material-symbols-rounded animate-spin">sync</span>
+              <span v-else class="material-symbols-rounded">event_seat</span>
+              บันทึก
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showManualModal" class="modal-overlay" @click.self="showManualModal = false">
       <div class="modal-card modal-lg">
         <div class="modal-header">
@@ -1799,6 +1872,9 @@ const filters = reactive({
 
 const showDetail = ref(false);
 const showStatusModal = ref(false);
+const showHoldModal = ref(false);
+const holdBooking = ref(null);
+const holdForm = reactive({ until: '', note: '' });
 const showManualModal = ref(false);
 const showEditModal = ref(false);
 const showTransferModal = ref(false);
@@ -2651,6 +2727,62 @@ function appendForm(fd, key, value) {
     return;
   }
   fd.append(key, value === null || value === undefined ? '' : value);
+}
+
+// ป้าย "กันที่นั่งถึง ..." บนการ์ด — เฉพาะใบที่ยังไม่ได้ชำระ ใบที่จ่ายแล้วไม่มีเส้นตายอีก
+function holdState(booking) {
+  if (!booking?.hold_until || booking.status !== 'pending') return null;
+  const until = new Date(booking.hold_until);
+  if (Number.isNaN(until.getTime())) return null;
+  const expired = until <= new Date();
+  return {
+    expired,
+    label: expired ? 'ล็อกหมดเวลา' : `กันที่นั่งถึง ${formatDateTime(booking.hold_until)}`,
+  };
+}
+
+function openHoldModal(booking) {
+  holdBooking.value = booking;
+  holdForm.note = booking.hold_note || '';
+  if (booking.hold_until) {
+    const until = new Date(booking.hold_until);
+    holdForm.until = Number.isNaN(until.getTime()) ? '' : toDateTimeInput(until);
+  } else {
+    holdForm.until = '';
+  }
+  if (!holdForm.until) setHoldDays(3);
+  showHoldModal.value = true;
+}
+
+function toDateTimeInput(date) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function setHoldDays(days) {
+  const until = new Date();
+  until.setDate(until.getDate() + days);
+  until.setSeconds(0, 0);
+  holdForm.until = toDateTimeInput(until);
+}
+
+async function doUpdateHold() {
+  if (!holdBooking.value || !holdForm.until) return;
+
+  submitting.value = true;
+  try {
+    const res = await admin.updateBookingHold(holdBooking.value.booking_ref, {
+      holdUntil: new Date(holdForm.until).toISOString(),
+      note: holdForm.note || null,
+    });
+    showHoldModal.value = false;
+    await fetchData(currentPage.value);
+    toast.success(res?.message || 'อัปเดตเวลาล็อกที่นั่งแล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'อัปเดตเวลาล็อกที่นั่งไม่สำเร็จ');
+  } finally {
+    submitting.value = false;
+  }
 }
 
 function openStatusModal(booking) {
@@ -3799,6 +3931,54 @@ async function reverifySlip(bookingRef, slipType) {
   border: 1px solid #ddd6fe;
 }
 
+.mini-badge.hold {
+  gap: 3px;
+  background: #ecfeff;
+  color: #0e7490;
+  border: 1px solid #a5f3fc;
+}
+
+.mini-badge.hold .material-symbols-rounded {
+  font-size: 12px;
+}
+
+.mini-badge.hold.expired {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.btn-hold {
+  color: #0e7490;
+}
+
+.btn-hold:hover:not(:disabled) {
+  background: #ecfeff;
+}
+
+.hold-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.hold-chip {
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 12px;
+}
+
+.hold-chip:hover {
+  border-color: #0e7490;
+  color: #0e7490;
+}
+
 .mini-badge.gift,
 .type-badge.gift {
   background: #fdf2f8;
@@ -3823,6 +4003,26 @@ async function reverifySlip(bookingRef, slipType) {
 .gift-note .material-symbols-rounded {
   font-size: 20px;
   color: #be185d;
+}
+
+.gift-note.hold-note {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #155e75;
+}
+
+.gift-note.hold-note .material-symbols-rounded {
+  color: #0e7490;
+}
+
+.gift-note.hold-note.expired {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.gift-note.hold-note.expired .material-symbols-rounded {
+  color: #b91c1c;
 }
 
 .payment-progress {

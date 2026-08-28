@@ -287,26 +287,66 @@
           <div class="section-head">
             <span class="section-step">{{ form.is_join_trip ? 4 : 5 }}</span>
             <div>
-              <h2>การชำระเงิน</h2>
-              <p>เลือกเงื่อนไขจ่ายเงิน ช่องทางชำระ แนบสลิป และระบุวันเวลาที่โอนจริง</p>
+              <h2>{{ isHoldMode ? 'ล็อกที่นั่งไว้ก่อน' : 'การชำระเงิน' }}</h2>
+              <p v-if="isHoldMode">ข้ามขั้นชำระเงินไปก่อน กันที่นั่งไว้ให้ลูกค้าจนถึงเวลาที่กำหนด</p>
+              <p v-else>เลือกเงื่อนไขจ่ายเงิน ช่องทางชำระ แนบสลิป และระบุวันเวลาที่โอนจริง</p>
             </div>
           </div>
 
           <div class="payment-grid">
             <div class="payment-block">
-              <div class="block-label">สถานะการชำระเงิน</div>
-              <div class="radio-choice-group">
-                <label class="radio-card" :class="{ active: form.status === 'pending' }">
-                  <input v-model="form.status" type="radio" value="pending" />
-                  <span class="radio-dot"></span>
-                  รอชำระเงิน
-                </label>
-                <label class="radio-card" :class="{ active: form.status === 'confirmed' }">
-                  <input v-model="form.status" type="radio" value="confirmed" />
-                  <span class="radio-dot"></span>
-                  รับชำระแล้ว
+              <div class="block-label">จะจัดการเรื่องเงินยังไง</div>
+              <div class="payment-method-grid mode-grid">
+                <label
+                  v-for="mode in bookingModeOptions"
+                  :key="mode.value"
+                  class="payment-method-card"
+                  :class="{ active: form.mode === mode.value }"
+                >
+                  <input v-model="form.mode" type="radio" :value="mode.value" @change="onModeChange" />
+                  <span class="material-symbols-rounded">{{ mode.icon }}</span>
+                  <strong>{{ mode.label }}</strong>
+                  <small>{{ mode.description }}</small>
                 </label>
               </div>
+              <p v-if="form.mode === 'await'" class="field-note">
+                ที่นั่งจะถูกคืนอัตโนมัติภายใน {{ pendingTtlMinutes }} นาทีถ้าลูกค้ายังไม่ชำระ —
+                ถ้าลูกค้ายังไม่พร้อมจ่ายตอนนี้ ให้เลือก "ล็อกที่นั่งไว้ก่อน"
+              </p>
+            </div>
+
+            <div v-if="isHoldMode" class="payment-block hold-panel">
+              <div class="block-label">กันที่นั่งไว้ให้ถึงเมื่อไหร่</div>
+              <div class="hold-quick">
+                <button
+                  v-for="option in holdQuickOptions"
+                  :key="option.days"
+                  type="button"
+                  class="hold-chip"
+                  :class="{ active: holdQuickDays === option.days }"
+                  @click="setHoldDays(option.days)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+              <div class="form-grid">
+                <label class="form-field">
+                  <span>ล็อกถึงวันและเวลา *</span>
+                  <input
+                    v-model="form.hold_until"
+                    type="datetime-local"
+                    :min="holdMinInput"
+                    :max="holdMaxInput"
+                    required
+                    @input="holdQuickDays = null"
+                  />
+                </label>
+                <label class="form-field">
+                  <span>บันทึกภายใน (เห็นเฉพาะทีมงาน)</span>
+                  <input v-model.trim="form.hold_note" maxlength="255" placeholder="เช่น ลูกค้าโทรมาจอง ขอโอนวันศุกร์" />
+                </label>
+              </div>
+              <p class="field-note">{{ holdHint }}</p>
             </div>
 
             <div class="payment-block">
@@ -356,7 +396,7 @@
               </p>
             </div>
 
-            <div class="payment-block">
+            <div v-if="!isHoldMode" class="payment-block">
               <div class="block-label">ช่องทางชำระ</div>
               <div class="payment-method-grid">
                 <label
@@ -374,7 +414,11 @@
             </div>
 
             <div class="payment-preview">
-              <div v-if="form.payment_method === 'promptpay'" class="pay-visual">
+              <div v-if="isHoldMode" class="pay-visual">
+                <span class="material-symbols-rounded pay-hold-icon">event_seat</span>
+                <span>กันที่นั่งไว้ก่อน — ยังไม่เก็บเงินตอนนี้</span>
+              </div>
+              <div v-else-if="form.payment_method === 'promptpay'" class="pay-visual">
                 <img src="/images/qr_promptpay.webp" alt="QR PromptPay" />
                 <span>QR พร้อมเพย์</span>
               </div>
@@ -396,7 +440,7 @@
               </div>
             </div>
 
-            <div class="slip-uploader full" :class="{ hasFile: slipPreview }" @click="slipInputRef?.click()">
+            <div v-if="!isHoldMode" class="slip-uploader full" :class="{ hasFile: slipPreview }" @click="slipInputRef?.click()">
               <input ref="slipInputRef" type="file" accept="image/*" class="hidden-input" @change="onSlipChange" />
               <template v-if="slipPreview">
                 <img :src="slipPreview" alt="สลิปโอนเงิน" />
@@ -409,21 +453,23 @@
               </template>
             </div>
 
-            <label class="form-field">
-              <span>วันที่โอน{{ paymentEvidenceRequired ? ' *' : '' }}</span>
-              <input v-model="form.transfer_date" :required="paymentEvidenceRequired" type="date" />
-            </label>
-            <label class="form-field">
-              <span>เวลาที่โอน{{ paymentEvidenceRequired ? ' *' : '' }}</span>
-              <input v-model="form.transfer_time" :required="paymentEvidenceRequired" type="time" />
-            </label>
+            <template v-if="!isHoldMode">
+              <label class="form-field">
+                <span>วันที่โอน{{ paymentEvidenceRequired ? ' *' : '' }}</span>
+                <input v-model="form.transfer_date" :required="paymentEvidenceRequired" type="date" />
+              </label>
+              <label class="form-field">
+                <span>เวลาที่โอน{{ paymentEvidenceRequired ? ' *' : '' }}</span>
+                <input v-model="form.transfer_time" :required="paymentEvidenceRequired" type="time" />
+              </label>
+            </template>
           </div>
         </section>
 
         <div class="submit-bar">
           <button class="btn-primary" type="submit" :disabled="submitting || !canSubmit">
-            <span class="material-symbols-rounded" :class="{ 'animate-spin': submitting }">{{ submitting ? 'sync' : 'send' }}</span>
-            สร้างการจองและส่งอีเมล
+            <span class="material-symbols-rounded" :class="{ 'animate-spin': submitting }">{{ submitting ? 'sync' : submitIcon }}</span>
+            {{ submitLabel }}
           </button>
           <span v-if="submitHint" class="submit-hint">{{ submitHint }}</span>
         </div>
@@ -468,6 +514,10 @@
             <span>รับตอนนี้</span>
             <strong>{{ form.status === 'confirmed' ? formatCurrency(payableNow) : 'ยังไม่รับชำระ' }}</strong>
           </div>
+          <div v-if="isHoldMode" class="summary-row">
+            <span>ล็อกที่นั่งถึง</span>
+            <strong>{{ form.hold_until ? formatDateTime(form.hold_until) : '-' }}</strong>
+          </div>
           <div class="summary-total">
             <span>ยอดรวม</span>
             <strong>{{ formatCurrency(totalAmount) }}</strong>
@@ -475,9 +525,10 @@
         </div>
 
         <div v-if="createdBooking" class="success-panel">
-          <span class="material-symbols-rounded">task_alt</span>
-          <h2>สร้างการจองสำเร็จ</h2>
+          <span class="material-symbols-rounded">{{ createdBooking.hold_until ? 'event_seat' : 'task_alt' }}</span>
+          <h2>{{ createdBooking.hold_until ? 'ล็อกที่นั่งให้แล้ว' : 'สร้างการจองสำเร็จ' }}</h2>
           <p>เลขจอง {{ createdBooking.booking_ref }}</p>
+          <p v-if="createdBooking.hold_until">กันที่นั่งไว้ถึง {{ formatDateTime(createdBooking.hold_until) }}</p>
           <router-link :to="`/payment/${createdBooking.booking_ref}`" class="btn-secondary">เปิดหน้าชำระเงิน</router-link>
         </div>
       </aside>
@@ -506,6 +557,35 @@ const slipPreview = ref('');
 const slipInputRef = ref(null);
 
 const bloodGroupOptions = ['A', 'B', 'O', 'AB'];
+// ต้องตรงกับ Booking::PENDING_TTL_MINUTES / HOLD_DEFAULT_DAYS / HOLD_MAX_DAYS ฝั่งเซิร์ฟเวอร์
+const pendingTtlMinutes = 10;
+const HOLD_DEFAULT_DAYS = 3;
+const HOLD_MAX_DAYS = 30;
+const bookingModeOptions = [
+  {
+    value: 'paid',
+    label: 'รับชำระแล้ว',
+    description: 'ลูกค้าโอนมาแล้ว — แนบสลิปและวันเวลาที่โอน',
+    icon: 'task_alt',
+  },
+  {
+    value: 'await',
+    label: 'รอลูกค้าชำระ',
+    description: `ส่งให้ลูกค้าไปจ่ายเอง ภายใน ${pendingTtlMinutes} นาที`,
+    icon: 'hourglass_top',
+  },
+  {
+    value: 'hold',
+    label: 'ล็อกที่นั่งไว้ก่อน',
+    description: 'ข้ามหน้าชำระเงิน กันที่นั่งไว้ให้ตามเวลาที่กำหนด',
+    icon: 'event_seat',
+  },
+];
+const holdQuickOptions = [
+  { days: 1, label: '1 วัน' },
+  { days: 3, label: '3 วัน' },
+  { days: 7, label: '7 วัน' },
+];
 const paymentMethodOptions = [
   {
     value: 'promptpay',
@@ -530,13 +610,19 @@ const regionLabels = {
   bangkok: 'กรุงเทพฯ',
 };
 
+const holdQuickDays = ref(null);
+
 const form = reactive({
   trip_id: '',
   schedule_id: '',
   customer_name: '',
   email: '',
   phone: '',
+  // mode = paid | await | hold — status เป็นผลของ mode ไม่ให้ตั้งสวนกันได้
+  mode: 'await',
   status: 'pending',
+  hold_until: '',
+  hold_note: '',
   payment_type: 'full',
   payment_method: 'promptpay',
   installment_count: 2,
@@ -641,7 +727,51 @@ const paymentPlanLabel = computed(() => {
   if (form.payment_type === 'deposit') return 'มัดจำ';
   return 'จ่ายเต็ม';
 });
-const paymentEvidenceRequired = computed(() => form.status === 'confirmed');
+const paymentEvidenceRequired = computed(() => form.mode === 'paid');
+const isHoldMode = computed(() => form.mode === 'hold');
+
+// เวลารถออกจริงของรอบนี้ในเวลาไทย — ล็อกที่นั่งข้ามวันเดินทางไม่มีความหมาย
+const holdLimitDate = computed(() => {
+  const schedule = selectedSchedule.value;
+  if (!schedule?.departure_date) return null;
+  const raw = schedule.departs_at || `${schedule.departure_date}T00:00:00`;
+  const parsed = new Date(`${raw.slice(0, 10)}T${raw.slice(11, 16) || '00:00'}:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+});
+const holdCeilingDate = computed(() => {
+  const cap = new Date();
+  cap.setDate(cap.getDate() + HOLD_MAX_DAYS);
+  const limit = holdLimitDate.value;
+  return limit && limit < cap ? limit : cap;
+});
+const holdMinInput = computed(() => formatInputDateTime(new Date()));
+const holdMaxInput = computed(() => formatInputDateTime(holdCeilingDate.value));
+const holdUntilDate = computed(() => {
+  if (!form.hold_until) return null;
+  const parsed = new Date(form.hold_until);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+});
+const isHoldValid = computed(() => {
+  const until = holdUntilDate.value;
+  if (!until) return false;
+  return until > new Date() && until <= holdCeilingDate.value;
+});
+const holdHint = computed(() => {
+  const until = holdUntilDate.value;
+  if (!until) return `เลือกวันและเวลาที่จะกันที่นั่งไว้ให้ ล็อกได้ไม่เกิน ${HOLD_MAX_DAYS} วัน`;
+  if (until <= new Date()) return 'เวลาที่เลือกผ่านมาแล้ว กรุณาเลือกใหม่';
+  if (until > holdCeilingDate.value) {
+    return holdLimitDate.value && holdCeilingDate.value === holdLimitDate.value
+      ? `ล็อกได้ถึงเวลาออกเดินทางเท่านั้น (${formatDateTime(holdLimitDate.value)})`
+      : `ล็อกที่นั่งได้ไม่เกิน ${HOLD_MAX_DAYS} วัน`;
+  }
+  return `กันที่นั่งไว้ให้ถึง ${formatDateTime(until)} (${holdRemainingLabel(until)}) — เลยเวลานี้ระบบจะคืนที่นั่งให้รอบเดินทางอัตโนมัติ`;
+});
+const submitLabel = computed(() => {
+  if (isHoldMode.value) return 'ล็อกที่นั่งให้ลูกค้า';
+  return form.send_email ? 'สร้างการจองและส่งอีเมล' : 'สร้างการจอง';
+});
+const submitIcon = computed(() => (isHoldMode.value ? 'event_seat' : 'send'));
 const seatColumns = computed(() => seatMap.value?.columns || []);
 const seatGridStyle = computed(() => ({
   gridTemplateColumns: seatColumns.value.map((column) => column === '' ? '34px' : '58px').join(' '),
@@ -676,6 +806,7 @@ const canSubmit = computed(() => {
   if (form.payment_type === 'installment' && !installmentAllowed.value) return false;
   if (form.payment_type === 'deposit' && !depositAllowed.value) return false;
   if (paymentEvidenceRequired.value && (!slipFile.value || !form.transfer_date || !form.transfer_time)) return false;
+  if (isHoldMode.value && !isHoldValid.value) return false;
   return true;
 });
 const submitHint = computed(() => {
@@ -691,6 +822,7 @@ const submitHint = computed(() => {
   if (form.payment_type === 'deposit' && !depositAllowed.value) return 'รอบนี้ยังไม่เปิดมัดจำ';
   if (paymentEvidenceRequired.value && !slipFile.value) return 'แนบไฟล์สลิปก่อน';
   if (paymentEvidenceRequired.value && (!form.transfer_date || !form.transfer_time)) return 'ระบุวันที่และเวลาที่โอน';
+  if (isHoldMode.value && !isHoldValid.value) return 'ระบุวันและเวลาที่จะล็อกที่นั่งถึง';
   return '';
 });
 
@@ -698,6 +830,14 @@ onMounted(fetchTrips);
 
 watch(() => passengers.value.length, () => {
   selectedSeatIds.value = selectedSeatIds.value.slice(0, passengers.value.length);
+});
+
+watch(holdCeilingDate, (ceiling) => {
+  // เปลี่ยนรอบแล้วเส้นตายเดิมเลยวันเดินทางของรอบใหม่ — ดึงกลับมาให้อยู่ในกรอบ
+  if (holdUntilDate.value && ceiling && holdUntilDate.value > ceiling) {
+    form.hold_until = formatInputDateTime(ceiling);
+    holdQuickDays.value = null;
+  }
 });
 
 watch([selectedSchedule, () => form.is_join_trip], () => {
@@ -868,6 +1008,47 @@ function formatInputDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatInputDateTime(date) {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${formatInputDate(date)}T${hours}:${minutes}`;
+}
+
+// สลับโหมดเรื่องเงิน — status เป็นผลของ mode เสมอ และโหมดล็อกที่นั่งไม่ส่งอีเมลเอง
+// (บางครั้งยังคุยกับลูกค้าไม่จบ อีเมลยืนยันจะกลายเป็นคำสัญญาไปก่อน)
+function onModeChange() {
+  form.status = form.mode === 'paid' ? 'confirmed' : 'pending';
+
+  if (form.mode === 'hold') {
+    form.send_email = false;
+    if (!form.hold_until) setHoldDays(HOLD_DEFAULT_DAYS);
+    return;
+  }
+
+  form.send_email = true;
+  form.hold_until = '';
+  form.hold_note = '';
+  holdQuickDays.value = null;
+}
+
+function setHoldDays(days) {
+  const until = new Date();
+  until.setDate(until.getDate() + days);
+  until.setSeconds(0, 0);
+  const ceiling = holdCeilingDate.value;
+  form.hold_until = formatInputDateTime(until > ceiling ? ceiling : until);
+  holdQuickDays.value = days;
+}
+
+// "อีก 3 วัน" / "อีก 5 ชั่วโมง" — บอกความยาวของล็อกให้เห็นภาพ ไม่ต้องนับวันเอง
+function holdRemainingLabel(until) {
+  const minutes = Math.max(0, Math.round((until.getTime() - Date.now()) / 60000));
+  if (minutes < 60) return `อีก ${minutes} นาที`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `อีก ${hours} ชั่วโมง`;
+  return `อีก ${Math.round(hours / 24)} วัน`;
+}
+
 function onSlipChange(event) {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -910,6 +1091,12 @@ function buildBookingPayload() {
   appendFormValue(fd, 'passenger_count', passengers.value.length);
   appendFormValue(fd, 'send_email', form.send_email);
 
+  if (isHoldMode.value && holdUntilDate.value) {
+    // ส่งเป็น ISO ที่มีโซนเวลาติดไป เซิร์ฟเวอร์จะได้ไม่ต้องเดาว่าเป็นเวลาไทยหรือ UTC
+    appendFormValue(fd, 'hold_until', holdUntilDate.value.toISOString());
+    appendFormValue(fd, 'hold_note', form.hold_note);
+  }
+
   passengers.value.forEach(({ key, ...passenger }, index) => {
     Object.entries(passenger).forEach(([field, value]) => {
       appendFormValue(fd, `passengers[${index}][${field}]`, value);
@@ -935,7 +1122,7 @@ async function submitBooking() {
   try {
     const res = await api.post('/admin/bookings/manual', buildBookingPayload());
     createdBooking.value = res.data?.data || null;
-    toast.success(form.send_email ? 'สร้างการจองและส่งอีเมลแล้ว' : 'สร้างการจองแล้ว');
+    toast.success(res.data?.message || (form.send_email ? 'สร้างการจองและส่งอีเมลแล้ว' : 'สร้างการจองแล้ว'));
   } catch (error) {
     toast.error(error.response?.data?.message || 'สร้างการจองไม่สำเร็จ');
   } finally {
@@ -950,6 +1137,17 @@ function formatDate(value) {
     month: 'short',
     year: 'numeric',
   });
+}
+
+function formatDateTime(value) {
+  if (!value) return '-';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return `${date.toLocaleDateString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })} ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
 }
 
 // เวลาออกรถจริง เช่น "23:30 น. (คืนก่อนวันทริป)" — รถอาจออกก่อนวันทริป
@@ -1136,6 +1334,46 @@ function formatCurrency(value) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.mode-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hold-panel {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 14px;
+}
+
+.hold-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.hold-chip {
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+}
+
+.hold-chip.active {
+  border-color: var(--color-accent);
+  background: #eef8f1;
+  color: var(--color-accent);
+}
+
+.pay-hold-icon {
+  color: var(--color-accent);
+  font-size: 30px;
 }
 
 .payment-method-card {

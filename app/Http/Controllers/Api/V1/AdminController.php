@@ -1885,6 +1885,9 @@ class AdminController extends Controller
             'transfer_date' => ['nullable', 'date'],
             'transfer_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
             'send_email' => ['nullable', 'boolean'],
+            // ล็อกที่นั่งไว้ก่อน: ข้ามขั้นชำระเงิน แล้วกันที่นั่งไว้ให้ถึงเวลานี้
+            'hold_until' => ['nullable', 'date'],
+            'hold_note' => ['nullable', 'string', 'max:255'],
         ]);
 
         $schedule = TripSchedule::with(['trip', 'pickupPoints'])->findOrFail($request->schedule_id);
@@ -1909,6 +1912,12 @@ class AdminController extends Controller
         $isJoinTrip = (bool) $request->boolean('is_join_trip');
         $paymentType = $request->input('payment_type', 'full');
         $isPaid = $request->status === 'confirmed';
+
+        // โหมด "ล็อกที่นั่งไว้ก่อน" — รับได้เฉพาะใบที่ยังไม่ได้ชำระ
+        $holdUntil = $isPaid ? null : $this->resolveManualHoldUntil($request->input('hold_until'), $schedule);
+        if ($holdUntil && $holdUntil->gt(now()->addDays(Booking::HOLD_MAX_DAYS))) {
+            return $this->error('ล็อกที่นั่งได้ไม่เกิน '.Booking::HOLD_MAX_DAYS.' วัน', 422);
+        }
 
         if ($isJoinTrip && ! $schedule->join_trip_enabled) {
             return $this->error('รอบเดินทางนี้ยังไม่ได้เปิดจอยทริป', 422);
@@ -2047,7 +2056,8 @@ class AdminController extends Controller
                 $request, $schedule, $user, $pickupPoint, $participantCount, $totalAmount,
                 $paidAmount, $paymentType, $installmentCount, $installmentIntervalDays,
                 $depositAmount, $balanceAmount, $balanceDueAt,
-                $isPaid, $paymentRef, $slipPath, $transferDt, $isJoinTrip, $passengers, $seatIds
+                $isPaid, $paymentRef, $slipPath, $transferDt, $isJoinTrip, $passengers, $seatIds,
+                $holdUntil
             ) {
                 // ล็อกรอบเดินทางแล้วตรวจที่นั่งซ้ำใต้ lock — ทำให้ check-แล้ว-insert เป็น atomic
                 // กัน race กับการจองอื่น (ของลูกค้า/แอดมินคนอื่น) ที่ทำให้ชน unique constraint
@@ -2088,6 +2098,9 @@ class AdminController extends Controller
                     'transfer_datetime' => $transferDt,
                     'qr_code' => Booking::generateQrCode(),
                     'is_join_trip' => $isJoinTrip,
+                    'hold_until' => $holdUntil,
+                    'hold_note' => $holdUntil ? $request->input('hold_note') : null,
+                    'hold_by_id' => $holdUntil ? $request->user()?->id : null,
                 ]);
 
                 $passengerModels = $passengers->map(function ($passenger) use ($booking) {
@@ -2166,7 +2179,75 @@ class AdminController extends Controller
             app(SmsService::class)->sendPaymentConfirmed($booking, $paymentType);
         }
 
-        return $this->success(new BookingResource($booking), 'บันทึกการจองและส่งอีเมลสำเร็จ', 201);
+        $message = match (true) {
+            $holdUntil !== null => 'ล็อกที่นั่งให้ลูกค้าแล้ว ถึง '.ThaiDate::shortTime($holdUntil->setTimezone('Asia/Bangkok')).' น.',
+            $request->boolean('send_email', true) => 'บันทึกการจองและส่งอีเมลสำเร็จ',
+            default => 'บันทึกการจองสำเร็จ',
+        };
+
+        return $this->success(new BookingResource($booking), $message, 201);
+    }
+
+    /**
+     * POST /admin/bookings/{ref}/hold
+     * ต่อเวลา/แก้เส้นตายของที่นั่งที่ทีมงานกันไว้ให้ลูกค้า
+     *
+     * ไม่มีทางเลือก "ปลดล็อก" โดยตั้งใจ: การจองใบนี้ถูกสร้างมานานแล้ว ถ้าล้าง
+     * hold_until ทิ้ง ExpirePendingBookingsJob จะเห็นเป็นใบค้างเกินสิบนาทีแล้ว
+     * ยกเลิกทันทีในนาทีถัดไป — ถ้าจะเลิกกันที่นั่งให้ใช้ยกเลิกการจองตามปกติ
+     */
+    public function updateBookingHold(Request $request, string $ref): JsonResponse
+    {
+        $request->validate([
+            'hold_until' => ['required', 'date'],
+            'hold_note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $booking = Booking::with('schedule')->where('booking_ref', $ref)->firstOrFail();
+
+        if ($booking->status !== 'pending') {
+            return $this->error('ล็อกที่นั่งได้เฉพาะการจองที่ยังไม่ได้ชำระเงิน', 422);
+        }
+
+        if (! $booking->schedule) {
+            return $this->error('การจองนี้ไม่มีรอบเดินทางแล้ว', 422);
+        }
+
+        $holdUntil = $this->resolveManualHoldUntil($request->input('hold_until'), $booking->schedule);
+
+        if ($holdUntil->gt(now()->addDays(Booking::HOLD_MAX_DAYS))) {
+            return $this->error('ล็อกที่นั่งได้ไม่เกิน '.Booking::HOLD_MAX_DAYS.' วัน', 422);
+        }
+
+        $booking->update([
+            'hold_until' => $holdUntil,
+            'hold_note' => $request->filled('hold_note') ? $request->input('hold_note') : $booking->hold_note,
+            'hold_by_id' => $booking->hold_by_id ?: $request->user()?->id,
+        ]);
+
+        $booking->load(['schedule.trip', 'user', 'passengers', 'seats']);
+
+        return $this->success(
+            new BookingResource($booking),
+            'ล็อกที่นั่งถึง '.ThaiDate::shortTime($holdUntil->setTimezone('Asia/Bangkok')).' น.',
+        );
+    }
+
+    /**
+     * เส้นตายล็อกที่นั่งที่แอดมินกรอก — ช่อง datetime-local ส่งค่าที่ไม่มีโซนเวลามา
+     * ซึ่งคือเวลาไทยที่แอดมินเห็นบนจอ ไม่ใช่ UTC ตามที่ Carbon จะเดาให้
+     */
+    private function resolveManualHoldUntil(?string $value, TripSchedule $schedule): ?CarbonImmutable
+    {
+        if (! filled($value)) {
+            return null;
+        }
+
+        $parsed = preg_match('/(Z|[+-]\d{2}:?\d{2})$/', $value)
+            ? Carbon::parse($value)
+            : Carbon::parse($value, 'Asia/Bangkok');
+
+        return CarbonImmutable::instance(Booking::capHoldUntil($parsed->utc(), $schedule));
     }
 
     private function resolveManualTransferDatetime(Request $request): ?string

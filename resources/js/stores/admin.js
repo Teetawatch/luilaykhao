@@ -130,6 +130,15 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    // ต่อเวลา/ตั้งเวลา "ล็อกที่นั่งไว้ก่อน" ให้การจองที่ยังไม่ได้ชำระเงิน
+    async updateBookingHold(ref, { holdUntil, note = null }) {
+      const res = await api.post(`/admin/bookings/${ref}/hold`, {
+        hold_until: holdUntil,
+        hold_note: note,
+      });
+      return res.data;
+    },
+
     async updateBooking(ref, data) {
       const res = await api.post(`/admin/bookings/${ref}`, data);
       return res.data;

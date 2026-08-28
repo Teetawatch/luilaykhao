@@ -90,9 +90,19 @@ class BookingResource extends JsonResource
             // เส้นตายที่ระบบจะยกเลิกการจองอัตโนมัติเพื่อคืนที่นั่ง — มีเฉพาะรายการที่
             // ยังไม่ได้ส่งสลิป (ส่งแล้ว = ถือที่นั่งไว้รอแอดมินตรวจ ไม่มีเส้นตาย)
             // ส่งมาให้ client นับถอยหลังเอง จะได้ไม่ต้อง hardcode TTL ไว้สองที่
+            // ใบที่ทีมงานล็อกที่นั่งไว้ให้เดินตาม hold_until แทนสิบนาทีมาตรฐาน — client
+            // ที่ยังไม่รู้จัก hold_until ก็ยังนับถอยหลังไปยังเส้นตายที่ถูกต้องอยู่ดี
             'expires_at' => $this->status === 'pending' && $this->slip_ocr_status === null
-                ? $this->created_at?->addMinutes(Booking::PENDING_TTL_MINUTES)->toISOString()
+                ? ($this->hold_until
+                    ? $this->hold_until->toISOString()
+                    : $this->created_at?->addMinutes(Booking::PENDING_TTL_MINUTES)->toISOString())
                 : null,
+            // ที่นั่งที่ทีมงานกันไว้ให้ลูกค้า (แอดมินจองแทนแล้วข้ามหน้าชำระเงิน)
+            'hold_until' => $this->hold_until?->toISOString(),
+            'hold_note' => $this->when(
+                (bool) $request->user()?->hasAnyRole(['admin', 'operator']),
+                $this->hold_note,
+            ),
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),
             'status' => $this->status,

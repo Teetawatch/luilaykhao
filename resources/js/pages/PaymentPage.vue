@@ -35,6 +35,21 @@
       </div>
     </div>
 
+    <!-- ทีมงานกันที่นั่งไว้ให้ — ไม่ต้องนับถอยหลังสิบนาทีแบบจองเอง -->
+    <div v-if="isOnHold" class="max-w-7xl mx-auto mb-10">
+      <div class="bg-teal-50 border border-teal-100 rounded-3xl p-5 md:p-6 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+          <span class="material-symbols-rounded text-[#006565] text-2xl">event_seat</span>
+        </div>
+        <div>
+          <h3 class="text-[#004b4b] font-bold text-base md:text-lg">ทีมงานกันที่นั่งไว้ให้คุณแล้ว</h3>
+          <p class="text-[#006565] text-sm">
+            ชำระเงินได้ถึง {{ holdUntilLabel }} ยังไม่ต้องรีบครับ ถ้าต้องการเวลาเพิ่มทักทีมงานได้เลย
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Urgency Message & Timer -->
     <div v-if="seatsStore.countdownSeconds > 0" class="max-w-7xl mx-auto mb-10">
       <div class="bg-red-50 border border-red-100 rounded-3xl p-5 md:p-6 mb-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1029,6 +1044,7 @@ import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
 import { useSwal } from '../lib/swal';
 import { addPaymentInfo } from '../lib/analytics';
 import { useBeamCharge } from '../composables/useBeamCharge';
+import { thaiShort } from '../lib/thaiDate';
 
 const route = useRoute();
 const router = useRouter();
@@ -1043,11 +1059,33 @@ const swal = useSwal();
 // และ QR ของเกตเวย์ก็หมดอายุไปก่อนหน้านั้นด้วยซ้ำ)
 const PENDING_TTL_SECONDS = 10 * 60; // fallback เท่านั้น — ต้องตรงกับ Booking::PENDING_TTL_MINUTES
 
+const isOnHold = computed(() => {
+  const holdUntil = booking.value?.hold_until ? new Date(booking.value.hold_until) : null;
+
+  return Boolean(
+    booking.value?.status === 'pending'
+    && holdUntil
+    && !Number.isNaN(holdUntil.getTime())
+    && holdUntil > new Date(),
+  );
+});
+
+const holdUntilLabel = computed(() => {
+  const holdUntil = booking.value?.hold_until ? new Date(booking.value.hold_until) : null;
+  if (!holdUntil || Number.isNaN(holdUntil.getTime())) return '';
+
+  return `${thaiShort(holdUntil)} ${holdUntil.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+});
+
 const paymentDeadline = computed(() => {
   const b = booking.value;
   if (!b || b.status !== 'pending') return null;
   // ส่งสลิปแล้ว = ถือที่นั่งไว้รอแอดมินตรวจ ไม่มีเส้นตาย (หลังบ้านก็ข้ามรายการพวกนี้)
   if (b.slip_ocr_status) return null;
+
+  // ทีมงานกันที่นั่งไว้ให้ (แอดมินจองแทนแล้วข้ามหน้าชำระเงิน) — เส้นตายเป็นวัน
+  // ไม่ใช่นาที และหลังบ้านเป็นคนปล่อยที่นั่งเอง เว็บจึงไม่ต้องนับถอยหลัง/ยกเลิกให้
+  if (isOnHold.value) return null;
 
   const serverExpiry = b.expires_at ? new Date(b.expires_at) : null;
   if (serverExpiry && !Number.isNaN(serverExpiry.getTime())) return serverExpiry;

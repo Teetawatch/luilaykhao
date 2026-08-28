@@ -5,7 +5,13 @@
     <span class="email-brand">Luilaykhao</span>
     <div class="header-emoji">🎉</div>
     <h1 class="header-title">รับการจองของคุณแล้วครับ</h1>
-    <p class="header-subtitle">อีกนิดเดียว ชำระเงินแล้วที่นั่งเป็นของคุณเลยครับ</p>
+    <p class="header-subtitle">
+      @if($booking->isOnHold())
+        ทีมงานกันที่นั่งไว้ให้คุณเรียบร้อยแล้วครับ
+      @else
+        อีกนิดเดียว ชำระเงินแล้วที่นั่งเป็นของคุณเลยครับ
+      @endif
+    </p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -14,9 +20,25 @@
 
     <div class="greeting">
       สวัสดีคุณ <strong>{{ $booking->user->name }}</strong> 👋<br />
-      ขอบคุณที่เลือกเดินทางไปกับพวกเรานะครับ ทีมงานบันทึกการจองของคุณเรียบร้อยแล้ว
-      เหลืออีกขั้นเดียวคือชำระเงินภายในเวลาที่กำหนด ที่นั่งก็จะเป็นของคุณอย่างสมบูรณ์ครับ
+      @if($booking->isOnHold())
+        ขอบคุณที่เลือกเดินทางไปกับพวกเรานะครับ ทีมงานจองที่นั่งให้คุณเรียบร้อยแล้ว
+        และกันที่นั่งนี้ไว้ให้ตามเวลาด้านล่าง ยังไม่ต้องรีบชำระเงินครับ
+      @else
+        ขอบคุณที่เลือกเดินทางไปกับพวกเรานะครับ ทีมงานบันทึกการจองของคุณเรียบร้อยแล้ว
+        เหลืออีกขั้นเดียวคือชำระเงินภายในเวลาที่กำหนด ที่นั่งก็จะเป็นของคุณอย่างสมบูรณ์ครับ
+      @endif
     </div>
+
+    @if($booking->isOnHold())
+    <div class="alert-box alert-teal">
+      <p class="alert-title">🎟️ ที่นั่งของคุณถูกกันไว้แล้ว</p>
+      <p class="alert-text">
+        ทีมงานกันที่นั่งนี้ไว้ให้คุณถึง
+        <strong>{{ \App\Support\ThaiDate::shortTime($booking->hold_until->setTimezone('Asia/Bangkok')) }} น.</strong>
+        ชำระเงินภายในเวลานี้ได้เลยครับ ถ้าต้องการเวลาเพิ่มหรือมีอะไรให้ช่วย ทักมาบอกทีมงานได้ตลอดนะครับ
+      </p>
+    </div>
+    @endif
 
     <p class="section-label">รายละเอียดทริป</p>
     <div class="info-card">
@@ -89,7 +111,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">สถานะ</span>
-        <span class="info-value accent-amber">รอชำระเงิน</span>
+        <span class="info-value accent-amber">{{ $booking->isOnHold() ? 'กันที่นั่งไว้ให้ รอชำระเงิน' : 'รอชำระเงิน' }}</span>
       </div>
     </div>
 
