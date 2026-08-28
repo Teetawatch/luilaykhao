@@ -75,6 +75,50 @@ class PaymentInstallmentTest extends TestCase
         return $booking;
     }
 
+    /**
+     * แผนเก่าที่ทำไว้ตอนเพดานยังเป็น 6 งวด ต้องจ่ายต่อจนจบได้ ถึงแม้วันนี้จะสร้างแผน
+     * แบบนั้นใหม่ไม่ได้แล้ว — ทุกเส้นทางการจ่ายอ่านจากแถวงวดจริง ไม่ได้เทียบกับเพดาน
+     */
+    public function test_a_six_instalment_plan_made_before_the_cap_can_still_be_paid_off(): void
+    {
+        Mail::fake();
+        Storage::fake(MediaDisk::slipDisk());
+        config()->set('services.thaibulksms.enabled', false);
+
+        $user = User::factory()->create();
+        $booking = $this->makeInstallmentBooking($user);
+
+        // ขยายแผนเดิมเป็น 6 งวดแบบที่การจองเก่าบน production เป็นอยู่
+        $booking->update(['installment_count' => 6, 'total_amount' => 6000]);
+        foreach ([4, 5, 6] as $no) {
+            InstallmentPayment::create([
+                'booking_id' => $booking->id,
+                'installment_no' => $no,
+                'amount' => 1000,
+                'due_date' => now()->addDays(30 * $no)->toDateString(),
+                'status' => 'pending',
+            ]);
+        }
+
+        foreach ([2, 3, 4, 5, 6] as $no) {
+            $this->actingAs($user, 'sanctum')
+                ->postJson('/api/v1/payments/charge-installment', [
+                    'booking_ref' => $booking->booking_ref,
+                    'installment_no' => $no,
+                    'payment_method' => 'promptpay',
+                    'slip_image' => UploadedFile::fake()->image("slip-{$no}.jpg", 400, 300),
+                    'transfer_date' => now()->toDateString(),
+                    'transfer_time' => '10:30',
+                ])
+                ->assertOk()
+                ->assertJsonPath('data.installment_no', $no);
+        }
+
+        $booking->refresh()->load('installmentPayments');
+        $this->assertSame(6, $booking->installmentPayments->where('status', 'paid')->count());
+        $this->assertEquals(6000.0, (float) $booking->paid_amount);
+    }
+
     public function test_customer_can_pay_an_installment_with_slip(): void
     {
         Mail::fake();
