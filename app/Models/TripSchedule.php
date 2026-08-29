@@ -731,9 +731,8 @@ class TripSchedule extends Model
         $layout = $vehicle?->seat_layout;
         if ($layout && isset($layout['seats'])) {
             // ผังที่แอดมินวาดเองไม่ได้บอกว่าเป็นรถแบบไหน — เติมให้จากชนิดรถ
-            // เพื่อให้ทุกหน้าจอวาดโครงรถ (ประตู/คนขับ/แถวหลัง) ได้ถูกแบบ
+            // เพื่อให้ทุกหน้าจอวาดโครงรถ (คนขับ/ที่นั่งหน้า/แถวหลัง) ได้ถูกแบบ
             $layout['layout_kind'] ??= $kind;
-            $layout['door_rows'] ??= $kind === SeatLayoutFactory::KIND_BUS ? [1] : [2];
 
             return $layout;
         }

@@ -100,13 +100,6 @@ class SeatLayoutFactoryTest extends TestCase
     }
 
     #[Test]
-    public function a_long_bus_gets_a_middle_door_as_well_as_the_front_one(): void
-    {
-        $this->assertSame([1], SeatLayoutFactory::make('bus', 20)['door_rows']);
-        $this->assertCount(2, SeatLayoutFactory::make('bus', 45)['door_rows']);
-    }
-
-    #[Test]
     public function a_minibus_skips_the_five_across_back_row(): void
     {
         $layout = SeatLayoutFactory::make('bus', 14);

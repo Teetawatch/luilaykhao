@@ -713,7 +713,6 @@ class DriverController extends Controller
             'front_seat' => $layout['front_seat'] ?? null,
             'last_row_center' => $layout['last_row_center'] ?? [],
             'layout_kind' => $layout['layout_kind'] ?? SeatLayoutFactory::KIND_VAN,
-            'door_rows' => array_values($layout['door_rows'] ?? []),
             'front_label' => $layout['front_label'] ?? 'หน้ารถ',
             'rear_label' => $layout['rear_label'] ?? 'ท้ายรถ',
             'show_driver' => $layout['show_driver'] ?? true,

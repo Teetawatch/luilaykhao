@@ -53,7 +53,7 @@ class SeatLayoutFactory
     /**
      * รถตู้ — ที่นั่งคู่คนขับ 1 ที่ (พวงมาลัยขวาแบบไทย คนขับอยู่ขวา ที่นั่งคู่คนขับ
      * จึงอยู่ซ้าย) แล้วตามด้วยแถว 1 + ทางเดิน + 2 และปิดท้ายด้วยแถวหลังนั่งเรียงกัน
-     * 3-4 ที่ ตรงกับรถตู้ VIP ที่ใช้กันจริง ประตูเลื่อนอยู่ฝั่งซ้ายข้างแถวแรก
+     * 3-4 ที่ ตรงกับรถตู้ VIP ที่ใช้กันจริง
      */
     private static function van(int $capacity): array
     {
@@ -115,14 +115,12 @@ class SeatLayoutFactory
             'rear_label' => 'ท้ายรถ (สำหรับเก็บสัมภาระ)',
             'driver_icon' => 'directions_car',
             'show_driver' => true,
-            // ประตูเลื่อนฝั่งซ้าย อยู่ข้างแถวผู้โดยสารแถวแรก
-            'door_rows' => [2],
         ];
     }
 
     /**
      * รถบัส — 2 + ทางเดิน + 2 ทุกแถว และแถวหลังสุดนั่งยาว 5 ที่ ไม่มีที่นั่ง
-     * คู่คนขับ (ที่ตรงนั้นเป็นบันไดขึ้นลง) ประตูอยู่ฝั่งซ้ายทั้งหน้าและกลางคัน
+     * คู่คนขับ เพราะตรงนั้นเป็นบันไดขึ้นลง
      */
     private static function bus(int $capacity): array
     {
@@ -160,12 +158,6 @@ class SeatLayoutFactory
             }
         }
 
-        // ประตูหน้าเสมอ คันยาวมีประตูกลางเพิ่ม
-        $doorRows = [1];
-        if ($lastRow >= 8) {
-            $doorRows[] = (int) ceil($lastRow / 2);
-        }
-
         return [
             'layout_kind' => self::KIND_BUS,
             'rows' => $lastRow,
@@ -177,7 +169,6 @@ class SeatLayoutFactory
             'rear_label' => 'ท้ายรถ (ห้องน้ำ / สัมภาระ)',
             'driver_icon' => 'directions_bus',
             'show_driver' => true,
-            'door_rows' => $doorRows,
         ];
     }
 
@@ -213,7 +204,6 @@ class SeatLayoutFactory
             'rear_label' => 'ท้ายเรือ',
             'driver_icon' => 'sailing',
             'show_driver' => true,
-            'door_rows' => [],
         ];
     }
 
@@ -242,7 +232,6 @@ class SeatLayoutFactory
             'rear_label' => 'ท้ายรถ',
             'driver_icon' => $kind === self::KIND_BUS ? 'directions_bus' : 'directions_car',
             'show_driver' => true,
-            'door_rows' => [],
         ];
     }
 

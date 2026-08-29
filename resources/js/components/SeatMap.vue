@@ -65,15 +65,6 @@
         <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl"></div>
       </div>
 
-      <!-- ประตูขึ้นรถ ฝั่งซ้าย (รถไทยพวงมาลัยขวา ประตูผู้โดยสารจึงอยู่ซ้ายเสมอ)
-           รถตู้ = ประตูเลื่อนติดที่นั่งหน้า A1 · รถบัส = บันไดหน้าสุด ต่ำลงมาเล็กน้อย
-           ยึดระยะจากความสูงของหัวรถซึ่งคงที่ ไม่ใช่ % ของลำตัวที่ยืดตามจำนวนแถว -->
-      <div v-if="hasDoor" class="absolute left-0 z-30 flex flex-col items-center justify-center gap-2 w-6 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 pointer-events-none"
-        :style="doorStyle">
-        <span class="material-symbols-rounded text-[16px] text-amber-700" style="font-variation-settings:'FILL' 1,'wght' 500">door_open</span>
-        <span class="text-[10px] font-black text-amber-700 tracking-wide" style="writing-mode:vertical-rl;text-orientation:mixed;">ประตู</span>
-      </div>
-
       <!-- ล้อ — บอกว่านี่คือรถมองจากด้านบน แค่พอให้รู้ ไม่แย่งสายตาไปจากที่นั่ง -->
       <div class="absolute -left-0.5 top-[24%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
       <div class="absolute -right-0.5 top-[24%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
@@ -266,25 +257,11 @@ const layoutConfig = computed(() => {
     // ชนิดรถของผัง — เซิร์ฟเวอร์เติมมาเสมอ (App\Support\SeatLayoutFactory)
     // ผังรุ่นเก่าที่ไม่มีคีย์นี้ถือเป็นรถตู้
     layout_kind: sm?.layout_kind || 'van',
-    door_rows: sm?.door_rows ?? [],
   };
 });
 
 const isBus = computed(() => layoutConfig.value.layout_kind === 'bus');
-const hasDoor = computed(() => (layoutConfig.value.door_rows || []).length > 0);
 
-// ระยะจากขอบบนลำตัวถึงแถวหัวรถ: pt-6 (24) + กระจกหน้า h-9 (36) + pt-1 (4)
-const NOSE_TOP = 64;
-// หัวรถสูงเท่าปุ่มที่นั่ง (48 + ป้าย 16) แล้วต่อด้วย pb-4 (16) + mb-5 (20)
-const SEAT_BUTTON_HEIGHT = 64;
-const ROWS_TOP = NOSE_TOP + SEAT_BUTTON_HEIGHT + 36;
-
-// ประตูอยู่แนวเดียวกับ A1 พอดี — รถตู้ A1 คือที่นั่งคู่คนขับที่หัวรถ
-// ส่วนรถบัสไม่มีที่นั่งคู่คนขับ A1 จึงเป็นที่นั่งแถวแรกของห้องโดยสาร
-const doorStyle = computed(() => ({
-  top: `${isBus.value ? ROWS_TOP : NOSE_TOP}px`,
-  height: `${SEAT_BUTTON_HEIGHT - 4}px`,
-}));
 
 // ─── Own seats ────────────────────────────────────────────────────
 // ที่นั่งที่ผู้ใช้คนนี้ถืออยู่เอง (ล็อกไว้ หรืออยู่ในใบจองของตัวเอง) — ต้องแยกให้ออก
