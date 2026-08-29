@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\VehicleInspection;
 use App\Services\ChatService;
 use App\Services\DriverLoginCodeService;
+use App\Support\SeatLayoutFactory;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -711,6 +712,8 @@ class DriverController extends Controller
             'seats' => $seats,
             'front_seat' => $layout['front_seat'] ?? null,
             'last_row_center' => $layout['last_row_center'] ?? [],
+            'layout_kind' => $layout['layout_kind'] ?? SeatLayoutFactory::KIND_VAN,
+            'door_rows' => array_values($layout['door_rows'] ?? []),
             'front_label' => $layout['front_label'] ?? 'หน้ารถ',
             'rear_label' => $layout['rear_label'] ?? 'ท้ายรถ',
             'show_driver' => $layout['show_driver'] ?? true,

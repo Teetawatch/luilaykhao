@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Jobs\NotifyTripCrewAssignedJob;
 use App\Jobs\SendDriverAssignmentPushJob;
 use App\Support\LoyaltyTier;
+use App\Support\SeatLayoutFactory;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
@@ -710,48 +711,36 @@ class TripSchedule extends Model
     }
 
     /**
-     * Resolve the vehicle's seat layout, falling back to a generated 4-column
-     * grid when no custom layout is configured. Returns the raw layout (seats
-     * carry id/row/column/label but no live status) so callers can overlay
-     * their own per-seat data — booking availability or staff occupancy.
+     * Resolve the vehicle's seat layout, falling back to a layout generated for
+     * that kind of vehicle (van / bus / boat) when none is configured. Returns
+     * the raw layout (seats carry id/row/column/label but no live status) so
+     * callers can overlay their own per-seat data — booking availability or
+     * staff occupancy.
+     *
+     * @see SeatLayoutFactory
      */
     public function resolveSeatLayout(?ScheduleVehicleOption $option = null): array
     {
         // รอบที่วิ่งหลายคัน — ผังเป็นของคันนั้น ๆ ไม่ใช่ของรอบ (ที่นั่งแยกตามคัน
         // ทั้งใน booking_seats และในคีย์ล็อก จึงวาดผังเดียวกันสองคันก็ไม่ชนกัน)
         $vehicle = $option?->seatLayoutVehicle($this) ?? $this->vehicle;
+        $kind = SeatLayoutFactory::normaliseKind(
+            $option?->transport_type ?? $vehicle?->type ?? $this->transport_type
+        );
+
         $layout = $vehicle?->seat_layout;
         if ($layout && isset($layout['seats'])) {
+            // ผังที่แอดมินวาดเองไม่ได้บอกว่าเป็นรถแบบไหน — เติมให้จากชนิดรถ
+            // เพื่อให้ทุกหน้าจอวาดโครงรถ (ประตู/คนขับ/แถวหลัง) ได้ถูกแบบ
+            $layout['layout_kind'] ??= $kind;
+            $layout['door_rows'] ??= $kind === SeatLayoutFactory::KIND_BUS ? [1] : [2];
+
             return $layout;
         }
 
         $total = $option?->seats ?: ($vehicle?->capacity ?: ($this->total_seats ?: 10));
-        $cols = ['A', 'B', 'C', 'D'];
-        $numCols = 4;
-        $numRows = (int) ceil($total / $numCols);
 
-        $seats = [];
-        for ($i = 0; $i < $total; $i++) {
-            $row = (int) floor($i / $numCols) + 1;
-            $colIdx = $i % $numCols;
-            $seatId = $cols[$colIdx].$row;
-            $seats[] = [
-                'id' => $seatId,
-                'row' => $row,
-                'column' => $colIdx + 1,
-                'label' => $seatId,
-            ];
-        }
-
-        return [
-            'rows' => $numRows,
-            'columns' => array_slice($cols, 0, $numCols),
-            'seats' => $seats,
-            'front_label' => 'หน้ารถ',
-            'rear_label' => 'หลังรถ',
-            'show_driver' => true,
-            'driver_icon' => 'directions_car',
-        ];
+        return SeatLayoutFactory::make($kind, (int) $total);
     }
 
     public function reviewAvailableAt(): CarbonImmutable

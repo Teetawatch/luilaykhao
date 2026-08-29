@@ -283,7 +283,7 @@ class StaffMySchedulesTest extends TestCase
         $staff = User::factory()->create();
         $staff->assignRole('staff');
 
-        $schedule = $this->makeSchedule(); // total_seats 20 → default A1..D5 grid
+        $schedule = $this->makeSchedule(); // total_seats 20 → ผังรถตู้ตั้งต้น
         $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
 
         $booking = $this->makeBooking($schedule, passengerCount: 0, checkedIn: true);
@@ -317,8 +317,8 @@ class StaffMySchedulesTest extends TestCase
         $this->assertSame($booking->booking_ref, $seatA1['occupant']['booking_ref']);
 
         // An unbooked seat stays empty.
-        $seatB2 = collect($seatMap['seats'])->firstWhere('id', 'B2');
-        $this->assertNull($seatB2['occupant']);
+        $seatD2 = collect($seatMap['seats'])->firstWhere('id', 'D2');
+        $this->assertNull($seatD2['occupant']);
     }
 
     public function test_manifest_seat_map_is_null_without_seat_assignments(): void

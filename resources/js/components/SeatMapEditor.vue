@@ -116,6 +116,9 @@
           <button type="button" @click="resetToVan" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
             <span class="material-symbols-rounded" style="font-size:16px">airport_shuttle</span> รีเซ็ตเป็นรถตู้ VIP
           </button>
+          <button type="button" @click="resetToBus" class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-xs font-black text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2">
+            <span class="material-symbols-rounded" style="font-size:16px">directions_bus</span> รีเซ็ตเป็นรถบัส
+          </button>
           <button type="button" @click="fillAll" class="px-4 py-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 text-xs font-black hover:bg-blue-100 transition-colors flex items-center gap-2">
             <span class="material-symbols-rounded" style="font-size:16px">done_all</span> เลือกทั้งหมด
           </button>
@@ -367,6 +370,37 @@ function resetToVan() {
       {id:'A4', row:4, col:'A', label:'A4'}, {id:'B4', row:4, col:'B', label:'B4'}, {id:'C4', row:4, col:'C', label:'C4'},
     ];
   }
+}
+
+/// รถบัส 2 + ทางเดิน + 2 ทุกแถว ปิดท้ายด้วยแถวหลังนั่งยาว 5 ที่ — รูปแบบเดียว
+/// กับผังตั้งต้นที่เซิร์ฟเวอร์ปั้นให้ (App\Support\SeatLayoutFactory)
+function resetToBus() {
+  const rows = parseInt(prompt('รถบัสคันนี้มีกี่แถว (รวมแถวหลังที่นั่งยาว)?', '11'), 10);
+  if (!rows || rows < 2 || rows > 15) return;
+
+  layout.value.rows = rows;
+  columnsRaw.value = 'A,B,,C,D,E';
+  layout.value.columns = ['A', 'B', '', 'C', 'D', 'E'];
+  layout.value.front_seat = null;
+  layout.value.front_label = 'หน้ารถ';
+  layout.value.rear_label = 'ท้ายรถ (ห้องน้ำ / สัมภาระ)';
+  layout.value.driver_icon = 'directions_bus';
+  layout.value.show_driver = true;
+  frontSeatRaw.value = '';
+
+  const seats = [];
+  for (let r = 1; r < rows; r++) {
+    for (const col of ['A', 'B', 'C', 'D']) {
+      seats.push({ id: `${col}${r}`, row: r, col, label: `${col}${r}` });
+    }
+  }
+  const back = ['A', 'B', 'C', 'D', 'E'].map(col => `${col}${rows}`);
+  for (const id of back) {
+    seats.push({ id, row: rows, col: id[0], label: id });
+  }
+  layout.value.seats = seats;
+  layout.value.last_row_center = back;
+  lastRowCenterRaw.value = back.join(',');
 }
 
 onMounted(() => {
