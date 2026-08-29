@@ -41,13 +41,19 @@ class SeatLockService
         }
     }
 
-    public function lock(int $scheduleId, string $seatId, int $userId, array $metadata = [], int $ttlSeconds = self::LOCK_TTL): array
+    /**
+     * ล็อกที่นั่งหนึ่งที่
+     *
+     * $vehicleOptionId คือคันที่ที่นั่งนี้อยู่ (0 = รอบนี้มีรถคันเดียว) — ที่นั่ง A1
+     * ของรถบัสกับ A1 ของรถตู้เป็นคนละล็อกกัน
+     */
+    public function lock(int $scheduleId, string $seatId, int $userId, array $metadata = [], int $ttlSeconds = self::LOCK_TTL, int $vehicleOptionId = 0): array
     {
         if (! $this->redisAvailable()) {
             // ไม่มี Redis ก็ทำ soft-lock แบบกันชนระหว่างผู้ใช้ไม่ได้ (ไม่มี shared store)
             // แต่ยังกันไม่ให้แจกล็อกบนที่นั่งที่ "ถูกจองจริง" แล้วได้ โดยอ่านจาก booking_seats ตรง ๆ
             // ส่วนการกันจองซ้ำตอน commit อาศัย DB guard + lockForUpdate ใน BookingService
-            if ($this->isSeatBooked($scheduleId, $seatId)) {
+            if ($this->isSeatBooked($scheduleId, $seatId, $vehicleOptionId)) {
                 return [
                     'locked' => false,
                     'message' => 'ที่นั่งนี้ถูกจองไปแล้ว',
@@ -60,7 +66,7 @@ class SeatLockService
             ];
         }
 
-        $key = $this->seatKey($scheduleId, $seatId);
+        $key = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
         $value = $this->lockValue($userId, $metadata);
         $locked = Redis::set($key, $value, 'EX', $ttlSeconds, 'NX');
 
@@ -87,15 +93,15 @@ class SeatLockService
         ];
     }
 
-    public function lockMultiple(int $scheduleId, array $seatIds, int $userId, array $metadata = [], int $ttlSeconds = self::LOCK_TTL): array
+    public function lockMultiple(int $scheduleId, array $seatIds, int $userId, array $metadata = [], int $ttlSeconds = self::LOCK_TTL, int $vehicleOptionId = 0): array
     {
         $lockedSeats = [];
 
         foreach ($seatIds as $seatId) {
-            $result = $this->lock($scheduleId, $seatId, $userId, $metadata, $ttlSeconds);
+            $result = $this->lock($scheduleId, $seatId, $userId, $metadata, $ttlSeconds, $vehicleOptionId);
             if (! $result['locked']) {
                 foreach ($lockedSeats as $lockedSeatId) {
-                    $this->unlock($scheduleId, $lockedSeatId, $userId);
+                    $this->unlock($scheduleId, $lockedSeatId, $userId, $vehicleOptionId);
                 }
 
                 return [
@@ -114,13 +120,13 @@ class SeatLockService
         ];
     }
 
-    public function unlock(int $scheduleId, string $seatId, int $userId): bool
+    public function unlock(int $scheduleId, string $seatId, int $userId, int $vehicleOptionId = 0): bool
     {
         if (! $this->redisAvailable()) {
             return true;
         }
 
-        $key = $this->seatKey($scheduleId, $seatId);
+        $key = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
         $lockedBy = $this->lockUserId(Redis::get($key));
 
         if ($lockedBy === $userId) {
@@ -132,11 +138,11 @@ class SeatLockService
         return false;
     }
 
-    public function unlockMultiple(int $scheduleId, array $seatIds, int $userId): int
+    public function unlockMultiple(int $scheduleId, array $seatIds, int $userId, int $vehicleOptionId = 0): int
     {
         $count = 0;
         foreach ($seatIds as $seatId) {
-            if ($this->unlock($scheduleId, $seatId, $userId)) {
+            if ($this->unlock($scheduleId, $seatId, $userId, $vehicleOptionId)) {
                 $count++;
             }
         }
@@ -152,13 +158,15 @@ class SeatLockService
 
         $groups = [];
         foreach (Redis::keys('seat_lock:*') as $key) {
-            if (! preg_match('/seat_lock:(\d+):(.+)$/', (string) $key, $matches)) {
+            // คีย์รูปแบบเก่า (ไม่มีช่องคัน) ตกไปโดยไม่เข้าเงื่อนไข — ดู seatKey()
+            if (! preg_match('/seat_lock:(\d+):(\d+):(.+)$/', (string) $key, $matches)) {
                 continue;
             }
 
             $scheduleId = (int) $matches[1];
-            $seatId = $matches[2];
-            $redisKey = $this->seatKey($scheduleId, $seatId);
+            $vehicleOptionId = (int) $matches[2];
+            $seatId = $matches[3];
+            $redisKey = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
             $payload = $this->lockPayload(Redis::get($redisKey));
             $lockedBy = $this->lockUserId($payload);
             if ($lockedBy !== $userId) {
@@ -170,16 +178,19 @@ class SeatLockService
                 continue;
             }
 
-            $groups[$scheduleId] ??= [
+            // จัดกลุ่มตาม (รอบ, คัน) — ล็อกข้ามคันในรอบเดียวกันเป็นคนละใบจอง
+            $groupKey = $scheduleId.':'.$vehicleOptionId;
+            $groups[$groupKey] ??= [
                 'schedule_id' => $scheduleId,
+                'vehicle_option_id' => $vehicleOptionId,
                 'seat_ids' => [],
                 'locked_ttl_seconds' => $ttl,
                 'pickup_point_id' => $payload['pickup_point_id'] ?? null,
                 'pickup_region' => $payload['pickup_region'] ?? null,
             ];
-            $groups[$scheduleId]['seat_ids'][] = $seatId;
-            $groups[$scheduleId]['locked_ttl_seconds'] = min(
-                $groups[$scheduleId]['locked_ttl_seconds'],
+            $groups[$groupKey]['seat_ids'][] = $seatId;
+            $groups[$groupKey]['locked_ttl_seconds'] = min(
+                $groups[$groupKey]['locked_ttl_seconds'],
                 $ttl,
             );
         }
@@ -189,7 +200,7 @@ class SeatLockService
         }
 
         $schedules = TripSchedule::with('trip')
-            ->whereIn('id', array_keys($groups))
+            ->whereIn('id', collect($groups)->pluck('schedule_id')->unique()->all())
             ->get()
             ->keyBy('id');
 
@@ -223,6 +234,7 @@ class SeatLockService
                         'status' => $schedule->status,
                         'transport_type' => $schedule->transport_type,
                     ],
+                    'vehicle_option_id' => $lock['vehicle_option_id'] ?: null,
                     'seat_ids' => array_values($lock['seat_ids']),
                     'seat_count' => count($lock['seat_ids']),
                     'pickup_point_id' => $lock['pickup_point_id'],
@@ -237,18 +249,26 @@ class SeatLockService
             ->all();
     }
 
-    public function unlockActiveForUser(int $scheduleId, int $userId, array $seatIds = []): array
+    public function unlockActiveForUser(int $scheduleId, int $userId, array $seatIds = [], ?int $vehicleOptionId = null): array
     {
+        // ไม่ระบุคันมา = ปลดล็อกใบที่ค้างอยู่ในรอบนี้ใบไหนก็ได้ (พฤติกรรมเดิม)
         $activeLock = collect($this->activeLocksForUser($userId))
-            ->firstWhere('schedule_id', $scheduleId);
+            ->where('schedule_id', $scheduleId)
+            ->when(
+                $vehicleOptionId !== null,
+                fn ($locks) => $locks->where('vehicle_option_id', $vehicleOptionId ?: null),
+            )
+            ->first();
 
         if (! $activeLock) {
             return [
                 'unlocked_count' => 0,
                 'seat_ids' => [],
+                'vehicle_option_id' => null,
             ];
         }
 
+        $lockedOptionId = (int) ($activeLock['vehicle_option_id'] ?? 0);
         $activeSeatIds = $activeLock['seat_ids'] ?? [];
         $targetSeatIds = empty($seatIds)
             ? $activeSeatIds
@@ -256,7 +276,7 @@ class SeatLockService
 
         $unlockedSeatIds = [];
         foreach ($targetSeatIds as $seatId) {
-            if ($this->unlock($scheduleId, $seatId, $userId)) {
+            if ($this->unlock($scheduleId, $seatId, $userId, $lockedOptionId)) {
                 $unlockedSeatIds[] = $seatId;
             }
         }
@@ -264,21 +284,23 @@ class SeatLockService
         return [
             'unlocked_count' => count($unlockedSeatIds),
             'seat_ids' => $unlockedSeatIds,
+            'vehicle_option_id' => $lockedOptionId ?: null,
         ];
     }
 
-    public function forceUnlock(int $scheduleId, string $seatId): void
+    public function forceUnlock(int $scheduleId, string $seatId, int $vehicleOptionId = 0): void
     {
         if (! $this->redisAvailable()) {
             return;
         }
-        Redis::del($this->seatKey($scheduleId, $seatId));
+        Redis::del($this->seatKey($scheduleId, $seatId, $vehicleOptionId));
     }
 
-    public function getSeatStatus(int $scheduleId, array $allSeatIds, ?int $userId = null): array
+    public function getSeatStatus(int $scheduleId, array $allSeatIds, ?int $userId = null, int $vehicleOptionId = 0): array
     {
         $statuses = [];
         $bookedSeats = BookingSeat::where('schedule_id', $scheduleId)
+            ->where('vehicle_option_id', $vehicleOptionId)
             ->whereHas('booking', fn ($query) => $query
                 ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
                 ->where('is_join_trip', false))
@@ -304,8 +326,8 @@ class SeatLockService
                     'booked_by_current_user' => $isOwnBooking,
                     'booking_ref' => $isOwnBooking ? $seat->booking?->booking_ref : null,
                 ];
-            } elseif ($redisUp && Redis::exists($this->seatKey($scheduleId, $seatId))) {
-                $key = $this->seatKey($scheduleId, $seatId);
+            } elseif ($redisUp && Redis::exists($this->seatKey($scheduleId, $seatId, $vehicleOptionId))) {
+                $key = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
                 $ttl = (int) Redis::ttl($key);
                 if ($ttl <= 0) {
                     $statuses[$seatId] = [
@@ -347,12 +369,12 @@ class SeatLockService
         return $statuses;
     }
 
-    public function isLockedByUser(int $scheduleId, string $seatId, int $userId): bool
+    public function isLockedByUser(int $scheduleId, string $seatId, int $userId, int $vehicleOptionId = 0): bool
     {
         if (! $this->redisAvailable()) {
             return true;
         }
-        $key = $this->seatKey($scheduleId, $seatId);
+        $key = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
 
         return $this->lockUserId(Redis::get($key)) === $userId;
     }
@@ -361,9 +383,10 @@ class SeatLockService
      * ที่นั่งถูกจองจริงหรือยัง (อ่านจาก source of truth = booking_seats ของการจองที่ยัง active)
      * ใช้เป็น fallback ตอน Redis ใช้ไม่ได้
      */
-    private function isSeatBooked(int $scheduleId, string $seatId): bool
+    private function isSeatBooked(int $scheduleId, string $seatId, int $vehicleOptionId = 0): bool
     {
         return BookingSeat::where('schedule_id', $scheduleId)
+            ->where('vehicle_option_id', $vehicleOptionId)
             ->where('seat_id', $seatId)
             ->whereHas('booking', fn ($query) => $query
                 ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
@@ -371,9 +394,16 @@ class SeatLockService
             ->exists();
     }
 
-    private function seatKey(int $scheduleId, string $seatId): string
+    /**
+     * คีย์ล็อก: seat_lock:{รอบ}:{คัน}:{ที่นั่ง} — 0 คือรอบที่มีรถคันเดียว
+     *
+     * รูปแบบเดิมไม่มีช่อง {คัน} ล็อกที่ค้างอยู่ตอนดีพลอยจึงถูกมองข้ามและหมดอายุ
+     * ไปเองภายใน TTL ของมัน (สูงสุดราวครึ่งชั่วโมง) การจองซ้ำยังกันได้อยู่ที่
+     * unique index ของ booking_seats + lockForUpdate ใน BookingService
+     */
+    private function seatKey(int $scheduleId, string $seatId, int $vehicleOptionId = 0): string
     {
-        return "seat_lock:{$scheduleId}:{$seatId}";
+        return "seat_lock:{$scheduleId}:{$vehicleOptionId}:{$seatId}";
     }
 
     private function lockValue(int $userId, array $metadata = []): string

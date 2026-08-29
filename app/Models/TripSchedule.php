@@ -376,6 +376,20 @@ class TripSchedule extends Model
     }
 
     /**
+     * คันของรอบนี้ที่ชื่อตรงกับใบจองที่ย้ายมา — ใบที่ย้ายรอบต้องเปลี่ยนไปชี้คันของ
+     * รอบปลายทาง ไม่งั้นโควตาที่นั่งจะถูกนับข้ามรอบ ไม่เจอชื่อที่ตรงกันคืน null
+     * (ราคายังคงเดิมตามกติกาการย้ายรอบ สำเนาบนใบจองยังอธิบายยอดเดิมได้)
+     */
+    public function vehicleOptionByLabel(?string $label): ?ScheduleVehicleOption
+    {
+        if (blank($label)) {
+            return null;
+        }
+
+        return $this->activeVehicleOptions()->where('label', $label)->first();
+    }
+
+    /**
      * ลูกค้าต้องเลือกคันไหม — รอบที่มีตัวเลือกใช้งานอยู่ตั้งแต่สองแบบขึ้นไปเท่านั้น
      * (แบบเดียวไม่ใช่ตัวเลือก มันคือรถของรอบ)
      */
@@ -701,14 +715,17 @@ class TripSchedule extends Model
      * carry id/row/column/label but no live status) so callers can overlay
      * their own per-seat data — booking availability or staff occupancy.
      */
-    public function resolveSeatLayout(): array
+    public function resolveSeatLayout(?ScheduleVehicleOption $option = null): array
     {
-        $layout = $this->vehicle?->seat_layout;
+        // รอบที่วิ่งหลายคัน — ผังเป็นของคันนั้น ๆ ไม่ใช่ของรอบ (ที่นั่งแยกตามคัน
+        // ทั้งใน booking_seats และในคีย์ล็อก จึงวาดผังเดียวกันสองคันก็ไม่ชนกัน)
+        $vehicle = $option?->seatLayoutVehicle($this) ?? $this->vehicle;
+        $layout = $vehicle?->seat_layout;
         if ($layout && isset($layout['seats'])) {
             return $layout;
         }
 
-        $total = $this->total_seats ?: 10;
+        $total = $option?->seats ?: ($vehicle?->capacity ?: ($this->total_seats ?: 10));
         $cols = ['A', 'B', 'C', 'D'];
         $numCols = 4;
         $numRows = (int) ceil($total / $numCols);

@@ -604,10 +604,19 @@ class AdminController extends Controller
         // Prepare pickup point mapping
         $pickupMap = $this->pickupPointMap($source, $target);
 
+        // ประเภทรถผูกกับรอบ — ใบที่ย้ายไปหาคันชื่อเดียวกันในรอบปลายทาง ไม่เจอก็ไป
+        // อยู่กองรถคันเดียวของรอบนั้น (0) ที่นั่งของแต่ละใบจึงตรวจกันคนละกอง
+        $targetOptionIds = $bookings
+            ->mapWithKeys(fn ($booking) => [
+                $booking->id => (int) ($target->vehicleOptionByLabel($booking->vehicle_option_label)?->id ?? 0),
+            ]);
+        $targetOptionIdFor = fn (Booking $booking) => (int) ($targetOptionIds[$booking->id] ?? 0);
+
         $seatMoves = $dropSeats
             ? collect()
             : $bookings
-                ->flatMap(fn ($booking) => $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments))
+                ->flatMap(fn ($booking) => $this->seatMovesForBooking($booking, $selectedPassengerIds, $seatAssignments)
+                    ->map(fn ($move) => [...$move, 'target_option_id' => $targetOptionIdFor($booking)]))
                 ->values();
 
         $seatIdsToMove = $seatMoves
@@ -615,8 +624,12 @@ class AdminController extends Controller
             ->filter()
             ->values();
 
-        $duplicateSeatIds = $seatIdsToMove
-            ->duplicates()
+        // ซ้ำกันเฉพาะเมื่ออยู่คันเดียวกัน — A1 ของบัสกับ A1 ของตู้เป็นคนละที่นั่ง
+        $duplicateSeatIds = $seatMoves
+            ->filter(fn ($move) => filled($move['target_seat_id']))
+            ->groupBy(fn ($move) => $move['target_option_id'].':'.$move['target_seat_id'])
+            ->filter(fn ($group) => $group->count() > 1)
+            ->map(fn ($group) => $group->first()['target_seat_id'])
             ->unique()
             ->values();
 
@@ -624,29 +637,35 @@ class AdminController extends Controller
             return $this->error('เลือกที่นั่งปลายทางซ้ำ: '.$duplicateSeatIds->join(', '), 422);
         }
 
-        $seatIdsToMove = $seatIdsToMove->unique()->values();
-
         if ($seatIdsToMove->isNotEmpty()) {
             $movingSeatRowIds = $seatMoves
                 ->map(fn ($move) => $move['seat']->id)
                 ->unique()
                 ->values();
 
-            $occupiedSeatQuery = BookingSeat::where('schedule_id', $target->id)
-                ->whereIn('seat_id', $seatIdsToMove);
+            $occupiedSeatIds = collect($seatMoves)
+                ->filter(fn ($move) => filled($move['target_seat_id']))
+                ->groupBy('target_option_id')
+                ->flatMap(function ($moves, $optionId) use ($target, $sameSchedule, $movingSeatRowIds) {
+                    $query = BookingSeat::where('schedule_id', $target->id)
+                        ->where('vehicle_option_id', (int) $optionId)
+                        ->whereIn('seat_id', $moves->pluck('target_seat_id')->unique()->all());
 
-            if ($sameSchedule) {
-                $occupiedSeatQuery->whereNotIn('id', $movingSeatRowIds);
-            }
+                    if ($sameSchedule) {
+                        $query->whereNotIn('id', $movingSeatRowIds);
+                    }
 
-            $occupiedSeatIds = $occupiedSeatQuery->pluck('seat_id')->values();
+                    return $query->pluck('seat_id');
+                })
+                ->unique()
+                ->values();
 
             if ($occupiedSeatIds->isNotEmpty()) {
                 return $this->error('ที่นั่ง '.$occupiedSeatIds->join(', ').' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกปลายทางอื่นหรือแก้ผังที่นั่งก่อน', 422);
             }
         }
 
-        DB::transaction(function () use ($source, $target, $sameSchedule, $bookings, $pickupMap, $selectedPassengerIds, $seatAssignments, $dropSeats) {
+        DB::transaction(function () use ($source, $target, $sameSchedule, $bookings, $pickupMap, $selectedPassengerIds, $seatAssignments, $dropSeats, $targetOptionIdFor) {
             foreach ($bookings as $booking) {
                 $selectedInBooking = $booking->passengers
                     ->whereIn('id', $selectedPassengerIds->all())
@@ -669,7 +688,10 @@ class AdminController extends Controller
 
                 if ($selectedInBooking->count() === $booking->passengers->count()) {
                     $updateData = array_merge(
-                        ['schedule_id' => $target->id],
+                        [
+                            'schedule_id' => $target->id,
+                            'vehicle_option_id' => $targetOptionIdFor($booking) ?: null,
+                        ],
                         $this->resolveMovedPickup($booking, $source, $target, $pickupMap),
                     );
 
@@ -680,6 +702,7 @@ class AdminController extends Controller
 
                     $seatMoves->each(fn ($move) => $move['seat']->update([
                         'schedule_id' => $target->id,
+                        'vehicle_option_id' => $targetOptionIdFor($booking),
                         'seat_id' => $move['target_seat_id'],
                     ]));
                 } else {
@@ -697,6 +720,7 @@ class AdminController extends Controller
                         ->each(fn ($move) => $move['seat']->update([
                             'booking_id' => $newBooking->id,
                             'schedule_id' => $target->id,
+                            'vehicle_option_id' => $targetOptionIdFor($booking),
                             'seat_id' => $move['target_seat_id'],
                         ]));
                 }
@@ -704,6 +728,8 @@ class AdminController extends Controller
 
             $source->syncBookedSeats();
             $target->syncBookedSeats();
+            $source->syncVehicleOptionSeats();
+            $target->syncVehicleOptionSeats();
         });
 
         // ที่นั่งรอบปลายทางเพิ่มขึ้นเหมือนมีคนจอง — ต้องแจ้งเตือนเหมือนกัน (เต็ม /
@@ -794,6 +820,8 @@ class AdminController extends Controller
             'birthdate_token' => null,
             'gift_code' => null,
             'schedule_id' => $target->id,
+            // ประเภทรถของรอบปลายทาง — ใบที่แยกออกมาไปคนละรอบแล้ว จะชี้คันของรอบเดิมไม่ได้
+            'vehicle_option_id' => $target->vehicleOptionByLabel($booking->vehicle_option_label)?->id,
             'is_group' => $selectedCount > 1,
             'total_amount' => round(((float) $booking->total_amount) * $ratio, 2),
             'paid_amount' => round(((float) $booking->paid_amount) * $ratio, 2),
@@ -1670,7 +1698,11 @@ class AdminController extends Controller
                         }
 
                         // ที่นั่งเหล่านี้ต้องไม่มีแถวค้างของ booking อื่นเลย (unique constraint ไม่สนสถานะ)
+                        // ที่นั่งผูกกับคัน — A1 ของบัสกับ A1 ของตู้ไม่ชนกัน
+                        $seatOptionId = (int) ($booking->vehicle_option_id ?? 0);
+
                         $occupied = BookingSeat::where('schedule_id', $booking->schedule_id)
+                            ->where('vehicle_option_id', $seatOptionId)
                             ->whereIn('seat_id', $newSeatIds)
                             ->pluck('seat_id')
                             ->unique()
@@ -1689,6 +1721,7 @@ class AdminController extends Controller
 
                             $booking->seats()->create([
                                 'schedule_id' => $booking->schedule_id,
+                                'vehicle_option_id' => $seatOptionId,
                                 'seat_id' => $seatId,
                                 'passenger_name' => $seatPassengers->get($index)?->name,
                             ]);
@@ -1702,9 +1735,15 @@ class AdminController extends Controller
                     $movingSeats = $booking->seats()->where('schedule_id', $oldSchedule->id)->get();
 
                     if ($movingSeats->isNotEmpty()) {
-                        TripSchedule::lockForUpdate()->find($booking->schedule_id);
+                        $newSchedule = TripSchedule::lockForUpdate()->find($booking->schedule_id);
+
+                        // ประเภทรถผูกกับรอบ — หาคันชื่อเดียวกันในรอบปลายทาง ไม่เจอ
+                        // ก็ไปอยู่กองรถคันเดียวของรอบนั้น (0) พร้อมกับตัวใบจองเอง
+                        $movedOption = $newSchedule?->vehicleOptionByLabel($booking->vehicle_option_label);
+                        $movedOptionId = (int) ($movedOption?->id ?? 0);
 
                         $taken = BookingSeat::where('schedule_id', $booking->schedule_id)
+                            ->where('vehicle_option_id', $movedOptionId)
                             ->whereIn('seat_id', $movingSeats->pluck('seat_id'))
                             ->whereNot('booking_id', $booking->id)
                             ->pluck('seat_id')
@@ -1716,7 +1755,11 @@ class AdminController extends Controller
                         }
 
                         $booking->seats()->where('schedule_id', $oldSchedule->id)
-                            ->update(['schedule_id' => $booking->schedule_id]);
+                            ->update([
+                                'schedule_id' => $booking->schedule_id,
+                                'vehicle_option_id' => $movedOptionId,
+                            ]);
+                        $booking->update(['vehicle_option_id' => $movedOption?->id]);
                     }
                 }
 
@@ -2004,6 +2047,7 @@ class AdminController extends Controller
             }
 
             $occupiedSeatIds = BookingSeat::where('schedule_id', $schedule->id)
+                ->where('vehicle_option_id', (int) ($request->vehicle_option_id ?: 0))
                 ->whereIn('seat_id', $seatIds)
                 ->pluck('seat_id');
 
@@ -2154,6 +2198,7 @@ class AdminController extends Controller
 
                 if (! $isJoinTrip && $seatIds->isNotEmpty()) {
                     $occupied = BookingSeat::where('schedule_id', $lockedSchedule->id)
+                        ->where('vehicle_option_id', (int) ($vehicleOption?->id ?? 0))
                         ->whereIn('seat_id', $seatIds->all())
                         ->pluck('seat_id')
                         ->unique()
@@ -2224,6 +2269,7 @@ class AdminController extends Controller
                         BookingSeat::create([
                             'booking_id' => $booking->id,
                             'schedule_id' => $lockedSchedule->id,
+                            'vehicle_option_id' => (int) ($vehicleOption?->id ?? 0),
                             'seat_id' => $seatId,
                             'passenger_name' => $passengerModels->get($index)?->name,
                         ]);
@@ -3315,6 +3361,8 @@ class AdminController extends Controller
             // ติดลบได้ = คันนี้ถูกกว่าราคาปกติของรอบ
             'price_adjustment' => [$required, 'numeric', 'between:-100000,100000'],
             'seats' => ['nullable', 'integer', 'min:0', 'max:200'],
+            // ปิด = ทีมงานจัดที่นั่งหน้างาน คันนั้นข้ามขั้นเลือกที่นั่งไปเลย
+            'seat_selection' => ['nullable', 'boolean'],
             'note' => ['nullable', 'string', 'max:255'],
             'image_url' => ['nullable', 'url', 'max:2048'],
             'is_active' => ['nullable', 'boolean'],

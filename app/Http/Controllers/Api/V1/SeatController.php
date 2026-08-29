@@ -6,6 +6,7 @@ use App\Events\SeatLocked;
 use App\Events\SeatReleased;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Seat\LockSeatRequest;
+use App\Models\ScheduleVehicleOption;
 use App\Models\TripSchedule;
 use App\Services\SeatLockService;
 use App\Traits\ApiResponse;
@@ -20,11 +21,41 @@ class SeatController extends Controller
         private SeatLockService $seatLockService,
     ) {}
 
+    /**
+     * คันที่ที่นั่งในคำขอนี้อยู่ — null = รอบมีรถคันเดียว, false = ส่ง id ที่ไม่ใช่
+     * ของรอบนี้มา (กติกาเดียวกับ ScheduleController::seats)
+     */
+    private function resolveOption(TripSchedule $schedule, mixed $requestedId): ScheduleVehicleOption|null|false
+    {
+        $options = $schedule->vehicleOptions->where('is_active', true);
+        if ($options->isEmpty()) {
+            return null;
+        }
+
+        if (blank($requestedId)) {
+            return $options->firstWhere(
+                fn (ScheduleVehicleOption $option) => (float) $option->price_adjustment === 0.0
+            ) ?? $options->first();
+        }
+
+        return $options->firstWhere('id', (int) $requestedId) ?? false;
+    }
+
     public function lock(LockSeatRequest $request, int $scheduleId): JsonResponse
     {
-        $schedule = TripSchedule::findOrFail($scheduleId);
+        $schedule = TripSchedule::with('vehicleOptions')->findOrFail($scheduleId);
         $userId = $request->user()->id;
         $seatIds = $request->seat_ids;
+
+        // ที่นั่งผูกกับคัน — A1 ของบัสกับ A1 ของตู้ล็อกกันคนละใบ
+        $option = $this->resolveOption($schedule, $request->input('vehicle_option_id'));
+        if ($option === false) {
+            return $this->error('ตัวเลือกยานพาหนะที่เลือกไม่อยู่ในรอบเดินทางนี้', 422);
+        }
+        if ($option && ! $option->seat_selection) {
+            return $this->error($option->label.'ไม่ต้องเลือกที่นั่ง ทีมงานจัดที่นั่งให้หน้างาน', 422);
+        }
+        $optionId = (int) ($option?->id ?? 0);
 
         // รอบที่บินไปไม่มีผังที่นั่งให้จอง — กันไว้ตรงนี้ด้วย เผื่อแอปรุ่นเก่าที่ยัง
         // วาดผังจากข้อมูลที่ค้างอยู่ในเครื่องยิงเข้ามา
@@ -42,7 +73,7 @@ class SeatController extends Controller
         $result = $this->seatLockService->lockMultiple($scheduleId, $seatIds, $userId, [
             'pickup_point_id' => $request->input('pickup_point_id'),
             'pickup_region' => $request->input('pickup_region'),
-        ], $ttlSeconds);
+        ], $ttlSeconds, $optionId);
 
         if ($result['locked']) {
             foreach ($seatIds as $seatId) {
@@ -51,6 +82,7 @@ class SeatController extends Controller
                     $seatId,
                     $result['expires_at'],
                     $schedule->available_seats,
+                    $option?->id,
                 ))->toOthers();
             }
 
@@ -62,7 +94,7 @@ class SeatController extends Controller
 
     public function unlock(Request $request, int $scheduleId): JsonResponse
     {
-        $schedule = TripSchedule::findOrFail($scheduleId);
+        $schedule = TripSchedule::with('vehicleOptions')->findOrFail($scheduleId);
         $userId = $request->user()->id;
 
         $seatIds = $request->input('seat_ids', []);
@@ -70,13 +102,24 @@ class SeatController extends Controller
             return $this->error('กรุณาระบุที่นั่งที่ต้องการปลดล็อค', 422);
         }
 
-        $unlocked = $this->seatLockService->unlockMultiple($scheduleId, $seatIds, $userId);
+        $option = $this->resolveOption($schedule, $request->input('vehicle_option_id'));
+        if ($option === false) {
+            return $this->error('ตัวเลือกยานพาหนะที่เลือกไม่อยู่ในรอบเดินทางนี้', 422);
+        }
+
+        $unlocked = $this->seatLockService->unlockMultiple(
+            $scheduleId,
+            $seatIds,
+            $userId,
+            (int) ($option?->id ?? 0),
+        );
 
         foreach ($seatIds as $seatId) {
             broadcast(new SeatReleased(
                 $scheduleId,
                 $seatId,
                 $schedule->available_seats,
+                $option?->id,
             ))->toOthers();
         }
 
@@ -100,6 +143,7 @@ class SeatController extends Controller
             $scheduleId,
             $request->user()->id,
             is_array($seatIds) ? $seatIds : [],
+            $request->filled('vehicle_option_id') ? (int) $request->input('vehicle_option_id') : null,
         );
 
         foreach ($result['seat_ids'] as $seatId) {
@@ -107,6 +151,7 @@ class SeatController extends Controller
                 $scheduleId,
                 $seatId,
                 $schedule->available_seats,
+                $result['vehicle_option_id'] ?? null,
             ))->toOthers();
         }
 

@@ -10,7 +10,7 @@ class BookingSeat extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'booking_id', 'schedule_id', 'seat_id', 'passenger_name',
+        'booking_id', 'schedule_id', 'vehicle_option_id', 'seat_id', 'passenger_name',
     ];
 
     public function booking(): BelongsTo
@@ -21,5 +21,13 @@ class BookingSeat extends Model
     public function schedule(): BelongsTo
     {
         return $this->belongsTo(TripSchedule::class, 'schedule_id');
+    }
+
+    /**
+     * คันที่ที่นั่งนี้อยู่ — 0 คือรอบที่มีรถคันเดียว (ไม่ใช่แถวจริง จึงไม่มี FK)
+     */
+    public function vehicleOption(): BelongsTo
+    {
+        return $this->belongsTo(ScheduleVehicleOption::class, 'vehicle_option_id');
     }
 }

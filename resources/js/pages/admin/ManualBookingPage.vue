@@ -82,7 +82,7 @@
 
             <label v-if="vehicleOptions.length > 1 && !form.is_join_trip" class="form-field full">
               <span>ประเภทรถ</span>
-              <select v-model.number="form.vehicle_option_id">
+              <select v-model.number="form.vehicle_option_id" @change="onVehicleOptionChange">
                 <option value="">ไม่ระบุ (ราคาปกติ)</option>
                 <option v-for="option in vehicleOptions" :key="option.id" :value="option.id"
                   :disabled="option.is_sold_out">
@@ -1197,7 +1197,10 @@ async function fetchSeatMap() {
   seatsLoading.value = true;
   seatError.value = '';
   try {
-    const res = await api.get(`/schedules/${form.schedule_id}/seats`);
+    // ผังเป็นของคันที่เลือกให้ลูกค้า — รอบที่วิ่งทั้งบัสและตู้มีคนละผัง
+    const res = await api.get(`/schedules/${form.schedule_id}/seats`, {
+      params: form.vehicle_option_id ? { vehicle_option_id: form.vehicle_option_id } : {},
+    });
     seatMap.value = res.data?.data || null;
   } catch (error) {
     seatError.value = error.response?.data?.message || 'โหลดผังที่นั่งไม่สำเร็จ';
@@ -1205,6 +1208,13 @@ async function fetchSeatMap() {
   } finally {
     seatsLoading.value = false;
   }
+}
+
+// ที่นั่งผูกกับคัน — เปลี่ยนคันแล้วผังและที่นั่งที่เลือกไว้ต้องเริ่มใหม่
+async function onVehicleOptionChange() {
+  selectedSeatIds.value = [];
+  seatError.value = '';
+  if (!form.is_join_trip && form.schedule_id) await fetchSeatMap();
 }
 
 async function onBookingTypeChange() {

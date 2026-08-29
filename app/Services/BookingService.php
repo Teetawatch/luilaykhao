@@ -105,11 +105,14 @@ class BookingService
                 ? null
                 : $this->resolveVehicleOption($schedule, $vehicleOptionId, $participantCount);
 
-            // ที่นั่งบนผังเป็นของรถหลักของรอบคันเดียว — คันอื่นทีมงานจัดที่นั่งหน้างาน
-            // (เหตุผลเต็มอยู่ที่ ScheduleVehicleOption::usesScheduleSeatMap)
-            if ($vehicleOption && ! $vehicleOption->usesScheduleSeatMap($schedule)) {
+            // คันที่แอดมินปิดการเลือกที่นั่งไว้ (ทีมงานจัดหน้างาน) — ที่นั่งที่ส่งมา
+            // เป็นของค้างจากผังของคันก่อนหน้า ทิ้งเงียบ ๆ เหมือนรอบที่บินไป
+            if ($vehicleOption && ! $vehicleOption->seat_selection) {
                 $seatIds = [];
             }
+
+            // ที่นั่งผูกกับคัน — 0 คือรอบที่มีรถคันเดียว (ดูไมเกรชัน booking_seats)
+            $seatOptionId = (int) ($vehicleOption?->id ?? 0);
 
             // จอยทริปไม่กินที่นั่งบนรถ แต่มีโควตาของตัวเองถ้าแอดมินกำหนดเพดานไว้
             // (ไม่กำหนด = ไม่จำกัด เหมือนพฤติกรรมเดิม)
@@ -157,7 +160,7 @@ class BookingService
                 // อาศัย DB guard ด้านล่าง (booking_seats + lockForUpdate ของ schedule) ซึ่งเป็น source of truth
                 if ($verifySeatLocks) {
                     foreach ($seatIds as $seatId) {
-                        if (! $this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId)) {
+                        if (! $this->seatLockService->isLockedByUser($scheduleId, $seatId, $userId, $seatOptionId)) {
                             throw new \Exception("ที่นั่ง {$seatId} ไม่ได้ถูกล็อคโดยคุณ");
                         }
                     }
@@ -167,6 +170,7 @@ class BookingService
                 // (TTL หมด/ล่ม/ถูก forceUnlock หลังจองสำเร็จ) จึงกันที่นั่งซ้ำไม่ได้เสมอ
                 // เราถือ lockForUpdate ของ schedule อยู่แล้ว การอ่านตรงนี้จึง race-safe กับการจองพร้อมกันบนรอบเดียวกัน
                 $alreadyBookedSeats = BookingSeat::where('schedule_id', $scheduleId)
+                    ->where('vehicle_option_id', $seatOptionId)
                     ->whereIn('seat_id', $seatIds)
                     ->whereHas('booking', fn ($query) => $query
                         ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES))
@@ -495,12 +499,13 @@ class BookingService
                     BookingSeat::create([
                         'booking_id' => $booking->id,
                         'schedule_id' => $scheduleId,
+                        'vehicle_option_id' => $seatOptionId,
                         'seat_id' => $seatId,
                         'passenger_name' => $passengers[$index]['name'] ?? null,
                     ]);
                 }
                 foreach ($seatIds as $seatId) {
-                    $this->seatLockService->forceUnlock($scheduleId, $seatId);
+                    $this->seatLockService->forceUnlock($scheduleId, $seatId, $seatOptionId);
                 }
             }
 
@@ -636,7 +641,7 @@ class BookingService
 
                 // ปล่อย soft lock ที่นั่งและลบ booking seats แล้วปรับตัวนับที่นั่งให้ตรง
                 foreach ($booking->seats as $seat) {
-                    $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
+                    $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id, (int) $seat->vehicle_option_id);
                 }
                 $booking->seats()->delete();
 
@@ -769,7 +774,7 @@ class BookingService
             // Release seat locks
             if ($booking->seats->isNotEmpty()) {
                 foreach ($booking->seats as $seat) {
-                    $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
+                    $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id, (int) $seat->vehicle_option_id);
                 }
             }
 
@@ -801,7 +806,7 @@ class BookingService
 
             // Release seat locks & delete booking seats
             foreach ($booking->seats as $seat) {
-                $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
+                $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id, (int) $seat->vehicle_option_id);
             }
             $booking->seats()->delete();
 
@@ -904,6 +909,12 @@ class BookingService
                 }
             }
 
+            // ประเภทรถผูกกับรอบ — ใบที่ย้ายรอบจึงต้องหาคันของรอบปลายทางที่ชื่อ
+            // ตรงกัน ไม่เจอก็ปล่อยว่าง (ราคายังคงเดิมตามกติกาการย้ายรอบ และสำเนา
+            // ชื่อ/ส่วนต่างบนใบจองยังอธิบายยอดที่เก็บไปแล้วได้)
+            $targetOption = $target->vehicleOptionByLabel($booking->vehicle_option_label);
+            $targetOptionId = (int) ($targetOption?->id ?? 0);
+
             // ตรวจที่นั่งสำหรับการจองแบบเลือกที่นั่ง
             $newSeatIds = [];
             if ($usesSeats) {
@@ -925,6 +936,7 @@ class BookingService
                 }
 
                 $occupied = BookingSeat::where('schedule_id', $target->id)
+                    ->where('vehicle_option_id', $targetOptionId)
                     ->whereIn('seat_id', $newSeatIds->all())
                     ->pluck('seat_id')
                     ->unique()
@@ -955,10 +967,11 @@ class BookingService
                 $booking->seats()->delete();
 
                 foreach ($newSeatIds as $index => $seatId) {
-                    $this->seatLockService->forceUnlock($target->id, $seatId);
+                    $this->seatLockService->forceUnlock($target->id, $seatId, $targetOptionId);
                     BookingSeat::create([
                         'booking_id' => $booking->id,
                         'schedule_id' => $target->id,
+                        'vehicle_option_id' => $targetOptionId,
                         'seat_id' => $seatId,
                         'passenger_name' => $passengerNames->get($index),
                     ]);
@@ -967,7 +980,7 @@ class BookingService
                 // ย้ายไปรอบที่บินไป — คืนที่นั่งเดิมให้รอบต้นทาง แล้วรอทีมงานกรอก
                 // เลขที่นั่งจากสายการบินให้ใหม่
                 foreach ($booking->seats as $seat) {
-                    $this->seatLockService->forceUnlock($source->id, $seat->seat_id);
+                    $this->seatLockService->forceUnlock($source->id, $seat->seat_id, (int) $seat->vehicle_option_id);
                 }
                 $booking->seats()->delete();
             }
@@ -980,11 +993,16 @@ class BookingService
                 'schedule_id' => $target->id,
                 'pickup_point_id' => $pickupPoint?->id,
                 'pickup_region' => $pickupPoint?->region,
+                // ชี้ไปที่คันของรอบปลายทาง (null เมื่อไม่มีคันชื่อเดียวกัน) — ปล่อยให้
+                // ชี้ค้างที่คันของรอบเดิมไม่ได้ โควตาที่นั่งจะนับข้ามรอบ
+                'vehicle_option_id' => $targetOption?->id,
                 'rescheduled_at' => now(),
             ]);
 
             $source->syncBookedSeats();
             $target->syncBookedSeats();
+            $source->syncVehicleOptionSeats();
+            $target->syncVehicleOptionSeats();
 
             return $booking->fresh(['passengers', 'seats', 'schedule.trip', 'pickupPoint']);
         });
@@ -1210,7 +1228,7 @@ class BookingService
             // ปล่อยที่นั่งคืน — booking ที่ refund แล้วต้องไม่ถือที่นั่งไว้ (เหมือน cancelBooking)
             // มิฉะนั้นแถว booking_seats จะค้างและไปชน unique constraint ตอนมีคนจองที่นั่งเดิมซ้ำ
             foreach ($booking->seats as $seat) {
-                $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id);
+                $this->seatLockService->forceUnlock($booking->schedule_id, $seat->seat_id, (int) $seat->vehicle_option_id);
             }
             $booking->seats()->delete();
 

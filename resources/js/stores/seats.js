@@ -98,6 +98,9 @@ export const useSeatsStore = defineStore('seats', {
     // ที่นั่งที่หน้านี้ล็อกไว้กับเซิร์ฟเวอร์จริง ๆ (ไม่ใช่แค่ที่เลือกไว้) — ใช้ตามเก็บ
     // ล็อกค้างเวลาผู้ใช้เปลี่ยนใจเลือกน้อยลง เพราะผังที่นั่งในมือยังไม่รู้ว่าล็อกไปแล้ว
     lockedSeatIds: [],
+    // คันที่ผัง/ล็อกปัจจุบันเป็นของมัน (null = รอบนี้มีรถคันเดียว) — ที่นั่ง A1 ของ
+    // รถบัสกับ A1 ของรถตู้เป็นคนละที่ ปลดล็อกผิดคันจะปล่อยของคนอื่นไม่ออก
+    vehicleOptionId: null,
     _onExpireCallbacks: [],
   }),
 
@@ -119,11 +122,14 @@ export const useSeatsStore = defineStore('seats', {
   },
 
   actions: {
-    async fetchSeatMap(scheduleId) {
+    async fetchSeatMap(scheduleId, vehicleOptionId = null) {
       this.loading = true;
       try {
-        const res = await api.get(`/schedules/${scheduleId}/seats`);
+        const res = await api.get(`/schedules/${scheduleId}/seats`, {
+          params: vehicleOptionId ? { vehicle_option_id: vehicleOptionId } : {},
+        });
         this.seatMap = res.data.data;
+        this.vehicleOptionId = res.data.data?.vehicle_option_id ?? null;
         return this.seatMap;
       } finally {
         this.loading = false;
@@ -134,6 +140,7 @@ export const useSeatsStore = defineStore('seats', {
       try {
         const res = await api.post(`/schedules/${scheduleId}/seats/lock`, {
           seat_ids: seatIds,
+          vehicle_option_id: this.vehicleOptionId,
         });
         if (res.data.data?.locked) {
           // เส้นตายจริงคือ TTL ที่ SeatLockService ตั้งไว้ใน Redis — มันรวมโบนัสตามระดับ
@@ -177,7 +184,9 @@ export const useSeatsStore = defineStore('seats', {
       if (stale.length === 0) return;
 
       try {
-        await api.delete(`/seat-locks/${scheduleId}`, { data: { seat_ids: stale } });
+        await api.delete(`/seat-locks/${scheduleId}`, {
+          data: { seat_ids: stale, vehicle_option_id: this.vehicleOptionId },
+        });
         stale.forEach(id => this.updateSeatStatus(id, 'available'));
       } catch {}
     },
@@ -188,7 +197,7 @@ export const useSeatsStore = defineStore('seats', {
       if (seatIds.length === 0) return;
       try {
         await api.delete(`/schedules/${scheduleId}/seats/lock`, {
-          data: { seat_ids: seatIds },
+          data: { seat_ids: seatIds, vehicle_option_id: this.vehicleOptionId },
         });
       } catch {}
       this.clearSelection();

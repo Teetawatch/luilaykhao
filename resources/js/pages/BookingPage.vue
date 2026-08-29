@@ -1963,6 +1963,16 @@ const vehicleAllowsSeatMap = computed(() => {
   return option.uses_seat_map !== false;
 });
 
+// ที่นั่งเป็นของคันที่เลือก — สลับคันแล้วต้องคืนที่นั่งของคันเดิมก่อนดึงผังใหม่
+watch(selectedVehicleOptionId, async (next, previous) => {
+  if (next === previous) return;
+  if (previous) await seatsStore.unlockSeats(route.params.scheduleId);
+  seatsStore.clearSelection();
+  if (schedule.value) {
+    await seatsStore.fetchSeatMap(route.params.scheduleId, next);
+  }
+});
+
 // รอบที่มีแบบเดียวไม่ต้องให้กด และค่าที่ค้างจากรอบก่อนต้องหลุดไปเอง
 watch(vehicleOptions, (options) => {
   if (options.length === 1) {
@@ -3038,7 +3048,7 @@ onMounted(async () => {
       seats: passengerCount.value,
       value: totalAmount.value,
     });
-    await seatsStore.fetchSeatMap(route.params.scheduleId);
+    await seatsStore.fetchSeatMap(route.params.scheduleId, selectedVehicleOptionId.value);
 
     // ตัวเลือกสัญชาติโหลดเฉพาะทริปต่างประเทศ — ทริปในประเทศไม่มีช่องนี้ให้กรอก
     if (isInternational.value) loadCountries();

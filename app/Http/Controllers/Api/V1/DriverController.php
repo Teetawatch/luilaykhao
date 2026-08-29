@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\SchedulePickupPoint;
+use App\Models\ScheduleVehicleOption;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -599,6 +600,8 @@ class DriverController extends Controller
             ];
         })->values();
 
+        $seatMaps = $this->buildSeatMaps($schedule, $bookings);
+
         return $this->success([
             'schedule' => $this->formatSchedule($schedule),
             'summary' => [
@@ -627,7 +630,10 @@ class DriverController extends Controller
                     ->count(),
             ],
             'pickup_groups' => $this->buildPickupGroups($bookings),
-            'seat_map' => $this->buildSeatMap($schedule, $bookings),
+            // รอบที่วิ่งหลายคันมีผังคนละใบ — seat_map คือใบแรกไว้ให้แอปรุ่นก่อนหน้า
+            // ที่รู้จักผังเดียว ส่วน seat_maps คือครบทุกคัน
+            'seat_map' => $seatMaps[0] ?? null,
+            'seat_maps' => $seatMaps,
             'bookings' => $manifest,
         ], 'รายชื่อผู้โดยสาร');
     }
@@ -638,14 +644,42 @@ class DriverController extends Controller
      * who sits where. Returns null when this schedule has no seat assignments
      * (e.g. charters / join trips) — the app then hides the seat-map section.
      */
-    private function buildSeatMap(TripSchedule $schedule, Collection $bookings): ?array
+    /**
+     * ผังที่นั่งของทุกคันในรอบ — รอบที่วิ่งทั้งบัสและตู้มีผังคนละใบ และที่นั่งชื่อ
+     * เดียวกันบนคนละคันเป็นคนละที่ ถ้ารวมเป็นใบเดียวคนหนึ่งจะทับอีกคนหายไปเลย
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildSeatMaps(TripSchedule $schedule, Collection $bookings): array
+    {
+        $options = $schedule->activeVehicleOptions()->get();
+
+        if ($options->isEmpty()) {
+            $map = $this->buildSeatMap($schedule, $bookings);
+
+            return $map ? [$map] : [];
+        }
+
+        return $options
+            ->map(fn ($option) => $this->buildSeatMap($schedule, $bookings, $option))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function buildSeatMap(TripSchedule $schedule, Collection $bookings, ?ScheduleVehicleOption $option = null): ?array
     {
         $occupants = [];
+        $optionId = (int) ($option?->id ?? 0);
 
         foreach ($bookings as $booking) {
             $byName = $booking->passengers->keyBy(fn ($p) => trim((string) $p->name));
 
             foreach ($booking->seats as $seat) {
+                if ((int) $seat->vehicle_option_id !== $optionId) {
+                    continue;
+                }
+
                 $name = trim((string) $seat->passenger_name);
                 $passenger = $name !== '' ? $byName->get($name) : null;
 
@@ -662,7 +696,7 @@ class DriverController extends Controller
             return null;
         }
 
-        $layout = $schedule->resolveSeatLayout();
+        $layout = $schedule->resolveSeatLayout($option);
         $seats = collect($layout['seats'])->map(fn ($seat) => [
             'id' => $seat['id'],
             'label' => $seat['label'] ?? $seat['id'],
@@ -670,6 +704,8 @@ class DriverController extends Controller
         ])->values();
 
         return [
+            'vehicle_option_id' => $option?->id,
+            'vehicle_label' => $option?->label,
             'rows' => $layout['rows'] ?? 0,
             'columns' => $layout['columns'] ?? [],
             'seats' => $seats,

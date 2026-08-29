@@ -734,6 +734,8 @@
               ส่วนต่างคิด<b>ต่อคน</b> บวกจากราคาที่ลูกค้าเห็นอยู่แล้ว (ราคารอบ หรือราคาโซนของจุดขึ้นรถ) — ใส่ค่าติดลบได้ถ้าคันนั้นถูกกว่า
               · ตั้งไว้แบบเดียวลูกค้าจะไม่เห็นตัวเลือก ต้องมีอย่างน้อยสองแบบ
               · <b>แบบแรกควรเป็นส่วนต่าง 0</b> เพราะเป็นค่าตั้งต้นของช่องทางที่ยังไม่มีปุ่มให้เลือก
+              · แต่ละคันมีผังที่นั่งของตัวเอง (A1 ของบัสกับ A1 ของตู้เป็นคนละที่) — ผูกรถไว้เพื่อใช้ผังของคันนั้น
+              หรือปิด "ให้เลือกที่นั่ง" ถ้าทีมงานจะจัดที่นั่งหน้างาน
             </span>
           </div>
 
@@ -765,6 +767,17 @@
                 <label class="ride-field">
                   <span>โควตาที่นั่ง</span>
                   <input v-model.number="opt.seats" type="number" min="0" placeholder="ไม่จำกัด" />
+                </label>
+                <label class="ride-field">
+                  <span>รถ (ผังที่นั่ง)</span>
+                  <select v-model="opt.vehicle_id">
+                    <option :value="null">ใช้รถของรอบ</option>
+                    <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
+                  </select>
+                </label>
+                <label class="ride-field ride-field-toggle">
+                  <span>ให้เลือกที่นั่ง</span>
+                  <input v-model="opt.seat_selection" type="checkbox" />
                 </label>
                 <label class="ride-field ride-field-note">
                   <span>หมายเหตุ</span>
@@ -814,6 +827,17 @@
                 <label class="ride-field">
                   <span>โควตาที่นั่ง</span>
                   <input v-model.number="rideForm.seats" type="number" min="0" placeholder="ไม่จำกัด" />
+                </label>
+                <label class="ride-field">
+                  <span>รถ (ผังที่นั่ง)</span>
+                  <select v-model="rideForm.vehicle_id">
+                    <option :value="null">ใช้รถของรอบ</option>
+                    <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
+                  </select>
+                </label>
+                <label class="ride-field ride-field-toggle">
+                  <span>ให้เลือกที่นั่ง</span>
+                  <input v-model="rideForm.seat_selection" type="checkbox" />
                 </label>
                 <label class="ride-field ride-field-note">
                   <span>หมายเหตุ</span>
@@ -3328,7 +3352,7 @@ const rideSchedule = ref(null);
 const rideOptions = ref([]);
 const rideLoading = ref(false);
 const rideSaving = ref(false);
-const rideForm = reactive({ label: '', transport_type: null, price_adjustment: 0, seats: null, note: '' });
+const rideForm = reactive({ label: '', transport_type: null, vehicle_id: null, price_adjustment: 0, seats: null, seat_selection: true, note: '' });
 
 const ridePriceLabel = (opt) => {
   const base = Number(rideSchedule.value?.price || 0);
@@ -3337,7 +3361,7 @@ const ridePriceLabel = (opt) => {
 
 const openRideManager = async (sch) => {
   rideSchedule.value = sch;
-  Object.assign(rideForm, { label: '', transport_type: null, price_adjustment: 0, seats: null, note: '' });
+  Object.assign(rideForm, { label: '', transport_type: null, vehicle_id: null, price_adjustment: 0, seats: null, seat_selection: true, note: '' });
   showRideManager.value = true;
   await loadRideOptions(sch.id);
 };
@@ -3363,10 +3387,12 @@ const createRideOption = async () => {
   try {
     await api.post(`/admin/schedules/${rideSchedule.value.id}/vehicle-options`, {
       ...rideForm,
+      vehicle_id: rideForm.vehicle_id || null,
       price_adjustment: Number(rideForm.price_adjustment || 0),
       seats: rideSeatsValue(rideForm.seats),
+      seat_selection: !!rideForm.seat_selection,
     });
-    Object.assign(rideForm, { label: '', transport_type: null, price_adjustment: 0, seats: null, note: '' });
+    Object.assign(rideForm, { label: '', transport_type: null, vehicle_id: null, price_adjustment: 0, seats: null, seat_selection: true, note: '' });
     await loadRideOptions(rideSchedule.value.id);
     fetchData();
   } catch (e) {
@@ -3382,8 +3408,10 @@ const saveRideOption = async (opt) => {
     await api.put(`/admin/schedules/${rideSchedule.value.id}/vehicle-options/${opt.id}`, {
       label: opt.label,
       transport_type: opt.transport_type || null,
+      vehicle_id: opt.vehicle_id || null,
       price_adjustment: Number(opt.price_adjustment || 0),
       seats: rideSeatsValue(opt.seats),
+      seat_selection: !!opt.seat_selection,
       note: opt.note || null,
       is_active: !!opt.is_active,
     });
@@ -6040,7 +6068,7 @@ onMounted(() => {
 
 .ride-item-grid {
   display: grid;
-  grid-template-columns: 1.6fr 0.9fr 1fr 0.9fr 1.6fr 0.7fr;
+  grid-template-columns: 1.4fr 0.8fr 0.9fr 0.8fr 1fr 0.7fr 1.2fr 0.7fr;
   gap: 10px;
 }
 

@@ -17,7 +17,7 @@ class ScheduleVehicleOption extends Model
 
     protected $fillable = [
         'schedule_id', 'label', 'transport_type', 'vehicle_id',
-        'price_adjustment', 'seats', 'booked_seats', 'note', 'image_url', 'is_active', 'sort_order',
+        'price_adjustment', 'seats', 'booked_seats', 'seat_selection', 'note', 'image_url', 'is_active', 'sort_order',
     ];
 
     protected function casts(): array
@@ -26,6 +26,7 @@ class ScheduleVehicleOption extends Model
             'price_adjustment' => 'decimal:2',
             'seats' => 'integer',
             'booked_seats' => 'integer',
+            'seat_selection' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];
@@ -72,16 +73,23 @@ class ScheduleVehicleOption extends Model
     }
 
     /**
-     * ตัวเลือกนี้ใช้ผังที่นั่งของรอบได้ไหม
+     * คันนี้ให้ลูกค้าเลือกที่นั่งเองได้ไหม
      *
-     * ผังที่นั่งของรอบมาจากรถคันที่ผูกกับรอบคันเดียว และการล็อกที่นั่งก็คีย์ด้วย
-     * (รอบ, รหัสที่นั่ง) — ถ้าปล่อยให้รถคันที่สองใช้ผังด้วย ที่นั่ง A1 ของบัสกับ
-     * A1 ของตู้จะกลายเป็นที่นั่งเดียวกันในสายตาระบบล็อก คันที่ไม่ใช่รถหลักของรอบ
-     * จึงเป็นแบบไม่ระบุที่นั่ง (ทีมงานจัดหน้างาน) จนกว่าจะมีผังแยกรายคันจริง ๆ
+     * ทุกคันมีผังของตัวเองได้ (ที่นั่งผูกกับคันทั้งใน booking_seats และในคีย์ล็อก
+     * ที่นั่ง — A1 ของบัสกับ A1 ของตู้เป็นคนละที่) เหลือแค่สองเงื่อนไข: รอบนั้น
+     * ต้องเลือกที่นั่งได้ (รอบที่บินไปไม่ได้) และแอดมินไม่ได้ปิดสวิตช์ของคันนี้
      */
-    public function usesScheduleSeatMap(TripSchedule $schedule): bool
+    public function allowsSeatSelection(TripSchedule $schedule): bool
     {
-        return $this->vehicle_id === null
-            || (int) $this->vehicle_id === (int) $schedule->vehicle_id;
+        return $schedule->allowsSeatSelection() && $this->seat_selection;
+    }
+
+    /**
+     * รถที่ใช้วาดผังของคันนี้ — ไม่ได้ผูกรถไว้ก็ใช้รถของรอบ (ผังเหมือนกันได้
+     * ไม่ชนกันแล้ว เพราะที่นั่งแยกตามคัน)
+     */
+    public function seatLayoutVehicle(TripSchedule $schedule): ?Vehicle
+    {
+        return $this->vehicle ?? $schedule->vehicle;
     }
 }

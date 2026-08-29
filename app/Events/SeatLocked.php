@@ -17,6 +17,9 @@ class SeatLocked implements ShouldBroadcast
         public string $seatId,
         public string $lockedUntil,
         public int $availableCount,
+        // คันที่ที่นั่งนี้อยู่ (null = รอบนี้มีรถคันเดียว) — หน้าจองที่เปิดผังของ
+        // อีกคันอยู่ต้องมองข้ามอีเวนต์นี้ ไม่งั้นที่นั่งชื่อเดียวกันจะกะพริบตามกัน
+        public ?int $vehicleOptionId = null,
     ) {}
 
     public function broadcastOn(): array
@@ -32,6 +35,7 @@ class SeatLocked implements ShouldBroadcast
             'seat_id' => $this->seatId,
             'locked_until' => $this->lockedUntil,
             'available_count' => $this->availableCount,
+            'vehicle_option_id' => $this->vehicleOptionId,
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\BookingSeat;
 use App\Models\SchedulePickupPoint;
 use App\Models\ScheduleVehicleOption;
 use App\Models\Trip;
@@ -229,10 +230,9 @@ class ScheduleVehicleOptionTest extends TestCase
             ->assertJsonPath('data.vehicle_options.0.available_seats', null);
     }
 
-    public function test_only_the_rounds_own_vehicle_keeps_the_seat_map(): void
+    public function test_each_vehicle_has_its_own_seat_map(): void
     {
-        // ผังที่นั่งของรอบเป็นของรถหลักคันเดียว และการล็อกที่นั่งคีย์ด้วย (รอบ, รหัสที่นั่ง)
-        // คันที่สองจึงเป็นแบบไม่ระบุที่นั่ง ไม่งั้น A1 ของบัสกับ A1 ของตู้จะชนกัน
+        // A1 ของรถบัสกับ A1 ของรถตู้เป็นคนละที่นั่ง — จองพร้อมกันได้ในรอบเดียวกัน
         $bus = Vehicle::create([
             'name' => 'บัส 40 ที่นั่ง', 'type' => 'bus', 'capacity' => 40, 'license_plate' => '10-1234',
         ]);
@@ -245,20 +245,94 @@ class ScheduleVehicleOptionTest extends TestCase
 
         $busOption = $this->makeOption($schedule, 'รถบัส', 0);
         $busOption->update(['vehicle_id' => $bus->id]);
-        $vanOption = $this->makeOption($schedule, 'รถตู้', 400);
+        $vanOption = $this->makeOption($schedule, 'รถตู้', 400, seats: 9);
         $vanOption->update(['vehicle_id' => $vanVehicle->id]);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(1),
+                'vehicle_option_id' => $busOption->id,
+                'seat_ids' => ['A1'],
+            ])
+            ->assertCreated();
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(1),
+                'vehicle_option_id' => $vanOption->id,
+                'seat_ids' => ['A1'],
+            ])
+            ->assertCreated();
+
+        $this->assertSame(2, BookingSeat::where('seat_id', 'A1')->count());
+
+        // แต่ A1 ของคันเดียวกันยังจองซ้ำไม่ได้
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(1),
+                'vehicle_option_id' => $vanOption->id,
+                'seat_ids' => ['A1'],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'ที่นั่ง A1 ถูกจองไปแล้ว กรุณาเลือกที่นั่งอื่น');
+    }
+
+    public function test_the_seat_map_endpoint_draws_the_vehicle_that_was_asked_for(): void
+    {
+        $schedule = $this->makeSchedule();
+        $busOption = $this->makeOption($schedule, 'รถบัส', 0, seats: 40);
+        $vanOption = $this->makeOption($schedule, 'รถตู้', 400, seats: 9);
+
+        $user = User::factory()->create();
+
+        // ไม่ระบุคัน = คันราคาปกติ ผังจึงเท่าโควตาของคันนั้น
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/schedules/'.$schedule->id.'/seats')
+            ->assertOk()
+            ->assertJsonPath('data.vehicle_option_id', $busOption->id)
+            ->assertJsonPath('data.total_seats', 40)
+            ->assertJsonCount(40, 'data.seats');
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/schedules/'.$schedule->id.'/seats?vehicle_option_id='.$vanOption->id)
+            ->assertOk()
+            ->assertJsonPath('data.vehicle_option_id', $vanOption->id)
+            ->assertJsonPath('data.vehicle_option_label', 'รถตู้')
+            ->assertJsonPath('data.total_seats', 9)
+            ->assertJsonCount(9, 'data.seats');
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/schedules/'.$schedule->id.'/seats?vehicle_option_id=999999')
+            ->assertStatus(422);
+    }
+
+    public function test_a_vehicle_can_opt_out_of_seat_selection(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->makeOption($schedule, 'รถบัส', 0);
+        $van = $this->makeOption($schedule, 'รถตู้', 400);
+        $van->update(['seat_selection' => false]);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->getJson('/api/v1/schedules/'.$schedule->id.'/seats?vehicle_option_id='.$van->id)
+            ->assertOk()
+            ->assertJsonPath('data.has_seat_map', false)
+            ->assertJsonPath('data.seat_selection_disabled_reason', 'รถตู้รอบนี้ไม่ต้องเลือกที่นั่ง ทีมงานจัดที่นั่งให้หน้างาน');
 
         $this->getJson('/api/v1/schedules/'.$schedule->id)
             ->assertOk()
             ->assertJsonPath('data.vehicle_options.0.uses_seat_map', true)
             ->assertJsonPath('data.vehicle_options.1.uses_seat_map', false);
 
-        // ที่นั่งที่ส่งมากับคันที่ไม่มีผังถูกทิ้ง ไม่ใช่ปฏิเสธการจอง
+        // ที่นั่งที่ค้างมาจากผังของคันก่อนหน้าถูกทิ้ง ไม่ใช่ปฏิเสธการจอง
         $this->actingAs(User::factory()->create(), 'sanctum')
             ->postJson('/api/v1/bookings', [
                 'schedule_id' => $schedule->id,
                 'passengers' => $this->passengers(1),
-                'vehicle_option_id' => $vanOption->id,
+                'vehicle_option_id' => $van->id,
                 'seat_ids' => ['A1'],
             ])
             ->assertCreated();

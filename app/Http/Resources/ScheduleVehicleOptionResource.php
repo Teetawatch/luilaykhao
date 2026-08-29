@@ -39,13 +39,13 @@ class ScheduleVehicleOptionResource extends JsonResource
             'is_sold_out' => $this->isSoldOut(),
             'note' => $this->note,
             'image_url' => $this->image_url,
-            // เลือกที่นั่งบนผังได้ไหม — ผังของรอบเป็นของรถหลักคันเดียว คันอื่น
-            // ทีมงานจัดที่นั่งหน้างาน (ScheduleVehicleOption::usesScheduleSeatMap)
+            // เลือกที่นั่งบนผังของคันนี้ได้ไหม — ทุกคันมีผังของตัวเองได้ เหลือแค่
+            // รอบต้องเลือกที่นั่งได้ และแอดมินไม่ได้ปิดสวิตช์ของคันนี้
             'uses_seat_map' => $this->when(
                 $this->schedule !== null,
-                fn () => $this->schedule->allowsSeatSelection()
-                    && $this->resource->usesScheduleSeatMap($this->schedule)
+                fn () => $this->resource->allowsSeatSelection($this->schedule)
             ),
+            'seat_selection' => (bool) $this->seat_selection,
             'sort_order' => (int) $this->sort_order,
             'is_active' => (bool) $this->is_active,
         ];
