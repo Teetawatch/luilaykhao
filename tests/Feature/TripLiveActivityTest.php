@@ -6,12 +6,14 @@ use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\LiveActivity;
+use App\Models\ScheduleItineraryItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\TripActivityService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -104,6 +106,83 @@ class TripLiveActivityTest extends TestCase
         $this->assertGreaterThan(0.5, $state['progress']);
     }
 
+    public function test_a_pinned_pickup_gets_an_eta_just_like_a_listed_one(): void
+    {
+        // ลูกค้าที่ปักหมุดจุดรับเองก็ยืนรอรถอยู่ริมถนนเหมือนกัน พิกัดอยู่บนใบจอง
+        // ครบแล้ว การไม่อ่านมันแปลว่าเขาเห็นแค่ "เตรียมตัว" ตลอดเช้า
+        $this->booking->update([
+            'pickup_point_id' => null,
+            'custom_pickup_label' => 'หน้าหมู่บ้านสีวลี',
+            'custom_pickup_lat' => 13.9500,
+            'custom_pickup_lng' => 100.6200,
+            'custom_pickup_status' => Booking::CUSTOM_PICKUP_APPROVED,
+        ]);
+        $this->schedule->update(['vehicle_id' => $this->vehicleId()]);
+
+        $this->fakeVehicleLocation(13.9230, 100.6200, speed: 40);
+
+        $state = app(TripActivityService::class)
+            ->stateFor($this->booking->fresh(['schedule', 'pickupPoint']));
+
+        $this->assertSame('arriving', $state['stage']);
+        $this->assertLessThanOrEqual(5, $state['eta_minutes']);
+        $this->assertStringContainsString('หน้าหมู่บ้านสีวลี', $state['detail']);
+    }
+
+    public function test_a_rejected_pin_is_not_used_for_the_eta(): void
+    {
+        $this->booking->update([
+            'pickup_point_id' => null,
+            'custom_pickup_label' => 'หน้าหมู่บ้านสีวลี',
+            'custom_pickup_lat' => 13.9500,
+            'custom_pickup_lng' => 100.6200,
+            'custom_pickup_status' => Booking::CUSTOM_PICKUP_REJECTED,
+        ]);
+        $this->schedule->update(['vehicle_id' => $this->vehicleId()]);
+
+        $this->fakeVehicleLocation(13.9230, 100.6200, speed: 40);
+
+        $state = app(TripActivityService::class)
+            ->stateFor($this->booking->fresh(['schedule', 'pickupPoint']));
+
+        $this->assertNull($state['eta_minutes']);
+    }
+
+    public function test_a_round_without_a_departure_time_never_says_midnight(): void
+    {
+        // effectiveDepartsAt() เติมเที่ยงคืนให้รอบที่ไม่ได้กรอกเวลา ซึ่งเคยหลุดไป
+        // เป็น "รถออกเวลา 00:00 น." ค้างอยู่ทั้งวันบนหน้าจอล็อกของลูกค้า
+        $this->schedule->update(['departs_at' => null]);
+
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
+
+        $this->assertSame('preparing', $state['stage']);
+        $this->assertStringNotContainsString('00:00', $state['headline']);
+        $this->assertSame('ถึงวันเดินทางแล้ว', $state['headline']);
+    }
+
+    public function test_a_round_without_a_departure_time_counts_down_in_days(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-05 20:00:00', 'Asia/Bangkok'));
+
+        try {
+            $this->schedule->update([
+                'departure_date' => '2026-09-06',
+                'departs_at' => null,
+                'return_date' => '2026-09-07',
+            ]);
+
+            $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
+
+            // "อีก 4 ชั่วโมงออกเดินทาง" ที่นับจากเที่ยงคืนสมมติดูแม่นยำแต่ผิด
+            $this->assertSame('countdown', $state['stage']);
+            $this->assertSame('พรุ่งนี้ออกเดินทาง', $state['headline']);
+            $this->assertStringNotContainsString('ชั่วโมง', $state['headline']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     public function test_checked_in_flips_the_card_to_onboard(): void
     {
         $this->booking->update(['checked_in' => true, 'checked_in_at' => now()]);
@@ -111,6 +190,75 @@ class TripLiveActivityTest extends TestCase
         $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
 
         $this->assertSame('onboard', $state['stage']);
+        $this->assertSame(1.0, $state['progress']);
+    }
+
+    public function test_the_card_follows_the_itinerary_once_boarding_is_old_news(): void
+    {
+        // เดิมทีเช็คอินคือจุดจบของเรื่องเล่า — การ์ดแช่ "ขึ้นรถเรียบร้อยแล้ว" ไป
+        // จนจบทริปสองวัน ทั้งที่คำถามของคนบนรถเปลี่ยนเป็น "ต่อไปทำอะไร" แล้ว
+        $this->itineraryItem('ออกจากกรุงเทพฯ', '05:00', reached: true);
+        $this->itineraryItem('แวะพักปั๊มสิงห์บุรี', '07:30', reached: true);
+        $this->itineraryItem('ถึงจุดชมวิวผาตั้ง', '10:00');
+        $this->itineraryItem('เข้าที่พัก', '16:00');
+
+        $this->booking->update([
+            'checked_in' => true,
+            'checked_in_at' => now()->subHour(),
+        ]);
+
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
+
+        $this->assertSame('itinerary', $state['stage']);
+        $this->assertSame('10:00 น. · ถึงจุดชมวิวผาตั้ง', $state['headline']);
+        $this->assertStringContainsString('ผ่านมาแล้ว 2 จาก 4 จุด', $state['detail']);
+        $this->assertSame(0.5, $state['progress']);
+        // ETA ของรถไม่มีความหมายแล้วหลังขึ้นรถ อย่าให้ Dynamic Island โชว์ตัวเลขค้าง
+        $this->assertNull($state['eta_minutes']);
+    }
+
+    public function test_boarding_confirmation_stays_up_for_a_moment_first(): void
+    {
+        $this->itineraryItem('ถึงจุดชมวิวผาตั้ง', '10:00');
+
+        $this->booking->update([
+            'checked_in' => true,
+            'checked_in_at' => now()->subMinutes(2),
+        ]);
+
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
+
+        // คนที่เพิ่งยื่นโทรศัพท์ให้ทีมงานสแกนกำลังมองหาคำยืนยัน ไม่ใช่ตารางเวลา
+        $this->assertSame('onboard', $state['stage']);
+        $this->assertSame('ขึ้นรถเรียบร้อยแล้ว', $state['headline']);
+    }
+
+    public function test_a_round_without_an_itinerary_keeps_the_old_onboard_card(): void
+    {
+        $this->booking->update([
+            'checked_in' => true,
+            'checked_in_at' => now()->subHours(3),
+        ]);
+
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
+
+        $this->assertSame('onboard', $state['stage']);
+    }
+
+    public function test_the_card_closes_out_the_itinerary_when_every_stop_is_ticked(): void
+    {
+        $this->itineraryItem('ถึงจุดชมวิวผาตั้ง', '10:00', reached: true);
+        $this->itineraryItem('เข้าที่พัก', '16:00', reached: true);
+
+        $this->booking->update([
+            'checked_in' => true,
+            'checked_in_at' => now()->subHours(6),
+        ]);
+
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
+
+        $this->assertSame('itinerary', $state['stage']);
+        $this->assertSame('ครบทุกจุดในกำหนดการแล้ว', $state['headline']);
         $this->assertSame(1.0, $state['progress']);
     }
 
@@ -288,6 +436,18 @@ class TripLiveActivityTest extends TestCase
         openssl_pkey_export($key, $exported);
 
         return $exported;
+    }
+
+    private function itineraryItem(string $title, ?string $time, bool $reached = false): ScheduleItineraryItem
+    {
+        return ScheduleItineraryItem::create([
+            'schedule_id' => $this->schedule->id,
+            'item_date' => $this->schedule->departure_date->toDateString(),
+            'time' => $time,
+            'title' => $title,
+            'sort_order' => ScheduleItineraryItem::where('schedule_id', $this->schedule->id)->count(),
+            'reached_at' => $reached ? now() : null,
+        ]);
     }
 
     private function vehicleId(): int

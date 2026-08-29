@@ -117,7 +117,9 @@ Vehicle GPS is pushed to `/api/v1/tracking/update` (no auth, intended for device
 
 ### Live Activity ("วันเดินทาง" lock-screen card)
 
-`TripActivityService` is the single source of the card's Thai copy, stage, and ETA — the apps only draw. Stages: `countdown → preparing → enroute → approaching → arriving → arrived → onboard`.
+`TripActivityService` is the single source of the card's Thai copy, stage, and ETA — the apps only draw. Stages: `countdown → preparing → enroute → approaching → arriving → arrived → onboard → itinerary` (flight rounds swap the GPS-driven middle for `meetup → boarding`). Check-in is not the end of the story: 15 min after `checked_in_at` the card switches to `itinerary`, showing the next unticked `ScheduleItineraryItem` and reached/total progress, sourced from `TripProgressService` — the same service the Trip Day screen and the family share link use. A round with no itinerary keeps the old frozen `onboard` card.
+
+`departs_at` is optional, and `effectiveDepartsAt()` fills midnight in its place. That midnight is fine for comparing dates but must never be printed or counted against — `departTimeLabel()` returns null when the time was never set, and every stage/copy decision takes that as "count in days, not hours".
 
 - **iOS** — the app starts the Activity once (`luilaykhao/live_activity` MethodChannel → `ios/Runner/LiveActivityChannel.swift`), posts its push token to `POST /api/v1/live-activities`, and from then on `ApnsLiveActivityService` pushes updates straight to APNs. This needs a **direct APNs auth key** (`.p8`, `APNS_*` in `.env`) because FCM cannot set the `<bundle>.push-type.liveactivity` topic. With `APNS_KEY_ID`/`APNS_TEAM_ID` unset the whole feature no-ops. On iOS 17.2+ the server can also *start* the card unprompted via the push-to-start token stored on `fcm_tokens.live_activity_start_token`.
 - **Android** — no ActivityKit; the same state ships as an FCM data message (`type: trip_activity`) that `TripActivityService` (Dart) renders as an ongoing notification on the `trip_activity` channel.

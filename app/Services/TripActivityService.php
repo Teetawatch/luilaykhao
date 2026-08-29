@@ -44,6 +44,9 @@ class TripActivityService
     /** ถึงเวลานี้แล้วยังไม่มีอะไรเปลี่ยน ก็ยิงซ้ำกันหน้าจอค้างข้อมูลเก่า (นาที) */
     private const HEARTBEAT_MINUTES = 20;
 
+    /** หลังเช็คอินกี่นาทีจึงเลิกโชว์ "ขึ้นรถเรียบร้อยแล้ว" แล้วเดินตามกำหนดการต่อ */
+    private const ONBOARD_MINUTES = 15;
+
     /** ขั้นที่ควรทำให้เครื่องสั่น/เด้ง ไม่ใช่แค่เปลี่ยนตัวเลขเงียบ ๆ */
     private const ALERTING_STAGES = ['arriving', 'arrived', 'onboard', 'meetup', 'boarding'];
 
@@ -52,7 +55,18 @@ class TripActivityService
     public function __construct(
         private ApnsLiveActivityService $apns,
         private FcmService $fcm,
+        private TripProgressService $tripProgress,
     ) {}
+
+    /**
+     * ความคืบหน้ากำหนดการของรอบหนึ่ง จำไว้ตลอดการซิงก์รอบนั้น
+     *
+     * `syncSchedule()` วน stateFor ทีละใบจองของรอบเดียวกัน คำตอบของ
+     * [TripProgressService] เหมือนกันหมด การไม่จำคือยิงคิวรีเดิม 20 ครั้งทุกนาที
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    private array $progressCache = [];
 
     /**
      * ใบจองที่ "ควรมี Live Activity อยู่ตอนนี้" — ตั้งแต่ 18 ชม. ก่อนรถออก จนถึง
@@ -129,19 +143,19 @@ class TripActivityService
             return $this->flightStateFor($booking, $schedule, $departsAt);
         }
 
-        $pickup = $booking->pickupPoint;
+        $pickupCoords = $this->pickupCoords($booking);
         $pickupName = $this->pickupName($booking);
         $location = $schedule->vehicle_id ? $this->vehicleLocation((int) $schedule->vehicle_id) : null;
 
         $etaMinutes = null;
         $distanceKm = null;
 
-        if ($location && $pickup && $pickup->latitude !== null && $pickup->longitude !== null) {
+        if ($location && $pickupCoords) {
             $distanceKm = $this->distanceKm(
                 (float) $location['latitude'],
                 (float) $location['longitude'],
-                (float) $pickup->latitude,
-                (float) $pickup->longitude,
+                $pickupCoords['lat'],
+                $pickupCoords['lng'],
             );
             $etaMinutes = $this->etaMinutes(
                 $distanceKm,
@@ -149,8 +163,16 @@ class TripActivityService
             );
         }
 
-        $stage = $this->stage($booking, $departsAt, $distanceKm, $etaMinutes);
-        $copy = $this->copyFor($stage, $departsAt, $etaMinutes, $pickupName, $booking);
+        $departTime = $this->departTimeLabel($schedule);
+        $stage = $this->stage($booking, $departsAt, $departTime !== null, $distanceKm, $etaMinutes);
+        $copy = $this->copyFor($stage, $departsAt, $departTime, $etaMinutes, $pickupName, $booking);
+        $progress = $this->progress($stage, $departsAt, $etaMinutes);
+
+        if ($leg = $this->itineraryLeg($booking, $schedule, $stage)) {
+            [$stage, $copy, $progress, $etaMinutes, $distanceKm] = [
+                $leg['stage'], $leg, $leg['progress'], null, null,
+            ];
+        }
 
         return [
             'stage' => $stage,
@@ -158,7 +180,7 @@ class TripActivityService
             'detail' => $copy['detail'],
             'eta_minutes' => $etaMinutes,
             'distance_km' => $distanceKm !== null ? round($distanceKm, 2) : null,
-            'progress' => $this->progress($stage, $departsAt, $etaMinutes),
+            'progress' => $progress,
             'departs_at' => $departsAt?->toIso8601String(),
             'pickup_name' => $pickupName,
             'trip_title' => $schedule->trip?->title ?? 'ทริปของคุณ',
@@ -188,19 +210,28 @@ class TripActivityService
         $meetingAt = $schedule->meetingAt();
         $meetingPoint = trim((string) $schedule->meeting_point) ?: null;
         $flightLabel = $this->flightLabel($schedule);
+        $departTime = $this->departTimeLabel($schedule);
 
-        $stage = $this->flightStage($booking, $meetingAt, $departsAt);
+        $stage = $this->flightStage($booking, $meetingAt, $departsAt, $departTime !== null);
 
         // นับถอยหลังไปหา "สิ่งที่ต้องทำอันถัดไป" — ก่อนเจอทีมงานคือเวลานัดพบ
         // หลังจากนั้นคือเวลาเครื่องออก ตัวเลขบนการ์ดจึงเป็นตัวเลขที่ยังต้องรออยู่จริง
+        $knownDepartsAt = $departTime !== null ? $departsAt : null;
         $target = in_array($stage, ['boarding', 'onboard'], true)
-            ? $departsAt
-            : ($meetingAt ?? $departsAt);
+            ? $knownDepartsAt
+            : ($meetingAt ?? $knownDepartsAt);
         $etaMinutes = $target
             ? max(0, (int) ceil($this->nowThai()->diffInMinutes($target, false)))
             : null;
 
-        $copy = $this->flightCopy($stage, $meetingAt, $departsAt, $etaMinutes, $meetingPoint, $flightLabel);
+        $copy = $this->flightCopy($stage, $meetingAt, $departsAt, $departTime, $etaMinutes, $meetingPoint, $flightLabel);
+        $progress = $this->flightProgress($stage, $meetingAt);
+
+        // ลงเครื่องแล้วกำหนดการก็เดินต่อเหมือนกัน — ไทม์ไลน์สนามบินจบที่ขึ้นเครื่อง
+        // ไม่ใช่จบที่ทริป
+        if ($leg = $this->itineraryLeg($booking, $schedule, $stage)) {
+            [$stage, $copy, $progress, $etaMinutes] = [$leg['stage'], $leg, $leg['progress'], null];
+        }
 
         return [
             'stage' => $stage,
@@ -208,7 +239,7 @@ class TripActivityService
             'detail' => $copy['detail'],
             'eta_minutes' => $etaMinutes,
             'distance_km' => null,
-            'progress' => $this->flightProgress($stage, $meetingAt),
+            'progress' => $progress,
             'departs_at' => $departsAt?->toIso8601String(),
             'pickup_name' => $meetingPoint,
             'trip_title' => $schedule->trip?->title ?? 'ทริปของคุณ',
@@ -226,7 +257,7 @@ class TripActivityService
 
     private const FLIGHT_PREPARING_HOURS = 6;
 
-    private function flightStage(Booking $booking, ?Carbon $meetingAt, ?Carbon $departsAt): string
+    private function flightStage(Booking $booking, ?Carbon $meetingAt, ?Carbon $departsAt, bool $timeKnown): string
     {
         if ($booking->checked_in) {
             return 'onboard';
@@ -234,14 +265,16 @@ class TripActivityService
 
         $now = $this->nowThai();
 
-        if ($departsAt && $now->gte($departsAt->copy()->subMinutes(self::FLIGHT_BOARDING_MINUTES))) {
+        if ($timeKnown && $departsAt && $now->gte($departsAt->copy()->subMinutes(self::FLIGHT_BOARDING_MINUTES))) {
             return 'boarding';
         }
 
-        // ไม่ได้ตั้งเวลานัดพบไว้ ก็ยังบอกอะไรได้อยู่จากเวลาเครื่องออก อย่าเงียบ
-        $anchor = $meetingAt ?? $departsAt;
+        // ไม่ได้ตั้งเวลานัดพบไว้ ก็ยังบอกอะไรได้อยู่จากเวลาเครื่องออก อย่าเงียบ —
+        // แต่เฉพาะเวลาที่ถูกกรอกไว้จริง เที่ยงคืนที่ถูกเติมแทนเวลาที่ยังไม่รู้จะทำให้
+        // "ขึ้นเครื่อง" เด้งตั้งแต่ห้าทุ่มของคืนก่อน
+        $anchor = $meetingAt ?? ($timeKnown ? $departsAt : null);
         if (! $anchor) {
-            return 'countdown';
+            return $this->departureDayReached($departsAt) ? 'preparing' : 'countdown';
         }
 
         if ($now->gte($anchor->copy()->subMinutes(self::FLIGHT_MEETUP_MINUTES))) {
@@ -262,13 +295,13 @@ class TripActivityService
         string $stage,
         ?Carbon $meetingAt,
         ?Carbon $departsAt,
+        ?string $departTime,
         ?int $etaMinutes,
         ?string $meetingPoint,
         ?string $flightLabel,
     ): array {
         $place = $meetingPoint ?: 'จุดนัดพบที่สนามบิน';
         $meetingTime = $meetingAt ? $meetingAt->format('H:i').' น.' : null;
-        $departTime = $departsAt ? $departsAt->format('H:i').' น.' : null;
         $flight = $flightLabel ? "เที่ยวบิน $flightLabel" : 'เที่ยวบินของคุณ';
 
         return match ($stage) {
@@ -295,7 +328,10 @@ class TripActivityService
                 'detail' => "ไปที่$place".($departTime ? " · เครื่องออก $departTime" : ''),
             ],
             default => [
-                'headline' => $this->countdownLabel($meetingAt ?? $departsAt),
+                'headline' => $this->countdownLabel(
+                    $meetingAt ?? $departsAt,
+                    $meetingTime !== null || $departTime !== null,
+                ),
                 'detail' => $meetingTime
                     ? "เจอกัน $meetingTime ที่$place"
                     : $place,
@@ -623,7 +659,7 @@ class TripActivityService
         ];
     }
 
-    private function stage(Booking $booking, ?Carbon $departsAt, ?float $distanceKm, ?int $etaMinutes): string
+    private function stage(Booking $booking, ?Carbon $departsAt, bool $timeKnown, ?float $distanceKm, ?int $etaMinutes): string
     {
         if ($booking->checked_in) {
             return 'onboard';
@@ -643,17 +679,20 @@ class TripActivityService
             return 'enroute';
         }
 
-        if ($departsAt && $this->nowThai()->diffInHours($departsAt, false) <= 3) {
-            return 'preparing';
-        }
+        // รอบที่ไม่ได้กรอกเวลารถออก ถูกอ่านกลับมาเป็นเที่ยงคืนของวันเดินทาง เทียบ
+        // "อีกกี่ชั่วโมง" กับเที่ยงคืนที่ไม่มีใครตั้งจึงกลายเป็นเตรียมตัวตั้งแต่สาม
+        // ทุ่มของคืนก่อน — ที่รู้จริงคือ "วัน" ก็เดินด้วยวันไปตรง ๆ
+        $close = $timeKnown
+            ? ($departsAt && $this->nowThai()->diffInHours($departsAt, false) <= 3)
+            : $this->departureDayReached($departsAt);
 
-        return 'countdown';
+        return $close ? 'preparing' : 'countdown';
     }
 
     /**
      * @return array{headline: string, detail: string}
      */
-    private function copyFor(string $stage, ?Carbon $departsAt, ?int $etaMinutes, ?string $pickupName, Booking $booking): array
+    private function copyFor(string $stage, ?Carbon $departsAt, ?string $departTime, ?int $etaMinutes, ?string $pickupName, Booking $booking): array
     {
         $place = $pickupName ? "จุดรับ $pickupName" : 'จุดรับของคุณ';
 
@@ -681,22 +720,34 @@ class TripActivityService
                 'detail' => 'เดินทางปลอดภัย แล้วเจอกันที่ปลายทาง 🎒',
             ],
             'preparing' => [
-                'headline' => $departsAt ? 'รถออกเวลา '.$departsAt->format('H:i').' น.' : 'ใกล้ถึงเวลาออกเดินทาง',
+                'headline' => $departTime ? "รถออกเวลา $departTime" : 'ถึงวันเดินทางแล้ว',
                 'detail' => "เตรียมตัวไปที่$place",
             ],
             default => [
-                'headline' => $this->countdownLabel($departsAt),
-                'detail' => $departsAt
-                    ? 'ออกเดินทาง '.$departsAt->format('H:i').' น. · '.$place
+                'headline' => $this->countdownLabel($departsAt, $departTime !== null),
+                'detail' => $departTime
+                    ? "ออกเดินทาง $departTime · $place"
                     : $place,
             ],
         };
     }
 
-    private function countdownLabel(?Carbon $departsAt): string
+    private function countdownLabel(?Carbon $departsAt, bool $timeKnown = true): string
     {
         if (! $departsAt) {
             return 'ทริปของคุณ';
+        }
+
+        // ไม่รู้เวลารถออก ก็อย่านับเป็นชั่วโมง "อีก 7 ชั่วโมงออกเดินทาง" ที่นับจาก
+        // เที่ยงคืนสมมติคือตัวเลขที่ดูแม่นยำแต่ผิด ซึ่งแย่กว่าบอกเป็นวันตรง ๆ
+        if (! $timeKnown) {
+            $days = (int) $this->nowThai()->startOfDay()->diffInDays($departsAt->copy()->startOfDay(), false);
+
+            return match (true) {
+                $days <= 0 => 'ถึงวันเดินทางแล้ว',
+                $days === 1 => 'พรุ่งนี้ออกเดินทาง',
+                default => "อีก {$days} วันออกเดินทาง",
+            };
         }
 
         $hours = (int) ceil($this->nowThai()->diffInMinutes($departsAt, false) / 60);
@@ -733,6 +784,123 @@ class TripActivityService
         }
 
         return $booking->custom_pickup_label ?: null;
+    }
+
+    /**
+     * ช่วงกลางทริป — "ต่อไปทำอะไร" แทนที่จะค้างอยู่ที่ "ขึ้นรถเรียบร้อยแล้ว"
+     *
+     * เดิมทีเช็คอินคือจุดจบของเรื่องเล่า: [stage] คืน `onboard` เป็นบรรทัดแรกสุด
+     * แล้วการ์ดก็แช่ข้อความเดียวไปจนจบทริปสองวัน ทั้งที่คำถามของคนบนรถเปลี่ยนไป
+     * แล้วตั้งแต่ตอนขึ้นรถ
+     *
+     * แหล่งความจริงคือหมุดที่ทีมงานกดยืนยันหน้างาน ([TripProgressService] — ตัว
+     * เดียวกับที่หน้าวันเดินทางและลิงก์ให้ที่บ้านติดตามใช้) ไม่ใช่นาฬิกา เพราะแผน
+     * เลื่อนได้ทุกทริป แต่หมุดที่กดแล้วคือสิ่งที่เกิดขึ้นจริง
+     *
+     * คืน null เมื่อยังไม่ควรเปลี่ยน — ยังไม่ได้ขึ้นรถ เพิ่งขึ้นรถ หรือรอบนี้ไม่มี
+     * กำหนดการ ซึ่งแปลว่าค้างที่ขั้นเดิม ไม่ใช่ขึ้นการ์ดเปล่า
+     *
+     * @return array{stage: string, headline: string, detail: string, progress: float}|null
+     */
+    private function itineraryLeg(Booking $booking, TripSchedule $schedule, string $stage): ?array
+    {
+        if ($stage !== 'onboard') {
+            return null;
+        }
+
+        // เพิ่งสแกนตั๋วเสร็จ ปล่อยให้ "ขึ้นรถเรียบร้อยแล้ว" ค้างไว้ก่อน — มันคือคำ
+        // ยืนยันที่คนเพิ่งยื่นโทรศัพท์ให้ทีมงานกำลังมองหา
+        $checkedInAt = $booking->checked_in_at;
+        if ($checkedInAt && $checkedInAt->gt(now()->subMinutes(self::ONBOARD_MINUTES))) {
+            return null;
+        }
+
+        $progress = $this->itineraryProgress($schedule);
+        if (! ($progress['has_itinerary'] ?? false)) {
+            return null;
+        }
+
+        $total = (int) $progress['total'];
+        $reached = (int) $progress['reached_count'];
+        $next = $progress['next'];
+
+        if ($next === null) {
+            return [
+                'stage' => 'itinerary',
+                'headline' => 'ครบทุกจุดในกำหนดการแล้ว',
+                'detail' => 'เดินทางกลับโดยสวัสดิภาพ 🎒',
+                'progress' => 1.0,
+            ];
+        }
+
+        return [
+            'stage' => 'itinerary',
+            'headline' => $next['time']
+                ? $next['time'].' น. · '.$next['title']
+                : $next['title'],
+            'detail' => "ถัดไปในกำหนดการ · ผ่านมาแล้ว {$reached} จาก {$total} จุด",
+            'progress' => $total > 0 ? round($reached / $total, 2) : 0.0,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function itineraryProgress(TripSchedule $schedule): array
+    {
+        return $this->progressCache[$schedule->id] ??= $this->tripProgress->forSchedule($schedule);
+    }
+
+    /**
+     * พิกัดจุดรับของใบจองนี้ — จุดรับของรอบก่อน แล้วค่อยหมุดที่ลูกค้าปักเอง
+     *
+     * หมุดที่ปักเองมีพิกัดอยู่บนใบจองอยู่แล้ว ([Booking::custom_pickup_lat]) การไม่
+     * อ่านมันแปลว่าคนกลุ่มนี้เห็นการ์ดค้างอยู่ที่ "เตรียมตัว" ตลอดเช้า ทั้งที่รถ
+     * กำลังวิ่งมาหาเขาจริง ๆ เกณฑ์ "ยังไม่ถูกปฏิเสธ" ใช้ชุดเดียวกับที่แอปคนขับใช้
+     * ตัดสินว่าจุดนี้ต้องแวะไหม
+     *
+     * @return array{lat: float, lng: float}|null
+     */
+    private function pickupCoords(Booking $booking): ?array
+    {
+        $point = $booking->pickupPoint;
+        if ($point && $point->latitude !== null && $point->longitude !== null) {
+            return ['lat' => (float) $point->latitude, 'lng' => (float) $point->longitude];
+        }
+
+        if ($booking->pickup_point_id === null
+            && $booking->custom_pickup_lat !== null
+            && $booking->custom_pickup_lng !== null
+            && $booking->custom_pickup_status !== 'rejected'
+        ) {
+            return [
+                'lat' => (float) $booking->custom_pickup_lat,
+                'lng' => (float) $booking->custom_pickup_lng,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * "23:30 น." — หรือ null เมื่อรอบนี้ไม่ได้กรอกเวลารถออกไว้
+     *
+     * [TripSchedule::effectiveDepartsAt] เติมเที่ยงคืนให้รอบที่ไม่มี `departs_at`
+     * ซึ่งถูกสำหรับการเทียบวัน แต่ห้ามเอาไปพิมพ์ลงการ์ด "รถออกเวลา 00:00 น." เป็น
+     * เวลาที่ไม่มีใครตั้งไว้ และลูกค้าที่ยืนอ่านตอนตีสี่ไม่มีทางรู้ว่ามันคือค่าว่าง
+     */
+    private function departTimeLabel(TripSchedule $schedule): ?string
+    {
+        return $schedule->departs_at
+            ? $schedule->departs_at->format('H:i').' น.'
+            : null;
+    }
+
+    /** ถึงวันเดินทางแล้วหรือยัง — เกณฑ์สำรองของรอบที่ไม่ได้ระบุเวลารถออก */
+    private function departureDayReached(?Carbon $departsAt): bool
+    {
+        return $departsAt !== null
+            && $this->nowThai()->gte($departsAt->copy()->startOfDay());
     }
 
     private function vehicleLabel(TripSchedule $schedule): ?string
