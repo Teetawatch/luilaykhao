@@ -65,6 +65,15 @@
         <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl"></div>
       </div>
 
+      <!-- ประตูขึ้นรถ ฝั่งซ้าย (รถไทยพวงมาลัยขวา ประตูผู้โดยสารจึงอยู่ซ้ายเสมอ)
+           รถตู้ = ประตูเลื่อนติดที่นั่งหน้า A1 · รถบัส = บันไดหน้าสุด ต่ำลงมาเล็กน้อย
+           ยึดระยะจากความสูงของหัวรถซึ่งคงที่ ไม่ใช่ % ของลำตัวที่ยืดตามจำนวนแถว -->
+      <div v-if="hasDoor" class="absolute left-0 z-30 flex flex-col items-center justify-center gap-2 w-6 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 pointer-events-none"
+        :style="doorStyle">
+        <span class="material-symbols-rounded text-[16px] text-amber-700" style="font-variation-settings:'FILL' 1,'wght' 500">door_open</span>
+        <span class="text-[10px] font-black text-amber-700 tracking-wide" style="writing-mode:vertical-rl;text-orientation:mixed;">ประตู</span>
+      </div>
+
       <!-- ล้อ — บอกว่านี่คือรถมองจากด้านบน แค่พอให้รู้ ไม่แย่งสายตาไปจากที่นั่ง -->
       <div class="absolute -left-0.5 top-[24%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
       <div class="absolute -right-0.5 top-[24%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
@@ -120,16 +129,6 @@
               </span>
             </button>
 
-            <!-- ประตูขึ้นรถ — อยู่ติดที่นั่งหน้าฝั่งซ้าย (รถไทยพวงมาลัยขวา
-                 ประตูผู้โดยสารจึงอยู่ซ้ายเสมอ) รถบัสไม่มีที่นั่งคู่คนขับ
-                 ตรงนั้นเป็นบันไดขึ้นลงพอดี -->
-            <div v-if="hasDoor" class="flex flex-col items-center gap-1 shrink-0">
-              <div class="w-12 h-12 rounded-2xl bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
-                <span class="material-symbols-rounded text-[20px] text-gray-400"
-                  style="font-variation-settings:'FILL' 0,'wght' 400">door_open</span>
-              </div>
-              <span class="text-[10px] font-bold text-gray-400">ประตู</span>
-            </div>
           </div>
 
           <!-- Front label -->
@@ -273,6 +272,15 @@ const layoutConfig = computed(() => {
 
 const isBus = computed(() => layoutConfig.value.layout_kind === 'bus');
 const hasDoor = computed(() => (layoutConfig.value.door_rows || []).length > 0);
+
+// ระยะจากขอบบนลำตัวถึงแถวหัวรถ: pt-6 (24) + กระจกหน้า h-9 (36) + pt-1 (4)
+const NOSE_TOP = 64;
+
+// รถตู้: ประตูเลื่อนเริ่มตรงที่นั่งหน้า A1 แล้วยาวลงมาเล็กน้อย
+// รถบัส: บันไดขึ้นลงอยู่หน้าสุด ต่ำลงมาจากกระจกหน้านิดหน่อย
+const doorStyle = computed(() => (isBus.value
+  ? { top: `${NOSE_TOP + 10}px`, height: '74px' }
+  : { top: `${NOSE_TOP}px`, height: '84px' }));
 
 // ─── Own seats ────────────────────────────────────────────────────
 // ที่นั่งที่ผู้ใช้คนนี้ถืออยู่เอง (ล็อกไว้ หรืออยู่ในใบจองของตัวเอง) — ต้องแยกให้ออก
