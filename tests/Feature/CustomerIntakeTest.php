@@ -70,12 +70,22 @@ class CustomerIntakeTest extends TestCase
     }
 
     /** @return array<string, mixed> */
+    /** ผู้เดินทางที่ไม่มีอีเมล — ใช้ทดสอบว่ากฎบังคับกรอกทำงานจริง */
+    private function personBase(array $overrides = []): array
+    {
+        $payload = $this->personPayload($overrides);
+        unset($payload['email']);
+
+        return $payload;
+    }
+
     private function personPayload(array $overrides = []): array
     {
         return array_merge([
             'name' => 'สมชาย ใจดี',
             'nickname' => 'ชาย',
             'phone' => '081-234-5678',
+            'email' => 'somchai@example.com',
             'consent' => '1',
         ], $overrides);
     }
@@ -420,18 +430,17 @@ class CustomerIntakeTest extends TestCase
         Mail::assertNothingQueued();
 
         $intake = CustomerIntake::latest('id')->firstOrFail();
-        $this->post("/g/{$intake->token}", $this->personPayload([
+        $friend = $this->personPayload([
             'name' => 'สมหญิง ใจงาม',
             'phone' => '089-999-9999',
-        ]));
+            'email' => 'somying@example.com',
+        ]);
+        $this->post("/g/{$intake->token}", $friend);
 
         Mail::assertQueued(AdminIntakeReadyMail::class, 1);
 
         // กรอกซ้ำ/แก้ข้อมูลทีหลังต้องไม่ยิงเมลอีกฉบับ
-        $this->post("/g/{$intake->token}", $this->personPayload([
-            'name' => 'สมหญิง ใจงาม',
-            'phone' => '089-999-9999',
-        ]));
+        $this->post("/g/{$intake->token}", $friend);
 
         Mail::assertQueued(AdminIntakeReadyMail::class, 1);
     }
@@ -490,6 +499,32 @@ class CustomerIntakeTest extends TestCase
             ->assertSee('กรอกข้อมูลผู้เดินทางของกลุ่ม · เขาหลวง สุโขทัย', false)
             // การ์ดถูกอ่านโดยคนทั้งแชทกลุ่ม ห้ามมีชื่อใครหลุดไปอยู่ในนั้น
             ->assertDontSee('<meta property="og:description" content="สมชาย', false);
+    }
+
+    /**
+     * อีเมลบังคับกรอกทั้งสองประตู — ใบเสร็จ กำหนดการ และอีเมลยืนยันการจอง
+     * ส่งทางนี้ทางเดียว ไม่มีอีเมลคือลูกค้าไม่ได้รับเอกสารอะไรเลย
+     */
+    public function test_an_email_is_required_on_both_doors(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+
+        $payload = $this->personPayload();
+        unset($payload['email']);
+
+        $this->post("/r/{$link->token}", $payload)->assertSessionHasErrors('email');
+        $this->assertSame(0, CustomerIntake::count());
+
+        // ประตูของกลุ่มก็ต้องเหมือนกัน เพื่อนแต่ละคนมีอีเมลของตัวเอง
+        $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 2]));
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+
+        $friend = $this->personBase();
+        $this->post("/g/{$intake->token}", $friend)->assertSessionHasErrors('email');
+
+        // และรูปแบบต้องเป็นอีเมลจริง ไม่ใช่ข้อความอะไรก็ได้
+        $this->post("/r/{$link->token}", $this->personPayload(['email' => 'ไม่มีอีเมลครับ']))
+            ->assertSessionHasErrors('email');
     }
 
     /** QR ไว้แปะ rich menu ไลน์ / สตอรี่ไอจี / ป้ายหน้าบูธ ที่คัดลอก URL ไม่ได้ */

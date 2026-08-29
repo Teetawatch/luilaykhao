@@ -39,8 +39,8 @@
 </div>
 
 <div class="f">
-    <label class="field" for="email">อีเมล <span class="opt">(ไม่บังคับ)</span></label>
-    <input type="email" id="email" name="email" autocomplete="email" inputmode="email"
+    <label class="field" for="email">อีเมล <span class="req">*</span></label>
+    <input type="email" id="email" name="email" required autocomplete="email" inputmode="email"
            placeholder="สำหรับส่งใบเสร็จและกำหนดการ" value="{{ old('email') }}">
 </div>
 

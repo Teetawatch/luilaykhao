@@ -143,7 +143,8 @@ class PublicIntakeController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'nickname' => ['nullable', 'string', 'max:50'],
             'phone' => ['required', 'string', 'max:20'],
-            'email' => ['nullable', 'email', 'max:120'],
+            // อีเมลบังคับกรอก — ใบเสร็จ กำหนดการ และอีเมลยืนยันการจองส่งทางนี้ทางเดียว
+            'email' => ['required', 'email', 'max:120'],
             'id_card' => ['nullable', 'string', 'max:20', new ThaiIdCard],
             'birth_date' => ['nullable', 'date', 'before:today'],
             'blood_group' => ['nullable', Rule::in(['A', 'B', 'AB', 'O', ''])],
@@ -159,6 +160,8 @@ class PublicIntakeController extends Controller
         ], [
             'name.required' => 'กรุณากรอกชื่อ-นามสกุล',
             'phone.required' => 'กรุณากรอกเบอร์โทรศัพท์',
+            'email.required' => 'กรุณากรอกอีเมล',
+            'email.email' => 'รูปแบบอีเมลไม่ถูกต้อง',
             'birth_date.before' => 'วันเกิดต้องเป็นวันในอดีต',
             'consent.accepted' => 'กรุณายินยอมให้เก็บข้อมูลก่อนส่ง',
             'name_en.required' => 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต',
