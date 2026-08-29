@@ -120,13 +120,15 @@
               </span>
             </button>
 
-            <!-- ประตูหน้า — รถบัสไม่มีที่นั่งคู่คนขับ ตรงนั้นคือบันไดขึ้นลง -->
-            <div v-else-if="isBus" class="flex flex-col items-center gap-1 shrink-0">
-              <div class="w-12 h-12 rounded-2xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center">
-                <span class="material-symbols-rounded text-[20px] text-amber-600"
-                  style="font-variation-settings:'FILL' 1,'wght' 400">door_open</span>
+            <!-- ประตูขึ้นรถ — อยู่ติดที่นั่งหน้าฝั่งซ้าย (รถไทยพวงมาลัยขวา
+                 ประตูผู้โดยสารจึงอยู่ซ้ายเสมอ) รถบัสไม่มีที่นั่งคู่คนขับ
+                 ตรงนั้นเป็นบันไดขึ้นลงพอดี -->
+            <div v-if="hasDoor" class="flex flex-col items-center gap-1 shrink-0">
+              <div class="w-12 h-12 rounded-2xl bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
+                <span class="material-symbols-rounded text-[20px] text-gray-400"
+                  style="font-variation-settings:'FILL' 0,'wght' 400">door_open</span>
               </div>
-              <span class="text-[10px] font-bold text-amber-600">ประตู</span>
+              <span class="text-[10px] font-bold text-gray-400">ประตู</span>
             </div>
           </div>
 
@@ -155,13 +157,9 @@
             :key="rowIdx"
             class="flex items-stretch"
           >
-            <!-- ประตูฝั่งซ้าย (รถไทยพวงมาลัยขวา ประตูผู้โดยสารจึงอยู่ซ้ายเสมอ)
-                 วางตรงแถวที่ประตูอยู่จริง ช่วยให้เลือกที่นั่งใกล้/ไกลประตูได้ตั้งใจ -->
-            <div class="shrink-0 flex items-center justify-start" :style="{ width: gutterPx + 'px' }">
-              <div v-if="doorRows.has(rowDef.row)"
-                class="w-1.5 self-stretch rounded-r-full bg-amber-300"
-                :title="'ประตูขึ้นลงอยู่ตรงแถวนี้'"></div>
-              <span v-if="showRowNumbers" class="w-4 text-[10px] font-black text-gray-300 text-center ml-auto">
+            <!-- เลขแถว — มีเมื่อรถยาวจนนับเองไม่ไหว -->
+            <div class="shrink-0 flex items-center justify-end" :style="{ width: gutterPx + 'px' }">
+              <span v-if="showRowNumbers" class="w-4 text-[10px] font-black text-gray-300 text-center">
                 {{ rowDef.row }}
               </span>
             </div>
@@ -203,12 +201,6 @@
             <!-- ถ่วงให้แถวอยู่กึ่งกลางลำตัวรถจริง ๆ ไม่ใช่กึ่งกลางของพื้นที่ที่เหลือ -->
             <div class="shrink-0" :style="{ width: gutterPx + 'px' }"></div>
           </div>
-        </div>
-
-        <!-- ป้ายประตู วางไว้ครั้งเดียวใต้ผัง ไม่ต้องเขียนซ้ำทุกแถว -->
-        <div v-if="doorRows.size" class="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-amber-600">
-          <div class="w-1.5 h-3.5 rounded-full bg-amber-300"></div>
-          ประตูขึ้นลง
         </div>
 
         <!-- Rear (cargo door) -->
@@ -280,7 +272,7 @@ const layoutConfig = computed(() => {
 });
 
 const isBus = computed(() => layoutConfig.value.layout_kind === 'bus');
-const doorRows = computed(() => new Set((layoutConfig.value.door_rows || []).map(Number)));
+const hasDoor = computed(() => (layoutConfig.value.door_rows || []).length > 0);
 
 // ─── Own seats ────────────────────────────────────────────────────
 // ที่นั่งที่ผู้ใช้คนนี้ถืออยู่เอง (ล็อกไว้ หรืออยู่ในใบจองของตัวเอง) — ต้องแยกให้ออก
@@ -418,9 +410,9 @@ const gapPx = computed(() => (maxSeatsAcross.value >= 5 ? 6 : 10));
 
 const aislePx = computed(() => (maxSeatsAcross.value >= 5 ? 26 : 40));
 
-// ช่องซ้าย (รางประตู + เลขแถว) ถูกถ่วงด้วยช่องขวาเท่ากัน แถวจึงอยู่กึ่งกลาง
-// ลำตัวรถจริง ไม่ใช่กึ่งกลางของพื้นที่ที่เหลือจากรางประตู
-const gutterPx = computed(() => (showRowNumbers.value ? 26 : 10));
+// ช่องเลขแถวฝั่งซ้ายถูกถ่วงด้วยช่องเปล่าฝั่งขวาเท่ากัน แถวจึงอยู่กึ่งกลางลำตัวรถ
+// จริง ไม่ใช่กึ่งกลางของพื้นที่ที่เหลือจากเลขแถว
+const gutterPx = computed(() => (showRowNumbers.value ? 20 : 0));
 
 const seatPx = computed(() => {
   const n = maxSeatsAcross.value;
