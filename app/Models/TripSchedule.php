@@ -360,6 +360,37 @@ class TripSchedule extends Model
     }
 
     /**
+     * ตัวเลือกยานพาหนะของรอบนี้ (รถบัส / รถตู้ / ...) — รอบที่ไม่ได้ตั้งไว้เลย
+     * ทำงานเหมือนเดิมทุกอย่าง: มีพาหนะแบบเดียวคือ transport_type ของรอบ
+     */
+    public function vehicleOptions(): HasMany
+    {
+        return $this->hasMany(ScheduleVehicleOption::class, 'schedule_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function activeVehicleOptions(): HasMany
+    {
+        return $this->vehicleOptions()->where('is_active', true);
+    }
+
+    /**
+     * ลูกค้าต้องเลือกคันไหม — รอบที่มีตัวเลือกใช้งานอยู่ตั้งแต่สองแบบขึ้นไปเท่านั้น
+     * (แบบเดียวไม่ใช่ตัวเลือก มันคือรถของรอบ)
+     */
+    public function offersVehicleChoice(): bool
+    {
+        if ($this->isFlight()) {
+            return false;
+        }
+
+        return $this->relationLoaded('vehicleOptions')
+            ? $this->vehicleOptions->where('is_active', true)->count() > 1
+            : $this->activeVehicleOptions()->count() > 1;
+    }
+
+    /**
      * จุดพิกัดของเส้นทางเดินรถที่แอดมินวาดเอง (กรองเฉพาะรายการที่พิกัดใช้ได้)
      * — มีตั้งแต่ 2 จุดขึ้นไปเมื่อไหร่ เส้นนี้ override เส้นจาก Google Directions
      *
@@ -786,6 +817,48 @@ class TripSchedule extends Model
         $this->booked_seats = $count;
         $this->join_trip_booked_seats = $joinCount;
 
+        // ตัวนับของตัวเลือกยานพาหนะนับใหม่เฉพาะเมื่อมีคนโหลดตัวเลือกมาแล้ว —
+        // เมธอดนี้ถูกเรียกวนทุกรอบในหน้ารายการทริป การยิงคิวรีเพิ่มรอบละครั้ง
+        // ให้รอบส่วนใหญ่ที่ไม่มีตัวเลือกเลยไม่คุ้ม จุดที่ต้องการตัวเลขสด (หน้าจอง
+        // และตอนสร้างการจอง) โหลดตัวเลือกหรือเรียกเมธอดนี้ตรง ๆ อยู่แล้ว
+        if ($this->relationLoaded('vehicleOptions')) {
+            $this->syncVehicleOptionSeats();
+        }
+
         return $count;
+    }
+
+    /**
+     * ตัวนับที่นั่งของแต่ละตัวเลือกยานพาหนะ นับใหม่จากใบจองจริง
+     *
+     * แยกเมธอดไว้เพื่อให้ syncBookedSeats() ยังอ่านง่าย และเพราะรอบส่วนใหญ่
+     * ไม่มีตัวเลือกเลย — คิวรีนี้จึงข้ามไปทั้งก้อนโดยไม่แตะฐานข้อมูลเพิ่ม
+     */
+    public function syncVehicleOptionSeats(): void
+    {
+        $options = $this->relationLoaded('vehicleOptions')
+            ? $this->vehicleOptions
+            : $this->vehicleOptions()->get();
+
+        if ($options->isEmpty()) {
+            return;
+        }
+
+        $counts = BookingPassenger::query()
+            ->join('bookings', 'bookings.id', '=', 'booking_passengers.booking_id')
+            ->where('bookings.schedule_id', $this->id)
+            ->whereIn('bookings.status', self::ACTIVE_BOOKING_STATUSES)
+            ->whereNotNull('bookings.vehicle_option_id')
+            ->groupBy('bookings.vehicle_option_id')
+            ->selectRaw('bookings.vehicle_option_id as option_id, count(*) as seats')
+            ->pluck('seats', 'option_id');
+
+        foreach ($options as $option) {
+            $booked = (int) ($counts[$option->id] ?? 0);
+            if ((int) $option->booked_seats !== $booked) {
+                // เขียนผ่านอินสแตนซ์ที่โหลดมา ค่าที่ resource เรนเดอร์ต่อจึงเป็นค่าสด
+                $option->update(['booked_seats' => $booked]);
+            }
+        }
     }
 }

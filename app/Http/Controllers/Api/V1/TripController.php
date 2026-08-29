@@ -352,7 +352,7 @@ class TripController extends Controller
             ->with(['photos', 'schedules' => function ($q) {
                 $q->where('status', 'open')
                     ->where('departure_date', '>=', now()->startOfDay())
-                    ->with('pickupPoints')
+                    ->with(['pickupPoints', 'vehicleOptions'])
                     // ที่นั่งที่กันไว้ให้คิวรอต้องไม่ถูกนับเป็นของว่างบนหน้าจอง
                     ->withHeldSeats()
                     ->orderBy('departure_date');
@@ -433,7 +433,7 @@ class TripController extends Controller
         $schedules = $trip->schedules()
             ->where('status', 'open')
             ->where('departure_date', '>=', now()->startOfDay())
-            ->with(['vehicle', 'pickupPoints'])
+            ->with(['vehicle', 'pickupPoints', 'vehicleOptions'])
             ->orderBy('departure_date')
             ->get();
         $schedules->each->syncBookedSeats();

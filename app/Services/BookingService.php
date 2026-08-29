@@ -11,6 +11,7 @@ use App\Models\LoyaltyReward;
 use App\Models\Payment;
 use App\Models\Promotion;
 use App\Models\SchedulePickupPoint;
+use App\Models\ScheduleVehicleOption;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -53,6 +54,7 @@ class BookingService
         bool $isGift = false,
         ?string $giftFromName = null,
         ?string $giftMessage = null,
+        ?int $vehicleOptionId = null,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -66,7 +68,7 @@ class BookingService
         $bookedBeforeBooking = null;
         $bookedAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -96,6 +98,18 @@ class BookingService
             }
 
             $participantCount = count($passengers);
+
+            // รถที่ลูกค้าเลือก (รอบที่วิ่งทั้งบัสและตู้) — จอยทริปไม่ขึ้นรถของเรา
+            // และรอบที่บินไปไม่มีรถ ทั้งสองกรณีจึงไม่มีตัวเลือกให้เลือก
+            $vehicleOption = ($isJoinTrip || $schedule->isFlight())
+                ? null
+                : $this->resolveVehicleOption($schedule, $vehicleOptionId, $participantCount);
+
+            // ที่นั่งบนผังเป็นของรถหลักของรอบคันเดียว — คันอื่นทีมงานจัดที่นั่งหน้างาน
+            // (เหตุผลเต็มอยู่ที่ ScheduleVehicleOption::usesScheduleSeatMap)
+            if ($vehicleOption && ! $vehicleOption->usesScheduleSeatMap($schedule)) {
+                $seatIds = [];
+            }
 
             // จอยทริปไม่กินที่นั่งบนรถ แต่มีโควตาของตัวเองถ้าแอดมินกำหนดเพดานไว้
             // (ไม่กำหนด = ไม่จำกัด เหมือนพฤติกรรมเดิม)
@@ -334,7 +348,13 @@ class BookingService
                 ));
             }
 
-            $totalAmount = $passengersSubtotal + $addonsTotal + $rentalsTotal;
+            // ส่วนต่างของรถที่เลือก คิดต่อคนหลังราคาจุดขึ้นรถ — ไม่ทับราคาโซน
+            // แต่บวก/ลบจากราคาที่ลูกค้าเห็นอยู่แล้ว (ดูคอมเมนต์ในไมเกรชัน)
+            $vehicleAdjustment = $vehicleOption
+                ? (float) $vehicleOption->price_adjustment * $participantCount
+                : 0.0;
+
+            $totalAmount = $passengersSubtotal + $vehicleAdjustment + $addonsTotal + $rentalsTotal;
 
             // ... rest of the logic remains the same until Booking::create
             // I need to include the rest of the logic here because I'm replacing a large block.
@@ -420,6 +440,9 @@ class BookingService
                 'schedule_id' => $scheduleId,
                 'pickup_region' => $pickupRegion,
                 'pickup_point_id' => $pickupPoint?->id,
+                'vehicle_option_id' => $vehicleOption?->id,
+                'vehicle_option_label' => $vehicleOption?->label,
+                'vehicle_option_adjustment' => $vehicleOption ? (float) $vehicleOption->price_adjustment : null,
                 'custom_pickup_label' => $useCustomPickup ? $customPickup['label'] : null,
                 'custom_pickup_lat' => $useCustomPickup ? $customPickup['lat'] : null,
                 'custom_pickup_lng' => $useCustomPickup ? $customPickup['lng'] : null,
@@ -482,6 +505,10 @@ class BookingService
             }
 
             if (! $isJoinTrip) {
+                // โควตาของตัวเลือกรถเป็นกองย่อยในเพดานรวมของรอบ ต้องขยับพร้อมกัน
+                // ไม่งั้นคันที่เต็มแล้วจะยังดูว่างจนกว่าจะมีใครเรียก syncBookedSeats()
+                $vehicleOption?->increment('booked_seats', $participantCount);
+
                 $bookedBeforeBooking = (int) $schedule->booked_seats;
                 $schedule->increment('booked_seats', $participantCount);
                 // increment() also updates the in-memory attribute, so the
@@ -983,6 +1010,45 @@ class BookingService
     /**
      * ลูกค้าเปลี่ยนจุดรับ — คงราคาเดิม ใช้ได้ก่อนเดินทาง 1 วัน
      */
+    /**
+     * หาตัวเลือกยานพาหนะที่ลูกค้าเลือก พร้อมตรวจว่ายังจองได้จริง
+     *
+     * ไม่ได้ส่งมา = ช่องทางที่ยังไม่รู้จักฟีเจอร์นี้ (แอปรุ่นก่อนหน้า, LIFF) —
+     * ให้ตกลงมาที่ตัวเลือกแรกที่ "ราคาปกติ" (ส่วนต่าง 0) เท่านั้น เพื่อไม่ให้
+     * ใครถูกชาร์จส่วนต่างของรถที่เขาไม่เคยเห็นหน้าจอให้เลือก
+     */
+    private function resolveVehicleOption(TripSchedule $schedule, ?int $optionId, int $participantCount): ?ScheduleVehicleOption
+    {
+        // นับที่นั่งของแต่ละคันใหม่ก่อนตัดสินว่ายังว่างไหม — การยกเลิกการจองเรียก
+        // syncBookedSeats() โดยไม่ได้โหลดตัวเลือกมาด้วย ตัวนับจึงอาจค้างสูงเกินจริง
+        $schedule->syncVehicleOptionSeats();
+
+        $options = $schedule->activeVehicleOptions()->get();
+        if ($options->isEmpty()) {
+            return null;
+        }
+
+        if (! $optionId) {
+            return $options->firstWhere(fn (ScheduleVehicleOption $option) => (float) $option->price_adjustment === 0.0);
+        }
+
+        $option = $options->firstWhere('id', $optionId);
+
+        if (! $option) {
+            throw new \Exception('ตัวเลือกยานพาหนะที่เลือกไม่อยู่ในรอบเดินทางนี้');
+        }
+
+        if (! $option->canFit($participantCount)) {
+            throw new \Exception(
+                $option->available_seats > 0
+                    ? $option->label.'เหลือ '.$option->available_seats.' ที่ ไม่พอสำหรับ '.$participantCount.' ท่าน'
+                    : $option->label.'ของรอบนี้เต็มแล้ว กรุณาเลือกคันอื่น'
+            );
+        }
+
+        return $option;
+    }
+
     public function changePickupPoint(Booking $booking, int $pickupPointId): Booking
     {
         return DB::transaction(function () use ($booking, $pickupPointId) {

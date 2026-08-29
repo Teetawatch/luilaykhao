@@ -92,6 +92,7 @@
       <!-- Step: Region Picker (Trekking only, before seat map / passenger info) -->
       <div v-if="isTrekking && step === 0" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div class="lg:col-span-7 xl:col-span-8"> 
+          <VehicleOptionPicker :options="vehicleOptions" v-model="selectedVehicleOptionId" />
           <div class="mb-8 bg-white p-6 md:p-8 rounded-3xl border border-gray-100">
             <div class="flex items-center gap-3 mb-2">
               <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
@@ -234,14 +235,17 @@
             <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
                 @click="confirmRegion"
-                :disabled="!selectedPickup && !customPickup && pickupPoints.length > 0"
+                :disabled="(offersVehicleChoice && !selectedVehicleOptionId) || (!selectedPickup && !customPickup && pickupPoints.length > 0)"
                 class="w-full sm:w-auto bg-teal-600 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed group flex items-center justify-center gap-3">
                 <span>{{ pickupPoints.length ? 'ไปเลือกที่นั่ง' : 'ขั้นตอนถัดไป' }}</span>
                 <span class="material-symbols-rounded transition-transform group-hover:translate-x-1">arrow_forward</span>
               </button>
             </div>
           </div>
-          <p v-if="!selectedPickup && !customPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-gray-500 font-medium">
+          <p v-if="offersVehicleChoice && !selectedVehicleOptionId" class="text-center mt-4 text-sm text-gray-500 font-medium">
+            เลือกประเภทรถก่อน จึงจะไปขั้นตอนถัดไปได้
+          </p>
+          <p v-else-if="!selectedPickup && !customPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-gray-500 font-medium">
             เลือกจุดขึ้นรถก่อน จึงจะไปขั้นตอนถัดไปได้
           </p>
         </div>
@@ -316,6 +320,9 @@
 
           <!-- Step 0: Seat Map -->
           <div v-if="step === (isTrekking ? 1 : 0) && hasSeatMap" class="space-y-6">
+
+            <!-- รอบที่วิ่งหลายคันคนละราคา — ถามก่อนเลือกที่นั่ง เพราะคันรองไม่มีผัง -->
+            <VehicleOptionPicker v-if="step === 0" :options="vehicleOptions" v-model="selectedVehicleOptionId" />
 
             <!-- Header card -->
             <div class="bg-white rounded-3xl border border-gray-100 overflow-hidden">
@@ -471,6 +478,7 @@
 
           <!-- Passenger Info step -->
           <div v-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)">
+            <VehicleOptionPicker v-if="step === 0" :options="vehicleOptions" v-model="selectedVehicleOptionId" />
             <div class="mb-8 bg-white p-6 rounded-3xl border border-gray-100">
               <h2 class="text-2xl font-bold text-gray-900 mb-2">ข้อมูลผู้เดินทาง</h2>
               <p class="text-gray-500">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการเดินทาง</p>
@@ -1272,7 +1280,15 @@
                         <span class="font-bold text-gray-900">฿{{ passengerTicketPrice(p).toLocaleString() }}</span>
                       </div>
                     </template>
-                    <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
+                    <div v-if="selectedVehicleOption && vehicleAdjustment !== 0" class="flex justify-between items-center text-sm text-teal-700">
+                <span class="font-bold flex items-center gap-2 min-w-0">
+                  <span class="material-symbols-rounded text-[16px] shrink-0">directions_bus</span>
+                  <span class="truncate">{{ selectedVehicleOption.label }}</span>
+                  <span class="shrink-0 text-teal-500 font-bold">×{{ seatCount }}</span>
+                </span>
+                <span class="font-bold shrink-0">{{ vehicleAdjustment > 0 ? '+' : '-' }}฿{{ (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }}</span>
+              </div>
+              <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
                       <span class="flex items-center gap-2 min-w-0">
                         <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-amber-100" />
                         <span v-else class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
@@ -1289,6 +1305,14 @@
                         <span class="shrink-0 text-sky-500 font-bold">×{{ item.quantity }}</span>
                       </span>
                       <span class="font-bold shrink-0">+฿{{ rentalLineTotal(item).toLocaleString() }}</span>
+                    </div>
+                    <div v-if="selectedVehicleOption && vehicleAdjustment !== 0" class="flex justify-between items-center text-sm text-teal-700">
+                      <span class="font-bold flex items-center gap-2 min-w-0">
+                        <span class="material-symbols-rounded text-[16px] shrink-0">directions_bus</span>
+                        <span class="truncate">{{ selectedVehicleOption.label }}</span>
+                        <span class="shrink-0 text-teal-500 font-bold">×{{ seatCount }}</span>
+                      </span>
+                      <span class="font-bold shrink-0">{{ vehicleAdjustment > 0 ? '+' : '-' }}฿{{ (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }}</span>
                     </div>
                     <div v-if="promotionData" class="flex justify-between text-sm text-teal-700 pt-2 border-t border-gray-100">
                       <span class="flex items-center gap-1 font-medium">
@@ -1738,7 +1762,7 @@
 
         <button v-else-if="isTrekking && step === 0"
           @click="confirmRegion"
-          :disabled="!selectedPickup && !customPickup && pickupPoints.length > 0"
+          :disabled="(offersVehicleChoice && !selectedVehicleOptionId) || (!selectedPickup && !customPickup && pickupPoints.length > 0)"
           class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
           <span>ไปเลือกที่นั่ง</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
@@ -1768,6 +1792,7 @@ import SeatMap from '../components/SeatMap.vue';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import CustomPickupModal from '../components/CustomPickupModal.vue';
 import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
+import VehicleOptionPicker from '../components/VehicleOptionPicker.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
@@ -1861,6 +1886,7 @@ const promotionError = ref('');
 
 const hasSeatMap = computed(() => {
   if (isJoinTrip.value) return false;
+  if (!vehicleAllowsSeatMap.value) return false;
   return seatsStore.seatMap?.has_seat_map ?? false;
 });
 // เหตุผลที่รอบนี้ไม่มีผังที่นั่ง (เช่น บินไป สายการบินจัดที่นั่งเอง) — ว่างไว้
@@ -1919,6 +1945,35 @@ const pickupPoints = computed(() => {
   const filtered = all.filter(pt => pt.region === preselectedRegion);
   return filtered.length ? filtered : all;
 });
+// ประเภทรถของรอบ (บัส/ตู้ คนละราคา) — แบบเดียวไม่ใช่ตัวเลือก มันคือรถของรอบ
+const vehicleOptions = computed(() => {
+  if (isJoinTrip.value || isFlightSchedule.value) return [];
+  return schedule.value?.vehicle_options || [];
+});
+const offersVehicleChoice = computed(() => vehicleOptions.value.length > 1);
+const selectedVehicleOptionId = ref(null);
+const selectedVehicleOption = computed(() =>
+  vehicleOptions.value.find(option => option.id === selectedVehicleOptionId.value) || null);
+// ส่วนต่างต่อคนของคันที่เลือก (0 เมื่อยังไม่ได้เลือกหรือรอบนี้มีคันเดียว)
+const vehicleAdjustment = computed(() => Number(selectedVehicleOption.value?.price_adjustment || 0));
+// คันรองไม่มีผังที่นั่งของตัวเอง — ทีมงานจัดที่นั่งหน้างาน (เซิร์ฟเวอร์ตัดสิน)
+const vehicleAllowsSeatMap = computed(() => {
+  const option = selectedVehicleOption.value;
+  if (!option) return true;
+  return option.uses_seat_map !== false;
+});
+
+// รอบที่มีแบบเดียวไม่ต้องให้กด และค่าที่ค้างจากรอบก่อนต้องหลุดไปเอง
+watch(vehicleOptions, (options) => {
+  if (options.length === 1) {
+    selectedVehicleOptionId.value = options[0].id;
+    return;
+  }
+  if (!options.some(option => option.id === selectedVehicleOptionId.value)) {
+    selectedVehicleOptionId.value = null;
+  }
+}, { immediate: true });
+
 const selectedPickup = ref(null);
 // จุดรับที่ลูกค้าปักหมุดเอง { label, lat, lng, note } — ใช้เมื่อไม่มีจุดที่กำหนดที่สะดวก
 const customPickup = ref(null);
@@ -2636,15 +2691,18 @@ const rentalLineTotal = (item) => item.price * (item.quantity ?? rentalQty(item.
 const rentalsTotal = computed(() => selectedRentalItems.value.reduce((sum, item) => sum + rentalLineTotal(item), 0));
 
 const passengerTicketPrice = (p) => {
+  // ส่วนต่างของรถบวกท้ายราคาที่ได้ ไม่ทับราคาโซนของจุดขึ้นรถ (ตรงกับ BookingService)
   if (pickupPoints.value.length && p.pickup_point_id) {
     const pt = pickupPoints.value.find(pp => pp.id === p.pickup_point_id);
-    if (pt) return Number(pt.price);
+    if (pt) return Number(pt.price) + vehicleAdjustment.value;
   }
-  return effectivePrice.value;
+  return effectivePrice.value + vehicleAdjustment.value;
 };
 
 const passengersSubtotal = computed(() => {
-  if (!pickupPoints.value.length) return effectivePrice.value * seatCount.value;
+  if (!pickupPoints.value.length) {
+    return (effectivePrice.value + vehicleAdjustment.value) * seatCount.value;
+  }
   return passengers.value.reduce((sum, p) => sum + passengerTicketPrice(p), 0);
 });
 
@@ -2876,6 +2934,7 @@ async function createBooking() {
       // แล้วมองข้ามหมุด (useCustomPickup = false) ทำให้ข้อมูลหมุดไม่ถูกบันทึก
       pickup_region: usingCustomPickup ? null : (selectedPickup.value?.region || preselectedRegion || null),
       pickup_point_id: usingCustomPickup ? null : (selectedPickup.value?.id || null),
+      vehicle_option_id: selectedVehicleOptionId.value,
       is_group: isGroup.value,
       group_name: isGroup.value ? groupName.value : null,
       group_notes: isGroup.value ? groupNotes.value : null,

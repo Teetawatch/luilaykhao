@@ -56,6 +56,13 @@ class BookingResource extends JsonResource
                     'notes' => $this->pickupPoint->notes,
                 ];
             }),
+            // รถที่เลือกไว้ อ่านจากสำเนาบนใบจอง ไม่ใช่จากตัวเลือกปัจจุบันของรอบ
+            // (แอดมินแก้ราคา/ลบตัวเลือกทีหลังได้ แต่ยอดของใบนี้ต้องอธิบายตัวเองได้)
+            'vehicle_option' => $this->when($this->vehicle_option_label !== null, fn () => [
+                'id' => $this->vehicle_option_id,
+                'label' => $this->vehicle_option_label,
+                'price_adjustment' => (float) $this->vehicle_option_adjustment,
+            ]),
             'custom_pickup' => $this->when($this->custom_pickup_status !== null, fn () => [
                 'label' => $this->custom_pickup_label,
                 'lat' => $this->custom_pickup_lat,

@@ -39,6 +39,7 @@ class Booking extends Model
 
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
+        'vehicle_option_id', 'vehicle_option_label', 'vehicle_option_adjustment',
         'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
         'custom_pickup_status', 'custom_pickup_price', 'custom_pickup_reject_reason', 'custom_pickup_resolved_at',
         'is_group', 'group_name', 'group_notes',
@@ -98,6 +99,7 @@ class Booking extends Model
             'custom_pickup_lat' => 'float',
             'custom_pickup_lng' => 'float',
             'custom_pickup_price' => 'decimal:2',
+            'vehicle_option_adjustment' => 'decimal:2',
             'custom_pickup_resolved_at' => 'datetime',
         ];
     }
@@ -110,6 +112,15 @@ class Booking extends Model
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    /**
+     * รถที่ลูกค้าเลือกตอนจอง (รอบที่วิ่งหลายแบบ) — อาจถูกลบทิ้งภายหลัง
+     * ชื่อและส่วนต่างราคาที่ใช้จริงอ่านจากคอลัมน์สำเนาบนใบจองเสมอ
+     */
+    public function vehicleOption(): BelongsTo
+    {
+        return $this->belongsTo(ScheduleVehicleOption::class, 'vehicle_option_id');
     }
 
     /**

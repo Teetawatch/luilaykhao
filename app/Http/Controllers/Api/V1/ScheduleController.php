@@ -22,7 +22,7 @@ class ScheduleController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $schedule = TripSchedule::with(['trip.photos', 'vehicle', 'pickupPoints'])
+        $schedule = TripSchedule::with(['trip.photos', 'vehicle', 'pickupPoints', 'vehicleOptions'])
             ->withHeldSeats()
             ->findOrFail($id);
         $schedule->syncBookedSeats();

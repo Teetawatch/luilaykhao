@@ -200,6 +200,9 @@ class CreateBookingRequest extends FormRequest
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
             'is_join_trip' => ['nullable', 'boolean'],
+            // ประเภทรถที่เลือก (รอบที่วิ่งทั้งบัสและตู้) — ความเป็นเจ้าของของรอบ
+            // ตรวจใน BookingService ที่เดียว เพราะต้องอ่านโควตาที่นั่งพร้อมกัน
+            'vehicle_option_id' => ['nullable', 'integer', 'exists:schedule_vehicle_options,id'],
             'is_gift' => ['nullable', 'boolean'],
             'gift_from_name' => ['nullable', 'string', 'max:100', 'required_if:is_gift,true'],
             'gift_message' => ['nullable', 'string', 'max:500'],
@@ -271,6 +274,16 @@ class CreateBookingRequest extends FormRequest
                         'กรุณาเลือกจุดรับผู้โดยสาร หรือปักหมุดจุดรับเอง'
                     );
                 }
+            }
+
+            // รอบที่ให้เลือกได้ว่าจะนั่งคันไหน ต้องเลือกก่อน — บังคับเฉพาะช่องทางที่
+            // ส่งคีย์นี้มาแล้ว (= หน้าจอมีตัวเลือกให้กด) แอปรุ่นก่อนหน้าที่ยังไม่มี
+            // ช่องเลือกจะตกไปที่ตัวเลือกราคาปกติแทน (BookingService::resolveVehicleOption)
+            if (! $this->boolean('is_join_trip')
+                && $this->has('vehicle_option_id')
+                && blank($this->input('vehicle_option_id'))
+                && $schedule->offersVehicleChoice()) {
+                $validator->errors()->add('vehicle_option_id', 'กรุณาเลือกประเภทรถที่จะเดินทาง');
             }
 
             if ($schedule->trip->is_women_only) {

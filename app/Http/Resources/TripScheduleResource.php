@@ -156,6 +156,21 @@ class TripScheduleResource extends JsonResource
                         : [])
                     ->values()
             ),
+            // ตัวเลือกยานพาหนะของรอบ (รถบัส / รถตู้) พร้อมส่วนต่างราคาต่อคน —
+            // มีมากกว่าหนึ่งรายการเมื่อไหร่ หน้าจองต้องให้ลูกค้าเลือกก่อนไปต่อ
+            'vehicle_options' => $this->whenLoaded(
+                'vehicleOptions',
+                fn () => $this->vehicleOptions
+                    ->where('is_active', true)
+                    ->values()
+                    ->map(fn ($option) => (new ScheduleVehicleOptionResource($option))
+                        ->forSchedule($this->resource)
+                        ->toArray($request))
+            ),
+            'offers_vehicle_choice' => $this->when(
+                $this->relationLoaded('vehicleOptions'),
+                fn () => $this->offersVehicleChoice()
+            ),
             'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
             // เส้นทางเดินรถที่แอดมินวาดเอง (จุดดิบสำหรับ editor; ลูกค้าได้ polyline
             // ที่ encode แล้วผ่าน /schedules/{id}/route อยู่แล้ว จึงไม่ใช่ความลับ)

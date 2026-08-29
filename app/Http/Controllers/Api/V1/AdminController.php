@@ -11,6 +11,7 @@ use App\Http\Requests\Admin\StoreVehicleRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\DriverResource;
 use App\Http\Resources\SchedulePickupPointResource;
+use App\Http\Resources\ScheduleVehicleOptionResource;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Http\Resources\VehicleResource;
@@ -29,6 +30,7 @@ use App\Models\InstallmentPayment;
 use App\Models\Review;
 use App\Models\SchedulePickupPoint;
 use App\Models\ScheduleStaffAssignment;
+use App\Models\ScheduleVehicleOption;
 use App\Models\Setting;
 use App\Models\SmartNotification;
 use App\Models\Trip;
@@ -339,7 +341,7 @@ class AdminController extends Controller
 
     public function schedules(Request $request): JsonResponse
     {
-        $query = TripSchedule::with(['trip', 'vehicle', 'pickupPoints']);
+        $query = TripSchedule::with(['trip', 'vehicle', 'pickupPoints', 'vehicleOptions']);
 
         $query->withCount([
             'bookings as active_bookings_count' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
@@ -398,7 +400,7 @@ class AdminController extends Controller
             : 'สร้างรอบเดินทางสำเร็จ';
 
         return $this->success(
-            new TripScheduleResource($schedule->load('trip', 'vehicle', 'pickupPoints')),
+            new TripScheduleResource($schedule->load('trip', 'vehicle', 'pickupPoints', 'vehicleOptions')),
             $message,
             201,
         );
@@ -1905,6 +1907,7 @@ class AdminController extends Controller
             'seat_ids.*' => ['nullable', 'string', 'max:30'],
             'pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
             'pickup_region' => ['nullable', 'string', 'max:80'],
+            'vehicle_option_id' => ['nullable', 'integer', 'exists:schedule_vehicle_options,id'],
             'is_join_trip' => ['nullable', 'boolean'],
             'status' => ['required', 'in:pending,confirmed'],
             'payment_method' => ['nullable', 'string', 'max:100'],
@@ -1925,7 +1928,7 @@ class AdminController extends Controller
             'intake_ids.*' => ['integer', 'exists:customer_intakes,id'],
         ]);
 
-        $schedule = TripSchedule::with(['trip', 'pickupPoints'])->findOrFail($request->schedule_id);
+        $schedule = TripSchedule::with(['trip', 'pickupPoints', 'vehicleOptions'])->findOrFail($request->schedule_id);
         $schedule->syncBookedSeats();
 
         $fullName = trim($request->input('customer_name') ?: trim(($request->input('name') ?? '').' '.($request->input('surname') ?? '')));
@@ -2051,6 +2054,19 @@ class AdminController extends Controller
         // fallback มาที่หัว) ถ้าแอดมินไม่ได้เลือกจุดหลัก ใช้จุดของคนแรกที่เลือกไว้
         $pickupPoint ??= collect($passengerPickups)->first(fn ($point) => $point !== null);
 
+        // ประเภทรถที่แอดมินเลือกให้ลูกค้า (รอบที่วิ่งทั้งบัสและตู้) — ส่วนต่างคิด
+        // ต่อคนบนราคาที่ได้จากจุดรับ เหมือนฝั่งลูกค้าใน BookingService
+        $vehicleOption = null;
+        if (! $isJoinTrip && $request->filled('vehicle_option_id')) {
+            $vehicleOption = $schedule->vehicleOptions->firstWhere('id', (int) $request->vehicle_option_id);
+            if (! $vehicleOption) {
+                return $this->error('ประเภทรถที่เลือกไม่อยู่ในรอบเดินทางนี้', 422);
+            }
+            if (! $vehicleOption->canFit($participantCount)) {
+                return $this->error($vehicleOption->label.'ของรอบนี้เหลือไม่พอสำหรับ '.$participantCount.' ท่าน', 422);
+            }
+        }
+
         $email = $request->input('email');
         $user = User::when($email, fn ($query) => $query->where('email', $email))
             ->when(! $email, fn ($query) => $query->where('phone', $request->phone))
@@ -2079,7 +2095,7 @@ class AdminController extends Controller
             : array_sum(array_map(
                 fn ($point) => (float) ($point?->price ?? $schedule->effective_price),
                 $passengerPickups,
-            ));
+            )) + ((float) ($vehicleOption?->price_adjustment ?? 0) * $participantCount);
         $installmentCount = null;
         $installmentIntervalDays = null;
         $installmentDueDates = [];
@@ -2130,7 +2146,7 @@ class AdminController extends Controller
                 $paidAmount, $paymentType, $installmentCount, $installmentIntervalDays,
                 $depositAmount, $balanceAmount, $balanceDueAt,
                 $isPaid, $paymentRef, $slipPath, $transferDt, $isJoinTrip, $passengers, $seatIds,
-                $holdUntil, $passengerPickups
+                $holdUntil, $passengerPickups, $vehicleOption
             ) {
                 // ล็อกรอบเดินทางแล้วตรวจที่นั่งซ้ำใต้ lock — ทำให้ check-แล้ว-insert เป็น atomic
                 // กัน race กับการจองอื่น (ของลูกค้า/แอดมินคนอื่น) ที่ทำให้ชน unique constraint
@@ -2154,6 +2170,9 @@ class AdminController extends Controller
                     'schedule_id' => $request->schedule_id,
                     'pickup_region' => $pickupPoint?->region ?: $request->input('pickup_region'),
                     'pickup_point_id' => $pickupPoint?->id,
+                    'vehicle_option_id' => $vehicleOption?->id,
+                    'vehicle_option_label' => $vehicleOption?->label,
+                    'vehicle_option_adjustment' => $vehicleOption ? (float) $vehicleOption->price_adjustment : null,
                     'is_group' => $participantCount > 1,
                     'status' => $request->status,
                     'total_amount' => $totalAmount,
@@ -2234,6 +2253,8 @@ class AdminController extends Controller
                 }
 
                 $lockedSchedule->syncBookedSeats();
+                // รอบที่เพิ่งล็อกมายังไม่ได้โหลดตัวเลือกรถ syncBookedSeats() จึงข้ามไป
+                $lockedSchedule->syncVehicleOptionSeats();
 
                 return $booking;
             });
@@ -2427,6 +2448,8 @@ class AdminController extends Controller
                 ->whereIn('status', ['confirmed', 'pending']);
         })->with(['booking.seats', 'booking.pickupPoint', 'booking.user'])->get()->map(function ($p) {
             $p->is_join_trip = $p->booking->is_join_trip ?? false;
+            // รอบที่วิ่งทั้งบัสและตู้ — ใบรายชื่อต้องบอกได้ว่าใครขึ้นคันไหน
+            $p->vehicle_option_label = $p->booking->vehicle_option_label;
 
             return $p;
         });
@@ -3210,6 +3233,93 @@ class AdminController extends Controller
         $point->delete();
 
         return $this->success(null, 'ลบจุดรับผู้โดยสารสำเร็จ');
+    }
+
+    // ─── Schedule Vehicle Options ─────────────────────────────
+    // รอบที่วิ่งหลายคันคนละราคา (บัส/ตู้) — ลูกค้าเลือกเองในหน้าจอง
+
+    public function vehicleOptions(int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::with('vehicleOptions')->findOrFail($scheduleId);
+        $schedule->syncVehicleOptionSeats();
+
+        return $this->success(ScheduleVehicleOptionResource::collection($schedule->vehicleOptions));
+    }
+
+    public function storeVehicleOption(Request $request, int $scheduleId): JsonResponse
+    {
+        TripSchedule::findOrFail($scheduleId);
+
+        $validated = $request->validate($this->vehicleOptionRules());
+        $validated['schedule_id'] = $scheduleId;
+
+        $option = ScheduleVehicleOption::create($validated);
+
+        return $this->success(new ScheduleVehicleOptionResource($option), 'เพิ่มประเภทรถสำเร็จ', 201);
+    }
+
+    public function updateVehicleOption(Request $request, int $scheduleId, int $optionId): JsonResponse
+    {
+        $option = ScheduleVehicleOption::where('schedule_id', $scheduleId)->findOrFail($optionId);
+
+        $validated = $request->validate($this->vehicleOptionRules(updating: true));
+
+        // ลดโควตาต่ำกว่าคนที่จองคันนี้ไปแล้วไม่ได้ — ที่นั่งที่ขายไปแล้วต้องมีที่นั่งจริงรองรับ
+        if (array_key_exists('seats', $validated)
+            && $validated['seats'] !== null
+            && $validated['seats'] < (int) $option->booked_seats) {
+            return $this->error(
+                'ลดที่นั่งเหลือ '.$validated['seats'].' ไม่ได้ เพราะมีคนจอง'.$option->label.'ไปแล้ว '.$option->booked_seats.' ที่',
+                422
+            );
+        }
+
+        $option->update($validated);
+
+        return $this->success(new ScheduleVehicleOptionResource($option->fresh()), 'อัปเดตประเภทรถสำเร็จ');
+    }
+
+    public function deleteVehicleOption(int $scheduleId, int $optionId): JsonResponse
+    {
+        $option = ScheduleVehicleOption::where('schedule_id', $scheduleId)->findOrFail($optionId);
+
+        // ใบจองที่เลือกคันนี้ไว้ยังอ้างถึงอยู่ — ปิดการใช้งานแทนการลบ เพื่อให้
+        // ใบจองเดิมยังชี้ไปที่ตัวเลือกเดิมได้ และคนใหม่เลือกไม่ได้แล้ว
+        if ($option->bookings()
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->exists()) {
+            $option->update(['is_active' => false]);
+
+            return $this->success(
+                new ScheduleVehicleOptionResource($option->fresh()),
+                'มีการจองที่เลือก'.$option->label.'อยู่ จึงปิดไม่ให้เลือกใหม่แทนการลบ'
+            );
+        }
+
+        $option->delete();
+
+        return $this->success(null, 'ลบประเภทรถสำเร็จ');
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function vehicleOptionRules(bool $updating = false): array
+    {
+        $required = $updating ? 'sometimes' : 'required';
+
+        return [
+            'label' => [$required, 'string', 'max:60'],
+            'transport_type' => ['nullable', 'string', Rule::in(Vehicle::TYPES)],
+            'vehicle_id' => ['nullable', 'integer', 'exists:vehicles,id'],
+            // ติดลบได้ = คันนี้ถูกกว่าราคาปกติของรอบ
+            'price_adjustment' => [$required, 'numeric', 'between:-100000,100000'],
+            'seats' => ['nullable', 'integer', 'min:0', 'max:200'],
+            'note' => ['nullable', 'string', 'max:255'],
+            'image_url' => ['nullable', 'url', 'max:2048'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ];
     }
 
     /**

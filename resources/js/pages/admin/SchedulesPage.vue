@@ -184,6 +184,12 @@
                       <button class="btn-icon btn-pickup" @click="openPickupManager(sch)" title="จัดการจุดรับ">
                         <span class="material-symbols-rounded">location_on</span>
                       </button>
+                      <button class="btn-icon"
+                        :class="sch.vehicle_options?.length ? 'btn-active' : 'btn-pickup'"
+                        @click="openRideManager(sch)"
+                        :title="sch.vehicle_options?.length ? `ประเภทรถ (${sch.vehicle_options.length} แบบ)` : 'ตั้งประเภทรถ (บัส/ตู้ คนละราคา)'">
+                        <span class="material-symbols-rounded">directions_bus</span>
+                      </button>
                       <button class="btn-icon" :class="sch.custom_route?.length ? 'btn-active' : 'btn-pickup'"
                         @click="openRouteEditor(sch)"
                         :title="sch.custom_route?.length ? 'เส้นทางเดินรถ (ใช้เส้นวาดเองอยู่)' : 'วาดเส้นทางเดินรถเอง'">
@@ -708,6 +714,124 @@
       </div>
     </div>
 
+    <!-- ประเภทรถของรอบ — รอบเดียววิ่งทั้งบัสและตู้ ลูกค้าเลือกเองในหน้าจอง -->
+    <div class="modal-overlay" v-if="showRideManager">
+      <div class="modal-card modal-xl">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:var(--color-accent);margin-right:8px;">directions_bus</span>ประเภทรถของรอบนี้</h2>
+            <p class="modal-subtitle" v-if="rideSchedule">
+              {{ rideSchedule.trip?.title }} — {{ rideSchedule.departure_date }}
+              · ราคาปกติ ฿{{ Number(rideSchedule.price || 0).toLocaleString() }}
+            </p>
+          </div>
+          <button class="modal-close" @click="showRideManager = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="ride-hint">
+            <span class="material-symbols-rounded" style="font-size:16px;">info</span>
+            <span>
+              ส่วนต่างคิด<b>ต่อคน</b> บวกจากราคาที่ลูกค้าเห็นอยู่แล้ว (ราคารอบ หรือราคาโซนของจุดขึ้นรถ) — ใส่ค่าติดลบได้ถ้าคันนั้นถูกกว่า
+              · ตั้งไว้แบบเดียวลูกค้าจะไม่เห็นตัวเลือก ต้องมีอย่างน้อยสองแบบ
+              · <b>แบบแรกควรเป็นส่วนต่าง 0</b> เพราะเป็นค่าตั้งต้นของช่องทางที่ยังไม่มีปุ่มให้เลือก
+            </span>
+          </div>
+
+          <div v-if="rideLoading" class="pickup-loading"><div class="spinner"></div></div>
+          <template v-else>
+            <div v-if="!rideOptions.length" class="ride-empty">
+              ยังไม่ได้ตั้งประเภทรถ — รอบนี้ใช้พาหนะเดียวตามที่ตั้งไว้ในรอบ ({{ transportLabels[rideSchedule?.transport_type] || rideSchedule?.transport_type }})
+            </div>
+
+            <div v-for="opt in rideOptions" :key="opt.id" class="ride-item" :class="{ 'ride-item-off': !opt.is_active }">
+              <div class="ride-item-grid">
+                <label class="ride-field ride-field-label">
+                  <span>ชื่อที่ลูกค้าเห็น *</span>
+                  <input v-model="opt.label" type="text" maxlength="60" placeholder="รถบัส 40 ที่นั่ง" />
+                </label>
+                <label class="ride-field">
+                  <span>ประเภท</span>
+                  <select v-model="opt.transport_type">
+                    <option :value="null">ไม่ระบุ</option>
+                    <option value="bus">รถบัส</option>
+                    <option value="van">รถตู้</option>
+                    <option value="boat">เรือ</option>
+                  </select>
+                </label>
+                <label class="ride-field">
+                  <span>ส่วนต่างต่อคน (บาท)</span>
+                  <input v-model.number="opt.price_adjustment" type="number" step="1" placeholder="0" />
+                </label>
+                <label class="ride-field">
+                  <span>โควตาที่นั่ง</span>
+                  <input v-model.number="opt.seats" type="number" min="0" placeholder="ไม่จำกัด" />
+                </label>
+                <label class="ride-field ride-field-note">
+                  <span>หมายเหตุ</span>
+                  <input v-model="opt.note" type="text" maxlength="255" placeholder="ที่นั่งกว้าง มีห้องน้ำบนรถ" />
+                </label>
+                <label class="ride-field ride-field-toggle">
+                  <span>เปิดให้เลือก</span>
+                  <input v-model="opt.is_active" type="checkbox" />
+                </label>
+              </div>
+              <div class="ride-item-foot">
+                <span class="ride-price">
+                  ลูกค้าจ่าย ฿{{ ridePriceLabel(opt) }}/คน
+                  <template v-if="opt.seats !== null && opt.seats !== ''"> · จองแล้ว {{ opt.booked_seats }}/{{ opt.seats }} ที่</template>
+                  <template v-else> · จองแล้ว {{ opt.booked_seats }} ที่ (ไม่จำกัดโควตา)</template>
+                </span>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn-sm btn-primary" @click="saveRideOption(opt)" :disabled="rideSaving">
+                    <span class="material-symbols-rounded">save</span> บันทึก
+                  </button>
+                  <button class="btn-icon btn-delete" @click="deleteRideOption(opt)" title="ลบ">
+                    <span class="material-symbols-rounded">delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <form class="ride-add" @submit.prevent="createRideOption">
+              <div class="ride-item-grid">
+                <label class="ride-field ride-field-label">
+                  <span>เพิ่มประเภทรถ *</span>
+                  <input v-model="rideForm.label" type="text" maxlength="60" placeholder="รถตู้ VIP 9 ที่นั่ง" />
+                </label>
+                <label class="ride-field">
+                  <span>ประเภท</span>
+                  <select v-model="rideForm.transport_type">
+                    <option :value="null">ไม่ระบุ</option>
+                    <option value="bus">รถบัส</option>
+                    <option value="van">รถตู้</option>
+                    <option value="boat">เรือ</option>
+                  </select>
+                </label>
+                <label class="ride-field">
+                  <span>ส่วนต่างต่อคน (บาท)</span>
+                  <input v-model.number="rideForm.price_adjustment" type="number" step="1" placeholder="0" />
+                </label>
+                <label class="ride-field">
+                  <span>โควตาที่นั่ง</span>
+                  <input v-model.number="rideForm.seats" type="number" min="0" placeholder="ไม่จำกัด" />
+                </label>
+                <label class="ride-field ride-field-note">
+                  <span>หมายเหตุ</span>
+                  <input v-model="rideForm.note" type="text" maxlength="255" placeholder="ที่นั่งกว้าง มีห้องน้ำบนรถ" />
+                </label>
+                <div class="ride-field ride-field-toggle">
+                  <span>&nbsp;</span>
+                  <button class="btn-sm btn-primary" type="submit" :disabled="rideSaving || !rideForm.label">
+                    <span class="material-symbols-rounded">add</span> เพิ่ม
+                  </button>
+                </div>
+              </div>
+            </form>
+          </template>
+        </div>
+      </div>
+    </div>
+
     <!-- Route Editor Modal — วาดเส้นทางเดินรถเองบนแผนที่ (override เส้นจาก Google) -->
     <div class="modal-overlay" v-if="showRouteEditor">
       <div class="modal-card modal-xl">
@@ -829,6 +953,11 @@
                         <div class="p-pickup" v-if="p.booking?.pickupPoint">
                           <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-accent);">location_on</span>
                           {{ p.booking.pickupPoint.pickup_location }}
+                        </div>
+                        <!-- รอบที่วิ่งหลายคัน — ต้องรู้ว่าคนนี้ขึ้นคันไหน -->
+                        <div class="p-pickup" v-if="p.vehicle_option_label">
+                          <span class="material-symbols-rounded" style="font-size:14px;color:var(--color-accent);">directions_bus</span>
+                          {{ p.vehicle_option_label }}
                         </div>
                       </div>
                     </td>
@@ -3191,6 +3320,94 @@ const pickupLoading = ref(false);
 const pickupSubmitting = ref(false);
 const editingPickup = ref(null);
 const addingInRegion = ref(null); // which region's inline-add form is open
+
+// ─── ประเภทรถของรอบ (บัส/ตู้ คนละราคา) ─────────────────────
+// ส่วนต่างคิดต่อคน บวกท้ายราคาที่ลูกค้าเห็น — ไม่ใช่ราคาเต็มที่ทับราคาโซนจุดรับ
+const showRideManager = ref(false);
+const rideSchedule = ref(null);
+const rideOptions = ref([]);
+const rideLoading = ref(false);
+const rideSaving = ref(false);
+const rideForm = reactive({ label: '', transport_type: null, price_adjustment: 0, seats: null, note: '' });
+
+const ridePriceLabel = (opt) => {
+  const base = Number(rideSchedule.value?.price || 0);
+  return (base + Number(opt.price_adjustment || 0)).toLocaleString();
+};
+
+const openRideManager = async (sch) => {
+  rideSchedule.value = sch;
+  Object.assign(rideForm, { label: '', transport_type: null, price_adjustment: 0, seats: null, note: '' });
+  showRideManager.value = true;
+  await loadRideOptions(sch.id);
+};
+
+const loadRideOptions = async (scheduleId) => {
+  rideLoading.value = true;
+  try {
+    const res = await api.get(`/admin/schedules/${scheduleId}/vehicle-options`);
+    rideOptions.value = res.data.data;
+  } catch {
+    rideOptions.value = [];
+  } finally {
+    rideLoading.value = false;
+  }
+};
+
+// ช่องว่าง = ไม่จำกัดโควตา ต้องส่ง null ไม่ใช่ '' ไม่งั้น validation ตีเป็นสตริง
+const rideSeatsValue = (seats) => (seats === '' || seats === null || seats === undefined ? null : Number(seats));
+
+const createRideOption = async () => {
+  if (!rideForm.label) return;
+  rideSaving.value = true;
+  try {
+    await api.post(`/admin/schedules/${rideSchedule.value.id}/vehicle-options`, {
+      ...rideForm,
+      price_adjustment: Number(rideForm.price_adjustment || 0),
+      seats: rideSeatsValue(rideForm.seats),
+    });
+    Object.assign(rideForm, { label: '', transport_type: null, price_adjustment: 0, seats: null, note: '' });
+    await loadRideOptions(rideSchedule.value.id);
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'เพิ่มประเภทรถไม่สำเร็จ');
+  } finally {
+    rideSaving.value = false;
+  }
+};
+
+const saveRideOption = async (opt) => {
+  rideSaving.value = true;
+  try {
+    await api.put(`/admin/schedules/${rideSchedule.value.id}/vehicle-options/${opt.id}`, {
+      label: opt.label,
+      transport_type: opt.transport_type || null,
+      price_adjustment: Number(opt.price_adjustment || 0),
+      seats: rideSeatsValue(opt.seats),
+      note: opt.note || null,
+      is_active: !!opt.is_active,
+    });
+    await loadRideOptions(rideSchedule.value.id);
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'บันทึกไม่สำเร็จ');
+  } finally {
+    rideSaving.value = false;
+  }
+};
+
+const deleteRideOption = async (opt) => {
+  if (!confirm(`ลบ "${opt.label}" ออกจากรอบนี้?`)) return;
+  try {
+    // ตัวเลือกที่มีคนจองอยู่จะถูกปิดแทนการลบ (ฝั่งเซิร์ฟเวอร์ตัดสิน) แล้วบอกกลับมา
+    const res = await api.delete(`/admin/schedules/${rideSchedule.value.id}/vehicle-options/${opt.id}`);
+    if (res.data?.data) alert(res.data.message);
+    await loadRideOptions(rideSchedule.value.id);
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'ลบไม่สำเร็จ');
+  }
+};
 
 // ─── Route Editor (วาดเส้นทางเดินรถเอง) ───────────────────
 // เส้นที่วาดจะ override เส้นจาก Google Directions ในหน้าลูกค้าทั้งหมด
@@ -5782,5 +5999,101 @@ onMounted(() => {
 }
 .route-editor-map :deep(.route-vertex-last) {
   background: #dc2626;
+}
+/* ── ประเภทรถของรอบ (บัส/ตู้ คนละราคา) ── */
+.ride-hint {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2, #f9fafb);
+}
+
+.ride-empty {
+  padding: 16px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.ride-item,
+.ride-add {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.ride-add {
+  border-style: dashed;
+}
+
+.ride-item-off {
+  opacity: 0.55;
+}
+
+.ride-item-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 0.9fr 1fr 0.9fr 1.6fr 0.7fr;
+  gap: 10px;
+}
+
+.ride-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ride-field > span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.ride-field input[type='text'],
+.ride-field input[type='number'],
+.ride-field select {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.ride-field-toggle {
+  align-items: flex-start;
+}
+
+.ride-field-toggle input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin-top: 5px;
+}
+
+.ride-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ride-price {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .ride-item-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 </style>

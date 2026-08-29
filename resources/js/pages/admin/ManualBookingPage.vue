@@ -80,6 +80,21 @@
               <small>ไม่ต้องเลือกที่นั่ง ใช้ราคาจอยทริป {{ formatCurrency(selectedSchedule.join_trip_price || selectedSchedule.price) }}</small>
             </label>
 
+            <label v-if="vehicleOptions.length > 1 && !form.is_join_trip" class="form-field full">
+              <span>ประเภทรถ</span>
+              <select v-model.number="form.vehicle_option_id">
+                <option value="">ไม่ระบุ (ราคาปกติ)</option>
+                <option v-for="option in vehicleOptions" :key="option.id" :value="option.id"
+                  :disabled="option.is_sold_out">
+                  {{ option.label }}
+                  · {{ Number(option.price_adjustment) === 0 ? 'ราคาปกติ' : `${Number(option.price_adjustment) > 0 ? '+' : '-'}${formatCurrency(Math.abs(Number(option.price_adjustment)))}/คน` }}
+                  <template v-if="option.is_sold_out"> · เต็มแล้ว</template>
+                  <template v-else-if="option.available_seats !== null"> · เหลือ {{ option.available_seats }} ที่</template>
+                </option>
+              </select>
+              <small class="field-note">ส่วนต่างคิดต่อคน บวกจากราคาที่ได้จากจุดรับ</small>
+            </label>
+
             <label v-if="pickupPoints.length && !form.is_join_trip" class="form-field full">
               <span>จุดรับหลัก</span>
               <select v-model.number="form.pickup_point_id">
@@ -743,6 +758,7 @@ const form = reactive({
   transfer_time: '',
   is_join_trip: false,
   pickup_point_id: '',
+  vehicle_option_id: '',
   send_email: true,
 });
 
@@ -761,6 +777,12 @@ const titleOptions = computed(() => isWomenOnlyTrip.value
   ? ['นาง', 'นางสาว']
   : ['นาย', 'นาง', 'นางสาว']);
 const pickupPoints = computed(() => selectedSchedule.value?.pickup_points || []);
+// ประเภทรถของรอบ (บัส/ตู้ คนละราคา) — ส่วนต่างคิดต่อคนบนราคาที่ได้จากจุดรับ
+const vehicleOptions = computed(() => selectedSchedule.value?.vehicle_options || []);
+const selectedVehicleOption = computed(
+  () => vehicleOptions.value.find((option) => option.id === Number(form.vehicle_option_id)) || null,
+);
+const vehicleAdjustment = computed(() => Number(selectedVehicleOption.value?.price_adjustment || 0));
 const selectedPickup = computed(() => pickupPoints.value.find((point) => point.id === Number(form.pickup_point_id)) || null);
 const requiresDiveInfo = computed(() => ['diving', 'snorkeling'].includes(selectedTrip.value?.type || selectedSchedule.value?.trip?.type));
 const installmentAllowed = computed(() => Boolean(selectedSchedule.value?.installment_enabled && !form.is_join_trip));
@@ -781,7 +803,7 @@ const priceForPassenger = (passenger) => {
   if (form.is_join_trip) return pricePerPerson.value;
   const own = pickupPoints.value.find((point) => point.id === Number(passenger.pickup_point_id));
 
-  return own ? Number(own.price || 0) : pricePerPerson.value;
+  return (own ? Number(own.price || 0) : pricePerPerson.value) + vehicleAdjustment.value;
 };
 
 // บวกทีละคน ไม่ใช่คูณราคาเดียว — ในใบเดียวกันแต่ละคนขึ้นคนละจุดได้ และราคาจุดรับ
@@ -1144,6 +1166,7 @@ async function fetchTrips() {
 async function onTripChange() {
   form.schedule_id = '';
   form.pickup_point_id = '';
+  form.vehicle_option_id = '';
   clearPassengerPickups();
   resetSeats();
   if (!form.trip_id) return;
@@ -1159,6 +1182,7 @@ async function onTripChange() {
 
 async function onScheduleChange() {
   form.pickup_point_id = '';
+  form.vehicle_option_id = '';
   // จุดรับเป็นของรอบ ไม่ใช่ของทริป — ค้างไว้ข้ามรอบคือส่ง id ของรอบอื่นไปให้เซิร์ฟเวอร์
   clearPassengerPickups();
   form.is_join_trip = false;
@@ -1353,6 +1377,7 @@ function buildBookingPayload() {
   appendFormValue(fd, 'transfer_time', form.transfer_time);
   appendFormValue(fd, 'is_join_trip', form.is_join_trip);
   appendFormValue(fd, 'pickup_point_id', form.pickup_point_id || null);
+  appendFormValue(fd, 'vehicle_option_id', form.vehicle_option_id || null);
   appendFormValue(fd, 'passenger_count', passengers.value.length);
   appendFormValue(fd, 'send_email', form.send_email);
   // มาจากหน้า "ข้อมูลลูกค้าจากลิงก์" — เซิร์ฟเวอร์ปิดทุกกลุ่มที่รวมมาให้เองเมื่อจองสำเร็จ

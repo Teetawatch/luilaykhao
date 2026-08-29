@@ -615,6 +615,12 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/pickup-points/sync-images', [AdminController::class, 'syncPickupImages']);
         Route::put('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'updatePickupPoint']);
         Route::delete('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'deletePickupPoint']);
+
+        // ประเภทรถของรอบ (บัส/ตู้ คนละราคา) — ลูกค้าเลือกเองในหน้าจอง
+        Route::get('schedules/{id}/vehicle-options', [AdminController::class, 'vehicleOptions']);
+        Route::post('schedules/{id}/vehicle-options', [AdminController::class, 'storeVehicleOption']);
+        Route::put('schedules/{id}/vehicle-options/{optionId}', [AdminController::class, 'updateVehicleOption']);
+        Route::delete('schedules/{id}/vehicle-options/{optionId}', [AdminController::class, 'deleteVehicleOption']);
         // เส้นทางเดินรถที่แอดมินวาดเอง — override เส้นจาก Google ในหน้าลูกค้า
         Route::put('schedules/{id}/route', [AdminController::class, 'updateScheduleRoute']);
 
