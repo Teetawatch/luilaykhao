@@ -1,55 +1,62 @@
-@extends('passenger-fill.layout')
+@extends('intake.layout')
 
 @section('title', 'กรอกข้อมูลผู้เดินทาง')
 
-@push('styles')
-<style>
-    .notice { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e;
-              border-radius: 12px; padding: 13px 15px; font-size: 13.5px; margin-bottom: 18px; }
-    .notice strong { display: block; margin-bottom: 2px; }
-</style>
-@endpush
+@php
+    $heroImage = $trip?->cover_image ? url($trip->cover_image) : null;
+    $heroTitle = $trip?->title ?: 'กรอกข้อมูลผู้เดินทาง';
+    $heroEyebrow = $trip ? 'ฟอร์มข้อมูลผู้เดินทาง' : 'ฝากข้อมูลไว้กับทีมงาน';
+    $heroEyebrowIcon = $trip ? 'note' : 'sparkle';
+    $heroSub = $trip
+        ? 'กรอกข้อมูลของคุณไว้ล่วงหน้า ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่งและวิธีชำระเงิน'
+        : 'ยังไม่ต้องรู้ว่าจะไปรอบไหนก็ฝากข้อมูลไว้ได้ ทีมงานจะช่วยแนะนำทริปที่เหมาะกับคุณ';
+    $heroChips = [];
+    if ($trip && $schedule) {
+        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->departureLabelThai()];
+    }
+    $heroChips[] = ['icon' => 'clock', 'text' => 'ใช้เวลาประมาณ 2 นาที'];
+@endphp
 
 @section('content')
-<div class="card">
-    <div class="card-header">
-        <div class="brand">ลุยเลเขา</div>
-        <h1>กรอกข้อมูลผู้เดินทาง</h1>
-        @if ($trip)
-            <p>{{ $trip->title }} · {{ $schedule->departureLabelThai() }}</p>
-        @else
-            <p>ฝากข้อมูลไว้กับทีมงาน แล้วเราติดต่อกลับ</p>
-        @endif
-    </div>
-
-    <div class="card-body">
-        <p class="lead">
-            กรอกข้อมูลของ <strong>ตัวคุณเอง</strong> ก่อนได้เลย ไม่ต้องสมัครสมาชิก
-            ถ้ามาหลายคน กรอกเสร็จแล้วจะได้ลิงก์ไว้ส่งต่อให้เพื่อนกรอกของตัวเอง
-        </p>
-
-        {{-- ต้องบอกให้ชัดตั้งแต่ต้น ไม่งั้นลูกค้าจะเข้าใจว่ากรอกแล้ว = ได้ที่นั่งแล้ว --}}
-        <div class="notice">
+    {{-- ต้องบอกให้ชัดตั้งแต่ต้น ไม่งั้นลูกค้าจะเข้าใจว่ากรอกแล้ว = ได้ที่นั่งแล้ว --}}
+    <div class="callout callout--warn">
+        @include('intake.icon', ['name' => 'alert'])
+        <div>
             <strong>การกรอกฟอร์มนี้ยังไม่ใช่การจอง</strong>
             ที่นั่งจะถูกกันให้เมื่อทีมงานยืนยันกับคุณอีกครั้ง
         </div>
+    </div>
 
-        @if ($errors->any())
-            <div class="alert alert-error">
-                กรุณาตรวจสอบข้อมูลอีกครั้ง
+    <p class="lead">
+        กรอกข้อมูลของ <strong>ตัวคุณเอง</strong> ก่อนได้เลย ไม่ต้องสมัครสมาชิก
+        ถ้ามาหลายคน กรอกเสร็จแล้วจะได้ลิงก์ไว้ส่งต่อให้เพื่อนกรอกของตัวเอง
+    </p>
+
+    @if ($errors->any())
+        <div class="callout callout--error">
+            @include('intake.icon', ['name' => 'alert'])
+            <div>
+                <strong>กรุณาตรวจสอบข้อมูลอีกครั้ง</strong>
                 <ul>
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
-        @endif
+        </div>
+    @endif
 
-        <form method="POST" action="{{ route('public.intake.submit', $link->token) }}">
-            @csrf
+    <form method="POST" action="{{ route('public.intake.submit', $link->token) }}" data-guard>
+        @csrf
 
-            @if (! $link->trip_schedule_id)
-                <div class="section-label">ทริปที่สนใจ</div>
+        <div class="step">
+            <span class="n">@include('intake.icon', ['name' => 'calendar'])</span>
+            <h2>{{ $link->trip_schedule_id ? 'การเดินทางของคุณ' : 'ทริปที่สนใจ' }}</h2>
+            <span class="rule"></span>
+        </div>
+
+        @if (! $link->trip_schedule_id)
+            <div class="f">
                 <label class="field" for="schedule_id">เลือกรอบเดินทาง</label>
                 <select id="schedule_id" name="schedule_id">
                     <option value="">ยังไม่ระบุ — ให้ทีมงานแนะนำ</option>
@@ -59,45 +66,68 @@
                         </option>
                     @endforeach
                 </select>
-            @endif
+            </div>
+        @endif
 
-            <label class="field" for="party_size">มากันกี่คน</label>
-            <select id="party_size" name="party_size">
-                @for ($n = 1; $n <= \App\Services\CustomerIntakeService::MAX_PEOPLE; $n++)
-                    <option value="{{ $n }}" @selected((int) old('party_size', 1) === $n)>{{ $n }} คน</option>
-                @endfor
-            </select>
+        <div class="f">
+            <span class="field" style="display:block">มากันกี่คน</span>
+            <div class="stepper">
+                <div class="stepper-box" data-stepper>
+                    <button type="button" data-step="-1" aria-label="ลดจำนวน">@include('intake.icon', ['name' => 'minus'])</button>
+                    <input type="number" id="party_size" name="party_size" inputmode="numeric"
+                           min="1" max="{{ \App\Services\CustomerIntakeService::MAX_PEOPLE }}"
+                           value="{{ old('party_size', 1) }}" aria-label="จำนวนผู้เดินทาง">
+                    <button type="button" data-step="1" aria-label="เพิ่มจำนวน">@include('intake.icon', ['name' => 'plus'])</button>
+                </div>
+                <span class="unit">คน</span>
+            </div>
             <p class="hint">กรอกคร่าว ๆ ได้ แก้ทีหลังได้ ใช้บอกทีมงานว่าต้องรอเพื่อนอีกกี่คน</p>
+        </div>
 
-            @include('intake.person-fields', ['isInternational' => (bool) $trip?->isInternational()])
+        @include('intake.person-fields', ['isInternational' => (bool) $trip?->isInternational()])
 
-            <div class="section-label">ฝากบอกทีมงาน</div>
+        <div class="step">
+            <span class="n">@include('intake.icon', ['name' => 'note'])</span>
+            <h2>ฝากบอกทีมงาน</h2>
+            <span class="rule"></span>
+        </div>
 
-            <label class="field" for="note">มีอะไรอยากบอกไหม</label>
+        <div class="f">
+            <label class="field" for="note">มีอะไรอยากบอกไหม <span class="opt">(ไม่บังคับ)</span></label>
             <textarea id="note" name="note" maxlength="1000"
                       placeholder="เช่น ขอที่นั่งติดกัน, ขึ้นรถที่ปั๊มไหน, สอบถามเรื่องอะไร">{{ old('note') }}</textarea>
+        </div>
 
-            <label class="field" for="source">รู้จักเราจากช่องทางไหน</label>
-            <select id="source" name="source">
-                <option value="">ไม่ระบุ</option>
-                @foreach (['line' => 'LINE', 'facebook' => 'Facebook', 'instagram' => 'Instagram', 'other' => 'อื่น ๆ'] as $value => $label)
-                    <option value="{{ $value }}" @selected(old('source') === $value)>{{ $label }}</option>
+        <div class="f">
+            <span class="field" style="display:block">รู้จักเราจากช่องทางไหน</span>
+            <div class="pills">
+                @foreach (['' => 'ไม่ระบุ', 'line' => 'LINE', 'facebook' => 'Facebook', 'instagram' => 'Instagram', 'other' => 'อื่น ๆ'] as $value => $label)
+                    <label class="pill">
+                        <input type="radio" name="source" value="{{ $value }}" @checked(old('source', '') === $value)>
+                        <span>{{ $label }}</span>
+                    </label>
                 @endforeach
-            </select>
+            </div>
+        </div>
 
-            <label class="check">
+        <div class="form-actions">
+            <label class="check check--consent" style="margin-bottom:14px">
                 <input type="checkbox" name="consent" value="1" required @checked(old('consent'))>
-                ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน
+                <span>ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน</span>
             </label>
 
-            <button type="submit" class="btn">ส่งข้อมูลให้ทีมงาน</button>
+            <button type="submit" class="btn">
+                @include('intake.icon', ['name' => 'send']) ส่งข้อมูลให้ทีมงาน
+            </button>
+        </div>
 
-            <p class="privacy">
+        <div class="privacy">
+            @include('intake.icon', ['name' => 'lock'])
+            <span>
                 ข้อมูลนี้ใช้สำหรับติดต่อกลับ ทำประกันการเดินทาง และการดูแลระหว่างทริปเท่านั้น
                 หากไม่ได้เดินทางกับเรา ข้อมูลจะถูกลบอัตโนมัติภายใน
                 {{ \App\Models\CustomerIntake::RETENTION_DAYS }} วัน
-            </p>
-        </form>
-    </div>
-</div>
+            </span>
+        </div>
+    </form>
 @endsection

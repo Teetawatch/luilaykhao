@@ -1,133 +1,219 @@
-@extends('passenger-fill.layout')
+@extends('intake.layout')
 
 @section('title', 'ข้อมูลผู้เดินทางของกลุ่ม')
 
+@php
+    $heroImage = $trip?->cover_image ? url($trip->cover_image) : null;
+    $heroTitle = $trip?->title ?: 'ข้อมูลผู้เดินทาง';
+    $heroEyebrow = 'ข้อมูลผู้เดินทางของกลุ่ม';
+    $heroEyebrowIcon = 'users';
+    $filledCount = count($filled);
+    $partySize = max($intake->party_size, $filledCount);
+    $percent = $partySize > 0 ? min(100, (int) round($filledCount / $partySize * 100)) : 0;
+    $heroSub = match (true) {
+        ! $intake->acceptsSubmissions() => 'ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว',
+        $intake->isComplete() => 'กรอกครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง',
+        default => 'ส่งลิงก์นี้ให้เพื่อนในกลุ่ม แล้วแต่ละคนกรอกข้อมูลของตัวเองได้เลย',
+    };
+    $heroChips = [];
+    if ($trip && $schedule) {
+        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->departureLabelThai()];
+    }
+    $heroChips[] = ['icon' => 'users', 'text' => 'กรอกแล้ว '.$filledCount.' / '.$partySize.' คน'];
+@endphp
+
 @push('styles')
 <style>
-    .ok { background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46;
-          border-radius: 12px; padding: 13px 15px; font-size: 14px; margin-bottom: 18px; }
-    .share { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px;
-             padding: 16px; margin-bottom: 20px; }
-    .share h2 { font-size: 15px; margin-bottom: 6px; }
-    .share p { font-size: 13px; color: #64748b; margin-bottom: 10px; }
-    .share-url { display: block; width: 100%; border: 1px solid #cbd5e1; border-radius: 10px;
-                 padding: 11px; font-size: 13px; background: #fff; color: #0f172a;
-                 font-family: inherit; margin-bottom: 10px; }
-    .btn-copy { display: block; width: 100%; border: 1px solid #0B6E5F; border-radius: 10px;
-                padding: 11px; background: #fff; color: #0B6E5F; font-size: 14px;
-                font-weight: 700; cursor: pointer; font-family: inherit; }
-    .roster { list-style: none; margin: 10px 0 0; }
-    .roster li { font-size: 14px; color: #334155; padding: 6px 0; border-top: 1px solid #e2e8f0; }
-    .roster li:first-child { border-top: none; }
-    .roster .waiting { color: #94a3b8; }
-    .progress { font-size: 13px; color: #475569; font-weight: 600; }
+    .share { border: 1px solid var(--tint-line); background: var(--tint); border-radius: 16px; padding: 16px; margin-bottom: 20px; }
+    .share h2 { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.35; }
+    .share > p { font-size: 15px; color: var(--body); margin-top: 6px; line-height: 1.55; }
+    .share-url {
+        width: 100%; border: 1px solid var(--line-mid); border-radius: 11px; padding: 11px 12px;
+        font-family: inherit; font-size: 15px; background: #fff; color: var(--body);
+        margin: 12px 0 10px; text-overflow: ellipsis;
+    }
+    .share-actions { display: grid; gap: 8px; }
+    .share-actions .btn { padding: 13px; font-size: 16.5px; }
+
+    .progress { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--tint-line); }
+    .progress--bare { margin-top: 12px; padding-top: 0; border-top: none; }
+    .progress-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 15px; color: var(--body); }
+    .progress-head b { font-size: 16px; color: var(--canopy-dark); font-weight: 700; }
+    .progress-track { height: 8px; border-radius: 999px; background: #DCEAE2; overflow: hidden; margin-top: 8px; }
+    .progress-fill { height: 100%; background: var(--canopy); border-radius: 999px; }
+
+    .roster { list-style: none; display: grid; gap: 9px; margin-top: 14px; }
+    .roster li { display: flex; align-items: center; gap: 10px; font-size: 15.5px; color: var(--ink); }
+    .roster .avatar {
+        flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%;
+        display: grid; place-items: center; font-size: 15px; font-weight: 700;
+        background: var(--canopy); color: #fff;
+    }
+    .roster .avatar--wait { background: #fff; border: 1px dashed var(--line-mid); color: var(--muted); }
+    .roster .state { margin-left: auto; font-size: 14px; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+    .roster .state--done { color: var(--canopy); }
+    .roster .state .ic { width: 15px; height: 15px; }
+    .roster .waiting { color: var(--muted); }
 </style>
 @endpush
 
 @section('content')
-<div class="card">
-    <div class="card-header">
-        <div class="brand">ลุยเลเขา</div>
-        <h1>ข้อมูลผู้เดินทาง</h1>
-        @if ($trip)
-            <p>{{ $trip->title }} · {{ $schedule->departureLabelThai() }}</p>
-        @else
-            <p>คุณ{{ $intake->contact_name }} และเพื่อนร่วมทาง</p>
-        @endif
-    </div>
-
-    <div class="card-body">
-        @if ($justFilled)
-            <div class="ok">
-                บันทึกข้อมูลของ {{ $justFilled }} เรียบร้อยแล้ว
-                @if (! $intake->isComplete())
-                    — ยังรอเพื่อนอีก {{ $intake->missingCount() }} คน
+    @if ($justFilled)
+        <div class="callout callout--ok">
+            @include('intake.icon', ['name' => 'check-circle'])
+            <div>
+                <strong>บันทึกข้อมูลของ {{ $justFilled }} เรียบร้อยแล้ว</strong>
+                @if ($intake->isComplete())
+                    ครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง
+                @else
+                    ยังรอเพื่อนอีก {{ $intake->missingCount() }} คน ส่งลิงก์ด้านล่างให้เขาได้เลย
                 @endif
             </div>
-        @endif
+        </div>
+    @endif
 
-        <div class="share">
+    <div class="share">
+        @if ($intake->acceptsSubmissions())
             <h2>ส่งลิงก์นี้ให้เพื่อนกรอกข้อมูลของตัวเอง</h2>
             <p>
                 แต่ละคนกรอกของตัวเองได้ คนละเวลา ข้อมูลที่กรอกไปแล้วจะถูกเก็บไว้จนกว่าจะครบ
                 ไม่ต้องรีบกรอกให้เสร็จในครั้งเดียว
             </p>
+
             <input class="share-url" type="text" id="share-url" readonly
-                   value="{{ $intake->groupUrl() }}" onclick="this.select()">
-            <button class="btn-copy" type="button" id="copy-btn">คัดลอกลิงก์</button>
+                   value="{{ $intake->groupUrl() }}" aria-label="ลิงก์ของกลุ่ม" onclick="this.select()">
+
+            <div class="share-actions">
+                <button class="btn" type="button" id="share-btn" hidden>
+                    @include('intake.icon', ['name' => 'share']) ส่งต่อให้เพื่อน
+                </button>
+                <button class="btn btn--ghost" type="button" id="copy-btn">
+                    @include('intake.icon', ['name' => 'copy']) <span>คัดลอกลิงก์</span>
+                </button>
+            </div>
+        @else
+            {{-- ปิดรับแล้ว ส่งลิงก์ต่อไปก็กรอกไม่ได้ เหลือไว้แค่สรุปให้ดู --}}
+            <h2>สรุปข้อมูลของกลุ่ม</h2>
+        @endif
+
+        <div class="progress @if (! $intake->acceptsSubmissions()) progress--bare @endif">
+            <div class="progress-head">
+                <span>ความคืบหน้าของกลุ่ม</span>
+                <b>{{ $filledCount }} / {{ $partySize }} คน</b>
+            </div>
+            <div class="progress-track" role="img" aria-label="กรอกแล้ว {{ $filledCount }} จาก {{ $partySize }} คน">
+                <div class="progress-fill" style="width: {{ $percent }}%"></div>
+            </div>
 
             <ul class="roster">
                 @foreach ($filled as $label)
-                    <li>✅ {{ $label }} — กรอกแล้ว</li>
+                    <li>
+                        <span class="avatar">{{ mb_substr($label, 0, 1) }}</span>
+                        <span>{{ $label }}</span>
+                        <span class="state state--done">@include('intake.icon', ['name' => 'check']) กรอกแล้ว</span>
+                    </li>
                 @endforeach
                 @for ($i = 0; $i < $intake->missingCount(); $i++)
-                    <li class="waiting">⏳ ยังไม่ได้กรอก</li>
+                    <li>
+                        <span class="avatar avatar--wait">?</span>
+                        <span class="waiting">รอเพื่อนกรอก</span>
+                        <span class="state">@include('intake.icon', ['name' => 'clock']) ยังไม่ได้กรอก</span>
+                    </li>
                 @endfor
             </ul>
-            <p class="progress" style="margin-top:10px">
-                กรอกแล้ว {{ count($filled) }} / {{ $intake->party_size }} คน
-            </p>
         </div>
+    </div>
 
-        @if ($errors->any())
-            <div class="alert alert-error">
-                กรุณาตรวจสอบข้อมูลอีกครั้ง
+    @if ($errors->any())
+        <div class="callout callout--error">
+            @include('intake.icon', ['name' => 'alert'])
+            <div>
+                <strong>กรุณาตรวจสอบข้อมูลอีกครั้ง</strong>
                 <ul>
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
-        @endif
+        </div>
+    @endif
 
-        @if ($intake->acceptsSubmissions())
-            <div class="section-label">เพิ่มข้อมูลของคุณ</div>
-            <p class="lead">
-                ถ้าคุณเพิ่งเปิดลิงก์นี้จากเพื่อน กรอกข้อมูลของ <strong>ตัวคุณเอง</strong> ด้านล่างได้เลย
-                กรอกซ้ำด้วยเบอร์เดิมจะเป็นการแก้ไขของเดิม ไม่ใช่เพิ่มคนใหม่
-            </p>
+    @if ($intake->acceptsSubmissions())
+        <p class="lead">
+            ถ้าคุณเพิ่งเปิดลิงก์นี้จากเพื่อน กรอกข้อมูลของ <strong>ตัวคุณเอง</strong> ด้านล่างได้เลย
+            กรอกซ้ำด้วยเบอร์เดิมจะเป็นการแก้ไขของเดิม ไม่ใช่เพิ่มคนใหม่
+        </p>
 
-            <form method="POST" action="{{ route('public.intake.group.submit', $intake->token) }}">
-                @csrf
+        <form method="POST" action="{{ route('public.intake.group.submit', $intake->token) }}" data-guard>
+            @csrf
 
-                @include('intake.person-fields', ['isInternational' => (bool) $trip?->isInternational()])
+            @include('intake.person-fields', ['isInternational' => (bool) $trip?->isInternational()])
 
-                <label class="check">
+            <div class="form-actions">
+                <label class="check check--consent" style="margin-bottom:14px">
                     <input type="checkbox" name="consent" value="1" required @checked(old('consent'))>
-                    ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน
+                    <span>ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน</span>
                 </label>
 
-                <button type="submit" class="btn">บันทึกข้อมูลของฉัน</button>
-            </form>
-        @else
-            <div class="ok">
-                ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว หากต้องการแก้ไขข้อมูล กรุณาทักหาทีมงานได้เลย
+                <button type="submit" class="btn">
+                    @include('intake.icon', ['name' => 'send']) บันทึกข้อมูลของฉัน
+                </button>
             </div>
-        @endif
+        </form>
+    @else
+        <div class="callout callout--ok">
+            @include('intake.icon', ['name' => 'check-circle'])
+            <div>
+                <strong>ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว</strong>
+                หากต้องการแก้ไขข้อมูล กรุณาทักหาทีมงานได้เลย
+            </div>
+        </div>
+    @endif
 
-        <p class="privacy">
+    <div class="privacy">
+        @include('intake.icon', ['name' => 'lock'])
+        <span>
             ลิงก์นี้เห็นได้เฉพาะชื่อเล่นว่าใครกรอกไปแล้วบ้าง ไม่แสดงเบอร์โทร เลขบัตรประชาชน
             หรือข้อมูลสุขภาพของใครทั้งสิ้น
-        </p>
+        </span>
     </div>
-</div>
-
-<script>
-    document.getElementById('copy-btn')?.addEventListener('click', function () {
-        var field = document.getElementById('share-url');
-        var done = function () {
-            var button = document.getElementById('copy-btn');
-            button.textContent = 'คัดลอกแล้ว ✓';
-            setTimeout(function () { button.textContent = 'คัดลอกลิงก์'; }, 2000);
-        };
-        // เบราว์เซอร์ในแอปแชทบางตัวไม่มี navigator.clipboard — ถอยไปใช้ execCommand
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(field.value).then(done);
-        } else {
-            field.select();
-            document.execCommand('copy');
-            done();
-        }
-    });
-</script>
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        var field = document.getElementById('share-url');
+        var copyBtn = document.getElementById('copy-btn');
+        var shareBtn = document.getElementById('share-btn');
+        var shareText = @json(($trip?->title ? $trip->title.' — ' : '').'กรอกข้อมูลผู้เดินทางของคุณที่ลิงก์นี้ได้เลย');
+
+        function flash(button, message) {
+            var label = button.querySelector('span') || button;
+            var original = label.textContent;
+            label.textContent = message;
+            setTimeout(function () { label.textContent = original; }, 2000);
+        }
+
+        function copy() {
+            // เบราว์เซอร์ในแอปแชทบางตัวไม่มี navigator.clipboard — ถอยไปใช้ execCommand
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(field.value).then(function () { flash(copyBtn, 'คัดลอกแล้ว ✓'); });
+            } else {
+                field.select();
+                field.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+                flash(copyBtn, 'คัดลอกแล้ว ✓');
+            }
+        }
+
+        copyBtn?.addEventListener('click', copy);
+
+        if (navigator.share && shareBtn) {
+            shareBtn.hidden = false;
+            shareBtn.addEventListener('click', function () {
+                navigator.share({ title: 'ลุยเลเขา', text: shareText, url: field.value }).catch(function () {});
+            });
+        }
+    })();
+</script>
+@endpush
