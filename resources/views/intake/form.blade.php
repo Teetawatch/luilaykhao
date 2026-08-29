@@ -121,7 +121,10 @@
             <p class="hint">กรอกคร่าว ๆ ได้ แก้ทีหลังได้ ใช้บอกทีมงานว่าต้องรอเพื่อนอีกกี่คน</p>
         </div>
 
-        @include('intake.person-fields', ['isInternational' => (bool) $trip?->isInternational()])
+        @include('intake.person-fields', [
+                'isInternational' => (bool) $trip?->isInternational(),
+                'pickupPoints' => $pickupPoints ?? collect(),
+            ])
 
         <div class="step">
             <span class="n">@include('intake.icon', ['name' => 'note'])</span>

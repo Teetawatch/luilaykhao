@@ -1,5 +1,6 @@
 {{-- ช่องข้อมูลของผู้เดินทางหนึ่งคน ใช้ร่วมกันทั้งหน้าลิงก์ทีมงานและหน้ากลุ่ม --}}
 @php($isInternational = $isInternational ?? false)
+@php($pickupPoints = $pickupPoints ?? collect())
 
 <div class="step">
     <span class="n">@include('intake.icon', ['name' => 'user'])</span>
@@ -74,6 +75,10 @@
         </div>
     </div>
     <p class="hint" style="margin-top:-9px;margin-bottom:15px">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
+@endif
+
+@if ($pickupPoints->isNotEmpty())
+    @include('intake.pickup-choice', ['pickupPoints' => $pickupPoints])
 @endif
 
 <div class="step">

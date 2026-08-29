@@ -9,6 +9,7 @@ use App\Models\BookingPassenger;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
 use App\Models\IntakeLink;
+use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -499,6 +500,118 @@ class CustomerIntakeTest extends TestCase
             ->assertSee('กรอกข้อมูลผู้เดินทางของกลุ่ม · เขาหลวง สุโขทัย', false)
             // การ์ดถูกอ่านโดยคนทั้งแชทกลุ่ม ห้ามมีชื่อใครหลุดไปอยู่ในนั้น
             ->assertDontSee('<meta property="og:description" content="สมชาย', false);
+    }
+
+    private function makePickupPoint(TripSchedule $schedule, string $name, float $price = 2500): SchedulePickupPoint
+    {
+        return SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => $name,
+            'price' => $price,
+            'image_url' => 'https://cdn.example.com/'.md5($name).'.jpg',
+            'pickup_time' => '04:30',
+        ]);
+    }
+
+    /**
+     * คนที่รู้ว่าตัวเองขึ้นรถที่ไหนคือเจ้าตัว ไม่ใช่คนที่กดลิงก์มาก่อน — และรูป
+     * คือสิ่งที่ทำให้ไปยืนถูกที่ตอนตีสี่ ชื่อจุดอย่างเดียวไม่พอ
+     */
+    public function test_each_person_picks_their_own_pickup_point_with_a_photo(): void
+    {
+        $schedule = $this->makeSchedule();
+        $rangsit = $this->makePickupPoint($schedule, 'ปั๊ม ปตท. รังสิต', 2200);
+        $ladprao = $this->makePickupPoint($schedule, 'BTS ลาดพร้าว', 2500);
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('name="pickup_point_id"', false)
+            ->assertSee('ปั๊ม ปตท. รังสิต')
+            ->assertSee($rangsit->image_url, false)
+            ->assertSee('นัดหมาย 04:30 น.')
+            ->assertSee('2,200 บาท / ท่าน');
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'party_size' => 2,
+            'pickup_point_id' => $rangsit->id,
+        ]));
+
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+        $this->assertSame($rangsit->id, $intake->people()->first()->pickup_point_id);
+
+        // เพื่อนในกลุ่มเลือกคนละจุดได้ ไม่ต้องตรงกับคนแรก
+        $this->post("/g/{$intake->token}", $this->personPayload([
+            'name' => 'สมหญิง ใจงาม',
+            'phone' => '089-999-9999',
+            'email' => 'somying@example.com',
+            'pickup_point_id' => $ladprao->id,
+        ]));
+
+        $this->assertSame(
+            [$rangsit->id, $ladprao->id],
+            $intake->people()->orderBy('id')->pluck('pickup_point_id')->all(),
+        );
+    }
+
+    /** รอบที่มีจุดรับ ต้องเลือกให้ครบทุกคน และเลือกได้เฉพาะจุดของรอบนี้ */
+    public function test_the_pickup_point_is_required_when_the_round_has_any(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->makePickupPoint($schedule, 'ปั๊ม ปตท. รังสิต');
+        $otherRound = $this->makePickupPoint($this->makeSchedule(), 'จุดของรอบอื่น');
+        $link = $this->makeLink($schedule);
+
+        $this->post("/r/{$link->token}", $this->personPayload())
+            ->assertSessionHasErrors('pickup_point_id');
+
+        $this->post("/r/{$link->token}", $this->personPayload(['pickup_point_id' => $otherRound->id]))
+            ->assertSessionHasErrors('pickup_point_id');
+
+        $this->assertSame(0, CustomerIntake::count());
+    }
+
+    /**
+     * ลิงก์กลางยังไม่รู้ว่ารอบไหน จุดรับเป็นของรอบ จึงไม่มีรายการที่ถูกต้องให้เลือก
+     * — บังคับไม่ได้ ต้องไม่ปิดประตูใส่คนที่แค่อยากฝากข้อมูลไว้
+     */
+    public function test_a_central_link_does_not_ask_for_a_pickup_point(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->makePickupPoint($schedule, 'ปั๊ม ปตท. รังสิต');
+
+        $link = $this->makeLink();
+
+        $this->get("/r/{$link->token}")->assertOk()->assertDontSee('name="pickup_point_id"', false);
+        $this->post("/r/{$link->token}", $this->personPayload(['schedule_id' => $schedule->id]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, CustomerIntake::count());
+    }
+
+    /** จุดที่เลือกไว้ต้องไหลไปถึงฟอร์มจองแทนลูกค้า ไม่ใช่ตกหล่นตอนดึงไปจอง */
+    public function test_the_chosen_point_travels_into_the_booking_prefill(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $point = $this->makePickupPoint($schedule, 'ปั๊ม ปตท. รังสิต');
+        $link = $this->makeLink($schedule);
+
+        $this->post("/r/{$link->token}", $this->personPayload(['pickup_point_id' => $point->id]));
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+
+        $data = $this->actingAs($admin)
+            ->getJson("/api/v1/admin/intakes/{$intake->id}")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($point->id, $data['passengers'][0]['pickup_point_id']);
+        $this->assertSame('ปั๊ม ปตท. รังสิต', $data['people'][0]['pickup_label']);
     }
 
     /**

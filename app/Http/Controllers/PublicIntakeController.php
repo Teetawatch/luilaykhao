@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\CustomerIntake;
 use App\Models\IntakeLink;
+use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Rules\ThaiIdCard;
 use App\Services\CustomerIntakeService;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -40,6 +42,9 @@ class PublicIntakeController extends Controller
             'schedule' => $schedule,
             'trip' => $schedule?->trip,
             'closed' => $closed,
+            // เลือกจุดขึ้นรถได้ต่อเมื่อรู้แน่ว่าเป็นรอบไหน — จุดรับเป็นของรอบ
+            // หน้าที่ยังให้เลือกรอบอยู่จึงไม่มีรายการที่ถูกต้องให้เลือก
+            'pickupPoints' => $closed ? collect() : $this->pickupChoices($schedule),
             // รอบที่ผูกไว้เต็ม/ผ่านไปแล้ว ยังรับข้อมูลอยู่ (ทีมงานเอาไปเสนอรอบอื่นได้)
             // แต่ต้องบอกตั้งแต่ต้นและยื่นรอบอื่นให้เลือกตรงนั้นเลย ไม่ใช่ปล่อยให้
             // กรอกจนจบแล้วค่อยรู้ตอนทีมงานตอบกลับ
@@ -62,7 +67,7 @@ class PublicIntakeController extends Controller
             ? ($this->pickSchedule($request->input('schedule_id')) ?: $bound)
             : $bound;
 
-        $data = $this->validatePerson($request, $schedule, [
+        $data = $this->validatePerson($request, $schedule, $mayChoose ? collect() : $this->pickupChoices($schedule), [
             'party_size' => ['nullable', 'integer', 'min:1', 'max:'.CustomerIntakeService::MAX_PEOPLE],
             'note' => ['nullable', 'string', 'max:1000'],
             'source' => ['nullable', Rule::in(['line', 'facebook', 'instagram', 'other'])],
@@ -92,6 +97,7 @@ class PublicIntakeController extends Controller
             // เพื่อนที่ตามมากรอกทีหลังควรรู้ด้วยว่าระหว่างนั้นรอบเต็มไปแล้ว —
             // ข้อมูลยังรับอยู่ เพราะทีมงานเอาไปเสนอรอบอื่นหรือคิวรอให้ได้
             'closed' => $intake->schedule !== null && ! $intake->schedule->acceptsNewCustomers(),
+            'pickupPoints' => $this->pickupChoices($intake->schedule),
             // ชื่อเล่นเท่านั้น — ลิงก์นี้อยู่ในแชทกลุ่ม ใครเปิดก็ได้
             'filled' => $intake->people()->get()->map->publicLabel()->all(),
             'justFilled' => session('intake_just_filled'),
@@ -106,7 +112,7 @@ class PublicIntakeController extends Controller
             return back()->withErrors(['name' => 'กลุ่มนี้ปิดรับข้อมูลแล้ว เพราะทีมงานเปิดการจองให้เรียบร้อยแล้ว']);
         }
 
-        $data = $this->validatePerson($request, $intake->schedule, [
+        $data = $this->validatePerson($request, $intake->schedule, $this->pickupChoices($intake->schedule), [
             'consent' => ['accepted'],
         ]);
 
@@ -131,8 +137,12 @@ class PublicIntakeController extends Controller
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>
      */
-    private function validatePerson(Request $request, ?TripSchedule $schedule, array $extra = []): array
-    {
+    private function validatePerson(
+        Request $request,
+        ?TripSchedule $schedule,
+        Collection $pickupPoints,
+        array $extra = [],
+    ): array {
         // ทริปต่างประเทศต้องได้เอกสารเดินทางตั้งแต่ตอนนี้ ไม่งั้นแอดมินก็ต้อง
         // กลับไปไล่ถามในแชทอยู่ดี ซึ่งคือปัญหาเดิมที่หน้านี้ตั้งใจแก้
         $isInternational = (bool) $schedule?->trip?->isInternational();
@@ -156,9 +166,16 @@ class PublicIntakeController extends Controller
             'allergies' => ['nullable', 'string', 'max:500'],
             'health_notes' => ['nullable', 'string', 'max:500'],
             'halal_food' => ['nullable', 'boolean'],
+            // รอบที่มีจุดรับ ต้องเลือกให้ครบทุกคน — คนที่รู้ว่าตัวเองขึ้นที่ไหนคือ
+            // เจ้าตัว ไม่ใช่คนที่กดลิงก์มาก่อน และราคาต่อคนก็ผูกกับจุดที่ขึ้น
+            'pickup_point_id' => $pickupPoints->isEmpty()
+                ? ['nullable', 'integer']
+                : ['required', Rule::in($pickupPoints->pluck('id')->all())],
             ...$extra,
         ], [
             'name.required' => 'กรุณากรอกชื่อ-นามสกุล',
+            'pickup_point_id.required' => 'กรุณาเลือกจุดขึ้นรถ',
+            'pickup_point_id.in' => 'จุดขึ้นรถนี้ไม่อยู่ในรอบเดินทางนี้',
             'phone.required' => 'กรุณากรอกเบอร์โทรศัพท์',
             'email.required' => 'กรุณากรอกอีเมล',
             'email.email' => 'รูปแบบอีเมลไม่ถูกต้อง',
@@ -189,6 +206,24 @@ class PublicIntakeController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * จุดขึ้นรถที่เลือกได้ของรอบนี้ — ว่างเปล่าเมื่อยังไม่รู้รอบ หรือรอบนี้ไม่มีจุดรับ
+     * (รอบที่บินไปใช้จุดนัดพบที่สนามบินแทน ไม่มีอะไรให้เลือก)
+     *
+     * @return Collection<int, SchedulePickupPoint>
+     */
+    private function pickupChoices(?TripSchedule $schedule): Collection
+    {
+        if (! $schedule || $schedule->isFlight()) {
+            return collect();
+        }
+
+        return $schedule->pickupPoints()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
     }
 
     /** รอบที่ยังรับคนได้จริง — ใช้กับลิงก์กลางที่ไม่ผูกรอบ */

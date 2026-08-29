@@ -20,7 +20,7 @@ class CustomerIntakePerson extends Model
     public const CONSENT_TEXT = 'ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน';
 
     protected $fillable = [
-        'customer_intake_id', 'is_lead', 'title', 'name', 'nickname', 'phone', 'email',
+        'customer_intake_id', 'is_lead', 'pickup_point_id', 'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'name_en', 'nationality',
         'passport_no', 'passport_expires_at', 'emergency_contact', 'emergency_phone',
         'allergies', 'health_notes', 'halal_food', 'dive_cert_level', 'cert_number', 'weight',
@@ -49,10 +49,17 @@ class CustomerIntakePerson extends Model
         return $this->belongsTo(CustomerIntake::class, 'customer_intake_id');
     }
 
+    public function pickupPoint(): BelongsTo
+    {
+        return $this->belongsTo(SchedulePickupPoint::class, 'pickup_point_id');
+    }
+
     /** รูปแบบเดียวกับที่ฟอร์มผู้โดยสารของหน้า "จองแทนลูกค้า" ใช้ */
     public function toPassengerPayload(): array
     {
         return [
+            // จุดขึ้นรถรายคน — หน้าจองแทนลูกค้ารับช่องนี้ตรง ๆ ต่อคน
+            'pickup_point_id' => $this->pickup_point_id,
             'title' => $this->title,
             'name' => $this->name,
             'nickname' => $this->nickname,

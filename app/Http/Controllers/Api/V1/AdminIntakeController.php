@@ -142,7 +142,7 @@ class AdminIntakeController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $intake = CustomerIntake::with(['schedule.trip', 'link', 'people'])->findOrFail($id);
+        $intake = CustomerIntake::with(['schedule.trip', 'link', 'people.pickupPoint'])->findOrFail($id);
 
         return $this->success([
             ...$this->summaryPayload($intake),
@@ -159,6 +159,8 @@ class AdminIntakeController extends Controller
                 'filled_at' => $person->created_at?->toIso8601String(),
                 // หลักฐานความยินยอม PDPA — ต้องหยิบให้ได้ตอนมีคนถาม
                 'consent_at' => $person->consent_at?->toIso8601String(),
+                // จุดขึ้นรถที่เจ้าตัวเลือกเอง — คนละคนในกลุ่มขึ้นคนละจุดได้
+                'pickup_label' => $person->pickupPoint?->pickup_location,
             ])->values(),
         ]);
     }

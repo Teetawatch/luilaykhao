@@ -191,6 +191,41 @@
             background: var(--amber); color: #fff; font-size: 13.5px; font-weight: 700;
         }
 
+        /* ── จุดขึ้นรถ ─────────────────────────────────────────────── */
+        .pickups { display: grid; gap: 10px; margin-bottom: 15px; }
+        .pickup { position: relative; display: block; }
+        .pickup input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+        .pickup-card {
+            display: flex; align-items: center; gap: 12px;
+            border: 1px solid var(--line-mid); border-radius: 14px; background: #fff;
+            padding: 10px; transition: border-color .15s ease, background-color .15s ease;
+        }
+        .pickup-photo {
+            width: 74px; height: 74px; flex: 0 0 74px; border-radius: 11px;
+            object-fit: cover; background: var(--tint);
+        }
+        .pickup-photo--blank {
+            display: grid; place-items: center; color: var(--muted);
+            border: 1px dashed var(--line-mid);
+        }
+        .pickup-photo--blank .ic { width: 22px; height: 22px; }
+        .pickup-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .pickup-body strong { font-size: 16.5px; color: var(--ink); line-height: 1.35; }
+        .pickup-meta { font-size: 14px; color: var(--muted); }
+        .pickup-note { font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+        .pickup-price { font-size: 14.5px; font-weight: 700; color: var(--canopy-dark); margin-top: 2px; }
+        .pickup-tick {
+            flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%;
+            border: 1px solid var(--line-mid); color: transparent;
+            display: grid; place-items: center;
+        }
+        .pickup-tick .ic { width: 14px; height: 14px; }
+        .pickup input:checked + .pickup-card { border-color: var(--canopy); background: var(--tint); }
+        .pickup input:checked + .pickup-card .pickup-tick {
+            background: var(--canopy); border-color: var(--canopy); color: #fff;
+        }
+        .pickup input:focus-visible + .pickup-card { outline: 2px solid rgba(45,122,79,.35); outline-offset: 1px; }
+
         /* ── ฟิลด์ ─────────────────────────────────────────────────── */
         .f { margin-bottom: 15px; }
         .f:last-child { margin-bottom: 0; }

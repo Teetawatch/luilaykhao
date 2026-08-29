@@ -169,7 +169,10 @@
         <form method="POST" action="{{ route('public.intake.group.submit', $intake->token) }}" data-guard>
             @csrf
 
-            @include('intake.person-fields', ['isInternational' => (bool) $trip?->isInternational()])
+            @include('intake.person-fields', [
+                'isInternational' => (bool) $trip?->isInternational(),
+                'pickupPoints' => $pickupPoints ?? collect(),
+            ])
 
             <div class="form-actions">
                 <label class="check check--consent" style="margin-bottom:14px">

@@ -155,6 +155,8 @@ class CustomerIntakeService
         $person->fill([
             'customer_intake_id' => $intake->id,
             'is_lead' => $isLead || $person->is_lead,
+            // จุดขึ้นรถของคนนี้ — คนละคนขึ้นคนละจุดได้ในกลุ่มเดียวกัน
+            'pickup_point_id' => $data['pickup_point_id'] ?? $person->pickup_point_id,
             'title' => $data['title'] ?? null,
             'name' => $data['name'],
             'nickname' => $data['nickname'] ?? null,
