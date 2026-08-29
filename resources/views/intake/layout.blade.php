@@ -158,6 +158,14 @@
         .round-label { font-size: 13.5px; color: var(--canopy-dark); }
         .round-text strong { font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1.3; }
         .round-meta { font-size: 14.5px; color: var(--body); line-height: 1.5; }
+        .round--closed { border-color: var(--amber-line); background: var(--amber-bg); }
+        .round--closed .round-ic { border-color: var(--amber-line); color: var(--amber); }
+        .round--closed .round-label { color: var(--amber); }
+        .round-flag {
+            align-self: flex-start; margin-top: 5px;
+            border-radius: 999px; padding: 3px 11px;
+            background: var(--amber); color: #fff; font-size: 13.5px; font-weight: 700;
+        }
 
         /* ── ฟิลด์ ─────────────────────────────────────────────────── */
         .f { margin-bottom: 15px; }

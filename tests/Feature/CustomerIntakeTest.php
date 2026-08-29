@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\NotifyStalledIntakesJob;
 use App\Jobs\PurgeStaleCustomerIntakesJob;
+use App\Mail\AdminIntakeReadyMail;
 use App\Models\BookingPassenger;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
@@ -10,7 +12,9 @@ use App\Models\IntakeLink;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\MailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -384,6 +388,143 @@ class CustomerIntakeTest extends TestCase
         }
 
         $this->assertSame(2, BookingPassenger::where('booking_id', $bookingId)->count());
+    }
+
+    /**
+     * ข้อมูลที่หน้านี้รับมีเลขบัตร อาหารที่แพ้ และโรคประจำตัว = ข้อมูลอ่อนไหว
+     * ตาม PDPA ที่ต้องพิสูจน์ความยินยอมย้อนหลังได้ ไม่ใช่แค่บังคับติ๊กตอนกรอก
+     */
+    public function test_consent_is_kept_as_proof_not_just_checked(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+        $this->post("/r/{$link->token}", $this->personPayload());
+
+        $person = CustomerIntakePerson::latest('id')->firstOrFail();
+
+        $this->assertNotNull($person->consent_at);
+        $this->assertSame(CustomerIntakePerson::CONSENT_TEXT, $person->consent_text);
+        $this->assertNotNull($person->consent_ip);
+    }
+
+    /** กรอกครบ = หยิบไปเปิดการจองได้ ทีมงานต้องรู้โดยไม่ต้องเปิดหน้าแอดมินค้างไว้ */
+    public function test_the_team_is_emailed_once_when_a_group_is_complete(): void
+    {
+        Mail::fake();
+        Role::findOrCreate('admin', 'web');
+        User::factory()->create(['email' => 'admin@luilaykhao.com'])->assignRole('admin');
+
+        $link = $this->makeLink($this->makeSchedule());
+        $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 2]));
+
+        // ยังรอเพื่อนอีกคน — ยังไม่มีอะไรให้ทีมงานทำ
+        Mail::assertNothingQueued();
+
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+        $this->post("/g/{$intake->token}", $this->personPayload([
+            'name' => 'สมหญิง ใจงาม',
+            'phone' => '089-999-9999',
+        ]));
+
+        Mail::assertQueued(AdminIntakeReadyMail::class, 1);
+
+        // กรอกซ้ำ/แก้ข้อมูลทีหลังต้องไม่ยิงเมลอีกฉบับ
+        $this->post("/g/{$intake->token}", $this->personPayload([
+            'name' => 'สมหญิง ใจงาม',
+            'phone' => '089-999-9999',
+        ]));
+
+        Mail::assertQueued(AdminIntakeReadyMail::class, 1);
+    }
+
+    /**
+     * กลุ่มที่แจ้งว่ามา 4 คนแต่กรอกแค่ 2 จะไม่มีวันครบเอง ถ้าไม่ตามเก็บก็จม
+     * อยู่ในหน้าแอดมินเงียบ ๆ จนถูกลบทิ้งตามอายุข้อมูล
+     */
+    public function test_a_group_that_stalls_half_filled_is_still_reported(): void
+    {
+        Mail::fake();
+        Role::findOrCreate('admin', 'web');
+        User::factory()->create(['email' => 'admin@luilaykhao.com'])->assignRole('admin');
+
+        $link = $this->makeLink($this->makeSchedule());
+        $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 4]));
+
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+        $intake->forceFill([
+            'last_activity_at' => now()->subHours(NotifyStalledIntakesJob::STALE_HOURS + 1),
+        ])->save();
+
+        (new NotifyStalledIntakesJob)->handle(app(MailService::class));
+
+        Mail::assertQueued(AdminIntakeReadyMail::class, 1);
+        $this->assertNotNull($intake->fresh()->team_notified_at);
+
+        // รันซ้ำวันถัดไปต้องไม่ทวงซ้ำ
+        (new NotifyStalledIntakesJob)->handle(app(MailService::class));
+        Mail::assertQueued(AdminIntakeReadyMail::class, 1);
+    }
+
+    /**
+     * ลิงก์ถูกแปะค้างไว้ในไบโอไอจี/auto-reply — พอรอบเต็ม ลิงก์เดิมก็ยังถูกเปิดอยู่
+     * ปล่อยให้กรอกจนจบแล้วค่อยตอบว่าเต็มคือความผิดหวังที่หลบได้ตั้งแต่แรก
+     */
+    public function test_a_full_round_says_so_before_the_customer_starts_typing(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['booked_seats' => $schedule->total_seats]);
+
+        $sibling = TripSchedule::create([
+            'trip_id' => $schedule->trip_id,
+            'departure_date' => now('Asia/Bangkok')->addMonths(2)->toDateString(),
+            'return_date' => now('Asia/Bangkok')->addMonths(2)->addDay()->toDateString(),
+            'total_seats' => 20,
+            'booked_seats' => 0,
+            'transport_type' => 'van',
+            'status' => 'open',
+        ]);
+
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('รอบนี้เต็มแล้ว')
+            // ไม่ได้ปิดประตูใส่ — เสนอรอบอื่นของทริปเดียวกันตรงนั้นเลย
+            ->assertSee('ย้ายไปรอบอื่นของทริปนี้')
+            ->assertSee('<option value="'.$sibling->id.'"', false);
+
+        // และย้ายรอบได้จริง ทั้งที่ลิงก์ผูกไว้กับรอบที่เต็ม
+        $this->post("/r/{$link->token}", $this->personPayload(['schedule_id' => $sibling->id]));
+
+        $this->assertSame($sibling->id, CustomerIntake::latest('id')->firstOrFail()->trip_schedule_id);
+    }
+
+    /** รอบที่เต็มแล้วไม่ควรโผล่ในลิสต์ของลิงก์กลาง เลือกไปก็ได้คำตอบเดิม */
+    public function test_a_central_link_never_offers_a_full_round(): void
+    {
+        $full = $this->makeSchedule();
+        $full->update(['booked_seats' => $full->total_seats]);
+        $open = $this->makeSchedule();
+
+        $this->get('/r/'.$this->makeLink()->token)
+            ->assertOk()
+            ->assertSee('<option value="'.$open->id.'"', false)
+            ->assertDontSee('<option value="'.$full->id.'"', false);
+
+        // ยัดไอดีรอบที่เต็มมาเองก็ไม่ผูกให้ ปล่อยเป็น "ยังไม่ระบุรอบ" ให้ทีมงานจัดการ
+        $this->post('/r/'.$this->makeLink()->token, $this->personPayload(['schedule_id' => $full->id]));
+
+        $this->assertNull(CustomerIntake::latest('id')->firstOrFail()->trip_schedule_id);
+    }
+
+    /** ลิงก์ที่ผูกรอบไว้และรอบยังเปิดอยู่ ห้ามให้ใครส่งรอบอื่นมาทับ */
+    public function test_a_bound_link_on_an_open_round_refuses_a_swapped_round(): void
+    {
+        $schedule = $this->makeSchedule();
+        $other = $this->makeSchedule();
+        $link = $this->makeLink($schedule);
+
+        $this->post("/r/{$link->token}", $this->personPayload(['schedule_id' => $other->id]))
+            ->assertSessionHasErrors('schedule_id');
     }
 
     /**

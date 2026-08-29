@@ -136,6 +136,8 @@ class AdminIntakeController extends Controller
                 'nickname' => $person->nickname,
                 'phone' => $person->phone,
                 'filled_at' => $person->created_at?->toIso8601String(),
+                // หลักฐานความยินยอม PDPA — ต้องหยิบให้ได้ตอนมีคนถาม
+                'consent_at' => $person->consent_at?->toIso8601String(),
             ])->values(),
         ]);
     }

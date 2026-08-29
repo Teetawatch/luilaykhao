@@ -12,6 +12,7 @@
     $percent = $partySize > 0 ? min(100, (int) round($filledCount / $partySize * 100)) : 0;
     $heroSub = match (true) {
         ! $intake->acceptsSubmissions() => 'ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว',
+        ($closed ?? false) => 'รอบนี้เต็มแล้ว ทีมงานจะติดต่อกลับเรื่องรอบอื่นหรือคิวรอที่นั่ง',
         $intake->isComplete() => 'กรอกครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง',
         default => 'ส่งลิงก์นี้ให้เพื่อนในกลุ่ม แล้วแต่ละคนกรอกข้อมูลของตัวเองได้เลย',
     };
@@ -60,6 +61,17 @@
 @section('content')
     @if ($schedule)
         @include('intake.round', ['schedule' => $schedule, 'roundLabel' => 'รอบเดินทางของกลุ่มนี้'])
+    @endif
+
+    @if (($closed ?? false) && $intake->acceptsSubmissions())
+        <div class="callout callout--warn">
+            @include('intake.icon', ['name' => 'alert'])
+            <div>
+                <strong>รอบนี้ปิดรับแล้ว</strong>
+                เพื่อนที่ยังไม่ได้กรอกยังกรอกต่อได้ ข้อมูลไม่หาย — ทีมงานจะติดต่อกลับ
+                เรื่องรอบอื่นหรือคิวรอที่นั่งให้ทั้งกลุ่ม
+            </div>
+        </div>
     @endif
 
     @if ($justFilled)
@@ -156,7 +168,7 @@
             <div class="form-actions">
                 <label class="check check--consent" style="margin-bottom:14px">
                     <input type="checkbox" name="consent" value="1" required @checked(old('consent'))>
-                    <span>ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน</span>
+                    <span>{{ \App\Models\CustomerIntakePerson::CONSENT_TEXT }}</span>
                 </label>
 
                 <button type="submit" class="btn">

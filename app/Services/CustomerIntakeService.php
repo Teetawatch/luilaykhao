@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\NotifyStalledIntakesJob;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
 use App\Models\IntakeLink;
@@ -20,6 +21,8 @@ class CustomerIntakeService
     /** กันลิงก์กลุ่มที่หลุดออกไปถูกกรอกถล่มจนกลายเป็นถังขยะ */
     public const MAX_PEOPLE = 20;
 
+    public function __construct(private readonly MailService $mail) {}
+
     /**
      * คนแรกเปิดลิงก์สาธารณะแล้วกรอก — เปิดกลุ่มใหม่ หรือกลับเข้ากลุ่มเดิมของตัวเอง
      *
@@ -27,7 +30,7 @@ class CustomerIntakeService
      */
     public function openFromLink(IntakeLink $link, array $data, ?TripSchedule $schedule): CustomerIntake
     {
-        return DB::transaction(function () use ($link, $data, $schedule) {
+        $intake = DB::transaction(function () use ($link, $data, $schedule) {
             $phone = $this->normalisePhone($data['phone'] ?? '');
 
             // เบอร์เดิม + รอบเดิม + ยังไม่ถูกดึงไปจอง = คนเดิมกลับมา ไม่ใช่ลูกค้าใหม่
@@ -70,6 +73,10 @@ class CustomerIntakeService
 
             return $intake->fresh();
         });
+
+        $this->notifyTeamIfReady($intake);
+
+        return $intake;
     }
 
     /**
@@ -81,7 +88,7 @@ class CustomerIntakeService
      */
     public function addToGroup(CustomerIntake $intake, array $data): CustomerIntakePerson
     {
-        return DB::transaction(function () use ($intake, $data) {
+        $person = DB::transaction(function () use ($intake, $data) {
             $phone = $this->normalisePhone($data['phone'] ?? '');
             $existing = $this->findPerson($intake, $phone, $data['name']);
 
@@ -101,6 +108,34 @@ class CustomerIntakeService
 
             return $person;
         });
+
+        $this->notifyTeamIfReady($intake->fresh());
+
+        return $person;
+    }
+
+    /**
+     * กลุ่มไหน "พร้อมให้ทีมงานหยิบ" แล้วก็บอกเลย ไม่ต้องรอให้ใครเปิดหน้าแอดมินเจอ
+     *
+     * เกณฑ์คือ "กรอกครบตามที่แจ้งไว้" ไม่ใช่ทุกครั้งที่มีคนกรอก — กลุ่ม 5 คน
+     * ที่ทยอยกรอกคนละเวลาจะกลายเป็นเมล 5 ฉบับที่ไม่มีใครทำอะไรได้กับ 4 ฉบับแรก
+     * ส่วนกลุ่มที่กรอกค้างแล้วเงียบไป มี {@see NotifyStalledIntakesJob}
+     * ตามเก็บให้อีกชั้น
+     */
+    private function notifyTeamIfReady(?CustomerIntake $intake): void
+    {
+        if (! $intake || $intake->team_notified_at !== null || ! $intake->acceptsSubmissions()) {
+            return;
+        }
+
+        if (! $intake->isComplete()) {
+            return;
+        }
+
+        // ตีตราก่อนส่ง — สองคนกดส่งพร้อมกันแล้วได้เมลซ้ำเป็นเรื่องที่เกิดขึ้นได้จริง
+        $intake->forceFill(['team_notified_at' => now()])->save();
+
+        $this->mail->sendAdminIntakeReady($intake, 'complete');
     }
 
     /**
@@ -137,6 +172,11 @@ class CustomerIntakeService
             'allergies' => $data['allergies'] ?? null,
             'health_notes' => $data['health_notes'] ?? null,
             'halal_food' => (bool) ($data['halal_food'] ?? false),
+            // ทุกครั้งที่กรอกคือการยินยอมครั้งใหม่ — เก็บครั้งล่าสุดไว้พร้อมข้อความ
+            // ที่แสดงตอนนั้น ข้อมูลอ่อนไหวตาม PDPA ต้องพิสูจน์ความยินยอมย้อนหลังได้
+            'consent_at' => now(),
+            'consent_ip' => $data['consent_ip'] ?? null,
+            'consent_text' => CustomerIntakePerson::CONSENT_TEXT,
         ])->save();
 
         return $person;

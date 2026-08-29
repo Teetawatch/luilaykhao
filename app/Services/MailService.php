@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\AdminIntakeReadyMail;
 use App\Mail\AdminNewBookingMail;
 use App\Mail\AdminPaymentReceivedMail;
 use App\Mail\BalanceDueReminderMail;
@@ -22,6 +23,7 @@ use App\Mail\PaymentConfirmedMail;
 use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
+use App\Models\CustomerIntake;
 use App\Models\InstallmentPayment;
 use App\Models\Receipt;
 use App\Models\User;
@@ -48,6 +50,29 @@ class MailService
             ]);
 
             return null;
+        }
+    }
+
+    /**
+     * บอกทีมงานว่ามีลูกค้ากรอกข้อมูลผ่านลิงก์เข้ามารอเปิดการจอง
+     *
+     * ส่งครั้งเดียวต่อกลุ่ม (ผู้เรียกเป็นคนกันซ้ำด้วย team_notified_at) —
+     * กลุ่ม 5 คนที่ทยอยกรอกไม่ควรกลายเป็นเมล 5 ฉบับ
+     */
+    public function sendAdminIntakeReady(CustomerIntake $intake, string $reason = 'complete'): void
+    {
+        try {
+            $adminEmails = $this->getAdminEmails();
+            if (! empty($adminEmails)) {
+                $intake->loadMissing(['people', 'schedule.trip', 'link']);
+                Mail::to($adminEmails)->send(new AdminIntakeReadyMail($intake, $reason));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send admin intake email', [
+                'intake_id' => $intake->id,
+                'reason' => $reason,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

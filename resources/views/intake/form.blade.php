@@ -7,9 +7,11 @@
     $heroTitle = $trip?->title ?: 'กรอกข้อมูลผู้เดินทาง';
     $heroEyebrow = $trip ? 'ฟอร์มข้อมูลผู้เดินทาง' : 'ฝากข้อมูลไว้กับทีมงาน';
     $heroEyebrowIcon = $trip ? 'note' : 'sparkle';
-    $heroSub = $trip
-        ? 'กรอกข้อมูลของคุณไว้ล่วงหน้า ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่งและวิธีชำระเงิน'
-        : 'ยังไม่ต้องรู้ว่าจะไปรอบไหนก็ฝากข้อมูลไว้ได้ ทีมงานจะช่วยแนะนำทริปที่เหมาะกับคุณ';
+    $heroSub = match (true) {
+        ($closed ?? false) => 'รอบนี้ปิดรับแล้ว แต่ฝากข้อมูลไว้ได้ ทีมงานจะติดต่อกลับเรื่องรอบอื่นหรือคิวรอที่นั่ง',
+        (bool) $trip => 'กรอกข้อมูลของคุณไว้ล่วงหน้า ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่งและวิธีชำระเงิน',
+        default => 'ยังไม่ต้องรู้ว่าจะไปรอบไหนก็ฝากข้อมูลไว้ได้ ทีมงานจะช่วยแนะนำทริปที่เหมาะกับคุณ',
+    };
     $heroChips = [];
     if ($trip && $schedule) {
         $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabelThai()];
@@ -18,14 +20,31 @@
 @endphp
 
 @section('content')
-    {{-- ต้องบอกให้ชัดตั้งแต่ต้น ไม่งั้นลูกค้าจะเข้าใจว่ากรอกแล้ว = ได้ที่นั่งแล้ว --}}
-    <div class="callout callout--warn">
-        @include('intake.icon', ['name' => 'alert'])
-        <div>
-            <strong>การกรอกฟอร์มนี้ยังไม่ใช่การจอง</strong>
-            ที่นั่งจะถูกกันให้เมื่อทีมงานยืนยันกับคุณอีกครั้ง
+    {{-- รอบเต็มแล้วต้องรู้ก่อนกรอก ไม่ใช่รู้ตอนทีมงานตอบกลับ — ข้อมูลยังรับอยู่
+         เพราะทีมงานเอาไปเสนอรอบอื่นหรือคิวรอที่นั่งให้ได้ --}}
+    @if ($closed ?? false)
+        <div class="callout callout--warn">
+            @include('intake.icon', ['name' => 'alert'])
+            <div>
+                <strong>รอบนี้ปิดรับแล้ว</strong>
+                @if ($scheduleOptions->isNotEmpty())
+                    เลือกรอบอื่นของทริปนี้ด้านล่างได้เลย หรือฝากข้อมูลไว้เฉย ๆ
+                    ทีมงานจะติดต่อกลับถ้ามีที่ว่างในรอบนี้
+                @else
+                    ฝากข้อมูลไว้ได้ ทีมงานจะติดต่อกลับถ้ามีที่ว่างหรือมีรอบใหม่
+                @endif
+            </div>
         </div>
-    </div>
+    @else
+        {{-- ต้องบอกให้ชัดตั้งแต่ต้น ไม่งั้นลูกค้าจะเข้าใจว่ากรอกแล้ว = ได้ที่นั่งแล้ว --}}
+        <div class="callout callout--warn">
+            @include('intake.icon', ['name' => 'alert'])
+            <div>
+                <strong>การกรอกฟอร์มนี้ยังไม่ใช่การจอง</strong>
+                ที่นั่งจะถูกกันให้เมื่อทีมงานยืนยันกับคุณอีกครั้ง
+            </div>
+        </div>
+    @endif
 
     <p class="lead">
         กรอกข้อมูลของ <strong>ตัวคุณเอง</strong> ก่อนได้เลย ไม่ต้องสมัครสมาชิก
@@ -59,14 +78,19 @@
             @include('intake.round', ['schedule' => $schedule, 'roundLabel' => 'รอบเดินทางที่คุณกำลังกรอก'])
         @endif
 
-        @if (! $link->trip_schedule_id)
+        @if ($scheduleOptions->isNotEmpty())
             <div class="f">
-                <label class="field" for="schedule_id">เลือกรอบเดินทาง</label>
+                <label class="field" for="schedule_id">
+                    {{ ($closed ?? false) ? 'ย้ายไปรอบอื่นของทริปนี้' : 'เลือกรอบเดินทาง' }}
+                </label>
                 <select id="schedule_id" name="schedule_id">
-                    <option value="">ยังไม่ระบุ — ให้ทีมงานแนะนำ</option>
+                    <option value="">
+                        {{ ($closed ?? false) ? 'ยังไม่เปลี่ยนรอบ — รอที่ว่างรอบนี้' : 'ยังไม่ระบุ — ให้ทีมงานแนะนำ' }}
+                    </option>
                     @foreach ($scheduleOptions as $option)
                         <option value="{{ $option->id }}" @selected((int) old('schedule_id') === $option->id)>
                             {{ $option->trip->title }} · {{ $option->departureLabelShort() }}
+                            ({{ $option->is_charter ? 'รอบเหมา' : 'เหลือ '.$option->bookable_seats.' ที่' }})
                         </option>
                     @endforeach
                 </select>
@@ -117,7 +141,7 @@
         <div class="form-actions">
             <label class="check check--consent" style="margin-bottom:14px">
                 <input type="checkbox" name="consent" value="1" required @checked(old('consent'))>
-                <span>ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน</span>
+                <span>{{ \App\Models\CustomerIntakePerson::CONSENT_TEXT }}</span>
             </label>
 
             <button type="submit" class="btn">

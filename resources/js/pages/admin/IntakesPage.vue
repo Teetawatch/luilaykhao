@@ -361,6 +361,10 @@
                   <strong>{{ person.name }}</strong>
                   <span v-if="person.is_lead" class="lead-chip">คนติดต่อ</span>
                   <div class="cell-sub">{{ person.phone || 'ไม่มีเบอร์' }}</div>
+                  <div class="cell-sub consent">
+                    <span class="material-symbols-rounded">verified_user</span>
+                    {{ person.consent_at ? `ยินยอมเมื่อ ${formatDateTime(person.consent_at)}` : 'ไม่มีบันทึกความยินยอม' }}
+                  </div>
                 </div>
                 <button class="btn-danger btn-sm" @click="removePerson(person)">
                   <span class="material-symbols-rounded" style="font-size:16px">delete</span>
@@ -803,6 +807,8 @@ tr.inactive { opacity: .5; }
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 10px 0; border-bottom: 1px solid #f3f4f6;
 }
+.consent { display: flex; align-items: center; gap: 4px; color: #047857; }
+.consent .material-symbols-rounded { font-size: 14px; }
 .lead-chip {
   margin-left: 6px; font-size: 10.5px; font-weight: 700; color: #047857;
   background: #ecfdf5; border-radius: 999px; padding: 2px 7px;

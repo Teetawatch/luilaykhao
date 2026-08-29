@@ -32,25 +32,41 @@ class PublicIntakeController extends Controller
     public function show(string $token): View
     {
         $link = $this->resolveLink($token);
+        $schedule = $link->schedule;
+        $closed = $schedule !== null && ! $schedule->acceptsNewCustomers();
 
         return view('intake.form', [
             'link' => $link,
-            'schedule' => $link->schedule,
-            'trip' => $link->schedule?->trip,
-            'scheduleOptions' => $link->trip_schedule_id ? collect() : $this->openSchedules(),
+            'schedule' => $schedule,
+            'trip' => $schedule?->trip,
+            'closed' => $closed,
+            // รอบที่ผูกไว้เต็ม/ผ่านไปแล้ว ยังรับข้อมูลอยู่ (ทีมงานเอาไปเสนอรอบอื่นได้)
+            // แต่ต้องบอกตั้งแต่ต้นและยื่นรอบอื่นให้เลือกตรงนั้นเลย ไม่ใช่ปล่อยให้
+            // กรอกจนจบแล้วค่อยรู้ตอนทีมงานตอบกลับ
+            'scheduleOptions' => match (true) {
+                $schedule === null => $this->openSchedules(),
+                $closed => $this->siblingRounds($schedule),
+                default => collect(),
+            },
         ]);
     }
 
     public function submit(Request $request, string $token): RedirectResponse
     {
         $link = $this->resolveLink($token);
-        $schedule = $link->schedule ?: $this->pickSchedule($request->input('schedule_id'));
+        $bound = $link->schedule;
+
+        // เลือกรอบเองได้เมื่อลิงก์ไม่ได้ผูกรอบ หรือรอบที่ผูกไว้ปิดรับไปแล้ว
+        $mayChoose = $bound === null || ! $bound->acceptsNewCustomers();
+        $schedule = $mayChoose
+            ? ($this->pickSchedule($request->input('schedule_id')) ?: $bound)
+            : $bound;
 
         $data = $this->validatePerson($request, $schedule, [
             'party_size' => ['nullable', 'integer', 'min:1', 'max:'.CustomerIntakeService::MAX_PEOPLE],
             'note' => ['nullable', 'string', 'max:1000'],
             'source' => ['nullable', Rule::in(['line', 'facebook', 'instagram', 'other'])],
-            'schedule_id' => [$link->trip_schedule_id ? 'prohibited' : 'nullable', 'integer'],
+            'schedule_id' => [$mayChoose ? 'nullable' : 'prohibited', 'integer'],
             'consent' => ['accepted'],
         ]);
 
@@ -73,6 +89,9 @@ class PublicIntakeController extends Controller
             'intake' => $intake,
             'schedule' => $intake->schedule,
             'trip' => $intake->schedule?->trip,
+            // เพื่อนที่ตามมากรอกทีหลังควรรู้ด้วยว่าระหว่างนั้นรอบเต็มไปแล้ว —
+            // ข้อมูลยังรับอยู่ เพราะทีมงานเอาไปเสนอรอบอื่นหรือคิวรอให้ได้
+            'closed' => $intake->schedule !== null && ! $intake->schedule->acceptsNewCustomers(),
             // ชื่อเล่นเท่านั้น — ลิงก์นี้อยู่ในแชทกลุ่ม ใครเปิดก็ได้
             'filled' => $intake->people()->get()->map->publicLabel()->all(),
             'justFilled' => session('intake_just_filled'),
@@ -119,7 +138,7 @@ class PublicIntakeController extends Controller
         $isInternational = (bool) $schedule?->trip?->isInternational();
         $passportRule = $isInternational ? 'required' : 'nullable';
 
-        return $request->validate([
+        $validated = $request->validate([
             'title' => ['nullable', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:120'],
             'nickname' => ['nullable', 'string', 'max:50'],
@@ -149,6 +168,9 @@ class PublicIntakeController extends Controller
             'passport_expires_at.required' => 'กรุณาระบุวันหมดอายุพาสปอร์ต',
             'passport_expires_at.after' => 'พาสปอร์ตหมดอายุแล้ว',
         ]);
+
+        // ไอพีเก็บคู่กับความยินยอม ไม่ได้เอาไปทำอย่างอื่น
+        return [...$validated, 'consent_ip' => $request->ip()];
     }
 
     /** เกณฑ์ 6 เดือนเดียวกับตอนจอง — ตกตั้งแต่ตอนนี้ดีกว่าไปตกตอนออกตั๋ว */
@@ -166,7 +188,7 @@ class PublicIntakeController extends Controller
         return null;
     }
 
-    /** รอบที่ยังเปิดขายและยังไม่ออกเดินทาง — ใช้กับลิงก์กลางที่ไม่ผูกรอบ */
+    /** รอบที่ยังรับคนได้จริง — ใช้กับลิงก์กลางที่ไม่ผูกรอบ */
     private function openSchedules()
     {
         return TripSchedule::with('trip')
@@ -175,7 +197,24 @@ class PublicIntakeController extends Controller
             ->orderBy('departure_date')
             ->limit(60)
             ->get()
-            ->filter(fn (TripSchedule $schedule) => $schedule->trip !== null);
+            // รอบที่เต็มแล้วไม่ควรอยู่ในลิสต์ให้เลือก — เลือกไปก็ได้คำตอบเดียวกัน
+            ->filter(fn (TripSchedule $schedule) => $schedule->trip !== null && $schedule->acceptsNewCustomers())
+            ->values();
+    }
+
+    /** รอบอื่นของทริปเดียวกัน — ทางออกให้ลูกค้าที่เปิดลิงก์ของรอบที่เต็มไปแล้ว */
+    private function siblingRounds(TripSchedule $schedule)
+    {
+        return TripSchedule::with('trip')
+            ->where('trip_id', $schedule->trip_id)
+            ->whereKeyNot($schedule->id)
+            ->where('status', 'open')
+            ->whereDate('departure_date', '>=', now('Asia/Bangkok')->toDateString())
+            ->orderBy('departure_date')
+            ->limit(12)
+            ->get()
+            ->filter(fn (TripSchedule $other) => $other->trip !== null && $other->acceptsNewCustomers())
+            ->values();
     }
 
     private function pickSchedule(mixed $scheduleId): ?TripSchedule
@@ -186,10 +225,12 @@ class PublicIntakeController extends Controller
 
         // ถามฐานข้อมูลตรง ๆ ไม่ใช่ค้นจากลิสต์ที่ตัดมา 60 แถว ไม่งั้นรอบที่อยู่
         // ไกลออกไปจะถูกปัดทิ้งเงียบ ๆ กลายเป็นข้อมูลที่ไม่ผูกรอบโดยไม่มีใครรู้
-        return TripSchedule::with('trip')
+        $schedule = TripSchedule::with('trip')
             ->where('status', 'open')
             ->whereDate('departure_date', '>=', now('Asia/Bangkok')->toDateString())
             ->find((int) $scheduleId);
+
+        return $schedule?->acceptsNewCustomers() ? $schedule : null;
     }
 
     private function resolveLink(string $token): IntakeLink

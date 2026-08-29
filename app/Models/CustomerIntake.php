@@ -29,7 +29,7 @@ class CustomerIntake extends Model
     protected $fillable = [
         'intake_link_id', 'trip_schedule_id', 'contact_name', 'contact_phone',
         'contact_email', 'party_size', 'source', 'note', 'status',
-        'booking_id', 'converted_at', 'last_activity_at',
+        'booking_id', 'converted_at', 'last_activity_at', 'team_notified_at',
     ];
 
     protected function casts(): array
@@ -38,6 +38,7 @@ class CustomerIntake extends Model
             'party_size' => 'integer',
             'converted_at' => 'datetime',
             'last_activity_at' => 'datetime',
+            'team_notified_at' => 'datetime',
         ];
     }
 

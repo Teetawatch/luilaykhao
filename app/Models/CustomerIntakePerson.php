@@ -13,11 +13,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CustomerIntakePerson extends Model
 {
+    /**
+     * ข้อความยินยอมที่แสดงบนฟอร์ม — เก็บคู่กับเวลาที่ติ๊กไว้เป็นหลักฐาน
+     * แก้ที่นี่ที่เดียว ทั้งฟอร์มและหลักฐานจึงพูดตรงกันเสมอ
+     */
+    public const CONSENT_TEXT = 'ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน';
+
     protected $fillable = [
         'customer_intake_id', 'is_lead', 'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'name_en', 'nationality',
         'passport_no', 'passport_expires_at', 'emergency_contact', 'emergency_phone',
         'allergies', 'health_notes', 'halal_food', 'dive_cert_level', 'cert_number', 'weight',
+        'consent_at', 'consent_ip', 'consent_text',
     ];
 
     protected function casts(): array
@@ -33,6 +40,7 @@ class CustomerIntakePerson extends Model
             'passport_expires_at' => 'date',
             'halal_food' => 'boolean',
             'weight' => 'float',
+            'consent_at' => 'datetime',
         ];
     }
 
