@@ -1388,6 +1388,8 @@ class AdminController extends Controller
             'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
             'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],
             'passengers.*.halal_food' => ['nullable', 'boolean'],
+            // จุดรับรายคน — กลุ่มเดียวกันขึ้นคนละจุดเป็นเรื่องปกติ
+            'passengers.*.pickup_point_id' => ['nullable', 'integer'],
             // จุดรับรายคน — คนในกลุ่มเดียวกันขึ้นคนละจุดได้ (ว่าง = ตามจุดของการจอง)
             'passengers.*.pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
             'installments' => ['nullable', 'array'],
@@ -1897,6 +1899,8 @@ class AdminController extends Controller
             'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
             'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],
             'passengers.*.halal_food' => ['nullable', 'boolean'],
+            // จุดรับรายคน — กลุ่มเดียวกันขึ้นคนละจุดเป็นเรื่องปกติ
+            'passengers.*.pickup_point_id' => ['nullable', 'integer'],
             'seat_ids' => ['nullable', 'array'],
             'seat_ids.*' => ['nullable', 'string', 'max:30'],
             'pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
@@ -2013,6 +2017,40 @@ class AdminController extends Controller
             }
         }
 
+        // จุดรับรายคน — ไปรับที่รังสิตสองคน ที่ลาดพร้าวอีกคนในใบจองเดียวกันเป็น
+        // เรื่องปกติ ราคาต่อคนจึงเป็นราคาของจุดที่คนนั้นขึ้น เพราะราคาจุดรับคือ
+        // "ราคาต่อคนของโซนนั้น" ไม่ใช่ค่าบริการที่บวกเพิ่มจากราคารอบ
+        // คนที่ไม่ได้เลือกเอง ใช้จุดรับหลักของใบจอง
+        $passengerPickups = [];
+        foreach ($passengers as $passenger) {
+            if ($isJoinTrip) {
+                $passengerPickups[] = null;
+
+                continue;
+            }
+
+            $ownId = $passenger['pickup_point_id'] ?? null;
+            if (blank($ownId)) {
+                $passengerPickups[] = $pickupPoint;
+
+                continue;
+            }
+
+            $own = $schedule->pickupPoints->firstWhere('id', (int) $ownId);
+            if (! $own) {
+                return $this->error(
+                    'จุดรับของ '.($passenger['name'] ?? 'ผู้เดินทาง').' ไม่อยู่ในรอบเดินทางนี้',
+                    422,
+                );
+            }
+
+            $passengerPickups[] = $own;
+        }
+
+        // หัวการจองยังต้องมีจุดรับไว้ให้หน้าที่อ่านทีละใบ (ใบเสร็จ/อีเมล/สตาฟที่ยัง
+        // fallback มาที่หัว) ถ้าแอดมินไม่ได้เลือกจุดหลัก ใช้จุดของคนแรกที่เลือกไว้
+        $pickupPoint ??= collect($passengerPickups)->first(fn ($point) => $point !== null);
+
         $email = $request->input('email');
         $user = User::when($email, fn ($query) => $query->where('email', $email))
             ->when(! $email, fn ($query) => $query->where('phone', $request->phone))
@@ -2034,10 +2072,14 @@ class AdminController extends Controller
             ], fn ($value) => filled($value)));
         }
 
-        $pricePerPerson = $isJoinTrip
-            ? ($schedule->join_trip_price ?? $schedule->effective_price)
-            : ($pickupPoint?->price ?? $schedule->effective_price);
-        $totalAmount = $pricePerPerson * $participantCount;
+        // ยอดรวมบวกทีละคนตามจุดที่คนนั้นขึ้น — คูณราคาเดียวด้วยจำนวนคนไม่ได้อีกแล้ว
+        // เมื่อในใบเดียวกันมีหลายจุดรับ (ตรรกะเดียวกับฝั่งลูกค้าใน BookingService)
+        $totalAmount = $isJoinTrip
+            ? ($schedule->join_trip_price ?? $schedule->effective_price) * $participantCount
+            : array_sum(array_map(
+                fn ($point) => (float) ($point?->price ?? $schedule->effective_price),
+                $passengerPickups,
+            ));
         $installmentCount = null;
         $installmentIntervalDays = null;
         $installmentDueDates = [];
@@ -2088,7 +2130,7 @@ class AdminController extends Controller
                 $paidAmount, $paymentType, $installmentCount, $installmentIntervalDays,
                 $depositAmount, $balanceAmount, $balanceDueAt,
                 $isPaid, $paymentRef, $slipPath, $transferDt, $isJoinTrip, $passengers, $seatIds,
-                $holdUntil
+                $holdUntil, $passengerPickups
             ) {
                 // ล็อกรอบเดินทางแล้วตรวจที่นั่งซ้ำใต้ lock — ทำให้ check-แล้ว-insert เป็น atomic
                 // กัน race กับการจองอื่น (ของลูกค้า/แอดมินคนอื่น) ที่ทำให้ชน unique constraint
@@ -2134,9 +2176,11 @@ class AdminController extends Controller
                     'hold_by_id' => $holdUntil ? $request->user()?->id : null,
                 ]);
 
-                $passengerModels = $passengers->map(function ($passenger) use ($booking) {
+                $passengerModels = $passengers->map(function ($passenger, $index) use ($booking, $passengerPickups) {
                     return BookingPassenger::create([
                         'booking_id' => $booking->id,
+                        // แถวรายคนคือสิ่งที่หน้าสตาฟและแอปคนขับอ่านก่อนหัวการจอง
+                        'pickup_point_id' => ($passengerPickups[$index] ?? null)?->id,
                         'title' => $passenger['title'] ?? '',
                         'name' => $passenger['name'],
                         'nickname' => $passenger['nickname'] ?? null,
@@ -2197,7 +2241,7 @@ class AdminController extends Controller
             return $this->error($e->getMessage(), 422);
         }
 
-        $booking->load(['schedule.trip', 'schedule.vehicle', 'pickupPoint', 'user', 'passengers', 'seats', 'installmentPayments']);
+        $booking->load(['schedule.trip', 'schedule.vehicle', 'pickupPoint', 'user', 'passengers.pickupPoint', 'seats', 'installmentPayments']);
 
         if ($request->boolean('send_email', true) && $user->email && ! str_starts_with($user->email, 'manual_')) {
             app(MailService::class)->sendBookingCreatedEmail($booking);

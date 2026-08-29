@@ -81,13 +81,14 @@
             </label>
 
             <label v-if="pickupPoints.length && !form.is_join_trip" class="form-field full">
-              <span>จุดรับ</span>
+              <span>จุดรับหลัก</span>
               <select v-model.number="form.pickup_point_id">
                 <option value="">ไม่ระบุจุดรับ</option>
                 <option v-for="point in pickupPoints" :key="point.id" :value="point.id">
                   {{ point.region_label || point.region }} · {{ point.pickup_location }} · {{ formatCurrency(point.price) }}
                 </option>
               </select>
+              <small class="field-note">ใช้กับทุกคนที่ไม่ได้เลือกจุดของตัวเอง — เลือกรายคนได้ในขั้นที่ 3</small>
             </label>
           </div>
         </section>
@@ -204,6 +205,16 @@
                     </label>
                   </div>
                 </div>
+                <label v-if="pickupPoints.length && !form.is_join_trip" class="form-field full">
+                  <span>จุดรับ</span>
+                  <select v-model.number="passenger.pickup_point_id">
+                    <option value="">{{ selectedPickup ? `ใช้จุดรับหลัก · ${selectedPickup.pickup_location}` : 'ใช้จุดรับหลัก (ยังไม่ได้เลือก)' }}</option>
+                    <option v-for="point in pickupPoints" :key="point.id" :value="point.id">
+                      {{ point.region_label || point.region }} · {{ point.pickup_location }} · {{ formatCurrency(point.price) }}
+                    </option>
+                  </select>
+                  <small class="field-note">ราคาต่อคนคิดตามจุดที่คนนี้ขึ้น</small>
+                </label>
                 <label class="form-field full">
                   <span>การแพ้อาหาร / อื่นๆ</span>
                   <input v-model.trim="passenger.allergies" placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ" />
@@ -528,6 +539,14 @@
             <span>ผู้เดินทาง</span>
             <strong>{{ passengers.length }} คน</strong>
           </div>
+          <div v-if="pickupBreakdown.length" class="summary-row summary-row--stack">
+            <span>จุดรับ</span>
+            <div class="pickup-breakdown">
+              <strong v-for="bucket in pickupBreakdown" :key="bucket.id">
+                {{ bucket.label }} · {{ bucket.count }} คน
+              </strong>
+            </div>
+          </div>
           <div class="summary-row">
             <span>ที่นั่ง</span>
             <strong>{{ seatSelectionRequired ? (selectedSeatIds.join(', ') || '-') : 'ไม่ต้องเลือก' }}</strong>
@@ -756,7 +775,38 @@ const pricePerPerson = computed(() => {
   if (selectedPickup.value) return Number(selectedPickup.value.price || 0);
   return Number(selectedSchedule.value.price || 0);
 });
-const totalAmount = computed(() => pricePerPerson.value * passengers.value.length);
+
+/** ราคาของคนคนหนึ่ง — จุดของตัวเองก่อน แล้วค่อยจุดรับหลัก/ราคารอบ */
+const priceForPassenger = (passenger) => {
+  if (form.is_join_trip) return pricePerPerson.value;
+  const own = pickupPoints.value.find((point) => point.id === Number(passenger.pickup_point_id));
+
+  return own ? Number(own.price || 0) : pricePerPerson.value;
+};
+
+// บวกทีละคน ไม่ใช่คูณราคาเดียว — ในใบเดียวกันแต่ละคนขึ้นคนละจุดได้ และราคาจุดรับ
+// คือราคาต่อคนของโซนนั้น ไม่ใช่ค่าบริการที่บวกเพิ่ม
+const totalAmount = computed(
+  () => passengers.value.reduce((sum, passenger) => sum + priceForPassenger(passenger), 0),
+);
+
+/** จุดรับที่ใช้จริงในใบนี้ พร้อมจำนวนคน — ไว้เตือนตาก่อนกดบันทึก */
+const pickupBreakdown = computed(() => {
+  if (form.is_join_trip || !pickupPoints.value.length) return [];
+
+  const buckets = new Map();
+  passengers.value.forEach((passenger) => {
+    const own = pickupPoints.value.find((point) => point.id === Number(passenger.pickup_point_id))
+      || selectedPickup.value;
+    const key = own?.id ?? 0;
+    const current = buckets.get(key)
+      || { id: key, label: own ? (own.pickup_location || own.region_label || own.region) : 'ยังไม่ระบุจุดรับ', count: 0 };
+    current.count += 1;
+    buckets.set(key, current);
+  });
+
+  return [...buckets.values()];
+});
 // งวดถูกหารจาก "วันนี้ → วันปิดยอด" (วันเดินทาง - 15 วัน) แบบเดียวกับ PaymentQuote
 // ฝั่งเซิร์ฟเวอร์ ไม่ใช่เดินทีละ 30 วันแล้วไปตกหลังวันเดินทาง
 const installmentDueDates = computed(() => {
@@ -988,6 +1038,7 @@ function newPassenger() {
     cert_number: '',
     weight: null,
     halal_food: null,
+    pickup_point_id: '',
   };
 }
 
@@ -1079,6 +1130,12 @@ async function prefillFromIntake(intakeParam) {
   }
 }
 
+function clearPassengerPickups() {
+  passengers.value.forEach((passenger) => {
+    passenger.pickup_point_id = '';
+  });
+}
+
 async function fetchTrips() {
   const res = await api.get('/admin/trips', { params: { per_page: 500 } });
   trips.value = res.data?.data || [];
@@ -1087,6 +1144,7 @@ async function fetchTrips() {
 async function onTripChange() {
   form.schedule_id = '';
   form.pickup_point_id = '';
+  clearPassengerPickups();
   resetSeats();
   if (!form.trip_id) return;
 
@@ -1101,6 +1159,8 @@ async function onTripChange() {
 
 async function onScheduleChange() {
   form.pickup_point_id = '';
+  // จุดรับเป็นของรอบ ไม่ใช่ของทริป — ค้างไว้ข้ามรอบคือส่ง id ของรอบอื่นไปให้เซิร์ฟเวอร์
+  clearPassengerPickups();
   form.is_join_trip = false;
   resetSeats();
   if (!form.schedule_id) return;
@@ -1610,6 +1670,16 @@ function formatCurrency(value) {
 .form-field textarea:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
+}
+
+.pickup-breakdown {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.summary-row--stack {
+  align-items: flex-start;
 }
 
 .field-note {
