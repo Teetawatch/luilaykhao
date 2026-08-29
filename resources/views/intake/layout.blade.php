@@ -143,6 +143,22 @@
         .step-note { font-size: 14.5px; color: var(--muted); line-height: 1.55; margin: -6px 0 14px; }
         .step-note strong { color: var(--ink); font-weight: 700; }
 
+        /* ── รอบเดินทางที่กำลังกรอกอยู่ ─────────────────────────────── */
+        .round {
+            display: flex; gap: 12px; align-items: flex-start;
+            border: 1px solid var(--tint-line); background: var(--tint);
+            border-radius: 14px; padding: 13px 14px; margin-bottom: 16px;
+        }
+        .round-ic {
+            flex: 0 0 34px; height: 34px; border-radius: 11px;
+            background: #fff; border: 1px solid var(--tint-line); color: var(--canopy-dark);
+            display: grid; place-items: center;
+        }
+        .round-text { display: flex; flex-direction: column; gap: 2px; }
+        .round-label { font-size: 13.5px; color: var(--canopy-dark); }
+        .round-text strong { font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+        .round-meta { font-size: 14.5px; color: var(--body); line-height: 1.5; }
+
         /* ── ฟิลด์ ─────────────────────────────────────────────────── */
         .f { margin-bottom: 15px; }
         .f:last-child { margin-bottom: 0; }

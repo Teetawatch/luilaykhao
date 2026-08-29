@@ -373,9 +373,13 @@ class AdminController extends Controller
         // เรียงตามวันเดินทางใหม่→เก่า และตัดสินเสมอด้วย id เพื่อให้ลำดับคงที่
         // ข้ามหน้า (หลายรอบมีวันเดินทางวันเดียวกันได้ ถ้าไม่มีตัวตัดสิน แถวเดิม
         // อาจโผล่ซ้ำหรือหายไปเมื่อไล่ดูทีละหน้า)
+        //
+        // order=asc สำหรับหน้าที่ให้ "เลือกรอบข้างหน้า" — เรียงใหม่→เก่าแล้วตัดหน้าแรก
+        // จะได้รอบที่ไกลที่สุดมาก่อน ซึ่งตรงข้ามกับที่ตัวเลือกควรเห็น
+        $direction = $request->input('order') === 'asc' ? 'asc' : 'desc';
         $schedules = $query
-            ->orderByDesc('departure_date')
-            ->orderByDesc('id')
+            ->orderBy('departure_date', $direction)
+            ->orderBy('id', $direction)
             ->paginate($request->get('per_page', 15));
         $schedules->getCollection()->each->syncBookedSeats();
 

@@ -169,6 +169,15 @@ class TripSchedule extends Model
     }
 
     /**
+     * ช่วงวันเดินทางภาษาไทย เช่น "5 – 7 กันยายน 2569" — ใช้กับหน้าที่ลูกค้าอ่าน
+     * แล้วต้องตอบตัวเองได้ว่า "รอบนี้คือวันไหนถึงวันไหน" ไม่ใช่แค่วันออกเดินทาง
+     */
+    public function dateRangeLabelThai(): string
+    {
+        return ThaiDate::range($this->departure_date, $this->return_date);
+    }
+
+    /**
      * ข้อความวันเดินทางแบบสั้น เช่น "12/06/2026 23:30 น." — ใช้ใน SMS
      */
     public function departureLabelShort(): string

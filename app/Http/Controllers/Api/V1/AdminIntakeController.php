@@ -195,6 +195,11 @@ class AdminIntakeController extends Controller
             'schedule_label' => $schedule
                 ? trim(($schedule->trip?->title ?? 'รอบเดินทาง').' · '.$schedule->departureLabelShort())
                 : null,
+            // ชิ้นส่วนแยกของป้ายเดียวกัน — หน้าแอดมินมีรอบเยอะจนอ่านเป็นบรรทัด
+            // ข้อความไม่ทัน จึงวาดเป็นการ์ดรูป+วันที่แทน
+            'schedule_trip_title' => $schedule?->trip?->title,
+            'schedule_departure_date' => $schedule?->departure_date?->toDateString(),
+            'schedule_image' => $schedule?->trip?->thumbnail_image ?: $schedule?->trip?->cover_image,
         ];
     }
 

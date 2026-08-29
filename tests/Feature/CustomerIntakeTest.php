@@ -385,4 +385,104 @@ class CustomerIntakeTest extends TestCase
 
         $this->assertSame(2, BookingPassenger::where('booking_id', $bookingId)->count());
     }
+
+    /**
+     * ลูกค้าเปิดลิงก์จากแชทโดยไม่ได้ผ่านหน้าทริป ถ้าไม่บอกว่าเป็นรอบวันไหน
+     * ก็เท่ากับให้กรอกข้อมูลส่วนตัวไปโดยไม่รู้ว่ากำลังตอบรับทริปวันไหน
+     */
+    public function test_the_form_tells_the_customer_which_round_it_is_for(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'departure_date' => '2026-09-05',
+            'return_date' => '2026-09-07',
+            'departs_at' => '2026-09-04 20:00:00',
+        ]);
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('รอบเดินทางที่คุณกำลังกรอก')
+            // ย่อเดือน/ปีที่ซ้ำกันออก ไม่ใช่ "5 กันยายน 2569 – 7 กันยายน 2569"
+            ->assertSee('5 – 7 กันยายน 2569')
+            ->assertSee('เวลา 20:00 น.')
+            ->assertSee('3 วัน 2 คืน');
+    }
+
+    /** เพื่อนที่รับลิงก์กลุ่มต่อมาก็ต้องเห็นรอบเหมือนกัน ไม่ใช่เห็นแค่ชื่อทริป */
+    public function test_the_group_page_shows_the_round_too(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['departure_date' => '2026-09-05', 'return_date' => '2026-09-05', 'departs_at' => null]);
+        $link = $this->makeLink($schedule);
+        $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 2]));
+
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+
+        $this->get("/g/{$intake->token}")
+            ->assertOk()
+            ->assertSee('รอบเดินทางของกลุ่มนี้')
+            // ไปกลับวันเดียว ไม่ต้องมีขีดคั่น
+            ->assertSee('5 กันยายน 2569')
+            ->assertDontSee('–');
+    }
+
+    /**
+     * หน้าแอดมินวาดรอบที่ลิงก์ผูกอยู่เป็นการ์ดรูป+วันที่ ไม่ใช่บรรทัดข้อความ
+     * จึงต้องได้ชิ้นส่วนแยกมาด้วย ไม่ใช่แค่ schedule_label ที่ต่อไว้แล้ว
+     */
+    public function test_link_list_carries_the_pieces_needed_to_draw_the_round(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update(['thumbnail_image' => 'https://cdn.example.com/khao-luang.jpg']);
+        $this->makeLink($schedule);
+        $this->makeLink();
+
+        $links = $this->actingAs($admin)->getJson('/api/v1/admin/intake-links')->assertOk()->json('data');
+
+        $bound = collect($links)->firstWhere('trip_schedule_id', $schedule->id);
+        $this->assertSame('เขาหลวง สุโขทัย', $bound['schedule_trip_title']);
+        $this->assertSame($schedule->departure_date->toDateString(), $bound['schedule_departure_date']);
+        $this->assertSame('https://cdn.example.com/khao-luang.jpg', $bound['schedule_image']);
+
+        // ลิงก์กลางไม่มีรอบผูกอยู่ — หน้าจอต้องแยกได้ว่าไม่ใช่ "ยังไม่มีข้อมูล"
+        $general = collect($links)->firstWhere('trip_schedule_id', null);
+        $this->assertNull($general['schedule_trip_title']);
+        $this->assertNull($general['schedule_image']);
+    }
+
+    /**
+     * ตัวเลือกรอบดึงมาหน้าเดียว 200 รอบ ถ้าเรียงใหม่→เก่าตามค่าเริ่มต้น
+     * รอบที่ใกล้จะถึงจะตกไปอยู่หน้าท้าย ๆ ซึ่งเป็นรอบที่แอดมินต้องใช้บ่อยที่สุด
+     */
+    public function test_schedule_list_can_be_ordered_soonest_first(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $soon = $this->makeSchedule();
+        $soon->update(['departure_date' => now('Asia/Bangkok')->addDays(3)->toDateString()]);
+        $later = $this->makeSchedule();
+        $later->update(['departure_date' => now('Asia/Bangkok')->addMonths(6)->toDateString()]);
+
+        $ids = $this->actingAs($admin)
+            ->getJson('/api/v1/admin/schedules?upcoming=1&order=asc')
+            ->assertOk()
+            ->json('data.*.id');
+
+        $this->assertSame([$soon->id, $later->id], $ids);
+
+        // ไม่ส่ง order มา ต้องยังเป็นใหม่→เก่าเหมือนเดิมสำหรับหน้าอื่น
+        $default = $this->actingAs($admin)
+            ->getJson('/api/v1/admin/schedules?upcoming=1')
+            ->assertOk()
+            ->json('data.*.id');
+
+        $this->assertSame([$later->id, $soon->id], $default);
+    }
 }

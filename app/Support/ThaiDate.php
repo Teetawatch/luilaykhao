@@ -59,6 +59,32 @@ class ThaiDate
     }
 
     /**
+     * ช่วงวันที่ภาษาไทย: "25 – 27 กรกฎาคม 2569" — ย่อส่วนที่ซ้ำกันออก
+     * ("30 กรกฎาคม – 2 สิงหาคม 2569" เมื่อข้ามเดือน, เขียนเต็มทั้งสองฝั่งเมื่อข้ามปี)
+     * ทริปส่วนใหญ่ค้างคืน การบอกแค่วันออกเดินทางทำให้ลูกค้าไม่รู้ว่ากลับวันไหน
+     */
+    public static function range(?CarbonInterface $from, ?CarbonInterface $to): string
+    {
+        if ($from === null) {
+            return $to === null ? '-' : self::full($to);
+        }
+
+        if ($to === null || $to->isSameDay($from)) {
+            return self::full($from);
+        }
+
+        if ($from->year !== $to->year) {
+            return self::full($from).' – '.self::full($to);
+        }
+
+        $head = $from->month === $to->month
+            ? $from->locale('th')->isoFormat('D')
+            : $from->locale('th')->isoFormat('D MMMM');
+
+        return $head.' – '.self::full($to);
+    }
+
+    /**
      * วันที่+เวลาแบบสั้น: "25 ก.ค. 2569 14:30" (ยังไม่รวม " น.")
      */
     public static function shortTime(?CarbonInterface $date): string

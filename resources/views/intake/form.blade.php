@@ -12,7 +12,7 @@
         : 'ยังไม่ต้องรู้ว่าจะไปรอบไหนก็ฝากข้อมูลไว้ได้ ทีมงานจะช่วยแนะนำทริปที่เหมาะกับคุณ';
     $heroChips = [];
     if ($trip && $schedule) {
-        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->departureLabelThai()];
+        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabelThai()];
     }
     $heroChips[] = ['icon' => 'clock', 'text' => 'ใช้เวลาประมาณ 2 นาที'];
 @endphp
@@ -54,6 +54,10 @@
             <h2>{{ $link->trip_schedule_id ? 'การเดินทางของคุณ' : 'ทริปที่สนใจ' }}</h2>
             <span class="rule"></span>
         </div>
+
+        @if ($schedule)
+            @include('intake.round', ['schedule' => $schedule, 'roundLabel' => 'รอบเดินทางที่คุณกำลังกรอก'])
+        @endif
 
         @if (! $link->trip_schedule_id)
             <div class="f">

@@ -17,7 +17,7 @@
     };
     $heroChips = [];
     if ($trip && $schedule) {
-        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->departureLabelThai()];
+        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabelThai()];
     }
     $heroChips[] = ['icon' => 'users', 'text' => 'กรอกแล้ว '.$filledCount.' / '.$partySize.' คน'];
 @endphp
@@ -58,6 +58,10 @@
 @endpush
 
 @section('content')
+    @if ($schedule)
+        @include('intake.round', ['schedule' => $schedule, 'roundLabel' => 'รอบเดินทางของกลุ่มนี้'])
+    @endif
+
     @if ($justFilled)
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'check-circle'])
