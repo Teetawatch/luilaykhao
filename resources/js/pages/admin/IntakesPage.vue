@@ -112,6 +112,24 @@
       </div>
     </div>
 
+    <!-- ลูกค้าที่มาด้วยกันมักกดลิงก์คนละครั้งจนกลายเป็นคนละกลุ่ม แต่ต้องขึ้นรถคันเดียวกัน
+         เลือกหลายกลุ่มแล้วดึงไปเปิดเป็นการจองใบเดียว จะได้เลือกที่นั่งพร้อมกัน -->
+    <div v-if="selectedIntakes.length" class="bulk-bar">
+      <div class="bulk-info">
+        <strong>เลือกไว้ {{ selectedIntakes.length }} กลุ่ม · {{ selectedPeopleCount }} คน</strong>
+        <span v-if="selectedScheduleLabel">{{ selectedScheduleLabel }}</span>
+        <span v-if="mixedSchedules" class="bulk-warn">
+          <span class="material-symbols-rounded">warning</span>
+          กลุ่มที่เลือกอยู่คนละรอบเดินทาง — จะใช้รอบของกลุ่มแรกให้
+        </span>
+      </div>
+      <button class="btn-secondary btn-sm" @click="selectedIds = []">ล้างที่เลือก</button>
+      <button class="btn-primary btn-sm" @click="pullSelectedIntoBooking">
+        <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
+        ดึงไปจองรวมกัน ({{ selectedPeopleCount }} คน)
+      </button>
+    </div>
+
     <div class="table-card">
       <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
       <div v-else>
@@ -125,6 +143,14 @@
         <table v-else class="data-table">
           <thead>
             <tr>
+              <th class="pick-col">
+                <input
+                  type="checkbox"
+                  :checked="allPickableSelected"
+                  :disabled="!pickableIntakes.length"
+                  @change="toggleSelectAll($event.target.checked)"
+                />
+              </th>
               <th>ลูกค้า</th>
               <th>ทริปที่สนใจ</th>
               <th>กรอกแล้ว</th>
@@ -133,7 +159,15 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="intake in intakes" :key="intake.id">
+            <tr v-for="intake in intakes" :key="intake.id" :class="{ picked: selectedIds.includes(intake.id) }">
+              <td class="pick-col">
+                <input
+                  type="checkbox"
+                  :disabled="intake.status !== 'new'"
+                  :checked="selectedIds.includes(intake.id)"
+                  @change="toggleSelect(intake)"
+                />
+              </td>
               <td>
                 <strong>{{ intake.contact_name }}</strong>
                 <div class="cell-sub">
@@ -243,7 +277,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../lib/axios';
 
@@ -264,9 +298,36 @@ const status = ref('new');
 const search = ref('');
 const newCount = ref(0);
 const copiedKey = ref(null);
+const selectedIds = ref([]);
 const showLinkForm = ref(false);
 const creatingLink = ref(false);
 const newLink = ref({ trip_schedule_id: '', label: '' });
+
+// เลือกได้เฉพาะกลุ่มที่ยังไม่ถูกดึงไปจอง — กลุ่มที่จองแล้ว/เก็บเข้ากรุ ดึงซ้ำไม่ได้
+const pickableIntakes = computed(() => intakes.value.filter((row) => row.status === 'new'));
+const selectedIntakes = computed(() => intakes.value.filter((row) => selectedIds.value.includes(row.id)));
+const allPickableSelected = computed(
+  () => pickableIntakes.value.length > 0 && pickableIntakes.value.every((row) => selectedIds.value.includes(row.id)),
+);
+// นับ "คนที่กรอกมาแล้ว" ไม่ใช่จำนวนที่แจ้งไว้ — ที่นั่งที่ต้องเลือกคือเท่าที่มีข้อมูลจริง
+const selectedPeopleCount = computed(
+  () => selectedIntakes.value.reduce((sum, row) => sum + (row.filled_count || 0), 0),
+);
+const selectedScheduleLabel = computed(() => selectedIntakes.value.find((row) => row.schedule_label)?.schedule_label || '');
+const mixedSchedules = computed(
+  () => new Set(selectedIntakes.value.map((row) => row.trip_schedule_id ?? null)).size > 1,
+);
+
+const toggleSelect = (intake) => {
+  if (intake.status !== 'new') return;
+  selectedIds.value = selectedIds.value.includes(intake.id)
+    ? selectedIds.value.filter((id) => id !== intake.id)
+    : [...selectedIds.value, intake.id];
+};
+
+const toggleSelectAll = (checked) => {
+  selectedIds.value = checked ? pickableIntakes.value.map((row) => row.id) : [];
+};
 
 const fetchAll = async () => {
   loading.value = true;
@@ -290,6 +351,8 @@ const fetchIntakes = async (toggleLoading = true) => {
     });
     intakes.value = res.data?.data ?? [];
     newCount.value = res.data?.meta?.new_count ?? 0;
+    // แถวที่หายไปจากรายการใหม่ต้องไม่ค้างอยู่ในสิ่งที่เลือกไว้
+    selectedIds.value = selectedIds.value.filter((id) => intakes.value.some((row) => row.id === id));
   } catch (e) {
     intakes.value = [];
     alert(e.response?.data?.message ?? 'โหลดข้อมูลไม่สำเร็จ');
@@ -367,7 +430,13 @@ const destroy = async (intake) => {
  * ผู้โดยสารเอง แล้วส่ง intake_id กลับมาตอนบันทึกเพื่อปิดกลุ่มนี้ให้อัตโนมัติ
  */
 const pullIntoBooking = (intake) => {
-  router.push({ name: 'admin-manual-booking', query: { intake: intake.id } });
+  router.push({ name: 'admin-manual-booking', query: { intake: String(intake.id) } });
+};
+
+/** หลายกลุ่ม = การจองใบเดียว ผู้โดยสารรวมกันทุกคน (หน้าปลายทางกรองชื่อซ้ำให้เอง) */
+const pullSelectedIntoBooking = () => {
+  if (!selectedIds.value.length) return;
+  router.push({ name: 'admin-manual-booking', query: { intake: selectedIds.value.join(',') } });
 };
 
 const copy = async (text, key) => {
@@ -494,4 +563,25 @@ tr.inactive { opacity: .5; }
   background: #ecfdf5; border-radius: 999px; padding: 2px 7px;
 }
 .drawer-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 18px; border-top: 1px solid #e5e7eb; }
+
+/* ── แถบ "เลือกไว้กี่กลุ่ม" เหนือตาราง ─────────────────────────── */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  background: #f0fdf4;
+}
+.bulk-info { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.bulk-info strong { font-size: 14px; color: #065f46; }
+.bulk-info span { font-size: 12.5px; color: #047857; }
+.bulk-warn { display: flex; align-items: center; gap: 4px; color: #b45309; }
+.bulk-warn .material-symbols-rounded { font-size: 16px; }
+.pick-col { width: 36px; text-align: center; }
+.pick-col input { width: 16px; height: 16px; accent-color: #059669; cursor: pointer; }
+.data-table tr.picked { background: #f0fdf4; }
 </style>

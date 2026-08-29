@@ -14,16 +14,27 @@
       </router-link>
     </div>
 
-    <div v-if="intakeSource" class="intake-banner">
+    <div v-if="intakeSources.length" class="intake-banner">
       <span class="material-symbols-rounded">contact_mail</span>
       <div>
-        <strong>ดึงข้อมูลจากลิงก์ที่ลูกค้ากรอกเองมาแล้ว</strong>
-        <p>
-          {{ intakeSource.contact_name }} · กรอกครบ {{ intakeSource.people.length }}/{{ intakeSource.party_size }} คน
-          <template v-if="intakeSource.people.length < intakeSource.party_size">
-            — ยังรอเพื่อนอีก {{ intakeSource.party_size - intakeSource.people.length }} คน จองตอนนี้จะได้เท่าที่กรอกมา
+        <strong>
+          ดึงข้อมูลจากลิงก์ที่ลูกค้ากรอกเองมาแล้ว
+          <template v-if="intakeSources.length > 1">· {{ intakeSources.length }} กลุ่ม รวมเป็นการจองใบเดียว</template>
+        </strong>
+        <p v-for="source in intakeSources" :key="source.id">
+          {{ source.contact_name }} · กรอกครบ {{ source.people.length }}/{{ source.party_size }} คน
+          <template v-if="source.people.length < source.party_size">
+            — ยังรอเพื่อนอีก {{ source.party_size - source.people.length }} คน จองตอนนี้จะได้เท่าที่กรอกมา
           </template>
-          · เมื่อบันทึกการจองแล้ว กลุ่มนี้จะถูกปิดโดยอัตโนมัติ
+        </p>
+        <p>
+          ผู้เดินทางในฟอร์มด้านล่าง {{ passengers.length }} คน
+          <template v-if="intakeDroppedCount">(ตัดชื่อที่ซ้ำกันออก {{ intakeDroppedCount }} คน)</template>
+          · เมื่อบันทึกการจองแล้ว กลุ่มเหล่านี้จะถูกปิดโดยอัตโนมัติ
+        </p>
+        <p v-if="intakeScheduleMixed" class="intake-warn">
+          <span class="material-symbols-rounded">warning</span>
+          กลุ่มที่เลือกมาอยู่คนละรอบเดินทาง — ตั้งรอบให้ตามกลุ่มแรก ตรวจอีกครั้งก่อนบันทึก
         </p>
       </div>
       <router-link to="/admin/intakes" class="btn-secondary">กลับไปรายการ</router-link>
@@ -546,13 +557,63 @@
           <p v-if="createdBooking.hold_until">กันที่นั่งไว้ถึง {{ formatDateTime(createdBooking.hold_until) }}</p>
           <router-link :to="`/payment/${createdBooking.booking_ref}`" class="btn-secondary">เปิดหน้าชำระเงิน</router-link>
         </div>
+
+        <!-- QR ให้ลูกค้าสแกนจ่าย — ลูกค้าคุยอยู่ในแชท ไม่ได้เปิดแอป จึงต้องมี QR
+             ที่ทีมงานแคปส่งต่อได้ทันทีที่เปิดการจองเสร็จ -->
+        <div v-if="createdBooking && !isPaidMode" class="qr-panel">
+          <div class="qr-head">
+            <div>
+              <strong>QR ให้ลูกค้าสแกนจ่าย</strong>
+              <span v-if="qrData">{{ qrData.purpose_label }} · {{ formatCurrency(qrData.amount) }}</span>
+              <span v-else>ออก QR แล้วส่งให้ลูกค้าในแชทได้เลย</span>
+            </div>
+            <button
+              type="button"
+              class="btn-secondary btn-sm"
+              :disabled="qrLoading"
+              @click="createQr"
+            >
+              <span class="material-symbols-rounded" style="font-size:16px">qr_code_2</span>
+              {{ qrData ? 'ออก QR ใหม่' : 'ออก QR' }}
+            </button>
+          </div>
+
+          <div v-if="qrPaid" class="qr-paid">
+            <span class="material-symbols-rounded">task_alt</span>
+            <div>
+              <strong>ลูกค้าชำระเงินแล้ว</strong>
+              <p>ยอด {{ formatCurrency(qrData?.amount) }} เข้าระบบเรียบร้อย</p>
+            </div>
+          </div>
+
+          <template v-else-if="qrImageSrc">
+            <div class="qr-image-wrap">
+              <img :src="qrImageSrc" alt="QR ชำระเงิน" />
+              <div v-if="qrExpired" class="qr-expired">
+                <span class="material-symbols-rounded">timer_off</span>
+                QR หมดอายุแล้ว
+              </div>
+            </div>
+            <p class="qr-meta">
+              <template v-if="qrData?.provider === 'promptpay'">
+                QR พร้อมเพย์ของบริษัท — ลูกค้าโอนแล้วให้ส่งสลิปมาแนบในใบจองนี้
+              </template>
+              <template v-else-if="!qrExpired">
+                รอลูกค้าสแกน · QR หมดอายุใน <strong>{{ qrCountdownText }}</strong>
+              </template>
+              <template v-else>กด "ออก QR ใหม่" เพื่อออกใบใหม่ให้ลูกค้า</template>
+            </p>
+          </template>
+
+          <p v-if="qrError" class="qr-error">{{ qrError }}</p>
+        </div>
       </aside>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
@@ -629,8 +690,19 @@ const regionLabels = {
 const holdQuickDays = ref(null);
 
 // ข้อมูลลูกค้าที่ถูกดึงมาจากลิงก์กรอกเอง — โชว์แถบบอกที่มา แล้วส่ง id กลับตอนบันทึก
-const intakeId = ref(null);
-const intakeSource = ref(null);
+// เป็นรายการเพราะกลุ่มที่มาด้วยกันอาจถูกกรอกแยกกันมาหลายกลุ่ม แต่ต้องจองใบเดียว
+const intakeIds = ref([]);
+const intakeSources = ref([]);
+const intakeDroppedCount = ref(0);
+const intakeScheduleMixed = ref(false);
+
+// ── QR ให้ลูกค้าสแกนจ่าย (หลังเปิดการจองเสร็จ) ──
+const qrData = ref(null);
+const qrLoading = ref(false);
+const qrError = ref('');
+const qrSecondsLeft = ref(0);
+let qrPollTimer = null;
+let qrTickTimer = null;
 
 const route = useRoute();
 
@@ -750,6 +822,24 @@ const paymentPlanLabel = computed(() => {
   return 'จ่ายเต็ม';
 });
 const paymentEvidenceRequired = computed(() => form.mode === 'paid');
+const isPaidMode = computed(() => form.mode === 'paid');
+
+const qrImageSrc = computed(() => {
+  if (!qrData.value) return '';
+  // Beam ส่ง PNG มาเป็น base64 ส่วน QR พร้อมเพย์ของเราเองเป็น SVG data URI
+  return qrData.value.qr_image_base64
+    ? `data:image/png;base64,${qrData.value.qr_image_base64}`
+    : (qrData.value.qr_data_uri || '');
+});
+const qrPaid = computed(() => qrData.value?.status === 'succeeded');
+// QR พร้อมเพย์ของเราเองไม่มีวันหมดอายุ — มีแต่ QR ของเกตเวย์ที่นับถอยหลัง
+const qrExpired = computed(
+  () => Boolean(qrData.value?.expires_at) && qrSecondsLeft.value <= 0 && !qrPaid.value,
+);
+const qrCountdownText = computed(() => {
+  const total = Math.max(0, qrSecondsLeft.value);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+});
 const isHoldMode = computed(() => form.mode === 'hold');
 
 // เวลารถออกจริงของรอบนี้ในเวลาไทย — ล็อกที่นั่งข้ามวันเดินทางไม่มีความหมาย
@@ -853,6 +943,8 @@ onMounted(async () => {
   await prefillFromIntake(route.query.intake);
 });
 
+onBeforeUnmount(stopQrTimers);
+
 watch(() => passengers.value.length, () => {
   selectedSeatIds.value = selectedSeatIds.value.slice(0, passengers.value.length);
 });
@@ -902,49 +994,85 @@ function newPassenger() {
 /**
  * เติมฟอร์มจากข้อมูลที่ลูกค้ากรอกมาเองผ่านลิงก์ (/admin/intakes)
  *
+ * รับได้ทีละหลายกลุ่ม ("3,7,9") เพราะลูกค้าที่มาด้วยกันมักกดลิงก์ทีมงานคนละครั้ง
+ * จนกลายเป็นคนละกลุ่ม แต่ต้องขึ้นรถคันเดียวกันและเลือกที่นั่งพร้อมกัน
+ *
  * เดินตามลำดับเดียวกับที่แอดมินกดเอง — เลือกทริปก่อน แล้วรอรายการรอบโหลดเสร็จ
  * ค่อยเลือกรอบ ไม่งั้น onTripChange จะล้าง schedule_id ที่เพิ่งตั้งไปทิ้ง
  */
 async function prefillFromIntake(intakeParam) {
-  const id = Number(intakeParam);
-  if (!id) return;
+  const ids = String(intakeParam ?? '')
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  if (!ids.length) return;
 
   try {
-    const res = await api.get(`/admin/intakes/${id}`);
-    const intake = res.data?.data;
-    if (!intake) return;
+    const responses = await Promise.all(ids.map((id) => api.get(`/admin/intakes/${id}`)));
+    const sources = responses.map((res) => res.data?.data).filter(Boolean);
+    if (!sources.length) return;
 
-    intakeId.value = id;
-    intakeSource.value = intake;
+    intakeIds.value = sources.map((source) => source.id);
+    intakeSources.value = sources;
 
-    form.customer_name = intake.contact_name || '';
-    form.phone = intake.contact_phone || '';
-    form.email = intake.contact_email || '';
+    // ผู้ติดต่อคือคนของกลุ่มแรก — ใบจองมีเจ้าของได้คนเดียว และคนที่ทีมงานคุยด้วย
+    // คือคนที่กดลิงก์มาก่อน
+    const [lead] = sources;
+    form.customer_name = lead.contact_name || '';
+    form.phone = lead.contact_phone || '';
+    form.email = lead.contact_email || '';
+
+    // รอบเดินทางยึดกลุ่มแรกที่ระบุรอบไว้ ถ้ากลุ่มอื่นคนละรอบ แถบด้านบนจะเตือนให้ตรวจ
+    const scheduled = sources.find((source) => source.trip_id) || null;
+    intakeScheduleMixed.value = new Set(
+      sources.map((source) => source.trip_schedule_id ?? null),
+    ).size > 1;
 
     // ตัวเลขล้วน ไม่ใช่สตริง — select ผูกด้วย v-model.number และ :value เป็น id ตัวเลข
     // ถ้าใส่เป็นสตริงช่องจะขึ้นว่างทั้งที่ค่าถูกตั้งไว้แล้ว
-    if (intake.trip_id) {
-      form.trip_id = Number(intake.trip_id);
+    if (scheduled) {
+      form.trip_id = Number(scheduled.trip_id);
       await onTripChange();
-      if (intake.trip_schedule_id) {
-        form.schedule_id = Number(intake.trip_schedule_id);
+      if (scheduled.trip_schedule_id) {
+        form.schedule_id = Number(scheduled.trip_schedule_id);
         await onScheduleChange();
       }
     }
 
-    const filled = (intake.passengers || []).map((passenger) => ({
-      ...newPassenger(),
-      ...passenger,
-      // ค่าที่เซิร์ฟเวอร์ส่งมาเป็น null ต้องกลายเป็นค่าว่าง ไม่งั้น input แสดง "null"
-      ...Object.fromEntries(
-        Object.entries(passenger).filter(([, value]) => value === null).map(([field]) => [field, '']),
-      ),
-      halal_food: passenger.halal_food ?? null,
-      weight: passenger.weight ?? null,
-    }));
+    const incoming = sources.flatMap((source) => source.passengers || []);
+    const merged = [];
+    const seen = new Set();
+    let dropped = 0;
 
-    if (filled.length) {
-      passengers.value = filled;
+    for (const passenger of incoming) {
+      // คนเดียวกันกรอกทั้งลิงก์ทีมงานและลิงก์กลุ่มก็เกิดขึ้นจริง — เบอร์คือตัวชี้ขาด
+      // เหมือนฝั่งเซิร์ฟเวอร์ ไม่มีเบอร์ค่อยถอยไปเทียบชื่อแบบตัดช่องว่าง
+      const key = (passenger.phone || '').replace(/\D/g, '')
+        || (passenger.name || '').replace(/\s+/g, '').toLowerCase();
+
+      if (key && seen.has(key)) {
+        dropped += 1;
+        continue;
+      }
+      if (key) seen.add(key);
+
+      merged.push({
+        ...newPassenger(),
+        ...passenger,
+        // ค่าที่เซิร์ฟเวอร์ส่งมาเป็น null ต้องกลายเป็นค่าว่าง ไม่งั้น input แสดง "null"
+        ...Object.fromEntries(
+          Object.entries(passenger).filter(([, value]) => value === null).map(([field]) => [field, '']),
+        ),
+        halal_food: passenger.halal_food ?? null,
+        weight: passenger.weight ?? null,
+      });
+    }
+
+    intakeDroppedCount.value = dropped;
+
+    if (merged.length) {
+      passengers.value = merged;
     }
   } catch (error) {
     toast.error(error.response?.data?.message || 'ดึงข้อมูลลูกค้าไม่สำเร็จ');
@@ -1167,8 +1295,8 @@ function buildBookingPayload() {
   appendFormValue(fd, 'pickup_point_id', form.pickup_point_id || null);
   appendFormValue(fd, 'passenger_count', passengers.value.length);
   appendFormValue(fd, 'send_email', form.send_email);
-  // มาจากหน้า "ข้อมูลลูกค้าจากลิงก์" — เซิร์ฟเวอร์ปิดกลุ่มนั้นให้เองเมื่อจองสำเร็จ
-  appendFormValue(fd, 'intake_id', intakeId.value);
+  // มาจากหน้า "ข้อมูลลูกค้าจากลิงก์" — เซิร์ฟเวอร์ปิดทุกกลุ่มที่รวมมาให้เองเมื่อจองสำเร็จ
+  intakeIds.value.forEach((id) => appendFormValue(fd, 'intake_ids[]', id));
 
   if (isHoldMode.value && holdUntilDate.value) {
     // ส่งเป็น ISO ที่มีโซนเวลาติดไป เซิร์ฟเวอร์จะได้ไม่ต้องเดาว่าเป็นเวลาไทยหรือ UTC
@@ -1198,14 +1326,86 @@ async function submitBooking() {
 
   submitting.value = true;
   createdBooking.value = null;
+  stopQrTimers();
+  qrData.value = null;
+  qrError.value = '';
   try {
     const res = await api.post('/admin/bookings/manual', buildBookingPayload());
     createdBooking.value = res.data?.data || null;
     toast.success(res.data?.message || (form.send_email ? 'สร้างการจองและส่งอีเมลแล้ว' : 'สร้างการจองแล้ว'));
+
+    // ยังไม่ได้รับเงิน = ทีมงานต้องส่ง QR ให้ลูกค้าต่อทันที ออกให้เลยไม่ต้องกดอีกที
+    if (createdBooking.value && !isPaidMode.value) {
+      await createQr();
+    }
   } catch (error) {
     toast.error(error.response?.data?.message || 'สร้างการจองไม่สำเร็จ');
   } finally {
     submitting.value = false;
+  }
+}
+
+/**
+ * ออก QR ให้ลูกค้าสแกนจ่าย — ยอดและชนิดของหนี้เซิร์ฟเวอร์เป็นคนตัดสิน หน้านี้แค่แสดง
+ *
+ * ไม่มีใครกด "จ่ายแล้ว" ที่ฝั่งลูกค้าได้ (เขาอยู่ในแชท ไม่ได้เปิดแอป) จึงถามสถานะเอง
+ * เป็นระยะ แล้วสลับการ์ดเป็น "ชำระเงินแล้ว" ทันทีที่ webhook ของ Beam เข้า
+ */
+async function createQr() {
+  if (!createdBooking.value || qrLoading.value) return;
+
+  stopQrTimers();
+  qrLoading.value = true;
+  qrError.value = '';
+  try {
+    const res = await api.post(`/admin/payments/${createdBooking.value.booking_ref}/qr`);
+    qrData.value = res.data?.data || null;
+    watchQr();
+  } catch (error) {
+    qrData.value = null;
+    qrError.value = error.response?.data?.message || 'ออก QR ไม่สำเร็จ';
+  } finally {
+    qrLoading.value = false;
+  }
+}
+
+function stopQrTimers() {
+  if (qrPollTimer) { clearInterval(qrPollTimer); qrPollTimer = null; }
+  if (qrTickTimer) { clearInterval(qrTickTimer); qrTickTimer = null; }
+}
+
+function watchQr() {
+  const expiresAt = qrData.value?.expires_at ? new Date(qrData.value.expires_at).getTime() : 0;
+
+  const tick = () => {
+    qrSecondsLeft.value = expiresAt ? Math.max(0, Math.round((expiresAt - Date.now()) / 1000)) : 0;
+    // หมดอายุแล้วก็ไม่ต้องถามต่อ ทีมงานต้องกดออกใบใหม่อยู่ดี
+    if (expiresAt && qrSecondsLeft.value <= 0) stopQrTimers();
+  };
+  tick();
+  qrTickTimer = setInterval(tick, 1000);
+
+  // QR พร้อมเพย์ (ไม่มี payment_id) ไม่มีอะไรให้ถาม — เงินเข้าเมื่อลูกค้าส่งสลิปมา
+  if (!qrData.value?.payment_id) return;
+
+  qrPollTimer = setInterval(pollQrOnce, 3000);
+}
+
+async function pollQrOnce() {
+  const paymentId = qrData.value?.payment_id;
+  if (!paymentId || !createdBooking.value) return;
+
+  try {
+    const res = await api.get(`/admin/payments/${createdBooking.value.booking_ref}/qr/${paymentId}`);
+    const fresh = res.data?.data;
+    if (!fresh) return;
+
+    qrData.value = { ...qrData.value, status: fresh.status };
+    if (['succeeded', 'failed', 'expired'].includes(fresh.status)) {
+      stopQrTimers();
+    }
+  } catch {
+    // เน็ตสะดุดรอบเดียวไม่ใช่เรื่องต้องแจ้ง รอบหน้าค่อยถามใหม่
   }
 }
 
@@ -1264,6 +1464,53 @@ function formatCurrency(value) {
 .intake-banner strong { font-size: 14px; color: #065f46; }
 .intake-banner p { font-size: 12.5px; color: #047857; margin-top: 2px; }
 .intake-banner .material-symbols-rounded { color: #059669; }
+.intake-warn { display: flex; align-items: center; gap: 4px; color: #b45309 !important; }
+.intake-warn .material-symbols-rounded { font-size: 16px; color: #b45309; }
+
+/* ── QR ให้ลูกค้าสแกนจ่าย ─────────────────────────────────────── */
+.qr-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 14px;
+  background: #fff;
+}
+.qr-head { display: flex; align-items: flex-start; gap: 12px; }
+.qr-head > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.qr-head strong { font-size: 14px; color: #111827; }
+.qr-head span { font-size: 12.5px; color: #6b7280; }
+.qr-image-wrap { position: relative; margin: 14px auto 0; width: 220px; }
+.qr-image-wrap img { width: 100%; display: block; border-radius: 12px; background: #fff; }
+.qr-expired {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .93);
+  font-size: 13px;
+  font-weight: 700;
+  color: #b45309;
+}
+.qr-meta { margin-top: 10px; font-size: 12.5px; color: #6b7280; text-align: center; }
+.qr-meta strong { color: #059669; font-variant-numeric: tabular-nums; }
+.qr-error { margin-top: 10px; font-size: 12.5px; font-weight: 700; color: #dc2626; }
+.qr-paid {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  background: #f0fdf4;
+}
+.qr-paid .material-symbols-rounded { color: #059669; }
+.qr-paid strong { font-size: 14px; color: #065f46; }
+.qr-paid p { font-size: 12.5px; color: #047857; }
 
 .manual-layout {
   display: grid;

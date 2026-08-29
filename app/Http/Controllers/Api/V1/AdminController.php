@@ -1910,7 +1910,11 @@ class AdminController extends Controller
             'hold_until' => ['nullable', 'date'],
             'hold_note' => ['nullable', 'string', 'max:255'],
             // มาจากหน้า "ข้อมูลลูกค้า" — ปิดกลุ่มนั้นทันทีที่เปิดการจองให้แล้ว
+            // หลายกลุ่มพร้อมกันได้ เพราะลูกค้าที่มาด้วยกันมักกดลิงก์ทีมงานคนละครั้ง
+            // จนกลายเป็นคนละกลุ่ม แต่ต้องขึ้นรถคันเดียวกันและเลือกที่นั่งพร้อมกัน
             'intake_id' => ['nullable', 'exists:customer_intakes,id'],
+            'intake_ids' => ['nullable', 'array', 'max:20'],
+            'intake_ids.*' => ['integer', 'exists:customer_intakes,id'],
         ]);
 
         $schedule = TripSchedule::with(['trip', 'pickupPoints'])->findOrFail($request->schedule_id);
@@ -2202,7 +2206,10 @@ class AdminController extends Controller
             app(SmsService::class)->sendPaymentConfirmed($booking, $paymentType);
         }
 
-        $this->markIntakeBooked($request->input('intake_id'), $booking);
+        $this->markIntakesBooked(
+            array_merge((array) $request->input('intake_ids', []), [$request->input('intake_id')]),
+            $booking,
+        );
 
         $message = match (true) {
             $holdUntil !== null => 'ล็อกที่นั่งให้ลูกค้าแล้ว ถึง '.ThaiDate::shortTime($holdUntil->setTimezone('Asia/Bangkok')).' น.',
@@ -2220,13 +2227,21 @@ class AdminController extends Controller
      * อาจถูกยกเลิกในไม่กี่ชั่วโมงถัดมา แล้วจะไม่เหลืออะไรให้ดึงกลับมาใช้เลย
      * งานลบอัตโนมัติเก็บให้เองหลังจากนี้ {@see CustomerIntake::CONVERTED_RETENTION_DAYS} วัน
      */
-    private function markIntakeBooked(mixed $intakeId, Booking $booking): void
+    /**
+     * ปิดกลุ่มข้อมูลลูกค้าที่ถูกดึงมาเปิดการจองใบนี้ — ปิดทุกกลุ่มที่รวมกันมา
+     * ไม่งั้นกลุ่มที่เหลือจะยังค้างเป็น "ใหม่" ให้แอดมินไล่ปิดเองทีหลัง
+     *
+     * @param  array<int, mixed>  $intakeIds
+     */
+    private function markIntakesBooked(array $intakeIds, Booking $booking): void
     {
-        if (blank($intakeId)) {
+        $ids = collect($intakeIds)->reject(fn ($id) => blank($id))->map(fn ($id) => (int) $id)->unique()->all();
+
+        if ($ids === []) {
             return;
         }
 
-        CustomerIntake::where('id', $intakeId)->where('status', 'new')->update([
+        CustomerIntake::whereIn('id', $ids)->where('status', 'new')->update([
             'status' => 'booked',
             'booking_id' => $booking->id,
             'converted_at' => now(),

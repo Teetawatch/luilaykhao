@@ -493,11 +493,16 @@ class BeamPaymentService
             return $expiry;
         }
 
-        // เผื่อเวลาให้ webhook เดินทาง 1 นาที ก่อนที่ timer จะคืนที่นั่ง
-        $seatDeadline = $booking->created_at
-            ->copy()
-            ->addMinutes(Booking::PENDING_TTL_MINUTES)
-            ->subMinute();
+        // ใบที่ทีมงานกันที่นั่งไว้ให้ไม่ได้เดินนาฬิกาสิบนาที (ExpirePendingBookingsJob
+        // ข้ามใบพวกนี้) เส้นตายจึงเป็น hold_until ไม่ใช่เวลาที่เปิดใบ — ไม่งั้น QR ที่
+        // ออกให้ใบที่กันไว้ตั้งแต่เมื่อวานจะหมดอายุตั้งแต่วินาทีที่ออก
+        $seatDeadline = $booking->isOnHold()
+            ? $booking->hold_until->copy()
+            : $booking->created_at
+                ->copy()
+                ->addMinutes(Booking::PENDING_TTL_MINUTES)
+                // เผื่อเวลาให้ webhook เดินทาง 1 นาที ก่อนที่ timer จะคืนที่นั่ง
+                ->subMinute();
 
         return $expiry->lt($seatDeadline) ? $expiry : $seatDeadline;
     }

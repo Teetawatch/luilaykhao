@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\PurgeStaleCustomerIntakesJob;
+use App\Models\BookingPassenger;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
 use App\Models\IntakeLink;
@@ -328,5 +329,60 @@ class CustomerIntakeTest extends TestCase
         $this->assertSame('booked', $intake->status);
         $this->assertNotNull($intake->booking_id);
         $this->assertNotNull($intake->converted_at);
+    }
+
+    /**
+     * สองคนที่มาด้วยกันแต่กดลิงก์ทีมงานคนละครั้ง = คนละกลุ่ม (เกณฑ์จับคู่คือเบอร์)
+     * ทั้งคู่ต้องขึ้นรถคันเดียวกันและเลือกที่นั่งพร้อมกัน จึงต้องดึงรวมเป็นใบเดียวได้
+     */
+    public function test_two_separate_groups_can_be_pulled_into_one_booking(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $link = $this->makeLink($schedule);
+
+        $this->post("/r/{$link->token}", $this->personPayload());
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'name' => 'สมหญิง ใจงาม',
+            'nickname' => 'หญิง',
+            'phone' => '089-999-8888',
+        ]));
+
+        $intakes = CustomerIntake::orderBy('id')->get();
+        $this->assertCount(2, $intakes);
+
+        $passengers = $intakes
+            ->map(fn (CustomerIntake $intake) => $this->actingAs($admin)
+                ->getJson("/api/v1/admin/intakes/{$intake->id}")
+                ->json('data.passengers.0'))
+            ->all();
+
+        $response = $this->actingAs($admin)->postJson('/api/v1/admin/bookings/manual', [
+            'schedule_id' => $schedule->id,
+            'customer_name' => $intakes[0]->contact_name,
+            'email' => 'somchai@example.com',
+            'phone' => $intakes[0]->contact_phone,
+            'status' => 'pending',
+            'hold_until' => now()->addDays(3)->format('Y-m-d H:i'),
+            'passengers' => $passengers,
+            'intake_ids' => $intakes->pluck('id')->all(),
+            'send_email' => false,
+        ]);
+
+        $response->assertCreated();
+        $bookingId = $response->json('data.id');
+
+        // ทั้งสองกลุ่มต้องถูกปิด ไม่ใช่แค่กลุ่มแรก ไม่งั้นอีกกลุ่มค้างเป็น "ใหม่" ตลอดไป
+        foreach ($intakes as $intake) {
+            $intake->refresh();
+            $this->assertSame('booked', $intake->status);
+            $this->assertSame($bookingId, $intake->booking_id);
+        }
+
+        $this->assertSame(2, BookingPassenger::where('booking_id', $bookingId)->count());
     }
 }

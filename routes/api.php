@@ -689,6 +689,9 @@ Route::prefix('v1')->group(function () {
         Route::get('payments/outstanding', [AdminPaymentController::class, 'outstanding']);
         Route::post('payments/send-links', [AdminPaymentController::class, 'sendLinksBulk']);
         Route::post('payments/{ref}/send-link', [AdminPaymentController::class, 'sendLink']);
+        // QR ให้ลูกค้าสแกนจ่ายตอนทีมงานเปิดการจองแทน (ลูกค้าไม่ได้อยู่ในแอป)
+        Route::post('payments/{ref}/qr', [AdminPaymentController::class, 'qr'])->middleware('throttle:payment');
+        Route::get('payments/{ref}/qr/{payment}', [AdminPaymentController::class, 'qrStatus']);
 
         // Drivers (ทะเบียนคนขับ)
         Route::get('drivers', [AdminController::class, 'drivers']);
