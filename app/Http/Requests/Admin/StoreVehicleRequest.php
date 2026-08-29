@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Vehicle;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreVehicleRequest extends FormRequest
 {
@@ -15,7 +17,7 @@ class StoreVehicleRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:van,boat'],
+            'type' => ['required', Rule::in(Vehicle::TYPES)],
             'capacity' => ['required', 'integer', 'min:1'],
             'seat_layout' => ['nullable', 'array'],
             'license_plate' => ['nullable', 'string', 'max:20'],

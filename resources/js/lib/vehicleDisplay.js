@@ -8,7 +8,12 @@ const COLOR_HEX = {
   'ส้ม': '#f97316', 'ม่วง': '#a855f7', 'ชมพู': '#ec4899',
 };
 
-const TYPE_LABELS = { van: 'รถตู้', boat: 'เรือ' };
+// ประเภทยานพาหนะ — ต้องตรงกับ Vehicle::TYPES ฝั่ง backend
+export const VEHICLE_TYPES = ['van', 'boat', 'bus'];
+
+const TYPE_LABELS = { van: 'รถตู้', boat: 'เรือ', bus: 'รถบัส' };
+
+const TYPE_ICONS = { van: 'airport_shuttle', boat: 'directions_boat', bus: 'directions_bus' };
 
 export function colorHex(colorName) {
   return COLOR_HEX[colorName] || '#9ca3af';
@@ -16,4 +21,8 @@ export function colorHex(colorName) {
 
 export function vehicleTypeLabel(type) {
   return TYPE_LABELS[type] || type || '-';
+}
+
+export function vehicleTypeIcon(type) {
+  return TYPE_ICONS[type] || 'directions_car';
 }

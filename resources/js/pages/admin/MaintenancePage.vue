@@ -84,7 +84,7 @@
                   <div class="vehicle-cell">
                     <div class="vehicle-mini-icon" :class="`vtype-${m.vehicle_type}`">
                       <span class="material-symbols-rounded" style="font-size:16px;">
-                        {{ m.vehicle_type === 'van' ? 'airport_shuttle' : 'directions_boat' }}
+                        {{ vehicleTypeIcon(m.vehicle_type) }}
                       </span>
                     </div>
                     <span>{{ m.vehicle_name }}</span>
@@ -225,6 +225,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAdminStore } from '../../stores/admin';
+import { vehicleTypeIcon } from '../../lib/vehicleDisplay';
 
 const admin = useAdminStore();
 const searchQuery = ref('');
@@ -405,6 +406,7 @@ onMounted(() => {
 
 .vtype-van { background: var(--color-sand); color: var(--color-accent); }
 .vtype-boat { background: #eff6ff; color: #2563eb; }
+.vtype-bus { background: #f5f3ff; color: #6d28d9; }
 
 .mtype-routine { background: #eff6ff; color: #2563eb; }
 .mtype-repair { background: #fef2f2; color: #dc2626; }

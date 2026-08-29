@@ -13,6 +13,13 @@ class Vehicle extends Model
     use HasFactory;
 
     /**
+     * ประเภทยานพาหนะที่ลงทะเบียนได้ — คอลัมน์ `type` เป็นสตริงธรรมดา ตัวคุมค่าจริง
+     * คือค่าคงที่นี้ (ใช้ใน validation) เหมือน TripSchedule::TRANSPORT_TYPES
+     * ('flight' ไม่อยู่ในนี้ เพราะเครื่องบินไม่ใช่รถของเรา ไม่มีคนขับ/ผังที่นั่งให้จัดการ)
+     */
+    public const TYPES = ['van', 'boat', 'bus'];
+
+    /**
      * รอบที่ไม่นับว่ารถ "ยังมีงาน" — รอบที่ยกเลิกหรือจบไปแล้ว
      */
     public const DORMANT_SCHEDULE_STATUSES = ['cancelled', 'completed'];

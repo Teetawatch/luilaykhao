@@ -334,7 +334,7 @@
               <tbody>
                 <tr v-for="v in vehicleReport" :key="v.id">
                   <td><strong>{{ v.name }}</strong></td>
-                  <td>{{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}</td>
+                  <td>{{ vehicleTypeLabel(v.type) }}</td>
                   <td>{{ v.capacity }}</td>
                   <td>{{ v.total_trips }}</td>
                   <td>{{ v.upcoming_trips }}</td>
@@ -354,6 +354,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
+import { vehicleTypeLabel } from '../../lib/vehicleDisplay';
 
 const admin = useAdminStore();
 const activeTab = ref('bookings');

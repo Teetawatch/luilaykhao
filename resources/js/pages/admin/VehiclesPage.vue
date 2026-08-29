@@ -5,7 +5,7 @@
         <h1 class="page-title">
           <span class="material-symbols-rounded heading-icon">airport_shuttle</span> ยานพาหนะ
         </h1>
-        <p class="page-subtitle">จัดการรถตู้และเรือ พร้อมรอบทริปที่ได้รับมอบหมาย</p>
+        <p class="page-subtitle">จัดการรถตู้ รถบัส และเรือ พร้อมรอบทริปที่ได้รับมอบหมาย</p>
       </div>
       <button class="btn-primary" @click="openForm()">
         <span class="material-symbols-rounded">add</span> เพิ่มยานพาหนะ
@@ -21,18 +21,11 @@
           <span class="stat-label">ยานพาหนะทั้งหมด</span>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon stat-van"><span class="material-symbols-rounded">airport_shuttle</span></div>
+      <div class="stat-card" v-for="t in VEHICLE_TYPES" :key="t">
+        <div class="stat-icon" :class="'stat-' + t"><span class="material-symbols-rounded">{{ vehicleTypeIcon(t) }}</span></div>
         <div class="stat-info">
-          <span class="stat-value">{{ allVehicles.filter(v => v.type === 'van').length }}</span>
-          <span class="stat-label">รถตู้</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon stat-boat"><span class="material-symbols-rounded">directions_boat</span></div>
-        <div class="stat-info">
-          <span class="stat-value">{{ allVehicles.filter(v => v.type === 'boat').length }}</span>
-          <span class="stat-label">เรือ</span>
+          <span class="stat-value">{{ allVehicles.filter(v => v.type === t).length }}</span>
+          <span class="stat-label">{{ vehicleTypeLabel(t) }}</span>
         </div>
       </div>
       <div class="stat-card">
@@ -94,7 +87,7 @@
       <template v-for="group in vehicleGroups" :key="group.type">
         <div class="type-section" v-if="group.vehicles.length">
           <div class="type-section-header">
-            <span class="material-symbols-rounded">{{ group.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+            <span class="material-symbols-rounded">{{ vehicleTypeIcon(group.type) }}</span>
             <span>{{ group.label }}</span>
             <span class="section-count">{{ group.vehicles.length }} คัน</span>
           </div>
@@ -102,13 +95,13 @@
             <div class="vehicle-card" :class="{ 'vc-retired': v.is_retired }" v-for="v in group.vehicles" :key="v.id">
               <div class="vc-top" :class="'vtype-bg-' + v.type">
                 <div class="vc-type-icon">
-                  <span class="material-symbols-rounded">{{ v.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                  <span class="material-symbols-rounded">{{ vehicleTypeIcon(v.type) }}</span>
                 </div>
                 <div class="vc-header-info">
                   <h3>{{ v.name }}</h3>
                   <div class="vc-badges">
-                    <span class="type-tag" :class="'type-' + (v.type === 'van' ? 'trekking' : 'diving')">
-                      {{ v.type === 'van' ? 'รถตู้' : 'เรือ' }}
+                    <span class="type-tag" :class="'vtype-tag-' + v.type">
+                      {{ vehicleTypeLabel(v.type) }}
                     </span>
                     <span class="capacity-chip">
                       <span class="material-symbols-rounded">groups</span> {{ v.capacity }} ที่นั่ง
@@ -251,13 +244,13 @@
               </div>
               <div class="td-vehicle" v-if="s.vehicle">
                 <div class="td-vehicle-icon" :class="'vtype-bg-' + s.vehicle.type">
-                  <span class="material-symbols-rounded">{{ s.vehicle.type === 'van' ? 'airport_shuttle' : 'directions_boat' }}</span>
+                  <span class="material-symbols-rounded">{{ vehicleTypeIcon(s.vehicle.type) }}</span>
                 </div>
                 <div class="td-vehicle-info">
                   <span class="td-vehicle-name">{{ s.vehicle.name }}</span>
                   <div class="td-vehicle-meta">
-                    <span class="type-tag" :class="'type-' + (s.vehicle.type === 'van' ? 'trekking' : 'diving')">
-                      {{ s.vehicle.type === 'van' ? 'รถตู้' : 'เรือ' }}
+                    <span class="type-tag" :class="'vtype-tag-' + s.vehicle.type">
+                      {{ vehicleTypeLabel(s.vehicle.type) }}
                     </span>
                     <span class="plate-chip" v-if="s.vehicle.license_plate">{{ s.vehicle.license_plate }}</span>
                     <span class="td-driver" v-if="s.vehicle.driver_name">
@@ -315,8 +308,7 @@
             <div class="form-group">
               <label>ประเภท *</label>
               <select v-model="form.type" required class="form-input">
-                <option value="van">รถตู้</option>
-                <option value="boat">เรือ</option>
+                <option v-for="t in VEHICLE_TYPES" :key="t" :value="t">{{ vehicleTypeLabel(t) }}</option>
               </select>
             </div>
             <div class="form-group">
@@ -755,7 +747,7 @@ import { useAdminStore } from '../../stores/admin';
 import SeatMapEditor from '../../components/SeatMapEditor.vue';
 import MediaLibrary from '../../components/MediaLibrary.vue';
 import api from '../../lib/axios';
-import { colorHex } from '../../lib/vehicleDisplay';
+import { colorHex, vehicleTypeIcon, vehicleTypeLabel, VEHICLE_TYPES } from '../../lib/vehicleDisplay';
 
 const admin = useAdminStore();
 const filters = reactive({ type: '' });
@@ -876,10 +868,11 @@ const byStatus = (list) => list.filter(v => isRetired(v) === (statusFilter.value
 
 const filteredVehicles = computed(() => byStatus(byType(searchedVehicles.value)));
 
-const vehicleGroups = computed(() => [
-  { type: 'van', label: 'รถตู้', vehicles: filteredVehicles.value.filter(v => v.type === 'van') },
-  { type: 'boat', label: 'เรือ', vehicles: filteredVehicles.value.filter(v => v.type === 'boat') },
-]);
+const vehicleGroups = computed(() => VEHICLE_TYPES.map(type => ({
+  type,
+  label: vehicleTypeLabel(type),
+  vehicles: filteredVehicles.value.filter(v => v.type === type),
+})));
 
 // ── Trip-centric view ────────────────────────────────
 // กรองรอบทริปที่กำลังจะมาถึงตามประเภทรถ + คำค้นหา (ชื่อทริป/ชื่อรถ/ทะเบียน/คนขับ)
@@ -927,8 +920,12 @@ const typeTabs = computed(() => {
   const data = byStatus(searchedVehicles.value);
   return [
     { value: '', icon: 'directions_car', label: 'ทั้งหมด', count: data.length },
-    { value: 'van', icon: 'airport_shuttle', label: 'รถตู้', count: data.filter(v => v.type === 'van').length },
-    { value: 'boat', icon: 'directions_boat', label: 'เรือ', count: data.filter(v => v.type === 'boat').length },
+    ...VEHICLE_TYPES.map(type => ({
+      value: type,
+      icon: vehicleTypeIcon(type),
+      label: vehicleTypeLabel(type),
+      count: data.filter(v => v.type === type).length,
+    })),
   ];
 });
 
@@ -1517,6 +1514,7 @@ onMounted(() => fetchData());
 .stat-all  { background: linear-gradient(135deg, #f0f9ff, #e0f2fe); color: #0369a1; }
 .stat-van  { background: linear-gradient(135deg, #fef9ee, #fef3c7); color: #b45309; }
 .stat-boat { background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1d4ed8; }
+.stat-bus  { background: linear-gradient(135deg, #f5f3ff, #ede9fe); color: #6d28d9; }
 .stat-schedule { background: linear-gradient(135deg, #f0fdf4, #dcfce7); color: #15803d; }
 
 .stat-info { display: flex; flex-direction: column; }
@@ -1638,6 +1636,7 @@ onMounted(() => fetchData());
 .td-vehicle-icon .material-symbols-rounded { font-size: 21px; }
 .vtype-bg-van.td-vehicle-icon  { background: #fef3c7; color: #b45309; }
 .vtype-bg-boat.td-vehicle-icon { background: #dbeafe; color: #1d4ed8; }
+.vtype-bg-bus.td-vehicle-icon  { background: #ede9fe; color: #6d28d9; }
 .td-icon-empty { background: var(--color-sand); color: var(--color-text-muted); }
 .td-vehicle-info { min-width: 0; }
 .td-vehicle-name { display: block; font-size: 14px; font-weight: 700; color: var(--color-text-dark); }
@@ -1709,6 +1708,7 @@ onMounted(() => fetchData());
 }
 .vtype-bg-van  { background: linear-gradient(135deg, #fffbeb, #fef9ee); }
 .vtype-bg-boat { background: linear-gradient(135deg, #eff6ff, #f0f9ff); }
+.vtype-bg-bus  { background: linear-gradient(135deg, #faf5ff, #f5f3ff); }
 
 .vc-type-icon {
   width: 44px; height: 44px;
@@ -1718,6 +1718,12 @@ onMounted(() => fetchData());
 }
 .vtype-bg-van  .vc-type-icon { background: #fef3c7; color: #b45309; }
 .vtype-bg-boat .vc-type-icon { background: #dbeafe; color: #1d4ed8; }
+.vtype-bg-bus  .vc-type-icon { background: #ede9fe; color: #6d28d9; }
+
+/* ป้ายประเภทบนการ์ด — สีเดียวกับหัวการ์ดของประเภทนั้น */
+.vtype-tag-van  { background: #F5F5F5; color: #15803d; }
+.vtype-tag-boat { background: #dbeafe; color: #1d4ed8; }
+.vtype-tag-bus  { background: #ede9fe; color: #6d28d9; }
 .vc-type-icon .material-symbols-rounded { font-size: 24px; }
 
 .vc-header-info { flex: 1; min-width: 0; }

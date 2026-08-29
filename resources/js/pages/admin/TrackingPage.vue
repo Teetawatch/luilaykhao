@@ -44,10 +44,10 @@
 
         <div class="sidebar-filters">
           <div class="filter-group">
-            <button v-for="t in ['all', 'van', 'boat']" :key="t" 
+            <button v-for="t in ['all', ...VEHICLE_TYPES]" :key="t" 
               class="filter-pill" :class="{ active: filterType === t }"
               @click="filterType = t">
-              {{ t === 'all' ? 'ทั้งหมด' : (t === 'van' ? 'รถตู้' : 'เรือ') }}
+              {{ t === 'all' ? 'ทั้งหมด' : vehicleTypeLabel(t) }}
             </button>
           </div>
           <div class="filter-group">
@@ -218,6 +218,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import api from '../../lib/axios';
+import { vehicleTypeIcon, vehicleTypeLabel, VEHICLE_TYPES } from '../../lib/vehicleDisplay';
 
 // ─── State ───────────────────────────────────────────────
 const mapContainer = ref(null);
@@ -351,12 +352,9 @@ function roundLabel(v) {
 }
 
 function getVehicleIcon(type) {
-  switch (type) {
-    case 'boat': return 'directions_boat';
-    case 'van': return 'directions_bus'; /* Changing to directions_bus as it looks more like a van front-on */
-    case 'bus': return 'directions_bus';
-    default: return 'directions_bus';
-  }
+  // รถตู้ใช้ไอคอน directions_bus เพราะหน้ารถดูใกล้เคียงรถตู้จริงมากกว่า airport_shuttle
+  if (type === 'van') return 'directions_bus';
+  return vehicleTypeIcon(type);
 }
 
 // ─── Map Init ────────────────────────────────────────────
