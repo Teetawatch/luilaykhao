@@ -6,10 +6,11 @@
   </div>
 
   <div v-else class="space-y-5">
-    <!-- Legend -->
+    <!-- Legend — สีต้องตรงกับที่นั่งจริงในผัง ไม่งั้นคำอธิบายกลายเป็นการเดา -->
     <div class="flex flex-wrap gap-x-5 gap-y-2 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
       <div class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg bg-white border-2 border-gray-200"></div>
+        <div class="w-5 h-5 rounded-lg border-2"
+          :class="isWomenOnly ? 'bg-pink-50/60 border-pink-200' : 'bg-teal-50/70 border-teal-200'"></div>
         <span class="text-[11px] font-bold text-gray-500">ว่าง</span>
       </div>
       <div v-if="!readonly" class="flex items-center gap-1.5">
@@ -17,11 +18,11 @@
         <span class="text-[11px] font-bold text-gray-500">กำลังเลือก</span>
       </div>
       <div class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg bg-amber-50 border-2 border-amber-300"></div>
-        <span class="text-[11px] font-bold text-gray-500">ล็อคชั่วคราว</span>
+        <div class="w-5 h-5 rounded-lg bg-amber-50 border-2 border-amber-200"></div>
+        <span class="text-[11px] font-bold text-gray-500">มีคนกำลังจอง</span>
       </div>
       <div class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg bg-red-100 border-2 border-red-300"></div>
+        <div class="w-5 h-5 rounded-lg bg-gray-100 border-2 border-gray-100"></div>
         <span class="text-[11px] font-bold text-gray-500">จองแล้ว</span>
       </div>
       <div v-if="hasOwnSeats" class="flex items-center gap-1.5">
@@ -54,7 +55,7 @@
     </div>
 
     <!-- Vehicle layout -->
-    <div class="van-body relative mx-auto max-w-sm bg-white border-2 border-gray-200 rounded-b-[3rem] pt-9 pb-6 px-6 md:px-8"
+    <div class="van-body relative mx-auto max-w-sm bg-white border-2 border-gray-200 rounded-b-[3rem] pt-6 pb-5 px-6 md:px-8"
       :class="isBus ? 'rounded-t-[2.5rem]' : 'rounded-t-[6rem]'">
       <!-- Clip layer: ambient glows + headlights (clipped to the body shape) -->
       <div class="absolute inset-0 rounded-b-[3rem] overflow-hidden pointer-events-none"
@@ -62,26 +63,15 @@
         <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-3xl opacity-50"
           :class="isWomenOnly ? 'bg-pink-100' : 'bg-teal-50'"></div>
         <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl"></div>
-        <!-- Headlights -->
-        <div class="absolute top-5 left-8 w-7 h-3 rounded-full bg-amber-200/80 blur-[1px]"></div>
-        <div class="absolute top-5 right-8 w-7 h-3 rounded-full bg-amber-200/80 blur-[1px]"></div>
-        <!-- Front grille hint -->
-        <div class="absolute top-3 left-1/2 -translate-x-1/2 w-16 h-1.5 rounded-full bg-gray-100"></div>
       </div>
 
-      <!-- Wheels (front + rear axles, both sides) -->
-      <div class="absolute -left-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
-      <div class="absolute -right-1 top-[22%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
-      <div class="absolute -left-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
-      <div class="absolute -right-1 bottom-[13%] w-2.5 h-10 rounded-xl bg-gray-700 pointer-events-none"></div>
+      <!-- ล้อ — บอกว่านี่คือรถมองจากด้านบน แค่พอให้รู้ ไม่แย่งสายตาไปจากที่นั่ง -->
+      <div class="absolute -left-0.5 top-[24%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
+      <div class="absolute -right-0.5 top-[24%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
+      <div class="absolute -left-0.5 bottom-[15%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
+      <div class="absolute -right-0.5 bottom-[15%] w-1.5 h-9 rounded-full bg-gray-200 pointer-events-none"></div>
 
-      <!-- Sliding door (left side — Thai vans), spans from behind front seat down to near rear wheel -->
-      <div v-if="!isBus" class="absolute left-0 top-[31%] bottom-[27%] z-30 flex flex-col items-center justify-center gap-2 w-6 rounded-r-xl bg-amber-100/95 border-2 border-l-0 border-amber-300 pointer-events-none">
-        <span class="material-symbols-rounded text-[16px] text-amber-700" style="font-variation-settings:'FILL' 1,'wght' 500">door_open</span>
-        <span class="text-[10px] font-black text-amber-700 tracking-wide" style="writing-mode:vertical-rl;text-orientation:mixed;">ประตู</span>
-      </div>
-
-      <div class="relative max-w-xs mx-auto">
+      <div class="relative mx-auto" :class="isBus ? 'max-w-sm' : 'max-w-xs'">
 
         <!-- Windshield — a van noses to a point, a bus is a flat wall of glass -->
         <div class="mx-auto h-9 border-2 border-b-0 pointer-events-none"
@@ -91,7 +81,7 @@
           ]"></div>
 
         <!-- Front cabin: staff + front passenger (left) · label · driver (right) -->
-        <div class="flex items-end justify-between mb-7 px-1 pt-1 pb-6 border-2 border-t-0 rounded-b-3xl border-dashed"
+        <div class="flex items-end justify-between mb-5 px-1 pt-1 pb-4 border-2 border-t-0 rounded-b-3xl border-dashed"
           :class="isWomenOnly ? 'border-pink-100/70' : 'border-teal-100/70'">
           <!-- Left group: staff then front passenger seat -->
           <div class="flex items-end gap-2 shrink-0">
@@ -119,7 +109,7 @@
                 :class="seatBgClass(frontPassengerSeat)">
                 <span class="material-symbols-rounded text-[20px] transition-all duration-200"
                   :class="seatIconClass(frontPassengerSeat)"
-                  style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_normal</span>
+                  style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
               </div>
               <span class="text-[10px] font-extrabold leading-none transition-colors" :class="seatLabelClass(frontPassengerSeat)">
                 {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
@@ -163,17 +153,17 @@
           <div
             v-for="(rowDef, rowIdx) in bodyRows"
             :key="rowIdx"
-            class="flex items-center justify-center"
-            :style="{ gap: gapPx + 'px' }"
+            class="flex items-stretch"
           >
-            <!-- ประตูฝั่งซ้าย (รถไทยพวงมาลัยขวา) — บัสมีประตูหน้าและกลางคัน
-                 ส่วนรถตู้ใช้ประตูเลื่อนที่วาดคร่อมลำตัวไว้แล้ว -->
-            <div class="w-2 shrink-0 self-stretch rounded-r"
-              :class="doorRows.has(rowDef.row) ? 'bg-amber-300/70' : ''"></div>
-
-            <!-- เลขแถว — มีเมื่อรถยาวจนนับเองไม่ไหว -->
-            <div v-if="showRowNumbers" class="w-4 shrink-0 text-[10px] font-black text-gray-300 text-center">
-              {{ rowDef.row }}
+            <!-- ประตูฝั่งซ้าย (รถไทยพวงมาลัยขวา ประตูผู้โดยสารจึงอยู่ซ้ายเสมอ)
+                 วางตรงแถวที่ประตูอยู่จริง ช่วยให้เลือกที่นั่งใกล้/ไกลประตูได้ตั้งใจ -->
+            <div class="shrink-0 flex items-center justify-start" :style="{ width: gutterPx + 'px' }">
+              <div v-if="doorRows.has(rowDef.row)"
+                class="w-1.5 self-stretch rounded-r-full bg-amber-300"
+                :title="'ประตูขึ้นลงอยู่ตรงแถวนี้'"></div>
+              <span v-if="showRowNumbers" class="w-4 text-[10px] font-black text-gray-300 text-center ml-auto">
+                {{ rowDef.row }}
+              </span>
             </div>
 
             <div class="flex-1 flex items-center justify-center" :style="{ gap: gapPx + 'px' }">
@@ -196,7 +186,8 @@
               <!-- ทางเดิน — มีเมื่อมีที่นั่งอยู่ทั้งสองฝั่งจริง ๆ ไม่งั้นแถวจะถูกดันเบี้ยว -->
               <template v-if="rowDef.right.length">
                 <div class="flex items-center justify-center shrink-0" :style="{ width: aislePx + 'px' }">
-                  <div v-if="rowDef.hasAisle" class="w-px h-10 bg-gray-100 rounded-full"></div>
+                  <div v-if="rowDef.hasAisle" class="w-px bg-gray-200 rounded-full"
+                    :style="{ height: seatPx + 'px' }"></div>
                 </div>
 
                 <!-- Right group -->
@@ -208,12 +199,21 @@
                 </div>
               </template>
             </div>
+
+            <!-- ถ่วงให้แถวอยู่กึ่งกลางลำตัวรถจริง ๆ ไม่ใช่กึ่งกลางของพื้นที่ที่เหลือ -->
+            <div class="shrink-0" :style="{ width: gutterPx + 'px' }"></div>
           </div>
         </div>
 
+        <!-- ป้ายประตู วางไว้ครั้งเดียวใต้ผัง ไม่ต้องเขียนซ้ำทุกแถว -->
+        <div v-if="doorRows.size" class="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-amber-600">
+          <div class="w-1.5 h-3.5 rounded-full bg-amber-300"></div>
+          ประตูขึ้นลง
+        </div>
+
         <!-- Rear (cargo door) -->
-        <div class="mt-7 pt-5 border-t-2 border-dashed border-gray-100">
-          <div class="mx-auto w-[88%] rounded-b-[2rem] border-2 border-t-0 border-gray-100 bg-gray-50/60 pt-2 pb-3 flex flex-col items-center gap-1.5">
+        <div class="mt-5 pt-4 border-t-2 border-dashed border-gray-100">
+          <div class="mx-auto w-[88%] rounded-b-[2rem] border-2 border-t-0 border-gray-100 bg-gray-50/60 pt-2 pb-2.5 flex flex-col items-center gap-1.5">
             <div class="w-[65%] h-2 rounded-full bg-gray-200"></div>
             <span class="text-gray-400 text-[10px] font-black tracking-widest uppercase text-center px-3 leading-tight">
               {{ layoutConfig.rear_label }}
@@ -313,16 +313,18 @@ const hasOwnSeats = computed(() => !props.readonly && ownSeatIds.value.length > 
 
 // ─── Seat style helpers ───────────────────────────────────────────
 function seatBgClass(seat) {
-  if (!seat) return 'bg-gray-50 border-gray-200';
+  if (!seat) return 'bg-gray-50 border-gray-100';
   if (isOwnBooking(seat)) {
     return props.isWomenOnly
       ? 'bg-pink-50 border-[#db2777] border-dashed'
       : 'bg-teal-50 border-[#006565] border-dashed';
   }
-  if (seat.status === 'booked') return 'bg-red-100 border-red-300';
+  // ที่นั่งที่คนอื่นจองไปแล้วเป็นสีเทา ไม่ใช่สีแดง — รถที่เต็มเกือบหมดไม่ควร
+  // อ่านเหมือนหน้าจอแจ้งเตือนความผิดพลาด และที่นั่งที่ยังว่างต้องเป็นสิ่งที่เด่นที่สุด
+  if (seat.status === 'booked') return 'bg-gray-100 border-gray-100';
   if (isSelected(seat)) {
     return props.isWomenOnly
-      ? 'bg-[#db2777] border-[#db2777] shadow-pink-200 scale-105'
+      ? 'bg-[#db2777] border-[#db2777] scale-105'
       : 'bg-[#006565] border-[#006565] scale-105';
   }
   if (isOwnLock(seat)) {
@@ -330,30 +332,28 @@ function seatBgClass(seat) {
       ? 'bg-pink-50 border-[#db2777] border-dashed group-hover:bg-pink-100'
       : 'bg-teal-50 border-[#006565] border-dashed group-hover:bg-teal-100';
   }
-  if (seat.status === 'locked') return 'bg-amber-50 border-amber-300';
+  if (seat.status === 'locked') return 'bg-amber-50 border-amber-200';
   if (props.readonly) return 'bg-white border-gray-200';
   return props.isWomenOnly
-    ? 'bg-white border-gray-200 group-hover:border-[#db2777]/50 group-hover:bg-pink-50 group-hover:scale-105'
-    : 'bg-white border-gray-200 group-hover:border-[#006565]/50 group-hover:bg-teal-50 group-hover:scale-105';
+    ? 'bg-pink-50/60 border-pink-200 group-hover:border-[#db2777] group-hover:bg-pink-100 group-hover:scale-105'
+    : 'bg-teal-50/70 border-teal-200 group-hover:border-[#006565] group-hover:bg-teal-100 group-hover:scale-105';
 }
 
 function seatIconClass(seat) {
-  if (!seat) return 'text-gray-300';
+  if (!seat) return 'text-gray-200';
   if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
-  if (seat.status === 'booked') return 'text-red-400';
+  if (seat.status === 'booked') return 'text-gray-300';
   if (isSelected(seat)) return 'text-white';
   if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-400';
   if (props.readonly) return 'text-gray-300';
-  return props.isWomenOnly
-    ? 'text-gray-300 group-hover:text-[#db2777]'
-    : 'text-gray-300 group-hover:text-[#006565]';
+  return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
 }
 
 function seatLabelClass(seat) {
-  if (!seat) return 'text-gray-400';
+  if (!seat) return 'text-gray-300';
   if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
-  if (seat.status === 'booked') return 'text-red-400';
+  if (seat.status === 'booked') return 'text-gray-400';
   if (isSelected(seat)) return props.isWomenOnly ? 'text-[#db2777] font-black' : 'text-[#006565] font-black';
   if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-500';
@@ -402,8 +402,8 @@ const bodyRows = computed(() => allRows.value);
 // ─── Fit to the body width ────────────────────────────────────────
 // รถบัส 2+2 และแถวหลัง 5 ที่ กว้างเกินลำตัวถ้าวาดที่นั่งขนาดเต็ม — ย่อขนาด
 // ที่นั่งให้ทั้งคันพอดีแทนที่จะปล่อยให้ล้นออกนอกกรอบรถ
-const BODY_WIDTH = 272; // max-w-xs (320) ลบ padding ของลำตัว
-const GUTTER = 8 + 8; // รางประตู + ช่องไฟ
+// รถบัสกว้างกว่าจริง ๆ จึงได้ลำตัวกว้างกว่า (max-w-sm) ส่วนรถตู้อยู่ max-w-xs
+const bodyWidth = computed(() => (isBus.value ? 336 : 272));
 
 const maxSeatsAcross = computed(() =>
   bodyRows.value.reduce(
@@ -418,11 +418,14 @@ const gapPx = computed(() => (maxSeatsAcross.value >= 5 ? 6 : 10));
 
 const aislePx = computed(() => (maxSeatsAcross.value >= 5 ? 26 : 40));
 
+// ช่องซ้าย (รางประตู + เลขแถว) ถูกถ่วงด้วยช่องขวาเท่ากัน แถวจึงอยู่กึ่งกลาง
+// ลำตัวรถจริง ไม่ใช่กึ่งกลางของพื้นที่ที่เหลือจากรางประตู
+const gutterPx = computed(() => (showRowNumbers.value ? 26 : 10));
+
 const seatPx = computed(() => {
   const n = maxSeatsAcross.value;
   const budget =
-    BODY_WIDTH - GUTTER - (showRowNumbers.value ? 16 : 0) - aislePx.value -
-    (n - 1) * gapPx.value;
+    bodyWidth.value - gutterPx.value * 2 - aislePx.value - (n - 1) * gapPx.value;
 
   return Math.max(32, Math.min(48, Math.floor(budget / n)));
 });
@@ -443,11 +446,23 @@ function handleSeatClick(seat) {
   emit('seat-click', seat);
 }
 
+// คำกำกับใต้ที่นั่งเหลือไว้เฉพาะที่นั่งของตัวเอง — เขียน "จองแล้ว" ใต้ที่นั่ง
+// ทุกที่ที่คนอื่นจองไป คือคำเดิมสิบรอบบนหน้าจอเดียว สถานะที่เหลือใช้สีกับไอคอนมุมบอก
 function seatStatusLabel(seat) {
   if (isOwnBooking(seat)) return { text: 'คุณจองแล้ว', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]' };
-  if (seat?.status === 'booked') return { text: 'จองแล้ว', class: 'text-red-400' };
   if (isOwnLock(seat)) return { text: 'ของคุณ', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]' };
-  if (seat?.status === 'locked') return { text: 'ล็อค', class: 'text-amber-500' };
+  return null;
+}
+
+/// ไอคอนมุมที่นั่ง — แทนคำว่า "จองแล้ว" / "ล็อค" ที่เคยเขียนใต้ทุกที่นั่ง
+function seatBadge(seat) {
+  if (!seat) return null;
+  if (isSelected(seat)) return { icon: 'check', class: 'bg-white text-[#006565]' };
+  if (isOwnBooking(seat) || isOwnLock(seat)) {
+    return { icon: 'person', class: props.isWomenOnly ? 'bg-[#db2777] text-white' : 'bg-[#006565] text-white' };
+  }
+  if (seat.status === 'booked') return { icon: 'lock', class: 'bg-gray-300 text-white' };
+  if (seat.status === 'locked') return { icon: 'schedule', class: 'bg-amber-400 text-white' };
   return null;
 }
 
@@ -475,6 +490,8 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
     return h('span', { class: ['text-[9px] font-bold leading-none', label.class] }, label.text);
   };
 
+  const badge = seatBadge(seat);
+
   return h('div', { class: 'relative group' }, [
     h('button', {
       disabled,
@@ -486,13 +503,22 @@ const SeatButton = (btnProps, { emit: btnEmit }) => {
       title: seatTitle(seat),
     }, [
       h('div', {
-        class: ['rounded-2xl flex items-center justify-center transition-all duration-200 border-2', seatBgClass(seat)],
+        class: ['relative rounded-2xl flex items-center justify-center transition-all duration-200 border-2', seatBgClass(seat)],
         style: { width: `${size}px`, height: `${size}px` },
       }, [
         h('span', {
           class: ['material-symbols-rounded transition-all duration-200', seatIconClass(seat)],
-          style: `font-variation-settings:'FILL' 1,'wght' 400;font-size:${Math.round(size * 0.42)}px`,
-        }, 'airline_seat_recline_normal'),
+          style: `font-variation-settings:'FILL' 1,'wght' 400;font-size:${Math.round(size * 0.46)}px`,
+        }, 'event_seat'),
+        badge ? h('span', {
+          class: ['absolute -top-1 -right-1 rounded-full flex items-center justify-center', badge.class],
+          style: 'width:16px;height:16px',
+        }, [
+          h('span', {
+            class: 'material-symbols-rounded',
+            style: "font-variation-settings:'FILL' 1,'wght' 500;font-size:11px",
+          }, badge.icon),
+        ]) : null,
       ]),
       h('span', {
         class: ['text-[10px] font-extrabold leading-none transition-colors', seatLabelClass(seat)],
