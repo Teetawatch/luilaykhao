@@ -627,6 +627,7 @@ Route::prefix('v1')->group(function () {
 
         // ลิงก์เก็บข้อมูลลูกค้า (ก่อนการจอง) — ลูกค้าที่ทักมาทางแชทกรอกเอง
         Route::get('intake-links', [AdminIntakeController::class, 'links']);
+        Route::get('intake-links/{id}/qr', [AdminIntakeController::class, 'linkQr']);
         Route::post('intake-links', [AdminIntakeController::class, 'storeLink']);
         Route::put('intake-links/{id}', [AdminIntakeController::class, 'updateLink']);
         Route::delete('intake-links/{id}', [AdminIntakeController::class, 'destroyLink']);

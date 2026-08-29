@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerIntake;
 use App\Models\IntakeLink;
+use App\Services\QrCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,6 +71,26 @@ class AdminIntakeController extends Controller
         $link->fill($data)->save();
 
         return $this->success($this->linkPayload($link->load('schedule.trip')->loadCount('intakes')), 'บันทึกแล้ว');
+    }
+
+    /**
+     * QR ของลิงก์ — ช่องทางที่คัดลอก URL ไม่ได้ (rich menu ไลน์, สตอรี่ไอจี,
+     * ป้ายหน้าบูธ, นามบัตร) ต้องการรูป ไม่ใช่ข้อความ
+     */
+    public function linkQr(int $id, QrCodeService $qr): JsonResponse
+    {
+        $link = IntakeLink::findOrFail($id);
+        $url = $link->publicUrl();
+
+        // ตัด XML declaration หัวไฟล์ออก — ฝั่งหน้าเว็บฝัง SVG นี้ลงใน HTML ตรง ๆ
+        // ตัว declaration จะถูก parser มองเป็น comment เปล่า ๆ ที่ไม่มีประโยชน์
+        $svg = preg_replace('/^<\?xml[^>]*>\s*/', '', $qr->svg($url, 420));
+
+        return $this->success([
+            'url' => $url,
+            'label' => $link->label,
+            'svg' => $svg,
+        ]);
     }
 
     public function destroyLink(int $id): JsonResponse

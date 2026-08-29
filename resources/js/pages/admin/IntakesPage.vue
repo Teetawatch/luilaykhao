@@ -181,11 +181,21 @@
               <div class="cell-sub">{{ link.last_used_at ? formatDateTime(link.last_used_at) : 'ยังไม่มีใครกรอก' }}</div>
             </td>
             <td style="text-align:right;white-space:nowrap;">
-              <button class="btn-primary btn-sm" @click="copy(link.url, `link-${link.id}`)">
+              <!-- ปุ่มที่ใช้บ่อยที่สุดคือ "ข้อความ" ไม่ใช่ "ลิงก์" — วางในแชทได้ทั้งก้อน
+                   ไม่ต้องพิมพ์คำอธิบายเองใหม่ทุกครั้ง -->
+              <button class="btn-primary btn-sm" @click="copy(linkMessage(link), `msg-${link.id}`)">
                 <span class="material-symbols-rounded" style="font-size:16px">
-                  {{ copiedKey === `link-${link.id}` ? 'check' : 'content_copy' }}
+                  {{ copiedKey === `msg-${link.id}` ? 'check' : 'chat' }}
                 </span>
-                {{ copiedKey === `link-${link.id}` ? 'คัดลอกแล้ว' : 'คัดลอก' }}
+                {{ copiedKey === `msg-${link.id}` ? 'คัดลอกแล้ว' : 'ข้อความ' }}
+              </button>
+              <button class="btn-secondary btn-sm" title="คัดลอกเฉพาะลิงก์" @click="copy(link.url, `link-${link.id}`)">
+                <span class="material-symbols-rounded" style="font-size:16px">
+                  {{ copiedKey === `link-${link.id}` ? 'check' : 'link' }}
+                </span>
+              </button>
+              <button class="btn-secondary btn-sm" title="QR สำหรับ rich menu / ป้าย" @click="openQr(link)">
+                <span class="material-symbols-rounded" style="font-size:16px">qr_code_2</span>
               </button>
               <button class="btn-secondary btn-sm" @click="toggleLink(link)">
                 {{ link.is_active ? 'ปิดลิงก์' : 'เปิดลิงก์' }}
@@ -324,6 +334,42 @@
       </div>
     </div>
 
+    <!-- ── QR ของลิงก์ ──────────────────────────────────────────────── -->
+    <div v-if="qr" class="drawer-backdrop qr-backdrop" @click.self="qr = null">
+      <div class="qr-modal">
+        <header class="qr-head">
+          <div>
+            <h2>QR ของลิงก์</h2>
+            <p>{{ qr.label || 'ลิงก์เก็บข้อมูล' }}</p>
+          </div>
+          <button class="btn-icon" @click="qr = null">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </header>
+
+        <div class="qr-body">
+          <div v-if="qr.loading" class="spinner"></div>
+          <!-- SVG มาจาก QrCodeService ของเราเอง ไม่ใช่ข้อความที่ผู้ใช้กรอก -->
+          <div v-else class="qr-art" v-html="qr.svg"></div>
+          <p class="qr-url">{{ qr.url }}</p>
+        </div>
+
+        <footer class="qr-foot">
+          <button class="btn-secondary btn-sm" :disabled="qr.loading" @click="downloadQr">
+            <span class="material-symbols-rounded" style="font-size:16px">download</span>
+            ดาวน์โหลด SVG
+          </button>
+          <button class="btn-secondary btn-sm" :disabled="qr.loading" @click="printQr">
+            <span class="material-symbols-rounded" style="font-size:16px">print</span>
+            พิมพ์
+          </button>
+          <button class="btn-primary btn-sm" @click="copy(qr.url, 'qr-url')">
+            {{ copiedKey === 'qr-url' ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์' }}
+          </button>
+        </footer>
+      </div>
+    </div>
+
     <!-- ── รายละเอียดกลุ่ม ──────────────────────────────────────────── -->
     <div v-if="detail" class="drawer-backdrop" @click.self="detail = null">
       <aside class="drawer">
@@ -416,6 +462,7 @@ const selectedIds = ref([]);
 const showLinkForm = ref(false);
 const creatingLink = ref(false);
 const newLink = ref({ trip_schedule_id: '', label: '' });
+const qr = ref(null);
 const linkMode = ref('general');
 const scheduleSearch = ref('');
 const monthFilter = ref('');
@@ -620,6 +667,82 @@ const pullSelectedIntoBooking = () => {
   router.push({ name: 'admin-manual-booking', query: { intake: selectedIds.value.join(',') } });
 };
 
+/**
+ * ข้อความพร้อมวางในแชท — ทีมงานส่งลิงก์นี้วันละหลายรอบ ถ้าคัดลอกได้แค่ URL
+ * ก็ต้องพิมพ์คำอธิบายเองใหม่ทุกครั้ง และคำอธิบายที่พิมพ์สด ๆ มักลืมบอกว่า
+ * "ยังไม่ใช่การจอง" ซึ่งเป็นเรื่องที่เข้าใจผิดกันบ่อยที่สุด
+ */
+const linkMessage = (link) => {
+  const lines = ['สวัสดีครับ 🙏'];
+
+  if (link.trip_schedule_id) {
+    lines.push('รบกวนกรอกข้อมูลผู้เดินทางที่ลิงก์นี้ได้เลยครับ');
+    lines.push('');
+    lines.push(`🏔️ ${link.schedule_trip_title || 'ทริป'}`);
+    const date = thaiShort(link.schedule_departure_date);
+    if (date) lines.push(`📅 วันเดินทาง ${date}`);
+  } else {
+    lines.push('รบกวนกรอกข้อมูลผู้เดินทางที่ลิงก์นี้ได้เลยครับ เลือกทริปและรอบที่สนใจได้ในลิงก์เลย');
+  }
+
+  lines.push('');
+  lines.push(link.url);
+  lines.push('');
+  lines.push('ใช้เวลาประมาณ 2 นาที กรอกแล้วยังไม่ใช่การจองนะครับ ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่งอีกครั้ง');
+  lines.push('ถ้ามาหลายคน กรอกเสร็จจะมีลิงก์ให้ส่งต่อให้เพื่อนกรอกของตัวเองได้เลยครับ');
+
+  return lines.join('\n');
+};
+
+const openQr = async (link) => {
+  qr.value = { loading: true, url: link.url, label: link.label, svg: '' };
+  try {
+    const res = await api.get(`/admin/intake-links/${link.id}/qr`);
+    qr.value = { loading: false, ...res.data.data };
+  } catch (e) {
+    qr.value = null;
+    alert(e.response?.data?.message ?? 'สร้าง QR ไม่สำเร็จ');
+  }
+};
+
+const qrFileName = () => `qr-${(qr.value.label || 'intake-link').replace(/\s+/g, '-')}.svg`;
+
+const downloadQr = () => {
+  const blob = new Blob([qr.value.svg], { type: 'image/svg+xml' });
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = href;
+  anchor.download = qrFileName();
+  anchor.click();
+  URL.revokeObjectURL(href);
+};
+
+/** หน้าต่างแยกเพื่อไม่ให้ CSS ของหน้าแอดมินติดไปกับกระดาษ */
+const printQr = () => {
+  const win = window.open('', '_blank', 'width=520,height=680');
+  if (!win) {
+    alert('เบราว์เซอร์บล็อกหน้าต่างใหม่ไว้ — อนุญาต popup ของเว็บนี้ก่อนนะครับ');
+    return;
+  }
+
+  win.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8">
+    <title>${qr.value.label || 'ลิงก์เก็บข้อมูลลูกค้า'}</title>
+    <style>
+      body { font-family: sans-serif; text-align: center; padding: 32px; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      p { font-size: 12px; color: #555; word-break: break-all; }
+      svg { width: 320px; height: 320px; }
+    </style></head><body>
+    <h1>${qr.value.label || 'กรอกข้อมูลผู้เดินทาง'}</h1>
+    <p>สแกนเพื่อกรอกข้อมูลผู้เดินทาง</p>
+    ${qr.value.svg}
+    <p>${qr.value.url}</p>
+    </body></html>`);
+  win.document.close();
+  win.focus();
+  win.print();
+};
+
 const copy = async (text, key) => {
   try {
     await navigator.clipboard.writeText(text);
@@ -814,6 +937,19 @@ tr.inactive { opacity: .5; }
   background: #ecfdf5; border-radius: 999px; padding: 2px 7px;
 }
 .drawer-foot { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 18px; border-top: 1px solid #e5e7eb; }
+
+/* ── QR ของลิงก์ ───────────────────────────────────────────────── */
+.qr-backdrop { align-items: center; justify-content: center; }
+.qr-modal { width: min(360px, 92vw); background: #fff; border-radius: 14px; overflow: hidden; }
+.qr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid #e5e7eb; }
+.qr-head h2 { font-size: 16px; font-weight: 700; }
+.qr-head p { font-size: 12.5px; color: #6b7280; margin-top: 2px; }
+.qr-body { padding: 18px 16px; text-align: center; }
+.qr-art { display: flex; justify-content: center; }
+.qr-art :deep(svg) { width: 240px; height: 240px; }
+.qr-url { margin-top: 10px; font-size: 11.5px; color: #6b7280; word-break: break-all; }
+.qr-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 14px 16px; border-top: 1px solid #e5e7eb; }
+.qr-foot .btn-secondary.btn-sm, .qr-foot .btn-primary.btn-sm { margin-left: 0; }
 
 /* ── แถบ "เลือกไว้กี่กลุ่ม" เหนือตาราง ─────────────────────────── */
 .bulk-bar {

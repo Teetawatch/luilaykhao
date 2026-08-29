@@ -465,6 +465,60 @@ class CustomerIntakeTest extends TestCase
     }
 
     /**
+     * ลิงก์นี้เดินทางด้วยการวางในแชทเป็นหลัก ถ้าไม่มีการ์ดพรีวิว ลูกค้าเห็นแค่
+     * URL สุ่มยาว ๆ แล้วลังเลที่จะกด — และหน้ากลุ่มยิ่งสำคัญ เพราะลูกค้าเป็นคน
+     * ส่งต่อเอง การ์ดคือสิ่งที่อธิบายแทนเขา
+     */
+    public function test_both_public_pages_unfurl_as_a_card_in_chat(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update(['cover_image' => 'https://cdn.example.com/khao-luang.jpg']);
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('og:title', false)
+            ->assertSee('กรอกข้อมูลผู้เดินทาง · เขาหลวง สุโขทัย', false)
+            ->assertSee('https://cdn.example.com/khao-luang.jpg', false)
+            ->assertSee('summary_large_image', false);
+
+        $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 2]));
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+
+        $this->get("/g/{$intake->token}")
+            ->assertOk()
+            ->assertSee('กรอกข้อมูลผู้เดินทางของกลุ่ม · เขาหลวง สุโขทัย', false)
+            // การ์ดถูกอ่านโดยคนทั้งแชทกลุ่ม ห้ามมีชื่อใครหลุดไปอยู่ในนั้น
+            ->assertDontSee('<meta property="og:description" content="สมชาย', false);
+    }
+
+    /** QR ไว้แปะ rich menu ไลน์ / สตอรี่ไอจี / ป้ายหน้าบูธ ที่คัดลอก URL ไม่ได้ */
+    public function test_admin_can_get_a_qr_for_a_link(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $link = $this->makeLink($this->makeSchedule());
+
+        $data = $this->actingAs($admin)
+            ->getJson("/api/v1/admin/intake-links/{$link->id}/qr")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($link->publicUrl(), $data['url']);
+        $this->assertStringStartsWith('<svg', $data['svg']);
+    }
+
+    /** คนนอกหยิบ QR ของลิงก์ไปไม่ได้ */
+    public function test_the_qr_endpoint_is_admin_only(): void
+    {
+        $link = $this->makeLink();
+
+        $this->getJson("/api/v1/admin/intake-links/{$link->id}/qr")->assertUnauthorized();
+    }
+
+    /**
      * ลิงก์ถูกแปะค้างไว้ในไบโอไอจี/auto-reply — พอรอบเต็ม ลิงก์เดิมก็ยังถูกเปิดอยู่
      * ปล่อยให้กรอกจนจบแล้วค่อยตอบว่าเต็มคือความผิดหวังที่หลบได้ตั้งแต่แรก
      */

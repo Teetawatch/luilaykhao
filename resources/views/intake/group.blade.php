@@ -21,6 +21,12 @@
         $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabelThai()];
     }
     $heroChips[] = ['icon' => 'users', 'text' => 'กรอกแล้ว '.$filledCount.' / '.$partySize.' คน'];
+
+    // ลิงก์นี้ลูกค้าเป็นคนส่งต่อในแชทกลุ่มเอง การ์ดจึงต้องอธิบายแทนเขาได้
+    // ห้ามมีชื่อใครในนี้ — แชทกลุ่มมีคนอ่านมากกว่าคนในทริป
+    $ogTitle = 'กรอกข้อมูลผู้เดินทางของกลุ่ม'.($trip ? ' · '.$trip->title : '');
+    $ogDescription = ($schedule ? $schedule->dateRangeLabelThai().' — ' : '')
+        .'แต่ละคนกรอกข้อมูลของตัวเองได้ คนละเวลา ใช้เวลาประมาณ 2 นาที';
 @endphp
 
 @push('styles')

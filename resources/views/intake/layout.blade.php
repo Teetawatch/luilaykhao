@@ -19,6 +19,30 @@
     <meta name="color-scheme" content="light only">
     <title>@yield('title', 'กรอกข้อมูลผู้เดินทาง') · ลุยเลเขา</title>
 
+    {{-- การ์ดพรีวิวตอนวางลิงก์ในแชท — ลิงก์นี้เดินทางด้วยการวางในไลน์/เมสเซนเจอร์
+         เป็นหลัก ถ้าไม่มีการ์ด ลูกค้าเห็นแค่ URL สุ่มยาว ๆ แล้วลังเลที่จะกด
+         และตอนลูกค้าส่งลิงก์กลุ่มต่อให้เพื่อน การ์ดคือสิ่งที่อธิบายแทนเขา --}}
+    @php
+        $ogTitle = ($ogTitle ?? null) ?: (($heroTitle ?? 'กรอกข้อมูลผู้เดินทาง').' · ลุยเลเขา');
+        $ogDescription = ($ogDescription ?? null) ?: ($heroSub ?? 'กรอกข้อมูลผู้เดินทางล่วงหน้า ใช้เวลาประมาณ 2 นาที');
+        $ogImage = ($ogImage ?? null) ?: ($heroImage ?? null);
+    @endphp
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ลุยเลเขา">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="{{ $ogTitle }}">
+    <meta property="og:description" content="{{ $ogDescription }}">
+    @if ($ogImage)
+        <meta property="og:image" content="{{ $ogImage }}">
+        <meta property="og:image:alt" content="{{ $heroTitle ?? 'ลุยเลเขา' }}">
+    @endif
+    <meta name="twitter:card" content="{{ $ogImage ? 'summary_large_image' : 'summary' }}">
+    <meta name="twitter:title" content="{{ $ogTitle }}">
+    <meta name="twitter:description" content="{{ $ogDescription }}">
+    @if ($ogImage)
+        <meta name="twitter:image" content="{{ $ogImage }}">
+    @endif
+
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon-32x32.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
     <link rel="stylesheet" href="{{ asset('fonts/db-heavent/db-heavent.css') }}?v={{ filemtime(public_path('fonts/db-heavent/db-heavent.css')) }}">
