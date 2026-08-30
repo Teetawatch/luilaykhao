@@ -423,6 +423,150 @@ class ScheduleVehicleOptionTest extends TestCase
         $this->assertSame('รถตู้', Booking::first()->vehicle_option_label);
     }
 
+    public function test_admin_moves_a_booking_from_the_bus_to_the_van(): void
+    {
+        // ทางเดียวที่จะเอาใบจองออกจากคันที่แอดมินอยากเลิกใช้ โดยไม่ต้องยกเลิกใบจอง
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule();
+        $bus = $this->makeOption($schedule, 'รถบัส', 0);
+        $van = $this->makeOption($schedule, 'รถตู้', 400, seats: 9);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(2),
+                'vehicle_option_id' => $bus->id,
+                'seat_ids' => ['A1', 'A2'],
+            ])->assertCreated();
+
+        $booking = Booking::first();
+        $this->assertSame(3000.0, (float) $booking->total_amount);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/bookings/'.$booking->booking_ref, [
+                'vehicle_option_id' => $van->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.vehicle_option.label', 'รถตู้');
+
+        $booking->refresh();
+        $this->assertSame($van->id, $booking->vehicle_option_id);
+        // ส่วนต่างต่อคนของคันใหม่แทนที่ของคันเดิมในยอดรวม (400 × 2 คน)
+        $this->assertSame(3800.0, (float) $booking->total_amount);
+        // ที่นั่งผูกกับคัน — ต้องย้ายตามไป ไม่งั้นลูกค้าถือที่นั่งของบัสที่ไม่ได้นั่งแล้ว
+        $this->assertSame(0, BookingSeat::where('vehicle_option_id', $bus->id)->count());
+        $this->assertSame(2, BookingSeat::where('vehicle_option_id', $van->id)->count());
+        $this->assertSame(0, (int) $bus->fresh()->booked_seats);
+        $this->assertSame(2, (int) $van->fresh()->booked_seats);
+
+        // คันที่ไม่มีใครจองแล้วลบได้จริง ไม่ใช่แค่ถูกปิด
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson('/api/v1/admin/schedules/'.$schedule->id.'/vehicle-options/'.$bus->id)
+            ->assertOk();
+
+        $this->assertNull($bus->fresh());
+    }
+
+    public function test_moving_to_a_vehicle_that_is_full_is_refused(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $schedule = $this->makeSchedule();
+        $bus = $this->makeOption($schedule, 'รถบัส', 0);
+        $van = $this->makeOption($schedule, 'รถตู้', 400, seats: 1);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(1),
+                'vehicle_option_id' => $van->id,
+            ])->assertCreated();
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(2),
+                'vehicle_option_id' => $bus->id,
+            ])->assertCreated();
+
+        $onBus = Booking::where('vehicle_option_id', $bus->id)->firstOrFail();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/bookings/'.$onBus->booking_ref, [
+                'vehicle_option_id' => $van->id,
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame($bus->id, $onBus->fresh()->vehicle_option_id);
+    }
+
+    public function test_moving_onto_a_seat_someone_else_holds_is_refused(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $schedule = $this->makeSchedule();
+        $bus = $this->makeOption($schedule, 'รถบัส', 0);
+        $van = $this->makeOption($schedule, 'รถตู้', 400);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(1),
+                'vehicle_option_id' => $bus->id,
+                'seat_ids' => ['A1'],
+            ])->assertCreated();
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(1),
+                'vehicle_option_id' => $van->id,
+                'seat_ids' => ['A1'],
+            ])->assertCreated();
+
+        $onBus = Booking::where('vehicle_option_id', $bus->id)->firstOrFail();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/bookings/'.$onBus->booking_ref, [
+                'vehicle_option_id' => $van->id,
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame($bus->id, $onBus->fresh()->vehicle_option_id);
+    }
+
+    public function test_moving_to_a_vehicle_the_staff_seats_by_hand_frees_the_seats(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $schedule = $this->makeSchedule();
+        $bus = $this->makeOption($schedule, 'รถบัส', 0);
+        $van = $this->makeOption($schedule, 'รถตู้', 400);
+        $van->update(['seat_selection' => false]);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => $this->passengers(1),
+                'vehicle_option_id' => $bus->id,
+                'seat_ids' => ['A1'],
+            ])->assertCreated();
+
+        $booking = Booking::first();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/bookings/'.$booking->booking_ref, [
+                'vehicle_option_id' => $van->id,
+            ])
+            ->assertOk();
+
+        // คันที่ทีมงานจัดที่นั่งหน้างานไม่มีผังให้ยึด — เลข A1 ของบัสตามมาไม่ได้
+        $this->assertSame(0, BookingSeat::count());
+        $this->assertSame($van->id, $booking->fresh()->vehicle_option_id);
+    }
+
     public function test_admin_cannot_shrink_a_vehicle_below_what_is_already_sold(): void
     {
         $admin = User::factory()->create();

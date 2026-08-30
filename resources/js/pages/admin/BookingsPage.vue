@@ -799,6 +799,28 @@
                 </select>
                 <small v-if="editSchedulesLoading" class="field-hint">กำลังโหลดรอบเดินทาง...</small>
               </div>
+              <div v-if="editVehicleOptions.length" class="form-group">
+                <label>ประเภทรถ</label>
+                <select
+                  v-model.number="editForm.vehicle_option_id"
+                  @change="onEditVehicleOptionChange"
+                  :disabled="editForm.is_join_trip"
+                >
+                  <option value="">— ไม่ระบุคัน —</option>
+                  <option v-for="option in editVehicleOptions" :key="option.id" :value="option.id">
+                    {{ option.label }}
+                    <template v-if="Number(option.price_adjustment)">
+                      ({{ Number(option.price_adjustment) > 0 ? '+' : '−' }}{{ formatMoney(Math.abs(Number(option.price_adjustment))) }}/คน)
+                    </template>
+                    <template v-if="option.is_active === false"> · ปิดรับแล้ว</template>
+                    <template v-else-if="option.available_seats != null"> · ว่าง {{ option.available_seats }} ที่</template>
+                  </option>
+                </select>
+                <small class="field-hint">
+                  ย้ายคันแล้วยอดรวมจะปรับตามส่วนต่างให้ — ที่นั่งของคันเดิมใช้ต่อไม่ได้
+                  (A1 ของบัสกับ A1 ของตู้เป็นคนละที่) กรอกที่นั่งใหม่ในส่วนผู้เดินทางด้วย
+                </small>
+              </div>
               <div class="form-group">
                 <label>ประเภทการจอง</label>
                 <select v-model="editForm.is_join_trip">
@@ -2009,6 +2031,7 @@ const editForm = reactive({
   cancellation_reason: '',
   pickup_point_id: '',
   pickup_region: '',
+  vehicle_option_id: '',
   user: { name: '', email: '', phone: '' },
   total_amount: 0,
   paid_amount: 0,
@@ -2041,6 +2064,9 @@ const editPickupPrevious = ref('');
 
 // ค่าเช่าอุปกรณ์ล่าสุดที่สะท้อนอยู่ในช่องยอดรวมแล้ว — ใช้คิดส่วนต่างเวลาแอดมินแก้
 const rentalsBaseline = ref(0);
+
+// ส่วนต่างต่อคนของคันที่สะท้อนอยู่ในช่องยอดรวมแล้ว — ใช้คิดผลต่างเวลาย้ายคัน
+const vehicleAdjustmentBaseline = ref(0);
 const suppressRentalTotalSync = ref(false);
 
 const allTrips = ref([]);
@@ -2118,6 +2144,22 @@ const editScheduleOptions = computed(() => {
 const editScheduleIsFlight = computed(() => {
   const schedule = editScheduleOptions.value.find((s) => s.id === editForm.schedule_id);
   return (schedule || editBooking.value?.schedule)?.transport_type === 'flight';
+});
+
+// ประเภทรถของรอบที่กำลังเลือกอยู่ — รายการจาก API มีเฉพาะคันที่ยังเปิดรับ จึงต้อง
+// พ่วงคันที่ใบนี้นั่งอยู่เข้าไปด้วย ไม่งั้นใบที่นั่งคันที่แอดมินเพิ่งปิดจะดูเหมือน
+// ไม่ได้เลือกอะไรไว้ แล้วการกดบันทึกจะล้างคันทิ้งโดยไม่ตั้งใจ
+const editVehicleOptions = computed(() => {
+  const schedule = editScheduleOptions.value.find((s) => s.id === editForm.schedule_id);
+  const list = [...(schedule?.vehicle_options || [])];
+  const current = editBooking.value?.vehicle_option;
+
+  if (current?.id && schedule?.id === editBooking.value?.schedule?.id
+      && !list.some((option) => option.id === current.id)) {
+    list.unshift({ ...current, is_active: false });
+  }
+
+  return list;
 });
 
 // จุดรับของรอบเดินทางที่กำลังเลือกอยู่ใน modal แก้ไข
@@ -2287,6 +2329,16 @@ function onEditScheduleChange() {
     editForm.pickup_region = '';
   }
 
+  // ประเภทรถผูกกับรอบ — คันของรอบเดิมไม่มีอยู่ในรอบใหม่ ให้เลือกคันชื่อเดียวกัน
+  // ถ้ามี (แบบเดียวกับที่ฝั่ง server จับคู่ให้ตอนย้ายรอบ) ไม่มีก็ปล่อยว่าง
+  if (!editVehicleOptions.value.some((option) => option.id === editForm.vehicle_option_id)) {
+    const sameLabel = editVehicleOptions.value.find(
+      (option) => option.label === editBooking.value?.vehicle_option?.label,
+    );
+    editForm.vehicle_option_id = sameLabel?.id || '';
+    applyVehicleAdjustment();
+  }
+
   // จุดรับเป็นของรอบเดินทาง — ย้ายรอบแล้วจุดของรอบเดิมใช้ไม่ได้อีก
   // (ฝั่ง server มี remapPassengerPickupPoints จับคู่จุดที่ชื่อตรงกันให้อยู่แล้ว)
   editForm.passengers.forEach((passenger) => {
@@ -2294,6 +2346,26 @@ function onEditScheduleChange() {
       passenger.pickup_point_id = '';
     }
   });
+}
+
+// ย้ายคัน (บัส ↔ ตู้) — ราคาคิดเป็นส่วนต่างต่อคน จึงปรับยอดรวม (และยอดคงเหลือของ
+// ใบมัดจำ) ให้เห็นก่อนกดบันทึก ฝั่ง server ก็คิดให้เหมือนกันเมื่อผู้เรียกไม่ได้ส่งยอดมา
+function onEditVehicleOptionChange() {
+  applyVehicleAdjustment();
+}
+
+function applyVehicleAdjustment() {
+  const chosen = editVehicleOptions.value.find((option) => option.id === editForm.vehicle_option_id);
+  const adjustment = moneyNumber(chosen?.price_adjustment);
+  const delta = (adjustment - vehicleAdjustmentBaseline.value) * editForm.passengers.length;
+
+  vehicleAdjustmentBaseline.value = adjustment;
+  if (!delta) return;
+
+  editForm.total_amount = Math.max(0, moneyNumber(editForm.total_amount) + delta);
+  if (editForm.payment_type === 'deposit' && editForm.balance_amount !== '') {
+    editForm.balance_amount = Math.max(0, moneyNumber(editForm.balance_amount) + delta);
+  }
 }
 
 // เมื่อเลือกจุดรับจาก dropdown: เติม region ให้อัตโนมัติ
@@ -2363,6 +2435,7 @@ function resetEditForm() {
     cancellation_reason: '',
     pickup_point_id: '',
     pickup_region: '',
+    vehicle_option_id: '',
     user: { name: '', email: '', phone: '' },
     total_amount: 0,
     paid_amount: 0,
@@ -2394,6 +2467,8 @@ function resetEditForm() {
 function fillEditForm(booking) {
   resetEditForm();
   editPickupPrevious.value = booking.pickup_point?.id || '';
+  // ยอดรวมที่โหลดมารวมส่วนต่างของคันนี้ไว้แล้ว — เก็บไว้เทียบตอนแอดมินย้ายคัน
+  vehicleAdjustmentBaseline.value = moneyNumber(booking.vehicle_option?.price_adjustment);
   editCustomPickup.value = booking.custom_pickup
     ? {
         label: booking.custom_pickup.label,
@@ -2415,6 +2490,7 @@ function fillEditForm(booking) {
     cancellation_reason: booking.cancellation_reason || '',
     pickup_point_id: booking.pickup_point?.id || '',
     pickup_region: booking.pickup_region || booking.pickup_point?.region || '',
+    vehicle_option_id: booking.vehicle_option?.id || '',
     user: {
       name: booking.user?.name || '',
       email: booking.user?.email || '',
@@ -2646,6 +2722,10 @@ function buildEditFormData() {
   appendForm(fd, 'cancellation_reason', editForm.cancellation_reason);
   appendForm(fd, 'pickup_point_id', editForm.pickup_point_id);
   appendForm(fd, 'pickup_region', editForm.pickup_region);
+  // ส่งเฉพาะรอบที่มีตัวเลือกรถจริง — รอบรถคันเดียวส่งมาจะกลายเป็นสั่งล้างคันทิ้ง
+  if (editVehicleOptions.value.length) {
+    appendForm(fd, 'vehicle_option_id', editForm.vehicle_option_id);
+  }
   if (editCustomPickup.value) {
     appendForm(fd, 'custom_pickup_label', editCustomPickup.value.label);
     appendForm(fd, 'custom_pickup_lat', editCustomPickup.value.lat);

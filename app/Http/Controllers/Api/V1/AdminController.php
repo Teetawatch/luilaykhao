@@ -1360,6 +1360,8 @@ class AdminController extends Controller
         $data = $request->validate([
             'status' => ['nullable', 'in:pending,confirmed,cancelled,refunded'],
             'schedule_id' => ['nullable', 'exists:trip_schedules,id'],
+            // ย้ายคันภายในรอบเดียวกัน (บัส → ตู้) — ว่าง = ไม่ระบุคัน (รอบที่มีรถคันเดียว)
+            'vehicle_option_id' => ['nullable', 'integer', 'exists:schedule_vehicle_options,id'],
             'pickup_region' => ['nullable', 'string', 'max:100'],
             'pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
             'custom_pickup_label' => ['nullable', 'string', 'max:255'],
@@ -1459,6 +1461,12 @@ class AdminController extends Controller
                 // จุดรับรายคนมาก่อนจุดระดับการจองเสมอ (สตาฟ/คนขับจัดกลุ่มจากรายคน)
                 // จำไว้ว่าใคร "ยืนจุดเดียวกับหัวการจอง" ก่อนแก้ เพื่อย้ายตามเมื่อแอดมิน
                 // เปลี่ยนจุดรับ — คนที่เลือกจุดของตัวเองไว้ต่างหากจะไม่ถูกทับ
+                // คันที่ใบนี้นั่งอยู่ก่อนแก้ — ที่นั่งผูกกับคัน (A1 ของบัสกับ A1 ของตู้
+                // เป็นคนละที่) แถวที่นั่งจึงต้องย้ายตามเมื่อแอดมินเปลี่ยนคันให้
+                $originalOptionId = (int) ($booking->vehicle_option_id ?? 0);
+                $newOption = null;
+                $optionChosen = array_key_exists('vehicle_option_id', $data);
+
                 $originalPickupPointId = $booking->pickup_point_id ? (int) $booking->pickup_point_id : null;
                 $pickupFollowerIds = $booking->passengers
                     ->filter(function ($passenger) use ($originalPickupPointId) {
@@ -1496,6 +1504,58 @@ class AdminController extends Controller
                 }
                 if (array_key_exists('is_group', $data)) {
                     $bookingUpdates['is_group'] = (bool) $data['is_group'];
+                }
+
+                // ย้ายคันภายในรอบ (บัส → ตู้) — ทางเดียวที่จะเอาใบจองออกจากตัวเลือก
+                // ที่แอดมินอยากเลิกใช้ โดยไม่ต้องยกเลิกใบจองหรือย้ายรอบ
+                if ($optionChosen) {
+                    $targetScheduleId = (int) ($bookingUpdates['schedule_id'] ?? $booking->schedule_id);
+                    $joinTrip = (bool) ($bookingUpdates['is_join_trip'] ?? $booking->is_join_trip);
+                    $paxCount = array_key_exists('passengers', $data) && $data['passengers'] !== null
+                        ? count($data['passengers'])
+                        : $booking->passengers->count();
+
+                    // จอยทริปไม่กินที่นั่งบนรถ จึงไม่มีคันให้เลือก (เหมือนตอนลูกค้าจอง)
+                    if (filled($data['vehicle_option_id']) && ! $joinTrip) {
+                        $newOption = ScheduleVehicleOption::where('schedule_id', $targetScheduleId)
+                            ->find((int) $data['vehicle_option_id']);
+
+                        if (! $newOption) {
+                            throw new \RuntimeException('ประเภทรถที่เลือกไม่ได้อยู่ในรอบเดินทางนี้');
+                        }
+                    }
+
+                    // โควตาของคันปลายทางต้องรับไหว — นับใหม่จากใบจองจริงก่อนตัดสิน
+                    if ($newOption && (int) $newOption->id !== $originalOptionId && $newOption->seats !== null) {
+                        TripSchedule::with('vehicleOptions')->find($targetScheduleId)?->syncVehicleOptionSeats();
+                        $newOption->refresh();
+
+                        if (! $newOption->canFit($paxCount)) {
+                            throw new \RuntimeException(
+                                $newOption->label.' เหลือ '.(int) $newOption->available_seats.' ที่ ไม่พอสำหรับ '.$paxCount.' ท่าน'
+                            );
+                        }
+                    }
+
+                    // สำเนาชื่อ/ส่วนต่างไว้บนใบจองเหมือนตอนจอง — ใบนี้ต้องอธิบายยอดของ
+                    // ตัวเองได้ตลอดไปแม้ตัวเลือกจะถูกแก้ราคาหรือปิดทีหลัง
+                    $bookingUpdates['vehicle_option_id'] = $newOption?->id;
+                    $bookingUpdates['vehicle_option_label'] = $newOption?->label;
+                    $bookingUpdates['vehicle_option_adjustment'] = $newOption ? (float) $newOption->price_adjustment : null;
+
+                    // ส่วนต่างต่อคนเปลี่ยนตามคัน — ผู้เรียกที่ไม่ได้ส่งยอดมาเองให้ปรับให้
+                    // (หน้าแอดมินคิดให้เห็นก่อนกดบันทึกและส่ง total_amount มาเสมอ)
+                    $adjustmentDelta = ((float) ($newOption?->price_adjustment ?? 0)
+                        - (float) ($booking->vehicle_option_adjustment ?? 0)) * $paxCount;
+
+                    if ($adjustmentDelta != 0.0) {
+                        if (! array_key_exists('total_amount', $data)) {
+                            $bookingUpdates['total_amount'] = max(0, (float) $booking->total_amount + $adjustmentDelta);
+                        }
+                        if (! array_key_exists('balance_amount', $data) && $booking->balance_amount !== null) {
+                            $bookingUpdates['balance_amount'] = max(0, (float) $booking->balance_amount + $adjustmentDelta);
+                        }
+                    }
                 }
 
                 // อุปกรณ์เช่า — แอดมินเพิ่ม/แก้จำนวนให้ลูกค้าที่ขอทีหลังได้ (เต็นท์ ถุงนอน หมอน)
@@ -1729,37 +1789,56 @@ class AdminController extends Controller
                     }
                 }
 
-                // ย้ายรอบโดยไม่ได้เลือกที่นั่งใหม่ — แถวที่นั่งยังค้างอยู่รอบเดิม ต้องย้ายตามไปด้วย
-                // ไม่งั้นที่นั่งค้างกินโควตารอบเก่า และรอบใหม่นับที่นั่งไม่ตรง
-                if (! array_key_exists('seat_ids', $data) && $oldSchedule && $oldSchedule->id !== $booking->schedule_id) {
-                    $movingSeats = $booking->seats()->where('schedule_id', $oldSchedule->id)->get();
+                // ย้ายรอบ/ย้ายคันโดยไม่ได้เลือกที่นั่งใหม่ — แถวที่นั่งยังค้างอยู่ใต้รอบและคันเดิม
+                // ต้องย้ายตามไปด้วย ไม่งั้นที่นั่งค้างกินโควตาของเดิม รอบใหม่นับที่นั่งไม่ตรง
+                // และที่นั่งผูกกับคัน (A1 ของบัสกับ A1 ของตู้เป็นคนละที่) ลูกค้าจะถือ
+                // ที่นั่งของคันที่ไม่ได้นั่งอีกแล้ว
+                $scheduleChanged = $oldSchedule && $oldSchedule->id !== $booking->schedule_id;
+                $optionChanged = $optionChosen && (int) ($booking->vehicle_option_id ?? 0) !== $originalOptionId;
+
+                if (! array_key_exists('seat_ids', $data) && ($scheduleChanged || $optionChanged)) {
+                    $movingSeats = $booking->seats()
+                        ->where('schedule_id', $oldSchedule?->id ?? $booking->schedule_id)
+                        ->where('vehicle_option_id', $originalOptionId)
+                        ->get();
 
                     if ($movingSeats->isNotEmpty()) {
                         $newSchedule = TripSchedule::lockForUpdate()->find($booking->schedule_id);
 
-                        // ประเภทรถผูกกับรอบ — หาคันชื่อเดียวกันในรอบปลายทาง ไม่เจอ
-                        // ก็ไปอยู่กองรถคันเดียวของรอบนั้น (0) พร้อมกับตัวใบจองเอง
-                        $movedOption = $newSchedule?->vehicleOptionByLabel($booking->vehicle_option_label);
+                        // แอดมินระบุคันมาเองในคำขอนี้ = คำสั่งตรง ไม่ต้องเดา; ย้ายรอบเฉย ๆ
+                        // ให้หาคันชื่อเดียวกันในรอบปลายทาง ไม่เจอก็ไปอยู่กองรถคันเดียว
+                        // ของรอบนั้น (0) พร้อมกับตัวใบจองเอง
+                        if ($optionChosen) {
+                            $movedOption = $newOption;
+                        } else {
+                            $movedOption = $newSchedule?->vehicleOptionByLabel($booking->vehicle_option_label);
+                            $booking->update(['vehicle_option_id' => $movedOption?->id]);
+                        }
                         $movedOptionId = (int) ($movedOption?->id ?? 0);
 
-                        $taken = BookingSeat::where('schedule_id', $booking->schedule_id)
-                            ->where('vehicle_option_id', $movedOptionId)
-                            ->whereIn('seat_id', $movingSeats->pluck('seat_id'))
-                            ->whereNot('booking_id', $booking->id)
-                            ->pluck('seat_id')
-                            ->unique()
-                            ->values();
+                        // คันที่ทีมงานจัดที่นั่งหน้างานไม่มีผังให้ลูกค้ายึด — ปล่อยที่นั่งคืน
+                        // เหมือนตอนจอง แทนที่จะยกเลขที่นั่งของคันเดิมข้ามมา
+                        if ($movedOption && ! $movedOption->seat_selection) {
+                            $booking->seats()->whereKey($movingSeats->pluck('id'))->delete();
+                        } else {
+                            $taken = BookingSeat::where('schedule_id', $booking->schedule_id)
+                                ->where('vehicle_option_id', $movedOptionId)
+                                ->whereIn('seat_id', $movingSeats->pluck('seat_id'))
+                                ->whereNot('booking_id', $booking->id)
+                                ->pluck('seat_id')
+                                ->unique()
+                                ->values();
 
-                        if ($taken->isNotEmpty()) {
-                            throw new \RuntimeException('ที่นั่ง '.$taken->join(', ').' ในรอบปลายทางถูกจองแล้ว กรุณาเลือกที่นั่งใหม่ให้การจองนี้');
+                            if ($taken->isNotEmpty()) {
+                                throw new \RuntimeException('ที่นั่ง '.$taken->join(', ').' ปลายทางถูกจองแล้ว กรุณาเลือกที่นั่งใหม่ให้การจองนี้');
+                            }
+
+                            $booking->seats()->whereKey($movingSeats->pluck('id'))
+                                ->update([
+                                    'schedule_id' => $booking->schedule_id,
+                                    'vehicle_option_id' => $movedOptionId,
+                                ]);
                         }
-
-                        $booking->seats()->where('schedule_id', $oldSchedule->id)
-                            ->update([
-                                'schedule_id' => $booking->schedule_id,
-                                'vehicle_option_id' => $movedOptionId,
-                            ]);
-                        $booking->update(['vehicle_option_id' => $movedOption?->id]);
                     }
                 }
 
@@ -1840,8 +1919,12 @@ class AdminController extends Controller
                     }
                 }
 
-                $booking->fresh(['schedule'])->schedule?->syncBookedSeats();
+                // โหลดตัวเลือกยานพาหนะมาด้วย เพื่อให้ตัวนับรายคัน (booked_seats ของ
+                // บัส/ตู้) นับใหม่ตามไปพร้อมกัน — syncBookedSeats() แตะตัวเลือกเฉพาะ
+                // เมื่อความสัมพันธ์ถูกโหลดมาแล้วเท่านั้น
+                TripSchedule::with('vehicleOptions')->find($booking->fresh()->schedule_id)?->syncBookedSeats();
                 if ($oldSchedule && $oldSchedule->id !== $booking->schedule_id) {
+                    $oldSchedule->load('vehicleOptions');
                     $oldSchedule->syncBookedSeats();
                 }
             });
@@ -3331,14 +3414,25 @@ class AdminController extends Controller
 
         // ใบจองที่เลือกคันนี้ไว้ยังอ้างถึงอยู่ — ปิดการใช้งานแทนการลบ เพื่อให้
         // ใบจองเดิมยังชี้ไปที่ตัวเลือกเดิมได้ และคนใหม่เลือกไม่ได้แล้ว
-        if ($option->bookings()
+        // (ที่นั่งผูกกับคัน ลบทิ้งเลยจะทำให้แถวใน booking_seats ชี้คันที่ไม่มีอยู่
+        //  แล้วที่นั่งที่ลูกค้าจ่ายไปแล้วหลุดจากผัง)
+        $blocking = $option->bookings()
             ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
-            ->exists()) {
+            ->orderBy('id')
+            ->pluck('booking_ref');
+
+        if ($blocking->isNotEmpty()) {
             $option->update(['is_active' => false]);
+
+            // บอกไปเลยว่าติดใบไหน แอดมินจะได้เข้าไปย้ายคันในหน้าแก้ไขการจองแล้ว
+            // กลับมาลบได้ โดยไม่ต้องไล่หาเองว่าใครจองคันนี้ไว้
+            $refs = $blocking->take(5)->join(', ')
+                .($blocking->count() > 5 ? ' และอีก '.($blocking->count() - 5).' ใบ' : '');
 
             return $this->success(
                 new ScheduleVehicleOptionResource($option->fresh()),
-                'มีการจองที่เลือก'.$option->label.'อยู่ จึงปิดไม่ให้เลือกใหม่แทนการลบ'
+                'มีการจองที่เลือก'.$option->label.'อยู่ ('.$refs.') จึงปิดไม่ให้เลือกใหม่แทนการลบ'
+                .' — ย้ายใบจองเหล่านี้ไปคันอื่นในหน้าแก้ไขการจองก่อน แล้วจึงลบได้'
             );
         }
 
