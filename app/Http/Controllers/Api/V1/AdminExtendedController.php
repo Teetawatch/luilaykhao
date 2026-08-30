@@ -11,7 +11,6 @@ use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
 use App\Models\Review;
-use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -20,11 +19,16 @@ use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class AdminExtendedController extends Controller
 {
     use ApiResponse;
+
+    // รายงานทั้งหมดอ่านวันที่เป็นเวลาไทย — คอลัมน์ timestamp เก็บเป็น UTC
+    private const REPORT_TZ = 'Asia/Bangkok';
 
     // ─── Calendar Data ─────────────────────────────────────────
 
@@ -671,75 +675,76 @@ class AdminExtendedController extends Controller
         ]);
     }
 
+    /**
+     * รายงานรายได้ — ยอดขาย / เงินที่รับแล้ว / ยอดค้าง ของช่วงเวลาหนึ่ง
+     *
+     * เกณฑ์ที่ใช้ (เดิมเหมารวมใบ pending เข้ายอดขาย แล้วเอา total − paid เป็นยอดค้าง
+     * ทั้งก้อน ตัวเลขจึงบวมด้วยตะกร้าที่หมดอายุไปแล้วและใบที่แอดมินยกเว้นการชำระ):
+     *
+     *   ยอดขายรวม     = total_amount ของใบที่ "ยืนยันแล้ว" เท่านั้น
+     *   ชำระแล้ว      = paid_amount ของใบเดียวกัน
+     *   ยกเว้นชำระ    = ส่วนที่ไม่มีวันเก็บได้ ของใบที่แอดมินยืนยันโดยข้ามการชำระเงิน
+     *   ยังไม่ชำระ    = ยอดขายรวม − ชำระแล้ว − ยกเว้นชำระ (ไม่ติดลบรายใบ)
+     *   เหลือผ่อนชำระ = ผลรวมงวดที่ยังไม่จ่ายจริง — เป็นส่วนหนึ่งของ "ยังไม่ชำระ"
+     *
+     * ใบ pending (ยังไม่จ่าย/สลิปรอแอดมินตรวจ) กับใบที่คืนเงินแล้ว แยกไปเป็นตัวเลข
+     * ของตัวเอง ไม่ปนกับยอดขาย ส่วน "เงินเข้าสุทธิ" หักคืนเงินออกแล้วตามเกณฑ์
+     * เดียวกับหน้าบัญชี (AdminFinanceController): เงินที่รับจริง = paid − refund
+     */
     public function reportRevenue(Request $request): JsonResponse
     {
-        $from = $request->get('from', now()->startOfYear()->format('Y-m-d'));
-        $to = $request->get('to', now()->format('Y-m-d'));
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
 
-        $bookings = Booking::whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
-            ->whereIn('status', ['confirmed', 'pending'])
-            ->with(['schedule.trip'])
+        $from = $request->get('from') ?: Carbon::now(self::REPORT_TZ)->startOfYear()->toDateString();
+        $to = $request->get('to') ?: Carbon::now(self::REPORT_TZ)->toDateString();
+
+        $bookings = Booking::query()
+            ->whereBetween('created_at', $this->reportDateRange($from, $to))
+            ->whereIn('status', ['pending', 'confirmed', 'refunded'])
+            ->with(['schedule.trip', 'installmentPayments'])
             ->withCount('passengers')
             ->get();
 
-        $totalAmount = (float) $bookings->sum('total_amount');
-        $paidAmount = (float) $bookings->sum('paid_amount');
-        $remainingAmount = round($totalAmount - $paidAmount, 2);
+        $rows = $bookings->map(fn (Booking $booking) => $this->revenueRow($booking));
 
-        // Per payment_type breakdown
-        $byPaymentType = $bookings->groupBy('payment_type')->map(function ($group, $type) {
-            $groupTotal = (float) $group->sum('total_amount');
-            $groupPaid = (float) $group->sum('paid_amount');
+        $confirmed = $rows->where('status', 'confirmed');
+        $pending = $rows->where('status', 'pending');
+        $refunded = $rows->where('status', 'refunded');
 
-            return [
-                'payment_type' => $type,
-                'bookings_count' => $group->count(),
-                'passengers_count' => $group->sum(fn ($b) => $b->passengers_count ?? 0),
-                'total_amount' => $groupTotal,
-                'paid_amount' => $groupPaid,
-                'remaining_amount' => round($groupTotal - $groupPaid, 2),
-            ];
-        })->values();
-
-        // Group by month
-        $monthly = $bookings->groupBy(fn ($b) => $b->created_at->format('Y-m'))->map(function ($group, $month) {
-            $mTotal = (float) $group->sum('total_amount');
-            $mPaid = (float) $group->sum('paid_amount');
-
-            return [
-                'month' => $month,
-                'bookings_count' => $group->count(),
-                'passengers_count' => $group->sum(fn ($b) => $b->passengers_count ?? 0),
-                'total_amount' => $mTotal,
-                'paid_amount' => $mPaid,
-                'remaining_amount' => round($mTotal - $mPaid, 2),
-            ];
-        })->sortKeys()->values();
-
-        // Group by trip
-        $byTrip = $bookings->groupBy(fn ($b) => $b->schedule?->trip?->title ?? 'ไม่ทราบ')->map(function ($group, $trip) {
-            $tTotal = (float) $group->sum('total_amount');
-            $tPaid = (float) $group->sum('paid_amount');
-
-            return [
-                'trip' => $trip,
-                'bookings_count' => $group->count(),
-                'passengers_count' => $group->sum(fn ($b) => $b->passengers_count ?? 0),
-                'total_amount' => $tTotal,
-                'paid_amount' => $tPaid,
-                'remaining_amount' => round($tTotal - $tPaid, 2),
-            ];
-        })->sortByDesc('total_amount')->values();
-
-        $summary = [
+        $summary = array_merge($this->revenueTotals($confirmed), [
             'period' => "$from ถึง $to",
-            'total_bookings' => $bookings->count(),
-            'total_passengers' => $bookings->sum(fn ($b) => $b->passengers_count ?? 0),
-            'total_amount' => $totalAmount,
-            'paid_amount' => $paidAmount,
-            'remaining_amount' => $remainingAmount,
-        ];
+            'pending_bookings' => $pending->count(),
+            'pending_amount' => round((float) $pending->sum('total_amount'), 2),
+            'refunded_bookings' => $refunded->count(),
+            'refunded_amount' => round((float) $refunded->sum('refund_amount'), 2),
+            // เงินที่ยังอยู่ในมือ: ที่รับมาทั้งจากใบที่ยืนยันและใบที่ภายหลังคืนเงิน ลบยอดที่คืนไป
+            'net_amount' => round(
+                (float) $confirmed->sum('paid_amount')
+                + (float) $refunded->sum('paid_amount')
+                - (float) $refunded->sum('refund_amount'),
+                2
+            ),
+        ]);
+
+        $byPaymentType = $confirmed
+            ->groupBy('payment_type')
+            ->map(fn ($group, $type) => array_merge(['payment_type' => $type], $this->revenueTotals($group)))
+            ->values();
+
+        $monthly = $confirmed
+            ->groupBy('month')
+            ->sortKeys()
+            ->map(fn ($group, $month) => array_merge(['month' => $month], $this->revenueTotals($group)))
+            ->values();
+
+        $byTrip = $confirmed
+            ->groupBy('trip')
+            ->map(fn ($group, $trip) => array_merge(['trip' => $trip], $this->revenueTotals($group)))
+            ->sortByDesc('total_amount')
+            ->values();
 
         return $this->success([
             'summary' => $summary,
@@ -747,6 +752,87 @@ class AdminExtendedController extends Controller
             'monthly' => $monthly,
             'by_trip' => $byTrip,
         ]);
+    }
+
+    /**
+     * ตัวเลขเงินของใบจองหนึ่งใบ — คิดครั้งเดียวแล้วเอาไปรวมได้ทุกมุมมอง
+     *
+     * @return array<string, mixed>
+     */
+    private function revenueRow(Booking $booking): array
+    {
+        $isConfirmed = $booking->status === 'confirmed';
+        $total = round((float) $booking->total_amount, 2);
+        $paid = round((float) $booking->paid_amount, 2);
+
+        // ใบที่แอดมินยืนยันโดยข้ามการชำระเงิน — ไม่มีเงินก้อนนี้ให้ตามเก็บอีกแล้ว
+        // ถ้าปล่อยให้ตกไปอยู่ "ยังไม่ชำระ" ยอดลูกหนี้จะค้างอยู่อย่างนั้นตลอดไป
+        $waived = $isConfirmed && $booking->payment_method === Booking::PAYMENT_METHOD_ADMIN_SKIP
+            ? max(0, round($total - $paid, 2))
+            : 0.0;
+
+        // ยอดค้างของใบผ่อนคิดจากงวดที่ยังไม่จ่ายจริง ไม่ใช่ total − paid เพราะแอดมิน
+        // แก้ยอดรายงวดได้จนผลรวมของงวดไม่เท่ากับ total_amount เป๊ะ
+        $installments = $booking->installmentPayments;
+        $installmentOutstanding = $isConfirmed && $booking->payment_type === 'installment'
+            ? round((float) $installments->where('status', '!=', 'paid')->sum('amount'), 2)
+            : 0.0;
+
+        $outstanding = match (true) {
+            ! $isConfirmed, $waived > 0 => 0.0,
+            $booking->payment_type === 'installment' && $installments->isNotEmpty() => $installmentOutstanding,
+            default => max(0, round($total - $paid, 2)),
+        };
+
+        return [
+            'status' => $booking->status,
+            'payment_type' => $booking->payment_type ?: 'full',
+            // จัดกลุ่มตามเดือนไทย ให้ตรงกับช่วงวันที่ที่ผู้ใช้เลือก
+            'month' => $booking->created_at?->copy()->setTimezone(self::REPORT_TZ)->format('Y-m') ?? '-',
+            'trip' => $booking->schedule?->trip?->title ?? 'ไม่ทราบ',
+            'passengers_count' => (int) ($booking->passengers_count ?? 0),
+            'total_amount' => $total,
+            'paid_amount' => $paid,
+            'refund_amount' => round((float) $booking->refund_amount, 2),
+            'waived_amount' => $waived,
+            'outstanding_amount' => $outstanding,
+            'installment_outstanding_amount' => $installmentOutstanding,
+        ];
+    }
+
+    /**
+     * รวมแถวจาก revenueRow() เป็นยอดของกลุ่มหนึ่ง (ทั้งช่วง / รายเดือน / รายทริป)
+     *
+     * @param  Collection<int, array<string, mixed>>  $rows
+     * @return array<string, mixed>
+     */
+    private function revenueTotals($rows): array
+    {
+        return [
+            'bookings_count' => $rows->count(),
+            'passengers_count' => (int) $rows->sum('passengers_count'),
+            'total_amount' => round((float) $rows->sum('total_amount'), 2),
+            'paid_amount' => round((float) $rows->sum('paid_amount'), 2),
+            'outstanding_amount' => round((float) $rows->sum('outstanding_amount'), 2),
+            'installment_outstanding_amount' => round((float) $rows->sum('installment_outstanding_amount'), 2),
+            'waived_amount' => round((float) $rows->sum('waived_amount'), 2),
+        ];
+    }
+
+    /**
+     * ขอบช่วงวันที่ของรายงาน — รับวันแบบเวลาไทย คืนเป็นช่วง UTC
+     *
+     * created_at เก็บเป็น UTC การ whereDate ตรง ๆ ทำให้ใบจองที่เกิดระหว่างเที่ยงคืน
+     * ถึงเจ็ดโมงเช้าตามเวลาไทยตกไปนับเป็นของเมื่อวานเสมอ
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function reportDateRange(string $from, string $to): array
+    {
+        return [
+            Carbon::parse($from, self::REPORT_TZ)->startOfDay()->utc(),
+            Carbon::parse($to, self::REPORT_TZ)->endOfDay()->utc(),
+        ];
     }
 
     public function reportVehicles(Request $request): JsonResponse

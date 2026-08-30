@@ -143,28 +143,53 @@
       <div class="loading-state" v-if="loadingReport"><div class="spinner"></div></div>
 
       <template v-if="revenueReport">
-        <!-- Primary Summary -->
+        <!-- Primary Summary — ทุกตัวเลขนับเฉพาะใบจองที่ยืนยันแล้ว -->
         <div class="report-summary">
           <div class="rs-item rs-blue">
             <span class="rs-val">{{ formatMoney(revenueReport.summary.total_amount) }}</span>
-            <span class="rs-label">ยอดรวมทั้งหมด</span>
+            <span class="rs-label">ยอดขายรวม (ยืนยันแล้ว)</span>
           </div>
           <div class="rs-item rs-green">
             <span class="rs-val">{{ formatMoney(revenueReport.summary.paid_amount) }}</span>
             <span class="rs-label">ชำระแล้ว</span>
           </div>
           <div class="rs-item rs-orange">
-            <span class="rs-val">{{ formatMoney(revenueReport.summary.remaining_amount) }}</span>
+            <span class="rs-val">{{ formatMoney(revenueReport.summary.outstanding_amount) }}</span>
             <span class="rs-label">ยังไม่ชำระ</span>
           </div>
-          <div class="rs-item">
-            <span class="rs-val">{{ revenueReport.summary.total_bookings }}</span>
-            <span class="rs-label">จองทั้งหมด</span>
+          <div class="rs-item rs-purple">
+            <span class="rs-val">{{ formatMoney(revenueReport.summary.installment_outstanding_amount) }}</span>
+            <span class="rs-label">เหลือผ่อนชำระ</span>
           </div>
-          <div class="rs-item">
-            <span class="rs-val">{{ revenueReport.summary.total_passengers }}</span>
-            <span class="rs-label">ผู้โดยสารรวม</span>
+          <div class="rs-item rs-blue">
+            <span class="rs-val">{{ formatMoney(revenueReport.summary.net_amount) }}</span>
+            <span class="rs-label">เงินเข้าสุทธิ (หักคืนเงิน)</span>
           </div>
+        </div>
+
+        <!-- ยอดที่ไม่ได้อยู่ในยอดขาย + วิธีอ่านตัวเลขข้างบน -->
+        <div class="revenue-notes">
+          <div class="rn-item">
+            <span class="rn-key">จองที่ยืนยันแล้ว</span>
+            <span class="rn-val">{{ revenueReport.summary.bookings_count }} ใบ · {{ revenueReport.summary.passengers_count }} คน</span>
+          </div>
+          <div class="rn-item">
+            <span class="rn-key">รอชำระ / รอตรวจสลิป</span>
+            <span class="rn-val">{{ revenueReport.summary.pending_bookings }} ใบ · {{ formatMoney(revenueReport.summary.pending_amount) }}</span>
+          </div>
+          <div class="rn-item">
+            <span class="rn-key">คืนเงินแล้ว</span>
+            <span class="rn-val">{{ revenueReport.summary.refunded_bookings }} ใบ · {{ formatMoney(revenueReport.summary.refunded_amount) }}</span>
+          </div>
+          <div class="rn-item" v-if="revenueReport.summary.waived_amount > 0">
+            <span class="rn-key">ยกเว้นชำระ (แอดมินข้ามการชำระเงิน)</span>
+            <span class="rn-val">{{ formatMoney(revenueReport.summary.waived_amount) }}</span>
+          </div>
+          <p class="rn-formula">
+            ยอดขายรวม = ชำระแล้ว + ยังไม่ชำระ + ยกเว้นชำระ ·
+            ใบที่รอชำระและใบที่คืนเงินแล้วไม่ถูกนับเป็นยอดขาย ·
+            เหลือผ่อนชำระคิดจากงวดที่ยังไม่จ่ายจริง และเป็นส่วนหนึ่งของยังไม่ชำระ
+          </p>
         </div>
 
         <!-- Payment Type Breakdown -->
@@ -178,16 +203,24 @@
               </div>
               <div class="pt-amounts">
                 <div class="pt-row">
-                  <span class="pt-key">ยอดรวม</span>
+                  <span class="pt-key">ยอดขายรวม</span>
                   <span class="pt-val">{{ formatMoney(pt.total_amount) }}</span>
                 </div>
                 <div class="pt-row">
                   <span class="pt-key">ชำระแล้ว</span>
                   <span class="pt-val pt-paid">{{ formatMoney(pt.paid_amount) }}</span>
                 </div>
-                <div class="pt-row pt-row-remaining" v-if="pt.remaining_amount > 0">
+                <div class="pt-row pt-row-remaining" v-if="pt.outstanding_amount > 0">
                   <span class="pt-key">ยังไม่ชำระ</span>
-                  <span class="pt-val pt-remaining">{{ formatMoney(pt.remaining_amount) }}</span>
+                  <span class="pt-val pt-remaining">{{ formatMoney(pt.outstanding_amount) }}</span>
+                </div>
+                <div class="pt-row" v-if="pt.installment_outstanding_amount > 0">
+                  <span class="pt-key">เหลือผ่อนชำระ</span>
+                  <span class="pt-val pt-remaining">{{ formatMoney(pt.installment_outstanding_amount) }}</span>
+                </div>
+                <div class="pt-row" v-if="pt.waived_amount > 0">
+                  <span class="pt-key">ยกเว้นชำระ</span>
+                  <span class="pt-val">{{ formatMoney(pt.waived_amount) }}</span>
                 </div>
               </div>
             </div>
@@ -219,7 +252,7 @@
             </div>
           </div>
           <div class="bar-legend">
-            <span class="legend-item"><span class="legend-dot legend-total"></span>ยอดรวม</span>
+            <span class="legend-item"><span class="legend-dot legend-total"></span>ยอดขายรวม</span>
             <span class="legend-item"><span class="legend-dot legend-paid"></span>ชำระแล้ว</span>
           </div>
         </div>
@@ -234,9 +267,10 @@
                   <th>เดือน</th>
                   <th>จอง</th>
                   <th>คน</th>
-                  <th class="money">ยอดรวม</th>
+                  <th class="money">ยอดขายรวม</th>
                   <th class="money">ชำระแล้ว</th>
                   <th class="money">ยังไม่ชำระ</th>
+                  <th class="money">เหลือผ่อนชำระ</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,17 +280,19 @@
                   <td>{{ m.passengers_count }}</td>
                   <td class="money">{{ formatMoney(m.total_amount) }}</td>
                   <td class="money money-green">{{ formatMoney(m.paid_amount) }}</td>
-                  <td class="money" :class="m.remaining_amount > 0 ? 'money-orange' : ''">{{ formatMoney(m.remaining_amount) }}</td>
+                  <td class="money" :class="m.outstanding_amount > 0 ? 'money-orange' : ''">{{ formatMoney(m.outstanding_amount) }}</td>
+                  <td class="money">{{ formatMoney(m.installment_outstanding_amount) }}</td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr class="tfoot-total">
                   <td><strong>รวม</strong></td>
-                  <td><strong>{{ revenueReport.summary.total_bookings }}</strong></td>
-                  <td><strong>{{ revenueReport.summary.total_passengers }}</strong></td>
+                  <td><strong>{{ revenueReport.summary.bookings_count }}</strong></td>
+                  <td><strong>{{ revenueReport.summary.passengers_count }}</strong></td>
                   <td class="money"><strong>{{ formatMoney(revenueReport.summary.total_amount) }}</strong></td>
                   <td class="money money-green"><strong>{{ formatMoney(revenueReport.summary.paid_amount) }}</strong></td>
-                  <td class="money money-orange"><strong>{{ formatMoney(revenueReport.summary.remaining_amount) }}</strong></td>
+                  <td class="money money-orange"><strong>{{ formatMoney(revenueReport.summary.outstanding_amount) }}</strong></td>
+                  <td class="money"><strong>{{ formatMoney(revenueReport.summary.installment_outstanding_amount) }}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -273,9 +309,10 @@
                   <th>ทริป</th>
                   <th>จอง</th>
                   <th>คน</th>
-                  <th class="money">ยอดรวม</th>
+                  <th class="money">ยอดขายรวม</th>
                   <th class="money">ชำระแล้ว</th>
                   <th class="money">ยังไม่ชำระ</th>
+                  <th class="money">เหลือผ่อนชำระ</th>
                 </tr>
               </thead>
               <tbody>
@@ -285,7 +322,8 @@
                   <td>{{ t.passengers_count }}</td>
                   <td class="money">{{ formatMoney(t.total_amount) }}</td>
                   <td class="money money-green">{{ formatMoney(t.paid_amount) }}</td>
-                  <td class="money" :class="t.remaining_amount > 0 ? 'money-orange' : ''">{{ formatMoney(t.remaining_amount) }}</td>
+                  <td class="money" :class="t.outstanding_amount > 0 ? 'money-orange' : ''">{{ formatMoney(t.outstanding_amount) }}</td>
+                  <td class="money">{{ formatMoney(t.installment_outstanding_amount) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -355,6 +393,7 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { useAdminStore } from '../../stores/admin';
 import { vehicleTypeLabel } from '../../lib/vehicleDisplay';
+import { bangkokToday } from '../../lib/bangkokDate';
 
 const admin = useAdminStore();
 const activeTab = ref('bookings');
@@ -372,16 +411,20 @@ onMounted(() => {
   loadBookingReport();
 });
 
-const bookingFilters = reactive({ 
-  from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), 
-  to: new Date().toISOString().slice(0, 10), 
+// ช่วงเริ่มต้นคิดจาก "วันนี้" ตามเวลาไทย — toISOString() เป็น UTC จึงให้เมื่อวาน
+// ตลอดช่วงเที่ยงคืนถึงเจ็ดโมงเช้า และรายงานจะขาดวันล่าสุดไปหนึ่งวัน
+const today = bangkokToday();
+
+const bookingFilters = reactive({
+  from: `${today.slice(0, 7)}-01`,
+  to: today,
   status: '',
   trip_id: '',
   date_type: 'booking'
 });
-const revenueFilters = reactive({ 
-  from: new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10), 
-  to: new Date().toISOString().slice(0, 10) 
+const revenueFilters = reactive({
+  from: `${today.slice(0, 4)}-01-01`,
+  to: today
 });
 
 const bookingReport = ref(null);
@@ -475,15 +518,15 @@ function exportExcel(type) {
   if (type === 'bookings' && bookingReport.value) {
     headers = ['รหัสจอง', 'ลูกค้า', 'อีเมล', 'เบอร์โทร', 'ทริป', 'วันเดินทาง', 'ผู้โดยสาร', 'สถานะ', 'ยอดรวม', 'ชำระแล้ว', 'วิธีชำระ', 'กลุ่ม', 'ชื่อกลุ่ม', 'วันที่จอง'];
     data = bookingReport.value.rows.map(r => [r.booking_ref, r.customer_name, r.customer_email, r.customer_phone, r.trip_title, r.departure_date, r.passengers_count, r.status, r.total_amount, r.paid_amount, r.payment_method, r.is_group, r.group_name, r.created_at]);
-    filename = `booking-report-${new Date().toISOString().slice(0,10)}`;
+    filename = `booking-report-${bangkokToday()}`;
   } else if (type === 'revenue' && revenueReport.value) {
-    headers = ['เดือน', 'จำนวนจอง', 'ผู้โดยสาร', 'ยอดรวม', 'ชำระแล้ว', 'ยังไม่ชำระ'];
-    data = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, m.passengers_count, m.total_amount, m.paid_amount, m.remaining_amount]);
-    filename = `revenue-report-${new Date().toISOString().slice(0,10)}`;
+    headers = ['เดือน', 'จำนวนจอง', 'ผู้โดยสาร', 'ยอดขายรวม', 'ชำระแล้ว', 'ยังไม่ชำระ', 'เหลือผ่อนชำระ', 'ยกเว้นชำระ'];
+    data = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, m.passengers_count, m.total_amount, m.paid_amount, m.outstanding_amount, m.installment_outstanding_amount, m.waived_amount]);
+    filename = `revenue-report-${bangkokToday()}`;
   } else if (type === 'vehicles' && vehicleReport.value) {
     headers = ['ยานพาหนะ', 'ประเภท', 'ความจุ', 'ทริปที่ผ่านมา', 'ทริปที่จะมา', 'บำรุงรักษา', 'ค่าบำรุงรักษารวม', 'บำรุงรักษาถัดไป'];
     data = vehicleReport.value.map(v => [v.name, v.type, v.capacity, v.total_trips, v.upcoming_trips, v.total_maintenances, v.total_maintenance_cost, v.next_maintenance || '-']);
-    filename = `vehicle-report-${new Date().toISOString().slice(0,10)}`;
+    filename = `vehicle-report-${bangkokToday()}`;
   } else return;
 
   // Generate CSV (Excel-compatible with BOM for Thai)
@@ -508,19 +551,24 @@ function exportPdf(type) {
     title = 'รายงานรายได้';
     const s = revenueReport.value.summary;
     const ptLines = revenueReport.value.by_payment_type.map(pt =>
-      `${paymentTypeLabels[pt.payment_type] || pt.payment_type}: ${pt.bookings_count} จอง (${pt.passengers_count} คน) ยอดรวม ${formatMoney(pt.total_amount)} ชำระแล้ว ${formatMoney(pt.paid_amount)} เหลือ ${formatMoney(pt.remaining_amount)}`
+      `${paymentTypeLabels[pt.payment_type] || pt.payment_type}: ${pt.bookings_count} จอง (${pt.passengers_count} คน) ยอดขายรวม ${formatMoney(pt.total_amount)} ชำระแล้ว ${formatMoney(pt.paid_amount)} ยังไม่ชำระ ${formatMoney(pt.outstanding_amount)}`
     );
     summaryLines = [
       `ช่วงเวลา: ${s.period}`,
-      `จองทั้งหมด: ${s.total_bookings} จอง (${s.total_passengers} คน)`,
-      `ยอดรวมทั้งหมด: ${formatMoney(s.total_amount)}`,
+      `จองที่ยืนยันแล้ว: ${s.bookings_count} จอง (${s.passengers_count} คน)`,
+      `ยอดขายรวม: ${formatMoney(s.total_amount)}`,
       `ชำระแล้ว: ${formatMoney(s.paid_amount)}`,
-      `ยังไม่ชำระ: ${formatMoney(s.remaining_amount)}`,
+      `ยังไม่ชำระ: ${formatMoney(s.outstanding_amount)}`,
+      `เหลือผ่อนชำระ: ${formatMoney(s.installment_outstanding_amount)}`,
+      `ยกเว้นชำระ (แอดมินข้ามการชำระเงิน): ${formatMoney(s.waived_amount)}`,
+      `คืนเงินแล้ว: ${s.refunded_bookings} จอง ${formatMoney(s.refunded_amount)}`,
+      `รอชำระ / รอตรวจสลิป: ${s.pending_bookings} จอง ${formatMoney(s.pending_amount)}`,
+      `เงินเข้าสุทธิ (หักคืนเงิน): ${formatMoney(s.net_amount)}`,
       '--- แยกตามประเภทการชำระ ---',
       ...ptLines,
     ];
-    tableHeaders = ['เดือน', 'จอง', 'คน', 'ยอดรวม', 'ชำระแล้ว', 'ยังไม่ชำระ'];
-    tableRows = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, m.passengers_count, formatMoney(m.total_amount), formatMoney(m.paid_amount), formatMoney(m.remaining_amount)]);
+    tableHeaders = ['เดือน', 'จอง', 'คน', 'ยอดขายรวม', 'ชำระแล้ว', 'ยังไม่ชำระ', 'เหลือผ่อนชำระ'];
+    tableRows = revenueReport.value.monthly.map(m => [m.month, m.bookings_count, m.passengers_count, formatMoney(m.total_amount), formatMoney(m.paid_amount), formatMoney(m.outstanding_amount), formatMoney(m.installment_outstanding_amount)]);
   } else if (type === 'vehicles' && vehicleReport.value) {
     title = 'รายงานยานพาหนะ';
     summaryLines = [`จำนวนยานพาหนะ: ${vehicleReport.value.length}`];
@@ -674,6 +722,36 @@ function downloadFile(content, filename, contentType) {
 .rs-red .rs-val { color: #dc2626; }
 .rs-blue .rs-val { color: var(--color-ocean); font-size: 18px; }
 .rs-orange .rs-val { color: #ea580c; font-size: 18px; }
+
+.rs-purple .rs-val { color: #7c3aed; font-size: 18px; }
+
+.revenue-notes {
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.rn-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.rn-key { color: var(--color-text-muted); }
+.rn-val { font-weight: 600; color: var(--color-text-dark); }
+
+.rn-formula {
+  margin: 8px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-sand-dark);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--color-text-muted);
+}
 
 .rs-label {
   font-size: 11px;
