@@ -37,6 +37,10 @@ class Booking extends Model
 
     public const HOLD_MAX_DAYS = 30;
 
+    // ใบจองที่แอดมินยืนยันเองโดยข้ามการชำระเงิน — ไม่มีเงินเข้า paid_amount จึงเป็น 0
+    // ใช้แยกใบพวกนี้ออกจากยอดที่โอนเข้ามาจริงเวลาไล่บัญชี
+    public const PAYMENT_METHOD_ADMIN_SKIP = 'admin_skip';
+
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'vehicle_option_id', 'vehicle_option_label', 'vehicle_option_adjustment',

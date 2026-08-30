@@ -19,6 +19,7 @@ use App\Support\CustomPickupPricing;
 use App\Support\ThaiDate;
 use App\Traits\RemapsBookingPickup;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class BookingService
 {
@@ -55,6 +56,7 @@ class BookingService
         ?string $giftFromName = null,
         ?string $giftMessage = null,
         ?int $vehicleOptionId = null,
+        bool $skipPayment = false,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -534,21 +536,43 @@ class BookingService
             return $booking;
         });
 
-        // Send emails outside of DB transaction
-        $this->mailService->sendBookingCreatedEmail($booking);
-        // ทริปต่างประเทศที่จองจากช่องทางที่ยังไม่มีช่องกรอกพาสปอร์ต (แอปรุ่นก่อนหน้า)
-        // — ส่งลิงก์ให้มากรอกบนเว็บทีหลัง ตัวเมธอดเงียบเองเมื่อข้อมูลครบอยู่แล้ว
-        $this->mailService->sendPassportInfoNeededEmail($booking);
-        SmartNotification::send(
-            $booking->user_id,
-            'booking_created',
-            'สร้างการจองสำเร็จ',
-            "เลขการจอง {$booking->booking_ref} ถูกสร้างแล้ว กรุณาชำระเงินเพื่อยืนยันที่นั่ง",
-            [
-                'booking_ref' => $booking->booking_ref,
-                'route' => 'booking',
-            ],
-        );
+        if ($skipPayment) {
+            // สิทธิ์แอดมินเท่านั้น (กันไว้ที่ BookingController) — ยืนยันใบจองทันที
+            // โดยไม่มีเงินเข้า จึงลง paid_amount เป็น 0 ให้รายงานรายรับไม่บวมขึ้นมา
+            // และไม่ส่งอีเมล/แจ้งเตือนที่บอกให้ไปชำระเงิน เพราะไม่มีอะไรให้จ่ายแล้ว
+            $booking = $this->confirmBooking(
+                $booking,
+                Booking::PAYMENT_METHOD_ADMIN_SKIP,
+                'ADMIN-'.strtoupper(Str::random(8)),
+                0,
+            );
+            SmartNotification::send(
+                $booking->user_id,
+                'booking_confirmed',
+                'ยืนยันการจองแล้ว',
+                "เลขการจอง {$booking->booking_ref} ได้รับการยืนยันแล้ว (ข้ามการชำระเงินโดยแอดมิน)",
+                [
+                    'booking_ref' => $booking->booking_ref,
+                    'route' => 'booking',
+                ],
+            );
+        } else {
+            // Send emails outside of DB transaction
+            $this->mailService->sendBookingCreatedEmail($booking);
+            // ทริปต่างประเทศที่จองจากช่องทางที่ยังไม่มีช่องกรอกพาสปอร์ต (แอปรุ่นก่อนหน้า)
+            // — ส่งลิงก์ให้มากรอกบนเว็บทีหลัง ตัวเมธอดเงียบเองเมื่อข้อมูลครบอยู่แล้ว
+            $this->mailService->sendPassportInfoNeededEmail($booking);
+            SmartNotification::send(
+                $booking->user_id,
+                'booking_created',
+                'สร้างการจองสำเร็จ',
+                "เลขการจอง {$booking->booking_ref} ถูกสร้างแล้ว กรุณาชำระเงินเพื่อยืนยันที่นั่ง",
+                [
+                    'booking_ref' => $booking->booking_ref,
+                    'route' => 'booking',
+                ],
+            );
+        }
 
         // Mark user's waitlist entry as booked (if they came from the waitlist)
         $this->waitlistService->markBooked($userId, $scheduleId);

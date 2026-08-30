@@ -196,6 +196,8 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.cert_number' => ['nullable', 'string'],
             'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],
             'is_group' => ['nullable', 'boolean'],
+            // ข้ามการชำระเงินแล้วยืนยันทันที — ตรวจสิทธิ์แอดมินที่ BookingController
+            'skip_payment' => ['nullable', 'boolean'],
             'group_name' => ['nullable', 'string', 'max:255'],
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],

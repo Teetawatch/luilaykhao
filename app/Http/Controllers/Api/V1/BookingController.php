@@ -35,6 +35,11 @@ class BookingController extends Controller
 
     public function store(CreateBookingRequest $request): JsonResponse
     {
+        // ข้ามขั้นชำระเงินแล้วยืนยันใบจองทันที — สิทธิ์ของบัญชีแอดมินเท่านั้น
+        // ผู้ใช้ทั่วไปที่ส่งธงนี้มาเองจะได้ใบจอง pending ตามปกติ ไม่ใช่ข้อผิดพลาด
+        // เพราะไม่มีอะไรให้เดา และช่องทางเก่าที่ยังไม่รู้จักธงนี้ต้องทำงานเหมือนเดิม
+        $skipPayment = $request->boolean('skip_payment') && $request->user()->hasRole('admin');
+
         try {
             $booking = $this->bookingService->createBooking(
                 userId: $request->user()->id,
@@ -60,9 +65,14 @@ class BookingController extends Controller
                 isGift: $request->boolean('is_gift'),
                 giftFromName: $request->gift_from_name,
                 giftMessage: $request->gift_message,
+                skipPayment: $skipPayment,
             );
 
-            return $this->success(new BookingResource($booking), 'สร้างการจองสำเร็จ', 201);
+            return $this->success(
+                new BookingResource($booking),
+                $skipPayment ? 'ยืนยันการจองสำเร็จ (ข้ามการชำระเงิน)' : 'สร้างการจองสำเร็จ',
+                201,
+            );
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
