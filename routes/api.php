@@ -625,6 +625,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/pickup-points/copy-from', [AdminController::class, 'copyPickupPointsFrom']);
         Route::post('schedules/{id}/pickup-points', [AdminController::class, 'storePickupPoint']);
         Route::post('schedules/{id}/pickup-points/sync-images', [AdminController::class, 'syncPickupImages']);
+        Route::post('schedules/{id}/pickup-points/sync-times', [AdminController::class, 'syncPickupTimes']);
         Route::put('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'updatePickupPoint']);
         Route::delete('schedules/{id}/pickup-points/{pointId}', [AdminController::class, 'deletePickupPoint']);
 

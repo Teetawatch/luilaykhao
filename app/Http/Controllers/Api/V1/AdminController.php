@@ -3333,6 +3333,72 @@ class AdminController extends Controller
         ], "ซิงค์รูปจุดรับไป {$updatedSchedules} รอบสำเร็จ");
     }
 
+    /**
+     * คัดลอกเวลาขึ้นรถของรอบนี้ไปทับจุดรับที่ชื่อตรงกันในรอบอื่น
+     *
+     * ทริปเดียวกันมักใช้เวลานัดชุดเดิมทุกรอบ แต่เดิมต้องไล่แก้ทีละรอบทีละจุด
+     * จับคู่ด้วย region + ชื่อจุดแบบเดียวกับการซิงค์รูป และไม่สร้าง/ไม่ลบจุดไหนเลย
+     * ใบจองที่ผูกกับจุดรับเดิมจึงไม่ขยับตาม
+     *
+     * ไม่ส่ง schedule_ids มา = ทุกรอบที่เหลือของทริปเดียวกัน (ปุ่ม "คัดลอกเวลาไปทุกรอบ")
+     * ส่งมาก็ยังถูกกรองให้เหลือเฉพาะรอบของทริปนี้ — เวลานัดของทริปหนึ่งไม่ควรรั่ว
+     * ไปทับอีกทริปที่บังเอิญมีจุดรับชื่อเดียวกัน
+     */
+    public function syncPickupTimes(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'schedule_ids' => ['nullable', 'array'],
+            'schedule_ids.*' => ['integer'],
+        ]);
+
+        $source = TripSchedule::with('pickupPoints')->findOrFail($scheduleId);
+
+        $timeMap = [];
+        foreach ($source->pickupPoints as $point) {
+            if (filled($point->pickup_time)) {
+                $timeMap[$point->region.'::'.$point->pickup_location] = $point->pickup_time;
+            }
+        }
+
+        if (empty($timeMap)) {
+            return $this->error('รอบต้นทางยังไม่ได้กรอกเวลาขึ้นรถให้จุดไหนเลย', 422);
+        }
+
+        $targetIds = TripSchedule::where('trip_id', $source->trip_id)
+            ->whereKeyNot($source->id)
+            ->when(
+                filled($validated['schedule_ids'] ?? null),
+                fn ($query) => $query->whereIn('id', $validated['schedule_ids'])
+            )
+            ->pluck('id');
+
+        $updatedPoints = 0;
+        $updatedSchedules = 0;
+
+        foreach ($targetIds as $targetId) {
+            $changed = 0;
+
+            foreach (SchedulePickupPoint::where('schedule_id', $targetId)->get() as $point) {
+                $time = $timeMap[$point->region.'::'.$point->pickup_location] ?? null;
+
+                if ($time !== null && $point->pickup_time !== $time) {
+                    $point->update(['pickup_time' => $time]);
+                    $changed++;
+                }
+            }
+
+            if ($changed > 0) {
+                $updatedPoints += $changed;
+                $updatedSchedules++;
+            }
+        }
+
+        return $this->success([
+            'updated_schedules' => $updatedSchedules,
+            'updated_points' => $updatedPoints,
+        ], "คัดลอกเวลาขึ้นรถไป {$updatedSchedules} รอบสำเร็จ");
+    }
+
     public function updatePickupPoint(Request $request, int $scheduleId, int $pointId): JsonResponse
     {
         $point = SchedulePickupPoint::where('schedule_id', $scheduleId)->findOrFail($pointId);

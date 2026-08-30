@@ -94,6 +94,15 @@
           <button class="btn-sm btn-danger-sm" @click="deleteTripGroup(activeGroup)" title="ลบทุกรอบในทริปนี้">
             <span class="material-symbols-rounded">delete</span> ลบทั้งหมด
           </button>
+          <button
+            v-if="pastScheduleCount"
+            class="btn-sm btn-secondary toolbar-end"
+            @click="showPastSchedules = !showPastSchedules"
+            :title="showPastSchedules ? 'ซ่อนรอบที่ผ่านไปแล้ว' : 'แสดงรอบที่ผ่านไปแล้ว'"
+          >
+            <span class="material-symbols-rounded">{{ showPastSchedules ? 'visibility_off' : 'history' }}</span>
+            {{ showPastSchedules ? 'ซ่อนรอบที่ผ่านไปแล้ว' : `รอบที่ผ่านไปแล้ว ${pastScheduleCount} รอบ` }}
+          </button>
         </div>
 
         <div class="modal-body schedules-modal-body">
@@ -110,7 +119,14 @@
                   <th>การจัดการ</th>
                 </tr>
               </thead>
-              <tbody v-for="m in groupSchedulesByMonth(activeGroup.schedules)" :key="m.key">
+              <tbody v-if="!visibleSchedules.length">
+                <tr>
+                  <td :colspan="7" class="schedule-empty-row">
+                    ทริปนี้มีแต่รอบที่ผ่านไปแล้ว — กด "รอบที่ผ่านไปแล้ว {{ pastScheduleCount }} รอบ" ด้านบนเพื่อดู
+                  </td>
+                </tr>
+              </tbody>
+              <tbody v-for="m in groupSchedulesByMonth(visibleSchedules)" :key="m.key">
                 <tr class="month-sep-row" :class="{ 'is-past': isPastMonth(m) }">
                   <td :colspan="7">
                     <span class="material-symbols-rounded month-sep-icon">event</span>
@@ -573,6 +589,9 @@
                 </div>
               </div>
             </button>
+            <button class="btn-sm btn-secondary" @click="copyPickupTimes()" :disabled="!pickupPointsWithTime">
+              <span class="material-symbols-rounded">schedule</span> คัดลอกเวลาไปทุกรอบ
+            </button>
             <button class="btn-sm btn-primary" @click="copyPickupPoints(pickupSchedule)" :disabled="!pickupPoints.length">
               <span class="material-symbols-rounded">content_copy</span> คัดลอกไปรอบอื่น
             </button>
@@ -582,6 +601,12 @@
         <div class="modal-body">
           <div v-if="pickupLoading" class="pickup-loading"><div class="spinner"></div></div>
           <template v-else>
+
+            <p class="pickup-time-hint">
+              <span class="material-symbols-rounded">schedule</span>
+              เวลาขึ้นรถกรอกที่ช่องนาฬิกาช่องเดียว — แอปกับเว็บอ่านจากช่องนี้เพื่อคิด ETA
+              และเรียงลำดับการรับ ส่วน "หมายเหตุ" เป็นข้อความอิสระที่ไม่ถูกนำไปคำนวณ
+            </p>
 
             <!-- Region sections -->
             <div v-for="r in REGIONS" :key="r.value" class="pickup-region-section">
@@ -667,7 +692,7 @@
                 <div v-if="addingInRegion === r.value" class="pickup-item-edit pickup-item-add">
                   <div class="pif-row">
                     <input v-model="pickupForm.pickup_location" placeholder="จุดขึ้นรถ *" class="pif-location" />
-                    <input v-model="pickupForm.notes" placeholder="เวลานัด / หมายเหตุ" class="pif-notes" />
+                    <input v-model="pickupForm.notes" placeholder="หมายเหตุ (ไม่บังคับ)" class="pif-notes" />
                     <div class="pif-price-wrap">
                       <span class="pif-baht">฿</span>
                       <input v-model.number="pickupForm.price" type="number" min="0" placeholder="ราคา" class="pif-price" />
@@ -1240,7 +1265,11 @@
                     <option v-for="r in REGIONS" :key="r.value" :value="r.value">{{ r.label }}</option>
                   </select>
                   <input v-model="pt.pickup_location" placeholder="จุดขึ้นรถ เช่น ปั้ม PTT เชียงใหม่" style="flex:2;" />
-                  <input v-model="pt.notes" placeholder="เวลานัด เช่น 05:30 น." style="flex:1;" />
+                  <label class="pif-time-wrap" title="เวลาขึ้นรถ">
+                    <span class="material-symbols-rounded">schedule</span>
+                    <input v-model="pt.pickup_time" type="time" class="pif-time" />
+                  </label>
+                  <input v-model="pt.notes" placeholder="หมายเหตุ (ไม่บังคับ)" style="flex:1;" />
                 </div>
                 <div class="pickup-inline-right">
                   <div style="display:flex;align-items:center;gap:6px;">
@@ -1618,7 +1647,11 @@
                   </div>
                   <div v-for="(pt, pi) in editingTemplate.points.filter(p => p.region === r.value)" :key="pi" class="tpl-point-row">
                     <input v-model="pt.pickup_location" placeholder="จุดขึ้นรถ *" style="flex:2;" />
-                    <input v-model="pt.notes" placeholder="เวลา / หมายเหตุ" style="flex:1;" />
+                    <label class="pif-time-wrap" title="เวลาขึ้นรถ">
+                      <span class="material-symbols-rounded">schedule</span>
+                      <input v-model="pt.pickup_time" type="time" class="pif-time" />
+                    </label>
+                    <input v-model="pt.notes" placeholder="หมายเหตุ (ไม่บังคับ)" style="flex:1;" />
                     <div style="display:flex;align-items:center;gap:4px;">
                       <span style="font-size:12px;color:#6b7280;">฿</span>
                       <input v-model.number="pt.price" type="number" min="0" placeholder="ราคา" style="width:80px;" />
@@ -1770,6 +1803,14 @@
                   <div style="font-size:11px;color:#6b7280;">อัปเดตเฉพาะรูปให้จุดที่ชื่อตรงกัน ไม่ลบ/ไม่เพิ่มจุด</div>
                 </div>
               </label>
+              <label class="apply-mode-option" :class="{ active: copyMode === 'times' }">
+                <input type="radio" v-model="copyMode" value="times" />
+                <span class="material-symbols-rounded">schedule</span>
+                <div>
+                  <div style="font-weight:700;">เฉพาะเวลาขึ้นรถ <span style="font-size:10px;color:#059669;font-weight:700;">· ปลอดภัยกับใบจอง</span></div>
+                  <div style="font-size:11px;color:#6b7280;">อัปเดตเฉพาะเวลาให้จุดที่ชื่อตรงกัน ไม่ลบ/ไม่เพิ่มจุด</div>
+                </div>
+              </label>
               <label class="apply-mode-option" :class="{ active: copyMode === 'append' }">
                 <input type="radio" v-model="copyMode" value="append" />
                 <span class="material-symbols-rounded">add_circle</span>
@@ -1821,7 +1862,7 @@
           <button class="btn-secondary" @click="showCopyModal = false">ยกเลิก</button>
           <button class="btn-primary" @click="doCopyPickups" :disabled="!copySelectedIds.length || copySubmitting">
             <span class="material-symbols-rounded" :class="{ 'animate-spin': copySubmitting }" v-if="copySubmitting">sync</span>
-            {{ copyMode === 'images' ? 'ซิงค์รูป' : copyMode === 'replace' ? 'เขียนทับ' : 'คัดลอก' }}ไป {{ copySelectedIds.length }} รอบ
+            {{ copyMode === 'images' ? 'ซิงค์รูป' : copyMode === 'times' ? 'คัดลอกเวลา' : copyMode === 'replace' ? 'เขียนทับ' : 'คัดลอก' }}ไป {{ copySelectedIds.length }} รอบ
           </button>
         </div>
       </div>
@@ -2011,8 +2052,8 @@ const activeTripId = ref(null);
 const activeGroup = computed(() =>
   groupedByTrip.value.find(g => g.trip_id === activeTripId.value) || null
 );
-const openTripSchedules = (group) => { activeTripId.value = group.trip_id; };
-const closeSchedulesModal = () => { activeTripId.value = null; };
+const openTripSchedules = (group) => { activeTripId.value = group.trip_id; showPastSchedules.value = false; };
+const closeSchedulesModal = () => { activeTripId.value = null; showPastSchedules.value = false; };
 
 // ─── Month grouping & day-trip helpers ─────────────────────
 const MONTH_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -2044,6 +2085,18 @@ const todayKey = computed(() => {
 const isPastSchedule = (sch) => !!sch.departure_date && sch.departure_date < todayKey.value;
 const isTodaySchedule = (sch) => !!sch.departure_date && sch.departure_date === todayKey.value;
 const isPastMonth = (m) => !!m.key && m.key < todayKey.value.slice(0, 7);
+
+// รอบที่ผ่านไปแล้วซ่อนไว้ก่อน — แอดมินเปิดหน้านี้เพื่อจัดการรอบข้างหน้าเกือบทุกครั้ง
+// ทริปที่วิ่งมาทั้งปีจะดันรอบที่ยังขายอยู่ตกไปท้ายตาราง (ยังกดดูย้อนหลังได้จากปุ่ม)
+const showPastSchedules = ref(false);
+const pastScheduleCount = computed(
+  () => (activeGroup.value?.schedules || []).filter(isPastSchedule).length,
+);
+const visibleSchedules = computed(() => {
+  const list = activeGroup.value?.schedules || [];
+
+  return showPastSchedules.value ? list : list.filter((sch) => !isPastSchedule(sch));
+});
 const showForm = ref(false);
 const showDeleteConfirm = ref(false);
 const editing = ref(null);
@@ -3054,11 +3107,42 @@ const copyPickupPoints = async (sch) => {
   showCopyModal.value = true;
 };
 
+// จุดรับที่กรอกเวลาไว้แล้ว — ไม่มีสักจุดก็ไม่มีอะไรให้คัดลอก
+const pickupPointsWithTime = computed(
+  () => pickupPoints.value.filter((pt) => pt.pickup_time).length,
+);
+
+// "คัดลอกเวลาไปทุกรอบ" — ใช้กล่องเดิม แต่ตั้งโหมดเวลาและติ๊กรอบของทริปนี้ไว้ให้แล้ว
+// ยังเห็นรายชื่อรอบและปลดติ๊กก่อนกดยืนยันได้ ไม่ใช่ปุ่มที่ยิงทันทีโดยไม่ให้ดู
+const copyPickupTimes = () => {
+  const sch = pickupSchedule.value;
+  if (!sch) return;
+
+  copySource.value = sch;
+  copyMode.value = 'times';
+  copySourceCount.value = pickupPointsWithTime.value;
+  copySelectedIds.value = copyTargets.value
+    .filter((target) => target.trip_id === sch.trip_id)
+    .map((target) => target.id);
+  showCopyModal.value = true;
+};
+
 const doCopyPickups = async () => {
   copySubmitting.value = true;
   try {
     // Image-only sync: update image_url on matching points in target rounds.
     // Booking-safe — no points are created or deleted.
+    // เวลาขึ้นรถอย่างเดียว — จับคู่จุดด้วยชื่อ ไม่สร้าง/ไม่ลบจุดไหน ใบจองจึงไม่ขยับ
+    if (copyMode.value === 'times') {
+      const timeRes = await api.post(`/admin/schedules/${copySource.value.id}/pickup-points/sync-times`, {
+        schedule_ids: copySelectedIds.value,
+      });
+      showCopyModal.value = false;
+      fetchData();
+      const d = timeRes.data.data || {};
+      alert(`คัดลอกเวลาไป ${d.updated_schedules ?? 0} รอบ (${d.updated_points ?? 0} จุด)\nจุดที่ชื่อไม่ตรงกันจะถูกข้าม`);
+      return;
+    }
     if (copyMode.value === 'images') {
       const syncRes = await api.post(`/admin/schedules/${copySource.value.id}/pickup-points/sync-images`, {
         schedule_ids: copySelectedIds.value,
@@ -3151,7 +3235,10 @@ const startNewTemplate = () => {
 };
 
 const startEditTemplate = (tpl) => {
-  editingTemplate.value = JSON.parse(JSON.stringify(tpl));
+  const copy = JSON.parse(JSON.stringify(tpl));
+  // เทมเพลตที่บันทึกไว้ก่อนมีช่องเวลาไม่มีคีย์นี้ — เติมให้ก่อนผูก v-model
+  copy.points = (copy.points || []).map((pt) => ({ pickup_time: '', ...pt }));
+  editingTemplate.value = copy;
 };
 
 const cancelEditTemplate = () => {
@@ -3186,6 +3273,7 @@ const addTplPoint = (regionValue) => {
     pickup_location: '',
     notes: '',
     price: 0,
+    pickup_time: '',
     map_url: '',
     image_url: '',
   });
@@ -4289,10 +4377,21 @@ onMounted(() => {
   background: var(--color-sand);
 }
 
+.schedules-modal-toolbar .toolbar-end {
+  margin-left: auto;
+}
+
 .schedules-modal-body {
   padding: 0 !important;
   max-height: 70vh;
   overflow-y: auto;
+}
+
+.schedule-empty-row {
+  padding: 28px 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .btn-danger-sm {
@@ -5463,6 +5562,24 @@ onMounted(() => {
 
 .pif-price {
   width: 90px;
+}
+
+.pickup-time-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-sand);
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.pickup-time-hint .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 .pif-time-wrap {

@@ -128,6 +128,70 @@ class SchedulePickupCopyTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_sync_times_fills_every_other_round_of_the_trip(): void
+    {
+        // ทริปเดียวกันใช้เวลานัดชุดเดิมทุกรอบ — ไม่ต้องไล่แก้ทีละรอบทีละจุด
+        $source = $this->makeSchedule(now()->addDays(5)->toDateString());
+        $this->addPoint($source, ['pickup_location' => 'ปั๊ม ปตท. รังสิต', 'pickup_time' => '05:30']);
+        $this->addPoint($source, ['region' => 'north', 'region_label' => 'ภาคเหนือ', 'pickup_location' => 'ขนส่งเชียงใหม่', 'pickup_time' => '06:15']);
+
+        $target = $this->makeSchedule(now()->addDays(12)->toDateString());
+        $rangsit = $this->addPoint($target, ['pickup_location' => 'ปั๊ม ปตท. รังสิต', 'pickup_time' => null]);
+        $chiangmai = $this->addPoint($target, ['region' => 'north', 'region_label' => 'ภาคเหนือ', 'pickup_location' => 'ขนส่งเชียงใหม่', 'pickup_time' => '07:00']);
+        // จุดที่ไม่มีคู่ในรอบต้นทางต้องไม่ถูกแตะ
+        $orphan = $this->addPoint($target, ['pickup_location' => 'เซ็นทรัลลาดพร้าว', 'pickup_time' => '04:00']);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules/'.$source->id.'/pickup-points/sync-times')
+            ->assertOk()
+            ->assertJsonPath('data.updated_schedules', 1)
+            ->assertJsonPath('data.updated_points', 2);
+
+        $this->assertSame('05:30', $rangsit->fresh()->pickup_time);
+        $this->assertSame('06:15', $chiangmai->fresh()->pickup_time);
+        $this->assertSame('04:00', $orphan->fresh()->pickup_time);
+        // ไม่สร้างและไม่ลบจุดไหนเลย — ใบจองที่ผูกกับจุดรับเดิมจึงไม่ขยับ
+        $this->assertSame(3, SchedulePickupPoint::where('schedule_id', $target->id)->count());
+    }
+
+    public function test_sync_times_never_reaches_another_trip(): void
+    {
+        $source = $this->makeSchedule(now()->addDays(5)->toDateString());
+        $this->addPoint($source, ['pickup_time' => '05:30']);
+
+        $otherTrip = Trip::create([
+            'title' => 'ทริปน่าน', 'slug' => 'nan', 'type' => 'trekking', 'location' => 'Nan',
+            'difficulty' => 'easy', 'duration_days' => 1, 'max_participants' => 20,
+            'price_per_person' => 1500, 'status' => 'active',
+        ]);
+        $foreign = TripSchedule::create([
+            'trip_id' => $otherTrip->id, 'departure_date' => now()->addDays(9)->toDateString(),
+            'return_date' => now()->addDays(9)->toDateString(),
+            'total_seats' => 12, 'booked_seats' => 0, 'transport_type' => 'van', 'status' => 'open',
+        ]);
+        $foreignPoint = $this->addPoint($foreign, ['pickup_time' => '08:00']);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules/'.$source->id.'/pickup-points/sync-times', [
+                'schedule_ids' => [$foreign->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.updated_schedules', 0);
+
+        $this->assertSame('08:00', $foreignPoint->fresh()->pickup_time);
+    }
+
+    public function test_sync_times_needs_a_time_on_the_source_round(): void
+    {
+        $source = $this->makeSchedule(now()->addDays(5)->toDateString());
+        $this->addPoint($source, ['pickup_time' => null]);
+        $this->makeSchedule(now()->addDays(12)->toDateString());
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules/'.$source->id.'/pickup-points/sync-times')
+            ->assertStatus(422);
+    }
+
     public function test_copy_sources_lists_other_rounds_with_points_only(): void
     {
         $withPoints = $this->makeSchedule(now()->addDays(4)->toDateString());
