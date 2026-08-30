@@ -143,6 +143,8 @@ step('ขั้น 1 — ผังที่นั่ง/รถ/จุดรั�
   assert($('.seat-driver'), 'ไม่มีที่คนขับ');
   assert($('.seat-aisle'), 'ไม่มีทางเดิน');
   assert(text().includes('จุดขึ้นรถ'), 'ไม่มีจุดขึ้นรถ');
+  assert(!text().includes('จุดนัดหมายหลัก'), 'ไม่ควรมีตัวเลือกขึ้นที่จุดนัดหมายหลักแล้ว');
+  assert(w.document.querySelectorAll('input[name="pickup"]').length === 2, 'ต้องมีเฉพาะจุดรับจริงของรอบ');
   assert(text().includes('ปักหมุดเอง'), 'ไม่มีปุ่มปักหมุดเอง');
   assert($('#next').disabled, 'ปุ่มถัดไปควรถูกปิดตอนยังไม่เลือกที่นั่ง');
 });
@@ -230,21 +232,23 @@ $('#agree').dispatchEvent(new w.Event('change'));
 $('#termsOk').dispatchEvent(new w.Event('click'));
 await wait(150);
 
-// จองหลายคน ระบบถามว่าจะเก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหม
-step('ถามเก็บผู้ร่วมเดินทางหลังจองเสร็จ', () => {
-  const sheet = w.document.querySelector('.sheet-overlay');
-  assert(sheet && sheet.textContent.includes('เก็บผู้ร่วมเดินทาง'), 'ไม่ได้ถามเรื่องสมุดผู้ร่วมเดินทาง');
-  sheet.querySelector('[data-role="yes"]').dispatchEvent(new w.Event('click'));
+// จองเสร็จต้องเจอ QR เลย ไม่มีอะไรมาคั่น (คำถามเรื่องสมุดผู้ร่วมเดินทางถูกเลื่อน
+// ไปถามหลังจ่ายเงินเสร็จ)
+step('จองเสร็จแล้วไม่มีแผ่นอะไรมาบัง QR', () => {
+  assert(!w.document.querySelector('.sheet-overlay'), 'ไม่ควรมีแผ่นเลื่อนค้างอยู่หน้า QR');
 });
-await wait(150);
 
-step('หน้าชำระเงิน (Beam)', () => {
+step('หน้าชำระเงิน (Beam) — QR ขึ้นเองทันที', () => {
   assert(text().includes('ชำระเงิน'), 'ไม่ได้เข้าหน้าชำระเงิน: ' + text().slice(0, 120));
+  assert(calls.includes('POST /payments/beam/charge'), 'ไม่ได้ออก QR ให้อัตโนมัติ');
+  assert(w.document.querySelector('#payArea .qr-wrap img'), 'ไม่มีรูป QR ให้สแกน');
+  assert(text().includes('จ่ายเงินแล้ว'), 'ไม่มีปุ่มยืนยันว่าจ่ายแล้ว');
+  assert(text().includes('K PLUS'), 'ไม่มีปุ่มแอปธนาคาร');
   assert(text().includes('มัดจำ'), 'ไม่มีตัวเลือกมัดจำ');
   assert(text().includes('ผ่อนชำระ'), 'ไม่มีตัวเลือกผ่อน');
-  assert(text().includes('K PLUS'), 'ไม่มีปุ่มแอปธนาคาร');
-  assert(calls.includes('POST /payments/beam/charge'), 'ไม่ได้ออก QR ให้อัตโนมัติ');
-  assert(text().includes('จ่ายเงินแล้ว'), 'ไม่มีปุ่มยืนยันว่าจ่ายแล้ว');
+  // QR ต้องมาก่อนตัวเลือกรูปแบบการชำระในหน้า
+  const html = w.document.getElementById('app').innerHTML;
+  assert(html.indexOf('payArea') < html.indexOf('เปลี่ยนรูปแบบการชำระ'), 'QR ต้องอยู่เหนือตัวเลือกรูปแบบ');
 });
 
 const payload = calls.filter((c) => c === 'POST /bookings');

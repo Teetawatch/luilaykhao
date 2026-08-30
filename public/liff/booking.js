@@ -277,7 +277,6 @@ function renderSeatStep() {
   if (points.length) {
     content.appendChild(el(`<div class="section-heading">จุดขึ้นรถ</div>`));
     const list = el(`<div></div>`);
-    list.appendChild(pickupOption(null, 'ขึ้นที่จุดนัดหมายหลัก', bk.schedule.price, null));
     points.forEach((p) => list.appendChild(
       pickupOption(p.id, p.pickup_location || p.region_label || 'จุดรับ', p.price, p.pickup_time)
     ));
@@ -1772,7 +1771,10 @@ async function submitBooking(banner, btn) {
 
   btn.textContent = 'กำลังแนบเอกสาร…';
   await uploadBookingDocuments(booking.booking_ref, booking.passengers);
-  await offerToSaveTravellers(booking.booking_ref);
+
+  // ถามเรื่องสมุดผู้ร่วมเดินทางหลังจ่ายเงินเสร็จ ไม่ใช่ตอนนี้ — ระหว่างที่นั่งยังถูก
+  // นับถอยหลังอยู่ ห้ามมีอะไรมาคั่นระหว่างลูกค้ากับ QR
+  pendingSaveTravellers = bk.passengers.length >= 2 ? booking.booking_ref : null;
 
   showPayment(booking);
 }
@@ -1806,12 +1808,15 @@ async function uploadBookingDocuments(bookingRef, createdPassengers) {
   if (failed > 0) alert(`แนบเอกสารไม่สำเร็จ ${failed} ไฟล์ — แนบใหม่ได้ที่หน้ารายละเอียดการจองในแอปหรือเว็บไซต์`);
 }
 
+// เลขที่จองที่รอถามเรื่องสมุดผู้ร่วมเดินทาง — ตั้งตอนจองเสร็จ ถามตอนจ่ายเงินเสร็จ
+let pendingSaveTravellers = null;
+
 // ข้อมูลบัตร/สุขภาพของคนอื่น เก็บได้ต่อเมื่อเจ้าของการจองกดยืนยัน ไม่เก็บเงียบ ๆ
 async function offerToSaveTravellers(bookingRef) {
-  if (bk.passengers.length < 2) return;
+  if (!bookingRef) return;
   const ok = await askConfirm(
     'เก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหมครับ',
-    `ครั้งหน้าเลือกจากสมุดได้เลย ไม่ต้องกรอกใหม่ทั้ง ${bk.passengers.length} คน`,
+    'ครั้งหน้าเลือกจากสมุดได้เลย ไม่ต้องกรอกใหม่ทุกคน',
     'เก็บไว้', 'ไม่ต้อง',
   );
   if (!ok) return;

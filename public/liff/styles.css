@@ -477,3 +477,12 @@ ul.bullets li { margin-bottom: 4px; }
 .tag.pink { color: #b3306b; background: #fce4ef; }
 
 .ask-text { margin: 4px 0 8px; font-size: 15px; line-height: 1.6; }
+
+/* ---- ไฮไลต์ของทริป ---- */
+.highlight {
+  display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line);
+}
+.highlight:last-child { border-bottom: none; }
+.hl-no { font-size: 15px; font-weight: 800; color: #cfd8d2; font-variant-numeric: tabular-nums; }
+.hl-title { font-weight: 700; line-height: 1.4; }
+.hl-desc { margin: 3px 0 0; font-size: 14px; color: var(--muted); line-height: 1.6; }

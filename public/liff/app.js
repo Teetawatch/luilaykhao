@@ -651,12 +651,21 @@ function itinerarySectors(trip) {
 function renderTripOverview(pane, trip) {
   if (trip.description) pane.appendChild(el(`<p class="trip-desc">${esc(trip.description)}</p>`));
 
-  const highlights = trip.highlights || [];
+  // ไฮไลต์เก็บเป็นอ็อบเจ็กต์ { icon, title, desc } ไม่ใช่สตริง (ดู TripDetailPage.vue)
+  // ทริปรุ่นเก่าบางอันยังเป็นสตริงล้วน จึงต้องรับทั้งสองแบบ
+  const highlights = (trip.highlights || []).map((h) => (
+    typeof h === 'string' ? { title: h, desc: '' } : { title: h?.title || '', desc: h?.desc || h?.description || '' }
+  )).filter((h) => h.title || h.desc);
+
   if (highlights.length) {
     pane.appendChild(el(`<div class="section-heading">ไฮไลต์</div>`));
-    const ul = el(`<ul class="bullets"></ul>`);
-    highlights.forEach((h) => ul.appendChild(el(`<li>${esc(h)}</li>`)));
-    pane.appendChild(ul);
+    highlights.forEach((h, i) => pane.appendChild(el(`<div class="highlight">
+      <span class="hl-no">${String(i + 1).padStart(2, '0')}</span>
+      <div>
+        ${h.title ? `<div class="hl-title">${esc(h.title)}</div>` : ''}
+        ${h.desc ? `<p class="hl-desc">${esc(h.desc)}</p>` : ''}
+      </div>
+    </div>`)));
   }
 
   const inclusions = trip.inclusions || [];

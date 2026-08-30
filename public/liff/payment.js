@@ -171,8 +171,8 @@ function renderPaymentScreen() {
     content.appendChild(el(`<div class="lock-bar">⏳ ชำระภายใน <b id="payLeft">--:--</b> ไม่งั้นที่นั่งจะถูกปล่อยคืน</div>`));
   }
 
-  content.appendChild(buildPlanChooser());
-
+  // QR มาก่อนทุกอย่าง — คนที่เพิ่งกรอกข้อมูลเสร็จมาที่หน้านี้เพื่อสแกนจ่าย
+  // ไม่ใช่เพื่ออ่านสรุป ตัวเลือกรูปแบบการชำระจึงอยู่ใต้ QR
   content.appendChild(el(`<div class="section-heading">ยอดที่ต้องชำระตอนนี้</div>`));
   content.appendChild(el(`<div class="card"><div class="body">
     ${planSummaryLines()}
@@ -180,6 +180,7 @@ function renderPaymentScreen() {
   </div></div>`));
 
   content.appendChild(el(`<div id="payArea"></div>`));
+  content.appendChild(buildPlanChooser());
   node.appendChild(content);
   render(node);
 
@@ -218,7 +219,7 @@ function buildPlanChooser() {
 
   if (rows.length < 2) return wrap;
 
-  wrap.appendChild(el(`<div class="section-heading">รูปแบบการชำระ</div>`));
+  wrap.appendChild(el(`<div class="section-heading">เปลี่ยนรูปแบบการชำระ</div>`));
   rows.forEach((row) => {
     const opt = el(`<label class="pick ${pay.plan === row.plan ? 'on' : ''}">
       <input type="radio" name="plan" ${pay.plan === row.plan ? 'checked' : ''}>
@@ -685,6 +686,14 @@ function bookingHeadlines(booking) {
 
 function showBookingDone(booking, message) {
   stopPaymentTimers();
+
+  // จ่ายเสร็จแล้วค่อยถามเรื่องสมุดผู้ร่วมเดินทาง — ตอนจองเสร็จมี QR รออยู่
+  if (pendingSaveTravellers) {
+    const ref = pendingSaveTravellers;
+    pendingSaveTravellers = null;
+    setTimeout(() => offerToSaveTravellers(ref), 400);
+  }
+
   const paid = Number(booking.paid_amount || 0);
   const outstanding = Math.max(0, Number(booking.total_amount || 0) - paid);
 

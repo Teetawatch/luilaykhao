@@ -6,7 +6,11 @@ const TRIP = {
   difficulty: 'moderate', distance_km: 12.5, elevation_gain_m: 800,
   rating: 4.6, review_count: 24, price_per_person: 5200, min_price: 5200,
   destination_type: 'domestic', type: 'trekking', is_women_only: true,
-  description: 'ทริปเดินป่าปายสามวัน', highlights: ['ทะเลหมอก', 'น้ำตกลับ'],
+  description: 'ทริปเดินป่าปายสามวัน',
+  highlights: [
+    { icon: 'landscape', title: 'ทะเลหมอกยามเช้า', desc: 'ตื่นตี 5 ขึ้นจุดชมวิว' },
+    'น้ำตกลับที่คนไม่ค่อยรู้จัก',
+  ],
   inclusions: ['รถตู้ไป-กลับ', 'อาหาร 5 มื้อ'], exclusions: ['ค่าใช้จ่ายส่วนตัว'],
   gallery: ['https://cdn/x1.jpg', 'https://cdn/x2.jpg'],
   videos: ['https://cdn/clip.mp4'],
@@ -88,6 +92,13 @@ console.log('\n▶ หน้ารายละเอียดทริป');
     assert(text().includes('ทริปผู้หญิงล้วน'), 'ไม่มีป้ายทริปผู้หญิง');
     assert(text().includes('มีเมฆบางส่วน'), 'ไม่มีพยากรณ์อากาศของรอบ');
     assert(text().includes('ส่งทริปนี้ให้เพื่อนใน LINE'), 'ไม่มีปุ่มแชร์');
+  });
+
+  step('ไฮไลต์เป็นอ็อบเจ็กต์ ต้องไม่ออกมาเป็น [object Object]', () => {
+    assert(!text().includes('[object Object]'), 'ยังมี [object Object] อยู่');
+    assert(text().includes('ทะเลหมอกยามเช้า'), 'ไม่มีหัวข้อไฮไลต์');
+    assert(text().includes('ตื่นตี 5'), 'ไม่มีคำอธิบายไฮไลต์');
+    assert(text().includes('น้ำตกลับ'), 'ไฮไลต์แบบสตริงเดิมต้องยังแสดงได้');
   });
 
   step('แท็บภาพรวม: รวมอะไร/ไม่รวม, รูป, นโยบายยกเลิก', () => {
