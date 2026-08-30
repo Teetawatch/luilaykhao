@@ -179,26 +179,68 @@ class AdminController extends Controller
 
     // ─── Trips ────────────────────────────────────────────────
 
+    /**
+     * รายการทริปของแอดมิน
+     *
+     * ยอดรวมแยกตามสถานะคิดจาก "ทั้งชุดที่ค้นเจอ" ไม่ใช่แค่หน้าปัจจุบัน เพราะแถบสรุป
+     * ด้านบนของหน้าใช้เป็นปุ่มกรองสถานะไปในตัว — ตัวเลขที่นับแค่หน้าเดียวจะโกหก
+     * ทันทีที่ทริปเกิน 15 รายการ ตัวกรองสถานะจึงไม่ถูกนับรวมในยอดพวกนี้
+     */
     public function trips(Request $request): JsonResponse
     {
-        $query = Trip::withCount('schedules');
+        $filtered = fn () => Trip::query()
+            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
+            ->when($request->filled('search'), fn ($q) => $q->where(
+                fn ($inner) => $inner->whereLike('title', "%{$request->search}%")
+                    ->orWhereLike('location', "%{$request->search}%")
+            ));
 
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
+        $query = $filtered()->withCount([
+            'schedules',
+            // รอบที่ยังขายได้จริง — ทริปที่เหลือศูนย์คือทริปที่ลูกค้ากดจองไม่ได้
+            // แม้สถานะจะเป็น "ใช้งาน" อยู่ ซึ่งเป็นสิ่งที่หน้ารายการต้องเตือนให้เห็น
+            'schedules as open_schedules_count' => fn ($q) => $q
+                ->where('status', 'open')
+                ->whereDate('departure_date', '>=', now('Asia/Bangkok')->toDateString()),
+        ]);
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->whereLike('title', "%{$request->search}%")
-                    ->orWhereLike('location', "%{$request->search}%");
-            });
+        if ($request->boolean('featured')) {
+            $query->where('is_featured', true);
         }
 
-        $trips = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
+        // ตัดสินเสมอด้วย id ต่อท้าย — หลายทริปมีราคา/วันที่สร้างเท่ากันได้ ถ้าไม่มี
+        // ตัวตัดสิน แถวเดิมอาจโผล่ซ้ำหรือหายไปเมื่อไล่ดูทีละหน้า
+        $sorts = [
+            'newest' => ['created_at', 'desc'],
+            'oldest' => ['created_at', 'asc'],
+            'title' => ['title', 'asc'],
+            'price_low' => ['price_per_person', 'asc'],
+            'price_high' => ['price_per_person', 'desc'],
+            'views' => ['views_count', 'desc'],
+        ];
+        [$column, $direction] = $sorts[$request->input('sort')] ?? $sorts['newest'];
 
-        return $this->paginated($trips->through(fn ($t) => new TripResource($t)));
+        $trips = $query->orderBy($column, $direction)
+            ->orderByDesc('id')
+            ->paginate($request->get('per_page', 15));
+
+        $byStatus = $filtered()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        return $this->paginated($trips->through(fn ($t) => new TripResource($t)), meta: [
+            'summary' => [
+                'total' => (int) $byStatus->sum(),
+                'active' => (int) ($byStatus['active'] ?? 0),
+                'inactive' => (int) ($byStatus['inactive'] ?? 0),
+                'full' => (int) ($byStatus['full'] ?? 0),
+                'featured' => $filtered()->where('is_featured', true)->count(),
+            ],
+        ]);
     }
 
     public function showTrip(int $id): JsonResponse

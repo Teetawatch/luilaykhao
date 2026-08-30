@@ -109,6 +109,10 @@ class TripResource extends JsonResource
             'is_flash_sale' => $this->activeFlashSaleSchedule() !== null,
             'flash_sale_ends_at' => $this->activeFlashSaleSchedule()?->flash_sale_ends_at?->toISOString(),
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
+            // จำนวนรอบ — หน้าแอดมินใช้บอกว่าทริปนี้ยังมีรอบให้ลูกค้าจองอยู่ไหม
+            // (ทริปสถานะ "ใช้งาน" ที่ไม่เหลือรอบเปิดเลย ขายไม่ได้จริง)
+            'schedules_count' => $this->whenCounted('schedules'),
+            'open_schedules_count' => $this->whenCounted('open_schedules'),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

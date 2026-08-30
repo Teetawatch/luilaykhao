@@ -1994,10 +1994,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
 const toast = useToast();
+const route = useRoute();
 
 const REGIONS = [
   { value: 'bangkok',   label: 'กรุงเทพมหานคร' },
@@ -2211,7 +2213,8 @@ const fetchData = () => {
   if (filters.status) params.status = filters.status;
   if (filters.upcoming) params.upcoming = 1;
   // เปิดหน้ามาให้ทุกหัวข้อ "ปิด" ไว้ก่อน แล้วค่อยกดเปิดเฉพาะที่ต้องการ
-  admin.fetchSchedules(params);
+  // คืน promise ไว้ให้จุดที่ต้องรอข้อมูลก่อนทำงานต่อ (เช่น deep link ?trip=)
+  return admin.fetchSchedules(params);
 };
 
 // ขอมาให้ครบทุกคัน — backend แบ่งหน้าเสมอ และเรียงตามชื่อ รถที่เพิ่งเพิ่มเข้ามา
@@ -4055,9 +4058,14 @@ const toggleCharter = async (sch) => {
   }
 };
 
-onMounted(() => {
-  fetchData();
+onMounted(async () => {
   loadOptions();
+  await fetchData();
+
+  // มาจากหน้าจัดการทริป (?trip=) — เปิดรอบของทริปนั้นให้เลย ไม่ต้องมาค้นชื่อซ้ำ
+  const tripId = Number(route.query.trip);
+  const group = tripId ? groupedByTrip.value.find((g) => g.trip_id === tripId) : null;
+  if (group) openTripSchedules(group);
 });
 </script>
 

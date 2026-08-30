@@ -303,12 +303,16 @@
 }
 
 /* ─── Tags & Badges ───────────────────── */
+/* ประเภททริปเป็นหมวดหมู่ที่แอดมินสร้างเองได้ — slug ที่ไม่มีสีเฉพาะต้องยังอ่านออก
+   ไม่ใช่ตัวหนังสือลอย ๆ ไม่มีพื้น (คลาสเจาะจงด้านล่างทับค่านี้ได้ตามปกติ) */
 .type-tag {
   display: inline-block;
   padding: 3px 10px;
   border-radius: 5px;
   font-size: 12px;
   font-weight: 600;
+  background: #F0F1F0;
+  color: #4b5563;
 }
 
 .type-trekking { background: #F5F5F5; color: #15803d; }
