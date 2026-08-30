@@ -15,6 +15,7 @@ use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PublicReceiptController;
 use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\SlipController;
+use App\Http\Controllers\TripStoryController;
 use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\FaceSearchConsent;
@@ -70,6 +71,17 @@ Route::get('/u/{handle}', [PublicProfileController::class, 'show'])
     ->where('handle', '[a-z0-9]+')
     ->middleware('throttle:120,1')
     ->name('public.profile.show');
+
+// การ์ดนับถอยหลังสาธารณะ — server-rendered เพื่อให้บ็อตแชร์อ่าน OG meta ได้
+// (ต้องมาก่อน SPA catch-all) ภาพ OG ลงท้าย .png จึงจดก่อนตัว {token}
+Route::get('/s/{token}/og.png', [TripStoryController::class, 'ogImage'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('trip.story.og');
+Route::get('/s/{token}', [TripStoryController::class, 'show'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('trip.story.show');
 
 // Live Share Link — standalone tracking page (must be before the SPA catch-all)
 Route::get('/track/{token}', function (string $token) {

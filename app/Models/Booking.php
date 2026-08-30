@@ -47,7 +47,7 @@ class Booking extends Model
         'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
         'custom_pickup_status', 'custom_pickup_price', 'custom_pickup_reject_reason', 'custom_pickup_resolved_at',
         'is_group', 'group_name', 'group_notes',
-        'qr_code', 'share_token', 'payment_token', 'birthdate_token', 'passport_token', 'checked_in', 'checked_in_at',
+        'qr_code', 'share_token', 'story_token', 'payment_token', 'birthdate_token', 'passport_token', 'checked_in', 'checked_in_at',
         'total_amount', 'selected_addons', 'addons_total', 'selected_rentals', 'rentals_total', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
         'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_paid_at',
@@ -393,6 +393,30 @@ class Booking extends Model
     public function shareUrl(): string
     {
         return url('/track/'.$this->ensureShareToken());
+    }
+
+    /**
+     * คืนค่า token ของการ์ดนับถอยหลังที่เอาไว้แชร์ลงสตอรี่/ฟีด สร้างใหม่ถ้ายังไม่มี
+     *
+     * ห้ามใช้ [share_token] แทน — ตัวนั้นเปิดหน้าติดตามรถแบบเรียลไทม์ ถ้าเอาไป
+     * แปะไว้ในโพสต์สาธารณะก็เท่ากับถ่ายทอดตำแหน่งผู้โดยสารให้คนทั้งอินเทอร์เน็ต
+     */
+    public function ensureStoryToken(): string
+    {
+        if (empty($this->story_token)) {
+            do {
+                $token = Str::lower(Str::random(12));
+            } while (static::where('story_token', $token)->exists());
+
+            $this->forceFill(['story_token' => $token])->save();
+        }
+
+        return $this->story_token;
+    }
+
+    public function storyUrl(): string
+    {
+        return url('/s/'.$this->ensureStoryToken());
     }
 
     /**

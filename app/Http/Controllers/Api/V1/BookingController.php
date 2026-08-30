@@ -261,6 +261,25 @@ class BookingController extends Controller
         }
     }
 
+    /**
+     * ลิงก์การ์ดนับถอยหลังสำหรับแชร์ลงฟีด/สตอรี่ สร้างโทเคนให้ในครั้งแรกที่เรียก
+     *
+     * เป็น POST เพราะครั้งแรกมันเขียนโทเคนลงการจอง ไม่ใช่การอ่านอย่างเดียว
+     * การจองที่ยกเลิกแล้วไม่ได้ลิงก์ — หน้าปลายทางก็ไม่ยอมแสดงอยู่แล้ว
+     */
+    public function storyLink(Request $request, string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)
+            ->where('user_id', $request->user()->id)
+            ->whereNot('status', 'cancelled')
+            ->firstOrFail();
+
+        return $this->success([
+            'url' => $booking->storyUrl(),
+            'image_url' => route('trip.story.og', ['token' => $booking->ensureStoryToken()]),
+        ]);
+    }
+
     public function reschedule(RescheduleBookingRequest $request, string $ref): JsonResponse
     {
         $booking = Booking::where('booking_ref', $ref)

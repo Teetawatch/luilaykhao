@@ -253,6 +253,7 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings', [BookingController::class, 'index']);
         Route::get('bookings/{ref}', [BookingController::class, 'show']);
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
+        Route::post('bookings/{ref}/story-link', [BookingController::class, 'storyLink']);
         Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
