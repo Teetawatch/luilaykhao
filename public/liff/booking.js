@@ -483,7 +483,9 @@ function seatCell(seat) {
         : seat.status === 'locked'
           ? 'มีผู้ใช้อื่นกำลังจอง'
           : 'แตะเพื่อเลือก';
-  const cell = el(`<button class="seat${mine ? ' mine' : ''}${bk.selected.includes(seat.id) ? ' selected' : ''}" title="${esc(title)}" ${usable ? '' : 'disabled'}>${esc(seat.label || seat.id)}</button>`);
+  // ว่าง = เขียว (คลาสพื้นฐาน), จองแล้ว = แดง + แม่กุญแจ, คนอื่นกำลังจอง = เหลือง
+  const state = seat.status === 'booked' ? ' taken' : seat.status === 'locked' ? ' held' : '';
+  const cell = el(`<button class="seat${state}${mine ? ' mine' : ''}${bk.selected.includes(seat.id) ? ' selected' : ''}" title="${esc(title)}" ${usable ? '' : 'disabled'}>${esc(seat.label || seat.id)}</button>`);
   cell.dataset.id = seat.id;
   cell.onclick = () => toggleSeat(seat.id, cell);
   return cell;

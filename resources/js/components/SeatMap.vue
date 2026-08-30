@@ -9,8 +9,7 @@
     <!-- Legend — สีต้องตรงกับที่นั่งจริงในผัง ไม่งั้นคำอธิบายกลายเป็นการเดา -->
     <div class="flex flex-wrap gap-x-5 gap-y-2 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
       <div class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg border-2"
-          :class="isWomenOnly ? 'bg-pink-50/60 border-pink-200' : 'bg-teal-50/70 border-teal-200'"></div>
+        <div class="w-5 h-5 rounded-lg border-2 bg-emerald-50 border-emerald-300"></div>
         <span class="text-[11px] font-bold text-gray-500">ว่าง</span>
       </div>
       <div v-if="!readonly" class="flex items-center gap-1.5">
@@ -22,7 +21,9 @@
         <span class="text-[11px] font-bold text-gray-500">มีคนกำลังจอง</span>
       </div>
       <div class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg bg-gray-100 border-2 border-gray-100"></div>
+        <div class="w-5 h-5 rounded-lg bg-rose-50 border-2 border-rose-200 flex items-center justify-center">
+          <span class="material-symbols-rounded text-rose-500" style="font-variation-settings:'FILL' 1,'wght' 500;font-size:12px">lock</span>
+        </div>
         <span class="text-[11px] font-bold text-gray-500">จองแล้ว</span>
       </div>
       <div v-if="hasOwnSeats" class="flex items-center gap-1.5">
@@ -105,11 +106,17 @@
               :class="readonly ? 'cursor-default' : isBlocked(frontPassengerSeat) ? 'cursor-not-allowed' : 'cursor-pointer'"
               :title="seatTitle(frontPassengerSeat)"
             >
-              <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2"
+              <div class="relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 border-2"
                 :class="seatBgClass(frontPassengerSeat)">
                 <span class="material-symbols-rounded text-[20px] transition-all duration-200"
                   :class="seatIconClass(frontPassengerSeat)"
                   style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
+                <!-- ที่นั่งคู่คนขับวาดแยกจาก SeatButton จึงต้องติดไอคอนมุมเองด้วย -->
+                <span v-if="seatBadge(frontPassengerSeat)"
+                  class="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
+                  :class="seatBadge(frontPassengerSeat).class">
+                  <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1,'wght' 500;font-size:11px">{{ seatBadge(frontPassengerSeat).icon }}</span>
+                </span>
               </div>
               <span class="text-[10px] font-extrabold leading-none transition-colors" :class="seatLabelClass(frontPassengerSeat)">
                 {{ frontPassengerSeat.label ?? frontPassengerSeat.id }}
@@ -300,9 +307,9 @@ function seatBgClass(seat) {
       ? 'bg-pink-50 border-[#db2777] border-dashed'
       : 'bg-teal-50 border-[#006565] border-dashed';
   }
-  // ที่นั่งที่คนอื่นจองไปแล้วเป็นสีเทา ไม่ใช่สีแดง — รถที่เต็มเกือบหมดไม่ควร
-  // อ่านเหมือนหน้าจอแจ้งเตือนความผิดพลาด และที่นั่งที่ยังว่างต้องเป็นสิ่งที่เด่นที่สุด
-  if (seat.status === 'booked') return 'bg-gray-100 border-gray-100';
+  // ไฟจราจร: ว่าง = เขียว, จองแล้ว = แดง + ไอคอนล็อค — อ่านออกตั้งแต่ระยะสายตาแรก
+  // โดยไม่ต้องอ่านคำอธิบายสี
+  if (seat.status === 'booked') return 'bg-rose-50 border-rose-200';
   if (isSelected(seat)) {
     return props.isWomenOnly
       ? 'bg-[#db2777] border-[#db2777] scale-105'
@@ -314,34 +321,29 @@ function seatBgClass(seat) {
       : 'bg-teal-50 border-[#006565] border-dashed group-hover:bg-teal-100';
   }
   if (seat.status === 'locked') return 'bg-amber-50 border-amber-200';
-  if (props.readonly) return 'bg-white border-gray-200';
-  return props.isWomenOnly
-    ? 'bg-pink-50/60 border-pink-200 group-hover:border-[#db2777] group-hover:bg-pink-100 group-hover:scale-105'
-    : 'bg-teal-50/70 border-teal-200 group-hover:border-[#006565] group-hover:bg-teal-100 group-hover:scale-105';
+  if (props.readonly) return 'bg-emerald-50 border-emerald-200';
+  return 'bg-emerald-50 border-emerald-300 group-hover:border-emerald-600 group-hover:bg-emerald-100 group-hover:scale-105';
 }
 
 function seatIconClass(seat) {
   if (!seat) return 'text-gray-200';
   if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
-  if (seat.status === 'booked') return 'text-gray-300';
+  if (seat.status === 'booked') return 'text-rose-400';
   if (isSelected(seat)) return 'text-white';
   if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-400';
-  if (props.readonly) return 'text-gray-300';
-  return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
+  return 'text-emerald-600';
 }
 
 function seatLabelClass(seat) {
   if (!seat) return 'text-gray-300';
   if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
-  if (seat.status === 'booked') return 'text-gray-400';
+  if (seat.status === 'booked') return 'text-rose-400';
   if (isSelected(seat)) return props.isWomenOnly ? 'text-[#db2777] font-black' : 'text-[#006565] font-black';
   if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-500';
   if (props.readonly) return 'text-gray-400';
-  return props.isWomenOnly
-    ? 'text-gray-400 group-hover:text-[#db2777]'
-    : 'text-gray-400 group-hover:text-[#006565]';
+  return 'text-gray-400 group-hover:text-emerald-700';
 }
 
 // ─── Front passenger seat ─────────────────────────────────────────
@@ -442,7 +444,7 @@ function seatBadge(seat) {
   if (isOwnBooking(seat) || isOwnLock(seat)) {
     return { icon: 'person', class: props.isWomenOnly ? 'bg-[#db2777] text-white' : 'bg-[#006565] text-white' };
   }
-  if (seat.status === 'booked') return { icon: 'lock', class: 'bg-gray-300 text-white' };
+  if (seat.status === 'booked') return { icon: 'lock', class: 'bg-rose-500 text-white' };
   if (seat.status === 'locked') return { icon: 'schedule', class: 'bg-amber-400 text-white' };
   return null;
 }

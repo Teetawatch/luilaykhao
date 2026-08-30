@@ -167,14 +167,24 @@ ul.bullets li { margin-bottom: 4px; }
 .seat-aisle { width: var(--seat-aisle); flex-shrink: 0; display: flex; justify-content: center; }
 .seat-aisle i { width: 1px; height: var(--seat-size); background: var(--line); display: block; }
 .seat {
+  position: relative;
   width: var(--seat-size); height: var(--seat-size); flex-shrink: 0;
   border-radius: 12px; border: 1.5px solid var(--green); background: #eaf4ee;
   color: var(--green-dark); font-family: inherit; font-size: 12px; font-weight: 700;
   cursor: pointer; padding: 0;
 }
 .seat.selected { background: var(--green); color: #fff; border-color: var(--green); }
-.seat[disabled] { background: #ececec; border-color: #d8d8d8; color: #b3b3b3; cursor: not-allowed; }
+/* ไฟจราจร: ว่าง = เขียว, จองแล้ว = แดง + แม่กุญแจ, มีคนกำลังจอง = เหลือง */
+.seat[disabled] { cursor: not-allowed; }
+.seat.taken { background: #fdecea; border-color: #f0b4ad; color: #b03a2b; }
+.seat.taken::after {
+  content: '🔒'; position: absolute; top: -5px; right: -5px;
+  width: 15px; height: 15px; border-radius: 999px; background: var(--danger);
+  font-size: 8px; line-height: 15px; text-align: center;
+}
+.seat.held { background: #fff3e0; border-color: #f0c98a; color: #a05f00; }
 .seat.mine, .seat.mine[disabled] { background: #eaf4ee; border: 1.5px dashed var(--green); color: var(--green-dark); }
+.seat.mine.taken::after { content: none; }
 .seat-rear {
   margin-top: 14px; padding-top: 10px; border-top: 2px dashed var(--line);
   text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 1px; color: var(--muted);
@@ -187,7 +197,7 @@ ul.bullets li { margin-bottom: 4px; }
 .legend .sw { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
 .legend .sw.avail { background: #eaf4ee; border: 1.5px solid var(--green); }
 .legend .sw.sel { background: var(--green); }
-.legend .sw.taken { background: #ececec; border: 1.5px solid #d8d8d8; }
+.legend .sw.taken { background: #fdecea; border: 1.5px solid #f0b4ad; }
 
 /* ---- Pickup / add-on option rows ---- */
 .pick {
