@@ -7,6 +7,7 @@ use App\Http\Requests\Payment\ChargeRequest;
 use App\Http\Resources\BookingResource;
 use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
+use App\Models\BookingSplitShare;
 use App\Models\SmartNotification;
 use App\Models\User;
 use App\Services\BalancePaymentService;
@@ -14,6 +15,8 @@ use App\Services\BookingService;
 use App\Services\BookingSettlementService;
 use App\Services\InstallmentPaymentService;
 use App\Services\PaymentNotAvailableException;
+use App\Services\PromptPayService;
+use App\Services\QrCodeService;
 use App\Services\SlipOcrService;
 use App\Support\MediaDisk;
 use App\Support\PaymentQuote;
@@ -388,6 +391,144 @@ class PaymentController extends Controller
         }
 
         return $this->success(null, 'Processed');
+    }
+
+    /**
+     * QR พร้อมเพย์ของยอดที่ต้องโอน "ตอนนี้"
+     *
+     * มีไว้เพื่อไม่ให้ client แต่ละตัวไปประกอบ EMVCo payload เอง — เว็บกับแอปทำเอง
+     * มาก่อนหน้านี้และตัวเลขในนั้นก็เพี้ยนกันมาแล้วรอบหนึ่ง (ดู PaymentQuote) ยอดบน
+     * QR จึงมาจากหลังบ้านเสมอ ไม่ใช่ยอดที่ client ส่งมา
+     *
+     * รองรับทั้งการชำระครั้งแรกของใบที่ยังรอชำระ (full/deposit/installment/split —
+     * ยอดจาก BookingSettlementService::quote() ตัวเดียวกับที่ charge() เก็บเงินจริง)
+     * และรายการที่จ่ายบนใบที่ยืนยันแล้ว: ยอดคงเหลือ, ค่างวดที่ 2 เป็นต้นไป และ
+     * ส่วนแบ่งของเพื่อน — สามอันหลังอ่านยอดจากแถวที่บันทึกไว้ ไม่ใช่จาก quote
+     */
+    public function promptPayQr(
+        Request $request,
+        string $bookingRef,
+        PromptPayService $promptPay,
+        BookingSettlementService $settlement,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'purpose' => ['nullable', 'in:full,deposit,installment,split,balance,installment_due,split_share'],
+            'installment_count' => ['nullable', 'integer', 'min:2', 'max:'.PaymentQuote::MAX_INSTALLMENT_COUNT],
+            'installment_no' => ['nullable', 'integer', 'min:2'],
+            'share_id' => ['nullable', 'integer'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $bookingRef)
+            ->with(['schedule', 'installmentPayments'])
+            ->firstOrFail();
+
+        if (! $booking->isAccessibleByUser($request->user()->id)) {
+            return $this->error('คุณไม่มีสิทธิ์ดูรายการชำระเงินนี้', 403);
+        }
+
+        $purpose = $validated['purpose'] ?? 'full';
+        $paidOnConfirmed = in_array($purpose, ['balance', 'installment_due', 'split_share'], true);
+
+        if (! $paidOnConfirmed && $booking->status !== 'pending') {
+            return $this->error('การจองนี้ไม่ได้อยู่ระหว่างรอชำระเงินครั้งแรก', 422);
+        }
+
+        try {
+            $amount = $paidOnConfirmed
+                ? $this->outstandingAmount($booking, $purpose, $validated)
+                : $settlement->quote($booking, $purpose, [
+                    'installment_count' => $validated['installment_count'] ?? null,
+                ]);
+        } catch (PaymentNotAvailableException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        $identifier = (string) config('payment.promptpay_id');
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'purpose' => $purpose,
+            'amount' => $amount,
+            'qr_data_uri' => $promptPay->qrDataUri($promptPay->buildPayload($identifier, $amount)),
+            'promptpay_id' => config('payment.promptpay_id_display'),
+            'merchant_name' => config('payment.merchant_name'),
+            'bank_name' => config('payment.bank_name'),
+            'bank_account' => config('payment.bank_account'),
+            'bank_holder' => config('payment.bank_holder'),
+            'support_phone' => config('payment.support_phone'),
+        ]);
+    }
+
+    /**
+     * ยอดของรายการที่จ่ายบนใบจองที่ยืนยันแล้ว
+     *
+     * อ่านจากแถวที่บันทึกไว้เท่านั้น (balance_amount / installment_payments /
+     * booking_split_shares) — ยอดพวกนี้ถูกตรึงตั้งแต่ตอนตกลงแผนการชำระ การไป
+     * คิดใหม่จาก quote จะได้ตัวเลขที่ไม่ตรงกับที่ระบบรอรับ
+     *
+     * @param  array<string, mixed>  $validated
+     *
+     * @throws PaymentNotAvailableException
+     */
+    private function outstandingAmount(Booking $booking, string $purpose, array $validated): float
+    {
+        if ($purpose === 'balance') {
+            if ($booking->balance_paid_at !== null || (float) $booking->balance_amount <= 0) {
+                throw new PaymentNotAvailableException('การจองนี้ไม่มียอดส่วนที่เหลือที่ต้องชำระ');
+            }
+
+            return round((float) $booking->balance_amount, 2);
+        }
+
+        if ($purpose === 'installment_due') {
+            $installment = $booking->installmentPayments
+                ->where('installment_no', $validated['installment_no'] ?? 0)
+                ->firstWhere('status', '!=', 'paid');
+
+            if (! $installment) {
+                throw new PaymentNotAvailableException('ไม่พบงวดที่ต้องชำระ หรือชำระแล้ว');
+            }
+
+            return round((float) $installment->amount, 2);
+        }
+
+        $share = BookingSplitShare::whereKey($validated['share_id'] ?? 0)
+            ->where('booking_id', $booking->id)
+            ->where('status', '!=', BookingSplitShare::STATUS_PAID)
+            ->first();
+
+        if (! $share) {
+            throw new PaymentNotAvailableException('ไม่พบส่วนแบ่งที่ต้องชำระในการจองนี้');
+        }
+
+        return round((float) $share->amount, 2);
+    }
+
+    /**
+     * QR เช็คอินของใบจอง (โค้ดเดียวกับที่ทีมงานสแกนหน้างาน)
+     *
+     * เว็บวาด QR เองด้วยไลบรารี npm — LIFF ไม่มี build step จึงให้เซิร์ฟเวอร์
+     * วาดเป็น SVG มาให้เลย ดีกว่าลากไลบรารีจาก CDN มาเพื่อสี่เหลี่ยมรูปเดียว
+     */
+    public function checkInQr(Request $request, string $bookingRef, QrCodeService $qrCodes): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $bookingRef)->firstOrFail();
+
+        if (! $booking->isAccessibleByUser($request->user()->id)) {
+            return $this->error('คุณไม่มีสิทธิ์ดูการจองนี้', 403);
+        }
+
+        if (blank($booking->qr_code)) {
+            return $this->error('การจองนี้ยังไม่มีรหัสเช็คอิน', 422);
+        }
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'code' => $booking->qr_code,
+            'qr_data_uri' => $qrCodes->svgDataUri($booking->qr_code, 260),
+            'checked_in' => (bool) $booking->checked_in,
+            'checked_in_at' => $booking->checked_in_at?->toISOString(),
+        ]);
     }
 
     public function status(string $bookingRef): JsonResponse

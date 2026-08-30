@@ -361,6 +361,17 @@ Route::prefix('v1')->group(function () {
         Route::post('payments/beam/charge', [BeamPaymentController::class, 'charge'])->middleware('throttle:payment');
         Route::get('payments/beam/{payment}', [BeamPaymentController::class, 'status']);
 
+        // QR พร้อมเพย์ของยอดที่ต้องโอน "ตอนนี้" — คิดยอดจาก PaymentQuote ที่เดียว
+        // แล้วคืน QR มาให้เลย client จึงไม่ต้องประกอบ EMVCo payload เอง
+        // อ่านอย่างเดียวและกดสลับรูปแบบการชำระได้หลายครั้งในนาทีเดียว จึงไม่ใช้
+        // ลิมิต 'payment' (5/นาที) ที่ตั้งไว้กันการยิงเก็บเงินซ้ำ
+        Route::get('payments/{booking_ref}/promptpay', [PaymentController::class, 'promptPayQr'])
+            ->middleware('throttle:20,1');
+
+        // QR เช็คอินของใบจอง — วาดฝั่งเซิร์ฟเวอร์เพื่อให้ client ที่ไม่มี build step
+        // (LIFF) ไม่ต้องลากไลบรารี QR มาเอง
+        Route::get('bookings/{booking_ref}/check-in-qr', [PaymentController::class, 'checkInQr']);
+
         Route::get('payments/{booking_ref}', [PaymentController::class, 'status']);
 
         // Reviews (authenticated)
