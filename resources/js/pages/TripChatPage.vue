@@ -63,7 +63,8 @@
               <span class="text-[10px] font-black tracking-wide text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ข้อความจากทีมงาน</span>
               <span class="text-[10px] text-[#A0B0B0]">{{ formatTime(m.created_at) }}</span>
             </div>
-            <p class="text-sm text-[#1a1c1c] leading-relaxed whitespace-pre-line" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ m.body }}</p>
+            <!-- v-html ปลอดภัย: escape ทั้งก้อนก่อน แล้วค่อยแปลงเฉพาะเบอร์โทรเป็นลิงก์ tel: -->
+            <p class="text-sm text-[#1a1c1c] leading-relaxed whitespace-pre-line" style="font-family:'DB Heavent', 'Anuphan',sans-serif;" v-html="systemBodyHtml(m.body)"></p>
           </div>
 
           <div
@@ -467,6 +468,27 @@ function roleTagClass(role) {
 function formatDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/**
+ * ข้อความระบบ (เช่น สรุปสตาฟ/คนขับก่อนเดินทาง) มีเบอร์โทรอยู่ในเนื้อความ —
+ * ทำให้กดโทรได้เหมือนในแอป แทนที่จะต้องคัดลอกเอง
+ *
+ * escape HTML ก่อนเสมอ แล้วค่อยใส่แท็ก <a> ทีหลัง (เนื้อความมาจากเซิร์ฟเวอร์ก็จริง
+ * แต่ห้ามเปิดช่องให้ข้อความใด ๆ กลายเป็น markup ได้)
+ * ไม่ใช้ lookbehind ใน regex — Safari รุ่นก่อน 16.4 จะพังทั้งหน้า
+ */
+function systemBodyHtml(body) {
+  const escaped = String(body || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return escaped.replace(
+    /(^|[^\d])(0\d{1,2}[-\s]?\d{3}[-\s]?\d{3,4})(?!\d)/g,
+    (_all, before, phone) =>
+      `${before}<a href="tel:${phone.replace(/[^0-9+]/g, '')}" class="font-bold text-[#006565] underline">${phone}</a>`,
+  );
 }
 
 function formatTime(d) {

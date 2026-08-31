@@ -9,18 +9,21 @@ use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Services\TripChatTimelineService;
+use App\Services\TripFactsService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 class TripChatTimelineTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeSchedule(array $overrides = []): TripSchedule
+    private function makeSchedule(array $overrides = [], array $tripOverrides = []): TripSchedule
     {
-        $trip = Trip::create([
+        $trip = Trip::create(array_merge([
             'title' => 'ยอดดอยหลวง',
             'slug' => 'timeline-trip-'.uniqid(),
             'type' => 'trekking',
@@ -31,7 +34,7 @@ class TripChatTimelineTest extends TestCase
             'price_per_person' => 2500,
             'status' => 'active',
             'preparations' => ['เป้ 30 ลิตร', 'ถุงมือกันหนาว'],
-        ]);
+        ], $tripOverrides));
 
         return TripSchedule::create(array_merge([
             'trip_id' => $trip->id,
@@ -177,6 +180,167 @@ class TripChatTimelineTest extends TestCase
         // ห้องถูกลบ 3 วันหลังจบทริป — เตือนเซฟรูปก่อน 1 วัน
         $expiring = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-18 10:05'));
         $this->assertSame(['photos_expiring'], $expiring);
+    }
+
+    private function assignStaff(TripSchedule $schedule, string $nickname, ?string $phone): User
+    {
+        $staff = User::factory()->create([
+            'name' => "{$nickname} ใจดี",
+            'nickname' => $nickname,
+            'phone' => $phone,
+        ]);
+        $schedule->staff()->attach($staff->id);
+
+        return $staff;
+    }
+
+    private function assignVehicle(TripSchedule $schedule, ?string $driverPhone = '0801112222'): Vehicle
+    {
+        $vehicle = Vehicle::create([
+            'name' => 'รถตู้คันที่ 1',
+            'type' => 'van',
+            'capacity' => 10,
+            'license_plate' => 'ฮก 8899',
+            'driver_name' => 'พี่สมชาย',
+            'driver_phone' => $driverPhone,
+        ]);
+
+        $schedule->vehicle_id = $vehicle->id;
+        $schedule->save();
+        $schedule->refresh();
+
+        return $vehicle;
+    }
+
+    public function test_crew_summary_posts_two_days_ahead_with_staff_and_driver_phones(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $this->assignStaff($schedule, 'พี่หนึ่ง', '0812223333');
+        $this->assignStaff($schedule, 'พี่สอง', '0834445555');
+        $this->assignVehicle($schedule);
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 10:05'));
+
+        $this->assertContains('crew_contacts', $posted);
+
+        $body = ChatMessage::where('system_key', 'crew_contacts')->value('body');
+        $this->assertStringContainsString('พี่หนึ่ง', $body);
+        $this->assertStringContainsString('081-222-3333', $body);
+        $this->assertStringContainsString('พี่สอง', $body);
+        $this->assertStringContainsString('083-444-5555', $body);
+        $this->assertStringContainsString('พี่สมชาย', $body);
+        $this->assertStringContainsString('080-111-2222', $body);
+        $this->assertStringContainsString('ฮก 8899', $body);
+    }
+
+    public function test_crew_summary_waits_for_missing_data_then_posts_as_soon_as_it_lands(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $this->assignStaff($schedule, 'พี่หนึ่ง', '0812223333');
+
+        // ยังไม่มีคนขับ — ห้ามโพสต์สรุปครึ่ง ๆ กลาง ๆ ตั้งแต่ 2 วันก่อน
+        $early = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 10:05'));
+        $this->assertNotContains('crew_contacts', $early);
+
+        $this->assignVehicle($schedule);
+
+        // แอดมินกรอกข้อมูลคนขับวันรุ่งขึ้น — job รอบถัดไปต้องโพสต์ทันที
+        $later = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-14 09:00'));
+        $this->assertContains('crew_contacts', $later);
+        $this->assertStringContainsString(
+            '080-111-2222',
+            ChatMessage::where('system_key', 'crew_contacts')->value('body'),
+        );
+    }
+
+    public function test_crew_summary_posts_what_it_has_when_departure_is_close(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->assignStaff($schedule, 'พี่หนึ่ง', '0812223333');
+
+        // รถออก 05:30 ของวันทริป — เลยเส้นตายรอข้อมูล (3 ชม.ก่อนออก) แล้ว
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 03:30'));
+
+        $this->assertContains('crew_contacts', $posted);
+
+        $body = ChatMessage::where('system_key', 'crew_contacts')->value('body');
+        $this->assertStringContainsString('081-222-3333', $body);
+        $this->assertStringContainsString(TripFactsService::PENDING_DRIVER, $body);
+    }
+
+    public function test_crew_summary_needs_no_driver_on_a_flight_round(): void
+    {
+        $schedule = $this->makeSchedule(['transport_type' => 'flight']);
+        $this->assignStaff($schedule, 'พี่หนึ่ง', '0812223333');
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 10:05'));
+
+        $this->assertContains('crew_contacts', $posted);
+
+        $body = ChatMessage::where('system_key', 'crew_contacts')->value('body');
+        $this->assertStringContainsString('พี่หนึ่ง', $body);
+        $this->assertStringNotContainsString('คนขับ', $body);
+    }
+
+    public function test_crew_summary_is_posted_once_even_when_staff_change_later(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $this->assignStaff($schedule, 'พี่หนึ่ง', '0812223333');
+        $this->assignVehicle($schedule);
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 10:05'));
+        $this->assignStaff($schedule, 'พี่สอง', '0834445555');
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-14 09:00'));
+
+        $this->assertSame(1, ChatMessage::where('system_key', 'crew_contacts')->count());
+    }
+
+    public function test_faq_message_lists_the_trip_faqs(): void
+    {
+        $schedule = $this->makeSchedule([], [
+            'faqs' => [
+                ['question' => 'ต้องเตรียมเงินสดไปเท่าไหร่?', 'answer' => 'ประมาณ 500 บาทสำหรับค่าอาหารระหว่างทาง'],
+                ['question' => 'มีห้องน้ำระหว่างทางไหม?', 'answer' => 'มีทุกจุดจอดพักครับ'],
+            ],
+        ]);
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 10:35'));
+
+        $this->assertContains('trip_faq', $posted);
+
+        $body = ChatMessage::where('system_key', 'trip_faq')->value('body');
+        $this->assertStringContainsString('ต้องเตรียมเงินสดไปเท่าไหร่?', $body);
+        $this->assertStringContainsString('ประมาณ 500 บาท', $body);
+        $this->assertStringContainsString('มีห้องน้ำระหว่างทางไหม?', $body);
+    }
+
+    public function test_faq_message_caps_the_list_and_points_to_the_app(): void
+    {
+        $faqs = [];
+        for ($i = 1; $i <= 7; $i++) {
+            $faqs[] = ['question' => "คำถามข้อ {$i}?", 'answer' => "คำตอบข้อ {$i}"];
+        }
+
+        $schedule = $this->makeSchedule([], ['faqs' => $faqs]);
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 10:35'));
+
+        $body = ChatMessage::where('system_key', 'trip_faq')->value('body');
+        $this->assertStringContainsString('คำถามข้อ 5?', $body);
+        $this->assertStringNotContainsString('คำถามข้อ 6?', $body);
+        $this->assertStringContainsString('ยังมีอีก 2 คำถาม', $body);
+    }
+
+    public function test_no_faq_message_when_the_trip_has_none(): void
+    {
+        $schedule = $this->makeSchedule();
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 10:35'));
+
+        $this->assertNotContains('trip_faq', $posted);
     }
 
     public function test_cancelled_rounds_get_no_timeline_messages(): void

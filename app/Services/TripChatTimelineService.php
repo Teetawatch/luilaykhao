@@ -9,14 +9,15 @@ use App\Models\TripSchedule;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * ข้อความอัตโนมัติในห้องแชทตามไทม์ไลน์ของทริป
  *
  * ห้องแชทเดิมเงียบจนกว่าจะมีคนพิมพ์ ทั้งที่ช่วงก่อนเดินทางคือช่วงที่ลูกค้าอยาก
  * รู้มากที่สุด บริการนี้จึงโพสต์ข้อความระบบตามจังหวะของทริป (นับถอยหลัง →
- * เตรียมของ → อากาศ → จุดรับคืนก่อนเดินทาง → เช้าวันเดินทาง → ปิดทริป →
- * เตือนเซฟรูปก่อนห้องถูกลบ)
+ * เตรียมของ → ทีมงาน+คนขับพร้อมเบอร์โทร → คำถามที่พบบ่อย → อากาศ →
+ * จุดรับคืนก่อนเดินทาง → เช้าวันเดินทาง → ปิดทริป → เตือนเซฟรูปก่อนห้องถูกลบ)
  *
  * หลักการ
  * - ทุกข้อความมี `system_key` ประจำห้อง (unique ระดับ DB) → job ยิงซ้ำกี่รอบก็ไม่ซ้ำ
@@ -24,6 +25,8 @@ use Illuminate\Support\Facades\Log;
  *   (ดู SendDepartureSoonRemindersJob) ส่วน timezone ของแอปเป็น UTC
  * - โพสต์เฉพาะที่ "ถึงเวลาแล้วและยังไม่เกินช่วงผ่อนผัน" — ห้องที่เพิ่งมีคนจอง
  *   ก่อนเดินทาง 2 วัน จึงไม่โดนเทข้อความย้อนหลังทั้งไทม์ไลน์
+ * - ข้อความที่ต้องรอข้อมูลของแอดมิน (สรุปทีมงาน/คนขับ) ผ่อนผันยาวถึงเวลารถออก
+ *   และคืน null ระหว่างที่ข้อมูลยังไม่ครบ — พอครบก็ลงห้องในรอบ job ถัดไปเลย
  * - ไม่ยิง push (FCM) เพราะมี job เตือนก่อนเดินทาง/เช็คอิน/รีวิว ยิง push อยู่แล้ว
  *   ข้อความพวกนี้ทำหน้าที่เป็นบันทึกในห้อง + badge ยังไม่อ่านของแท็บแชท
  */
@@ -34,9 +37,16 @@ class TripChatTimelineService
     /** ช่วงผ่อนผันมาตรฐาน — เลยเวลาไปเกินนี้ถือว่าตกขบวน ไม่ต้องโพสต์ย้อนหลัง */
     private const DEFAULT_GRACE_HOURS = 24;
 
+    /** ก่อนรถออกกี่ชั่วโมงถึงยอมโพสต์สรุปทีมงาน "เท่าที่มี" แทนการรอจนข้อมูลครบ */
+    private const CREW_LAST_CALL_HOURS = 3;
+
+    /** ยกคำถามที่พบบ่อยลงห้องแชทกี่ข้อ (ที่เหลืออ่านต่อในแอป) */
+    private const FAQ_LIMIT = 5;
+
     public function __construct(
         private ChatService $chatService,
         private WeatherService $weatherService,
+        private TripFactsService $facts,
     ) {}
 
     /**
@@ -49,6 +59,8 @@ class TripChatTimelineService
         return [
             'countdown_7d',
             'prepare_3d',
+            'crew_contacts',
+            'trip_faq',
             'weather_2d',
             'pickup_eve',
             'departure_soon',
@@ -81,7 +93,7 @@ class TripChatTimelineService
                 continue;
             }
 
-            $body = $this->body($key, $schedule);
+            $body = $this->body($key, $schedule, $now);
             if ($body === null) {
                 continue;   // ข้อมูลไม่พอสำหรับข้อความนี้ (เช่น ยังไม่มีพยากรณ์อากาศ)
             }
@@ -134,18 +146,28 @@ class TripChatTimelineService
             ? CarbonImmutable::parse($schedule->departure_date->toDateString(), self::TIMEZONE)
             : null;
 
-        // เวลาออกรถจริง (อาจเป็นคืนก่อนวันทริป) — ตัวเลขที่เก็บคือเวลาไทยอยู่แล้ว
-        $departsAt = $schedule->departs_at
-            ? CarbonImmutable::parse($schedule->departs_at->format('Y-m-d H:i:s'), self::TIMEZONE)
-            : $departureDate?->setTime(5, 30);
+        // เวลาออกรถจริง (อาจเป็นคืนก่อนวันทริป)
+        $departsAt = $this->departsAtThai($schedule);
 
         $endDate = $schedule->return_date
             ? CarbonImmutable::parse($schedule->return_date->toDateString(), self::TIMEZONE)
             : $departureDate;
 
+        // สรุปทีมงาน/คนขับและคำถามที่พบบ่อยรอข้อมูลได้จนถึงเวลารถออก — แอดมินมัก
+        // ยืนยันสตาฟและคนขับช้ากว่า 2 วันก่อนเดินทาง ถ้าใช้ผ่อนผัน 24 ชม.
+        // ตามปกติ ห้องที่ข้อมูลมาช้าจะไม่ได้ข้อความนี้เลย
+        $graceUntilDeparture = fn (?CarbonImmutable $dueAt): int => ($dueAt === null || $departsAt === null || $departsAt->lte($dueAt))
+            ? self::DEFAULT_GRACE_HOURS
+            : max(1, (int) ceil(abs($dueAt->diffInHours($departsAt))));
+
+        $crewDueAt = $departureDate?->subDays(2)->setTime(10, 0);
+        $faqDueAt = $departureDate?->subDays(2)->setTime(10, 30);
+
         return [
             'countdown_7d' => [$departureDate?->subDays(7)->setTime(9, 0), self::DEFAULT_GRACE_HOURS],
             'prepare_3d' => [$departureDate?->subDays(3)->setTime(19, 0), self::DEFAULT_GRACE_HOURS],
+            'crew_contacts' => [$crewDueAt, $graceUntilDeparture($crewDueAt)],
+            'trip_faq' => [$faqDueAt, $graceUntilDeparture($faqDueAt)],
             'weather_2d' => [$departureDate?->subDays(2)->setTime(18, 0), self::DEFAULT_GRACE_HOURS],
             // คืนก่อนออกเดินทางจริง 20:00 — ยึดวันที่รถออก ไม่ใช่วันทริป
             'pickup_eve' => [$departsAt?->startOfDay()->subDay()->setTime(20, 0), 11],
@@ -163,11 +185,13 @@ class TripChatTimelineService
     /**
      * เนื้อข้อความของแต่ละคีย์ — null = ยังไม่มีข้อมูลพอ ให้ข้ามไปก่อน
      */
-    private function body(string $key, TripSchedule $schedule): ?string
+    private function body(string $key, TripSchedule $schedule, CarbonImmutable $now): ?string
     {
         return match ($key) {
             'countdown_7d' => $this->countdownBody($schedule),
             'prepare_3d' => $this->prepareBody($schedule),
+            'crew_contacts' => $this->crewBody($schedule, $now),
+            'trip_faq' => $this->faqBody($schedule),
             'weather_2d' => $this->weatherBody($schedule),
             'pickup_eve' => $this->pickupBody($schedule),
             'departure_soon' => $this->departureBody($schedule),
@@ -209,6 +233,156 @@ class TripChatTimelineService
 
         return "🎒 เหลืออีก 3 วัน เตรียมของกันได้แล้วครับ\n{$list}\n\n"
             .'จัดของแต่เนิ่น ๆ จะได้ไม่ลืมของสำคัญนะครับ ใครมีของเด็ด ๆ แนะนำเพื่อนร่วมทริปได้เลย 😄';
+    }
+
+    /**
+     * สรุปรายชื่อสตาฟและคนขับพร้อมเบอร์โทร — ข้อมูลที่ลูกค้าถามหามากที่สุดก่อนวันเดินทาง
+     *
+     * รอข้อมูลได้: ตราบใดที่ยังไม่ครบ (ไม่มีเบอร์สตาฟ หรือรอบที่ใช้รถยังไม่มีเบอร์
+     * คนขับ) จะคืน null ให้ job รอบถัดไปลองใหม่ พอแอดมินกรอกครบเมื่อไหร่ ข้อความ
+     * จะลงห้องภายในรอบ job ถัดไปทันที ไม่ต้องรอเวลาอื่น
+     *
+     * ใกล้รถออก (CREW_LAST_CALL_HOURS) แล้วยังไม่ครบ ให้โพสต์เท่าที่มี พร้อมบอกว่า
+     * ส่วนที่ขาดจะแจ้งตามในห้องนี้ — มีเบอร์ครึ่งเดียวยังดีกว่าไม่มีเลยตอนตีสี่
+     */
+    private function crewBody(TripSchedule $schedule, CarbonImmutable $now): ?string
+    {
+        $schedule->loadMissing(['vehicle.driver']);
+
+        $staff = $this->facts->staff($schedule);
+        $driver = $this->facts->driver($schedule);
+
+        // รอบที่บินไปไม่มีรถและคนขับของบริษัท — ครบที่สตาฟอย่างเดียวก็โพสต์ได้
+        $needsDriver = $schedule->transport_type !== TripSchedule::TRANSPORT_FLIGHT;
+
+        $driverPhone = trim((string) ($driver['phone'] ?? ''));
+        $staffReady = collect($staff)->contains(fn (array $s) => trim((string) ($s['phone'] ?? '')) !== '');
+        $driverReady = ! $needsDriver || $driverPhone !== '';
+
+        if (! $staffReady || ! $driverReady) {
+            $lastCall = $this->departsAtThai($schedule)?->subHours(self::CREW_LAST_CALL_HOURS);
+
+            // ยังพอรอได้ — ไว้โพสต์ตอนข้อมูลครบ
+            if ($lastCall === null || $now->lt($lastCall)) {
+                return null;
+            }
+
+            // หมดเวลารอแล้วแต่ยังไม่มีอะไรจะบอกเลย ไม่ต้องโพสต์ให้เสียของ
+            if ($staff === [] && $driver === null) {
+                return null;
+            }
+        }
+
+        $lines = ['🎽 ทีมงานที่จะไปกับเรารอบนี้ครับ'];
+        $lines[] = 'ออกเดินทาง '.$schedule->departureLabelThai();
+        $lines[] = '';
+
+        if ($staff !== []) {
+            $lines[] = 'สตาฟประจำรอบ';
+            foreach ($staff as $member) {
+                $phone = $this->phoneLabel(trim((string) ($member['phone'] ?? '')));
+                $lines[] = '• '.$member['name']
+                    .($phone !== '' ? " — โทร {$phone}" : ' — ทีมงานจะแจ้งเบอร์ให้อีกครั้ง');
+            }
+        } else {
+            $lines[] = 'สตาฟประจำรอบ: '.TripFactsService::PENDING_STAFF;
+        }
+
+        if ($needsDriver) {
+            $lines[] = '';
+            if ($driver !== null) {
+                $plate = trim((string) ($schedule->vehicle?->license_plate ?? ''));
+                $detail = collect([
+                    $driverPhone !== '' ? 'โทร '.$this->phoneLabel($driverPhone) : null,
+                    $plate !== '' ? "ทะเบียน {$plate}" : null,
+                ])->filter()->implode(' · ');
+
+                $lines[] = '🚐 คนขับ';
+                $lines[] = '• '.$driver['name'].($detail !== '' ? " — {$detail}" : '');
+            } else {
+                $lines[] = '🚐 คนขับ: '.TripFactsService::PENDING_DRIVER;
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = 'แตะที่เบอร์เพื่อโทรได้เลยครับ ถึงจุดรับแล้วไม่เจอรถ '
+            .'หรือมีเหตุด่วนก่อนออกเดินทาง โทรหาทีมงานได้ตลอดครับ 🙏';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * คำถามที่พบบ่อยของทริป — ทริปที่ยังไม่ได้เขียน FAQ ไว้จะไม่มีข้อความนี้
+     * (ไม่แต่งคำตอบเรื่องนโยบายขึ้นเอง)
+     */
+    private function faqBody(TripSchedule $schedule): ?string
+    {
+        $faqs = collect($schedule->trip?->faqs ?? [])
+            ->map(function ($faq) {
+                $question = trim((string) (is_array($faq) ? ($faq['question'] ?? '') : ''));
+                $answer = trim((string) (is_array($faq) ? ($faq['answer'] ?? '') : ''));
+
+                return ($question === '' || $answer === '') ? null : [$question, $answer];
+            })
+            ->filter()
+            ->values();
+
+        if ($faqs->isEmpty()) {
+            return null;
+        }
+
+        $lines = ['❓ คำถามที่พบบ่อยของทริปนี้'];
+
+        foreach ($faqs->take(self::FAQ_LIMIT) as [$question, $answer]) {
+            $lines[] = '';
+            $lines[] = "• {$question}";
+            $lines[] = '  '.Str::limit(preg_replace('/\s+/u', ' ', $answer), 220);
+        }
+
+        $lines[] = '';
+
+        $more = $faqs->count() - self::FAQ_LIMIT;
+        if ($more > 0) {
+            $lines[] = "ยังมีอีก {$more} คำถามอ่านต่อได้ที่หน้าทริปในแอปครับ";
+        }
+
+        $lines[] = 'ถ้ามีคำถามอื่นที่ยังไม่ได้ตอบ พิมพ์ถามในห้องนี้ได้เลยครับ ทีมงานอ่านทุกข้อความ 🌿';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * เบอร์โทรแบบอ่านง่าย 081-222-3333 / 02-123-4567 — เบอร์ที่ผิดรูปคืนค่าเดิมไป
+     * (แอปกับเว็บจับรูปแบบขีดคั่นนี้ทำเป็นลิงก์กดโทรได้อยู่แล้ว)
+     */
+    private function phoneLabel(string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', $phone);
+
+        if (strlen($digits) === 10) {
+            return substr($digits, 0, 3).'-'.substr($digits, 3, 3).'-'.substr($digits, 6);
+        }
+
+        if (strlen($digits) === 9) {
+            return substr($digits, 0, 2).'-'.substr($digits, 2, 3).'-'.substr($digits, 5);
+        }
+
+        return $phone;
+    }
+
+    /**
+     * เวลารถออกจริงในเวลาไทย (คอลัมน์เก็บเวลาไทยไว้ในคอลัมน์ชนิด UTC)
+     * ไม่ได้กำหนดเวลาไว้ = ถือว่าเช้าตรู่ของวันทริป
+     */
+    private function departsAtThai(TripSchedule $schedule): ?CarbonImmutable
+    {
+        if ($schedule->departs_at) {
+            return CarbonImmutable::parse($schedule->departs_at->format('Y-m-d H:i:s'), self::TIMEZONE);
+        }
+
+        return $schedule->departure_date
+            ? CarbonImmutable::parse($schedule->departure_date->toDateString(), self::TIMEZONE)->setTime(5, 30)
+            : null;
     }
 
     private function weatherBody(TripSchedule $schedule): ?string

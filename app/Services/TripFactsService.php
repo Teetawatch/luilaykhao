@@ -263,9 +263,13 @@ class TripFactsService
     }
 
     /**
+     * ชื่อ-เบอร์คนขับของรอบ (อ่านจากสำเนาบนคันรถ ซึ่ง VehicleDriverService มิเรอร์
+     * มาจากทะเบียนคนขับให้แล้ว) — สาธารณะเพราะข้อความสรุปทีมงานในห้องแชท
+     * (TripChatTimelineService) ต้องใช้ชุดเดียวกับที่แอปแสดง
+     *
      * @return array<string, mixed>|null
      */
-    private function driver(TripSchedule $schedule): ?array
+    public function driver(TripSchedule $schedule): ?array
     {
         $vehicle = $schedule->vehicle;
         $name = trim((string) ($vehicle?->driver_name ?? ''));
@@ -285,9 +289,12 @@ class TripFactsService
     /**
      * สตาฟที่ยังประจำรอบอยู่ (ที่ถูกปลดหลังจบทริปแล้วไม่นับ)
      *
+     * สาธารณะด้วยเหตุผลเดียวกับ [driver()] — ห้องแชทสรุปรายชื่อทีมงานให้ลูกค้า
+     * ก่อนเดินทาง และต้องเป็นรายชื่อชุดเดียวกับหน้าใบจอง
+     *
      * @return array<int, array<string, mixed>>
      */
-    private function staff(TripSchedule $schedule): array
+    public function staff(TripSchedule $schedule): array
     {
         return $schedule->activeStaff()
             ->get(['users.id', 'users.name', 'users.nickname', 'users.phone', 'users.avatar'])

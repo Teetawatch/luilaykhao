@@ -42,7 +42,7 @@ class PostTripChatTimelineJob implements ShouldQueue
                 $q->whereBetween('departure_date', [$from, $to])
                     ->orWhereBetween('return_date', [$from, $to]);
             })
-            ->with('trip')
+            ->with(['trip', 'vehicle'])
             ->get();
 
         $posted = 0;
