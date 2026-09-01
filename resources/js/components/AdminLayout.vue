@@ -188,6 +188,7 @@ const menuGroups = ref([
       { to: '/admin/schedule-overview', icon: 'fas fa-th-list', label: 'ตารางที่นั่งว่าง' },
       { to: '/admin/trips', icon: 'fas fa-route', label: 'ทริปทั้งหมด' },
       { to: '/admin/schedules', icon: 'fas fa-calendar-alt', label: 'รอบเดินทาง' },
+      { to: '/admin/price-sheet', icon: 'fas fa-tag', label: 'ราคาทริปรายเดือน' },
       { to: '/admin/at-risk', icon: 'fas fa-triangle-exclamation', label: 'รอบเสี่ยงไม่ออก' },
       { to: '/admin/flexi-price', icon: 'fas fa-people-arrows', label: 'Flexi-Price ไปต่อ' },
       { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },

@@ -276,6 +276,7 @@ const routes = [
       { path: 'van-trips/create', name: 'admin-van-trip-create', component: () => import('../pages/admin/TripEditPage.vue') },
       { path: 'van-trips/:id/edit', name: 'admin-van-trip-edit', component: () => import('../pages/admin/TripEditPage.vue') },
       { path: 'schedules', name: 'admin-schedules', component: () => import('../pages/admin/SchedulesPage.vue') },
+      { path: 'price-sheet', name: 'admin-price-sheet', component: () => import('../pages/admin/PriceSheetPage.vue') },
       { path: 'manual-booking', name: 'admin-manual-booking', component: () => import('../pages/admin/ManualBookingPage.vue') },
       { path: 'intakes', name: 'admin-intakes', component: () => import('../pages/admin/IntakesPage.vue') },
       { path: 'bookings', name: 'admin-bookings', component: () => import('../pages/admin/BookingsPage.vue') },

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\AdminIntakeController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
+use App\Http\Controllers\Api\V1\AdminPriceSheetController;
 use App\Http\Controllers\Api\V1\AdminRentalController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
 use App\Http\Controllers\Api\V1\AdminSosController;
@@ -609,6 +610,9 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);
         Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);
         Route::post('schedules/{id}/staff/release', [AdminController::class, 'releaseScheduleStaff']);
+
+        // ราคาทริปรายเดือน — ทริป/รอบ/ราคาของเดือนหนึ่งไว้ที่เดียวสำหรับทำสื่อโปรโมท
+        Route::get('price-sheet', [AdminPriceSheetController::class, 'index']);
 
         // เรดาร์รอบเสี่ยงไม่ออก — รวมรอบที่คนยังไม่ครบขั้นต่ำไว้พร้อมปุ่มลงมือแก้
         Route::get('schedules/at-risk', [AdminAtRiskScheduleController::class, 'index']);

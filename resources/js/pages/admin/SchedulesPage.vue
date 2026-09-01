@@ -7,6 +7,9 @@
       </div>
       <div class="page-actions">
         <div class="page-actions-secondary">
+          <router-link class="btn-secondary" to="/admin/price-sheet">
+            <span class="material-symbols-rounded">sell</span> ราคาทริปรายเดือน
+          </router-link>
           <button class="btn-secondary" @click="openBulkJoinTripModal()">
             <span class="material-symbols-rounded">group_add</span> จัดการจอยทริป
           </button>
@@ -5840,6 +5843,8 @@ onMounted(async () => {
   padding-right: 12px;
   border-right: 1px solid #e5e7eb;
 }
+
+.page-actions-secondary .btn-secondary { text-decoration: none; }
 
 /* ── Named status badges ── */
 .badge-charter {
