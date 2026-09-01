@@ -47,6 +47,18 @@ class ScheduleFinanceOverdueTest extends TestCase
             'location' => 'เชียงใหม่', 'difficulty' => 'hard', 'duration_days' => 2,
             'max_participants' => 10, 'price_per_person' => 4000, 'status' => 'active',
         ]);
+
+        // ค่าตั้งต้นของระบบคือ "ไม่บล็อก" — ชุดนี้ทดสอบตัวบล็อกโดยเฉพาะ จึงเปิดเอง
+        // ให้ชัด แทนที่จะพึ่งค่าตั้งต้นซึ่งเปลี่ยนความหมายของเทสต์ไปเงียบ ๆ ได้
+        $this->setSetting(['finance_block_new_rounds' => true]);
+    }
+
+    /** ทับเฉพาะคีย์ที่ส่งมา — Setting::put() เขียนทับทั้งก้อน จะล้างค่าที่ setUp ตั้งไว้ */
+    private function setSetting(array $values): void
+    {
+        $stored = Setting::get(SiteSettings::KEY, []);
+
+        Setting::put(SiteSettings::KEY, array_merge(is_array($stored) ? $stored : [], $values));
     }
 
     /** รอบที่จบไปแล้ว $daysAgo วันและยังไม่ปิดงบ */
@@ -112,6 +124,42 @@ class ScheduleFinanceOverdueTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_an_empty_overdue_round_can_be_closed_and_unblocks_the_trip(): void
+    {
+        // ทางออกของทางตัน: รอบที่ไม่มีใครจองปิดงบได้โดยไม่ต้องกุค่าใช้จ่ายขึ้นมา
+        $overdue = $this->endedRound(10);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/finance/schedules/{$overdue->id}/close")
+            ->assertOk();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules', $this->newRoundPayload())
+            ->assertCreated();
+    }
+
+    public function test_an_overdue_round_that_took_money_still_blocks_until_its_costs_are_keyed(): void
+    {
+        $overdue = $this->endedRound(10);
+        Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $overdue->id,
+            'qr_code' => Booking::generateQrCode(),
+            'status' => 'confirmed',
+            'total_amount' => 4000,
+            'paid_amount' => 4000,
+        ]);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/finance/schedules/{$overdue->id}/close")
+            ->assertStatus(422);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules', $this->newRoundPayload())
+            ->assertStatus(422);
+    }
+
     public function test_a_cancelled_round_is_never_counted_as_overdue(): void
     {
         $this->endedRound(30)->update(['status' => 'cancelled']);
@@ -126,9 +174,31 @@ class ScheduleFinanceOverdueTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_the_shipped_default_lets_a_new_round_open_regardless(): void
+    {
+        // ค่าตั้งต้นของระบบคือไม่บล็อก — ลบค่าที่ setUp บันทึกไว้เพื่อทดสอบค่าตั้งต้นจริง
+        Setting::query()->where('key', SiteSettings::KEY)->delete();
+        Setting::forget(SiteSettings::KEY);
+
+        $this->assertFalse(SiteSettings::financeBlocksNewRounds());
+
+        $this->endedRound(30);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules', $this->newRoundPayload())
+            ->assertCreated();
+
+        // แต่ยังต้องขึ้นเป็นงานค้างให้เห็นอยู่
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/finance/overdue')
+            ->assertOk()
+            ->assertJsonPath('data.count', 1)
+            ->assertJsonPath('data.blocks_new_rounds', false);
+    }
+
     public function test_turning_the_block_off_leaves_only_a_warning(): void
     {
-        Setting::put(SiteSettings::KEY, ['finance_block_new_rounds' => false]);
+        $this->setSetting(['finance_block_new_rounds' => false]);
         $this->endedRound(10);
 
         $this->actingAs($this->admin, 'sanctum')
@@ -241,7 +311,7 @@ class ScheduleFinanceOverdueTest extends TestCase
 
     public function test_the_grace_window_is_configurable(): void
     {
-        Setting::put(SiteSettings::KEY, ['finance_close_grace_days' => 30]);
+        $this->setSetting(['finance_close_grace_days' => 30]);
         $this->endedRound(10);
 
         $this->actingAs($this->admin, 'sanctum')

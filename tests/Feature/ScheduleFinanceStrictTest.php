@@ -177,6 +177,36 @@ class ScheduleFinanceStrictTest extends TestCase
             ->assertJsonPath('data.blockers.0.code', 'no_expenses');
     }
 
+    public function test_a_round_with_no_bookings_and_no_money_closes_without_an_expense(): void
+    {
+        // ไม่มีใครจอง ไม่มีเงินเข้าออก จึงไม่มีอะไรให้ทำบัญชี — ถ้ายังบังคับให้คีย์
+        // รายจ่ายก่อนปิด รอบนี้จะปิดไม่ได้ตลอดกาล และไปบล็อกการเปิดรอบใหม่ของทริป
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson($this->url('/close-check'))
+            ->assertOk()
+            ->assertJsonPath('data.can_close', true)
+            ->assertJsonPath('data.blockers', [])
+            ->assertJsonPath('data.warnings.0.code', 'no_activity');
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson($this->url('/close'))
+            ->assertOk();
+
+        $this->assertNotNull($this->schedule->fresh()->finance_closed_at);
+    }
+
+    public function test_a_refunded_booking_still_counts_as_activity(): void
+    {
+        // เงินเคยเข้ามาแล้วคืนไป ยังต้องมีบัญชี — ไม่ใช่รอบที่ "ไม่เคยเกิดอะไรขึ้น"
+        $this->book(total: 5000, paid: 5000)->update(['refund_amount' => 5000]);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson($this->url('/close-check'))
+            ->assertOk()
+            ->assertJsonPath('data.can_close', false)
+            ->assertJsonPath('data.blockers.0.code', 'no_expenses');
+    }
+
     public function test_close_is_blocked_when_a_big_expense_has_no_slip(): void
     {
         // แถวนี้เข้าฐานตรง ๆ เลียนแบบข้อมูลเก่าก่อนมีข้อบังคับ

@@ -224,7 +224,8 @@
         </label>
         <span class="help">
           ตัวบังคับที่แรงที่สุด — กันการปล่อยรอบเก่าค้างไว้แล้วเปิดรอบใหม่ไปเรื่อย ๆ
-          ปิดสวิตช์นี้แล้วเหลือแค่เตือน ไม่ได้ห้าม
+          ปิดไว้ตามค่าตั้งต้น เพราะมันไปหยุดฝั่งขาย รอบที่ค้างยังขึ้นเตือนบนเมนู
+          ในคิวงาน และในอีเมลทุกเช้าอยู่ดี
         </span>
       </section>
 
@@ -332,7 +333,7 @@ const form = reactive({
   finance_close_requires_expense: true,
   finance_close_requires_settled: true,
   finance_close_grace_days: 7,
-  finance_block_new_rounds: true,
+  finance_block_new_rounds: false,
   support_phone: '',
   support_line: '',
   support_email: '',

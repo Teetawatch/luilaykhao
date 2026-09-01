@@ -100,10 +100,21 @@ class ScheduleFinanceService
         }
 
         if ($summary['expense_items_count'] === 0) {
-            $entry = ['code' => 'no_expenses', 'message' => 'ยังไม่มีรายการค่าใช้จ่ายสักรายการ — กำไรที่เห็นจึงยังไม่ใช่ของจริง'];
-            $strict && SiteSettings::bool('finance_close_requires_expense')
-                ? $blockers[] = $entry
-                : $warnings[] = $entry;
+            // รอบที่ไม่มีใครจองและไม่มีเงินเคลื่อนไหวเลย ไม่มีอะไรให้ทำบัญชี การบังคับ
+            // ให้คีย์รายจ่ายก่อนปิดจึงกลายเป็นทางตัน: ปิดก็ไม่ได้ (ติดข้อนี้) เปิดรอบใหม่
+            // ก็ไม่ได้ (ติด assertNoOverdueRounds) ทางออกเดียวคือปิดกติกาทั้งบริษัท
+            // รอบแบบนี้ปิดได้เลย แต่ยังบอกไว้ให้รู้ว่าปิดเพราะไม่มีอะไรเกิดขึ้น
+            if ($this->hadNoActivity($summary)) {
+                $warnings[] = [
+                    'code' => 'no_activity',
+                    'message' => 'รอบนี้ไม่มีใบจองและไม่มีเงินเข้าออกเลย — ปิดงบได้โดยไม่ต้องมีรายจ่าย',
+                ];
+            } else {
+                $entry = ['code' => 'no_expenses', 'message' => 'ยังไม่มีรายการค่าใช้จ่ายสักรายการ — กำไรที่เห็นจึงยังไม่ใช่ของจริง'];
+                $strict && SiteSettings::bool('finance_close_requires_expense')
+                    ? $blockers[] = $entry
+                    : $warnings[] = $entry;
+            }
         }
 
         if ($summary['unpaid_bookings_count'] > 0) {
@@ -140,6 +151,22 @@ class ScheduleFinanceService
             'warnings' => $warnings,
             'summary' => $summary,
         ];
+    }
+
+    /**
+     * รอบนี้ "ไม่เคยเกิดอะไรขึ้น" ใช่ไหม — ไม่มีใบจอง ไม่มียอดจอง ไม่มีเงินรับ คืน หรือรับหน้างาน
+     *
+     * ใช้ตัดสินว่ารอบที่ไม่มีรายจ่ายเป็นรอบที่ "ยังไม่ได้คีย์" (ต้องคีย์ก่อนปิด)
+     * หรือรอบที่ "ไม่มีอะไรให้คีย์" (ปิดได้เลย) — รอบที่ไม่มีคนจองแล้วยังออกเดินทาง
+     * จนมีค่าใช้จ่ายจริงจะไม่เข้าเงื่อนไขนี้ เพราะ expense_items_count จะไม่เป็นศูนย์
+     */
+    private function hadNoActivity(array $summary): bool
+    {
+        return $summary['bookings_count'] === 0
+            && $summary['booked_total'] <= 0
+            && $summary['paid_revenue'] <= 0
+            && $summary['refunded'] <= 0
+            && $summary['onsite_income'] <= 0;
     }
 
     /**
