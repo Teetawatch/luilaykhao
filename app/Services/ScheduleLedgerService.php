@@ -6,6 +6,7 @@ use App\Models\ScheduleExpense;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
+use App\Support\SiteSettings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,8 @@ class ScheduleLedgerService
 {
     /** สลิปเก็บบนดิสก์ private เหมือนสลิปโอนเงิน — path ต้องขึ้นต้นด้วย slips/ */
     private const SLIP_DIR = 'slips/expenses';
+
+    public function __construct(private ExpenseAuditService $auditService) {}
 
     /**
      * รายการทั้งหมดของรอบ + ยอดสรุป
@@ -41,6 +44,13 @@ class ScheduleLedgerService
                 'id' => $schedule->id,
                 'trip_title' => $schedule->trip?->title,
                 'departure_date' => $schedule->departure_date?->toDateString(),
+                // ปิดงบแล้ว = แอปต้องซ่อนปุ่มเพิ่ม/แก้ ไม่ใช่ปล่อยให้กดแล้วเด้ง error
+                'finance_closed' => $schedule->financeClosed(),
+            ],
+            // ข้อบังคับที่แอปต้องรู้ล่วงหน้า — เกินยอดนี้ต้องถ่ายสลิป, ต้องเลือกหมวด
+            'rules' => [
+                'slip_required_above' => SiteSettings::financeSlipRequiredAbove(),
+                'require_category' => SiteSettings::financeRequiresCategory(),
             ],
             'summary' => $this->totals($entries),
             'categories' => [
@@ -70,11 +80,11 @@ class ScheduleLedgerService
         ];
     }
 
-    public function record(TripSchedule $schedule, User $user, array $data, ?UploadedFile $slip = null): ScheduleExpense
+    public function record(TripSchedule $schedule, User $user, array $data, ?UploadedFile $slip = null, ?string $reason = null): ScheduleExpense
     {
         $kind = $data['kind'] ?? ScheduleExpense::KIND_EXPENSE;
 
-        return ScheduleExpense::create([
+        $entry = ScheduleExpense::create([
             'schedule_id' => $schedule->id,
             'kind' => $kind,
             'category' => $this->normalizeCategory($kind, $data['category'] ?? null),
@@ -85,10 +95,15 @@ class ScheduleLedgerService
             'spent_at' => $data['spent_at'] ?? now('Asia/Bangkok')->toDateString(),
             'created_by' => $user->id,
         ]);
+
+        $this->auditService->created($entry, $user, $reason);
+
+        return $entry;
     }
 
-    public function update(ScheduleExpense $entry, array $data, ?UploadedFile $slip = null): ScheduleExpense
+    public function update(ScheduleExpense $entry, array $data, ?UploadedFile $slip = null, ?User $actor = null, ?string $reason = null): ScheduleExpense
     {
+        $before = $entry->auditSnapshot();
         $kind = $data['kind'] ?? $entry->kind;
 
         $payload = [
@@ -117,12 +132,22 @@ class ScheduleLedgerService
 
         $entry->update($payload);
 
+        $this->auditService->updated($entry, $before, $actor, $reason);
+
         return $entry->fresh('creator');
     }
 
-    public function delete(ScheduleExpense $entry): void
+    /**
+     * ลบรายการ — soft delete เท่านั้น และ "ไม่" ลบสลิปทิ้ง
+     *
+     * สลิปคือหลักฐานว่าเงินก้อนนั้นเคยถูกบันทึกไว้จริง ลบไฟล์ทิ้งพร้อมแถวแปลว่า
+     * การลบเงินออกจากงบตรวจสอบย้อนหลังไม่ได้เลย — ยอมให้ไฟล์ค้างบน bucket ดีกว่า
+     */
+    public function delete(ScheduleExpense $entry, ?User $actor = null, ?string $reason = null): void
     {
-        $this->deleteSlip($entry->slip_path);
+        $this->auditService->deleted($entry, $actor, $reason);
+
+        $entry->forceFill(['deleted_by' => $actor?->id])->save();
         $entry->delete();
     }
 

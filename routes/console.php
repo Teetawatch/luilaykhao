@@ -20,6 +20,7 @@ use App\Jobs\ReconcileBeamChargesJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
 use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
+use App\Jobs\SendFinanceCloseRemindersJob;
 use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendSafeTravelsJob;
 use App\Jobs\SendStaffShiftRemindersJob;
@@ -56,6 +57,8 @@ Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangko
 Schedule::job(new SendTravelDocumentRemindersJob)->dailyAt('09:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // 5 วันก่อนออกเดินทาง เตือนลูกค้าเมื่อรอบยังมีผู้จองไม่ถึงขั้นต่ำ (8 ที่นั่ง) — ทริปอาจถูกยกเลิก
 Schedule::job(new SendUnderfilledTripWarningsJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// รอบที่เดินทางจบแล้วแต่ยังไม่ปิดงบ — เตือนทุกเช้าจนกว่าจะเคลียร์ ไม่ปล่อยให้เงียบหาย
+Schedule::job(new SendFinanceCloseRemindersJob)->dailyAt('09:15')->timezone('Asia/Bangkok')->withoutOverlapping();
 
 // ของขวัญวันเกิดตามระดับสมาชิก — เช้าพอที่จะเห็นตั้งแต่ต้นวันเกิด
 Schedule::job(new IssueBirthdayCouponsJob)->dailyAt('07:30')->timezone('Asia/Bangkok')->withoutOverlapping();

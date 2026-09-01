@@ -8,7 +8,7 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div v-for="group in menuGroups" :key="group.id" class="nav-group">
+        <div v-for="group in visibleGroups" :key="group.id" class="nav-group">
           <div 
             class="group-header" 
             :class="{ active: group.isOpen }"
@@ -37,6 +37,7 @@
               <span>{{ item.label }}</span>
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge">{{ sosCount }}</span>
               <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm">{{ intakeCount }}</span>
+              <span v-if="item.badge === 'finance' && financeOverdueCount" class="nav-badge calm">{{ financeOverdueCount }}</span>
             </router-link>
           </div>
 
@@ -53,6 +54,7 @@
               <i :class="item.icon"></i>
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge collapsed-badge">{{ sosCount }}</span>
               <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm collapsed-badge">{{ intakeCount }}</span>
+              <span v-if="item.badge === 'finance' && financeOverdueCount" class="nav-badge calm collapsed-badge">{{ financeOverdueCount }}</span>
             </router-link>
           </div>
         </div>
@@ -99,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import api from '../lib/axios';
@@ -136,6 +138,34 @@ const loadIntakeCount = async () => {
   }
 };
 
+/**
+ * เมนูที่ต้องมีสิทธิ์การเงินถึงจะเห็น — ตัวเลขกำไร/ต้นทุนของบริษัท
+ * ฝั่งเซิร์ฟเวอร์กันด้วย middleware อยู่แล้ว ตรงนี้แค่ไม่โชว์ลิงก์ที่กดไปก็ 403
+ */
+const canSeeFinance = computed(() => {
+  const roles = auth.user?.roles || [];
+  return roles.includes('admin') || roles.includes('finance');
+});
+
+const visibleGroups = computed(() => menuGroups.value
+  .map(group => ({ ...group, items: group.items.filter(item => !item.finance || canSeeFinance.value) }))
+  .filter(group => group.items.length > 0));
+
+// รอบที่เดินทางจบแล้วแต่ยังไม่ปิดงบ — ค้างไว้ต้องเห็นจากทุกหน้า ไม่ใช่เห็นตอน
+// บังเอิญเปิดหน้าบัญชี ขยับช้าเป็นวัน ๆ จึงถามถี่น้อยกว่างานอื่น
+const financeOverdueCount = ref(0);
+let financeTimer = null;
+
+const loadFinanceOverdueCount = async () => {
+  if (!canSeeFinance.value) return;
+  try {
+    const res = await api.get('/admin/finance/overdue-count');
+    financeOverdueCount.value = res.data.data.count || 0;
+  } catch {
+    // สิทธิ์ไม่พอ/เน็ตสะดุด — เงียบไว้ รอบหน้าค่อยลองใหม่
+  }
+};
+
 const menuGroups = ref([
   {
     id: 'main',
@@ -146,7 +176,7 @@ const menuGroups = ref([
       { to: '/admin/action-queue', icon: 'fas fa-list-check', label: 'สิ่งที่รอคุณ' },
       { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
       { to: '/admin/reports', icon: 'fas fa-chart-line', label: 'รายงาน' },
-      { to: '/admin/finance', icon: 'fas fa-money-bill-wave', label: 'สรุปกำไร/ค่าใช้จ่าย' },
+      { to: '/admin/finance', icon: 'fas fa-money-bill-wave', label: 'บัญชีทริป', finance: true, badge: 'finance' },
     ],
     isOpen: true
   },
@@ -274,16 +304,22 @@ onMounted(() => {
 
   loadIntakeCount();
   intakeTimer = setInterval(loadIntakeCount, 120000);
+
+  loadFinanceOverdueCount();
+  financeTimer = setInterval(loadFinanceOverdueCount, 600000);
 });
 
 onBeforeUnmount(() => {
   if (sosTimer) clearInterval(sosTimer);
   if (intakeTimer) clearInterval(intakeTimer);
+  if (financeTimer) clearInterval(financeTimer);
 });
 
 // ออกจากหน้าข้อมูลลูกค้าแล้วนับใหม่ทันที ไม่ต้องรอรอบถัดไปสองนาที — คนที่เพิ่ง
 // กดดึงไปจองหรือเก็บเข้ากรุจะได้ไม่เห็นตัวเลขเดิมค้างอยู่บนเมนู
 watch(() => route.path, (to, from) => {
+  // เพิ่งออกจากหน้าบัญชีทริป — อาจเพิ่งปิดงบไป ตัวเลขบนเมนูต้องตามทันที
+  if (from === '/admin/finance' && to !== from) loadFinanceOverdueCount();
   if (from === '/admin/intakes' && to !== from) {
     loadIntakeCount();
   }

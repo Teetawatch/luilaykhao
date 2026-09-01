@@ -2,8 +2,44 @@
   <div class="admin-page">
     <div class="page-header">
       <div>
-        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">savings</span> สรุปกำไร/ค่าใช้จ่าย</h1>
+        <h1 class="page-title"><span class="material-symbols-rounded heading-icon">savings</span> บัญชีทริป</h1>
         <p class="page-subtitle">รายรับจริง + รับหน้างาน − ค่าใช้จ่าย = กำไร ต่อทริปและต่อรอบเดินทาง</p>
+      </div>
+      <div class="view-switch">
+        <button :class="{ active: !showMonthsModal }" @click="showMonthsModal = false">ต่อทริป</button>
+        <button :class="{ active: showMonthsModal }" @click="showMonths">รายเดือน</button>
+      </div>
+    </div>
+
+    <!-- โหมดเข้มงวดกำลังบังคับอะไรอยู่ — บอกไว้ก่อนที่คนจะไปเจอ error ตอนกดบันทึก -->
+    <div class="strict-banner" v-if="rules.strict">
+      <span class="material-symbols-rounded">verified_user</span>
+      <span>
+        โหมดบัญชีเข้มงวด:
+        <template v-if="rules.require_category">ทุกรายการต้องระบุหมวด · </template>
+        <template v-if="rules.slip_required_above">รายจ่ายเกิน {{ formatMoney(rules.slip_required_above) }} ต้องแนบสลิป · </template>
+        ปิดงบแล้วแก้ได้เฉพาะแอดมินและต้องมีเหตุผล
+      </span>
+    </div>
+
+    <!-- รอบที่ค้างปิดงบ — งานค้างที่ต้องเคลียร์ก่อนตัวเลขจะเชื่อได้ -->
+    <div class="overdue-card" v-if="overdue.count">
+      <div class="overdue-head">
+        <span class="material-symbols-rounded">lock_clock</span>
+        <b>ค้างปิดงบ {{ overdue.count }} รอบ</b>
+        <span class="overdue-meta">
+          เดินทางจบเกิน {{ overdue.grace_days }} วันแล้วแต่ยังไม่ปิดงบ
+          <template v-if="overdue.blocks_new_rounds"> · ทริปเหล่านี้เปิดรอบใหม่ไม่ได้จนกว่าจะเคลียร์</template>
+        </span>
+      </div>
+      <div class="overdue-list">
+        <button v-for="r in overdue.rounds" :key="r.schedule_id" class="overdue-row" @click="jumpToRound(r)">
+          <span class="overdue-trip">{{ r.trip_title }}</span>
+          <span class="overdue-date">{{ r.departure_label }}</span>
+          <span class="overdue-days">จบมาแล้ว {{ r.days_since_end }} วัน</span>
+          <span v-if="!r.expense_items_count" class="warn-text">ยังไม่มีรายการค่าใช้จ่ายเลย</span>
+          <span class="material-symbols-rounded overdue-go">chevron_right</span>
+        </button>
       </div>
     </div>
 
@@ -43,8 +79,14 @@
         <span class="sc-val" :class="profitClass(summary.profit)">{{ formatMoney(summary.profit) }}</span>
       </div>
       <div class="sc-item">
-        <span class="sc-label">ช่วงข้อมูล</span>
-        <span class="sc-val sc-period">{{ summary.period }}</span>
+        <span class="sc-label">ค้างรับจากลูกค้า</span>
+        <span class="sc-val money-red">{{ formatMoney(summary.outstanding) }}</span>
+        <span class="sc-hint">เก็บครบแล้วกำไรจะเป็น {{ formatMoney(summary.potential_profit) }}</span>
+      </div>
+      <div class="sc-item">
+        <span class="sc-label">รอบที่ยังไม่ปิดงบ</span>
+        <span class="sc-val" :class="summary.open_rounds ? 'money-orange' : 'money-green'">{{ summary.open_rounds }}</span>
+        <span class="sc-hint">{{ summary.period }}</span>
       </div>
     </div>
 
@@ -63,6 +105,7 @@
               <th class="num">รายรับจริง</th>
               <th class="num">รับหน้างาน</th>
               <th class="num">ค่าใช้จ่าย</th>
+              <th class="num">ค้างรับ</th>
               <th class="num">กำไร</th>
               <th class="num">มาร์จิน</th>
               <th></th>
@@ -78,7 +121,12 @@
                 <td class="num money-green">{{ formatMoney(t.paid_revenue) }}</td>
                 <td class="num money-green">{{ formatMoney(t.onsite_income) }}</td>
                 <td class="num money-orange">{{ formatMoney(t.expense_total) }}</td>
-                <td class="num" :class="profitClass(t.profit)">{{ formatMoney(t.profit) }}</td>
+                <td class="num" :class="t.outstanding > 0 ? 'money-red' : ''">{{ t.outstanding > 0 ? formatMoney(t.outstanding) : '-' }}</td>
+                <td class="num" :class="profitClass(t.profit)">
+                  {{ formatMoney(t.profit) }}
+                  <!-- ยังมีรอบที่ยังไม่ปิดงบ = ตัวเลขนี้ยังขยับได้ อย่าเพิ่งเอาไปใช้ตัดสินใจ -->
+                  <span v-if="t.open_rounds" class="tmpl-chip chip-open" :title="`${t.open_rounds} รอบยังไม่ปิดงบ`">ยังไม่ปิด {{ t.open_rounds }}</span>
+                </td>
                 <td class="num">{{ t.margin_percent != null ? t.margin_percent + '%' : '-' }}</td>
                 <td>
                   <button class="btn-icon" title="รายการประจำของทริป" @click.stop="openTemplates(t)">
@@ -89,7 +137,7 @@
 
               <!-- Expanded: schedules -->
               <tr v-if="expanded === t.trip_id" class="detail-row">
-                <td :colspan="10">
+                <td :colspan="11">
                   <div class="schedule-loading" v-if="detailLoading"><div class="spinner spinner-sm"></div></div>
                   <div v-else-if="detail" class="schedule-list">
                     <div v-if="!detail.schedules.length" class="empty-state">
@@ -107,18 +155,42 @@
                               <span class="material-symbols-rounded">calendar_month</span>
                               {{ s.departure_label }}
                               <span class="status-badge" :class="`status-${s.status}`">{{ s.status }}</span>
+                              <span v-if="s.is_closed" class="lock-badge" :title="`ปิดงบโดย ${s.closed_by_name || '-'}`">
+                                <span class="material-symbols-rounded">lock</span> ปิดงบแล้ว
+                              </span>
                             </div>
-                            <button class="btn-secondary btn-xs" @click="openExpenses(t, s)">
-                              <span class="material-symbols-rounded" style="font-size:16px;">receipt_long</span>
-                              จัดการค่าใช้จ่าย ({{ s.expenses.length }})
-                            </button>
+                            <div class="sched-actions">
+                              <button class="btn-secondary btn-xs" @click="openExpenses(t, s)">
+                                <span class="material-symbols-rounded" style="font-size:16px;">receipt_long</span>
+                                จัดการค่าใช้จ่าย ({{ s.expenses.length }})
+                              </button>
+                              <button class="btn-secondary btn-xs" @click="openAudits(s)" title="ปูมการแก้ไข">
+                                <span class="material-symbols-rounded" style="font-size:16px;">history</span>
+                              </button>
+                              <button class="btn-secondary btn-xs" @click="exportCsv(s)" title="ดาวน์โหลด CSV">
+                                <span class="material-symbols-rounded" style="font-size:16px;">download</span>
+                              </button>
+                            </div>
                           </div>
                           <div class="sched-figures">
                             <span>รายรับจริง <b class="money-green">{{ formatMoney(s.paid_revenue) }}</b></span>
                             <span v-if="s.onsite_income">รับหน้างาน <b class="money-green">{{ formatMoney(s.onsite_income) }}</b></span>
                             <span>ค่าใช้จ่าย <b class="money-orange">{{ formatMoney(s.expense_total) }}</b></span>
+                            <span v-if="s.outstanding > 0">ค้างรับ <b class="money-red">{{ formatMoney(s.outstanding) }}</b></span>
                             <span>กำไร <b :class="profitClass(s.profit)">{{ formatMoney(s.profit) }}</b></span>
                             <span class="sched-pax">{{ s.passengers_count }} คน · {{ s.bookings_count }} จอง</span>
+                          </div>
+                          <div class="sched-figures sched-sub">
+                            <span v-if="s.cost_per_pax != null">ต้นทุนต่อหัว <b>{{ formatMoney(s.cost_per_pax) }}</b></span>
+                            <span v-if="s.break_even_pax != null">คุ้มทุนที่ <b>{{ s.break_even_pax }}</b> ที่นั่ง</span>
+                            <span v-if="s.budget != null">
+                              งบ <b>{{ formatMoney(s.budget) }}</b>
+                              <b :class="s.over_budget ? 'money-red' : 'money-green'">
+                                ({{ s.over_budget ? 'เกิน' : 'เหลือ' }} {{ formatMoney(Math.abs(s.budget_variance)) }})
+                              </b>
+                            </span>
+                            <span v-if="s.missing_slip_count" class="warn-text">{{ s.missing_slip_count }} รายการไม่มีสลิป</span>
+                            <span v-if="s.uncategorised_count" class="warn-text">{{ s.uncategorised_count }} รายการไม่มีหมวด</span>
                           </div>
                         </div>
                       </div>
@@ -146,21 +218,65 @@
         </div>
         <div class="modal-body">
           <div class="exp-summary" v-if="expSummary">
+            <span>ยอดจองเต็ม <b>{{ formatMoney(expSummary.booked_total) }}</b></span>
             <span>รายรับจริง <b class="money-green">{{ formatMoney(expSummary.paid_revenue) }}</b></span>
+            <span v-if="expSummary.outstanding > 0">ค้างรับ <b class="money-red">{{ formatMoney(expSummary.outstanding) }}</b></span>
             <span>รับหน้างาน <b class="money-green">{{ formatMoney(expSummary.onsite_income) }}</b></span>
             <span>ค่าใช้จ่าย <b class="money-orange">{{ formatMoney(expSummary.expense_total) }}</b></span>
             <span>กำไร <b :class="profitClass(expSummary.profit)">{{ formatMoney(expSummary.profit) }}</b></span>
           </div>
 
+          <!-- ปิดงบ: เงื่อนไขที่ยังค้างอยู่ต้องเคลียร์ก่อน ไม่ใช่กดแล้วเด้ง error -->
+          <div class="close-panel" :class="{ locked: expSummary?.is_closed }" v-if="expSummary">
+            <template v-if="expSummary.is_closed">
+              <div class="close-head">
+                <span class="material-symbols-rounded">lock</span>
+                <b>ปิดงบแล้ว</b>
+                <span class="close-meta">{{ formatDateTime(expSummary.closed_at) }} · {{ expSummary.closed_by_name || '-' }}</span>
+                <button class="btn-secondary btn-xs" @click="doReopen" :disabled="expBusy">เปิดงบกลับ</button>
+              </div>
+              <p class="close-hint">ตัวเลขของรอบนี้ล็อกแล้ว การแก้ไขต่อจากนี้ต้องกรอกเหตุผลในฟอร์มด้านล่าง และถูกบันทึกลงปูมทุกครั้ง</p>
+            </template>
+            <template v-else>
+              <div class="close-head">
+                <span class="material-symbols-rounded" :class="closeCheck?.can_close ? 'ok' : 'warn'">
+                  {{ closeCheck?.can_close ? 'task_alt' : 'error' }}
+                </span>
+                <b>{{ closeCheck?.can_close ? 'พร้อมปิดงบ' : 'ยังปิดงบไม่ได้' }}</b>
+                <button class="btn-primary btn-xs" @click="doClose" :disabled="expBusy || !closeCheck?.can_close">ปิดงบรอบนี้</button>
+              </div>
+              <ul class="close-list" v-if="closeCheck">
+                <li v-for="b in closeCheck.blockers" :key="b.code" class="blocker">
+                  <span class="material-symbols-rounded">block</span>{{ b.message }}
+                </li>
+                <li v-for="w in closeCheck.warnings" :key="w.code" class="warning">
+                  <span class="material-symbols-rounded">info</span>{{ w.message }}
+                </li>
+              </ul>
+            </template>
+          </div>
+
           <div class="exp-toolbar">
-            <button class="btn-secondary btn-xs" @click="applyTemplates" :disabled="expBusy">
+            <button class="btn-secondary btn-xs" @click="applyTemplates" :disabled="expBusy || expSummary?.is_closed">
               <span class="material-symbols-rounded" style="font-size:16px;">playlist_add</span>
               ใช้รายการประจำ
+            </button>
+            <button class="btn-secondary btn-xs" @click="applyStaffCost" :disabled="expBusy || expSummary?.is_closed" title="ลงค่าตอบแทนทีมงานจากเรตต่อวันที่ตั้งไว้">
+              <span class="material-symbols-rounded" style="font-size:16px;">groups</span>
+              ลงค่าทีมงาน
             </button>
             <button class="btn-secondary btn-xs" @click="openCopy" :disabled="expBusy || !selectedIds.length" title="เลือกรายการในตารางก่อน">
               <span class="material-symbols-rounded" style="font-size:16px;">content_copy</span>
               คัดลอกไปรอบอื่น<template v-if="selectedIds.length"> ({{ selectedIds.length }})</template>
             </button>
+            <div class="budget-box">
+              <label>งบรอบนี้</label>
+              <input v-model.number="budgetInput" type="number" step="0.01" min="0" placeholder="ตามรายการประจำ" />
+              <button class="btn-secondary btn-xs" @click="saveBudget" :disabled="expBusy">บันทึก</button>
+              <b v-if="expSummary?.budget != null" :class="expSummary.over_budget ? 'money-red' : 'money-green'">
+                ใช้ไป {{ expSummary.budget_used_percent }}%
+              </b>
+            </div>
           </div>
 
           <div class="loading-state" v-if="expLoading"><div class="spinner spinner-sm"></div></div>
@@ -193,6 +309,7 @@
                   <a v-if="e.slip_url" :href="e.slip_url" target="_blank" rel="noopener" class="btn-icon" title="ดูสลิป">
                     <span class="material-symbols-rounded" style="font-size:16px;">receipt_long</span>
                   </a>
+                  <span v-else-if="needsSlip(e)" class="warn-text" title="ยอดเกินเกณฑ์แต่ไม่มีหลักฐาน — ปิดงบไม่ได้">ต้องมีสลิป</span>
                   <span v-else class="exp-note">-</span>
                 </td>
                 <td class="action-btns">
@@ -217,13 +334,36 @@
                 <option value="income">รายรับหน้างาน</option>
               </select>
             </div>
+            <div class="form-group exp-kind">
+              <label>หมวด<span class="req" v-if="rules.require_category"> *</span></label>
+              <select v-model="expForm.category">
+                <option :value="null">— ไม่ระบุ —</option>
+                <option v-for="c in categoryOptions" :key="c.value" :value="c.value">{{ c.label }}</option>
+              </select>
+            </div>
             <div class="form-group exp-amount">
               <label>จำนวนเงิน (บาท)</label>
               <input v-model.number="expForm.amount" type="number" step="0.01" min="0" required />
             </div>
+            <div class="form-group exp-amount">
+              <label>วันที่ใช้เงิน</label>
+              <input v-model="expForm.spent_at" type="date" />
+            </div>
             <div class="form-group">
               <label>หมายเหตุ</label>
               <input v-model="expForm.note" placeholder="ไม่บังคับ" />
+            </div>
+            <div class="form-group exp-slip">
+              <label :class="{ req: slipRequired }">
+                สลิป/ใบเสร็จ<template v-if="slipRequired"> * จำเป็น</template>
+              </label>
+              <input type="file" accept="image/*" @change="onSlipPicked" />
+              <small v-if="expForm.id && expForm.hasSlip && !expForm.slip" class="exp-meta">มีสลิปเดิมอยู่แล้ว — เลือกไฟล์ใหม่เพื่อแทนที่</small>
+            </div>
+            <!-- ปิดงบไปแล้ว: ทุกการแก้ต้องมีเหตุผล เก็บลงปูมพร้อมยอดก่อน/หลัง -->
+            <div class="form-group" v-if="expSummary?.is_closed">
+              <label class="req">เหตุผลที่แก้รอบที่ปิดงบแล้ว *</label>
+              <input v-model="expForm.reason" placeholder="เช่น ใบเสร็จค่าที่พักมาทีหลัง" />
             </div>
             <div class="exp-form-actions">
               <button type="button" class="btn-secondary btn-xs" v-if="expForm.id" @click="resetExpForm">ยกเลิก</button>
@@ -272,6 +412,72 @@
       </div>
     </div>
 
+    <!-- ─── Audit log modal ─── -->
+    <div class="modal-overlay" v-if="showAudits">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>ปูมการแก้ไข — {{ auditSchedule?.departure_label }}</h2>
+          <button class="modal-close" @click="showAudits = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <p class="page-subtitle" style="margin-bottom:12px;">ทุกครั้งที่ตัวเลขเงินของรอบนี้ขยับจะมีบรรทัดที่นี่ — ใครแก้ จากเท่าไรเป็นเท่าไร เพราะอะไร</p>
+          <div class="loading-state" v-if="auditLoading"><div class="spinner spinner-sm"></div></div>
+          <div v-else class="audit-list">
+            <div v-for="a in audits" :key="a.id" class="audit-row" :class="`audit-${a.action}`">
+              <div class="audit-head">
+                <b>{{ a.action_label }}</b>
+                <span>{{ a.after?.name || a.before?.name || '' }}</span>
+                <span class="audit-meta">{{ formatDateTime(a.created_at) }} · {{ a.user_name || 'ระบบ' }}</span>
+              </div>
+              <div class="audit-diff" v-if="a.action === 'updated'">
+                {{ formatMoney(a.before?.amount) }} → <b>{{ formatMoney(a.after?.amount) }}</b>
+              </div>
+              <div class="audit-diff" v-else-if="a.action === 'created'">+{{ formatMoney(a.after?.amount) }}</div>
+              <div class="audit-diff" v-else-if="a.action === 'deleted'">−{{ formatMoney(a.before?.amount) }}</div>
+              <div class="audit-diff" v-else-if="a.action === 'closed'">
+                ปิดที่กำไร <b>{{ formatMoney(a.after?.profit) }}</b> · ค่าใช้จ่าย {{ formatMoney(a.after?.expense_total) }}
+              </div>
+              <div class="audit-reason" v-if="a.reason">เหตุผล: {{ a.reason }}</div>
+            </div>
+            <div v-if="!audits.length" class="exp-empty">ยังไม่มีการแก้ไข</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Monthly dashboard modal ─── -->
+    <div class="modal-overlay" v-if="showMonthsModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>กำไรรายเดือน</h2>
+          <button class="modal-close" @click="showMonthsModal = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="loading-state" v-if="monthsLoading"><div class="spinner spinner-sm"></div></div>
+          <table class="data-table exp-table" v-else>
+            <thead>
+              <tr>
+                <th>เดือน</th><th class="num">รอบ</th><th class="num">คน</th>
+                <th class="num">รายรับ</th><th class="num">ค่าใช้จ่าย</th><th class="num">กำไร</th><th class="num">ค้างรับ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="m in months" :key="m.month">
+                <td>{{ m.label }}</td>
+                <td class="num">{{ m.rounds }}<small class="exp-meta" v-if="m.closed_rounds < m.rounds">ปิดงบ {{ m.closed_rounds }}</small></td>
+                <td class="num">{{ m.passengers }}</td>
+                <td class="num money-green">{{ formatMoney(m.paid_revenue + m.onsite_income) }}</td>
+                <td class="num money-orange">{{ formatMoney(m.expense_total) }}</td>
+                <td class="num" :class="profitClass(m.profit)">{{ formatMoney(m.profit) }}</td>
+                <td class="num" :class="m.outstanding > 0 ? 'money-red' : ''">{{ m.outstanding > 0 ? formatMoney(m.outstanding) : '-' }}</td>
+              </tr>
+              <tr v-if="!months.length"><td colspan="7" class="exp-empty">ไม่มีรอบเดินทางในช่วงนี้</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Templates manager modal ─── -->
     <div class="modal-overlay" v-if="showTemplates">
       <div class="modal-card">
@@ -285,11 +491,12 @@
           <div class="loading-state" v-if="tmplLoading"><div class="spinner spinner-sm"></div></div>
           <table class="data-table exp-table" v-else>
             <thead>
-              <tr><th>รายการ</th><th class="num">จำนวนตั้งต้น</th><th>สถานะ</th><th></th></tr>
+              <tr><th>รายการ</th><th>หมวด</th><th class="num">จำนวนตั้งต้น</th><th>สถานะ</th><th></th></tr>
             </thead>
             <tbody>
               <tr v-for="tm in templates" :key="tm.id">
                 <td>{{ tm.name }}</td>
+                <td>{{ categoryLabel(tm.category) }}</td>
                 <td class="num">{{ tm.default_amount != null ? formatMoney(tm.default_amount) : '-' }}</td>
                 <td><span class="status-badge" :class="tm.is_active ? 'status-active' : 'status-inactive'">{{ tm.is_active ? 'ใช้งาน' : 'ปิด' }}</span></td>
                 <td class="action-btns">
@@ -297,7 +504,7 @@
                   <button class="btn-icon btn-delete" title="ลบ" @click="removeTemplate(tm)"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
                 </td>
               </tr>
-              <tr v-if="!templates.length"><td colspan="4" class="exp-empty">ยังไม่มีรายการประจำ</td></tr>
+              <tr v-if="!templates.length"><td colspan="5" class="exp-empty">ยังไม่มีรายการประจำ</td></tr>
             </tbody>
           </table>
 
@@ -305,6 +512,13 @@
             <div class="form-group">
               <label>{{ tmplForm.id ? 'แก้ไขรายการประจำ' : 'เพิ่มรายการประจำ' }}</label>
               <input v-model="tmplForm.name" placeholder="เช่น ค่าน้ำมัน" required />
+            </div>
+            <div class="form-group exp-kind">
+              <label>หมวด</label>
+              <select v-model="tmplForm.category">
+                <option :value="null">— ไม่ระบุ —</option>
+                <option v-for="c in expenseCategories" :key="c.value" :value="c.value">{{ c.label }}</option>
+              </select>
             </div>
             <div class="form-group exp-amount">
               <label>จำนวนตั้งต้น</label>
@@ -342,6 +556,22 @@ const loading = ref(false);
 const summary = ref(null);
 const trips = ref([]);
 
+// ข้อบังคับของโหมดเข้มงวด — เซิร์ฟเวอร์เป็นคนบอกว่าบังคับอะไรอยู่ หน้าเว็บแค่สะท้อน
+const rules = ref({ strict: false, slip_required_above: null, require_category: false });
+const categories = ref({ expense: [], income: [] });
+
+// ปิดงบ / ปูม / งบ / รายเดือน
+const overdue = ref({ count: 0, rounds: [], grace_days: 7, blocks_new_rounds: false });
+const closeCheck = ref(null);
+const budgetInput = ref(null);
+const showAudits = ref(false);
+const auditSchedule = ref(null);
+const audits = ref([]);
+const auditLoading = ref(false);
+const showMonthsModal = ref(false);
+const months = ref([]);
+const monthsLoading = ref(false);
+
 // expanded trip detail
 const expanded = ref(null);
 const detail = ref(null);
@@ -355,7 +585,17 @@ const expenses = ref([]);
 const expSummary = ref(null);
 const expLoading = ref(false);
 const expBusy = ref(false);
-const expForm = reactive({ id: null, name: '', amount: null, note: '', kind: 'expense' });
+const expForm = reactive({ id: null, name: '', amount: null, note: '', kind: 'expense', category: null, spent_at: '', slip: null, hasSlip: false, reason: '' });
+
+const expenseCategories = computed(() => categories.value.expense || []);
+const categoryOptions = computed(() => (expForm.kind === 'income' ? categories.value.income : categories.value.expense) || []);
+
+/** ยอดที่กำลังกรอกเกินเพดานหลักฐานหรือยัง — บอกก่อนกดบันทึก ไม่ใช่หลังโดนปฏิเสธ */
+const slipRequired = computed(() => {
+  const above = rules.value.slip_required_above;
+  if (!above || expForm.kind === 'income') return false;
+  return Number(expForm.amount || 0) > Number(above);
+});
 
 // row selection + copy-to-other-rounds state
 const selectedIds = ref([]);
@@ -371,13 +611,27 @@ const showTemplates = ref(false);
 const templates = ref([]);
 const tmplLoading = ref(false);
 const tmplBusy = ref(false);
-const tmplForm = reactive({ id: null, name: '', default_amount: null, is_active: true });
+const tmplForm = reactive({ id: null, name: '', category: null, default_amount: null, is_active: true });
 
 function formatMoney(amount) {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(amount || 0);
 }
 function profitClass(v) {
   return v < 0 ? 'money-red' : 'money-green';
+}
+function formatDateTime(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+}
+function categoryLabel(value) {
+  if (!value) return '-';
+  const all = [...(categories.value.expense || []), ...(categories.value.income || [])];
+  return all.find(c => c.value === value)?.label || value;
+}
+/** รายการนี้ยอดเกินเพดานแต่ยังไม่มีสลิป — คือสิ่งที่กันไม่ให้ปิดงบ */
+function needsSlip(e) {
+  const above = rules.value.slip_required_above;
+  return !!above && e.kind !== 'income' && Number(e.amount) > Number(above) && !e.has_slip;
 }
 
 async function loadSummary() {
@@ -391,6 +645,7 @@ async function loadSummary() {
     });
     summary.value = data.summary;
     trips.value = data.trips;
+    if (data.rules) rules.value = data.rules;
   } catch (e) {
     alert(e.response?.data?.message || 'ไม่สามารถโหลดข้อมูลได้');
   } finally {
@@ -447,6 +702,10 @@ async function loadExpenses() {
     const data = await admin.fetchScheduleExpenses(activeSchedule.value.schedule_id);
     expenses.value = data.expenses;
     expSummary.value = data.summary;
+    if (data.rules) rules.value = data.rules;
+    if (data.categories) categories.value = data.categories;
+    budgetInput.value = data.summary?.budget ?? null;
+    await loadCloseCheck();
     // keep selection only for rows that still exist
     const ids = expenses.value.map(e => e.id);
     selectedIds.value = selectedIds.value.filter(id => ids.includes(id));
@@ -503,6 +762,11 @@ function resetExpForm() {
   expForm.amount = null;
   expForm.note = '';
   expForm.kind = 'expense';
+  expForm.category = null;
+  expForm.spent_at = '';
+  expForm.slip = null;
+  expForm.hasSlip = false;
+  expForm.reason = '';
 }
 function startEdit(e) {
   expForm.id = e.id;
@@ -510,19 +774,51 @@ function startEdit(e) {
   expForm.amount = e.amount;
   expForm.note = e.note || '';
   expForm.kind = e.kind || 'expense';
+  expForm.category = e.category || null;
+  expForm.spent_at = e.spent_at || '';
+  expForm.slip = null;
+  expForm.hasSlip = !!e.has_slip;
+  expForm.reason = '';
+}
+
+function onSlipPicked(ev) {
+  expForm.slip = ev.target.files?.[0] || null;
+}
+
+/**
+ * ฟอร์มเป็น FormData เฉพาะตอนแนบไฟล์ — ไม่งั้นส่ง JSON ตามเดิม
+ * (FormData ส่ง null มาเป็นสตริง "null" ฝั่ง PHP จึงตัดค่าว่างทิ้งก่อน)
+ */
+function expensePayload() {
+  const fields = {
+    name: expForm.name,
+    amount: expForm.amount,
+    note: expForm.note || null,
+    kind: expForm.kind,
+    category: expForm.category || null,
+    spent_at: expForm.spent_at || null,
+    reason: expForm.reason || null,
+  };
+
+  if (!expForm.slip) return fields;
+
+  const form = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') form.append(key, value);
+  });
+  form.append('slip', expForm.slip);
+  return form;
 }
 
 async function submitExpense() {
   expBusy.value = true;
   try {
     const id = activeSchedule.value.schedule_id;
-    if (expForm.id) {
-      const data = await admin.updateScheduleExpense(id, expForm.id, { name: expForm.name, amount: expForm.amount, note: expForm.note || null, kind: expForm.kind });
-      expSummary.value = data.summary;
-    } else {
-      const data = await admin.createScheduleExpense(id, { name: expForm.name, amount: expForm.amount, note: expForm.note || null, kind: expForm.kind });
-      expSummary.value = data.summary;
-    }
+    const payload = expensePayload();
+    const data = expForm.id
+      ? await admin.updateScheduleExpense(id, expForm.id, payload)
+      : await admin.createScheduleExpense(id, payload);
+    expSummary.value = data.summary;
     resetExpForm();
     await loadExpenses();
   } catch (e) {
@@ -534,9 +830,17 @@ async function submitExpense() {
 
 async function removeExpense(e) {
   if (!confirm(`ลบรายการ "${e.name}" ?`)) return;
+
+  // รอบที่ปิดงบแล้วต้องมีเหตุผลกำกับเสมอ — ถามตรงนี้ ไม่ปล่อยให้ยิงไปโดนปฏิเสธ
+  let reason = null;
+  if (expSummary.value?.is_closed) {
+    reason = prompt('รอบนี้ปิดงบแล้ว — ลบเพราะอะไร?');
+    if (!reason) return;
+  }
+
   expBusy.value = true;
   try {
-    const data = await admin.deleteScheduleExpense(activeSchedule.value.schedule_id, e.id);
+    const data = await admin.deleteScheduleExpense(activeSchedule.value.schedule_id, e.id, reason);
     expSummary.value = data.summary;
     await loadExpenses();
   } catch (err) {
@@ -570,6 +874,10 @@ async function openTemplates(t) {
   tmplLoading.value = true;
   try {
     templates.value = await admin.fetchExpenseTemplates(t.trip_id);
+    if (!categories.value.expense?.length && detail.value?.schedules?.length) {
+      const data = await admin.fetchScheduleExpenses(detail.value.schedules[0].schedule_id);
+      categories.value = data.categories || categories.value;
+    }
   } catch (e) {
     alert(e.response?.data?.message || 'ไม่สามารถโหลดรายการประจำได้');
   } finally {
@@ -580,12 +888,14 @@ async function openTemplates(t) {
 function resetTmplForm() {
   tmplForm.id = null;
   tmplForm.name = '';
+  tmplForm.category = null;
   tmplForm.default_amount = null;
   tmplForm.is_active = true;
 }
 function startEditTmpl(tm) {
   tmplForm.id = tm.id;
   tmplForm.name = tm.name;
+  tmplForm.category = tm.category || null;
   tmplForm.default_amount = tm.default_amount != null ? Number(tm.default_amount) : null;
   tmplForm.is_active = !!tm.is_active;
 }
@@ -594,7 +904,7 @@ async function submitTemplate() {
   tmplBusy.value = true;
   try {
     const tripId = activeTrip.value.trip_id;
-    const payload = { name: tmplForm.name, default_amount: tmplForm.default_amount, is_active: tmplForm.is_active };
+    const payload = { name: tmplForm.name, category: tmplForm.category, default_amount: tmplForm.default_amount, is_active: tmplForm.is_active };
     if (tmplForm.id) {
       await admin.updateExpenseTemplate(tripId, tmplForm.id, payload);
     } else {
@@ -622,7 +932,136 @@ async function removeTemplate(tm) {
   }
 }
 
-onMounted(loadSummary);
+// ─── ปิดงบ / เปิดกลับ ───
+async function loadCloseCheck() {
+  if (!activeSchedule.value) return;
+  try {
+    closeCheck.value = await admin.fetchFinanceCloseCheck(activeSchedule.value.schedule_id);
+  } catch {
+    // เช็กไม่ได้ก็ไม่ควรทำให้หน้าค่าใช้จ่ายพัง — แค่ไม่โชว์แผงปิดงบ
+    closeCheck.value = null;
+  }
+}
+
+async function doClose() {
+  const note = prompt('บันทึกกำกับการปิดงบ (ไม่บังคับ)') ?? '';
+  expBusy.value = true;
+  try {
+    const res = await admin.closeScheduleFinance(activeSchedule.value.schedule_id, { note: note || null });
+    expSummary.value = res.data.summary;
+    alert(res.message);
+    await loadExpenses();
+    await loadOverdue();
+  } catch (e) {
+    alert(e.response?.data?.message || 'ปิดงบไม่สำเร็จ');
+  } finally {
+    expBusy.value = false;
+  }
+}
+
+async function doReopen() {
+  const reason = prompt('เปิดงบกลับเพราะอะไร? (บังคับ — เก็บลงปูม)');
+  if (!reason) return;
+  expBusy.value = true;
+  try {
+    const res = await admin.reopenScheduleFinance(activeSchedule.value.schedule_id, { reason });
+    expSummary.value = res.data.summary;
+    alert(res.message);
+    await loadExpenses();
+    await loadOverdue();
+  } catch (e) {
+    alert(e.response?.data?.message || 'เปิดงบกลับไม่สำเร็จ');
+  } finally {
+    expBusy.value = false;
+  }
+}
+
+async function saveBudget() {
+  expBusy.value = true;
+  try {
+    const data = await admin.updateScheduleBudget(activeSchedule.value.schedule_id, {
+      finance_budget: budgetInput.value === '' ? null : budgetInput.value,
+    });
+    expSummary.value = data.summary;
+  } catch (e) {
+    alert(e.response?.data?.message || 'บันทึกงบไม่สำเร็จ');
+  } finally {
+    expBusy.value = false;
+  }
+}
+
+async function applyStaffCost() {
+  expBusy.value = true;
+  try {
+    const res = await admin.applyScheduleStaffCost(activeSchedule.value.schedule_id);
+    alert(res.message);
+    await loadExpenses();
+  } catch (e) {
+    alert(e.response?.data?.message || 'ลงค่าทีมงานไม่สำเร็จ');
+  } finally {
+    expBusy.value = false;
+  }
+}
+
+// ─── ปูมการแก้ไข ───
+async function openAudits(s) {
+  auditSchedule.value = s;
+  showAudits.value = true;
+  auditLoading.value = true;
+  try {
+    audits.value = await admin.fetchScheduleFinanceAudits(s.schedule_id);
+  } catch (e) {
+    alert(e.response?.data?.message || 'ไม่สามารถโหลดปูมได้');
+  } finally {
+    auditLoading.value = false;
+  }
+}
+
+async function exportCsv(s) {
+  try {
+    await admin.downloadScheduleFinanceCsv(s.schedule_id);
+  } catch (e) {
+    alert(e.response?.data?.message || 'ดาวน์โหลดไม่สำเร็จ');
+  }
+}
+
+// ─── กำไรรายเดือน ───
+async function showMonths() {
+  showMonthsModal.value = true;
+  monthsLoading.value = true;
+  try {
+    const data = await admin.fetchFinanceDashboard({
+      from: filters.from || undefined,
+      to: filters.to || undefined,
+    });
+    months.value = data.months;
+  } catch (e) {
+    alert(e.response?.data?.message || 'ไม่สามารถโหลดกำไรรายเดือนได้');
+  } finally {
+    monthsLoading.value = false;
+  }
+}
+
+async function loadOverdue() {
+  try {
+    overdue.value = await admin.fetchFinanceOverdue();
+  } catch {
+    // โหลดงานค้างไม่ได้ไม่ควรทำให้ทั้งหน้าพัง — หน้าสรุปยังใช้งานได้ตามปกติ
+  }
+}
+
+/** กดจากรายการค้าง → กางทริปนั้นแล้วเปิดหน้าค่าใช้จ่ายของรอบนั้นให้เลย */
+async function jumpToRound(row) {
+  const trip = trips.value.find(t => t.trip_id === row.trip_id) || { trip_id: row.trip_id, title: row.trip_title };
+  if (expanded.value !== row.trip_id) await toggleTrip(trip);
+  const schedule = detail.value?.schedules?.find(s => s.schedule_id === row.schedule_id);
+  if (schedule) await openExpenses(trip, schedule);
+}
+
+onMounted(() => {
+  loadSummary();
+  loadOverdue();
+});
 </script>
 
 <style scoped>
@@ -690,4 +1129,65 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .copy-row:hover { background: #f7f8fa; }
 .copy-row input { width: 16px; height: 16px; cursor: pointer; }
 .copy-row .status-badge { margin-left: auto; }
+
+/* ── โหมดเข้มงวด ─────────────────────────────────────── */
+.view-switch { display: inline-flex; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+.view-switch button { border: 0; background: #fff; padding: 8px 16px; font-size: 13px; font-weight: 700; color: #6b7280; cursor: pointer; }
+.view-switch button.active { background: #111827; color: #fff; }
+
+.strict-banner { display: flex; align-items: center; gap: 8px; background: #f0f9ff; border: 1px solid #bae6fd; color: #075985; border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 4px; }
+.strict-banner .material-symbols-rounded { font-size: 18px; }
+
+.sc-hint { font-size: 11px; color: #9aa0aa; font-weight: 600; }
+.warn-text { color: #b45309; font-weight: 700; font-size: 12px; }
+.chip-open { color: #b45309; background: #fffbeb; }
+
+.sched-actions { display: flex; gap: 6px; }
+.sched-sub { font-size: 13px; color: #6b7280; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #eef0f3; }
+.lock-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: #475569; background: #f1f5f9; border-radius: 6px; padding: 2px 8px; }
+.lock-badge .material-symbols-rounded { font-size: 14px; }
+
+.close-panel { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; background: #fff; }
+.close-panel.locked { background: #f8fafc; }
+.close-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.close-head .material-symbols-rounded { font-size: 18px; }
+.close-head .ok { color: #16a34a; }
+.close-head .warn { color: #dc2626; }
+.close-head button { margin-left: auto; }
+.close-meta { font-size: 12px; color: #8b909a; }
+.close-hint { font-size: 12px; color: #6b7280; margin: 8px 0 0; }
+.close-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.close-list li { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.close-list .material-symbols-rounded { font-size: 16px; }
+.close-list .blocker { color: #dc2626; }
+.close-list .warning { color: #b45309; }
+
+.budget-box { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 13px; }
+.budget-box label { font-weight: 700; color: #6b7280; }
+.budget-box input { width: 120px; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 8px; }
+.exp-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.exp-form .exp-slip { flex: 0 0 220px; }
+.exp-form label.req, .exp-form .req { color: #b45309; }
+
+.audit-list { display: flex; flex-direction: column; gap: 8px; max-height: min(60vh, 520px); overflow-y: auto; }
+.audit-row { border: 1px solid #eef0f3; border-left: 3px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; }
+.audit-row.audit-deleted { border-left-color: #dc2626; }
+.audit-row.audit-created { border-left-color: #16a34a; }
+.audit-row.audit-closed { border-left-color: #111827; }
+.audit-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.audit-meta { margin-left: auto; font-size: 12px; color: #8b909a; }
+.audit-diff { font-size: 13px; color: #475569; margin-top: 2px; }
+.audit-reason { font-size: 12px; color: #b45309; margin-top: 4px; }
+
+.overdue-card { border: 1px solid #fecaca; background: #fef2f2; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+.overdue-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: #b91c1c; }
+.overdue-head .material-symbols-rounded { font-size: 20px; }
+.overdue-meta { font-size: 12px; color: #7f1d1d; font-weight: 600; }
+.overdue-list { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; max-height: 220px; overflow-y: auto; }
+.overdue-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 6px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.overdue-row:hover { background: #fee2e2; }
+.overdue-trip { font-weight: 800; color: #111827; }
+.overdue-date { color: #6b7280; }
+.overdue-days { color: #b91c1c; font-weight: 700; }
+.overdue-go { margin-left: auto; color: #b91c1c; }
 </style>

@@ -79,6 +79,8 @@ class TripSchedule extends Model
         'is_charter', 'photo_token', 'custom_route',
         // รอบที่บินไป — จุดนัดพบที่สนามบิน + ขาบิน + น้ำหนักกระเป๋า
         'meeting_point', 'meeting_map_url', 'meeting_time', 'baggage_allowance', 'flights',
+        // งบค่าใช้จ่ายที่ตั้งไว้ต่อรอบ (การปิดงบไม่ mass-assign — ผ่าน ScheduleFinanceService)
+        'finance_budget',
     ];
 
     protected function casts(): array
@@ -110,6 +112,8 @@ class TripSchedule extends Model
             'rally_nudged_at' => 'datetime',
             'custom_route' => 'array',
             'flights' => 'array',
+            'finance_closed_at' => 'datetime',
+            'finance_budget' => 'decimal:2',
         ];
     }
 
@@ -353,6 +357,22 @@ class TripSchedule extends Model
     public function expenses(): HasMany
     {
         return $this->hasMany(ScheduleExpense::class, 'schedule_id')->orderBy('id');
+    }
+
+    public function financeAudits(): HasMany
+    {
+        return $this->hasMany(ScheduleExpenseAudit::class, 'schedule_id');
+    }
+
+    public function financeCloser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'finance_closed_by');
+    }
+
+    /** ปิดงบไปแล้ว = ตัวเลขเงินของรอบนี้ล็อก แก้ได้เฉพาะแอดมินและต้องมีเหตุผล */
+    public function financeClosed(): bool
+    {
+        return $this->finance_closed_at !== null;
     }
 
     public function pickupPoints(): HasMany

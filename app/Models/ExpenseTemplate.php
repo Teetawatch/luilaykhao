@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ExpenseTemplate extends Model
 {
     protected $fillable = [
-        'trip_id', 'name', 'default_amount', 'sort_order', 'is_active',
+        'trip_id', 'name', 'category', 'default_amount', 'sort_order', 'is_active',
     ];
 
     protected function casts(): array

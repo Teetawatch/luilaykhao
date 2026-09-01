@@ -42,6 +42,21 @@ class SiteSettings
         // เลข 11 ขึ้นต้น = นำเที่ยวได้ทั้งในและต่างประเทศ
         'licence_no' => '11/13855',
         'licence_image' => null,
+        // ── บัญชีทริป (โหมดเข้มงวด) ────────────────────────────────
+        // ปิดโหมดนี้ = กลับไปเป็นสมุดบันทึกหลวม ๆ แบบเดิม ทุกข้อบังคับด้านล่างจะไม่ทำงาน
+        'finance_strict_mode' => true,
+        // รายจ่ายเกินกี่บาทต้องแนบสลิป/ใบเสร็จ (0 = ไม่บังคับ)
+        'finance_slip_required_above' => 1000,
+        // ทุกรายการต้องระบุหมวด
+        'finance_require_category' => true,
+        // ปิดงบไม่ได้ถ้ายังไม่มีรายจ่ายสักรายการ (กันกำไรลวงตา 100%)
+        'finance_close_requires_expense' => true,
+        // ปิดงบไม่ได้ถ้ายังมีบุ๊คกิ้งค้างชำระ
+        'finance_close_requires_settled' => true,
+        // ทริปจบแล้วกี่วันต้องปิดงบให้เสร็จ — เลยกำหนดถือว่า "ค้างปิดงบ"
+        'finance_close_grace_days' => 7,
+        // มีรอบค้างปิดงบ = เปิดรอบใหม่ของทริปนั้นไม่ได้ จนกว่าจะเคลียร์
+        'finance_block_new_rounds' => true,
     ];
 
     /**
@@ -151,6 +166,44 @@ class SiteSettings
 
         // ค่าที่อัปโหลดใหม่เป็น URL เต็มจาก R2 อยู่แล้ว ส่วน local dev ได้ path
         return MediaDisk::url($stored) ?: url($stored);
+    }
+
+    /** โหมดบัญชีเข้มงวด — ปิดแล้วข้อบังคับด้านการเงินทั้งหมดหยุดทำงาน */
+    public static function financeStrict(): bool
+    {
+        return self::bool('finance_strict_mode');
+    }
+
+    /**
+     * รายจ่ายเกินยอดนี้ต้องมีหลักฐาน — คืน null เมื่อไม่บังคับ
+     * (ปิดโหมดเข้มงวด หรือตั้งเพดานเป็น 0)
+     */
+    public static function financeSlipRequiredAbove(): ?float
+    {
+        if (! self::financeStrict()) {
+            return null;
+        }
+
+        $above = (float) self::get('finance_slip_required_above');
+
+        return $above > 0 ? $above : null;
+    }
+
+    public static function financeRequiresCategory(): bool
+    {
+        return self::financeStrict() && self::bool('finance_require_category');
+    }
+
+    /** ทริปจบแล้วกี่วันถึงถือว่าค้างปิดงบ — อย่างน้อย 1 วันเสมอ */
+    public static function financeCloseGraceDays(): int
+    {
+        return max(1, (int) self::get('finance_close_grace_days'));
+    }
+
+    /** ห้ามเปิดรอบใหม่ของทริปที่ยังมีรอบค้างปิดงบหรือไม่ */
+    public static function financeBlocksNewRounds(): bool
+    {
+        return self::financeStrict() && self::bool('finance_block_new_rounds');
     }
 
     /** รูปใบอนุญาตชุดเดิมก่อนมีหน้าอัปโหลดในแอดมิน */

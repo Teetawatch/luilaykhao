@@ -434,6 +434,7 @@ export const useAdminStore = defineStore('admin', {
       return res.data.data;
     },
 
+    // data เป็น FormData ได้เมื่อแนบสลิป — axios ตั้ง Content-Type ให้เอง
     async createScheduleExpense(scheduleId, data) {
       const res = await api.post(`/admin/finance/schedules/${scheduleId}/expenses`, data);
       return res.data.data;
@@ -450,13 +451,75 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async updateScheduleExpense(scheduleId, id, data) {
-      const res = await api.put(`/admin/finance/schedules/${scheduleId}/expenses/${id}`, data);
+      const url = `/admin/finance/schedules/${scheduleId}/expenses/${id}`;
+
+      // อัปโหลดไฟล์ผ่าน PUT ไม่ได้ — ต้องยิง POST แล้วสวม _method ให้ Laravel
+      if (data instanceof FormData) {
+        data.append('_method', 'PUT');
+        const res = await api.post(url, data);
+        return res.data.data;
+      }
+
+      const res = await api.put(url, data);
       return res.data.data;
     },
 
-    async deleteScheduleExpense(scheduleId, id) {
-      const res = await api.delete(`/admin/finance/schedules/${scheduleId}/expenses/${id}`);
+    async deleteScheduleExpense(scheduleId, id, reason = null) {
+      const res = await api.delete(`/admin/finance/schedules/${scheduleId}/expenses/${id}`, {
+        params: reason ? { reason } : {},
+      });
       return res.data.data;
+    },
+
+    // ─── Finance: ปิดงบรอบ ปูม งบประมาณ ─────────────
+    async fetchFinanceDashboard(params = {}) {
+      const res = await api.get('/admin/finance/dashboard', { params });
+      return res.data.data;
+    },
+
+    async fetchFinanceOverdue() {
+      const res = await api.get('/admin/finance/overdue');
+      return res.data.data;
+    },
+
+    async fetchFinanceCloseCheck(scheduleId) {
+      const res = await api.get(`/admin/finance/schedules/${scheduleId}/close-check`);
+      return res.data.data;
+    },
+
+    async closeScheduleFinance(scheduleId, payload = {}) {
+      const res = await api.post(`/admin/finance/schedules/${scheduleId}/close`, payload);
+      return res.data;
+    },
+
+    async reopenScheduleFinance(scheduleId, payload) {
+      const res = await api.post(`/admin/finance/schedules/${scheduleId}/reopen`, payload);
+      return res.data;
+    },
+
+    async fetchScheduleFinanceAudits(scheduleId) {
+      const res = await api.get(`/admin/finance/schedules/${scheduleId}/audits`);
+      return res.data.data.audits;
+    },
+
+    async updateScheduleBudget(scheduleId, payload) {
+      const res = await api.put(`/admin/finance/schedules/${scheduleId}/budget`, payload);
+      return res.data.data;
+    },
+
+    async applyScheduleStaffCost(scheduleId) {
+      const res = await api.post(`/admin/finance/schedules/${scheduleId}/staff-cost`);
+      return res.data;
+    },
+
+    async downloadScheduleFinanceCsv(scheduleId) {
+      const res = await api.get(`/admin/finance/schedules/${scheduleId}/export`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `finance-schedule-${scheduleId}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
     },
 
     // ─── Blog Articles ──────────────

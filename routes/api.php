@@ -810,8 +810,15 @@ Route::prefix('v1')->group(function () {
         Route::get('reports/vehicles', [AdminExtendedController::class, 'reportVehicles']);
 
         // Finance — สรุปกำไร/ค่าใช้จ่ายต่อทริปและต่อรอบเดินทาง
-        Route::prefix('finance')->group(function () {
+        //
+        // ตัวเลขกำไรรวมของบริษัทไม่ใช่ของที่ operator ทุกคนควรเห็น จึงกันอีกชั้น
+        // ด้วยบทบาท `finance` — แอดมินเห็นเสมอ, operator ต้องได้รับสิทธิ์นี้ก่อน
+        Route::prefix('finance')->middleware('role:admin|finance')->group(function () {
             Route::get('trips', [AdminFinanceController::class, 'tripProfitSummary']);
+            Route::get('dashboard', [AdminFinanceController::class, 'dashboard']);
+            // รอบที่เดินทางจบแล้วแต่ยังไม่ปิดงบ — งานค้างที่ต้องเคลียร์
+            Route::get('overdue', [AdminFinanceController::class, 'overdue']);
+            Route::get('overdue-count', [AdminFinanceController::class, 'overdueCount']);
             Route::get('trips/{tripId}/schedules', [AdminFinanceController::class, 'tripScheduleProfit']);
             Route::get('trips/{tripId}/templates', [AdminFinanceController::class, 'templates']);
             Route::post('trips/{tripId}/templates', [AdminFinanceController::class, 'storeTemplate']);
@@ -823,6 +830,14 @@ Route::prefix('v1')->group(function () {
             Route::post('schedules/{scheduleId}/expenses/copy-to', [AdminFinanceController::class, 'copyExpensesTo']);
             Route::put('schedules/{scheduleId}/expenses/{id}', [AdminFinanceController::class, 'updateExpense']);
             Route::delete('schedules/{scheduleId}/expenses/{id}', [AdminFinanceController::class, 'deleteExpense']);
+            // ปิดงบรอบ — ล็อกตัวเลข, ปูมการแก้ไข, งบประมาณ, ค่าตอบแทนทีมงาน, ออกไฟล์
+            Route::get('schedules/{scheduleId}/close-check', [AdminFinanceController::class, 'closeCheck']);
+            Route::post('schedules/{scheduleId}/close', [AdminFinanceController::class, 'close']);
+            Route::post('schedules/{scheduleId}/reopen', [AdminFinanceController::class, 'reopen']);
+            Route::get('schedules/{scheduleId}/audits', [AdminFinanceController::class, 'audits']);
+            Route::put('schedules/{scheduleId}/budget', [AdminFinanceController::class, 'updateBudget']);
+            Route::post('schedules/{scheduleId}/staff-cost', [AdminFinanceController::class, 'applyStaffCost']);
+            Route::get('schedules/{scheduleId}/export', [AdminFinanceController::class, 'exportSchedule']);
         });
 
         // QR Check-in

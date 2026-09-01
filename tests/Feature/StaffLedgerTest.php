@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\ScheduleExpense;
+use App\Models\Setting;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +34,10 @@ class StaffLedgerTest extends TestCase
 
         Role::findOrCreate('staff');
         Role::findOrCreate('admin');
+
+        // ชุดนี้ทดสอบสมุดบัญชีหน้างานของสตาฟ ส่วนข้อบังคับของโหมดเข้มงวด
+        // (บังคับหมวด/สลิป, ล็อกหลังปิดงบ) มีชุดของตัวเองที่ ScheduleFinanceStrictTest
+        Setting::put(SiteSettings::KEY, ['finance_strict_mode' => false]);
 
         $trip = Trip::create([
             'title' => 'ภูกระดึง',
@@ -162,7 +168,7 @@ class StaffLedgerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.summary.expense_total', 500);
 
-        $this->assertDatabaseMissing('schedule_expenses', ['id' => $mine]);
+        $this->assertSoftDeleted('schedule_expenses', ['id' => $mine]);
         $this->assertDatabaseHas('schedule_expenses', ['id' => $theirs->id, 'amount' => 500]);
     }
 

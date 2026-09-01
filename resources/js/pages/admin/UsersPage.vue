@@ -72,16 +72,18 @@
               </td>
               <td>{{ u.phone || '-' }}</td>
               <td>
-                <span class="role-badge" :class="`role-${u.roles?.[0] || 'customer'}`">
-                  {{ roleLabels[u.roles?.[0]] || 'ลูกค้า' }}
+                <span class="role-badge" :class="`role-${primaryRole(u)}`">
+                  {{ roleLabels[primaryRole(u)] || 'ลูกค้า' }}
                 </span>
+                <!-- สิทธิ์เห็นตัวเลขกำไร เป็นบทบาทเสริม ไม่ใช่บทบาทหลัก -->
+                <span v-if="u.finance_access" class="role-badge role-finance" title="เห็นหน้าบัญชีทริป">การเงิน</span>
               </td>
               <td>{{ u.bookings_count || 0 }}</td>
               <td class="date">{{ formatDate(u.created_at) }}</td>
               <td>
                 <div class="action-btns">
                   <button
-                    v-if="u.has_driver_pin && u.roles?.[0] !== 'customer'"
+                    v-if="u.has_driver_pin && primaryRole(u) !== 'customer'"
                     class="btn-icon btn-copy-link"
                     :class="{ copied: copiedUserId === u.id }"
                     @click="copyDriverLink(u)"
@@ -153,6 +155,18 @@
                 <option value="admin">ผู้ดูแล</option>
               </select>
             </div>
+            <div class="form-group" v-if="form.role === 'staff'">
+              <label>ค่าตอบแทนต่อวัน (บาท)</label>
+              <input v-model.number="form.staff_day_rate" type="number" min="0" step="50" placeholder="เช่น 1200" />
+              <small class="form-hint">ใช้ลงรายการค่าจ้างให้อัตโนมัติด้วยปุ่ม "ลงค่าทีมงาน" ในหน้าบัญชีทริป</small>
+            </div>
+            <div class="form-group" v-if="form.role !== 'customer' && form.role !== 'admin'">
+              <label class="check-label">
+                <input type="checkbox" v-model="form.finance_access" />
+                <span>ให้เห็นหน้าบัญชีทริป (กำไร/ต้นทุน)</span>
+              </label>
+              <small class="form-hint">ผู้ดูแลเห็นอยู่แล้วเสมอ — สวิตช์นี้ให้สิทธิ์เพิ่มโดยไม่เปลี่ยนบทบาทหลัก</small>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
@@ -198,9 +212,16 @@ const deleting = ref(null);
 const submitting = ref(false);
 const formError = ref('');
 const copiedUserId = ref(null);
-const form = reactive({ name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer' });
+const form = reactive({ name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer', finance_access: false, staff_day_rate: null });
 
-const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า' };
+/**
+ * บทบาทหลักของผู้ใช้ — roles[] มีบทบาทเสริม (finance) ปนอยู่ด้วย
+ * การหยิบ roles[0] ตรง ๆ จึงอาจได้ "finance" มาแสดงเป็นบทบาทหลัก
+ */
+const PRIMARY_ROLES = ['admin', 'operator', 'staff', 'customer'];
+const primaryRole = (u) => PRIMARY_ROLES.find(r => (u.roles || []).includes(r)) || 'customer';
+
+const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า', finance: 'การเงิน' };
 const signupProviderLabels = { email: 'อีเมล', google: 'Gmail', facebook: 'Facebook', line: 'LINE' };
 
 const normalizeSignupProvider = (provider) => {
@@ -224,9 +245,16 @@ const openForm = (u = null) => {
   editing.value = u;
   formError.value = '';
   if (u) {
-    Object.assign(form, { name: u.name, email: u.email, phone: u.phone || '', password: '', driver_pin: '', role: u.roles?.[0] || 'customer' });
+    Object.assign(form, {
+      name: u.name, email: u.email, phone: u.phone || '', password: '', driver_pin: '',
+      role: primaryRole(u), finance_access: !!u.finance_access,
+      staff_day_rate: u.staff_day_rate ?? null,
+    });
   } else {
-    Object.assign(form, { name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer' });
+    Object.assign(form, {
+      name: '', email: '', phone: '', password: '', driver_pin: '',
+      role: 'customer', finance_access: false, staff_day_rate: null,
+    });
   }
   showForm.value = true;
 };
@@ -238,6 +266,8 @@ const submitForm = async () => {
     const data = { ...form };
     if (editing.value && !data.password) delete data.password;
     if (!data.driver_pin) delete data.driver_pin;
+    // เรตต่อวันมีความหมายเฉพาะกับสตาฟ และช่องว่าง = ยังไม่ได้ตั้ง ไม่ใช่ศูนย์
+    if (data.role !== 'staff' || data.staff_day_rate === '' || data.staff_day_rate == null) data.staff_day_rate = null;
     if (editing.value) {
       await admin.updateUser(editing.value.id, data);
     } else {
@@ -296,6 +326,10 @@ onMounted(() => fetchData());
 
 <style scoped>
 @import url('./admin-shared.css');
+
+.role-badge.role-finance { background: #ecfdf5; color: #047857; margin-left: 4px; }
+.check-label { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+.check-label input { width: 16px; height: 16px; cursor: pointer; }
 
 .user-cell {
   display: flex;

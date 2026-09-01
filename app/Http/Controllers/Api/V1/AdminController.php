@@ -43,6 +43,7 @@ use App\Services\ChatRoomEventService;
 use App\Services\DriverLoginCodeService;
 use App\Services\MailService;
 use App\Services\RouteTrackService;
+use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleSeatNotifier;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
@@ -432,6 +433,15 @@ class AdminController extends Controller
 
     public function storeSchedule(StoreScheduleRequest $request): JsonResponse
     {
+        // ทริปที่ยังมีรอบเดินทางจบแล้วแต่ไม่ปิดงบ เปิดรอบใหม่ไม่ได้ — นี่คือจุดที่
+        // ทำให้ "ทุกรอบต้องทำบัญชี" ไม่ใช่แค่คำขอ ปิดสวิตช์ได้ที่หน้าตั้งค่าระบบ
+        try {
+            app(ScheduleFinanceService::class)
+                ->assertNoOverdueRounds((int) $request->validated()['trip_id']);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
         $schedule = TripSchedule::create($request->validated());
 
         // คัดลอกจุดรับจากรอบล่าสุดของทริปเดียวกันให้อัตโนมัติ (ราคา/เวลานัดติดมาด้วย)
@@ -1115,6 +1125,20 @@ class AdminController extends Controller
         }
 
         $this->ensureAssignableRole($roleName);
+    }
+
+    /** เปิด/ปิดสิทธิ์เห็นบัญชีของบริษัท โดยไม่แตะบทบาทหลักของผู้ใช้ */
+    private function syncFinanceAccess(User $user, mixed $enabled): void
+    {
+        if ($enabled === null) {
+            return;
+        }
+
+        if ($enabled) {
+            $user->assignRole($this->ensureAssignableRole('finance'));
+        } else {
+            $user->removeRole('finance');
+        }
     }
 
     private function ensureAssignableRole(string $roleName): Role
@@ -3071,6 +3095,8 @@ class AdminController extends Controller
                 'avatar_url' => $user->avatar_url,
                 'social_provider' => $user->social_provider,
                 'roles' => $user->roles->pluck('name'),
+                'finance_access' => $user->roles->contains('name', 'finance'),
+                'staff_day_rate' => $user->staff_day_rate !== null ? (float) $user->staff_day_rate : null,
                 'has_driver_pin' => ! empty($user->driver_pin_hash),
                 'bookings_count' => $user->bookings_count,
                 'assigned_schedules_count' => $user->assigned_schedules_count,
@@ -3181,6 +3207,8 @@ class AdminController extends Controller
             'password' => ['required', 'string', 'min:6'],
             'driver_pin' => ['nullable', 'string', 'regex:/^\d{4,8}$/'],
             'role' => ['required', 'in:admin,operator,staff,customer'],
+            'finance_access' => ['sometimes', 'boolean'],
+            'staff_day_rate' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
         ]);
 
         // PIN ใช้เลขชุดเดียวกับคนขับประจำรถ — ถ้าซ้ำ pinLogin จะพาไปเข้าบัญชีผิดคน
@@ -3200,16 +3228,20 @@ class AdminController extends Controller
             'driver_pin_hash' => ! empty($validated['driver_pin'])
                 ? Hash::make($validated['driver_pin'])
                 : null,
+            'staff_day_rate' => $validated['staff_day_rate'] ?? null,
         ]);
 
         $user->assignRole($this->ensureAssignableRole($validated['role']));
+        $this->syncFinanceAccess($user, $validated['finance_access'] ?? null);
 
         return $this->success([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
-            'roles' => $user->roles->pluck('name'),
+            'roles' => $user->fresh()->roles->pluck('name'),
+            'finance_access' => $user->fresh()->hasRole('finance'),
+            'staff_day_rate' => $user->staff_day_rate !== null ? (float) $user->staff_day_rate : null,
             'has_driver_pin' => ! empty($user->driver_pin_hash),
         ], 'สร้างผู้ใช้สำเร็จ', 201);
     }
@@ -3225,9 +3257,12 @@ class AdminController extends Controller
             'password' => ['nullable', 'string', 'min:6'],
             'driver_pin' => ['nullable', 'string', 'regex:/^\d{4,8}$/'],
             'role' => ['sometimes', 'in:admin,operator,staff,customer'],
+            // สิทธิ์เห็นตัวเลขกำไร/ต้นทุน — เป็นบทบาทเสริมบนบทบาทหลัก ไม่ใช่แทนที่
+            'finance_access' => ['sometimes', 'boolean'],
+            'staff_day_rate' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
         ]);
 
-        $userData = collect($validated)->except(['password', 'driver_pin', 'role'])->toArray();
+        $userData = collect($validated)->except(['password', 'driver_pin', 'role', 'finance_access'])->toArray();
         if (! empty($validated['password'])) {
             $userData['password'] = Hash::make($validated['password']);
         }
@@ -3245,7 +3280,13 @@ class AdminController extends Controller
         $user->update($userData);
 
         if (isset($validated['role'])) {
+            // syncRoles ล้างบทบาทเดิมทั้งหมด — สิทธิ์การเงินเป็นสวิตช์แยก
+            // จึงต้องใส่กลับหลังจากนี้เสมอ ไม่งั้นแก้ชื่อผู้ใช้ทีสิทธิ์หลุดที
+            $hadFinance = $user->hasRole('finance');
             $user->syncRoles([$this->ensureAssignableRole($validated['role'])]);
+            $this->syncFinanceAccess($user, $validated['finance_access'] ?? $hadFinance);
+        } elseif (array_key_exists('finance_access', $validated)) {
+            $this->syncFinanceAccess($user, $validated['finance_access']);
         }
 
         return $this->success([
@@ -3254,6 +3295,8 @@ class AdminController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'roles' => $user->fresh()->roles->pluck('name'),
+            'finance_access' => $user->fresh()->hasRole('finance'),
+            'staff_day_rate' => $user->staff_day_rate !== null ? (float) $user->staff_day_rate : null,
             'has_driver_pin' => ! empty($user->driver_pin_hash),
         ], 'อัปเดตผู้ใช้สำเร็จ');
     }

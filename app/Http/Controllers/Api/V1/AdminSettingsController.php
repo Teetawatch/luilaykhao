@@ -52,6 +52,16 @@ class AdminSettingsController extends Controller
             // เลขที่ใบอนุญาตเป็นเอกสารราชการ รูปแบบคือ เลขกลุ่ม/เลขลำดับ
             'licence_no' => ['required', 'string', 'regex:/^[0-9]{1,3}\/[0-9]{3,8}$/'],
             'licence_image' => ['nullable', 'string', 'max:2048'],
+            // บัญชีทริปโหมดเข้มงวด — nullable ทุกช่องเพราะ Setting::put เขียนทับทั้งก้อน
+            // ฟอร์มรุ่นก่อนที่ยังไม่มีช่องเหล่านี้จึงต้องบันทึกผ่านได้โดยไม่ปิดโหมดทิ้งเงียบ ๆ
+            'finance_strict_mode' => ['nullable', 'boolean'],
+            'finance_slip_required_above' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'finance_require_category' => ['nullable', 'boolean'],
+            'finance_close_requires_expense' => ['nullable', 'boolean'],
+            'finance_close_requires_settled' => ['nullable', 'boolean'],
+            // สั้นกว่า 1 วันคือบังคับปิดงบตั้งแต่วันที่กลับถึงบ้าน ยาวเกิน 90 วันก็ไม่เหลือความหมาย
+            'finance_close_grace_days' => ['nullable', 'integer', 'min:1', 'max:90'],
+            'finance_block_new_rounds' => ['nullable', 'boolean'],
         ]);
 
         if ($data['quiet_start_hour'] === $data['quiet_end_hour']) {
@@ -59,6 +69,14 @@ class AdminSettingsController extends Controller
         }
 
         $data['sos_sms_enabled'] = (bool) ($data['sos_sms_enabled'] ?? SiteSettings::bool('sos_sms_enabled'));
+
+        $data['finance_close_grace_days'] = (int) ($data['finance_close_grace_days'] ?? SiteSettings::financeCloseGraceDays());
+
+        foreach (['finance_strict_mode', 'finance_require_category', 'finance_close_requires_expense', 'finance_close_requires_settled', 'finance_block_new_rounds'] as $flag) {
+            $data[$flag] = (bool) ($data[$flag] ?? SiteSettings::bool($flag));
+        }
+
+        $data['finance_slip_required_above'] = (float) ($data['finance_slip_required_above'] ?? SiteSettings::get('finance_slip_required_above'));
 
         Setting::put(SiteSettings::KEY, $data);
 

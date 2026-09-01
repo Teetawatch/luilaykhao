@@ -5,9 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ScheduleExpense extends Model
 {
+    // ลบรายการเงินแล้วต้องยังตามรอยได้ — ซ่อนจากยอดรวม แต่ปูมยังชี้กลับมาถึง
+    use SoftDeletes;
+
     public const KIND_EXPENSE = 'expense';
 
     public const KIND_INCOME = 'income';
@@ -39,7 +44,7 @@ class ScheduleExpense extends Model
 
     protected $fillable = [
         'schedule_id', 'expense_template_id', 'kind', 'category', 'name',
-        'amount', 'note', 'slip_path', 'spent_at', 'created_by',
+        'amount', 'note', 'slip_path', 'spent_at', 'created_by', 'deleted_by',
     ];
 
     protected function casts(): array
@@ -90,5 +95,24 @@ class ScheduleExpense extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function audits(): HasMany
+    {
+        return $this->hasMany(ScheduleExpenseAudit::class, 'expense_id');
+    }
+
+    /** ฟิลด์ที่มีความหมายทางบัญชี — ใช้เป็น snapshot ก่อน/หลังในปูม */
+    public function auditSnapshot(): array
+    {
+        return [
+            'kind' => $this->kind,
+            'category' => $this->category,
+            'name' => $this->name,
+            'amount' => (float) $this->amount,
+            'note' => $this->note,
+            'spent_at' => $this->spent_at?->toDateString(),
+            'has_slip' => (bool) $this->slip_path,
+        ];
     }
 }

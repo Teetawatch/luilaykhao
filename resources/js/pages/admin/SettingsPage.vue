@@ -149,6 +149,85 @@
         </span>
       </section>
 
+      <!-- ── บัญชีทริป ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">savings</span>
+          <div>
+            <h2>บัญชีทริป (โหมดเข้มงวด)</h2>
+            <p>กติกาที่ทำให้ตัวเลขกำไรในหน้า "บัญชีทริป" เชื่อถือได้</p>
+          </div>
+        </div>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.finance_strict_mode" />
+          <span class="switch"></span>
+          <span>เปิดโหมดเข้มงวด</span>
+        </label>
+        <span class="help">
+          ปิดสวิตช์นี้แล้วข้อบังคับทั้งหมดด้านล่างหยุดทำงาน เหลือเป็นสมุดจดแบบเดิม
+          — การล็อกรอบที่ปิดงบแล้วยังทำงานเสมอไม่ว่าสวิตช์นี้จะเปิดหรือปิด
+        </span>
+
+        <div class="field" :class="{ disabled: !form.finance_strict_mode }">
+          <label>รายจ่ายเกินกี่บาทต้องแนบสลิป</label>
+          <div class="input-row">
+            <input v-model.number="form.finance_slip_required_above" type="number" min="0" step="100" :disabled="!form.finance_strict_mode" />
+            <span class="unit">บาท</span>
+            <button v-if="isChanged('finance_slip_required_above')" class="reset-link" @click="reset('finance_slip_required_above')">
+              คืนค่าเดิม ({{ defaults.finance_slip_required_above }})
+            </button>
+          </div>
+          <span class="help">
+            เกินยอดนี้แล้วไม่มีสลิป = บันทึกไม่ได้ และรายการเก่าที่ไม่มีสลิปจะกันไม่ให้ปิดงบรอบนั้น
+            (0 = ไม่บังคับ) — บังคับเฉพาะฝั่งรายจ่าย เงินที่รับเข้ามาไม่ต้องมีใบเสร็จ
+          </span>
+        </div>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.finance_require_category" :disabled="!form.finance_strict_mode" />
+          <span class="switch"></span>
+          <span>ทุกรายการต้องระบุหมวด</span>
+        </label>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.finance_close_requires_expense" :disabled="!form.finance_strict_mode" />
+          <span class="switch"></span>
+          <span>ปิดงบไม่ได้ถ้ายังไม่มีรายจ่ายสักรายการ</span>
+        </label>
+        <span class="help">รอบที่ออกทริปไปแล้วแต่ไม่มีใครคีย์ค่าใช้จ่าย จะโชว์กำไร 100% ซึ่งไม่จริง</span>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.finance_close_requires_settled" :disabled="!form.finance_strict_mode" />
+          <span class="switch"></span>
+          <span>ปิดงบไม่ได้ถ้ายังมีลูกค้าค้างชำระ</span>
+        </label>
+
+        <div class="field">
+          <label>ทริปจบแล้วกี่วันต้องปิดงบให้เสร็จ</label>
+          <div class="input-row">
+            <input v-model.number="form.finance_close_grace_days" type="number" min="1" max="90" />
+            <span class="unit">วัน</span>
+            <button v-if="isChanged('finance_close_grace_days')" class="reset-link" @click="reset('finance_close_grace_days')">
+              คืนค่าเดิม ({{ defaults.finance_close_grace_days }})
+            </button>
+          </div>
+          <span class="help">
+            เลยกำหนดแล้วรอบจะขึ้นเป็น "ค้างปิดงบ" บนเมนู ในคิวงาน และมีอีเมลเตือนทีมงานทุกเช้า 09:15
+          </span>
+        </div>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.finance_block_new_rounds" :disabled="!form.finance_strict_mode" />
+          <span class="switch"></span>
+          <span>ทริปที่ค้างปิดงบ เปิดรอบใหม่ไม่ได้</span>
+        </label>
+        <span class="help">
+          ตัวบังคับที่แรงที่สุด — กันการปล่อยรอบเก่าค้างไว้แล้วเปิดรอบใหม่ไปเรื่อย ๆ
+          ปิดสวิตช์นี้แล้วเหลือแค่เตือน ไม่ได้ห้าม
+        </span>
+      </section>
+
       <!-- ── ข้อมูลติดต่อ ── -->
       <section class="setting-card">
         <div class="card-head">
@@ -247,6 +326,13 @@ const form = reactive({
   quiet_start_hour: 21,
   quiet_end_hour: 8,
   sos_sms_enabled: true,
+  finance_strict_mode: true,
+  finance_slip_required_above: 1000,
+  finance_require_category: true,
+  finance_close_requires_expense: true,
+  finance_close_requires_settled: true,
+  finance_close_grace_days: 7,
+  finance_block_new_rounds: true,
   support_phone: '',
   support_line: '',
   support_email: '',

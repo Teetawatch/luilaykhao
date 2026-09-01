@@ -6,9 +6,11 @@ use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\ExpenseTemplate;
 use App\Models\ScheduleExpense;
+use App\Models\Setting;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -25,6 +27,10 @@ class AdminFinanceTest extends TestCase
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $this->admin = User::factory()->create();
         $this->admin->assignRole('admin');
+
+        // ชุดนี้ทดสอบ "คณิตศาสตร์" ของบัญชีทริป ส่วนข้อบังคับของโหมดเข้มงวด
+        // (บังคับหมวด/สลิป, ปิดงบ, ปูม) มีชุดของตัวเองที่ ScheduleFinanceStrictTest
+        Setting::put(SiteSettings::KEY, ['finance_strict_mode' => false]);
     }
 
     private function makeTrip(): Trip
@@ -205,7 +211,8 @@ class AdminFinanceTest extends TestCase
             ->deleteJson("/api/v1/admin/finance/schedules/{$schedule->id}/expenses/{$expense->id}")
             ->assertOk()
             ->assertJsonPath('data.summary.expense_total', 0);
-        $this->assertDatabaseMissing('schedule_expenses', ['id' => $expense->id]);
+        // ลบแล้วต้องยังตามรอยได้ — soft delete ไม่ใช่ลบทิ้งจริง
+        $this->assertSoftDeleted('schedule_expenses', ['id' => $expense->id]);
     }
 
     public function test_copy_expenses_to_other_rounds(): void

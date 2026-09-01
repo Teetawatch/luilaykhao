@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
         // Roles
         Role::firstOrCreate(['name' => 'admin']);
         Role::firstOrCreate(['name' => 'operator']);
+        // เห็นตัวเลขกำไร/ต้นทุนของบริษัท — ให้เฉพาะคนที่ดูแลบัญชีจริง
+        Role::firstOrCreate(['name' => 'finance']);
         Role::firstOrCreate(['name' => 'staff']);
         Role::firstOrCreate(['name' => 'customer']);
 

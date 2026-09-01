@@ -12,6 +12,7 @@ use App\Models\SosAlert;
 use App\Models\SupportConversation;
 use App\Models\TripPost;
 use App\Services\AtRiskScheduleService;
+use App\Services\ScheduleFinanceService;
 use App\Services\SlipOcrService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +42,7 @@ class AdminActionQueueController extends Controller
             $this->sosGroup(),
             $this->incidentGroup(),
             $this->atRiskScheduleGroup(),
+            $this->financeCloseGroup(),
             $this->slipGroup(),
             $this->customPickupGroup(),
             $this->supportGroup(),
@@ -121,6 +123,32 @@ class AdminActionQueueController extends Controller
                 'title' => $row['trip_title'],
                 'detail' => "{$row['departure_label']} · {$row['booked_seats']}/{$row['min_seats']} ท่าน"
                     ." · เหลือ {$row['days_left']} วัน",
+                'at' => null,
+            ])->values(),
+        );
+    }
+
+    /**
+     * รอบที่เดินทางจบแล้วแต่ยังไม่ปิดงบ — ค้างไว้แปลว่ากำไรของเดือนนั้นยังไม่จริง
+     * และ (ถ้าเปิดสวิตช์ไว้) ทริปนั้นเปิดรอบใหม่ไม่ได้ด้วย
+     *
+     * ไม่แสดงยอดเงินตรงนี้ เพราะคิวงานเปิดได้ถึงระดับ operator ส่วนตัวเลขกำไร
+     * กันไว้ให้เฉพาะคนที่มีสิทธิ์การเงิน
+     */
+    private function financeCloseGroup(): array
+    {
+        $service = app(ScheduleFinanceService::class);
+        $rounds = $service->overdueRounds(5);
+
+        return $this->group(
+            'finance_close', 'รอบที่ยังไม่ปิดงบ', 'lock_clock', 'high',
+            $service->overdueCount(),
+            '/admin/finance',
+            collect($rounds)->map(fn (array $row) => [
+                'title' => $row['trip_title'],
+                'detail' => $row['departure_label']
+                    .' · จบมาแล้ว '.$row['days_since_end'].' วัน'
+                    .($row['expense_items_count'] === 0 ? ' · ยังไม่มีรายการค่าใช้จ่ายเลย' : ''),
                 'at' => null,
             ])->values(),
         );

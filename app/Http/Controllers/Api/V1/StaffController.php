@@ -9,6 +9,7 @@ use App\Models\StaffReview;
 use App\Models\TripSchedule;
 use App\Services\OutstandingPaymentService;
 use App\Services\RentalHandoutService;
+use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleLedgerService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,7 @@ class StaffController extends Controller
         private OutstandingPaymentService $outstandingPaymentService,
         private RentalHandoutService $rentalHandoutService,
         private ScheduleLedgerService $ledgerService,
+        private ScheduleFinanceService $financeService,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -280,6 +282,14 @@ class StaffController extends Controller
             'amount' => ['required', 'numeric', 'min:0', 'max:9999999'],
         ]);
 
+        // กติกาชุดเดียวกับฝั่งเว็บ — ปิดงบแล้วจดเพิ่มไม่ได้ และรายจ่ายก้อนใหญ่ต้องมีสลิป
+        try {
+            $this->financeService->assertEditable($schedule, $request->user());
+            $this->financeService->assertEvidence($validated, $request->hasFile('slip'));
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
         $entry = $this->ledgerService->record(
             $schedule,
             $request->user(),
@@ -321,7 +331,21 @@ class StaffController extends Controller
             'remove_slip' => ['sometimes', 'boolean'],
         ]);
 
-        $updated = $this->ledgerService->update($entry, $validated, $request->file('slip'));
+        $hasSlip = $request->hasFile('slip')
+            || ($entry->slip_path && ! ($validated['remove_slip'] ?? false));
+
+        try {
+            $this->financeService->assertEditable($schedule, $request->user());
+            $this->financeService->assertEvidence([
+                'kind' => $validated['kind'] ?? $entry->kind,
+                'category' => array_key_exists('category', $validated) ? $validated['category'] : $entry->category,
+                'amount' => $validated['amount'] ?? $entry->amount,
+            ], (bool) $hasSlip);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        $updated = $this->ledgerService->update($entry, $validated, $request->file('slip'), $request->user());
 
         return $this->success([
             'entry' => $this->ledgerService->present($updated, $request->user()->id),
@@ -347,7 +371,13 @@ class StaffController extends Controller
             return $this->error('ลบได้เฉพาะรายการที่คุณบันทึกเอง', 403);
         }
 
-        $this->ledgerService->delete($entry);
+        try {
+            $this->financeService->assertEditable($schedule, $request->user());
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        $this->ledgerService->delete($entry, $request->user());
 
         return $this->success(
             $this->ledgerService->forSchedule($schedule, $request->user()->id),
