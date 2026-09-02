@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\PostTripChatTimelineJob;
 use App\Models\Booking;
 use App\Models\ChatMessage;
+use App\Models\ScheduleItineraryItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -62,6 +63,23 @@ class TripChatTimelineTest extends TestCase
     private function timeline(): TripChatTimelineService
     {
         return app(TripChatTimelineService::class);
+    }
+
+    private function addItineraryItem(
+        TripSchedule $schedule,
+        string $date,
+        ?string $time,
+        string $title,
+        ?string $detail = null,
+    ): ScheduleItineraryItem {
+        return ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id,
+            'item_date' => $date,
+            'time' => $time,
+            'title' => $title,
+            'detail' => $detail,
+            'sort_order' => $schedule->itineraryItems()->count(),
+        ]);
     }
 
     private function bangkok(string $datetime): CarbonImmutable
@@ -210,6 +228,100 @@ class TripChatTimelineTest extends TestCase
         $schedule->refresh();
 
         return $vehicle;
+    }
+
+    public function test_itinerary_message_lists_the_round_plan_two_days_ahead(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $this->addItineraryItem($schedule, '2026-08-15', '05:30', 'ออกเดินทางจากกรุงเทพฯ');
+        $this->addItineraryItem($schedule, '2026-08-15', '09:00', 'ถึงจุดเริ่มเดิน', 'แวะเข้าห้องน้ำครั้งสุดท้าย');
+        $this->addItineraryItem($schedule, '2026-08-16', '06:00', 'ชมพระอาทิตย์ขึ้น');
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
+
+        $this->assertContains('itinerary_2d', $posted);
+
+        $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
+        $this->assertStringContainsString('ยอดดอยหลวง', $body);
+        $this->assertStringContainsString('05:30 น. ออกเดินทางจากกรุงเทพฯ', $body);
+        $this->assertStringContainsString('แวะเข้าห้องน้ำครั้งสุดท้าย', $body);
+        $this->assertStringContainsString('ชมพระอาทิตย์ขึ้น', $body);
+        // จัดกลุ่มตามวันจริงของรอบ
+        $this->assertStringContainsString('15 ส.ค. 2569', $body);
+        $this->assertStringContainsString('16 ส.ค. 2569', $body);
+    }
+
+    public function test_itinerary_message_caps_the_list_and_points_back_to_the_room(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        for ($i = 1; $i <= TripFactsService::ITINERARY_CHAT_LIMIT + 3; $i++) {
+            $this->addItineraryItem($schedule, '2026-08-15', null, "จุดที่ {$i}");
+        }
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
+
+        $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
+        $this->assertStringContainsString('จุดที่ '.TripFactsService::ITINERARY_CHAT_LIMIT, $body);
+        $this->assertStringNotContainsString('จุดที่ '.(TripFactsService::ITINERARY_CHAT_LIMIT + 1), $body);
+        $this->assertStringContainsString('ยังมีอีก 3 รายการ', $body);
+        $this->assertStringContainsString('กำหนดการ', $body);
+    }
+
+    public function test_itinerary_message_keeps_a_single_leftover_item_instead_of_cutting_it(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $last = TripFactsService::ITINERARY_CHAT_LIMIT + 1;
+        for ($i = 1; $i <= $last; $i++) {
+            $this->addItineraryItem($schedule, '2026-08-15', null, "จุดที่ {$i}");
+        }
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
+
+        $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
+        $this->assertStringContainsString("จุดที่ {$last}", $body);
+        $this->assertStringNotContainsString('ยังมีอีก', $body);
+    }
+
+    public function test_itinerary_message_falls_back_to_the_trip_plan(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule([], [
+            'itinerary' => [
+                [
+                    'sector' => 'วันแรก',
+                    'items' => [
+                        ['day' => 1, 'title' => '08:00 ออกจากจุดนัดพบ', 'description' => 'พร้อมกันหน้าปั๊ม'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
+
+        $this->assertContains('itinerary_2d', $posted);
+
+        $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
+        $this->assertStringContainsString('วันแรก', $body);
+        $this->assertStringContainsString('08:00 น. ออกจากจุดนัดพบ', $body);
+    }
+
+    public function test_itinerary_message_waits_until_the_plan_is_written(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+
+        // ยังไม่มีกำหนดการ — ไม่ต้องโพสต์ห้องเปล่า ๆ
+        $early = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
+        $this->assertNotContains('itinerary_2d', $early);
+
+        $this->addItineraryItem($schedule, '2026-08-15', '05:30', 'ออกเดินทาง');
+
+        // แอดมินเขียนกำหนดการวันรุ่งขึ้น — ยังอยู่ในช่วงผ่อนผัน (ยาวถึงเวลารถออก)
+        $later = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-14 12:00'));
+        $this->assertContains('itinerary_2d', $later);
     }
 
     public function test_crew_summary_posts_two_days_ahead_with_staff_and_driver_phones(): void

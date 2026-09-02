@@ -6,6 +6,7 @@ use App\Jobs\NotifyTripCrewAssignedJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Models\Booking;
 use App\Models\ChatMessage;
+use App\Models\ScheduleItineraryItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
 use App\Models\Trip;
@@ -59,6 +60,20 @@ class TripFactsTest extends TestCase
             'map_url' => 'https://maps.app.goo.gl/abc',
             'sort_order' => 0,
         ], $overrides));
+    }
+
+    private function itineraryItem(
+        TripSchedule $schedule,
+        ?string $time,
+        string $title,
+    ): ScheduleItineraryItem {
+        return ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id,
+            'item_date' => $schedule->departure_date->toDateString(),
+            'time' => $time,
+            'title' => $title,
+            'sort_order' => $schedule->itineraryItems()->count(),
+        ]);
     }
 
     private function bookOnto(
@@ -209,6 +224,84 @@ class TripFactsTest extends TestCase
         $this->assertStringContainsString('19:30', $body);
         $this->assertStringContainsString('ฮก 1234', $body);
         $this->assertStringContainsString('0812345678', $body);
+    }
+
+    public function test_trip_info_carries_the_itinerary_for_the_quick_ask_sheet(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $customer = User::factory()->create();
+        $this->bookOnto($customer, $schedule);
+
+        // ยังไม่มีกำหนดการ — ต้องเป็น null เพื่อให้แอปซ่อนปุ่มถามไปเลย
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/trip-info")
+            ->assertOk()
+            ->assertJsonPath('data.itinerary', null);
+
+        $this->itineraryItem($schedule, '05:30', 'ออกเดินทางจากกรุงเทพฯ');
+        $this->itineraryItem($schedule, '09:00', 'ถึงจุดเริ่มเดิน');
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/trip-info")
+            ->assertOk()
+            ->assertJsonPath('data.itinerary.source', 'schedule')
+            ->assertJsonPath('data.itinerary.total', 2)
+            ->assertJsonPath('data.itinerary.items.0.title', 'ออกเดินทางจากกรุงเทพฯ')
+            ->assertJsonPath('data.itinerary.items.0.time', '05:30');
+    }
+
+    public function test_trip_info_itinerary_is_capped_but_reports_the_real_total(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $customer = User::factory()->create();
+        $this->bookOnto($customer, $schedule);
+
+        $total = TripFactsService::ITINERARY_LIMIT + 4;
+        for ($i = 1; $i <= $total; $i++) {
+            $this->itineraryItem($schedule, null, "จุดที่ {$i}");
+        }
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/trip-info")
+            ->assertOk()
+            ->assertJsonPath('data.itinerary.total', $total)
+            ->assertJsonCount(TripFactsService::ITINERARY_LIMIT, 'data.itinerary.items');
+    }
+
+    public function test_only_staff_can_post_the_itinerary_into_the_room(): void
+    {
+        Bus::fake();
+        Role::findOrCreate('staff');
+        $schedule = $this->makeSchedule();
+
+        $customer = User::factory()->create();
+        $this->bookOnto($customer, $schedule);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+        $schedule->staff()->attach($staff->id);
+
+        // รอบที่ยังไม่มีกำหนดการ — บอกไปตรง ๆ ดีกว่าโพสต์ข้อความเปล่าเข้าห้อง
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/trip-itinerary")
+            ->assertStatus(422);
+
+        $this->itineraryItem($schedule, '05:30', 'ออกเดินทางจากกรุงเทพฯ');
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/trip-itinerary")
+            ->assertStatus(403);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/trip-itinerary")
+            ->assertCreated()
+            ->assertJsonPath('data.sender_role', 'system');
+
+        $body = ChatMessage::where('sender_role', 'system')->latest('id')->value('body');
+        $this->assertStringContainsString('กำหนดการเดินทาง', $body);
+        $this->assertStringContainsString('05:30 น. ออกเดินทางจากกรุงเทพฯ', $body);
     }
 
     public function test_customers_are_notified_when_a_vehicle_is_assigned(): void

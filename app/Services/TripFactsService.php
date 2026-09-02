@@ -7,6 +7,9 @@ use App\Models\BookingMember;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\ThaiDate;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * "ข้อมูลการเดินทางของฉัน" — คำตอบของคำถามที่ลูกค้าถามซ้ำที่สุด
@@ -28,6 +31,19 @@ class TripFactsService
     public const PENDING_STAFF = 'ทีมงานจะแจ้งสตาฟประจำรอบให้ก่อนเดินทาง';
 
     public const PENDING_PICKUP = 'ทีมงานจะยืนยันจุดรับและเวลาให้อีกครั้งก่อนเดินทาง';
+
+    /** ยกกำหนดการมาให้ชีตคำถามด่วนกี่รายการ (ที่เหลือกดดูต่อในหน้ากำหนดการเต็ม) */
+    public const ITINERARY_LIMIT = 12;
+
+    /** ยกกำหนดการลงห้องแชทกี่รายการ — ยาวกว่านี้บับเบิลเดียวอ่านไม่ไหว */
+    public const ITINERARY_CHAT_LIMIT = 8;
+
+    /** ขึ้นต้นข้อความกำหนดการทุกฉบับ — ใช้หาข้อความกำหนดการล่าสุดในห้อง */
+    public const ITINERARY_MARK = '🗺️';
+
+    public function __construct(
+        private ScheduleItineraryService $itineraryService,
+    ) {}
 
     /**
      * ข้อมูลการเดินทางของผู้ใช้คนนี้ในรอบนี้
@@ -52,7 +68,123 @@ class TripFactsService
             'vehicle' => $this->vehicle($schedule),
             'driver' => $this->driver($schedule),
             'staff' => $this->staff($schedule),
+            'itinerary' => $this->itinerary($schedule),
         ];
+    }
+
+    /**
+     * กำหนดการของรอบแบบย่อสำหรับชีตคำถามด่วน — null เมื่อรอบนี้ยังไม่มีกำหนดการ
+     * (ทั้งของรอบเองและของทริป) ฝั่งแอปใช้ค่านี้ตัดสินว่าจะโชว์ปุ่มถามไหม
+     *
+     * รูปร่างของ items เหมือนกับ GET schedules/{id}/itinerary ทุกประการ แอปจะได้
+     * วาดด้วยโค้ดชุดเดียวกับหน้ากำหนดการเต็ม
+     *
+     * @return array<string, mixed>|null
+     */
+    public function itinerary(TripSchedule $schedule): ?array
+    {
+        $payload = $this->itineraryService->payload($schedule);
+        $items = $payload['items'];
+
+        if ($items === []) {
+            return null;
+        }
+
+        return [
+            'source' => $payload['source'],
+            'total' => count($items),
+            'items' => array_slice($items, 0, self::ITINERARY_LIMIT),
+        ];
+    }
+
+    /**
+     * กำหนดการในรูปข้อความสำหรับโพสต์ลงห้องแชท — ใช้ทั้งข้อความอัตโนมัติ D-2
+     * (TripChatTimelineService), ปุ่ม "ส่งกำหนดการ" ของสตาฟ และข้อความแจ้งเมื่อ
+     * แอดมินแก้กำหนดการทีหลัง (AnnounceItineraryChangeJob)
+     *
+     * $updated เปลี่ยน "เฉพาะบรรทัดหัว" เท่านั้น ที่เหลือของข้อความต้องเหมือนกัน
+     * เป๊ะ ๆ เพราะ AnnounceItineraryChangeJob ใช้ส่วนที่เหลือเทียบว่ากำหนดการ
+     * เปลี่ยนจริงไหม (แอดมินแก้แล้วแก้กลับ = ไม่ต้องกวนห้อง)
+     *
+     * คืน null เมื่อยังไม่มีกำหนดการ เพื่อให้ผู้เรียกรอข้อมูลของแอดมินได้
+     */
+    public function itinerarySummaryText(TripSchedule $schedule, bool $updated = false): ?string
+    {
+        $payload = $this->itineraryService->payload($schedule);
+        $items = $payload['items'];
+
+        if ($items === []) {
+            return null;
+        }
+
+        $title = trim((string) ($schedule->trip?->title ?? ''));
+
+        $heading = $updated ? 'กำหนดการมีการปรับ' : 'กำหนดการเดินทาง';
+
+        $lines = [self::ITINERARY_MARK.' '.$heading.($title !== '' ? " — {$title}" : '')];
+        $lines[] = 'ออกเดินทาง '.$schedule->departureLabelThai();
+
+        // เกินโควตาอยู่รายการเดียวก็ใส่ให้ครบไปเลย — "ยังมีอีก 1 รายการ"
+        // กินที่พอ ๆ กับรายการนั้นเอง แถมทำให้กำหนดการดูขาดตอนโดยไม่จำเป็น
+        $limit = count($items) === self::ITINERARY_CHAT_LIMIT + 1
+            ? count($items)
+            : self::ITINERARY_CHAT_LIMIT;
+
+        $shown = array_slice($items, 0, $limit);
+        $currentGroup = null;
+
+        foreach ($shown as $item) {
+            $group = $this->itineraryGroupLabel($item);
+
+            if ($group !== null && $group !== $currentGroup) {
+                $currentGroup = $group;
+                $lines[] = '';
+                $lines[] = "📅 {$group}";
+            }
+
+            $time = trim((string) ($item['time'] ?? ''));
+            $lines[] = '• '.($time !== '' ? "{$time} น. " : '').trim((string) $item['title']);
+
+            $detail = trim((string) ($item['detail'] ?? ''));
+            if ($detail !== '') {
+                $lines[] = '  '.Str::limit(preg_replace('/\s+/u', ' ', $detail), 90);
+            }
+        }
+
+        $lines[] = '';
+
+        // บอก "ในแอป" ให้ชัด — ห้องแชทบนเว็บอ่านข้อความเดียวกันนี้ได้ แต่ยังไม่มี
+        // ปุ่มคำถามด่วน การชี้ปุ่มลอย ๆ จะกลายเป็นบอกทางผิดสำหรับคนที่เปิดจากเว็บ
+        $more = count($items) - count($shown);
+        if ($more > 0) {
+            $lines[] = "ยังมีอีก {$more} รายการ — เปิดแอปแล้วกดปุ่ม \"กำหนดการ\" เหนือช่องพิมพ์ ดูฉบับเต็มได้ครับ";
+        } else {
+            $lines[] = 'ดูย้อนหลังได้ตลอดในแอป ที่ปุ่ม "กำหนดการ" เหนือช่องพิมพ์ครับ';
+        }
+
+        $lines[] = 'เวลาอาจขยับได้ตามหน้างานและสภาพอากาศ ทีมงานจะแจ้งในห้องนี้ทุกครั้งครับ 🌿';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * หัวข้อกลุ่มของรายการกำหนดการ — กำหนดการของรอบจัดกลุ่มด้วยวันที่จริง
+     * ส่วนกำหนดการระดับทริปมาพร้อมชื่อภาค/"วันที่ N" อยู่แล้ว
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function itineraryGroupLabel(array $item): ?string
+    {
+        // กำหนดการระดับทริปมากับกลุ่มของมันเอง (ชื่อภาค หรือ "วันที่ N") — ใช้ตามนั้น
+        // ทั้งชุด จะได้ไม่ปนกันระหว่างหัวข้อวันที่จริงกับ "วันที่ N" ในข้อความเดียว
+        $group = trim((string) ($item['group'] ?? ''));
+        if ($group !== '') {
+            return $group;
+        }
+
+        $date = trim((string) ($item['item_date'] ?? ''));
+
+        return $date !== '' ? ThaiDate::short(CarbonImmutable::parse($date)) : null;
     }
 
     /**

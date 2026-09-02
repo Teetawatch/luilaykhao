@@ -318,6 +318,7 @@ Route::prefix('v1')->group(function () {
         // คำถามด่วน "ขึ้นรถกี่โมง/รอที่ไหน/ทะเบียนรถ/เบอร์ติดต่อ" + ปุ่มสรุปของสตาฟ
         Route::get('schedules/{id}/chat/trip-info', [ChatController::class, 'tripInfo']);
         Route::post('schedules/{id}/chat/trip-summary', [ChatController::class, 'postTripSummary']);
+        Route::post('schedules/{id}/chat/trip-itinerary', [ChatController::class, 'postTripItinerary']);
         // โพลในห้องแชท — สร้าง/โหวต/ปิดโหวต
         Route::post('schedules/{id}/chat/polls', [ChatController::class, 'createPoll'])->middleware('throttle:chat');
         Route::post('schedules/{id}/chat/polls/{pollId}/vote', [ChatController::class, 'votePoll']);

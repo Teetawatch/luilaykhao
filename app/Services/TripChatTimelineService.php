@@ -59,6 +59,7 @@ class TripChatTimelineService
         return [
             'countdown_7d',
             'prepare_3d',
+            'itinerary_2d',
             'crew_contacts',
             'trip_faq',
             'weather_2d',
@@ -160,12 +161,16 @@ class TripChatTimelineService
             ? self::DEFAULT_GRACE_HOURS
             : max(1, (int) ceil(abs($dueAt->diffInHours($departsAt))));
 
+        // กำหนดการก็รอข้อมูลของแอดมินเหมือนสรุปทีมงาน — บางรอบเขียนกำหนดการเสร็จ
+        // เอาวันสองวันก่อนเดินทาง จึงผ่อนผันยาวถึงเวลารถออกเช่นกัน
+        $itineraryDueAt = $departureDate?->subDays(2)->setTime(9, 0);
         $crewDueAt = $departureDate?->subDays(2)->setTime(10, 0);
         $faqDueAt = $departureDate?->subDays(2)->setTime(10, 30);
 
         return [
             'countdown_7d' => [$departureDate?->subDays(7)->setTime(9, 0), self::DEFAULT_GRACE_HOURS],
             'prepare_3d' => [$departureDate?->subDays(3)->setTime(19, 0), self::DEFAULT_GRACE_HOURS],
+            'itinerary_2d' => [$itineraryDueAt, $graceUntilDeparture($itineraryDueAt)],
             'crew_contacts' => [$crewDueAt, $graceUntilDeparture($crewDueAt)],
             'trip_faq' => [$faqDueAt, $graceUntilDeparture($faqDueAt)],
             'weather_2d' => [$departureDate?->subDays(2)->setTime(18, 0), self::DEFAULT_GRACE_HOURS],
@@ -190,6 +195,7 @@ class TripChatTimelineService
         return match ($key) {
             'countdown_7d' => $this->countdownBody($schedule),
             'prepare_3d' => $this->prepareBody($schedule),
+            'itinerary_2d' => $this->facts->itinerarySummaryText($schedule),
             'crew_contacts' => $this->crewBody($schedule, $now),
             'trip_faq' => $this->faqBody($schedule),
             'weather_2d' => $this->weatherBody($schedule),
@@ -207,7 +213,7 @@ class TripChatTimelineService
 
         return "⛰️ อีก 7 วันจะได้เจอกันแล้วครับ — {$title}\n"
             ."ออกเดินทาง {$schedule->departureLabelThai()}\n\n"
-            .'ระหว่างนี้ดูกำหนดการ จุดรับ และอากาศได้จากปุ่มข้อมูลห้อง (มุมขวาบน) '
+            .'ระหว่างนี้เปิดแอปกดปุ่มเหนือช่องพิมพ์ ดูกำหนดการ จุดรับ และเบอร์ติดต่อได้เลยครับ '
             .'มีอะไรสงสัยถามในห้องนี้ได้ตลอดครับ ทีมงานอ่านทุกข้อความ 🌿';
     }
 

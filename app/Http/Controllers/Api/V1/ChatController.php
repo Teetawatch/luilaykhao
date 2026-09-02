@@ -351,6 +351,38 @@ class ChatController extends Controller
     }
 
     /**
+     * สตาฟ/แอดมินโพสต์กำหนดการของรอบเข้าห้อง — คำถามที่ถูกถามซ้ำที่สุดรองจาก
+     * จุดรับ ตอบทั้งห้องรวดเดียวแทนการพิมพ์ไล่ตอบทีละคน
+     *
+     * แยกจากสรุปการเดินทางเพราะทั้งสองข้อความยาวคนละเรื่อง รวมกันแล้วอ่านไม่ไหว
+     */
+    public function postTripItinerary(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canModerate($user, $schedule)) {
+            return $this->error('เฉพาะสตาฟหรือทีมงานเท่านั้นที่ส่งกำหนดการได้', 403);
+        }
+
+        $body = $this->tripFacts->itinerarySummaryText($schedule);
+
+        if ($body === null) {
+            return $this->error('รอบนี้ยังไม่มีกำหนดการให้ส่ง', 422);
+        }
+
+        $message = $this->chatService->postSystem($schedule, $body);
+
+        $message->load($this->messageRelations());
+
+        return $this->success(
+            $this->chatService->presentMessage($message, $user->id),
+            'ส่งกำหนดการเข้าห้องแล้ว',
+            201,
+        );
+    }
+
+    /**
      * สร้างโพลในห้อง — ใครก็ได้ที่อยู่ในห้อง (ทริปกลุ่มต้องตัดสินใจร่วมกัน)
      */
     public function createPoll(Request $request, int $scheduleId): JsonResponse
