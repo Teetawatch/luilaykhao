@@ -62,6 +62,7 @@ class AdminSettingsController extends Controller
             // สั้นกว่า 1 วันคือบังคับปิดงบตั้งแต่วันที่กลับถึงบ้าน ยาวเกิน 90 วันก็ไม่เหลือความหมาย
             'finance_close_grace_days' => ['nullable', 'integer', 'min:1', 'max:90'],
             'finance_block_new_rounds' => ['nullable', 'boolean'],
+            'chat_auto_answer_enabled' => ['nullable', 'boolean'],
         ]);
 
         if ($data['quiet_start_hour'] === $data['quiet_end_hour']) {
@@ -72,7 +73,7 @@ class AdminSettingsController extends Controller
 
         $data['finance_close_grace_days'] = (int) ($data['finance_close_grace_days'] ?? SiteSettings::financeCloseGraceDays());
 
-        foreach (['finance_strict_mode', 'finance_require_category', 'finance_close_requires_expense', 'finance_close_requires_settled', 'finance_block_new_rounds'] as $flag) {
+        foreach (['finance_strict_mode', 'finance_require_category', 'finance_close_requires_expense', 'finance_close_requires_settled', 'finance_block_new_rounds', 'chat_auto_answer_enabled'] as $flag) {
             $data[$flag] = (bool) ($data[$flag] ?? SiteSettings::bool($flag));
         }
 

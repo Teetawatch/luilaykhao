@@ -149,6 +149,29 @@
         </span>
       </section>
 
+      <!-- ── ห้องแชททริป ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">forum</span>
+          <div>
+            <h2>ห้องแชททริป</h2>
+            <p>คำตอบอัตโนมัติสำหรับคำถามที่ลูกค้าถามซ้ำทุกรอบ</p>
+          </div>
+        </div>
+
+        <label class="switch-row">
+          <input type="checkbox" v-model="form.chat_auto_answer_enabled" />
+          <span class="switch"></span>
+          <span>ตอบคำถามซ้ำ ๆ ในห้องให้อัตโนมัติ</span>
+        </label>
+
+        <span class="help">
+          ลูกค้าถามเรื่องกำหนดการ จุดรับ ทะเบียนรถ หรือเบอร์ติดต่อ ระบบจะรอ 3 นาที
+          ให้ทีมงานตอบก่อน ถ้ายังไม่มีใครตอบจึงโพสต์คำตอบให้ทั้งห้อง
+          ตอบได้วันละครั้งต่อห้อง และจะเงียบไว้เมื่อยังไม่มีข้อมูลจริงจะตอบ
+        </span>
+      </section>
+
       <!-- ── บัญชีทริป ── -->
       <section class="setting-card">
         <div class="card-head">
@@ -327,6 +350,7 @@ const form = reactive({
   quiet_start_hour: 21,
   quiet_end_hour: 8,
   sos_sms_enabled: true,
+  chat_auto_answer_enabled: true,
   finance_strict_mode: true,
   finance_slip_required_above: 1000,
   finance_require_category: true,

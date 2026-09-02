@@ -31,6 +31,9 @@ class SiteSettings
         'quiet_hours_enabled' => true,
         'quiet_start_hour' => 21,
         'quiet_end_hour' => 8,
+        // ตอบคำถามซ้ำ ๆ ในห้องแชทให้เองเมื่อลูกค้าถาม (ดู ChatAutoAnswerService)
+        // ปิดได้เมื่ออยากให้ทีมงานเป็นคนตอบเองทุกคำถาม
+        'chat_auto_answer_enabled' => true,
         // ยิง SMS หาสตาฟ/คนขับ/ทีมออฟฟิศเมื่อมีเคส SOS — ช่องทางเดียวที่ไปถึง
         // เครื่องที่ไม่มี data ปิดได้เมื่อเครดิต SMS หมดโดยไม่กระทบ push/อีเมล
         'sos_sms_enabled' => true,

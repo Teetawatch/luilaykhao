@@ -9,11 +9,13 @@ use App\Events\ChatReactionUpdated;
 use App\Events\ChatReadUpdated;
 use App\Events\ChatTyping;
 use App\Http\Controllers\Controller;
+use App\Jobs\PostChatAutoAnswerJob;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
 use App\Models\ChatPoll;
 use App\Models\ChatRead;
 use App\Models\TripSchedule;
+use App\Services\ChatAutoAnswerService;
 use App\Services\ChatPollService;
 use App\Services\ChatService;
 use App\Services\ContentFilterService;
@@ -39,6 +41,7 @@ class ChatController extends Controller
         private ContentFilterService $filter,
         private ModerationService $moderation,
         private ScheduleItineraryService $itineraryService,
+        private ChatAutoAnswerService $autoAnswer,
     ) {}
 
     public function index(Request $request, int $scheduleId): JsonResponse
@@ -158,8 +161,30 @@ class ChatController extends Controller
         $this->chatService->markRead($user, $schedule, $message->id);
 
         SendChatPushJob::dispatch($message->id, $user->id, $mentions);
+        $this->queueAutoAnswer($message);
 
         return $this->success($this->chatService->presentMessage($message, $user->id), 'ส่งข้อความสำเร็จ', 201);
+    }
+
+    /**
+     * ลูกค้าถามคำถามที่ห้องตอบเองได้ไหม — ถ้าใช่ ตั้งงานตอบไว้แบบหน่วงเวลา
+     *
+     * คัดหยาบ ๆ ตรงนี้ก่อนเพื่อไม่ให้ทุกข้อความในห้องกลายเป็นงานในคิว ส่วนกฎ
+     * ที่เหลือ (ทีมงานตอบก่อนไหม / ตอบไปแล้ววันนี้หรือยัง) อยู่ในงานนั้น
+     * เพราะต้องตัดสินตอนถึงเวลาโพสต์จริง ไม่ใช่ตอนรับข้อความ
+     */
+    private function queueAutoAnswer(ChatMessage $message): void
+    {
+        if (! ChatAutoAnswerService::enabled() || $message->sender_role !== 'customer') {
+            return;
+        }
+
+        if ($this->autoAnswer->topicFor($message->body) === null) {
+            return;
+        }
+
+        PostChatAutoAnswerJob::dispatch($message->id)
+            ->delay(now()->addMinutes(ChatAutoAnswerService::QUIET_MINUTES));
     }
 
     /**
