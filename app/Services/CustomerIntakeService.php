@@ -32,11 +32,15 @@ class CustomerIntakeService
     {
         $intake = DB::transaction(function () use ($link, $data, $schedule) {
             $phone = $this->normalisePhone($data['phone'] ?? '');
+            $bookingType = $data['booking_type'] ?? CustomerIntake::TYPE_NORMAL;
 
-            // เบอร์เดิม + รอบเดิม + ยังไม่ถูกดึงไปจอง = คนเดิมกลับมา ไม่ใช่ลูกค้าใหม่
+            // เบอร์เดิม + รอบเดิม + ประเภทเดิม + ยังไม่ถูกดึงไปจอง = คนเดิมกลับมา
+            // ประเภทต้องตรงด้วย เพราะคนที่กรอกไว้แบบจองปกติแล้วกลับมากรอกลิงก์จอย
+            // คือคนละใบจอง (ใบจองหนึ่งใบเป็นได้ประเภทเดียว) ไม่ใช่การกรอกซ้ำ
             $intake = CustomerIntake::open()
                 ->where('contact_phone', $phone)
                 ->where('trip_schedule_id', $schedule?->id)
+                ->where('booking_type', $bookingType)
                 ->latest('id')
                 ->first();
 
@@ -44,6 +48,7 @@ class CustomerIntakeService
                 $intake = new CustomerIntake([
                     'intake_link_id' => $link->id,
                     'trip_schedule_id' => $schedule?->id,
+                    'booking_type' => $bookingType,
                     'contact_name' => $data['name'],
                     'contact_phone' => $phone,
                     'contact_email' => $data['email'] ?? null,
@@ -156,7 +161,13 @@ class CustomerIntakeService
             'customer_intake_id' => $intake->id,
             'is_lead' => $isLead || $person->is_lead,
             // จุดขึ้นรถของคนนี้ — คนละคนขึ้นคนละจุดได้ในกลุ่มเดียวกัน
-            'pickup_point_id' => $data['pickup_point_id'] ?? $person->pickup_point_id,
+            //
+            // กลุ่มจอยทริปไม่มีรถให้ขึ้น ฟอร์มจึงไม่ถาม แต่ค่าที่ส่งมาจากเบราว์เซอร์
+            // แก้ได้ (หรือ JS ไม่ทำงานจนช่องเดิมยังถูกส่งมา) — ตัดทิ้งตรงนี้ที่เดียว
+            // ทั้งประตูลิงก์ทีมงานและลิงก์กลุ่มจะได้ผลเหมือนกันเสมอ
+            'pickup_point_id' => $intake->isJoinTrip()
+                ? null
+                : ($data['pickup_point_id'] ?? $person->pickup_point_id),
             'title' => $data['title'] ?? null,
             'name' => $data['name'],
             'nickname' => $data['nickname'] ?? null,

@@ -3,6 +3,7 @@
 @section('title', 'กรอกข้อมูลผู้เดินทาง')
 
 @php
+    $isJoinLink = ($bookingType ?? 'normal') === \App\Models\IntakeLink::TYPE_JOIN;
     $heroImage = $trip?->cover_image ? url($trip->cover_image) : null;
     $heroTitle = $trip?->title ?: 'กรอกข้อมูลผู้เดินทาง';
     $heroEyebrow = $trip ? 'ฟอร์มข้อมูลผู้เดินทาง' : 'ฝากข้อมูลไว้กับทีมงาน';
@@ -51,6 +52,19 @@
             <div>
                 <strong>การกรอกฟอร์มนี้ยังไม่ใช่การจอง</strong>
                 ที่นั่งจะถูกกันให้เมื่อทีมงานยืนยันกับคุณอีกครั้ง
+            </div>
+        </div>
+    @endif
+
+    {{-- ลิงก์จอยทริปไม่มีขั้นตอนเลือกจุดขึ้นรถ ถ้าไม่บอกไว้ ลูกค้าที่คิดว่ามีรถมารับ
+         จะรู้ตัวอีกทีตอนถึงวันเดินทาง — เรื่องนี้ต้องชัดตั้งแต่บรรทัดแรก --}}
+    @if ($isJoinLink)
+        <div class="callout callout--ok">
+            @include('intake.icon', ['name' => 'bus'])
+            <div>
+                <strong>ลิงก์นี้สำหรับจอยทริป (เดินทางไปเอง)</strong>
+                ไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับ — ถ้าคุณอยากไปกับรถ
+                บอกทีมงานในช่อง "ฝากบอกทีมงาน" ด้านล่างได้เลย
             </div>
         </div>
     @endif
@@ -104,6 +118,10 @@
                     @endforeach
                 </select>
             </div>
+        @endif
+
+        @if ($mayChooseType ?? false)
+            @include('intake.booking-type')
         @endif
 
         <div class="f">

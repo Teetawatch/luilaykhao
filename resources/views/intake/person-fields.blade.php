@@ -78,7 +78,10 @@
 @endif
 
 @if ($pickupPoints->isNotEmpty())
-    @include('intake.pickup-choice', ['pickupPoints' => $pickupPoints])
+    {{-- ห่อไว้เพื่อให้ตัวเลือก "จอยทริป" ซ่อนทั้งก้อนได้ (ดู intake.booking-type) --}}
+    <div data-pickup-block>
+        @include('intake.pickup-choice', ['pickupPoints' => $pickupPoints])
+    </div>
 @endif
 
 <div class="step">

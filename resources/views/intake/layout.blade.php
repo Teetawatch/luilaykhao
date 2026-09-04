@@ -273,6 +273,24 @@
         }
         .pill input:focus-visible + span { outline: 2px solid rgba(45,122,79,.35); outline-offset: 1px; }
 
+        /* ── ตัวเลือกใหญ่แบบการ์ด — ใช้กับคำถามที่คำตอบเปลี่ยนราคา ──── */
+        .choices { display: grid; gap: 10px; }
+        .choice { position: relative; display: block; }
+        .choice input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+        .choice-card {
+            display: flex; flex-direction: column; gap: 3px;
+            padding: 14px 16px; border-radius: 13px;
+            border: 1px solid var(--line-mid); background: #fff;
+            transition: border-color .15s ease, background-color .15s ease;
+        }
+        .choice-card strong { font-size: 16px; color: var(--ink); font-weight: 700; }
+        .choice-note { font-size: 14px; color: var(--muted); line-height: 1.5; }
+        .choice input:checked + .choice-card {
+            border-color: var(--canopy); background: var(--tint);
+        }
+        .choice input:checked + .choice-card strong { color: var(--canopy-dark); }
+        .choice input:focus-visible + .choice-card { outline: 2px solid rgba(45,122,79,.35); outline-offset: 1px; }
+
         /* ── ตัวนับจำนวนคน ─────────────────────────────────────────── */
         .stepper { display: flex; align-items: center; gap: 12px; }
         .stepper-box {

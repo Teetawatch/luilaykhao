@@ -39,13 +39,30 @@
         <span class="info-label">วันเดินทาง</span>
         <span class="info-value">{{ $schedule->dateRangeLabelThai() }}</span>
       </div>
+      {{-- คนจอยไม่ได้กินที่นั่งบนรถ ตัวเลขที่นั่งจึงไม่ใช่คำตอบว่ารับกลุ่มนี้ได้ไหม
+           — รอบที่รถเต็มแต่โควตาจอยยังว่างต้องไม่ขึ้นว่า "ปิดรับแล้ว" --}}
+      @php($roundOpen = $schedule->acceptsBookingType($intake->booking_type))
       <div class="info-row">
-        <span class="info-label">ที่นั่ง</span>
-        <span class="info-value {{ $schedule->acceptsNewCustomers() ? '' : 'accent-amber' }}">
-          {{ $schedule->acceptsNewCustomers() ? 'เหลือ '.$schedule->bookable_seats.' ที่' : 'รอบนี้ปิดรับแล้ว' }}
+        <span class="info-label">{{ $intake->isJoinTrip() ? 'โควตาจอยทริป' : 'ที่นั่ง' }}</span>
+        <span class="info-value {{ $roundOpen ? '' : 'accent-amber' }}">
+          @if (! $roundOpen)
+            รอบนี้ปิดรับแล้ว
+          @elseif ($intake->isJoinTrip())
+            {{ $schedule->join_trip_available_seats === null
+                ? 'ไม่จำกัดจำนวน'
+                : 'เหลือ '.$schedule->join_trip_available_seats.' ที่' }}
+          @else
+            เหลือ {{ $schedule->bookable_seats }} ที่
+          @endif
         </span>
       </div>
       @endif
+      <div class="info-row">
+        <span class="info-label">ประเภท</span>
+        <span class="info-value {{ $intake->isJoinTrip() ? 'accent-amber' : '' }}">
+          {{ $intake->bookingTypeLabel() }}{{ $intake->isJoinTrip() ? ' — เดินทางไปเอง ไม่มีรถรับ' : '' }}
+        </span>
+      </div>
       <div class="info-row">
         <span class="info-label">กรอกแล้ว</span>
         <span class="info-value">{{ $people->count() }} / {{ $intake->party_size }} คน</span>

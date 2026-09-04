@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerIntake;
 use App\Models\IntakeLink;
+use App\Models\TripSchedule;
 use App\Services\QrCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -39,11 +40,24 @@ class AdminIntakeController extends Controller
     {
         $data = $request->validate([
             'trip_schedule_id' => ['nullable', 'exists:trip_schedules,id'],
+            'booking_type' => ['nullable', Rule::in(IntakeLink::TYPES)],
             'label' => ['nullable', 'string', 'max:100'],
         ]);
 
+        $bookingType = $data['booking_type'] ?? IntakeLink::TYPE_NORMAL;
+
+        // ออกลิงก์จอยทริปกับรอบที่ไม่ได้เปิดจอยไว้ = ลิงก์ที่พาลูกค้าไปสู่สิ่งที่
+        // ขายไม่ได้ ปฏิเสธตั้งแต่ตอนสร้าง ดีกว่าให้รู้ตอนลูกค้ากรอกมาแล้ว
+        if ($bookingType !== IntakeLink::TYPE_NORMAL && ! empty($data['trip_schedule_id'])) {
+            $schedule = TripSchedule::find($data['trip_schedule_id']);
+            if ($schedule && ! $schedule->join_trip_enabled) {
+                return $this->error('รอบนี้ยังไม่ได้เปิดจอยทริป — เปิดที่หน้ารอบเดินทางก่อน หรือออกลิงก์แบบจองปกติ', 422);
+            }
+        }
+
         $link = new IntakeLink([
             'trip_schedule_id' => $data['trip_schedule_id'] ?? null,
+            'booking_type' => $bookingType,
             'label' => $data['label'] ?? null,
             'is_active' => true,
             'created_by' => $request->user()->id,
@@ -115,6 +129,10 @@ class AdminIntakeController extends Controller
 
         if ($scheduleId = $request->input('schedule_id')) {
             $query->where('trip_schedule_id', $scheduleId);
+        }
+
+        if ($bookingType = $request->input('booking_type')) {
+            $query->where('booking_type', $bookingType);
         }
 
         if ($search = trim((string) $request->input('search'))) {
@@ -217,6 +235,11 @@ class AdminIntakeController extends Controller
             'intakes_count' => $link->intakes_count ?? 0,
             'last_used_at' => $link->last_used_at?->toIso8601String(),
             'trip_schedule_id' => $link->trip_schedule_id,
+            // จองปกติ / จอยทริป / ให้ลูกค้าเลือกเอง — ตัวลิงก์เป็นคนตัดสิน ฟอร์ม
+            // จึงถามหรือไม่ถามตามนี้ และข้อความที่ทีมงานก๊อปไปวางก็ต่างกัน
+            'booking_type' => $link->booking_type,
+            'schedule_join_trip_enabled' => (bool) $schedule?->join_trip_enabled,
+            'schedule_join_trip_price' => $schedule?->join_trip_price,
             'schedule_label' => $schedule
                 ? trim(($schedule->trip?->title ?? 'รอบเดินทาง').' · '.$schedule->departureLabelShort())
                 : null,
@@ -242,6 +265,9 @@ class AdminIntakeController extends Controller
             'party_size' => $intake->party_size,
             'filled_count' => $intake->people_count ?? $intake->people()->count(),
             'source' => $intake->source,
+            // ใบจองหนึ่งใบเป็นได้ประเภทเดียว หน้ารายการจึงต้องแยกให้เห็นก่อนกด
+            // "ดึงไปจอง" ไม่ใช่ไปรู้เอาตอนอยู่ในฟอร์มจองแล้ว
+            'booking_type' => $intake->booking_type,
             'note_excerpt' => $intake->note ? mb_substr($intake->note, 0, 120) : null,
             'trip_schedule_id' => $intake->trip_schedule_id,
             'trip_id' => $schedule?->trip_id,

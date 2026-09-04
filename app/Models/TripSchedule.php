@@ -181,7 +181,7 @@ class TripSchedule extends Model
      * รอบเหมาคันไม่ได้ขายรายที่นั่ง — แอดมินผูกลิงก์ไว้เพื่อเก็บข้อมูลคนในกลุ่ม
      * นั้นโดยเฉพาะ จึงไม่เอาที่นั่งมาตัดสิน
      */
-    public function acceptsNewCustomers(): bool
+    public function acceptsNewCustomers(bool $joinTrip = false): bool
     {
         if ($this->status !== 'open') {
             return false;
@@ -193,7 +193,19 @@ class TripSchedule extends Model
             return false;
         }
 
+        // คนจอยไม่ได้ขึ้นรถ ที่นั่งบนรถจึงไม่ใช่คำตอบว่ารับเพิ่มได้ไหม — รอบที่รถ
+        // เต็มแล้วยังขายจอยได้อยู่ ตราบใดที่โควตาจอยยังเหลือ
+        if ($joinTrip) {
+            return (bool) $this->join_trip_enabled && ! $this->joinTripIsFull();
+        }
+
         return $this->is_charter || $this->bookable_seats > 0;
+    }
+
+    /** รอบนี้รับกลุ่มประเภทนี้เพิ่มได้ไหม — 'normal' หรือ 'join' */
+    public function acceptsBookingType(string $type): bool
+    {
+        return $this->acceptsNewCustomers($type === IntakeLink::TYPE_JOIN);
     }
 
     /**

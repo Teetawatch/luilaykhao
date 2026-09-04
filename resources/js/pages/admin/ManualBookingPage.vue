@@ -36,6 +36,20 @@
           <span class="material-symbols-rounded">warning</span>
           กลุ่มที่เลือกมาอยู่คนละรอบเดินทาง — ตั้งรอบให้ตามกลุ่มแรก ตรวจอีกครั้งก่อนบันทึก
         </p>
+        <p v-if="intakeTypeMixed" class="intake-warn">
+          <span class="material-symbols-rounded">warning</span>
+          กลุ่มที่เลือกมามีทั้งจองปกติและจอยทริป — ใบจองใบเดียวเป็นได้ประเภทเดียว
+          แยกดึงทีละประเภทจะตรงกว่า
+        </p>
+        <p v-else-if="intakeJoinUnavailable" class="intake-warn">
+          <span class="material-symbols-rounded">warning</span>
+          ลูกค้ากรอกมาแบบจอยทริป แต่รอบนี้ยังไม่ได้เปิดจอยทริป — เปิดที่หน้ารอบเดินทางก่อน
+          หรือคุยกับลูกค้าว่าจะเปลี่ยนเป็นจองปกติ
+        </p>
+        <p v-else-if="form.is_join_trip" class="intake-note">
+          <span class="material-symbols-rounded">hiking</span>
+          ลูกค้ากรอกมาแบบจอยทริป — ติ๊ก "จองแบบจอยทริป" ให้แล้ว ไม่ต้องเลือกที่นั่งและจุดขึ้นรถ
+        </p>
       </div>
       <router-link to="/admin/intakes" class="btn-secondary">กลับไปรายการ</router-link>
     </div>
@@ -729,6 +743,8 @@ const intakeIds = ref([]);
 const intakeSources = ref([]);
 const intakeDroppedCount = ref(0);
 const intakeScheduleMixed = ref(false);
+const intakeTypeMixed = ref(false);
+const intakeJoinUnavailable = ref(false);
 
 // ── QR ให้ลูกค้าสแกนจ่าย (หลังเปิดการจองเสร็จ) ──
 const qrData = ref(null);
@@ -1110,6 +1126,21 @@ async function prefillFromIntake(intakeParam) {
       if (scheduled.trip_schedule_id) {
         form.schedule_id = Number(scheduled.trip_schedule_id);
         await onScheduleChange();
+      }
+    }
+
+    // ประเภทมาจากตอนลูกค้ากรอก ไม่ใช่สิ่งที่แอดมินต้องจำจากแชท — ตั้งให้เลย
+    // (ต้องอยู่หลัง onScheduleChange เพราะฟังก์ชันนั้นล้างค่ากลับเป็นจองปกติ)
+    intakeTypeMixed.value = new Set(sources.map((source) => source.booking_type || 'normal')).size > 1;
+    intakeJoinUnavailable.value = false;
+
+    if (!intakeTypeMixed.value && sources[0].booking_type === 'join') {
+      if (selectedSchedule.value?.join_trip_enabled) {
+        form.is_join_trip = true;
+        await onBookingTypeChange();
+      } else {
+        // รอบปิดจอยไปหลังลูกค้ากรอก — ติ๊กให้ก็ส่งไม่ผ่านอยู่ดี บอกให้แอดมินตัดสินใจ
+        intakeJoinUnavailable.value = true;
       }
     }
 
@@ -1561,6 +1592,8 @@ function formatCurrency(value) {
 .intake-banner .material-symbols-rounded { color: #059669; }
 .intake-warn { display: flex; align-items: center; gap: 4px; color: #b45309 !important; }
 .intake-warn .material-symbols-rounded { font-size: 16px; color: #b45309; }
+.intake-note { display: flex; align-items: center; gap: 4px; color: #047857 !important; font-weight: 600; }
+.intake-note .material-symbols-rounded { font-size: 16px; color: #047857; }
 
 /* ── QR ให้ลูกค้าสแกนจ่าย ─────────────────────────────────────── */
 .qr-panel {

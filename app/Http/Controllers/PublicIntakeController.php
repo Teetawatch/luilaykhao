@@ -9,9 +9,9 @@ use App\Models\TripSchedule;
 use App\Rules\ThaiIdCard;
 use App\Services\CustomerIntakeService;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -35,22 +35,28 @@ class PublicIntakeController extends Controller
     {
         $link = $this->resolveLink($token);
         $schedule = $link->schedule;
-        $closed = $schedule !== null && ! $schedule->acceptsNewCustomers();
+        $type = $link->booking_type;
+        $closed = $schedule !== null && ! $this->roundOpenFor($schedule, $type);
 
         return view('intake.form', [
             'link' => $link,
             'schedule' => $schedule,
             'trip' => $schedule?->trip,
             'closed' => $closed,
+            // ลิงก์บอกแล้วว่าเป็นจองปกติหรือจอยทริป ยกเว้นลิงก์แบบ ask ที่ให้
+            // ลูกค้าเลือกเอง — ฟอร์มจึงต้องรู้ทั้งประเภทและว่าต้องถามไหม
+            'bookingType' => $type,
+            'mayChooseType' => ! $link->locksBookingType(),
             // เลือกจุดขึ้นรถได้ต่อเมื่อรู้แน่ว่าเป็นรอบไหน — จุดรับเป็นของรอบ
             // หน้าที่ยังให้เลือกรอบอยู่จึงไม่มีรายการที่ถูกต้องให้เลือก
-            'pickupPoints' => $closed ? collect() : $this->pickupChoices($schedule),
+            // (คนจอยทริปไปเอง ไม่มีรถให้ขึ้น จึงไม่ต้องเลือกเลย)
+            'pickupPoints' => $closed ? collect() : $this->pickupChoices($schedule, $link->isJoinTrip()),
             // รอบที่ผูกไว้เต็ม/ผ่านไปแล้ว ยังรับข้อมูลอยู่ (ทีมงานเอาไปเสนอรอบอื่นได้)
             // แต่ต้องบอกตั้งแต่ต้นและยื่นรอบอื่นให้เลือกตรงนั้นเลย ไม่ใช่ปล่อยให้
             // กรอกจนจบแล้วค่อยรู้ตอนทีมงานตอบกลับ
             'scheduleOptions' => match (true) {
-                $schedule === null => $this->openSchedules(),
-                $closed => $this->siblingRounds($schedule),
+                $schedule === null => $this->openSchedules($type),
+                $closed => $this->siblingRounds($schedule, $type),
                 default => collect(),
             },
         ]);
@@ -61,23 +67,45 @@ class PublicIntakeController extends Controller
         $link = $this->resolveLink($token);
         $bound = $link->schedule;
 
+        // ประเภทมาจากลิงก์เสมอ ยกเว้นลิงก์แบบ ask ที่อ่านจากที่ลูกค้าเลือก —
+        // ค่าที่ส่งมาจากเบราว์เซอร์แก้ได้ จึงไม่ให้มันล้มล้างลิงก์ที่ล็อกไว้แล้ว
+        $type = $link->resolveBookingType($request->input('booking_type'));
+        $isJoin = $type === IntakeLink::TYPE_JOIN;
+
         // เลือกรอบเองได้เมื่อลิงก์ไม่ได้ผูกรอบ หรือรอบที่ผูกไว้ปิดรับไปแล้ว
-        $mayChoose = $bound === null || ! $bound->acceptsNewCustomers();
+        $mayChoose = $bound === null || ! $bound->acceptsBookingType($type);
         $schedule = $mayChoose
-            ? ($this->pickSchedule($request->input('schedule_id')) ?: $bound)
+            ? ($this->pickSchedule($request->input('schedule_id'), $type) ?: $bound)
             : $bound;
 
-        $data = $this->validatePerson($request, $schedule, $mayChoose ? collect() : $this->pickupChoices($schedule), [
+        $pickupChoices = $mayChoose ? collect() : $this->pickupChoices($schedule, $isJoin);
+
+        $data = $this->validatePerson($request, $schedule, $pickupChoices, [
             'party_size' => ['nullable', 'integer', 'min:1', 'max:'.CustomerIntakeService::MAX_PEOPLE],
             'note' => ['nullable', 'string', 'max:1000'],
             'source' => ['nullable', Rule::in(['line', 'facebook', 'instagram', 'other'])],
             'schedule_id' => [$mayChoose ? 'nullable' : 'prohibited', 'integer'],
+            'booking_type' => $link->locksBookingType()
+                ? ['nullable']
+                : ['required', Rule::in([IntakeLink::TYPE_NORMAL, IntakeLink::TYPE_JOIN])],
             'consent' => ['accepted'],
         ]);
 
         if ($error = $this->passportWindowError($data, $schedule)) {
             return back()->withInput()->withErrors(['passport_expires_at' => $error]);
         }
+
+        // ลูกค้าเลือกจอยเองกับรอบที่ไม่ได้เปิดจอย = เลือกสิ่งที่ไม่มีอยู่จริง
+        // ต้องบอกกลับ ไม่ใช่เงียบ ๆ เปลี่ยนให้เป็นจองปกติแทนที่เขาไม่ได้ขอ
+        // (ลิงก์ที่ล็อกจอยไว้ไม่ผ่านทางนี้ — ข้อมูลลูกค้าสำคัญกว่าลิงก์ที่ออกผิด
+        // ทีมงานเห็นในหน้าแอดมินแล้วโทรกลับได้)
+        if ($isJoin && ! $link->locksBookingType() && $schedule && ! $schedule->join_trip_enabled) {
+            return back()->withInput()->withErrors([
+                'booking_type' => 'รอบที่เลือกไม่มีจอยทริป กรุณาเลือกแบบจองปกติ หรือเลือกรอบอื่น',
+            ]);
+        }
+
+        $data['booking_type'] = $type;
 
         $intake = $this->intakes->openFromLink($link, $data, $schedule);
 
@@ -96,8 +124,11 @@ class PublicIntakeController extends Controller
             'trip' => $intake->schedule?->trip,
             // เพื่อนที่ตามมากรอกทีหลังควรรู้ด้วยว่าระหว่างนั้นรอบเต็มไปแล้ว —
             // ข้อมูลยังรับอยู่ เพราะทีมงานเอาไปเสนอรอบอื่นหรือคิวรอให้ได้
-            'closed' => $intake->schedule !== null && ! $intake->schedule->acceptsNewCustomers(),
-            'pickupPoints' => $this->pickupChoices($intake->schedule),
+            'closed' => $intake->schedule !== null
+                && ! $intake->schedule->acceptsBookingType($intake->booking_type),
+            // เพื่อนในกลุ่มเป็นประเภทเดียวกับกลุ่มเสมอ — กลุ่มจอยทริปจึงไม่มีใคร
+            // ต้องเลือกจุดขึ้นรถ
+            'pickupPoints' => $this->pickupChoices($intake->schedule, $intake->isJoinTrip()),
             // ชื่อเล่นเท่านั้น — ลิงก์นี้อยู่ในแชทกลุ่ม ใครเปิดก็ได้
             'filled' => $intake->people()->get()->map->publicLabel()->all(),
             'justFilled' => session('intake_just_filled'),
@@ -112,7 +143,7 @@ class PublicIntakeController extends Controller
             return back()->withErrors(['name' => 'กลุ่มนี้ปิดรับข้อมูลแล้ว เพราะทีมงานเปิดการจองให้เรียบร้อยแล้ว']);
         }
 
-        $data = $this->validatePerson($request, $intake->schedule, $this->pickupChoices($intake->schedule), [
+        $data = $this->validatePerson($request, $intake->schedule, $this->pickupChoices($intake->schedule, $intake->isJoinTrip()), [
             'consent' => ['accepted'],
         ]);
 
@@ -214,9 +245,11 @@ class PublicIntakeController extends Controller
      *
      * @return Collection<int, SchedulePickupPoint>
      */
-    private function pickupChoices(?TripSchedule $schedule): Collection
+    private function pickupChoices(?TripSchedule $schedule, bool $joinTrip = false): Collection
     {
-        if (! $schedule || $schedule->isFlight()) {
+        // จอยทริป = เดินทางไปเอง ไม่มีรถของเราให้ขึ้น การถามจุดขึ้นรถจึงไม่ใช่แค่
+        // เกินจำเป็น แต่ทำให้ลูกค้าเข้าใจผิดว่ามีรถไปรับ
+        if (! $schedule || $joinTrip || $schedule->isFlight()) {
             return collect();
         }
 
@@ -226,8 +259,23 @@ class PublicIntakeController extends Controller
             ->get();
     }
 
+    /**
+     * รอบนี้ยังรับกลุ่มแบบนี้ได้ไหม
+     *
+     * ลิงก์แบบ ask ยังไม่รู้ว่าลูกค้าจะเลือกอะไร ผ่านถ้าทางใดทางหนึ่งยังเปิด —
+     * รอบที่รถเต็มแต่โควตาจอยยังว่างคือกรณีที่ต้องไม่หายไปจากลิสต์
+     */
+    private function roundOpenFor(TripSchedule $schedule, string $type): bool
+    {
+        if ($type === IntakeLink::TYPE_ASK) {
+            return $schedule->acceptsNewCustomers() || $schedule->acceptsNewCustomers(true);
+        }
+
+        return $schedule->acceptsBookingType($type);
+    }
+
     /** รอบที่ยังรับคนได้จริง — ใช้กับลิงก์กลางที่ไม่ผูกรอบ */
-    private function openSchedules()
+    private function openSchedules(string $type = IntakeLink::TYPE_NORMAL)
     {
         return TripSchedule::with('trip')
             ->where('status', 'open')
@@ -236,12 +284,13 @@ class PublicIntakeController extends Controller
             ->limit(60)
             ->get()
             // รอบที่เต็มแล้วไม่ควรอยู่ในลิสต์ให้เลือก — เลือกไปก็ได้คำตอบเดียวกัน
-            ->filter(fn (TripSchedule $schedule) => $schedule->trip !== null && $schedule->acceptsNewCustomers())
+            // ลิงก์จอยทริปเห็นเฉพาะรอบที่เปิดจอย ด้วยเหตุผลเดียวกัน
+            ->filter(fn (TripSchedule $schedule) => $schedule->trip !== null && $this->roundOpenFor($schedule, $type))
             ->values();
     }
 
     /** รอบอื่นของทริปเดียวกัน — ทางออกให้ลูกค้าที่เปิดลิงก์ของรอบที่เต็มไปแล้ว */
-    private function siblingRounds(TripSchedule $schedule)
+    private function siblingRounds(TripSchedule $schedule, string $type = IntakeLink::TYPE_NORMAL)
     {
         return TripSchedule::with('trip')
             ->where('trip_id', $schedule->trip_id)
@@ -251,11 +300,11 @@ class PublicIntakeController extends Controller
             ->orderBy('departure_date')
             ->limit(12)
             ->get()
-            ->filter(fn (TripSchedule $other) => $other->trip !== null && $other->acceptsNewCustomers())
+            ->filter(fn (TripSchedule $other) => $other->trip !== null && $this->roundOpenFor($other, $type))
             ->values();
     }
 
-    private function pickSchedule(mixed $scheduleId): ?TripSchedule
+    private function pickSchedule(mixed $scheduleId, string $type = IntakeLink::TYPE_NORMAL): ?TripSchedule
     {
         if (blank($scheduleId)) {
             return null; // ลูกค้ายังไม่เลือกรอบก็รับข้อมูลไว้ก่อน แอดมินผูกรอบให้ทีหลังได้
@@ -268,7 +317,7 @@ class PublicIntakeController extends Controller
             ->whereDate('departure_date', '>=', now('Asia/Bangkok')->toDateString())
             ->find((int) $scheduleId);
 
-        return $schedule?->acceptsNewCustomers() ? $schedule : null;
+        return $schedule && $this->roundOpenFor($schedule, $type) ? $schedule : null;
     }
 
     private function resolveLink(string $token): IntakeLink

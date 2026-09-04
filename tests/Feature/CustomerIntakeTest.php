@@ -57,10 +57,11 @@ class CustomerIntakeTest extends TestCase
         ]);
     }
 
-    private function makeLink(?TripSchedule $schedule = null): IntakeLink
+    private function makeLink(?TripSchedule $schedule = null, string $type = IntakeLink::TYPE_NORMAL): IntakeLink
     {
         $link = new IntakeLink([
             'trip_schedule_id' => $schedule?->id,
+            'booking_type' => $type,
             'label' => 'ไลน์ OA',
             'is_active' => true,
         ]);
@@ -827,5 +828,269 @@ class CustomerIntakeTest extends TestCase
             ->json('data.*.id');
 
         $this->assertSame([$later->id, $soon->id], $default);
+    }
+
+    /**
+     * ── จอยทริป ────────────────────────────────────────────────────────────
+     *
+     * คนจอยทริปขับรถไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับ การถามจุดขึ้นรถจึงไม่ใช่
+     * แค่เกินจำเป็น แต่ทำให้เขาเข้าใจว่าจะมีรถมารับ ซึ่งรู้ตัวอีกทีตอนวันเดินทาง
+     */
+    public function test_a_join_trip_link_skips_the_pickup_step_and_records_the_type(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true, 'join_trip_price' => 1800]);
+        $this->makePickupPoint($schedule, 'ปั๊ม ปตท. รังสิต');
+
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('จอยทริป')
+            ->assertSee('ไม่มีรถของทริปไปรับ')
+            ->assertDontSee('name="pickup_point_id"', false);
+
+        // ไม่ส่งจุดขึ้นรถมาก็ผ่าน — ต่างจากรอบเดียวกันแบบจองปกติที่บังคับ
+        // และต่อให้ยัดจุดขึ้นรถมาเอง ก็ต้องไม่ติดไปกับกลุ่มจอย
+        $point = $schedule->pickupPoints()->firstOrFail();
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'pickup_point_id' => $point->id,
+        ]))->assertSessionHasNoErrors();
+
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+        $this->assertSame(CustomerIntake::TYPE_JOIN, $intake->booking_type);
+        $this->assertNull($intake->people()->first()->pickup_point_id);
+    }
+
+    /** เพื่อนที่ตามมากรอกทีหลังเป็นประเภทเดียวกับกลุ่มเสมอ — ใบจองมีประเภทเดียว */
+    public function test_friends_of_a_join_group_are_not_asked_for_a_pickup_point_either(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true]);
+        $this->makePickupPoint($schedule, 'ปั๊ม ปตท. รังสิต');
+
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+        $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 2]));
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+
+        $this->get("/g/{$intake->token}")
+            ->assertOk()
+            ->assertSee('กลุ่มนี้เป็นจอยทริป')
+            ->assertDontSee('name="pickup_point_id"', false);
+
+        $this->post("/g/{$intake->token}", $this->personPayload([
+            'name' => 'สมหญิง ใจงาม',
+            'phone' => '089-999-9999',
+            'email' => 'somying@example.com',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame(2, $intake->people()->count());
+    }
+
+    /** ลิงก์ที่ยังไม่ล็อกประเภท ให้ลูกค้าตอบเอง แล้วเก็บคำตอบไว้ให้ทีมงานเห็น */
+    public function test_an_ask_link_lets_the_customer_choose_how_they_travel(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true]);
+        $this->makePickupPoint($schedule, 'ปั๊ม ปตท. รังสิต');
+
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_ASK);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('name="booking_type"', false)
+            ->assertSee('เดินทางแบบไหน')
+            // จุดขึ้นรถยังอยู่ในหน้า แต่สคริปต์ต้องมาด้วย ไม่งั้นเลือก "จอย" แล้ว
+            // ช่องที่ยัง required อยู่จะบล็อกการส่งฟอร์มโดยลูกค้าไม่เห็นว่าติดตรงไหน
+            ->assertSee('data-pickup-block', false)
+            ->assertSee('data-booking-type', false);
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'booking_type' => IntakeLink::TYPE_JOIN,
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            CustomerIntake::TYPE_JOIN,
+            CustomerIntake::latest('id')->firstOrFail()->booking_type,
+        );
+    }
+
+    /** เลือกจอยกับรอบที่ไม่ได้เปิดจอย = เลือกสิ่งที่ไม่มีขาย ต้องบอกกลับ ไม่ใช่เงียบ ๆ เปลี่ยนให้ */
+    public function test_choosing_join_on_a_round_without_it_is_refused(): void
+    {
+        $schedule = $this->makeSchedule(); // join_trip_enabled ยังปิดอยู่
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_ASK);
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'booking_type' => IntakeLink::TYPE_JOIN,
+        ]))->assertSessionHasErrors('booking_type');
+
+        $this->assertSame(0, CustomerIntake::count());
+    }
+
+    /** ค่าที่ส่งมาจากเบราว์เซอร์แก้ได้ ลิงก์ที่ล็อกไว้แล้วจึงต้องไม่ถูกมันล้มล้าง */
+    public function test_a_locked_link_ignores_a_type_sent_by_the_browser(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true]);
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_NORMAL);
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'booking_type' => IntakeLink::TYPE_JOIN,
+        ]));
+
+        $this->assertSame(
+            CustomerIntake::TYPE_NORMAL,
+            CustomerIntake::latest('id')->firstOrFail()->booking_type,
+        );
+    }
+
+    /**
+     * รถเต็มไม่ได้แปลว่ารอบนี้ขายอะไรไม่ได้แล้ว — คนจอยไม่ได้กินที่นั่งบนรถ
+     * ลิงก์จอยจึงต้องไม่ปิดตัวเองตามที่นั่งบนรถ
+     */
+    public function test_a_round_whose_van_is_full_still_takes_join_trip_customers(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'booked_seats' => $schedule->total_seats,
+            'join_trip_enabled' => true,
+            'join_trip_seats' => 5,
+        ]);
+
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+
+        $this->get("/r/{$link->token}")->assertOk()->assertDontSee('รอบนี้ปิดรับแล้ว');
+        $this->post("/r/{$link->token}", $this->personPayload())->assertSessionHasNoErrors();
+
+        $this->assertSame($schedule->id, CustomerIntake::latest('id')->firstOrFail()->trip_schedule_id);
+    }
+
+    /** โควตาจอยเต็มแล้วก็ต้องบอกก่อนกรอก เหมือนที่นั่งบนรถเต็ม */
+    public function test_a_join_link_says_so_when_the_join_quota_is_full(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'join_trip_enabled' => true,
+            'join_trip_seats' => 2,
+            'join_trip_booked_seats' => 2,
+        ]);
+
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+
+        $this->get("/r/{$link->token}")->assertOk()->assertSee('รอบนี้ปิดรับแล้ว');
+    }
+
+    /** ออกลิงก์จอยกับรอบที่ไม่ได้เปิดจอย = ลิงก์ที่พาลูกค้าไปหาสิ่งที่ขายไม่ได้ */
+    public function test_admin_cannot_create_a_join_link_for_a_round_without_join(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+
+        $this->actingAs($admin)->postJson('/api/v1/admin/intake-links', [
+            'trip_schedule_id' => $schedule->id,
+            'booking_type' => IntakeLink::TYPE_JOIN,
+        ])->assertStatus(422);
+
+        $schedule->update(['join_trip_enabled' => true]);
+
+        $this->actingAs($admin)->postJson('/api/v1/admin/intake-links', [
+            'trip_schedule_id' => $schedule->id,
+            'booking_type' => IntakeLink::TYPE_JOIN,
+        ])->assertCreated()->assertJsonPath('data.booking_type', IntakeLink::TYPE_JOIN);
+    }
+
+    /** ปลายทางของทั้งเรื่อง: กลุ่มจอยทริปต้องกลายเป็นใบจองแบบจอย ไม่ใช่กินที่นั่งบนรถ */
+    public function test_a_join_group_becomes_a_join_booking(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true, 'join_trip_price' => 1800]);
+
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+        $this->post("/r/{$link->token}", $this->personPayload(['id_card' => self::VALID_ID]));
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+
+        $detail = $this->actingAs($admin)->getJson("/api/v1/admin/intakes/{$intake->id}")->assertOk();
+        $this->assertSame(CustomerIntake::TYPE_JOIN, $detail->json('data.booking_type'));
+
+        $this->actingAs($admin)->postJson('/api/v1/admin/bookings/manual', [
+            'schedule_id' => $schedule->id,
+            'customer_name' => $intake->contact_name,
+            'email' => 'somchai@example.com',
+            'phone' => $intake->contact_phone,
+            'status' => 'pending',
+            'is_join_trip' => true,
+            'passengers' => $detail->json('data.passengers'),
+            'intake_id' => $intake->id,
+            'send_email' => false,
+        ])->assertCreated();
+
+        $booking = $intake->fresh()->booking;
+        $this->assertTrue((bool) $booking->is_join_trip);
+        // คนจอยไม่กินที่นั่งบนรถ — ที่นั่งที่ขายได้ต้องไม่ลดลง
+        $this->assertSame(0, (int) $schedule->fresh()->booked_seats);
+        $this->assertSame(1, (int) $schedule->fresh()->join_trip_booked_seats);
+    }
+
+    /**
+     * เมลที่บอกทีมงานว่า "หยิบไปจองได้แล้ว" ต้องบอกด้วยว่าเป็นกลุ่มแบบไหน —
+     * และรอบที่รถเต็มแต่จอยยังว่างต้องไม่ขึ้นว่าปิดรับ
+     */
+    public function test_the_ready_email_says_the_group_is_a_join_trip(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'booked_seats' => $schedule->total_seats,
+            'join_trip_enabled' => true,
+            'join_trip_seats' => 4,
+        ]);
+
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+        $this->post("/r/{$link->token}", $this->personPayload());
+
+        $intake = CustomerIntake::latest('id')->firstOrFail();
+        $html = (new AdminIntakeReadyMail($intake, 'complete'))->render();
+
+        $this->assertStringContainsString('จอยทริป', $html);
+        $this->assertStringContainsString('เหลือ 4 ที่', $html);
+        $this->assertStringNotContainsString('รอบนี้ปิดรับแล้ว', $html);
+    }
+
+    /** หน้าแอดมินต้องแยกสองประเภทออกจากกันได้ก่อนกด "ดึงไปจอง" */
+    public function test_admin_list_shows_and_filters_by_booking_type(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true]);
+
+        $this->post('/r/'.$this->makeLink($schedule)->token, $this->personPayload());
+        $this->post('/r/'.$this->makeLink($schedule, IntakeLink::TYPE_JOIN)->token, $this->personPayload([
+            'name' => 'สมหญิง ใจงาม',
+            'phone' => '089-999-9999',
+            'email' => 'somying@example.com',
+        ]));
+
+        $all = $this->actingAs($admin)->getJson('/api/v1/admin/intakes?status=new')->assertOk()->json('data');
+        $this->assertCount(2, $all);
+
+        $join = $this->actingAs($admin)
+            ->getJson('/api/v1/admin/intakes?status=new&booking_type=join')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertCount(1, $join);
+        $this->assertSame('สมหญิง ใจงาม', $join[0]['contact_name']);
+        $this->assertSame(CustomerIntake::TYPE_JOIN, $join[0]['booking_type']);
     }
 }

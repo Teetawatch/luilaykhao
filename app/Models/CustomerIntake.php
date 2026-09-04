@@ -26,8 +26,13 @@ class CustomerIntake extends Model
     /** ดึงไปเปิดการจองแล้ว ข้อมูลไปอยู่บนการจองจริง เหลือไว้กันเหนียวเท่านี้วัน */
     public const CONVERTED_RETENTION_DAYS = 7;
 
+    /** ประเภทของกลุ่มนี้ — ใบจองหนึ่งใบเป็นได้ประเภทเดียว จึงเก็บไว้ที่กลุ่ม ไม่ใช่รายคน */
+    public const TYPE_NORMAL = IntakeLink::TYPE_NORMAL;
+
+    public const TYPE_JOIN = IntakeLink::TYPE_JOIN;
+
     protected $fillable = [
-        'intake_link_id', 'trip_schedule_id', 'contact_name', 'contact_phone',
+        'intake_link_id', 'trip_schedule_id', 'booking_type', 'contact_name', 'contact_phone',
         'contact_email', 'party_size', 'source', 'note', 'status',
         'booking_id', 'converted_at', 'last_activity_at', 'team_notified_at',
     ];
@@ -92,6 +97,17 @@ class CustomerIntake extends Model
      * ยังเปิดให้เพื่อนกรอกเพิ่มได้ไหม — ปิดทันทีที่ถูกดึงไปเปิดการจองแล้ว
      * เพราะข้อมูลที่กรอกเข้ามาหลังจากนั้นจะไม่มีใครเห็นและไม่ถูกนำไปใช้
      */
+    public function isJoinTrip(): bool
+    {
+        return $this->booking_type === self::TYPE_JOIN;
+    }
+
+    /** 'จอยทริป' / 'จองปกติ' — คำเดียวกับที่หน้าแอดมินและหน้าจองใช้ */
+    public function bookingTypeLabel(): string
+    {
+        return $this->isJoinTrip() ? 'จอยทริป' : 'จองปกติ';
+    }
+
     public function acceptsSubmissions(): bool
     {
         return $this->status === 'new';

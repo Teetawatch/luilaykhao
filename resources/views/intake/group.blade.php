@@ -80,6 +80,18 @@
         </div>
     @endif
 
+    {{-- เพื่อนที่กดลิงก์กลุ่มตามมาไม่ได้เห็นลิงก์แรกที่คนเปิดกลุ่มกดเข้ามา จึงไม่รู้
+         ว่ากลุ่มนี้ตกลงกันว่าไปเอง — ต้องบอกซ้ำที่นี่ ไม่งั้นจะมายืนรอรถ --}}
+    @if ($intake->isJoinTrip())
+        <div class="callout callout--ok">
+            @include('intake.icon', ['name' => 'bus'])
+            <div>
+                <strong>กลุ่มนี้เป็นจอยทริป (เดินทางไปเอง)</strong>
+                ไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับ จึงไม่ต้องเลือกจุดขึ้นรถ
+            </div>
+        </div>
+    @endif
+
     @if ($justFilled)
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'check-circle'])

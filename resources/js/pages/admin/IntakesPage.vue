@@ -153,6 +153,30 @@
           </div>
         </div>
 
+        <!-- ใบจองหนึ่งใบเป็นได้ประเภทเดียว ลิงก์จึงควรตัดสินตั้งแต่ต้นทาง —
+             คนกดลิงก์จอยจะไม่ถูกถามจุดขึ้นรถ และตอนดึงไปจองสวิตช์จอยติ๊กมาให้เอง -->
+        <div class="form-block">
+          <label class="block-label">ลิงก์นี้ใช้กับการจองแบบไหน</label>
+          <div class="mode-cards">
+            <button
+              v-for="option in bookingTypeOptions"
+              :key="option.value"
+              type="button"
+              class="mode-card"
+              :class="{ active: newLink.booking_type === option.value, disabled: option.disabled }"
+              :disabled="option.disabled"
+              :title="option.disabled ? 'รอบนี้ยังไม่ได้เปิดจอยทริป' : ''"
+              @click="newLink.booking_type = option.value"
+            >
+              <span class="material-symbols-rounded">{{ option.icon }}</span>
+              <span class="mode-text">
+                <strong>{{ option.label }}</strong>
+                <small>{{ option.disabled ? 'รอบนี้ยังไม่ได้เปิดจอยทริป' : option.note }}</small>
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div class="form-block form-foot">
           <div class="filter-field" style="flex:1;min-width:200px;">
             <label>ป้ายกำกับ (ไว้ให้เรารู้เอง)</label>
@@ -186,7 +210,10 @@
         <tbody>
           <tr v-for="link in visibleLinks" :key="link.id" :class="{ inactive: !link.is_active }">
             <td>
-              <strong>{{ link.label || 'ลิงก์เก็บข้อมูล' }}</strong>
+              <div class="link-name">
+                <strong>{{ link.label || 'ลิงก์เก็บข้อมูล' }}</strong>
+                <span class="type-chip" :class="link.booking_type">{{ bookingTypeLabel(link.booking_type) }}</span>
+              </div>
               <div class="cell-sub link-url">{{ link.url }}</div>
             </td>
             <td>
@@ -264,6 +291,11 @@
             <span v-if="tab.value === 'new' && newCount" class="tab-count">{{ newCount }}</span>
           </button>
         </div>
+        <select v-model="bookingType" class="type-filter" @change="applySearch">
+          <option value="">ทุกประเภท</option>
+          <option value="normal">จองปกติ</option>
+          <option value="join">จอยทริป</option>
+        </select>
         <div class="search-box toolbar-search">
           <span class="material-symbols-rounded">search</span>
           <input
@@ -289,9 +321,15 @@
             <span class="material-symbols-rounded">warning</span>
             กลุ่มที่เลือกอยู่คนละรอบเดินทาง — จะใช้รอบของกลุ่มแรกให้
           </span>
+          <!-- จองปกติกับจอยทริปรวมเป็นใบเดียวไม่ได้ (is_join_trip อยู่บนใบจอง
+               ไม่ใช่รายคน) จึงหยุดตั้งแต่ตรงนี้ ไม่ใช่ปล่อยให้ไปพังในหน้าจอง -->
+          <span v-if="mixedBookingTypes" class="bulk-warn">
+            <span class="material-symbols-rounded">warning</span>
+            เลือกปนกันทั้งจองปกติและจอยทริป — ต้องแยกเป็นคนละใบจอง เลือกทีละประเภท
+          </span>
         </div>
         <button class="btn-secondary btn-sm" @click="selectedIds = []">ล้างที่เลือก</button>
-        <button class="btn-primary btn-sm" @click="pullSelectedIntoBooking">
+        <button class="btn-primary btn-sm" :disabled="mixedBookingTypes" @click="pullSelectedIntoBooking">
           <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
           ดึงไปจองรวมกัน ({{ selectedPeopleCount }} คน)
         </button>
@@ -344,7 +382,10 @@
                   <div v-if="intake.note_excerpt" class="note-line">“{{ intake.note_excerpt }}”</div>
                 </td>
                 <td>
-                  {{ intake.schedule_label || 'ยังไม่ระบุรอบ' }}
+                  <div class="link-name">
+                    <span>{{ intake.schedule_label || 'ยังไม่ระบุรอบ' }}</span>
+                    <span v-if="intake.booking_type === 'join'" class="type-chip join">จอยทริป</span>
+                  </div>
                   <div v-if="intake.link_label" class="cell-sub">มาจาก {{ intake.link_label }}</div>
                 </td>
                 <td>
@@ -438,8 +479,14 @@
       <aside class="drawer">
         <header class="drawer-head">
           <div>
-            <h2>{{ detail.contact_name }}</h2>
+            <div class="link-name">
+              <h2>{{ detail.contact_name }}</h2>
+              <span v-if="detail.booking_type === 'join'" class="type-chip join">จอยทริป</span>
+            </div>
             <p>{{ detail.schedule_label || 'ยังไม่ระบุรอบ' }}</p>
+            <p v-if="detail.booking_type === 'join'" class="drawer-note">
+              เดินทางไปเอง ไม่มีรถรับ — ตอนดึงไปจองจะติ๊ก "จองแบบจอยทริป" ให้อัตโนมัติ
+            </p>
           </div>
           <button class="btn-icon" @click="detail = null">
             <span class="material-symbols-rounded">close</span>
@@ -501,7 +548,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../lib/axios';
 import { thaiShort, thaiDayMonth, THAI_MONTHS_SHORT } from '../../lib/thaiDate';
@@ -533,7 +580,8 @@ const selectedIds = ref([]);
 const showLinkForm = ref(false);
 const showInactiveLinks = ref(false);
 const creatingLink = ref(false);
-const newLink = ref({ trip_schedule_id: '', label: '' });
+const newLink = ref({ trip_schedule_id: '', booking_type: 'normal', label: '' });
+const bookingType = ref('');
 const qr = ref(null);
 const linkMode = ref('general');
 const scheduleSearch = ref('');
@@ -562,6 +610,56 @@ const filteredSchedules = computed(() => {
   });
 });
 
+/** รอบที่เลือกอยู่ในฟอร์มสร้างลิงก์ — ใช้ตัดสินว่าจอยทริปเลือกได้ไหม */
+const newLinkSchedule = computed(
+  () => scheduleOptions.value.find((option) => option.id === newLink.value.trip_schedule_id) || null,
+);
+
+/**
+ * ลิงก์เจาะจงรอบที่ไม่ได้เปิดจอยทริป จะเลือกประเภทจอยไม่ได้ — ออกไปก็เป็นลิงก์
+ * ที่พาลูกค้าไปสู่สิ่งที่รอบนั้นไม่ได้ขาย (ฝั่งเซิร์ฟเวอร์ปฏิเสธซ้ำอีกชั้น)
+ */
+const joinLocked = computed(
+  () => linkMode.value === 'schedule' && !(newLinkSchedule.value?.joinEnabled ?? false),
+);
+
+const bookingTypeOptions = computed(() => [
+  {
+    value: 'normal',
+    icon: 'directions_bus',
+    label: 'จองปกติ',
+    note: 'ไปกับรถของทริป — ฟอร์มให้เลือกจุดขึ้นรถ',
+    disabled: false,
+  },
+  {
+    value: 'join',
+    icon: 'hiking',
+    label: 'จอยทริป',
+    note: 'ลูกค้าเดินทางไปเอง — ฟอร์มข้ามจุดขึ้นรถ',
+    disabled: joinLocked.value,
+  },
+  {
+    value: 'ask',
+    icon: 'help',
+    label: 'ให้ลูกค้าเลือกเอง',
+    note: 'ฟอร์มถามเองว่าไปกับรถหรือไปเอง',
+    disabled: joinLocked.value,
+  },
+]);
+
+// เปลี่ยนไปรอบที่ไม่มีจอยทริป แล้วปล่อยให้ค่าเดิมค้างไว้ = กดสร้างแล้วโดน
+// เซิร์ฟเวอร์ปฏิเสธโดยไม่รู้ว่าเพราะอะไร ดึงกลับมาเป็นจองปกติให้ตรงนั้นเลย
+watch(joinLocked, (locked) => {
+  if (locked && newLink.value.booking_type !== 'normal') {
+    newLink.value.booking_type = 'normal';
+  }
+});
+
+const bookingTypeLabel = (type) => ({
+  join: 'จอยทริป',
+  ask: 'ลูกค้าเลือกเอง',
+}[type] || 'จองปกติ');
+
 const activeLinkCount = computed(() => links.value.filter((link) => link.is_active).length);
 const inactiveLinkCount = computed(() => links.value.length - activeLinkCount.value);
 const visibleLinks = computed(
@@ -581,6 +679,9 @@ const selectedPeopleCount = computed(
 const selectedScheduleLabel = computed(() => selectedIntakes.value.find((row) => row.schedule_label)?.schedule_label || '');
 const mixedSchedules = computed(
   () => new Set(selectedIntakes.value.map((row) => row.trip_schedule_id ?? null)).size > 1,
+);
+const mixedBookingTypes = computed(
+  () => new Set(selectedIntakes.value.map((row) => row.booking_type ?? 'normal')).size > 1,
 );
 
 const toggleSelect = (intake) => {
@@ -612,7 +713,12 @@ const fetchIntakes = async (toggleLoading = true) => {
   if (toggleLoading) loading.value = true;
   try {
     const res = await api.get('/admin/intakes', {
-      params: { status: status.value, search: search.value || undefined, page: page.value },
+      params: {
+        status: status.value,
+        search: search.value || undefined,
+        booking_type: bookingType.value || undefined,
+        page: page.value,
+      },
     });
     intakes.value = res.data?.data ?? [];
     newCount.value = res.data?.meta?.new_count ?? 0;
@@ -678,6 +784,7 @@ const fetchSchedules = async () => {
       dateLabel: dateRangeLabel(schedule.departure_date, schedule.return_date),
       seatLabel: seatLabel(schedule, available),
       seatsTight: !schedule.is_charter && available <= 3,
+      joinEnabled: Boolean(schedule.join_trip_enabled),
     };
   });
 };
@@ -711,10 +818,11 @@ const createLink = async () => {
   try {
     const res = await api.post('/admin/intake-links', {
       trip_schedule_id: newLink.value.trip_schedule_id || null,
+      booking_type: newLink.value.booking_type,
       label: newLink.value.label || null,
     });
     links.value.unshift(res.data.data);
-    newLink.value = { trip_schedule_id: '', label: '' };
+    newLink.value = { trip_schedule_id: '', booking_type: 'normal', label: '' };
     linkMode.value = 'general';
     scheduleSearch.value = '';
     monthFilter.value = '';
@@ -798,6 +906,17 @@ const linkMessage = (link) => {
     if (date) lines.push(`📅 วันเดินทาง ${date}`);
   } else {
     lines.push('รบกวนกรอกข้อมูลผู้เดินทางที่ลิงก์นี้ได้เลยครับ เลือกทริปและรอบที่สนใจได้ในลิงก์เลย');
+  }
+
+  // ลิงก์จอยทริปต้องพูดเรื่อง "ไม่มีรถรับ" ตั้งแต่ในแชท ไม่ใช่ให้ไปเจอในฟอร์ม —
+  // ลูกค้าที่เข้าใจว่ามีรถมารับคือปัญหาที่แก้ตอนวันเดินทางไม่ได้แล้ว
+  if (link.booking_type === 'join') {
+    lines.push('🚗 รอบนี้เป็นแบบจอยทริป เดินทางไปเอง ไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับนะครับ');
+    if (link.schedule_join_trip_price) {
+      lines.push(`💸 ค่าจอยทริป ${Number(link.schedule_join_trip_price).toLocaleString('th-TH')} บาท/ท่าน`);
+    }
+  } else if (link.booking_type === 'ask') {
+    lines.push('🚐 ในลิงก์เลือกได้เลยว่าจะไปกับรถของทริป หรือจอยทริป (ขับไปเอง) ครับ');
   }
 
   lines.push('');
@@ -1029,6 +1148,20 @@ onMounted(fetchAll);
 .sched-chip strong { font-size: 13px; }
 .sched-chip.general strong { color: #6b7280; font-weight: 600; }
 .link-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; word-break: break-all; }
+.link-name { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.type-chip {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; letter-spacing: .1px;
+  background: #f1f5f9; color: #475569;
+}
+.type-chip.join { background: #fef3c7; color: #b45309; }
+.type-chip.ask { background: #e0e7ff; color: #4338ca; }
+.type-filter {
+  border: 1px solid #e5e7eb; border-radius: 10px; background: #fff;
+  padding: 9px 12px; font-size: 13px; font-weight: 600; color: #4b5563; cursor: pointer;
+}
+.mode-card.disabled { opacity: .5; cursor: not-allowed; }
+.mode-card.disabled:hover { border-color: #e5e7eb; }
 tr.inactive { opacity: .5; }
 
 .filter-field { display: flex; flex-direction: column; gap: 4px; }
@@ -1061,6 +1194,7 @@ tr.inactive { opacity: .5; }
   gap: 12px; padding: 18px; border-bottom: 1px solid #e5e7eb;
 }
 .drawer-head h2 { font-size: 17px; font-weight: 700; }
+.drawer-note { color: #b45309 !important; margin-top: 4px; }
 .drawer-head p { font-size: 12.5px; color: #6b7280; margin-top: 2px; }
 .drawer-body { flex: 1; overflow-y: auto; padding: 18px; }
 .drawer-row { margin-bottom: 20px; }
