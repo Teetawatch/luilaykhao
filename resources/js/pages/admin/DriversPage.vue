@@ -154,17 +154,38 @@
             </div>
             <div class="form-group full-width">
               <label>รูปคนขับ</label>
-              <div class="photo-field">
-                <div class="photo-preview" v-if="form.photo">
-                  <img :src="form.photo" alt="" />
-                  <button type="button" class="remove-btn" @click="form.photo = ''"><span class="material-symbols-rounded">close</span></button>
-                </div>
-                <button type="button" class="photo-pick" @click="showMediaLibrary = true">
-                  <span class="material-symbols-rounded">{{ form.photo ? 'swap_horiz' : 'add_a_photo' }}</span>
-                  {{ form.photo ? 'เปลี่ยนรูป' : 'เลือกรูป' }}
-                </button>
+              <div
+                class="photo-field"
+                :class="{ 'is-dragging': photoDragging }"
+                @dragover.prevent="photoDragging = true"
+                @dragleave.prevent="photoDragging = false"
+                @drop.prevent="onPhotoDrop"
+              >
+                <template v-if="photoPreview">
+                  <div class="photo-preview">
+                    <img :src="photoPreview" alt="" />
+                    <div class="photo-progress" v-if="photoUploading">{{ photoPercent }}%</div>
+                  </div>
+                  <div class="photo-actions">
+                    <label class="photo-pick compact" :class="{ 'is-busy': photoUploading }">
+                      <span class="material-symbols-rounded">swap_horiz</span>
+                      เปลี่ยนรูป
+                      <input type="file" accept="image/jpeg,image/png,image/webp" hidden :disabled="photoUploading" @change="onPickPhoto" />
+                    </label>
+                    <button type="button" class="btn-danger compact" :disabled="photoUploading" @click="removePhoto">
+                      ลบรูป
+                    </button>
+                  </div>
+                </template>
+                <label class="photo-drop" :class="{ 'is-busy': photoUploading }" v-else>
+                  <span class="material-symbols-rounded">{{ photoUploading ? 'hourglass_top' : 'add_a_photo' }}</span>
+                  <span class="photo-drop-text">
+                    {{ photoUploading ? `กำลังอัปโหลด ${photoPercent}%` : 'ลากรูปมาวาง หรือคลิกเพื่อเลือกไฟล์' }}
+                  </span>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" hidden :disabled="photoUploading" @change="onPickPhoto" />
+                </label>
               </div>
-              <small class="field-hint">รูปนี้ลูกค้าเห็นได้ (แสดงคู่กับรถในหน้าติดตาม) — ใช้รูปสุภาพ</small>
+              <small class="field-hint">รูปนี้ลูกค้าเห็นได้ (แสดงคู่กับรถในหน้าติดตาม) — ใช้รูปสุภาพ ไฟล์ JPG/PNG/WebP ไม่เกิน 8 MB</small>
             </div>
           </div>
 
@@ -292,21 +313,14 @@
       </div>
     </div>
 
-    <MediaLibrary
-      :show="showMediaLibrary"
-      media-type="image"
-      :initial-selection="form.photo"
-      @close="showMediaLibrary = false"
-      @select="(v) => form.photo = v || ''"
-    />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useAdminStore } from '../../stores/admin';
-import MediaLibrary from '../../components/MediaLibrary.vue';
 import api from '../../lib/axios';
+import { uploadMedia } from '../../lib/mediaUpload';
 import { colorHex, vehicleTypeLabel } from '../../lib/vehicleDisplay';
 
 const admin = useAdminStore();
@@ -316,7 +330,6 @@ const searchQuery = ref('');
 const unlinkedOnly = ref(false);
 const showForm = ref(false);
 const showDeleteConfirm = ref(false);
-const showMediaLibrary = ref(false);
 const editing = ref(null);
 const deleting = ref(null);
 const submitting = ref(false);
@@ -329,6 +342,74 @@ const defaultForm = {
 };
 const form = reactive({ ...defaultForm });
 const licencePreviewFailed = ref(false);
+
+const photoUploading = ref(false);
+const photoPercent = ref(0);
+const photoDragging = ref(false);
+
+/**
+ * รูปที่เพิ่งเลือกจากเครื่อง — พรีวิวได้ทันทีระหว่างอัปโหลด และเก็บไว้ต่อจนกว่าจะ
+ * เปลี่ยน/ลบ เพราะเป็นรูปเดียวกับที่อัปขึ้นไปแล้ว จะได้ไม่กระพริบตอนสลับไปโหลดจาก R2
+ */
+const photoObjectUrl = ref('');
+const photoPreview = computed(() => photoObjectUrl.value || form.photo);
+
+/** 8 MB — รูปติดบัตรคนขับหนึ่งใบ ใหญ่กว่านี้แปลว่ายังไม่ได้ย่อ */
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+
+function releasePhotoPreview() {
+  if (photoObjectUrl.value) URL.revokeObjectURL(photoObjectUrl.value);
+  photoObjectUrl.value = '';
+}
+
+function onPickPhoto(event) {
+  const file = event.target.files?.[0];
+  // เคลียร์ input ทันที จะได้เลือกไฟล์เดิมซ้ำได้ถ้าอัปโหลดพลาด
+  event.target.value = '';
+  uploadPhoto(file);
+}
+
+function onPhotoDrop(event) {
+  photoDragging.value = false;
+  if (photoUploading.value) return;
+  uploadPhoto(event.dataTransfer?.files?.[0]);
+}
+
+async function uploadPhoto(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    alert('เลือกได้เฉพาะไฟล์รูปภาพ (JPG/PNG/WebP)');
+    return;
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    alert('ไฟล์ใหญ่เกิน 8 MB กรุณาย่อรูปก่อนอัปโหลด');
+    return;
+  }
+
+  releasePhotoPreview();
+  photoObjectUrl.value = URL.createObjectURL(file);
+  photoUploading.value = true;
+  photoPercent.value = 0;
+  try {
+    const url = await uploadMedia(file, (loaded, total) => {
+      photoPercent.value = total ? Math.round((loaded / total) * 100) : 0;
+    });
+    form.photo = url;
+  } catch (e) {
+    releasePhotoPreview();
+    alert(e.response?.data?.message || e.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    photoUploading.value = false;
+  }
+}
+
+/** ล้างรูปออกจากฟอร์มเท่านั้น ไม่ได้ลบไฟล์บน R2 — เผลอกดแล้วยังกู้กลับมาได้ */
+function removePhoto() {
+  releasePhotoPreview();
+  form.photo = '';
+}
+
+onBeforeUnmount(releasePhotoPreview);
 
 // ข้อความใต้ช่องวันหมดอายุ — บอกทันทีว่าใบยังใช้ได้อีกกี่วัน ไม่ต้องนับเอง
 const licenseHint = computed(() => {
@@ -398,6 +479,9 @@ function goPage(p) { fetchData(p); }
 function openForm(d = null) {
   editing.value = d;
   licencePreviewFailed.value = false;
+  releasePhotoPreview();
+  photoUploading.value = false;
+  photoDragging.value = false;
   if (d) {
     Object.assign(form, {
       name: d.name, phone: d.phone || '', line_id: d.line_id || '',
@@ -631,12 +715,19 @@ onMounted(() => fetchData());
 
 .btn-icon:disabled { opacity: 0.35; cursor: not-allowed; }
 
-.photo-field { display: flex; align-items: center; gap: 12px; }
-.photo-preview { position: relative; width: 72px; height: 72px; border-radius: 12px; overflow: hidden; }
+.photo-field { display: flex; align-items: center; gap: 12px; border-radius: 14px; }
+.photo-field.is-dragging { outline: 2px dashed #2563eb; outline-offset: 4px; }
+.photo-preview { position: relative; width: 72px; height: 72px; border-radius: 12px; overflow: hidden; flex-shrink: 0; background: #f1f5f9; }
 .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
-.photo-preview .remove-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.photo-preview .remove-btn .material-symbols-rounded { font-size: 15px; }
+.photo-progress { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(15,23,42,0.55); color: #fff; font-weight: 800; font-size: 13px; }
+.photo-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.photo-drop { display: flex; align-items: center; gap: 10px; flex: 1; padding: 18px 16px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #475569; font-weight: 700; cursor: pointer; }
+.photo-drop:hover { border-color: #94a3b8; background: #f1f5f9; }
+.photo-drop .material-symbols-rounded { font-size: 22px; }
+.photo-drop-text { font-size: 13px; }
 .photo-pick { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #475569; font-weight: 700; cursor: pointer; }
+.photo-pick.compact { padding: 8px 14px; font-size: 13px; }
+.photo-pick.is-busy, .photo-drop.is-busy { opacity: 0.6; cursor: default; }
 
 .linked-hint { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 10px 12px; background: #eff6ff; color: #1d4ed8; border-radius: 10px; font-size: 13px; }
 .linked-hint .material-symbols-rounded { font-size: 18px; }
