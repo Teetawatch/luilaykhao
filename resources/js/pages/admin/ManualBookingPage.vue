@@ -58,7 +58,10 @@
       <form class="booking-workspace" @submit.prevent="submitBooking">
         <section class="booking-section">
           <div class="section-head">
-            <span class="section-step">1</span>
+            <span class="section-step" :class="{ done: stepDone.trip }">
+              <span v-if="stepDone.trip" class="material-symbols-rounded">check</span>
+              <template v-else>1</template>
+            </span>
             <div>
               <h2>เลือกทริปและรอบเดินทาง</h2>
               <p>เลือกรอบที่ลูกค้าต้องการ แล้วระบบจะโหลดจุดรับและที่นั่งว่างให้ทันที</p>
@@ -87,12 +90,71 @@
               </select>
             </label>
 
-            <label v-if="selectedSchedule?.join_trip_enabled" class="booking-type-toggle full">
-              <input v-model="form.is_join_trip" type="checkbox" @change="onBookingTypeChange" />
-              <span class="material-symbols-rounded">group_add</span>
-              <strong>จองแบบจอยทริป</strong>
-              <small>ไม่ต้องเลือกที่นั่ง ใช้ราคาจอยทริป {{ formatCurrency(selectedSchedule.join_trip_price || selectedSchedule.price) }}</small>
-            </label>
+            <!-- การ์ดสรุปรอบที่เลือก — บรรทัดใน dropdown ยาวจนอ่านไม่ทัน คนคีย์จอง
+                 ต้องเห็นชัด ๆ ว่ากำลังจองรอบไหน ก่อนไปกรอกข้อมูลอีกสิบช่องข้างล่าง -->
+            <div v-if="selectedSchedule" class="round-card full">
+              <img v-if="scheduleImage" :src="scheduleImage" :alt="scheduleTripTitle" />
+              <div v-else class="round-thumb-empty">
+                <span class="material-symbols-rounded">landscape</span>
+              </div>
+              <div class="round-info">
+                <strong>{{ scheduleTripTitle }}</strong>
+                <span class="round-date">
+                  <span class="material-symbols-rounded">calendar_month</span>
+                  {{ scheduleDateLabel }}
+                </span>
+                <div class="round-chips">
+                  <span class="round-chip">{{ transportLabel }}</span>
+                  <span class="round-chip">{{ scheduleRegionLabel(selectedSchedule) }}</span>
+                  <span class="round-chip" :class="{ tight: seatsTight }">{{ seatsLabel }}</span>
+                </div>
+              </div>
+              <div class="round-price">
+                <span>ราคาเริ่มต้น</span>
+                <strong>{{ formatCurrency(selectedSchedule.price) }}</strong>
+                <small>ต่อคน</small>
+              </div>
+            </div>
+
+            <!-- ประเภทการจองต้องเห็นทุกครั้ง ไม่ใช่โผล่มาเฉพาะรอบที่เปิดจอย —
+                 ทีมงานที่ไม่เห็นตัวเลือกจะเข้าใจว่าหน้านี้จองจอยทริปไม่ได้ -->
+            <div v-if="selectedSchedule" class="form-field full">
+              <span>ประเภทการจอง *</span>
+              <div class="type-choice-grid">
+                <label class="type-card" :class="{ active: !form.is_join_trip }">
+                  <input v-model="form.is_join_trip" type="radio" :value="false" @change="onBookingTypeChange" />
+                  <span class="material-symbols-rounded">directions_bus</span>
+                  <div class="type-body">
+                    <strong>จองปกติ</strong>
+                    <small>ไปกับรถของทริป · เลือกจุดขึ้นรถและที่นั่ง</small>
+                  </div>
+                  <em>{{ formatCurrency(selectedSchedule.price) }}</em>
+                </label>
+                <label class="type-card" :class="{ active: form.is_join_trip, disabled: !joinTripSelectable }">
+                  <input
+                    v-model="form.is_join_trip"
+                    type="radio"
+                    :value="true"
+                    :disabled="!joinTripSelectable"
+                    @change="onBookingTypeChange"
+                  />
+                  <span class="material-symbols-rounded">hiking</span>
+                  <div class="type-body">
+                    <strong>จอยทริป</strong>
+                    <small>{{ joinTripHint }}</small>
+                  </div>
+                  <em v-if="selectedSchedule.join_trip_enabled">{{ formatCurrency(joinTripPrice) }}</em>
+                </label>
+              </div>
+              <small v-if="!selectedSchedule.join_trip_enabled" class="field-note">
+                รอบนี้ยังไม่ได้เปิดจอยทริป — เปิดที่
+                <router-link to="/admin/schedules" class="inline-link">หน้ารอบเดินทาง</router-link>
+                ก่อน แล้วกลับมาเลือกใหม่
+              </small>
+              <small v-else-if="!joinTripSelectable" class="field-note">
+                โควตาจอยทริปของรอบนี้เต็มแล้ว ({{ selectedSchedule.join_trip_booked_seats }}/{{ selectedSchedule.join_trip_seats }} ที่)
+              </small>
+            </div>
 
             <label v-if="vehicleOptions.length > 1 && !form.is_join_trip" class="form-field full">
               <span>ประเภทรถ</span>
@@ -124,7 +186,10 @@
 
         <section class="booking-section">
           <div class="section-head">
-            <span class="section-step">2</span>
+            <span class="section-step" :class="{ done: stepDone.customer }">
+              <span v-if="stepDone.customer" class="material-symbols-rounded">check</span>
+              <template v-else>2</template>
+            </span>
             <div>
               <h2>ข้อมูลลูกค้า</h2>
               <p>อีเมลนี้จะใช้ส่งใบยืนยันการจองและรายละเอียดการชำระเงิน</p>
@@ -154,7 +219,10 @@
 
         <section class="booking-section">
           <div class="section-head">
-            <span class="section-step">3</span>
+            <span class="section-step" :class="{ done: stepDone.passengers }">
+              <span v-if="stepDone.passengers" class="material-symbols-rounded">check</span>
+              <template v-else>3</template>
+            </span>
             <div>
               <h2>ผู้เดินทาง</h2>
               <p>เพิ่มรายชื่อผู้เดินทางให้ครบ จำนวนนี้จะใช้คำนวณราคาและจำนวนที่นั่ง</p>
@@ -165,6 +233,11 @@
             <article v-for="(passenger, index) in passengers" :key="passenger.key" class="passenger-card">
               <div class="passenger-card-head">
                 <strong>คนที่ {{ index + 1 }}</strong>
+                <span v-if="passenger.name" class="passenger-name">{{ passenger.name }}</span>
+                <span class="passenger-state" :class="{ ok: isPassengerComplete(passenger) }">
+                  <span class="material-symbols-rounded">{{ isPassengerComplete(passenger) ? 'check_circle' : 'pending' }}</span>
+                  {{ isPassengerComplete(passenger) ? 'ครบแล้ว' : 'ยังไม่ครบ' }}
+                </span>
                 <button v-if="passengers.length > 1" class="btn-icon btn-delete" type="button" @click="removePassenger(index)">
                   <span class="material-symbols-rounded">close</span>
                 </button>
@@ -282,7 +355,10 @@
 
         <section v-if="selectedSchedule && !form.is_join_trip" class="booking-section">
           <div class="section-head">
-            <span class="section-step">4</span>
+            <span class="section-step" :class="{ done: stepDone.seats }">
+              <span v-if="stepDone.seats" class="material-symbols-rounded">check</span>
+              <template v-else>4</template>
+            </span>
             <div>
               <h2>เลือกที่นั่ง</h2>
               <p>เลือก {{ passengers.length }} ที่นั่งให้ครบตามจำนวนผู้เดินทาง</p>
@@ -351,7 +427,10 @@
 
         <section class="booking-section">
           <div class="section-head">
-            <span class="section-step">{{ form.is_join_trip ? 4 : 5 }}</span>
+            <span class="section-step" :class="{ done: stepDone.payment }">
+              <span v-if="stepDone.payment" class="material-symbols-rounded">check</span>
+              <template v-else>{{ form.is_join_trip ? 4 : 5 }}</template>
+            </span>
             <div>
               <h2>{{ isHoldMode ? 'ล็อกที่นั่งไว้ก่อน' : 'การชำระเงิน' }}</h2>
               <p v-if="isHoldMode">ข้ามขั้นชำระเงินไปก่อน กันที่นั่งไว้ให้ลูกค้าจนถึงเวลาที่กำหนด</p>
@@ -533,24 +612,41 @@
         </section>
 
         <div class="submit-bar">
-          <button class="btn-primary" type="submit" :disabled="submitting || !canSubmit">
-            <span class="material-symbols-rounded" :class="{ 'animate-spin': submitting }">{{ submitting ? 'sync' : submitIcon }}</span>
-            {{ submitLabel }}
-          </button>
-          <span v-if="submitHint" class="submit-hint">{{ submitHint }}</span>
+          <div class="submit-total">
+            <span>{{ isHoldMode ? 'ยอดรวมทั้งใบ (ยังไม่เก็บตอนนี้)' : payableNowLabel }}</span>
+            <strong>{{ formatCurrency(isHoldMode ? totalAmount : payableNow) }}</strong>
+            <small>{{ passengers.length }} คน · ยอดรวมทั้งใบ {{ formatCurrency(totalAmount) }}</small>
+          </div>
+          <div class="submit-actions">
+            <span v-if="submitHint" class="submit-hint">
+              <span class="material-symbols-rounded">info</span>
+              {{ submitHint }}
+            </span>
+            <button class="btn-primary" type="submit" :disabled="submitting || !canSubmit">
+              <span class="material-symbols-rounded" :class="{ 'animate-spin': submitting }">{{ submitting ? 'sync' : submitIcon }}</span>
+              {{ submitLabel }}
+            </button>
+          </div>
         </div>
       </form>
 
       <aside class="booking-summary">
         <div class="summary-panel">
-          <h2>สรุปการจอง</h2>
+          <div class="summary-head">
+            <h2>สรุปการจอง</h2>
+            <span class="summary-type" :class="{ join: form.is_join_trip }">
+              {{ form.is_join_trip ? 'จอยทริป' : 'จองปกติ' }}
+            </span>
+          </div>
+
+          <p class="summary-group">รอบเดินทาง</p>
           <div class="summary-row">
             <span>ทริป</span>
             <strong>{{ selectedTrip?.title || '-' }}</strong>
           </div>
           <div class="summary-row">
-            <span>รอบเดินทาง</span>
-            <strong>{{ selectedSchedule ? formatDate(selectedSchedule.departure_date) : '-' }}</strong>
+            <span>วันเดินทาง</span>
+            <strong>{{ selectedSchedule ? scheduleDateLabel : '-' }}</strong>
           </div>
           <div v-if="selectedSchedule?.departs_at" class="summary-row">
             <span>ออกรถจริง</span>
@@ -560,12 +656,10 @@
             <span>ภาค</span>
             <strong>{{ selectedSchedule ? scheduleRegionLabel(selectedSchedule) : '-' }}</strong>
           </div>
+
+          <p class="summary-group">ผู้เดินทาง</p>
           <div class="summary-row">
-            <span>ประเภท</span>
-            <strong>{{ form.is_join_trip ? 'จอยทริป' : 'จองปกติ' }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>ผู้เดินทาง</span>
+            <span>จำนวน</span>
             <strong>{{ passengers.length }} คน</strong>
           </div>
           <div v-if="pickupBreakdown.length" class="summary-row summary-row--stack">
@@ -580,18 +674,31 @@
             <span>ที่นั่ง</span>
             <strong>{{ seatSelectionRequired ? (selectedSeatIds.join(', ') || '-') : 'ไม่ต้องเลือก' }}</strong>
           </div>
+
+          <p class="summary-group">การเงิน</p>
           <div class="summary-row">
-            <span>การจ่าย</span>
+            <span>รูปแบบ</span>
             <strong>{{ paymentPlanLabel }}</strong>
           </div>
           <div class="summary-row">
             <span>รับตอนนี้</span>
-            <strong>{{ form.status === 'confirmed' ? formatCurrency(payableNow) : 'ยังไม่รับชำระ' }}</strong>
+            <strong>{{ isPaidMode ? formatCurrency(payableNow) : 'ยังไม่รับชำระ' }}</strong>
           </div>
           <div v-if="isHoldMode" class="summary-row">
             <span>ล็อกที่นั่งถึง</span>
             <strong>{{ form.hold_until ? formatDateTime(form.hold_until) : '-' }}</strong>
           </div>
+
+          <!-- ยอดรวมมาจากราคาของแต่ละคน (คนละจุดขึ้นรถ = คนละราคา) ไม่ใช่ราคาเดียว
+               คูณจำนวนคน — คนคีย์จองต้องเห็นว่าตัวเลขรวมนี้มาจากไหน -->
+          <div v-if="priceBreakdown.length" class="price-breakdown">
+            <div v-for="line in priceBreakdown" :key="line.key" class="price-line">
+              <span>{{ line.label }}</span>
+              <small>{{ formatCurrency(line.price) }} × {{ line.count }}</small>
+              <strong>{{ formatCurrency(line.price * line.count) }}</strong>
+            </div>
+          </div>
+
           <div class="summary-total">
             <span>ยอดรวม</span>
             <strong>{{ formatCurrency(totalAmount) }}</strong>
@@ -814,6 +921,68 @@ const pricePerPerson = computed(() => {
   return Number(selectedSchedule.value.price || 0);
 });
 
+// ── รอบที่เลือกอยู่: ข้อมูลที่ต้องเห็นบนการ์ดสรุปหัวฟอร์ม ──────────────
+const scheduleTripTitle = computed(
+  () => selectedTrip.value?.title || selectedSchedule.value?.trip?.title || 'ทริป',
+);
+const scheduleImage = computed(() => {
+  const trip = selectedSchedule.value?.trip || selectedTrip.value;
+  return trip?.thumbnail_image || trip?.cover_image || '';
+});
+const scheduleDateLabel = computed(() => {
+  const schedule = selectedSchedule.value;
+  if (!schedule) return '-';
+  const departure = formatDate(schedule.departure_date);
+  const label = schedule.return_date && schedule.return_date !== schedule.departure_date
+    ? `${departure} – ${formatDate(schedule.return_date)}`
+    : departure;
+  const departs = departsTimeLabel(schedule);
+
+  return departs ? `${label} · ออกรถ ${departs}` : label;
+});
+const transportLabel = computed(() => ({
+  flight: 'เดินทางโดยเครื่องบิน',
+  bus: 'รถบัส',
+  van: 'รถตู้',
+}[selectedSchedule.value?.transport_type] || 'รถของทริป'));
+const seatsLabel = computed(() => {
+  const schedule = selectedSchedule.value;
+  if (!schedule) return '';
+  if (schedule.is_charter) return 'รอบเหมาคัน';
+  // รถเต็มไม่ได้แปลว่ารอบนี้ขายไม่ได้ — โควตาจอยทริปเป็นคนละกอง
+  if (Number(schedule.available_seats) <= 0) return 'รถเต็มแล้ว';
+
+  return `ที่นั่งว่าง ${schedule.available_seats}/${schedule.total_seats} ที่`;
+});
+const seatsTight = computed(
+  () => !selectedSchedule.value?.is_charter && Number(selectedSchedule.value?.available_seats ?? 0) <= 3,
+);
+
+// ── จอยทริป ────────────────────────────────────────────────────────────
+// ราคาจอยตั้งแยกได้ต่อรอบ ไม่ได้ตั้งไว้ = คิดเท่าราคารอบ (ตรงกับฝั่งเซิร์ฟเวอร์)
+const joinTripPrice = computed(
+  () => Number(selectedSchedule.value?.join_trip_price || selectedSchedule.value?.price || 0),
+);
+// โควตาจอยแยกจากที่นั่งบนรถคนละกอง — null = ไม่จำกัดจำนวน ต้องเช็คก่อนอ่านตัวเลข
+const joinSeatsLeft = computed(() => {
+  const schedule = selectedSchedule.value;
+  if (!schedule?.join_trip_enabled || schedule.join_trip_seats === null) return null;
+
+  return Math.max(0, Number(schedule.join_trip_available_seats ?? 0));
+});
+const joinTripSelectable = computed(() => {
+  if (!selectedSchedule.value?.join_trip_enabled) return false;
+
+  return joinSeatsLeft.value === null || joinSeatsLeft.value > 0;
+});
+const joinTripHint = computed(() => {
+  if (!selectedSchedule.value?.join_trip_enabled) return 'รอบนี้ยังไม่ได้เปิดจอยทริป';
+  if (joinSeatsLeft.value === null) return 'เดินทางไปเอง ไม่ต้องเลือกที่นั่ง · รับไม่จำกัดจำนวน';
+  if (joinSeatsLeft.value === 0) return 'โควตาจอยทริปเต็มแล้ว';
+
+  return `เดินทางไปเอง ไม่ต้องเลือกที่นั่ง · เหลือ ${joinSeatsLeft.value} ที่`;
+});
+
 /** ราคาของคนคนหนึ่ง — จุดของตัวเองก่อน แล้วค่อยจุดรับหลัก/ราคารอบ */
 const priceForPassenger = (passenger) => {
   if (form.is_join_trip) return pricePerPerson.value;
@@ -845,6 +1014,44 @@ const pickupBreakdown = computed(() => {
 
   return [...buckets.values()];
 });
+
+/**
+ * ยอดรวมมาจากไหน — คนละจุดขึ้นรถคือคนละราคาในใบเดียวกัน ตัวเลขก้อนเดียวจึงอธิบาย
+ * ตัวเองไม่ได้ รวมคนที่ราคาเท่ากันเป็นบรรทัดเดียวแล้วโชว์ "ราคา × จำนวน"
+ */
+const priceBreakdown = computed(() => {
+  if (!selectedSchedule.value) return [];
+
+  const buckets = new Map();
+  passengers.value.forEach((passenger) => {
+    const price = priceForPassenger(passenger);
+    const own = pickupPoints.value.find((point) => point.id === Number(passenger.pickup_point_id))
+      || selectedPickup.value;
+    const label = form.is_join_trip
+      ? 'ค่าจอยทริป'
+      : (own?.pickup_location || own?.region_label || 'ราคาปกติของรอบ');
+    const key = `${label}-${price}`;
+    const current = buckets.get(key) || { key, label, price, count: 0 };
+    current.count += 1;
+    buckets.set(key, current);
+  });
+
+  return [...buckets.values()];
+});
+
+/**
+ * ขั้นไหนกรอกครบแล้ว — ฟอร์มนี้ยาวจนเลื่อนหาย ป้ายติ๊กถูกบนหัวข้อคือสิ่งเดียวที่
+ * บอกได้เร็ว ๆ ว่าเหลือขั้นไหนที่ยังไม่ได้ทำ (เกณฑ์เดียวกับที่ canSubmit ใช้)
+ */
+const stepDone = computed(() => ({
+  trip: Boolean(form.schedule_id),
+  customer: Boolean(form.customer_name && form.phone && form.email),
+  passengers: passengers.value.length > 0
+    && passengers.value.every((passenger) => isPassengerComplete(passenger)),
+  seats: !seatSelectionRequired.value
+    || selectedSeatIds.value.length === passengers.value.length,
+  payment: canSubmit.value,
+}));
 // งวดถูกหารจาก "วันนี้ → วันปิดยอด" (วันเดินทาง - 15 วัน) แบบเดียวกับ PaymentQuote
 // ฝั่งเซิร์ฟเวอร์ ไม่ใช่เดินทีละ 30 วันแล้วไปตกหลังวันเดินทาง
 const installmentDueDates = computed(() => {
@@ -1251,7 +1458,17 @@ async function onVehicleOptionChange() {
 async function onBookingTypeChange() {
   selectedSeatIds.value = [];
   seatError.value = '';
-  if (!form.is_join_trip && form.schedule_id && !seatMap.value) {
+
+  if (form.is_join_trip) {
+    // จอยทริปไม่มีรถให้ขึ้นและไม่มีคันให้เลือก — ค้างค่าไว้คือส่งจุดรับของรอบ
+    // ติดไปกับใบจองที่ไม่ได้ใช้รถ แล้วราคาที่สรุปให้ลูกค้าจะไม่ตรงกับที่เก็บจริง
+    form.pickup_point_id = '';
+    form.vehicle_option_id = '';
+    clearPassengerPickups();
+    return;
+  }
+
+  if (form.schedule_id && !seatMap.value) {
     await fetchSeatMap();
   }
 }
@@ -1653,7 +1870,7 @@ function formatCurrency(value) {
 .success-panel {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .booking-workspace {
@@ -1684,6 +1901,15 @@ function formatCurrency(value) {
   justify-content: center;
   font-weight: 900;
   flex-shrink: 0;
+}
+
+.section-step.done {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.section-step .material-symbols-rounded {
+  font-size: 20px;
 }
 
 .section-head h2 {
@@ -1757,7 +1983,6 @@ function formatCurrency(value) {
   font-weight: 700;
 }
 
-.booking-type-toggle,
 .email-toggle,
 .checkbox-inline {
   display: flex;
@@ -1768,23 +1993,195 @@ function formatCurrency(value) {
   padding: 10px 12px;
 }
 
-.booking-type-toggle.full {
-  grid-column: 1 / -1;
-}
-
-.booking-type-toggle .material-symbols-rounded,
 .email-toggle .material-symbols-rounded {
   color: var(--color-accent);
 }
 
-.booking-type-toggle strong {
-  color: #111827;
-  font-size: 13px;
+/* ── การ์ดรอบที่เลือก ─────────────────────────────────────────── */
+.round-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  grid-column: 1 / -1;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  padding: 12px;
 }
 
-.booking-type-toggle small {
+.round-card img,
+.round-thumb-empty {
+  flex-shrink: 0;
+  width: 76px;
+  height: 62px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #e5e7eb;
+}
+
+.round-thumb-empty {
+  display: grid;
+  place-items: center;
+  color: #9ca3af;
+}
+
+.round-info {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.round-info > strong {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.round-date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #4b5563;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.round-date .material-symbols-rounded {
+  font-size: 16px;
+  color: var(--color-accent);
+}
+
+.round-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.round-chip {
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+}
+
+.round-chip.tight {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.round-price {
+  display: grid;
+  gap: 1px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.round-price span,
+.round-price small {
   color: #6b7280;
-  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.round-price strong {
+  color: var(--color-accent);
+  font-size: 19px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ประเภทการจอง: ปกติ / จอยทริป ─────────────────────────────── */
+.type-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.type-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  padding: 12px;
+}
+
+.type-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.type-card > .material-symbols-rounded {
+  flex-shrink: 0;
+  color: #9ca3af;
+  font-size: 22px;
+}
+
+.type-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.type-card strong {
+  color: #111827;
+  font-size: 13.5px;
+  font-weight: 900;
+}
+
+.type-card small {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.type-card em {
+  flex-shrink: 0;
+  color: #374151;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.type-card:hover:not(.disabled) {
+  border-color: #9ca3af;
+}
+
+.type-card.active {
+  border-color: var(--color-accent);
+  background: #eef8f1;
+}
+
+.type-card.active > .material-symbols-rounded,
+.type-card.active em {
+  color: var(--color-accent);
+}
+
+.type-card.disabled {
+  background: #f9fafb;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.inline-link {
+  color: var(--color-accent);
+  font-weight: 900;
+  text-decoration: underline;
 }
 
 .payment-grid {
@@ -2100,6 +2497,39 @@ function formatCurrency(value) {
   font-size: 14px;
 }
 
+.passenger-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #4b5563;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.passenger-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+}
+
+.passenger-state.ok {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.passenger-state .material-symbols-rounded {
+  font-size: 14px;
+}
+
 .dive-fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2341,20 +2771,62 @@ function formatCurrency(value) {
 .submit-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   position: sticky;
   bottom: 0;
   z-index: 2;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(6px);
+  padding: 12px 14px;
+}
+
+.submit-total {
+  display: grid;
+  gap: 1px;
+}
+
+.submit-total span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.submit-total strong {
+  color: var(--color-accent);
+  font-size: 22px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.submit-total small {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.submit-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .submit-hint {
-  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #b45309;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
+  text-align: right;
+}
+
+.submit-hint .material-symbols-rounded {
+  font-size: 16px;
 }
 
 .booking-summary {
@@ -2374,7 +2846,82 @@ function formatCurrency(value) {
   color: #111827;
   font-size: 17px;
   font-weight: 900;
-  margin: 0 0 12px;
+  margin: 0;
+}
+
+.summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.summary-type {
+  border-radius: 999px;
+  background: #eef8f1;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+}
+
+.summary-type.join {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.summary-group {
+  margin: 14px 0 2px;
+  color: #9ca3af;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+.price-breakdown {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 10px;
+}
+
+.price-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  align-items: baseline;
+}
+
+.price-line span {
+  color: #374151;
+  font-size: 12px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.price-line small {
+  grid-column: 1;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-line strong {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 .summary-row,
@@ -2397,6 +2944,7 @@ function formatCurrency(value) {
 .summary-total strong {
   color: #111827;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
@@ -2445,8 +2993,27 @@ function formatCurrency(value) {
   .payment-grid,
   .payment-method-grid,
   .radio-choice-group,
+  .type-choice-grid,
   .dive-fields {
     grid-template-columns: 1fr;
+  }
+
+  .round-card {
+    flex-wrap: wrap;
+  }
+
+  .round-price {
+    text-align: left;
+  }
+
+  .submit-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+
+  .submit-hint {
+    text-align: left;
   }
 
   .payment-preview,
