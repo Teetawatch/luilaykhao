@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Jobs\AnnounceChatMemberJoinedJob;
 use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
+use App\Services\CustomerIntakeService;
 use App\Services\LoyaltyService;
 
 /**
@@ -30,7 +31,10 @@ class BookingObserver
     /** สถานะที่แปลว่าไม่ได้ไป — ต้องถอนทริปและแต้มคืน. */
     private const REVERSING_STATUSES = ['cancelled', 'refunded'];
 
-    public function __construct(private LoyaltyService $loyaltyService) {}
+    public function __construct(
+        private LoyaltyService $loyaltyService,
+        private CustomerIntakeService $intakeService,
+    ) {}
 
     public function created(Booking $booking): void
     {
@@ -60,6 +64,14 @@ class BookingObserver
 
         if (! $booking->wasChanged('status')) {
             return;
+        }
+
+        // ตายไปทั้งที่ยังไม่เคยยืนยัน = ลูกค้าไม่ได้จ่าย (สแกนไม่ทันบ้าง เปลี่ยนใจบ้าง)
+        // ข้อมูลที่ทีมงานดึงจากลิงก์มาเปิดใบนี้จึงยังไม่ได้ถูกใช้จริง ต้องกลับไปรอ
+        // ให้ดึงไปจองใหม่ได้ ไม่ใช่ค้างอยู่ในหมวด "จองแล้ว" ตลอดไป
+        if (in_array($booking->status, self::REVERSING_STATUSES, true)
+            && $booking->getOriginal('status') === 'pending') {
+            $this->intakeService->reopenForFailedBooking($booking);
         }
 
         // ยกเลิกแล้วต้องเก็บการ์ดออกจากหน้าจอล็อกด้วย ไม่ใช่ค้างนับถอยหลังไปยัง

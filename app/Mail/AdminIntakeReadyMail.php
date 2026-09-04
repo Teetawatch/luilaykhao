@@ -14,6 +14,7 @@ use Illuminate\Queue\SerializesModels;
  * $reason บอกว่าทำไมถึงส่งตอนนี้
  *  - complete: กรอกครบทุกคนตามที่แจ้งไว้ = หยิบไปเปิดการจองได้เลย
  *  - stalled:  กรอกไม่ครบและเงียบไปแล้ว = ต้องมีคนไปตามในแชท
+ *  - reopened: ใบจองที่ดึงกลุ่มนี้ไปเปิดถูกยกเลิกก่อนจ่ายเงิน = กลับมารอดึงใหม่
  */
 class AdminIntakeReadyMail extends QueuedMail
 {
@@ -27,9 +28,11 @@ class AdminIntakeReadyMail extends QueuedMail
     public function envelope(): Envelope
     {
         $name = $this->intake->contact_name ?: 'ลูกค้า';
-        $subject = $this->reason === 'stalled'
-            ? 'ลูกค้ากรอกค้างไว้ — '.$name
-            : 'ลูกค้ากรอกข้อมูลครบแล้ว — '.$name;
+        $subject = match ($this->reason) {
+            'stalled' => 'ลูกค้ากรอกค้างไว้ — '.$name,
+            'reopened' => 'การจองไม่สำเร็จ ข้อมูลกลับมารอจองใหม่ — '.$name,
+            default => 'ลูกค้ากรอกข้อมูลครบแล้ว — '.$name,
+        };
 
         return new Envelope(subject: $subject);
     }

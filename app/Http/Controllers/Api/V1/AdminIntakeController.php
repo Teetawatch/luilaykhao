@@ -120,7 +120,7 @@ class AdminIntakeController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = CustomerIntake::with(['schedule.trip', 'link'])
+        $query = CustomerIntake::with(['schedule.trip', 'link', 'booking'])
             ->withCount('people');
 
         if ($status = $request->input('status')) {
@@ -160,7 +160,7 @@ class AdminIntakeController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $intake = CustomerIntake::with(['schedule.trip', 'link', 'people.pickupPoint'])->findOrFail($id);
+        $intake = CustomerIntake::with(['schedule.trip', 'link', 'booking', 'people.pickupPoint'])->findOrFail($id);
 
         return $this->success([
             ...$this->summaryPayload($intake),
@@ -194,9 +194,16 @@ class AdminIntakeController extends Controller
             'note' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        // ดึงกลับมาเป็น "ยังไม่ได้จอง" ไม่ใช่แค่เปลี่ยนตัวอักษรในคอลัมน์ — ต้องล้าง
+        // ร่องรอยการแปลงเป็นการจองและเริ่มนับอายุการเก็บใหม่ด้วย {@see CustomerIntake::reopen()}
+        if (($data['status'] ?? null) === 'new') {
+            $intake->reopen();
+            unset($data['status']);
+        }
+
         $intake->fill($data)->save();
 
-        return $this->success($this->summaryPayload($intake->fresh(['schedule.trip', 'link'])->loadCount('people')), 'บันทึกแล้ว');
+        return $this->success($this->summaryPayload($intake->fresh(['schedule.trip', 'link', 'booking'])->loadCount('people')), 'บันทึกแล้ว');
     }
 
     public function destroy(int $id): JsonResponse
@@ -277,6 +284,11 @@ class AdminIntakeController extends Controller
             'departure_date' => $schedule?->departure_date?->toDateString(),
             'link_label' => $intake->link?->label,
             'booking_id' => $intake->booking_id,
+            // ใบจองที่เคยดึงกลุ่มนี้ไปเปิด — หน้ารายการต้องบอกได้ว่ามันจบยังไง
+            // กลุ่มที่กลับมาอยู่ "ยังไม่ได้จอง" ทั้งที่มีเลขใบจองติดอยู่ = ใบนั้นล่ม
+            'booking_ref' => $intake->booking?->booking_ref,
+            'booking_status' => $intake->booking?->status,
+            'reopened' => $intake->wasReopened(),
             'converted_at' => $intake->converted_at?->toIso8601String(),
             'last_activity_at' => $intake->last_activity_at?->toIso8601String(),
             'created_at' => $intake->created_at?->toIso8601String(),

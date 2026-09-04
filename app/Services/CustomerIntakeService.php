@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\NotifyStalledIntakesJob;
+use App\Models\Booking;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
 use App\Models\IntakeLink;
@@ -117,6 +118,39 @@ class CustomerIntakeService
         $this->notifyTeamIfReady($intake->fresh());
 
         return $person;
+    }
+
+    /**
+     * ใบจองที่ดึงกลุ่มนี้ไปเปิดไว้ตายไปทั้งที่ยังไม่เคยยืนยัน — คืนกลุ่มกลับมาให้ดึงใหม่
+     *
+     * กรณีที่เกิดจริงบ่อยที่สุดคือลูกค้าสแกนจ่ายไม่ทันหน้าต่างชำระเงิน ระบบยกเลิก
+     * ใบจองอัตโนมัติแล้วคืนที่นั่ง แต่ตัวกลุ่มยังค้างเป็น "จองแล้ว" — ทีมงานที่กลับ
+     * ไปหาข้อมูลลูกค้าคนนั้นจะเจอแค่หมวดที่ไม่มีปุ่มดึงไปจอง ทั้งที่ความจริงคือ
+     * ลูกค้ายังไม่ได้จองอะไรเลย
+     *
+     * เฉพาะกลุ่มที่สถานะยัง "จองแล้ว" เท่านั้น — กลุ่มที่แอดมินเก็บเข้ากรุเองตั้งใจ
+     * ปิดมัน ไม่ใช่หน้าที่ของการยกเลิกใบจองที่จะไปรื้อกลับมา
+     *
+     * @return int จำนวนกลุ่มที่กลับมารอ
+     */
+    public function reopenForFailedBooking(Booking $booking): int
+    {
+        $intakes = CustomerIntake::where('booking_id', $booking->id)
+            ->where('status', 'booked')
+            ->get()
+            ->filter(fn (CustomerIntake $intake) => $intake->reopen());
+
+        foreach ($intakes as $intake) {
+            // ตีตราว่าบอกทีมงานแล้วสำหรับรอบการรอครั้งนี้ ก่อนส่งจริง — กลุ่มที่กลับ
+            // มารอเงียบ ๆ ในหมวด "ยังไม่ได้จอง" คือกลุ่มที่ไม่มีใครรู้ว่าต้องโทรกลับ
+            $intake->forceFill(['team_notified_at' => now()])->save();
+
+            // ส่งหลังคอมมิต — การยกเลิกใบจองอยู่ในทรานแซกชัน ถ้ามันย้อนกลับ
+            // ทีหลังเราจะได้ไม่ส่งเมลบอกเรื่องที่ไม่ได้เกิดขึ้น
+            DB::afterCommit(fn () => $this->mail->sendAdminIntakeReady($intake, 'reopened'));
+        }
+
+        return $intakes->count();
     }
 
     /**

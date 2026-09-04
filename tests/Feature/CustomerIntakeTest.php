@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\NotifyStalledIntakesJob;
 use App\Jobs\PurgeStaleCustomerIntakesJob;
 use App\Mail\AdminIntakeReadyMail;
+use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
@@ -13,6 +15,7 @@ use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\BookingService;
 use App\Services\MailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -1092,5 +1095,169 @@ class CustomerIntakeTest extends TestCase
         $this->assertCount(1, $join);
         $this->assertSame('สมหญิง ใจงาม', $join[0]['contact_name']);
         $this->assertSame(CustomerIntake::TYPE_JOIN, $join[0]['booking_type']);
+    }
+
+    /**
+     * ดึงไปเปิดการจองแล้วลูกค้าสแกนจ่ายไม่ทัน = ยังไม่มีการจอง กลุ่มต้องกลับมารอ
+     *
+     * เคสนี้คือเคสที่เกิดบ่อยที่สุดหลังกดปุ่ม "ดึงไปจอง" — ถ้าปล่อยให้ค้างเป็น
+     * "จองแล้ว" ข้อมูลที่ลูกค้าอุตส่าห์กรอกจะกลายเป็นข้อมูลที่หยิบมาใช้ไม่ได้อีก
+     */
+    public function test_a_group_comes_back_to_the_queue_when_its_booking_dies_unpaid(): void
+    {
+        Mail::fake();
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create(['email' => 'admin@luilaykhao.com']);
+        $admin->assignRole('admin');
+
+        $intake = $this->pullIntoPendingBooking($admin, $this->makeSchedule());
+        $this->assertSame('booked', $intake->status);
+
+        // เลยเส้นตายที่ทีมงานกันที่นั่งไว้ให้ แล้วงานประจำนาทีมาเก็บ
+        $booking = Booking::findOrFail($intake->booking_id);
+        $booking->update(['hold_until' => now()->subMinute()]);
+        (new ExpirePendingBookingsJob)->handle(app(BookingService::class));
+
+        $this->assertSame('cancelled', $booking->fresh()->status);
+
+        $intake->refresh();
+        $this->assertSame('new', $intake->status);
+        // ร่องรอยว่าเคยดึงไปแล้วยังอยู่ แต่ "แปลงเป็นการจอง" ต้องถือว่าไม่เคยเกิดขึ้น
+        $this->assertSame($booking->id, $intake->booking_id);
+        $this->assertNull($intake->converted_at);
+        // กลับมาอยู่ในคิวจริง ๆ ไม่ใช่แค่ตัวอักษรในคอลัมน์
+        $this->assertTrue($intake->acceptsSubmissions());
+
+        $list = $this->actingAs($admin)->getJson('/api/v1/admin/intakes?status=new')->assertOk();
+        $list->assertJsonPath('meta.new_count', 1);
+        $list->assertJsonPath('data.0.booking_ref', $booking->booking_ref);
+        $list->assertJsonPath('data.0.booking_status', 'cancelled');
+
+        // ทีมงานต้องรู้ว่าต้องโทรกลับ ไม่ใช่รอให้ใครบังเอิญเปิดหน้าแอดมินเจอ
+        Mail::assertQueued(AdminIntakeReadyMail::class, fn (AdminIntakeReadyMail $mail) => $mail->reason === 'reopened');
+    }
+
+    /** กลุ่มที่กลับมาแล้วต้องดึงไปเปิดการจองใบใหม่ได้จริง ไม่ใช่แค่ดูสวยในตาราง */
+    public function test_a_reopened_group_can_be_pulled_into_a_second_booking(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $intake = $this->pullIntoPendingBooking($admin, $schedule);
+        $firstBookingId = $intake->booking_id;
+
+        app(BookingService::class)->cancelBooking(Booking::findOrFail($firstBookingId), 'ลูกค้าโอนไม่ทัน');
+        $this->assertSame('new', $intake->fresh()->status);
+
+        $second = $this->pullIntoPendingBooking($admin, $schedule, $intake->fresh());
+
+        $this->assertSame('booked', $second->status);
+        $this->assertNotSame($firstBookingId, $second->booking_id);
+        $this->assertNotNull($second->converted_at);
+    }
+
+    /**
+     * ใบจองที่ยืนยันแล้วค่อยยกเลิกทีหลังเป็นคนละเรื่อง — ลูกค้าจ่ายเงินมาแล้ว
+     * มีขั้นตอนคืนเงินและอื่น ๆ ตามมา ไม่ใช่ "ยังไม่ได้จอง" ที่หยิบไปเปิดใหม่ได้เลย
+     */
+    public function test_a_paid_booking_cancelled_later_leaves_the_group_closed(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $intake = $this->pullIntoPendingBooking($admin, $this->makeSchedule());
+        $booking = Booking::findOrFail($intake->booking_id);
+        $booking->update(['status' => 'confirmed', 'paid_at' => now(), 'paid_amount' => $booking->total_amount]);
+
+        app(BookingService::class)->cancelBooking($booking->fresh(), 'ลูกค้าขอยกเลิกและรับเงินคืน');
+
+        $this->assertSame('booked', $intake->fresh()->status);
+    }
+
+    /** ...แต่แอดมินยังกดเปิดกลับมาเองได้เสมอ ทั้งกลุ่มที่จองแล้วและที่เก็บเข้ากรุ */
+    public function test_admin_can_reopen_a_closed_group_by_hand(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $link = $this->makeLink($this->makeSchedule());
+        $this->post("/r/{$link->token}", $this->personPayload());
+
+        $intake = CustomerIntake::firstOrFail();
+        $intake->forceFill([
+            'status' => 'archived',
+            'converted_at' => now()->subDays(3),
+            'last_activity_at' => now()->subDays(40),
+        ])->save();
+
+        $this->actingAs($admin)
+            ->putJson("/api/v1/admin/intakes/{$intake->id}", ['status' => 'new'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'new');
+
+        $intake->refresh();
+        $this->assertNull($intake->converted_at);
+        // อายุการเก็บต้องเริ่มนับใหม่ ไม่งั้นกลุ่มที่เพิ่งเปิดกลับมาโดนงานลบกวาดทันที
+        $this->assertTrue($intake->last_activity_at->isToday());
+        $this->assertSame(0, CustomerIntake::query()->dueForPurge()->count());
+    }
+
+    /** เมลที่บอกว่าการจองล่ม ต้องบอกด้วยว่าใบไหนและเพราะอะไร ไม่ใช่แค่ "มีกลุ่มรออยู่" */
+    public function test_the_reopened_email_names_the_booking_that_failed(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $intake = $this->pullIntoPendingBooking($admin, $this->makeSchedule());
+        $booking = Booking::findOrFail($intake->booking_id);
+        app(BookingService::class)->cancelBooking($booking, 'ลูกค้าโอนไม่ทัน');
+
+        $html = (new AdminIntakeReadyMail($intake->fresh(), 'reopened'))->render();
+
+        $this->assertStringContainsString($booking->booking_ref, $html);
+        $this->assertStringContainsString('ลูกค้าโอนไม่ทัน', $html);
+        $this->assertStringContainsString('การจองไม่สำเร็จ', $html);
+    }
+
+    /**
+     * เปิดการจองให้กลุ่มหนึ่งแบบยังไม่จ่าย (ทีมงานกันที่นั่งไว้ให้) แล้วคืนแถวล่าสุด
+     */
+    private function pullIntoPendingBooking(User $admin, TripSchedule $schedule, ?CustomerIntake $existing = null): CustomerIntake
+    {
+        $intake = $existing;
+
+        if (! $intake) {
+            $link = $this->makeLink($schedule);
+            $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 1, 'id_card' => self::VALID_ID]));
+            $intake = CustomerIntake::latest('id')->firstOrFail();
+        }
+
+        $passengers = $this->actingAs($admin)
+            ->getJson("/api/v1/admin/intakes/{$intake->id}")
+            ->assertOk()
+            ->json('data.passengers');
+
+        $this->actingAs($admin)->postJson('/api/v1/admin/bookings/manual', [
+            'schedule_id' => $schedule->id,
+            'customer_name' => $intake->contact_name,
+            'email' => 'somchai@example.com',
+            'phone' => $intake->contact_phone,
+            'status' => 'pending',
+            'hold_until' => now()->addDays(3)->format('Y-m-d H:i'),
+            'passengers' => $passengers,
+            'intake_id' => $intake->id,
+            'send_email' => false,
+        ])->assertCreated();
+
+        return $intake->fresh();
     }
 }

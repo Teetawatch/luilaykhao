@@ -380,6 +380,10 @@
                     <template v-if="intake.source"><span class="dot">·</span>{{ sourceLabel(intake.source) }}</template>
                   </div>
                   <div v-if="intake.note_excerpt" class="note-line">“{{ intake.note_excerpt }}”</div>
+                  <div v-if="failedBookingLabel(intake)" class="failed-line">
+                    <span class="material-symbols-rounded">error</span>
+                    {{ failedBookingLabel(intake) }}
+                  </div>
                 </td>
                 <td>
                   <div class="link-name">
@@ -415,9 +419,15 @@
                     <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
                     ดึงไปจอง
                   </button>
-                  <span v-else class="status-chip" :class="intake.status">
-                    {{ intake.status === 'booked' ? 'จองแล้ว' : 'เก็บเข้ากรุ' }}
-                  </span>
+                  <template v-else>
+                    <span class="status-chip" :class="statusChipClass(intake)">
+                      {{ statusChipLabel(intake) }}
+                    </span>
+                    <button class="btn-secondary btn-sm" @click="reopenAndPull(intake)">
+                      <span class="material-symbols-rounded" style="font-size:16px">restart_alt</span>
+                      ดึงไปจองใหม่
+                    </button>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -540,6 +550,15 @@
             ดึงไปเปิดการจอง
           </button>
           <button v-if="detail.status === 'new'" class="btn-secondary" @click="archive(detail)">เก็บเข้ากรุ</button>
+          <!-- กลุ่มที่ปิดไปแล้วต้องเปิดใหม่ได้ — การจองที่ดึงไปเปิดอาจล่มไปตั้งแต่
+               ยังไม่ได้เงิน แล้วข้อมูลชุดนี้คือสิ่งเดียวที่ลูกค้ากรอกให้เรา -->
+          <template v-else>
+            <button class="btn-primary" @click="reopenAndPull(detail)">
+              <span class="material-symbols-rounded" style="font-size:18px">restart_alt</span>
+              ดึงไปเปิดการจองใหม่
+            </button>
+            <button class="btn-secondary" @click="reopen(detail)">คืนไปหมวดยังไม่ได้จอง</button>
+          </template>
           <button class="btn-danger" @click="destroy(detail)">ลบข้อมูลกลุ่มนี้</button>
         </footer>
       </aside>
@@ -863,6 +882,62 @@ const removePerson = async (person) => {
   await fetchIntakes();
 };
 
+/**
+ * "จองแล้ว" หมายถึงถูกดึงไปเปิดใบจองแล้ว ซึ่งยังไม่ใช่การจองที่จบ — ใบที่ยังรอ
+ * ลูกค้าโอนต้องพูดตามจริง ไม่งั้นทีมงานจะนึกว่าปิดการขายไปแล้วทั้งที่ยังไม่ได้เงิน
+ */
+const statusChipLabel = (intake) => {
+  if (intake.status !== 'booked') return 'เก็บเข้ากรุ';
+  if (intake.booking_status === 'pending') return 'รอลูกค้าชำระเงิน';
+  if (['cancelled', 'refunded'].includes(intake.booking_status)) return 'การจองถูกยกเลิก';
+
+  return 'จองแล้ว';
+};
+
+const statusChipClass = (intake) => {
+  if (intake.status !== 'booked') return 'archived';
+  if (intake.booking_status === 'pending') return 'awaiting';
+  if (['cancelled', 'refunded'].includes(intake.booking_status)) return 'dead';
+
+  return 'booked';
+};
+
+/**
+ * ใบจองที่ดึงกลุ่มนี้ไปเปิดไม่ได้แปลว่าจองสำเร็จ — ลูกค้าสแกนจ่ายไม่ทันแล้วระบบ
+ * ยกเลิกใบนั้นทิ้งเป็นเรื่องปกติ ข้อความบอกให้เห็นตั้งแต่ในตารางว่ากลุ่มนี้ยังรออยู่
+ */
+const failedBookingLabel = (intake) => {
+  if (!intake.booking_ref) return null;
+
+  // อยู่ในหมวด "ยังไม่ได้จอง" ทั้งที่มีเลขใบจองติดอยู่ = ใบนั้นล่มแล้วระบบคืนกลุ่มมาให้
+  if (intake.reopened) return `การจอง ${intake.booking_ref} ไม่สำเร็จ — ดึงไปจองใหม่ได้เลย`;
+
+  return ['cancelled', 'refunded'].includes(intake.booking_status)
+    ? `การจอง ${intake.booking_ref} ถูกยกเลิกแล้ว`
+    : null;
+};
+
+/** คืนกลุ่มกลับไปหมวด "ยังไม่ได้จอง" เฉย ๆ ยังไม่เปิดการจองใหม่ตอนนี้ */
+const reopen = async (intake) => {
+  await api.put(`/admin/intakes/${intake.id}`, { status: 'new' });
+  detail.value = null;
+  status.value = 'new';
+  page.value = 1;
+  await fetchIntakes();
+};
+
+/** คืนกลุ่มกลับมาแล้วพาไปเปิดการจองใหม่ต่อทันที — ปุ่มที่ใช้บ่อยที่สุดของสองอัน */
+const reopenAndPull = async (intake) => {
+  try {
+    await api.put(`/admin/intakes/${intake.id}`, { status: 'new' });
+  } catch (e) {
+    alert(e.response?.data?.message ?? 'เปิดกลุ่มนี้กลับมาไม่สำเร็จ');
+    return;
+  }
+  detail.value = null;
+  router.push({ name: 'admin-manual-booking', query: { intake: String(intake.id) } });
+};
+
 const archive = async (intake) => {
   await api.put(`/admin/intakes/${intake.id}`, { status: 'archived' });
   detail.value = null;
@@ -1179,9 +1254,16 @@ tr.inactive { opacity: .5; }
 }
 
 .note-line { font-size: 12px; color: #6b7280; margin-top: 4px; font-style: italic; }
+.failed-line {
+  display: flex; align-items: center; gap: 4px; margin-top: 4px;
+  font-size: 12px; font-weight: 600; color: #b45309;
+}
+.failed-line .material-symbols-rounded { font-size: 14px; }
 .waiting { color: #b45309; }
 .status-chip { font-size: 12px; font-weight: 600; color: #6b7280; }
 .status-chip.booked { color: #047857; }
+.status-chip.awaiting { color: #b45309; }
+.status-chip.dead { color: #b91c1c; }
 .empty-inline { font-size: 13px; color: #9ca3af; padding: 12px 2px; }
 
 .drawer-backdrop {

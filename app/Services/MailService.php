@@ -64,7 +64,9 @@ class MailService
         try {
             $adminEmails = $this->getAdminEmails();
             if (! empty($adminEmails)) {
-                $intake->loadMissing(['people', 'schedule.trip', 'link']);
+                // booking ใช้เฉพาะเมลแบบ reopened (บอกว่าใบไหนล้ม) แต่โหลดมาด้วยเลย
+                // ไม่งั้นเมลจะไป lazy-load เอาเองตอน render บนคิว
+                $intake->loadMissing(['people', 'schedule.trip', 'link', 'booking']);
                 Mail::to($adminEmails)->send(new AdminIntakeReadyMail($intake, $reason));
             }
         } catch (\Throwable $e) {
