@@ -129,7 +129,9 @@ return [
         'credit_type' => env('THAIBULKSMS_CREDIT_TYPE', 'standard'),
         'endpoint' => env('THAIBULKSMS_ENDPOINT', 'https://api-v2.thaibulksms.com/sms'),
         'credit_endpoint' => env('THAIBULKSMS_CREDIT_ENDPOINT', 'https://api-v2.thaibulksms.com/credit'),
-        'shorten_url' => env('THAIBULKSMS_SHORTEN_URL'),
+        // ThaiBulkSMS รับพารามิเตอร์นี้เป็นสตริง "true"/"false" เท่านั้น ปล่อยให้
+        // env() คืน boolean มาตรง ๆ ไม่ได้ เพราะฟอร์มจะเข้ารหัสเป็น "1" แล้วโดนปัดทิ้ง
+        'shorten_url' => filter_var(env('THAIBULKSMS_SHORTEN_URL'), FILTER_VALIDATE_BOOL) ? 'true' : null,
         'expire' => env('THAIBULKSMS_EXPIRE'),
         'timeout' => env('THAIBULKSMS_TIMEOUT', 10),
     ],
