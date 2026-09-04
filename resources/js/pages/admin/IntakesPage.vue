@@ -19,17 +19,43 @@
       </div>
     </div>
 
+    <!-- งานประจำวันคือ "ดูของที่กรอกเข้ามา" ส่วนลิงก์เป็นงานตั้งค่าที่ทำครั้งเดียว
+         แยกเป็นสองแท็บ หน้าจะได้ไม่ยาวลงไปเรื่อย ๆ ตามจำนวนลิงก์ที่ออกไว้ -->
+    <div class="section-tabs">
+      <button class="section-tab" :class="{ active: view === 'intakes' }" @click="view = 'intakes'">
+        <span class="material-symbols-rounded">inbox</span>
+        ข้อมูลที่กรอกเข้ามา
+        <span class="tab-count" v-if="newCount">{{ newCount }}</span>
+      </button>
+      <button class="section-tab" :class="{ active: view === 'links' }" @click="view = 'links'">
+        <span class="material-symbols-rounded">link</span>
+        ลิงก์ที่ส่งให้ลูกค้า
+        <span class="tab-num" v-if="activeLinkCount">{{ activeLinkCount }}</span>
+      </button>
+    </div>
+
     <!-- ── ลิงก์ที่ส่งให้ลูกค้า ─────────────────────────────────────── -->
-    <section class="panel">
+    <section class="panel" v-if="view === 'links'">
       <header class="panel-head">
         <div>
           <h2>ลิงก์สำหรับส่งให้ลูกค้า</h2>
           <p>สร้างครั้งเดียว ใช้ซ้ำได้ไม่จำกัดคน แปะไว้ใน auto-reply ของไลน์หรือไบโอไอจีได้</p>
         </div>
-        <button class="btn-primary btn-sm" @click="showLinkForm = !showLinkForm">
-          <span class="material-symbols-rounded" style="font-size:16px">{{ showLinkForm ? 'close' : 'add_link' }}</span>
-          {{ showLinkForm ? 'ปิด' : 'สร้างลิงก์ใหม่' }}
-        </button>
+        <div class="head-actions">
+          <!-- ลิงก์ที่ปิดแล้วเก็บไว้เป็นประวัติ ไม่ได้ใช้ต่อ — ซ่อนไว้ก่อน
+               ตารางจะได้เหลือเฉพาะลิงก์ที่ยังส่งให้ลูกค้าได้จริง -->
+          <button
+            v-if="inactiveLinkCount"
+            class="btn-secondary btn-sm"
+            @click="showInactiveLinks = !showInactiveLinks"
+          >
+            {{ showInactiveLinks ? 'ซ่อนลิงก์ที่ปิดแล้ว' : `ลิงก์ที่ปิดแล้ว (${inactiveLinkCount})` }}
+          </button>
+          <button class="btn-primary btn-sm" @click="showLinkForm = !showLinkForm">
+            <span class="material-symbols-rounded" style="font-size:16px">{{ showLinkForm ? 'close' : 'add_link' }}</span>
+            {{ showLinkForm ? 'ปิด' : 'สร้างลิงก์ใหม่' }}
+          </button>
+        </div>
       </header>
 
       <div v-if="showLinkForm" class="link-form">
@@ -142,9 +168,13 @@
         </div>
       </div>
 
-      <div v-if="!links.length" class="empty-inline">ยังไม่มีลิงก์ — กด "สร้างลิงก์ใหม่" เพื่อเริ่ม</div>
+      <div v-if="loading" class="loading-state"><div class="spinner"></div></div>
+      <div v-else-if="!visibleLinks.length" class="empty-inline">
+        {{ links.length ? 'ลิงก์ที่เปิดอยู่ไม่มีแล้ว — กด "ลิงก์ที่ปิดแล้ว" เพื่อดูของเก่า' : 'ยังไม่มีลิงก์ — กด "สร้างลิงก์ใหม่" เพื่อเริ่ม' }}
+      </div>
 
-      <table v-else class="data-table">
+      <div v-else class="table-container">
+      <table class="data-table">
         <thead>
           <tr>
             <th>ลิงก์</th>
@@ -154,7 +184,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="link in links" :key="link.id" :class="{ inactive: !link.is_active }">
+          <tr v-for="link in visibleLinks" :key="link.id" :class="{ inactive: !link.is_active }">
             <td>
               <strong>{{ link.label || 'ลิงก์เก็บข้อมูล' }}</strong>
               <div class="cell-sub link-url">{{ link.url }}</div>
@@ -180,158 +210,191 @@
               <span class="progress-pill">{{ link.intakes_count }} กลุ่ม</span>
               <div class="cell-sub">{{ link.last_used_at ? formatDateTime(link.last_used_at) : 'ยังไม่มีใครกรอก' }}</div>
             </td>
-            <td style="text-align:right;white-space:nowrap;">
+            <td class="link-actions">
               <!-- ปุ่มที่ใช้บ่อยที่สุดคือ "ข้อความ" ไม่ใช่ "ลิงก์" — วางในแชทได้ทั้งก้อน
-                   ไม่ต้องพิมพ์คำอธิบายเองใหม่ทุกครั้ง -->
+                   ไม่ต้องพิมพ์คำอธิบายเองใหม่ทุกครั้ง ที่เหลือเป็นไอคอนล้วน
+                   แถวจะได้ไม่ยาวจนตารางต้องเลื่อนข้าง -->
               <button class="btn-primary btn-sm" @click="copy(linkMessage(link), `msg-${link.id}`)">
                 <span class="material-symbols-rounded" style="font-size:16px">
                   {{ copiedKey === `msg-${link.id}` ? 'check' : 'chat' }}
                 </span>
                 {{ copiedKey === `msg-${link.id}` ? 'คัดลอกแล้ว' : 'ข้อความ' }}
               </button>
-              <button class="btn-secondary btn-sm" title="คัดลอกเฉพาะลิงก์" @click="copy(link.url, `link-${link.id}`)">
+              <button class="btn-secondary btn-sm icon-only" title="คัดลอกเฉพาะลิงก์" @click="copy(link.url, `link-${link.id}`)">
                 <span class="material-symbols-rounded" style="font-size:16px">
                   {{ copiedKey === `link-${link.id}` ? 'check' : 'link' }}
                 </span>
               </button>
-              <button class="btn-secondary btn-sm" title="QR สำหรับ rich menu / ป้าย" @click="openQr(link)">
+              <button class="btn-secondary btn-sm icon-only" title="QR สำหรับ rich menu / ป้าย" @click="openQr(link)">
                 <span class="material-symbols-rounded" style="font-size:16px">qr_code_2</span>
               </button>
-              <button class="btn-secondary btn-sm" @click="toggleLink(link)">
-                {{ link.is_active ? 'ปิดลิงก์' : 'เปิดลิงก์' }}
+              <button
+                class="btn-secondary btn-sm icon-only"
+                :title="link.is_active ? 'ปิดลิงก์ — คนที่กดจะใช้ไม่ได้ทันที' : 'เปิดลิงก์ให้ใช้ได้อีกครั้ง'"
+                @click="toggleLink(link)"
+              >
+                <span class="material-symbols-rounded" style="font-size:18px">
+                  {{ link.is_active ? 'toggle_on' : 'toggle_off' }}
+                </span>
               </button>
-              <button class="btn-danger btn-sm" @click="deleteLink(link)">
+              <button class="btn-danger btn-sm icon-only" title="ลบลิงก์" @click="deleteLink(link)">
                 <span class="material-symbols-rounded" style="font-size:16px">delete</span>
               </button>
             </td>
           </tr>
         </tbody>
       </table>
+      </div>
     </section>
 
     <!-- ── ข้อมูลที่กรอกเข้ามา ──────────────────────────────────────── -->
-    <div class="filter-bar">
-      <div class="status-tabs">
-        <button
-          v-for="tab in statusTabs"
-          :key="tab.value"
-          class="status-tab"
-          :class="{ active: status === tab.value }"
-          @click="status = tab.value; fetchIntakes()"
-        >
-          {{ tab.label }}
-          <span v-if="tab.value === 'new' && newCount" class="tab-count">{{ newCount }}</span>
+    <div class="table-card" v-if="view === 'intakes'">
+      <!-- ตัวกรองอยู่บนหัวการ์ดเดียวกับตาราง ไม่แยกเป็นอีกกล่อง — สายตาไล่จาก
+           "ดูหมวดไหนอยู่" ลงไปที่รายการได้ทันที ไม่ต้องข้ามช่องว่างระหว่างกล่อง -->
+      <header class="card-toolbar">
+        <div class="status-tabs">
+          <button
+            v-for="tab in statusTabs"
+            :key="tab.value"
+            class="status-tab"
+            :class="{ active: status === tab.value }"
+            @click="selectStatus(tab.value)"
+          >
+            {{ tab.label }}
+            <span v-if="tab.value === 'new' && newCount" class="tab-count">{{ newCount }}</span>
+          </button>
+        </div>
+        <div class="search-box toolbar-search">
+          <span class="material-symbols-rounded">search</span>
+          <input
+            v-model.trim="search"
+            type="text"
+            placeholder="ค้นหาชื่อลูกค้า หรือเบอร์โทร"
+            @input="onSearch"
+            @keyup.enter="applySearch"
+          />
+          <button v-if="search" class="btn-icon clear-search" title="ล้างคำค้น" @click="clearSearch">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ลูกค้าที่มาด้วยกันมักกดลิงก์คนละครั้งจนกลายเป็นคนละกลุ่ม แต่ต้องขึ้นรถคันเดียวกัน
+           เลือกหลายกลุ่มแล้วดึงไปเปิดเป็นการจองใบเดียว จะได้เลือกที่นั่งพร้อมกัน -->
+      <div v-if="selectedIntakes.length" class="bulk-bar">
+        <div class="bulk-info">
+          <strong>เลือกไว้ {{ selectedIntakes.length }} กลุ่ม · {{ selectedPeopleCount }} คน</strong>
+          <span v-if="selectedScheduleLabel">{{ selectedScheduleLabel }}</span>
+          <span v-if="mixedSchedules" class="bulk-warn">
+            <span class="material-symbols-rounded">warning</span>
+            กลุ่มที่เลือกอยู่คนละรอบเดินทาง — จะใช้รอบของกลุ่มแรกให้
+          </span>
+        </div>
+        <button class="btn-secondary btn-sm" @click="selectedIds = []">ล้างที่เลือก</button>
+        <button class="btn-primary btn-sm" @click="pullSelectedIntoBooking">
+          <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
+          ดึงไปจองรวมกัน ({{ selectedPeopleCount }} คน)
         </button>
       </div>
-      <div class="filter-field" style="flex:1;min-width:220px;">
-        <label>ค้นหา</label>
-        <input v-model.trim="search" type="text" placeholder="ชื่อลูกค้า / เบอร์โทร" @keyup.enter="fetchIntakes" />
-      </div>
-    </div>
 
-    <!-- ลูกค้าที่มาด้วยกันมักกดลิงก์คนละครั้งจนกลายเป็นคนละกลุ่ม แต่ต้องขึ้นรถคันเดียวกัน
-         เลือกหลายกลุ่มแล้วดึงไปเปิดเป็นการจองใบเดียว จะได้เลือกที่นั่งพร้อมกัน -->
-    <div v-if="selectedIntakes.length" class="bulk-bar">
-      <div class="bulk-info">
-        <strong>เลือกไว้ {{ selectedIntakes.length }} กลุ่ม · {{ selectedPeopleCount }} คน</strong>
-        <span v-if="selectedScheduleLabel">{{ selectedScheduleLabel }}</span>
-        <span v-if="mixedSchedules" class="bulk-warn">
-          <span class="material-symbols-rounded">warning</span>
-          กลุ่มที่เลือกอยู่คนละรอบเดินทาง — จะใช้รอบของกลุ่มแรกให้
-        </span>
-      </div>
-      <button class="btn-secondary btn-sm" @click="selectedIds = []">ล้างที่เลือก</button>
-      <button class="btn-primary btn-sm" @click="pullSelectedIntoBooking">
-        <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
-        ดึงไปจองรวมกัน ({{ selectedPeopleCount }} คน)
-      </button>
-    </div>
-
-    <div class="table-card">
       <div class="loading-state" v-if="loading"><div class="spinner"></div></div>
-      <div v-else>
+      <template v-else>
         <div v-if="!intakes.length" class="empty-state">
           <span class="material-symbols-rounded" style="font-size:48px;color:#d1d5db;display:block;margin-bottom:12px;">
             inbox
           </span>
-          ยังไม่มีข้อมูลลูกค้าในหมวดนี้
+          {{ search ? `ไม่พบกลุ่มที่ตรงกับ "${search}"` : 'ยังไม่มีข้อมูลลูกค้าในหมวดนี้' }}
         </div>
 
-        <table v-else class="data-table">
-          <thead>
-            <tr>
-              <th class="pick-col">
-                <input
-                  type="checkbox"
-                  :checked="allPickableSelected"
-                  :disabled="!pickableIntakes.length"
-                  @change="toggleSelectAll($event.target.checked)"
-                />
-              </th>
-              <th>ลูกค้า</th>
-              <th>ทริปที่สนใจ</th>
-              <th>กรอกแล้ว</th>
-              <th>เข้ามาเมื่อ</th>
-              <th style="text-align:right;">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="intake in intakes" :key="intake.id" :class="{ picked: selectedIds.includes(intake.id) }">
-              <td class="pick-col">
-                <input
-                  type="checkbox"
-                  :disabled="intake.status !== 'new'"
-                  :checked="selectedIds.includes(intake.id)"
-                  @change="toggleSelect(intake)"
-                />
-              </td>
-              <td>
-                <strong>{{ intake.contact_name }}</strong>
-                <div class="cell-sub">
-                  {{ intake.contact_phone || 'ไม่มีเบอร์' }}
-                  <template v-if="intake.source"><span class="dot">·</span>{{ sourceLabel(intake.source) }}</template>
-                </div>
-                <div v-if="intake.note_excerpt" class="note-line">“{{ intake.note_excerpt }}”</div>
-              </td>
-              <td>
-                {{ intake.schedule_label || 'ยังไม่ระบุรอบ' }}
-                <div v-if="intake.link_label" class="cell-sub">มาจาก {{ intake.link_label }}</div>
-              </td>
-              <td>
-                <span class="progress-pill" :class="{ done: intake.filled_count >= intake.party_size }">
-                  {{ intake.filled_count }}/{{ intake.party_size }} คน
-                </span>
-                <div v-if="intake.filled_count < intake.party_size" class="cell-sub waiting">
-                  รอเพื่อนอีก {{ intake.party_size - intake.filled_count }} คน
-                </div>
-              </td>
-              <td>
-                {{ formatDateTime(intake.created_at) }}
-                <div v-if="intake.last_activity_at !== intake.created_at" class="cell-sub">
-                  อัปเดต {{ formatDateTime(intake.last_activity_at) }}
-                </div>
-              </td>
-              <td style="text-align:right;white-space:nowrap;">
-                <button class="btn-secondary btn-sm" @click="openDetail(intake)">
-                  <span class="material-symbols-rounded" style="font-size:16px">visibility</span>
-                  ดูข้อมูล
-                </button>
-                <button
-                  v-if="intake.status === 'new'"
-                  class="btn-primary btn-sm"
-                  @click="pullIntoBooking(intake)"
-                >
-                  <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
-                  ดึงไปจอง
-                </button>
-                <span v-else class="status-chip" :class="intake.status">
-                  {{ intake.status === 'booked' ? 'จองแล้ว' : 'เก็บเข้ากรุ' }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <div v-else class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="pick-col">
+                  <input
+                    type="checkbox"
+                    :checked="allPickableSelected"
+                    :disabled="!pickableIntakes.length"
+                    @change="toggleSelectAll($event.target.checked)"
+                  />
+                </th>
+                <th>ลูกค้า</th>
+                <th>ทริปที่สนใจ</th>
+                <th>กรอกแล้ว</th>
+                <th>เข้ามาเมื่อ</th>
+                <th style="text-align:right;">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="intake in intakes" :key="intake.id" :class="{ picked: selectedIds.includes(intake.id) }">
+                <td class="pick-col">
+                  <input
+                    type="checkbox"
+                    :disabled="intake.status !== 'new'"
+                    :checked="selectedIds.includes(intake.id)"
+                    @change="toggleSelect(intake)"
+                  />
+                </td>
+                <td>
+                  <strong>{{ intake.contact_name }}</strong>
+                  <div class="cell-sub">
+                    {{ intake.contact_phone || 'ไม่มีเบอร์' }}
+                    <template v-if="intake.source"><span class="dot">·</span>{{ sourceLabel(intake.source) }}</template>
+                  </div>
+                  <div v-if="intake.note_excerpt" class="note-line">“{{ intake.note_excerpt }}”</div>
+                </td>
+                <td>
+                  {{ intake.schedule_label || 'ยังไม่ระบุรอบ' }}
+                  <div v-if="intake.link_label" class="cell-sub">มาจาก {{ intake.link_label }}</div>
+                </td>
+                <td>
+                  <span class="progress-pill" :class="{ done: intake.filled_count >= intake.party_size }">
+                    {{ intake.filled_count }}/{{ intake.party_size }} คน
+                  </span>
+                  <div v-if="intake.filled_count < intake.party_size" class="cell-sub waiting">
+                    รอเพื่อนอีก {{ intake.party_size - intake.filled_count }} คน
+                  </div>
+                </td>
+                <td>
+                  {{ formatDateTime(intake.created_at) }}
+                  <div v-if="intake.last_activity_at !== intake.created_at" class="cell-sub">
+                    อัปเดต {{ formatDateTime(intake.last_activity_at) }}
+                  </div>
+                </td>
+                <td class="intake-actions">
+                  <button class="btn-secondary btn-sm" @click="openDetail(intake)">
+                    <span class="material-symbols-rounded" style="font-size:16px">visibility</span>
+                    ดูข้อมูล
+                  </button>
+                  <button
+                    v-if="intake.status === 'new'"
+                    class="btn-primary btn-sm"
+                    @click="pullIntoBooking(intake)"
+                  >
+                    <span class="material-symbols-rounded" style="font-size:16px">event_seat</span>
+                    ดึงไปจอง
+                  </button>
+                  <span v-else class="status-chip" :class="intake.status">
+                    {{ intake.status === 'booked' ? 'จองแล้ว' : 'เก็บเข้ากรุ' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- หน้าหลังยังโหลดไม่เคยถูกเรียกมาก่อน — API ตัดมาให้ทีละ 20 กลุ่มอยู่แล้ว
+             ถ้าไม่มีปุ่มนี้ กลุ่มที่ 21 เป็นต้นไปจะหายไปเงียบ ๆ -->
+        <div class="pagination" v-if="meta.last_page > 1">
+          <button :disabled="meta.current_page <= 1" @click="goPage(meta.current_page - 1)">
+            <span class="material-symbols-rounded">chevron_left</span>
+          </button>
+          <span class="page-info">หน้า {{ meta.current_page }} / {{ meta.last_page }} · ทั้งหมด {{ meta.total }} กลุ่ม</span>
+          <button :disabled="meta.current_page >= meta.last_page" @click="goPage(meta.current_page + 1)">
+            <span class="material-symbols-rounded">chevron_right</span>
+          </button>
+        </div>
+      </template>
     </div>
 
     <!-- ── QR ของลิงก์ ──────────────────────────────────────────────── -->
@@ -454,16 +517,21 @@ const statusTabs = [
 ];
 
 const loading = ref(true);
+const view = ref('intakes');
 const links = ref([]);
 const intakes = ref([]);
+const meta = ref({ current_page: 1, last_page: 1, total: 0 });
+let searchTimer = null;
 const scheduleOptions = ref([]);
 const detail = ref(null);
 const status = ref('new');
 const search = ref('');
+const page = ref(1);
 const newCount = ref(0);
 const copiedKey = ref(null);
 const selectedIds = ref([]);
 const showLinkForm = ref(false);
+const showInactiveLinks = ref(false);
 const creatingLink = ref(false);
 const newLink = ref({ trip_schedule_id: '', label: '' });
 const qr = ref(null);
@@ -493,6 +561,12 @@ const filteredSchedules = computed(() => {
     return !term || option.tripTitle.toLowerCase().includes(term);
   });
 });
+
+const activeLinkCount = computed(() => links.value.filter((link) => link.is_active).length);
+const inactiveLinkCount = computed(() => links.value.length - activeLinkCount.value);
+const visibleLinks = computed(
+  () => (showInactiveLinks.value ? links.value : links.value.filter((link) => link.is_active)),
+);
 
 // เลือกได้เฉพาะกลุ่มที่ยังไม่ถูกดึงไปจอง — กลุ่มที่จองแล้ว/เก็บเข้ากรุ ดึงซ้ำไม่ได้
 const pickableIntakes = computed(() => intakes.value.filter((row) => row.status === 'new'));
@@ -538,10 +612,15 @@ const fetchIntakes = async (toggleLoading = true) => {
   if (toggleLoading) loading.value = true;
   try {
     const res = await api.get('/admin/intakes', {
-      params: { status: status.value, search: search.value || undefined },
+      params: { status: status.value, search: search.value || undefined, page: page.value },
     });
     intakes.value = res.data?.data ?? [];
     newCount.value = res.data?.meta?.new_count ?? 0;
+    meta.value = {
+      current_page: res.data?.meta?.current_page ?? 1,
+      last_page: res.data?.meta?.last_page ?? 1,
+      total: res.data?.meta?.total ?? intakes.value.length,
+    };
     // แถวที่หายไปจากรายการใหม่ต้องไม่ค้างอยู่ในสิ่งที่เลือกไว้
     selectedIds.value = selectedIds.value.filter((id) => intakes.value.some((row) => row.id === id));
   } catch (e) {
@@ -550,6 +629,35 @@ const fetchIntakes = async (toggleLoading = true) => {
   } finally {
     if (toggleLoading) loading.value = false;
   }
+};
+
+/** เปลี่ยนหมวดหรือคำค้นแล้วต้องกลับหน้าแรกเสมอ ไม่งั้นจะค้างอยู่หน้า 3 ของผลชุดเก่า */
+const selectStatus = (value) => {
+  if (status.value === value) return;
+  status.value = value;
+  page.value = 1;
+  fetchIntakes();
+};
+
+const onSearch = () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(applySearch, 300);
+};
+
+const applySearch = () => {
+  clearTimeout(searchTimer);
+  page.value = 1;
+  fetchIntakes();
+};
+
+const clearSearch = () => {
+  search.value = '';
+  applySearch();
+};
+
+const goPage = (next) => {
+  page.value = next;
+  fetchIntakes();
 };
 
 /**
@@ -623,6 +731,9 @@ const createLink = async () => {
 const toggleLink = async (link) => {
   const res = await api.put(`/admin/intake-links/${link.id}`, { is_active: !link.is_active });
   Object.assign(link, res.data.data);
+  // ปิดลิงก์แล้วแถวจะหลุดออกจากรายการที่กรองไว้ทันที ดูเหมือนเพิ่งลบทิ้ง —
+  // เปิดโซนลิงก์ที่ปิดแล้วให้เห็นว่ามันย้ายไปอยู่ตรงไหน
+  if (!link.is_active) showInactiveLinks.value = true;
 };
 
 const deleteLink = async (link) => {
@@ -791,6 +902,36 @@ onMounted(fetchAll);
 .progress-pill.done { color: #065f46; background: #d1fae5; }
 .btn-sm { font-size: 13px; padding: 7px 12px; }
 .btn-secondary.btn-sm, .btn-danger.btn-sm, .btn-primary.btn-sm { margin-left: 6px; }
+.btn-sm.icon-only { padding: 7px 9px; }
+.link-actions, .intake-actions { text-align: right; white-space: nowrap; }
+.link-actions .btn-sm, .intake-actions .btn-sm { vertical-align: middle; }
+
+/* ── สลับระหว่าง "ของที่กรอกเข้ามา" กับ "ลิงก์" ─────────────────── */
+.section-tabs {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; padding: 4px;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; width: fit-content; max-width: 100%;
+}
+.section-tab {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  border: none; background: transparent; border-radius: 9px;
+  padding: 9px 15px; font-size: 13.5px; font-weight: 700; color: #6b7280;
+}
+.section-tab:hover { color: #111827; }
+.section-tab .material-symbols-rounded { font-size: 19px; }
+.section-tab.active { background: #0f172a; color: #fff; }
+.tab-num {
+  display: inline-block; background: #f3f4f6; color: #4b5563;
+  border-radius: 999px; padding: 0 7px; font-size: 11.5px; font-weight: 700;
+}
+.section-tab.active .tab-num { background: rgba(255, 255, 255, .18); color: #fff; }
+.section-tab .tab-count { margin-left: 0; }
+
+/* ── หัวการ์ดตาราง: หมวด + ค้นหา อยู่ในกล่องเดียวกับรายการ ─────── */
+.card-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+}
+.toolbar-search { flex: 0 1 300px; min-width: 200px; }
 
 .panel {
   background: #fff;
@@ -802,6 +943,8 @@ onMounted(fetchAll);
 .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .panel-head h2 { font-size: 15px; font-weight: 700; }
 .panel-head p { font-size: 12.5px; color: #6b7280; margin-top: 2px; }
+.head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.head-actions .btn-sm { margin-left: 0; }
 
 .link-form {
   display: flex; flex-direction: column; gap: 16px;
@@ -888,10 +1031,6 @@ onMounted(fetchAll);
 .link-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; word-break: break-all; }
 tr.inactive { opacity: .5; }
 
-.filter-bar {
-  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px;
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px;
-}
 .filter-field { display: flex; flex-direction: column; gap: 4px; }
 .filter-field label { font-size: 11px; font-weight: 700; color: #6b7280; }
 
@@ -963,10 +1102,8 @@ tr.inactive { opacity: .5; }
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
   padding: 12px 16px;
-  border: 1px solid #bbf7d0;
-  border-radius: 12px;
+  border-bottom: 1px solid #bbf7d0;
   background: #f0fdf4;
 }
 .bulk-info { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
