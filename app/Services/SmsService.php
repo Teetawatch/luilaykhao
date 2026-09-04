@@ -15,34 +15,22 @@ class SmsService
         private ThaiBulkSmsClient $client,
     ) {}
 
-    public function sendBookingCreated(Booking $booking): ?SmsLog
+    public function sendPaymentConfirmed(Booking $booking, string $paymentType = 'full'): ?SmsLog
     {
         $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'booking_created',
-            dedupeKey: 'default',
-            message: sprintf(
-                'จองทริป %s สำเร็จ รหัส %s กรุณาชำระเงินเพื่อยืนยันที่นั่ง รายละเอียด %s',
-                $this->tripTitle($booking),
-                $booking->booking_ref,
-                $this->bookingUrl($booking),
-            ),
-        );
-    }
-
-    public function sendPaymentConfirmed(Booking $booking, string $paymentType = 'full'): ?SmsLog
-    {
-        $booking->loadMissing(['user', 'passengers']);
-
+        // ข้อความนี้จะค้างอยู่ในเครื่องลูกค้าไปจนถึงวันเดินทาง จึงต้องตอบได้ด้วยตัวเอง
+        // ว่าไปทริปไหน วันไหน และกดดูจุดนัดพบต่อได้ที่ไหน
         return $this->queueOrSend(
             booking: $booking,
             type: 'payment_confirmed',
             dedupeKey: $paymentType,
             message: sprintf(
-                'ชำระเงินเรียบร้อยแล้ว ขอบพระคุณที่ไว้วางใจเรา หมายเลขการจอง %s',
+                'ยืนยันที่นั่งแล้ว %s %s %s ขอบคุณครับ จุดนัดพบ/ติดตามรถ %s',
+                $this->tripTitle($booking),
+                $this->departureDate($booking),
                 $booking->booking_ref,
+                $this->trackUrl($booking),
             ),
         );
     }
@@ -70,7 +58,8 @@ class SmsService
     {
         $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        $reasonText = $reason ? " เหตุผล: {$reason}" : '';
+        $trimmedReason = $this->clip($reason, 60);
+        $reasonText = $trimmedReason !== '' ? " เหตุผล: {$trimmedReason}" : '';
 
         return $this->queueOrSend(
             booking: $booking,
@@ -112,7 +101,7 @@ class SmsService
                 $this->money($installment->amount),
                 $booking->booking_ref,
                 ThaiDate::short($installment->due_date),
-                $this->bookingUrl($booking),
+                $this->payUrl($booking),
             ),
         );
     }
@@ -129,12 +118,12 @@ class SmsService
             type: 'deposit_paid',
             dedupeKey: 'default',
             message: sprintf(
-                'รับชำระมัดจำ %s บาท สำหรับ booking %s แล้ว ยอดส่วนที่เหลือ %s บาท ครบกำหนด %s รายละเอียด %s',
+                'รับมัดจำ %s บาทแล้ว %s ยอดคงเหลือ %s บาท ครบกำหนด %s ชำระที่ %s',
                 $this->money($booking->deposit_amount),
                 $booking->booking_ref,
                 $this->money($balance),
                 $due,
-                $this->bookingUrl($booking),
+                $this->payUrl($booking),
             ),
         );
     }
@@ -150,11 +139,11 @@ class SmsService
             type: 'balance_due_reminder',
             dedupeKey: $booking->balance_due_at?->toDateString() ?? 'default',
             message: sprintf(
-                'แจ้งเตือนชำระยอดส่วนที่เหลือ %s บาท สำหรับ booking %s ภายในวันที่ %s ชำระที่ %s',
+                'เตือนชำระยอดคงเหลือ %s บาท %s ภายใน %s ชำระที่ %s',
                 $this->money($booking->balance_amount),
                 $booking->booking_ref,
                 $due,
-                $this->bookingUrl($booking),
+                $this->payUrl($booking),
             ),
         );
     }
@@ -168,9 +157,10 @@ class SmsService
             type: 'balance_paid',
             dedupeKey: 'default',
             message: sprintf(
-                'รับชำระยอดส่วนที่เหลือ %s บาท สำหรับ booking %s ครบถ้วนแล้ว ขอบคุณค่ะ',
+                'รับชำระครบแล้ว %s บาท %s ขอบคุณครับ ดูจุดนัดพบ/ติดตามรถ %s',
                 $this->money($booking->balance_amount),
                 $booking->booking_ref,
+                $this->trackUrl($booking),
             ),
         );
     }
@@ -184,12 +174,12 @@ class SmsService
             type: 'departure_reminder',
             dedupeKey: $daysBefore.'_days_before',
             message: sprintf(
-                'อีก %d วันถึงทริป %s วันที่ %s จุดนัดพบ %s รายละเอียด %s',
+                'อีก %d วันถึงทริป %s %s จุดนัดพบ %s ติดตามรถ %s',
                 $daysBefore,
                 $this->tripTitle($booking),
                 $this->departureDate($booking),
                 $this->meetingPoint($booking),
-                $this->bookingUrl($booking),
+                $this->trackUrl($booking),
             ),
         );
     }
@@ -344,6 +334,12 @@ class SmsService
             && filled($config['sender']);
     }
 
+    /**
+     * ชนิดข้อความที่ยิงจริง — ที่ไม่อยู่ในลิสต์จะถูกบันทึกเป็น skipped เฉย ๆ
+     *
+     * `booking_created` ตั้งใจไม่ส่ง: ตอนเพิ่งกดจองลูกค้ายังอยู่หน้าจอ และมีทั้ง
+     * อีเมลกับ push อยู่แล้ว ไม่คุ้มค่าเครดิต SMS
+     */
     private function sendableSmsTypes(): array
     {
         return [
@@ -383,7 +379,7 @@ class SmsService
 
     private function tripTitle(Booking $booking): string
     {
-        return $booking->schedule?->trip?->title ?? 'ทริปของคุณ';
+        return $this->clip($booking->schedule?->trip?->title, 45) ?: 'ทริปของคุณ';
     }
 
     private function departureDate(Booking $booking): string
@@ -394,24 +390,42 @@ class SmsService
 
     private function meetingPoint(Booking $booking): string
     {
-        return $booking->pickupPoint?->name
-            ?? $booking->schedule?->trip?->departure_point
-            ?? 'ตามรายละเอียดการจอง';
+        $name = $booking->pickupPoint?->name
+            ?? $booking->schedule?->trip?->departure_point;
+
+        return $this->clip($name, 45) ?: 'ตามรายละเอียดการจอง';
     }
 
-    private function bookingUrl(Booking $booking): string
+    /**
+     * ลิงก์หน้าติดตามรถสาธารณะ /track/{token} — เปิดได้โดยไม่ต้องล็อกอิน และก่อน
+     * วันเดินทางก็ยังบอกชื่อทริป วันเดินทาง และจุดนัดพบให้อยู่
+     */
+    private function trackUrl(Booking $booking): string
     {
-        return rtrim((string) config('app.frontend_url', config('app.url')), '/').'/confirmation/'.$booking->booking_ref;
+        return $booking->shareUrl();
     }
 
-    private function installmentPaymentUrl(Booking $booking): string
+    /** ลิงก์หน้าชำระเงินสาธารณะ /pay/{token} — ตัวเดียวกับที่อีเมลแจ้งยอดค้างใช้ */
+    private function payUrl(Booking $booking): string
     {
-        return rtrim((string) config('app.frontend_url', config('app.url')), '/').'/installment-payment/'.$booking->booking_ref;
+        return $booking->payUrl();
     }
 
+    /**
+     * ตัดข้อความอิสระ (ชื่อทริป จุดนัดพบ เหตุผลยกเลิกที่แอดมินพิมพ์เอง) ให้สั้นพอ
+     * ไม่งั้นมันจะดันลิงก์ท้ายข้อความให้ตกขอบตอน [queueOrSend] ตัดที่ 450 ตัวอักษร
+     */
+    private function clip(?string $value, int $max): string
+    {
+        return Str::limit(trim((string) $value), $max, '');
+    }
+
+    /** 1500 -> "1,500" แต่ 1500.50 -> "1,500.50" — ทศนิยมลอย ๆ กินเครดิต SMS เปล่า ๆ */
     private function money(mixed $amount): string
     {
-        return number_format((float) $amount, 2);
+        $value = (float) $amount;
+
+        return number_format($value, fmod($value, 1) === 0.0 ? 0 : 2);
     }
 
     private function nextInstallmentText(Booking $booking, ?InstallmentPayment $currentInstallment = null): string
@@ -443,7 +457,7 @@ class SmsService
             $nextInstallment->installment_no,
             $this->money($nextInstallment->amount),
             ThaiDate::short($nextInstallment->due_date),
-            $this->installmentPaymentUrl($booking),
+            $this->payUrl($booking),
         );
     }
 }
