@@ -1473,6 +1473,43 @@ class CustomerIntakeTest extends TestCase
         $this->assertNull(CustomerIntakePerson::first()->seat_id);
     }
 
+    /**
+     * ลิงก์แบบให้ลูกค้าเลือกเอง: หน้าเปิดมาพร้อมผังที่นั่ง (ยังไม่รู้ว่าเขาจะเลือกอะไร)
+     * พอเลือกจอยทริป JS ซ่อนผังให้ — แต่ถ้า JS ไม่ทำงาน ค่าที่นั่งจะถูกส่งมาด้วย
+     * ฝั่งเซิร์ฟเวอร์จึงต้องตัดทิ้งเอง ไม่ใช่ฝากความถูกต้องไว้กับเบราว์เซอร์
+     */
+    public function test_choosing_join_on_an_ask_link_drops_the_seat_that_came_with_it(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true, 'join_trip_price' => 1200]);
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_ASK);
+
+        // หน้าแรกมีทั้งผังที่นั่งและตัวเลือกวิธีเดินทาง
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('name="seat_id"', false)
+            ->assertSee('name="booking_type"', false);
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'booking_type' => IntakeLink::TYPE_JOIN,
+            'seat_id' => 'A1',
+        ]))->assertSessionHasNoErrors();
+
+        $intake = CustomerIntake::firstOrFail();
+        $this->assertTrue($intake->isJoinTrip());
+        $this->assertNull($intake->people()->first()->seat_id);
+
+        // ที่นั่งนั้นต้องยังว่างสำหรับคนที่ไปกับรถจริง ๆ
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'name' => 'สมหญิง ใจงาม',
+            'phone' => '089-999-8888',
+            'booking_type' => IntakeLink::TYPE_NORMAL,
+            'seat_id' => 'A1',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('A1', CustomerIntake::latest('id')->firstOrFail()->people()->first()->seat_id);
+    }
+
     private function bookSeat(TripSchedule $schedule, string $seatId): Booking
     {
         $booking = Booking::create([
