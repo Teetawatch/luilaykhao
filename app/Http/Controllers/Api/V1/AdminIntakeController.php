@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerIntake;
 use App\Models\IntakeLink;
 use App\Models\TripSchedule;
+use App\Services\IntakeSeatService;
 use App\Services\QrCodeService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +22,8 @@ use Illuminate\Validation\Rule;
 class AdminIntakeController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private readonly IntakeSeatService $seats) {}
 
     // ── ลิงก์ ────────────────────────────────────────────────────────────
 
@@ -162,12 +165,35 @@ class AdminIntakeController extends Controller
     {
         $intake = CustomerIntake::with(['schedule.trip', 'link', 'booking', 'people.pickupPoint'])->findOrFail($id);
 
+        // สถานะที่นั่ง ณ ตอนนี้ ไม่ใช่ตอนที่ลูกค้ากรอก — ที่นั่งในฟอร์มไม่ถูกล็อก
+        // ระหว่างที่กลุ่มนี้รออยู่ อาจมีคนจองและจ่ายเงินตัดหน้าไปแล้ว ซึ่งได้สิทธิ์ก่อน
+        $seatStates = collect($this->seats->mapFor($intake->schedule, $intake->isJoinTrip())['seats'] ?? [])
+            ->keyBy('id');
+
+        $taken = $intake->people
+            ->filter(fn ($person) => filled($person->seat_id))
+            ->filter(fn ($person) => ! in_array(
+                $seatStates[$person->seat_id]['state'] ?? 'booked',
+                ['available', 'claimed'],
+                true,
+            ));
+
         return $this->success([
             ...$this->summaryPayload($intake),
             'note' => $intake->note,
             'group_url' => $intake->groupUrl(),
             // ชุดที่หน้า "จองแทนลูกค้า" เอาไปเติมฟอร์มผู้โดยสารได้ตรง ๆ
             'passengers' => $intake->people->map->toPassengerPayload()->values(),
+            // ที่นั่งเรียงตรงกับ passengers ทีละคน — หน้าจองแทนลูกค้าเอาไปติ๊กบนผัง
+            // ให้เลย ไม่ใช่ให้แอดมินอ่านแล้วไล่คลิกเอง
+            'seats' => $intake->people->map(fn ($person) => $person->seat_id)->values(),
+            'seat_vehicle_option_id' => (int) ($intake->people
+                ->firstWhere(fn ($person) => filled($person->seat_id))?->seat_vehicle_option_id ?? 0),
+            // ที่นั่งที่ลูกค้าเลือกไว้แล้วถูกใช้ไป — ต้องเห็นก่อนกดดึงไปจอง
+            'seat_conflicts' => $taken->map(fn ($person) => [
+                'name' => $person->name,
+                'seat_id' => $person->seat_id,
+            ])->values(),
             'people' => $intake->people->map(fn ($person) => [
                 'id' => $person->id,
                 'is_lead' => $person->is_lead,
@@ -179,6 +205,9 @@ class AdminIntakeController extends Controller
                 'consent_at' => $person->consent_at?->toIso8601String(),
                 // จุดขึ้นรถที่เจ้าตัวเลือกเอง — คนละคนในกลุ่มขึ้นคนละจุดได้
                 'pickup_label' => $person->pickupPoint?->pickup_location,
+                // ที่นั่งที่เจ้าตัวเลือกไว้ + ยังใช้ได้อยู่ไหม
+                'seat_id' => $person->seat_id,
+                'seat_lost' => filled($person->seat_id) && $taken->contains($person),
             ])->values(),
         ]);
     }

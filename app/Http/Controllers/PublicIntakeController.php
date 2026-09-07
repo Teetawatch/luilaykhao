@@ -8,6 +8,7 @@ use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Rules\ThaiIdCard;
 use App\Services\CustomerIntakeService;
+use App\Services\IntakeSeatService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class PublicIntakeController extends Controller
 {
-    public function __construct(private readonly CustomerIntakeService $intakes) {}
+    public function __construct(
+        private readonly CustomerIntakeService $intakes,
+        private readonly IntakeSeatService $seats,
+    ) {}
 
     public function show(string $token): View
     {
@@ -51,6 +55,9 @@ class PublicIntakeController extends Controller
             // หน้าที่ยังให้เลือกรอบอยู่จึงไม่มีรายการที่ถูกต้องให้เลือก
             // (คนจอยทริปไปเอง ไม่มีรถให้ขึ้น จึงไม่ต้องเลือกเลย)
             'pickupPoints' => $closed ? collect() : $this->pickupChoices($schedule, $link->isJoinTrip()),
+            // ผังที่นั่งของรอบที่ผูกไว้ — เลือกได้ตั้งแต่ตอนกรอก แต่ยังไม่ล็อก
+            // (รอบที่ยังไม่รู้ว่าเป็นรอบไหน ไม่มีผังที่ถูกต้องให้เลือก เหมือนจุดขึ้นรถ)
+            'seatMap' => $closed ? null : $this->seats->mapFor($schedule, $link->isJoinTrip()),
             // รอบที่ผูกไว้เต็ม/ผ่านไปแล้ว ยังรับข้อมูลอยู่ (ทีมงานเอาไปเสนอรอบอื่นได้)
             // แต่ต้องบอกตั้งแต่ต้นและยื่นรอบอื่นให้เลือกตรงนั้นเลย ไม่ใช่ปล่อยให้
             // กรอกจนจบแล้วค่อยรู้ตอนทีมงานตอบกลับ
@@ -79,8 +86,10 @@ class PublicIntakeController extends Controller
             : $bound;
 
         $pickupChoices = $mayChoose ? collect() : $this->pickupChoices($schedule, $isJoin);
+        // เลือกที่นั่งได้เฉพาะรอบที่รู้แน่แล้วว่าเป็นรอบไหน — ผังเป็นของรอบ
+        $seatSchedule = $mayChoose ? null : $schedule;
 
-        $data = $this->validatePerson($request, $schedule, $pickupChoices, [
+        $data = $this->validatePerson($request, $schedule, $pickupChoices, $seatSchedule, $isJoin, [
             'party_size' => ['nullable', 'integer', 'min:1', 'max:'.CustomerIntakeService::MAX_PEOPLE],
             'note' => ['nullable', 'string', 'max:1000'],
             'source' => ['nullable', Rule::in(['line', 'facebook', 'instagram', 'other'])],
@@ -129,6 +138,9 @@ class PublicIntakeController extends Controller
             // เพื่อนในกลุ่มเป็นประเภทเดียวกับกลุ่มเสมอ — กลุ่มจอยทริปจึงไม่มีใคร
             // ต้องเลือกจุดขึ้นรถ
             'pickupPoints' => $this->pickupChoices($intake->schedule, $intake->isJoinTrip()),
+            // ที่นั่งของเพื่อนในกลุ่มเดียวกันติดชื่อเล่นกำกับ — คนที่กลับมาแก้ข้อมูล
+            // ของตัวเองจะได้รู้ว่าที่นั่งที่หายไปคือของตัวเอง ไม่ใช่คนแปลกหน้า
+            'seatMap' => $this->seats->mapFor($intake->schedule, $intake->isJoinTrip(), $intake),
             // ชื่อเล่นเท่านั้น — ลิงก์นี้อยู่ในแชทกลุ่ม ใครเปิดก็ได้
             'filled' => $intake->people()->get()->map->publicLabel()->all(),
             'justFilled' => session('intake_just_filled'),
@@ -143,9 +155,14 @@ class PublicIntakeController extends Controller
             return back()->withErrors(['name' => 'กลุ่มนี้ปิดรับข้อมูลแล้ว เพราะทีมงานเปิดการจองให้เรียบร้อยแล้ว']);
         }
 
-        $data = $this->validatePerson($request, $intake->schedule, $this->pickupChoices($intake->schedule, $intake->isJoinTrip()), [
-            'consent' => ['accepted'],
-        ]);
+        $data = $this->validatePerson(
+            $request,
+            $intake->schedule,
+            $this->pickupChoices($intake->schedule, $intake->isJoinTrip()),
+            $intake->schedule,
+            $intake->isJoinTrip(),
+            ['consent' => ['accepted']],
+        );
 
         if ($error = $this->passportWindowError($data, $intake->schedule)) {
             return back()->withInput()->withErrors(['passport_expires_at' => $error]);
@@ -172,31 +189,47 @@ class PublicIntakeController extends Controller
         Request $request,
         ?TripSchedule $schedule,
         Collection $pickupPoints,
+        ?TripSchedule $seatSchedule = null,
+        bool $isJoin = false,
         array $extra = [],
     ): array {
+        // ที่นั่งที่ยังเลือกได้ ณ วินาทีนี้ — ไม่ใช่ตอนที่ลูกค้าเปิดหน้าจอ ระหว่างที่
+        // เขากรอกอยู่ อาจมีคนจองจริงและจ่ายเงินตัดหน้าไปแล้ว ซึ่งคนนั้นได้สิทธิ์ก่อน
+        $selectableSeats = $this->seats->selectableSeatIds($seatSchedule, $isJoin, $request->input('phone'));
         // ทริปต่างประเทศต้องได้เอกสารเดินทางตั้งแต่ตอนนี้ ไม่งั้นแอดมินก็ต้อง
         // กลับไปไล่ถามในแชทอยู่ดี ซึ่งคือปัญหาเดิมที่หน้านี้ตั้งใจแก้
         $isInternational = (bool) $schedule?->trip?->isInternational();
         $passportRule = $isInternational ? 'required' : 'nullable';
 
+        // ทุกช่องในฟอร์มนี้บังคับกรอก — ข้อมูลชุดนี้ไปทำประกันและใช้ดูแลลูกค้า
+        // ระหว่างทริป ช่องที่ปล่อยว่างได้คือช่องที่ทีมงานต้องกลับไปไล่ถามในแชท
+        // ซึ่งคือปัญหาเดิมที่หน้านี้ตั้งใจแก้ ช่องที่ "ไม่มีจริง ๆ" ก็มีปุ่มให้ตอบว่า
+        // ไม่มี (แพ้อาหาร/โรคประจำตัว) และกรุ๊ปเลือดตอบว่าไม่ทราบได้ แต่ต้องตอบ
         $validated = $request->validate([
-            'title' => ['nullable', 'string', 'max:50'],
+            'title' => ['required', Rule::in(['นาย', 'นาง', 'นางสาว'])],
             'name' => ['required', 'string', 'max:120'],
-            'nickname' => ['nullable', 'string', 'max:50'],
+            'nickname' => ['required', 'string', 'max:50'],
             'phone' => ['required', 'string', 'max:20'],
             // อีเมลบังคับกรอก — ใบเสร็จ กำหนดการ และอีเมลยืนยันการจองส่งทางนี้ทางเดียว
             'email' => ['required', 'email', 'max:120'],
-            'id_card' => ['nullable', 'string', 'max:20', new ThaiIdCard],
-            'birth_date' => ['nullable', 'date', 'before:today'],
-            'blood_group' => ['nullable', Rule::in(['A', 'B', 'AB', 'O', ''])],
+            'id_card' => ['required', 'string', 'max:20', new ThaiIdCard],
+            'birth_date' => ['required', 'date', 'before:today'],
+            // present ไม่ใช่ required — "ไม่ทราบ" เป็นคำตอบที่ยอมรับได้ (ค่าว่าง)
+            // แต่ต้องเป็นการกดเลือก ไม่ใช่การข้ามไปเฉย ๆ
+            'blood_group' => ['present', Rule::in(['A', 'B', 'AB', 'O', ''])],
             'name_en' => [$passportRule, 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
             'passport_no' => [$passportRule, 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],
             'passport_expires_at' => [$passportRule, 'nullable', 'date', 'after:today'],
-            'emergency_contact' => ['nullable', 'string', 'max:120'],
-            'emergency_phone' => ['nullable', 'string', 'max:20'],
-            'allergies' => ['nullable', 'string', 'max:500'],
-            'health_notes' => ['nullable', 'string', 'max:500'],
-            'halal_food' => ['nullable', 'boolean'],
+            'emergency_contact' => ['required', 'string', 'max:120'],
+            'emergency_phone' => ['required', 'string', 'max:20'],
+            'allergies' => ['required', 'string', 'max:500'],
+            'health_notes' => ['required', 'string', 'max:500'],
+            'halal_food' => ['required', 'boolean'],
+            // ที่นั่งบังคับเลือกเฉพาะตอนที่ยังมีที่ให้เลือกจริง — รอบที่ที่นั่งถูกจอง
+            // ไปหมดแล้วยังต้องรับข้อมูลลูกค้าไว้ได้ (ทีมงานเอาไปเสนอคิวรอ/รอบอื่น)
+            'seat_id' => empty($selectableSeats)
+                ? ['nullable', 'string', 'max:10']
+                : ['required', Rule::in($selectableSeats)],
             // รอบที่มีจุดรับ ต้องเลือกให้ครบทุกคน — คนที่รู้ว่าตัวเองขึ้นที่ไหนคือ
             // เจ้าตัว ไม่ใช่คนที่กดลิงก์มาก่อน และราคาต่อคนก็ผูกกับจุดที่ขึ้น
             'pickup_point_id' => $pickupPoints->isEmpty()
@@ -204,7 +237,20 @@ class PublicIntakeController extends Controller
                 : ['required', Rule::in($pickupPoints->pluck('id')->all())],
             ...$extra,
         ], [
+            'title.required' => 'กรุณาเลือกคำนำหน้า',
+            'title.in' => 'กรุณาเลือกคำนำหน้า',
             'name.required' => 'กรุณากรอกชื่อ-นามสกุล',
+            'nickname.required' => 'กรุณากรอกชื่อเล่น (ทีมงานใช้เรียกหน้างาน)',
+            'id_card.required' => 'กรุณากรอกเลขบัตรประชาชน (ใช้ทำประกันการเดินทาง)',
+            'birth_date.required' => 'กรุณาระบุวันเกิด (ใช้ทำประกันการเดินทาง)',
+            'blood_group.present' => 'กรุณาเลือกกรุ๊ปเลือด เลือก "ไม่ทราบ" ได้ถ้าไม่แน่ใจ',
+            'emergency_contact.required' => 'กรุณากรอกผู้ติดต่อฉุกเฉิน',
+            'emergency_phone.required' => 'กรุณากรอกเบอร์ผู้ติดต่อฉุกเฉิน',
+            'allergies.required' => 'กรุณากรอกการแพ้อาหาร/ยา กดปุ่ม "ไม่มี" ได้ถ้าไม่มี',
+            'health_notes.required' => 'กรุณากรอกโรคประจำตัว/หมายเหตุสุขภาพ กดปุ่ม "ไม่มี" ได้ถ้าไม่มี',
+            'halal_food.required' => 'กรุณาเลือกว่าต้องการอาหารฮาลาลหรือไม่',
+            'seat_id.required' => 'กรุณาเลือกที่นั่งของคุณ',
+            'seat_id.in' => 'ที่นั่งที่เลือกเพิ่งถูกใช้ไปแล้ว กรุณาเลือกที่นั่งอื่น',
             'pickup_point_id.required' => 'กรุณาเลือกจุดขึ้นรถ',
             'pickup_point_id.in' => 'จุดขึ้นรถนี้ไม่อยู่ในรอบเดินทางนี้',
             'phone.required' => 'กรุณากรอกเบอร์โทรศัพท์',
@@ -219,6 +265,14 @@ class PublicIntakeController extends Controller
             'passport_expires_at.required' => 'กรุณาระบุวันหมดอายุพาสปอร์ต',
             'passport_expires_at.after' => 'พาสปอร์ตหมดอายุแล้ว',
         ]);
+
+        // ที่นั่งเป็นของ "คัน" ไม่ใช่ของรอบ — คันมาจากฝั่งเรา ไม่ใช่จากเบราว์เซอร์
+        // รอบที่ไม่มีอะไรให้เลือก ค่าที่หลุดมาจากฟอร์มเก่าต้องไม่ติดไปด้วย
+        if (empty($selectableSeats)) {
+            unset($validated['seat_id']);
+        } elseif (filled($validated['seat_id'] ?? null) && $seatSchedule) {
+            $validated['seat_vehicle_option_id'] = (int) ($this->seats->defaultOption($seatSchedule)?->id ?? 0);
+        }
 
         // ไอพีเก็บคู่กับความยินยอม ไม่ได้เอาไปทำอย่างอื่น
         return [...$validated, 'consent_ip' => $request->ip()];

@@ -50,6 +50,17 @@
           <span class="material-symbols-rounded">hiking</span>
           ลูกค้ากรอกมาแบบจอยทริป — ติ๊ก "จองแบบจอยทริป" ให้แล้ว ไม่ต้องเลือกที่นั่งและจุดขึ้นรถ
         </p>
+        <!-- ที่นั่งในลิงก์เก็บข้อมูลไม่ได้ถูกล็อกไว้ ระหว่างที่กลุ่มนี้รอ อาจมีคนจอง
+             และจ่ายเงินเองตัดหน้าไปแล้ว — ต้องบอกก่อนกดบันทึก ไม่ใช่ให้เจอตอนส่งไม่ผ่าน -->
+        <p v-if="intakeSeatsLost.length" class="intake-warn">
+          <span class="material-symbols-rounded">warning</span>
+          ที่นั่งที่ลูกค้าเลือกไว้ถูกใช้ไปแล้ว {{ intakeSeatsLost.length }} ที่
+          ({{ intakeSeatsLost.join(', ') }}) — เลือกที่นั่งใหม่ให้เขาแล้วแจ้งกลับด้วย
+        </p>
+        <p v-else-if="intakeSeatsApplied.length" class="intake-note">
+          <span class="material-symbols-rounded">event_seat</span>
+          ติ๊กที่นั่งที่ลูกค้าเลือกไว้ให้แล้ว ({{ intakeSeatsApplied.join(', ') }}) — ยังเปลี่ยนได้
+        </p>
       </div>
       <router-link to="/admin/intakes" class="btn-secondary">กลับไปรายการ</router-link>
     </div>
@@ -852,6 +863,8 @@ const intakeDroppedCount = ref(0);
 const intakeScheduleMixed = ref(false);
 const intakeTypeMixed = ref(false);
 const intakeJoinUnavailable = ref(false);
+const intakeSeatsApplied = ref([]);
+const intakeSeatsLost = ref([]);
 
 // ── QR ให้ลูกค้าสแกนจ่าย (หลังเปิดการจองเสร็จ) ──
 const qrData = ref(null);
@@ -1351,12 +1364,18 @@ async function prefillFromIntake(intakeParam) {
       }
     }
 
-    const incoming = sources.flatMap((source) => source.passengers || []);
+    // ที่นั่งเดินคู่มากับผู้โดยสารทีละคน (เรียงตรงกันจากฝั่งเซิร์ฟเวอร์) — คนที่ถูก
+    // ตัดออกเพราะซ้ำ ต้องไม่ทิ้งที่นั่งของเขาค้างไว้ในรายการที่จะติ๊ก
+    const incoming = sources.flatMap((source) => (source.passengers || []).map((passenger, index) => ({
+      passenger,
+      seatId: source.seats?.[index] || '',
+    })));
     const merged = [];
+    const mergedSeats = [];
     const seen = new Set();
     let dropped = 0;
 
-    for (const passenger of incoming) {
+    for (const { passenger, seatId } of incoming) {
       // คนเดียวกันกรอกทั้งลิงก์ทีมงานและลิงก์กลุ่มก็เกิดขึ้นจริง — เบอร์คือตัวชี้ขาด
       // เหมือนฝั่งเซิร์ฟเวอร์ ไม่มีเบอร์ค่อยถอยไปเทียบชื่อแบบตัดช่องว่าง
       const key = (passenger.phone || '').replace(/\D/g, '')
@@ -1368,6 +1387,7 @@ async function prefillFromIntake(intakeParam) {
       }
       if (key) seen.add(key);
 
+      mergedSeats.push(seatId);
       merged.push({
         ...newPassenger(),
         ...passenger,
@@ -1385,9 +1405,51 @@ async function prefillFromIntake(intakeParam) {
     if (merged.length) {
       passengers.value = merged;
     }
+
+    await applyIntakeSeats(mergedSeats, sources);
   } catch (error) {
     toast.error(error.response?.data?.message || 'ดึงข้อมูลลูกค้าไม่สำเร็จ');
   }
+}
+
+/**
+ * ติ๊กที่นั่งที่ลูกค้าเลือกไว้ตอนกรอกฟอร์มให้บนผังของหน้านี้
+ *
+ * ที่นั่งชุดนั้นเป็น "ที่นั่งที่ขอไว้" ไม่เคยถูกล็อก — คนที่กดจองและจ่ายเงินเองได้
+ * สิทธิ์ก่อนเสมอ จึงต้องเช็คกับผังจริงทีละที่ ที่ไหนถูกใช้ไปแล้วก็ไม่ติ๊ก แล้วบอก
+ * แอดมินเป็นตัวเลขว่าหายไปกี่ที่ ไม่ใช่ติ๊กไปเงียบ ๆ แล้วให้ไปตกตอนกดบันทึก
+ */
+async function applyIntakeSeats(seatIds, sources) {
+  intakeSeatsApplied.value = [];
+  intakeSeatsLost.value = [];
+
+  const wanted = seatIds.filter(Boolean);
+  if (!wanted.length || form.is_join_trip || !form.schedule_id) return;
+
+  // ที่นั่งผูกกับคัน — A1 ของรถตู้ไม่ใช่ A1 ของรถบัส ถ้าลูกค้าเลือกบนคันอื่น
+  // ต้องสลับผังก่อน ไม่ใช่เอารหัสที่นั่งไปทาบกับผังที่บังเอิญมีชื่อเดียวกัน
+  const optionId = Number(sources.find((source) => source.seat_vehicle_option_id)?.seat_vehicle_option_id || 0);
+  if (optionId && Number(seatMap.value?.vehicle_option_id || 0) !== optionId
+      && vehicleOptions.value.some((option) => Number(option.id) === optionId)) {
+    form.vehicle_option_id = optionId;
+    await onVehicleOptionChange();
+  }
+
+  if (!seatMap.value || seatMap.value.has_seat_map === false) return;
+
+  const byId = new Map((seatMap.value.seats || []).map((seat) => [seat.id, seat]));
+  const applied = [];
+
+  wanted.forEach((seatId) => {
+    if (byId.get(seatId)?.status === 'available' && !applied.includes(seatId)) {
+      applied.push(seatId);
+    } else {
+      intakeSeatsLost.value.push(seatId);
+    }
+  });
+
+  selectedSeatIds.value = applied.slice(0, passengers.value.length);
+  intakeSeatsApplied.value = selectedSeatIds.value.slice();
 }
 
 function clearPassengerPickups() {

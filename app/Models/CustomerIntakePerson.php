@@ -20,7 +20,8 @@ class CustomerIntakePerson extends Model
     public const CONSENT_TEXT = 'ยินยอมให้เก็บข้อมูลนี้เพื่อจัดการการเดินทางและทำประกัน';
 
     protected $fillable = [
-        'customer_intake_id', 'is_lead', 'pickup_point_id', 'title', 'name', 'nickname', 'phone', 'email',
+        'customer_intake_id', 'is_lead', 'pickup_point_id', 'seat_id', 'seat_vehicle_option_id',
+        'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'name_en', 'nationality',
         'passport_no', 'passport_expires_at', 'emergency_contact', 'emergency_phone',
         'allergies', 'health_notes', 'halal_food', 'dive_cert_level', 'cert_number', 'weight',
@@ -39,6 +40,7 @@ class CustomerIntakePerson extends Model
             'birth_date' => 'date',
             'passport_expires_at' => 'date',
             'halal_food' => 'boolean',
+            'seat_vehicle_option_id' => 'integer',
             'weight' => 'float',
             'consent_at' => 'datetime',
         ];

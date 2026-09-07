@@ -1,20 +1,21 @@
 {{-- ช่องข้อมูลของผู้เดินทางหนึ่งคน ใช้ร่วมกันทั้งหน้าลิงก์ทีมงานและหน้ากลุ่ม --}}
 @php($isInternational = $isInternational ?? false)
 @php($pickupPoints = $pickupPoints ?? collect())
+@php($seatMap = $seatMap ?? null)
 
 <div class="step">
     <span class="n">@include('intake.icon', ['name' => 'user'])</span>
     <h2>ข้อมูลผู้เดินทาง</h2>
     <span class="rule"></span>
 </div>
-<p class="step-note">กรอกของ<strong>ตัวคุณเอง</strong> ช่องที่มี <span class="req">*</span> จำเป็นต้องกรอก ที่เหลือเว้นไว้ก่อนได้</p>
+<p class="step-note">กรอกของ<strong>ตัวคุณเอง</strong> ทุกช่องจำเป็นต้องกรอก เพราะใช้ทำประกันการเดินทางและดูแลคุณระหว่างทริป</p>
 
 <div class="f">
-    <span class="field" style="display:block">คำนำหน้า</span>
+    <span class="field" style="display:block">คำนำหน้า <span class="req">*</span></span>
     <div class="pills">
-        @foreach (['' => 'ไม่ระบุ', 'นาย' => 'นาย', 'นาง' => 'นาง', 'นางสาว' => 'นางสาว'] as $value => $label)
+        @foreach (['นาย', 'นาง', 'นางสาว'] as $label)
             <label class="pill">
-                <input type="radio" name="title" value="{{ $value }}" @checked(old('title', '') === $value)>
+                <input type="radio" name="title" value="{{ $label }}" required @checked(old('title') === $label)>
                 <span>{{ $label }}</span>
             </label>
         @endforeach
@@ -29,8 +30,8 @@
 
 <div class="grid2">
     <div class="f">
-        <label class="field" for="nickname">ชื่อเล่น</label>
-        <input type="text" id="nickname" name="nickname" placeholder="ให้ทีมงานเรียก" value="{{ old('nickname') }}">
+        <label class="field" for="nickname">ชื่อเล่น <span class="req">*</span></label>
+        <input type="text" id="nickname" name="nickname" required placeholder="ให้ทีมงานเรียก" value="{{ old('nickname') }}">
     </div>
     <div class="f">
         <label class="field" for="phone">เบอร์โทรศัพท์ <span class="req">*</span></label>
@@ -84,6 +85,13 @@
     </div>
 @endif
 
+@if ($seatMap)
+    {{-- ห่อด้วยเหตุผลเดียวกับจุดขึ้นรถ — คนจอยทริปไม่ได้ขึ้นรถของเรา จึงไม่มีที่นั่ง --}}
+    <div data-seat-wrap>
+        @include('intake.seat-choice', ['seatMap' => $seatMap])
+    </div>
+@endif
+
 <div class="step">
     <span class="n">@include('intake.icon', ['name' => 'shield'])</span>
     <h2>ข้อมูลสำหรับทำประกัน</h2>
@@ -92,23 +100,26 @@
 <p class="step-note">ทริปของเราทำประกันการเดินทางให้ทุกคน บริษัทประกันขอข้อมูลชุดนี้</p>
 
 <div class="f">
-    <label class="field" for="id_card">เลขบัตรประชาชน</label>
-    <input type="text" id="id_card" name="id_card" inputmode="numeric" maxlength="17"
+    <label class="field" for="id_card">เลขบัตรประชาชน <span class="req">*</span></label>
+    <input type="text" id="id_card" name="id_card" required inputmode="numeric" maxlength="17"
            data-id-card placeholder="X-XXXX-XXXXX-XX-X" value="{{ old('id_card') }}">
 </div>
 
 <div class="f">
-    <label class="field" for="birth_date">วันเกิด</label>
-    <input type="date" id="birth_date" name="birth_date" max="{{ now('Asia/Bangkok')->toDateString() }}"
+    <label class="field" for="birth_date">วันเกิด <span class="req">*</span></label>
+    <input type="date" id="birth_date" name="birth_date" required max="{{ now('Asia/Bangkok')->toDateString() }}"
            value="{{ old('birth_date') }}">
 </div>
 
 <div class="f">
-    <span class="field" style="display:block">กรุ๊ปเลือด</span>
+    <span class="field" style="display:block">กรุ๊ปเลือด <span class="req">*</span></span>
     <div class="pills">
-        @foreach (['' => 'ไม่ทราบ', 'A' => 'A', 'B' => 'B', 'AB' => 'AB', 'O' => 'O'] as $value => $label)
+        {{-- "ไม่ทราบ" เป็นคำตอบที่ยอมรับได้ แต่ต้องกดเลือก ไม่ใช่ข้ามไปเฉย ๆ —
+             ให้เดาแล้วกรอกผิดอันตรายกว่าไม่รู้ --}}
+        @foreach (['A' => 'A', 'B' => 'B', 'AB' => 'AB', 'O' => 'O', '' => 'ไม่ทราบ'] as $value => $label)
             <label class="pill">
-                <input type="radio" name="blood_group" value="{{ $value }}" @checked(old('blood_group', '') === $value)>
+                <input type="radio" name="blood_group" value="{{ $value }}" required
+                       @checked(old('blood_group') !== null && old('blood_group') === $value)>
                 <span>{{ $label }}</span>
             </label>
         @endforeach
@@ -124,30 +135,46 @@
 
 <div class="grid2">
     <div class="f">
-        <label class="field" for="emergency_contact">ผู้ติดต่อฉุกเฉิน</label>
-        <input type="text" id="emergency_contact" name="emergency_contact"
+        <label class="field" for="emergency_contact">ผู้ติดต่อฉุกเฉิน <span class="req">*</span></label>
+        <input type="text" id="emergency_contact" name="emergency_contact" required
                placeholder="ชื่อ · ความสัมพันธ์" value="{{ old('emergency_contact') }}">
     </div>
     <div class="f">
-        <label class="field" for="emergency_phone">เบอร์ผู้ติดต่อ</label>
-        <input type="tel" id="emergency_phone" name="emergency_phone" inputmode="tel"
+        <label class="field" for="emergency_phone">เบอร์ผู้ติดต่อ <span class="req">*</span></label>
+        <input type="tel" id="emergency_phone" name="emergency_phone" required inputmode="tel"
                placeholder="08X-XXX-XXXX" value="{{ old('emergency_phone') }}">
     </div>
 </div>
 
+{{-- สองช่องนี้บังคับกรอก เพราะ "เว้นว่าง" อ่านไม่ออกว่าแปลว่าไม่มี หรือแปลว่า
+     ลูกค้าข้ามไป — ปุ่ม "ไม่มี" ทำให้คำตอบว่าไม่มีเป็นการกดครั้งเดียว ไม่ใช่การพิมพ์ --}}
 <div class="f">
-    <label class="field" for="allergies">การแพ้อาหาร / แพ้ยา</label>
-    <textarea id="allergies" name="allergies" maxlength="500"
-              placeholder="เช่น แพ้อาหารทะเล, แพ้ยาเพนิซิลลิน">{{ old('allergies') }}</textarea>
+    <div class="field-row">
+        <label class="field" for="allergies">การแพ้อาหาร / แพ้ยา <span class="req">*</span></label>
+        <button type="button" class="none-btn" data-none="allergies">ไม่มี</button>
+    </div>
+    <textarea id="allergies" name="allergies" required maxlength="500"
+              placeholder="เช่น แพ้อาหารทะเล, แพ้ยาเพนิซิลลิน — ถ้าไม่มี กดปุ่ม &quot;ไม่มี&quot;">{{ old('allergies') }}</textarea>
 </div>
 
 <div class="f">
-    <label class="field" for="health_notes">โรคประจำตัว / หมายเหตุสุขภาพ</label>
-    <textarea id="health_notes" name="health_notes" maxlength="500"
-              placeholder="เช่น หอบหืด, ความดัน, ยาที่ต้องพกติดตัว">{{ old('health_notes') }}</textarea>
+    <div class="field-row">
+        <label class="field" for="health_notes">โรคประจำตัว / หมายเหตุสุขภาพ <span class="req">*</span></label>
+        <button type="button" class="none-btn" data-none="health_notes">ไม่มี</button>
+    </div>
+    <textarea id="health_notes" name="health_notes" required maxlength="500"
+              placeholder="เช่น หอบหืด, ความดัน, ยาที่ต้องพกติดตัว — ถ้าไม่มี กดปุ่ม &quot;ไม่มี&quot;">{{ old('health_notes') }}</textarea>
 </div>
 
-<label class="check">
-    <input type="checkbox" name="halal_food" value="1" @checked(old('halal_food'))>
-    <span>ต้องการอาหารฮาลาล</span>
-</label>
+<div class="f">
+    <span class="field" style="display:block">อาหารฮาลาล <span class="req">*</span></span>
+    <div class="pills">
+        @foreach (['0' => 'ไม่ต้องการ', '1' => 'ต้องการอาหารฮาลาล'] as $value => $label)
+            <label class="pill">
+                <input type="radio" name="halal_food" value="{{ $value }}" required
+                       @checked(old('halal_food') === $value)>
+                <span>{{ $label }}</span>
+            </label>
+        @endforeach
+    </div>
+</div>

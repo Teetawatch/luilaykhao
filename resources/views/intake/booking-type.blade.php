@@ -32,23 +32,28 @@
 
 @push('scripts')
     <script>
-        // จุดขึ้นรถมีความหมายเฉพาะกับคนที่ไปกับรถ — ซ่อนไปเฉย ๆ ไม่พอ ต้องปลด
-        // required ด้วย ไม่งั้นเบราว์เซอร์จะปฏิเสธการส่งฟอร์มโดยชี้ไปที่ช่องที่
-        // มองไม่เห็น แล้วลูกค้าจะไม่รู้เลยว่าติดตรงไหน
+        // จุดขึ้นรถและที่นั่งมีความหมายเฉพาะกับคนที่ไปกับรถ — ซ่อนไปเฉย ๆ ไม่พอ
+        // ต้องปลด required ด้วย ไม่งั้นเบราว์เซอร์จะปฏิเสธการส่งฟอร์มโดยชี้ไปที่
+        // ช่องที่มองไม่เห็น แล้วลูกค้าจะไม่รู้เลยว่าติดตรงไหน
         (function () {
             var group = document.querySelector('[data-booking-type]');
-            var pickup = document.querySelector('[data-pickup-block]');
-            if (!group || !pickup) { return; }
+            if (!group) { return; }
 
-            var inputs = pickup.querySelectorAll('input[type="radio"]');
+            var blocks = document.querySelectorAll('[data-pickup-block], [data-seat-wrap]');
+            if (!blocks.length) { return; }
 
             function sync() {
                 var choice = group.querySelector('input:checked');
                 var isJoin = choice && choice.value === 'join';
-                pickup.hidden = isJoin;
-                inputs.forEach(function (input) {
-                    input.required = !isJoin;
-                    if (isJoin) { input.checked = false; }
+
+                blocks.forEach(function (block) {
+                    block.hidden = isJoin;
+                    block.querySelectorAll('input[type="radio"]').forEach(function (input) {
+                        // ที่นั่งที่ถูกจองไปแล้วต้อง disabled ต่อไปเสมอ การเปิด required
+                        // ให้มันคือการบังคับให้เลือกที่นั่งที่เลือกไม่ได้
+                        input.required = !isJoin && !input.disabled;
+                        if (isJoin) { input.checked = false; }
+                    });
                 });
             }
 

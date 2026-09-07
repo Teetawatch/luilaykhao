@@ -8,6 +8,7 @@ use App\Jobs\PurgeStaleCustomerIntakesJob;
 use App\Mail\AdminIntakeReadyMail;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\BookingSeat;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
 use App\Models\IntakeLink;
@@ -87,10 +88,22 @@ class CustomerIntakeTest extends TestCase
     private function personPayload(array $overrides = []): array
     {
         return array_merge([
+            'title' => 'นาย',
             'name' => 'สมชาย ใจดี',
             'nickname' => 'ชาย',
             'phone' => '081-234-5678',
             'email' => 'somchai@example.com',
+            // ทุกช่องในฟอร์มบังคับกรอก — ชุดตั้งต้นจึงต้องครบเหมือนที่ลูกค้าส่งจริง
+            'id_card' => self::VALID_ID,
+            'birth_date' => '1994-05-02',
+            'blood_group' => '',
+            'emergency_contact' => 'สมหญิง ใจดี · พี่สาว',
+            'emergency_phone' => '089-999-8888',
+            'allergies' => 'ไม่มี',
+            'health_notes' => 'ไม่มี',
+            'halal_food' => '0',
+            // ที่นั่งคู่คนขับ มีอยู่ในผังรถตู้ทุกขนาด — เทสต์ที่มีหลายคนต้องระบุเอง
+            'seat_id' => 'A1',
             'consent' => '1',
         ], $overrides);
     }
@@ -173,6 +186,8 @@ class CustomerIntakeTest extends TestCase
             'name' => 'มานี รักเรียน',
             'nickname' => 'มานี',
             'phone' => '0899999999',
+            // ที่นั่งของเพื่อนต้องเป็นคนละที่ — A1 ถูกคนแรกเลือกไปแล้ว
+            'seat_id' => 'A2',
         ]))->assertRedirect("/g/{$intake->token}");
 
         $this->assertSame(2, $intake->people()->count());
@@ -192,11 +207,14 @@ class CustomerIntakeTest extends TestCase
             'name' => 'มานี รักเรียน',
             'phone' => '0899999999',
             'blood_group' => 'A',
+            'seat_id' => 'A2',
         ]));
+        // กรอกซ้ำด้วยเบอร์เดิม = คนเดิม ที่นั่งเดิมของตัวเองจึงต้องส่งกลับมาได้
         $this->post("/g/{$intake->token}", $this->personPayload([
             'name' => 'มานี รักเรียน',
             'phone' => '089-999-9999',
             'blood_group' => 'O',
+            'seat_id' => 'A2',
         ]));
 
         $this->assertSame(2, $intake->people()->count());
@@ -276,7 +294,7 @@ class CustomerIntakeTest extends TestCase
         $stale = CustomerIntake::first();
         $stale->forceFill(['last_activity_at' => now()->subDays(CustomerIntake::RETENTION_DAYS + 1)])->save();
 
-        $this->post("/r/{$link->token}", $this->personPayload(['phone' => '0822222222']));
+        $this->post("/r/{$link->token}", $this->personPayload(['phone' => '0822222222', 'seat_id' => 'A2']));
         $fresh = CustomerIntake::where('contact_phone', '0822222222')->first();
 
         (new PurgeStaleCustomerIntakesJob)->handle();
@@ -369,6 +387,7 @@ class CustomerIntakeTest extends TestCase
             'name' => 'สมหญิง ใจงาม',
             'nickname' => 'หญิง',
             'phone' => '089-999-8888',
+            'seat_id' => 'A2',
         ]));
 
         $intakes = CustomerIntake::orderBy('id')->get();
@@ -439,6 +458,7 @@ class CustomerIntakeTest extends TestCase
             'name' => 'สมหญิง ใจงาม',
             'phone' => '089-999-9999',
             'email' => 'somying@example.com',
+            'seat_id' => 'A2',
         ]);
         $this->post("/g/{$intake->token}", $friend);
 
@@ -552,6 +572,7 @@ class CustomerIntakeTest extends TestCase
             'phone' => '089-999-9999',
             'email' => 'somying@example.com',
             'pickup_point_id' => $ladprao->id,
+            'seat_id' => 'A2',
         ]));
 
         $this->assertSame(
@@ -1259,5 +1280,217 @@ class CustomerIntakeTest extends TestCase
         ])->assertCreated();
 
         return $intake->fresh();
+    }
+
+    // ── ทุกช่องบังคับกรอก ────────────────────────────────────────────────
+
+    /**
+     * ช่องที่เว้นว่างได้คือช่องที่ทีมงานต้องกลับไปไล่ถามในแชท ซึ่งคือปัญหาเดิม
+     * ที่หน้านี้ตั้งใจแก้ — ฟอร์มนี้จึงบังคับกรอกทุกช่องของผู้เดินทาง
+     */
+    public function test_every_traveller_field_is_required(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+
+        $payload = $this->personPayload();
+        foreach (['title', 'nickname', 'id_card', 'birth_date', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'halal_food'] as $field) {
+            unset($payload[$field]);
+        }
+
+        $this->post("/r/{$link->token}", $payload)->assertSessionHasErrors([
+            'title', 'nickname', 'id_card', 'birth_date', 'blood_group',
+            'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'halal_food',
+        ]);
+
+        $this->assertSame(0, CustomerIntake::count());
+    }
+
+    /** "ไม่มี" ต้องเป็นการกดปุ่มครั้งเดียว ไม่ใช่การพิมพ์ — ไม่งั้นคนจะข้ามไปเลย */
+    public function test_the_form_offers_a_one_tap_no_answer_for_allergies_and_health(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('data-none="allergies"', false)
+            ->assertSee('data-none="health_notes"', false);
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'allergies' => 'ไม่มี',
+            'health_notes' => 'ไม่มี',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('ไม่มี', CustomerIntakePerson::first()->allergies);
+    }
+
+    /** กรุ๊ปเลือดตอบว่า "ไม่ทราบ" ได้ แต่ต้องตอบ — เดาแล้วกรอกผิดอันตรายกว่าไม่รู้ */
+    public function test_blood_group_may_be_unknown_but_must_be_answered(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+
+        $payload = $this->personPayload();
+        unset($payload['blood_group']);
+        $this->post("/r/{$link->token}", $payload)->assertSessionHasErrors('blood_group');
+
+        $this->post("/r/{$link->token}", $this->personPayload(['blood_group' => '']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull(CustomerIntakePerson::first()->blood_group);
+    }
+
+    // ── ที่นั่ง ──────────────────────────────────────────────────────────
+
+    /**
+     * หัวใจของเรื่องที่นั่งในหน้านี้: เลือกได้จริง แต่ไม่ล็อก
+     *
+     * คนที่กดจองเองและจ่ายเงินในหน้าต่างชำระเงินคือคนที่ได้ที่นั่งจริง การกันที่นั่ง
+     * ให้คนที่ยังไม่ได้ตกลงอะไรเลย = เอาที่นั่งของคนที่พร้อมจ่ายไปแขวนไว้เฉย ๆ
+     */
+    public function test_the_customer_picks_a_seat_and_nothing_is_locked_or_booked(): void
+    {
+        $schedule = $this->makeSchedule();
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('name="seat_id"', false)
+            ->assertSee('ที่นั่งนี้ยังไม่ถูกกันไว้ให้');
+
+        $this->post("/r/{$link->token}", $this->personPayload(['seat_id' => 'D2']))
+            ->assertSessionHasNoErrors();
+
+        $person = CustomerIntakePerson::first();
+        $this->assertSame('D2', $person->seat_id);
+        $this->assertSame(0, $person->seat_vehicle_option_id);
+
+        // ไม่มีที่นั่งจริงถูกกัน และจำนวนที่นั่งที่ขายได้ไม่ขยับ
+        $this->assertSame(0, BookingSeat::where('schedule_id', $schedule->id)->count());
+        $this->assertSame(0, $schedule->fresh()->booked_seats);
+    }
+
+    /** ที่นั่งที่ถูกจองจริงแล้วเลือกไม่ได้ — ความจริงชนะความตั้งใจเสมอ */
+    public function test_a_seat_already_booked_cannot_be_chosen(): void
+    {
+        $schedule = $this->makeSchedule();
+        $link = $this->makeLink($schedule);
+        $this->bookSeat($schedule, 'A1');
+
+        $this->get("/r/{$link->token}")->assertOk()->assertSee('จองแล้ว');
+
+        $this->post("/r/{$link->token}", $this->personPayload(['seat_id' => 'A1']))
+            ->assertSessionHasErrors('seat_id');
+
+        $this->assertSame(0, CustomerIntake::count());
+    }
+
+    /** เพื่อนในกลุ่มเลือกที่นั่งซ้ำกันไม่ได้ ไม่งั้นทีมงานได้ที่นั่งชนกันมาแก้เอง */
+    public function test_two_people_cannot_choose_the_same_seat(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+        $this->post("/r/{$link->token}", $this->personPayload(['party_size' => 2, 'seat_id' => 'A1']));
+        $intake = CustomerIntake::firstOrFail();
+
+        $this->post("/g/{$intake->token}", $this->personPayload([
+            'name' => 'มานี รักเรียน',
+            'phone' => '0899999999',
+            'seat_id' => 'A1',
+        ]))->assertSessionHasErrors('seat_id');
+
+        // หน้ากลุ่มบอกด้วยว่าที่นั่งนั้นหายไปเพราะเพื่อนในกลุ่มเลือก ไม่ใช่คนแปลกหน้า
+        $this->get("/g/{$intake->token}")->assertOk()->assertSee('ชาย เลือกไว้');
+
+        $this->assertSame(1, $intake->people()->count());
+    }
+
+    /** ที่นั่งที่เลือกไว้ต้องเดินทางไปถึงหน้า "จองแทนลูกค้า" พร้อมกับข้อมูลคน */
+    public function test_the_chosen_seat_travels_into_the_booking_prefill(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $link = $this->makeLink($this->makeSchedule());
+        $this->post("/r/{$link->token}", $this->personPayload(['seat_id' => 'E2']));
+        $intake = CustomerIntake::firstOrFail();
+
+        $detail = $this->actingAs($admin)->getJson("/api/v1/admin/intakes/{$intake->id}");
+
+        $detail->assertOk()
+            ->assertJsonPath('data.seats.0', 'E2')
+            ->assertJsonPath('data.people.0.seat_id', 'E2')
+            ->assertJsonPath('data.people.0.seat_lost', false)
+            ->assertJsonPath('data.seat_conflicts', []);
+    }
+
+    /** ที่นั่งถูกคนที่จองเองแย่งไประหว่างที่กลุ่มนี้รอ — แอดมินต้องเห็นก่อนกดดึงไปจอง */
+    public function test_a_seat_taken_since_the_customer_chose_it_is_flagged_for_the_team(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $link = $this->makeLink($schedule);
+        $this->post("/r/{$link->token}", $this->personPayload(['seat_id' => 'A1']));
+        $intake = CustomerIntake::firstOrFail();
+
+        $this->bookSeat($schedule, 'A1');
+
+        $this->actingAs($admin)->getJson("/api/v1/admin/intakes/{$intake->id}")
+            ->assertOk()
+            ->assertJsonPath('data.seat_conflicts.0.seat_id', 'A1')
+            ->assertJsonPath('data.people.0.seat_lost', true);
+    }
+
+    /** จอยทริป = ไปเอง ไม่มีรถของเราให้นั่ง ค่าที่หลุดมาจากเบราว์เซอร์ต้องไม่ติดไปด้วย */
+    public function test_a_join_group_is_never_given_a_seat(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['join_trip_enabled' => true, 'join_trip_price' => 1200]);
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+
+        $this->get("/r/{$link->token}")->assertOk()->assertDontSee('name="seat_id"', false);
+
+        $this->post("/r/{$link->token}", $this->personPayload(['seat_id' => 'A1']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull(CustomerIntakePerson::first()->seat_id);
+    }
+
+    /** รอบที่บินไป สายการบินเป็นคนจัดที่นั่ง ฟอร์มจึงไม่ถาม และส่งได้โดยไม่ต้องเลือก */
+    public function test_a_flight_round_does_not_ask_for_a_seat(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update(['transport_type' => 'flight']);
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")->assertOk()->assertDontSee('name="seat_id"', false);
+
+        $payload = $this->personPayload();
+        unset($payload['seat_id']);
+        $this->post("/r/{$link->token}", $payload)->assertSessionHasNoErrors();
+
+        $this->assertNull(CustomerIntakePerson::first()->seat_id);
+    }
+
+    private function bookSeat(TripSchedule $schedule, string $seatId): Booking
+    {
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $schedule->id,
+            'status' => 'confirmed',
+            'total_amount' => 3500,
+            'qr_code' => Booking::generateQrCode(),
+        ]);
+
+        BookingSeat::create([
+            'booking_id' => $booking->id,
+            'schedule_id' => $schedule->id,
+            'seat_id' => $seatId,
+            'passenger_name' => 'ลูกค้าที่จองเอง',
+        ]);
+
+        return $booking;
     }
 }

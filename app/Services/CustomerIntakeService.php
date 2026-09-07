@@ -202,6 +202,11 @@ class CustomerIntakeService
             'pickup_point_id' => $intake->isJoinTrip()
                 ? null
                 : ($data['pickup_point_id'] ?? $person->pickup_point_id),
+            // ที่นั่งที่เจ้าตัวเลือกเอง — เป็นความตั้งใจ ไม่ใช่การล็อก ที่นั่งจริงถูกกัน
+            // ตอนแอดมินเปิดใบจอง ({@see \App\Services\IntakeSeatService})
+            // กรอกใหม่ = ย้ายที่นั่ง ที่เดิมจึงต้องว่างทันที ไม่ใช่ค้างชื่อเดิมไว้
+            'seat_id' => $intake->isJoinTrip() ? null : (($data['seat_id'] ?? null) ?: null),
+            'seat_vehicle_option_id' => $intake->isJoinTrip() ? 0 : (int) ($data['seat_vehicle_option_id'] ?? 0),
             'title' => $data['title'] ?? null,
             'name' => $data['name'],
             'nickname' => $data['nickname'] ?? null,

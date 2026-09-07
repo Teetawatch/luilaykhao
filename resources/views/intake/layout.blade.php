@@ -291,6 +291,64 @@
         .choice input:checked + .choice-card strong { color: var(--canopy-dark); }
         .choice input:focus-visible + .choice-card { outline: 2px solid rgba(45,122,79,.35); outline-offset: 1px; }
 
+        /* ── ปุ่ม "ไม่มี" ข้างช่องที่บังคับกรอกแต่มักไม่มีจริง ────────── */
+        .field-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+        .field-row label.field { margin-bottom: 0; }
+        .none-btn {
+            flex: 0 0 auto; border: 1px solid var(--line-mid); background: #fff;
+            border-radius: 999px; padding: 6px 14px; font-family: inherit;
+            font-size: 14.5px; font-weight: 700; color: var(--body); cursor: pointer;
+            transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+        }
+        .none-btn:hover { border-color: var(--canopy); color: var(--canopy-dark); }
+        .none-btn[aria-pressed="true"] { border-color: var(--canopy); background: var(--tint); color: var(--canopy-dark); }
+
+        /* ── ผังที่นั่ง ─────────────────────────────────────────────── */
+        .seat-legend {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+            font-size: 13.5px; color: var(--muted); margin-bottom: 10px;
+        }
+        .seat-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .seat-dot { width: 12px; height: 12px; border-radius: 4px; border: 1px solid var(--line-mid); background: #fff; }
+        .seat-dot--mine { background: var(--canopy); border-color: var(--canopy); }
+        .seat-dot--taken { background: #E7ECE9; border-color: var(--line-mid); }
+        .seat-legend .seat-left { margin-left: auto; color: var(--canopy-dark); font-weight: 700; }
+
+        .seat-vehicle { border: 1px solid var(--line-mid); border-radius: 18px; background: #fff; padding: 10px; }
+        .seat-front {
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 13.5px; color: var(--muted); padding: 2px 4px 10px;
+            border-bottom: 1px dashed var(--line-mid); margin-bottom: 10px;
+        }
+        .seat-driver { display: inline-flex; align-items: center; gap: 5px; color: var(--body); }
+        .seat-driver .ic { width: 17px; height: 17px; }
+        .seat-rear {
+            font-size: 13.5px; color: var(--muted); text-align: center;
+            padding-top: 10px; margin-top: 10px; border-top: 1px dashed var(--line-mid);
+        }
+        .seat-grid { display: grid; gap: 7px; }
+        .seat-aisle, .seat-gap { min-height: 10px; }
+        .seat { position: relative; display: block; }
+        .seat input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+        .seat-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+            min-height: 52px; padding: 6px 3px; border-radius: 11px;
+            border: 1px solid var(--line-mid); background: #fff;
+            transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+        }
+        .seat-card strong { font-size: 15px; font-weight: 700; color: var(--body); }
+        .seat-card small {
+            font-size: 10.5px; line-height: 1.25; color: var(--muted); text-align: center;
+            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .seat input:checked + .seat-card { border-color: var(--canopy); background: var(--canopy); }
+        .seat input:checked + .seat-card strong,
+        .seat input:checked + .seat-card small { color: #fff; }
+        .seat input:focus-visible + .seat-card { outline: 2px solid rgba(45,122,79,.35); outline-offset: 1px; }
+        .seat--taken .seat-card { background: #EEF2EF; border-color: var(--line); }
+        .seat--taken .seat-card strong { color: #9FB3A7; text-decoration: line-through; }
+        .seat--taken input { cursor: not-allowed; }
+
         /* ── ตัวนับจำนวนคน ─────────────────────────────────────────── */
         .stepper { display: flex; align-items: center; gap: 12px; }
         .stepper-box {
@@ -445,6 +503,26 @@
         // text-transform เป็นแค่ภาพ — ค่าที่ส่งไปต้องเป็นตัวใหญ่จริงด้วย ไม่งั้นชื่อบนตั๋วไม่ตรง
         document.querySelectorAll('[data-uppercase]').forEach(function (input) {
             input.addEventListener('blur', function () { input.value = input.value.toUpperCase(); });
+        });
+
+        // ── ปุ่ม "ไม่มี" ────────────────────────────────────────────
+        // ช่องแพ้อาหาร/โรคประจำตัวบังคับกรอก คนส่วนใหญ่ไม่มีอะไรจะกรอก การพิมพ์
+        // คำว่า "ไม่มี" เองคือกำแพงที่ทำให้คนกดออกจากฟอร์ม — กดปุ่มเดียวจบ
+        document.querySelectorAll('[data-none]').forEach(function (button) {
+            var field = document.getElementById(button.dataset.none);
+            if (!field) { return; }
+
+            function sync() {
+                button.setAttribute('aria-pressed', field.value.trim() === 'ไม่มี' ? 'true' : 'false');
+            }
+
+            button.addEventListener('click', function () {
+                field.value = field.value.trim() === 'ไม่มี' ? '' : 'ไม่มี';
+                sync();
+                if (field.value === '') { field.focus(); }
+            });
+            field.addEventListener('input', sync);
+            sync();
         });
 
         // ── กันกดส่งซ้ำ ────────────────────────────────────────────

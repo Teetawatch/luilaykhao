@@ -142,6 +142,7 @@
         @include('intake.person-fields', [
                 'isInternational' => (bool) $trip?->isInternational(),
                 'pickupPoints' => $pickupPoints ?? collect(),
+                'seatMap' => $seatMap ?? null,
             ])
 
         <div class="step">

@@ -531,6 +531,13 @@
                     <span class="material-symbols-rounded">pin_drop</span>
                     {{ person.pickup_label }}
                   </div>
+                  <!-- ที่นั่งที่ลูกค้าเลือกเอง ยังไม่ถูกล็อก — ถ้าถูกใช้ไปแล้วต้องเห็น
+                       ตั้งแต่ตรงนี้ ไม่ใช่ไปเจอตอนเปิดผังในหน้าจองแทนลูกค้า -->
+                  <div v-if="person.seat_id" class="cell-sub seat" :class="{ lost: person.seat_lost }">
+                    <span class="material-symbols-rounded">event_seat</span>
+                    ที่นั่ง {{ person.seat_id }}
+                    <template v-if="person.seat_lost">· ถูกใช้ไปแล้ว ต้องเลือกใหม่</template>
+                  </div>
                   <div class="cell-sub consent">
                     <span class="material-symbols-rounded">verified_user</span>
                     {{ person.consent_at ? `ยินยอมเมื่อ ${formatDateTime(person.consent_at)}` : 'ไม่มีบันทึกความยินยอม' }}
@@ -1293,6 +1300,9 @@ tr.inactive { opacity: .5; }
 .consent .material-symbols-rounded { font-size: 14px; }
 .pickup { display: flex; align-items: center; gap: 4px; color: #4b5563; }
 .pickup .material-symbols-rounded { font-size: 14px; }
+.seat { display: flex; align-items: center; gap: 4px; color: #4b5563; }
+.seat .material-symbols-rounded { font-size: 14px; }
+.seat.lost { color: #b91c1c; font-weight: 600; }
 .lead-chip {
   margin-left: 6px; font-size: 10.5px; font-weight: 700; color: #047857;
   background: #ecfdf5; border-radius: 999px; padding: 2px 7px;
