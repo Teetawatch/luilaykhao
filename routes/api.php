@@ -612,7 +612,7 @@ Route::prefix('v1')->group(function () {
         Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);
         Route::post('schedules/{id}/staff/release', [AdminController::class, 'releaseScheduleStaff']);
 
-        // ราคาทริปรายเดือน — ทริป/รอบ/ราคาของเดือนหนึ่งไว้ที่เดียวสำหรับทำสื่อโปรโมท
+        // ราคาทริป — ทริป/รอบ/ราคาของช่วงเวลาหนึ่งไว้ที่เดียวสำหรับทำสื่อโปรโมท
         Route::get('price-sheet', [AdminPriceSheetController::class, 'index']);
 
         // เรดาร์รอบเสี่ยงไม่ออก — รวมรอบที่คนยังไม่ครบขั้นต่ำไว้พร้อมปุ่มลงมือแก้

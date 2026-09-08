@@ -12,9 +12,9 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * "ราคาทริปรายเดือน" — ทริป/รอบ/ราคาของเดือนหนึ่งรวมไว้ที่เดียวสำหรับทำสื่อโปรโมท
+ * "ราคาทริป" — ทริป/รอบ/ราคาของช่วงเวลาหนึ่งรวมไว้ที่เดียวสำหรับทำสื่อโปรโมท
  */
-class AdminMonthlyPriceSheetTest extends TestCase
+class AdminPriceSheetTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -219,5 +219,73 @@ class AdminMonthlyPriceSheetTest extends TestCase
 
         $this->actingAs($customer)->getJson('/api/v1/admin/price-sheet')->assertStatus(403);
         $this->getJson('/api/v1/admin/price-sheet')->assertStatus(403);
+    }
+
+    public function test_a_date_range_narrows_the_sheet_to_that_window(): void
+    {
+        $trip = $this->makeTrip('เขาช้างเผือก', 1990);
+        $this->makeSchedule($trip, ['departure_date' => '2026-09-05', 'return_date' => '2026-09-06']);
+        // เสาร์ถัดไป — อยู่นอกสัปดาห์ที่ถาม
+        $this->makeSchedule($trip, ['departure_date' => '2026-09-12', 'return_date' => '2026-09-13']);
+
+        $res = $this->actingAs($this->admin)
+            ->getJson('/api/v1/admin/price-sheet?from=2026-09-01&to=2026-09-07');
+
+        $res->assertOk();
+        $data = $res->json('data');
+
+        $this->assertSame('2026-09-01', $data['from']);
+        $this->assertSame('2026-09-07', $data['to']);
+        $this->assertSame(7, $data['days']);
+        $this->assertFalse($data['is_full_month']);
+        $this->assertSame('1 – 7 กันยายน 2569', $data['range_label']);
+        $this->assertCount(1, $data['trips'][0]['schedules']);
+        $this->assertSame('2026-09-05', $data['trips'][0]['schedules'][0]['departure_date']);
+    }
+
+    public function test_a_range_that_covers_a_whole_month_is_labelled_as_that_month(): void
+    {
+        $trip = $this->makeTrip('ภูชี้ฟ้า', 1500);
+        $this->makeSchedule($trip, ['departure_date' => '2026-09-30', 'return_date' => '2026-10-01']);
+
+        $data = $this->actingAs($this->admin)
+            ->getJson('/api/v1/admin/price-sheet?from=2026-09-01&to=2026-09-30')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertTrue($data['is_full_month']);
+        $this->assertSame('กันยายน 2569', $data['range_label']);
+        // รอบที่ออกวันสุดท้ายของเดือนแล้วกลับเดือนหน้ายังนับเป็นของเดือนนี้
+        $this->assertCount(1, $data['trips']);
+    }
+
+    public function test_a_range_typed_backwards_is_read_the_right_way_round(): void
+    {
+        $trip = $this->makeTrip('ดอยหลวงเชียงดาว', 3200);
+        $this->makeSchedule($trip, ['departure_date' => '2026-09-05', 'return_date' => '2026-09-06']);
+
+        $data = $this->actingAs($this->admin)
+            ->getJson('/api/v1/admin/price-sheet?from=2026-09-07&to=2026-09-01')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame('2026-09-01', $data['from']);
+        $this->assertSame('2026-09-07', $data['to']);
+        $this->assertCount(1, $data['trips']);
+    }
+
+    public function test_half_a_range_is_rejected(): void
+    {
+        $this->actingAs($this->admin)
+            ->getJson('/api/v1/admin/price-sheet?from=2026-09-01')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('to');
+    }
+
+    public function test_a_range_longer_than_the_cap_is_refused(): void
+    {
+        $this->actingAs($this->admin)
+            ->getJson('/api/v1/admin/price-sheet?from=2026-01-01&to=2027-12-31')
+            ->assertStatus(422);
     }
 }

@@ -11,8 +11,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
- * "ราคาทริปรายเดือน" — รวมทุกรอบเดินทางของเดือนหนึ่งพร้อมราคาทุกแบบไว้ที่เดียว
+ * "ราคาทริป" — รวมทุกรอบเดินทางในช่วงเวลาหนึ่งพร้อมราคาทุกแบบไว้ที่เดียว
  * เพื่อให้ทีมงานก๊อปไปทำรูปโปรโมทได้ในครั้งเดียว
+ *
+ * ช่วงเวลาเป็นอะไรก็ได้ ไม่ใช่แค่เดือน — "ทริปว่างสัปดาห์นี้" กับ "ทริปเดือนหน้า"
+ * เป็นสื่อคนละใบที่ทีมงานทำบ่อยพอ ๆ กัน [forMonth] จึงเหลือไว้เป็นทางลัดของเดือนเต็ม
  *
  * เหตุผลที่ต้องมี: ข้อมูลนี้มีอยู่แล้ว แต่กระจายอยู่สามที่ — ราคาต่อรอบอยู่ที่
  * price_override (หรือราคาทริปเมื่อไม่ได้ตั้งทับ), ราคา "เจอหน้างาน / ขึ้นรถจุดอื่น"
@@ -25,15 +28,30 @@ use Illuminate\Support\Collection;
  * ที่เหลือส่งไปให้ฝั่งหน้าเว็บกรองเอง (เปิดรับจอง / เต็ม / ปิด) จะได้สลับดูได้ทันที
  * โดยไม่ต้องยิงใหม่
  */
-class MonthlyPriceSheetService
+class PriceSheetService
 {
     /**
+     * ทางลัดของ "ทั้งเดือน" — ปฏิทินเดือนนั้นตั้งแต่วันที่ 1 ถึงวันสุดท้าย
+     *
      * @return array<string, mixed>
      */
     public function forMonth(CarbonImmutable $month): array
     {
-        $start = $month->startOfMonth();
-        $end = $month->endOfMonth();
+        return $this->forRange($month->startOfMonth(), $month->endOfMonth());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function forRange(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $start = $from->startOfDay();
+        $end = $to->startOfDay();
+
+        // ช่วงกลับหัวเป็นความผิดพลาดของคนกรอก ไม่ใช่ช่วงว่าง — สลับให้แทนที่จะคืนศูนย์รอบ
+        if ($end->lt($start)) {
+            [$start, $end] = [$end, $start];
+        }
 
         $schedules = TripSchedule::query()
             // price_per_person คือราคาที่ effective_price ตกกลับไปใช้เมื่อรอบไม่ได้ตั้งราคาทับ
@@ -60,7 +78,18 @@ class MonthlyPriceSheetService
             ->values()
             ->all();
 
+        $isFullMonth = $start->isSameMonth($end)
+            && $start->day === 1
+            && $end->day === $end->daysInMonth;
+
         return [
+            'from' => $start->toDateString(),
+            'to' => $end->toDateString(),
+            'days' => $start->diffInDays($end) + 1,
+            'is_full_month' => $isFullMonth,
+            // หัวข้อที่เขียนลงสื่อได้เลย — เดือนเต็มพูดเป็นชื่อเดือน ที่เหลือพูดเป็นช่วงวัน
+            'range_label' => $isFullMonth ? ThaiDate::monthYear($start) : ThaiDate::range($start, $end),
+            // เดือนของวันเริ่มช่วง — ยังใช้ตั้งชื่อไฟล์และหัวข้อ "ทริปเดือน…" ได้เหมือนเดิม
             'month' => $start->format('Y-m'),
             'month_label' => ThaiDate::monthYear($start),
             'month_name' => ThaiDate::monthName($start->month),

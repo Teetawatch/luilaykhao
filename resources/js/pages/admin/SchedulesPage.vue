@@ -8,7 +8,7 @@
       <div class="page-actions">
         <div class="page-actions-secondary">
           <router-link class="btn-secondary" to="/admin/price-sheet">
-            <span class="material-symbols-rounded">sell</span> ราคาทริปรายเดือน
+            <span class="material-symbols-rounded">sell</span> ราคาทริป
           </router-link>
           <button class="btn-secondary" @click="openBulkJoinTripModal()">
             <span class="material-symbols-rounded">group_add</span> จัดการจอยทริป
