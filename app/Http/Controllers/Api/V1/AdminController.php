@@ -38,6 +38,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
+use App\Services\AccountClaimService;
 use App\Services\BookingService;
 use App\Services\ChatRoomEventService;
 use App\Services\DriverLoginCodeService;
@@ -50,6 +51,7 @@ use App\Services\SmsService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
 use App\Support\PaymentQuote;
+use App\Support\PhoneNumber;
 use App\Support\Polyline;
 use App\Support\ThaiDate;
 use App\Support\TripDocumentRequirements;
@@ -1358,6 +1360,31 @@ class AdminController extends Controller
     }
 
     /**
+     * POST /admin/bookings/{ref}/claim-link
+     *
+     * ส่ง SMS ลิงก์ "เปิดใช้บัญชี" ให้ลูกค้าที่ทีมงานเปิดใบจองแทนให้ ปลายทางคือหน้า
+     * /claim/{token} ที่ตั้งรหัสผ่านแล้วเห็นใบจองในแอปได้เลย
+     *
+     * ใช้กับใบที่เจ้าของยังเป็นบัญชีเงาเท่านั้น — ใบที่ลูกค้าสมัครเองแล้วไม่ต้องใช้
+     */
+    public function sendBookingClaimLink(string $ref, AccountClaimService $claims): JsonResponse
+    {
+        $booking = Booking::with(['user', 'passengers', 'schedule.trip'])
+            ->where('booking_ref', $ref)
+            ->firstOrFail();
+
+        if (! $claims->sendClaimLink($booking, force: true)) {
+            return $this->error('ลูกค้ารายนี้มีบัญชีของตัวเองแล้ว ไม่ต้องส่งลิงก์เปิดใช้บัญชี', 422);
+        }
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'claim_url' => $claims->claimUrl($booking->user),
+            'sent_to' => $booking->user->phone,
+        ], 'ส่งลิงก์เปิดใช้บัญชีให้ลูกค้าแล้ว');
+    }
+
+    /**
      * POST /admin/bookings/{ref}/transfer
      * ย้ายการจองไปยังบัญชีผู้ใช้อื่น
      */
@@ -2260,10 +2287,15 @@ class AdminController extends Controller
             }
         }
 
-        $email = $request->input('email');
-        $user = User::when($email, fn ($query) => $query->where('email', $email))
-            ->when(! $email, fn ($query) => $query->where('phone', $request->phone))
-            ->first();
+        // หาบัญชีเดิมของลูกค้าให้เจอก่อนสร้างใหม่ — เทียบทั้งอีเมล (พิมพ์เล็กเสมอ
+        // เหมือนตอนสมัคร) และเบอร์ทุกรูปแบบที่คนพิมพ์กันจริง เพราะบัญชีซ้ำหนึ่งใบ
+        // แปลว่าลูกค้าเข้าแอปแล้วไม่เห็นใบจองของตัวเอง
+        $email = filled($request->input('email')) ? mb_strtolower(trim($request->input('email'))) : null;
+        $phoneVariants = PhoneNumber::variants($request->phone);
+
+        $user = ($email ? User::where('email', $email)->first() : null)
+            // บัญชีจริงของลูกค้ามาก่อนบัญชีเงาเสมอ ถ้าเบอร์เดียวกันมีทั้งสองแบบค้างอยู่
+            ?? User::query()->whereIn('phone', $phoneVariants)->orderBy('is_shadow')->first();
 
         if (! $user) {
             $user = User::create([
@@ -2272,12 +2304,15 @@ class AdminController extends Controller
                 'email' => $email ?: 'manual_'.time().'_'.Str::random(4).'@luilaykhao.com',
                 'password' => Hash::make(Str::random(16)),
             ]);
+            $user->forceFill(['is_shadow' => true])->save();
             $user->assignRole('customer');
         } else {
+            // อีเมลของบัญชีที่ลูกค้าสมัครเองห้ามถูกทับด้วยอีเมลที่แอดมินพิมพ์มา —
+            // ทับแล้วลูกค้าล็อกอินด้วยอีเมลเดิมไม่ได้อีก
             $user->update(array_filter([
                 'name' => $fullName ?: null,
                 'phone' => $request->phone ?: null,
-                'email' => $email ?: null,
+                'email' => ($email && $user->is_shadow) ? $email : null,
             ], fn ($value) => filled($value)));
         }
 
@@ -2459,7 +2494,7 @@ class AdminController extends Controller
 
         $booking->load(['schedule.trip', 'schedule.vehicle', 'pickupPoint', 'user', 'passengers.pickupPoint', 'seats', 'installmentPayments']);
 
-        if ($request->boolean('send_email', true) && $user->email && ! str_starts_with($user->email, 'manual_')) {
+        if ($request->boolean('send_email', true) && $user->email && ! $user->hasPlaceholderEmail()) {
             app(MailService::class)->sendBookingCreatedEmail($booking);
             if ($booking->status === 'confirmed') {
                 app(MailService::class)->sendPaymentConfirmedEmail($booking, $paymentType);
@@ -2468,6 +2503,12 @@ class AdminController extends Controller
 
         if ($booking->status === 'confirmed') {
             app(SmsService::class)->sendPaymentConfirmed($booking, $paymentType);
+        }
+
+        // ลูกค้าที่ยังไม่เคยสมัครเอง จะไม่มีทางเห็นใบจองนี้ในแอปเลยถ้าไม่ได้ลิงก์นี้ —
+        // ส่งให้ตั้งแต่ตอนเปิดใบจอง ไม่ต้องรอให้ลูกค้าทักมาถามว่าทำไมแอปว่างเปล่า
+        if ($user->is_shadow) {
+            app(AccountClaimService::class)->sendClaimLink($booking);
         }
 
         $this->markIntakesBooked(

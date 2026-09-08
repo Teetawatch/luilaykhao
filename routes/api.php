@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AccountClaimController;
 use App\Http\Controllers\Api\V1\AdminActionQueueController;
 use App\Http\Controllers\Api\V1\AdminArticleController;
 use App\Http\Controllers\Api\V1\AdminAtRiskScheduleController;
@@ -252,6 +253,9 @@ Route::prefix('v1')->group(function () {
         // Bookings
         Route::post('bookings', [BookingController::class, 'store']);
         Route::get('bookings', [BookingController::class, 'index']);
+        // ใบจองที่ทีมงานเปิดให้ก่อนลูกค้าจะมีบัญชี — ผูกเข้าบัญชีตัวเองด้วยเลขที่จอง
+        Route::get('me/claimable-bookings', [AccountClaimController::class, 'index']);
+        Route::post('bookings/claim', [AccountClaimController::class, 'claim'])->middleware('throttle:10,1');
         Route::get('bookings/{ref}', [BookingController::class, 'show']);
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
         Route::post('bookings/{ref}/story-link', [BookingController::class, 'storyLink']);
@@ -493,6 +497,10 @@ Route::prefix('v1')->group(function () {
     // Beam callback — คนละสเปกลายเซ็นกับอันบน (base64 + X-Beam-Signature) จึงแยก endpoint
     Route::post('payments/beam/webhook', BeamWebhookController::class);
 
+    // ลิงก์ "เปิดใช้บัญชี" ที่ส่งเข้าเบอร์ลูกค้า หลังทีมงานเปิดใบจองแทนให้
+    Route::get('account/claim/{token}', [AccountClaimController::class, 'preview'])->middleware('throttle:30,1');
+    Route::post('account/claim/{token}', [AccountClaimController::class, 'activate'])->middleware('throttle:10,1');
+
     // Guest booking lookup: ยืนยันตัวตนด้วย booking_ref + เบอร์โทร (ไม่ต้องล็อกอิน)
     Route::post('bookings/guest-lookup', [VehicleTrackingController::class, 'guestLookup'])->middleware('throttle:20,1');
     // Guest booking lookup by name: ค้นด้วยชื่อ + เบอร์โทรเต็ม (ไม่เปิดเผย booking_ref)
@@ -673,6 +681,8 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/refund-preview', [AdminController::class, 'refundPreview']);
         Route::post('bookings/{ref}/refund', [AdminController::class, 'processRefund']);
         Route::post('bookings/{ref}/transfer', [AdminController::class, 'transferBooking']);
+        // ส่ง SMS ลิงก์เปิดใช้บัญชีให้ลูกค้าที่ทีมงานเปิดใบจองแทนให้
+        Route::post('bookings/{ref}/claim-link', [AdminController::class, 'sendBookingClaimLink']);
         Route::post('bookings/{ref}/slip/approve', [AdminController::class, 'approveSlip']);
         Route::post('bookings/{ref}/slip/reject', [AdminController::class, 'rejectSlip']);
         Route::post('bookings/{ref}/slip/reverify', [AdminController::class, 'reverifySlip']);

@@ -28,6 +28,9 @@ class BookingResource extends JsonResource
                     'email' => $this->user->email,
                     'phone' => $this->user->phone,
                     'avatar_url' => $this->user->avatar_url,
+                    // บัญชีที่ทีมงานสร้างแทนลูกค้า — ลูกค้ายังเข้าแอปมาดูใบจองนี้ไม่ได้
+                    // จนกว่าจะกดลิงก์เปิดใช้บัญชี หน้าแอดมินใช้ธงนี้ตัดสินใจโชว์ปุ่มส่งลิงก์
+                    'is_shadow' => (bool) $this->user->is_shadow,
                 ];
             }),
             'schedule' => new TripScheduleResource($this->whenLoaded('schedule')),

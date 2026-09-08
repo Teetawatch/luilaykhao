@@ -27,7 +27,7 @@
         .hello strong { color: #0f172a; }
         .lead { font-size: 13.5px; color: #64748b; margin-bottom: 20px; }
         label.field { display: block; font-size: 13px; color: #475569; margin-bottom: 6px; font-weight: 600; }
-        input[type=date], input[type=text], select {
+        input[type=date], input[type=text], input[type=email], input[type=password], input[type=tel], select {
             width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 13px 12px;
             font-size: 16px; font-family: inherit; background: #fff; color: #0f172a; margin-bottom: 16px;
         }

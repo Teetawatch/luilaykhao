@@ -194,7 +194,7 @@
                   <div class="info-lines">
                     <strong>{{ booking.user?.name || '-' }}</strong>
                     <span>{{ booking.user?.phone || booking.passengers?.[0]?.phone || '-' }}</span>
-                    <span>{{ booking.user?.email || '-' }}</span>
+                    <span>{{ booking.user?.is_shadow ? 'ยังไม่มีบัญชีในแอป' : (booking.user?.email || '-') }}</span>
                     <span v-if="booking.is_group">กลุ่ม: {{ booking.group_name || '-' }}</span>
                     <span v-if="booking.group_notes">หมายเหตุกรุ๊ป: {{ booking.group_notes }}</span>
                   </div>
@@ -345,6 +345,16 @@
             >
               <span class="material-symbols-rounded">move_item</span>
               ย้ายเจ้าของ
+            </button>
+            <button
+              v-if="detailBooking?.user?.is_shadow"
+              class="btn-secondary compact"
+              :disabled="sendingClaimLink"
+              title="ลูกค้ายังไม่มีบัญชีของตัวเอง — ส่ง SMS ลิงก์ตั้งรหัสผ่านให้ดูการจองในแอปได้"
+              @click="sendClaimLink(detailBooking)"
+            >
+              <span class="material-symbols-rounded">link</span>
+              ส่งลิงก์เปิดใช้บัญชี
             </button>
             <button
               v-if="detailBooking && canSplitBooking(detailBooking)"
@@ -3326,6 +3336,25 @@ async function doTransferBooking() {
     transferError.value = e.response?.data?.message || 'เกิดข้อผิดพลาดในการย้ายการจอง';
   } finally {
     submitting.value = false;
+  }
+}
+
+// ── ลิงก์เปิดใช้บัญชีให้ลูกค้าที่ทีมงานจองแทนให้ ──────────────────
+// ใบจองที่เปิดให้ลูกค้าที่ยังไม่เคยสมัคร จะเกาะอยู่กับ "บัญชีเงา" ลูกค้าเข้าแอป
+// มาแล้วจึงไม่เห็นอะไรเลย ปุ่มนี้ส่ง SMS ลิงก์ตั้งรหัสผ่านครั้งเดียวให้เขา
+const sendingClaimLink = ref(false);
+
+async function sendClaimLink(booking) {
+  if (!booking?.booking_ref || sendingClaimLink.value) return;
+
+  sendingClaimLink.value = true;
+  try {
+    const { data } = await api.post(`/admin/bookings/${booking.booking_ref}/claim-link`);
+    toast.success(data?.message || 'ส่งลิงก์เปิดใช้บัญชีให้ลูกค้าแล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ส่งลิงก์ไม่สำเร็จ');
+  } finally {
+    sendingClaimLink.value = false;
   }
 }
 

@@ -184,6 +184,30 @@ class SmsService
         );
     }
 
+    /**
+     * ลิงก์ "เปิดใช้บัญชี" สำหรับใบจองที่ทีมงานเปิดให้แทนลูกค้า — ลูกค้ายังไม่มี
+     * รหัสผ่าน จึงเข้าแอปมาดูใบจองของตัวเองไม่ได้จนกว่าจะกดลิงก์นี้
+     *
+     * ส่งทาง SMS เท่านั้นโดยตั้งใจ: บัญชีแบบนี้ส่วนใหญ่ไม่มีอีเมลจริงในระบบ และ
+     * การที่ลิงก์ไปโผล่ในเครื่องที่ถือเบอร์นั้นอยู่ คือสิ่งที่ยืนยันว่าเป็นเจ้าของจริง
+     */
+    public function sendAccountClaimLink(Booking $booking, string $url, string $dedupeKey = 'default'): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'account_claim',
+            dedupeKey: $dedupeKey,
+            message: sprintf(
+                'ทีมงานเปิดการจอง %s ทริป %s ให้คุณแล้ว เปิดใช้บัญชีเพื่อดูในแอป %s',
+                $booking->booking_ref,
+                $this->tripTitle($booking),
+                $url,
+            ),
+        );
+    }
+
     public function sendPending(int $limit = 100): int
     {
         if (! $this->isConfigured()) {
@@ -353,6 +377,7 @@ class SmsService
             'deposit_paid',
             'balance_due_reminder',
             'balance_paid',
+            'account_claim',
         ];
     }
 

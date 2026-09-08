@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PaymentReturnController;
+use App\Http\Controllers\PublicAccountClaimController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicIntakeController;
@@ -199,6 +200,19 @@ Route::post('/g/{token}', [PublicIntakeController::class, 'groupSubmit'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:10,1')
     ->name('public.intake.group.submit');
+
+// ลิงก์ "เปิดใช้บัญชี" จาก SMS หลังทีมงานเปิดใบจองแทนลูกค้า — ตั้งรหัสผ่านครั้งเดียว
+// แล้วใบจองที่ค้างอยู่ในบัญชีเงาก็ขึ้นในแอปของลูกค้า
+Route::get('/claim/{token}', [PublicAccountClaimController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:30,1')
+    ->name('public.claim.show');
+Route::post('/claim/{token}', [PublicAccountClaimController::class, 'submit'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:10,1')
+    ->name('public.claim.submit');
+Route::get('/claim-done', [PublicAccountClaimController::class, 'done'])
+    ->name('public.claim.done');
 
 Route::get('/birthdate/{token}', [PublicBirthdateController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')

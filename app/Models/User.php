@@ -42,9 +42,21 @@ class User extends Authenticatable
             'hiking_baseline_updated_at' => 'datetime',
             'marketing_push_enabled' => 'boolean',
             'public_profile_enabled' => 'boolean',
+            'is_shadow' => 'boolean',
+            'claim_token_sent_at' => 'datetime',
             // ค่าตอบแทนต่อวันของทีมงาน — ใช้ลงรายการค่าจ้างตอนปิดงบรอบ
             'staff_day_rate' => 'decimal:2',
         ];
+    }
+
+    /**
+     * อีเมลที่ระบบกรอกให้เองตอนแอดมินเปิดใบจองแทนลูกค้า (manual_...@luilaykhao.com)
+     * ส่งเมลไปไม่มีวันถึงใคร — เช็คก่อนทุกครั้งที่จะส่งอีเมลหาบัญชีที่ไม่ได้สมัครเอง
+     */
+    public function hasPlaceholderEmail(): bool
+    {
+        return str_starts_with((string) $this->email, 'manual_')
+            && str_ends_with((string) $this->email, '@luilaykhao.com');
     }
 
     /** Age in whole years, computed live from birth_date; null when unknown. */
