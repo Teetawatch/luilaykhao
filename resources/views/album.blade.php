@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#044C4D">
+    <meta name="theme-color" content="#044C4D" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#08201E" media="(prefers-color-scheme: dark)">
     <title>อัลบั้มรูปทริป | ลุยเลเขา</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,9 +16,17 @@
     <style>
         /* ดีไซน์แบน: ไม่มีเงา ไม่มีไล่สี ใช้เส้นขอบบางแยกพื้นที่แทนทั้งหน้า */
         :root {
+            color-scheme: light dark;
+
             --brand: #087C68;
-            --brand-dark: #044C4D;
+            --brand-ink: #ffffff;
             --brand-soft: #EEF5F3;
+            --brand-soft-line: #D9E8E3;
+            --header-bg: #044C4D;
+            --header-line: rgba(255,255,255,0.14);
+            --header-soft: rgba(255,255,255,0.08);
+            --header-text: rgba(255,255,255,0.72);
+
             --ink: #101828;
             --ink-2: #344054;
             --muted: #667085;
@@ -25,12 +34,49 @@
             --line-strong: #D3D9D7;
             --bg: #F6F7F7;
             --surface: #FFFFFF;
-            --radius: 10px;
-            --radius-sm: 8px;
+            --tile-bg: #E9ECEB;
+
+            --notice-bg: #FFFBF2;
+            --notice-line: #EFE0C0;
+            --notice-ink: #6B4A08;
+            --notice-icon: #B0791F;
+
+            --radius: 14px;
+            --radius-sm: 10px;
+            --radius-pill: 999px;
+            --bar-h: 58px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --brand: #14A187;
+                --brand-ink: #04201B;
+                --brand-soft: #12211E;
+                --brand-soft-line: #21372F;
+                --header-bg: #08201E;
+                --header-line: rgba(255,255,255,0.10);
+                --header-soft: rgba(255,255,255,0.06);
+                --header-text: rgba(255,255,255,0.66);
+
+                --ink: #F1F4F3;
+                --ink-2: #C6CFCC;
+                --muted: #8D9995;
+                --line: #232A28;
+                --line-strong: #333D3A;
+                --bg: #0D110F;
+                --surface: #141917;
+                --tile-bg: #1B211F;
+
+                --notice-bg: #241D10;
+                --notice-line: #3F3320;
+                --notice-ink: #E7CE9C;
+                --notice-icon: #D3A44A;
+            }
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+        html { scroll-behavior: smooth; }
         html, body {
             font-family: 'DB Heavent', 'Anuphan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg);
@@ -38,93 +84,142 @@
             min-height: 100dvh;
             -webkit-font-smoothing: antialiased;
         }
+        body.no-scroll { overflow: hidden; }
 
         svg { display: block; }
         .icon { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+        .hidden { display: none !important; }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+        }
+
+        .wrap { max-width: 1240px; margin: 0 auto; padding-inline: clamp(14px, 3.4vw, 28px); }
 
         /* ── Header ───────────────────────────────────── */
         header {
-            background: var(--brand-dark);
+            background: var(--header-bg);
             color: #fff;
-            padding: clamp(12px, 2.6vw, 15px) clamp(14px, 3vw, 22px);
-            padding-top: max(clamp(12px, 2.6vw, 15px), env(safe-area-inset-top));
-            position: sticky;
-            top: 0;
-            z-index: 10;
+            padding-top: max(18px, calc(env(safe-area-inset-top) + 12px));
+            padding-bottom: clamp(18px, 3.6vw, 26px);
         }
-        /* หัวเรื่องชิดคอลัมน์เดียวกับเนื้อหาด้านล่าง ไม่ลอยไปติดขอบจอ */
-        header .head-inner {
-            max-width: 1120px; margin: 0 auto;
-            display: flex; align-items: center; gap: 12px;
+        header .brand {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--header-text);
+            font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em;
+            text-transform: uppercase;
         }
-        header .logo {
-            width: 36px; height: 36px;
-            border-radius: var(--radius-sm);
-            background: rgba(255,255,255,0.10);
-            border: 1px solid rgba(255,255,255,0.16);
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
+        header .brand .mark {
+            width: 26px; height: 26px; border-radius: 8px;
+            background: var(--header-soft); border: 1px solid var(--header-line);
+            display: flex; align-items: center; justify-content: center; color: #fff;
         }
-        header .logo .icon { width: 19px; height: 19px; }
-        header .title { flex: 1; min-width: 0; }
-        header .title h1 {
-            font-size: clamp(15px, 3.6vw, 17px); font-weight: 700; letter-spacing: -0.01em;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        header .title p {
-            font-size: clamp(11px, 2.8vw, 12.5px); color: rgba(255,255,255,0.70); font-weight: 500;
-            margin-top: 2px;
-            display: flex; align-items: center; gap: 5px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        header .title p .icon { width: 13px; height: 13px; flex-shrink: 0; }
+        header .brand .mark .icon { width: 15px; height: 15px; }
 
-        /* ── Layout ───────────────────────────────────── */
-        main { max-width: 1120px; margin: 0 auto; padding: clamp(16px, 3vw, 26px) clamp(14px, 3vw, 22px); }
-
-        .toolbar {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; flex-wrap: wrap;
-            padding-bottom: 14px; margin-bottom: 16px;
-            border-bottom: 1px solid var(--line);
+        header h1 {
+            margin-top: 12px;
+            font-size: clamp(22px, 5.6vw, 34px);
+            font-weight: 800; letter-spacing: -0.02em; line-height: 1.2;
+            overflow-wrap: anywhere;
         }
-        .toolbar .count {
-            font-size: 13.5px; color: var(--ink-2); font-weight: 600;
-            display: inline-flex; align-items: center; gap: 7px;
-        }
-        .toolbar .count .icon { width: 16px; height: 16px; color: var(--muted); }
 
-        /* แจ้งเตือนวันหมดอายุของอัลบั้ม — รูปถูกลบอัตโนมัติหลังอัปโหลดครบกำหนด */
-        .notice {
-            display: flex; align-items: flex-start; gap: 10px;
-            background: #FFFBF2; border: 1px solid #EFE0C0; border-radius: var(--radius);
-            padding: 12px 14px; margin-bottom: 16px;
-            font-size: 13.5px; line-height: 1.55; color: #6B4A08;
-        }
-        .notice .icon { width: 17px; height: 17px; color: #B0791F; flex: none; margin-top: 2px; }
-        .notice strong { font-weight: 700; }
-
-        .btn {
-            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-            border: 1px solid transparent; border-radius: var(--radius-sm);
-            padding: 10px 16px; font-size: 13.5px; font-weight: 700;
-            font-family: inherit; cursor: pointer; text-decoration: none;
-            transition: background 0.14s, border-color 0.14s, color 0.14s;
+        /* ชิปข้อมูลรอบ: วันเดินทาง / จำนวนรูป / จำนวนคนเข้าดู */
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--header-soft); border: 1px solid var(--header-line);
+            color: rgba(255,255,255,0.92);
+            border-radius: var(--radius-pill);
+            padding: 6px 12px; font-size: 13px; font-weight: 600;
             white-space: nowrap;
         }
+        .chip .icon { width: 15px; height: 15px; color: rgba(255,255,255,0.72); }
+        .chip b { font-weight: 800; }
+        .chip.skeleton { color: transparent; background: var(--header-soft); width: 108px; height: 30px; }
+
+        /* ── Sticky toolbar ───────────────────────────── */
+        .toolbar {
+            position: sticky; top: 0; z-index: 20;
+            background: color-mix(in srgb, var(--bg) 88%, transparent);
+            backdrop-filter: saturate(1.6) blur(12px);
+            -webkit-backdrop-filter: saturate(1.6) blur(12px);
+            border-bottom: 1px solid var(--line);
+        }
+        @supports not (background: color-mix(in srgb, red 50%, blue)) {
+            .toolbar { background: var(--bg); }
+        }
+        .toolbar .wrap {
+            min-height: var(--bar-h);
+            display: flex; align-items: center; gap: 12px;
+            padding-block: 10px;
+        }
+        .toolbar .count {
+            font-size: 14px; color: var(--ink-2); font-weight: 700;
+            display: inline-flex; align-items: center; gap: 7px; flex: none;
+        }
+        .toolbar .count .icon { width: 17px; height: 17px; color: var(--muted); }
+        .toolbar .count .dim { color: var(--muted); font-weight: 600; }
+        /* แถบปุ่มเลื่อนแนวนอนได้บนจอแคบ ไม่ตัดปุ่มทิ้งและไม่ดันบรรทัดใหม่ */
+        .toolbar .actions {
+            margin-left: auto;
+            display: flex; align-items: center; gap: 8px;
+            overflow-x: auto; scrollbar-width: none;
+            padding-inline: 2px; margin-inline: -2px;
+        }
+        .toolbar .actions::-webkit-scrollbar { display: none; }
+
+        @media (max-width: 560px) {
+            .toolbar .wrap { flex-wrap: wrap; }
+            .toolbar .count { width: 100%; }
+            .toolbar .actions { margin-left: 0; width: 100%; }
+            .toolbar .actions .btn { flex: none; }
+        }
+
+        /* ── Buttons ──────────────────────────────────── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            border: 1px solid transparent; border-radius: var(--radius-pill);
+            padding: 10px 16px; font-size: 13.5px; font-weight: 700;
+            font-family: inherit; cursor: pointer; text-decoration: none;
+            transition: background 0.14s, border-color 0.14s, color 0.14s, transform 0.14s;
+            white-space: nowrap;
+        }
+        .btn:active { transform: scale(0.97); }
         .btn .icon { width: 17px; height: 17px; }
         .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-        .btn-primary { background: var(--brand); color: #fff; }
-        .btn-primary:hover, .btn-primary:active { background: var(--brand-dark); }
+        .btn-primary { background: var(--brand); color: var(--brand-ink); }
+        .btn-primary:hover { background: color-mix(in srgb, var(--brand) 86%, #000); }
+        .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
+        .btn-ghost:hover { border-color: var(--muted); }
+        .btn-ghost.on { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
+        .btn-quiet { background: transparent; color: var(--muted); padding: 9px 12px; }
+        .btn-quiet:hover { color: var(--ink); background: var(--surface); }
+        .btn:disabled { color: var(--muted); background: var(--bg); border-color: var(--line); cursor: not-allowed; }
+        .btn:disabled:active { transform: none; }
+        .btn-sm { padding: 8px 13px; font-size: 13px; }
+
+        /* ── Layout ───────────────────────────────────── */
+        main { padding-block: clamp(16px, 3vw, 24px) clamp(40px, 8vw, 72px); }
+        /* เว้นที่ให้แถบล่างตอนเลือกรูป ไม่ให้บังรูปแถวสุดท้าย */
+        body.picking main { padding-bottom: 128px; }
+
+        .notice {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: var(--notice-bg); border: 1px solid var(--notice-line); border-radius: var(--radius);
+            padding: 13px 15px; margin-bottom: 16px;
+            font-size: 13.5px; line-height: 1.6; color: var(--notice-ink);
+        }
+        .notice .icon { width: 17px; height: 17px; color: var(--notice-icon); flex: none; margin-top: 2px; }
+        .notice strong { font-weight: 800; }
 
         /* ── Grid ─────────────────────────────────────── */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
-            gap: clamp(6px, 1.6vw, 10px);
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 156px), 1fr));
+            gap: clamp(7px, 1.4vw, 12px);
         }
-        @media (min-width: 640px) {
-            .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        @media (min-width: 700px) {
+            .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
         }
 
         .tile {
@@ -132,166 +227,214 @@
             aspect-ratio: 1;
             border-radius: var(--radius);
             overflow: hidden;
-            background: #EDEFEE;
+            background: var(--tile-bg);
             border: 1px solid var(--line);
+            /* ค่อย ๆ ไล่ขึ้นมาเมื่อรูปโหลดเสร็จ แทนที่จะกระตุกทีละใบ */
+            animation: tileIn 0.28s ease both;
+        }
+        @keyframes tileIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) {
+            .tile { animation: none; }
+            html { scroll-behavior: auto; }
         }
         .tile img {
             width: 100%; height: 100%;
             object-fit: cover; display: block;
             cursor: zoom-in;
+            transition: transform 0.36s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.24s;
         }
+        .tile:hover img { transform: scale(1.05); }
 
         .tile .dl {
             position: absolute; bottom: 8px; right: 8px;
-            width: 32px; height: 32px;
-            border-radius: var(--radius-sm);
-            background: var(--ink);
+            width: 34px; height: 34px;
+            border-radius: var(--radius-pill);
+            background: rgba(12,15,14,0.72);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
             color: #fff; text-decoration: none;
             display: flex; align-items: center; justify-content: center;
-            transition: background 0.14s, opacity 0.14s;
+            transition: background 0.14s, opacity 0.14s, transform 0.14s;
             opacity: 0;
         }
         .tile:hover .dl, .tile:focus-within .dl { opacity: 1; }
-        .tile .dl:hover { background: var(--brand); }
+        .tile .dl:hover { background: var(--brand); color: var(--brand-ink); }
         .tile .dl .icon { width: 17px; height: 17px; }
-        /* Touch devices can't hover — keep the button visible. */
-        @media (hover: none) {
-            .tile .dl { opacity: 1; }
+        @media (hover: none) { .tile .dl { opacity: 1; } }
+
+        /* ป้าย "คุณ" บนรูปที่ตรงกับใบหน้าที่ค้นหา */
+        .tile.match::before {
+            content: "คุณ"; position: absolute; top: 8px; left: 8px; z-index: 2;
+            background: var(--brand); color: var(--brand-ink); font-size: 11.5px; font-weight: 800;
+            padding: 3px 9px; border-radius: var(--radius-pill); letter-spacing: 0.02em;
         }
 
+        /* โหมดเลือกรูป — กดที่รูปเพื่อติ๊ก แล้วดาวน์โหลดเฉพาะที่เลือก */
+        .tile .pick {
+            position: absolute; inset: 0; z-index: 3;
+            border: 0; background: transparent; cursor: pointer;
+            display: none;
+        }
+        .grid.selecting .tile .pick { display: block; }
+        .grid.selecting .tile img { cursor: pointer; }
+        .grid.selecting .tile .dl { display: none; }
+        .tile .mark {
+            position: absolute; top: 8px; right: 8px; z-index: 4;
+            width: 26px; height: 26px; border-radius: var(--radius-pill);
+            border: 2px solid rgba(255,255,255,0.9);
+            background: rgba(12,15,14,0.35);
+            display: none; align-items: center; justify-content: center;
+            color: transparent; pointer-events: none;
+        }
+        .grid.selecting .tile .mark { display: flex; }
+        .tile .mark .icon { width: 15px; height: 15px; stroke-width: 3; }
+        .grid.selecting .tile:hover img { transform: none; }
+        .tile.on { border-color: var(--brand); }
+        .grid.selecting .tile.on img,
+        .grid.selecting .tile.on:hover img { transform: scale(0.92); border-radius: var(--radius); }
+        .tile.on .mark { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+
+        /* ── แถบล่างตอนเลือกรูป ───────────────────────── */
+        .selectbar {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+            background: var(--surface); border-top: 1px solid var(--line);
+            padding: 12px clamp(14px, 3.4vw, 28px) calc(12px + env(safe-area-inset-bottom));
+            animation: slideUp 0.2s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+        .selectbar .inner {
+            max-width: 1240px; margin: 0 auto;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .selectbar .n { font-size: 14px; font-weight: 800; flex: 1; min-width: 120px; }
+        .selectbar .n span { color: var(--brand); }
+
         /* ── States ───────────────────────────────────── */
-        .state { text-align: center; padding: clamp(48px, 12vw, 76px) 20px; color: var(--muted); }
+        .state { text-align: center; padding: clamp(48px, 12vw, 80px) 20px; color: var(--muted); }
         .state .badge {
-            width: 56px; height: 56px; margin: 0 auto 16px;
+            width: 60px; height: 60px; margin: 0 auto 16px;
             border-radius: var(--radius); background: var(--surface);
             border: 1px solid var(--line);
             display: flex; align-items: center; justify-content: center;
             color: var(--brand);
         }
-        .state .badge .icon { width: 26px; height: 26px; stroke-width: 1.75; }
-        .state h2 { font-size: 17px; color: var(--ink); margin-bottom: 6px; font-weight: 700; }
-        .state p { font-size: 13.5px; max-width: 360px; margin: 0 auto; line-height: 1.6; }
+        .state .badge .icon { width: 27px; height: 27px; stroke-width: 1.75; }
+        .state h2 { font-size: 18px; color: var(--ink); margin-bottom: 6px; font-weight: 800; }
+        .state p { font-size: 14px; max-width: 380px; margin: 0 auto; line-height: 1.65; }
 
-        .spinner {
-            width: 30px; height: 30px; margin: 0 auto 16px;
-            border: 2px solid var(--line-strong); border-top-color: var(--brand);
-            border-radius: 50%; animation: spin 0.7s linear infinite;
+        /* โครงรูปตอนกำลังโหลด — เห็นหน้าตาอัลบั้มทันทีแทนวงกลมหมุน */
+        .skel {
+            border-radius: var(--radius); background: var(--tile-bg);
+            border: 1px solid var(--line); aspect-ratio: 1;
+            position: relative; overflow: hidden;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .hidden { display: none !important; }
+        .skel::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 70%, transparent), transparent);
+            transform: translateX(-100%);
+            animation: shimmer 1.25s infinite;
+        }
+        @keyframes shimmer { to { transform: translateX(100%); } }
+        @media (prefers-reduced-motion: reduce) { .skel::after { animation: none; } }
 
         /* ── Lightbox ─────────────────────────────────── */
         .lightbox {
             position: fixed; inset: 0; z-index: 50;
-            background: #0C0F0E;
+            background: #0A0D0C;
             display: flex; align-items: center; justify-content: center;
-            padding: 16px;
-            animation: fade 0.14s ease;
+            animation: fade 0.16s ease;
+            touch-action: pan-y;
+            padding: clamp(56px, 9vh, 84px) clamp(12px, 6vw, 76px);
         }
         @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
         .lightbox img {
-            max-width: 100%; max-height: 82dvh;
-            border-radius: 4px;
-            user-select: none;
+            max-width: min(100%, 1400px); max-height: 100%;
+            object-fit: contain;
+            user-select: none; -webkit-user-drag: none;
+        }
+        .lb-top, .lb-bottom {
+            position: absolute; left: 0; right: 0; z-index: 2;
+            display: flex; align-items: center; gap: 10px;
+            padding: 14px clamp(12px, 3vw, 20px);
+        }
+        .lb-top { top: 0; padding-top: max(14px, env(safe-area-inset-top)); }
+        .lb-bottom { bottom: 0; padding-bottom: max(14px, env(safe-area-inset-bottom)); justify-content: center; }
+        .lb-counter {
+            color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+            background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16);
+            padding: 6px 13px; border-radius: var(--radius-pill);
         }
         .lb-btn {
-            position: absolute;
             cursor: pointer;
-            background: rgba(255,255,255,0.08); color: #fff;
+            background: rgba(255,255,255,0.10); color: #fff;
             border: 1px solid rgba(255,255,255,0.18);
             display: flex; align-items: center; justify-content: center;
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-pill);
             transition: background 0.14s;
         }
-        .lb-btn:hover { background: rgba(255,255,255,0.16); }
+        .lb-btn:hover { background: rgba(255,255,255,0.2); }
         .lb-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
         .lb-btn .icon { width: 21px; height: 21px; }
-        .lb-close { top: max(16px, env(safe-area-inset-top)); right: 16px; width: 40px; height: 40px; }
-        .lb-nav { top: 50%; transform: translateY(-50%); width: 40px; height: 44px; }
-        .lb-prev { left: 14px; }
-        .lb-next { right: 14px; }
-        .lb-counter {
-            position: absolute; top: max(20px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
-            color: rgba(255,255,255,0.86); font-size: 12.5px; font-weight: 600;
-            letter-spacing: 0.02em;
-            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
-            padding: 5px 12px; border-radius: 999px;
-        }
-        .lb-download {
-            position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
-        }
-        @media (max-width: 540px) {
-            .lb-nav { width: 36px; height: 40px; }
-            .lb-prev { left: 8px; } .lb-next { right: 8px; }
+        .lb-close { width: 42px; height: 42px; margin-left: auto; }
+        .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 48px; z-index: 2; }
+        .lb-prev { left: clamp(8px, 2vw, 20px); }
+        .lb-next { right: clamp(8px, 2vw, 20px); }
+        @media (max-width: 560px) {
+            .lb-nav { width: 38px; height: 42px; }
         }
 
         /* ── ค้นหารูปของฉันด้วยใบหน้า ─────────────────── */
-        .toolbar .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-        .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
-        .btn-ghost:hover { background: var(--bg); border-color: var(--muted); }
-        .btn-quiet { background: transparent; color: var(--muted); padding: 9px 10px; }
-        .btn-quiet:hover { color: var(--ink); background: var(--bg); }
-        .btn:disabled { color: var(--muted); background: var(--bg); border-color: var(--line); cursor: not-allowed; }
-
         .face-panel {
             background: var(--surface); border: 1px solid var(--line);
             border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px;
         }
         .face-panel .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .face-panel .texts { flex: 1; min-width: 190px; }
-        .face-panel .msg { font-size: 14.5px; font-weight: 700; letter-spacing: -0.005em; }
-        .face-panel .sub { font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 3px; line-height: 1.55; }
+        .face-panel .msg { font-size: 15px; font-weight: 800; letter-spacing: -0.005em; }
+        .face-panel .sub { font-size: 13.5px; color: var(--muted); font-weight: 500; margin-top: 3px; line-height: 1.55; }
         .face-panel .selfie {
-            width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover;
+            width: 44px; height: 44px; border-radius: var(--radius-sm); object-fit: cover;
             border: 1px solid var(--line-strong); flex: none;
         }
-        .bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; margin-top: 14px; }
+        .face-panel .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .bar { height: 5px; border-radius: var(--radius-pill); background: var(--line); overflow: hidden; margin-top: 14px; }
         .bar > i { display: block; height: 100%; width: 0; background: var(--brand); transition: width 0.25s ease; }
-
-        /* ป้าย "คุณ" บนรูปที่ตรงกับใบหน้าที่ค้นหา */
-        .tile.match::before {
-            content: "คุณ"; position: absolute; top: 8px; left: 8px; z-index: 2;
-            background: var(--brand); color: #fff; font-size: 11.5px; font-weight: 700;
-            padding: 2px 8px; border-radius: 4px; letter-spacing: 0.02em;
-        }
 
         /* ── Consent modal (PDPA) ─────────────────────── */
         .modal {
             position: fixed; inset: 0; z-index: 60;
-            background: rgba(16,24,40,0.55);
+            background: rgba(8,12,11,0.62);
             display: flex; align-items: flex-end; justify-content: center;
             animation: fade 0.14s ease;
         }
         @media (min-width: 640px) { .modal { align-items: center; padding: 20px; } }
         .modal .box {
-            background: var(--surface); width: 100%; max-width: 540px;
-            border-radius: 12px 12px 0 0; padding: 0 0 env(safe-area-inset-bottom);
+            background: var(--surface); width: 100%; max-width: 560px;
+            border: 1px solid var(--line); border-bottom: 0;
+            border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom);
             max-height: 92dvh; overflow-y: auto;
+            animation: slideUp 0.22s ease;
         }
         @media (min-width: 640px) {
-            .modal .box { border: 1px solid var(--line-strong); border-radius: 12px; padding-bottom: 0; }
+            .modal .box { border-bottom: 1px solid var(--line); border-radius: 18px; padding-bottom: 0; animation: none; }
         }
-        /* ส่วนหัว/ท้ายของชีตแยกด้วยเส้นบาง ให้อ่านเป็นเอกสารยินยอมมากกว่าป็อปอัป */
         .modal .head {
             display: flex; align-items: flex-start; gap: 12px;
             padding: 18px 20px; border-bottom: 1px solid var(--line);
         }
         .modal .head .badge {
-            width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--brand-soft);
-            border: 1px solid #DCE9E5;
+            width: 38px; height: 38px; border-radius: var(--radius-sm); background: var(--brand-soft);
+            border: 1px solid var(--brand-soft-line);
             display: flex; align-items: center; justify-content: center; color: var(--brand); flex: none;
         }
-        .modal .head .badge .icon { width: 19px; height: 19px; }
-        .modal h3 { font-size: 16.5px; font-weight: 700; letter-spacing: -0.01em; }
+        .modal .head .badge .icon { width: 20px; height: 20px; }
+        .modal h3 { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
         .modal .lead { font-size: 13.5px; color: var(--muted); line-height: 1.55; margin-top: 4px; }
         .modal .body { padding: 18px 20px; }
 
         .consent-list { list-style: none; display: grid; gap: 14px; margin-bottom: 18px; }
-        .consent-list li { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.65; color: var(--ink-2); }
+        .consent-list li { display: flex; gap: 10px; font-size: 13.5px; line-height: 1.68; color: var(--ink-2); }
         .consent-list li .icon { width: 17px; height: 17px; color: var(--brand); flex: none; margin-top: 3px; }
-        .consent-list li b { font-weight: 700; color: var(--ink); }
+        .consent-list li b { font-weight: 800; color: var(--ink); }
 
         .agree {
             display: flex; gap: 11px; align-items: flex-start; cursor: pointer;
@@ -306,19 +449,16 @@
             position: sticky; bottom: 0; background: var(--surface);
         }
         .modal .foot .btn { flex: 1; }
-        .legal {
-            font-size: 12px; color: var(--muted); line-height: 1.6;
-            margin-top: 14px;
-        }
+        .legal { font-size: 12.5px; color: var(--muted); line-height: 1.65; margin-top: 14px; }
         .legal a { color: var(--brand); font-weight: 700; }
 
         footer {
             border-top: 1px solid var(--line);
-            text-align: center; padding: 22px 16px calc(30px + env(safe-area-inset-bottom));
-            color: var(--muted); font-size: 12px;
+            text-align: center; padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
+            color: var(--muted); font-size: 12.5px;
             display: flex; align-items: center; justify-content: center; gap: 6px;
         }
-        footer .icon { width: 13px; height: 13px; color: var(--muted); }
+        footer .icon { width: 14px; height: 14px; color: var(--muted); }
     </style>
 </head>
 <body>
@@ -327,6 +467,7 @@
         <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></symbol>
         <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></symbol>
         <symbol id="i-images" viewBox="0 0 24 24"><rect x="3" y="3" width="13" height="13" rx="2"/><path d="m7 11 2-2 3 3M21 8v11a2 2 0 0 1-2 2H8"/></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
         <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
         <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
@@ -342,23 +483,45 @@
         <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></symbol>
         <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
         <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12.5 5 5 10-11"/></symbol>
+        <symbol id="i-check-square" viewBox="0 0 24 24"><path d="M9 11.5 11.5 14l5-5.5"/><rect x="3" y="3" width="18" height="18" rx="3"/></symbol>
         <symbol id="i-user-search" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 8.6-6.8"/><circle cx="17" cy="17" r="3.5"/><path d="m21 21-1.5-1.5"/></symbol>
     </svg>
 
     <header>
-        <div class="head-inner">
-            <div class="logo"><svg class="icon"><use href="#i-camera"/></svg></div>
-            <div class="title">
-                <h1 id="albumTitle">อัลบั้มรูปทริป</h1>
-                <p id="albumMeta">กำลังโหลด…</p>
+        <div class="wrap">
+            <div class="brand">
+                <span class="mark"><svg class="icon"><use href="#i-camera"/></svg></span>
+                ลุยเลเขา
+            </div>
+            <h1 id="albumTitle">อัลบั้มรูปทริป</h1>
+            <div class="chips" id="albumChips">
+                <span class="chip skeleton" id="chipLoading"></span>
             </div>
         </div>
     </header>
 
-    <main>
-        <div id="loadingState" class="state">
-            <div class="spinner"></div>
-            <p>กำลังโหลดรูปภาพ…</p>
+    <div class="toolbar hidden" id="toolbar">
+        <div class="wrap">
+            <span class="count" id="photoCount"></span>
+            <div class="actions">
+                <button class="btn btn-ghost" id="selectBtn" type="button">
+                    <svg class="icon"><use href="#i-check-square"/></svg> <span>เลือกรูป</span>
+                </button>
+                <button class="btn btn-ghost" id="faceSearchBtn" type="button">
+                    <svg class="icon"><use href="#i-scan-face"/></svg> ค้นหารูปของฉัน
+                </button>
+                <a class="btn btn-primary" id="downloadAll" href="#">
+                    <svg class="icon"><use href="#i-download"/></svg> ดาวน์โหลดทั้งหมด
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <main class="wrap">
+        <div id="loadingState">
+            <span class="sr-only">กำลังโหลดรูปภาพ…</span>
+            <div class="grid" id="skeletonGrid" aria-hidden="true"></div>
         </div>
 
         <div id="errorState" class="state hidden">
@@ -377,17 +540,6 @@
             <div id="expiryNotice" class="notice hidden">
                 <svg class="icon"><use href="#i-clock"/></svg>
                 <span id="expiryText"></span>
-            </div>
-            <div class="toolbar">
-                <span class="count" id="photoCount"><svg class="icon"><use href="#i-images"/></svg></span>
-                <div class="actions">
-                    <button class="btn btn-ghost" id="faceSearchBtn" type="button">
-                        <svg class="icon"><use href="#i-scan-face"/></svg> ค้นหารูปของฉัน
-                    </button>
-                    <a class="btn btn-primary" id="downloadAll" href="#">
-                        <svg class="icon"><use href="#i-download"/></svg> ดาวน์โหลดทั้งหมด
-                    </a>
-                </div>
             </div>
 
             {{-- แถบสถานะ/ผลลัพธ์ของการค้นหาด้วยใบหน้า (ทำงานบนเครื่องลูกค้าทั้งหมด) --}}
@@ -417,6 +569,18 @@
             <div class="grid" id="grid"></div>
         </div>
     </main>
+
+    {{-- แถบล่างของโหมดเลือกรูป — โผล่เฉพาะตอนกด "เลือกรูป" --}}
+    <div class="selectbar hidden" id="selectBar">
+        <div class="inner">
+            <div class="n" id="selectCount">เลือกแล้ว <span>0</span> รูป</div>
+            <button class="btn btn-quiet btn-sm" id="selectAll" type="button">เลือกทั้งหมด</button>
+            <button class="btn btn-ghost btn-sm" id="selectCancel" type="button">ยกเลิก</button>
+            <a class="btn btn-primary btn-sm" id="selectDownload" href="#">
+                <svg class="icon"><use href="#i-download"/></svg> ดาวน์โหลดที่เลือก
+            </a>
+        </div>
+    </div>
 
     <input type="file" id="selfieInput" accept="image/*" capture="user" class="hidden">
 
@@ -472,15 +636,19 @@
         </div>
     </div>
 
-    <div id="lightbox" class="lightbox hidden">
-        <span class="lb-counter" id="lbCounter"></span>
-        <button class="lb-btn lb-close" id="lbClose" aria-label="ปิด"><svg class="icon"><use href="#i-x"/></svg></button>
+    <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="ดูรูปขนาดใหญ่">
+        <div class="lb-top">
+            <span class="lb-counter" id="lbCounter"></span>
+            <button class="lb-btn lb-close" id="lbClose" aria-label="ปิด"><svg class="icon"><use href="#i-x"/></svg></button>
+        </div>
         <button class="lb-btn lb-nav lb-prev" id="lbPrev" aria-label="รูปก่อนหน้า"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
         <img id="lbImg" src="" alt="">
         <button class="lb-btn lb-nav lb-next" id="lbNext" aria-label="รูปถัดไป"><svg class="icon"><use href="#i-chevron-right"/></svg></button>
-        <a class="btn btn-primary lb-download" id="lbDownload" href="#">
-            <svg class="icon"><use href="#i-download"/></svg> ดาวน์โหลดรูปนี้
-        </a>
+        <div class="lb-bottom">
+            <a class="btn btn-primary" id="lbDownload" href="#">
+                <svg class="icon"><use href="#i-download"/></svg> ดาวน์โหลดรูปนี้
+            </a>
+        </div>
     </div>
 
     <footer>
@@ -515,13 +683,21 @@
             return thaiDate(iso) + ' เวลา ' + hh + ':' + mm + ' น.';
         }
 
+        const nf = (n) => Number(n || 0).toLocaleString('th-TH');
         function show(id) { document.getElementById(id).classList.remove('hidden'); }
         function hide(id) { document.getElementById(id).classList.add('hidden'); }
 
-        // ── Lightbox with prev/next navigation ──────────
+        // โครงรูปตอนกำลังโหลด — จำนวนพอดีหนึ่งหน้าจอ ไม่ต้องรู้ว่ามีกี่รูปจริง
+        document.getElementById('skeletonGrid').innerHTML =
+            Array.from({ length: 12 }, () => '<div class="skel"></div>').join('');
+
+        /* ══════════════════════════════════════════════════
+           Lightbox
+           ══════════════════════════════════════════════════ */
         let photoList = [];   // ทุกรูปในอัลบั้ม
         let viewList = [];    // ชุดที่กำลังแสดงอยู่ (ทั้งหมด หรือเฉพาะรูปที่เจอใบหน้าคุณ)
         let lbIndex = 0;
+        const lightbox = document.getElementById('lightbox');
         const lbImg = document.getElementById('lbImg');
         const lbCounter = document.getElementById('lbCounter');
         const lbDownload = document.getElementById('lbDownload');
@@ -530,28 +706,40 @@
             const p = viewList[lbIndex];
             if (!p) return;
             lbImg.src = p.url;
+            lbImg.alt = 'รูปที่ ' + (lbIndex + 1);
             lbDownload.href = DL_ONE(p.id);
             lbCounter.textContent = (lbIndex + 1) + ' / ' + viewList.length;
+            // โหลดรูปข้าง ๆ ไว้ล่วงหน้า กดลูกศรแล้วมาทันที
+            [lbIndex - 1, lbIndex + 1].forEach((i) => {
+                const n = viewList[(i + viewList.length) % viewList.length];
+                if (n && n !== p) new Image().src = n.url;
+            });
         }
         function openLightbox(index) {
             lbIndex = index;
             renderLightbox();
+            document.body.classList.add('no-scroll');
             show('lightbox');
+        }
+        function closeLightbox() {
+            hide('lightbox');
+            document.body.classList.remove('no-scroll');
         }
         function step(delta) {
             lbIndex = (lbIndex + delta + viewList.length) % viewList.length;
             renderLightbox();
         }
 
-        document.getElementById('lbClose').addEventListener('click', () => hide('lightbox'));
+        document.getElementById('lbClose').addEventListener('click', closeLightbox);
         document.getElementById('lbPrev').addEventListener('click', (e) => { e.stopPropagation(); step(-1); });
         document.getElementById('lbNext').addEventListener('click', (e) => { e.stopPropagation(); step(1); });
-        document.getElementById('lightbox').addEventListener('click', (e) => {
-            if (e.target.id === 'lightbox') hide('lightbox');
+        lightbox.addEventListener('click', (e) => {
+            // กดพื้นที่ว่างรอบรูปเพื่อปิด (ตัวรูปเองไม่ปิด จะได้กดค้างเซฟรูปได้)
+            if (e.target === lightbox) closeLightbox();
         });
         document.addEventListener('keydown', (e) => {
-            if (document.getElementById('lightbox').classList.contains('hidden')) return;
-            if (e.key === 'Escape') hide('lightbox');
+            if (lightbox.classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeLightbox();
             else if (e.key === 'ArrowLeft') step(-1);
             else if (e.key === 'ArrowRight') step(1);
         });
@@ -565,13 +753,67 @@
             touchX = null;
         }, { passive: true });
 
+        /* ══════════════════════════════════════════════════
+           โหมดเลือกรูป — ดาวน์โหลดเฉพาะรูปที่ติ๊กไว้
+           ══════════════════════════════════════════════════ */
+        const grid = document.getElementById('grid');
+        const selectBar = document.getElementById('selectBar');
+        const selectBtn = document.getElementById('selectBtn');
+        const selected = new Set();
+        let selecting = false;
+
+        function updateSelectBar() {
+            document.querySelector('#selectCount span').textContent = nf(selected.size);
+            const dl = document.getElementById('selectDownload');
+            dl.href = selected.size ? DL_ALL + '?ids=' + [...selected].join(',') : '#';
+            dl.classList.toggle('hidden', selected.size === 0);
+            document.getElementById('selectAll').textContent =
+                (selected.size > 0 && selected.size === viewList.length) ? 'ล้างที่เลือก' : 'เลือกทั้งหมด';
+        }
+
+        function setSelecting(on) {
+            selecting = on;
+            grid.classList.toggle('selecting', on);
+            selectBar.classList.toggle('hidden', !on);
+            selectBtn.classList.toggle('on', on);
+            selectBtn.querySelector('span').textContent = on ? 'ปิดโหมดเลือก' : 'เลือกรูป';
+            document.body.classList.toggle('picking', on);
+            if (!on) { selected.clear(); paintSelection(); }
+            updateSelectBar();
+        }
+
+        function paintSelection() {
+            grid.querySelectorAll('.tile').forEach((t) => {
+                t.classList.toggle('on', selected.has(Number(t.dataset.id)));
+            });
+        }
+
+        function toggleSelected(id) {
+            if (selected.has(id)) selected.delete(id); else selected.add(id);
+            paintSelection();
+            updateSelectBar();
+        }
+
+        selectBtn.addEventListener('click', () => setSelecting(!selecting));
+        document.getElementById('selectCancel').addEventListener('click', () => setSelecting(false));
+        document.getElementById('selectAll').addEventListener('click', () => {
+            if (selected.size > 0 && selected.size === viewList.length) selected.clear();
+            else viewList.forEach((p) => selected.add(p.id));
+            paintSelection();
+            updateSelectBar();
+        });
+
+        /* ══════════════════════════════════════════════════
+           ตารางรูป
+           ══════════════════════════════════════════════════ */
         // แสดงรูปตามชุดที่ส่งเข้ามา — ใช้ทั้งตอนโหลดครบทุกรูปและตอนกรองด้วยใบหน้า
         function renderGrid(list, matched = false) {
             viewList = list;
-            const grid = document.getElementById('grid');
             grid.innerHTML = list.map((p, i) => `
-                <div class="tile${matched ? ' match' : ''}">
-                    <img src="${p.thumb_url || p.url}" alt="" loading="lazy" data-index="${i}">
+                <div class="tile${matched ? ' match' : ''}" data-id="${p.id}" style="animation-delay:${Math.min(i, 11) * 18}ms">
+                    <img src="${p.thumb_url || p.url}" alt="" loading="lazy" decoding="async" data-index="${i}">
+                    <span class="mark"><svg class="icon"><use href="#i-check"/></svg></span>
+                    <button class="pick" type="button" data-id="${p.id}" aria-label="เลือกรูปนี้"></button>
                     <a class="dl" href="${DL_ONE(p.id)}" aria-label="ดาวน์โหลดรูปนี้">
                         <svg class="icon"><use href="#i-download"/></svg>
                     </a>
@@ -581,6 +823,12 @@
             grid.querySelectorAll('img').forEach((img) => {
                 img.addEventListener('click', () => openLightbox(Number(img.dataset.index)));
             });
+            grid.querySelectorAll('.pick').forEach((btn) => {
+                btn.addEventListener('click', () => toggleSelected(Number(btn.dataset.id)));
+            });
+
+            paintSelection();
+            updateSelectBar();
         }
 
         async function load() {
@@ -593,21 +841,16 @@
                 const data = body.data ?? body;
 
                 document.getElementById('albumTitle').textContent = data.trip_title || 'อัลบั้มรูปทริป';
-                const dep = thaiDate(data.departure_date);
-                const meta = document.getElementById('albumMeta');
-                if (dep) {
-                    meta.innerHTML = '<svg class="icon"><use href="#i-calendar"/></svg> เดินทาง ' + dep;
-                } else {
-                    meta.textContent = 'ภาพกิจกรรมประจำทริป';
-                }
-
                 photoList = data.photos || [];
                 hide('loadingState');
+
+                renderChips(data);
 
                 if (!photoList.length) { show('emptyState'); return; }
 
                 document.getElementById('photoCount').innerHTML =
-                    '<svg class="icon"><use href="#i-images"/></svg> ทั้งหมด ' + photoList.length + ' รูป';
+                    '<svg class="icon"><use href="#i-images"/></svg> ทั้งหมด ' + nf(photoList.length) +
+                    ' รูป <span class="dim">· กดที่รูปเพื่อดูเต็มจอ</span>';
                 document.getElementById('downloadAll').href = DL_ALL;
 
                 // รูปถูกลบอัตโนมัติหลังอัปโหลดครบกำหนด — บอกเส้นตายให้ชัดก่อนของหาย
@@ -622,16 +865,37 @@
                 }
 
                 renderGrid(photoList);
+                show('toolbar');
                 show('content');
             } catch (e) {
                 failAlbum('โหลดอัลบั้มไม่สำเร็จ', 'กรุณาลองใหม่อีกครั้ง');
             }
         }
 
-        // ล้างคำว่า "กำลังโหลด…" ใต้ชื่อเรื่องด้วย ไม่ให้ค้างอยู่บนหน้าที่โหลดไม่ขึ้น
+        // ชิปใต้ชื่ออัลบั้ม: วันเดินทาง / จำนวนรูป / จำนวนคนเข้าดู
+        function renderChips(data) {
+            const chips = [];
+            const dep = thaiDate(data.departure_date);
+            const ret = thaiDate(data.return_date);
+            if (dep) {
+                const range = (ret && ret !== dep) ? dep + ' – ' + ret : dep;
+                chips.push('<span class="chip"><svg class="icon"><use href="#i-calendar"/></svg> ' + range + '</span>');
+            }
+            const count = (data.photos || []).length;
+            if (count) {
+                chips.push('<span class="chip"><svg class="icon"><use href="#i-images"/></svg> <b>' + nf(count) + '</b> รูป</span>');
+            }
+            const views = Number(data.views_count || 0);
+            if (views > 0) {
+                chips.push('<span class="chip"><svg class="icon"><use href="#i-eye"/></svg> <b>' + nf(views) + '</b> คนเข้าดูแล้ว</span>');
+            }
+            document.getElementById('albumChips').innerHTML = chips.join('');
+        }
+
+        // ล้างชิป "กำลังโหลด" ด้วย ไม่ให้ค้างอยู่บนหน้าที่โหลดไม่ขึ้น
         function failAlbum(title, message) {
             hide('loadingState');
-            document.getElementById('albumMeta').textContent = '';
+            document.getElementById('albumChips').innerHTML = '';
             if (title) document.getElementById('errorTitle').textContent = title;
             if (message) document.getElementById('errorMsg').textContent = message;
             show('errorState');
@@ -990,6 +1254,7 @@
         }
 
         btnFaceSearch.addEventListener('click', () => {
+            if (selecting) setSelecting(false); // สองโหมดนี้อยู่ด้วยกันไม่ได้
             if (hasConsent()) { selfieInput.click(); return; }
             consentCheck.checked = false;
             consentAccept.disabled = true;

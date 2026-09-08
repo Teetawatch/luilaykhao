@@ -229,4 +229,58 @@ class PublicAlbumTest extends TestCase
             ->getJson("/api/v1/bookings/{$booking->booking_ref}/album")
             ->assertNotFound();
     }
+
+    public function test_opening_the_album_counts_the_visitor(): void
+    {
+        $schedule = $this->makeScheduleWithPhotos(1);
+        $token = $schedule->ensurePhotoToken();
+
+        $this->assertSame(0, $schedule->photo_views_count);
+
+        $this->withHeaders(['User-Agent' => 'first-visitor'])
+            ->getJson("/api/v1/album/{$token}/photos")
+            ->assertOk()
+            ->assertJsonPath('data.views_count', 1);
+
+        $this->assertSame(1, $schedule->fresh()->photo_views_count);
+    }
+
+    public function test_the_same_visitor_refreshing_does_not_inflate_the_count(): void
+    {
+        $schedule = $this->makeScheduleWithPhotos(1);
+        $token = $schedule->ensurePhotoToken();
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->withHeaders(['User-Agent' => 'same-visitor'])
+                ->getJson("/api/v1/album/{$token}/photos")
+                ->assertOk();
+        }
+
+        $this->assertSame(1, $schedule->fresh()->photo_views_count);
+    }
+
+    public function test_a_second_visitor_adds_to_the_count(): void
+    {
+        $schedule = $this->makeScheduleWithPhotos(1);
+        $token = $schedule->ensurePhotoToken();
+
+        $this->withHeaders(['User-Agent' => 'visitor-a'])->getJson("/api/v1/album/{$token}/photos")->assertOk();
+
+        $this->withHeaders(['User-Agent' => 'visitor-b'])
+            ->getJson("/api/v1/album/{$token}/photos")
+            ->assertOk()
+            ->assertJsonPath('data.views_count', 2);
+    }
+
+    public function test_downloading_photos_does_not_count_as_a_view(): void
+    {
+        $schedule = $this->makeScheduleWithPhotos(1);
+        $token = $schedule->ensurePhotoToken();
+        $photoId = $schedule->photos()->first()->id;
+
+        $this->get("/album/{$token}/download/{$photoId}")->assertOk();
+        $this->get("/album/{$token}/download")->assertOk();
+
+        $this->assertSame(0, $schedule->fresh()->photo_views_count);
+    }
 }

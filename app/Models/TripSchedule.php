@@ -64,6 +64,8 @@ class TripSchedule extends Model
      */
     protected $attributes = [
         'status' => 'open',
+        // รอบที่เพิ่งสร้างต้องรายงาน 0 ไม่ใช่ null — หน้าอัลบั้มเอาไปแสดงตรง ๆ
+        'photo_views_count' => 0,
     ];
 
     protected $fillable = [
@@ -114,6 +116,7 @@ class TripSchedule extends Model
             'flights' => 'array',
             'finance_closed_at' => 'datetime',
             'finance_budget' => 'decimal:2',
+            'photo_views_count' => 'integer',
         ];
     }
 

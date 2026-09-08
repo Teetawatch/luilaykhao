@@ -11,6 +11,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -32,9 +33,10 @@ class PublicAlbumController extends Controller
     }
 
     /** JSON consumed by the standalone album page. */
-    public function photos(string $token): JsonResponse
+    public function photos(Request $request, string $token): JsonResponse
     {
         $schedule = $this->resolveSchedule($token);
+        $this->registerView($schedule, $request);
 
         // รูปชุดแรกที่จะหมดอายุ คือเส้นตายที่ต้องเตือนให้ดาวน์โหลด
         $expiresAt = $schedule->photos
@@ -47,12 +49,28 @@ class PublicAlbumController extends Controller
             'departure_date' => optional($schedule->departure_date)->toDateString(),
             'return_date' => optional($schedule->return_date)->toDateString(),
             'count' => $schedule->photos->count(),
+            'views_count' => (int) $schedule->photo_views_count,
             'retention_days' => SchedulePhoto::RETENTION_DAYS,
             'expires_at' => $expiresAt?->toISOString(),
             // เวอร์ชันข้อความยินยอมปัจจุบัน — หน้าอัลบั้มถามใหม่เมื่อเวอร์ชันขยับ
             'face_search_consent_version' => FaceSearchConsent::CURRENT_VERSION,
             'photos' => SchedulePhotoResource::collection($schedule->photos),
         ]);
+    }
+
+    /**
+     * นับ "คนเข้าดูอัลบั้ม" แบบกันรีเฟรชซ้ำ
+     *
+     * ผูกกับ ip + user agent เป็นเวลา 6 ชั่วโมง เพื่อให้เลขที่โชว์เป็นจำนวน "คน"
+     * มากกว่าจำนวนครั้ง — ลิงก์อัลบั้มถูกส่งต่อในกลุ่มไลน์ คนเดิมเปิดซ้ำทั้งวัน
+     */
+    private function registerView(TripSchedule $schedule, Request $request): void
+    {
+        $key = 'album_view:'.$schedule->id.':'.sha1($request->ip().'|'.$request->userAgent());
+
+        if (Cache::add($key, true, now()->addHours(6))) {
+            $schedule->increment('photo_views_count');
+        }
     }
 
     /**
