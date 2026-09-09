@@ -24,6 +24,14 @@
         </span>
       </div>
 
+      <!-- ป้ายแคมเปญวันพิเศษ (9.9) — ป้ายเดียวที่แทรกเพิ่มได้บนรูป เพราะมันบอก
+           ราคาที่เปลี่ยนไปจริง ไม่ใช่คำโฆษณา และหายไปเองเมื่อแคมเปญจบ -->
+      <span v-if="campaign"
+        class="absolute bottom-4 left-4 px-3 py-1.5 rounded-full text-xs font-black tracking-wide text-white"
+        :style="{ backgroundColor: campaign.theme_color || '#e11d48' }">
+        {{ campaign.badge_label ? campaign.badge_label + ' · ' : '' }}{{ campaign.discount_label }}
+      </span>
+
       <!-- Favorite button -->
       <button @click.prevent="toggleFav" :aria-label="isFav ? 'นำออกจากรายการโปรด' : 'บันทึกรายการโปรด'"
         class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center transition-colors duration-300 rounded-full cursor-pointer z-10 backdrop-blur-md"
@@ -93,8 +101,13 @@
           <span class="text-xs text-[var(--color-text-muted)] font-bold mb-0.5">
             {{ hasPriceRange ? 'ช่วงราคาต่อคน' : 'ราคาต่อคน' }}
           </span>
-          <div class="flex items-baseline gap-1">
-            <span class="text-base font-extrabold text-[var(--color-text-dark)] tabular-nums">
+          <div class="flex items-baseline gap-1.5">
+            <!-- ราคาก่อนลดขึ้นเฉพาะตอนที่มันต่างจากราคาที่ขายจริง ๆ -->
+            <span v-if="hasDiscount" class="text-xs font-bold text-gray-400 line-through tabular-nums">
+              ฿{{ Number(trip.min_original_price).toLocaleString() }}
+            </span>
+            <span class="text-base font-extrabold tabular-nums"
+              :class="hasDiscount ? 'text-[#e11d48]' : 'text-[var(--color-text-dark)]'">
               <template v-if="hasPriceRange">
                 ฿{{ Number(trip.min_price).toLocaleString() }} - {{ Number(trip.max_price).toLocaleString() }}
               </template>
@@ -141,6 +154,15 @@ const typeBadgeClass = computed(() => typeMap[props.trip.type]?.class || 'bg-[#6
 const difficultyLabel = computed(() => diffMap[props.trip.difficulty] || props.trip.difficulty);
 
 const hasPriceRange = computed(() => Number(props.trip.min_price) !== Number(props.trip.max_price));
+
+// แคมเปญวันพิเศษมาจาก TripResource (คิดจากรอบที่ยังขายได้) ไม่ใช่จากสถานะเว็บ
+// ทริปที่ถูกยกเว้นหรือไม่เหลือรอบขาย จึงไม่ติดป้ายทั้งที่แคมเปญเปิดอยู่
+const campaign = computed(() => props.trip.campaign || null);
+
+const hasDiscount = computed(() => {
+  const before = Number(props.trip.min_original_price || 0);
+  return before > Number(props.trip.min_price || 0);
+});
 
 // ระยะเวลา/ระดับมีทุกทริป ส่วนระยะทาง/ความสูงสะสมมีเฉพาะทริปที่แอดมินกรอกไว้
 const routeFacts = computed(() => {

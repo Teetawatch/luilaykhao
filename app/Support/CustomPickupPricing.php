@@ -25,7 +25,10 @@ class CustomPickupPricing
     {
         $nearest = self::nearestPoint($points, $lat, $lng);
 
-        return max($basePrice, (float) ($nearest?->price ?? 0));
+        // effective_price = ราคาโซนหลังหักแคมเปญวันพิเศษแล้ว เท่ากับตัวเลขที่
+        // ไคลเอนต์เห็นใน pickup_points[].price — ถ้าอ่านคอลัมน์ดิบตรงนี้ คนที่
+        // ปักหมุดเองจะโดนคิดราคาก่อนลด ทั้งที่หน้าจอโชว์ราคาหลังลด
+        return max($basePrice, (float) ($nearest?->effective_price ?? 0));
     }
 
     /**

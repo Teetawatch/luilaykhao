@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\AbandonedBookingWinbackJob;
+use App\Jobs\AnnounceSaleCampaignJob;
 use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ClearEndedTripDriverPinsJob;
 use App\Jobs\ExpireFlexiOffersJob;
@@ -49,6 +50,9 @@ Schedule::job(new SendDepartureSoonRemindersJob)->everyFifteenMinutes()->without
 Schedule::job(new SendCheckInRemindersJob)->everyFiveMinutes()->withoutOverlapping();
 // ยิงประกาศ flash sale ที่ตั้งเวลาเริ่มไว้ ทันทีที่ถึงเวลาเริ่ม (ก่อนหน้านั้นเงียบ)
 Schedule::job(new StartScheduledFlashSalesJob)->everyMinute()->withoutOverlapping();
+// ประกาศแคมเปญวันพิเศษ (9.9/10.10) ทันทีที่ถึงเวลาเริ่ม — ราคาลดเองอยู่แล้วตั้งแต่
+// วินาทีแรก งานนี้แค่บอกลูกค้าว่ามันเริ่มแล้ว
+Schedule::job(new AnnounceSaleCampaignJob)->everyMinute()->withoutOverlapping();
 // เตือนสตาฟที่ถูกมอบหมายงาน เย็นก่อนวันเดินทาง 1 วัน ให้เตรียมอุปกรณ์/ความพร้อม
 Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();

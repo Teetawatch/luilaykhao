@@ -202,7 +202,8 @@ class BookingService
 
             // Use join trip price if applicable
             if ($isJoinTrip) {
-                $pricePerPerson = $schedule->join_trip_price ?? $schedule->effective_price;
+                $pricePerPerson = $schedule->effective_join_trip_price ?? $schedule->effective_price;
+                $defaultOriginalPrice = (float) ($schedule->join_trip_price ?? $schedule->priceWithoutCampaign());
                 $pickupPoint = null;
                 $pickupRegion = null; // Join trip might not need pickup region if they meet at destination?
                 // But user didn't specify. I'll keep pickup logic if they provided it.
@@ -216,9 +217,11 @@ class BookingService
                 $passengerPickupPoints = array_fill(0, count($passengers), null);
                 // ทุกคนจ่ายราคารอบเท่ากัน ไม่มีราคาโซนของจุดรับมาแทนที่
                 $defaultPrice = $schedule->effective_price;
+                $defaultOriginalPrice = $schedule->priceWithoutCampaign();
                 $pricePerPerson = $defaultPrice;
             } else {
                 $defaultPrice = $schedule->effective_price;
+                $defaultOriginalPrice = $schedule->priceWithoutCampaign();
                 $pickupPoint = null;
 
                 if ($pickupPointId) {
@@ -234,16 +237,30 @@ class BookingService
                 }
 
                 if ($pickupPoint) {
-                    $defaultPrice = $pickupPoint->price;
+                    // ราคาจุดขึ้นรถเป็นราคาเต็มต่อคน แคมเปญวันพิเศษลดมันด้วย —
+                    // ถามผ่านรอบเพื่อไม่ต้องยิง query หารอบกลับ
+                    $pickupPoint->setRelation('schedule', $schedule);
+                    $defaultPrice = $pickupPoint->effective_price;
+                    $defaultOriginalPrice = (float) $pickupPoint->price;
                     $pickupRegion = $pickupPoint->region;
                 } elseif (self::hasCustomPin($customPickup)) {
                     // หมุดที่ปักเองไม่มีราคาของตัวเอง ราคาจึงเคยร่วงกลับไปเป็นราคาฐาน
                     // ของรอบ — คิดเท่าจุดรับที่ใกล้หมุดที่สุดแทน (ขั้นต่ำ = ราคารอบ)
                     $defaultPrice = CustomPickupPricing::resolvePrice(
                         (float) $schedule->effective_price,
+                        $schedule->pickupPoints->each(fn ($point) => $point->setRelation('schedule', $schedule)),
+                        (float) $customPickup['lat'],
+                        (float) $customPickup['lng'],
+                    );
+                    // ราคาเดียวกันแบบไม่คิดแคมเปญ ไว้รู้ว่าแคมเปญลดไปเท่าไหร่
+                    $nearestPoint = CustomPickupPricing::nearestPoint(
                         $schedule->pickupPoints,
                         (float) $customPickup['lat'],
                         (float) $customPickup['lng'],
+                    );
+                    $defaultOriginalPrice = max(
+                        $schedule->priceWithoutCampaign(),
+                        (float) ($nearestPoint?->price ?? 0),
                     );
                 }
 
@@ -255,6 +272,7 @@ class BookingService
                         $pp = SchedulePickupPoint::where('id', $pPickupId)
                             ->where('schedule_id', $scheduleId)
                             ->first();
+                        $pp?->setRelation('schedule', $schedule);
                         $passengerPickupPoints[] = $pp ?? $pickupPoint;
                     } else {
                         $passengerPickupPoints[] = $pickupPoint;
@@ -347,12 +365,25 @@ class BookingService
 
             if ($isJoinTrip) {
                 $passengersSubtotal = $pricePerPerson * $participantCount;
+                $passengersSubtotalBeforeCampaign = $defaultOriginalPrice * $participantCount;
             } else {
                 $passengersSubtotal = array_sum(array_map(
-                    fn ($pp) => (float) ($pp?->price ?? $defaultPrice),
+                    fn ($pp) => (float) ($pp?->effective_price ?? $defaultPrice),
+                    $passengerPickupPoints
+                ));
+                $passengersSubtotalBeforeCampaign = array_sum(array_map(
+                    fn ($pp) => (float) ($pp?->price ?? $defaultOriginalPrice),
                     $passengerPickupPoints
                 ));
             }
+
+            // แคมเปญวันพิเศษไม่ได้เปลี่ยนวิธีคิดเงิน มันลดราคาต่อคนไปแล้วตั้งแต่
+            // effective_price — บันทึกไว้เฉย ๆ ว่ารอบนี้ลดไปเท่าไหร่ เพื่อให้หน้างบ
+            // ตอบได้ว่าแคมเปญ 9.9 แลกยอดขายมาด้วยส่วนลดเท่าไหร่
+            $saleCampaign = $schedule->saleCampaign();
+            $campaignDiscount = $saleCampaign
+                ? round(max(0.0, $passengersSubtotalBeforeCampaign - $passengersSubtotal), 2)
+                : 0.0;
 
             // ส่วนต่างของรถที่เลือก คิดต่อคนหลังราคาจุดขึ้นรถ — ไม่ทับราคาโซน
             // แต่บวก/ลบจากราคาที่ลูกค้าเห็นอยู่แล้ว (ดูคอมเมนต์ในไมเกรชัน)
@@ -469,6 +500,8 @@ class BookingService
                 'promotion_id' => $promotionId,
                 'promotion_code' => ($promotionId || $redemption) ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
+                'sale_campaign_id' => $saleCampaign?->id,
+                'campaign_discount' => $campaignDiscount,
                 'is_join_trip' => $isJoinTrip,
                 'is_gift' => $isGift,
                 'gift_code' => $isGift ? Booking::generateGiftCode() : null,

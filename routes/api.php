@@ -60,6 +60,7 @@ use App\Http\Controllers\Api\V1\PublicProfileSettingsController;
 use App\Http\Controllers\Api\V1\ReceiptController;
 use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\ReviewController;
+use App\Http\Controllers\Api\V1\SaleCampaignController;
 use App\Http\Controllers\Api\V1\SavedTravellerController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleItineraryController;
@@ -180,6 +181,9 @@ Route::prefix('v1')->group(function () {
 
     // Promotions (public active list)
     Route::get('promotions/active', [PromotionController::class, 'publicActive']);
+
+    // แคมเปญวันพิเศษที่กำลังลดราคาอยู่ (9.9 / 10.10) — คืน data: null เมื่อไม่มี
+    Route::get('sale-campaign/active', [SaleCampaignController::class, 'publicActive']);
 
     // Schedules (public)
     Route::get('schedules/{id}', [ScheduleController::class, 'show']);
@@ -910,6 +914,16 @@ Route::prefix('v1')->group(function () {
         Route::get('promotions/{id}', [PromotionController::class, 'show']);
         Route::put('promotions/{id}', [PromotionController::class, 'update']);
         Route::delete('promotions/{id}', [PromotionController::class, 'destroy']);
+
+        // แคมเปญวันพิเศษ (9.9 / 10.10) — ลดราคาทริปทั้งเว็บในครั้งเดียว
+        // preview/trips ต้องมาก่อน {id} ไม่งั้นถูกจับเป็นไอดี
+        Route::get('sale-campaigns/preview', [SaleCampaignController::class, 'preview']);
+        Route::get('sale-campaigns/trips', [SaleCampaignController::class, 'tripOptions']);
+        Route::get('sale-campaigns', [SaleCampaignController::class, 'index']);
+        Route::post('sale-campaigns', [SaleCampaignController::class, 'store']);
+        Route::get('sale-campaigns/{id}', [SaleCampaignController::class, 'show']);
+        Route::put('sale-campaigns/{id}', [SaleCampaignController::class, 'update']);
+        Route::delete('sale-campaigns/{id}', [SaleCampaignController::class, 'destroy']);
 
         // Waitlist management
         Route::get('schedules/{id}/waitlist', [WaitlistController::class, 'adminScheduleWaitlist']);

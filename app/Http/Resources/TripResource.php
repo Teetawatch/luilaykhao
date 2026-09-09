@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\SaleCampaign;
 use App\Models\TripSchedule;
 use App\Support\Countries;
 use Illuminate\Http\Request;
@@ -12,23 +13,32 @@ class TripResource extends JsonResource
     public function toArray(Request $request): array
     {
         $prices = collect();
+        $originalPrices = collect();
         if ($this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
             foreach ($this->schedules as $s) {
                 if ($s->relationLoaded('pickupPoints') && $s->pickupPoints->isNotEmpty()) {
                     foreach ($s->pickupPoints as $pt) {
-                        $prices->push((float) $pt->price);
+                        // ราคาจุดขึ้นรถเป็นราคาเต็มต่อคน แคมเปญวันพิเศษลดมันด้วย
+                        // จึงต้องถามผ่านรอบ ไม่ใช่อ่านคอลัมน์ตรง ๆ
+                        $pt->setRelation('schedule', $s);
+                        $prices->push((float) $pt->effective_price);
+                        $originalPrices->push((float) $pt->price);
                     }
                 } else {
                     // effective_price already reflects an active flash sale, so the
                     // "from ฿…" price on cards drops during a sale.
                     $prices->push((float) $s->effective_price);
+                    $originalPrices->push((float) $s->original_price);
                 }
             }
         }
 
         if ($prices->isEmpty()) {
             $prices->push((float) $this->price_per_person);
+            $originalPrices->push((float) $this->price_per_person);
         }
+
+        $campaign = $this->activeCampaign();
 
         $seatsLeft = $this->lowestOpenSeats();
 
@@ -108,6 +118,16 @@ class TripResource extends JsonResource
             'almost_full_date' => $this->lowestOpenSeatsDate(),
             'is_flash_sale' => $this->activeFlashSaleSchedule() !== null,
             'flash_sale_ends_at' => $this->activeFlashSaleSchedule()?->flash_sale_ends_at?->toISOString(),
+            // ราคาก่อนลด — ขีดฆ่าบนการ์ดทริปเมื่อมีแคมเปญวันพิเศษหรือ flash sale
+            'min_original_price' => $originalPrices->min(),
+            'campaign' => $campaign ? [
+                'id' => $campaign->id,
+                'name' => $campaign->name,
+                'badge_label' => $campaign->badge_label,
+                'discount_label' => $campaign->discountLabel(),
+                'theme_color' => $campaign->theme_color,
+                'ends_at' => $campaign->ends_at?->toISOString(),
+            ] : null,
             'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
             // จำนวนรอบ — หน้าแอดมินใช้บอกว่าทริปนี้ยังมีรอบให้ลูกค้าจองอยู่ไหม
             // (ทริปสถานะ "ใช้งาน" ที่ไม่เหลือรอบเปิดเลย ขายไม่ได้จริง)
@@ -115,6 +135,19 @@ class TripResource extends JsonResource
             'open_schedules_count' => $this->whenCounted('open_schedules'),
             'created_at' => $this->created_at?->toISOString(),
         ];
+    }
+
+    /**
+     * แคมเปญวันพิเศษที่กำลังลดราคาทริปนี้อยู่ — ถามจากรอบที่โหลดมา เพราะแคมเปญ
+     * ลดเฉพาะรอบที่ยังขายได้ ทริปที่มีแต่รอบที่ปิด/เต็มจึงไม่ควรติดป้าย 9.9
+     */
+    private function activeCampaign(): ?SaleCampaign
+    {
+        if (! $this->relationLoaded('schedules')) {
+            return null;
+        }
+
+        return $this->schedules->map(fn ($s) => $s->saleCampaign())->filter()->first();
     }
 
     /**

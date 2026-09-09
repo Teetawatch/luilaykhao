@@ -2318,10 +2318,14 @@ class AdminController extends Controller
 
         // ยอดรวมบวกทีละคนตามจุดที่คนนั้นขึ้น — คูณราคาเดียวด้วยจำนวนคนไม่ได้อีกแล้ว
         // เมื่อในใบเดียวกันมีหลายจุดรับ (ตรรกะเดียวกับฝั่งลูกค้าใน BookingService)
+        // ราคาทุกชนิดอ่านผ่านตัวรอบ เพื่อให้แคมเปญวันพิเศษลดให้ลูกค้าที่ทีมงาน
+        // จองแทนเหมือนกับลูกค้าที่กดจองเอง
         $totalAmount = $isJoinTrip
-            ? ($schedule->join_trip_price ?? $schedule->effective_price) * $participantCount
+            ? ($schedule->effective_join_trip_price ?? $schedule->effective_price) * $participantCount
             : array_sum(array_map(
-                fn ($point) => (float) ($point?->price ?? $schedule->effective_price),
+                fn ($point) => $point
+                    ? $schedule->campaignPriceFor((float) $point->price)
+                    : (float) $schedule->effective_price,
                 $passengerPickups,
             )) + ((float) ($vehicleOption?->price_adjustment ?? 0) * $participantCount);
         $installmentCount = null;

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\SendBroadcastNotificationJob;
 use App\Models\BroadcastDispatch;
+use App\Models\SaleCampaign;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Support\SiteSettings;
@@ -51,7 +52,36 @@ class BroadcastNotificationService
      * exempt from quiet-hours deferral (a held flash-sale/last-seats push is
      * useless once the round fills up or the sale ends overnight).
      */
-    public const URGENT_EVENTS = ['flash_sale', 'low_seats', 'sold_out', 'seats_freed'];
+    public const URGENT_EVENTS = ['flash_sale', 'low_seats', 'sold_out', 'seats_freed', 'sale_campaign'];
+
+    /**
+     * ประกาศแคมเปญวันพิเศษ (9.9 / 10.10) ตอนที่มันเริ่ม — ยิงครั้งเดียวต่อแคมเปญ
+     * ผ่านคีย์กันซ้ำ ต่างจาก flash sale ตรงที่ไม่ผูกกับรอบใดรอบหนึ่ง จึงพาไป
+     * หน้ารวมทริปแทนที่จะเป็นหน้าทริปเดียว
+     */
+    public function broadcastSaleCampaign(SaleCampaign $campaign): bool
+    {
+        if (! $campaign->isLive()) {
+            return false;
+        }
+
+        $endsAt = $campaign->ends_at->timezone(self::TIMEZONE);
+        $badge = $campaign->badge_label ? $campaign->badge_label.' ' : '';
+
+        return $this->broadcast(
+            'sale_campaign',
+            'sale_campaign:'.$campaign->id.':'.$campaign->starts_at->timestamp,
+            '🎉 '.$badge.$campaign->name,
+            trim(
+                ($campaign->tagline ?: $campaign->discountLabel().' ทุกทริปทั้งเว็บ')
+                .' ถึง '.$endsAt->format('d/m').' เวลา '.$endsAt->format('H:i').' น.'
+            ),
+            [
+                'route' => 'trips',
+                'sale_campaign_id' => $campaign->id,
+            ],
+        );
+    }
 
     /**
      * Announce a newly published trip to everyone.

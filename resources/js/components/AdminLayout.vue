@@ -239,6 +239,7 @@ const menuGroups = ref([
       { to: '/admin/content', icon: 'fas fa-file-lines', label: 'เนื้อหาหน้าเว็บ' },
       { to: '/admin/places', icon: 'fas fa-mountain', label: 'สถานที่/ฤดูกาล' },
       { to: '/admin/promotions', icon: 'fas fa-percent', label: 'โปรโมชั่น/ส่วนลด' },
+      { to: '/admin/sale-campaigns', icon: 'fas fa-calendar-day', label: 'แคมเปญวันพิเศษ (9.9)' },
       { to: '/admin/urgent-popup', icon: 'fas fa-fire', label: 'ป๊อปอัพทริปด่วน' },
       { to: '/admin/loyalty', icon: 'fas fa-coins', label: 'ระบบสะสมแต้ม' },
     ],

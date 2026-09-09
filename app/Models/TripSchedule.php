@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Jobs\NotifyTripCrewAssignedJob;
 use App\Jobs\SendDriverAssignmentPushJob;
+use App\Services\SaleCampaignService;
 use App\Support\LoyaltyTier;
 use App\Support\SeatLayoutFactory;
 use App\Support\SiteSettings;
@@ -600,11 +601,81 @@ class TripSchedule extends Model
 
     public function getEffectivePriceAttribute(): float
     {
+        $base = (float) ($this->price_override ?? $this->trip->price_per_person);
+
+        // แคมเปญวันพิเศษ (9.9) กับ flash sale รายรอบอยู่ด้วยกันได้ — ไม่ทบกัน
+        // แต่เอาราคาที่ถูกกว่าให้ลูกค้า ลูกค้าจึงไม่มีทางเจอราคาแพงกว่าเมื่อวาน
+        // เพราะวันนี้เป็นวันแคมเปญ
+        $campaignPrice = $this->campaignPriceFor($base);
+
         if ($this->flashSaleActive()) {
-            return (float) $this->flash_sale_price;
+            return min((float) $this->flash_sale_price, $campaignPrice);
         }
 
-        return $this->price_override ?? $this->trip->price_per_person;
+        return $campaignPrice;
+    }
+
+    /**
+     * ราคาต่อคนของรอบนี้ถ้าไม่มีแคมเปญวันพิเศษ — ใช้บันทึกว่าแคมเปญลดไปเท่าไหร่
+     * บนใบจอง (flash sale รายรอบยังนับเป็นราคาปกติของรอบ ไม่ใช่ส่วนลดแคมเปญ)
+     */
+    public function priceWithoutCampaign(): float
+    {
+        $base = (float) ($this->price_override ?? $this->trip->price_per_person);
+
+        return $this->flashSaleActive() ? min((float) $this->flash_sale_price, $base) : $base;
+    }
+
+    /**
+     * ราคาจอยทริปหลังหักแคมเปญ — join_trip_price เป็นราคาเต็มต่อคนของตัวเอง
+     * (ไม่ใช่ส่วนต่าง) แคมเปญจึงต้องลดมันด้วย ไม่งั้นคนจอยจ่ายเท่าเดิมทั้งที่
+     * หน้าเว็บประกาศว่า "ลดทั้งเว็บ"
+     */
+    public function getEffectiveJoinTripPriceAttribute(): ?float
+    {
+        if ($this->join_trip_price === null) {
+            return null;
+        }
+
+        return $this->campaignPriceFor((float) $this->join_trip_price);
+    }
+
+    /**
+     * ราคา $price หลังหักแคมเปญวันพิเศษ (คืนค่าเดิมถ้าไม่มีแคมเปญ)
+     *
+     * ใช้กับราคาต่อคนทุกชนิดของรอบนี้ — ราคารอบ ราคาจุดขึ้นรถ ราคาจอยทริป
+     */
+    public function campaignPriceFor(float $price): float
+    {
+        return $this->saleCampaign()?->priceFor($price) ?? $price;
+    }
+
+    /**
+     * แคมเปญวันพิเศษที่มีผลกับรอบนี้จริง ๆ
+     *
+     * ลดเฉพาะรอบที่ยังขายได้ (เปิดอยู่ ยังไม่ออกเดินทาง ที่นั่งเหลือ) —
+     * ถ้าลดรอบที่จบไปแล้วด้วย รายงานงบและ revenue-per-pax ที่อ่าน
+     * effective_price ย้อนหลังจะเพี้ยนทันทีที่เปิดแคมเปญ
+     */
+    public function saleCampaign(): ?SaleCampaign
+    {
+        if (! $this->campaignEligible()) {
+            return null;
+        }
+
+        return app(SaleCampaignService::class)->forTrip($this->trip_id);
+    }
+
+    /** รอบนี้ยังขายอยู่ไหม — เงื่อนไขเดียวกับที่ flash sale ใช้ */
+    public function campaignEligible(): bool
+    {
+        if ($this->status !== 'open' || $this->available_seats <= 0) {
+            return false;
+        }
+
+        $departsAt = $this->effectiveDepartsAt();
+
+        return $departsAt === null || $departsAt->isFuture();
     }
 
     /**

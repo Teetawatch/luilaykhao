@@ -31,6 +31,10 @@ class TripScheduleResource extends JsonResource
         // คอลัมน์ installment_* ยังอยู่เพื่อการจองเก่า แต่ไม่ใช่แหล่งความจริงแล้ว
         $installmentCount = PaymentQuote::maxInstallmentCount($this->resource);
 
+        // แคมเปญวันพิเศษที่ลดราคารอบนี้อยู่ — null เมื่อไม่มีแคมเปญ ทริปถูกยกเว้น
+        // หรือรอบนี้ขายไม่ได้แล้ว (ปิด/เต็ม/ออกเดินทางไปแล้ว)
+        $campaign = $this->saleCampaign();
+
         return [
             'id' => $this->id,
             'trip_id' => $this->trip_id,
@@ -116,6 +120,20 @@ class TripScheduleResource extends JsonResource
                         : 0,
                 ]
             ),
+            // แคมเปญวันพิเศษ (9.9/10.10) ที่กำลังลดราคารอบนี้อยู่ — ไม่มีคีย์นี้
+            // แปลว่ารอบนี้ขายราคาปกติ ไคลเอนต์เช็คที่เดียวว่าจะติดป้ายไหม
+            'campaign' => $this->when(
+                $campaign !== null,
+                fn () => [
+                    'id' => $campaign->id,
+                    'name' => $campaign->name,
+                    'badge_label' => $campaign->badge_label,
+                    'tagline' => $campaign->tagline,
+                    'discount_label' => $campaign->discountLabel(),
+                    'theme_color' => $campaign->theme_color,
+                    'ends_at' => $campaign->ends_at?->toISOString(),
+                ],
+            ),
             'installment_enabled' => $installmentCount >= 2,
             'installment_count' => $installmentCount,
             'installment_interval_days' => PaymentQuote::installmentIntervalDays($this->resource, $installmentCount),
@@ -130,7 +148,9 @@ class TripScheduleResource extends JsonResource
             'deposit_amount' => $this->deposit_amount,
             'deposit_percent' => $this->deposit_percent,
             'join_trip_enabled' => (bool) $this->join_trip_enabled,
-            'join_trip_price' => $this->join_trip_price,
+            'join_trip_price' => $this->effective_join_trip_price,
+            // ราคาจอยก่อนหักแคมเปญ ไว้ขีดฆ่าให้เห็นว่าลดจากเท่าไหร่
+            'join_trip_original_price' => $this->join_trip_price !== null ? (float) $this->join_trip_price : null,
             // โควตาจอยทริปแยกจากที่นั่งบนรถคนละกอง — join_trip_seats = null
             // แปลว่าแอดมินไม่ได้กำหนดเพดาน (รับได้ไม่จำกัด) UI ต้องเช็ค null
             // ก่อนจะขึ้นข้อความ "ว่าง N ที่"
@@ -171,7 +191,14 @@ class TripScheduleResource extends JsonResource
                 $this->relationLoaded('vehicleOptions'),
                 fn () => $this->offersVehicleChoice()
             ),
-            'pickup_points' => SchedulePickupPointResource::collection($this->whenLoaded('pickupPoints')),
+            // ผูกรอบกลับเข้าไปในแต่ละจุดขึ้นรถก่อน เพื่อให้ราคาหลังหักแคมเปญ
+            // คิดได้โดยไม่ต้องยิง query ถามรอบซ้ำทีละจุด
+            'pickup_points' => $this->whenLoaded(
+                'pickupPoints',
+                fn () => SchedulePickupPointResource::collection(
+                    $this->pickupPoints->each(fn ($point) => $point->setRelation('schedule', $this->resource))
+                ),
+            ),
             // เส้นทางเดินรถที่แอดมินวาดเอง (จุดดิบสำหรับ editor; ลูกค้าได้ polyline
             // ที่ encode แล้วผ่าน /schedules/{id}/route อยู่แล้ว จึงไม่ใช่ความลับ)
             'custom_route' => $this->custom_route,

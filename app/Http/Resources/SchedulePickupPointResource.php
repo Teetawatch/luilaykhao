@@ -15,7 +15,9 @@ class SchedulePickupPointResource extends JsonResource
             'region' => $this->region,
             'region_label' => $this->region_label,
             'pickup_location' => $this->pickup_location,
-            'price' => (float) $this->price,
+            // ราคาที่ต้องจ่ายจริง (หักแคมเปญวันพิเศษแล้ว) กับราคาก่อนลดไว้ขีดฆ่า
+            'price' => $this->effective_price,
+            'original_price' => (float) $this->price,
             'map_url' => $this->map_url,
             'image_url' => $this->image_url,
             'latitude' => $this->latitude,

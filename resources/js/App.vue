@@ -1,6 +1,7 @@
 <template>
   <div class="min-h-screen flex flex-col" v-if="!isAdminRoute">
     <Navbar />
+    <SaleCampaignBar />
 
     <!-- Global Active Booking Banner -->
     <Transition name="booking-banner">
@@ -130,6 +131,7 @@ import Footer from './components/Footer.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import UrgentTripsPopup from './components/UrgentTripsPopup.vue';
 import CookieConsentBanner from './components/CookieConsentBanner.vue';
+import SaleCampaignBar from './components/SaleCampaignBar.vue';
 import { useSeatsStore } from './stores/seats';
 import { useBookingStore } from './stores/booking';
 import { useWishlistStore } from './stores/wishlist';

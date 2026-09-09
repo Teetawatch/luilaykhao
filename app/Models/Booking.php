@@ -60,6 +60,7 @@ class Booking extends Model
         'hold_until', 'hold_note', 'hold_by_id',
         'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path',
         'promotion_id', 'promotion_code', 'discount_amount',
+        'sale_campaign_id', 'campaign_discount',
         'is_join_trip', 'flexi_surcharge',
         'is_gift', 'gift_code', 'gift_from_name', 'gift_message',
         'gifted_by_user_id', 'gift_claimed_at',
@@ -72,6 +73,7 @@ class Booking extends Model
             'addons_total' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'campaign_discount' => 'decimal:2',
             'flexi_surcharge' => 'decimal:2',
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
@@ -116,6 +118,12 @@ class Booking extends Model
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    /** แคมเปญวันพิเศษที่ใบจองนี้จองเข้ามาระหว่างที่มันเปิดอยู่ (ถ้ามี) */
+    public function saleCampaign(): BelongsTo
+    {
+        return $this->belongsTo(SaleCampaign::class, 'sale_campaign_id');
     }
 
     /**

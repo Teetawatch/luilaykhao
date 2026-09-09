@@ -110,8 +110,8 @@
               <p class="text-[11px] font-bold uppercase tracking-wider text-white/60">เริ่มต้น / ท่าน</p>
               <div class="mt-0.5 flex items-baseline gap-2">
                 <span class="text-2xl font-black tracking-tight text-white lg:text-[28px]">฿{{ displayPrice.toLocaleString() }}</span>
-                <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-[15px] font-bold text-white/45 line-through decoration-2">
-                  ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
+                <span v-if="hasVisibleDiscount" class="text-[15px] font-bold text-white/45 line-through decoration-2">
+                  ฿{{ originalDisplayPrice.toLocaleString() }}
                 </span>
               </div>
             </div>
@@ -665,6 +665,20 @@
               <!-- Price Card -->
               <div id="booking-section" class="bg-white p-8 rounded-[2rem] border border-gray-100 relative overflow-hidden z-10">
                 <!-- ราคาลดตามช่วงเวลา — แบนเนอร์เรียบ ไม่ไล่สี ไม่ตะโกน นับถอยหลังเป็นข้อมูลว่าหมดเมื่อไร -->
+                <div v-if="campaignInfo && !flashSchedule" class="mb-4 px-3.5 py-2.5 rounded-[1rem] text-white"
+                  :style="{ backgroundColor: campaignInfo.theme_color || '#e11d48' }">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-1.5 text-[13px] font-extrabold">
+                      <span v-if="campaignInfo.badge_label" class="px-2 py-0.5 rounded-md bg-white/20 text-[11px] font-black">
+                        {{ campaignInfo.badge_label }}
+                      </span>
+                      {{ campaignInfo.discount_label }} ทุกทริป
+                    </div>
+                    <div v-if="campaignInfo.ends_at" class="text-[12px] font-bold tabular-nums opacity-90">
+                      ถึงอีก {{ flashCountdown(campaignInfo.ends_at) }}
+                    </div>
+                  </div>
+                </div>
                 <div v-if="flashSchedule" class="mb-4 px-3.5 py-2.5 rounded-[1rem] bg-[var(--color-sand)] border border-gray-200">
                   <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-1.5 text-[13px] font-extrabold text-[var(--color-text-dark)]">
@@ -696,8 +710,8 @@
                 <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-1">เริ่มต้น / ท่าน</p>
                 <div class="flex items-end gap-2 mb-2">
                   <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
-                  <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-gray-400 text-xl pb-1.5 font-bold line-through decoration-2">
-                    ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
+                  <span v-if="hasVisibleDiscount" class="text-gray-400 text-xl pb-1.5 font-bold line-through decoration-2">
+                    ฿{{ originalDisplayPrice.toLocaleString() }}
                   </span>
                   <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold">/ ท่าน</span>
                 </div>
@@ -1268,8 +1282,8 @@
             </p>
             <div class="flex items-baseline gap-1.5">
               <span class="text-xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
-              <span v-if="flashSchedule && flashSchedule.flash_sale.price <= displayPrice" class="text-gray-400 text-sm font-bold line-through decoration-2">
-                ฿{{ Number(flashSchedule.original_price).toLocaleString() }}
+              <span v-if="hasVisibleDiscount" class="text-gray-400 text-sm font-bold line-through decoration-2">
+                ฿{{ originalDisplayPrice.toLocaleString() }}
               </span>
             </div>
             <p v-if="installmentPlan" class="mt-0.5 text-[11px] font-black text-[#2D7A4F] truncate">
@@ -1571,8 +1585,8 @@
                           {{ joinTripSeatLabel(s) }}
                         </span>
                         <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-                        <span class="text-xs md:text-sm font-black" :class="s.flash_sale?.active ? 'text-[#EA580C]' : 'text-[var(--color-text-dark)]'">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
-                        <span v-if="s.flash_sale?.active" class="text-[11px] font-bold text-gray-400 line-through">฿{{ Number(s.original_price).toLocaleString() }}</span>
+                        <span class="text-xs md:text-sm font-black" :class="s.flash_sale?.active || s.campaign ? 'text-[#EA580C]' : 'text-[var(--color-text-dark)]'">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
+                        <span v-if="Number(s.original_price) > Number(s.price)" class="text-[11px] font-bold text-gray-400 line-through">฿{{ Number(s.original_price).toLocaleString() }}</span>
                         <span v-if="s.flash_sale?.active" class="inline-flex items-center gap-0.5 text-[9px] font-black bg-[#FFF7ED] text-[#EA580C] border border-[#FED7AA] px-1.5 py-0.5 rounded-md uppercase">
                           <span class="material-symbols-rounded" style="font-size:11px;">bolt</span> Flash
                         </span>
@@ -2195,17 +2209,23 @@ const regionOptions = computed(() => {
       const region = pt.region || 'other';
       const regionLabel = pt.region_label || 'อื่นๆ';
       const price = Number(pt.price || 0);
+      // ราคาก่อนลดของจุดเดียวกัน — ใช้ขีดฆ่าเมื่อมีแคมเปญวันพิเศษ
+      const originalPrice = Number(pt.original_price ?? pt.price ?? 0);
 
       if (!map.has(region)) {
         map.set(region, {
           region,
           region_label: regionLabel,
           min_price: price,
+          min_original_price: originalPrice,
           schedule_count: 0,
         });
       } else {
         const existing = map.get(region);
-        if (price < existing.min_price) existing.min_price = price;
+        if (price < existing.min_price) {
+          existing.min_price = price;
+          existing.min_original_price = originalPrice;
+        }
       }
 
       if (!countedRegions.has(region)) {
@@ -2545,6 +2565,44 @@ const displayPrice = computed(() => {
   
   if (selectedSchedule.value?.price) return Number(selectedSchedule.value.price);
   return Number(trip.value?.price_per_person || 0);
+});
+
+/**
+ * ราคาก่อนลดของตัวเลขที่กำลังโชว์อยู่ — ไล่กิ่งเดียวกับ displayPrice เป๊ะ ๆ
+ * เพื่อไม่ให้ราคาขีดฆ่าเป็นของอีกกรณีหนึ่ง (เช่นโชว์ราคารอบขีดฆ่าทั้งที่ลูกค้า
+ * เลือกจุดขึ้นรถไปแล้ว) ครอบทั้ง flash sale รายรอบและแคมเปญวันพิเศษ
+ */
+const originalDisplayPrice = computed(() => {
+  if (isJoinTrip.value && selectedSchedule.value?.join_trip_enabled) {
+    return Number(
+      selectedSchedule.value.join_trip_original_price
+        ?? selectedSchedule.value.original_price
+        ?? displayPrice.value
+    );
+  }
+  if (selectedPickup.value) {
+    return Number(selectedPickup.value.original_price ?? selectedPickup.value.price);
+  }
+
+  if (selectedRegion.value && regionOptions.value.length) {
+    const region = regionOptions.value.find(r => r.region === selectedRegion.value);
+    if (region) return Number(region.min_original_price ?? region.min_price);
+  }
+
+  if (selectedSchedule.value?.original_price) return Number(selectedSchedule.value.original_price);
+  return displayPrice.value;
+});
+
+/** ราคาที่โชว์อยู่ถูกลดจริงไหม — เงื่อนไขเดียวของทุกจุดที่ขีดฆ่าราคา */
+const hasVisibleDiscount = computed(() => originalDisplayPrice.value > displayPrice.value);
+
+/**
+ * แคมเปญวันพิเศษที่ลดราคาทริปนี้อยู่ — เอาจากรอบที่เลือก ไม่งั้นรอบไหนก็ได้
+ * ที่ร่วมแคมเปญ (ทุกรอบใช้แคมเปญเดียวกัน)
+ */
+const campaignInfo = computed(() => {
+  if (selectedSchedule.value?.campaign) return selectedSchedule.value.campaign;
+  return schedules.value.find(s => s.campaign)?.campaign || null;
 });
 
 /**
