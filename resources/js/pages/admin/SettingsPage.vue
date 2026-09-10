@@ -274,6 +274,44 @@
           <label>อีเมล</label>
           <input v-model="form.support_email" class="wide" type="email" placeholder="เช่น hello@luilaykhao.com" />
         </div>
+        <div class="field">
+          <label>เวลาทำการ (ข้อความที่ลูกค้าเห็น)</label>
+          <input v-model="form.support_hours" class="wide" placeholder="เช่น ทุกวัน 09:00 - 20:00 น." />
+          <span class="help">
+            ข้อความนี้แสดงบนหน้าแรก หน้าติดต่อ หน้าชำระเงิน ท้ายเว็บ และหน้าเงื่อนไข — ที่เดียวเปลี่ยนหมดทุกหน้า
+          </span>
+        </div>
+        <div class="field">
+          <label>เวลาเปิด - ปิด (สำหรับ Google)</label>
+          <div class="input-row">
+            <input v-model="form.support_opens" type="time" />
+            <input v-model="form.support_closes" type="time" />
+          </div>
+          <span class="help">Google อ่านข้อความไทยไม่ได้ จึงต้องบอกเป็นตัวเลขอีกชุด ควรตรงกับข้อความด้านบน</span>
+        </div>
+      </section>
+
+      <!-- ── ผู้ประกอบการตามใบอนุญาต ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">domain</span>
+          <div>
+            <h2>ผู้ประกอบการตามใบอนุญาต</h2>
+            <p>แสดงท้ายเว็บ หน้าเงื่อนไข และนโยบายความเป็นส่วนตัว — เว้นว่าง = ซ่อนบรรทัดนั้น</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>ชื่อผู้ประกอบการ / นิติบุคคล</label>
+          <input v-model="form.operator_name" class="wide" placeholder="ชื่อตามที่ระบุในใบอนุญาต" />
+          <span class="help">
+            ยังไม่ได้กรอก = เว็บจะแสดงแค่ชื่อทางการค้ากับเลขที่ใบอนุญาต การกรอกชื่อจริงช่วยให้ลูกค้าตรวจสอบเราได้
+          </span>
+        </div>
+        <div class="field">
+          <label>ที่อยู่</label>
+          <input v-model="form.operator_address" class="wide" placeholder="ที่อยู่เต็มบรรทัดเดียว" />
+        </div>
       </section>
 
       <!-- ── ใบอนุญาตนำเที่ยว ── -->
@@ -361,6 +399,11 @@ const form = reactive({
   support_phone: '',
   support_line: '',
   support_email: '',
+  support_hours: '',
+  support_opens: '',
+  support_closes: '',
+  operator_name: '',
+  operator_address: '',
   licence_no: '',
   licence_image: '',
 });
@@ -433,7 +476,8 @@ async function load() {
     Object.assign(form, res.data.data.settings || {});
     licenceImageUrl.value = res.data.data.licence_image_url || '';
     // ช่องข้อความว่างมาเป็น null จาก API — แปลงเป็นสตริงว่างให้ input ผูกค่าได้
-    ['support_phone', 'support_line', 'support_email', 'licence_image'].forEach((k) => {
+    ['support_phone', 'support_line', 'support_email', 'support_hours', 'support_opens',
+      'support_closes', 'operator_name', 'operator_address', 'licence_image'].forEach((k) => {
       form[k] = form[k] ?? '';
     });
   } catch {
@@ -451,6 +495,11 @@ async function save() {
       support_phone: form.support_phone?.trim() || null,
       support_line: form.support_line?.trim() || null,
       support_email: form.support_email?.trim() || null,
+      support_hours: form.support_hours?.trim() || null,
+      support_opens: form.support_opens?.trim() || null,
+      support_closes: form.support_closes?.trim() || null,
+      operator_name: form.operator_name?.trim() || null,
+      operator_address: form.operator_address?.trim() || null,
       licence_no: form.licence_no?.trim(),
       licence_image: form.licence_image?.trim() || null,
     });

@@ -14,6 +14,7 @@ const FALLBACK = {
   line: '@luilaykhao',
   lineUrl: 'https://line.me/R/ti/p/@luilaykhao',
   email: 'luilaykhao.info@gmail.com',
+  hours: 'ทุกวัน 09:00 - 20:00 น.',
 };
 
 function readMeta(name) {
@@ -55,3 +56,40 @@ export function supportEmail() {
 export function supportEmailHref() {
   return `mailto:${supportEmail()}`;
 }
+
+/**
+ * เวลาทำการที่ประกาศไว้ เช่น `ทุกวัน 09:00 - 20:00 น.`
+ *
+ * เคยเขียนต่างกันสี่ที่ (หน้าแรกบอก 24/7 หน้าติดต่อบอก 09:00-20:00 หน้าชำระ
+ * เงินบอก 8:00-20:00 structured data บอก 08:00-22:00) — สัญญาที่เว็บตัวเอง
+ * แย้งกันสองหน้าถัดมา อ่านแล้วเชื่ออะไรไม่ได้สักอย่าง
+ */
+export function supportHours() {
+  return readMeta('llk:support-hours') || FALLBACK.hours;
+}
+
+/**
+ * ชื่อและที่อยู่ผู้ประกอบการตามใบอนุญาต — คืนค่าว่างได้
+ *
+ * เป็นข้อมูลตามเอกสารราชการ เดาแทนไม่ได้ ที่แสดงผลจึงต้องซ่อนบรรทัดที่ว่าง
+ * แทนที่จะเติมข้อความหลอก ๆ ลงไป แอดมินกรอกเองที่ /admin/settings
+ */
+export function operatorName() {
+  return readMeta('llk:operator-name');
+}
+
+export function operatorAddress() {
+  return readMeta('llk:operator-address');
+}
+
+/**
+ * โปรไฟล์ทางการของแบรนด์ — Navbar กับ Footer เคยมีคนละชุด (Footer ตก TikTok)
+ *
+ * ต้องตรงกับ config('company.social') ฝั่ง PHP ที่ใช้เป็น sameAs ใน
+ * structured data — มี SocialLinksSyncTest คอยจับไม่ให้หลุดจากกัน
+ */
+export const SOCIAL_LINKS = [
+  { key: 'facebook', label: 'Facebook', icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/profile.php?id=61572124170207' },
+  { key: 'instagram', label: 'Instagram', icon: 'fa-brands fa-instagram', href: 'https://instagram.com/luilaykhao' },
+  { key: 'tiktok', label: 'TikTok', icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@luilaykhao' },
+];

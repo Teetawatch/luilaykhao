@@ -57,6 +57,7 @@ class BookingService
         ?string $giftMessage = null,
         ?int $vehicleOptionId = null,
         bool $skipPayment = false,
+        bool $acceptedTerms = false,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -70,7 +71,7 @@ class BookingService
         $bookedBeforeBooking = null;
         $bookedAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $acceptedTerms, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -507,6 +508,11 @@ class BookingService
                 'gift_code' => $isGift ? Booking::generateGiftCode() : null,
                 'gift_from_name' => $isGift ? $giftFromName : null,
                 'gift_message' => $isGift ? $giftMessage : null,
+                // หลักฐานว่าลูกค้ากดยอมรับเงื่อนไขฉบับใด ณ เวลาใด — ช่องทางที่
+                // ยังไม่ได้ขอความยินยอม (แอดมินจองแทน, แอปรุ่นก่อน) ปล่อยว่างไว้
+                // ตามความจริง ดีกว่าประทับเวลาให้ทั้งที่ไม่มีใครกด
+                'terms_accepted_at' => $acceptedTerms ? now() : null,
+                'terms_version' => $acceptedTerms ? config('legal.terms_version') : null,
             ]);
 
             // ตัดคูปองทิ้งทันทีที่ผูกกับการจองแล้ว อยู่ใน transaction เดียวกับการ

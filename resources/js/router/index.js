@@ -182,7 +182,7 @@ const routes = [
     component: () => import('../pages/ContactPage.vue'),
     meta: {
       title: 'ติดต่อเรา',
-      description: 'ติดต่อลุยเลเขา สอบถามเรื่องจองทริปเดินป่า ดำน้ำตื้น เช่ารถตู้ โทร 062-612-6006 LINE @luilaykhao อีเมล luilaykhao.info@gmail.com',
+      description: 'ติดต่อลุยเลเขา สอบถามเรื่องจองทริปเดินป่า ดำน้ำตื้น เช่ารถตู้ โทร :phone LINE :line อีเมล :email',
       ogType: 'website'
     }
   },

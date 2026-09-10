@@ -41,6 +41,21 @@ class SiteSettings
         'support_phone' => null,
         'support_line' => null,
         'support_email' => null,
+        // เวลาทำการที่ประกาศไว้ — เคยเขียนต่างกันสี่ที่ (หน้าแรกบอก 24/7
+        // หน้าติดต่อบอก 09:00-20:00 หน้าชำระเงินบอก 8:00-20:00 และ
+        // structured data บอก 08:00-22:00) ตอนนี้ทุกหน้าอ่านค่านี้ค่าเดียว
+        'support_hours' => 'ทุกวัน 09:00 - 20:00 น.',
+        // ชั่วโมงเปิด-ปิดในรูปแบบที่ structured data ต้องการ (24 ชม.)
+        // แยกจากข้อความข้างบนเพราะ Google อ่านข้อความไทยไม่ได้
+        'support_opens' => '09:00',
+        'support_closes' => '20:00',
+        // ผู้ประกอบการตามใบอนุญาต — ชื่อและที่อยู่ที่แสดงท้ายเว็บ
+        //
+        // ชื่อเว้นว่างไว้ตั้งต้น เพราะชื่อผู้ถือใบอนุญาตเป็นข้อมูลตามเอกสาร
+        // ราชการ เดาแทนไม่ได้ — กรอกเองที่ /admin/settings แล้วบรรทัดนั้นจะโผล่
+        // ส่วนที่อยู่ใช้ที่เดียวกับที่หน้าติดต่อประกาศไว้อยู่แล้ว
+        'operator_name' => null,
+        'operator_address' => 'ถนนทางรถไฟเก่า แขวงบางนาใต้ เขตบางนา กรุงเทพมหานคร 10260',
         // ใบอนุญาตประกอบธุรกิจนำเที่ยว — เลขที่และรูปใบจริงที่ลูกค้ากดดูได้
         // เลข 11 ขึ้นต้น = นำเที่ยวได้ทั้งในและต่างประเทศ
         'licence_no' => '11/13855',
@@ -144,6 +159,41 @@ class SiteSettings
     public static function supportEmail(): string
     {
         return (string) (self::get('support_email') ?: config('app.support_email'));
+    }
+
+    /** เวลาทำการที่ประกาศไว้ เช่น `ทุกวัน 09:00 - 20:00 น.` */
+    public static function supportHours(): string
+    {
+        return (string) (self::get('support_hours') ?: self::DEFAULTS['support_hours']);
+    }
+
+    /** เวลาเปิด-ปิดแบบ 24 ชม. สำหรับ structured data */
+    public static function supportOpens(): string
+    {
+        return (string) (self::get('support_opens') ?: self::DEFAULTS['support_opens']);
+    }
+
+    public static function supportCloses(): string
+    {
+        return (string) (self::get('support_closes') ?: self::DEFAULTS['support_closes']);
+    }
+
+    /**
+     * ชื่อผู้ประกอบการตามใบอนุญาต — คืนค่าว่างถ้ายังไม่ได้กรอก
+     *
+     * ตั้งใจไม่ใส่ค่าตั้งต้น: ชื่อผู้ถือใบอนุญาตเป็นข้อมูลตามเอกสารราชการ
+     * เดาแทนไม่ได้ หน้าเว็บจึงซ่อนบรรทัดนี้จนกว่าแอดมินจะกรอกเองที่
+     * /admin/settings
+     */
+    public static function operatorName(): string
+    {
+        return trim((string) (self::get('operator_name') ?: config('company.legal_name') ?: ''));
+    }
+
+    /** ที่อยู่ผู้ประกอบการ — เว้นว่างได้ด้วยเหตุผลเดียวกับชื่อ */
+    public static function operatorAddress(): string
+    {
+        return trim((string) (self::get('operator_address') ?: config('company.address') ?: ''));
     }
 
     /**

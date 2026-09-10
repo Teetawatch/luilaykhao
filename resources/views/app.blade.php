@@ -31,6 +31,16 @@
     <meta name="llk:support-line" content="{{ \App\Support\SiteSettings::supportLine() }}">
     <meta name="llk:support-line-url" content="{{ \App\Support\SiteSettings::supportLineUrl() }}">
     <meta name="llk:support-email" content="{{ \App\Support\SiteSettings::supportEmail() }}">
+    <meta name="llk:support-hours" content="{{ \App\Support\SiteSettings::supportHours() }}">
+
+    {{-- ผู้ประกอบการตามใบอนุญาต — ว่างได้ ฝั่งเว็บซ่อนบรรทัดที่ไม่มีค่าเอง --}}
+    <meta name="llk:operator-name" content="{{ \App\Support\SiteSettings::operatorName() }}">
+    <meta name="llk:operator-address" content="{{ \App\Support\SiteSettings::operatorAddress() }}">
+
+    {{-- เวอร์ชันเอกสารเงื่อนไข — หน้า /terms แสดงเลขนี้ และใบจองบันทึกไว้ว่า
+         ลูกค้ากดยอมรับฉบับไหน (ดู config/legal.php) --}}
+    <meta name="llk:terms-version" content="{{ config('legal.terms_version') }}">
+    <meta name="llk:privacy-version" content="{{ config('legal.privacy_version') }}">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ $seo['canonical'] }}">
@@ -82,13 +92,28 @@
         "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว",
         "contactPoint": {
             "@@type": "ContactPoint",
-            "telephone": "+66-62-612-6006",
+            "telephone": "{{ \App\Support\PhoneNumber::international(\App\Support\SiteSettings::supportPhone()) }}",
+            "email": "{{ \App\Support\SiteSettings::supportEmail() }}",
             "contactType": "customer service",
             "areaServed": "TH",
             "serviceArea": { "@@type": "Place", "name": "Worldwide" },
             "availableLanguage": ["Thai"]
         },
-        "sameAs": []
+        @if(\App\Support\SiteSettings::operatorName())
+        "legalName": "{{ \App\Support\SiteSettings::operatorName() }}",
+        @endif
+        {{-- ใบอนุญาตประกอบธุรกิจนำเที่ยว — สิ่งที่แยกผู้ประกอบการจริงออกจาก
+             เพจขายทริป ประกาศไว้ให้เครื่องอ่านได้ ไม่ใช่แค่ตาคนอ่าน --}}
+        "hasCredential": {
+            "@@type": "EducationalOccupationalCredential",
+            "credentialCategory": "ใบอนุญาตประกอบธุรกิจนำเที่ยว",
+            "identifier": "{{ \App\Support\SiteSettings::licenceNo() }}",
+            "recognizedBy": {
+                "@@type": "GovernmentOrganization",
+                "name": "กรมการท่องเที่ยว กระทรวงการท่องเที่ยวและกีฬา"
+            }
+        },
+        "sameAs": {!! json_encode(array_values(array_filter(config('company.social', []))), JSON_UNESCAPED_SLASHES) !!}
     }
     </script>
 
@@ -102,10 +127,14 @@
         "logo": "{{ asset('images/logo.png').'?v=2' }}",
         "image": "{{ asset('images/logo.png').'?v=2' }}",
         "description": "แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ใบอนุญาตนำเที่ยวเลขที่ {{ \App\Support\SiteSettings::licenceNo() }} นำเที่ยวได้ทั้งในและต่างประเทศ",
-        "telephone": "+66-62-612-6006",
-        "email": "luilaykhao.info@@gmail.com",
+        "telephone": "{{ \App\Support\PhoneNumber::international(\App\Support\SiteSettings::supportPhone()) }}",
+        "email": "{{ \App\Support\SiteSettings::supportEmail() }}",
+        "sameAs": {!! json_encode(array_values(array_filter(config('company.social', []))), JSON_UNESCAPED_SLASHES) !!},
         "address": {
             "@@type": "PostalAddress",
+            @if(\App\Support\SiteSettings::operatorAddress())
+            "streetAddress": "{{ \App\Support\SiteSettings::operatorAddress() }}",
+            @endif
             "addressCountry": "TH"
         },
         "areaServed": [
@@ -116,8 +145,8 @@
         "openingHoursSpecification": {
             "@@type": "OpeningHoursSpecification",
             "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-            "opens": "08:00",
-            "closes": "22:00"
+            "opens": "{{ \App\Support\SiteSettings::supportOpens() }}",
+            "closes": "{{ \App\Support\SiteSettings::supportCloses() }}"
         },
         "hasOfferCatalog": {
             "@@type": "OfferCatalog",

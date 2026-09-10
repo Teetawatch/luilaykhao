@@ -789,7 +789,7 @@
           <div class="mt-11 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3.5">
             <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.07] border border-white/10 px-4 py-2 backdrop-blur-sm">
               <span class="material-symbols-rounded text-[var(--color-gold)] text-[18px]">verified_user</span>
-              <span class="font-semibold text-white/90 text-[0.8rem] md:text-sm">จองปลอดภัย 100%</span>
+              <span class="font-semibold text-white/90 text-[0.8rem] md:text-sm">ใบอนุญาตนำเที่ยว {{ licence }}</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-full bg-white/[0.07] border border-white/10 px-4 py-2 backdrop-blur-sm">
               <span class="material-symbols-rounded text-[var(--color-gold)] text-[18px]">thumb_up</span>
@@ -804,7 +804,7 @@
          FLOATING LINE OA CONTACT BUTTON
     ══════════════════════════════════════════ -->
     <a
-      href="https://line.me/R/ti/p/@luilaykhao"
+      :href="supportLineUrl()"
       target="_blank"
       rel="noopener"
       aria-label="ติดต่อเราผ่าน LINE"
@@ -825,9 +825,13 @@ import { useWishlistStore } from '../stores/wishlist';
 import TripCard from '../components/TripCard.vue';
 import CommunityFeedStrip from '../components/CommunityFeedStrip.vue';
 import LatestArticles from '../components/LatestArticles.vue';
+import { supportHours, supportLineUrl } from '../lib/contact';
+import { licenceNo } from '../lib/licence';
 
 const wishlistStore = useWishlistStore();
 const router = useRouter();
+
+const licence = licenceNo();
 
 const heroImages = ref([
   '/images/phusoidao.webp',
@@ -1093,13 +1097,15 @@ const marqueeDuration = computed(() => Math.max(30, reviews.value.length * 8));
 const trustItems = [
   {
     image: '/images/travel_safety.webp',
-    title: 'ความปลอดภัยสูงสุด',
-    desc: 'เราตรวจสอบอุปกรณ์ 100% ทุกครั้งก่อนออกเดินทาง เพื่อให้แน่ใจว่าคุณจะปลอดภัยตลอดทริป',
+    title: 'ความปลอดภัยมาก่อน',
+    desc: 'ตรวจสภาพรถและอุปกรณ์ก่อนออกเดินทางทุกรอบ พร้อมปุ่มแจ้งเหตุฉุกเฉินที่ถึงทีมงานทันที',
   },
   {
+    // เคยเขียนว่า 24/7 ทั้งที่หน้าติดต่อกับหน้าชำระเงินบอกเวลาทำการไว้ชัดเจน —
+    // คำโฆษณาที่เว็บตัวเองแย้งสองหน้าถัดมา ทำให้ที่เหลือพลอยไม่น่าเชื่อไปด้วย
     image: '/images/247_support.webp',
-    title: 'ผู้ดูแลส่วนตัว 24/7',
-    desc: 'ทีมงานมืออาชีพพร้อมให้ความช่วยเหลือคุณทุกนาที ไม่ว่าจะเป็นการจองหรือช่วยเหลือหน้างาน',
+    title: 'มีทีมงานอยู่ด้วยตลอดทริป',
+    desc: `ทีมงานดูแลตั้งแต่ก่อนออกเดินทางจนกลับถึงบ้าน สอบถามก่อนเดินทางได้${supportHours()} ส่วนวันเดินทางติดต่อทีมงานได้ตลอดทริป`,
   },
   {
     image: '/images/nature_travel.webp',
@@ -1107,9 +1113,12 @@ const trustItems = [
     desc: 'ทุกทริปของเรามุ่งเน้นความยั่งยืน สนับสนุนชุมชนท้องถิ่นและอนุรักษ์ธรรมชาติอย่างจริงจัง',
   },
   {
+    // "จ่ายครั้งเดียวจบ" ขัดกับตัวสินค้าเอง — มีทั้งจุดรับที่ราคาต่างกัน
+    // ประเภทรถ อุปกรณ์เช่า และการผ่อน/แบ่งจ่าย สิ่งที่เรารับปากได้จริงคือ
+    // เห็นยอดสุทธิครบก่อนกดจ่าย ไม่ใช่ว่ามีค่าใช้จ่ายก้อนเดียว
     image: '/images/nohidden_show.webp',
-    title: 'ราคาโปร่งใส No Hidden',
-    desc: 'ราคาสุทธิที่แจ้งคือราคาที่คุณต้องจ่ายจริง ไม่มีค่าธรรมเนียมแอบแฝง จ่ายครั้งเดียวจบ',
+    title: 'เห็นยอดสุทธิก่อนจ่าย',
+    desc: 'ค่าจุดขึ้นรถ ประเภทรถ และของเช่า คิดแยกให้เห็นทีละรายการ แล้วสรุปยอดสุทธิให้ดูก่อนกดชำระเงินเสมอ',
   },
 ];
 

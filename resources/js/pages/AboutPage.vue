@@ -200,7 +200,10 @@
       <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[var(--color-sand-dark)] to-transparent"></div>
       <div class="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[var(--color-sand-dark)] to-transparent"></div>
 
-      <div class="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-6 reveal-section">
+      <!-- ตัวเลขจริงจากฐานข้อมูลเท่านั้น และไม่วาดอะไรเลยจนกว่าจะโหลดได้ —
+           ก่อนหน้านี้ที่นี่ตั้งต้นด้วยเลขที่แต่งขึ้น (1,240+ ทริป / 9,650+ คน /
+           45+ จุดหมาย / 100% ความไว้วางใจ) ซึ่งจะค้างอยู่ทั้งชุดถ้า API ล่ม -->
+      <div v-if="stats.length" class="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-6 reveal-section">
         <div v-for="stat in stats" :key="stat.label" class="text-center group cursor-default">
           <div class="w-14 h-14 mx-auto mb-4 bg-[var(--color-sand)] rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300" :style="`background-color: ${stat.color}15; color: ${stat.color}`">
             <span class="material-symbols-rounded text-3xl">{{ stat.icon }}</span>
@@ -287,33 +290,31 @@
 import { ref, onMounted } from 'vue'
 import api from '../lib/axios'
 
-const stats = ref([
-  { icon: 'tour', value: '1,240+', label: 'ทริปที่ประทับใจ', color: '#0D2B1E' },
-  { icon: 'sentiment_very_satisfied', value: '9,650+', label: 'รอยยิ้มจากนักเดินทาง', color: '#4CAF7D' },
-  { icon: 'location_on', value: '45+', label: 'จุดหมายปลายทาง', color: '#C8963E' },
-  { icon: 'verified', value: '100%', label: 'ความไว้วางใจ', color: '#0D2B1E' },
-])
+// ว่างไว้ก่อนโดยตั้งใจ — เติมจาก /stats เมื่อได้ตัวเลขจริง ถ้าเรียกไม่สำเร็จ
+// ก็ไม่แสดงแถบนี้เลย ดีกว่าโชว์ตัวเลขที่ไม่มีที่มา
+const stats = ref([])
 
 const values = ref([
-  { image: '/images/travel_safety.webp', title: 'ปลอดภัย 100%', desc: 'ตรวจสอบอุปกรณ์และเส้นทางเดินรถทุกครั้งก่อนออกเดินทาง เพื่อความปลอดภัยสูงสุดของคุณ', color: '#4CAF7D' },
+  { image: '/images/travel_safety.webp', title: 'ความปลอดภัยมาก่อน', desc: 'ตรวจสภาพรถและอุปกรณ์ก่อนออกเดินทางทุกรอบ มีทีมงานดูแลตลอดทาง และมีปุ่มแจ้งเหตุฉุกเฉินในแอป', color: '#4CAF7D' },
   { image: '/images/nohidden_show.webp', title: 'ราคา Net โปร่งใส', desc: 'ไม่มีค่าใช้จ่ายแอบแฝง สิ่งที่เห็นคือสิ่งที่คุณจ่าย มั่นใจได้ในทุกการทำธุรกรรม', color: '#66C291' },
   { image: '/images/nature_travel.webp', title: 'ใส่ใจชุมชน', desc: 'เราทำงานร่วมกับคนในท้องถิ่น เพื่อกระจายรายได้และรักษาความงามของธรรมชาติอย่างยั่งยืน', color: '#C8963E' },
   { image: '/images/247_support.webp', title: 'ดูแลแบบ VIP', desc: 'ทีมงานพร้อมให้ความช่วยเหลือตลอดการเดินทาง เพื่อให้คุณอุ่นใจเหมือนมีเพื่อนอยู่ข้างๆ', color: '#007B8F' },
 ])
 
 onMounted(async () => {
-  // Fetch real stats
   try {
     const res = await api.get('/stats')
-    if (res.data?.data) {
-      const s = res.data.data
-      stats.value[0].value = `${(s.total_trips || 0).toLocaleString()}+`
-      stats.value[1].value = `${(s.total_customers || 0).toLocaleString()}+`
-      // For destinations, if not in stats, we can use a reasonable number or fetch from elsewhere
-      // but usually total_trips is a good proxy or we keep the placeholder if not available
-      if (s.total_destinations) {
-        stats.value[2].value = `${s.total_destinations}+`
-      }
+    const community = res.data?.data?.community
+
+    if (community) {
+      // นับเฉพาะสิ่งที่นับได้จริง: รอบที่เดินทางจบแล้ว คนที่เคยไปจริง
+      // ภูมิภาคที่ไปมาแล้ว และคะแนนรีวิวที่อนุมัติแล้ว
+      stats.value = [
+        { icon: 'hiking', value: (community.rounds_completed || 0).toLocaleString(), label: 'รอบที่เดินทางจบแล้ว', color: '#0D2B1E' },
+        { icon: 'group', value: (community.travellers_count || 0).toLocaleString(), label: 'นักเดินทางที่ไปกับเรา', color: '#4CAF7D' },
+        { icon: 'map', value: (community.regions_count || 0).toLocaleString(), label: 'ภูมิภาคที่ไปมาแล้ว', color: '#C8963E' },
+        { icon: 'star', value: (community.avg_rating || 0).toFixed(1), label: `คะแนนเฉลี่ยจาก ${(community.reviews_count || 0).toLocaleString()} รีวิว`, color: '#0D2B1E' },
+      ].filter((stat) => Number(String(stat.value).replace(/,/g, '')) > 0)
     }
   } catch (e) {
     console.error('Failed to fetch stats', e)

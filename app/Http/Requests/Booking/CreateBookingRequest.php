@@ -198,6 +198,10 @@ class CreateBookingRequest extends FormRequest
             'is_group' => ['nullable', 'boolean'],
             // ข้ามการชำระเงินแล้วยืนยันทันที — ตรวจสิทธิ์แอดมินที่ BookingController
             'skip_payment' => ['nullable', 'boolean'],
+            // ลูกค้ากดยอมรับเงื่อนไขในหน้าจองแล้ว — ไม่บังคับ เพราะช่องทางที่ยัง
+            // ไม่มีหน้าจอให้กด (แอดมินจองแทน, แอปรุ่นก่อน) ต้องจองได้เหมือนเดิม
+            // และ "ไม่ส่งมา" แปลว่าไม่มีหลักฐาน ไม่ใช่ปฏิเสธ
+            'accepted_terms' => ['nullable', 'boolean'],
             'group_name' => ['nullable', 'string', 'max:255'],
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],

@@ -856,7 +856,7 @@ import { useAuthStore } from '../stores/auth';
 import { useWishlistStore } from '../stores/wishlist';
 import api from '../lib/axios';
 import { licenceNo } from '../lib/licence';
-import { supportPhone, supportPhoneHref, supportLineUrl } from '../lib/contact';
+import { SOCIAL_LINKS, supportPhone, supportPhoneHref, supportLineUrl } from '../lib/contact';
 
 // อ่านครั้งเดียวตอนสร้างคอมโพเนนต์ — ค่ามากับ shell แล้ว ไม่เปลี่ยนระหว่างหน้า
 const licence = licenceNo();
@@ -903,11 +903,11 @@ const favoriteThumb = (trip) => (typeof trip === 'object' ? trip.thumbnail_image
 /*
    บัญชีเดียวกับที่ Footer และหน้าติดต่อเราใช้ — แก้ที่นี่แล้วต้องแก้ที่นั่นด้วย
 */
+// LINE นำหน้าเพราะเป็นช่องทางที่ลูกค้าทักจริง ที่เหลือมาจากรายการกลางที่
+// Footer ใช้ร่วมกัน และตรงกับ sameAs ที่ประกาศไว้ใน structured data
 const socialLinks = [
   { label: 'LINE', icon: 'fa-brands fa-line', href: supportLineUrl() },
-  { label: 'Facebook', icon: 'fa-brands fa-facebook-f', href: 'https://www.facebook.com/profile.php?id=61572124170207' },
-  { label: 'Instagram', icon: 'fa-brands fa-instagram', href: 'https://instagram.com/luilaykhao' },
-  { label: 'TikTok', icon: 'fa-brands fa-tiktok', href: 'https://www.tiktok.com/@luilaykhao' },
+  ...SOCIAL_LINKS,
 ];
 
 /*

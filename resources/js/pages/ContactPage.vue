@@ -23,15 +23,15 @@
       <div class="max-w-7xl mx-auto">
         <!-- Quick Contact Buttons -->
         <div class="flex flex-col sm:flex-row gap-3 mb-12 justify-center lg:justify-start">
-          <a href="https://line.me/ti/p/@luilaykhao" target="_blank"
+          <a :href="supportLineUrl()" target="_blank" rel="noopener"
              class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-[#06C755] text-white rounded-2xl font-bold text-lg hover:bg-[#05b34c] active:scale-[0.98] transition-all">
             <i class="fab fa-line text-2xl"></i>
             แชทผ่าน LINE
           </a>
-          <a href="tel:0626126006"
+          <a :href="supportPhoneHref()"
              class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid active:scale-[0.98] transition-all">
             <span class="material-symbols-rounded">call</span>
-            โทร 062-612-6006
+            โทร {{ supportPhone() }}
           </a>
         </div>
 
@@ -70,7 +70,7 @@
                   </div>
                   <div>
                     <p class="text-sm font-bold text-[#06C755] mb-1">LINE Official</p>
-                    <a href="https://line.me/R/ti/p/@luilaykhao" target="_blank" class="text-xl font-bold text-text-dark hover:text-[#06C755] transition-colors">@luilaykhao</a>
+                    <a :href="supportLineUrl()" target="_blank" rel="noopener" class="text-xl font-bold text-text-dark hover:text-[#06C755] transition-colors">{{ supportLine() }}</a>
                     <p class="text-sm text-text-muted mt-1">ทักไว้ได้ตลอด ทีมงานตอบในเวลาทำการ</p>
                   </div>
                 </div>
@@ -82,8 +82,8 @@
                   </div>
                   <div>
                     <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">เบอร์โทรศัพท์</p>
-                    <a href="tel:0626126006" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">062-612-6006</a>
-                    <p class="text-sm text-text-muted mt-1">จันทร์ - อาทิตย์, 09:00 - 20:00 น.</p>
+                    <a :href="supportPhoneHref()" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">{{ supportPhone() }}</a>
+                    <p class="text-sm text-text-muted mt-1">{{ supportHours() }}</p>
                   </div>
                 </div>
 
@@ -94,7 +94,7 @@
                   </div>
                   <div>
                     <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">อีเมล</p>
-                    <a href="mailto:luilaykhao.info@gmail.com" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">luilaykhao.info@gmail.com</a>
+                    <a :href="supportEmailHref()" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">{{ supportEmail() }}</a>
                   </div>
                 </div>
 
@@ -105,9 +105,8 @@
                   </div>
                   <div>
                     <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">ที่ตั้งสำนักงาน</p>
-                    <p class="text-lg font-bold text-text-dark leading-snug">
-                      ถนนทางรถไฟเก่า แขวงบางนาใต้<br />เขตบางนา กรุงเทพมหานคร 10260
-                    </p>
+                    <p class="text-lg font-bold text-text-dark leading-snug">{{ operatorAddress() }}</p>
+                    <p class="text-sm text-text-muted mt-1">ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}</p>
                   </div>
                 </div>
               </div>
@@ -117,9 +116,10 @@
             <div class="pt-8 px-6">
               <h3 class="text-sm font-bold text-text-muted uppercase tracking-widest mb-6">ติดตามเราได้ที่</h3>
               <div class="flex gap-4">
-                <a v-for="social in socials" :key="social.name" :href="social.link" target="_blank" rel="noopener"
+                <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
+                  :aria-label="social.label"
                   class="w-12 h-12 rounded-xl bg-white border border-sand-dark flex items-center justify-center text-text-mid hover:text-white hover:bg-primary hover:border-primary transition-all duration-300">
-                  <i :class="social.icon" class="text-xl"></i>
+                  <i :class="social.icon" class="text-xl" aria-hidden="true"></i>
                 </a>
               </div>
             </div>
@@ -173,7 +173,7 @@
                     </div>
                     <div class="space-y-2">
                       <label for="contact-phone" class="text-sm font-bold text-text-dark ml-1">เบอร์โทรศัพท์ (ถ้ามี)</label>
-                      <input id="contact-phone" v-model="form.phone" type="tel" placeholder="08x-xxx-xxxx" autocomplete="tel-national"
+                      <input id="contact-phone" v-model="form.phone" type="tel" placeholder="08X-XXX-XXXX" autocomplete="tel-national"
                         class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors" />
                     </div>
                   </div>
@@ -281,6 +281,12 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import api from '../lib/axios'
 import { useAuthStore } from '../stores/auth'
 import { useToast } from '../lib/toast'
+import {
+  SOCIAL_LINKS, operatorAddress,
+  supportEmail, supportEmailHref, supportHours,
+  supportLine, supportLineUrl, supportPhone, supportPhoneHref,
+} from '../lib/contact'
+import { licenceNo } from '../lib/licence'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -323,11 +329,10 @@ function removeImage(idx) {
   imagePreviews.value.splice(idx, 1)
 }
 
-const socials = [
-  { name: 'Facebook', icon: 'fab fa-facebook-f', link: 'https://www.facebook.com/p/%E0%B8%A5%E0%B8%B8%E0%B8%A2%E0%B9%80%E0%B8%A5%E0%B9%80%E0%B8%82%E0%B8%B2-Luilaykhao-61572124170207/' },
-  { name: 'Instagram', icon: 'fab fa-instagram', link: 'https://www.instagram.com/luilaykhao/' },
-  { name: 'TikTok', icon: 'fab fa-tiktok', link: 'https://www.tiktok.com/@luilaykhao' }
-]
+// เคยมีลิสต์ของตัวเอง (คนละ URL กับ Navbar และ Footer) — ใช้รายการกลาง
+// ชุดเดียวกับที่ประกาศเป็น sameAs ใน structured data
+const socials = SOCIAL_LINKS
+const licence = licenceNo()
 
 async function handleSubmit() {
   submitting.value = true

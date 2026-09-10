@@ -151,7 +151,7 @@
                 </div>
                 <input v-model="form.phone" type="tel"
                   class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                  placeholder="08x-xxx-xxxx" />
+                  placeholder="08X-XXX-XXXX" />
               </div>
             </div>
           </div>

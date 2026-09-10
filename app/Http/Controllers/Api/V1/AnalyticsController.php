@@ -173,6 +173,21 @@ class AnalyticsController extends Controller
                 'line' => SiteSettings::get('support_line') ?: config('app.support_line_id'),
                 'line_url' => config('app.support_line_url'),
                 'email' => SiteSettings::get('support_email') ?: config('app.support_email'),
+                // เวลาทำการที่ประกาศไว้ — เคยเขียนต่างกันทุกหน้า ตอนนี้มาจากที่เดียว
+                'hours' => SiteSettings::supportHours(),
+            ],
+            // ผู้ประกอบการตามใบอนุญาต — ว่างได้เมื่อแอดมินยังไม่ได้กรอก
+            // ฝั่งที่แสดงผลต้องซ่อนบรรทัดที่ว่าง ไม่ใช่โชว์ช่องโหว่
+            'operator' => [
+                'name' => SiteSettings::operatorName(),
+                'address' => SiteSettings::operatorAddress(),
+            ],
+            // เงื่อนไขที่ผูกพันลูกค้า — เวอร์ชันเอกสารและตัวเลขนโยบายชุดเดียว
+            // ที่หน้า /terms กล่องยืนยันก่อนจอง และหน้าชำระเงินอ้างถึงเหมือนกัน
+            'legal' => [
+                'terms_version' => config('legal.terms_version'),
+                'privacy_version' => config('legal.privacy_version'),
+                'policy' => config('legal.policy'),
             ],
             // ใบอนุญาตนำเที่ยว — แอดมินแก้เลขและอัปโหลดรูปใบใหม่ได้ที่หน้าตั้งค่า
             // เว็บกับแอปอ่านจากตรงนี้ ไม่ต้อง deploy ใหม่ตอนต่ออายุหรือเปลี่ยนใบ

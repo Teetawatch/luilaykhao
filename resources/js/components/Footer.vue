@@ -16,16 +16,21 @@
             เราไม่ได้อยากเป็นแค่แพลตฟอร์มจองทริป แต่อยากเป็น "เพื่อน" ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทาง
           </p>
           
-          <!-- Social Icons -->
+          <!-- Social Icons — ชุดเดียวกับ Navbar และกับ sameAs ใน structured data -->
           <div class="flex items-center gap-3">
-            <a href="https://www.facebook.com/profile.php?id=61572124170207" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
-              <i class="fa-brands fa-facebook-f"></i>
+            <a
+              v-for="social in socialLinks"
+              :key="social.label"
+              :href="social.href"
+              target="_blank"
+              rel="noopener"
+              :aria-label="social.label"
+              class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300"
+            >
+              <i :class="social.icon" aria-hidden="true"></i>
             </a>
-            <a href="https://instagram.com/luilaykhao" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
-              <i class="fa-brands fa-instagram"></i>
-            </a>
-            <a :href="supportLineUrl()" target="_blank" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
-              <i class="fa-brands fa-line text-lg"></i>
+            <a :href="supportLineUrl()" target="_blank" rel="noopener" aria-label="LINE Official" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
+              <i class="fa-brands fa-line text-lg" aria-hidden="true"></i>
             </a>
           </div>
 
@@ -80,6 +85,7 @@
                 <div class="pt-1.5">
                   <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">โทรศัพท์</p>
                   <p>{{ supportPhone() }}</p>
+                  <p class="text-xs text-text-muted mt-0.5">{{ supportHours() }}</p>
                 </div>
               </a>
             </li>
@@ -102,24 +108,45 @@
           <h4 class="font-anuphan font-bold text-lg mb-6 text-text-dark">
             ดาวน์โหลด Luilaykhao
           </h4>
+          <!-- ป้ายสโตร์ทั้งสองเป็นไฟล์จัตุรัส 1024x1024 ที่มีขอบโปร่งใสเยอะ
+               margin ติดลบชุดนี้คือการครอบขอบนั้นออก ไม่ใช่ของหลงเหลือ —
+               แก้ตัวเลขเมื่อไหร่ต้องดูของจริงด้วย -->
           <div class="flex items-center gap-3 ">
             <div class="shrink-0 -mt-10">
-              <img src="/images/logo.png?v=2" alt="Luilaykhao Logo" class="w-20 h-20 rounded-[1.25rem] border border-gray-100 bg-white p-2 object-contain" />
+              <img src="/images/logo.png?v=2" alt="ไอคอนแอปลุยเลเขา" class="w-20 h-20 rounded-[1.25rem] border border-gray-100 bg-white p-2 object-contain" />
             </div>
             <div class="flex flex-col gap-0 -mt-10">
-              <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" class="block hover:opacity-80 transition-opacity">
+              <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน App Store" class="block hover:opacity-80 transition-opacity">
                 <img src="/images/icon-appstore.webp" alt="App Store" class="w-28 h-28 object-contain" />
               </a>
-              <a href="https://play.google.com/store/apps/details?id=com.luilaykhao.app&hl=th" target="_blank" rel="noopener" class="block -mt-15 hover:opacity-80 transition-opacity">
-                <img src="/images/icon-playstore.webp" alt="Play Store" class="w-28 h-28 object-contain" />
+              <a href="https://play.google.com/store/apps/details?id=com.luilaykhao.app&hl=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน Google Play" class="block -mt-15 hover:opacity-80 transition-opacity">
+                <img src="/images/icon-playstore.webp" alt="Google Play" class="w-28 h-28 object-contain" />
               </a>
             </div>
           </div>
         </div>
       </div>
       
+      <!-- ตัวตนตามใบอนุญาต — สิ่งที่แยกผู้ประกอบการจริงออกจากเพจขายทริป
+           และเป็นที่แรกที่คนมองหาเวลาจะเช็คว่าเว็บนี้เชื่อได้ไหม -->
+      <div class="border-t border-sand-dark/40 mt-16 pt-8 flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+        <div class="w-10 h-10 rounded-full bg-accent/10 text-accent flex items-center justify-center shrink-0">
+          <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">verified_user</span>
+        </div>
+        <div class="text-sm text-text-muted leading-relaxed space-y-1">
+          <p class="font-semibold text-text-dark">
+            ใบอนุญาตประกอบธุรกิจนำเที่ยวเลขที่ {{ licence }}
+            <a v-if="licenceImage" :href="licenceImage" target="_blank" rel="noopener"
+              class="font-medium text-accent hover:underline ml-1">ดูใบอนุญาต</a>
+          </p>
+          <p>ได้รับอนุญาตให้นำเที่ยวได้ทั้งในประเทศและต่างประเทศ โดยกรมการท่องเที่ยว กระทรวงการท่องเที่ยวและกีฬา</p>
+          <p v-if="operator">ผู้ประกอบการ: {{ operator }}</p>
+          <p v-if="address">ที่อยู่: {{ address }}</p>
+        </div>
+      </div>
+
       <!-- Bottom Bar -->
-      <div class="border-t border-sand-dark/40 mt-16 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="border-t border-sand-dark/40 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="text-sm text-text-muted font-medium">
           &copy; {{ new Date().getFullYear() }} ลุยเลเขา. All rights reserved.
         </div>
@@ -142,11 +169,21 @@
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
 import {
-  supportPhone, supportPhoneHref, supportLine, supportLineUrl, supportEmail, supportEmailHref,
+  SOCIAL_LINKS,
+  operatorAddress, operatorName,
+  supportPhone, supportPhoneHref, supportLine, supportLineUrl, supportEmail, supportEmailHref, supportHours,
 } from '../lib/contact';
+import { licenceImageUrl, licenceNo } from '../lib/licence';
 
 const categories = ref([]);
 const loading = ref(true);
+
+const socialLinks = SOCIAL_LINKS;
+const licence = licenceNo();
+const licenceImage = licenceImageUrl();
+// ว่างได้ — แอดมินยังไม่ได้กรอกที่ /admin/settings ก็ซ่อนบรรทัดไป
+const operator = operatorName();
+const address = operatorAddress();
 
 onMounted(async () => {
   try {

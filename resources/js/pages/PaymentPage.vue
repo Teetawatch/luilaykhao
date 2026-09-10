@@ -352,11 +352,13 @@
                   <p class="text-[13px] sm:text-sm text-red-800 leading-relaxed">
                     กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ <strong class="text-red-900 underline decoration-wavy decoration-red-400 underline-offset-4">ไม่คืนเงินมัดจำทุกกรณี</strong>
                     เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า
+                    เลื่อนวันเดินทางได้ {{ POLICY.postponeTimes }} ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย {{ POLICY.postponeNoticeDays }} วัน
+                    (<router-link to="/terms" class="font-bold underline">เงื่อนไขฉบับเต็ม</router-link>)
                   </p>
                   <div class="mt-3 flex items-start gap-2 bg-white/70 rounded-xl p-3 border border-red-100">
                     <span class="material-symbols-rounded text-red-500 text-[18px] shrink-0 mt-0.5">schedule</span>
                     <p class="text-[12px] text-red-800 font-medium leading-snug">
-                      ต้องชำระยอดส่วนที่เหลือ <strong class="text-red-900">ก่อนเดินทาง 15 วัน</strong> (ภายในวันที่ <strong>{{ balanceDueDateText }}</strong>) มิฉะนั้นถือว่าสละสิทธิ์การเดินทาง
+                      ต้องชำระยอดส่วนที่เหลือ <strong class="text-red-900">ก่อนเดินทาง {{ POLICY.balanceDueDays }} วัน</strong> (ภายในวันที่ <strong>{{ balanceDueDateText }}</strong>) มิฉะนั้นถือว่าสละสิทธิ์การเดินทาง
                     </p>
                   </div>
                 </div>
@@ -780,8 +782,8 @@
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">verified</span>
              </div>
              <div>
-                <p class="text-sm font-bold text-gray-900">ความปลอดภัย 100%</p>
-                <p class="text-xs text-gray-500">ข้อมูลของคุณได้รับการเข้ารหัส SSL Encryption</p>
+                <p class="text-sm font-bold text-gray-900">การชำระเงินที่ตรวจสอบได้</p>
+                <p class="text-xs text-gray-500">เชื่อมต่อแบบเข้ารหัส และออกใบเสร็จอิเล็กทรอนิกส์ทุกครั้ง</p>
              </div>
            </div>
            <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100">
@@ -790,7 +792,9 @@
              </div>
              <div>
                 <p class="text-sm font-bold text-gray-900">ทีมงานพร้อมช่วยเหลือ</p>
-                <p class="text-xs text-gray-500">สอบถามโทร 062-612-6006 (8:00 - 20:00)</p>
+                <p class="text-xs text-gray-500">
+                  สอบถามโทร <a :href="supportPhoneHref()" class="font-semibold text-teal-700">{{ supportPhone() }}</a> ({{ supportHours() }})
+                </p>
              </div>
            </div>
         </div>
@@ -1045,6 +1049,8 @@ import { useSwal } from '../lib/swal';
 import { addPaymentInfo } from '../lib/analytics';
 import { useBeamCharge } from '../composables/useBeamCharge';
 import { thaiShort } from '../lib/thaiDate';
+import { POLICY } from '../lib/policy';
+import { supportHours, supportPhone, supportPhoneHref } from '../lib/contact';
 
 const route = useRoute();
 const router = useRouter();

@@ -8,6 +8,8 @@
  * แอดมินแก้ได้ที่ /admin/settings แล้วมีผลทันทีที่โหลดหน้าถัดไป ไม่ต้อง deploy
  */
 
+import { supportEmail, supportLine, supportPhone } from './contact';
+
 /** ค่าสำรองเมื่ออ่าน meta ไม่ได้ (เช่น หน้าที่เรนเดอร์นอก shell ปกติ) */
 const FALLBACK_LICENCE_NO = '11/13855';
 
@@ -23,9 +25,19 @@ export function licenceImageUrl() {
   return readMeta('llk:licence-image');
 }
 
-/** แทน `:licence` ในข้อความ SEO — รูปแบบเดียวกับที่ SeoMeta ทำฝั่ง PHP */
+/**
+ * แทนค่าที่แอดมินแก้ได้ในข้อความ SEO — รูปแบบเดียวกับที่ SeoMeta ทำฝั่ง PHP
+ *
+ * `:licence` `:phone` `:email` `:line` เขียนไว้ใน router/config แทนค่าจริง
+ * เพราะข้อความชุดนั้นถูก cache ไว้ ถ้าฝังเบอร์ลงไปตรง ๆ วันที่เปลี่ยนเบอร์
+ * ที่ /admin/settings ผลการค้นหาบน Google จะยังโชว์เบอร์เก่าจนกว่าจะ deploy
+ */
 export function withLicence(text) {
-  return typeof text === 'string' && text.includes(':licence')
-    ? text.replace(/:licence/g, licenceNo())
-    : text;
+  if (typeof text !== 'string' || !text.includes(':')) return text;
+
+  return text
+    .replace(/:licence/g, licenceNo())
+    .replace(/:phone/g, supportPhone())
+    .replace(/:email/g, supportEmail())
+    .replace(/:line/g, supportLine());
 }

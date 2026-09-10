@@ -965,7 +965,7 @@
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
-                  <input v-model="p.phone" type="tel" required placeholder="0XXXXXXXXX"
+                  <input v-model="p.phone" type="tel" required placeholder="08X-XXX-XXXX"
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
                     :autocomplete="`section-traveller${i} tel-national`"
                     @input="limitDigits(p, 'phone', 10)"
@@ -1010,7 +1010,7 @@
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์ฉุกเฉิน <span class="text-red-500">*</span></label>
-                  <input v-model="p.emergency_phone" type="tel" required placeholder="0XXXXXXXXX"
+                  <input v-model="p.emergency_phone" type="tel" required placeholder="08X-XXX-XXXX"
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
                     @input="limitDigits(p, 'emergency_phone', 10)"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
@@ -1799,6 +1799,7 @@ import { useToast } from '../lib/toast';
 import { bookableSeats, joinTripAvailableSeats, joinTripFull, joinTripSeatLabel } from '../lib/scheduleHelpers';
 import { toBangkokDate } from '../lib/bangkokDate';
 import { beginCheckout } from '../lib/analytics';
+import { BOOKING_TERMS, termsVersion } from '../lib/policy';
 
 const route = useRoute();
 const router = useRouter();
@@ -2895,9 +2896,7 @@ async function createBooking() {
       <div style="text-align:left; font-size:14px; color:#374151; line-height:1.7;">
         <p style="font-weight:700; color:#0f766e; margin-bottom:10px; font-size:15px;">การสำรองที่นั่ง และการเปลี่ยนแปลง</p>
         <ol style="padding-left:18px; margin:0 0 16px 0; display:flex; flex-direction:column; gap:8px;">
-          <li>1.เมื่อท่านยืนยันสิทธิ์การเดินทางแล้ว ทางทีมงานขอสงวนสิทธิ์ในการคืนเงินมัดจำ / ค่าทริป<strong>ทุกกรณี</strong></li>
-          <li>2.หากไม่สะดวกในวันดังกล่าว สามารถแจ้งเลื่อนได้ <strong>1 ครั้ง</strong> โดยรบกวนแจ้งล่วงหน้าอย่างน้อย <strong>30 วัน</strong> ก่อนวันเดินทางเดิม</li>
-          <li>3.กรณีต้องการเปลี่ยนแปลงตัวผู้เดินทาง สามารถหาคนมาแทนได้ โดยรบกวนแจ้งรายละเอียดให้ทีมงานทราบล่วงหน้าอย่างน้อย <strong>15 วัน</strong></li>
+          ${BOOKING_TERMS.map((rule, i) => `<li>${i + 1}. ${rule}</li>`).join('')}
         </ol>
         <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; color:#166534;">
           <strong>สรุปการจอง:</strong> จำนวน ${passengers.value.length} ท่าน · ฿${totalAmount.value.toLocaleString()}
@@ -2906,6 +2905,9 @@ async function createBooking() {
           <input type="checkbox" id="swal-terms-checkbox" style="margin-top:3px; width:16px; height:16px; accent-color:#0f766e; cursor:pointer; flex-shrink:0;" />
           <span>ข้าพเจ้าได้อ่านและ<strong>ยอมรับเงื่อนไข</strong>ข้างต้นทุกข้อแล้ว</span>
         </label>
+        <p style="margin:12px 0 0; font-size:12px; color:#6b7280;">
+          อ่านฉบับเต็มได้ที่ <a href="/terms" target="_blank" rel="noopener" style="color:#0f766e; font-weight:600;">เงื่อนไขการให้บริการ</a>${termsVersion() ? ` (ฉบับที่ ${termsVersion()})` : ''}
+        </p>
       </div>
     `,
     icon: 'info',
@@ -2949,6 +2951,9 @@ async function createBooking() {
       group_name: isGroup.value ? groupName.value : null,
       group_notes: isGroup.value ? groupNotes.value : null,
       booking_for: bookingFor.value,
+      // หลักฐานว่าลูกค้ากดยอมรับเงื่อนไขในกล่องด้านบนแล้ว — เซิร์ฟเวอร์ประทับ
+      // เวลาและเวอร์ชันเงื่อนไขลงใบจอง ไม่ใช่ธงเพื่อความสวยงาม
+      accepted_terms: true,
       passengers: passengers.value.map(p => ({
         title: p.title || null,
         name: String(p.name || '').trim(),

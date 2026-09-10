@@ -183,12 +183,26 @@ class SeoMeta
         return false;
     }
 
-    /** แทน `:licence` ในข้อความ SEO ด้วยเลขที่ใบอนุญาตปัจจุบัน */
+    /**
+     * แทนค่าที่แอดมินแก้ได้ในข้อความ SEO
+     *
+     * เขียน `:licence` `:phone` `:email` `:line` ไว้ใน config/seo.php แทนค่าจริง
+     * เพราะ config ถูก cache (config:cache) — ฝังเบอร์ลงไปตรง ๆ แล้ววันที่
+     * เปลี่ยนเบอร์ที่ /admin/settings ผลการค้นหาบน Google จะยังโชว์เบอร์เก่า
+     * จนกว่าจะ deploy ใหม่ ซึ่งคือปัญหาเดิมที่หน้าตั้งค่าตั้งใจแก้
+     */
     private static function withLicence(string $text): string
     {
-        return str_contains($text, ':licence')
-            ? str_replace(':licence', SiteSettings::licenceNo(), $text)
-            : $text;
+        if (! str_contains($text, ':')) {
+            return $text;
+        }
+
+        return strtr($text, [
+            ':licence' => SiteSettings::licenceNo(),
+            ':phone' => PhoneNumber::display(SiteSettings::supportPhone()),
+            ':email' => SiteSettings::supportEmail(),
+            ':line' => SiteSettings::supportLine(),
+        ]);
     }
 
     private static function assemble(array $parts): array

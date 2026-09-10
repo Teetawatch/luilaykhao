@@ -91,8 +91,8 @@
       </div>
 
       <p class="mt-4 text-sm text-text-muted text-center">
-        เรื่องด่วนวันเดินทาง โทร <a href="tel:0626126006" class="font-bold text-primary">062-612-6006</a>
-        · เรื่องทั่วไปตอบในเวลาทำการ 09:00-20:00 น.
+        เรื่องด่วนวันเดินทาง โทร <a :href="supportPhoneHref()" class="font-bold text-primary">{{ supportPhone() }}</a>
+        · เรื่องทั่วไปตอบในเวลาทำการ {{ supportHours() }}
       </p>
     </div>
 
@@ -110,6 +110,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';
+import { supportHours, supportPhone, supportPhoneHref } from '../lib/contact';
 
 const toast = useToast();
 

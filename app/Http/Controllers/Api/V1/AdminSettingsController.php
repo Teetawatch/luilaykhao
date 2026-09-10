@@ -49,6 +49,14 @@ class AdminSettingsController extends Controller
             'support_phone' => ['nullable', 'string', 'max:40'],
             'support_line' => ['nullable', 'string', 'max:80'],
             'support_email' => ['nullable', 'email', 'max:120'],
+            // เวลาทำการและผู้ประกอบการ — nullable เพราะ Setting::put เขียนทับ
+            // ทั้งก้อน ฟอร์มรุ่นก่อนที่ยังไม่มีช่องเหล่านี้ต้องบันทึกผ่านได้
+            // โดยไม่ล้างค่าเดิมทิ้ง (ดูการเติมค่ากลับด้านล่าง)
+            'support_hours' => ['nullable', 'string', 'max:120'],
+            'support_opens' => ['nullable', 'date_format:H:i'],
+            'support_closes' => ['nullable', 'date_format:H:i'],
+            'operator_name' => ['nullable', 'string', 'max:160'],
+            'operator_address' => ['nullable', 'string', 'max:300'],
             // เลขที่ใบอนุญาตเป็นเอกสารราชการ รูปแบบคือ เลขกลุ่ม/เลขลำดับ
             'licence_no' => ['required', 'string', 'regex:/^[0-9]{1,3}\/[0-9]{3,8}$/'],
             'licence_image' => ['nullable', 'string', 'max:2048'],
@@ -70,6 +78,14 @@ class AdminSettingsController extends Controller
         }
 
         $data['sos_sms_enabled'] = (bool) ($data['sos_sms_enabled'] ?? SiteSettings::bool('sos_sms_enabled'));
+
+        // ฟอร์มรุ่นก่อนไม่ได้ส่งช่องเหล่านี้มา — เติมค่าที่ใช้อยู่กลับเข้าไป
+        // ไม่งั้นการกดบันทึกจากหน้าเก่าจะล้างเวลาทำการและที่อยู่ทิ้งเงียบ ๆ
+        $data['support_hours'] = $data['support_hours'] ?? SiteSettings::supportHours();
+        $data['support_opens'] = $data['support_opens'] ?? SiteSettings::supportOpens();
+        $data['support_closes'] = $data['support_closes'] ?? SiteSettings::supportCloses();
+        $data['operator_name'] = $data['operator_name'] ?? (SiteSettings::get('operator_name') ?: null);
+        $data['operator_address'] = $data['operator_address'] ?? (SiteSettings::get('operator_address') ?: null);
 
         $data['finance_close_grace_days'] = (int) ($data['finance_close_grace_days'] ?? SiteSettings::financeCloseGraceDays());
 

@@ -15,4 +15,14 @@ return [
 
     // โลโก้บนหัวเอกสาร — path ใต้ public/ (dompdf อ่านไฟล์ในเครื่องได้)
     'logo_path' => env('COMPANY_LOGO_PATH', 'images/logo.png'),
+
+    // โปรไฟล์ทางการของแบรนด์ — ใช้เป็น sameAs ใน structured data เพื่อให้
+    // Google ผูกเว็บกับเพจจริงได้ (ก่อนหน้านี้ sameAs เป็น [] เปล่า)
+    // ฝั่งเว็บอ่านชุดเดียวกันจาก resources/js/lib/contact.js — มี
+    // SocialLinksSyncTest คอยจับไม่ให้สองฝั่งหลุดจากกัน
+    'social' => [
+        'facebook' => env('SOCIAL_FACEBOOK', 'https://www.facebook.com/profile.php?id=61572124170207'),
+        'instagram' => env('SOCIAL_INSTAGRAM', 'https://instagram.com/luilaykhao'),
+        'tiktok' => env('SOCIAL_TIKTOK', 'https://www.tiktok.com/@luilaykhao'),
+    ],
 ];

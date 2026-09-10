@@ -66,6 +66,7 @@ class BookingController extends Controller
                 giftFromName: $request->gift_from_name,
                 giftMessage: $request->gift_message,
                 skipPayment: $skipPayment,
+                acceptedTerms: $request->boolean('accepted_terms'),
             );
 
             return $this->success(
