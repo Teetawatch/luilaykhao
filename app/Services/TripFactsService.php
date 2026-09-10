@@ -35,8 +35,21 @@ class TripFactsService
     /** ยกกำหนดการมาให้ชีตคำถามด่วนกี่รายการ (ที่เหลือกดดูต่อในหน้ากำหนดการเต็ม) */
     public const ITINERARY_LIMIT = 12;
 
-    /** ยกกำหนดการลงห้องแชทกี่รายการ — ยาวกว่านี้บับเบิลเดียวอ่านไม่ไหว */
-    public const ITINERARY_CHAT_LIMIT = 8;
+    /**
+     * งบตัวอักษรของ "รายละเอียด" รวมทั้งข้อความ แบ่งกันไปตามจำนวนรายการที่ยกลงห้อง
+     * แทนการตัดตายตัวรายการละไม่กี่บรรทัด — กำหนดการที่แอดมินเขียนรวบไว้ก้อนเดียว
+     * (พบบ่อยในกำหนดการระดับทริป) จะได้ไม่โดนตัดจนเหลือแค่ประโยคแรก
+     */
+    public const ITINERARY_CHAT_DETAIL_BUDGET = 1200;
+
+    /** อย่างน้อยที่สุดที่รายละเอียดของแต่ละรายการต้องได้ แม้งบจะถูกแบ่งจนเหลือน้อย */
+    public const ITINERARY_CHAT_DETAIL_MIN = 120;
+
+    /**
+     * ความยาวรวมของ "ตัวกำหนดการ" ในบับเบิลเดียว — คุมด้วยความยาวแทนจำนวนรายการ
+     * เพราะรายการหนึ่งอาจเป็นบรรทัดเดียวหรือย่อหน้าก็ได้ นับเป็นชิ้นจึงคุมอะไรไม่ได้
+     */
+    public const ITINERARY_CHAT_BUDGET = 1600;
 
     /** ขึ้นต้นข้อความกำหนดการทุกฉบับ — ใช้หาข้อความกำหนดการล่าสุดในห้อง */
     public const ITINERARY_MARK = '🗺️';
@@ -69,6 +82,15 @@ class TripFactsService
             'driver' => $this->driver($schedule),
             'staff' => $this->staff($schedule),
             'itinerary' => $this->itinerary($schedule),
+
+            // ข้อความ "ยังไม่รู้" เดินทางมากับ payload เพื่อให้ทุก client พูดเหมือนกัน
+            // โดยไม่ต้องก๊อปประโยคไทยไปแปะไว้เองทีละที่
+            'pending' => [
+                'pickup' => self::PENDING_PICKUP,
+                'vehicle' => self::PENDING_VEHICLE,
+                'driver' => self::PENDING_DRIVER,
+                'staff' => self::PENDING_STAFF,
+            ],
         ];
     }
 
@@ -124,42 +146,27 @@ class TripFactsService
         $lines = [self::ITINERARY_MARK.' '.$heading.($title !== '' ? " — {$title}" : '')];
         $lines[] = 'ออกเดินทาง '.$schedule->departureLabelThai();
 
-        // เกินโควตาอยู่รายการเดียวก็ใส่ให้ครบไปเลย — "ยังมีอีก 1 รายการ"
-        // กินที่พอ ๆ กับรายการนั้นเอง แถมทำให้กำหนดการดูขาดตอนโดยไม่จำเป็น
-        $limit = count($items) === self::ITINERARY_CHAT_LIMIT + 1
-            ? count($items)
-            : self::ITINERARY_CHAT_LIMIT;
-
-        $shown = array_slice($items, 0, $limit);
-        $currentGroup = null;
-
-        foreach ($shown as $item) {
-            $group = $this->itineraryGroupLabel($item);
-
-            if ($group !== null && $group !== $currentGroup) {
-                $currentGroup = $group;
-                $lines[] = '';
-                $lines[] = "📅 {$group}";
-            }
-
-            $time = trim((string) ($item['time'] ?? ''));
-            $lines[] = '• '.($time !== '' ? "{$time} น. " : '').trim((string) $item['title']);
-
-            $detail = trim((string) ($item['detail'] ?? ''));
-            if ($detail !== '') {
-                $lines[] = '  '.Str::limit(preg_replace('/\s+/u', ' ', $detail), 90);
-            }
+        // หน้ากำหนดการในแอปติดหมายเหตุนี้ไว้อยู่แล้วเมื่อแผนมาจากทริป ไม่ใช่ของรอบ
+        // ข้อความในห้องต้องบอกเหมือนกัน ไม่งั้นลูกค้าจะอ่านแผนกลาง ๆ เป็นเวลาที่
+        // ทีมงานยืนยันแล้ว แล้วมาถามทีหลังว่าทำไมหน้างานไม่ตรง
+        if (($payload['source'] ?? '') === 'trip') {
+            $lines[] = 'นี่คือแผนของทริปนี้ ทีมงานยังไม่ได้ลงกำหนดการเฉพาะรอบครับ';
         }
 
+        // ตัดที่ "ขอบวัน" ไม่ตัดกลางวัน — วันที่โผล่มาครึ่งเดียวแล้วหายไปทำให้ลูกค้า
+        // เข้าใจผิดว่าทริปจบตรงนั้น การบอกว่ายังมีอีกทั้งวันตรง ๆ ชัดเจนกว่า
+        [$plan, $shownCount] = $this->packItineraryBlocks($this->itineraryBlocks($items));
+
+        $lines = array_merge($lines, $plan);
         $lines[] = '';
 
-        // บอก "ในแอป" ให้ชัด — ห้องแชทบนเว็บอ่านข้อความเดียวกันนี้ได้ แต่ยังไม่มี
-        // ปุ่มคำถามด่วน การชี้ปุ่มลอย ๆ จะกลายเป็นบอกทางผิดสำหรับคนที่เปิดจากเว็บ
-        $more = count($items) - count($shown);
+        // ปุ่ม "กำหนดการ" เหนือช่องพิมพ์มีทั้งในแอปและบนเว็บแล้ว จึงชี้ไปที่ปุ่มตรง ๆ
+        // ได้ — เดิมต้องบอกว่า "ในแอป" เพราะห้องแชทบนเว็บยังไม่มีทางลัดชุดนี้
+        $more = count($items) - $shownCount;
         if ($more > 0) {
-            $lines[] = "ยังมีอีก {$more} รายการ — เปิดแอปแล้วกดปุ่ม \"กำหนดการ\" เหนือช่องพิมพ์ ดูฉบับเต็มได้ครับ";
+            $lines[] = "ยังมีอีก {$more} รายการ — กดปุ่ม \"กำหนดการ\" เหนือช่องพิมพ์ ดูฉบับเต็มได้ครับ";
         } else {
-            $lines[] = 'ดูย้อนหลังได้ตลอดในแอป ที่ปุ่ม "กำหนดการ" เหนือช่องพิมพ์ครับ';
+            $lines[] = 'ดูย้อนหลังได้ตลอด ที่ปุ่ม "กำหนดการ" เหนือช่องพิมพ์ครับ';
         }
 
         $lines[] = 'เวลาอาจขยับได้ตามหน้างานและสภาพอากาศ ทีมงานจะแจ้งในห้องนี้ทุกครั้งครับ 🌿';
@@ -168,23 +175,203 @@ class TripFactsService
     }
 
     /**
+     * แปลงกำหนดการทั้งชุดเป็น "บล็อกต่อวัน" ที่พร้อมโพสต์ — หนึ่งบล็อกคือหัวกลุ่ม
+     * (📅 วันแรก) กับรายการใต้มัน เก็บแยกเป็น entry ละรายการเพื่อให้ขั้นตอนแพ็ค
+     * รู้ว่าตัดตรงไหนได้บ้างโดยไม่ทำให้เหลือหัววันลอย ๆ ไม่มีรายการ
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array{heading: array<int, string>, entries: array<int, array<int, string>>}>
+     */
+    private function itineraryBlocks(array $items): array
+    {
+        // ทริปข้ามวัน หัวกลุ่มอย่าง "วันแรก" ไม่ได้บอกว่าวันไหน — เติมวันที่จริงให้
+        // ส่วนทริปวันเดียวไม่ต้อง บรรทัด "ออกเดินทาง ..." ด้านบนบอกไปแล้ว
+        $dates = array_unique(array_filter(array_map(
+            fn ($item) => trim((string) ($item['item_date'] ?? '')),
+            $items,
+        )));
+        $datedGroups = count($dates) > 1;
+
+        $budget = self::ITINERARY_CHAT_DETAIL_BUDGET;
+        $pending = count($items);
+
+        $blocks = [];
+        $currentGroup = null;
+
+        foreach ($items as $item) {
+            $group = $this->itineraryGroupLabel($item, $datedGroups);
+
+            if ($blocks === [] || ($group !== null && $group !== $currentGroup)) {
+                $currentGroup = $group;
+                $blocks[] = [
+                    'heading' => $group !== null ? ['', "📅 {$group}"] : [''],
+                    'entries' => [],
+                ];
+            }
+
+            $time = trim((string) ($item['time'] ?? ''));
+            $title = trim((string) $item['title']);
+
+            // รายการที่ยังไม่ได้ยกลงห้องหารงบที่เหลือกันไปคนละเท่า ๆ กัน รายการที่
+            // รายละเอียดสั้น (หรือไม่มีเลย) จึงเหลืองบไว้ให้รายการถัดไปโดยอัตโนมัติ
+            $allowance = max(self::ITINERARY_CHAT_DETAIL_MIN, intdiv($budget, max(1, $pending)));
+            $detail = $this->itineraryDetailLines((string) ($item['detail'] ?? ''), $allowance);
+            $budget = max(0, $budget - array_sum(array_map(mb_strlen(...), $detail)));
+            $pending--;
+
+            // หัวข้อที่ซ้ำกับหัวกลุ่มเป๊ะ ๆ ("📅 วันเดินทาง" แล้วต่อด้วย "• วันเดินทาง")
+            // ไม่ได้บอกอะไรเพิ่ม — ยกรายละเอียดขึ้นมาเป็นบรรทัดหลักแทน
+            if ($detail !== [] && $time === '' && $group !== null && $title === $group) {
+                $blocks[array_key_last($blocks)]['entries'][] = array_map(
+                    fn (string $line) => '• '.$line,
+                    $detail,
+                );
+
+                continue;
+            }
+
+            $blocks[array_key_last($blocks)]['entries'][] = array_merge(
+                ['• '.($time !== '' ? "{$time} น. " : '').$title],
+                array_map(fn (string $line) => '  '.$line, $detail),
+            );
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * ยกบล็อกลงข้อความเท่าที่งบไหว โดยถือ "ทั้งวัน" เป็นหน่วยที่ตัดไม่ได้ — ยอมตัด
+     * กลางวันเฉพาะเมื่อวันแรกวันเดียวก็ล้นงบแล้ว (ไม่งั้นจะไม่เหลือกำหนดการเลย)
+     *
+     * @param  array<int, array{heading: array<int, string>, entries: array<int, array<int, string>>}>  $blocks
+     * @return array{0: array<int, string>, 1: int}
+     */
+    private function packItineraryBlocks(array $blocks): array
+    {
+        $lines = [];
+        $shown = 0;
+        $budget = self::ITINERARY_CHAT_BUDGET;
+
+        foreach ($blocks as $block) {
+            $cost = $this->linesLength($block['heading']);
+            foreach ($block['entries'] as $entry) {
+                $cost += $this->linesLength($entry);
+            }
+
+            if ($cost <= $budget) {
+                $lines = array_merge($lines, $block['heading']);
+                foreach ($block['entries'] as $entry) {
+                    $lines = array_merge($lines, $entry);
+                }
+                $shown += count($block['entries']);
+                $budget -= $cost;
+
+                continue;
+            }
+
+            if ($lines !== []) {
+                break;
+            }
+
+            // วันแรกใหญ่เกินงบ — ยกเข้าไปเท่าที่ไหว ดีกว่าไม่เหลือกำหนดการสักบรรทัด
+            $lines = $block['heading'];
+            $budget -= $this->linesLength($block['heading']);
+
+            foreach ($block['entries'] as $entry) {
+                $entryCost = $this->linesLength($entry);
+
+                if ($entryCost > $budget && $shown > 0) {
+                    break;
+                }
+
+                $lines = array_merge($lines, $entry);
+                $budget -= $entryCost;
+                $shown++;
+            }
+
+            break;
+        }
+
+        return [$lines, $shown];
+    }
+
+    /**
+     * @param  array<int, string>  $lines
+     */
+    private function linesLength(array $lines): int
+    {
+        return array_sum(array_map(mb_strlen(...), $lines));
+    }
+
+    /**
+     * รายละเอียดของรายการกำหนดการในรูปบรรทัดพร้อมโพสต์ — คงการขึ้นบรรทัดใหม่ที่
+     * แอดมินตั้งใจเขียนไว้ (กำหนดการมักเขียนเป็นเวลาบรรทัดละช่วง) การยุบทุกอย่าง
+     * ให้เหลือบรรทัดเดียวคือสิ่งที่ทำให้ข้อความยาว ๆ อ่านไม่รู้เรื่องตั้งแต่แรก
+     *
+     * เกินโควตาเมื่อไหร่ตัดที่ "ขอบบรรทัด" ไม่ตัดกลางประโยค ยกเว้นบรรทัดแรก
+     * ที่ยาวเกินโควตาอยู่แล้ว — บรรทัดนั้นยอมตัดกลาง ดีกว่าไม่ได้อ่านอะไรเลย
+     *
+     * @return array<int, string>
+     */
+    private function itineraryDetailLines(string $detail, int $allowance): array
+    {
+        $source = [];
+
+        foreach (preg_split('/\r\n|\r|\n/u', trim($detail)) ?: [] as $line) {
+            $line = trim((string) preg_replace('/[ \t]+/u', ' ', $line));
+
+            if ($line !== '') {
+                $source[] = $line;
+            }
+        }
+
+        $lines = [];
+        $used = 0;
+
+        foreach ($source as $line) {
+            $room = $allowance - $used;
+
+            if ($room <= 0) {
+                break;
+            }
+
+            if (mb_strlen($line) > $room) {
+                if ($lines === []) {
+                    $lines[] = Str::limit($line, max($room, self::ITINERARY_CHAT_DETAIL_MIN));
+                }
+
+                break;
+            }
+
+            $lines[] = $line;
+            $used += mb_strlen($line);
+        }
+
+        return $lines;
+    }
+
+    /**
      * หัวข้อกลุ่มของรายการกำหนดการ — กำหนดการของรอบจัดกลุ่มด้วยวันที่จริง
      * ส่วนกำหนดการระดับทริปมาพร้อมชื่อภาค/"วันที่ N" อยู่แล้ว
      *
      * @param  array<string, mixed>  $item
      */
-    private function itineraryGroupLabel(array $item): ?string
+    private function itineraryGroupLabel(array $item, bool $withDate = false): ?string
     {
+        $date = trim((string) ($item['item_date'] ?? ''));
+        $dateLabel = $date !== '' ? ThaiDate::short(CarbonImmutable::parse($date)) : null;
+
         // กำหนดการระดับทริปมากับกลุ่มของมันเอง (ชื่อภาค หรือ "วันที่ N") — ใช้ตามนั้น
         // ทั้งชุด จะได้ไม่ปนกันระหว่างหัวข้อวันที่จริงกับ "วันที่ N" ในข้อความเดียว
         $group = trim((string) ($item['group'] ?? ''));
+
         if ($group !== '') {
-            return $group;
+            return $withDate && $dateLabel !== null && ! str_contains($group, $dateLabel)
+                ? "{$group} · {$dateLabel}"
+                : $group;
         }
 
-        $date = trim((string) ($item['item_date'] ?? ''));
-
-        return $date !== '' ? ThaiDate::short(CarbonImmutable::parse($date)) : null;
+        return $dateLabel;
     }
 
     /**

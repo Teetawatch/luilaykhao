@@ -14,6 +14,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\TripFactsService;
+use App\Support\ThaiDate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Spatie\Permission\Models\Role;
@@ -187,7 +188,13 @@ class TripFactsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.pickup.time', '19:30')
             ->assertJsonPath('data.driver.phone', '0812345678')
-            ->assertJsonPath('data.vehicle.license_plate', 'ฮก 1234 กรุงเทพมหานคร');
+            ->assertJsonPath('data.vehicle.license_plate', 'ฮก 1234 กรุงเทพมหานคร')
+            // ข้อความ "ยังไม่รู้" เดินทางมากับ payload — เว็บกับแอปจะได้ไม่ก๊อปประโยคไทย
+            // ไปแปะเองคนละชุดแล้วเพี้ยนกันทีหลัง
+            ->assertJsonPath('data.pending.vehicle', TripFactsService::PENDING_VEHICLE)
+            ->assertJsonPath('data.pending.pickup', TripFactsService::PENDING_PICKUP)
+            ->assertJsonPath('data.pending.driver', TripFactsService::PENDING_DRIVER)
+            ->assertJsonPath('data.pending.staff', TripFactsService::PENDING_STAFF);
 
         $outsider = User::factory()->create();
         $this->actingAs($outsider, 'sanctum')
@@ -302,6 +309,179 @@ class TripFactsTest extends TestCase
         $body = ChatMessage::where('sender_role', 'system')->latest('id')->value('body');
         $this->assertStringContainsString('กำหนดการเดินทาง', $body);
         $this->assertStringContainsString('05:30 น. ออกเดินทางจากกรุงเทพฯ', $body);
+    }
+
+    public function test_itinerary_message_keeps_a_plan_written_as_one_long_block(): void
+    {
+        $schedule = $this->makeSchedule();
+        $plan = [
+            'เวลา 04:00 พร้อมที่ BTS แบริ่ง (ปั้มน้ำมันบางจาก) สำหรับท่านที่รอจุดนี้',
+            'เวลา 04:40 พร้อมที่ปั๊ม ปตท. บางนา กม.3 สำหรับท่านที่รอจุดนี้',
+            'เวลา 05:00 ออกเดินทางจากกรุงเทพฯ มุ่งหน้าจังหวัดชัยภูมิ',
+            'เวลา 13:00 เดินเท้าเข้าสู่น้ำตก ระยะทางประมาณ 2 กิโลเมตร',
+            'เวลา 22:00 ถึงกรุงเทพฯ โดยสวัสดิภาพ',
+        ];
+
+        ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id,
+            'item_date' => $schedule->departure_date->toDateString(),
+            'title' => 'ลงพื้นที่',
+            'detail' => implode("\n", $plan),
+            'sort_order' => 0,
+        ]);
+
+        $body = app(TripFactsService::class)->itinerarySummaryText($schedule);
+
+        // ทุกช่วงเวลาต้องอยู่ครบ และยังแยกบรรทัดเหมือนที่แอดมินเขียนไว้
+        foreach ($plan as $line) {
+            $this->assertStringContainsString($line, $body);
+        }
+        $this->assertStringNotContainsString('...', $body);
+    }
+
+    public function test_itinerary_message_does_not_repeat_the_group_heading_as_the_bullet(): void
+    {
+        $schedule = $this->makeSchedule();
+
+        $schedule->trip->update([
+            'itinerary' => [[
+                'sector' => 'วันเดินทาง',
+                'items' => [[
+                    'title' => 'วันเดินทาง',
+                    'description' => "เวลา 04:00 พร้อมที่ BTS แบริ่ง\nเวลา 05:00 ออกเดินทาง",
+                ]],
+            ]],
+        ]);
+
+        $body = app(TripFactsService::class)->itinerarySummaryText($schedule->fresh('trip'));
+
+        $this->assertStringContainsString('📅 วันเดินทาง', $body);
+        $this->assertStringNotContainsString('• วันเดินทาง', $body);
+        $this->assertStringContainsString('• 04:00 น. พร้อมที่ BTS แบริ่ง', $body);
+        $this->assertStringContainsString('• 05:00 น. ออกเดินทาง', $body);
+    }
+
+    public function test_itinerary_message_promotes_the_detail_when_the_title_repeats_the_group(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update([
+            'itinerary' => [[
+                'sector' => 'ก่อนออกเดินทาง',
+                'items' => [[
+                    'title' => 'ก่อนออกเดินทาง',
+                    'description' => 'เตรียมบัตรประชาชนและยาประจำตัวมาให้พร้อมนะครับ',
+                ]],
+            ]],
+        ]);
+
+        $body = app(TripFactsService::class)->itinerarySummaryText($schedule->fresh('trip'));
+
+        $this->assertStringContainsString('📅 ก่อนออกเดินทาง', $body);
+        $this->assertStringNotContainsString('• ก่อนออกเดินทาง', $body);
+        $this->assertStringContainsString('• เตรียมบัตรประชาชน', $body);
+    }
+
+    public function test_itinerary_message_still_trims_a_runaway_detail(): void
+    {
+        $schedule = $this->makeSchedule();
+
+        ScheduleItineraryItem::create([
+            'schedule_id' => $schedule->id,
+            'item_date' => $schedule->departure_date->toDateString(),
+            'title' => 'ลงพื้นที่',
+            'detail' => str_repeat('ก', 4000),
+            'sort_order' => 0,
+        ]);
+
+        $body = app(TripFactsService::class)->itinerarySummaryText($schedule);
+
+        $this->assertStringContainsString('...', $body);
+        $this->assertLessThan(2000, mb_strlen($body));
+    }
+
+    public function test_trip_plan_timetable_becomes_real_itinerary_points(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update([
+            'itinerary' => [[
+                'sector' => 'วันเดินทาง',
+                'items' => [[
+                    'title' => 'วันเดินทาง',
+                    'description' => "เวลา 04:00 พร้อมที่ BTS แบริ่ง\nเวลา 05:00 ออกเดินทางจากกรุงเทพฯ\nเวลา 22:00 ถึงกรุงเทพฯ โดยสวัสดิภาพ",
+                ]],
+            ]],
+        ]);
+
+        $itinerary = app(TripFactsService::class)->itinerary($schedule->fresh('trip'));
+
+        // สามบรรทัดในช่องรายละเอียด = สามจุดจริง แอปจะได้วาดป้ายเวลาให้
+        $this->assertSame(3, $itinerary['total']);
+        $this->assertSame('04:00', $itinerary['items'][0]['time']);
+        $this->assertSame('พร้อมที่ BTS แบริ่ง', $itinerary['items'][0]['title']);
+        $this->assertSame('22:00', $itinerary['items'][2]['time']);
+        $this->assertSame('วันเดินทาง', $itinerary['items'][0]['group']);
+    }
+
+    public function test_trip_plan_prose_is_left_alone(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update([
+            'itinerary' => [[
+                'sector' => 'เตรียมตัว',
+                'items' => [[
+                    'title' => 'สิ่งที่ต้องเตรียม',
+                    'description' => "รองเท้าผ้าใบที่เดินสบาย\nเสื้อกันฝนแบบพกพา",
+                ]],
+            ]],
+        ]);
+
+        $itinerary = app(TripFactsService::class)->itinerary($schedule->fresh('trip'));
+
+        // ไม่มีเวลานำหน้า = ย่อหน้าธรรมดา ห้ามแตกเป็นจุด
+        $this->assertSame(1, $itinerary['total']);
+        $this->assertSame('สิ่งที่ต้องเตรียม', $itinerary['items'][0]['title']);
+    }
+
+    public function test_itinerary_message_says_when_the_plan_is_not_round_specific(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update([
+            'itinerary' => [['sector' => 'วันแรก', 'items' => [['title' => 'ออกเดินทาง']]]],
+        ]);
+
+        $facts = app(TripFactsService::class);
+        $body = $facts->itinerarySummaryText($schedule->fresh('trip'));
+        $this->assertStringContainsString('ทีมงานยังไม่ได้ลงกำหนดการเฉพาะรอบ', $body);
+
+        // พอแอดมินลงกำหนดการของรอบจริง หมายเหตุต้องหายไป
+        $this->itineraryItem($schedule, '05:30', 'ออกเดินทางจากกรุงเทพฯ');
+        $body = $facts->itinerarySummaryText($schedule->fresh());
+        $this->assertStringNotContainsString('ทีมงานยังไม่ได้ลงกำหนดการเฉพาะรอบ', $body);
+    }
+
+    public function test_itinerary_message_dates_the_group_headings_on_a_multi_day_round(): void
+    {
+        $schedule = $this->makeSchedule();
+        $day1 = $schedule->departure_date->toDateString();
+        $day2 = $schedule->departure_date->copy()->addDay()->toDateString();
+
+        foreach ([[$day1, 'ออกเดินทาง'], [$day2, 'ชมพระอาทิตย์ขึ้น']] as $i => [$date, $title]) {
+            ScheduleItineraryItem::create([
+                'schedule_id' => $schedule->id,
+                'item_date' => $date,
+                'time' => '06:00',
+                'title' => $title,
+                'sort_order' => $i,
+            ]);
+        }
+
+        $body = app(TripFactsService::class)->itinerarySummaryText($schedule);
+
+        $this->assertStringContainsString(ThaiDate::short($schedule->departure_date), $body);
+        $this->assertStringContainsString(
+            ThaiDate::short($schedule->departure_date->copy()->addDay()),
+            $body,
+        );
     }
 
     public function test_customers_are_notified_when_a_vehicle_is_assigned(): void

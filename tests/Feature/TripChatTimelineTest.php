@@ -256,33 +256,61 @@ class TripChatTimelineTest extends TestCase
     {
         Bus::fake();
         $schedule = $this->makeSchedule();
-        for ($i = 1; $i <= TripFactsService::ITINERARY_CHAT_LIMIT + 3; $i++) {
-            $this->addItineraryItem($schedule, '2026-08-15', null, "จุดที่ {$i}");
+
+        // หัวข้อยาว ๆ จนล้นงบความยาวของบับเบิล — วันเดียวล้วน จึงยอมตัดกลางวันได้
+        $long = str_repeat('เดินป่าชมธรรมชาติ', 8);
+        for ($i = 1; $i <= 20; $i++) {
+            $this->addItineraryItem($schedule, '2026-08-15', null, "จุดที่ {$i} {$long}");
         }
 
         $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
 
         $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
-        $this->assertStringContainsString('จุดที่ '.TripFactsService::ITINERARY_CHAT_LIMIT, $body);
-        $this->assertStringNotContainsString('จุดที่ '.(TripFactsService::ITINERARY_CHAT_LIMIT + 1), $body);
-        $this->assertStringContainsString('ยังมีอีก 3 รายการ', $body);
+        $this->assertStringContainsString('จุดที่ 1 ', $body);
+        $this->assertStringNotContainsString('จุดที่ 20 ', $body);
+        $this->assertStringContainsString('ยังมีอีก', $body);
         $this->assertStringContainsString('กำหนดการ', $body);
+        $this->assertLessThan(2200, mb_strlen($body));
     }
 
-    public function test_itinerary_message_keeps_a_single_leftover_item_instead_of_cutting_it(): void
+    public function test_itinerary_message_shows_a_short_plan_in_full_however_many_points(): void
     {
         Bus::fake();
         $schedule = $this->makeSchedule();
-        $last = TripFactsService::ITINERARY_CHAT_LIMIT + 1;
-        for ($i = 1; $i <= $last; $i++) {
+
+        // 20 บรรทัดสั้น ๆ อ่านรวดเดียวไหว — ไม่มีเหตุให้ตัด
+        for ($i = 1; $i <= 20; $i++) {
             $this->addItineraryItem($schedule, '2026-08-15', null, "จุดที่ {$i}");
         }
 
         $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
 
         $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
-        $this->assertStringContainsString("จุดที่ {$last}", $body);
+        $this->assertStringContainsString('จุดที่ 20', $body);
         $this->assertStringNotContainsString('ยังมีอีก', $body);
+    }
+
+    public function test_itinerary_message_cuts_at_a_day_boundary_not_mid_day(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+
+        // วันแรกพอดีงบ วันที่สองใส่ไม่ลงแล้ว
+        $long = str_repeat('เดินป่าชมธรรมชาติ', 8);
+        for ($i = 1; $i <= 8; $i++) {
+            $this->addItineraryItem($schedule, '2026-08-15', null, "วันแรกจุดที่ {$i} {$long}");
+        }
+        foreach ([1, 2, 3] as $i) {
+            $this->addItineraryItem($schedule, '2026-08-16', null, "วันสองจุดที่ {$i} {$long}");
+        }
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
+
+        $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
+
+        // วันแรกกินงบไปหมดแล้ว วันที่สองจึงต้องไม่โผล่มาแค่บางส่วน — ไม่มาเลยทั้งวัน
+        $this->assertStringNotContainsString('วันสองจุดที่ 1', $body);
+        $this->assertStringContainsString('ยังมีอีก 3 รายการ', $body);
     }
 
     public function test_itinerary_message_falls_back_to_the_trip_plan(): void

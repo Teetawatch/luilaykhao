@@ -148,8 +148,22 @@
         </template>
       </div>
 
+      <!-- ทางลัดข้อมูลทริป — ชุดเดียวกับที่แอปมีเหนือช่องพิมพ์ -->
+      <div class="shrink-0 bg-white border-t border-[#E8EEEF] px-4 pt-2.5 flex items-center gap-2 overflow-x-auto">
+        <button
+          v-for="s in infoShortcuts"
+          :key="s.key"
+          @click="openInfo(s.key)"
+          class="flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full border border-[#E8EEEF] text-[12.5px] font-bold text-[#505E5E] hover:border-[#006565]/40 hover:text-[#006565] transition-all"
+          style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
+        >
+          <span class="material-symbols-rounded info-chip-icon">{{ s.icon }}</span>
+          {{ s.label }}
+        </button>
+      </div>
+
       <!-- Input -->
-      <div class="shrink-0 bg-white border-t border-[#E8EEEF] px-4 py-3 flex items-end gap-2 safe-area-pb">
+      <div class="shrink-0 bg-white px-4 py-3 flex items-end gap-2 safe-area-pb">
         <!-- Image preview -->
         <div v-if="imagePreview" class="absolute bottom-20 left-4 right-4 bg-white border border-[#E8EEEF] rounded-2xl p-3 flex items-center gap-3">
           <img :src="imagePreview" class="w-16 h-16 rounded-xl object-cover" />
@@ -191,6 +205,13 @@
       </div>
     </template>
 
+    <TripInfoSheet
+      v-if="infoTab"
+      :schedule-id="scheduleId"
+      :initial-tab="infoTab"
+      @close="infoTab = null"
+    />
+
     <!-- Lightbox -->
     <div v-if="lightboxUrl" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" @click="lightboxUrl = null">
       <img :src="lightboxUrl" class="max-w-full max-h-full rounded-xl object-contain" />
@@ -203,6 +224,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import TierBadge from '../components/TierBadge.vue';
+import TripInfoSheet from '../components/TripInfoSheet.vue';
 import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
@@ -226,6 +248,17 @@ const fileInputEl = ref(null);
 const imageFile = ref(null);
 const imagePreview = ref(null);
 const lightboxUrl = ref(null);
+
+const infoShortcuts = [
+  { key: 'itinerary', label: 'กำหนดการ', icon: 'route' },
+  { key: 'pickup', label: 'จุดรับ', icon: 'pin_drop' },
+  { key: 'crew', label: 'รถและทีมงาน', icon: 'directions_bus' },
+];
+const infoTab = ref(null);
+
+function openInfo(tab) {
+  infoTab.value = tab;
+}
 let channel = null;
 let pollTimer = null;
 
@@ -507,3 +540,11 @@ onBeforeUnmount(() => {
   if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
 });
 </script>
+
+<style scoped>
+/* app.css ตั้ง .material-symbols-rounded { font-size: 24px } ไว้นอก cascade layer
+   utility อย่าง text-[16px] จึงแพ้เสมอ — ต้องชนะด้วย specificity สองคลาสแทน */
+.material-symbols-rounded.info-chip-icon {
+  font-size: 16px;
+}
+</style>

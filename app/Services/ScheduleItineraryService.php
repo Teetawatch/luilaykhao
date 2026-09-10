@@ -194,23 +194,102 @@ class ScheduleItineraryService
             $detail = '';
         }
 
-        [$time, $title] = $this->splitLeadingTime($title);
         $day = $this->tripDayNumber($data);
 
+        // แอดมินมักพิมพ์ตารางเวลาทั้งวันรวบไว้ในช่องรายละเอียดช่องเดียว ซึ่งจริง ๆ
+        // แล้วคือกำหนดการหลายจุด — แตกออกมาให้เป็นจุดจริง แอปจะได้วาดเป็นไทม์ไลน์
+        // พร้อมป้ายเวลาเหมือนกำหนดการที่ลงเป็นรายจุด แทนย่อหน้าเดียวใต้หัวข้อลอย ๆ
+        $timetable = $this->timetableLines($detail);
+
+        if ($timetable !== []) {
+            // หัวข้อเดิม ("วันเดินทาง") กลายเป็นหัวกลุ่มของจุดที่แตกออกมา
+            $group = $sector ?? ($title !== '' ? $title : null);
+
+            foreach ($timetable as $line) {
+                [$time, $stepTitle] = $this->splitLeadingTime($line);
+                $this->pushPresentedTripItem($items, $schedule, $group, $day, $time, $stepTitle, null);
+            }
+
+            return;
+        }
+
+        [$time, $title] = $this->splitLeadingTime($title);
+
+        $this->pushPresentedTripItem(
+            $items,
+            $schedule,
+            $sector,
+            $day,
+            $time,
+            $title,
+            $detail !== '' ? $detail : null,
+        );
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    private function pushPresentedTripItem(
+        array &$items,
+        TripSchedule $schedule,
+        ?string $group,
+        ?int $day,
+        ?string $time,
+        string $title,
+        ?string $detail,
+    ): void {
         $items[] = [
             'id' => null,
             'source' => 'trip',
-            'group' => $sector ?? ($day !== null ? "วันที่ {$day}" : 'แผนการเดินทาง'),
+            'group' => $group ?? ($day !== null ? "วันที่ {$day}" : 'แผนการเดินทาง'),
             'day' => $day,
             'item_date' => $this->tripItemDate($schedule, $day),
             'time' => $time,
             'title' => $title,
-            'detail' => $detail !== '' ? $detail : null,
+            'detail' => $detail,
             'link' => null,
             'sort_order' => count($items),
             'reached_at' => null,
             'reached_by_name' => null,
         ];
+    }
+
+    /**
+     * บรรทัดของรายละเอียดที่เป็น "ตารางเวลา" — คืนค่าเฉพาะเมื่อมั่นใจว่าเป็นตาราง
+     * จริง (อย่างน้อยสองบรรทัดขึ้นต้นด้วยเวลา และเป็นเกินครึ่งของทั้งก้อน) ย่อหน้า
+     * ธรรมดาที่บังเอิญมีเลขเวลาโผล่มาบรรทัดเดียวจะไม่โดนแตก
+     *
+     * @return array<int, string>
+     */
+    private function timetableLines(string $detail): array
+    {
+        if ($detail === '') {
+            return [];
+        }
+
+        $lines = [];
+
+        foreach (preg_split('/\r\n|\r|\n/u', $detail) ?: [] as $line) {
+            $line = trim((string) preg_replace('/[ \t]+/u', ' ', $line));
+
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+        }
+
+        if (count($lines) < 2) {
+            return [];
+        }
+
+        $timed = 0;
+
+        foreach ($lines as $line) {
+            if ($this->splitLeadingTime($line)[0] !== null) {
+                $timed++;
+            }
+        }
+
+        return $timed >= 2 && $timed * 2 >= count($lines) ? $lines : [];
     }
 
     /**
@@ -271,13 +350,15 @@ class ScheduleItineraryService
 
     /**
      * ดึงเวลานำหน้าหัวข้อออกมาเป็นฟิลด์เวลา ("08:00 ออกเดินทาง" → 08:00 + ออกเดินทาง)
+     * รองรับ "เวลา 08:00 ..." และ "08.00 น. ..." ด้วย
      * เพราะแอดมินมักพิมพ์เวลาไว้ในหัวข้อของกำหนดการระดับทริป
      *
      * @return array{0: ?string, 1: string}
      */
     private function splitLeadingTime(string $title): array
     {
-        if (! preg_match('/^(\d{1,2})[:.](\d{2})\s*(?:น\.)?\s*[-–—]?\s*(.+)$/u', $title, $m)) {
+        // "เวลา 04:00 ..." เป็นรูปแบบที่แอดมินไทยพิมพ์บ่อยพอ ๆ กับ "04:00 น. ..."
+        if (! preg_match('/^(?:เวลา\s*)?(\d{1,2})[:.](\d{2})\s*(?:น\.?)?\s*[-–—]?\s*(.+)$/u', $title, $m)) {
             return [null, $title];
         }
 
