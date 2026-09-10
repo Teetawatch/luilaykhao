@@ -129,7 +129,6 @@ import { reactive, ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useEditor, EditorContent } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useAdminStore } from '../../stores/admin';
@@ -162,8 +161,13 @@ let fileTarget = 'cover';
 const editor = useEditor({
   content: '',
   extensions: [
-    StarterKit.configure({ heading: { levels: [2, 3] } }),
-    Link.configure({ openOnClick: false }),
+    // StarterKit แถม Link มาให้ตั้งแต่ 3.31 — import @tiptap/extension-link
+    // แยกอีกตัวจะได้ extension ชื่อซ้ำ (tiptap เตือน "Duplicate extension
+    // names") ตั้งค่าผ่าน StarterKit ตรงนี้แทน
+    StarterKit.configure({
+      heading: { levels: [2, 3] },
+      link: { openOnClick: false },
+    }),
     Image,
     Placeholder.configure({ placeholder: 'เขียนเนื้อหาบทความที่นี่...' }),
   ],
