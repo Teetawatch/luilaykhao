@@ -158,6 +158,29 @@ class TripChatTimelineTest extends TestCase
         $this->assertStringContainsString('20:15', $body);
     }
 
+    public function test_pickup_eve_repeats_what_the_trip_asks_travellers_to_bring(): void
+    {
+        $schedule = $this->makeSchedule([], ['checkin_bring' => 'พาสปอร์ต']);
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-14 20:05'));
+
+        $body = ChatMessage::where('system_key', 'pickup_eve')->value('body');
+        $this->assertStringContainsString('และพกพาสปอร์ตไปด้วยนะครับ', $body);
+        $this->assertStringNotContainsString('บัตรประชาชน', $body);
+    }
+
+    public function test_pickup_eve_drops_the_bring_line_when_the_trip_needs_nothing(): void
+    {
+        $schedule = $this->makeSchedule([], ['checkin_bring' => '']);
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-14 20:05'));
+
+        $body = ChatMessage::where('system_key', 'pickup_eve')->value('body');
+        $this->assertStringContainsString('รบกวนมาถึงก่อนเวลานัด 10–15 นาทีนะครับ', $body);
+        $this->assertStringNotContainsString('พก', $body);
+        $this->assertStringNotContainsString('เช็คอิน', $body);
+    }
+
     public function test_prepare_message_uses_the_trip_preparations(): void
     {
         $schedule = $this->makeSchedule();

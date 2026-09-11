@@ -560,6 +560,25 @@
                 <span class="material-symbols-rounded group-hover:scale-110 transition-transform">add_circle</span> เพิ่มเอกสารที่ต้องแนบ
               </button>
             </div>
+
+            <!-- สิ่งที่ต้องพกติดตัว — เข้าไปอยู่ในข้อความห้องแชทคืนก่อนเดินทาง -->
+            <div class="bg-white rounded-2xl border border-violet-100 p-4 space-y-2">
+              <label class="block font-bold text-gray-700">สิ่งที่ต้องพกไปวันเดินทาง</label>
+              <input v-model="form.checkin_bring" maxlength="255" placeholder="เช่น บัตรประชาชน (เว้นว่าง = ไม่ต้องพกอะไรเป็นพิเศษ)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-violet-500/20 font-bold" />
+              <div class="flex flex-wrap gap-2">
+                <button v-for="preset in checkinBringPresets" :key="preset" type="button" @click="form.checkin_bring = preset"
+                        class="px-3 py-1.5 rounded-full border border-violet-200 text-violet-600 text-sm font-bold hover:bg-violet-50">
+                  {{ preset }}
+                </button>
+                <button type="button" @click="form.checkin_bring = ''" class="px-3 py-1.5 rounded-full border border-gray-200 text-gray-500 text-sm font-bold hover:bg-gray-50">
+                  ไม่ต้องพก
+                </button>
+              </div>
+              <p class="text-sm text-gray-500">
+                ข้อความคืนก่อนเดินทางในห้องแชทจะเป็น
+                <span class="font-bold text-gray-700">“{{ checkinBringPreview }}”</span>
+              </p>
+            </div>
           </div>
         </div>
 
@@ -1001,9 +1020,22 @@ const form = reactive({
   must_know: { items: [], remarks: '' },
   rental_items: [],
   document_requirements: [],
+  checkin_bring: 'บัตรประชาชน',
   itinerary: [],
   preparations: [],
   faqs: [],
+});
+
+// ตัวอย่างที่กดเติมได้เร็ว ๆ — พิมพ์เองก็ได้ ไม่ใช่ตัวเลือกตายตัว
+const checkinBringPresets = ['บัตรประชาชน', 'พาสปอร์ต', 'บัตรประชาชนและใบขับขี่'];
+
+// ตัวอย่างประโยคจริงที่ลูกค้าจะเห็น — ต้องตรงกับ TripChatTimelineService::pickupBody()
+const checkinBringPreview = computed(() => {
+  const bring = String(form.checkin_bring || '').trim();
+
+  return bring
+    ? `รบกวนมาถึงก่อนเวลานัด 10–15 นาที และพก${bring}ไปด้วยนะครับ (ใช้ตอนเช็คอิน)`
+    : 'รบกวนมาถึงก่อนเวลานัด 10–15 นาทีนะครับ';
 });
 
 const normalizeArray = (value) => {
@@ -1141,6 +1173,7 @@ const buildTripPayload = () => {
         required: !!doc?.required,
       }))
       .filter((doc) => doc.label),
+    checkin_bring: String(form.checkin_bring || '').trim(),
     itinerary: normalizeArray(form.itinerary)
       .map((sector) => ({
         sector: String(sector?.sector || '').trim(),
@@ -1757,6 +1790,7 @@ const initData = async () => {
         note: doc?.note || '',
         required: !!doc?.required,
       }));
+      form.checkin_bring = trip.checkin_bring || '';
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
       router.push({ name: backRouteName.value });

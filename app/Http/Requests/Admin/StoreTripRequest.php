@@ -86,6 +86,8 @@ class StoreTripRequest extends FormRequest
             'document_requirements.*.label' => ['required_with:document_requirements', 'string', 'max:255'],
             'document_requirements.*.note' => ['nullable', 'string', 'max:500'],
             'document_requirements.*.required' => ['nullable', 'boolean'],
+            // สิ่งที่ต้องพกวันเดินทาง — เว้นว่างแปลว่าไม่ต้องพกอะไร ไม่ใช่ยังไม่ได้ตั้ง
+            'checkin_bring' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -32,7 +32,7 @@ class Trip extends Model
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items',
-        'document_requirements',
+        'document_requirements', 'checkin_bring',
         'route_track',
     ];
 
@@ -72,6 +72,19 @@ class Trip extends Model
     public function documentRequirements(): array
     {
         return TripDocumentRequirements::normalize($this->document_requirements);
+    }
+
+    /**
+     * "สิ่งที่ต้องพกวันเดินทาง" ที่แอดมินพิมพ์ไว้ — null เมื่อไม่ต้องพกอะไรเป็นพิเศษ
+     *
+     * เว้นว่างแล้วต้องหมายถึง "ไม่ต้องใช้" จริง ๆ ไม่ใช่ "ยังไม่ได้ตั้งค่า" มิฉะนั้น
+     * ทริปที่ไม่ขอเอกสารจะไม่มีทางปิดประโยคนั้นในห้องแชทได้เลย
+     */
+    public function checkinBringNote(): ?string
+    {
+        $note = trim((string) $this->checkin_bring);
+
+        return $note !== '' ? $note : null;
     }
 
     public function schedules(): HasMany

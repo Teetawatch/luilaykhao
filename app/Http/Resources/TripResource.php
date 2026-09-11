@@ -107,6 +107,7 @@ class TripResource extends JsonResource
             // เอกสารที่ทริปนี้ขอให้แนบตอนจอง — ส่งชุดที่จัดระเบียบแล้วเสมอ
             // หน้าจอจะได้ไม่ต้องเดาว่าแถวไหนใช้ได้
             'document_requirements' => $this->documentRequirements(),
+            'checkin_bring' => $this->checkinBringNote(),
             'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
             'review_count' => $this->reviews()->where('is_approved', true)->count(),
             'rating_breakdown' => $this->ratingBreakdown(),
