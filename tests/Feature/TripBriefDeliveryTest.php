@@ -311,6 +311,37 @@ class TripBriefDeliveryTest extends TestCase
         Mail::assertQueuedCount(1);
     }
 
+    public function test_the_sweep_leaves_a_day_only_round_that_departs_today_alone(): void
+    {
+        // รอบที่รู้แค่วัน ไม่รู้เวลา และวันนั้นคือวันนี้ — ตอนกวาดหัวค่ำถือว่าไปแล้ว
+        $schedule = $this->schedule('2026-09-10');
+        $booking = $this->booking($schedule, User::factory()->create(['email' => 'som@example.com']));
+
+        // ใบจองเก่าที่ยังไม่เคยได้ใบเดินทาง (ก่อนฟีเจอร์นี้มีอยู่) คือเคสที่การกวาด
+        // รอบแรกจะเจอ — ล้างร่องรอยที่ observer เพิ่งทำไว้ให้เหมือนของจริง
+        $booking->forceFill(['brief_sent_at' => null, 'brief_digest' => null])->save();
+        Mail::fake();
+
+        $this->runJob();
+
+        Mail::assertNothingQueued();
+    }
+
+    public function test_a_round_leaving_tonight_still_gets_its_brief(): void
+    {
+        // รอบเดียวกันแต่ตั้งเวลารถออกไว้สี่ทุ่ม — ยังทันส่ง
+        $schedule = $this->schedule('2026-09-10');
+        $schedule->update(['departs_at' => '2026-09-10 22:00:00']);
+        $booking = $this->booking($schedule, User::factory()->create(['email' => 'som@example.com']));
+
+        $booking->forceFill(['brief_sent_at' => null, 'brief_digest' => null])->save();
+        Mail::fake();
+
+        $this->runJob();
+
+        Mail::assertQueued(TripBriefMail::class);
+    }
+
     private function runJob(): void
     {
         (new SendTripBriefsJob)->handle(

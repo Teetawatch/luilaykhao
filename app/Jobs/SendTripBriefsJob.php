@@ -97,6 +97,10 @@ class SendTripBriefsJob implements ShouldQueue
             return 'skipped';
         }
 
+        if ($this->hasLikelyLeftToday($booking)) {
+            return 'skipped';
+        }
+
         $digest = $briefs->digest($booking);
         $isUpdate = $booking->brief_sent_at !== null;
 
@@ -128,6 +132,31 @@ class SendTripBriefsJob implements ShouldQueue
         ])->save();
 
         return $isUpdate ? 'updated' : 'sent';
+    }
+
+    /**
+     * รอบที่ "วันนี้" แต่ไม่เคยตั้งเวลาออกรถ — ตอนกวาดประจำวันถือว่าไปแล้ว
+     *
+     * รอบแบบนี้เรารู้แค่วัน ไม่รู้เวลา และการกวาดเกิดตอนหัวค่ำ (18:05) เสมอ
+     * โอกาสที่รอบซึ่งออกวันนี้จะยังไม่ออกตอนนั้นแทบไม่มี — ส่งไปก็คือส่งคำแนะนำ
+     * เตรียมตัวให้คนที่นั่งอยู่บนรถแล้ว หรือกลับถึงบ้านแล้ว
+     *
+     * ใช้เฉพาะตอนกวาดเท่านั้น การส่งแบบเจาะจงใบ (ลูกค้าเพิ่งจองเมื่อเช้า หรือ
+     * แอดมินกดส่งเอง) รู้บริบทดีกว่าเรา และเกิดตอนไหนของวันก็ได้
+     */
+    private function hasLikelyLeftToday(Booking $booking): bool
+    {
+        if ($this->bookingId !== null) {
+            return false;
+        }
+
+        $schedule = $booking->schedule;
+
+        if (! $schedule || $schedule->departs_at) {
+            return false;
+        }
+
+        return $schedule->departure_date?->toDateString() === Carbon::now(self::TIMEZONE)->toDateString();
     }
 
     /**
