@@ -8,6 +8,26 @@
       <p class="page-subtitle">ภาพรวมระบบ Luilaykhao</p>
     </div>
 
+    <!--
+      งานที่ทีมงานเปิดซ้ำทุกวัน — อยู่นอก v-if="loading" ตั้งใจ
+      ปุ่มพวกนี้ไม่ได้ใช้ข้อมูลแดชบอร์ดเลย กดได้ทันทีตั้งแต่หน้ายังโหลดสถิติไม่เสร็จ
+      ตำแหน่งต้องนิ่ง ไม่เรียงตามความถี่การใช้งาน เพราะมือจำที่อยู่ปุ่มได้เร็วกว่าอ่านป้าย
+    -->
+    <div class="quick-actions">
+      <router-link
+        v-for="action in quickActions"
+        :key="action.to"
+        :to="action.to"
+        class="quick-action">
+        <span class="material-symbols-rounded qa-icon" :style="{ background: action.tint, color: action.color }">{{ action.icon }}</span>
+        <span class="qa-text">
+          <span class="qa-label">{{ action.label }}</span>
+          <span class="qa-hint">{{ action.hint }}</span>
+        </span>
+        <span class="material-symbols-rounded qa-arrow">arrow_forward</span>
+      </router-link>
+    </div>
+
     <!-- Loading State -->
     <div class="loading-state" v-if="loading">
       <div class="spinner"></div>
@@ -219,6 +239,60 @@ const admin = useAdminStore();
 const loading = computed(() => admin.loading);
 const stats = computed(() => admin.dashboard);
 
+// งานประจำวันหลังบ้าน 6 อย่าง — จงใจไม่ใส่เพิ่ม เพราะเกินนี้จะกลายเป็นเมนูที่สอง
+// ที่ต้องกวาดตาหาเหมือนแถบข้าง แทนที่จะเป็นปุ่มที่จำตำแหน่งได้
+// ปลายทางเป็นหน้าที่ "ลงมือทำ" ได้เลย ไม่ใช่หน้ารายการให้กดต่ออีกที (ดู ?new=1)
+const quickActions = [
+  {
+    to: '/admin/manual-booking',
+    icon: 'headset_mic',
+    label: 'จองแทนลูกค้า',
+    hint: 'ลูกค้าโทร/ทักมาจอง',
+    tint: '#EAF2EE',
+    color: 'var(--color-accent)',
+  },
+  {
+    to: '/admin/intakes?new=1',
+    icon: 'add_link',
+    label: 'สร้างลิงก์ให้กรอกเอง',
+    hint: 'ส่งให้ลูกค้ากรอกข้อมูล',
+    tint: '#E8F0F5',
+    color: 'var(--color-ocean)',
+  },
+  {
+    to: '/admin/schedules?new=1',
+    icon: 'calendar_add_on',
+    label: 'เปิดรอบเดินทางใหม่',
+    hint: 'เพิ่มรอบของทริปที่มีอยู่',
+    tint: '#E8F0EC',
+    color: 'var(--color-primary)',
+  },
+  {
+    to: '/admin/schedule-overview',
+    icon: 'grid_view',
+    label: 'ตารางที่นั่งว่าง',
+    hint: 'เช็คก่อนตอบลูกค้า',
+    tint: '#F9F4EB',
+    color: 'var(--color-gold)',
+  },
+  {
+    to: '/admin/check-in',
+    icon: 'qr_code_scanner',
+    label: 'เช็คอิน QR',
+    hint: 'สแกนหน้างานวันเดินทาง',
+    tint: '#EAF2EE',
+    color: 'var(--color-accent)',
+  },
+  {
+    to: '/admin/broadcasts',
+    icon: 'campaign',
+    label: 'ส่งข้อความถึงลูกค้า',
+    hint: 'ประกาศ/แจ้งเตือนเป็นกลุ่ม',
+    tint: '#E8F0F5',
+    color: 'var(--color-ocean)',
+  },
+];
+
 const typeLabels = {
   trekking: 'เดินป่า',
   diving: 'ดำน้ำ',
@@ -314,6 +388,75 @@ onMounted(() => {
   font-size: 14px;
   color: var(--color-text-muted);
   margin: 0;
+}
+
+/* ─── Quick actions ───────────────────── */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.quick-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--color-white);
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
+  text-decoration: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.quick-action:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-accent);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+}
+
+.qa-icon {
+  font-size: 24px;
+  padding: 10px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.qa-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.qa-label {
+  font-family: var(--font-anuphan);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  line-height: 1.3;
+}
+
+.qa-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+.qa-arrow {
+  font-size: 18px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.quick-action:hover .qa-arrow {
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 /* ─── Loading ─────────────────────────── */

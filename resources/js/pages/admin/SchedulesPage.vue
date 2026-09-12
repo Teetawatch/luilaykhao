@@ -4069,6 +4069,10 @@ onMounted(async () => {
   const tripId = Number(route.query.trip);
   const group = tripId ? groupedByTrip.value.find((g) => g.trip_id === tripId) : null;
   if (group) openTripSchedules(group);
+
+  // มาจากปุ่มลัดบนแดชบอร์ด (?new=1) — เปิดฟอร์มรอบใหม่ให้เลย ปุ่มลัดที่พามาจอด
+  // หน้ารายการเฉย ๆ ไม่ได้ประหยัดอะไร ยังต้องกวาดตาหาปุ่ม "เพิ่มรอบ" อยู่ดี
+  if (route.query.new) openForm(tripId ? { trip_id: tripId } : null);
 });
 </script>
 

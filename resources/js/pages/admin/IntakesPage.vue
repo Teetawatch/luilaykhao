@@ -575,11 +575,12 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
 import { thaiShort, thaiDayMonth, THAI_MONTHS_SHORT } from '../../lib/thaiDate';
 
 const router = useRouter();
+const route = useRoute();
 
 const statusLabels = { open: 'เปิด', closed: 'ปิด', full: 'เต็ม', cancelled: 'ยกเลิก' };
 
@@ -1085,7 +1086,11 @@ const formatDateTime = (value) => {
   }
 };
 
-onMounted(fetchAll);
+onMounted(() => {
+  fetchAll();
+  // มาจากปุ่มลัดบนแดชบอร์ด (?new=1) — กางฟอร์มสร้างลิงก์ไว้เลย
+  if (route.query.new) showLinkForm.value = true;
+});
 </script>
 
 <style scoped>
