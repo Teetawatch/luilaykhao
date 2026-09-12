@@ -45,6 +45,10 @@ class BookingResource extends JsonResource
                     'avatar_url' => $staff->avatar_url,
                 ])->values(),
             ),
+            // ลิงก์ "ใบเดินทาง" สาธารณะ — หน้าแอดมินเอาไว้ก๊อปส่งให้ลูกค้าทางไลน์
+            // ได้ทันที และเป็นสิ่งเดียวที่ลูกค้าซึ่งไม่ได้โหลดแอปเปิดดูรอบตัวเองได้
+            'brief_url' => $this->brief_token ? url('/t/'.$this->brief_token) : null,
+            'brief_sent_at' => $this->brief_sent_at,
             'pickup_region' => $this->pickup_region,
             'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function () {
                 return [

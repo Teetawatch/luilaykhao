@@ -15,6 +15,7 @@ use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PublicReceiptController;
 use App\Http\Controllers\PublicSharePaymentController;
+use App\Http\Controllers\PublicTripBriefController;
 use App\Http\Controllers\SlipController;
 use App\Http\Controllers\TripStoryController;
 use App\Models\Article;
@@ -93,6 +94,13 @@ Route::get('/track/{token}', function (string $token) {
 Route::get('/driver/track', function () {
     return view('driver-track');
 });
+
+// ใบเดินทาง — หน้าสรุปก่อนเดินทางสาธารณะ เปิดจากลิงก์ในอีเมล/SMS (ต้องมาก่อน SPA catch-all)
+// ทางเดียวที่ลูกค้าซึ่งทีมงานเปิดใบจองแทนให้ (และไม่ได้โหลดแอป) จะเห็นข้อมูลรอบของตัวเอง
+Route::get('/t/{token}', [PublicTripBriefController::class, 'show'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('public.trip-brief.show');
 
 // Digital Travel Receipt — หน้าตรวจสอบใบเสร็จสาธารณะจาก QR / ลิงก์ในอีเมล
 Route::get('/receipt/{token}/pdf', [PublicReceiptController::class, 'pdf'])

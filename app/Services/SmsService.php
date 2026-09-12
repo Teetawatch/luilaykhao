@@ -208,6 +208,32 @@ class SmsService
         );
     }
 
+    /**
+     * ลิงก์ "ใบเดินทาง" ก่อนถึงวันเดินทาง
+     *
+     * ช่องทางหลักของลูกค้าที่ทีมงานเปิดใบจองแทนให้ — บัญชีกลุ่มนี้ส่วนใหญ่ไม่มี
+     * อีเมลจริงในระบบ (ได้ที่อยู่ปลอม manual_...@luilaykhao.com ติดตัวมา) และ
+     * ไม่ได้โหลดแอป SMS หนึ่งข้อความที่พาไปหน้าเดียวจึงเป็นทางเดียวที่ถึงตัวจริง
+     *
+     * [$dedupeKey] แยกฉบับแรกออกจากฉบับ "อัปเดต" เมื่อข้อมูลรอบเปลี่ยน
+     */
+    public function sendTripBrief(Booking $booking, string $url, string $dedupeKey = 'default'): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'trip_brief',
+            dedupeKey: $dedupeKey,
+            message: sprintf(
+                'ใบเดินทาง %s %s จุดขึ้นรถ กำหนดการ และเบอร์ทีมงานดูได้ที่ %s',
+                $this->tripTitle($booking),
+                $this->departureDate($booking),
+                $url,
+            ),
+        );
+    }
+
     public function sendPending(int $limit = 100): int
     {
         if (! $this->isConfigured()) {
@@ -378,6 +404,7 @@ class SmsService
             'balance_due_reminder',
             'balance_paid',
             'account_claim',
+            'trip_brief',
         ];
     }
 

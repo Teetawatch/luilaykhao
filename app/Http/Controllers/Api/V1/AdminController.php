@@ -48,6 +48,7 @@ use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleSeatNotifier;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
+use App\Services\TripBriefService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
 use App\Support\PaymentQuote;
@@ -1382,6 +1383,51 @@ class AdminController extends Controller
             'claim_url' => $claims->claimUrl($booking->user),
             'sent_to' => $booking->user->phone,
         ], 'ส่งลิงก์เปิดใช้บัญชีให้ลูกค้าแล้ว');
+    }
+
+    /**
+     * POST /admin/bookings/{ref}/trip-brief
+     * ส่ง "ใบเดินทาง" ให้ลูกค้าเดี๋ยวนี้ (ปกติงานตามตารางจะส่งเองตอน D-2 18:05)
+     *
+     * มีไว้สำหรับตอนลูกค้าโทรมาบอกว่าไม่ได้รับ หรือทีมงานเพิ่งกรอกข้อมูลรถเสร็จ
+     * แล้วอยากให้ถึงมือลูกค้าทันทีโดยไม่รอรอบถัดไป — ช่องทางเลือกเองตามข้อมูลที่
+     * ลูกค้ามีเหมือนงานตามตารางทุกประการ (อีเมลจริงก่อน ไม่มีค่อย SMS)
+     */
+    public function sendTripBrief(string $ref, TripBriefService $briefs, MailService $mail, SmsService $sms): JsonResponse
+    {
+        $booking = Booking::with($briefs->relations())->where('booking_ref', $ref)->firstOrFail();
+
+        if (! $briefs->isViewable($booking)) {
+            return $this->error('ใบจองนี้ยกเลิกแล้วหรือทริปจบไปแล้ว จึงไม่มีใบเดินทางให้ส่ง', 422);
+        }
+
+        $isUpdate = $booking->brief_sent_at !== null;
+        $url = $booking->briefUrl();
+        $channel = null;
+
+        if ($mail->sendTripBriefEmail($booking, $isUpdate)) {
+            $channel = 'email';
+        } else {
+            // ส่งซ้ำด้วยมือต้องออกจริงทุกครั้ง ไม่ติดกันซ้ำของ SmsLog เพราะแอดมิน
+            // กดตอนลูกค้ากำลังถืออยู่ในสาย
+            $log = $sms->sendTripBrief($booking, $url, 'manual:'.now()->timestamp);
+            $channel = ($log && $log->status !== 'skipped') ? 'sms' : null;
+        }
+
+        if ($channel === null) {
+            return $this->error('ใบจองนี้ไม่มีทั้งอีเมลและเบอร์โทรที่ส่งถึงลูกค้าได้ กรุณาเพิ่มข้อมูลติดต่อก่อน', 422);
+        }
+
+        $booking->forceFill([
+            'brief_sent_at' => now(),
+            'brief_digest' => $briefs->digest($booking),
+        ])->save();
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'brief_url' => $url,
+            'channel' => $channel,
+        ], $channel === 'email' ? 'ส่งใบเดินทางทางอีเมลแล้ว' : 'ส่งลิงก์ใบเดินทางทาง SMS แล้ว');
     }
 
     /**

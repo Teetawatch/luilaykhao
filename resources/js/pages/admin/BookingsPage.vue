@@ -357,6 +357,25 @@
               ส่งลิงก์เปิดใช้บัญชี
             </button>
             <button
+              v-if="detailBooking && !['cancelled','refunded'].includes(detailBooking.status)"
+              class="btn-secondary compact"
+              :disabled="sendingTripBrief"
+              title="ส่งใบเดินทาง (กำหนดการ จุดขึ้นรถ เบอร์ทีมงาน) ให้ลูกค้าทันที — อีเมลถ้ามี ไม่มีก็ SMS"
+              @click="sendTripBrief(detailBooking)"
+            >
+              <span class="material-symbols-rounded">outgoing_mail</span>
+              {{ detailBooking?.brief_sent_at ? 'ส่งใบเดินทางอีกครั้ง' : 'ส่งใบเดินทาง' }}
+            </button>
+            <button
+              v-if="detailBooking?.brief_url"
+              class="btn-secondary compact"
+              title="ก๊อปลิงก์ใบเดินทางไปส่งให้ลูกค้าทางไลน์ได้เลย"
+              @click="copyBriefUrl(detailBooking)"
+            >
+              <span class="material-symbols-rounded">content_copy</span>
+              ก๊อปลิงก์ใบเดินทาง
+            </button>
+            <button
               v-if="detailBooking && canSplitBooking(detailBooking)"
               class="btn-secondary compact"
               @click="openSplitModal(detailBooking)"
@@ -3355,6 +3374,40 @@ async function sendClaimLink(booking) {
     toast.error(e.response?.data?.message || 'ส่งลิงก์ไม่สำเร็จ');
   } finally {
     sendingClaimLink.value = false;
+  }
+}
+
+// ── ใบเดินทาง ────────────────────────────────────────────────────
+// หน้าสรุปก่อนเดินทาง (/t/{token}) ที่ลูกค้าเปิดได้โดยไม่ต้องมีแอป — ปกติระบบส่ง
+// เองตอน D-2 18:05 ปุ่มนี้ไว้ใช้ตอนลูกค้าโทรมาบอกว่าไม่ได้รับ หรือทีมงานเพิ่ง
+// กรอกข้อมูลรถเสร็จแล้วอยากให้ถึงมือลูกค้าเดี๋ยวนี้
+const sendingTripBrief = ref(false);
+
+async function sendTripBrief(booking) {
+  if (!booking?.booking_ref || sendingTripBrief.value) return;
+
+  sendingTripBrief.value = true;
+  try {
+    const { data } = await api.post(`/admin/bookings/${booking.booking_ref}/trip-brief`);
+    toast.success(data?.message || 'ส่งใบเดินทางให้ลูกค้าแล้ว');
+    if (detailBooking.value) {
+      detailBooking.value.brief_sent_at = new Date().toISOString();
+      detailBooking.value.brief_url = data?.data?.brief_url || detailBooking.value.brief_url;
+    }
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ส่งใบเดินทางไม่สำเร็จ');
+  } finally {
+    sendingTripBrief.value = false;
+  }
+}
+
+async function copyBriefUrl(booking) {
+  if (!booking?.brief_url) return;
+  try {
+    await navigator.clipboard.writeText(booking.brief_url);
+    toast.success('ก๊อปลิงก์ใบเดินทางแล้ว');
+  } catch {
+    toast.error('ก๊อปลิงก์ไม่สำเร็จ');
   }
 }
 

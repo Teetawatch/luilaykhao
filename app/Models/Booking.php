@@ -47,7 +47,8 @@ class Booking extends Model
         'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
         'custom_pickup_status', 'custom_pickup_price', 'custom_pickup_reject_reason', 'custom_pickup_resolved_at',
         'is_group', 'group_name', 'group_notes',
-        'qr_code', 'share_token', 'story_token', 'payment_token', 'birthdate_token', 'passport_token', 'checked_in', 'checked_in_at',
+        'qr_code', 'share_token', 'story_token', 'payment_token', 'birthdate_token', 'passport_token',
+        'brief_token', 'brief_sent_at', 'brief_digest', 'checked_in', 'checked_in_at',
         'terms_accepted_at', 'terms_version',
         'total_amount', 'selected_addons', 'addons_total', 'selected_rentals', 'rentals_total', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
@@ -85,6 +86,7 @@ class Booking extends Model
             'refund_amount' => 'decimal:2',
             'refunded_at' => 'datetime',
             'checked_in_at' => 'datetime',
+            'brief_sent_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'is_group' => 'boolean',
             'checked_in' => 'boolean',
@@ -471,6 +473,31 @@ class Booking extends Model
     public function passportUrl(): string
     {
         return url('/booking-passport/'.$this->ensurePassportToken());
+    }
+
+    /**
+     * โทเคนของ "ใบเดินทาง" — หน้าสรุปก่อนเดินทางที่เปิดได้โดยไม่ต้องล็อกอิน
+     *
+     * ห้ามใช้โทเคนตัวอื่นแทน: [share_token] เปิดตำแหน่งรถแบบเรียลไทม์,
+     * [payment_token] เปิดหน้าจ่ายเงิน — ใบเดินทางถูกส่งต่อให้คนที่บ้านเป็นปกติ
+     * จึงต้องเป็นโทเคนที่เพิกถอนแยกได้และไม่พ่วงสิทธิ์อะไรติดไปด้วย
+     */
+    public function ensureBriefToken(): string
+    {
+        if (empty($this->brief_token)) {
+            do {
+                $token = Str::lower(Str::random(14));
+            } while (static::where('brief_token', $token)->exists());
+
+            $this->forceFill(['brief_token' => $token])->save();
+        }
+
+        return $this->brief_token;
+    }
+
+    public function briefUrl(): string
+    {
+        return url('/t/'.$this->ensureBriefToken());
     }
 
     /**

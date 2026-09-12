@@ -3,10 +3,12 @@
 namespace App\Observers;
 
 use App\Jobs\AnnounceChatMemberJoinedJob;
+use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
 use App\Services\CustomerIntakeService;
 use App\Services\LoyaltyService;
+use Carbon\Carbon;
 
 /**
  * บันทึกการจองเข้าบัญชีสมาชิกทุกครั้งที่มัน "กลายเป็นการจองที่ยืนยันแล้ว"
@@ -43,6 +45,7 @@ class BookingObserver
         if (in_array($booking->status, self::EARNING_STATUSES, true)) {
             $this->loyaltyService->awardForBooking($booking);
             $this->announceInChat($booking);
+            $this->maybeSendTripBrief($booking);
         }
     }
 
@@ -83,6 +86,7 @@ class BookingObserver
         if (in_array($booking->status, self::EARNING_STATUSES, true)) {
             $this->loyaltyService->awardForBooking($booking);
             $this->announceInChat($booking);
+            $this->maybeSendTripBrief($booking);
 
             return;
         }
@@ -91,6 +95,41 @@ class BookingObserver
         if (in_array($booking->status, self::REVERSING_STATUSES, true)) {
             $this->loyaltyService->reverseForBooking($booking);
         }
+    }
+
+    /**
+     * "จองวันนี้ ไปพรุ่งนี้" ต้องได้ใบเดินทางเดี๋ยวนี้ ไม่ใช่รอรอบส่งประจำวัน
+     *
+     * งานประจำวิ่ง 18:05 ครั้งเดียว ใบจองที่เข้ามาหลังจากนั้นสำหรับรอบที่ออก
+     * พรุ่งนี้ตีสี่ จะต้องรอถึง 18:05 ของพรุ่งนี้ ซึ่งคือหลังรถออกไปแล้วสิบกว่า
+     * ชั่วโมง ลูกค้าที่จองกระชั้นคือกลุ่มที่ต้องการใบเดินทางมากที่สุดด้วยซ้ำ
+     * เพราะไม่มีเวลาถามอะไรใครแล้ว
+     *
+     * เฉพาะรอบที่ใกล้ถึงจริง ๆ เท่านั้น จองล่วงหน้าเป็นเดือนยังไม่มีอะไรให้บอก
+     * (ยังไม่รู้ด้วยซ้ำว่ารถคันไหน ใครเป็นสตาฟ) ปล่อยให้งานประจำวันจัดการตามคิว
+     */
+    private function maybeSendTripBrief(Booking $booking): void
+    {
+        if ($booking->brief_sent_at !== null) {
+            return;
+        }
+
+        $departureDate = $booking->schedule?->departure_date;
+
+        if (! $departureDate) {
+            return;
+        }
+
+        $daysAway = Carbon::now('Asia/Bangkok')->startOfDay()->diffInDays(
+            Carbon::parse($departureDate->toDateString(), 'Asia/Bangkok')->startOfDay(),
+            false,
+        );
+
+        if ($daysAway < 0 || $daysAway > SendTripBriefsJob::LEAD_DAYS) {
+            return;
+        }
+
+        SendTripBriefsJob::dispatch($booking->id);
     }
 
     /**

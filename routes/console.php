@@ -26,6 +26,7 @@ use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendSafeTravelsJob;
 use App\Jobs\SendStaffShiftRemindersJob;
 use App\Jobs\SendTravelDocumentRemindersJob;
+use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Jobs\SendWeatherAlertsJob;
@@ -55,6 +56,11 @@ Schedule::job(new StartScheduledFlashSalesJob)->everyMinute()->withoutOverlappin
 Schedule::job(new AnnounceSaleCampaignJob)->everyMinute()->withoutOverlapping();
 // เตือนสตาฟที่ถูกมอบหมายงาน เย็นก่อนวันเดินทาง 1 วัน ให้เตรียมอุปกรณ์/ความพร้อม
 Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+
+// ใบเดินทาง — ส่งลิงก์ /t/{token} ให้ลูกค้าก่อนเดินทาง 2 วัน แล้วส่งฉบับ "อัปเดต"
+// เมื่อข้อมูลรอบเปลี่ยน (18:00 เพราะข้อมูลรถ/สตาฟมักถูกกรอกครบช่วงเย็น และเป็น
+// เวลาที่ลูกค้ายังทักกลับมาถามทันถ้ามีอะไรไม่ตรง)
+Schedule::job(new SendTripBriefsJob)->dailyAt('18:05')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // ตามเก็บพาสปอร์ตของทริปต่างประเทศ 45/21/10 วันก่อนเดินทาง — ทั้งของที่ยังไม่กรอก
 // และเล่มที่จะหมดอายุเร็วกว่าเกณฑ์ 6 เดือน (ตกเกณฑ์ขึ้นมาเองเมื่อเวลาผ่านไป)

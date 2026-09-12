@@ -687,6 +687,8 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/transfer', [AdminController::class, 'transferBooking']);
         // ส่ง SMS ลิงก์เปิดใช้บัญชีให้ลูกค้าที่ทีมงานเปิดใบจองแทนให้
         Route::post('bookings/{ref}/claim-link', [AdminController::class, 'sendBookingClaimLink']);
+        // ส่ง "ใบเดินทาง" ให้ลูกค้าทันที (ปกติ SendTripBriefsJob ส่งเองตอน D-2)
+        Route::post('bookings/{ref}/trip-brief', [AdminController::class, 'sendTripBrief']);
         Route::post('bookings/{ref}/slip/approve', [AdminController::class, 'approveSlip']);
         Route::post('bookings/{ref}/slip/reject', [AdminController::class, 'rejectSlip']);
         Route::post('bookings/{ref}/slip/reverify', [AdminController::class, 'reverifySlip']);

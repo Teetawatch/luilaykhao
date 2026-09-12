@@ -20,6 +20,7 @@ use App\Mail\PassportExpiringMail;
 use App\Mail\PassportInfoNeededMail;
 use App\Mail\PasswordResetMail;
 use App\Mail\PaymentConfirmedMail;
+use App\Mail\TripBriefMail;
 use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
@@ -95,7 +96,7 @@ class MailService
 
         $passengerEmails = $booking->passengers
             ->pluck('email')
-            ->filter(fn ($email) => filled($email))
+            ->filter(fn ($email) => $this->isDeliverable($email))
             ->map(fn ($email) => strtolower(trim((string) $email)))
             ->unique()
             ->values()
@@ -106,11 +107,32 @@ class MailService
         }
 
         return collect([$booking->user?->email])
-            ->filter(fn ($email) => filled($email))
+            ->filter(fn ($email) => $this->isDeliverable($email))
             ->map(fn ($email) => strtolower(trim((string) $email)))
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * ที่อยู่นี้ส่งถึงคนจริงไหม
+     *
+     * บัญชีที่ทีมงานเปิดใบจองแทนลูกค้าโดยไม่ได้กรอกอีเมล จะได้ที่อยู่ปลอม
+     * manual_...@luilaykhao.com ติดตัวไว้ (ดู AdminController::storeBooking)
+     * ทุกฉบับที่ยิงไปที่นั่นคือ hard bounce ที่กดคะแนนโดเมนผู้ส่งของเราลง
+     * และพาอีเมลที่ส่งถึงลูกค้าจริงเข้าถังขยะไปด้วย — ตัดทิ้งตั้งแต่ต้นทาง
+     * ลูกค้ากลุ่มนี้รับข่าวสารทาง SMS แทน (ดู SmsService, SendTripBriefsJob)
+     */
+    private function isDeliverable(mixed $email): bool
+    {
+        if (blank($email)) {
+            return false;
+        }
+
+        $normalised = strtolower(trim((string) $email));
+
+        return ! str_starts_with($normalised, 'manual_')
+            || ! str_ends_with($normalised, '@luilaykhao.com');
     }
 
     private function sendToCustomerEmails(Booking $booking, callable $mailableFactory): void
@@ -180,6 +202,37 @@ class MailService
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * ส่ง "ใบเดินทาง" ฉบับอีเมล — คืนค่าว่ามีปลายทางจริงให้ส่งหรือไม่
+     *
+     * ตัว boolean นี้คือสิ่งที่ SendTripBriefsJob ใช้ตัดสินใจว่าต้องถอยไปใช้ SMS
+     * แทนไหม จึงต้องคืน false เมื่อการจองไม่มีอีเมลที่ส่งถึงคนจริงได้เลย
+     * (ลูกค้าที่ทีมงานเปิดใบจองแทนให้ส่วนใหญ่อยู่ในกลุ่มนี้)
+     */
+    public function sendTripBriefEmail(Booking $booking, bool $isUpdate = false): bool
+    {
+        $emails = $this->customerEmails($booking);
+
+        if (empty($emails)) {
+            return false;
+        }
+
+        try {
+            foreach ($emails as $email) {
+                Mail::to($email)->send(new TripBriefMail($booking, $isUpdate));
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Failed to send trip brief email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
     }
 
