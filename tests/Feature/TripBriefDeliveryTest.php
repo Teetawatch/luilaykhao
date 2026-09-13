@@ -342,6 +342,40 @@ class TripBriefDeliveryTest extends TestCase
         Mail::assertQueued(TripBriefMail::class);
     }
 
+    public function test_the_countdown_ticking_over_is_not_an_update(): void
+    {
+        // เทสต์ "ส่งซ้ำไม่ได้" ตัวอื่นตรึงเวลาไว้ จึงจับไม่ได้ว่าอะไรขยับตามนาฬิกา
+        // ตัวนี้เดินนาฬิกาข้ามคืนจริง ๆ: "อีก 2 วัน" กลายเป็น "พรุ่งนี้" เอง และนั่น
+        // ต้องไม่นับเป็นข่าวที่ต้องแจ้งลูกค้า
+        $this->booking($this->schedule('2026-09-12'), User::factory()->create(['email' => 'som@example.com']));
+
+        $this->runJob();
+        Mail::assertQueuedCount(1);
+
+        // เย็นวันถัดไป — ไม่มีใครแตะข้อมูลรอบเลย
+        Carbon::setTestNow(Carbon::parse('2026-09-11 11:05:00', 'UTC'));
+
+        $this->runJob();
+
+        Mail::assertQueuedCount(1);
+    }
+
+    public function test_a_real_change_the_next_day_still_goes_out(): void
+    {
+        $schedule = $this->schedule('2026-09-12');
+        $this->booking($schedule, User::factory()->create(['email' => 'som@example.com']));
+
+        $this->runJob();
+        Mail::assertQueuedCount(1);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-11 11:05:00', 'UTC'));
+        $schedule->vehicle->update(['driver_name' => 'ลุงสมศักดิ์', 'driver_phone' => '0877777777']);
+
+        $this->runJob();
+
+        Mail::assertQueuedCount(2);
+    }
+
     private function runJob(): void
     {
         (new SendTripBriefsJob)->handle(

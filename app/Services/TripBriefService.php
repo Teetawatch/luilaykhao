@@ -8,6 +8,7 @@ use App\Models\TripSchedule;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 /**
@@ -194,17 +195,30 @@ class TripBriefService
     }
 
     /**
+     * ช่องใน [whenBlock] ที่เปลี่ยนค่าเองทุกเที่ยงคืนโดยไม่มีใครไปแตะอะไรเลย
+     *
+     * "อีก 2 วัน" กลายเป็น "พรุ่งนี้" เองตามนาฬิกา ถ้าปล่อยให้มันอยู่ในลายนิ้วมือ
+     * ลายนิ้วมือก็เปลี่ยนทุกวัน และลูกค้าจะได้อีเมล "อัปเดตใบเดินทาง" ทุกวัน
+     * ทั้งที่รถคันเดิม คนเดิม เวลาเดิม
+     *
+     * @var array<int, string>
+     */
+    private const CLOCK_DRIVEN_FIELDS = ['days_left', 'countdown_label'];
+
+    /**
      * ลายนิ้วมือของเนื้อหาที่ "ถ้าเปลี่ยนแล้วลูกค้าต้องรู้"
      *
-     * ตั้งใจไม่รวมสภาพอากาศและยอดเงิน — สองอย่างนั้นขยับเองได้ทุกวันและมีช่องทาง
-     * เตือนของตัวเองอยู่แล้ว ถ้าเอามารวมด้วย ลูกค้าจะโดนอีเมล "อัปเดต" ทุกวัน
+     * เกณฑ์เดียวที่ใช้ตัดสินว่าอะไรควรอยู่ในนี้: มีคนตั้งใจเปลี่ยนมันหรือเปล่า
+     * เปลี่ยนคนขับ ย้ายจุดขึ้นรถ ขยับกำหนดการ — ใช่ ลูกค้าต้องรู้
+     * ส่วนสภาพอากาศ ยอดเงินคงเหลือ และตัวเลขนับถอยหลัง ขยับเองทั้งนั้น และสองอย่าง
+     * แรกมีช่องทางเตือนของตัวเองอยู่แล้ว
      */
     public function digest(Booking $booking): string
     {
         $payload = $this->payload($booking);
 
         return sha1(json_encode([
-            $payload['when'],
+            Arr::except($payload['when'], self::CLOCK_DRIVEN_FIELDS),
             $payload['pickup'],
             $payload['meetup'],
             $payload['vehicle'],
