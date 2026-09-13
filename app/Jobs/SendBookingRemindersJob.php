@@ -25,7 +25,8 @@ class SendBookingRemindersJob implements ShouldQueue
             $bookings = Booking::where('status', 'confirmed')
                 ->whereHas('schedule', function ($query) use ($daysBefore) {
                     // นับวันจากเวลาออกเดินทางจริง (departs_at) ไม่ใช่วันทริป
-                    $query->departingOn(now()->addDays($daysBefore))
+                    // เวลาไทยเสมอ — ดู SendTripReminderNotificationsJob
+                    $query->departingOn(now('Asia/Bangkok')->addDays($daysBefore))
                         ->where('status', '!=', 'cancelled');
                 })
                 ->with(['user', 'passengers', 'schedule.trip', 'pickupPoint'])

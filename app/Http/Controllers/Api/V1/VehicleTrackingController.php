@@ -751,7 +751,8 @@ class VehicleTrackingController extends Controller
 
         $schedules = TripSchedule::with('trip')
             ->where('vehicle_id', $id)
-            ->departingOn(today())
+            // วันไทย ไม่ใช่ today() ของ UTC — ไม่งั้นช่วงเช้ามืดหน้านี้ว่างเปล่า
+            ->departingOn(today('Asia/Bangkok'))
             ->whereNotIn('status', ['cancelled'])
             ->orderBy('departure_date')
             ->get();

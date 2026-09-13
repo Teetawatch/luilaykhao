@@ -114,9 +114,12 @@ class StaffAssignmentNotificationTest extends TestCase
     public function test_shift_reminder_sent_to_assigned_staff_for_tomorrow_and_deduped(): void
     {
         $staff = $this->makeStaff();
+        // "พรุ่งนี้" ของงานเตือนคือพรุ่งนี้ตามปฏิทินไทย ไม่ใช่ของ UTC — เทสต์ต้อง
+        // สร้างวันด้วยเกณฑ์เดียวกัน ไม่งั้นช่วง 00:00-07:00 เวลาไทยจะเพี้ยนไปวันหนึ่ง
+        // (ดู ReminderTimezoneTest ที่ตรึงนาฬิกาไว้ที่ชั่วโมงนั้นโดยเฉพาะ)
         $schedule = $this->makeSchedule([
-            'departure_date' => now()->addDay()->toDateString(),
-            'return_date' => now()->addDays(2)->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->addDay()->toDateString(),
+            'return_date' => now('Asia/Bangkok')->addDays(2)->toDateString(),
         ]);
         $schedule->staff()->attach($staff->id);
 
@@ -136,8 +139,8 @@ class StaffAssignmentNotificationTest extends TestCase
     {
         $staff = $this->makeStaff();
         $schedule = $this->makeSchedule([
-            'departure_date' => now()->addDay()->toDateString(),
-            'return_date' => now()->addDays(2)->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->addDay()->toDateString(),
+            'return_date' => now('Asia/Bangkok')->addDays(2)->toDateString(),
             'status' => 'cancelled',
         ]);
         $schedule->staff()->attach($staff->id);

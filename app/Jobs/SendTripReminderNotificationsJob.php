@@ -38,7 +38,12 @@ class SendTripReminderNotificationsJob implements ShouldQueue
                 ->whereHas('schedule', function ($query) use ($daysBefore) {
                     // นับวันจากเวลาออกเดินทางจริง (departs_at) ไม่ใช่วันทริป
                     // เพื่อให้รอบที่รถออกคืนก่อนวันทริปได้แจ้งเตือนถูกวัน
-                    $query->departingOn(now()->addDays($daysBefore))
+                    //
+                    // ต้องเป็น now('Asia/Bangkok') ไม่ใช่ now() — แอปตั้งโซนเป็น UTC
+                    // ช่วง 00:00-07:00 เวลาไทย UTC ยังเป็นเมื่อวาน "พรุ่งนี้" ที่คำนวณ
+                    // จาก now() จึงกลายเป็น "วันนี้" และข้อความ "พรุ่งนี้ออกเดินทางแล้ว!"
+                    // จะไปหาคนที่รถออกเช้านี้แทน
+                    $query->departingOn(now('Asia/Bangkok')->addDays($daysBefore))
                         ->where('status', '!=', 'cancelled');
                 })
                 ->with(['schedule.trip', 'schedule.vehicle', 'schedule.pickupPoints', 'pickupPoint'])

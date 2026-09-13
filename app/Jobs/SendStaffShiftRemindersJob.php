@@ -30,7 +30,8 @@ class SendStaffShiftRemindersJob implements ShouldQueue
         $sent = 0;
 
         $schedules = TripSchedule::query()
-            ->departingOn(now()->addDays(self::DAYS_BEFORE))
+            // เวลาไทยเสมอ — ดู SendTripReminderNotificationsJob
+            ->departingOn(now('Asia/Bangkok')->addDays(self::DAYS_BEFORE))
             ->where('status', '!=', 'cancelled')
             ->with(['trip', 'vehicle', 'staff'])
             ->get();
