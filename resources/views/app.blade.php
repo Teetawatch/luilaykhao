@@ -42,6 +42,17 @@
     <meta name="llk:terms-version" content="{{ config('legal.terms_version') }}">
     <meta name="llk:privacy-version" content="{{ config('legal.privacy_version') }}">
 
+    {{-- แถบแนะนำแอปของ Safari บน iPhone — Apple วาดให้เอง ไม่กินพื้นที่หน้าเว็บ
+         และผู้ใช้ปิดได้ถาวรด้วยตัวเอง จึงเป็นการชวนโหลดที่รบกวนน้อยที่สุดที่มี
+         ไม่พิมพ์แท็กเลยเมื่อแกะเลขแอปไม่ได้ ดีกว่าชี้ไปแอปผิดตัว --}}
+    @if ($appStoreId = \App\Support\AppLinks::appleAppStoreId())
+        <meta name="apple-itunes-app" content="app-id={{ $appStoreId }}">
+    @endif
+
+    {{-- ลิงก์ร้านแอปส่งมากับ shell แบบเดียวกับข้อมูลติดต่อ (ดู lib/appLinks.js) --}}
+    <meta name="llk:app-ios-url" content="{{ \App\Support\AppLinks::ios() }}">
+    <meta name="llk:app-android-url" content="{{ \App\Support\AppLinks::android() }}">
+
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ $seo['canonical'] }}">
 

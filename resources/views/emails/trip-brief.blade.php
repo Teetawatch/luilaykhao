@@ -236,6 +236,25 @@
       </div>
     @endif
 
+    {{-- ── ชวนโหลดแอป (เฉพาะคนที่ยังไม่มี) ──────────────────── --}}
+    @if($b['app']['show'])
+      <div class="alert-box alert-blue">
+        <p class="alert-title">📱 มีอะไรอยู่ในแอปอีก</p>
+        <p class="alert-text">
+          <strong>ห้องแชทของรอบนี้</strong> คุยกับเพื่อนร่วมทริปและทีมงานก่อนออกเดินทาง<br />
+          <strong>QR เช็คอิน</strong> ให้ทีมงานสแกนหน้างาน ไม่ต้องขานชื่อทีละคน<br />
+          <strong>ติดตามรถแบบเรียลไทม์</strong> เห็นว่ารถถึงไหนแล้ววันเดินทาง<br />
+          <span class="t-muted">
+            โหลดได้ที่
+            <a href="{{ $b['app']['ios'] }}" class="t-blue"><strong>App Store</strong></a>
+            หรือ
+            <a href="{{ $b['app']['android'] }}" class="t-blue"><strong>Google Play</strong></a>
+            &middot; ไม่โหลดก็ใช้ใบเดินทางนี้ได้เหมือนเดิมครับ
+          </span>
+        </p>
+      </div>
+    @endif
+
     {{-- ── ลิงก์ใบเดินทางฉบับที่อัปเดตตัวเอง ─────────────────── --}}
     <div class="cta-wrap">
       <a href="{{ $b['links']['brief'] }}" class="cta-btn cta-slate">เปิดใบเดินทางฉบับล่าสุด</a>

@@ -37,6 +37,10 @@ return [
         'MOBILE_IOS_STORE_URL',
         'https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th',
     ),
+    // เลขแอปบน App Store — ปกติแกะจาก mobile_ios_store_url ให้เอง (ดู AppLinks)
+    // ตั้งค่านี้เฉพาะเมื่อ URL ร้านเปลี่ยนรูปแบบจนแกะไม่ออก
+    'apple_app_store_id' => env('APPLE_APP_STORE_ID'),
+
     'mobile_update_message' => env(
         'MOBILE_UPDATE_MESSAGE',
         'อัปเดตเพื่อใช้ฟีเจอร์ใหม่และแก้ไขบั๊กล่าสุด',

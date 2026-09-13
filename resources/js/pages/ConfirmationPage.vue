@@ -470,6 +470,12 @@
               </div>
             </section>
 
+            <!-- จังหวะที่ลูกค้าตื่นเต้นที่สุดในทั้ง journey — เพิ่งจองเสร็จ
+                 การ์ดซ่อนตัวเองเมื่อลูกค้ามีแอปอยู่แล้ว -->
+            <div class="pt-4">
+              <AppInviteCard />
+            </div>
+
             <!-- More Actions (Secondary/Tertiary) -->
             <div class="flex flex-col gap-3 pt-4">
               <router-link to="/my-bookings"
@@ -526,6 +532,7 @@ import { purchase } from '../lib/analytics';
 import BookingDocuments from '../components/BookingDocuments.vue';
 import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
 import RallyCard from '../components/RallyCard.vue';
+import AppInviteCard from '../components/AppInviteCard.vue';
 
 const route = useRoute();
 const booking = ref(null);

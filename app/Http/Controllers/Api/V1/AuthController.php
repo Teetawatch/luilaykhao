@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\MailService;
 use App\Services\ReferralService;
 use App\Support\AccountLinks;
+use App\Support\AppLinks;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -727,6 +728,9 @@ class AuthController extends Controller
             'social_provider' => $user->social_provider,
             'has_password' => ! is_null($user->password),
             'email_verified' => $user->hasVerifiedEmail(),
+            // เคยเปิดแอปแล้วหรือยัง — เว็บใช้ค่านี้ตัดสินว่าจะชวนโหลดแอปไหม
+            // คนที่มีแล้วต้องไม่เห็นคำชวน (ดู App\Support\AppLinks)
+            'has_app' => AppLinks::hasApp($user),
             'created_at' => $user->created_at?->toISOString(),
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
+use App\Support\AppLinks;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\Carbon;
@@ -180,6 +181,7 @@ class TripBriefService
             'itinerary' => $this->itineraryBlock($schedule),
             'payment' => $this->paymentBlock($booking),
             'weather' => $this->weatherBlock($schedule),
+            'app' => $this->appBlock($booking),
             'links' => [
                 'brief' => $booking->briefUrl(),
                 'track' => $booking->shareUrl(),
@@ -545,6 +547,27 @@ class TripBriefService
             'due_label' => $dueAt ? ThaiDate::full($dueAt) : null,
             'is_overdue' => $dueAt ? $dueAt->copy()->endOfDay()->isPast() : false,
             'installment_no' => $nextInstallment?->installment_no,
+        ];
+    }
+
+    /**
+     * ชวนโหลดแอป — เฉพาะคนที่ยังไม่มี
+     *
+     * ใบเดินทางไปถึงกลุ่มที่ไม่ได้โหลดแอปพอดี และไปถึงในนาทีที่เขาสนใจทริปที่สุด
+     * ของในแอปที่ใบเดินทางให้ไม่ได้จริง ๆ มีอยู่: ห้องแชทของรอบ QR เช็คอิน และ
+     * การติดตามรถ จึงเป็นคำชวนที่มีเนื้อ ไม่ใช่ป้ายโฆษณา
+     *
+     * คนที่มีแอปอยู่แล้วต้องไม่เห็นบล็อกนี้ — เห็นของที่ตัวเองถืออยู่ถูกขายซ้ำ
+     * ทำให้ทั้งใบเดินทางดูเหมือนใบปลิว และคำชวนครั้งที่สำคัญจริงจะหมดน้ำหนัก
+     *
+     * @return array<string, mixed>
+     */
+    private function appBlock(Booking $booking): array
+    {
+        return [
+            'show' => ! AppLinks::hasApp($booking->user),
+            'ios' => AppLinks::ios(),
+            'android' => AppLinks::android(),
         ];
     }
 

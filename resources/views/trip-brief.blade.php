@@ -107,6 +107,17 @@
         .money .v { font-weight:800; font-variant-numeric:tabular-nums; }
         .money.due .v { color:var(--amber); font-size:19px; font-weight:900; }
 
+        /* ชวนโหลดแอป */
+        ul.list.app-list li { padding-left:20px; }
+        ul.list.app-list li b { font-weight:800; color:var(--brand-dark); }
+        .stores { display:flex; gap:8px; margin-top:14px; }
+        .stores a {
+            flex:1; text-align:center; text-decoration:none;
+            background:var(--brand); color:#fff; font-weight:800; font-size:14px;
+            padding:13px 8px; border-radius:12px;
+        }
+        .stores a:active { opacity:.9; }
+
         .foot { text-align:center; color:var(--muted); font-size:11.5px; margin-top:18px; line-height:1.8; }
         .foot b { color:var(--brand-dark); }
         .foot a { color:var(--brand); font-weight:700; text-decoration:none; }
@@ -389,6 +400,25 @@
                     @endif
                 </div>
                 <a class="btn amber" href="{{ $b['links']['pay'] }}">💳 ชำระเงิน</a>
+            </div>
+        </div>
+    @endif
+
+    {{-- ── ชวนโหลดแอป (เฉพาะคนที่ยังไม่มี) ────────────────────── --}}
+    @if($b['app']['show'])
+        <div class="card">
+            <div class="sec">
+                <div class="sec-label">มีอะไรอยู่ในแอปอีก</div>
+                <ul class="list app-list">
+                    <li><b>ห้องแชทของรอบนี้</b> — คุยกับเพื่อนร่วมทริปและทีมงานก่อนออกเดินทาง</li>
+                    <li><b>QR เช็คอิน</b> — ให้ทีมงานสแกนหน้างาน ไม่ต้องขานชื่อทีละคน</li>
+                    <li><b>ติดตามรถแบบเรียลไทม์</b> — เห็นว่ารถถึงไหนแล้ววันเดินทาง</li>
+                </ul>
+                <div class="stores">
+                    <a href="{{ $b['app']['ios'] }}" target="_blank" rel="noopener">App Store</a>
+                    <a href="{{ $b['app']['android'] }}" target="_blank" rel="noopener">Google Play</a>
+                </div>
+                <div class="note">ใบเดินทางหน้านี้ยังเปิดได้เหมือนเดิมนะครับ ไม่โหลดก็ไม่เป็นไร</div>
             </div>
         </div>
     @endif
