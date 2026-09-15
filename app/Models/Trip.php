@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Countries;
 use App\Support\TripDocumentRequirements;
+use App\Support\TripRentalItems;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -72,6 +73,19 @@ class Trip extends Model
     public function documentRequirements(): array
     {
         return TripDocumentRequirements::normalize($this->document_requirements);
+    }
+
+    /**
+     * อุปกรณ์ให้เช่าของทริปนี้ — จัดระเบียบแล้ว มี key ถาวรทุกแถว
+     *
+     * ทุกฝั่งต้องอ่านผ่านตัวนี้ ไม่ใช่ `$trip->rental_items` ดิบ ๆ ไม่อย่างนั้น
+     * ลำดับแถว (ที่ฝั่งจองส่งมาเป็น index) จะไม่ตรงกันเมื่อมีแถวเสียปนอยู่
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function rentalItems(): array
+    {
+        return TripRentalItems::normalize($this->rental_items);
     }
 
     /**

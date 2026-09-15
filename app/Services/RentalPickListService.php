@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\TripSchedule;
 use App\Support\ThaiDate;
+use App\Support\TripRentalItems;
 use Illuminate\Support\Collection;
 
 /**
@@ -34,7 +35,7 @@ class RentalPickListService
             ->orderBy('booking_ref')
             ->get();
 
-        $catalog = $this->catalogParts($schedule);
+        $catalog = $this->catalog($schedule);
 
         $items = [];      // รวมตามรายการที่ลูกค้าเช่า
         $picking = [];    // รวมตามชิ้นที่ต้องหยิบจริง
@@ -48,7 +49,9 @@ class RentalPickListService
             }
 
             foreach ($lines as $line) {
-                $key = $line['name'];
+                // จัดกลุ่มด้วย key ก่อน ชื่อเป็นทางรอง — สองใบจองที่ชี้อุปกรณ์ชิ้นเดียวกัน
+                // คนละชื่อ (เพราะแก้ชื่อคั่นกลาง) ต้องนับรวมเป็นบรรทัดเดียว
+                $key = $line['key'] !== '' ? $line['key'] : $line['name'];
                 $items[$key] ??= [
                     'name' => $line['name'],
                     'image_url' => $line['image_url'],
@@ -141,57 +144,56 @@ class RentalPickListService
         ];
     }
 
-    /** ส่วนประกอบของอุปกรณ์แต่ละชื่อ ตามที่ทริปตั้งไว้ตอนนี้ */
-    private function catalogParts(TripSchedule $schedule): array
+    /**
+     * แคตตาล็อกของทริป ณ ตอนนี้ เปิดหาได้ทั้งด้วย key และด้วยชื่อ
+     *
+     * key คือทางหลัก (ทนต่อการแก้ชื่อ) ส่วนชื่อไว้รองรับใบจองเก่าที่แช่ไว้ก่อน
+     * ระบบ key จะมี — ใบพวกนั้นยังไม่ถูก backfill ก็ยังหาชุดของตัวเองเจอ
+     *
+     * @return array{by_key: array<string, array<string, mixed>>, by_name: array<string, array<string, mixed>>}
+     */
+    private function catalog(TripSchedule $schedule): array
     {
-        $catalog = [];
+        $byKey = [];
+        $byName = [];
 
-        foreach ($schedule->trip?->rental_items ?? [] as $option) {
-            if (! is_array($option) || empty($option['name'])) {
-                continue;
-            }
-
-            $catalog[(string) $option['name']] = $this->normalizeParts($option['parts'] ?? []);
+        foreach ($schedule->trip?->rentalItems() ?? [] as $option) {
+            $byKey[$option['key']] = $option;
+            $byName[$option['name']] ??= $option;
         }
 
-        return $catalog;
+        return ['by_key' => $byKey, 'by_name' => $byName];
     }
 
-    /** บรรทัดของที่เช่าในใบจองหนึ่งใบ พร้อมส่วนประกอบที่ถอดออกมาแล้ว */
+    /**
+     * บรรทัดของที่เช่าในใบจองหนึ่งใบ พร้อมส่วนประกอบที่ถอดออกมาแล้ว
+     *
+     * ชื่อที่ใช้แสดงคือชื่อในแคตตาล็อกวันนี้เมื่อจับคู่ได้ — ใบจองเก่าที่แช่ชื่อเดิม
+     * ไว้จะได้ไปรวมบรรทัดเดียวกับใบใหม่ ไม่ใช่แยกเป็นสองกองให้คนเตรียมของงง
+     * (ราคายังเป็นราคาที่ตกลงกันวันจองเสมอ ไม่เคยอ่านจากแคตตาล็อก)
+     */
     private function linesOf(Booking $booking, array $catalog): Collection
     {
         return collect($booking->selected_rentals ?? [])
             ->map(function ($rental) use ($catalog) {
-                $name = (string) ($rental['name'] ?? '');
+                $name = trim((string) ($rental['name'] ?? ''));
+                $key = trim((string) ($rental['key'] ?? ''));
+
+                $option = ($key !== '' ? ($catalog['by_key'][$key] ?? null) : null)
+                    ?? ($catalog['by_name'][$name] ?? null);
 
                 return [
-                    'name' => $name,
+                    'key' => $option['key'] ?? $key,
+                    'name' => $option['name'] ?? $name,
                     'quantity' => (int) ($rental['quantity'] ?? 0),
                     'unit_price' => (float) ($rental['unit_price'] ?? 0),
                     'total_price' => (float) ($rental['total_price'] ?? 0),
                     'image_url' => (string) ($rental['image_url'] ?? ''),
-                    'parts' => $catalog[$name] ?? $this->normalizeParts($rental['parts'] ?? []),
+                    'parts' => $option['parts'] ?? TripRentalItems::normalizeParts($rental['parts'] ?? []),
                 ];
             })
             ->filter(fn ($line) => $line['name'] !== '' && $line['quantity'] > 0)
             ->values();
-    }
-
-    /** [{name, quantity}] ที่กรองแถวว่างและจำนวน 0 ออกแล้ว */
-    private function normalizeParts($parts): array
-    {
-        if (! is_array($parts)) {
-            return [];
-        }
-
-        return collect($parts)
-            ->map(fn ($part) => [
-                'name' => is_array($part) ? trim((string) ($part['name'] ?? '')) : '',
-                'quantity' => is_array($part) ? max(0, (int) ($part['quantity'] ?? 0)) : 0,
-            ])
-            ->filter(fn ($part) => $part['name'] !== '' && $part['quantity'] > 0)
-            ->values()
-            ->all();
     }
 
     /** จำนวนชิ้นต่อหนึ่งชุด — ของที่ไม่ใช่ชุดนับเป็น 1 ชิ้นตามตัวมันเอง */

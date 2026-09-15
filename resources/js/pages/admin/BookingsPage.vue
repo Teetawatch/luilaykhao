@@ -2138,6 +2138,7 @@ const editRentalCatalog = computed(() => {
     .filter((item) => item && item.name)
     .map((item, index) => ({
       key: `${index}-${item.name}`,
+      rental_key: item.key || '',
       name: item.name,
       price: moneyNumber(item.price),
       image_url: item.image_url || '',
@@ -2604,6 +2605,9 @@ function mapInstallmentToForm(payment = {}) {
 function mapRentalToForm(rental = {}) {
   return {
     local_key: `rental-${Date.now()}-${Math.random()}`,
+    // key ถาวรของรายการในแคตตาล็อก — ส่งกลับไปให้ server เพื่อให้ใบเตรียมของ
+    // ยังผูกกับชุดได้แม้แอดมินจะแก้ชื่อรายการทีหลัง (ว่างได้ ถ้าแอดมินพิมพ์เอง)
+    rental_key: rental.key || '',
     name: rental.name || '',
     unit_price: moneyNumber(rental.unit_price),
     quantity: Math.max(1, Math.round(moneyNumber(rental.quantity)) || 1),
@@ -2621,6 +2625,7 @@ function addRentalFromCatalog(item) {
   }
 
   editForm.rentals.push(mapRentalToForm({
+    key: item.rental_key,
     name: item.name,
     unit_price: item.price,
     quantity: 1,
@@ -2809,6 +2814,7 @@ function buildEditFormData() {
   editForm.rentals
     .filter((rental) => rental.name && moneyNumber(rental.quantity) >= 1)
     .forEach((rental, index) => {
+      appendForm(fd, `selected_rentals[${index}][key]`, rental.rental_key || '');
       appendForm(fd, `selected_rentals[${index}][name]`, rental.name);
       appendForm(fd, `selected_rentals[${index}][unit_price]`, moneyNumber(rental.unit_price));
       appendForm(fd, `selected_rentals[${index}][quantity]`, Math.round(moneyNumber(rental.quantity)));

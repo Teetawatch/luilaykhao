@@ -17,6 +17,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\CustomPickupPricing;
 use App\Support\ThaiDate;
+use App\Support\TripRentalItems;
 use App\Traits\RemapsBookingPickup;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -335,7 +336,9 @@ class BookingService
 
             // Equipment rentals — chosen by index into trip.rental_items with a
             // per-item quantity (e.g. 2 sleeping bags). Snapshotted like add-ons.
-            $rentalOptions = collect($schedule->trip?->rental_items ?? [])->values();
+            // อ่านผ่าน rentalItems() ให้ตรงกับที่ฝั่งจองเห็น (TripResource ก็ส่งชุดนี้)
+            // ไม่งั้น index ที่ลูกค้าส่งมาจะเลื่อนเมื่อแคตตาล็อกมีแถวเสียปนอยู่
+            $rentalOptions = collect($schedule->trip?->rentalItems() ?? [])->values();
             $selectedRentalSnapshots = [];
             $rentalsTotal = 0;
 
@@ -356,6 +359,8 @@ class BookingService
                 $rentalsTotal += $totalPrice;
 
                 $selectedRentalSnapshots[] = [
+                    // key ถาวรของรายการ — ตัวผูกกลับไปหาแคตตาล็อกแม้ชื่อจะถูกแก้ทีหลัง
+                    'key' => (string) ($option['key'] ?? ''),
                     'name' => (string) $option['name'],
                     'unit_price' => $unitPrice,
                     'quantity' => $quantity,
@@ -363,7 +368,7 @@ class BookingService
                     'image_url' => (string) ($option['image_url'] ?? ''),
                     // ส่วนประกอบของชุด แช่ไว้เผื่ออุปกรณ์ชิ้นนี้ถูกถอดออกจากทริปทีหลัง
                     // ใบเตรียมของยังแตกเป็นชิ้นได้ (ปกติอ่านจาก catalog ปัจจุบัน)
-                    'parts' => is_array($option['parts'] ?? null) ? array_values($option['parts']) : [],
+                    'parts' => TripRentalItems::normalizeParts($option['parts'] ?? []),
                 ];
             }
 

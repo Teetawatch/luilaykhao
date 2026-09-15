@@ -1183,6 +1183,7 @@ const buildTripPayload = () => {
     },
     rental_items: normalizeArray(form.rental_items)
       .map((item) => ({
+        key: String(item?.key || '').trim(),
         name: String(item?.name || '').trim(),
         price: Number(item?.price || 0),
         description: String(item?.description || '').trim(),
@@ -1454,7 +1455,7 @@ const addItem = (field, extra = null) => {
     form.must_know.items.push({ name: '', price: 0, price_type: 'per_booking', image_url: '' });
   } else if (field === 'rental_items') {
     if (!form.rental_items) form.rental_items = [];
-    form.rental_items.push({ name: '', price: 0, description: '', image_url: '', parts: [] });
+    form.rental_items.push({ key: '', name: '', price: 0, description: '', image_url: '', parts: [] });
   } else if (field === 'document_requirements') {
     if (!form.document_requirements) form.document_requirements = [];
     // key ปล่อยว่าง — backend เป็นคนตั้งให้ตอนบันทึก แล้วส่งกลับมาคาไว้ในฟอร์ม
@@ -1827,6 +1828,8 @@ const initData = async () => {
       form.preparations = normalizeArray(trip.preparations);
       form.faqs = normalizeArray(trip.faqs);
       form.rental_items = normalizeArray(trip.rental_items).map((item) => ({
+        // key มาจากเซิร์ฟเวอร์ ส่งกลับไปเหมือนเดิมเสมอ — ถ้าทำหาย ใบจองเก่าจะหลุดจากชุด
+        key: item?.key || '',
         name: item?.name || '',
         price: Number(item?.price || 0),
         description: item?.description || '',

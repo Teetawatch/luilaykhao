@@ -75,6 +75,8 @@ class StoreTripRequest extends FormRequest
             'faqs.*.question' => ['required_with:faqs', 'string', 'max:255'],
             'faqs.*.answer' => ['required_with:faqs', 'string', 'max:2000'],
             'rental_items' => ['nullable', 'array'],
+            // key มาจากเซิร์ฟเวอร์ ฟอร์มแค่ส่งกลับมาให้เหมือนเดิม (ดู TripRentalItems)
+            'rental_items.*.key' => ['nullable', 'string', 'max:64'],
             'rental_items.*.name' => ['required_with:rental_items', 'string', 'max:255'],
             'rental_items.*.price' => ['required_with:rental_items', 'numeric', 'min:0'],
             'rental_items.*.image_url' => ['nullable', 'string', 'max:2048'],

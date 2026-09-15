@@ -103,7 +103,7 @@ class TripResource extends JsonResource
             'itinerary' => $this->itinerary ?? [],
             'preparations' => $this->preparations ?? [],
             'faqs' => $this->faqs ?? [],
-            'rental_items' => $this->rental_items ?? [],
+            'rental_items' => $this->rentalItems(),
             // เอกสารที่ทริปนี้ขอให้แนบตอนจอง — ส่งชุดที่จัดระเบียบแล้วเสมอ
             // หน้าจอจะได้ไม่ต้องเดาว่าแถวไหนใช้ได้
             'document_requirements' => $this->documentRequirements(),

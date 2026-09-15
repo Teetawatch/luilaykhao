@@ -56,6 +56,7 @@ use App\Support\PhoneNumber;
 use App\Support\Polyline;
 use App\Support\ThaiDate;
 use App\Support\TripDocumentRequirements;
+use App\Support\TripRentalItems;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
 use App\Traits\RemapsBookingPickup;
@@ -286,6 +287,12 @@ class AdminController extends Controller
     {
         if (array_key_exists('document_requirements', $data)) {
             $data['document_requirements'] = TripDocumentRequirements::normalize($data['document_requirements']);
+        }
+
+        // อุปกรณ์ให้เช่าก็ผูกด้วย key ด้วยเหตุผลเดียวกัน — ใบจองที่แช่ไว้แล้ว
+        // ต้องตามหาชุดของมันเจอแม้แอดมินจะแก้ชื่อรายการทีหลัง
+        if (array_key_exists('rental_items', $data)) {
+            $data['rental_items'] = TripRentalItems::normalize($data['rental_items']);
         }
 
         return $data;
@@ -1578,6 +1585,7 @@ class AdminController extends Controller
             // อุปกรณ์เช่าเพิ่มเติม — ส่ง sync_rentals=1 เพื่อเขียนทับทั้งชุด (ชุดว่าง = ลบทั้งหมด)
             'sync_rentals' => ['nullable', 'boolean'],
             'selected_rentals' => ['nullable', 'array'],
+            'selected_rentals.*.key' => ['nullable', 'string', 'max:64'],
             'selected_rentals.*.name' => ['required_with:selected_rentals', 'string', 'max:255'],
             'selected_rentals.*.unit_price' => ['required_with:selected_rentals', 'numeric', 'min:0'],
             'selected_rentals.*.quantity' => ['required_with:selected_rentals', 'integer', 'min:1', 'max:50'],
@@ -1710,12 +1718,22 @@ class AdminController extends Controller
                         $linePrice = $unitPrice * $quantity;
                         $rentalsTotal += $linePrice;
 
+                        // แถวที่มาจากปุ่มลัดแคตตาล็อกจะพก key มาด้วย ส่วนแถวที่แอดมิน
+                        // พิมพ์เองไม่มี — หาให้จากชื่อ เพื่อให้ใบเตรียมของยังแตกชุดได้
+                        $name = trim($rental['name']);
+                        $key = trim((string) ($rental['key'] ?? ''));
+                        $option = $key !== ''
+                            ? TripRentalItems::find($booking->schedule?->trip?->rental_items, $key)
+                            : collect($booking->schedule?->trip?->rentalItems() ?? [])->firstWhere('name', $name);
+
                         $rentalSnapshots[] = [
-                            'name' => trim($rental['name']),
+                            'key' => (string) ($option['key'] ?? $key),
+                            'name' => $name,
                             'unit_price' => $unitPrice,
                             'quantity' => $quantity,
                             'total_price' => $linePrice,
                             'image_url' => (string) ($rental['image_url'] ?? ''),
+                            'parts' => TripRentalItems::normalizeParts($option['parts'] ?? []),
                         ];
                     }
 

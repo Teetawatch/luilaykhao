@@ -82,6 +82,28 @@ class EquipmentRentalTest extends TestCase
         $this->assertEquals(400, $booking->selected_rentals[0]['total_price']);
     }
 
+    public function test_a_booking_freezes_the_key_of_the_item_it_rented(): void
+    {
+        Mail::fake();
+
+        $schedule = $this->makeSchedule([
+            ['name' => 'ชุดเต็นท์', 'price' => 700, 'parts' => [['name' => 'เต็นท์', 'quantity' => 1]]],
+        ]);
+        $user = User::factory()->create();
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: $user->id,
+            scheduleId: $schedule->id,
+            passengers: $this->passenger(),
+            selectedRentals: [['index' => 0, 'quantity' => 1]],
+        );
+
+        $key = $booking->selected_rentals[0]['key'];
+        $this->assertNotSame('', $key);
+        $this->assertSame($key, $schedule->trip->rentalItems()[0]['key']);
+        $this->assertSame('เต็นท์', $booking->selected_rentals[0]['parts'][0]['name']);
+    }
+
     public function test_zero_quantity_rentals_are_ignored(): void
     {
         Mail::fake();
