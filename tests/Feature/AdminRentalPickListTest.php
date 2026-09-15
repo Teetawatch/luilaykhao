@@ -293,6 +293,34 @@ class AdminRentalPickListTest extends TestCase
         $this->assertFalse($payload['items'][0]['is_set']);
     }
 
+    /**
+     * ชื่อในแคตตาล็อกถูกเปลี่ยนไปแล้ว ใบจองเก่าบางใบจองไว้ก่อนมีการใส่ของในชุด
+     * บางใบจองหลัง — ต้องยังรู้ว่าชื่อนี้คือชุด ไม่ใช่ตัดสินจากใบแรกที่เจอ
+     */
+    public function test_a_renamed_set_is_still_read_as_a_set_when_only_some_bookings_know_its_parts(): void
+    {
+        $schedule = $this->makeScheduleWithSet();
+
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ชุดครัว', 'quantity' => 1, 'unit_price' => 300, 'total_price' => 300],
+        ]);
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ชุดครัว', 'quantity' => 1, 'unit_price' => 300, 'total_price' => 300, 'parts' => [
+                ['name' => 'เตาแก๊ส', 'quantity' => 1],
+                ['name' => 'หม้อสนาม', 'quantity' => 2],
+            ]],
+        ]);
+
+        $item = collect($this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/rentals/schedules/{$schedule->id}")
+            ->assertOk()
+            ->json('data.items'))->firstWhere('name', 'ชุดครัว');
+
+        $this->assertTrue($item['is_set']);
+        $this->assertSame(3, $item['pieces_each']);
+        $this->assertSame(2, collect($item['parts'])->firstWhere('name', 'หม้อสนาม')['quantity']);
+    }
+
     public function test_pick_list_downloads_as_a_pdf(): void
     {
         $schedule = $this->makeScheduleWithSet();

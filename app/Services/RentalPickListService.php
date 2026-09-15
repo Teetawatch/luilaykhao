@@ -55,9 +55,7 @@ class RentalPickListService
                     'quantity' => 0,
                     'revenue' => 0.0,
                     'renters' => 0,
-                    'is_set' => $line['parts'] !== [],
                     'parts' => [],
-                    'pieces_each' => $this->piecesEach($line['parts']),
                 ];
                 $items[$key]['quantity'] += $line['quantity'];
                 $items[$key]['revenue'] += $line['total_price'];
@@ -98,6 +96,12 @@ class RentalPickListService
         $items = collect($items)
             ->map(function (array $item) {
                 $item['parts'] = collect($item['parts'])->values()->all();
+
+                // ตัดสินว่าเป็นชุดจากส่วนประกอบที่รวมได้ทั้งหมด ไม่ใช่จากใบจองใบแรก —
+                // ชื่อเดียวกันอาจมีทั้งใบที่รู้จักส่วนประกอบและใบที่ไม่รู้ ถ้าชื่อในแคตตาล็อก
+                // ถูกเปลี่ยนไปแล้วและใบจองเก่าบางใบจองไว้ก่อนมีการใส่ของในชุด
+                $item['is_set'] = $item['parts'] !== [];
+                $item['pieces_each'] = $this->piecesEach($item['parts']);
 
                 return $item;
             })
@@ -190,9 +194,10 @@ class RentalPickListService
             ->all();
     }
 
+    /** จำนวนชิ้นต่อหนึ่งชุด — ของที่ไม่ใช่ชุดนับเป็น 1 ชิ้นตามตัวมันเอง */
     private function piecesEach(array $parts): int
     {
-        return $parts === [] ? 1 : (int) collect($parts)->sum('quantity');
+        return $parts === [] ? 1 : (int) collect($parts)->sum('quantity_each');
     }
 
     /**
