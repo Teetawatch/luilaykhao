@@ -17,14 +17,25 @@ use Illuminate\Console\Command;
  */
 class BackfillRentalKeys extends Command
 {
-    protected $signature = 'rentals:backfill-keys {--dry-run : แสดงผลลัพธ์โดยไม่บันทึก}';
+    protected $signature = 'rentals:backfill-keys
+        {--dry-run : แสดงผลลัพธ์โดยไม่บันทึก}
+        {--parts-from=* : คัดลอกของในชุดให้รายการที่ไม่มีในแคตตาล็อกแล้ว รูปแบบ "ชื่อบนใบจอง=ชื่อในแคตตาล็อกวันนี้" (ใส่ได้หลายคู่)}';
 
     protected $description = 'แปะ key ถาวรให้อุปกรณ์ให้เช่าในทริปและใบจองเดิม เพื่อให้เปลี่ยนชื่อรายการได้โดยใบจองไม่หลุด';
+
+    /** ชื่อบนใบจอง => ชื่อในแคตตาล็อกที่จะคัดลอกของในชุดมาให้ */
+    private array $partsFrom = [];
+
+    private int $partsCopied = 0;
 
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
         $prefix = $dryRun ? '[dry-run] ' : '';
+
+        if (! $this->readPartsFrom()) {
+            return self::FAILURE;
+        }
 
         $tripsTouched = $this->backfillTrips($dryRun);
         [$bookingsTouched, $linesTouched, $orphans] = $this->backfillBookings($dryRun);
@@ -33,15 +44,45 @@ class BackfillRentalKeys extends Command
         $this->info("{$prefix}แคตตาล็อก: แก้ {$tripsTouched} ทริป");
         $this->info("{$prefix}ใบจอง: แก้ {$bookingsTouched} ใบ ({$linesTouched} รายการ)");
 
+        if ($this->partsCopied > 0) {
+            $this->info("{$prefix}คัดลอกของในชุดให้รายการที่ไม่มีในแคตตาล็อกแล้ว {$this->partsCopied} รายการ");
+        }
+
         if ($orphans !== []) {
             $this->newLine();
             $this->warn('รายการที่หาในแคตตาล็อกไม่เจอ (ชื่อไม่ตรงกับทริปแล้ว) — ต้องไล่ดูเอง:');
             foreach ($orphans as $label => $count) {
                 $this->line("  {$label} · {$count} ใบจอง");
             }
+            $this->line('  ของชิ้นเดียวปล่อยไว้ได้ ใบเตรียมของนับถูกตามชื่อตัวเองอยู่แล้ว');
+            $this->line('  ถ้าเป็นชุด ใช้ --parts-from="ชื่อข้างบน=ชื่อในแคตตาล็อกวันนี้" เพื่อคัดลอกของในชุดมาให้');
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * อ่านคู่ --parts-from ที่ผู้ใช้สั่งมา
+     *
+     * คัดลอกแค่ "ของในชุด" ไม่แตะชื่อ/ราคา/key — รายการที่เลิกขายไปแล้ว
+     * (เช่นชุดเดียวกันแต่ "พร้อมแบกให้") จึงแตกเป็นชิ้นได้โดยไม่ต้องเอา
+     * ของที่เลิกขายกลับเข้าแคตตาล็อกให้ลูกค้าเห็น
+     */
+    private function readPartsFrom(): bool
+    {
+        foreach ((array) $this->option('parts-from') as $pair) {
+            $parts = explode('=', (string) $pair, 2);
+
+            if (count($parts) !== 2 || trim($parts[0]) === '' || trim($parts[1]) === '') {
+                $this->error('รูปแบบ --parts-from ต้องเป็น "ชื่อบนใบจอง=ชื่อในแคตตาล็อกวันนี้"');
+
+                return false;
+            }
+
+            $this->partsFrom[trim($parts[0])] = trim($parts[1]);
+        }
+
+        return true;
     }
 
     /** เขียน key ลงแคตตาล็อกของทุกทริปที่มีอุปกรณ์ให้เช่า */
@@ -108,6 +149,17 @@ class BackfillRentalKeys extends Command
                         $option = $catalog->get($name);
 
                         if (! $option) {
+                            // ไม่มีในแคตตาล็อกแล้ว — ยังพอคัดลอกของในชุดมาให้ได้ ถ้าสั่งไว้
+                            $source = $catalog->get($this->partsFrom[$name] ?? '');
+
+                            if ($source && $source['parts'] !== [] && ($rental['parts'] ?? []) === []) {
+                                $rentals[$index]['parts'] = $source['parts'];
+                                $changed = true;
+                                $this->partsCopied++;
+
+                                continue;
+                            }
+
                             if ($name !== '') {
                                 $orphans[$name] = ($orphans[$name] ?? 0) + 1;
                             }

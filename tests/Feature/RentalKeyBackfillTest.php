@@ -135,6 +135,43 @@ class RentalKeyBackfillTest extends TestCase
         $this->assertArrayNotHasKey('เต็นท์', $picking);
     }
 
+    /**
+     * ชุดเดียวกันที่เลิกขายไปแล้ว (เช่นเวอร์ชัน "พร้อมแบกให้") ไม่มีในแคตตาล็อก
+     * ให้จับคู่ — คัดลอกเฉพาะของในชุดมาแปะได้ โดยไม่ต้องเอาของที่เลิกขายกลับ
+     * เข้าแคตตาล็อกให้ลูกค้าเห็น และไม่แตะชื่อกับราคาที่ลูกค้าจ่ายไปแล้ว
+     */
+    public function test_parts_can_be_copied_onto_a_line_whose_item_is_gone(): void
+    {
+        $schedule = $this->makeSchedule();
+        $retired = 'ชุดเต็นท์ ถุงนอน แผ่นรองนอน หมอน (พร้อมแบกให้)';
+
+        $booking = $this->book($schedule, [
+            ['name' => $retired, 'quantity' => 2, 'unit_price' => 1200, 'total_price' => 2400],
+        ]);
+
+        $this->artisan('rentals:backfill-keys', [
+            '--parts-from' => [$retired.'='.self::OLD_NAME],
+        ])->assertSuccessful();
+
+        $line = $booking->fresh()->selected_rentals[0];
+        $this->assertSame($retired, $line['name']);          // ชื่อที่ลูกค้าจองไว้ ไม่ถูกแตะ
+        $this->assertSame('', $line['key'] ?? '');            // ไม่ผูกกับรายการที่ยังขายอยู่
+        $this->assertSame(1200.0, (float) $line['unit_price']);
+        $this->assertSame('แผ่นรองนอน', $line['parts'][2]['name']);
+
+        $picking = $this->picking($schedule);
+        $this->assertSame(2, $picking['เต็นท์']['quantity']);
+        $this->assertSame(2, $picking['ถุงนอน']['quantity']);
+        $this->assertArrayNotHasKey($retired, $picking);
+    }
+
+    public function test_a_malformed_parts_from_pair_stops_the_command(): void
+    {
+        $this->artisan('rentals:backfill-keys', ['--parts-from' => ['ไม่มีเครื่องหมายเท่ากับ']])
+            ->expectsOutputToContain('รูปแบบ --parts-from')
+            ->assertFailed();
+    }
+
     public function test_backfill_reports_lines_it_could_not_match(): void
     {
         $schedule = $this->makeSchedule();
