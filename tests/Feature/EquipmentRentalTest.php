@@ -168,4 +168,73 @@ class EquipmentRentalTest extends TestCase
             ->assertJsonPath('data.rental_items.0.name', 'ถุงนอน')
             ->assertJsonPath('data.rental_items.0.image_url', $image);
     }
+
+    public function test_admin_can_describe_what_a_rental_set_contains(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        Category::firstOrCreate(['slug' => 'trekking'], ['name' => 'เดินป่า']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $trip = Trip::create([
+            'title' => 'Set Trip', 'slug' => 'set-trip', 'type' => 'trekking',
+            'location' => 'Chiang Mai', 'region' => 'north', 'difficulty' => 'easy',
+            'duration_days' => 1, 'max_participants' => 8, 'price_per_person' => 1000,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/trips/{$trip->id}", [
+                'title' => $trip->title,
+                'type' => 'trekking',
+                'location' => $trip->location,
+                'region' => $trip->region,
+                'difficulty' => 'easy',
+                'duration_days' => 1,
+                'max_participants' => 8,
+                'price_per_person' => 1000,
+                'rental_items' => [
+                    ['name' => 'ชุดเต็นท์', 'price' => 700, 'parts' => [
+                        ['name' => 'เต็นท์ 2 คน', 'quantity' => 1],
+                        ['name' => 'ถุงนอน', 'quantity' => 2],
+                    ]],
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertSame('ถุงนอน', $trip->fresh()->rental_items[0]['parts'][1]['name']);
+        $this->assertSame(2, $trip->fresh()->rental_items[0]['parts'][1]['quantity']);
+    }
+
+    public function test_a_set_part_without_a_quantity_is_rejected(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        Category::firstOrCreate(['slug' => 'trekking'], ['name' => 'เดินป่า']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $trip = Trip::create([
+            'title' => 'Bad Set', 'slug' => 'bad-set', 'type' => 'trekking',
+            'location' => 'Chiang Mai', 'region' => 'north', 'difficulty' => 'easy',
+            'duration_days' => 1, 'max_participants' => 8, 'price_per_person' => 1000,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/trips/{$trip->id}", [
+                'title' => $trip->title,
+                'type' => 'trekking',
+                'location' => $trip->location,
+                'region' => $trip->region,
+                'difficulty' => 'easy',
+                'duration_days' => 1,
+                'max_participants' => 8,
+                'price_per_person' => 1000,
+                'rental_items' => [
+                    ['name' => 'ชุดเต็นท์', 'price' => 700, 'parts' => [['name' => 'เต็นท์ 2 คน']]],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('rental_items.0.parts.0.quantity');
+    }
 }

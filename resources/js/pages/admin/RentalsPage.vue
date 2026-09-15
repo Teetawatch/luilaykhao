@@ -10,8 +10,12 @@
           <span class="material-symbols-rounded" :class="{ 'animate-spin': loadingSchedules }">refresh</span>
           รีเฟรช
         </button>
-        <button v-if="detail" class="btn-primary" @click="printList">
-          <span class="material-symbols-rounded">print</span> พิมพ์ใบรวม
+        <button v-if="detail" class="btn-secondary" @click="printList">
+          <span class="material-symbols-rounded">print</span> พิมพ์
+        </button>
+        <button v-if="detail" class="btn-primary" :disabled="downloadingPdf" @click="downloadPdf">
+          <span class="material-symbols-rounded">{{ downloadingPdf ? 'hourglass_top' : 'picture_as_pdf' }}</span>
+          {{ downloadingPdf ? 'กำลังสร้าง...' : 'ดาวน์โหลด PDF' }}
         </button>
       </div>
     </div>
@@ -99,7 +103,7 @@
           <div class="print-head">
             <h1>ใบรวมอุปกรณ์เช่า</h1>
             <p>{{ detail.schedule.trip_title }} · รอบเดินทาง {{ detail.schedule.departure_date_thai }}</p>
-            <p class="print-meta">พิมพ์เมื่อ {{ printedAt }} · รวม {{ detail.totals.pieces }} ชิ้น จาก {{ detail.totals.bookings }} ใบจอง</p>
+            <p class="print-meta">พิมพ์เมื่อ {{ printedAt }} · ต้องหยิบ {{ detail.totals.picking_pieces }} ชิ้น จาก {{ detail.totals.bookings }} ใบจอง</p>
           </div>
 
           <div class="detail-head">
@@ -114,13 +118,17 @@
               </p>
             </div>
             <div class="totals">
-              <div class="total-cell">
-                <span class="total-num">{{ detail.totals.pieces }}</span>
-                <span class="total-label">ชิ้นที่ต้องขน</span>
+              <div class="total-cell strong">
+                <span class="total-num">{{ detail.totals.picking_pieces }}</span>
+                <span class="total-label">ชิ้นที่ต้องหยิบ</span>
               </div>
               <div class="total-cell">
-                <span class="total-num">{{ detail.items.length }}</span>
-                <span class="total-label">รายการ</span>
+                <span class="total-num">{{ detail.totals.picking_lines }}</span>
+                <span class="total-label">ชนิดของ</span>
+              </div>
+              <div class="total-cell">
+                <span class="total-num">{{ detail.totals.pieces }}</span>
+                <span class="total-label">รายการที่เช่า</span>
               </div>
               <div class="total-cell">
                 <span class="total-num">{{ detail.totals.bookings }}</span>
@@ -133,31 +141,68 @@
             </div>
           </div>
 
+          <!-- ของที่ต้องหยิบจริง — ชุดถูกแตกเป็นชิ้นแล้ว เพราะของวางแยกชั้นกันในโกดัง -->
           <div class="section-head">
-            <h3 class="section-label">สรุปของที่ต้องเตรียม</h3>
+            <h3 class="section-label">ของที่ต้องหยิบ · {{ detail.totals.picking_pieces }} ชิ้น</h3>
             <button class="link-btn no-print" @click="copySummary">
               <span class="material-symbols-rounded">content_copy</span> คัดลอกรายการ
             </button>
           </div>
 
+          <div class="pick-list">
+            <div v-for="piece in detail.picking" :key="piece.name" class="pick-row">
+              <span class="tick-box print-only"></span>
+              <span class="pick-name">
+                {{ piece.name }}
+                <span v-if="piece.from_set" class="pick-tag">อยู่ในชุด</span>
+              </span>
+              <span class="pick-from">
+                <template v-if="piece.from_set || piece.sources.length > 1">
+                  {{ piece.sources.map((s) => `${s.name} ×${s.quantity}`).join(' · ') }}
+                </template>
+                <template v-else>เช่าเป็นชิ้น</template>
+              </span>
+              <span class="pick-qty">{{ piece.quantity }}</span>
+            </div>
+          </div>
+
+          <div class="section-head">
+            <h3 class="section-label">รายการตามที่ลูกค้าเช่า</h3>
+          </div>
+
           <div class="item-grid">
             <div v-for="item in detail.items" :key="item.name" class="item-card">
-              <span class="tick-box print-only"></span>
-              <div class="item-thumb">
-                <img v-if="item.image_url" :src="item.image_url" :alt="item.name" loading="lazy" />
-                <span v-else class="material-symbols-rounded">backpack</span>
-              </div>
-              <div class="item-info">
-                <span class="item-name">{{ item.name }}</span>
-                <span class="item-sub">{{ item.renters }} ใบจอง · ฿{{ formatMoney(item.revenue) }}</span>
-                <span class="item-bar no-print">
-                  <span class="item-bar-fill" :style="{ width: `${sharePercent(item)}%` }"></span>
+              <div class="item-main">
+                <span class="tick-box print-only"></span>
+                <div class="item-thumb">
+                  <img v-if="item.image_url" :src="item.image_url" :alt="item.name" loading="lazy" />
+                  <span v-else class="material-symbols-rounded">backpack</span>
+                </div>
+                <div class="item-info">
+                  <span class="item-name">
+                    {{ item.name }}
+                    <span v-if="item.is_set" class="pick-tag">1 ชุด = {{ item.pieces_each }} ชิ้น</span>
+                  </span>
+                  <span class="item-sub">{{ item.renters }} ใบจอง · ฿{{ formatMoney(item.revenue) }}</span>
+                  <span class="item-bar no-print">
+                    <span class="item-bar-fill" :style="{ width: `${sharePercent(item)}%` }"></span>
+                  </span>
+                </div>
+                <span class="item-qty">
+                  <span class="qty-num">{{ item.quantity }}</span>
+                  <span class="qty-unit">{{ item.is_set ? 'ชุด' : 'ชิ้น' }}</span>
                 </span>
               </div>
-              <span class="item-qty">
-                <span class="qty-num">{{ item.quantity }}</span>
-                <span class="qty-unit">ชิ้น</span>
-              </span>
+
+              <!-- ชุดหนึ่งมีอะไรบ้าง ตั้งไว้ที่หน้าแก้ไขทริป → อุปกรณ์ให้เช่า -->
+              <ul v-if="item.parts.length" class="part-list">
+                <li v-for="part in item.parts" :key="part.name">
+                  <span class="tick-box print-only"></span>
+                  <span class="part-name">{{ part.name }}</span>
+                  <span class="part-each">ชุดละ {{ part.quantity_each }}</span>
+                  <span class="part-qty">×{{ part.quantity }}</span>
+                </li>
+              </ul>
             </div>
           </div>
 
@@ -194,6 +239,9 @@
                     <td>
                       <span v-for="it in b.items" :key="it.name" class="rent-chip">
                         {{ it.name }} <strong>×{{ it.quantity }}</strong>
+                        <em v-if="it.parts.length">
+                          ({{ it.parts.map((p) => `${p.name} ×${p.quantity * it.quantity}`).join(', ') }})
+                        </em>
                       </span>
                     </td>
                     <td class="num money">฿{{ formatMoney(b.rentals_total) }}</td>
@@ -237,6 +285,7 @@ const loadingDetail = ref(false);
 const printArea = ref(null);
 const scheduleQuery = ref('');
 const bookingQuery = ref('');
+const downloadingPdf = ref(false);
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString('th-TH');
@@ -371,14 +420,27 @@ function refresh() {
 async function copySummary() {
   if (!detail.value) return;
 
+  const d = detail.value;
   const lines = [
-    `ใบรวมอุปกรณ์เช่า — ${detail.value.schedule.trip_title}`,
-    `รอบเดินทาง ${detail.value.schedule.departure_date_thai}`,
+    `ใบเตรียมอุปกรณ์เช่า — ${d.schedule.trip_title}`,
+    `รอบเดินทาง ${d.schedule.departure_date_thai}`,
     '',
-    ...detail.value.items.map((it) => `• ${it.name} ×${it.quantity}`),
-    '',
-    `รวม ${detail.value.totals.pieces} ชิ้น จาก ${detail.value.totals.bookings} ใบจอง`,
+    `ของที่ต้องหยิบ (${d.totals.picking_pieces} ชิ้น)`,
+    ...d.picking.map((p) => `• ${p.name} ×${p.quantity}`),
   ];
+
+  // ชุดไหนประกอบด้วยอะไร ต่อท้ายไว้ให้คนจัดของใส่ถุงรายคนอ่านได้ในข้อความเดียว
+  const sets = d.items.filter((it) => it.parts.length);
+
+  if (sets.length) {
+    lines.push('', 'แจกแจงตามชุด');
+    sets.forEach((it) => {
+      lines.push(`• ${it.name} ×${it.quantity}`);
+      it.parts.forEach((part) => lines.push(`   – ${part.name} ×${part.quantity}`));
+    });
+  }
+
+  lines.push('', `จาก ${d.totals.bookings} ใบจอง · ${d.totals.pieces} รายการที่ลูกค้าเช่า`);
 
   try {
     await navigator.clipboard.writeText(lines.join('\n'));
@@ -390,6 +452,26 @@ async function copySummary() {
 
 function printList() {
   window.print();
+}
+
+/** ใบเตรียมของแบบ PDF — ส่งให้คนที่ไปหยิบของถือไปโดยไม่ต้องเปิดหลังบ้าน */
+async function downloadPdf() {
+  if (!detail.value || downloadingPdf.value) return;
+
+  downloadingPdf.value = true;
+  try {
+    const res = await api.get(`/admin/rentals/schedules/${selectedId.value}/pdf`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ใบเตรียมอุปกรณ์-${detail.value.schedule.departure_date || selectedId.value}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error('สร้าง PDF ไม่สำเร็จ');
+  } finally {
+    downloadingPdf.value = false;
+  }
 }
 
 onMounted(loadSchedules);
@@ -525,6 +607,7 @@ onMounted(loadSchedules);
   background: #FAFAFA; border: 1px solid #EEEEEE; border-radius: 10px;
 }
 .total-num { font-size: 20px; font-weight: 800; color: var(--color-accent); line-height: 1.2; }
+.total-cell.strong { background: rgba(45, 122, 79, 0.06); border-color: rgba(45, 122, 79, 0.18); }
 .total-label { font-size: 11.5px; color: #6b7280; }
 
 .section-head {
@@ -545,17 +628,58 @@ onMounted(loadSchedules);
 .link-btn .material-symbols-rounded { font-size: 17px; }
 .link-btn:hover { text-decoration: underline; }
 
+/* ─── ของที่ต้องหยิบจริง ─────────────────── */
+.pick-list {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  overflow: hidden; margin-bottom: 26px;
+}
+.pick-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 16px; border-bottom: 1px solid #F0F1F0;
+}
+.pick-row:last-child { border-bottom: none; }
+.pick-row:nth-child(even) { background: #FAFAFA; }
+
+.pick-name {
+  flex: 0 1 260px; min-width: 0;
+  font-size: 14.5px; font-weight: 700; color: #111827;
+}
+.pick-tag {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 6px;
+  background: rgba(45, 122, 79, 0.08); color: var(--color-accent);
+  font-size: 11px; font-weight: 700; vertical-align: middle;
+}
+.pick-from {
+  flex: 1; min-width: 0; font-size: 12.5px; color: #9ca3af;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pick-qty {
+  flex-shrink: 0; font-size: 20px; font-weight: 800;
+  color: var(--color-accent); line-height: 1.1; min-width: 44px; text-align: right;
+}
+
 /* ─── การ์ดของแต่ละรายการ ───────────────── */
 .item-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px; margin-bottom: 26px;
 }
 .item-card {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; flex-direction: column;
   background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 16px;
   transition: border-color 0.15s;
 }
 .item-card:hover { border-color: #d1d5db; }
+.item-main { display: flex; align-items: center; gap: 12px; }
+
+/* ของที่อยู่ในชุด — ไล่ลงมาใต้ชื่อชุด ไม่ใช่การ์ดแยก จะได้อ่านคู่กับจำนวนชุด */
+.part-list {
+  list-style: none; margin: 10px 0 0; padding: 10px 0 0;
+  border-top: 1px dashed #EEEEEE; display: flex; flex-direction: column; gap: 6px;
+}
+.part-list li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.part-name { flex: 1; min-width: 0; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.part-each { font-size: 11.5px; color: #9ca3af; flex-shrink: 0; }
+.part-qty { font-weight: 700; color: #111827; flex-shrink: 0; min-width: 34px; text-align: right; }
 
 .item-thumb {
   width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0;
@@ -592,6 +716,7 @@ onMounted(loadSchedules);
   margin: 2px 4px 2px 0;
 }
 .rent-chip strong { color: #111827; font-weight: 700; }
+.rent-chip em { font-style: normal; color: #9ca3af; font-size: 11.5px; }
 
 .phone-link {
   display: inline-flex; align-items: center; gap: 3px;
@@ -666,12 +791,20 @@ onMounted(loadSchedules);
   .total-cell { border: 1px solid #999; background: none; }
   .total-num { color: #000; }
 
-  .item-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; page-break-inside: avoid; }
-  .item-card { border-color: #999; padding: 8px 10px; }
+  .item-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .item-card { border-color: #999; padding: 8px 10px; page-break-inside: avoid; }
   .item-thumb { display: none; }
   .qty-num { color: #000; }
 
+  .pick-list { border-color: #999; }
+  .pick-row { page-break-inside: avoid; border-bottom-color: #ccc; }
+  .pick-row:nth-child(even) { background: none; }
+  .pick-qty { color: #000; }
+  .pick-tag { background: none; border: 1px solid #999; color: #000; }
+  .part-list { border-top-color: #ccc; }
+
   .print-only { display: table-cell !important; }
+  .pick-row .tick-box, .item-main .tick-box, .part-list .tick-box { display: inline-block !important; }
   .tick-col { width: 40px; text-align: center; }
   .tick-box {
     display: inline-block; width: 15px; height: 15px;

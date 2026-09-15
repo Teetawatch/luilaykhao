@@ -79,6 +79,11 @@ class StoreTripRequest extends FormRequest
             'rental_items.*.price' => ['required_with:rental_items', 'numeric', 'min:0'],
             'rental_items.*.image_url' => ['nullable', 'string', 'max:2048'],
             'rental_items.*.description' => ['nullable', 'string', 'max:500'],
+            // ของที่อยู่ในชุด เช่น "ชุดเต็นท์" = เต็นท์ 1 + ถุงนอน 1 + แผ่นรองนอน 1
+            // ใช้แตกเป็นชิ้นในใบเตรียมของ ไม่มีผลกับราคา (คิดตามราคาชุด)
+            'rental_items.*.parts' => ['nullable', 'array', 'max:20'],
+            'rental_items.*.parts.*.name' => ['required_with:rental_items.*.parts', 'string', 'max:255'],
+            'rental_items.*.parts.*.quantity' => ['required_with:rental_items.*.parts', 'integer', 'min:1', 'max:99'],
             // เอกสารที่ทริปนี้ขอให้ลูกค้าแนบ — `note` คือช่อง "ใช้สำหรับ..."
             // ที่แอดมินพิมพ์เอง `key` มาจากของเดิมเมื่อแก้แถวที่มีไฟล์แนบแล้ว
             'document_requirements' => ['nullable', 'array', 'max:20'],

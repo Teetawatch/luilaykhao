@@ -69,6 +69,24 @@ class AdminRentalPickListTest extends TestCase
         ]);
     }
 
+    /** รอบที่มี "ชุด" อยู่ในแคตตาล็อก — ชุดเต็นท์ = เต็นท์ 1 + ถุงนอน 1 + แผ่นรองนอน 1 */
+    private function makeScheduleWithSet(): TripSchedule
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update([
+            'rental_items' => [
+                ['name' => 'ถุงนอน', 'price' => 200],
+                ['name' => 'ชุดเต็นท์', 'price' => 700, 'parts' => [
+                    ['name' => 'เต็นท์ 2 คน', 'quantity' => 1],
+                    ['name' => 'ถุงนอน', 'quantity' => 2],
+                    ['name' => 'แผ่นรองนอน', 'quantity' => 2],
+                ]],
+            ],
+        ]);
+
+        return $schedule->fresh('trip');
+    }
+
     public function test_pick_list_totals_each_item_across_every_booking_on_the_round(): void
     {
         $schedule = $this->makeSchedule();
@@ -163,6 +181,143 @@ class AdminRentalPickListTest extends TestCase
             ->assertOk();
 
         $this->assertCount(2, $withPast->json('data.schedules'));
+    }
+
+    public function test_sets_are_exploded_into_the_pieces_that_must_be_picked(): void
+    {
+        $schedule = $this->makeScheduleWithSet();
+
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ชุดเต็นท์', 'quantity' => 2, 'unit_price' => 700, 'total_price' => 1400],
+        ]);
+        // ถุงนอนเดี่ยวต้องถูกบวกรวมกับถุงนอนที่อยู่ในชุด
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ถุงนอน', 'quantity' => 1, 'unit_price' => 200, 'total_price' => 200],
+        ]);
+
+        $payload = $this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/rentals/schedules/{$schedule->id}")
+            ->assertOk()
+            ->json('data');
+
+        $picking = collect($payload['picking'])->keyBy('name');
+
+        $this->assertSame(5, $picking['ถุงนอน']['quantity']);      // 2 ชุด ×2 + เดี่ยวอีก 1
+        $this->assertSame(4, $picking['แผ่นรองนอน']['quantity']);
+        $this->assertSame(2, $picking['เต็นท์ 2 คน']['quantity']);
+        $this->assertArrayNotHasKey('ชุดเต็นท์', $picking->all());  // ชุดไม่ใช่ของที่หยิบได้
+
+        // ถุงนอนมาจากสองทาง บอกให้ครบว่าอันไหนกี่ใบ
+        $this->assertEqualsCanonicalizing(
+            [['name' => 'ชุดเต็นท์', 'quantity' => 4, 'is_set' => true], ['name' => 'ถุงนอน', 'quantity' => 1, 'is_set' => false]],
+            $picking['ถุงนอน']['sources']
+        );
+
+        $this->assertSame(11, $payload['totals']['picking_pieces']);
+        $this->assertSame(3, $payload['totals']['picking_lines']);
+        // ยอด "รายการที่ลูกค้าเช่า" ยังนับเป็นชุดเหมือนเดิม
+        $this->assertSame(3, $payload['totals']['pieces']);
+
+        $set = collect($payload['items'])->firstWhere('name', 'ชุดเต็นท์');
+        $this->assertTrue($set['is_set']);
+        $this->assertSame(5, $set['pieces_each']);
+        $this->assertSame(4, collect($set['parts'])->firstWhere('name', 'ถุงนอน')['quantity']);
+        $this->assertSame(2, collect($set['parts'])->firstWhere('name', 'ถุงนอน')['quantity_each']);
+    }
+
+    public function test_editing_what_a_set_contains_updates_rounds_that_have_not_left(): void
+    {
+        $schedule = $this->makeScheduleWithSet();
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ชุดเต็นท์', 'quantity' => 1, 'unit_price' => 700, 'total_price' => 700, 'parts' => [
+                ['name' => 'เต็นท์ 2 คน', 'quantity' => 1],
+                ['name' => 'ถุงนอน', 'quantity' => 2],
+                ['name' => 'แผ่นรองนอน', 'quantity' => 2],
+            ]],
+        ]);
+
+        // เพิ่มหมอนเข้าไปในชุดทีหลัง — คนเตรียมของต้องเห็นหมอนด้วย
+        $schedule->trip->update([
+            'rental_items' => [
+                ['name' => 'ชุดเต็นท์', 'price' => 700, 'parts' => [
+                    ['name' => 'เต็นท์ 2 คน', 'quantity' => 1],
+                    ['name' => 'หมอนเป่าลม', 'quantity' => 1],
+                ]],
+            ],
+        ]);
+
+        $picking = collect($this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/rentals/schedules/{$schedule->id}")
+            ->assertOk()
+            ->json('data.picking'))->keyBy('name');
+
+        $this->assertSame(1, $picking['หมอนเป่าลม']['quantity']);
+        $this->assertArrayNotHasKey('ถุงนอน', $picking->all());
+    }
+
+    public function test_a_set_removed_from_the_trip_still_explodes_from_the_booking_snapshot(): void
+    {
+        $schedule = $this->makeScheduleWithSet();
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ชุดครัว', 'quantity' => 2, 'unit_price' => 300, 'total_price' => 600, 'parts' => [
+                ['name' => 'เตาแก๊ส', 'quantity' => 1],
+                ['name' => 'หม้อสนาม', 'quantity' => 1],
+            ]],
+        ]);
+
+        $picking = collect($this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/rentals/schedules/{$schedule->id}")
+            ->assertOk()
+            ->json('data.picking'))->keyBy('name');
+
+        $this->assertSame(2, $picking['เตาแก๊ส']['quantity']);
+        $this->assertSame(2, $picking['หม้อสนาม']['quantity']);
+    }
+
+    public function test_items_without_parts_are_picked_as_themselves(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ถุงนอน', 'quantity' => 3, 'unit_price' => 200, 'total_price' => 600],
+        ]);
+
+        $payload = $this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/rentals/schedules/{$schedule->id}")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame('ถุงนอน', $payload['picking'][0]['name']);
+        $this->assertSame(3, $payload['picking'][0]['quantity']);
+        $this->assertFalse($payload['picking'][0]['from_set']);
+        $this->assertSame(1, $payload['items'][0]['pieces_each']);
+        $this->assertFalse($payload['items'][0]['is_set']);
+    }
+
+    public function test_pick_list_downloads_as_a_pdf(): void
+    {
+        $schedule = $this->makeScheduleWithSet();
+        $this->bookWithRentals($schedule, [
+            ['name' => 'ชุดเต็นท์', 'quantity' => 2, 'unit_price' => 700, 'total_price' => 1400],
+        ]);
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->get("/api/v1/admin/rentals/schedules/{$schedule->id}/pdf")
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $this->assertStringContainsString('.pdf', $res->headers->get('content-disposition'));
+        $this->assertStringStartsWith('%PDF', $res->getContent());
+    }
+
+    public function test_customers_cannot_download_the_rental_pdf(): void
+    {
+        $schedule = $this->makeSchedule();
+        $customer = User::factory()->create();
+        $customer->assignRole('customer');
+
+        $this->actingAs($customer, 'sanctum')
+            ->get("/api/v1/admin/rentals/schedules/{$schedule->id}/pdf")
+            ->assertForbidden();
     }
 
     public function test_customers_cannot_read_the_rental_pick_list(): void

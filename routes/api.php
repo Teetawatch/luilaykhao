@@ -717,6 +717,7 @@ Route::prefix('v1')->group(function () {
         // ใบรวมอุปกรณ์เช่าที่ต้องเตรียมต่อรอบเดินทาง
         Route::get('rentals/schedules', [AdminRentalController::class, 'schedules']);
         Route::get('rentals/schedules/{id}', [AdminRentalController::class, 'show'])->whereNumber('id');
+        Route::get('rentals/schedules/{id}/pdf', [AdminRentalController::class, 'pdf'])->whereNumber('id');
 
         // ตั้งค่าระบบทั่วไป (เกณฑ์ที่นั่ง/ช่วงเวลางดรบกวน/ข้อมูลติดต่อ)
         Route::get('settings/site', [AdminSettingsController::class, 'show']);

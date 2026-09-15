@@ -361,6 +361,9 @@ class BookingService
                     'quantity' => $quantity,
                     'total_price' => $totalPrice,
                     'image_url' => (string) ($option['image_url'] ?? ''),
+                    // ส่วนประกอบของชุด แช่ไว้เผื่ออุปกรณ์ชิ้นนี้ถูกถอดออกจากทริปทีหลัง
+                    // ใบเตรียมของยังแตกเป็นชิ้นได้ (ปกติอ่านจาก catalog ปัจจุบัน)
+                    'parts' => is_array($option['parts'] ?? null) ? array_values($option['parts']) : [],
                 ];
             }
 

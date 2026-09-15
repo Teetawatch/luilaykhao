@@ -451,7 +451,8 @@
           <div class="rental-editor bg-sky-50 p-6 rounded-[2rem] border border-sky-100 space-y-4">
             <p class="text-sm font-bold text-sky-700 pl-1">
               ลูกค้าเลือกจำนวนเองได้ตอนจอง (เช่น ถุงนอน 2 ใบ) — ราคาคิดต่อชิ้น
-              ดูยอดรวมที่ต้องเตรียมแต่ละรอบได้ที่เมนู "อุปกรณ์เช่าที่ต้องเตรียม"
+              ถ้าเป็นชุด ใส่ "ของในชุด" ไว้ด้วย (เช่น ชุดเต็นท์ = เต็นท์ 1 + ถุงนอน 1 + แผ่นรองนอน 1)
+              แล้วใบเตรียมของจะแตกเป็นชิ้นให้เอง ดูได้ที่เมนู "อุปกรณ์เช่าที่ต้องเตรียม"
             </p>
 
             <div class="space-y-3">
@@ -482,6 +483,31 @@
                     <span class="text-gray-400 font-bold">฿</span>
                     <input v-model.number="item.price" type="number" min="0" placeholder="ราคาต่อชิ้น" class="w-32 px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-sky-500/20" />
                     <span class="text-gray-400 text-sm font-bold">/ ชิ้น</span>
+                  </div>
+
+                  <!-- ชุดนี้ประกอบด้วยอะไร — ใบเตรียมของแตกเป็นชิ้นตามนี้ ไม่กระทบราคา -->
+                  <div class="rounded-2xl bg-sky-50/70 border border-sky-100 p-3 space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-xs font-bold text-sky-700">
+                        ของในชุด
+                        <span v-if="item.parts?.length" class="text-sky-500">
+                          · {{ item.parts.length }} อย่าง รวม {{ setPieces(item) }} ชิ้น/ชุด
+                        </span>
+                        <span v-else class="text-gray-400 font-medium">(ไม่ใส่ก็ได้ ถ้าเป็นของชิ้นเดียว)</span>
+                      </span>
+                      <button type="button" @click="addRentalPart(idx)" class="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1">
+                        <span class="material-symbols-rounded" style="font-size:16px;">add_circle</span> เพิ่มของในชุด
+                      </button>
+                    </div>
+
+                    <div v-for="(part, pIdx) in item.parts || []" :key="pIdx" class="flex items-center gap-2">
+                      <input v-model="part.name" placeholder="ชื่อของ (เช่น ถุงนอน)" class="flex-1 min-w-0 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 ring-sky-500/20" />
+                      <input v-model.number="part.quantity" type="number" min="1" max="99" class="w-16 px-3 py-2 rounded-xl border border-gray-200 text-sm text-center focus:ring-2 ring-sky-500/20" />
+                      <span class="text-gray-400 text-xs font-bold shrink-0">ชิ้น/ชุด</span>
+                      <button type="button" @click="removeRentalPart(idx, pIdx)" class="text-red-300 hover:text-red-500 shrink-0">
+                        <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1161,6 +1187,13 @@ const buildTripPayload = () => {
         price: Number(item?.price || 0),
         description: String(item?.description || '').trim(),
         image_url: String(item?.image_url || '').trim(),
+        // ของที่อยู่ในชุด — ใช้แตกเป็นชิ้นในใบเตรียมของ ไม่มีผลกับราคา
+        parts: normalizeArray(item?.parts)
+          .map((part) => ({
+            name: String(part?.name || '').trim(),
+            quantity: Math.max(1, Number(part?.quantity || 1)),
+          }))
+          .filter((part) => part.name),
       }))
       .filter((item) => item.name),
     // key เดิมต้องส่งกลับไปด้วยเสมอ — ไฟล์ที่ลูกค้าแนบไว้แล้วผูกกับ key ไม่ใช่ชื่อ
@@ -1288,6 +1321,21 @@ const pickMustKnowLibrary = (url) => {
   showMustKnowLibrary.value = false;
 };
 
+// ─── ของในชุดอุปกรณ์เช่า ───────────────────────────────
+const setPieces = (item) =>
+  (item.parts || []).reduce((sum, part) => sum + Math.max(1, Number(part?.quantity || 1)), 0);
+
+const addRentalPart = (idx) => {
+  const item = form.rental_items[idx];
+  if (!item) return;
+  if (!Array.isArray(item.parts)) item.parts = [];
+  item.parts.push({ name: '', quantity: 1 });
+};
+
+const removeRentalPart = (idx, partIdx) => {
+  form.rental_items[idx]?.parts?.splice(partIdx, 1);
+};
+
 // ─── Equipment rental images ───────────────────────────────
 // เดินตามรูปแบบเดียวกับ must-know ด้านบน (อัปโหลดใหม่ หรือหยิบจากคลังรูปเดิม)
 const rentalImageInput = ref(null);
@@ -1406,7 +1454,7 @@ const addItem = (field, extra = null) => {
     form.must_know.items.push({ name: '', price: 0, price_type: 'per_booking', image_url: '' });
   } else if (field === 'rental_items') {
     if (!form.rental_items) form.rental_items = [];
-    form.rental_items.push({ name: '', price: 0, description: '', image_url: '' });
+    form.rental_items.push({ name: '', price: 0, description: '', image_url: '', parts: [] });
   } else if (field === 'document_requirements') {
     if (!form.document_requirements) form.document_requirements = [];
     // key ปล่อยว่าง — backend เป็นคนตั้งให้ตอนบันทึก แล้วส่งกลับมาคาไว้ในฟอร์ม
@@ -1783,6 +1831,10 @@ const initData = async () => {
         price: Number(item?.price || 0),
         description: item?.description || '',
         image_url: item?.image_url || '',
+        parts: normalizeArray(item?.parts).map((part) => ({
+          name: part?.name || '',
+          quantity: Number(part?.quantity || 1),
+        })),
       }));
       form.document_requirements = normalizeArray(trip.document_requirements).map((doc) => ({
         key: doc?.key || '',

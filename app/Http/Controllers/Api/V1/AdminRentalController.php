@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\TripSchedule;
+use App\Services\RentalPickListService;
 use App\Support\ThaiDate;
 use App\Traits\ApiResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * ใบรวมอุปกรณ์เช่าที่ต้องขนไปในแต่ละรอบ
@@ -17,13 +20,17 @@ use Illuminate\Http\Request;
  * แช่แข็งไว้บนการจอง) แต่เดิมข้อมูลนี้อ่านได้จากใบจองรายคนเท่านั้น ทีมงานจึงต้อง
  * เปิดทีละใบมานับเองว่าต้องเตรียมถุงนอนกี่ใบ หน้านี้รวมยอดต่อรอบให้ พร้อมแจกแจง
  * ว่าของชิ้นไหนของใคร เพื่อใช้เป็นเช็กลิสต์ตอนขนของขึ้นรถและตอนคืนของ
+ *
+ * การรวมยอดอยู่ใน RentalPickListService เพราะทั้ง JSON และ PDF ใช้ตัวเลขชุดเดียวกัน
  */
 class AdminRentalController extends Controller
 {
     use ApiResponse;
 
     /** สถานะการจองที่ถือว่าต้องเตรียมของจริง */
-    private const LIVE_STATUSES = ['confirmed', 'completed'];
+    private const LIVE_STATUSES = RentalPickListService::LIVE_STATUSES;
+
+    public function __construct(private RentalPickListService $pickList) {}
 
     /**
      * รอบที่มีคนเช่าอุปกรณ์ — ตั้งต้นเฉพาะรอบที่ยังไม่ออกเดินทาง
@@ -71,77 +78,27 @@ class AdminRentalController extends Controller
     {
         $schedule = TripSchedule::with('trip')->findOrFail($scheduleId);
 
-        $bookings = Booking::with('user')
-            ->where('schedule_id', $scheduleId)
-            ->whereIn('status', self::LIVE_STATUSES)
-            ->where('rentals_total', '>', 0)
-            ->orderBy('booking_ref')
-            ->get();
+        return $this->success($this->pickList->forSchedule($schedule));
+    }
 
-        // รวมยอดต่อชื่ออุปกรณ์ — ใช้ snapshot บนการจอง ไม่ใช่ catalog ปัจจุบัน
-        // เพราะราคา/รายการบนทริปอาจถูกแก้ไปแล้วหลังลูกค้าจอง
-        $items = [];
-        $perBooking = [];
+    /**
+     * ใบเตรียมของแบบ PDF — ส่งต่อให้คนที่ไปหยิบของในโกดังได้โดยไม่ต้องเปิดหลังบ้าน
+     */
+    public function pdf(int $scheduleId): Response
+    {
+        $schedule = TripSchedule::with('trip')->findOrFail($scheduleId);
+        $data = $this->pickList->forSchedule($schedule);
 
-        foreach ($bookings as $booking) {
-            $rentals = collect($booking->selected_rentals ?? [])
-                ->map(fn ($r) => [
-                    'name' => (string) ($r['name'] ?? ''),
-                    'quantity' => (int) ($r['quantity'] ?? 0),
-                    'unit_price' => (float) ($r['unit_price'] ?? 0),
-                    'total_price' => (float) ($r['total_price'] ?? 0),
-                    'image_url' => (string) ($r['image_url'] ?? ''),
-                ])
-                ->filter(fn ($r) => $r['name'] !== '' && $r['quantity'] > 0)
-                ->values();
+        $pdf = Pdf::loadView('admin.rentals.picklist', [
+            'd' => $data,
+            'printedAt' => ThaiDate::full(now('Asia/Bangkok')).' เวลา '.now('Asia/Bangkok')->format('H:i').' น.',
+            'fontRegular' => storage_path('fonts/Sarabun-Regular.ttf'),
+            'fontSemibold' => storage_path('fonts/Sarabun-SemiBold.ttf'),
+            'fontBold' => storage_path('fonts/Sarabun-Bold.ttf'),
+        ])->setPaper('a4');
 
-            if ($rentals->isEmpty()) {
-                continue;
-            }
+        $filename = 'rental-picklist-'.$schedule->id.'-'.($schedule->departure_date?->toDateString() ?? 'round').'.pdf';
 
-            foreach ($rentals as $rental) {
-                $key = $rental['name'];
-                $items[$key] ??= [
-                    'name' => $rental['name'],
-                    'image_url' => $rental['image_url'],
-                    'quantity' => 0,
-                    'revenue' => 0.0,
-                    'renters' => 0,
-                ];
-                $items[$key]['quantity'] += $rental['quantity'];
-                $items[$key]['revenue'] += $rental['total_price'];
-                $items[$key]['renters']++;
-                if ($items[$key]['image_url'] === '' && $rental['image_url'] !== '') {
-                    $items[$key]['image_url'] = $rental['image_url'];
-                }
-            }
-
-            $perBooking[] = [
-                'booking_ref' => $booking->booking_ref,
-                'customer_name' => $booking->user?->name ?? 'ลูกค้า',
-                'phone' => $booking->user?->phone,
-                'status' => $booking->status,
-                'rentals_total' => (float) $booking->rentals_total,
-                'items' => $rentals,
-            ];
-        }
-
-        $items = collect($items)->sortByDesc('quantity')->values();
-
-        return $this->success([
-            'schedule' => [
-                'id' => $schedule->id,
-                'trip_title' => $schedule->trip?->title,
-                'departure_date' => $schedule->departure_date?->toDateString(),
-                'departure_date_thai' => ThaiDate::full($schedule->departure_date),
-            ],
-            'items' => $items,
-            'bookings' => $perBooking,
-            'totals' => [
-                'pieces' => (int) $items->sum('quantity'),
-                'revenue' => (float) $items->sum('revenue'),
-                'bookings' => count($perBooking),
-            ],
-        ]);
+        return $pdf->download($filename);
     }
 }
