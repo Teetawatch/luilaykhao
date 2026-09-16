@@ -270,6 +270,10 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/story-link', [BookingController::class, 'storyLink']);
         Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
+        // ลูกค้ากดบอกสถานะตัวเองที่จุดนัด (กำลังไป/ถึงแล้ว/อาจสาย) — ให้กดซ้ำได้
+        // เรื่อย ๆ ตามสถานการณ์จริง แต่ไม่ถี่จนกลายเป็นช่องยิงแจ้งเตือนใส่สตาฟ
+        Route::post('bookings/{ref}/pickup-status', [BookingController::class, 'reportPickupStatus'])
+            ->middleware('throttle:20,10');
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
         // ลิงก์อัลบั้มสาธารณะของรอบ (ถ้าทีมงานเปิดแชร์แล้ว) — ทางไปค้นหารูปด้วยใบหน้า
         Route::get('bookings/{ref}/album', [BookingController::class, 'album']);

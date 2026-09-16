@@ -17,11 +17,13 @@ use App\Models\TripPost;
 use App\Models\TripSchedule;
 use App\Services\BookingService;
 use App\Services\ModerationService;
+use App\Services\PickupStatusService;
 use App\Services\WeatherService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
@@ -316,6 +318,48 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
+    }
+
+    /**
+     * ลูกค้ากดบอกเองว่าตอนนี้อยู่ตรงไหนของการนัดเจอที่จุดรับ
+     *
+     * เปิดให้เพื่อนร่วมใบจองกดได้ด้วย (ไม่ใช่เฉพาะคนจอง) เพราะคนที่ยืนอยู่ที่
+     * จุดนัดจริง ๆ บ่อยครั้งไม่ใช่คนที่กดจอง
+     */
+    public function reportPickupStatus(Request $request, string $ref, PickupStatusService $pickupStatus): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in(Booking::PICKUP_STATUSES)],
+            // "สายกี่นาที" เป็นการประมาณของลูกค้า ไม่ใช่สัญญา — ให้กรอกได้เท่าที่
+            // ยังมีความหมายกับการตัดสินใจของสตาฟ เกินสองชั่วโมงคือคนละเรื่องแล้ว
+            'eta_minutes' => ['nullable', 'integer', 'min:1', 'max:120'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $ref)
+            ->with(['schedule', 'pickupPoint', 'passengers', 'user'])
+            ->firstOrFail();
+
+        if (! $booking->isAccessibleByUser($request->user()->id)) {
+            return $this->error('ไม่พบการจองนี้', 404);
+        }
+
+        try {
+            $booking = $pickupStatus->report(
+                $booking,
+                $validated['status'],
+                $validated['eta_minutes'] ?? null,
+            );
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success([
+            'booking_ref' => $booking->booking_ref,
+            'pickup_status' => $booking->pickup_status,
+            'pickup_status_at' => $booking->pickup_status_at?->toISOString(),
+            'pickup_status_eta_minutes' => $booking->pickup_status_eta_minutes,
+            'label' => PickupStatusService::label($booking->pickup_status, $booking->pickup_status_eta_minutes),
+        ], 'แจ้งทีมงานแล้ว');
     }
 
     /**

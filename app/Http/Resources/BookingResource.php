@@ -119,6 +119,11 @@ class BookingResource extends JsonResource
             ),
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),
+            // สถานะที่ลูกค้ากดบอกเองที่จุดนัด — อ่านผ่าน freshPickupStatus() เสมอ
+            // เพื่อไม่ให้ป้ายของเมื่อวานกลับมาแสดงในเช้าวันเดินทาง
+            'pickup_status' => $this->freshPickupStatus(),
+            'pickup_status_at' => $this->freshPickupStatus() ? $this->pickup_status_at?->toISOString() : null,
+            'pickup_status_eta_minutes' => $this->freshPickupStatus() ? $this->pickup_status_eta_minutes : null,
             'status' => $this->status,
             'can_review' => $this->status === 'confirmed'
                 && $this->relationLoaded('schedule')

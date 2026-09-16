@@ -18,6 +18,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -169,6 +170,9 @@ class DriverController extends Controller
         $validated = $request->validate([
             'qr_code' => ['required', 'string'],
             'schedule_id' => ['nullable', 'integer', 'exists:trip_schedules,id'],
+            // เช็คอินที่สตาฟกดตอนไม่มีสัญญาณ แล้วแอปส่งตามมาทีหลัง — เวลาที่บันทึก
+            // ต้องเป็นตอนที่คนขึ้นรถจริง ไม่ใช่ตอนที่สัญญาณกลับมาบนยอดดอย
+            'checked_in_at' => ['nullable', 'date'],
         ]);
 
         $booking = $this->resolveCheckInBooking(
@@ -185,13 +189,29 @@ class DriverController extends Controller
             return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน (สถานะ: '.$booking->status.')', 422);
         }
 
+        $queued = array_key_exists('checked_in_at', $validated) && $validated['checked_in_at'] !== null;
+
         if ($booking->checked_in) {
-            return $this->error('เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i'), 422);
+            $when = 'เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i');
+
+            // คิวที่ค้างอยู่บนเครื่องสตาฟส่งซ้ำได้ (เปิดแอปใหม่ สัญญาณติด ๆ ดับ ๆ)
+            // และคนคนนั้นก็เช็คอินไปแล้วจริง ๆ — ตอบว่าเรียบร้อยเพื่อให้คิวปล่อย
+            // รายการนี้ทิ้ง ไม่ใช่ขึ้นสีแดงค้างไว้ในมือสตาฟทั้งทริป
+            if ($queued) {
+                return $this->success(
+                    new BookingResource($booking->fresh($this->checkInRelations())),
+                    $when,
+                    200,
+                    $this->checkInMeta($booking)
+                );
+            }
+
+            return $this->error($when, 422);
         }
 
         $booking->update([
             'checked_in' => true,
-            'checked_in_at' => now(),
+            'checked_in_at' => $this->resolveCheckInTime($validated['checked_in_at'] ?? null),
         ]);
 
         $this->notifyCheckIn($booking);
@@ -215,6 +235,30 @@ class DriverController extends Controller
             200,
             $this->checkInMeta($fresh)
         );
+    }
+
+    /**
+     * เวลาเช็คอินที่จะบันทึกจริง — ของที่แอปส่งมาต้องอยู่ในอดีตและไม่เก่าเกินหนึ่งวัน
+     *
+     * นาฬิกาบนเครื่องผู้ใช้ตั้งเองได้ เวลาที่ส่งมาจึงเป็นคำขอ ไม่ใช่ความจริง
+     * อะไรที่หลุดกรอบนี้ตกกลับไปเป็น now() — เสียความแม่นของนาทีที่ขึ้นรถ ดีกว่า
+     * ได้ใบจองที่เช็คอิน "เมื่อปีที่แล้ว" ค้างอยู่ในรายงาน
+     */
+    private function resolveCheckInTime(?string $raw): Carbon
+    {
+        if ($raw === null) {
+            return now();
+        }
+
+        try {
+            $at = Carbon::parse($raw);
+        } catch (\Throwable) {
+            return now();
+        }
+
+        return $at->isFuture() || $at->lessThan(now()->subDay())
+            ? now()
+            : $at;
     }
 
     /**
@@ -838,6 +882,16 @@ class DriverController extends Controller
                     'seat_label' => $seatByName->get(trim((string) $passenger->name))?->seat_id,
                     'checked_in' => (bool) $booking->checked_in,
                     'booking_ref' => $booking->booking_ref,
+                    // ลูกค้ากดบอกเองว่ากำลังไป/ถึงแล้ว/อาจสาย — ระดับใบจอง จึงติด
+                    // เหมือนกันทุกคนในใบเดียวกัน ป้ายที่เก่าเกินครึ่งวันถูกตัดทิ้ง
+                    // ที่ freshPickupStatus() ไม่ใช่ที่หน้าจอ
+                    'pickup_status' => $booking->freshPickupStatus(),
+                    'pickup_status_at' => $booking->freshPickupStatus()
+                        ? $booking->pickup_status_at?->toIso8601String()
+                        : null,
+                    'pickup_status_eta_minutes' => $booking->freshPickupStatus()
+                        ? $booking->pickup_status_eta_minutes
+                        : null,
                     // Profile photo of the account that made the booking (only when
                     // a real avatar was uploaded — passengers have no own photo).
                     'avatar_url' => $booking->user?->avatar
@@ -860,6 +914,17 @@ class DriverController extends Controller
                 $group['passenger_count'] = count($group['passengers']);
                 $group['checked_in_count'] = collect($group['passengers'])
                     ->where('checked_in', true)->count();
+                // "กี่คนบอกว่าถึงแล้ว" — ตัวเลขที่สตาฟมองหาก่อนตัดสินใจว่ารถจะรอ
+                // ต่อหรือออก นับเฉพาะคนที่ยังไม่ได้เช็คอิน เพราะคนที่เช็คอินแล้ว
+                // อยู่บนรถแล้ว ไม่ใช่ "คนที่กำลังจะมา"
+                $group['arrived_count'] = collect($group['passengers'])
+                    ->where('checked_in', false)
+                    ->where('pickup_status', Booking::PICKUP_STATUS_ARRIVED)
+                    ->count();
+                $group['late_count'] = collect($group['passengers'])
+                    ->where('checked_in', false)
+                    ->where('pickup_status', Booking::PICKUP_STATUS_LATE)
+                    ->count();
                 unset($group['sort_order']);
 
                 return $group;

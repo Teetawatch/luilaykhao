@@ -41,6 +41,23 @@ class Booking extends Model
     // ใช้แยกใบพวกนี้ออกจากยอดที่โอนเข้ามาจริงเวลาไล่บัญชี
     public const PAYMENT_METHOD_ADMIN_SKIP = 'admin_skip';
 
+    // สถานะที่ลูกค้ากดบอกเองว่าตอนนี้อยู่ตรงไหนของการนัดเจอที่จุดรับ
+    public const PICKUP_STATUS_ON_THE_WAY = 'on_the_way';
+
+    public const PICKUP_STATUS_ARRIVED = 'arrived';
+
+    public const PICKUP_STATUS_LATE = 'late';
+
+    public const PICKUP_STATUSES = [
+        self::PICKUP_STATUS_ON_THE_WAY,
+        self::PICKUP_STATUS_ARRIVED,
+        self::PICKUP_STATUS_LATE,
+    ];
+
+    // สถานะที่ลูกค้ากดไว้ "เมื่อวาน" ไม่ได้แปลว่าวันนี้เขามาถึงแล้ว — เกินเท่านี้
+    // ถือว่าหมดอายุ และรายชื่อของสตาฟจะไม่แสดงมันอีก ดู [freshPickupStatus]
+    public const PICKUP_STATUS_TTL_HOURS = 12;
+
     protected $fillable = [
         'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
         'vehicle_option_id', 'vehicle_option_label', 'vehicle_option_adjustment',
@@ -49,6 +66,7 @@ class Booking extends Model
         'is_group', 'group_name', 'group_notes',
         'qr_code', 'share_token', 'story_token', 'payment_token', 'birthdate_token', 'passport_token',
         'brief_token', 'brief_sent_at', 'brief_digest', 'checked_in', 'checked_in_at',
+        'pickup_status', 'pickup_status_at', 'pickup_status_eta_minutes',
         'terms_accepted_at', 'terms_version',
         'total_amount', 'selected_addons', 'addons_total', 'selected_rentals', 'rentals_total', 'paid_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
@@ -86,6 +104,8 @@ class Booking extends Model
             'refund_amount' => 'decimal:2',
             'refunded_at' => 'datetime',
             'checked_in_at' => 'datetime',
+            'pickup_status_at' => 'datetime',
+            'pickup_status_eta_minutes' => 'integer',
             'brief_sent_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'is_group' => 'boolean',
@@ -280,6 +300,25 @@ class Booking extends Model
             ->where('status', BookingMember::STATUS_ACTIVE)
             ->where('user_id', $userId)
             ->exists();
+    }
+
+    /**
+     * สถานะจุดนัดที่ยัง "ใช้ได้อยู่" — null เมื่อไม่เคยกด หรือกดไว้นานเกิน
+     * [PICKUP_STATUS_TTL_HOURS]
+     *
+     * รายชื่อของสตาฟอ่านผ่านตัวนี้เสมอ ไม่อ่านคอลัมน์ตรง ๆ เพราะป้าย "ถึงแล้ว"
+     * ที่ค้างจากรอบก่อนหน้าอันตรายกว่าการไม่มีป้ายเลย: มันทำให้รถออกโดยเชื่อว่า
+     * คนคนนั้นอยู่บนรถแล้ว
+     */
+    public function freshPickupStatus(): ?string
+    {
+        if ($this->pickup_status === null || $this->pickup_status_at === null) {
+            return null;
+        }
+
+        return $this->pickup_status_at->greaterThan(now()->subHours(self::PICKUP_STATUS_TTL_HOURS))
+            ? $this->pickup_status
+            : null;
     }
 
     public function installmentPayments(): HasMany
