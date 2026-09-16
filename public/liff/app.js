@@ -96,6 +96,45 @@ function askConfirm(title, message, okLabel = 'ตกลง', cancelLabel = 'ย
   });
 }
 
+/**
+ * ส่งข้อความ + ลิงก์ให้เพื่อนใน LINE
+ *
+ * shareTargetPicker คืน null เมื่อผู้ใช้กดยกเลิกที่หน้าเลือกคนรับ นั่นคือการ
+ * ตัดสินใจของเขา ไม่ใช่ความล้มเหลว — จึงไม่ไปคัดลอกลิงก์ทับให้ คลิปบอร์ดเป็น
+ * ทางสำรองสำหรับตอนที่ picker ใช้ไม่ได้จริง ๆ (เปิดนอก LINE / ไม่ได้เปิดสิทธิ์)
+ */
+async function shareToLine(text, url, sentMessage = 'ส่งลิงก์แล้ว', copiedMessage = 'คัดลอกลิงก์แล้ว') {
+  try {
+    if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
+      const res = await liff.shareTargetPicker([{ type: 'text', text }]);
+      if (res) alert(sentMessage);
+      return !!res;
+    }
+  } catch (_) { /* LIFF ไม่อนุญาต — ตกไปที่คลิปบอร์ด */ }
+
+  try {
+    await navigator.clipboard.writeText(url);
+    alert(copiedMessage);
+  } catch (_) {
+    alert(url);
+  }
+  return false;
+}
+
+/**
+ * นับถอยหลังที่เก็บตัวเองเมื่อโหนดหลุดจากหน้าจอ
+ *
+ * render() เปลี่ยนทั้งหน้าจอทิ้ง ตัวจับเวลาที่ผูกกับโหนดเก่าจึงต้องรู้ตัวเอง
+ * ว่าไม่มีใครดูอยู่แล้ว ไม่งั้นมันจะวิ่งค้างไปทั้งเซสชัน
+ */
+function tickWhileVisible(node, onTick, intervalMs = 1000) {
+  const timer = setInterval(() => {
+    if (!node.isConnected) return clearInterval(timer);
+    if (onTick() === false) clearInterval(timer);
+  }, intervalMs);
+  return timer;
+}
+
 function render(node) {
   app.innerHTML = '';
   app.appendChild(node);
@@ -185,6 +224,7 @@ function routeFromEntry() {
 
   if (bookingRef) return showBookingDetail(bookingRef);
   if (page === 'bookings') return showMyBookings();
+  if (page === 'referral') return showReferral();
   if (tripSlug) return showTrip(tripSlug);
   showTrips();
 }
@@ -203,6 +243,127 @@ async function authenticate() {
   });
   state.token = res.data.token;
   sessionStorage.setItem('llk_token', state.token);
+}
+
+/* ------------------------- เงื่อนไขการจอง --------------------------- */
+
+/* เงื่อนไขที่ผูกพันลูกค้าไม่ได้เขียนไว้ในไฟล์นี้ตั้งใจ — หน้าเว็บอ่านจาก
+ * resources/js/lib/policy.js ตอน build แต่ LIFF ไม่มี build step ถ้าพิมพ์ซ้ำไว้
+ * เอง วันที่นโยบายเปลี่ยน ลูกค้าที่จองในไลน์จะยอมรับเงื่อนไขคนละฉบับกับ
+ * ที่ประกาศบนเว็บ ซึ่งเป็นฉบับที่ผูกพันเราตามกฎหมาย */
+
+let legalPolicy = null;
+let legalPolicyPending = null;
+
+function loadLegalPolicy() {
+  if (legalPolicy) return Promise.resolve(legalPolicy);
+  if (!legalPolicyPending) {
+    legalPolicyPending = api('/legal/policy', { auth: false })
+      .then((res) => { legalPolicy = res.data || null; return legalPolicy; })
+      .catch(() => { legalPolicyPending = null; return null; }); // ลองใหม่ได้ครั้งหน้า
+  }
+  return legalPolicyPending;
+}
+
+/* ----------------------- แคมเปญวันพิเศษ (9.9) ------------------------ */
+
+/* ราคาที่ LIFF เห็นถูกลดมาจากเซิร์ฟเวอร์อยู่แล้ว (แคมเปญเสียบที่ effective price)
+ * ที่ขาดคือการบอกลูกค้าว่านี่คือราคาลด — คนที่ไม่รู้ว่ากำลังได้ส่วนลด ก็ไม่รู้ว่า
+ * ต้องรีบ ชุดนี้จึงเป็นแค่การแสดงผล ไม่มีอะไรคิดราคาเองสักตัว */
+
+let saleCampaign = null;
+let saleCampaignPending = null;
+
+/** โหลดครั้งเดียวต่อเซสชัน — คืน null เมื่อไม่มีแคมเปญหรือโหลดไม่ได้ */
+function loadSaleCampaign() {
+  if (saleCampaign !== null) return Promise.resolve(saleCampaign || null);
+  if (!saleCampaignPending) {
+    saleCampaignPending = api('/sale-campaign/active', { auth: false })
+      .then((res) => { saleCampaign = res.data || false; return saleCampaign || null; })
+      .catch(() => { saleCampaign = false; return null; }); // แคมเปญเป็นของแถม โหลดไม่ได้ก็แค่ไม่ขึ้น
+  }
+  return saleCampaignPending;
+}
+
+/**
+ * สีธีมของแคมเปญ — รับเฉพาะรหัสสี hex
+ *
+ * ค่านี้ถูกวางลงใน style="" ตรง ๆ แอดมินเป็นคนกรอก ไม่ใช่ลูกค้า แต่ช่องที่รับ
+ * อะไรก็ได้แล้ววางลง CSS ไม่ควรมีอยู่ตั้งแต่แรก — กรอกผิดก็ได้สีเริ่มต้นไป
+ */
+function campaignColor(campaign) {
+  const color = String(campaign?.theme_color || '');
+  return /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(color) ? color : '#e11d48';
+}
+
+/** แคมเปญที่ยังไม่หมดเวลา ณ วินาทีนี้ — ใช้ตัดสินใจว่าจะติดป้ายไหม */
+function activeCampaign() {
+  if (!saleCampaign) return null;
+  if (saleCampaign.ends_at && new Date(saleCampaign.ends_at).getTime() <= Date.now()) return null;
+  return saleCampaign;
+}
+
+/** เหลืออีกเท่าไหร่ — เกินหนึ่งวันบอกเป็นวัน + นาฬิกา เหมือนแถบบนหน้าเว็บ */
+function campaignRemaining(endsAt) {
+  const diff = new Date(endsAt).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const total = Math.floor(diff / 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  const clock = `${pad(Math.floor((total % 86400) / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+  const days = Math.floor(total / 86400);
+  return days > 0 ? `${days} วัน ${clock}` : clock;
+}
+
+/**
+ * แถบแคมเปญบนสุดของหน้า — วางไว้ล่วงหน้าแล้วเติมทีหลังเมื่อโหลดเสร็จ เพื่อไม่ให้
+ * หน้ารวมทริปต้องรอ endpoint ที่ไม่ใช่เนื้อหาหลัก และเก็บตัวเองเมื่อแคมเปญจบ
+ */
+function campaignBar() {
+  const host = el(`<div></div>`);
+
+  loadSaleCampaign().then((campaign) => {
+    if (!campaign || !host.isConnected || !activeCampaign()) return;
+
+    const bar = el(`<div class="campaign-bar" style="background:${campaignColor(campaign)}">
+      ${campaign.badge_label ? `<span class="campaign-badge">${esc(campaign.badge_label)}</span>` : ''}
+      <span class="campaign-text">${esc(campaign.tagline || `${campaign.discount_label} ทุกทริป`)}</span>
+      ${campaign.ends_at ? '<span class="campaign-left">เหลือ <b class="campaign-clock"></b></span>' : ''}
+    </div>`);
+    host.appendChild(bar);
+
+    if (!campaign.ends_at) return;
+    const left = bar.querySelector('.campaign-clock');
+    const paint = () => {
+      const remaining = campaignRemaining(campaign.ends_at);
+      if (!remaining) { host.innerHTML = ''; return false; } // แคมเปญจบระหว่างเปิดหน้าค้างไว้
+      left.textContent = remaining;
+      return true;
+    };
+    paint();
+    tickWhileVisible(host, paint);
+  });
+
+  return host;
+}
+
+/**
+ * ป้ายแคมเปญบนการ์ดทริป
+ *
+ * อ่านจาก trip.campaign ที่มากับ /trips ก้อนเดียวกับราคา ไม่ใช่จากแคมเปญที่โหลด
+ * แยกต่างหาก — สองอย่างนั้นมาถึงคนละจังหวะ และทริปที่ถูกยกเว้นจากแคมเปญจะไม่มี
+ * trip.campaign ทั้งที่แคมเปญยังเปิดอยู่ ติดป้ายจากตัวหลังจึงได้ป้ายที่โกหกราคา
+ */
+function campaignBadgeHtml(trip) {
+  const campaign = trip.campaign;
+  if (!campaign) return '';
+  // เปิดหน้าค้างไว้จนแคมเปญจบ — ราคาที่ค้างอยู่บนจอไม่ใช่ราคาขายแล้ว
+  if (campaign.ends_at && new Date(campaign.ends_at).getTime() <= Date.now()) return '';
+  // ทริปที่ราคาไม่ได้ลดจริง ห้ามติดป้ายลดราคา
+  if (!(Number(trip.min_original_price || 0) > Number(trip.min_price ?? trip.price_per_person ?? 0))) return '';
+
+  return `<span class="campaign-tag" style="background:${campaignColor(campaign)}">${esc(
+    [campaign.badge_label, campaign.discount_label].filter(Boolean).join(' · ')
+  )}</span>`;
 }
 
 /* --------------------------- screen: trips ---------------------------- */
@@ -298,9 +459,14 @@ async function showTrips(keepFeed = false) {
   node.appendChild(appbar('จองทริป'));
   const content = el(`<div class="content"></div>`);
 
+  // แถบแคมเปญอยู่บนสุด — มันอธิบายราคาทุกตัวที่อยู่ใต้มัน
+  content.appendChild(campaignBar());
+
   const mine = el(`<button class="btn secondary linkrow">📋 การจองของฉัน</button>`);
-  mine.onclick = showMyBookings;
+  mine.onclick = () => showMyBookings();
   content.appendChild(mine);
+
+  content.appendChild(referralEntry());
 
   // ค้นหา + ตัวกรอง
   const searchRow = el(`<div class="search-row">
@@ -337,6 +503,17 @@ async function showTrips(keepFeed = false) {
       input.setSelectionRange(input.value.length, input.value.length);
     }
   }
+}
+
+/**
+ * ปุ่มย้อนกลับมาหน้ารวมทริป
+ *
+ * มีรายการอยู่แล้วก็ใช้ของเดิม — คนกดย้อนกลับคาดหวังจะเจอผลค้นหาและหน้าที่
+ * โหลดเพิ่มไว้เหมือนตอนจากไป ไม่ใช่หน้าโหลดใหม่ตั้งแต่ต้น แต่คนที่เข้ามาตรง
+ * หน้าการจอง/ชำระเงินจาก Rich Menu ยังไม่เคยมีรายการ ต้องโหลดให้
+ */
+function backToTrips() {
+  return showTrips(tripFeed.items.length > 0);
 }
 
 async function reloadTrips(keepFocus = false) {
@@ -384,6 +561,9 @@ function tripCard(t) {
   const abroadTag = t.destination_type === 'international'
     ? `<span class="tag">🌏 ${esc(t.country_label || 'ต่างประเทศ')}</span>` : '';
   const rating = Number(t.rating || 0);
+  const fromPrice = Number(t.min_price ?? t.price_per_person ?? 0);
+  // ราคาก่อนลดขึ้นเฉพาะตอนที่มันต่างจากราคาที่ขายจริง (แคมเปญวันพิเศษ/แฟลชเซล)
+  const wasPrice = Number(t.min_original_price || 0) > fromPrice ? Number(t.min_original_price) : 0;
   const card = el(`<div class="card">
     ${t.cover_image ? `<img class="cover" src="${esc(t.cover_image)}" alt="" loading="lazy">` : ''}
     <div class="body">
@@ -394,9 +574,11 @@ function tripCard(t) {
         ${rating > 0 ? `<span>⭐ ${rating.toFixed(1)}${t.reviews_count ? ` (${t.reviews_count})` : ''}</span>` : ''}
         ${abroadTag}
         ${seatsTag}
+        ${campaignBadgeHtml(t)}
       </div>
       <div class="meta" style="margin-top:6px">
-        <span class="price">${baht(t.min_price ?? t.price_per_person)}${(t.max_price && t.max_price !== t.min_price) ? ' +' : ''}</span>
+        ${wasPrice ? `<span class="strike">${baht(wasPrice)}</span>` : ''}
+        <span class="price${wasPrice ? ' sale' : ''}">${baht(fromPrice)}${(t.max_price && t.max_price !== t.min_price) ? ' +' : ''}</span>
       </div>
     </div>
   </div>`);
@@ -536,10 +718,19 @@ async function openTripFilters() {
 // ราคาที่ต้องโชว์ของรอบ + ป้ายลดราคา (แฟลชเซลของรอบ ดู TripScheduleResource)
 function schedulePriceHtml(s) {
   const flash = s.flash_sale;
-  if (flash?.active && Number(s.original_price || 0) > Number(s.price || 0)) {
-    return `<span class="strike">${baht(s.original_price)}</span> <span class="price">${baht(s.price)}</span>`
+  const discounted = Number(s.original_price || 0) > Number(s.price || 0);
+
+  if (flash?.active && discounted) {
+    return `<span class="strike">${baht(s.original_price)}</span> <span class="price sale">${baht(s.price)}</span>`
       + (flash.discount_percent ? ` <span class="tag sale">-${flash.discount_percent}%</span>` : '');
   }
+
+  // แคมเปญวันพิเศษลดรอบนี้อยู่ — รอบที่ถูกยกเว้นจะไม่มีคีย์ campaign ติดมา
+  if (s.campaign && discounted) {
+    return `<span class="strike">${baht(s.original_price)}</span> <span class="price sale">${baht(s.price)}</span>`
+      + ` <span class="tag sale">${esc(s.campaign.discount_label || s.campaign.badge_label || 'ลดพิเศษ')}</span>`;
+  }
+
   return `<span class="price">${baht(s.price)}</span>`;
 }
 
@@ -576,8 +767,10 @@ async function showTrip(slug, tab) {
 
   const { trip, schedules } = tripCache;
   const node = el(`<div></div>`);
-  node.appendChild(appbar('รายละเอียดทริป', showTrips));
+  node.appendChild(appbar('รายละเอียดทริป', backToTrips));
   const content = el(`<div class="content"></div>`);
+
+  content.appendChild(campaignBar());
 
   if (trip.cover_image) content.appendChild(el(`<img class="hero" src="${esc(trip.cover_image)}" alt="">`));
 
@@ -934,22 +1127,110 @@ async function shareTrip(trip) {
   const url = `https://liff.line.me/${CFG.liffId}?trip=${encodeURIComponent(trip.slug)}`;
   const text = `${trip.title}\n📍 ${trip.location || ''} · ${trip.duration_days || 1} วัน\nเริ่มต้น ${baht(trip.min_price ?? trip.price_per_person)}\n${url}`;
 
-  try {
-    if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
-      const res = await liff.shareTargetPicker([{ type: 'text', text }]);
-      if (res) alert('ส่งให้เพื่อนแล้ว');
-      return;
-    }
-  } catch (e) {
-    // ผู้ใช้กดยกเลิก หรือ LIFF ไม่อนุญาต — ตกไปที่คัดลอกลิงก์แทน
+  await shareToLine(text, url, 'ส่งให้เพื่อนแล้ว', 'คัดลอกลิงก์ทริปแล้ว วางส่งให้เพื่อนได้เลยครับ');
+}
+
+/* --------------------------- ชวนเพื่อน --------------------------- */
+
+/**
+ * โค้ดแนะนำเพื่อน — ช่องทางนี้แชร์ได้ในสองแตะ ซึ่งเป็นข้อได้เปรียบที่เว็บไม่มี
+ *
+ * ปิดอยู่ (enabled: false) เมื่อไหร่ก็ไม่ต้องมีปุ่มให้กด ข้อความชวนเพื่อนมาจาก
+ * เซิร์ฟเวอร์ (share_message) เพื่อไม่ให้สามช่องทางชวนคนละแบบ
+ */
+let referralData = null;
+let referralPending = null;
+
+/** โหลดครั้งเดียวต่อเซสชัน — ทั้งปุ่มทางเข้าและตัวหน้าอ่านก้อนเดียวกัน */
+function loadReferral() {
+  if (referralData) return Promise.resolve(referralData);
+  if (!referralPending) {
+    referralPending = api('/referral')
+      .then((res) => { referralData = res.data || null; return referralData; })
+      .catch(() => { referralPending = null; return null; });
+  }
+  return referralPending;
+}
+
+/** ปุ่มทางเข้า — โผล่ต่อเมื่อระบบชวนเพื่อนเปิดอยู่จริง ไม่ใช่ปุ่มที่กดแล้วเจอข้อผิดพลาด */
+function referralEntry() {
+  const host = el(`<div></div>`);
+
+  loadReferral().then((data) => {
+    if (!data?.enabled || !data.code || !host.isConnected) return;
+    const btn = el(`<button class="btn secondary linkrow">🎁 ชวนเพื่อน รับ ${data.referrer_points} แต้ม</button>`);
+    btn.onclick = () => showReferral();
+    host.appendChild(btn);
+  });
+
+  return host;
+}
+
+async function showReferral() {
+  loading('กำลังโหลดโค้ดของคุณ…');
+
+  const data = await loadReferral();
+
+  if (!data?.enabled || !data.code) {
+    return errorScreen('ตอนนี้ยังไม่เปิดให้ชวนเพื่อนรับแต้มครับ', backToTrips);
   }
 
-  try {
-    await navigator.clipboard.writeText(url);
-    alert('คัดลอกลิงก์ทริปแล้ว วางส่งให้เพื่อนได้เลยครับ');
-  } catch (_) {
-    alert(url);
+  const node = el(`<div></div>`);
+  node.appendChild(appbar('ชวนเพื่อน', backToTrips));
+  const content = el(`<div class="content"></div>`);
+
+  content.appendChild(el(`<div class="card"><div class="body center">
+    <p class="muted">โค้ดของคุณ</p>
+    <p class="referral-code">${esc(data.code)}</p>
+    <p class="muted">เพื่อนสมัครด้วยโค้ดนี้ รับ ${data.referee_points} แต้ม · คุณได้ ${data.referrer_points} แต้มเมื่อเพื่อนเดินทางจริง</p>
+  </div></div>`));
+
+  const share = el(`<button class="btn">💬 ส่งโค้ดให้เพื่อนใน LINE</button>`);
+  share.onclick = () => shareToLine(
+    data.share_message || `ใช้โค้ด ${data.code} ตอนสมัคร รับแต้มไปเที่ยวกันครับ\n${data.share_url}`,
+    data.share_url,
+    'ส่งโค้ดให้เพื่อนแล้ว',
+    'คัดลอกลิงก์ชวนเพื่อนแล้ว',
+  );
+  content.appendChild(share);
+
+  const copy = el(`<button class="btn secondary" style="margin-top:8px">คัดลอกโค้ด</button>`);
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(data.code);
+      alert('คัดลอกโค้ดแล้ว');
+    } catch (_) {
+      alert(data.code);
+    }
+  };
+  content.appendChild(copy);
+
+  const summary = data.summary || {};
+  content.appendChild(el(`<div class="section-heading">สรุป</div>`));
+  content.appendChild(el(`<div class="card"><div class="body">
+    <div class="kv"><span class="k">ชวนไปแล้ว</span><span class="v">${summary.invited || 0} คน</span></div>
+    <div class="kv"><span class="k">เดินทางแล้ว</span><span class="v">${summary.rewarded || 0} คน</span></div>
+    <div class="kv"><span class="k">รอเดินทาง</span><span class="v">${summary.pending || 0} คน</span></div>
+    <div class="kv total"><span class="k">แต้มที่ได้</span><span class="v price">${summary.points_earned || 0} แต้ม</span></div>
+  </div></div>`));
+
+  const friends = data.friends || [];
+  if (friends.length) {
+    content.appendChild(el(`<div class="section-heading">เพื่อนที่ชวนมา</div>`));
+    friends.forEach((f) => {
+      const rewarded = f.status === 'rewarded';
+      content.appendChild(el(`<div class="pick">
+        <div class="pick-body">
+          <div class="pick-name">${esc(f.name || 'เพื่อนของคุณ')}</div>
+          <div class="pick-sub">${f.joined_at ? esc(new Date(f.joined_at).toLocaleDateString('th-TH', { dateStyle: 'medium' })) : ''}</div>
+        </div>
+        <span class="tag${rewarded ? ' ok' : ''}">${rewarded ? `+${f.points} แต้ม` : 'รอเดินทาง'}</span>
+      </div>`));
+    });
   }
+
+  node.appendChild(content);
+  render(node);
 }
 
 /* --------------------------- คิวรอที่นั่ง --------------------------- */

@@ -1658,29 +1658,50 @@ function rentalLines() {
 
 /* --------- เงื่อนไขก่อนยืนยัน (ข้อความชุดเดียวกับหน้าเว็บ) --------- */
 
-function confirmTerms(banner, btn) {
+/**
+ * แผ่นเงื่อนไขก่อนยืนยัน — ข้อความทุกบรรทัดมาจาก GET /legal/policy
+ *
+ * เงื่อนไขที่ประกาศบนเว็บคือฉบับที่ผูกพันเราตามกฎหมาย จึงต้องเป็นฉบับเดียวกับ
+ * ที่ลูกค้าในไลน์กดยอมรับ และเวอร์ชันที่กดยอมรับถูกประทับลงใบจองผ่าน
+ * accepted_terms ใน submitBooking() ไม่ใช่แค่ติ๊กให้ผ่านหน้าจอ
+ */
+async function confirmTerms(banner, btn) {
+  // ปุ่มค้างไว้ระหว่างรอเงื่อนไข ไม่งั้นแตะสองทีได้แผ่นซ้อนสองใบ
+  const restore = () => { btn.disabled = false; btn.textContent = 'ยืนยันการจอง · ' + baht(estimateTotal()); };
+  banner.innerHTML = '';
+  btn.disabled = true;
+
+  const policy = await loadLegalPolicy();
+
+  if (!policy?.booking_terms?.length) {
+    // อ่านเงื่อนไขไม่ได้ = ให้ลูกค้ากดยอมรับสิ่งที่เราเองยังไม่รู้ว่าคืออะไร
+    banner.innerHTML = '<div class="banner error">โหลดเงื่อนไขการจองไม่สำเร็จ กรุณาลองอีกครั้งครับ</div>';
+    restore();
+    return;
+  }
+
   const sheet = el(`<div class="sheet-overlay"><div class="sheet">
     <div class="sheet-head"><strong>เงื่อนไขก่อนยืนยันการจอง</strong><button class="sheet-close" aria-label="ปิด">✕</button></div>
     <div class="sheet-body">
       <p class="terms-head">การสำรองที่นั่ง และการเปลี่ยนแปลง</p>
       <ol class="terms">
-        <li>เมื่อยืนยันสิทธิ์การเดินทางแล้ว ทีมงานขอสงวนสิทธิ์ในการคืนเงินมัดจำ / ค่าทริป<b>ทุกกรณี</b></li>
-        <li>หากไม่สะดวกในวันดังกล่าว แจ้งเลื่อนได้ <b>1 ครั้ง</b> ล่วงหน้าอย่างน้อย <b>30 วัน</b> ก่อนวันเดินทางเดิม</li>
-        <li>เปลี่ยนตัวผู้เดินทางได้ โดยแจ้งทีมงานล่วงหน้าอย่างน้อย <b>15 วัน</b></li>
+        ${policy.booking_terms.map((line) => `<li>${esc(line)}</li>`).join('')}
       </ol>
       <div class="banner success">สรุปการจอง: ${paxCount()} ท่าน · ${baht(estimateTotal())}</div>
       <label class="pick"><input type="checkbox" id="agree">
         <div class="pick-body"><div class="pick-name">ข้าพเจ้าได้อ่านและยอมรับเงื่อนไขข้างต้นทุกข้อแล้ว</div></div>
       </label>
+      ${policy.terms_version ? `<p class="muted center" style="margin-top:8px">เงื่อนไขฉบับวันที่ ${esc(thaiDate(policy.terms_version))}</p>` : ''}
     </div>
     <div class="sheet-foot">
       <button class="btn secondary" id="termsCancel">ยกเลิก</button>
       <button class="btn" id="termsOk" disabled>ยืนยันและชำระเงิน</button>
     </div>
   </div></div>`);
-  sheet.onclick = (e) => { if (e.target === sheet) sheet.remove(); };
-  sheet.querySelector('.sheet-close').onclick = () => sheet.remove();
-  sheet.querySelector('#termsCancel').onclick = () => sheet.remove();
+  const dismiss = () => { sheet.remove(); restore(); };
+  sheet.onclick = (e) => { if (e.target === sheet) dismiss(); };
+  sheet.querySelector('.sheet-close').onclick = dismiss;
+  sheet.querySelector('#termsCancel').onclick = dismiss;
   sheet.querySelector('#agree').onchange = (e) => { sheet.querySelector('#termsOk').disabled = !e.target.checked; };
   sheet.querySelector('#termsOk').onclick = () => { sheet.remove(); submitBooking(banner, btn); };
   document.body.appendChild(sheet);
@@ -1703,6 +1724,9 @@ async function submitBooking(banner, btn) {
     pickup_point_id: usingCustomPickup ? null : (bk.pickupId || null),
     vehicle_option_id: bk.vehicleOptionId,
     booking_for: bk.bookingFor,
+    // หลักฐานว่าลูกค้ากดยอมรับเงื่อนไขในแผ่นก่อนหน้านี้แล้ว — เซิร์ฟเวอร์ประทับ
+    // เวลาและเวอร์ชันเงื่อนไขลงใบจอง (ไม่ส่ง = ใบจองไม่มีบันทึกการยอมรับเลย)
+    accepted_terms: true,
     is_group: bk.isGroup,
     group_name: bk.isGroup ? bk.groupName : null,
     group_notes: bk.isGroup ? bk.groupNotes : null,

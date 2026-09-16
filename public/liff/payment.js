@@ -150,7 +150,7 @@ function renderPaymentScreen() {
   if (booking.status === 'confirmed') return showBookingDone(booking);
 
   const node = el(`<div></div>`);
-  node.appendChild(appbar('ชำระเงิน', showMyBookings));
+  node.appendChild(appbar('ชำระเงิน', () => showMyBookings()));
   const content = el(`<div class="content"></div>`);
 
   content.appendChild(el(`<div class="banner success">จองสำเร็จ · เลขที่จอง ${esc(booking.booking_ref)}<br>ชำระเงินเพื่อยืนยันที่นั่ง</div>`));
@@ -712,11 +712,11 @@ function showBookingDone(booking, message) {
   }
 
   const mine = el(`<button class="btn" style="margin-top:16px">ดูการจองของฉัน</button>`);
-  mine.onclick = showMyBookings;
+  mine.onclick = () => showMyBookings();
   content.appendChild(mine);
 
   const back = el(`<button class="btn secondary" style="margin-top:10px">กลับไปหน้าทริป</button>`);
-  back.onclick = showTrips;
+  back.onclick = backToTrips;
   content.appendChild(back);
 
   node.appendChild(content);
@@ -733,7 +733,7 @@ function showSlipUnderReview(booking, message) {
   content.appendChild(el(`<p class="muted center" style="margin-top:10px">ที่นั่งยังถูกกันไว้ให้ ไม่ต้องโอนซ้ำ ทีมงานจะยืนยันให้เร็วที่สุด</p>`));
 
   const mine = el(`<button class="btn" style="margin-top:16px">ดูการจองของฉัน</button>`);
-  mine.onclick = showMyBookings;
+  mine.onclick = () => showMyBookings();
   content.appendChild(mine);
 
   node.appendChild(content);

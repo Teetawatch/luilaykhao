@@ -55,6 +55,10 @@ const BOOKING = {
 
 const routes = {
   'POST /auth/line/liff': { data: { token: 'x' } },
+  'GET /sale-campaign/active': { data: null },
+  'GET /referral': { data: { enabled: false } },
+  'GET /me/claimable-bookings': { data: { count: 0, trips: [] } },
+  'GET /waitlist': { data: [] },
   'GET /trips': { data: [TRIP], meta: { current_page: 1, last_page: 1, total: 1 } },
   'GET /trips/pai': { data: TRIP },
   'GET /trips/pai/schedules': { data: [SCHEDULE] },

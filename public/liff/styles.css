@@ -496,3 +496,34 @@ ul.bullets li { margin-bottom: 4px; }
 .hl-no { font-size: 15px; font-weight: 800; color: #cfd8d2; font-variant-numeric: tabular-nums; }
 .hl-title { font-weight: 700; line-height: 1.4; }
 .hl-desc { margin: 3px 0 0; font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+/* ---- แคมเปญวันพิเศษ (9.9 / 10.10) ---- */
+/* สีพื้นมาจาก theme_color ของแคมเปญ (inline) — ที่นี่คุมแค่รูปทรง */
+.campaign-bar {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 12px; margin-bottom: 10px; color: #fff;
+}
+.campaign-badge {
+  font-size: 11px; font-weight: 800; letter-spacing: .3px;
+  background: rgba(255, 255, 255, .22); padding: 2px 8px; border-radius: 20px;
+}
+.campaign-text { font-size: 14px; font-weight: 700; }
+.campaign-left { font-size: 12px; font-weight: 700; opacity: .92; }
+.campaign-left b { font-variant-numeric: tabular-nums; }
+.campaign-tag {
+  display: inline-block; font-size: 11px; font-weight: 800; color: #fff;
+  padding: 2px 8px; border-radius: 20px;
+}
+
+/* ราคาก่อนลดนอกการ์ดรอบเดินทาง (การ์ดทริป) — ในรอบเดินทางขีดฆ่าอยู่คนละบรรทัด */
+.strike { color: var(--muted); text-decoration: line-through; font-size: 12px; }
+.price.sale { color: #a4133c; }
+
+/* ประกาศจากผู้จัด — ขึ้นบรรทัดตามที่ทีมงานพิมพ์มา */
+.announce-body { margin: 0; white-space: pre-wrap; font-size: 14px; }
+
+/* โค้ดชวนเพื่อน — ต้องอ่านออกตอนถ่ายรูปหน้าจอส่งต่อ */
+.referral-code {
+  font-size: 30px; font-weight: 800; letter-spacing: 3px;
+  margin: 4px 0 8px; color: var(--green-dark);
+}

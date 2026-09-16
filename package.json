@@ -5,7 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:liff": "node tests/Liff/booking-flow.test.mjs && node tests/Liff/scenarios.test.mjs && node tests/Liff/detail.test.mjs"
+        "test:liff": "node tests/Liff/booking-flow.test.mjs && node tests/Liff/scenarios.test.mjs && node tests/Liff/detail.test.mjs && node tests/Liff/parity.test.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

@@ -53,6 +53,9 @@ console.log('\n▶ จอยทริป');
   const trip = TRIP(), schedule = SCHEDULE();
   const { w, calls, bodies, text } = makeWorld({
     'POST /auth/line/liff': { data: { token: 'x' } },
+    'GET /sale-campaign/active': { data: null },
+    'GET /referral': { data: { enabled: false } },
+    'GET /trips/t/related': { data: [] },
     'GET /trips': { data: [trip], meta: { current_page: 1, last_page: 1, total: 1 } },
     'GET /trips/t': { data: trip },
     'GET /trips/t/schedules': { data: [schedule] },
@@ -96,6 +99,9 @@ console.log('\n▶ ชำระเงินแบบโอน+สลิป');
   };
   const { w, calls, bodies, text } = makeWorld({
     'POST /auth/line/liff': { data: { token: 'x' } },
+    'GET /sale-campaign/active': { data: null },
+    'GET /referral': { data: { enabled: false } },
+    'GET /trips/t/related': { data: [] },
     'GET /trips': { data: [trip], meta: { current_page: 1, last_page: 1, total: 1 } },
     'GET /bookings/R2': { data: booking },
     'GET /payments/R2/promptpay': { data: { amount: 4000, qr_data_uri: 'data:image/svg+xml;base64,PC8+', promptpay_id: '004-99', merchant_name: 'LLK', bank_name: 'กสิกรไทย', bank_account: '230-1', bank_holder: 'นาย ก' } },
@@ -143,6 +149,9 @@ console.log('\n▶ ทริปต่างประเทศ (รอบบิ�
     flight_plan: { meeting_point: 'สนามบินสุวรรณภูมิ ประตู 4', meeting_time: '05:30', legs: [] } });
   const { w, calls, text } = makeWorld({
     'POST /auth/line/liff': { data: { token: 'x' } },
+    'GET /sale-campaign/active': { data: null },
+    'GET /referral': { data: { enabled: false } },
+    'GET /trips/t/related': { data: [] },
     'GET /trips': { data: [trip], meta: { current_page: 1, last_page: 1, total: 1 } },
     'GET /trips/t': { data: trip },
     'GET /trips/t/schedules': { data: [schedule] },
@@ -185,6 +194,9 @@ console.log('\n▶ รอบเต็ม / คิวรอ');
   const schedule = SCHEDULE({ available_seats: 0, bookable_seats: 0, join_trip_enabled: false });
   const { w, calls, text } = makeWorld({
     'POST /auth/line/liff': { data: { token: 'x' } },
+    'GET /sale-campaign/active': { data: null },
+    'GET /referral': { data: { enabled: false } },
+    'GET /trips/t/related': { data: [] },
     'GET /trips': { data: [trip], meta: { current_page: 1, last_page: 1, total: 1 } },
     'GET /trips/t': { data: trip },
     'GET /trips/t/schedules': { data: [schedule] },

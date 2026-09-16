@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\V1\GiftController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\HomeWidgetController;
 use App\Http\Controllers\Api\V1\IncidentController;
+use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\LiveActivityController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\ModerationController;
@@ -184,6 +185,10 @@ Route::prefix('v1')->group(function () {
 
     // แคมเปญวันพิเศษที่กำลังลดราคาอยู่ (9.9 / 10.10) — คืน data: null เมื่อไม่มี
     Route::get('sale-campaign/active', [SaleCampaignController::class, 'publicActive']);
+
+    // เงื่อนไขที่ประกาศใช้อยู่ — ช่องทางที่ไม่มี build step (LIFF) อ่านจากที่นี่
+    // แทนที่จะพิมพ์เงื่อนไขซ้ำไว้ในตัวเอง
+    Route::get('legal/policy', [LegalController::class, 'policy']);
 
     // Schedules (public)
     Route::get('schedules/{id}', [ScheduleController::class, 'show']);

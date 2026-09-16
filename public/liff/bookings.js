@@ -9,11 +9,14 @@
 
 /* -------------------------- การจองของฉัน -------------------------- */
 
+const BOOKING_SCOPES = ['upcoming', 'past'];
 let myBookingScope = 'upcoming';
 
 async function showMyBookings(scope) {
   stopPaymentTimers();
-  if (scope) myBookingScope = scope;
+  // รับเฉพาะ scope ที่มีจริง — ฟังก์ชันนี้ถูกใช้เป็น handler หลายที่ และตัว event
+  // ที่หลุดเข้ามาเคยกลายเป็น ?scope=[object Event] ที่ไม่มีแท็บไหนถูกเลือกเลย
+  if (BOOKING_SCOPES.includes(scope)) myBookingScope = scope;
   loading('กำลังโหลดการจอง…');
 
   let bookings;
@@ -27,7 +30,7 @@ async function showMyBookings(scope) {
   }
 
   const node = el(`<div></div>`);
-  node.appendChild(appbar('การจองของฉัน', showTrips));
+  node.appendChild(appbar('การจองของฉัน', backToTrips));
   const content = el(`<div class="content"></div>`);
 
   const tabs = el(`<div class="chip-row"></div>`);
@@ -49,6 +52,11 @@ async function showMyBookings(scope) {
   }
 
   bookings.forEach((booking) => content.appendChild(bookingCard(booking)));
+
+  // ใบจองที่ทีมงานจองให้ยังไม่อยู่ในบัญชีนี้ — อยู่ท้ายรายการเมื่อมีใบจองแล้ว
+  // แต่คนที่เปิดมาแล้วเห็นหน้าว่าง คือคนที่ต้องการมันที่สุด
+  if (myBookingScope === 'upcoming') content.appendChild(claimBlock());
+
   node.appendChild(content);
   render(node);
 }
@@ -88,6 +96,90 @@ function bookingCard(booking) {
   }
 
   return card;
+}
+
+/* ------------------- ใบจองที่ทีมงานจองให้ (เคลม) ------------------- */
+
+/* ลูกค้าส่วนใหญ่ที่นี่ทักเข้ามาในไลน์แล้วให้ทีมงานจองให้ ใบจองนั้นถูกสร้างไว้ใน
+ * "บัญชีเงา" ที่ผูกกับเบอร์ ไม่ใช่บัญชี LINE ของเขา — ถ้าไม่มีทางผูกเข้าบัญชี
+ * ตัวเอง เขาจะเปิด LIFF มาแล้วเห็นหน้าว่าง แล้วต้องกลับไปถามทีมงานทุกครั้ง
+ *
+ * บัญชีที่ล็อกอินด้วย LINE ไม่มีเบอร์ติดมาด้วย (LINE ไม่ให้) รายการที่ระบบเดาให้
+ * จึงมักว่าง — ประตูหลักคือกรอกเลขที่จอง + เบอร์ ซึ่งเปิดให้ใช้เสมอ */
+
+function claimBlock() {
+  const wrap = el(`<div></div>`);
+
+  const manual = el(`<div class="pick">
+    <div class="pick-body">
+      <div class="pick-name">ทีมงานจองให้แล้วแต่ไม่เห็นใบจอง?</div>
+      <div class="pick-sub">กรอกเลขที่จองเพื่อผูกเข้าบัญชีนี้</div>
+    </div>
+    <span class="tag">›</span>
+  </div>`);
+  manual.onclick = openClaimBooking;
+
+  api('/me/claimable-bookings')
+    .then((res) => {
+      const count = Number(res.data?.count || 0);
+      if (!count || !wrap.isConnected) return;
+
+      const trips = (res.data?.trips || [])
+        .map((t) => [t.trip_title, t.departure_date ? thaiDate(t.departure_date) : ''].filter(Boolean).join(' · '))
+        .filter(Boolean);
+
+      const card = el(`<div class="card"><div class="body">
+        <p class="title">มี ${count} การจองที่น่าจะเป็นของคุณ</p>
+        <p class="muted">${trips.length ? esc(trips.join(' / ')) : 'ทีมงานจองไว้ให้ด้วยเบอร์เดียวกับบัญชีนี้'}</p>
+      </div></div>`);
+      const btn = el(`<button class="btn" style="margin:0 14px 14px">ผูกเข้าบัญชีของฉัน</button>`);
+      btn.onclick = openClaimBooking;
+      card.appendChild(btn);
+      wrap.prepend(card);
+    })
+    .catch(() => { /* เดาให้ไม่ได้ก็ไม่เป็นไร ประตูกรอกเองยังอยู่ */ });
+
+  wrap.appendChild(manual);
+  return wrap;
+}
+
+/** กรอกเลขที่จอง + เบอร์ (4 ตัวท้ายก็พอ) — กติกาเดียวกับหน้าค้นหาการจอง */
+function openClaimBooking() {
+  const sheet = openSheet('ผูกการจองเข้าบัญชี');
+  sheet.body.appendChild(el(`<p class="muted">ใส่เลขที่การจองที่ทีมงานแจ้งไว้ กับเบอร์โทรที่ใช้จอง (กรอก 4 ตัวท้ายก็ได้) แล้วใบจองจะขึ้นในบัญชีนี้ทันที</p>`));
+
+  const form = el(`<div style="margin-top:12px">
+    ${field('เลขที่การจอง', '<input id="claimRef" placeholder="LLK-20261010-0001" autocapitalize="characters">')}
+    ${field('เบอร์โทรที่ใช้จอง', '<input id="claimPhone" inputmode="tel" placeholder="0812345678 หรือ 5678">')}
+    <div id="claimBanner"></div>
+  </div>`);
+  sheet.body.appendChild(form);
+
+  const submit = el(`<button class="btn">ผูกการจอง</button>`);
+  submit.onclick = async () => {
+    const bookingRef = form.querySelector('#claimRef').value.trim().toUpperCase();
+    const phone = form.querySelector('#claimPhone').value.trim();
+    const banner = form.querySelector('#claimBanner');
+
+    if (!bookingRef || phone.length < 4) {
+      banner.innerHTML = '<div class="banner error">กรอกเลขที่การจอง และเบอร์โทรอย่างน้อย 4 ตัวท้ายครับ</div>';
+      return;
+    }
+
+    submit.disabled = true;
+    submit.textContent = 'กำลังตรวจสอบ…';
+    try {
+      const res = await api('/bookings/claim', { method: 'POST', body: { booking_ref: bookingRef, phone } });
+      sheet.close();
+      alert('ผูกการจองเข้าบัญชีของคุณแล้ว');
+      showBookingDetail(res.data?.booking_ref || bookingRef);
+    } catch (e) {
+      banner.innerHTML = `<div class="banner error">${esc(e.message)}</div>`;
+      submit.disabled = false;
+      submit.textContent = 'ผูกการจอง';
+    }
+  };
+  sheet.foot.appendChild(submit);
 }
 
 /* --------------------------- คิวรอของฉัน --------------------------- */
@@ -172,6 +264,9 @@ async function showBookingDetail(ref, tab) {
   // สิ่งที่ต้องทำต่อ (ถ้ามี) อยู่บนสุดเสมอ — เงินค้างคือเรื่องที่ต้องเห็นก่อนอย่างอื่น
   const todo = outstandingBlock(booking);
   if (todo) content.appendChild(todo);
+
+  // ข้อเสนอ "ไปต่อกันไหม?" มีเส้นตาย และรอบจะออกหรือไม่ออกขึ้นกับคำตอบนี้
+  content.appendChild(flexiOfferBlock(booking));
 
   const tabs = [
     { key: 'trip', label: 'ทริป' },
@@ -258,6 +353,147 @@ function outstandingBlock(booking) {
   return has ? box : null;
 }
 
+/* --------- Flexi-Price: "ไปต่อกันไหม?" --------- */
+
+/**
+ * รอบที่คนไม่ครบ ผู้จัดขอเก็บส่วนต่างค่ารถท่านละ X ในวันเดินทาง เพื่อให้ทริป
+ * ออกได้ตามกำหนดเดิม เจ้าของใบจองเป็นคนตอบรับ/สละสิทธิ์
+ *
+ * ข้อความชุดเดียวกับการ์ดในแอป (booking_detail.part.dart) และเช่นเดียวกับที่นั่น
+ * ข้อเสนอที่ถูกปฏิเสธ/หมดอายุไม่ต้องรกในหน้าใบจอง ปล่อยให้แจ้งเตือนเป็นคนบอก
+ */
+function flexiOfferBlock(booking) {
+  const wrap = el(`<div></div>`);
+
+  api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/flexi-offer')
+    .then((res) => {
+      const offer = res.data;
+      if (!offer || !wrap.isConnected) return;
+
+      const confirmed = offer.status === 'confirmed';
+      if (!offer.is_open && !confirmed) return;
+
+      const progress = offer.progress || {};
+      const perPerson = baht(offer.surcharge_per_person);
+      const myTotal = baht(offer.my_surcharge_total ?? offer.surcharge_per_person);
+
+      wrap.appendChild(el(`<div class="card"><div class="body">
+        <p class="title">${confirmed ? 'ทริปไปต่อแน่นอน! 🎉' : 'ไปต่อกันไหม?'}</p>
+        <p class="announce-body">${confirmed
+          ? `ทุกท่านยินดีไปต่อแล้ว รอบนี้ออกเดินทางตามกำหนดเดิม ส่วนต่างค่ารถ ${esc(myTotal)} จะเก็บในวันเดินทาง`
+          : `รอบนี้มีผู้เดินทางไม่ครบ หากช่วยกันจ่ายส่วนต่างค่ารถเพิ่มท่านละ ${esc(perPerson)} ทริปจะออกเดินทางได้ตามกำหนดเดิม (เก็บในวันเดินทาง)`}</p>
+        ${!confirmed && offer.reason ? `<p class="muted" style="margin:8px 0 0">“${esc(offer.reason)}”</p>` : ''}
+        <div class="kv" style="margin-top:10px"><span class="k">ส่วนต่างของคุณ</span><span class="v price">${esc(myTotal)}</span></div>
+        ${progress.total ? `<div class="kv"><span class="k">ตอบรับแล้ว</span><span class="v">${progress.accepted || 0} / ${progress.total} คน</span></div>` : ''}
+        ${offer.respond_by && !confirmed ? `<div class="kv"><span class="k">ตอบภายใน</span><span class="v">${esc(new Date(offer.respond_by).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }))}</span></div>` : ''}
+      </div></div>`));
+
+      if (!offer.is_open) return;
+
+      // เพื่อนร่วมใบจองเห็นข้อเสนอได้ แต่เซิร์ฟเวอร์ให้เฉพาะเจ้าของเป็นคนตอบ —
+      // ถ้าโชว์ปุ่มให้ทุกคนกด คนที่ไม่ใช่เจ้าของจะได้ 403 กลับมาเฉย ๆ
+      if (booking.viewer_is_owner === false) {
+        wrap.appendChild(el(`<p class="muted">ผู้จองหลักเป็นคนตอบรับข้อเสนอนี้ครับ</p>`));
+        return;
+      }
+
+      if (offer.my_consent === 'accepted') {
+        wrap.appendChild(el(`<div class="banner success">คุณยืนยันไปต่อแล้ว กำลังรอเพื่อนร่วมทริปตอบรับให้ครบ</div>`));
+        return;
+      }
+      if (offer.my_consent === 'declined') return;
+
+      const respond = async (accept, button) => {
+        if (!accept) {
+          const ok = await askConfirm(
+            'ยืนยันการสละสิทธิ์?',
+            'หากคุณไม่ไปต่อ ทริปรอบนี้อาจไม่สามารถออกเดินทางได้ และทีมงานจะติดต่อกลับเรื่องการคืนเงิน ยืนยันหรือไม่?',
+            'ยืนยันสละสิทธิ์', 'ยกเลิก',
+          );
+          if (!ok) return;
+        }
+        button.disabled = true;
+        button.textContent = 'กำลังส่ง…';
+        try {
+          await api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/flexi-offer/respond', {
+            method: 'POST', body: { accept },
+          });
+          alert(accept ? 'ยืนยันการไปต่อแล้ว ขอบคุณครับ 🙌' : 'รับทราบการตอบกลับแล้ว');
+          reloadBookingDetail();
+        } catch (e) {
+          alert(e.message);
+          button.disabled = false;
+          button.textContent = accept ? 'ยินดีไปต่อ' : 'ขอสละสิทธิ์';
+        }
+      };
+
+      const yes = el(`<button class="btn">ยินดีไปต่อ</button>`);
+      yes.onclick = () => respond(true, yes);
+      const no = el(`<button class="btn secondary" style="margin-top:8px">ขอสละสิทธิ์</button>`);
+      no.onclick = () => respond(false, no);
+      wrap.appendChild(yes);
+      wrap.appendChild(no);
+    })
+    .catch(() => { /* ไม่ใช่เจ้าของ หรือรอบนี้ไม่มีข้อเสนอ */ });
+
+  return wrap;
+}
+
+/* --------- ประกาศจากผู้จัด --------- */
+
+/* ป้ายชื่อหมวดชุดเดียวกับที่ทีมงานเลือกตอนโพสต์ (AnnouncementsPage.vue) */
+const ANNOUNCEMENT_CATEGORIES = {
+  general: 'ทั่วไป',
+  meeting_point: 'จุดนัดพบ',
+  schedule_change: 'เปลี่ยนเวลา',
+  packing: 'ของที่ต้องเตรียม',
+  weather: 'สภาพอากาศ',
+  urgent: 'ด่วน',
+};
+
+/**
+ * ประกาศของรอบนี้ — เลื่อนเวลา เปลี่ยนจุดนัดพบ ของที่ต้องเตรียม
+ *
+ * เซิร์ฟเวอร์เป็นคนตัดสินว่าใครอ่านได้ (ต้องเป็นสมาชิกของรอบ) ที่นี่จึงแค่ขอ
+ * แล้วเงียบไปเมื่อถูกปฏิเสธ — ใบจองที่ยังไม่ยืนยันยังไม่ใช่สมาชิกของรอบ
+ */
+function announcementsBlock(booking) {
+  const scheduleId = booking.schedule?.id;
+  if (!scheduleId) return el(`<div></div>`);
+
+  const wrap = el(`<div></div>`);
+
+  api('/schedules/' + scheduleId + '/announcements')
+    .then((res) => {
+      const list = res.data?.announcements || [];
+      if (!list.length || !wrap.isConnected) return;
+
+      const unread = Number(res.data?.unread_count || 0);
+      wrap.appendChild(el(`<div class="section-heading">ประกาศจากผู้จัด${unread ? ` · ใหม่ ${unread}` : ''}</div>`));
+
+      list.forEach((a) => {
+        const posted = a.created_at
+          ? new Date(a.created_at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+          : '';
+        wrap.appendChild(el(`<div class="card"><div class="body">
+          <div class="meta" style="margin-bottom:6px">
+            <span class="tag${a.category === 'urgent' ? ' warn' : ''}">${esc(ANNOUNCEMENT_CATEGORIES[a.category] || 'ทั่วไป')}</span>
+            ${a.is_pinned ? '<span class="tag">📌 ปักหมุด</span>' : ''}
+          </div>
+          <p class="title">${esc(a.title)}</p>
+          <p class="announce-body">${esc(a.body)}</p>
+          <p class="muted" style="margin:6px 0 0">${esc(a.author_name || 'ทีมงาน')}${posted ? ' · ' + esc(posted) : ''}</p>
+        </div></div>`));
+      });
+
+      // เปิดอ่านแล้วถือว่าอ่าน — ตัวนับที่ค้างไว้จะไปโผล่เป็นแจ้งเตือนซ้ำในแอป
+      if (unread) api('/schedules/' + scheduleId + '/announcements/read', { method: 'POST' }).catch(() => {});
+    })
+    .catch(() => { /* ยังไม่ใช่สมาชิกของรอบ หรือรอบนี้ไม่มีประกาศ */ });
+
+  return wrap;
+}
+
 /* --------- แท็บ: ทริป --------- */
 
 function renderBookingTrip(pane, booking) {
@@ -280,6 +516,9 @@ function renderBookingTrip(pane, booking) {
       })
       .catch(() => { qrBox.remove(); });
   }
+
+  // ประกาศมาก่อนรายละเอียดที่ลูกค้าอ่านไปแล้วตอนจอง — มันคือสิ่งที่เปลี่ยน
+  pane.appendChild(announcementsBlock(booking));
 
   const rows = [
     ['ทริป', trip.title],
@@ -401,6 +640,83 @@ function renderBookingPeople(pane, booking) {
     pane.appendChild(el(`<div class="section-heading">เอกสารแนบ</div>`));
     pane.appendChild(bookingDocuments(booking, requirements, passengers));
   }
+
+  if (booking.viewer_is_owner !== false && booking.status !== 'cancelled') {
+    pane.appendChild(el(`<div class="section-heading">ให้เพื่อนกรอกข้อมูลเอง</div>`));
+    pane.appendChild(el(`<p class="muted">คนจองไม่ต้องไปถามเลขบัตรหรือโรคประจำตัวของใคร ส่งลิงก์ให้เจ้าตัวกรอกเองในแชทได้เลย</p>`));
+
+    passengers.forEach((p, i) => {
+      const row = el(`<div class="pick">
+        <div class="pick-body">
+          <div class="pick-name">คนที่ ${i + 1}${p.name ? ' · ' + esc(p.name) : ''}</div>
+          <div class="pick-sub">ส่งลิงก์ให้กรอกข้อมูลเอง</div>
+        </div>
+        <span class="tag">ส่ง ›</span>
+      </div>`);
+      row.onclick = () => sendPassengerFillLink(booking, p, i, row);
+      pane.appendChild(row);
+    });
+
+    // คำเชิญระดับใบจอง — เพื่อนที่รับคำเชิญจะเห็นใบจองนี้ในบัญชีตัวเอง
+    // (คนละเรื่องกับลิงก์กรอกข้อมูลด้านบน ซึ่งไม่ต้องมีบัญชีเลย)
+    const invite = el(`<button class="btn secondary" style="margin-top:10px">💬 ชวนเพื่อนเข้าใบจองนี้</button>`);
+    invite.onclick = () => sendBookingInvite(booking, invite);
+    pane.appendChild(invite);
+  }
+}
+
+/**
+ * ลิงก์ให้ผู้เดินทางคนหนึ่งกรอกข้อมูลของตัวเอง
+ *
+ * เซิร์ฟเวอร์ออกโทเคนใหม่ทุกครั้ง ลิงก์เก่าที่เคยส่งไปจะใช้ไม่ได้อีก — จึงต้องถาม
+ * ก่อน ไม่งั้นการกดซ้ำเพราะคิดว่ายังไม่ได้ส่ง จะทำลิงก์ที่เพื่อนกำลังกรอกอยู่พัง
+ */
+async function sendPassengerFillLink(booking, passenger, index, row) {
+  const ok = await askConfirm(
+    'ส่งลิงก์ให้กรอกเอง',
+    `สร้างลิงก์สำหรับคนที่ ${index + 1}${passenger.name ? ' (' + passenger.name + ')' : ''} — ถ้าเคยส่งลิงก์ของคนนี้ไปแล้ว ลิงก์เดิมจะใช้ไม่ได้อีก`,
+    'สร้างและส่งลิงก์', 'ยกเลิก',
+  );
+  if (!ok) return;
+
+  row.style.opacity = '.5';
+  let invite;
+  try {
+    invite = (await api(
+      '/bookings/' + encodeURIComponent(booking.booking_ref) + '/passengers/' + passenger.id + '/invite',
+      { method: 'POST' },
+    )).data;
+  } catch (e) {
+    row.style.opacity = '';
+    return alert(e.message);
+  }
+  row.style.opacity = '';
+
+  const tripTitle = booking.schedule?.trip?.title || 'ทริป';
+  const text = `ฝากกรอกข้อมูลผู้เดินทางสำหรับ ${tripTitle} ให้หน่อยครับ (ลิงก์ใช้ได้ ${invite.expires_in_days || 14} วัน)\n${invite.url}`;
+  await shareToLine(text, invite.url, 'ส่งลิงก์ให้เพื่อนแล้ว', 'คัดลอกลิงก์กรอกข้อมูลแล้ว');
+}
+
+/** คำเชิญให้เพื่อนเข้ามาเห็นใบจองนี้ในบัญชีของตัวเอง */
+async function sendBookingInvite(booking, btn) {
+  btn.disabled = true;
+  btn.textContent = 'กำลังสร้างคำเชิญ…';
+
+  let invite;
+  try {
+    invite = (await api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/invites', { method: 'POST', body: {} })).data;
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '💬 ชวนเพื่อนเข้าใบจองนี้';
+    return alert(e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '💬 ชวนเพื่อนเข้าใบจองนี้';
+
+  const tripTitle = booking.schedule?.trip?.title || 'ทริป';
+  const text = `มาเที่ยว ${tripTitle} ด้วยกันครับ กดลิงก์นี้เพื่อเข้าใบจองเดียวกัน\n${invite.invite_url}`;
+  await shareToLine(text, invite.invite_url, 'ส่งคำเชิญแล้ว', 'คัดลอกลิงก์คำเชิญแล้ว');
 }
 
 function bookingDocuments(booking, requirements, passengers) {
@@ -620,18 +936,8 @@ function splitBlock(booking) {
 
 async function shareSplitLink(share) {
   const text = `ช่วยจ่ายค่าทริปส่วนของ ${share.name} ${baht(share.amount)} ได้ที่ลิงก์นี้เลยครับ\n${share.pay_url}`;
-  try {
-    if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
-      const res = await liff.shareTargetPicker([{ type: 'text', text }]);
-      if (res) return alert('ส่งลิงก์แล้ว');
-    }
-  } catch (_) { /* ยกเลิก หรือใช้ไม่ได้ */ }
-  try {
-    await navigator.clipboard.writeText(share.pay_url);
-    alert('คัดลอกลิงก์จ่ายแล้ว');
-  } catch (_) {
-    alert(share.pay_url);
-  }
+
+  await shareToLine(text, share.pay_url, 'ส่งลิงก์แล้ว', 'คัดลอกลิงก์จ่ายแล้ว');
 }
 
 /* --------- แท็บ: จัดการ --------- */
@@ -799,18 +1105,8 @@ async function shareTracking(booking) {
   if (!url) return alert('ยังไม่มีลิงก์ติดตามสำหรับการจองนี้ครับ');
 
   const text = `ติดตามการเดินทางของเราได้ที่ลิงก์นี้ครับ\n${url}`;
-  try {
-    if (liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
-      const res = await liff.shareTargetPicker([{ type: 'text', text }]);
-      if (res) return alert('ส่งลิงก์แล้ว');
-    }
-  } catch (_) { /* ยกเลิก */ }
-  try {
-    await navigator.clipboard.writeText(url);
-    alert('คัดลอกลิงก์ติดตามแล้ว');
-  } catch (_) {
-    alert(url);
-  }
+
+  await shareToLine(text, url, 'ส่งลิงก์แล้ว', 'คัดลอกลิงก์ติดตามแล้ว');
 }
 
 /* --------------------------- แผ่นเลื่อนกลาง --------------------------- */

@@ -68,6 +68,22 @@ const routes = {
   'GET /trips/destinations': { data: { domestic: { regions: [{ key: 'north', label: 'ภาคเหนือ', count: 3 }] }, international: { countries: [{ code: 'JP', name: 'ญี่ปุ่น', flag: '🇯🇵' }] } } },
   'GET /pickup-vehicle-classes': { data: [{ id: 1, label: 'รถเก๋ง', min_pax: 1, max_pax: 3, pax_label: '1-3 ท่าน' }] },
   'GET /countries': { data: [{ code: 'TH', name: 'ไทย', flag: '🇹🇭' }] },
+  'GET /sale-campaign/active': { data: null },
+  'GET /referral': { data: { enabled: false } },
+  'GET /waitlist': { data: [] },
+  'GET /me/claimable-bookings': { data: { count: 0, trips: [] } },
+  'GET /legal/policy': {
+    data: {
+      terms_version: '2026-09-10',
+      policy: { postpone_times: 1, postpone_notice_days: 30, substitute_notice_days: 15 },
+      booking_terms: [
+        'เมื่อยืนยันสิทธิ์การเดินทางและชำระเงินแล้ว ทีมงานขอสงวนสิทธิ์ไม่คืนเงินมัดจำและค่าทริปทุกกรณี',
+        'หากไม่สะดวกในวันดังกล่าว แจ้งเลื่อนได้ 1 ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย 30 วัน ก่อนวันเดินทางเดิม',
+        'หากทีมงานเป็นฝ่ายยกเลิกรอบเดินทาง คืนเงิน 100% เต็มจำนวนทุกกรณี',
+      ],
+    },
+  },
+  'GET /trips/khao-yai/related': { data: [] },
   'GET /saved-travellers': { data: [] },
   'GET /auth/me': { data: { name: 'ทดสอบ', title: 'นาย', phone: '0812345678' } },
   'POST /schedules/9/seats/lock': { data: { locked: true, seats: ['A2'], expires_at: new Date(Date.now() + 900000).toISOString() } },
@@ -85,10 +101,12 @@ const dom = new JSDOM(fs.readFileSync(ROOT + 'index.html', 'utf8'), { url: 'http
 const w = dom.window;
 
 const calls = [];
+const bodies = [];
 w.fetch = async (url, opts = {}) => {
   const path = String(url).replace('https://example.com/api/v1', '');
   const key = `${opts.method || 'GET'} ${path.split('?')[0]}`;
   calls.push(key);
+  if (opts.body) bodies.push({ key, body: opts.body });
   const hit = routes[key];
   if (!hit) { console.log('  ⚠ ไม่มี route จำลอง:', key); return { ok: true, json: async () => ({ data: null }) }; }
   return { ok: true, status: 200, json: async () => hit };
@@ -222,10 +240,17 @@ step('ขั้น 3 — สรุป', () => {
 });
 
 $('#confirm').dispatchEvent(new w.Event('click'));
-await wait(20);
+await wait(40);
 step('แผ่นเงื่อนไข', () => {
   assert($('#termsOk'), 'ไม่มีแผ่นเงื่อนไข');
   assert($('#termsOk').disabled, 'ปุ่มยืนยันต้องปิดจนกว่าจะติ๊กยอมรับ');
+});
+// เงื่อนไขต้องเป็นฉบับที่เซิร์ฟเวอร์ประกาศ ไม่ใช่ข้อความที่พิมพ์ไว้ในไฟล์ LIFF
+step('เงื่อนไขมาจาก /legal/policy ไม่ได้ hardcode', () => {
+  assert(calls.includes('GET /legal/policy'), 'ไม่ได้ขอเงื่อนไขจากเซิร์ฟเวอร์');
+  const sheet = w.document.querySelector('.sheet-overlay').textContent;
+  assert(sheet.includes('คืนเงิน 100% เต็มจำนวนทุกกรณี'), 'ไม่ได้แสดงเงื่อนไขที่เซิร์ฟเวอร์ส่งมา');
+  assert(w.document.querySelectorAll('.sheet-overlay .terms li').length === 3, 'จำนวนข้อเงื่อนไขไม่ตรงกับที่เซิร์ฟเวอร์ส่งมา');
 });
 $('#agree').checked = true;
 $('#agree').dispatchEvent(new w.Event('change'));
@@ -236,6 +261,12 @@ await wait(150);
 // ไปถามหลังจ่ายเงินเสร็จ)
 step('จองเสร็จแล้วไม่มีแผ่นอะไรมาบัง QR', () => {
   assert(!w.document.querySelector('.sheet-overlay'), 'ไม่ควรมีแผ่นเลื่อนค้างอยู่หน้า QR');
+});
+
+// ใบจองต้องมีบันทึกว่าลูกค้ายอมรับเงื่อนไขฉบับไหน ไม่ใช่ติ๊กผ่านหน้าจอเฉย ๆ
+step('ส่ง accepted_terms ไปกับการจอง', () => {
+  const body = JSON.parse(bodies.find((b) => b.key === 'POST /bookings').body);
+  assert(body.accepted_terms === true, 'ไม่ได้ส่ง accepted_terms');
 });
 
 step('หน้าชำระเงิน (Beam) — QR ขึ้นเองทันที', () => {
