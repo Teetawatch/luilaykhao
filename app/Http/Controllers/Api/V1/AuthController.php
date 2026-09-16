@@ -346,6 +346,12 @@ class AuthController extends Controller
             $profile->json('pictureUrl'),
         );
 
+        // เปิด LIFF ได้แปลว่ากลับมาคุยกับ OA แล้ว — ล้างธงที่ตั้งไว้ตอน LINE ตอบ 403
+        // ไม่งั้นคนที่เคยบล็อกแล้วกลับมา จะไม่ได้รับข้อความอีกเลยตลอดกาล
+        if ($user->line_blocked_at !== null) {
+            $user->forceFill(['line_blocked_at' => null])->save();
+        }
+
         $user->load('roles');
         $token = $user->createToken('auth-token')->plainTextToken;
 

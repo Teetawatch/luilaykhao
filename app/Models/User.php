@@ -44,6 +44,8 @@ class User extends Authenticatable
             'public_profile_enabled' => 'boolean',
             'is_shadow' => 'boolean',
             'claim_token_sent_at' => 'datetime',
+            // วันที่ LINE ตอบว่าส่งหาคนนี้ไม่ได้ (บล็อก OA / ยังไม่ได้เพิ่มเพื่อน)
+            'line_blocked_at' => 'datetime',
             // ค่าตอบแทนต่อวันของทีมงาน — ใช้ลงรายการค่าจ้างตอนปิดงบรอบ
             'staff_day_rate' => 'decimal:2',
         ];

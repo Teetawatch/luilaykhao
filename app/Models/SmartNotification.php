@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Jobs\SendLineMessageJob;
 use App\Services\FcmService;
+use App\Services\LineMessagingService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
@@ -57,6 +59,13 @@ class SmartNotification extends Model
                 'notification_id' => $notification->id,
                 'message' => $e->getMessage(),
             ]);
+        }
+
+        // ลูกค้าที่จองผ่าน LINE แล้วไม่เคยลงแอป ได้แต่ SMS หรือไม่ได้อะไรเลย ทั้งที่
+        // เราถือ LINE userId ของเขาอยู่ — คัดเฉพาะเรื่องที่คุ้มค่าจะส่ง (ดู config/line.php)
+        // แล้วค่อยเข้าคิว เพื่อไม่ให้ทุกการแจ้งเตือนในระบบสร้างงานเปล่า
+        if (app(LineMessagingService::class)->shouldNotify($notification->type)) {
+            SendLineMessageJob::dispatch($notification->id);
         }
 
         return $notification;

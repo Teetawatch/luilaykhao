@@ -35,6 +35,9 @@ php artisan sms:credit
 
 # Verify the APNs auth key can reach Apple (Live Activity push) — no device needed
 php artisan apns:check
+
+# Verify the LINE Messaging API token (add --to=<user id> to send a real test message)
+php artisan line:check
 ```
 
 ### Flutter apps
@@ -80,6 +83,7 @@ Trip (slug-routed)
   - `WaitlistService` — manages queue; `ProcessWaitlistJob` offers seats when a cancellation frees them; offers expire after `WaitlistService::offerTtlMinutes()` (default 15, editable at `/admin/settings`)
   - `FcmService` — Firebase Cloud Messaging via service account JWT (cached 55 min); SOS alerts sent as high-priority FCM data messages
   - `SmsService` — ThaiBulkSMS integration; messages are queued via `SendPendingSmsJob` and deduplicated per booking/type
+  - `LineMessagingService` — pushes a notification into the customer's LINE chat, for the many customers who book through LIFF and never install the app. Hooked into `SmartNotification::send()` via `SendLineMessageJob`, and gated three ways: the type must be listed in `config/line.php`, the customer must *not* have the app (`AppLinks::hasApp`), and they must have signed in with LINE and not blocked the OA (`users.line_blocked_at`). No-ops entirely without `LINE_CHANNEL_TOKEN`
   - `MailService` — Brevo SMTP; triggered from `BookingService` and queue jobs
   - `GoogleDistanceService` — Distance Matrix API for pickup ETA calculations
 - **Events / Jobs** — real-time broadcast via Laravel Reverb: `SeatLocked`, `SeatReleased`, `SeatBooked`, `VehicleLocationUpdated`, `SosTriggered`

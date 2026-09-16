@@ -75,6 +75,44 @@ window.LIFF_CONFIG = {
 
 ลูกค้ากดปุ่มนี้ → เปิดหน้าจองในแอป LINE → login อัตโนมัติ → เลือกทริป → จอง
 
+ปุ่มอื่นที่ลิงก์ตรงเข้าหน้าได้: `?page=bookings` (การจองของฉัน), `?page=referral`
+(ชวนเพื่อน), `?trip=<slug>` (ทริปหนึ่ง), `?booking=<ref>` (ใบจองหนึ่ง)
+
+## 6) ส่งข้อความแจ้งเตือนหาลูกค้าทาง LINE (Messaging API)
+
+ลูกค้าที่จองผ่าน LIFF แล้วไม่ได้ลงแอป เคยได้แต่ SMS (เสียเงินรายข้อความ ตัดที่ 160
+ตัวอักษร) หรือไม่ได้อะไรเลย ทั้งที่เราถือ LINE userId ของเขาอยู่ตั้งแต่ตอนล็อกอิน
+
+**สำคัญที่สุด — สอง channel ต้องอยู่ provider เดียวกัน**
+userId ที่ LIFF ให้มาใช้กับ Messaging API ได้ก็ต่อเมื่อ **LINE Login channel** (ที่ LIFF
+อยู่ใต้มัน) กับ **Messaging API channel** (ตัว OA) อยู่ภายใต้ provider เดียวกันใน
+LINE Developers Console ถ้าคนละ provider LINE จะตอบ 400 ว่า property `to` ไม่ถูกต้อง
+และไม่มีอะไรบนหน้าจอบอกว่าเพราะอะไร ถ้าตอนนี้อยู่คนละ provider ต้องสร้าง Login
+channel ใหม่ใต้ provider เดียวกับ OA แล้วย้าย LIFF app ไป (ย้าย channel ข้าม provider
+ไม่ได้)
+
+1. LINE Developers Console → เลือก **Messaging API channel** ของ OA
+2. แท็บ **Messaging API** → **Channel access token (long-lived)** → Issue
+3. ใส่ลง `.env`:
+   ```
+   LINE_CHANNEL_TOKEN=<token ที่ได้>
+   LINE_LIFF_ID=2009790034-M99fcKSw   # ตัวเดียวกับใน public/liff/config.js
+   ```
+4. ตรวจว่าใช้ได้: `php artisan line:check`
+   ส่งข้อความทดสอบจริง: `php artisan line:check --to=<user id>`
+   (เป็นวิธีเดียวที่พิสูจน์ได้ว่าสอง channel อยู่ provider เดียวกัน)
+
+**ใครได้ข้อความบ้าง** — กติกาอยู่ใน `LineMessagingService` สามชั้น:
+- ประเภทการแจ้งเตือนต้องอยู่ใน `config('line.notify_types')` (26 จาก ~55 ประเภท)
+  LINE คิดเงินรายข้อความเมื่อเกินโควตา จึงคัดเฉพาะเรื่องเงิน ที่นั่ง และเส้นตาย
+  — แก้รายการนี้ได้ตามต้องการ
+- ลูกค้าต้อง**ไม่มีแอป** (`AppLinks::hasApp`) คนที่มีแอปได้ push อยู่แล้ว
+- ต้องเคยล็อกอินด้วย LINE และไม่ได้บล็อก OA (LINE ตอบ 403 → จำไว้ใน
+  `users.line_blocked_at` แล้วเลิกยิง จนกว่าเขาจะกลับมาเปิด LIFF อีกครั้ง)
+
+ไม่ตั้ง `LINE_CHANNEL_TOKEN` = ปิดทั้งฟีเจอร์ ไม่มีการยิงออกไปเลย
+เทสต์: `php artisan test --filter LineMessagingTest`
+
 ---
 
 ## ทดสอบ
@@ -216,7 +254,5 @@ QR อยู่บนสุดของหน้าและออกให้�
 เขียนรีวิว, Passport/แต้มสะสม, ซื้อเป็นของขวัญ, ศูนย์ช่วยเหลือ, การแจ้งเตือนในแอป
 — ของพวกนี้อยู่ในแอปลุยเลเขาและเว็บไซต์ตามเดิม
 
-และอีกอย่างที่ยังไม่มีทั้งระบบ ไม่ใช่แค่ใน LIFF: **การส่งข้อความผ่าน LINE Messaging
-API** — `LINE_CHANNEL_TOKEN` อยู่ใน `.env.example` แต่ไม่มีโค้ดอ่านมันสักบรรทัด
-การแจ้งเตือนทุกตัวยังออกทาง SMS/อีเมล/FCM เท่านั้น ทั้งที่ `users.social_id` เก็บ
-LINE userId ไว้แล้วตอน LIFF login เป็นงานฝั่ง backend แยกก้อน ไม่ใช่งานในโฟลเดอร์นี้
+(การส่งข้อความหาลูกค้าทาง LINE OA ทำแล้ว — ดูขั้นตอนที่ 6 ด้านบน ยังต้องออก
+`LINE_CHANNEL_TOKEN` บนโปรดักชันก่อนถึงจะเริ่มส่งจริง)
