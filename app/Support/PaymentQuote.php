@@ -85,7 +85,9 @@ class PaymentQuote
             'balance_due_at' => null,
         ];
 
-        if (! $schedule || $booking->is_join_trip || ! $schedule->deposit_enabled) {
+        // จอยทริปจ่ายมัดจำได้เหมือนจองปกติ (ผ่อน/แบ่งจ่ายยังปิดอยู่ ดู installment() และ split())
+        // — ยอดจอยเป็นราคาต่อคนเต็มก้อนของตัวเอง resolveDepositAmount() จึงคิดได้ตรงๆ
+        if (! $schedule || ! $schedule->deposit_enabled) {
             return $unavailable('not_enabled');
         }
 

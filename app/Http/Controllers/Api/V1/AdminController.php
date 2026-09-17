@@ -2271,7 +2271,8 @@ class AdminController extends Controller
             );
         }
 
-        if ($paymentType === 'deposit' && ($isJoinTrip || ! $schedule->deposit_enabled)) {
+        // จอยทริปมัดจำได้เหมือนจองปกติ — ติดแค่สวิตช์มัดจำของรอบ
+        if ($paymentType === 'deposit' && ! $schedule->deposit_enabled) {
             return $this->error('รอบเดินทางนี้ไม่รองรับการชำระแบบมัดจำ', 422);
         }
 

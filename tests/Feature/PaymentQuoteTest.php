@@ -141,6 +141,65 @@ class PaymentQuoteTest extends TestCase
         $this->assertSame('exceeds_total', $quote['deposit']['reason']);
     }
 
+    public function test_a_join_trip_can_pay_a_deposit_but_still_cannot_instal_or_split(): void
+    {
+        // จอยทริปเคยถูกบังคับให้จ่ายเต็มจำนวนอย่างเดียว ทั้งที่ยอดต่อคนก็ก้อนใหญ่เหมือนกัน
+        // มัดจำจึงเปิดให้แล้ว ส่วนผ่อน/แบ่งจ่ายยังปิดอยู่ตามเดิม
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(90)->toDateString(),
+            'join_trip_enabled' => true,
+            'deposit_enabled' => true,
+            'deposit_type' => 'percent',
+            'deposit_percent' => 50,
+        ]);
+
+        $booking = $this->makeBooking(User::factory()->create(), $schedule, 4000, passengers: 2);
+        $booking->update(['is_join_trip' => true]);
+
+        $quote = PaymentQuote::forBooking($booking->fresh()->load(['schedule', 'passengers']));
+
+        $this->assertTrue($quote['deposit']['available']);
+        $this->assertSame(2000.0, $quote['deposit']['amount']);
+        $this->assertSame(2000.0, $quote['deposit']['balance']);
+        $this->assertFalse($quote['installment']['available']);
+        $this->assertFalse($quote['split']['available']);
+    }
+
+    public function test_charging_a_deposit_on_a_join_trip_booking_is_accepted(): void
+    {
+        $schedule = $this->makeSchedule([
+            'departure_date' => now('Asia/Bangkok')->addDays(90)->toDateString(),
+            'join_trip_enabled' => true,
+            'deposit_enabled' => true,
+            'deposit_type' => 'amount',
+            'deposit_amount' => 1000,
+        ]);
+
+        $user = User::factory()->create();
+        $booking = $this->makeBooking($user, $schedule, 5000, passengers: 2);
+        $booking->update(['is_join_trip' => true]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/payments/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'payment_type' => 'deposit',
+                'payment_method' => 'promptpay',
+                'amount' => 2000,
+            ])
+            ->assertOk();
+
+        $booking->refresh();
+
+        $this->assertSame('deposit', $booking->payment_type);
+        // มัดจำคนละ 1,000 × 2 คน และยอดคงเหลือครบกำหนดก่อนเดินทาง 15 วัน
+        $this->assertSame(2000.0, (float) $booking->deposit_amount);
+        $this->assertSame(3000.0, (float) $booking->balance_amount);
+        $this->assertSame(
+            now('Asia/Bangkok')->addDays(75)->toDateString(),
+            $booking->balance_due_at->toDateString(),
+        );
+    }
+
     public function test_installment_plan_is_derived_from_the_departure_date_alone(): void
     {
         // 45 วันข้างหน้า → ปิดยอดก่อนเดินทาง 15 วัน เหลือช่วงผ่อนจริง 30 วัน

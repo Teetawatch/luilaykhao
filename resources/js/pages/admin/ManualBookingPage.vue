@@ -585,7 +585,7 @@
                 </label>
               </div>
               <p v-if="!depositAllowed && !installmentAllowed" class="field-note">รอบนี้รับชำระเต็มจำนวนเท่านั้น (ยังไม่เปิดมัดจำ หรือใกล้วันเดินทางเกินกว่าจะผ่อน)</p>
-              <p v-else-if="!depositAllowed && form.payment_type !== 'installment'" class="field-note">รอบนี้ยังไม่เปิดมัดจำ หรือเป็นจอยทริป</p>
+              <p v-else-if="!depositAllowed && form.payment_type !== 'installment'" class="field-note">รอบนี้ยังไม่เปิดมัดจำ</p>
               <p v-else-if="!installmentAllowed && form.payment_type !== 'deposit'" class="field-note">รอบนี้ใกล้วันเดินทางเกินกว่าจะผ่อนชำระได้ หรือเป็นจอยทริป</p>
             </div>
 
@@ -1013,7 +1013,8 @@ const vehicleAdjustment = computed(() => Number(selectedVehicleOption.value?.pri
 const selectedPickup = computed(() => pickupPoints.value.find((point) => point.id === Number(form.pickup_point_id)) || null);
 const requiresDiveInfo = computed(() => ['diving', 'snorkeling'].includes(selectedTrip.value?.type || selectedSchedule.value?.trip?.type));
 const installmentAllowed = computed(() => Boolean(selectedSchedule.value?.installment_enabled && !form.is_join_trip));
-const depositAllowed = computed(() => Boolean(selectedSchedule.value?.deposit_enabled && !form.is_join_trip));
+// จอยทริปมัดจำได้เหมือนจองปกติ — ต่างจากผ่อนชำระที่ยังปิดอยู่
+const depositAllowed = computed(() => Boolean(selectedSchedule.value?.deposit_enabled));
 // เพดานมาจากเซิร์ฟเวอร์ (PaymentQuote::maxInstallmentCount) ไม่ต้องกำหนดซ้ำที่นี่
 // ไม่งั้นวันที่เจ้าของเปลี่ยนกติกา หน้านี้จะเป็นที่เดียวที่ยังจำเลขเก่า
 const maxInstallmentCount = computed(() => Math.max(Number(selectedSchedule.value?.installment_count || 2), 2));

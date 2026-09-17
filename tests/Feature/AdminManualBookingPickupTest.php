@@ -197,4 +197,40 @@ class AdminManualBookingPickupTest extends TestCase
         $this->assertNull($booking->pickup_point_id);
         $this->assertTrue($booking->passengers->every(fn ($p) => $p->pickup_point_id === null));
     }
+
+    /** จอยทริปรับมัดจำได้แล้ว — เคยถูกปฏิเสธที่ด่านเดียวกับผ่อนชำระ */
+    public function test_join_trip_can_be_booked_on_a_deposit(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'join_trip_enabled' => true,
+            'join_trip_price' => 900,
+            'deposit_enabled' => true,
+            'deposit_type' => 'percent',
+            'deposit_percent' => 50,
+        ]);
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/bookings/manual', [
+                'schedule_id' => $schedule->id,
+                'customer_name' => 'สมชาย ใจดี',
+                'phone' => '0810000000',
+                'email' => 'join-deposit@example.test',
+                'is_join_trip' => true,
+                'passengers' => [
+                    $this->passengerPayload('สมชาย ใจดี'),
+                    $this->passengerPayload('สมหญิง ใจงาม'),
+                ],
+                'status' => 'pending',
+                'payment_type' => 'deposit',
+                'send_email' => false,
+            ]);
+
+        $res->assertCreated();
+        $booking = Booking::findOrFail($res->json('data.id'));
+
+        $this->assertSame('deposit', $booking->payment_type);
+        $this->assertEqualsWithDelta(900, (float) $booking->deposit_amount, 0.01);
+        $this->assertEqualsWithDelta(900, (float) $booking->balance_amount, 0.01);
+    }
 }
