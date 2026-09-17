@@ -204,39 +204,11 @@
     }
     </script>
 
-    <!-- JSON-LD BreadcrumbList -->
-    <script type="application/ld+json">
-    {
-        "@@context": "https://schema.org",
-        "@@type": "BreadcrumbList",
-        "itemListElement": [
-            {
-                "@@type": "ListItem",
-                "position": 1,
-                "name": "หน้าแรก",
-                "item": "{{ url('/') }}"
-            },
-            {
-                "@@type": "ListItem",
-                "position": 2,
-                "name": "ค้นหาทริปทั้งหมด",
-                "item": "{{ url('/trips') }}"
-            },
-            {
-                "@@type": "ListItem",
-                "position": 3,
-                "name": "เกี่ยวกับเรา",
-                "item": "{{ url('/about') }}"
-            },
-            {
-                "@@type": "ListItem",
-                "position": 4,
-                "name": "ติดต่อเรา",
-                "item": "{{ url('/contact') }}"
-            }
-        ]
-    }
-    </script>
+    {{-- The breadcrumb used to be hardcoded here, listing the whole top menu
+         (หน้าแรก › ทริป › เกี่ยวกับเรา › ติดต่อเรา) on every single page. Google
+         read it literally, so even the home page's search result showed a trail
+         ending at /contact. A breadcrumb is the path to *this* page and nothing
+         else, so it is built per page now — see App\Support\SeoMeta. --}}
 
     <!-- Preconnect for Performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -259,12 +231,27 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ลุยเลเขา">
 
+    {{-- Styles for the pre-boot markup in partials/boot-shell.blade.php. They
+         live here, inline, because the Vite CSS bundle is exactly the thing
+         that has not arrived yet at the moment this is on screen. --}}
+    <style>
+        .llk-boot { max-width: 1100px; margin: 0 auto; padding: 48px 20px 64px; }
+        .llk-boot__brand { display: inline-block; font-size: 30px; font-weight: 800; color: #0D2B1E; text-decoration: none; }
+        .llk-boot__tagline { margin: 8px 0 32px; max-width: 62ch; font-size: 18px; line-height: 1.6; color: #5b6660; }
+        .llk-boot__nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 28px; }
+        .llk-boot__heading { margin: 0 0 10px; font-size: 15px; font-weight: 700; color: #0D2B1E; }
+        .llk-boot__list { margin: 0; padding: 0; list-style: none; }
+        .llk-boot__list li { margin-bottom: 7px; }
+        .llk-boot__list a { font-size: 17px; color: #3f4a45; text-decoration: none; }
+        .llk-boot__list a:hover { text-decoration: underline; }
+    </style>
+
     @include('partials.analytics')
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-[var(--color-white)] text-[var(--color-text-mid)] antialiased" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">
-    <div id="app"></div>
+    <div id="app">@include('partials.boot-shell')</div>
 
 
 

@@ -210,15 +210,52 @@ class SeoMetaTest extends TestCase
     {
         $trip = $this->makeTrip();
 
-        $crumbs = null;
-        foreach ($this->jsonLdBlocks($this->get('/trips/'.$trip->slug)->getContent()) as $block) {
-            if (($block['@type'] ?? null) === 'BreadcrumbList' && count($block['itemListElement']) === 3) {
-                $crumbs = $block;
-            }
-        }
+        $crumbs = $this->jsonLdOfType($this->get('/trips/'.$trip->slug)->getContent(), 'BreadcrumbList');
 
         $this->assertNotNull($crumbs);
+        $this->assertCount(3, $crumbs['itemListElement']);
         $this->assertSame('เขาช้างเผือก 2 วัน 1 คืน', $crumbs['itemListElement'][2]['name']);
+    }
+
+    /**
+     * เส้นทางของหน้า static คือ หน้าแรก › หน้านี้ — ไม่ใช่เมนูทั้งเว็บ
+     *
+     * ก่อนหน้านี้ shell พิมพ์ BreadcrumbList ก้อนเดียวกันทุกหน้า ผลค้นหาของหน้าแรก
+     * บน Google จึงแสดง path ที่ลงท้ายด้วย ติดต่อเรา
+     */
+    public function test_a_static_page_breadcrumb_ends_at_that_page(): void
+    {
+        $crumbs = $this->jsonLdOfType($this->get('/contact')->getContent(), 'BreadcrumbList');
+
+        $this->assertNotNull($crumbs);
+        $this->assertCount(2, $crumbs['itemListElement']);
+        $this->assertSame('หน้าแรก', $crumbs['itemListElement'][0]['name']);
+        $this->assertSame('ติดต่อเรา', $crumbs['itemListElement'][1]['name']);
+        $this->assertSame(url('/contact'), $crumbs['itemListElement'][1]['item']);
+    }
+
+    /** ชื่อในเส้นทางเป็นชื่อหน้า ไม่ใช่ title ที่มีคีย์เวิร์ดต่อท้ายหลัง | */
+    public function test_a_breadcrumb_name_drops_the_keyword_tail_of_the_title(): void
+    {
+        $crumbs = $this->jsonLdOfType($this->get('/trips')->getContent(), 'BreadcrumbList');
+
+        $this->assertSame('ค้นหาทริปทั้งหมด', $crumbs['itemListElement'][1]['name']);
+    }
+
+    public function test_the_home_page_has_no_breadcrumb_at_all(): void
+    {
+        $this->assertNull($this->jsonLdOfType($this->get('/')->getContent(), 'BreadcrumbList'));
+    }
+
+    public function test_a_noindex_page_declares_no_breadcrumb(): void
+    {
+        $this->assertNull($this->jsonLdOfType($this->get('/login')->getContent(), 'BreadcrumbList'));
+        $this->assertNull($this->jsonLdOfType($this->get('/my-bookings')->getContent(), 'BreadcrumbList'));
+    }
+
+    public function test_an_unknown_path_declares_no_breadcrumb(): void
+    {
+        $this->assertNull($this->jsonLdOfType($this->get('/no-such-page')->getContent(), 'BreadcrumbList'));
     }
 
     public function test_an_unknown_trip_slug_falls_back_to_the_site_defaults(): void

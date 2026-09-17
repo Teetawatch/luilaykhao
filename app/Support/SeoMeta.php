@@ -155,6 +155,7 @@ class SeoMeta
     {
         $default = config('seo.default');
         $page = config('seo.pages.'.$path, []);
+        $robots = $page['robots'] ?? (self::isPrivatePath($path) ? 'noindex, nofollow' : $default['robots']);
 
         return self::assemble([
             'title' => $page['title'] ?? $default['title'],
@@ -163,8 +164,34 @@ class SeoMeta
             'image' => self::fallbackImage(),
             'image_alt' => config('seo.fallback_image_alt'),
             'type' => $page['type'] ?? $default['type'],
-            'robots' => $page['robots'] ?? (self::isPrivatePath($path) ? 'noindex, nofollow' : $default['robots']),
+            'robots' => $robots,
+            'json_ld' => self::staticBreadcrumb($path, $page['title'] ?? null, $robots),
         ]);
+    }
+
+    /**
+     * หน้าแรก › ชื่อหน้า — เท่าที่เป็นจริง
+     *
+     * เมนูบนสุดของเว็บเคยถูกประกาศเป็น BreadcrumbList ก้อนเดียว hardcode ไว้ใน
+     * shell ทุกหน้าจึงบอก Google ว่าเส้นทางมาถึงตัวเองคือ หน้าแรก › ทริป ›
+     * เกี่ยวกับเรา › ติดต่อเรา ผลคือแม้แต่ผลค้นหาของหน้าแรกก็แสดง path ที่ลงท้าย
+     * ด้วย /contact breadcrumb คือเส้นทางมาถึง "หน้านี้" ไม่ใช่รายการเมนู
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function staticBreadcrumb(string $path, ?string $title, string $robots): array
+    {
+        // หน้าแรกไม่มีเส้นทางมาถึงตัวเอง, path ที่ไม่ได้ลงทะเบียนไว้ไม่มีชื่อจะใส่
+        // และหน้าที่สั่ง noindex ก็ไม่ควรประกาศตัวเองในผลค้นหาตั้งแต่ต้น
+        if ($path === '/' || $title === null || str_contains($robots, 'noindex')) {
+            return [];
+        }
+
+        return [self::breadcrumbJsonLd([
+            'หน้าแรก' => url('/'),
+            // ชื่อในเส้นทางใช้ชื่อหน้าสั้น ๆ ไม่ใช่ title ที่ต่อคีย์เวิร์ดไว้ท้ายด้วย |
+            trim(Str::before($title, '|')) => url($path),
+        ])];
     }
 
     /**
