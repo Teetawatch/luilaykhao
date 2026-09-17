@@ -17,13 +17,20 @@
         default => 'รอบนี้เต็มแล้ว',
     };
 
+    // departs_at เก็บเวลาไทยตรง ๆ ในคอลัมน์ชนิด UTC — อ่านค่าดิบจึงได้เวลาที่ตั้งไว้จริง
+    $departsAt = $schedule->departs_at;
+    // ทริปจำนวนไม่น้อยรถออกคืนก่อนวันทริป ("ทริป 5-7" แต่ขึ้นรถคืนวันที่ 4) คนที่อ่าน
+    // แค่ช่วงวันเดินทางจะมาผิดวันเต็ม ๆ วันที่รถออกจริงจึงต้องเป็นบรรทัดของตัวเอง
+    // ไม่ใช่เวลาเล็ก ๆ ต่อท้ายช่วงวันที่
+    $departsEarly = $schedule->departsBeforeTripDay();
+    $daysEarly = $schedule->daysDepartingEarly();
+
     $roundMeta = [];
-    if ($departure) {
+    if (! $departsEarly && $departure) {
         $roundMeta[] = 'ออกวัน'.$departure->locale('th')->isoFormat('dddd');
     }
-    // departs_at เก็บเวลาไทยตรง ๆ ในคอลัมน์ชนิด UTC — อ่านค่าดิบจึงได้เวลาที่ตั้งไว้จริง
-    if ($schedule->departs_at) {
-        $roundMeta[] = 'เวลา '.$schedule->departs_at->format('H:i').' น.';
+    if (! $departsEarly && $departsAt) {
+        $roundMeta[] = 'เวลา '.$departsAt->format('H:i').' น.';
     }
     if ($nights > 0) {
         $roundMeta[] = ($nights + 1).' วัน '.$nights.' คืน';
@@ -40,6 +47,18 @@
         <strong>{{ $schedule->dateRangeLabelThai() }}</strong>
         @if ($roundMeta)
             <span class="round-meta">{{ implode(' · ', $roundMeta) }}</span>
+        @endif
+        @if ($departsEarly)
+            {{-- เขียนวันให้เต็มพร้อมชื่อวัน ไม่ใช่แค่เวลา — คนที่มาผิดวันคือคนที่อ่าน
+                 เจอแค่ "20:00 น." แล้วเติมวันที่ของทริปให้เอง --}}
+            <span class="round-early">
+                @include('intake.icon', ['name' => 'clock'])
+                <span>
+                    ขึ้นรถ <strong>{{ $departsAt->locale('th')->isoFormat('dddd') }}ที่ {{ \App\Support\ThaiDate::full($departsAt) }}
+                    เวลา {{ $departsAt->format('H:i') }} น.</strong>
+                    — รถออกก่อนวันทริป {{ $daysEarly }} วัน
+                </span>
+            </span>
         @endif
         @if ($roundClosed)
             <span class="round-flag">{{ $closedReason }}</span>

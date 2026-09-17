@@ -8,6 +8,7 @@ use App\Models\IntakeLink;
 use App\Models\TripSchedule;
 use App\Services\IntakeSeatService;
 use App\Services\QrCodeService;
+use App\Support\TripRentalItems;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -178,6 +179,8 @@ class AdminIntakeController extends Controller
                 true,
             ));
 
+        $rentals = TripRentalItems::mergeSelections($intake->people->map->rentals());
+
         return $this->success([
             ...$this->summaryPayload($intake),
             'note' => $intake->note,
@@ -189,6 +192,10 @@ class AdminIntakeController extends Controller
             'seats' => $intake->people->map(fn ($person) => $person->seat_id)->values(),
             'seat_vehicle_option_id' => (int) ($intake->people
                 ->firstWhere(fn ($person) => filled($person->seat_id))?->seat_vehicle_option_id ?? 0),
+            // อุปกรณ์เช่าของทั้งกลุ่มรวมเป็นชุดเดียว — ใบจองมีรายการเช่าชุดเดียวต่อใบ
+            // ไม่ใช่รายคน หน้าจองแทนลูกค้าจึงรับชุดนี้ไปตั้งจำนวนบนฟอร์มได้ตรง ๆ
+            'rentals' => $rentals,
+            'rentals_total' => round(array_sum(array_column($rentals, 'total_price')), 2),
             // ที่นั่งที่ลูกค้าเลือกไว้แล้วถูกใช้ไป — ต้องเห็นก่อนกดดึงไปจอง
             'seat_conflicts' => $taken->map(fn ($person) => [
                 'name' => $person->name,
@@ -208,6 +215,9 @@ class AdminIntakeController extends Controller
                 // ที่นั่งที่เจ้าตัวเลือกไว้ + ยังใช้ได้อยู่ไหม
                 'seat_id' => $person->seat_id,
                 'seat_lost' => filled($person->seat_id) && $taken->contains($person),
+                // อุปกรณ์ที่คนนี้ขอเช่า — ยอดรวมของกลุ่มอยู่ด้านบนแล้ว ตรงนี้ไว้ตอบ
+                // คำถามหน้างานว่า "ถุงนอนใบนี้ของใคร" ตอนแจกของ
+                'rentals' => $person->rentals(),
             ])->values(),
         ]);
     }

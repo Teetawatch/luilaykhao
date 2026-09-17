@@ -165,6 +165,33 @@ class TripSchedule extends Model
     }
 
     /**
+     * รอบนี้ "ออกก่อนวันทริป" ไหม — รถหลายรอบออกคืนก่อนเพื่อไปถึงตีนเขาตอนเช้า
+     *
+     * ลูกค้าที่อ่านแค่ช่วงวันเดินทางจะมาผิดวันเต็ม ๆ หน้าไหนที่พิมพ์วันออกเดินทาง
+     * ให้ลูกค้าอ่านจึงต้องถามตัวนี้ก่อน แล้วพูดวัน-เวลาที่ออกจริงออกมาตรง ๆ
+     *
+     * เทียบกันเป็น "วัน" ไม่ใช่เวลา — departs_at เก็บเวลาไทยในคอลัมน์ชนิด UTC
+     * การเทียบตรง ๆ จะเพี้ยนไป 7 ชั่วโมง (กฎเดียวกับ acceptsNewCustomers())
+     */
+    public function departsBeforeTripDay(): bool
+    {
+        return $this->departs_at !== null
+            && $this->departure_date !== null
+            && $this->departs_at->toDateString() < $this->departure_date->toDateString();
+    }
+
+    /** ออกก่อนวันทริปกี่วัน — 0 เมื่อออกวันเดียวกับวันทริป */
+    public function daysDepartingEarly(): int
+    {
+        if (! $this->departsBeforeTripDay()) {
+            return 0;
+        }
+
+        return (int) $this->departs_at->copy()->startOfDay()
+            ->diffInDays($this->departure_date->copy()->startOfDay());
+    }
+
+    /**
      * ข้อความวันเดินทางภาษาไทย เช่น "12 มิถุนายน 2026 เวลา 23:30 น."
      * ถ้าไม่ได้กำหนดเวลาออกรถ จะแสดงเฉพาะวันทริป
      */

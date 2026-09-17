@@ -207,6 +207,12 @@ class CustomerIntakeService
             // กรอกใหม่ = ย้ายที่นั่ง ที่เดิมจึงต้องว่างทันที ไม่ใช่ค้างชื่อเดิมไว้
             'seat_id' => $intake->isJoinTrip() ? null : (($data['seat_id'] ?? null) ?: null),
             'seat_vehicle_option_id' => $intake->isJoinTrip() ? 0 : (int) ($data['seat_vehicle_option_id'] ?? 0),
+            // อุปกรณ์ที่เจ้าตัวเลือกเช่า — กรอกใหม่ = แก้รายการของตัวเอง ไม่ใช่เพิ่มทับ
+            // ของเดิม (คนที่กลับมาเอาถุงนอนออกต้องได้ผลตามที่เขาตั้งใจ) ส่วนกลุ่มจอย
+            // ทริปยังเช่าได้เหมือนกัน เพราะเต็นท์กับถุงนอนไม่เกี่ยวกับการมีรถไปรับ
+            'selected_rentals' => array_key_exists('selected_rentals', $data)
+                ? $data['selected_rentals']
+                : $person->selected_rentals,
             'title' => $data['title'] ?? null,
             'name' => $data['name'],
             'nickname' => $data['nickname'] ?? null,

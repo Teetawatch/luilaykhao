@@ -436,6 +436,66 @@
           </div>
         </section>
 
+        <!-- อุปกรณ์เช่า — ขั้นที่ข้ามได้ จึงไม่กินเลขขั้นตอน แต่ต้องอยู่ก่อนขั้นชำระเงิน
+             เพราะค่าเช่าถูกรวมเข้ายอดก่อนคิดมัดจำ/งวดผ่อน -->
+        <section v-if="rentalCatalog.length" class="booking-section">
+          <div class="section-head">
+            <span class="section-step optional">
+              <span class="material-symbols-rounded">backpack</span>
+            </span>
+            <div>
+              <h2>อุปกรณ์เช่า <small>(ไม่บังคับ)</small></h2>
+              <p>ค่าเช่ารวมอยู่ในยอดของใบจองนี้ — ลูกค้าที่กรอกผ่านลิงก์เลือกมาแล้วจะถูกตั้งจำนวนให้อัตโนมัติ</p>
+            </div>
+          </div>
+
+          <p v-if="intakeRentalsApplied.length" class="intake-note rental-prefill">
+            <span class="material-symbols-rounded">auto_awesome</span>
+            ตั้งจำนวนตามที่ลูกค้าเลือกไว้ให้แล้ว ({{ intakeRentalsApplied.join(', ') }}) — แก้ได้
+          </p>
+          <p v-if="intakeRentalsMissing.length" class="intake-warn">
+            <span class="material-symbols-rounded">warning</span>
+            ลูกค้าเลือกอุปกรณ์ที่ทริปนี้ไม่มีให้เช่าแล้ว ({{ intakeRentalsMissing.join(', ') }}) — ตกลงกับลูกค้าก่อนบันทึก
+          </p>
+
+          <div class="rental-grid">
+            <div
+              v-for="item in rentalCatalog"
+              :key="item.key"
+              class="rental-card"
+              :class="{ active: Number(rentalQuantities[item.key] || 0) > 0 }"
+            >
+              <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="rental-thumb" />
+              <span v-else class="rental-thumb blank"><span class="material-symbols-rounded">backpack</span></span>
+              <div class="rental-info">
+                <strong>{{ item.name }}</strong>
+                <small v-if="item.description">{{ item.description }}</small>
+                <em>{{ formatCurrency(item.price) }} / ชิ้น</em>
+              </div>
+              <div class="rental-stepper">
+                <button type="button" :disabled="!Number(rentalQuantities[item.key])" @click="stepRental(item.key, -1)">
+                  <span class="material-symbols-rounded">remove</span>
+                </button>
+                <input
+                  :value="rentalQuantities[item.key] || 0"
+                  type="number"
+                  min="0"
+                  max="50"
+                  @input="setRental(item.key, $event.target.value)"
+                />
+                <button type="button" @click="stepRental(item.key, 1)">
+                  <span class="material-symbols-rounded">add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="rentalsTotal > 0" class="rental-total">
+            <span>ค่าเช่ารวม</span>
+            <strong>{{ formatCurrency(rentalsTotal) }}</strong>
+          </div>
+        </section>
+
         <section class="booking-section">
           <div class="section-head">
             <span class="section-step" :class="{ done: stepDone.payment }">
@@ -708,6 +768,12 @@
               <small>{{ formatCurrency(line.price) }} × {{ line.count }}</small>
               <strong>{{ formatCurrency(line.price * line.count) }}</strong>
             </div>
+            <!-- ค่าเช่าเป็นบรรทัดของตัวเอง ไม่ใช่ตัวเลขที่โผล่ในยอดรวมโดยไม่มีที่มา -->
+            <div v-for="line in rentalBreakdown" :key="line.key" class="price-line">
+              <span>{{ line.name }}</span>
+              <small>{{ formatCurrency(line.price) }} × {{ line.quantity }}</small>
+              <strong>{{ formatCurrency(line.price * line.quantity) }}</strong>
+            </div>
           </div>
 
           <div class="summary-total">
@@ -865,6 +931,10 @@ const intakeTypeMixed = ref(false);
 const intakeJoinUnavailable = ref(false);
 const intakeSeatsApplied = ref([]);
 const intakeSeatsLost = ref([]);
+// อุปกรณ์เช่า: key ของรายการในแคตตาล็อกทริป → จำนวน
+const rentalQuantities = ref({});
+const intakeRentalsApplied = ref([]);
+const intakeRentalsMissing = ref([]);
 
 // ── QR ให้ลูกค้าสแกนจ่าย (หลังเปิดการจองเสร็จ) ──
 const qrData = ref(null);
@@ -915,6 +985,27 @@ const titleOptions = computed(() => isWomenOnlyTrip.value
 const pickupPoints = computed(() => selectedSchedule.value?.pickup_points || []);
 // ประเภทรถของรอบ (บัส/ตู้ คนละราคา) — ส่วนต่างคิดต่อคนบนราคาที่ได้จากจุดรับ
 const vehicleOptions = computed(() => selectedSchedule.value?.vehicle_options || []);
+// แคตตาล็อกอุปกรณ์เช่าเป็นของทริป ไม่ใช่ของรอบ — เลือกรอบไหนก็เช่าของชุดเดียวกัน
+const rentalCatalog = computed(
+  () => selectedTrip.value?.rental_items || selectedSchedule.value?.trip?.rental_items || [],
+);
+const rentalsTotal = computed(() => rentalCatalog.value.reduce(
+  (sum, item) => sum + (Number(rentalQuantities.value[item.key] || 0) * Number(item.price || 0)),
+  0,
+));
+/** บรรทัดค่าเช่าในสรุปยอด — เฉพาะรายการที่เลือกไว้จริง */
+const rentalBreakdown = computed(() => rentalCatalog.value
+  .map((item) => ({
+    key: item.key,
+    name: item.name,
+    price: Number(item.price || 0),
+    quantity: Number(rentalQuantities.value[item.key] || 0),
+  }))
+  .filter((line) => line.quantity > 0));
+/** ชุดที่ส่งขึ้นเซิร์ฟเวอร์ — ส่งแค่ key กับจำนวน ราคามาจากแคตตาล็อกฝั่งโน้น */
+const rentalPayload = computed(() => rentalCatalog.value
+  .map((item) => ({ key: item.key, quantity: Number(rentalQuantities.value[item.key] || 0) }))
+  .filter((row) => row.quantity > 0));
 const selectedVehicleOption = computed(
   () => vehicleOptions.value.find((option) => option.id === Number(form.vehicle_option_id)) || null,
 );
@@ -1007,7 +1098,8 @@ const priceForPassenger = (passenger) => {
 // บวกทีละคน ไม่ใช่คูณราคาเดียว — ในใบเดียวกันแต่ละคนขึ้นคนละจุดได้ และราคาจุดรับ
 // คือราคาต่อคนของโซนนั้น ไม่ใช่ค่าบริการที่บวกเพิ่ม
 const totalAmount = computed(
-  () => passengers.value.reduce((sum, passenger) => sum + priceForPassenger(passenger), 0),
+  () => passengers.value.reduce((sum, passenger) => sum + priceForPassenger(passenger), 0)
+    + rentalsTotal.value,
 );
 
 /** จุดรับที่ใช้จริงในใบนี้ พร้อมจำนวนคน — ไว้เตือนตาก่อนกดบันทึก */
@@ -1407,9 +1499,45 @@ async function prefillFromIntake(intakeParam) {
     }
 
     await applyIntakeSeats(mergedSeats, sources);
+    applyIntakeRentals(sources);
   } catch (error) {
     toast.error(error.response?.data?.message || 'ดึงข้อมูลลูกค้าไม่สำเร็จ');
   }
+}
+
+/**
+ * ตั้งจำนวนอุปกรณ์เช่าตามที่ลูกค้าเลือกไว้ตอนกรอกฟอร์ม
+ *
+ * ต่างจากที่นั่งตรงที่ไม่มีใครแย่งกันได้ จึงตั้งให้ตรง ๆ — แต่แคตตาล็อกถูกแก้ได้
+ * ระหว่างที่กลุ่มรออยู่ ของที่ถูกถอดออกไปแล้วต้องบอกเป็นชื่อ ไม่ใช่หายไปเงียบ ๆ
+ * แล้วให้ลูกค้ามารู้ตอนไม่ได้ของหน้างาน
+ */
+function applyIntakeRentals(sources) {
+  intakeRentalsApplied.value = [];
+  intakeRentalsMissing.value = [];
+
+  const wanted = new Map();
+  sources.flatMap((source) => source.rentals || []).forEach((row) => {
+    const quantity = Number(row.quantity || 0);
+    if (!row.key || quantity <= 0) return;
+    const current = wanted.get(row.key) || { name: row.name, quantity: 0 };
+    current.quantity += quantity;
+    wanted.set(row.key, current);
+  });
+
+  if (!wanted.size) return;
+
+  const quantities = {};
+  wanted.forEach((row, key) => {
+    if (rentalCatalog.value.some((item) => item.key === key)) {
+      quantities[key] = row.quantity;
+      intakeRentalsApplied.value.push(`${row.name} ×${row.quantity}`);
+    } else {
+      intakeRentalsMissing.value.push(`${row.name} ×${row.quantity}`);
+    }
+  });
+
+  rentalQuantities.value = quantities;
 }
 
 /**
@@ -1458,6 +1586,16 @@ function clearPassengerPickups() {
   });
 }
 
+/** ตั้งจำนวนอุปกรณ์เช่าหนึ่งรายการ — 0 คือไม่เช่า ไม่ใช่การลบแถวทิ้ง */
+function setRental(key, value) {
+  const quantity = Math.max(0, Math.min(50, Math.round(Number(value) || 0)));
+  rentalQuantities.value = { ...rentalQuantities.value, [key]: quantity };
+}
+
+function stepRental(key, delta) {
+  setRental(key, Number(rentalQuantities.value[key] || 0) + delta);
+}
+
 async function fetchTrips() {
   const res = await api.get('/admin/trips', { params: { per_page: 500 } });
   trips.value = res.data?.data || [];
@@ -1469,6 +1607,10 @@ async function onTripChange() {
   form.vehicle_option_id = '';
   clearPassengerPickups();
   resetSeats();
+  // แคตตาล็อกอุปกรณ์เป็นของทริป — จำนวนที่ค้างไว้คือ key ของทริปเดิม
+  rentalQuantities.value = {};
+  intakeRentalsApplied.value = [];
+  intakeRentalsMissing.value = [];
   if (!form.trip_id) return;
 
   schedulesLoading.value = true;
@@ -1719,6 +1861,12 @@ function buildBookingPayload() {
     selectedSeatIds.value.forEach((seatId) => appendFormValue(fd, 'seat_ids[]', seatId));
   }
 
+  // อุปกรณ์เช่าเป็นของทั้งใบ ไม่ใช่รายคน — จอยทริปก็เช่าได้ (ไปเองแต่ยังต้องใช้เต็นท์)
+  rentalPayload.value.forEach((row, index) => {
+    appendFormValue(fd, `selected_rentals[${index}][key]`, row.key);
+    appendFormValue(fd, `selected_rentals[${index}][quantity]`, row.quantity);
+  });
+
   if (slipFile.value) {
     fd.append('slip_image', slipFile.value);
   }
@@ -1873,6 +2021,79 @@ function formatCurrency(value) {
 .intake-warn .material-symbols-rounded { font-size: 16px; color: #b45309; }
 .intake-note { display: flex; align-items: center; gap: 4px; color: #047857 !important; font-weight: 600; }
 .intake-note .material-symbols-rounded { font-size: 16px; color: #047857; }
+
+/* ── อุปกรณ์เช่า ───────────────────────────────────────────────── */
+.section-step.optional { background: #e0f2fe; color: #0369a1; }
+.section-head h2 small { font-size: 12px; font-weight: 600; color: #6b7280; }
+.rental-prefill { margin-bottom: 10px; }
+.rental-grid { display: grid; gap: 10px; }
+.rental-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  background: #fff;
+}
+.rental-card.active { border-color: #0369a1; background: #f0f9ff; }
+.rental-thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+.rental-thumb.blank { display: inline-flex; align-items: center; justify-content: center; color: #9ca3af; }
+.rental-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rental-info strong { font-size: 14px; }
+.rental-info small { font-size: 12px; color: #6b7280; }
+.rental-info em { font-size: 12.5px; font-weight: 700; font-style: normal; color: #0369a1; }
+.rental-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rental-stepper button {
+  width: 34px;
+  height: 36px;
+  border: none;
+  background: #fff;
+  color: #0369a1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.rental-stepper button:disabled { color: #d1d5db; cursor: default; }
+.rental-stepper button .material-symbols-rounded { font-size: 18px; }
+.rental-stepper input {
+  width: 46px;
+  text-align: center;
+  border: none;
+  border-left: 1px solid var(--color-border, #e5e7eb);
+  border-right: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 0;
+  font-weight: 700;
+  -moz-appearance: textfield;
+}
+.rental-stepper input::-webkit-outer-spin-button,
+.rental-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rental-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border, #e5e7eb);
+  font-size: 13px;
+  color: #6b7280;
+}
+.rental-total strong { font-size: 16px; color: #111827; }
 
 /* ── QR ให้ลูกค้าสแกนจ่าย ─────────────────────────────────────── */
 .qr-panel {

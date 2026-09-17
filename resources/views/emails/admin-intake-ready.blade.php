@@ -3,6 +3,9 @@
     $reopened = $reason === 'reopened';
     $people = $intake->people;
     $schedule = $intake->schedule;
+    // อุปกรณ์เช่าที่ลูกค้าเลือกมาเอง รวมทั้งกลุ่ม — ทีมงานต้องรู้ก่อนโทรกลับว่า
+    // ต้องเช็คของในสต๊อกกี่ชิ้น ไม่ใช่เปิดหน้าแอดมินแล้วค่อยเจอ
+    $rentals = \App\Support\TripRentalItems::mergeSelections($people->map->rentals());
 
     // หัวเมลสามแบบ — เหตุผลที่ส่งต่างกันคนละเรื่อง คนอ่านต้องรู้ตั้งแต่บรรทัดแรก
     // ว่าต้องไปตามในแชท, หยิบไปเปิดจอง, หรือโทรกลับเพราะการจองเมื่อกี้ไม่สำเร็จ
@@ -57,6 +60,16 @@
         <span class="info-label">วันเดินทาง</span>
         <span class="info-value">{{ $schedule->dateRangeLabelThai() }}</span>
       </div>
+      {{-- รอบที่รถออกคืนก่อนวันทริป — คนโทรกลับต้องย้ำวันขึ้นรถให้ลูกค้า
+           ไม่ใช่วันแรกของทริป --}}
+      @if ($schedule->departsBeforeTripDay())
+      <div class="info-row">
+        <span class="info-label">ขึ้นรถจริง</span>
+        <span class="info-value accent-amber">
+          {{ $schedule->departureLabelThai() }} (ก่อนวันทริป {{ $schedule->daysDepartingEarly() }} วัน)
+        </span>
+      </div>
+      @endif
       {{-- คนจอยไม่ได้กินที่นั่งบนรถ ตัวเลขที่นั่งจึงไม่ใช่คำตอบว่ารับกลุ่มนี้ได้ไหม
            — รอบที่รถเต็มแต่โควตาจอยยังว่างต้องไม่ขึ้นว่า "ปิดรับแล้ว" --}}
       @php($roundOpen = $schedule->acceptsBookingType($intake->booking_type))
@@ -108,6 +121,22 @@
           @endforeach
         </tbody>
       </table>
+    </div>
+    @endif
+
+    @if (! empty($rentals))
+    <p class="section-label">อุปกรณ์ที่ขอเช่า (รวมทั้งกลุ่ม)</p>
+    <div class="info-card">
+      @foreach ($rentals as $rental)
+      <div class="info-row">
+        <span class="info-label">{{ $rental['name'] }}</span>
+        <span class="info-value">{{ $rental['quantity'] }} ชิ้น &middot; {{ number_format((float) $rental['total_price']) }} บาท</span>
+      </div>
+      @endforeach
+      <div class="info-row">
+        <span class="info-label">รวมค่าเช่า</span>
+        <span class="info-value">{{ number_format(array_sum(array_column($rentals, 'total_price'))) }} บาท</span>
+      </div>
     </div>
     @endif
 

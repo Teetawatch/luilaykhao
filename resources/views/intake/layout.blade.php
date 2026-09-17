@@ -182,6 +182,17 @@
         .round-label { font-size: 13.5px; color: var(--canopy-dark); }
         .round-text strong { font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1.3; }
         .round-meta { font-size: 14.5px; color: var(--body); line-height: 1.5; }
+        /* วัน-เวลาที่รถออกจริงเมื่อไม่ตรงกับวันแรกของทริป — ต้องอ่านสะดุดตา
+           กว่าบรรทัดรายละเอียดอื่น เพราะเป็นวันที่ลูกค้าต้องมาถึงจุดนัดหมายจริง */
+        .round-early {
+            display: flex; gap: 7px; align-items: flex-start; margin-top: 7px;
+            border-radius: 11px; padding: 8px 10px;
+            background: var(--amber-bg); border: 1px solid var(--amber-line);
+            color: var(--amber); font-size: 14.5px; line-height: 1.5;
+        }
+        .round-early strong { font-size: 15px; font-weight: 700; color: var(--amber); }
+        .round-early .ic { width: 16px; height: 16px; margin-top: 3px; flex: 0 0 16px; }
+
         .round--closed { border-color: var(--amber-line); background: var(--amber-bg); }
         .round--closed .round-ic { border-color: var(--amber-line); color: var(--amber); }
         .round--closed .round-label { color: var(--amber); }
@@ -349,6 +360,32 @@
         .seat--taken .seat-card strong { color: #9FB3A7; text-decoration: line-through; }
         .seat--taken input { cursor: not-allowed; }
 
+        /* ── อุปกรณ์ให้เช่า ────────────────────────────────────────── */
+        .rentals { display: grid; gap: 10px; margin-bottom: 12px; }
+        .rental {
+            display: flex; align-items: center; gap: 12px;
+            border: 1px solid var(--line-mid); border-radius: 14px; background: #fff; padding: 10px;
+            transition: border-color .15s ease, background-color .15s ease;
+        }
+        .rental--on { border-color: var(--canopy); background: var(--tint); }
+        .rental-photo {
+            flex: 0 0 56px; width: 56px; height: 56px; border-radius: 11px;
+            object-fit: cover; background: var(--tint);
+        }
+        .rental-photo--blank { display: grid; place-items: center; color: var(--muted); border: 1px solid var(--line); }
+        .rental-photo--blank .ic { width: 22px; height: 22px; }
+        .rental-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+        .rental-body strong { font-size: 16.5px; font-weight: 700; color: var(--ink); line-height: 1.35; }
+        .rental-note, .rental-parts { font-size: 14px; color: var(--muted); line-height: 1.45; }
+        .rental-parts { color: var(--canopy-dark); }
+        .rental-price { font-size: 14.5px; font-weight: 700; color: var(--canopy-dark); margin-top: 2px; }
+        .rental-sum {
+            display: flex; align-items: baseline; justify-content: space-between;
+            border: 1px solid var(--tint-line); background: var(--tint); border-radius: 12px;
+            padding: 11px 14px; margin-bottom: 12px; font-size: 15.5px; color: var(--canopy-dark);
+        }
+        .rental-sum strong { font-size: 18px; font-weight: 700; color: var(--ink); }
+
         /* ── ตัวนับจำนวนคน ─────────────────────────────────────────── */
         .stepper { display: flex; align-items: center; gap: 12px; }
         .stepper-box {
@@ -373,6 +410,11 @@
         .stepper-box input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .stepper-box input:focus { outline-offset: -2px; }
         .stepper .unit { font-size: 16px; color: var(--muted); }
+        /* แถวอุปกรณ์เช่ามีรูป+ชื่อ+ราคาอยู่แล้ว ตัวนับจึงต้องเล็กลงให้พอในจอมือถือ */
+        .stepper-box--sm { flex: 0 0 auto; }
+        .stepper-box--sm button { width: 38px; height: 40px; }
+        .stepper-box--sm button .ic { width: 17px; height: 17px; }
+        .stepper-box--sm input { width: 42px; font-size: 16px; padding: 9px 0; }
 
         /* ── ช่องติ๊ก ───────────────────────────────────────────────── */
         .check {

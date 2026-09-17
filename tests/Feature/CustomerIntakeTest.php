@@ -1510,6 +1510,314 @@ class CustomerIntakeTest extends TestCase
         $this->assertSame('A1', CustomerIntake::latest('id')->firstOrFail()->people()->first()->seat_id);
     }
 
+    // ── วันออกเดินทางจริง ────────────────────────────────────────────────
+
+    /**
+     * ทริป "5-7 กันยา" ที่รถออกคืนวันที่ 4 — ลูกค้าที่อ่านแค่ช่วงวันที่จะมาผิดวันเต็ม ๆ
+     * หน้านี้เป็นที่เดียวที่เขาเห็นข้อมูลรอบก่อนตัดสินใจ จึงต้องพูดวันที่ขึ้นรถออกมาตรง ๆ
+     */
+    public function test_a_round_that_leaves_the_night_before_says_which_day_to_show_up(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'departure_date' => '2026-09-05',
+            'return_date' => '2026-09-07',
+            'departs_at' => '2026-09-04 20:00:00',
+        ]);
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('5 – 7 กันยายน 2569')
+            // วันที่รถออกจริงพร้อมชื่อวัน ไม่ใช่เวลาลอย ๆ ที่ลูกค้าต้องเดาวันเอง
+            ->assertSee('4 กันยายน 2569')
+            ->assertSee('ศุกร์ที่', false)
+            ->assertSee('เวลา 20:00 น.')
+            ->assertSee('รถออกก่อนวันทริป 1 วัน')
+            // ชื่อวันของ "วันทริป" ต้องไม่ถูกพิมพ์ออกมาคู่กับเวลารถออก — เสาร์ 20:00
+            // คือวันที่ไม่มีอยู่จริงในรอบนี้
+            ->assertDontSee('ออกวันเสาร์');
+    }
+
+    /** รอบที่รถออกวันเดียวกับวันทริป ยังพูดแบบเดิม ไม่ต้องมีบรรทัดเตือนเพิ่ม */
+    public function test_a_round_leaving_on_the_trip_day_keeps_the_plain_wording(): void
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'departure_date' => '2026-09-05',
+            'return_date' => '2026-09-06',
+            'departs_at' => '2026-09-05 06:00:00',
+        ]);
+        $link = $this->makeLink($schedule);
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('ออกวันเสาร์')
+            ->assertSee('เวลา 06:00 น.')
+            ->assertDontSee('รถออกก่อนวันทริป');
+    }
+
+    // ── อุปกรณ์เช่า ──────────────────────────────────────────────────────
+
+    /** @return array<int, array<string, mixed>> */
+    private function rentalCatalog(): array
+    {
+        return [
+            ['name' => 'ถุงนอน', 'price' => 200, 'description' => 'กันหนาวถึง 0 องศา'],
+            ['name' => 'ชุดเต็นท์ 2 คน', 'price' => 500, 'parts' => [
+                ['name' => 'เต็นท์', 'quantity' => 1],
+                ['name' => 'แผ่นรองนอน', 'quantity' => 2],
+            ]],
+        ];
+    }
+
+    private function withRentals(TripSchedule $schedule): TripSchedule
+    {
+        // ผ่าน withNormalizedDocuments ฝั่งแอดมินเป็นคนตั้ง key ให้ปกติ — ในเทสต์
+        // เขียนดิบได้ เพราะ rentalItems() เติม key ให้ตอนอ่านอยู่แล้ว
+        $schedule->trip->update(['rental_items' => $this->rentalCatalog()]);
+
+        return $schedule->fresh('trip');
+    }
+
+    public function test_the_form_offers_the_trips_rental_gear(): void
+    {
+        $schedule = $this->withRentals($this->makeSchedule());
+        $link = $this->makeLink($schedule);
+
+        $keys = collect($schedule->trip->rentalItems())->pluck('key');
+
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertSee('อุปกรณ์ให้เช่า')
+            ->assertSee('ถุงนอน')
+            ->assertSee('กันหนาวถึง 0 องศา')
+            // ของในชุดต้องบอกก่อนตัดสินใจ ไม่ใช่รู้ตอนไปรับของหน้างาน
+            ->assertSee('แผ่นรองนอน ×2')
+            ->assertSee('name="rentals['.$keys->first().']"', false);
+    }
+
+    public function test_a_trip_without_rentals_never_shows_the_section(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+
+        // หัวข้อคอมเมนต์ใน CSS ของเลย์เอาต์ใช้คำเดียวกัน จึงเช็คที่ตัวฟอร์มจริง
+        $this->get("/r/{$link->token}")
+            ->assertOk()
+            ->assertDontSee('<h2>อุปกรณ์ให้เช่า</h2>', false)
+            ->assertDontSee('name="rentals[', false);
+    }
+
+    public function test_the_customer_picks_gear_and_the_price_is_snapshotted(): void
+    {
+        $schedule = $this->withRentals($this->makeSchedule());
+        $link = $this->makeLink($schedule);
+        $keys = collect($schedule->trip->rentalItems())->pluck('key', 'name');
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'rentals' => [$keys['ถุงนอน'] => 2, $keys['ชุดเต็นท์ 2 คน'] => 0],
+        ]))->assertSessionHasNoErrors();
+
+        $rentals = CustomerIntakePerson::firstOrFail()->rentals();
+
+        // จำนวนศูนย์ไม่ใช่รายการ — ไม่ควรค้างอยู่ให้ทีมงานไล่กรอง
+        $this->assertCount(1, $rentals);
+        $this->assertSame('ถุงนอน', $rentals[0]['name']);
+        $this->assertSame(2, $rentals[0]['quantity']);
+        // ราคาที่ลูกค้าเห็นตอนกรอกถูกแช่ไว้ แม้แคตตาล็อกจะถูกแก้ทีหลัง
+        // ตัวเลขกลับมาจากคอลัมน์ JSON เป็น int เมื่อเป็นจำนวนเต็ม เทียบด้วยค่า
+        $this->assertEquals(200, $rentals[0]['unit_price']);
+        $this->assertEquals(400, $rentals[0]['total_price']);
+        $this->assertSame(400.0, CustomerIntakePerson::firstOrFail()->rentalsTotal());
+    }
+
+    /** กรอกใหม่ = แก้รายการของตัวเอง ไม่ใช่เพิ่มทับของเดิม */
+    public function test_filling_again_replaces_the_gear_instead_of_adding_to_it(): void
+    {
+        $schedule = $this->withRentals($this->makeSchedule());
+        $link = $this->makeLink($schedule);
+        $keys = collect($schedule->trip->rentalItems())->pluck('key', 'name');
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'rentals' => [$keys['ถุงนอน'] => 2],
+        ]));
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'rentals' => [$keys['ถุงนอน'] => 1],
+        ]));
+
+        $this->assertSame(1, CustomerIntakePerson::firstOrFail()->rentals()[0]['quantity']);
+
+        // เอาออกหมดก็ต้องหมายถึงไม่เช่าแล้วจริง ๆ
+        $this->post("/r/{$link->token}", $this->personPayload(['rentals' => [$keys['ถุงนอน'] => 0]]));
+        $this->assertSame([], CustomerIntakePerson::firstOrFail()->rentals());
+    }
+
+    /** เพื่อนในกลุ่มเช่าของตัวเองได้อีกชุด — ของยืมกันไม่ได้ ต้องนับเป็นชิ้น ๆ */
+    public function test_each_friend_rents_their_own_gear_and_the_team_sees_the_sum(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->withRentals($this->makeSchedule());
+        $link = $this->makeLink($schedule);
+        $keys = collect($schedule->trip->rentalItems())->pluck('key', 'name');
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'party_size' => 2,
+            'rentals' => [$keys['ถุงนอน'] => 1],
+        ]));
+        $intake = CustomerIntake::firstOrFail();
+
+        $this->post("/g/{$intake->token}", $this->personPayload([
+            'name' => 'มานี รักเรียน',
+            'nickname' => 'มานี',
+            'phone' => '0899999999',
+            'seat_id' => 'A2',
+            'rentals' => [$keys['ถุงนอน'] => 1, $keys['ชุดเต็นท์ 2 คน'] => 1],
+        ]))->assertSessionHasNoErrors();
+
+        $detail = $this->actingAs($admin)->getJson("/api/v1/admin/intakes/{$intake->id}")->assertOk();
+
+        // ใบจองมีรายการเช่าชุดเดียวต่อใบ — ถุงนอนของสองคนต้องรวมเป็น 2 ไม่ใช่สองแถว
+        $sleeping = collect($detail->json('data.rentals'))->firstWhere('name', 'ถุงนอน');
+        $this->assertSame(2, $sleeping['quantity']);
+        $this->assertEquals(400, $sleeping['total_price']);
+        $this->assertEquals(900, $detail->json('data.rentals_total'));
+
+        // แต่หน้างานยังต้องตอบได้ว่าเต็นท์หลังนี้ของใคร
+        $manee = collect($detail->json('data.people'))->firstWhere('name', 'มานี รักเรียน');
+        $this->assertCount(2, $manee['rentals']);
+    }
+
+    /** ของที่ถูกถอดออกจากทริประหว่างที่กลุ่มรออยู่ ไม่ล้มฟอร์มทั้งใบ */
+    public function test_gear_removed_from_the_trip_is_dropped_not_rejected(): void
+    {
+        $schedule = $this->withRentals($this->makeSchedule());
+        $link = $this->makeLink($schedule);
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'rentals' => ['ของที่ไม่มีอยู่จริง' => 3],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame([], CustomerIntakePerson::firstOrFail()->rentals());
+    }
+
+    /** คนจอยทริปขับรถไปเอง แต่ยังต้องใช้เต็นท์เหมือนกัน */
+    public function test_a_join_group_can_still_rent_gear(): void
+    {
+        $schedule = $this->withRentals($this->makeSchedule());
+        $schedule->update(['join_trip_enabled' => true, 'join_trip_price' => 1500]);
+        $link = $this->makeLink($schedule, IntakeLink::TYPE_JOIN);
+        $keys = collect($schedule->trip->rentalItems())->pluck('key', 'name');
+
+        $this->get("/r/{$link->token}")->assertOk()->assertSee('อุปกรณ์ให้เช่า');
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'rentals' => [$keys['ถุงนอน'] => 1],
+        ]))->assertSessionHasNoErrors();
+
+        $person = CustomerIntakePerson::firstOrFail();
+        $this->assertNull($person->seat_id);
+        $this->assertSame(1, $person->rentals()[0]['quantity']);
+    }
+
+    public function test_the_chosen_gear_travels_into_the_booking(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->withRentals($this->makeSchedule());
+        $link = $this->makeLink($schedule);
+        $keys = collect($schedule->trip->rentalItems())->pluck('key', 'name');
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'rentals' => [$keys['ถุงนอน'] => 2],
+        ]));
+        $intake = CustomerIntake::firstOrFail();
+
+        $detail = $this->actingAs($admin)->getJson("/api/v1/admin/intakes/{$intake->id}")->assertOk();
+
+        $booking = $this->actingAs($admin)->postJson('/api/v1/admin/bookings/manual', [
+            'schedule_id' => $schedule->id,
+            'customer_name' => $intake->contact_name,
+            'email' => 'somchai@example.com',
+            'phone' => $intake->contact_phone,
+            'status' => 'pending',
+            'hold_until' => now()->addDays(3)->format('Y-m-d H:i'),
+            'passengers' => $detail->json('data.passengers'),
+            'selected_rentals' => collect($detail->json('data.rentals'))
+                ->map(fn ($row) => ['key' => $row['key'], 'quantity' => $row['quantity']])
+                ->all(),
+            'intake_id' => $intake->id,
+            'send_email' => false,
+        ])->assertCreated();
+
+        $created = Booking::findOrFail($booking->json('data.id'));
+        $this->assertSame(400.0, (float) $created->rentals_total);
+        // ค่าเช่าต้องอยู่ในยอดรวม ไม่ใช่ตัวเลขที่แสดงเฉย ๆ แล้วเก็บเงินไม่ครบ
+        $this->assertSame(3900.0, (float) $created->total_amount);
+        $this->assertSame('ถุงนอน', $created->selected_rentals[0]['name']);
+    }
+
+    /** ราคาที่คิดจริงมาจากแคตตาล็อก ไม่ใช่ตัวเลขที่ฟอร์มส่งมา */
+    public function test_manual_booking_refuses_gear_that_is_no_longer_on_the_trip(): void
+    {
+        Role::findOrCreate('admin', 'web');
+        Role::findOrCreate('customer', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->withRentals($this->makeSchedule());
+
+        $this->actingAs($admin)->postJson('/api/v1/admin/bookings/manual', [
+            'schedule_id' => $schedule->id,
+            'customer_name' => 'สมชาย ใจดี',
+            'email' => 'somchai@example.com',
+            'phone' => '0812345678',
+            'status' => 'pending',
+            'hold_until' => now()->addDays(3)->format('Y-m-d H:i'),
+            'passenger_count' => 1,
+            'selected_rentals' => [['key' => 'ของที่ถูกลบไปแล้ว', 'quantity' => 1]],
+            'send_email' => false,
+        ])->assertStatus(422);
+    }
+
+    /**
+     * เมลที่ทีมงานได้ต้องพอให้ตัดสินใจได้ก่อนเปิดหน้าแอดมิน — ของที่ต้องเช็คสต๊อก
+     * กับวันที่ต้องย้ำกับลูกค้าตอนโทรกลับ คือสองเรื่องที่รู้ทีหลังแล้วแก้ยาก
+     */
+    public function test_the_team_email_carries_the_gear_and_the_real_departure_day(): void
+    {
+        Mail::fake();
+        Role::findOrCreate('admin', 'web');
+        User::factory()->create(['email' => 'admin@luilaykhao.com'])->assignRole('admin');
+
+        $schedule = $this->withRentals($this->makeSchedule());
+        $schedule->update([
+            'departure_date' => now('Asia/Bangkok')->addMonth()->startOfMonth()->addDays(4)->toDateString(),
+            'departs_at' => now('Asia/Bangkok')->addMonth()->startOfMonth()->addDays(3)->setTime(20, 0)->format('Y-m-d H:i:s'),
+        ]);
+        $link = $this->makeLink($schedule);
+        $keys = collect($schedule->trip->rentalItems())->pluck('key', 'name');
+
+        $this->post("/r/{$link->token}", $this->personPayload([
+            'rentals' => [$keys['ถุงนอน'] => 2],
+        ]));
+
+        Mail::assertQueued(AdminIntakeReadyMail::class, function (AdminIntakeReadyMail $mail) {
+            $html = $mail->render();
+
+            return str_contains($html, 'อุปกรณ์ที่ขอเช่า')
+                && str_contains($html, 'ถุงนอน')
+                && str_contains($html, '2 ชิ้น')
+                && str_contains($html, 'ขึ้นรถจริง')
+                && str_contains($html, 'ก่อนวันทริป 1 วัน');
+        });
+    }
+
     private function bookSeat(TripSchedule $schedule, string $seatId): Booking
     {
         $booking = Booking::create([

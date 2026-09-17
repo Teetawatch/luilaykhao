@@ -2188,6 +2188,11 @@ class AdminController extends Controller
             'passengers.*.pickup_point_id' => ['nullable', 'integer'],
             'seat_ids' => ['nullable', 'array'],
             'seat_ids.*' => ['nullable', 'string', 'max:30'],
+            // อุปกรณ์ให้เช่าของทริป — ส่งมาเป็น key ของรายการ + จำนวน ราคามาจาก
+            // แคตตาล็อกฝั่งเซิร์ฟเวอร์เสมอ ไม่ใช่ตัวเลขที่ฟอร์มส่งมา
+            'selected_rentals' => ['nullable', 'array', 'max:50'],
+            'selected_rentals.*.key' => ['required_with:selected_rentals', 'string', 'max:64'],
+            'selected_rentals.*.quantity' => ['required_with:selected_rentals', 'integer', 'min:1', 'max:50'],
             'pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
             'pickup_region' => ['nullable', 'string', 'max:80'],
             'vehicle_option_id' => ['nullable', 'integer', 'exists:schedule_vehicle_options,id'],
@@ -2392,6 +2397,23 @@ class AdminController extends Controller
                     : (float) $schedule->effective_price,
                 $passengerPickups,
             )) + ((float) ($vehicleOption?->price_adjustment ?? 0) * $participantCount);
+
+        // ค่าเช่าอุปกรณ์รวมเข้ายอดก่อนคิดมัดจำ/งวดผ่อน เหมือนฝั่งลูกค้าใน
+        // BookingService — ไม่งั้นมัดจำที่คิดเป็นเปอร์เซ็นต์จะไม่ตรงกันสองทาง
+        $rentalQuantities = collect($request->input('selected_rentals', []))
+            ->mapWithKeys(fn ($row) => [(string) ($row['key'] ?? '') => (int) ($row['quantity'] ?? 0)])
+            ->all();
+        $rentalCatalog = $schedule->trip?->rentalItems() ?? [];
+        $selectedRentals = TripRentalItems::snapshotSelection($rentalQuantities, $rentalCatalog);
+
+        // key ที่หาไม่เจอแปลว่าแคตตาล็อกถูกแก้ไประหว่างที่หน้านี้เปิดค้างอยู่ —
+        // บันทึกเงียบ ๆ โดยไม่มีของชิ้นนั้นคือใบจองที่ยอดไม่ตรงกับที่ตกลงกับลูกค้า
+        if (count($selectedRentals) !== count(array_filter($rentalQuantities, fn ($quantity) => $quantity > 0))) {
+            return $this->error('อุปกรณ์เช่าที่เลือกไม่อยู่ในทริปนี้แล้ว กรุณาโหลดหน้าใหม่แล้วเลือกอีกครั้ง', 422);
+        }
+
+        $rentalsTotal = round(array_sum(array_column($selectedRentals, 'total_price')), 2);
+        $totalAmount += $rentalsTotal;
         $installmentCount = null;
         $installmentIntervalDays = null;
         $installmentDueDates = [];
@@ -2442,7 +2464,7 @@ class AdminController extends Controller
                 $paidAmount, $paymentType, $installmentCount, $installmentIntervalDays,
                 $depositAmount, $balanceAmount, $balanceDueAt,
                 $isPaid, $paymentRef, $slipPath, $transferDt, $isJoinTrip, $passengers, $seatIds,
-                $holdUntil, $passengerPickups, $vehicleOption
+                $holdUntil, $passengerPickups, $vehicleOption, $selectedRentals, $rentalsTotal
             ) {
                 // ล็อกรอบเดินทางแล้วตรวจที่นั่งซ้ำใต้ lock — ทำให้ check-แล้ว-insert เป็น atomic
                 // กัน race กับการจองอื่น (ของลูกค้า/แอดมินคนอื่น) ที่ทำให้ชน unique constraint
@@ -2487,6 +2509,10 @@ class AdminController extends Controller
                     'transfer_datetime' => $transferDt,
                     'qr_code' => Booking::generateQrCode(),
                     'is_join_trip' => $isJoinTrip,
+                    // snapshot ชุดเดียวกับที่ลูกค้าจองเองได้ — ใบเตรียมของกับหน้าแจกของ
+                    // หน้างานอ่านคอลัมน์นี้ ไม่ได้อ่านว่าใบนี้เปิดมาจากทางไหน
+                    'selected_rentals' => $selectedRentals ?: null,
+                    'rentals_total' => $rentalsTotal,
                     'hold_until' => $holdUntil,
                     'hold_note' => $holdUntil ? $request->input('hold_note') : null,
                     'hold_by_id' => $holdUntil ? $request->user()?->id : null,

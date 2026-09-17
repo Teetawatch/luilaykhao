@@ -2,6 +2,7 @@
 @php($isInternational = $isInternational ?? false)
 @php($pickupPoints = $pickupPoints ?? collect())
 @php($seatMap = $seatMap ?? null)
+@php($rentalItems = $rentalItems ?? [])
 
 <div class="step">
     <span class="n">@include('intake.icon', ['name' => 'user'])</span>
@@ -90,6 +91,12 @@
     <div data-seat-wrap>
         @include('intake.seat-choice', ['seatMap' => $seatMap])
     </div>
+@endif
+
+@if (! empty($rentalItems))
+    {{-- ไม่ห่อด้วย data-pickup-block/data-seat-wrap โดยตั้งใจ — คนจอยทริปขับรถไปเอง
+         แต่ยังต้องใช้เต็นท์กับถุงนอนเหมือนกัน อุปกรณ์เช่าจึงถามทุกคน --}}
+    @include('intake.rental-choice', ['rentalItems' => $rentalItems])
 @endif
 
 <div class="step">

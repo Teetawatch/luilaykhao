@@ -519,6 +519,24 @@
             <p class="note-box">{{ detail.note }}</p>
           </div>
 
+          <!-- อุปกรณ์เช่าที่ลูกค้าเลือกมาเอง — รวมทั้งกลุ่มเป็นชุดเดียว เพราะใบจอง
+               มีรายการเช่าชุดเดียวต่อใบ ปุ่มดึงไปจองส่งชุดนี้ไปตั้งให้บนฟอร์มแล้ว -->
+          <div v-if="detail.rentals?.length" class="drawer-row">
+            <label>อุปกรณ์ที่ขอเช่า (รวมทั้งกลุ่ม)</label>
+            <ul class="rentals">
+              <li v-for="item in detail.rentals" :key="item.key || item.name">
+                <span class="material-symbols-rounded">backpack</span>
+                <span class="rental-name">{{ item.name }}</span>
+                <span class="rental-qty">×{{ item.quantity }}</span>
+                <span class="rental-money">{{ formatMoney(item.total_price) }}</span>
+              </li>
+            </ul>
+            <div class="rentals-total">
+              <span>ค่าเช่ารวม (ตามราคาที่ลูกค้าเห็นตอนกรอก)</span>
+              <strong>{{ formatMoney(detail.rentals_total) }}</strong>
+            </div>
+          </div>
+
           <div class="drawer-row">
             <label>ผู้เดินทางที่กรอกแล้ว ({{ detail.people.length }}/{{ detail.party_size }})</label>
             <ul class="people">
@@ -537,6 +555,11 @@
                     <span class="material-symbols-rounded">event_seat</span>
                     ที่นั่ง {{ person.seat_id }}
                     <template v-if="person.seat_lost">· ถูกใช้ไปแล้ว ต้องเลือกใหม่</template>
+                  </div>
+                  <!-- ของใครบ้าง — ยอดรวมอยู่ด้านบนแล้ว บรรทัดนี้ไว้ตอบตอนแจกของหน้างาน -->
+                  <div v-if="person.rentals?.length" class="cell-sub rental">
+                    <span class="material-symbols-rounded">backpack</span>
+                    {{ person.rentals.map((item) => `${item.name} ×${item.quantity}`).join(' · ') }}
                   </div>
                   <div class="cell-sub consent">
                     <span class="material-symbols-rounded">verified_user</span>
@@ -1075,6 +1098,8 @@ const copy = async (text, key) => {
 const sourceLabel = (source) =>
   ({ line: 'LINE', facebook: 'Facebook', instagram: 'Instagram', other: 'อื่น ๆ' }[source] ?? source);
 
+const formatMoney = (value) => `${Number(value || 0).toLocaleString('th-TH')} บาท`;
+
 const formatDateTime = (value) => {
   if (!value) return '—';
   try {
@@ -1308,6 +1333,23 @@ tr.inactive { opacity: .5; }
 .seat { display: flex; align-items: center; gap: 4px; color: #4b5563; }
 .seat .material-symbols-rounded { font-size: 14px; }
 .seat.lost { color: #b91c1c; font-weight: 600; }
+.rental { display: flex; align-items: center; gap: 4px; color: #0369a1; }
+.rental .material-symbols-rounded { font-size: 14px; }
+.rentals { list-style: none; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.rentals li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; font-size: 13px; border-bottom: 1px solid #f3f4f6;
+}
+.rentals li:last-child { border-bottom: none; }
+.rentals .material-symbols-rounded { font-size: 16px; color: #0369a1; }
+.rentals .rental-name { flex: 1; min-width: 0; }
+.rentals .rental-qty { font-weight: 700; color: #0369a1; }
+.rentals .rental-money { color: #6b7280; min-width: 72px; text-align: right; }
+.rentals-total {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-top: 6px; font-size: 12px; color: #6b7280;
+}
+.rentals-total strong { font-size: 14px; color: #111827; }
 .lead-chip {
   margin-left: 6px; font-size: 10.5px; font-weight: 700; color: #047857;
   background: #ecfdf5; border-radius: 999px; padding: 2px 7px;

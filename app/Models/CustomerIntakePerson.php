@@ -21,6 +21,7 @@ class CustomerIntakePerson extends Model
 
     protected $fillable = [
         'customer_intake_id', 'is_lead', 'pickup_point_id', 'seat_id', 'seat_vehicle_option_id',
+        'selected_rentals',
         'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'name_en', 'nationality',
         'passport_no', 'passport_expires_at', 'emergency_contact', 'emergency_phone',
@@ -41,6 +42,8 @@ class CustomerIntakePerson extends Model
             'passport_expires_at' => 'date',
             'halal_food' => 'boolean',
             'seat_vehicle_option_id' => 'integer',
+            // snapshot อุปกรณ์เช่าที่เจ้าตัวเลือก รูปแบบเดียวกับ bookings.selected_rentals
+            'selected_rentals' => 'array',
             'weight' => 'float',
             'consent_at' => 'datetime',
         ];
@@ -54,6 +57,26 @@ class CustomerIntakePerson extends Model
     public function pickupPoint(): BelongsTo
     {
         return $this->belongsTo(SchedulePickupPoint::class, 'pickup_point_id');
+    }
+
+    /**
+     * อุปกรณ์เช่าที่คนนี้เลือกไว้ — คืนเป็น array เสมอ แม้คอลัมน์จะยังว่าง
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function rentals(): array
+    {
+        return is_array($this->selected_rentals) ? $this->selected_rentals : [];
+    }
+
+    /** ค่าเช่าของคนนี้ — ยอดจริงคิดใหม่ตอนเปิดใบจอง ตัวนี้ไว้ให้ทีมงานอ่าน */
+    public function rentalsTotal(): float
+    {
+        return (float) array_sum(array_map(
+            fn (array $row) => (float) ($row['total_price']
+                ?? (float) ($row['unit_price'] ?? 0) * (int) ($row['quantity'] ?? 0)),
+            $this->rentals(),
+        ));
     }
 
     /** รูปแบบเดียวกับที่ฟอร์มผู้โดยสารของหน้า "จองแทนลูกค้า" ใช้ */

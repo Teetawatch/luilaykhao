@@ -111,6 +111,108 @@ class TripRentalItems
     }
 
     /**
+     * แปลง "key → จำนวน" ที่ลูกค้าเลือก ให้เป็น snapshot ชุดเดียวกับที่ใบจองเก็บ
+     *
+     * ทั้ง `bookings.selected_rentals` และ `customer_intake_people.selected_rentals`
+     * ใช้รูปร่างนี้ ตอนแอดมินดึงข้อมูลไปเปิดใบจองจึงเป็นการคัดลอก ไม่ใช่การแปลง
+     *
+     * key ที่ไม่มีอยู่ในแคตตาล็อกแล้วถูกข้ามเงียบ ๆ — แคตตาล็อกถูกแก้ระหว่างที่
+     * ลูกค้ากรอกฟอร์มค้างไว้ได้ และการปฏิเสธทั้งฟอร์มเพราะของชิ้นเดียวที่ถูกถอด
+     * ออกไป แลกไม่คุ้มกับข้อมูลผู้เดินทางทั้งชุดที่จะหายไปด้วย
+     *
+     * @param  array<string, mixed>  $quantities  key ของอุปกรณ์ → จำนวน
+     * @param  array<int, array<string, mixed>>  $catalog  ผลจาก normalize()
+     * @return array<int, array<string, mixed>>
+     */
+    public static function snapshotSelection(array $quantities, array $catalog): array
+    {
+        $byKey = [];
+        foreach ($catalog as $item) {
+            $byKey[$item['key']] = $item;
+        }
+
+        $result = [];
+
+        foreach ($quantities as $key => $quantity) {
+            $quantity = (int) $quantity;
+            $item = $byKey[(string) $key] ?? null;
+
+            if ($quantity <= 0 || ! $item) {
+                continue;
+            }
+
+            $unitPrice = (float) ($item['price'] ?? 0);
+
+            $result[] = [
+                'key' => $item['key'],
+                'name' => $item['name'],
+                'unit_price' => $unitPrice,
+                'quantity' => $quantity,
+                'total_price' => $unitPrice * $quantity,
+                'image_url' => (string) ($item['image_url'] ?? ''),
+                'parts' => self::normalizeParts($item['parts'] ?? []),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * รวม snapshot ของหลายคนให้เหลือรายการเดียวต่ออุปกรณ์หนึ่งชิ้น
+     *
+     * ใบจองมีรายการเช่าชุดเดียวต่อใบ ไม่ใช่รายคน — กลุ่มที่แต่ละคนเลือกถุงนอน
+     * คนละหนึ่งใบต้องกลายเป็น "ถุงนอน 4" ก่อนจะกลายเป็นใบจอง
+     *
+     * จัดกลุ่มด้วย key ไม่ใช่ชื่อ ด้วยเหตุผลเดียวกับที่ทั้งไฟล์นี้มีอยู่ — ชื่อถูกแก้ได้
+     * ราคาต่อหน่วยใช้ของแถวแรกที่เจอ — สองคนที่กรอกคนละวันหลังแอดมินขึ้นราคา
+     * ต้องได้ราคาเดียวกันในใบเดียวกัน แล้วให้แอดมินเห็นยอดรวมก่อนกดบันทึก
+     *
+     * @param  iterable<array<int, array<string, mixed>>>  $selections
+     * @return array<int, array<string, mixed>>
+     */
+    public static function mergeSelections(iterable $selections): array
+    {
+        $merged = [];
+
+        foreach ($selections as $rows) {
+            if (! is_array($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+
+                $name = trim((string) ($row['name'] ?? ''));
+                $quantity = (int) ($row['quantity'] ?? 0);
+                if ($name === '' || $quantity <= 0) {
+                    continue;
+                }
+
+                // ของที่ถูกบันทึกไว้ก่อนมีระบบ key ยังจับกลุ่มด้วยชื่อได้เหมือนเดิม
+                $key = (string) ($row['key'] ?? '') ?: 'name:'.$name;
+
+                if (! isset($merged[$key])) {
+                    $merged[$key] = [
+                        'key' => (string) ($row['key'] ?? ''),
+                        'name' => $name,
+                        'unit_price' => (float) ($row['unit_price'] ?? 0),
+                        'quantity' => 0,
+                        'total_price' => 0.0,
+                        'image_url' => (string) ($row['image_url'] ?? ''),
+                    ];
+                }
+
+                $merged[$key]['quantity'] += $quantity;
+                $merged[$key]['total_price'] = $merged[$key]['unit_price'] * $merged[$key]['quantity'];
+            }
+        }
+
+        return array_values($merged);
+    }
+
+    /**
      * key ที่คงที่และอ่านได้พอประมาณ
      *
      * ชื่ออุปกรณ์เป็นภาษาไทยแทบทั้งหมด ซึ่ง Str::slug ตัดทิ้งจนเหลือค่าว่าง จึง

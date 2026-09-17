@@ -9,6 +9,7 @@ use App\Models\TripSchedule;
 use App\Rules\ThaiIdCard;
 use App\Services\CustomerIntakeService;
 use App\Services\IntakeSeatService;
+use App\Support\TripRentalItems;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class PublicIntakeController extends Controller
 {
+    /** เช่าชิ้นเดียวกันได้สูงสุดกี่ชิ้นต่อคน — กันตัวเลขหลุดมือมากกว่ากันการโกง */
+    public const MAX_RENTAL_QUANTITY = 10;
+
     public function __construct(
         private readonly CustomerIntakeService $intakes,
         private readonly IntakeSeatService $seats,
@@ -58,6 +62,9 @@ class PublicIntakeController extends Controller
             // ผังที่นั่งของรอบที่ผูกไว้ — เลือกได้ตั้งแต่ตอนกรอก แต่ยังไม่ล็อก
             // (รอบที่ยังไม่รู้ว่าเป็นรอบไหน ไม่มีผังที่ถูกต้องให้เลือก เหมือนจุดขึ้นรถ)
             'seatMap' => $closed ? null : $this->seats->mapFor($schedule, $link->isJoinTrip()),
+            // อุปกรณ์ให้เช่าของทริปนี้ — ถามพร้อมข้อมูลผู้เดินทาง ไม่ใช่ไปไล่ถามในแชท
+            // ทีหลัง (รอบที่ปิดรับแล้วยังถามได้ ทีมงานเอาไปใช้กับรอบที่เสนอให้แทน)
+            'rentalItems' => $this->rentalChoices($schedule),
             // รอบที่ผูกไว้เต็ม/ผ่านไปแล้ว ยังรับข้อมูลอยู่ (ทีมงานเอาไปเสนอรอบอื่นได้)
             // แต่ต้องบอกตั้งแต่ต้นและยื่นรอบอื่นให้เลือกตรงนั้นเลย ไม่ใช่ปล่อยให้
             // กรอกจนจบแล้วค่อยรู้ตอนทีมงานตอบกลับ
@@ -141,6 +148,9 @@ class PublicIntakeController extends Controller
             // ที่นั่งของเพื่อนในกลุ่มเดียวกันติดชื่อเล่นกำกับ — คนที่กลับมาแก้ข้อมูล
             // ของตัวเองจะได้รู้ว่าที่นั่งที่หายไปคือของตัวเอง ไม่ใช่คนแปลกหน้า
             'seatMap' => $this->seats->mapFor($intake->schedule, $intake->isJoinTrip(), $intake),
+            // เพื่อนที่ตามมากรอกเลือกอุปกรณ์ของตัวเองได้อีกชุด — คนที่มีถุงนอนเองกับ
+            // คนที่ไม่มีอยู่ในกลุ่มเดียวกันเสมอ ทีมงานรวมเป็นยอดเดียวตอนเปิดใบจอง
+            'rentalItems' => $this->rentalChoices($intake->schedule),
             // ชื่อเล่นเท่านั้น — ลิงก์นี้อยู่ในแชทกลุ่ม ใครเปิดก็ได้
             'filled' => $intake->people()->get()->map->publicLabel()->all(),
             'justFilled' => session('intake_just_filled'),
@@ -235,6 +245,10 @@ class PublicIntakeController extends Controller
             'pickup_point_id' => $pickupPoints->isEmpty()
                 ? ['nullable', 'integer']
                 : ['required', Rule::in($pickupPoints->pluck('id')->all())],
+            // อุปกรณ์เช่าเป็นของที่ "ไม่เอาก็ได้" ต่างจากช่องอื่นในฟอร์มนี้ — ส่งมาเป็น
+            // key ของรายการ → จำนวน คนที่ไม่เช่าอะไรเลยส่งศูนย์มาทั้งชุดหรือไม่ส่งเลย
+            'rentals' => ['nullable', 'array'],
+            'rentals.*' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_RENTAL_QUANTITY],
             ...$extra,
         ], [
             'title.required' => 'กรุณาเลือกคำนำหน้า',
@@ -253,6 +267,7 @@ class PublicIntakeController extends Controller
             'seat_id.in' => 'ที่นั่งที่เลือกเพิ่งถูกใช้ไปแล้ว กรุณาเลือกที่นั่งอื่น',
             'pickup_point_id.required' => 'กรุณาเลือกจุดขึ้นรถ',
             'pickup_point_id.in' => 'จุดขึ้นรถนี้ไม่อยู่ในรอบเดินทางนี้',
+            'rentals.*.max' => 'เช่าอุปกรณ์ชิ้นเดียวกันได้สูงสุด '.self::MAX_RENTAL_QUANTITY.' ชิ้น กรุณาทักทีมงานถ้าต้องการมากกว่านี้',
             'phone.required' => 'กรุณากรอกเบอร์โทรศัพท์',
             'email.required' => 'กรุณากรอกอีเมล',
             'email.email' => 'รูปแบบอีเมลไม่ถูกต้อง',
@@ -274,6 +289,14 @@ class PublicIntakeController extends Controller
             $validated['seat_vehicle_option_id'] = (int) ($this->seats->defaultOption($seatSchedule)?->id ?? 0);
         }
 
+        // แช่ราคาที่ลูกค้าเห็นตอนกรอกไว้กับตัวเลือก — แคตตาล็อกถูกแก้ทีหลังได้ และ
+        // ยอดที่ทีมงานแจ้งกลับต้องอ้างได้ว่าคิดจากราคาไหน (ยอดจริงคิดใหม่ตอนเปิดใบจอง)
+        $validated['selected_rentals'] = TripRentalItems::snapshotSelection(
+            (array) ($validated['rentals'] ?? []),
+            $this->rentalChoices($schedule),
+        );
+        unset($validated['rentals']);
+
         // ไอพีเก็บคู่กับความยินยอม ไม่ได้เอาไปทำอย่างอื่น
         return [...$validated, 'consent_ip' => $request->ip()];
     }
@@ -291,6 +314,19 @@ class PublicIntakeController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * อุปกรณ์ให้เช่าของทริปที่รอบนี้อยู่ — ว่างเปล่าเมื่อยังไม่รู้รอบ หรือทริปไม่มีให้เช่า
+     *
+     * อ่านผ่าน rentalItems() เสมอ ไม่ใช่คอลัมน์ดิบ เพื่อให้ key/ลำดับตรงกับที่
+     * ฝั่งจอง (TripResource, BookingService) เห็น
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function rentalChoices(?TripSchedule $schedule): array
+    {
+        return $schedule?->trip?->rentalItems() ?? [];
     }
 
     /**
