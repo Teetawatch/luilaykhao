@@ -10,7 +10,15 @@
 --}}
 <div class="llk-boot">
     <a class="llk-boot__brand" href="{{ url('/') }}">ลุยเลเขา</a>
-    <p class="llk-boot__tagline">แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว</p>
+
+    @isset($shellTrip)
+        {{-- A trip page describes the trip. Every other page gets the tagline:
+             the links below are the whole point of the shell there, while here
+             they are the footer under something worth reading. --}}
+        @include('partials.boot-trip', ['shell' => \App\Support\TripShell::for($shellTrip)])
+    @else
+        <p class="llk-boot__tagline">แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว</p>
+    @endisset
 
     <nav class="llk-boot__nav" aria-label="ลิงก์หลักของเว็บไซต์">
         @foreach (\App\Support\SiteNav::sections() as $section)

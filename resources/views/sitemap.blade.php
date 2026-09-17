@@ -133,12 +133,18 @@
     @foreach ($trips as $trip)
         <url>
             <loc>{{ url('/trips/' . $trip->slug) }}</loc>
-            <lastmod>{{ $trip->updated_at->toAtomString() }}</lastmod>
+            {{-- A new round is new content on this page, but it never touches
+                 the trip row — so lastmod has to take the later of the two or
+                 a crawler is told nothing has changed since March. --}}
+            <lastmod>{{ max($trip->updated_at, $trip->schedules_max_updated_at ? \Illuminate\Support\Carbon::parse($trip->schedules_max_updated_at) : $trip->updated_at)->toAtomString() }}</lastmod>
             <changefreq>weekly</changefreq>
             <priority>0.8</priority>
             @if($trip->cover_image)
             <image:image>
-                <image:loc>{{ url($trip->cover_image) }}</image:loc>
+                {{-- MediaDisk, not url(): covers live on R2, and url() would
+                     mint luilaykhao.com/<r2-key> — a 404 for every trip image
+                     in the file. --}}
+                <image:loc>{{ \App\Support\MediaDisk::url($trip->cover_image) }}</image:loc>
                 <image:title>{{ $trip->title }} - ลุยเลเขา</image:title>
                 <image:caption>{{ $trip->title }} {{ $trip->location ?? '' }}</image:caption>
             </image:image>

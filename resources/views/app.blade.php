@@ -244,6 +244,27 @@
         .llk-boot__list li { margin-bottom: 7px; }
         .llk-boot__list a { font-size: 17px; color: #3f4a45; text-decoration: none; }
         .llk-boot__list a:hover { text-decoration: underline; }
+
+        /* The trip itself, on a trip page (partials/boot-trip). */
+        .llk-trip { margin: 20px 0 40px; }
+        .llk-trip__kicker { margin: 0 0 6px; font-size: 15px; font-weight: 700; color: #087C68; }
+        .llk-trip__title { margin: 0 0 10px; font-size: 32px; font-weight: 800; line-height: 1.25; color: #0D2B1E; }
+        .llk-trip__price { margin: 0 0 18px; font-size: 19px; font-weight: 700; color: #0D2B1E; }
+        .llk-trip__cover { display: block; width: 100%; max-width: 760px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; margin-bottom: 20px; background: #eef1ef; }
+        .llk-trip__lede { margin: 0 0 12px; max-width: 70ch; font-size: 18px; line-height: 1.7; color: #3f4a45; }
+        .llk-trip__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 24px; margin: 22px 0; padding: 0; }
+        .llk-trip__facts div { margin: 0; }
+        .llk-trip__facts dt { font-size: 14px; font-weight: 700; color: #5b6660; }
+        .llk-trip__facts dd { margin: 2px 0 0; font-size: 17px; color: #0D2B1E; }
+        .llk-trip__h2 { margin: 30px 0 12px; font-size: 22px; font-weight: 800; color: #0D2B1E; }
+        .llk-trip__h3 { margin: 18px 0 6px; font-size: 18px; font-weight: 700; color: #0D2B1E; }
+        .llk-trip__body { margin: 0 0 10px; max-width: 70ch; font-size: 17px; line-height: 1.7; color: #3f4a45; white-space: pre-line; }
+        .llk-trip__list { margin: 0; padding-left: 1.3em; }
+        .llk-trip__list li { margin-bottom: 6px; font-size: 17px; line-height: 1.6; color: #3f4a45; }
+        .llk-trip__rounds { margin: 0; padding: 0; list-style: none; }
+        .llk-trip__rounds li { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 9px 0; border-bottom: 1px solid #e7ebe9; }
+        .llk-trip__round-date { font-size: 17px; font-weight: 700; color: #0D2B1E; }
+        .llk-trip__round-meta { font-size: 16px; color: #5b6660; }
     </style>
 
     @include('partials.analytics')

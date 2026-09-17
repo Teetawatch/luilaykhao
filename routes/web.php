@@ -25,6 +25,7 @@ use App\Models\Place;
 use App\Models\Tag;
 use App\Models\Trip;
 use App\Support\MediaDisk;
+use App\Support\PageTrip;
 use App\Support\SeoMeta;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -37,7 +38,11 @@ Route::get('/google2a5171f00ca2654e.html', function () {
 
 // XML Sitemap
 Route::get('/sitemap.xml', function () {
-    $trips = Trip::where('status', 'published')->orWhere('status', 'active')->get();
+    $trips = Trip::whereIn('status', ['published', 'active'])
+        // Opening a round changes what the trip page says without touching the
+        // trip row, so <lastmod> takes the later of the two (see the view).
+        ->withMax('schedules', 'updated_at')
+        ->get();
 
     return response()->view('sitemap', [
         'trips' => $trips,
@@ -317,8 +322,17 @@ Route::get('/storage/{path}', function (string $path) {
 // the title, description and share image for the path being requested so a link
 // pasted into LINE or Facebook unfurls as the actual trip. Those crawlers never
 // execute the JavaScript that would otherwise set them.
+//
+// On a trip page the body is not the same either — the shell prints the trip
+// (App\Support\TripShell). The trip is resolved here and handed to both halves
+// so the <head> and the body cost one query between them, not two.
 Route::get('/{any?}', function (?string $any = null) {
-    return view('app', [
-        'seo' => SeoMeta::for($any ?? '/'),
-    ]);
+    $path = $any ?? '/';
+    $trip = PageTrip::forPath($path);
+
+    return view('app', array_filter([
+        'seo' => SeoMeta::for($path, $trip),
+        // Absent rather than null: the shell switches on @isset.
+        'shellTrip' => $trip,
+    ]));
 })->where('any', '.*');

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Place;
 use App\Models\Trip;
+use App\Models\TripSchedule;
 use Illuminate\Support\Str;
 
 /**
@@ -36,12 +37,15 @@ class SeoMeta
      *     extra: array<string, string>, json_ld: array<int, array<string, mixed>>
      * }
      */
-    public static function for(string $path): array
+    public static function for(string $path, ?Trip $trip = null): array
     {
         $path = '/'.trim($path, '/');
 
-        if (preg_match('#^/trips/([^/]+)$#', $path, $matches)) {
-            $resolved = self::trip(urldecode($matches[1]), $path);
+        if ($slug = PageTrip::slugFrom($path)) {
+            // The caller usually resolved the trip already (the shell needs the
+            // same row); looking it up again would double the queries on the
+            // most-visited page on the site.
+            $resolved = self::trip($trip ?: Trip::where('slug', $slug)->first(), $path);
             if ($resolved) {
                 return $resolved;
             }
@@ -61,10 +65,8 @@ class SeoMeta
      * A trip: the page that actually gets shared. Carries its own cover photo,
      * its real price, and the rating that earns a stars row in Google results.
      */
-    private static function trip(string $slug, string $path): ?array
+    private static function trip(?Trip $trip, string $path): ?array
     {
-        $trip = Trip::where('slug', $slug)->first();
-
         if (! $trip) {
             return null;
         }
@@ -286,15 +288,12 @@ class SeoMeta
                 '@type' => 'TravelAgency',
                 'name' => 'ลุยเลเขา Luilaykhao',
                 'url' => url('/'),
-                'telephone' => '+66-62-612-6006',
+                // From settings, not hardcoded: the number is editable at
+                // /admin/settings and a stale one here is a stale one in every
+                // search result that quotes it.
+                'telephone' => PhoneNumber::international(SiteSettings::supportPhone()),
             ],
-            'offers' => [
-                '@type' => 'Offer',
-                'price' => (float) $trip->price_per_person,
-                'priceCurrency' => 'THB',
-                'availability' => 'https://schema.org/InStock',
-                'url' => $canonical,
-            ],
+            'offers' => self::tripOffers($trip, $canonical),
         ];
 
         if ($trip->location) {
@@ -318,6 +317,52 @@ class SeoMeta
         }
 
         return $data;
+    }
+
+    /**
+     * One Offer per round on sale.
+     *
+     * This used to be a single Offer carrying the trip's list price and a flat
+     * `InStock`, which was wrong twice over: a trip whose last round left in
+     * March still advertised itself as available, and the price shown was the
+     * one before any per-round override, flash sale or campaign. Google drops a
+     * block whose availability it can disprove, and a wrong price is worse than
+     * none — so each round states its own, and a trip with nothing open says so.
+     *
+     * `validThrough` is the departure date: the day the offer stops being one.
+     *
+     * @return array<int, array<string, mixed>>|array<string, mixed>
+     */
+    private static function tripOffers(Trip $trip, string $canonical): array
+    {
+        $rounds = PageTrip::openRounds($trip);
+
+        if ($rounds->isEmpty()) {
+            return [
+                '@type' => 'Offer',
+                'price' => (float) $trip->price_per_person,
+                'priceCurrency' => 'THB',
+                // Nothing scheduled is not the same as sold out — the trip runs
+                // again, we just cannot say when yet.
+                'availability' => 'https://schema.org/OutOfStock',
+                'url' => $canonical,
+            ];
+        }
+
+        return $rounds
+            ->map(fn (TripSchedule $round) => [
+                '@type' => 'Offer',
+                'name' => ThaiDate::range($round->departure_date, $round->return_date),
+                'price' => $round->effective_price,
+                'priceCurrency' => 'THB',
+                'availability' => $round->available_seats > 0
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/SoldOut',
+                'validThrough' => $round->departure_date?->toDateString(),
+                'url' => $canonical,
+            ])
+            ->values()
+            ->all();
     }
 
     private static function placeJsonLd(Place $place, string $canonical, string $image): array

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\Place;
 use App\Models\Review;
+use App\Models\Setting;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -35,6 +36,19 @@ class SeoMetaTest extends TestCase
             'price_per_person' => 3500,
             'cover_image' => 'trips/khao-chang.jpg',
             'status' => 'active',
+        ], $attributes));
+    }
+
+    private function makeSchedule(Trip $trip, string $departure, array $attributes = []): TripSchedule
+    {
+        return TripSchedule::create(array_merge([
+            'trip_id' => $trip->id,
+            'departure_date' => $departure,
+            'return_date' => $departure,
+            'total_seats' => 12,
+            'booked_seats' => 0,
+            'transport_type' => 'van',
+            'status' => 'open',
         ], $attributes));
     }
 
@@ -145,6 +159,64 @@ class SeoMetaTest extends TestCase
         $this->assertSame('THB', $block['offers']['priceCurrency']);
         $this->assertSame('P2D', $block['duration']);
         $this->assertSame('กาญจนบุรี', $block['itinerary']['name']);
+    }
+
+    /** A round on sale is an offer, and it is the round that carries the price. */
+    public function test_each_round_on_sale_becomes_its_own_offer(): void
+    {
+        $trip = $this->makeTrip();
+        $departure = now('Asia/Bangkok')->addMonth()->toDateString();
+        $this->makeSchedule($trip, $departure, ['price_override' => 3900]);
+        $this->makeSchedule($trip, now('Asia/Bangkok')->addMonths(2)->toDateString());
+
+        $block = $this->jsonLdOfType($this->get('/trips/'.$trip->slug)->getContent(), 'TouristTrip');
+
+        $this->assertCount(2, $block['offers']);
+        $this->assertEquals(3900, $block['offers'][0]['price']);
+        $this->assertEquals(3500, $block['offers'][1]['price']);
+        $this->assertSame('https://schema.org/InStock', $block['offers'][0]['availability']);
+        $this->assertSame($departure, $block['offers'][0]['validThrough']);
+    }
+
+    /**
+     * The old block claimed InStock for every trip forever, including ones whose
+     * last round left months ago. Google can disprove that from the page itself,
+     * and a block it disproves is a block it drops.
+     */
+    public function test_a_trip_with_nothing_scheduled_does_not_claim_to_be_available(): void
+    {
+        $trip = $this->makeTrip();
+
+        $block = $this->jsonLdOfType($this->get('/trips/'.$trip->slug)->getContent(), 'TouristTrip');
+
+        $this->assertSame('https://schema.org/OutOfStock', $block['offers']['availability']);
+    }
+
+    public function test_a_round_with_no_seats_left_is_advertised_as_sold_out(): void
+    {
+        $trip = $this->makeTrip();
+        $this->makeSchedule($trip, now('Asia/Bangkok')->addMonth()->toDateString(), [
+            'total_seats' => 12,
+            'booked_seats' => 12,
+        ]);
+
+        $block = $this->jsonLdOfType($this->get('/trips/'.$trip->slug)->getContent(), 'TouristTrip');
+
+        $this->assertSame('https://schema.org/SoldOut', $block['offers'][0]['availability']);
+    }
+
+    /**
+     * The number used to be a literal in the class. Changing it at
+     * /admin/settings left every search result quoting the old one.
+     */
+    public function test_the_provider_phone_follows_the_settings_page(): void
+    {
+        $trip = $this->makeTrip();
+        Setting::put(SiteSettings::KEY, ['support_phone' => '0812345678']);
+
+        $block = $this->jsonLdOfType($this->get('/trips/'.$trip->slug)->getContent(), 'TouristTrip');
+
+        $this->assertSame('+66812345678', $block['provider']['telephone']);
     }
 
     /**

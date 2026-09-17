@@ -35,8 +35,5 @@ Disallow: /build/
 Disallow: /api/
 Disallow: /storage/
 
-# Crawl delay
-Crawl-delay: 1
-
 # Sitemap
 Sitemap: https://luilaykhao.com/sitemap.xml
