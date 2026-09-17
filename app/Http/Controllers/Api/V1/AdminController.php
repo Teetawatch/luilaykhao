@@ -64,6 +64,7 @@ use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -1091,6 +1092,7 @@ class AdminController extends Controller
                 'active_bookings_count' => (int) ($schedule->active_bookings_count ?? 0),
                 'assigned_staff_count' => (int) ($schedule->assigned_staff_count
                     ?? ($schedule->relationLoaded('activeStaff') ? $schedule->activeStaff->count() : 0)),
+                'details' => $this->formatScheduleRoundDetails($schedule),
             ],
             'staff' => $schedule->relationLoaded('activeStaff')
                 ? $schedule->activeStaff->map(fn ($user) => $this->formatScheduleStaffMember($user))->values()
@@ -1098,6 +1100,221 @@ class AdminController extends Controller
             'released_staff' => $schedule->relationLoaded('releasedStaff')
                 ? $schedule->releasedStaff->map(fn ($user) => $this->formatScheduleStaffMember($user))->values()
                 : [],
+        ];
+    }
+
+    /**
+     * รายละเอียดของรอบเดินทางสำหรับหน้าจัดสตาฟ — คนจัดตารางต้องตอบตัวเองได้ว่า
+     * "รอบนี้ออกกี่โมง มีคนกี่คน ขึ้นรถจุดไหนบ้าง มีใครต้องดูแลเป็นพิเศษไหม"
+     * ก่อนจะตัดสินใจว่าจะส่งใครไป ไม่ใช่เห็นแค่ชื่อทริปกับช่วงวันที่
+     */
+    private function formatScheduleRoundDetails(TripSchedule $schedule): array
+    {
+        $bookings = $schedule->bookings()
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->with('passengers')
+            ->get();
+
+        $passengers = $bookings->flatMap(fn (Booking $booking) => $booking->passengers);
+
+        return [
+            'departure' => $this->scheduleDepartureDetails($schedule),
+            'trip' => [
+                'type' => $schedule->trip?->type,
+                'difficulty' => $schedule->trip?->difficulty,
+                'duration_days' => $schedule->trip?->duration_days,
+            ],
+            'vehicle' => $schedule->vehicle ? [
+                'capacity' => (int) $schedule->vehicle->capacity,
+                'color' => $schedule->vehicle->color,
+                'driver_name' => $schedule->vehicle->driver_name,
+                'driver_phone' => $schedule->vehicle->driver_phone,
+            ] : null,
+            'people' => $this->schedulePeopleDetails($schedule, $bookings, $passengers),
+            'money' => $this->scheduleMoneyDetails($schedule, $bookings),
+            'pickups' => $this->schedulePickupDetails($schedule, $bookings),
+            'care' => $this->scheduleCareDetails($passengers),
+            'itinerary' => $this->scheduleItineraryDetails($schedule),
+        ];
+    }
+
+    /**
+     * เวลาออกเดินทางและวันที่ — departs_at เก็บ "เวลาไทย" ไว้ในคอลัมน์ชนิด UTC
+     * จึงอ่านออกมาตรง ๆ ห้ามแปลงโซนเวลา และรอบที่ไม่ได้ตั้งเวลาไว้ต้องคืน null
+     * ไม่ใช่เที่ยงคืนปลอม ๆ (กฎเดียวกับ TripActivityService::departTimeLabel)
+     */
+    private function scheduleDepartureDetails(TripSchedule $schedule): array
+    {
+        $today = now('Asia/Bangkok')->startOfDay();
+        $departureDate = $schedule->departure_date?->copy()->startOfDay();
+
+        return [
+            'departs_at' => $schedule->departs_at?->toISOString(),
+            'depart_time_label' => $schedule->departs_at?->format('H:i'),
+            'departs_before_trip_day' => $schedule->departsBeforeTripDay(),
+            'days_departing_early' => $schedule->daysDepartingEarly(),
+            'date_label' => $schedule->dateRangeLabelThai(),
+            'days_until' => $departureDate ? (int) $today->diffInDays($departureDate, false) : null,
+            'is_flight' => $schedule->isFlight(),
+            'is_charter' => (bool) $schedule->is_charter,
+            'meeting_point' => $schedule->meeting_point,
+            'meeting_time' => $schedule->meeting_time,
+            'meeting_map_url' => $schedule->meeting_map_url,
+            'baggage_allowance' => $schedule->baggage_allowance,
+            'flights' => $schedule->flightLegs(),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, Booking>  $bookings
+     * @param  Collection<int, BookingPassenger>  $passengers
+     */
+    private function schedulePeopleDetails(
+        TripSchedule $schedule,
+        Collection $bookings,
+        Collection $passengers,
+    ): array {
+        $checkedIn = $bookings->filter(fn (Booking $booking) => (bool) $booking->checked_in);
+
+        return [
+            'passengers_count' => $passengers->count(),
+            'join_trip_passengers' => $bookings->where('is_join_trip', true)
+                ->sum(fn (Booking $booking) => $booking->passengers->count()),
+            'confirmed_bookings' => $bookings->where('status', 'confirmed')->count(),
+            'pending_bookings' => $bookings->where('status', 'pending')->count(),
+            'group_bookings' => $bookings->where('is_group', true)->count(),
+            'gift_bookings' => $bookings->where('is_gift', true)->count(),
+            'checked_in_bookings' => $checkedIn->count(),
+            'checked_in_passengers' => $checkedIn->sum(fn (Booking $booking) => $booking->passengers->count()),
+            'waitlist_waiting' => $schedule->waitlistEntries()->where('status', 'waiting')->count(),
+            'waitlist_offered' => $schedule->waitlistEntries()->where('status', 'offered')->count(),
+            'departure_status' => $schedule->departureStatus(),
+            'seats_to_guarantee' => $schedule->seatsToGuarantee(),
+            'guarantee_min_seats' => TripSchedule::guaranteeMinSeats(),
+            'join_trip_enabled' => (bool) $schedule->join_trip_enabled,
+            'join_trip_seats' => $schedule->join_trip_seats !== null ? (int) $schedule->join_trip_seats : null,
+            'join_trip_booked_seats' => (int) $schedule->join_trip_booked_seats,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, Booking>  $bookings
+     */
+    private function scheduleMoneyDetails(TripSchedule $schedule, Collection $bookings): array
+    {
+        $total = (float) $bookings->sum(fn (Booking $booking) => (float) $booking->total_amount);
+        $paid = (float) $bookings->sum(fn (Booking $booking) => (float) $booking->paid_amount);
+
+        return [
+            'price_per_person' => round($schedule->effective_price, 2),
+            'total_amount' => round($total, 2),
+            'paid_amount' => round($paid, 2),
+            'outstanding_amount' => round($bookings->sum(
+                fn (Booking $booking) => max(0, (float) $booking->total_amount - (float) $booking->paid_amount),
+            ), 2),
+            'unpaid_bookings' => $bookings->filter(
+                fn (Booking $booking) => (float) $booking->paid_amount < (float) $booking->total_amount,
+            )->count(),
+        ];
+    }
+
+    /**
+     * ใครขึ้นรถจุดไหน — จุดรับอยู่สองที่ (ใบจองและรายชื่อผู้โดยสาร) คนในใบเดียวกัน
+     * ขึ้นคนละจุดได้ ค่าบนรายชื่อจึงชนะเมื่อกรอกไว้ ส่วนคนจอยทริปไม่ได้ขึ้นรถ
+     * จึงไม่ถูกนับว่า "ยังไม่ระบุจุดขึ้นรถ"
+     *
+     * @param  Collection<int, Booking>  $bookings
+     */
+    private function schedulePickupDetails(TripSchedule $schedule, Collection $bookings): array
+    {
+        $counts = [];
+        $unassigned = 0;
+        $custom = [];
+
+        foreach ($bookings as $booking) {
+            if ($booking->is_join_trip) {
+                continue;
+            }
+
+            $headcount = max(1, $booking->passengers->count());
+
+            if ($booking->custom_pickup_label) {
+                $key = $booking->custom_pickup_label.'|'.($booking->custom_pickup_status ?? '');
+                $custom[$key] ??= [
+                    'label' => $booking->custom_pickup_label,
+                    'status' => $booking->custom_pickup_status,
+                    'passengers_count' => 0,
+                ];
+                $custom[$key]['passengers_count'] += $headcount;
+
+                continue;
+            }
+
+            foreach ($booking->passengers as $passenger) {
+                $pointId = $passenger->pickup_point_id ?? $booking->pickup_point_id;
+                if ($pointId) {
+                    $counts[(int) $pointId] = ($counts[(int) $pointId] ?? 0) + 1;
+                } else {
+                    $unassigned++;
+                }
+            }
+
+            if ($booking->passengers->isEmpty()) {
+                $booking->pickup_point_id
+                    ? $counts[(int) $booking->pickup_point_id] = ($counts[(int) $booking->pickup_point_id] ?? 0) + 1
+                    : $unassigned++;
+            }
+        }
+
+        $points = $schedule->pickupPoints()->get()->map(fn (SchedulePickupPoint $point) => [
+            'id' => $point->id,
+            'label' => $point->pickup_location,
+            'region_label' => $point->region_label ?: $point->region,
+            'pickup_time' => $point->pickup_time,
+            'map_url' => $point->map_url,
+            'notes' => $point->notes,
+            'passengers_count' => $counts[(int) $point->id] ?? 0,
+        ])->values()->all();
+
+        return [
+            'points' => $points,
+            'unassigned_passengers' => $unassigned,
+            'custom' => array_values($custom),
+        ];
+    }
+
+    /**
+     * สิ่งที่สตาฟต้องรู้ล่วงหน้าเกี่ยวกับตัวคน — แพ้อาหาร/ยา โรคประจำตัว อาหารฮาลาล
+     * คืนเป็นจำนวนคนเท่านั้น รายละเอียดอ่านได้ที่ใบรายชื่อผู้โดยสาร
+     *
+     * @param  Collection<int, BookingPassenger>  $passengers
+     */
+    private function scheduleCareDetails(Collection $passengers): array
+    {
+        // แพ้อาหารและโรคประจำตัวถูกเข้ารหัสไว้ — แถวที่ถอดไม่ออกต้องไม่ล้มทั้งหน้า
+        // จัดสตาฟ นับเป็น "ไม่มี" แล้วปล่อยให้ใบรายชื่อผู้โดยสารเป็นคนรายงานปัญหา
+        $hasSecret = fn (BookingPassenger $p, string $field) => rescue(
+            fn () => filled($p->{$field}),
+            false,
+            false,
+        );
+
+        return [
+            'allergies' => $passengers->filter(fn (BookingPassenger $p) => $hasSecret($p, 'allergies'))->count(),
+            'health_notes' => $passengers->filter(fn (BookingPassenger $p) => $hasSecret($p, 'health_notes'))->count(),
+            'halal_food' => $passengers->filter(fn (BookingPassenger $p) => (bool) $p->halal_food)->count(),
+            'missing_emergency_contact' => $passengers->filter(fn (BookingPassenger $p) => blank($p->emergency_phone))->count(),
+        ];
+    }
+
+    private function scheduleItineraryDetails(TripSchedule $schedule): array
+    {
+        $items = $schedule->itineraryItems()->get();
+
+        return [
+            'total' => $items->count(),
+            'reached' => $items->whereNotNull('reached_at')->count(),
+            'next' => $items->firstWhere('reached_at', null)?->title,
         ];
     }
 

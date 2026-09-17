@@ -34,6 +34,10 @@
             <span class="material-symbols-rounded">place</span>{{ sch.trip?.location || '-' }}
             <span class="material-symbols-rounded" style="margin-left:6px;">directions_car</span>{{ vehicleLabel(sch.vehicle, sch.transport_type) }}
           </div>
+          <div class="today-trip-meta">
+            <span class="material-symbols-rounded">schedule</span>{{ scheduleTimeLabel(sch) ? `ออก ${scheduleTimeLabel(sch)} น.` : 'ยังไม่ระบุเวลาออก' }}
+            <span class="material-symbols-rounded" style="margin-left:6px;">event_seat</span>{{ sch.booked_seats ?? 0 }}/{{ sch.total_seats ?? 0 }} ที่นั่ง
+          </div>
           <div v-if="sch.assignedStaff && sch.assignedStaff.length" class="today-staff-row">
             <div v-for="st in sch.assignedStaff" :key="st.id" class="today-staff-chip">
               <img v-if="st.avatar_url" :src="st.avatar_url" :alt="st.name" class="today-avatar" />
@@ -143,7 +147,10 @@
                   @click="selectSchedule(round.id)"
                 >
                   <div class="rc-top">
-                    <span class="rc-date"><span class="material-symbols-rounded">event</span>{{ scheduleDateRange(round) }}</span>
+                    <span class="rc-date">
+                      <span class="material-symbols-rounded">event</span>{{ scheduleDateRange(round) }}
+                      <span v-if="scheduleTimeLabel(round)" class="rc-time">{{ scheduleTimeLabel(round) }} น.</span>
+                    </span>
                     <span class="rc-status" :class="`st-${round.status || 'unknown'}`">{{ statusLabel(round.status) }}</span>
                   </div>
                   <div class="rc-bottom">
@@ -175,19 +182,217 @@
                 <div>
                   <h2 class="round-title">{{ activeScheduleMeta.trip_title }}</h2>
                   <p class="round-subtitle">
-                    <span class="material-symbols-rounded">event</span>{{ scheduleDateRange(activeScheduleMeta) }}
+                    <span class="material-symbols-rounded">event</span>{{ roundDetails?.departure?.date_label || scheduleDateRange(activeScheduleMeta) }}
                   </p>
                 </div>
-                <span class="meta-pill status" :class="`status-${activeScheduleMeta.status || 'unknown'}`">
-                  <span class="material-symbols-rounded">radio_button_checked</span>{{ statusLabel(activeScheduleMeta.status) }}
-                </span>
+                <div class="round-header-pills">
+                  <span v-if="countdownLabel" class="meta-pill countdown">
+                    <span class="material-symbols-rounded">hourglass_top</span>{{ countdownLabel }}
+                  </span>
+                  <span class="meta-pill status" :class="`status-${activeScheduleMeta.status || 'unknown'}`">
+                    <span class="material-symbols-rounded">radio_button_checked</span>{{ statusLabel(activeScheduleMeta.status) }}
+                  </span>
+                </div>
               </div>
               <div class="schedule-meta">
                 <span class="meta-pill"><span class="material-symbols-rounded">place</span>{{ activeScheduleMeta.trip_location || '-' }}</span>
                 <span class="meta-pill"><span class="material-symbols-rounded">directions_car</span>{{ vehicleLabel(activeScheduleMeta.vehicle, activeScheduleMeta.transport_type) }}</span>
                 <span class="meta-pill"><span class="material-symbols-rounded">groups</span>จองแล้ว {{ activeScheduleMeta.active_bookings_count ?? activeScheduleMeta.booked_seats ?? 0 }} รายการ</span>
                 <span class="meta-pill"><span class="material-symbols-rounded">event_seat</span>{{ activeScheduleMeta.booked_seats ?? 0 }}/{{ activeScheduleMeta.total_seats ?? 0 }} ที่นั่ง</span>
+                <span v-if="roundDetails?.departure?.is_charter" class="meta-pill"><span class="material-symbols-rounded">workspace_premium</span>เหมาคัน</span>
               </div>
+              <!-- รถหลายรอบออกคืนก่อนวันทริป — คนจัดสตาฟต้องเห็นวัน-เวลาที่รถออกจริง -->
+              <p v-if="departureLine" class="depart-line" :class="{ warn: roundDetails?.departure?.departs_before_trip_day }">
+                <span class="material-symbols-rounded">{{ roundDetails?.departure?.is_flight ? 'flight_takeoff' : 'schedule' }}</span>
+                {{ departureLine }}
+              </p>
+            </div>
+
+            <!-- Round detail -->
+            <div class="table-card round-detail-card" v-if="roundDetails">
+              <div class="section-head">
+                <span class="material-symbols-rounded">info</span>
+                <strong>รายละเอียดรอบเดินทาง</strong>
+                <button type="button" class="collapse-btn" @click="detailsOpen = !detailsOpen">
+                  <span class="material-symbols-rounded">{{ detailsOpen ? 'expand_less' : 'expand_more' }}</span>
+                  {{ detailsOpen ? 'ย่อ' : 'ดูรายละเอียด' }}
+                </button>
+              </div>
+
+              <template v-if="detailsOpen">
+                <div class="stat-row">
+                  <div class="stat-tile">
+                    <span class="material-symbols-rounded">group</span>
+                    <div>
+                      <p>ผู้โดยสาร</p>
+                      <strong>{{ roundDetails.people.passengers_count }} คน</strong>
+                      <span v-if="roundDetails.people.join_trip_passengers" class="stat-sub">จอยทริป {{ roundDetails.people.join_trip_passengers }} คน</span>
+                    </div>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="material-symbols-rounded">receipt_long</span>
+                    <div>
+                      <p>ใบจอง</p>
+                      <strong>{{ roundDetails.people.confirmed_bookings + roundDetails.people.pending_bookings }} ใบ</strong>
+                      <span v-if="roundDetails.people.pending_bookings" class="stat-sub warn">รอชำระ {{ roundDetails.people.pending_bookings }} ใบ</span>
+                      <span v-else class="stat-sub">ยืนยันครบแล้ว</span>
+                    </div>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="material-symbols-rounded">how_to_reg</span>
+                    <div>
+                      <p>เช็คอินแล้ว</p>
+                      <strong>{{ roundDetails.people.checked_in_passengers }}/{{ roundDetails.people.passengers_count }}</strong>
+                      <span class="stat-sub">{{ roundDetails.people.checked_in_bookings }} ใบจอง</span>
+                    </div>
+                  </div>
+                  <div class="stat-tile">
+                    <span class="material-symbols-rounded">hourglass_empty</span>
+                    <div>
+                      <p>คิวรอที่นั่ง</p>
+                      <strong>{{ roundDetails.people.waitlist_waiting + roundDetails.people.waitlist_offered }} คน</strong>
+                      <span v-if="roundDetails.people.waitlist_offered" class="stat-sub warn">ยื่นสิทธิ์อยู่ {{ roundDetails.people.waitlist_offered }}</span>
+                      <span v-else class="stat-sub">ยังไม่ได้ยื่นสิทธิ์</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="fact-grid">
+                  <div v-if="guaranteeInfo" class="fact">
+                    <span class="fact-label">การันตีออกเดินทาง</span>
+                    <span class="fact-value">
+                      <span class="guarantee-dot" :class="roundDetails.people.departure_status"></span>
+                      {{ guaranteeInfo }}
+                    </span>
+                  </div>
+                  <div class="fact">
+                    <span class="fact-label">ราคาต่อคน</span>
+                    <span class="fact-value">{{ money(roundDetails.money.price_per_person) }} บาท</span>
+                  </div>
+                  <div class="fact">
+                    <span class="fact-label">ยอดขายรอบนี้</span>
+                    <span class="fact-value">{{ money(roundDetails.money.total_amount) }} บาท</span>
+                  </div>
+                  <div class="fact">
+                    <span class="fact-label">ค้างชำระ</span>
+                    <span class="fact-value" :class="{ warn: roundDetails.money.outstanding_amount > 0 }">
+                      {{ money(roundDetails.money.outstanding_amount) }} บาท
+                      <small v-if="roundDetails.money.unpaid_bookings">({{ roundDetails.money.unpaid_bookings }} ใบ)</small>
+                    </span>
+                  </div>
+                  <div v-if="roundDetails.vehicle?.driver_name" class="fact">
+                    <span class="fact-label">คนขับ</span>
+                    <span class="fact-value">
+                      {{ roundDetails.vehicle.driver_name }}
+                      <a v-if="roundDetails.vehicle.driver_phone" :href="`tel:${roundDetails.vehicle.driver_phone}`" class="phone-link">
+                        <span class="material-symbols-rounded">call</span>{{ roundDetails.vehicle.driver_phone }}
+                      </a>
+                    </span>
+                  </div>
+                  <div v-if="roundDetails.vehicle?.capacity" class="fact">
+                    <span class="fact-label">ความจุรถ</span>
+                    <span class="fact-value">{{ roundDetails.vehicle.capacity }} ที่นั่ง<small v-if="roundDetails.vehicle.color"> · สี{{ roundDetails.vehicle.color }}</small></span>
+                  </div>
+                  <div v-if="roundDetails.people.join_trip_enabled" class="fact">
+                    <span class="fact-label">โควตาจอยทริป</span>
+                    <span class="fact-value">
+                      {{ roundDetails.people.join_trip_booked_seats }}<template v-if="roundDetails.people.join_trip_seats !== null">/{{ roundDetails.people.join_trip_seats }}</template>
+                      <small v-if="roundDetails.people.join_trip_seats === null"> (ไม่จำกัด)</small>
+                    </span>
+                  </div>
+                  <div class="fact">
+                    <span class="fact-label">กำหนดการ</span>
+                    <span class="fact-value" v-if="roundDetails.itinerary.total">
+                      ผ่านแล้ว {{ roundDetails.itinerary.reached }}/{{ roundDetails.itinerary.total }}
+                      <small v-if="roundDetails.itinerary.next"> · ถัดไป {{ roundDetails.itinerary.next }}</small>
+                    </span>
+                    <span class="fact-value muted" v-else>ยังไม่ได้ลงกำหนดการ</span>
+                  </div>
+                  <div v-if="roundDetails.trip.difficulty || roundDetails.trip.duration_days" class="fact">
+                    <span class="fact-label">ลักษณะทริป</span>
+                    <span class="fact-value">
+                      {{ difficultyLabel(roundDetails.trip.difficulty) }}
+                      <small v-if="roundDetails.trip.duration_days"> · {{ roundDetails.trip.duration_days }} วัน</small>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Flight rounds meet at the airport, they have no pickup run -->
+                <div v-if="roundDetails.departure.is_flight" class="sub-block">
+                  <div class="sub-head"><span class="material-symbols-rounded">flight</span> จุดนัดพบและขาบิน</div>
+                  <div class="fact-grid">
+                    <div class="fact">
+                      <span class="fact-label">จุดนัดพบ</span>
+                      <span class="fact-value">
+                        {{ roundDetails.departure.meeting_point || '—' }}
+                        <a v-if="roundDetails.departure.meeting_map_url" :href="roundDetails.departure.meeting_map_url" target="_blank" rel="noopener" class="map-link">
+                          <span class="material-symbols-rounded">map</span>แผนที่
+                        </a>
+                      </span>
+                    </div>
+                    <div class="fact">
+                      <span class="fact-label">เวลานัดพบ</span>
+                      <span class="fact-value">{{ roundDetails.departure.meeting_time ? `${roundDetails.departure.meeting_time} น.` : '—' }}</span>
+                    </div>
+                    <div v-if="roundDetails.departure.baggage_allowance" class="fact">
+                      <span class="fact-label">น้ำหนักกระเป๋า</span>
+                      <span class="fact-value">{{ roundDetails.departure.baggage_allowance }}</span>
+                    </div>
+                  </div>
+                  <div v-if="flightLegs.length" class="flight-legs">
+                    <span v-for="(leg, i) in flightLegs" :key="i" class="flight-chip">
+                      <span class="material-symbols-rounded">{{ leg.direction === 'return' ? 'flight_land' : 'flight_takeoff' }}</span>
+                      {{ leg.text }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Pickup run: who gets on where, so the round can be split between staff -->
+                <div v-else class="sub-block">
+                  <div class="sub-head">
+                    <span class="material-symbols-rounded">pin_drop</span> จุดขึ้นรถ
+                    <span class="sub-count">{{ roundDetails.pickups.points.length }} จุด</span>
+                  </div>
+                  <div v-if="roundDetails.pickups.points.length" class="pickup-list">
+                    <div v-for="point in roundDetails.pickups.points" :key="point.id" class="pickup-row" :class="{ empty: !point.passengers_count }">
+                      <div class="pickup-main">
+                        <span class="pickup-label">{{ point.label }}</span>
+                        <span class="pickup-meta">
+                          <template v-if="point.region_label">{{ point.region_label }}</template>
+                          <template v-if="point.pickup_time"> · {{ point.pickup_time }} น.</template>
+                        </span>
+                      </div>
+                      <span class="pickup-count" :class="{ zero: !point.passengers_count }">
+                        <span class="material-symbols-rounded">person</span>{{ point.passengers_count }}
+                      </span>
+                    </div>
+                  </div>
+                  <p v-else class="sub-empty">รอบนี้ยังไม่ได้ตั้งจุดขึ้นรถ</p>
+
+                  <div v-if="roundDetails.pickups.custom.length" class="custom-pickups">
+                    <span v-for="(item, i) in roundDetails.pickups.custom" :key="i" class="custom-chip" :class="item.status">
+                      <span class="material-symbols-rounded">add_location_alt</span>
+                      {{ item.label }} · {{ item.passengers_count }} คน
+                      <small>{{ customPickupStatusLabel(item.status) }}</small>
+                    </span>
+                  </div>
+                  <p v-if="roundDetails.pickups.unassigned_passengers" class="sub-warn">
+                    <span class="material-symbols-rounded">help</span>
+                    ยังไม่ระบุจุดขึ้นรถ {{ roundDetails.pickups.unassigned_passengers }} คน
+                  </p>
+                </div>
+
+                <!-- Counts only — the names behind them live on the passenger manifest -->
+                <div class="sub-block">
+                  <div class="sub-head"><span class="material-symbols-rounded">health_and_safety</span> ข้อควรดูแล</div>
+                  <div v-if="careChips.length" class="care-row">
+                    <span v-for="chip in careChips" :key="chip.label" class="care-chip" :class="chip.tone">
+                      <span class="material-symbols-rounded">{{ chip.icon }}</span>{{ chip.label }} {{ chip.count }} คน
+                    </span>
+                  </div>
+                  <p v-else class="sub-empty">ไม่มีข้อมูลที่ต้องดูแลเป็นพิเศษในรอบนี้</p>
+                </div>
+              </template>
             </div>
 
             <!-- Assigned staff -->
@@ -417,6 +622,7 @@ const scheduleSearch = ref('');
 const scheduleScope = ref('upcoming');
 const onlyMissing = ref(false);
 const selectedScheduleId = ref('');
+const detailsOpen = ref(true);
 const detailPanel = ref(null);
 
 const releasing = ref(false);
@@ -513,7 +719,11 @@ const selectedSchedule = computed(() => {
 });
 
 const activeScheduleMeta = computed(() => {
-  if (selectedScheduleMeta.value) return selectedScheduleMeta.value;
+  // ระหว่างที่รอบใหม่ยังโหลดไม่เสร็จ meta ของรอบเก่ายังค้างอยู่ — ต้องไม่เอา
+  // รายละเอียดของรอบหนึ่งไปแปะหัวข้อของอีกรอบ
+  if (selectedScheduleMeta.value && Number(selectedScheduleMeta.value.id) === Number(selectedScheduleId.value)) {
+    return selectedScheduleMeta.value;
+  }
   if (!selectedSchedule.value) return null;
   return {
     id: selectedSchedule.value.id,
@@ -579,6 +789,9 @@ const scheduleDateRange = (schedule) => {
   return schedule.return_date && schedule.return_date !== schedule.departure_date ? `${start} - ${end}` : start;
 };
 
+// departs_at มาเป็นสตริงเวลาไทย 'Y-m-d H:i:s' — ตัดเอาเฉพาะ H:i ห้ามแปลงโซนเวลา
+const scheduleTimeLabel = (schedule) => String(schedule?.departs_at || '').slice(11, 16);
+
 const vehicleLabel = (vehicle, fallbackType = '') => {
   if (!vehicle) return fallbackType || '-';
   const plate = vehicle.license_plate ? ` (${vehicle.license_plate})` : '';
@@ -593,6 +806,92 @@ const statusLabel = (status) => {
 const formatRating = (rating) => {
   if (!rating) return '-';
   return Number(rating).toFixed(2).replace(/\.?0+$/, '');
+};
+
+// รายละเอียดรอบมาจาก endpoint ของรอบเท่านั้น — รายการฝั่งซ้ายไม่มีข้อมูลชุดนี้
+const roundDetails = computed(() => activeScheduleMeta.value?.details || null);
+
+const countdownLabel = computed(() => {
+  const days = roundDetails.value?.departure?.days_until;
+  if (days === null || days === undefined) return '';
+  if (days === 0) return 'วันนี้';
+  if (days === 1) return 'พรุ่งนี้';
+  if (days < 0) return `ผ่านมาแล้ว ${Math.abs(days)} วัน`;
+  return `อีก ${days} วัน`;
+});
+
+// departs_at เก็บ "เวลาไทย" ไว้ในคอลัมน์ชนิด UTC — อ่านวันกับเวลาจากค่าที่เซิร์ฟเวอร์
+// ตัดมาให้แล้วเท่านั้น ห้ามโยนเข้า new Date() แล้วฟอร์แมต ไม่งั้นเพี้ยนไป 7 ชั่วโมง
+const departureLine = computed(() => {
+  const dep = roundDetails.value?.departure;
+  if (!dep) return '';
+  const time = dep.depart_time_label ? `เวลา ${dep.depart_time_label} น.` : '';
+  if (dep.departs_before_trip_day) {
+    const date = formatDate(String(dep.departs_at).slice(0, 10));
+    const early = dep.days_departing_early > 1 ? ` (ก่อนวันทริป ${dep.days_departing_early} วัน)` : ' (คืนก่อนวันทริป)';
+    return `${dep.is_flight ? 'บินออก' : 'รถออก'} ${date} ${time}${early}`.replace(/\s+/g, ' ');
+  }
+  if (time) return `${dep.is_flight ? 'บินออก' : 'ออกเดินทาง'}${time.replace('เวลา', ' เวลา')}`;
+  return 'ยังไม่ได้ระบุเวลาออกเดินทาง';
+});
+
+const guaranteeInfo = computed(() => {
+  const people = roundDetails.value?.people;
+  if (!people?.departure_status) return '';
+  const labels = {
+    guaranteed: 'ออกเดินทางแน่นอน',
+    almost_ready: 'ใกล้ครบแล้ว',
+    waiting: 'ยังรอเพื่อนร่วมทาง',
+  };
+  const base = labels[people.departure_status] || people.departure_status;
+  return people.seats_to_guarantee
+    ? `${base} · ขาดอีก ${people.seats_to_guarantee} ที่นั่ง`
+    : base;
+});
+
+const flightLegs = computed(() => {
+  const legs = roundDetails.value?.departure?.flights;
+  if (!legs) return [];
+  // depart_at เป็นสตริงเวลาไทยใน JSON ไม่ใช่ timestamp — ตัดอ่านตรง ๆ ห้ามแปลงโซน
+  const legTime = (value) => {
+    if (!value) return '';
+    const raw = String(value).replace('T', ' ');
+    const time = raw.slice(11, 16);
+    return time ? `${formatDate(raw.slice(0, 10))} ${time} น.` : formatDate(raw.slice(0, 10));
+  };
+  const describe = (leg, direction) => ({
+    direction,
+    text: [leg.airline, leg.flight_no, [leg.from, leg.to].filter(Boolean).join(' → '), legTime(leg.depart_at)]
+      .filter(Boolean).join(' · '),
+  });
+  return [
+    ...(legs.outbound || []).map((leg) => describe(leg, 'outbound')),
+    ...(legs.return || []).map((leg) => describe(leg, 'return')),
+  ].filter((leg) => leg.text);
+});
+
+const careChips = computed(() => {
+  const care = roundDetails.value?.care;
+  if (!care) return [];
+  return [
+    { key: 'allergies', label: 'แพ้อาหาร/ยา', icon: 'e911_emergency', tone: 'danger' },
+    { key: 'health_notes', label: 'มีโรคประจำตัว', icon: 'medical_information', tone: 'danger' },
+    { key: 'halal_food', label: 'อาหารฮาลาล', icon: 'restaurant', tone: 'info' },
+    { key: 'missing_emergency_contact', label: 'ไม่มีเบอร์ฉุกเฉิน', icon: 'phone_missed', tone: 'warn' },
+  ].filter((chip) => Number(care[chip.key] || 0) > 0)
+    .map((chip) => ({ ...chip, count: care[chip.key] }));
+});
+
+const money = (amount) => Number(amount || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+
+const difficultyLabel = (difficulty) => {
+  const labels = { easy: 'ง่าย', moderate: 'ปานกลาง', hard: 'ยาก', extreme: 'ยากมาก' };
+  return labels[difficulty] || difficulty || 'ไม่ระบุ';
+};
+
+const customPickupStatusLabel = (status) => {
+  const labels = { pending: 'รออนุมัติ', approved: 'อนุมัติแล้ว', rejected: 'ไม่อนุมัติ' };
+  return labels[status] || '';
 };
 
 const normalizeStaffFromUsersApi = (users = []) => {
@@ -1398,6 +1697,257 @@ button.summary-card.active {
 .meta-pill.status-closed, .meta-pill.status-full { color: #92400e; background: #fffbeb; border-color: #fde68a; }
 .meta-pill.status-cancelled { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
 .meta-pill .material-symbols-rounded { font-size: 15px; }
+
+.rc-time { font-weight: 800; color: var(--color-accent); }
+
+.round-header-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.meta-pill.countdown { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+
+.depart-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.depart-line .material-symbols-rounded { font-size: 16px; }
+.depart-line.warn { color: #b45309; }
+
+/* ── Round detail ────────────────────────────────────────── */
+.collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.collapse-btn .material-symbols-rounded { font-size: 16px; }
+.collapse-btn:hover { background: #f8fafc; }
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.stat-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.stat-tile > .material-symbols-rounded { font-size: 20px; color: var(--color-accent); }
+.stat-tile p { margin: 0; font-size: 11px; font-weight: 700; color: #64748b; }
+.stat-tile strong { display: block; margin-top: 2px; font-size: 16px; font-weight: 800; color: #0f172a; }
+
+.stat-sub { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: #94a3b8; }
+.stat-sub.warn { color: #b45309; }
+
+.fact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 10px;
+  padding: 0 16px 14px;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.fact-label { font-size: 11px; font-weight: 700; color: #94a3b8; }
+
+.fact-value {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.fact-value small { font-size: 11.5px; font-weight: 600; color: #64748b; }
+.fact-value.warn { color: #b91c1c; }
+.fact-value.muted { color: #94a3b8; font-weight: 600; }
+
+.guarantee-dot { width: 9px; height: 9px; border-radius: 50%; background: #94a3b8; }
+.guarantee-dot.guaranteed { background: #059669; }
+.guarantee-dot.almost_ready { background: #d97706; }
+.guarantee-dot.waiting { background: #dc2626; }
+
+.sub-block { padding: 12px 16px 14px; border-top: 1px solid #f1f5f9; }
+
+.sub-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.sub-head .material-symbols-rounded { font-size: 17px; color: var(--color-accent); }
+
+.sub-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.sub-empty { margin: 0; font-size: 12.5px; font-weight: 600; color: #94a3b8; }
+
+.sub-warn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #b45309;
+}
+
+.sub-warn .material-symbols-rounded { font-size: 16px; }
+
+.pickup-list { display: flex; flex-direction: column; gap: 6px; }
+
+.pickup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.pickup-row.empty { background: #fff; border-style: dashed; }
+.pickup-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pickup-label { font-size: 13px; font-weight: 700; color: #0f172a; }
+.pickup-meta { font-size: 11.5px; font-weight: 600; color: #64748b; }
+
+.pickup-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #0f172a;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.pickup-count .material-symbols-rounded { font-size: 15px; }
+.pickup-count.zero { color: #94a3b8; background: #f1f5f9; }
+
+.custom-pickups { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+.custom-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.custom-chip .material-symbols-rounded { font-size: 15px; }
+.custom-chip small { font-size: 11px; font-weight: 600; color: #64748b; }
+.custom-chip.pending { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.custom-chip.pending small { color: #b45309; }
+.custom-chip.rejected { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+.custom-chip.rejected small { color: #dc2626; }
+
+.flight-legs { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.flight-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.flight-chip .material-symbols-rounded { font-size: 15px; }
+
+.map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.map-link .material-symbols-rounded { font-size: 14px; }
+
+.care-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.care-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.care-chip .material-symbols-rounded { font-size: 15px; }
+.care-chip.danger { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+.care-chip.warn { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+.care-chip.info { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+
+@media (max-width: 1280px) {
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .stat-row { grid-template-columns: 1fr; }
+  .fact-grid { grid-template-columns: 1fr; }
+  .round-header-pills { justify-content: flex-start; }
+}
 
 /* Section heads */
 .section-head {
