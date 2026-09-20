@@ -27,6 +27,7 @@ use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class ChatController extends Controller
@@ -747,8 +748,14 @@ class ChatController extends Controller
      */
     public function adminConversations(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         $schedules = TripSchedule::query()
-            ->with(['trip:id,title,cover_image,thumbnail_image', 'vehicle:id,name,type'])
+            ->with([
+                'trip:id,title,cover_image,thumbnail_image',
+                'vehicle:id,name,type',
+                'activeStaff:users.id,users.name,users.nickname',
+            ])
             ->where('departure_date', '>=', now()->subDays(7)->startOfDay())
             ->whereIn('status', ['open', 'closed', 'full'])
             ->orderBy('departure_date')
@@ -759,19 +766,52 @@ class ChatController extends Controller
             ->get()
             ->groupBy('schedule_id');
 
-        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule) {
-            $messages = $messagesBySchedule->get($schedule->id);
-            $last = $messages?->sortByDesc('id')->first();
+        // ตำแหน่งที่แอดมินคนนี้อ่านถึงในแต่ละห้อง → ใช้นับ "ยังไม่ได้อ่าน"
+        $reads = ChatRead::where('user_id', $user->id)
+            ->whereIn('schedule_id', $schedules->pluck('id'))
+            ->pluck('last_read_message_id', 'schedule_id');
+
+        // วันเดินทางเทียบกับ "วันนี้" ตามเวลาไทย ไม่ใช่ UTC ของเซิร์ฟเวอร์
+        $today = now('Asia/Bangkok')->startOfDay();
+
+        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule, $reads, $user, $today) {
+            $messages = $messagesBySchedule->get($schedule->id) ?? collect();
+            $last = $messages->sortByDesc('id')->first();
+            $lastReadId = (int) ($reads[$schedule->id] ?? 0);
+
+            $unread = $messages
+                ->where('id', '>', $lastReadId)
+                ->filter(fn ($m) => $m->user_id === null || $m->user_id !== $user->id)
+                ->count();
 
             return [
                 'schedule_id' => $schedule->id,
+                'trip_id' => $schedule->trip_id,
                 'trip_title' => $schedule->trip?->title,
                 'trip_image' => $schedule->trip?->thumbnail_image ?: $schedule->trip?->cover_image,
                 'vehicle_name' => $schedule->vehicle?->name,
                 'departure_date' => $schedule->departure_date?->toDateString(),
                 'return_date' => $schedule->return_date?->toDateString(),
                 'status' => $schedule->status,
-                'message_count' => $messages?->count() ?? 0,
+                // ติดลบ = รอบที่ออกเดินทางไปแล้ว
+                'days_until' => $schedule->departure_date
+                    ? (int) $today->diffInDays(
+                        Carbon::parse($schedule->departure_date->toDateString(), 'Asia/Bangkok')->startOfDay(),
+                        false,
+                    )
+                    : null,
+                'booked_seats' => (int) $schedule->booked_seats,
+                'total_seats' => (int) $schedule->total_seats,
+                // ห้องที่ยังไม่มีทีมงานประจำ = ไม่มีใครดูแลนอกจากแอดมิน
+                'staff_count' => $schedule->activeStaff->count(),
+                'staff_names' => $schedule->activeStaff
+                    ->map(fn ($s) => $s->nickname ?: $s->name)
+                    ->values()
+                    ->all(),
+                'message_count' => $messages->count(),
+                'unread_count' => $unread,
+                // ลูกค้าพูดคนสุดท้าย = ยังไม่มีใครตอบ
+                'needs_reply' => $last?->sender_role === 'customer',
                 'last_message' => $last ? [
                     'body' => $last->body,
                     'image_url' => $last->image_url,

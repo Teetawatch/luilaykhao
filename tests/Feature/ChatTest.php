@@ -749,4 +749,76 @@ class ChatTest extends TestCase
             fn (SendChatPushJob $job) => $job->mentionedUserIds === [$mentioned->id],
         );
     }
+
+    public function test_admin_conversation_list_flags_rooms_that_need_attention(): void
+    {
+        Role::findOrCreate('admin');
+        Role::findOrCreate('staff');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $waiting = $this->makeSchedule();
+        $answered = $this->makeSchedule();
+
+        $customer = User::factory()->create();
+        $this->bookOnto($customer, $waiting);
+        $this->bookOnto($customer, $answered);
+
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+        $answered->staff()->attach($staff->id, ['assigned_by' => $admin->id]);
+
+        ChatMessage::create(['schedule_id' => $waiting->id, 'user_id' => $customer->id, 'sender_role' => 'customer', 'body' => 'ขึ้นรถกี่โมงครับ']);
+        ChatMessage::create(['schedule_id' => $answered->id, 'user_id' => $customer->id, 'sender_role' => 'customer', 'body' => 'ขึ้นรถกี่โมงครับ']);
+        ChatMessage::create(['schedule_id' => $answered->id, 'user_id' => $staff->id, 'sender_role' => 'staff', 'body' => '05:00 ครับ']);
+
+        $rooms = collect($this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/chat/conversations')
+            ->assertOk()
+            ->json('data'))
+            ->keyBy('schedule_id');
+
+        $this->assertTrue($rooms[$waiting->id]['needs_reply']);
+        $this->assertSame(1, $rooms[$waiting->id]['unread_count']);
+        $this->assertSame(0, $rooms[$waiting->id]['staff_count']);
+
+        $this->assertFalse($rooms[$answered->id]['needs_reply']);
+        $this->assertSame(2, $rooms[$answered->id]['unread_count']);
+        $this->assertSame(1, $rooms[$answered->id]['staff_count']);
+        $this->assertSame([$staff->nickname ?: $staff->name], $rooms[$answered->id]['staff_names']);
+
+        // เดินทางเดือนหน้า → นับเป็นวันตามเวลาไทย ไม่ใช่ UTC ของเซิร์ฟเวอร์
+        $this->assertSame(
+            (int) now('Asia/Bangkok')->startOfDay()->diffInDays($waiting->departure_date->toDateString(), false),
+            $rooms[$waiting->id]['days_until'],
+        );
+    }
+
+    public function test_admin_conversation_list_does_not_count_own_messages_as_unread(): void
+    {
+        Role::findOrCreate('admin');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $schedule = $this->makeSchedule();
+        $customer = User::factory()->create();
+        $this->bookOnto($customer, $schedule);
+
+        ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $customer->id, 'sender_role' => 'customer', 'body' => 'สวัสดีครับ']);
+        $mine = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $admin->id, 'sender_role' => 'admin', 'body' => 'สวัสดีครับ']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/read", ['message_id' => $mine->id])
+            ->assertOk();
+
+        $room = collect($this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/chat/conversations')
+            ->json('data'))
+            ->firstWhere('schedule_id', $schedule->id);
+
+        $this->assertSame(0, $room['unread_count']);
+        $this->assertFalse($room['needs_reply']);
+    }
 }
