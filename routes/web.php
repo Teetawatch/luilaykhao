@@ -106,6 +106,19 @@ Route::get('/t/{token}', [PublicTripBriefController::class, 'show'])
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:120,1')
     ->name('public.trip-brief.show');
+// ไฟล์ปฏิทินของรอบเดียวกัน — ต้องมาก่อนอะไรก็ตามที่จับ /t/{token} แบบกว้างกว่า
+Route::get('/t/{token}/calendar.ics', [PublicTripBriefController::class, 'calendar'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.trip-brief.calendar');
+Route::post('/t/{token}/pickup-status', [PublicTripBriefController::class, 'reportPickupStatus'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:30,1')
+    ->name('public.trip-brief.pickup-status');
+Route::post('/t/{token}/ack', [PublicTripBriefController::class, 'acknowledge'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.trip-brief.ack');
 
 // Digital Travel Receipt — หน้าตรวจสอบใบเสร็จสาธารณะจาก QR / ลิงก์ในอีเมล
 Route::get('/receipt/{token}/pdf', [PublicReceiptController::class, 'pdf'])

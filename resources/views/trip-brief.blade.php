@@ -102,6 +102,72 @@
         .alert.amber { background:var(--amber-bg); color:#7c4a03; }
         .alert.teal { background:#e6f2f1; color:#0f3d3e; }
 
+        /* ประกาศจากผู้จัด */
+        .ann { padding:12px 0; border-top:1px solid var(--line); }
+        .ann:first-of-type { border-top:none; padding-top:2px; }
+        .ann .tag {
+            display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.3px;
+            background:#e6f2f1; color:var(--brand); padding:3px 9px; border-radius:999px;
+        }
+        .ann .tag.urgent { background:#fdecec; color:var(--red); }
+        .ann .tag.pin { background:#fff1dc; color:var(--amber); }
+        .ann b { display:block; font-size:15px; font-weight:800; margin-top:7px; }
+        .ann p { font-size:13.5px; margin-top:4px; white-space:pre-line; }
+        .ann .meta { font-size:11.5px; color:var(--muted); margin-top:6px; }
+
+        /* ยังขาดอะไรอยู่ */
+        .todo { display:flex; gap:11px; padding:11px 0; border-top:1px solid var(--line); }
+        .todo:first-of-type { border-top:none; padding-top:2px; }
+        .todo .mark {
+            flex:none; width:22px; height:22px; border-radius:8px; background:var(--amber-bg);
+            color:var(--amber); font-weight:900; font-size:12.5px;
+            display:flex; align-items:center; justify-content:center; margin-top:1px;
+        }
+        .todo .c b { display:block; font-size:14.5px; font-weight:800; }
+        .todo .c span { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.6; }
+        .todo .c a { display:inline-block; margin-top:7px; font-size:13px; font-weight:800; color:var(--brand); text-decoration:none; }
+
+        /* วันเดินทาง: QR เช็คอิน + ปุ่มบอกสถานะ */
+        .qr-wrap { text-align:center; padding:6px 0 2px; }
+        .qr-wrap img { width:200px; height:200px; display:block; margin:0 auto; }
+        .qr-code {
+            margin-top:10px; font-size:14px; font-weight:800; letter-spacing:2px;
+            font-variant-numeric:tabular-nums; color:var(--brand-dark);
+        }
+        .choice {
+            display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+            background:#fff; color:var(--ink); border:1.5px solid var(--line);
+            font-family:inherit; font-weight:800; font-size:14.5px;
+            padding:13px 15px; border-radius:14px; margin-top:9px; cursor:pointer;
+        }
+        .choice.on { border-color:var(--brand); background:#e6f2f1; color:var(--brand-dark); }
+        .choice .em { font-size:17px; }
+        .eta { display:flex; align-items:center; gap:9px; margin-top:11px; font-size:12.5px; color:var(--muted); }
+        .eta select {
+            font-family:inherit; font-size:13.5px; font-weight:700; color:var(--ink);
+            border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; background:#fff;
+        }
+        .flash { border-radius:14px; padding:12px 15px; font-size:13.5px; font-weight:700; margin-bottom:12px; }
+        .flash.ok { background:#e6f2f1; color:var(--brand-dark); }
+        .flash.bad { background:#fdecec; color:var(--red); }
+
+        /* ความคืบหน้าระหว่างทริป */
+        .bar { height:8px; border-radius:999px; background:var(--line); overflow:hidden; margin-top:12px; }
+        .bar i { display:block; height:100%; background:var(--brand); border-radius:999px; }
+
+        /* รับทราบแล้ว */
+        .ack-form { margin:0; }
+        .ack-btn {
+            display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+            background:var(--brand); color:#fff; font-weight:800; font-size:15px;
+            padding:14px; border-radius:14px; border:none; cursor:pointer;
+            font-family:inherit; margin-top:12px;
+        }
+        .ack-done {
+            background:#e6f2f1; color:var(--brand-dark); border-radius:14px;
+            padding:13px 16px; font-size:13.5px; font-weight:700; text-align:center; margin-top:12px;
+        }
+
         .money { display:flex; justify-content:space-between; gap:12px; padding:6px 0; font-size:14px; }
         .money .k { color:var(--muted); }
         .money .v { font-weight:800; font-variant-numeric:tabular-nums; }
@@ -121,6 +187,20 @@
         .foot { text-align:center; color:var(--muted); font-size:11.5px; margin-top:18px; line-height:1.8; }
         .foot b { color:var(--brand-dark); }
         .foot a { color:var(--brand); font-weight:700; text-decoration:none; }
+
+        /* โหมดพิมพ์ / เซฟเป็น PDF — ที่บ้านหลายหลังยังพิมพ์แปะตู้เย็นอยู่จริง ๆ
+           ปุ่มและฟอร์มทุกชิ้นหายไป เหลือแต่ข้อมูล ส่วน QR ยังต้องพิมพ์ติดไปด้วย */
+        @media print {
+            body { background:#fff; padding:0; }
+            .wrap { max-width:none; }
+            .card { border:1px solid #d5ddda; border-radius:12px; margin-bottom:10px; break-inside:avoid; page-break-inside:avoid; }
+            .btn, .ack-btn, .choice, .eta, form, .stores, .flash, .call, [data-print], [data-share] { display:none !important; }
+            .hero { background:#fff; color:var(--ink); border-bottom:1px solid #d5ddda; }
+            .hero .eyebrow { color:var(--muted); }
+            .hero .where, .hero .when { color:var(--ink); }
+            .pill { background:#fff; border:1px solid #d5ddda; color:var(--ink); }
+            .person .who span, .note, .sub { color:#4b5a55; }
+        }
 
         .empty { background:#fff; border:1px solid var(--line); border-radius:24px; padding:48px 28px; text-align:center; }
         .empty .icon { font-size:52px; }
@@ -180,6 +260,25 @@
             </div>
         @endif
     </div>
+
+    {{-- ── ถึงไหนแล้ว (ระหว่างทริป) ────────────────────────────────
+         หมุดกำหนดการที่ทีมงานกดยืนยัน ของชิ้นเดียวกับหน้าวันเดินทางในแอป --}}
+    @if($b['progress'])
+        <div class="card">
+            <div class="sec">
+                <div class="sec-label">ตอนนี้ถึงไหนแล้ว</div>
+                <div class="big">{{ $b['progress']['current']['title'] ?? 'กำลังเดินทาง' }}</div>
+                @if($b['progress']['next'])
+                    <div class="sub">ต่อไป · {{ $b['progress']['next']['title'] }}</div>
+                @endif
+                <div class="bar"><i style="width:{{ $b['progress']['percent'] }}%"></i></div>
+                <div class="note">
+                    ผ่านมาแล้ว {{ $b['progress']['reached_count'] }} จาก {{ $b['progress']['total'] }} จุด
+                    · เปิดหน้านี้ใหม่เพื่อดูล่าสุดได้เลยครับ
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- ── จุดขึ้นรถ / จุดนัดพบ ────────────────────────────────── --}}
     @if($b['meetup'])
@@ -246,6 +345,144 @@
                 <div class="sec-label">การเดินทาง</div>
                 <div class="big">จอยทริป — เดินทางไปเจอกันที่จุดหมาย</div>
                 <div class="note">รอบนี้คุณจองแบบจอยทริป ไม่มีรถไปรับนะครับ นัดเจอทีมงานที่หน้างานได้เลย</div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ── วันเดินทาง: บอกสถานะ + QR เช็คอิน ──────────────────────
+         สองอย่างที่เคยมีแต่ในแอป ทั้งที่คนไม่มีแอปคือกลุ่มที่สตาฟต้องไล่โทรตามที่สุด --}}
+    @if($b['pickup_status']['show'] || $b['checkin']['show'] || $b['checkin']['checked_in'])
+        <div class="card">
+            @if($b['pickup_status']['show'])
+                <div class="sec">
+                    <div class="sec-label">บอกทีมงานหน่อยว่าคุณถึงไหนแล้ว</div>
+
+                    @if(session('pickup_saved'))
+                        <div class="flash ok">ส่งให้ทีมงานแล้วครับ ขอบคุณมากครับ</div>
+                    @elseif(session('pickup_error'))
+                        <div class="flash bad">{{ session('pickup_error') }}</div>
+                    @endif
+
+                    @if($b['pickup_status']['current_label'])
+                        <div class="big">ล่าสุดคุณแจ้งว่า · {{ $b['pickup_status']['current_label'] }}</div>
+                        <div class="sub">เมื่อ {{ $b['pickup_status']['reported_at_label'] }} น. · กดใหม่ได้ถ้าสถานการณ์เปลี่ยน</div>
+                    @else
+                        <div class="note" style="margin-top:0;">
+                            ทีมงานจะได้ไม่ต้องโทรตามทีละคน ถ้ากดว่าอาจมาสาย ทีมงานจะรู้ทันทีครับ
+                        </div>
+                    @endif
+
+                    <form method="POST" action="{{ route('public.trip-brief.pickup-status', request()->route('token')) }}">
+                        @csrf
+                        @foreach($b['pickup_status']['options'] as $option)
+                            <button
+                                type="submit" name="status" value="{{ $option['value'] }}"
+                                class="choice {{ $b['pickup_status']['current'] === $option['value'] ? 'on' : '' }}"
+                            >
+                                <span class="em">{{ $option['emoji'] }}</span>
+                                <span>{{ $option['label'] }}</span>
+                            </button>
+                        @endforeach
+                        <div class="eta">
+                            <label for="eta">ถ้าสาย ประมาณ</label>
+                            <select id="eta" name="eta_minutes">
+                                <option value="">ไม่แน่ใจ</option>
+                                @foreach([10, 15, 20, 30, 45, 60] as $minutes)
+                                    <option value="{{ $minutes }}">{{ $minutes }} นาที</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            @endif
+
+            @if($b['checkin']['checked_in'])
+                <div class="sec">
+                    <div class="sec-label">เช็คอิน</div>
+                    <div class="big">✓ เช็คอินขึ้นรถแล้ว</div>
+                    @if($b['checkin']['checked_in_label'])
+                        <div class="sub">เมื่อ {{ $b['checkin']['checked_in_label'] }} น. · เดินทางปลอดภัยนะครับ</div>
+                    @endif
+                </div>
+            @elseif($b['checkin']['show'])
+                <div class="sec">
+                    <div class="sec-label">QR เช็คอิน</div>
+                    <div class="qr-wrap">
+                        <img src="{{ $b['checkin']['qr'] }}" alt="QR เช็คอินของการจอง {{ $b['booking']['ref'] }}">
+                        <div class="qr-code">{{ $b['checkin']['code'] }}</div>
+                    </div>
+                    <div class="note">
+                        ยื่นจอนี้ให้ทีมงานสแกนตอนขึ้นรถได้เลยครับ สแกนไม่ติดก็บอกเลขนี้แทนได้
+                    </div>
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{-- ── เพิ่มลงปฏิทิน ──────────────────────────────────────────
+         ใบเดินทางเป็นของที่ต้องเปิดถึงจะเห็น ปฏิทินเป็นของที่มาหาลูกค้าเอง --}}
+    @if($b['when']['start_date'] ?? null)
+        <div class="card">
+            <div class="sec">
+                <div class="sec-label">กันลืม</div>
+                <a class="btn ghost" href="{{ $b['links']['calendar'] }}">📅 เพิ่มลงปฏิทินในมือถือ</a>
+                <div class="note">
+                    ปฏิทินจะเตือนล่วงหน้า
+                    @if(($b['meetup']['time_label'] ?? null) || (($b['pickup']['points'][0]['point']['time'] ?? null)) || ($b['when']['time_label'] ?? null))
+                        1 ชั่วโมงก่อนถึงเวลานัด และอีกครั้งตั้งแต่เย็นวันก่อนหน้า
+                    @else
+                        ตั้งแต่เย็นวันก่อนเดินทาง
+                    @endif
+                    ครับ
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ── ประกาศจากผู้จัด ────────────────────────────────────────
+         คนที่ได้ใบเดินทางคือคนที่ไม่ได้โหลดแอป ถ้าไม่เอามาไว้ตรงนี้ก็ไม่มีวันได้อ่าน --}}
+    @if(! empty($b['announcements']))
+        <div class="card">
+            <div class="sec">
+                <div class="sec-label">ประกาศจากทีมงาน</div>
+                @foreach($b['announcements'] as $ann)
+                    <div class="ann">
+                        <span class="tag {{ $ann['is_urgent'] ? 'urgent' : ($ann['is_pinned'] ? 'pin' : '') }}">
+                            @if($ann['is_pinned'])📌 @endif{{ $ann['category_label'] }}
+                        </span>
+                        <b>{{ $ann['title'] }}</b>
+                        <p>{{ $ann['body'] }}</p>
+                        <div class="meta">
+                            {{ $ann['author_name'] }}@if($ann['date_label']) · {{ $ann['date_label'] }}@endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- ── ยังขาดอะไรอยู่ ─────────────────────────────────────────
+         เรื่องที่ทีมงานเคยต้องไล่โทรตามทีละใบ ย้ายมาให้ลูกค้ากดจบได้เอง --}}
+    @if(! empty($b['todo']))
+        <div class="card">
+            <div class="sec">
+                <div class="sec-label">ยังขาดข้อมูลอยู่นิดหน่อย</div>
+                @foreach($b['todo'] as $item)
+                    <div class="todo">
+                        <div class="mark">!</div>
+                        <div class="c">
+                            <b>{{ $item['title'] }}</b>
+                            <span>{{ $item['detail'] }}</span>
+                            @if($item['url'])
+                                <a href="{{ $item['url'] }}">{{ $item['cta'] }} →</a>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+                <div class="note">
+                    ลิงก์ในส่วนนี้เป็นของการจองคุณโดยเฉพาะ เก็บไว้กับตัวนะครับ
+                    ถ้าส่งเอกสารทางอื่นไว้แล้ว ข้ามได้เลย
+                </div>
             </div>
         </div>
     @endif
@@ -423,6 +660,58 @@
         </div>
     @endif
 
+    {{-- ── ใบเสร็จ (มีเฉพาะใบจองที่ออกใบเสร็จแล้ว) ──────────────── --}}
+    @if($b['links']['receipt'] ?? null)
+        <div class="card">
+            <div class="sec">
+                <div class="sec-label">เอกสาร</div>
+                <a class="btn ghost" href="{{ $b['links']['receipt'] }}">🧾 ใบเสร็จของการจองนี้</a>
+            </div>
+        </div>
+    @endif
+
+    {{-- ── ส่งต่อให้ที่บ้าน + พิมพ์เก็บไว้ ──────────────────────────
+         ส่งลิงก์ "ติดตามรถ" ไม่ใช่ใบเดินทางทั้งใบ — ที่บ้านอยากรู้แค่ว่าถึงไหนแล้ว
+         ไม่ต้องเห็นยอดเงินคงเหลือหรือปุ่มจ่ายเงินของเรา --}}
+    <div class="card">
+        <div class="sec">
+            <div class="sec-label">ให้ที่บ้านตามดูได้</div>
+            <div class="note" style="margin-top:0;">
+                ส่งลิงก์ติดตามให้คนที่บ้านได้เลยครับ เขาจะเห็นว่ารถถึงไหนแล้วและทริปเดินทางถึงจุดไหน
+                โดยไม่ต้องโหลดแอปและไม่เห็นข้อมูลการเงินของคุณ
+            </div>
+            <a
+                class="btn ghost"
+                href="{{ $b['links']['track'] }}"
+                data-share="{{ $b['links']['track'] }}"
+                data-share-text="ติดตามทริป {{ $b['trip']['title'] }} ของเราได้ที่ลิงก์นี้เลยครับ"
+            >📤 ส่งลิงก์ให้ที่บ้าน</a>
+            <button class="btn ghost" type="button" data-print style="display:none;">🖨 พิมพ์ / เซฟเป็น PDF</button>
+        </div>
+    </div>
+
+    {{-- ── รับทราบแล้ว ─────────────────────────────────────────────
+         ทีมงานจะได้เหลือรายชื่อที่ต้องโทรตามเฉพาะคนที่ยังไม่ได้อ่านจริง ๆ --}}
+    <div class="card">
+        <div class="sec">
+            <div class="sec-label">ทีมงานขอรบกวนนิดเดียว</div>
+            @if(($b['ack']['acknowledged'] ?? false) || session('acked'))
+                <div class="big">ขอบคุณครับ 🙏</div>
+                <div class="note">ทีมงานรู้แล้วว่าคุณได้อ่านใบเดินทางนี้แล้ว เจอกันวันเดินทางนะครับ</div>
+            @else
+                <div class="big">อ่านครบแล้วกดปุ่มนี้ให้หน่อยนะครับ</div>
+                <div class="note">
+                    ทีมงานจะได้รู้ว่าข้อมูลถึงมือคุณแล้ว จะได้ไม่ต้องโทรไปรบกวนซ้ำ
+                    ถ้ามีตรงไหนไม่ตรงกับที่นัดกันไว้ โทรบอกได้เลยก่อนกดครับ
+                </div>
+                <form class="ack-form" method="POST" action="{{ route('public.trip-brief.ack', request()->route('token')) }}">
+                    @csrf
+                    <button type="submit" class="ack-btn">✓ รับทราบแล้ว</button>
+                </form>
+            @endif
+        </div>
+    </div>
+
     {{-- ── ช่วยเหลือ ───────────────────────────────────────────── --}}
     <div class="card">
         <div class="sec">
@@ -448,5 +737,35 @@
 @endif
 
 </div>
+
+{{-- สคริปต์เดียวของหน้านี้ และหน้ายังใช้งานได้ครบถ้าไม่มีมัน:
+     ปุ่มส่งต่อเป็นลิงก์จริงอยู่แล้ว ส่วนปุ่มพิมพ์จะไม่โผล่เลยถ้า JS ไม่ทำงาน --}}
+<script>
+    document.querySelectorAll('[data-share]').forEach(function (el) {
+        el.addEventListener('click', function (event) {
+            if (!navigator.share && !navigator.clipboard) return; // ปล่อยให้เปิดลิงก์ไปตามปกติ
+            event.preventDefault();
+
+            var url = el.dataset.share;
+            var text = el.dataset.shareText || '';
+
+            if (navigator.share) {
+                navigator.share({ title: document.title, text: text, url: url }).catch(function () {});
+                return;
+            }
+
+            navigator.clipboard.writeText(url).then(function () {
+                el.textContent = '✓ คัดลอกลิงก์แล้ว ส่งต่อได้เลยครับ';
+            }).catch(function () {
+                window.prompt('คัดลอกลิงก์นี้ไปส่งได้เลยครับ', url);
+            });
+        });
+    });
+
+    document.querySelectorAll('[data-print]').forEach(function (el) {
+        el.style.display = '';
+        el.addEventListener('click', function () { window.print(); });
+    });
+</script>
 </body>
 </html>

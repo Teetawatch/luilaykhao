@@ -488,6 +488,17 @@ class TripSchedule extends Model
         return $points;
     }
 
+    /**
+     * ประกาศจากผู้จัดของรอบนี้ — ปักหมุดขึ้นก่อน แล้วใหม่สุดขึ้นก่อน ลำดับเดียวกับ
+     * ที่ลูกค้าเห็นในแอป (AnnouncementService::list) เพื่อไม่ให้สองที่เรียงไม่ตรงกัน
+     */
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(ScheduleAnnouncement::class, 'schedule_id')
+            ->orderByDesc('is_pinned')
+            ->orderByDesc('id');
+    }
+
     public function itineraryItems(): HasMany
     {
         return $this->hasMany(ScheduleItineraryItem::class, 'schedule_id')

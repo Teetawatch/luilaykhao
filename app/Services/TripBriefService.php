@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\Receipt;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Support\AppLinks;
@@ -53,7 +54,13 @@ class TripBriefService
      */
     private array $cache = [];
 
-    public function __construct(private WeatherService $weather) {}
+    public function __construct(
+        private WeatherService $weather,
+        private BookingDocumentService $documents,
+        private QrCodeService $qrCodes,
+        private PickupStatusService $pickupStatus,
+        private TripProgressService $progress,
+    ) {}
 
     /**
      * ใบเดินทางจากโทเคนสาธารณะ — null เมื่อหาไม่เจอ ถูกยกเลิก หรือหมดอายุแล้ว
@@ -67,6 +74,13 @@ class TripBriefService
         if (! $booking || ! $this->isViewable($booking)) {
             return null;
         }
+
+        // หน้าเว็บต้องเห็นฐานข้อมูล ณ วินาทีที่เปิดเสมอ จึงทิ้งของที่ประกอบไว้รอบก่อน
+        //
+        // ที่ต้องเขียนบรรทัดนี้เพราะอ็อบเจกต์นี้อยู่ได้นานกว่าหนึ่งรีเควสต์ง่ายกว่าที่คิด:
+        // Route จำอินสแตนซ์ของคอนโทรลเลอร์ไว้กับตัวมันเอง (และของที่ฉีดเข้ามาด้วย)
+        // ลูกค้าที่กดปุ่มแล้วกลับมาหน้าเดิมจึงมีสิทธิ์ได้ใบเดินทางฉบับก่อนกดคืนไป
+        unset($this->cache[$booking->id]);
 
         return $this->payload($booking);
     }
@@ -143,7 +157,9 @@ class TripBriefService
             'schedule.vehicle',
             'schedule.itineraryItems',
             'schedule.activeStaff',
+            'schedule.announcements.author',
             'installmentPayments',
+            'documents',
         ];
     }
 
@@ -179,13 +195,24 @@ class TripBriefService
             'vehicle' => $this->vehicleBlock($schedule),
             'crew' => $this->crewBlock($schedule),
             'itinerary' => $this->itineraryBlock($schedule),
+            'announcements' => $this->announcementsBlock($schedule),
+            'todo' => $this->todoBlock($booking),
+            'checkin' => $this->checkinBlock($booking, $schedule),
+            'pickup_status' => $this->pickupStatusBlock($booking, $schedule),
+            'progress' => $this->progressBlock($schedule),
             'payment' => $this->paymentBlock($booking),
             'weather' => $this->weatherBlock($schedule),
             'app' => $this->appBlock($booking),
             'links' => [
                 'brief' => $booking->briefUrl(),
+                'calendar' => $booking->briefUrl().'/calendar.ics',
                 'track' => $booking->shareUrl(),
                 'pay' => $booking->payUrl(),
+                'receipt' => $this->receiptUrl($booking),
+            ],
+            'ack' => [
+                'read_at' => $booking->brief_read_at?->toISOString(),
+                'acknowledged' => $booking->brief_ack_at !== null,
             ],
             'support' => [
                 'phone' => SiteSettings::supportPhone() ?: config('company.phone'),
@@ -226,6 +253,7 @@ class TripBriefService
             $payload['vehicle'],
             $payload['crew'],
             $payload['itinerary'],
+            $payload['announcements'],
         ], JSON_UNESCAPED_UNICODE));
     }
 
@@ -286,6 +314,10 @@ class TripBriefService
             && $departsAt->toDateString() < $departureDate->toDateString();
 
         return [
+            // วันแบบดิบ (Y-m-d) สำหรับไฟล์ปฏิทิน — ป้ายภาษาไทยข้างบนเอาไปคำนวณต่อไม่ได้
+            'start_date' => $departureDate?->toDateString(),
+            'end_date' => $schedule->return_date?->toDateString(),
+            'departs_on_date' => $departsAt?->toDateString(),
             'date_label' => ThaiDate::full($departureDate),
             'range_label' => ThaiDate::range($departureDate, $schedule->return_date),
             'return_label' => $schedule->return_date ? ThaiDate::full($schedule->return_date) : null,
@@ -519,6 +551,221 @@ class TripBriefService
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * ประกาศจากผู้จัดของรอบนี้
+     *
+     * ประกาศมีช่องทางของตัวเองอยู่แล้ว (แจ้งเตือนเข้าแอป) แต่คนที่ได้ใบเดินทาง
+     * คือคนที่ไม่ได้โหลดแอปพอดี — ถ้าไม่เอามาไว้ตรงนี้ กลุ่มนี้จะไม่มีวันได้อ่าน
+     * เลยสักฉบับ ทั้งที่มันคือเรื่องที่ทีมงานตั้งใจเขียนถึงเขาโดยตรง
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function announcementsBlock(?TripSchedule $schedule): array
+    {
+        if (! $schedule) {
+            return [];
+        }
+
+        return $schedule->announcements
+            ->map(fn ($announcement) => [
+                'title' => $announcement->title,
+                'body' => $announcement->body,
+                'category' => $announcement->category,
+                'category_label' => AnnouncementService::categoryLabel($announcement->category),
+                'is_pinned' => (bool) $announcement->is_pinned,
+                'is_urgent' => $announcement->category === 'urgent',
+                'author_name' => $announcement->author?->nickname ?: $announcement->author?->name ?: 'ทีมงาน',
+                'date_label' => $announcement->created_at ? ThaiDate::short($announcement->created_at) : null,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * "ยังขาดอะไรอยู่" — ข้อมูลที่ทีมงานต้องได้ก่อนวันเดินทาง และตอนนี้ต้องไล่โทรตามเอง
+     *
+     * ทุกข้อมีปุ่มที่กรอกจบได้ในหน้านั้นเลย ไม่ใช่แค่บอกว่าขาด — รายการที่บอกว่า
+     * ขาดแต่ไม่บอกว่าไปกรอกที่ไหน แปลว่าลูกค้าต้องโทรมาถาม ซึ่งแพงกว่าเดิม
+     *
+     * ตั้งใจไม่ใส่ไว้ใน [digest]: ลูกค้ากรอกข้อมูลของตัวเองเสร็จแล้วรายการนี้จะสั้นลง
+     * เอง ถ้านับเป็นการเปลี่ยนแปลง ลูกค้าจะได้อีเมล "อัปเดตใบเดินทาง" เพราะตัวเอง
+     * เพิ่งกรอกฟอร์มไป ซึ่งไม่มีใครอยากได้
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function todoBlock(Booking $booking): array
+    {
+        $items = [];
+
+        $missingPassport = $booking->passengersMissingPassport();
+
+        if ($missingPassport->isNotEmpty()) {
+            $items[] = [
+                'key' => 'passport',
+                'title' => 'ข้อมูลพาสปอร์ต',
+                'detail' => $this->whoLabel($missingPassport->pluck('name')->all(), $booking)
+                    .' — ต้องใช้ชื่อภาษาอังกฤษ เลขที่พาสปอร์ต และวันหมดอายุ สำหรับออกตั๋วและทำประกัน',
+                'cta' => 'กรอกข้อมูลพาสปอร์ต',
+                'url' => $booking->passportUrl(),
+            ];
+        }
+
+        $missingBirthdate = $booking->passengers->filter(fn ($passenger) => blank($passenger->birth_date));
+
+        if ($missingBirthdate->isNotEmpty()) {
+            $items[] = [
+                'key' => 'birthdate',
+                'title' => 'วันเกิดของผู้เดินทาง',
+                'detail' => $this->whoLabel($missingBirthdate->pluck('name')->all(), $booking)
+                    .' — ใช้ทำประกันการเดินทาง กรอกไว้ก่อนวันเดินทางนะครับ',
+                'cta' => 'กรอกวันเกิด',
+                'url' => $booking->birthdateUrl(),
+            ];
+        }
+
+        foreach ($this->documents->missingRequirements($booking) as $requirement) {
+            $items[] = [
+                'key' => 'document:'.$requirement['key'],
+                'title' => $requirement['label'],
+                'detail' => $this->whoLabel($requirement['passengers'], $booking)
+                    .($requirement['note'] ? ' — '.$requirement['note'] : ''),
+                // ยังไม่มีหน้าอัปโหลดแบบไม่ต้องล็อกอิน ทางที่ไปถึงทีมงานได้จริงคือทักไลน์
+                'cta' => null,
+                'url' => null,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * "ใคร" ของรายการที่ยังขาด — ขึ้นชื่อเมื่อขาดแค่บางคน เพราะนั่นคือข้อมูลจริง
+     * ที่ทำให้ลูกค้ารู้ว่าต้องไปถามใคร แต่พอขาดทั้งใบก็ไม่ต้องไล่ชื่อให้รก
+     *
+     * @param  array<int, string>  $names
+     */
+    private function whoLabel(array $names, Booking $booking): string
+    {
+        $total = $booking->passengers->count();
+
+        if ($names === [] || (count($names) === $total && $total > 1)) {
+            return 'ผู้เดินทางทุกท่าน';
+        }
+
+        if (count($names) > 3) {
+            return 'ผู้เดินทาง '.count($names).' ท่าน';
+        }
+
+        return implode(', ', $names);
+    }
+
+    /**
+     * ใบเสร็จฉบับล่าสุดของการจองนี้ — ไม่ใช่ทุกใบจองที่มี (ออกเมื่อชำระครบ)
+     */
+    private function receiptUrl(Booking $booking): ?string
+    {
+        $receipt = Receipt::where('booking_id', $booking->id)
+            ->whereNotNull('verify_token')
+            ->orderByDesc('id')
+            ->first();
+
+        return $receipt ? url('/receipt/'.$receipt->verify_token) : null;
+    }
+
+    /**
+     * QR เช็คอินบนหน้าใบเดินทาง
+     *
+     * จนถึงตอนนี้ QR อยู่ในแอปอย่างเดียว ซึ่งแปลว่ากลุ่มที่ได้ใบเดินทาง (คนที่
+     * ไม่ได้โหลดแอป) คือกลุ่มเดียวที่สตาฟต้องขานชื่อทีละคนหน้างาน ทั้งที่รหัส
+     * ของเขามีอยู่แล้วตั้งแต่วันจอง
+     *
+     * ขึ้นเฉพาะช่วงที่ใช้จริง (เย็นวันก่อนถึงวันเดินทาง) ไม่ใช่ตั้งแต่วันแรกที่ส่งใบ —
+     * ใบเดินทางถูกส่งต่อให้คนที่บ้านเป็นปกติ รหัสขึ้นรถจึงไม่ควรค้างอยู่บนหน้าจอ
+     * นานกว่าที่จำเป็น
+     *
+     * @return array<string, mixed>
+     */
+    private function checkinBlock(Booking $booking, ?TripSchedule $schedule): array
+    {
+        if ($booking->checked_in) {
+            return [
+                'show' => false,
+                'checked_in' => true,
+                'checked_in_label' => $booking->checked_in_at?->timezone(self::TIMEZONE)->format('H:i'),
+            ];
+        }
+
+        $show = $schedule
+            && $booking->status === 'confirmed'
+            && blank($booking->qr_code) === false
+            && $this->pickupStatus->isWithinWindow($schedule);
+
+        return [
+            'show' => $show,
+            'checked_in' => false,
+            'checked_in_label' => null,
+            'code' => $show ? $booking->qr_code : null,
+            'qr' => $show ? $this->qrCodes->svgDataUri($booking->qr_code, 220) : null,
+        ];
+    }
+
+    /**
+     * ปุ่ม "กำลังไป / ถึงแล้ว / อาจสาย" สำหรับคนที่ไม่มีแอป
+     *
+     * กติกาว่ากดได้เมื่อไหร่เป็นของ PickupStatusService ทั้งหมด ที่นี่แค่ถาม —
+     * ปุ่มที่กดแล้วเด้ง error กลับมาแย่กว่าปุ่มที่ไม่ขึ้นให้เห็นตั้งแต่แรก
+     *
+     * @return array<string, mixed>
+     */
+    private function pickupStatusBlock(Booking $booking, ?TripSchedule $schedule): array
+    {
+        $current = $booking->freshPickupStatus();
+
+        $show = $schedule
+            && $booking->status === 'confirmed'
+            && ! $booking->checked_in
+            && ! $booking->is_join_trip
+            && $this->pickupStatus->isWithinWindow($schedule);
+
+        return [
+            'show' => $show,
+            'current' => $current,
+            'current_label' => PickupStatusService::label($current, $booking->pickup_status_eta_minutes),
+            'reported_at_label' => $current
+                ? $booking->pickup_status_at?->timezone(self::TIMEZONE)->format('H:i')
+                : null,
+            'options' => [
+                ['value' => Booking::PICKUP_STATUS_ON_THE_WAY, 'label' => 'กำลังไปจุดนัด', 'emoji' => '🚶'],
+                ['value' => Booking::PICKUP_STATUS_ARRIVED, 'label' => 'ถึงจุดนัดแล้ว', 'emoji' => '📍'],
+                ['value' => Booking::PICKUP_STATUS_LATE, 'label' => 'อาจมาสาย', 'emoji' => '⏳'],
+            ],
+        ];
+    }
+
+    /**
+     * ความคืบหน้าระหว่างทริป — ของชิ้นเดียวกับที่หน้าวันเดินทางในแอปและลิงก์ให้
+     * ที่บ้านติดตามใช้ (หมุดกำหนดการที่ทีมงานกดยืนยัน ไม่ใช่พิกัดสดของใคร)
+     *
+     * ขึ้นเฉพาะเมื่อออกเดินทางแล้วจริง ๆ — ก่อนหน้านั้นแถบ 0% ไม่ได้บอกอะไร
+     * นอกจากทำให้ลูกค้าคิดว่าทีมงานลืมกด
+     *
+     * @return array<string, mixed>|null
+     */
+    private function progressBlock(?TripSchedule $schedule): ?array
+    {
+        if (! $schedule) {
+            return null;
+        }
+
+        $progress = $this->progress->forSchedule($schedule);
+
+        if (! $progress['has_itinerary'] || $progress['reached_count'] === 0) {
+            return null;
+        }
+
+        return $progress;
     }
 
     /**

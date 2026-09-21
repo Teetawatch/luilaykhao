@@ -45,6 +45,56 @@ class BookingDocumentService
     }
 
     /**
+     * เอกสารบังคับที่ยังไม่มีใครส่ง รวมทั้งใบจอง — พร้อมชื่อคนที่ยังขาด
+     *
+     * ใบเดินทางเอาไปขึ้นเป็นรายการ "ยังขาดอะไรอยู่" ให้ลูกค้าที่ไม่ได้โหลดแอปเห็น
+     * กติกาว่าอะไรนับว่าขาด (บังคับ + ยังไม่มีไฟล์ของคนนั้น) ต้องเป็นกติกาเดียว
+     * กับ [payload] ที่หน้าจอในแอปใช้ จึงอยู่ในคลาสนี้ ไม่ใช่ไปเขียนซ้ำที่ปลายทาง
+     *
+     * @return array<int, array{key: string, label: string, note: string, passengers: array<int, string>}>
+     */
+    public function missingRequirements(Booking $booking): array
+    {
+        $requirements = array_values(array_filter(
+            $this->requirementsFor($booking),
+            fn (array $requirement) => $requirement['required'],
+        ));
+
+        if ($requirements === []) {
+            return [];
+        }
+
+        $booking->loadMissing(['passengers', 'documents']);
+        $byPassenger = $booking->documents->groupBy('booking_passenger_id');
+
+        $missing = [];
+
+        foreach ($requirements as $requirement) {
+            $names = $booking->passengers
+                ->filter(fn (BookingPassenger $passenger) => ($byPassenger->get($passenger->id) ?? collect())
+                    ->where('requirement_key', $requirement['key'])
+                    ->isEmpty())
+                ->pluck('name')
+                ->filter()
+                ->values()
+                ->all();
+
+            if ($names === []) {
+                continue;
+            }
+
+            $missing[] = [
+                'key' => $requirement['key'],
+                'label' => $requirement['label'],
+                'note' => $requirement['note'],
+                'passengers' => $names,
+            ];
+        }
+
+        return $missing;
+    }
+
+    /**
      * เก็บไฟล์หนึ่งใบ
      *
      * @throws \Exception เมื่อทริปไม่ได้ขอเอกสารชิ้นนี้ หรือแนบเกินโควตา

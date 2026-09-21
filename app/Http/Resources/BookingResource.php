@@ -49,6 +49,9 @@ class BookingResource extends JsonResource
             // ได้ทันที และเป็นสิ่งเดียวที่ลูกค้าซึ่งไม่ได้โหลดแอปเปิดดูรอบตัวเองได้
             'brief_url' => $this->brief_token ? url('/t/'.$this->brief_token) : null,
             'brief_sent_at' => $this->brief_sent_at,
+            // เปิดอ่านหรือยัง / กดรับทราบหรือยัง — ตัวตัดสินว่าทีมงานต้องโทรตามใคร
+            'brief_read_at' => $this->brief_read_at,
+            'brief_ack_at' => $this->brief_ack_at,
             'pickup_region' => $this->pickup_region,
             'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function () {
                 return [

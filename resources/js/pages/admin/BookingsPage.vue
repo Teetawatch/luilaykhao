@@ -474,6 +474,7 @@
               <InfoItem label="พาหนะ" :value="vehicleName(detailBooking)" />
               <InfoItem label="ประเภทการจอง" :value="detailBooking.is_join_trip ? 'จอยทริป' : 'จองปกติ'" />
               <InfoItem label="QR เช็คอิน" :value="detailBooking.qr_code || '-'" />
+              <InfoItem label="ใบเดินทาง" :value="briefStatusLabel(detailBooking)" wide />
               <InfoItem v-if="detailBooking.cancelled_at" label="วันที่ยกเลิก" :value="formatDateTime(detailBooking.cancelled_at)" />
               <InfoItem v-if="detailBooking.cancellation_reason" label="เหตุผลยกเลิก" :value="detailBooking.cancellation_reason" wide />
             </div>
@@ -3405,6 +3406,22 @@ async function sendTripBrief(booking) {
   } finally {
     sendingTripBrief.value = false;
   }
+}
+
+/**
+ * สถานะใบเดินทางในหนึ่งบรรทัด — "ส่งแล้วแต่ยังไม่มีใครเปิด" คือเคสเดียวที่ทีมงาน
+ * ต้องโทรตาม ส่วน "รับทราบแล้ว" คือลูกค้ากดยืนยันเองบนหน้าใบเดินทาง
+ */
+function briefStatusLabel(booking) {
+  if (!booking?.brief_sent_at) return 'ยังไม่ได้ส่ง';
+
+  const parts = [`ส่งแล้ว ${formatDateTime(booking.brief_sent_at)}`];
+
+  if (booking.brief_ack_at) parts.push(`ลูกค้ากดรับทราบ ${formatDateTime(booking.brief_ack_at)}`);
+  else if (booking.brief_read_at) parts.push(`เปิดอ่านแล้ว ${formatDateTime(booking.brief_read_at)}`);
+  else parts.push('ยังไม่มีใครเปิดลิงก์');
+
+  return parts.join(' · ');
 }
 
 async function copyBriefUrl(booking) {

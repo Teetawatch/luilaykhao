@@ -119,6 +119,39 @@
       </div>
     @endif
 
+    {{-- ── เพิ่มลงปฏิทิน ─────────────────────────────────────── --}}
+    @if($when['start_date'] ?? null)
+      <div class="cta-wrap">
+        <a href="{{ $b['links']['calendar'] }}" class="cta-btn cta-slate">📅 เพิ่มลงปฏิทินในมือถือ</a>
+      </div>
+      <p class="body-text" style="text-align:center;margin-top:-8px;">
+        <span class="t-muted">ปฏิทินจะเตือนล่วงหน้าให้เองครับ จะได้ไม่ต้องคอยจำ</span>
+      </p>
+    @endif
+
+    {{-- ── ประกาศจากผู้จัด ──────────────────────────────────────
+         ลูกค้ากลุ่มที่ได้อีเมลฉบับนี้คือกลุ่มที่ไม่ได้โหลดแอป ประกาศที่ทีมงาน
+         โพสต์ไว้จึงไม่เคยไปถึงเขาเลยก่อนหน้านี้ --}}
+    @if(! empty($b['announcements']))
+      <p class="section-label">ประกาศจากทีมงาน</p>
+      <div class="info-card">
+        @foreach(array_slice($b['announcements'], 0, 5) as $ann)
+          <div class="info-row">
+            <span class="info-label">{{ $ann['is_pinned'] ? '📌 ' : '' }}{{ $ann['category_label'] }}</span>
+            <span class="info-value">
+              {{ $ann['title'] }}<br />
+              <span class="t-muted" style="font-weight:400;">{{ $ann['body'] }}</span>
+            </span>
+          </div>
+        @endforeach
+      </div>
+      @if(count($b['announcements']) > 5)
+        <p class="body-text" style="margin-top:-12px;">
+          <span class="t-muted">ยังมีประกาศอีก {{ count($b['announcements']) - 5 }} ฉบับ อ่านครบได้ในใบเดินทางครับ</span>
+        </p>
+      @endif
+    @endif
+
     {{-- ── เบอร์ที่โทรได้ ────────────────────────────────────── --}}
     @if(! empty($b['crew']) || ($b['vehicle']['driver_name'] ?? null))
       <p class="section-label">ติดต่อได้ที่ใคร</p>
@@ -215,6 +248,25 @@
           @endforeach
         </p>
       </div>
+    @endif
+
+    {{-- ── ยังขาดข้อมูลอะไรอยู่ ─────────────────────────────── --}}
+    @if(! empty($b['todo']))
+      <div class="alert-box alert-amber">
+        <p class="alert-title">📝 ยังขาดข้อมูลอยู่นิดหน่อยครับ</p>
+        <p class="alert-text">
+          @foreach($b['todo'] as $item)
+            <strong>{{ $item['title'] }}</strong> &middot; {{ $item['detail'] }}
+            @if($item['url'])
+              <br /><a href="{{ $item['url'] }}" class="t-teal"><strong>{{ $item['cta'] }} &rarr;</strong></a>
+            @endif
+            @if(! $loop->last)<br /><br />@endif
+          @endforeach
+        </p>
+      </div>
+      <p class="body-text" style="margin-top:-12px;">
+        <span class="t-muted">ลิงก์ในส่วนนี้เป็นของการจองคุณโดยเฉพาะ ถ้าส่งเอกสารทางอื่นไว้แล้วข้ามได้เลยครับ</span>
+      </p>
     @endif
 
     {{-- ── ยอดค้างชำระ ──────────────────────────────────────── --}}

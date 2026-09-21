@@ -22,6 +22,24 @@ class AnnouncementService
         'general', 'meeting_point', 'schedule_change', 'packing', 'weather', 'urgent',
     ];
 
+    /**
+     * ชื่อไทยของหมวดประกาศ — อยู่ที่นี่เพราะใบเดินทาง (ฝั่งเซิร์ฟเวอร์) ต้องเรียก
+     * ชื่อหมวดให้ตรงกับที่ลูกค้าเห็นในแอป ไม่ใช่ตั้งชื่อของตัวเองขึ้นมาอีกชุด
+     */
+    public const CATEGORY_LABELS = [
+        'general' => 'ประกาศ',
+        'meeting_point' => 'จุดนัดพบ',
+        'schedule_change' => 'เปลี่ยนกำหนดการ',
+        'packing' => 'การเตรียมตัว',
+        'weather' => 'สภาพอากาศ',
+        'urgent' => 'เรื่องด่วน',
+    ];
+
+    public static function categoryLabel(?string $category): string
+    {
+        return self::CATEGORY_LABELS[$category] ?? self::CATEGORY_LABELS['general'];
+    }
+
     public function __construct(
         private ChatService $chatService,
     ) {}
