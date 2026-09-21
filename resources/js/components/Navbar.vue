@@ -936,6 +936,7 @@ const navLinks = [
     to: '/trips',
     children: [
       { to: '/trips', icon: 'explore', label: 'ทริปทั้งหมด', desc: 'ทุกทริปที่เปิดจองอยู่ตอนนี้' },
+      { to: '/calendar', icon: 'event', label: 'ปฏิทินทริป', desc: 'เดือนนี้เดือนหน้ามีรอบไหนบ้าง' },
       { to: '/explore', icon: 'map', label: 'แผนที่ทริป', desc: 'ดูว่าแต่ละทริปอยู่ตรงไหนของประเทศไทย' },
       { to: '/find', icon: 'travel_explore', label: 'ค้นหาทริปที่ใช่', desc: 'ตอบไม่กี่ข้อ แล้วให้เราแนะนำ' },
       { to: '/assistant', icon: 'auto_awesome', label: 'ถามผู้ช่วย', desc: 'พิมพ์บอกงบและวันที่ไหว แล้วให้ AI หาให้' },

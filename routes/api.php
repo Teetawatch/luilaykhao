@@ -73,6 +73,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TravelDocumentController;
 use App\Http\Controllers\Api\V1\TripAlertController;
+use App\Http\Controllers\Api\V1\TripCalendarController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripMemberLocationController;
 use App\Http\Controllers\Api\V1\TripPostController;
@@ -127,6 +128,8 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/destinations', [TripController::class, 'destinations']);
         Route::get('trips/almost-full', [TripController::class, 'almostFull']);
         Route::get('trips/flash-sale', [TripController::class, 'flashSale']);
+        // ปฏิทินทริปรายเดือน — หน้าที่ทีมงานส่งลิงก์ให้ลูกค้าเวลาถามว่าเดือนหน้ามีอะไร
+        Route::get('trips/calendar', [TripCalendarController::class, 'index']);
         Route::get('trips/urgent-popup', [TripController::class, 'urgentPopup']);
         Route::get('trips/{slug}', [TripController::class, 'show']);
         Route::get('trips/{slug}/related', [TripController::class, 'related']);

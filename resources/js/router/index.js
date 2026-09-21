@@ -52,6 +52,18 @@ const routes = [
     }
   },
   {
+    // ปฏิทินทริป — หน้าที่ทีมงานส่งลิงก์ให้ลูกค้าเวลาถามว่า "เดือนหน้ามีทริปอะไร"
+    // หัวเรื่องจริงตั้งในหน้าเอง (useHead) เพราะเปลี่ยนตามเดือนที่เปิดดู
+    path: '/calendar/:month?',
+    name: 'trip-calendar',
+    component: () => import('../pages/TripCalendarPage.vue'),
+    meta: {
+      title: 'ปฏิทินทริป | เดือนนี้เดือนหน้ามีทริปอะไรบ้าง',
+      description: 'ดูทุกรอบเดินทางของลุยเลเขาในเดือนนี้และเดือนหน้า พร้อมราคา ที่นั่งที่เหลือ และทริปไฟไหม้ที่ใกล้ออกเดินทาง จองออนไลน์ได้เลย',
+      ogType: 'website'
+    }
+  },
+  {
     path: '/explore',
     name: 'explore-map',
     component: () => import('../pages/ExploreMapPage.vue'),

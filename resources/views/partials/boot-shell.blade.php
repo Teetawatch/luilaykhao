@@ -16,6 +16,9 @@
              the links below are the whole point of the shell there, while here
              they are the footer under something worth reading. --}}
         @include('partials.boot-trip', ['shell' => \App\Support\TripShell::for($shellTrip)])
+    @elseif (isset($shellCalendar))
+        {{-- หน้าปฏิทินพิมพ์รอบของเดือนนั้นออกมาเลย ด้วยเหตุผลเดียวกับหน้าทริป --}}
+        @include('partials.boot-calendar', ['shell' => \App\Support\CalendarShell::present($shellCalendar)])
     @else
         <p class="llk-boot__tagline">แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว</p>
     @endisset

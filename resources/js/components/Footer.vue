@@ -152,6 +152,7 @@
         </div>
         <!-- แถวลิงก์ยาวขึ้นเรื่อย ๆ ตามหน้าที่เพิ่ม จึงต้องยอมให้ตกบรรทัดแทนที่จะดันจนล้น -->
         <div class="flex flex-wrap justify-center md:justify-end gap-x-6 gap-y-2 text-sm font-medium text-text-muted">
+          <router-link to="/calendar" class="hover:text-accent transition-colors">ปฏิทินทริป</router-link>
           <a href="/blog" class="hover:text-accent transition-colors">บทความ</a>
           <router-link to="/places" class="hover:text-accent transition-colors">สถานที่ธรรมชาติ</router-link>
           <router-link to="/seasons" class="hover:text-accent transition-colors">เดือนไหนไปไหนดี</router-link>

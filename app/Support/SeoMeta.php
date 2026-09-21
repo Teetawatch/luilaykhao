@@ -37,9 +37,15 @@ class SeoMeta
      *     extra: array<string, string>, json_ld: array<int, array<string, mixed>>
      * }
      */
-    public static function for(string $path, ?Trip $trip = null): array
+    public static function for(string $path, ?Trip $trip = null, ?array $calendar = null): array
     {
         $path = '/'.trim($path, '/');
+
+        // ปฏิทินทริป — หน้าที่ถูกแปะในไลน์มากที่สุดรองจากหน้าทริป และเนื้อหาของมัน
+        // เปลี่ยนทุกเดือน คำโปรยจึงต้องมาจากข้อมูลจริง ไม่ใช่ประโยคคงที่ใน config
+        if ($calendar !== null) {
+            return self::calendar($calendar, $path);
+        }
 
         if ($slug = PageTrip::slugFrom($path)) {
             // The caller usually resolved the trip already (the shell needs the
@@ -151,6 +157,65 @@ class SeoMeta
                 ]),
             ],
         ]);
+    }
+
+    /**
+     * ปฏิทินทริปของเดือนหนึ่ง
+     *
+     * รูปที่ใช้พรีวิวคือปกของทริปแรกในเดือน ไม่ใช่โลโก้บริษัท — ลิงก์ที่ขึ้นเป็น
+     * ภาพภูเขาจริงถูกกดมากกว่าลิงก์ที่ขึ้นเป็นโลโก้เดิมทุกเดือนอย่างเห็นได้ชัด
+     *
+     * @param  array<string, mixed>  $calendar
+     */
+    private static function calendar(array $calendar, string $path): array
+    {
+        $summary = $calendar['summary'];
+        $monthLabel = $calendar['month_label'];
+        $canonical = url($path);
+        $title = 'ทริปเดือน'.$monthLabel.' | รอบที่เปิดจองทั้งหมด';
+
+        $firstTrip = collect($calendar['hot'])->first()
+            ?? collect($calendar['days'])->first()['rounds'][0] ?? null;
+
+        $image = MediaDisk::url($firstTrip['trip']['cover_image'] ?? null) ?: self::fallbackImage();
+
+        return self::assemble([
+            'title' => $title,
+            'description' => self::calendarDescription($calendar, $summary, $monthLabel),
+            'canonical' => $canonical,
+            'image' => $image,
+            'image_alt' => 'ทริปเดือน'.$monthLabel.' - ลุยเลเขา',
+            'type' => 'website',
+            'json_ld' => [self::breadcrumbJsonLd([
+                'หน้าแรก' => url('/'),
+                'ค้นหาทริปทั้งหมด' => url('/trips'),
+                'ทริปเดือน'.$monthLabel => $canonical,
+            ])],
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $calendar
+     * @param  array<string, mixed>  $summary
+     */
+    private static function calendarDescription(array $calendar, array $summary, string $monthLabel): string
+    {
+        if (($summary['round_count'] ?? 0) === 0) {
+            return 'ยังไม่มีรอบเดินทางเปิดจองในเดือน'.$monthLabel
+                .' ดูเดือนถัดไปหรือทริปทั้งหมดของลุยเลเขาได้ที่นี่';
+        }
+
+        $names = collect($calendar['days'])
+            ->flatMap(fn (array $day) => $day['rounds'])
+            ->pluck('trip.title')
+            ->unique()
+            ->take(4)
+            ->implode(' ');
+
+        $price = $summary['min_price'] ? ' เริ่มต้น '.number_format((float) $summary['min_price']).' บาท' : '';
+
+        return 'ทริปเดือน'.$monthLabel.' ของลุยเลเขา '.$summary['trip_count'].' ทริป '
+            .$summary['round_count'].' รอบ'.$price.' — '.$names.' ดูวันว่างและจองออนไลน์ได้เลย';
     }
 
     private static function staticPage(string $path): array

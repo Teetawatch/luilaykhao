@@ -12,6 +12,15 @@
         <changefreq>daily</changefreq>
         <priority>0.9</priority>
     </url>
+    {{-- ปฏิทินทริป: หน้าเดียวกันแต่คนละเดือน เนื้อหาต่างกันจริง จึงแจ้งแยก url
+         สามเดือนข้างหน้าพอ — เดือนที่ไกลกว่านั้นส่วนใหญ่ยังไม่มีรอบให้อ่าน --}}
+    @foreach (range(0, 3) as $offset)
+        <url>
+            <loc>{{ url('/calendar/'.now('Asia/Bangkok')->startOfMonth()->addMonths($offset)->format('Y-m')) }}</loc>
+            <changefreq>daily</changefreq>
+            <priority>{{ $offset === 0 ? '0.9' : '0.7' }}</priority>
+        </url>
+    @endforeach
     <url>
         <loc>{{ url('/about') }}</loc>
         <changefreq>monthly</changefreq>

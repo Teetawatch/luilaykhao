@@ -24,6 +24,7 @@ use App\Models\FaceSearchConsent;
 use App\Models\Place;
 use App\Models\Tag;
 use App\Models\Trip;
+use App\Support\CalendarShell;
 use App\Support\MediaDisk;
 use App\Support\PageTrip;
 use App\Support\SeoMeta;
@@ -342,10 +343,14 @@ Route::get('/storage/{path}', function (string $path) {
 Route::get('/{any?}', function (?string $any = null) {
     $path = $any ?? '/';
     $trip = PageTrip::forPath($path);
+    // ปฏิทินทริปก็เป็นหน้าที่ body ไม่เหมือนหน้าอื่นเช่นกัน และเนื้อหาของมันเปลี่ยน
+    // ทุกเดือน จึงประกอบที่นี่ครั้งเดียวแล้วส่งให้ทั้ง <head> และ body ใช้ร่วมกัน
+    $calendar = $trip ? null : CalendarShell::forPath($path);
 
     return view('app', array_filter([
-        'seo' => SeoMeta::for($path, $trip),
+        'seo' => SeoMeta::for($path, $trip, $calendar),
         // Absent rather than null: the shell switches on @isset.
         'shellTrip' => $trip,
+        'shellCalendar' => $calendar,
     ]));
 })->where('any', '.*');
