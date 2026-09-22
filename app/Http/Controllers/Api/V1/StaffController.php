@@ -133,11 +133,10 @@ class StaffController extends Controller
                     ] : null,
                     'departure_date' => $s->departure_date?->toDateString(),
                     'departs_at' => $s->departs_at?->format('Y-m-d H:i:s'),
-                    // ถึงเวลาที่มือถือของสตาฟควรเป็น GPS ของรถคันนี้แล้วหรือยัง
-                    // เซิร์ฟเวอร์ตัดสินให้ที่เดียว แอปจะได้ไม่ต้องคิดเรื่องเวลาไทยเอง
-                    'share_location_due' => $s->vehicle_id !== null
-                        && $s->status !== 'cancelled'
-                        && $this->vehicleLocations->withinSharingWindow($s),
+                    // ถึงเวลาที่มือถือของสตาฟควรเป็น GPS ของรถคันนี้แล้วหรือยัง และ
+                    // ควรส่งถี่แค่ไหน — เซิร์ฟเวอร์ตัดสินให้ที่เดียว แอปจะได้ไม่ต้อง
+                    // คิดเรื่องเวลาไทยหรือ "รับครบหรือยัง" เอง
+                    'share_location_mode' => $this->vehicleLocations->autoShareMode($s),
                     'return_date' => $s->return_date?->toDateString(),
                     'status' => $s->status,
                     'transport_type' => $s->transport_type,

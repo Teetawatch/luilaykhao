@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\VehicleLocationUpdated;
+use App\Models\Booking;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
@@ -28,6 +29,9 @@ class VehicleLocationService
 
     /** ตำแหน่งล่าสุดใน Redis อยู่ได้นานแค่ไหน (วินาที) */
     public const CACHE_TTL = 3600;
+
+    /** แอปเริ่มแชร์เองก่อนรถออกกี่นาที (คนละเรื่องกับกรอบที่เซิร์ฟเวอร์ยอมรับพิกัด) */
+    public const AUTO_START_BEFORE_MINUTES = 90;
 
     /**
      * บันทึกพิกัดหนึ่งจุด + แคช + กระจาย event
@@ -170,6 +174,61 @@ class VehicleLocationService
             : $departureDay->copy()->endOfDay()->addHours(6);
 
         return [$start, $end];
+    }
+
+    /**
+     * โหมดการแชร์ที่ควรเป็นตอนนี้ของรอบนี้ — null = ไม่ต้องแชร์
+     *
+     * แยกจาก [withinSharingWindow] ตั้งใจ: กรอบนั้นคือ "เซิร์ฟเวอร์ยอมรับพิกัด
+     * ไหม" ซึ่งเปิดกว้าง (12 ชม. ก่อนรถออก) ส่วนอันนี้คือ "มือถือของสตาฟควรเริ่ม
+     * ส่งเองเมื่อไหร่" ซึ่งต้องแคบกว่ามาก — เปิดเองตั้งแต่เย็นวันก่อนแปลว่าเรา
+     * ออกอากาศตำแหน่งส่วนตัวของสตาฟทั้งคืนในนามของรถ แถมกินแบตจนถึงเช้า
+     *
+     * - pickup  = ยังวิ่งเก็บคนอยู่ ลูกค้าที่ยืนรอต้องการตำแหน่งถี่ ๆ
+     * - onboard = รับครบทุกจุดแล้ว คนที่ยังดูอยู่คือคนที่บ้าน ส่งห่างขึ้นได้
+     */
+    public function autoShareMode(TripSchedule $schedule, ?Carbon $now = null): ?string
+    {
+        if (! $schedule->vehicle_id || $schedule->status === 'cancelled') {
+            return null;
+        }
+
+        $now ??= $this->nowThai();
+        [, $end] = $this->sharingWindow($schedule);
+
+        $departsAt = $schedule->departs_at?->copy()
+            ?: $schedule->departure_date?->copy()->setTime(6, 0);
+
+        if (! $departsAt) {
+            return null;
+        }
+
+        $start = $departsAt->subMinutes(self::AUTO_START_BEFORE_MINUTES);
+
+        if ($now->lt($start) || $now->gt($end)) {
+            return null;
+        }
+
+        return $this->everyoneAboard($schedule) ? 'onboard' : 'pickup';
+    }
+
+    /**
+     * รับคนครบแล้วหรือยัง — ยึด "จุดรับถูกปิดครบ" เป็นหลัก เพราะเป็นสิ่งที่สตาฟ
+     * ติ๊ก (และการเช็คอินคนสุดท้ายของจุดก็ปิดให้เองอยู่แล้ว) รอบที่ไม่มีจุดรับ
+     * ตายตัวใช้ "ไม่มีใครค้างเช็คอิน" แทน
+     */
+    private function everyoneAboard(TripSchedule $schedule): bool
+    {
+        $points = $schedule->pickupPoints()->count();
+
+        if ($points > 0) {
+            return $schedule->pickupPoints()->whereNull('completed_at')->doesntExist();
+        }
+
+        $confirmed = Booking::where('schedule_id', $schedule->id)->where('status', 'confirmed');
+
+        return $confirmed->clone()->exists()
+            && $confirmed->clone()->where('checked_in', false)->doesntExist();
     }
 
     /** อยู่ในช่วงที่รถของรอบนี้ควรมีตำแหน่งให้ติดตามไหม */

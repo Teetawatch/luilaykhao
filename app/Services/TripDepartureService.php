@@ -7,6 +7,7 @@ use App\Models\ChatMessage;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\VehicleLocation;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -83,11 +84,19 @@ class TripDepartureService
         // ลงห้องแชทด้วย — คนที่ปิดแจ้งเตือนไว้ยังเห็นย้อนหลังได้ และ system_key
         // นี่เองที่ทำหน้าที่กันประกาศซ้ำ (unique ระดับ DB) แทนแคชที่หายได้
         $this->chatService->ensureWelcome($schedule);
-        $this->chatService->postSystem(
-            $schedule,
-            'รถออกเดินทางแล้ว 🚐 ติดตามตำแหน่งรถแบบเรียลไทม์ได้จากหน้า “วันเดินทาง” เลยครับ',
-            self::CHAT_KEY,
-        );
+
+        try {
+            $this->chatService->postSystem(
+                $schedule,
+                'รถออกเดินทางแล้ว 🚐 ติดตามตำแหน่งรถแบบเรียลไทม์ได้จากหน้า “วันเดินทาง” เลยครับ',
+                self::CHAT_KEY,
+            );
+        } catch (QueryException $e) {
+            // งานตามรอบกับการกดเองชนกันพอดี — unique ของ system_key กันซ้ำให้แล้ว
+            if (! $this->alreadyAnnounced($schedule)) {
+                throw $e;
+            }
+        }
 
         Log::info('TripDepartureService: ประกาศรถออกเดินทาง', [
             'schedule_id' => $schedule->id,
