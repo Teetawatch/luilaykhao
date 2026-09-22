@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\FcmToken;
 use App\Models\LiveActivity;
+use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Models\VehicleLocation;
 use Carbon\Carbon;
@@ -666,6 +667,13 @@ class TripActivityService
             return 'onboard';
         }
 
+        // สตาฟที่นั่งมากับรถกดยืนยันว่าจอดถึงจุดนี้แล้ว — ชนะทุกอย่างที่คำนวณจาก
+        // GPS รวมถึงกรณีไม่มีพิกัดเลย ซึ่งเคยทำให้การ์ดค้างที่ "เตรียมตัว" ทั้งที่
+        // รถจอดอยู่ตรงหน้าลูกค้า (หน้าจอในแอปเชื่อสตาฟอยู่แล้ว การ์ดต้องพูดตรงกัน)
+        if ($this->arrivedPickupPoint($booking) !== null) {
+            return 'arrived';
+        }
+
         if ($distanceKm !== null && $etaMinutes !== null) {
             if ($distanceKm <= self::ARRIVED_KM) {
                 return 'arrived';
@@ -928,9 +936,15 @@ class TripActivityService
      */
     private function parkingNote(Booking $booking): ?string
     {
-        $note = trim((string) $booking->pickupPoint?->arrival_note);
+        $note = trim((string) $this->arrivedPickupPoint($booking)?->arrival_note);
 
         return $note !== '' ? $note : null;
+    }
+
+    /** กติกา "รถถึงจุดนี้แล้วจริงไหม" อยู่ที่ PickupArrivalService ที่เดียว */
+    private function arrivedPickupPoint(Booking $booking): ?SchedulePickupPoint
+    {
+        return app(PickupArrivalService::class)->freshArrivalFor($booking);
     }
 
     private function vehicleLabel(TripSchedule $schedule): ?string

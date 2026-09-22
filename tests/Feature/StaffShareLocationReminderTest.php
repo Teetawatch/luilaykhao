@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -85,6 +86,92 @@ class StaffShareLocationReminderTest extends TestCase
         (new RemindStaffToShareLocationJob)->handle();
 
         $this->assertSame(1, SmartNotification::where('type', 'staff_share_location')->count());
+    }
+
+    public function test_a_round_with_no_departure_time_is_reminded_in_the_morning(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: 45);
+        // รอบที่แอดมินไม่ได้กรอกเวลารถออก — ใช้ 06:00 เวลาไทยเป็นตัวแทน
+        $schedule->update([
+            'departs_at' => null,
+            'departure_date' => now('Asia/Bangkok')->toDateString(),
+        ]);
+
+        // 05:30 ของเช้าวันเดินทาง = ครึ่งชั่วโมงก่อนเวลาตัวแทน จึงต้องเตือน
+        $this->travelToThai('05:30');
+        (new RemindStaffToShareLocationJob)->handle();
+        $this->assertSame(1, SmartNotification::where('type', 'staff_share_location')->count());
+    }
+
+    public function test_it_does_not_wait_until_lunchtime_to_remind(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: 45);
+        $schedule->update([
+            'departs_at' => null,
+            'departure_date' => now('Asia/Bangkok')->toDateString(),
+        ]);
+
+        // เที่ยงวัน = รถออกไปหกชั่วโมงแล้ว เตือนตอนนี้ไม่มีประโยชน์กับใคร
+        $this->travelToThai('12:00');
+        (new RemindStaffToShareLocationJob)->handle();
+        $this->assertSame(0, SmartNotification::where('type', 'staff_share_location')->count());
+    }
+
+    public function test_sharing_that_dies_mid_trip_is_flagged(): void
+    {
+        // รถออกไปสามชั่วโมงแล้ว — พ้นช่วงเตือน "ก่อนรถออก" ไปแล้ว
+        [$schedule] = $this->round(minutesFromNow: -180);
+
+        // เปิดแชร์ตอนเช้าจริง แล้วเงียบไปตั้งแต่ชั่วโมงที่แล้ว (เครื่องรีสตาร์ต)
+        VehicleLocation::create([
+            'vehicle_id' => $schedule->vehicle_id,
+            'latitude' => 13.75,
+            'longitude' => 100.5,
+            'recorded_at' => now()->subMinutes(70),
+        ]);
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $push = SmartNotification::where('type', 'staff_share_location')->firstOrFail();
+        $this->assertSame('stalled', $push->data['slot']);
+        $this->assertStringContainsString('หยุดส่ง', $push->title);
+    }
+
+    public function test_a_round_that_never_shared_is_not_nagged_again_mid_trip(): void
+    {
+        $this->round(minutesFromNow: -180);
+
+        // ไม่เคยมีพิกัดเข้ามาเลย — เตือนไปแล้วตอนก่อนรถออก ไม่ต้องตามจิกอีก
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(0, SmartNotification::where('type', 'staff_share_location')->count());
+    }
+
+    public function test_a_short_signal_gap_on_the_road_is_not_a_failure(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: -180);
+
+        // เงียบไป 25 นาที — อุโมงค์กับทางเขาเป็นแบบนี้เป็นปกติ
+        VehicleLocation::create([
+            'vehicle_id' => $schedule->vehicle_id,
+            'latitude' => 13.75,
+            'longitude' => 100.5,
+            'recorded_at' => now()->subMinutes(25),
+        ]);
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(0, SmartNotification::where('type', 'staff_share_location')->count());
+    }
+
+    /** ย้ายนาฬิกาไปที่เวลาไทยที่กำหนดของวันนี้ */
+    private function travelToThai(string $hhmm): void
+    {
+        $target = Carbon::parse(
+            now('Asia/Bangkok')->toDateString().' '.$hhmm,
+            'Asia/Bangkok',
+        );
+        $this->travelTo($target);
     }
 
     public function test_a_round_without_a_van_is_skipped(): void

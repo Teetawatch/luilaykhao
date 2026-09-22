@@ -373,7 +373,13 @@
             map.setView(busPos, 15);
         }
 
-        const etaText = eta
+        // สตาฟกดยืนยันว่ารถจอดถึงจุดรับแล้ว — ชนะตัวเลข ETA ที่คำนวณจาก GPS
+        const arrived = pickup && pickup.arrived_at;
+
+        const etaText = arrived
+            ? `<div class="eta-value" style="font-size:24px;">ถึงจุดรับแล้ว</div>
+               ${pickup.arrival_note ? `<div class="eta-distance">${escapeHtml(pickup.arrival_note)}</div>` : ''}`
+            : eta
             ? `<div class="eta-value">${eta.minutes}<span class="unit"> นาที</span></div>
                <div class="eta-distance">ห่างจุดรับ ${eta.distance_km} กม.</div>`
             : `<div class="eta-value" style="font-size:24px;">กำลังเดินทาง</div>`;
@@ -381,7 +387,7 @@
         document.getElementById('sheet').innerHTML = `
             <div class="eta-row">
                 <div class="eta-main">
-                    <div class="eta-label">${pickup && pickup.name ? 'รถจะถึง ' + pickup.name : 'รถจะถึงจุดรับในอีก'}</div>
+                    <div class="eta-label">${arrived ? (pickup.name || 'จุดรับ') : (pickup && pickup.name ? 'รถจะถึง ' + pickup.name : 'รถจะถึงจุดรับในอีก')}</div>
                     ${etaText}
                 </div>
                 <div class="vehicle-chip">

@@ -8,6 +8,7 @@ use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
+use App\Services\PickupArrivalService;
 use App\Services\VehicleLocationService;
 use App\Support\GuestBookingPresenter;
 use App\Support\MediaDisk;
@@ -280,6 +281,8 @@ class VehicleTrackingController extends Controller
         }
 
         [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
+
+        $arrival = app(PickupArrivalService::class)->freshArrivalFor($booking);
         $trip = $booking->schedule?->trip;
 
         return $this->success(GuestBookingPresenter::present($booking, true) + [
@@ -357,6 +360,8 @@ class VehicleTrackingController extends Controller
 
             [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
 
+            $arrival = app(PickupArrivalService::class)->freshArrivalFor($booking);
+
             return GuestBookingPresenter::present($booking, false) + [
                 'pickup_lat' => $pickupLat,
                 'pickup_lng' => $pickupLng,
@@ -396,6 +401,8 @@ class VehicleTrackingController extends Controller
 
         [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
 
+        $arrival = app(PickupArrivalService::class)->freshArrivalFor($booking);
+
         $data = [
             'id' => $booking->id,
             'booking_ref' => $booking->booking_ref,
@@ -420,10 +427,12 @@ class VehicleTrackingController extends Controller
             'vehicle_color' => $vehicle?->color,
             'vehicle_photo' => MediaDisk::url(is_array($vehicle?->images) ? ($vehicle->images[0] ?? null) : null),
             'driver_photo' => MediaDisk::url($vehicle?->driver_photo),
-            // สตาฟกดว่ารถถึงจุดนี้แล้ว พร้อมรูปตรงที่จอด
-            'pickup_arrived_at' => $booking->pickupPoint?->arrived_at?->toIso8601String(),
-            'pickup_arrival_note' => $booking->pickupPoint?->arrival_note,
-            'pickup_arrival_photo_url' => $booking->pickupPoint?->arrival_photo_url,
+            // สตาฟกดว่ารถถึงจุดนี้แล้ว พร้อมรูปตรงที่จอด — ส่งเฉพาะที่ยัง "ตอนนี้"
+            // จริง (ดู PickupArrivalService::freshArrivalFor) เพราะหน้าจอที่ได้ไป
+            // จะพูดว่ารถจอดรออยู่ตรงนั้นเดี๋ยวนี้
+            'pickup_arrived_at' => $arrival?->arrived_at?->toIso8601String(),
+            'pickup_arrival_note' => $arrival?->arrival_note,
+            'pickup_arrival_photo_url' => $arrival?->arrival_photo_url,
             'share_url' => $booking->shareUrl(),
             // รอบที่บินไปไม่มีรถให้ติดตามและไม่มีจุดขึ้นรถ — หน้าจอที่เคยขึ้นว่า
             // "ยังไม่มีสัญญาณรถ" ต้องรู้ว่าให้พูดถึงจุดนัดพบที่สนามบินแทน
@@ -469,6 +478,8 @@ class VehicleTrackingController extends Controller
         $vehicle = $schedule?->vehicle;
 
         [$pickupLat, $pickupLng] = $this->resolvePickupCoords($booking);
+
+        $arrival = app(PickupArrivalService::class)->freshArrivalFor($booking);
         $pickupName = $booking->pickupPoint?->pickup_location
             ?? $trip?->departure_point
             ?? '';
@@ -483,6 +494,10 @@ class VehicleTrackingController extends Controller
                 'name' => $pickupName,
                 'lat' => $pickupLat,
                 'lng' => $pickupLng,
+                // สตาฟกดว่ารถถึงจุดนี้แล้ว — คนที่บ้านที่เฝ้าลิงก์นี้อยู่ถามคำถาม
+                // เดียวกับคนที่ยืนรออยู่: ถึงหรือยัง
+                'arrived_at' => $arrival?->arrived_at?->toIso8601String(),
+                'arrival_note' => $arrival?->arrival_note,
             ],
             'vehicle' => null,
             'eta' => null,
@@ -516,7 +531,11 @@ class VehicleTrackingController extends Controller
         $location = $vehicleId ? $this->resolveVehicleLocation($vehicleId) : null;
 
         if (! $vehicleId || ! $location) {
-            $payload['message'] = 'รถยังไม่เริ่มส่งตำแหน่ง โปรดติดตามอีกครั้ง';
+            // คำยืนยันของสตาฟชนะการไม่มีสัญญาณ — หน้านี้เคยบอกว่า "รถยังไม่เริ่ม
+            // ส่งตำแหน่ง" ทั้งที่รถจอดรับผู้โดยสารอยู่ตรงนั้นแล้ว
+            $payload['message'] = $arrival
+                ? 'รถถึงจุดรับแล้ว'.($arrival->arrival_note ? ' · '.$arrival->arrival_note : '')
+                : 'รถยังไม่เริ่มส่งตำแหน่ง โปรดติดตามอีกครั้ง';
 
             return $this->success($payload, 'ข้อมูลการติดตาม');
         }

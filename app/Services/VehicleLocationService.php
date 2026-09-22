@@ -160,7 +160,7 @@ class VehicleLocationService
     {
         $departureDay = $schedule->departure_date
             ? $schedule->departure_date->copy()->startOfDay()
-            : now(self::TIMEZONE)->startOfDay();
+            : $this->nowThai()->startOfDay();
 
         $start = ($schedule->departs_at ? $schedule->departs_at->copy()->min($departureDay) : $departureDay)
             ->subHours(12);
@@ -176,8 +176,19 @@ class VehicleLocationService
     public function withinSharingWindow(TripSchedule $schedule, ?Carbon $now = null): bool
     {
         [$start, $end] = $this->sharingWindow($schedule);
-        $now ??= now(self::TIMEZONE);
 
-        return $now->betweenIncluded($start, $end);
+        return ($now ?? $this->nowThai())->betweenIncluded($start, $end);
+    }
+
+    /**
+     * "ตอนนี้" ในกรอบเดียวกับที่ departs_at/departure_date ถูกเก็บ
+     *
+     * คอลัมน์พวกนี้เก็บตัวเลขนาฬิกาไทยตรง ๆ ในชนิด UTC (ดู SendDepartureSoonRemindersJob)
+     * การเทียบกับ now('Asia/Bangkok') ซึ่งเป็น "ขณะเดียวกัน" จะคลาดไป 7 ชั่วโมงเสมอ
+     * — รอบที่รถออก 23:30 คืนก่อนหน้าเคยเปิดแชร์ไม่ได้จนถึง 18:30 แทนที่จะเป็น 11:30
+     */
+    private function nowThai(): Carbon
+    {
+        return Carbon::parse(now(self::TIMEZONE)->format('Y-m-d H:i:s'));
     }
 }

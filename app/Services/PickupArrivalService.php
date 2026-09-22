@@ -10,6 +10,7 @@ use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -29,6 +30,14 @@ class PickupArrivalService
 {
     /** โฟลเดอร์ของรูปจุดจอดบน disk สื่อสาธารณะ */
     public const PHOTO_DIR = 'pickups';
+
+    /**
+     * "สตาฟกดว่ารถถึงแล้ว" ใช้ตอบว่า "รถอยู่ตรงนั้นตอนนี้" ได้นานแค่ไหน (นาที)
+     *
+     * ทริปหลายวันกดขาไปครั้งหนึ่ง ถ้าไม่มีอายุ การ์ดของวันกลับจะยังบอกว่ารถจอด
+     * รออยู่ที่จุดรับตั้งแต่เมื่อวาน
+     */
+    public const TRUST_MINUTES = 180;
 
     public function __construct(private ChatService $chatService) {}
 
@@ -110,6 +119,28 @@ class PickupArrivalService
         ];
     }
 
+    /**
+     * จุดรับของใบจองนี้ เมื่อสตาฟเพิ่งกดว่ารถถึงจุดนั้นจริง — ไม่งั้นคืน null
+     *
+     * ตรวจสองอย่างที่พลาดง่ายและให้ข้อมูลผิดทั้งคู่: จุดต้องเป็นของรอบนี้ (ใบจอง
+     * ที่เคยถูกย้ายรอบมี FK ค้างชี้จุดของรอบเดิมได้ ซึ่งจะพารูปจุดจอดของทริปอื่น
+     * มาแสดง) และต้องเพิ่งเกิดขึ้น ไม่ใช่ค่าที่ค้างจากขาไปของทริปหลายวัน
+     */
+    public function freshArrivalFor(Booking $booking): ?SchedulePickupPoint
+    {
+        $point = $booking->pickupPoint;
+
+        if (! $point || (int) $point->schedule_id !== (int) $booking->schedule_id) {
+            return null;
+        }
+
+        if (! $point->arrived_at || $point->arrived_at->lt(now()->subMinutes(self::TRUST_MINUTES))) {
+            return null;
+        }
+
+        return $point;
+    }
+
     /** ชื่อจุดที่เอาไปพูดกับลูกค้าได้ */
     public function label(SchedulePickupPoint $point): string
     {
@@ -163,11 +194,31 @@ class PickupArrivalService
                 continue;
             }
 
-            // ใบจองเก่าที่ไม่มีรายชื่อผู้โดยสารแยก นับเป็นหนึ่งหัว ไม่ใช่ศูนย์
-            $perPoint = max(1, (int) ceil($booking->passengers->count() / count($points)));
+            // ใบจองเก่าที่ไม่มีรายชื่อผู้โดยสารแยก นับเป็นหนึ่งหัวที่จุดของใบจอง
+            if ($booking->passengers->isEmpty()) {
+                foreach ($points as $pointId) {
+                    $counts[$pointId] = ($counts[$pointId] ?? 0) + 1;
+                }
 
-            foreach ($points as $pointId) {
-                $counts[$pointId] = ($counts[$pointId] ?? 0) + $perPoint;
+                continue;
+            }
+
+            // นับรายคนจริง ๆ ไม่ใช่หารจำนวนคนด้วยจำนวนจุด — ใบจอง 3 คนที่แยกขึ้น
+            // สองจุด (2 คนจุดแรก 1 คนจุดหลัง) เคยถูกนับเป็นจุดละ 2 รวมเป็น 4 หัว
+            $bookingPointId = in_array((int) $booking->pickup_point_id, $validIds, true)
+                ? (int) $booking->pickup_point_id
+                : null;
+
+            foreach ($booking->passengers as $passenger) {
+                $own = in_array((int) $passenger->pickup_point_id, $validIds, true)
+                    ? (int) $passenger->pickup_point_id
+                    : null;
+
+                $pointId = $own ?? $bookingPointId;
+
+                if ($pointId !== null) {
+                    $counts[$pointId] = ($counts[$pointId] ?? 0) + 1;
+                }
             }
         }
 
@@ -302,17 +353,37 @@ class PickupArrivalService
             ->first();
 
         if ($existing) {
-            // สตาฟถ่ายรูปตามมาทีหลัง — เติมรูปให้ข้อความเดิมแทนการโพสต์ใหม่
-            $existing->update([
-                'body' => $body,
-                'image_path' => $point->arrival_photo_path ?? $existing->image_path,
-            ]);
+            $this->updateChatMessage($existing, $body, $point);
 
             return;
         }
 
         $this->chatService->ensureWelcome($schedule);
-        $this->chatService->postSystem($schedule, $body, $key, $point->arrival_photo_path);
+
+        try {
+            $this->chatService->postSystem($schedule, $body, $key, $point->arrival_photo_path);
+        } catch (QueryException $e) {
+            // สตาฟสองคนบนรถคันเดียวกันกดพร้อมกัน — system_key เป็น unique ระดับ DB
+            // คนที่แพ้จังหวะต้องได้ผลเหมือนกดทีหลัง ไม่ใช่ 500 กลางลานจอด
+            $raced = ChatMessage::where('schedule_id', $schedule->id)
+                ->where('system_key', $key)
+                ->first();
+
+            if (! $raced) {
+                throw $e;
+            }
+
+            $this->updateChatMessage($raced, $body, $point);
+        }
+    }
+
+    /** สตาฟถ่ายรูปตามมาทีหลัง — เติมรูปให้ข้อความเดิมแทนการโพสต์ใหม่ */
+    private function updateChatMessage(ChatMessage $message, string $body, SchedulePickupPoint $point): void
+    {
+        $message->update([
+            'body' => $body,
+            'image_path' => $point->arrival_photo_path ?? $message->image_path,
+        ]);
     }
 
     private function chatKey(SchedulePickupPoint $point): string

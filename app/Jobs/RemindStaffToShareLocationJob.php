@@ -34,9 +34,24 @@ class RemindStaffToShareLocationJob implements ShouldQueue
     /** พิกัดเก่ากว่านี้ถือว่ายังไม่ได้เปิดแชร์ (นาที) */
     public const STALE_MINUTES = 20;
 
+    /**
+     * เคยส่งแล้วแต่เงียบไปนานกว่านี้ ถือว่าการแชร์หลุด (นาที)
+     *
+     * ยาวกว่าตัวบนตั้งใจ: ระหว่างทางมีทั้งอุโมงค์ ทางเขา และเสาสัญญาณห่าง การ
+     * เงียบยี่สิบนาทีเป็นเรื่องปกติ ส่วนสี่สิบห้านาทีมักแปลว่าเครื่องรีสตาร์ตหรือ
+     * แอปถูกระบบปิดไปแล้ว
+     */
+    public const STALLED_MINUTES = 45;
+
+    /** หลังรถออกกี่ชั่วโมงยังคุ้มที่จะเตือนเรื่องการแชร์ที่หลุดกลางทาง */
+    private const STALLED_WINDOW_HOURS = 10;
+
     public function handle(): void
     {
         $now = now('Asia/Bangkok');
+        // เวลาไทยในกรอบเดียวกับที่ departs_at/departure_date ถูกเก็บ (ตัวเลขนาฬิกา
+        // ไทยในคอลัมน์ชนิด UTC) — เทียบกับ now('Asia/Bangkok') ตรง ๆ จะเพี้ยน 7 ชม.
+        $nowThai = Carbon::parse($now->format('Y-m-d H:i:s'));
         $sent = 0;
 
         $schedules = TripSchedule::query()
@@ -47,33 +62,44 @@ class RemindStaffToShareLocationJob implements ShouldQueue
             ->get();
 
         foreach ($schedules as $schedule) {
-            if (! $this->dueFor($schedule, $now)) {
-                continue;
-            }
+            $slot = $this->slotFor($schedule, $nowThai);
 
-            if ($this->hasFreshLocation((int) $schedule->vehicle_id)) {
+            if ($slot === null) {
                 continue;
             }
 
             $plate = trim((string) $schedule->vehicle?->license_plate);
             $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
-            $body = "เปิดแชร์ตำแหน่งรถ{$this->plateSuffix($plate)}ในแอป ลูกค้าจะได้เห็นว่ารถถึงไหนแล้ว "
-                .'และการ์ดวันเดินทางบนเครื่องลูกค้าจะเดินต่อได้';
+
+            [$title, $body] = $slot === 'stalled'
+                ? [
+                    "📍 {$tripTitle} — ตำแหน่งรถหยุดส่ง",
+                    "แอปไม่ได้ส่งตำแหน่งรถ{$this->plateSuffix($plate)}มาสักพักแล้ว "
+                        .'เปิดแชร์อีกครั้งเพื่อให้ลูกค้าและคนที่บ้านเห็นว่ารถถึงไหน',
+                ]
+                : [
+                    "📍 {$tripTitle} — อย่าลืมเปิดแชร์ตำแหน่งรถ",
+                    "เปิดแชร์ตำแหน่งรถ{$this->plateSuffix($plate)}ในแอป ลูกค้าจะได้เห็นว่ารถถึงไหนแล้ว "
+                        .'และการ์ดวันเดินทางบนเครื่องลูกค้าจะเดินต่อได้',
+                ];
 
             foreach ($schedule->activeStaff as $staff) {
-                if ($this->alreadySent($staff->id, $schedule->id, $now)) {
+                if ($this->alreadySent($staff->id, $schedule->id, $now, $slot)) {
                     continue;
                 }
 
                 SmartNotification::send(
                     $staff->id,
                     'staff_share_location',
-                    "📍 {$tripTitle} — อย่าลืมเปิดแชร์ตำแหน่งรถ",
+                    $title,
                     $body,
                     [
                         'route' => 'staff_manifest',
                         'schedule_id' => (string) $schedule->id,
+                        // หน้ารายชื่อของสตาฟเปิดมาพร้อมชื่อทริปบนหัวจอ
+                        'trip_title' => $tripTitle,
                         'on' => $now->toDateString(),
+                        'slot' => $slot,
                     ],
                 );
 
@@ -91,35 +117,64 @@ class RemindStaffToShareLocationJob implements ShouldQueue
         return $plate !== '' ? " (ทะเบียน {$plate})" : '';
     }
 
-    /** ใกล้เวลารถออกพอที่จะเตือนหรือยัง — รอบที่ไม่ได้กรอกเวลาใช้ 06:00 เป็นตัวแทน */
-    private function dueFor(TripSchedule $schedule, Carbon $now): bool
+    /**
+     * ใกล้เวลารถออกพอที่จะเตือนหรือยัง — รอบที่ไม่ได้กรอกเวลาใช้ 06:00 เป็นตัวแทน
+     *
+     * $now ต้องเป็นเวลาไทยในกรอบเดียวกับคอลัมน์ (ดู handle) — เดิมรอบที่ไม่มี
+     * departs_at ถูกคิดเป็น 06:00 UTC = 13:00 ไทย การเตือนจึงดังหลังรถออกครึ่งวัน
+     */
+    private function slotFor(TripSchedule $schedule, Carbon $now): ?string
     {
-        $departsAt = $schedule->departs_at
-            ? Carbon::parse($schedule->departs_at->format('Y-m-d H:i:s'), 'Asia/Bangkok')
-            : $schedule->departure_date?->copy()->setTime(6, 0);
+        $departsAt = $schedule->departs_at?->copy()
+            ?: $schedule->departure_date?->copy()->setTime(6, 0);
 
         if (! $departsAt) {
-            return false;
+            return null;
         }
 
-        // ยังไม่ถึงเวลาเตือน หรือเลยเวลารถออกไปนานแล้ว (สายไปที่จะเตือน)
-        return $now->lte($departsAt->copy()->addHours(2))
-            && $now->gte($departsAt->copy()->subMinutes(self::LEAD_MINUTES));
+        $vehicleId = (int) $schedule->vehicle_id;
+
+        // ก่อนรถออก: ยังไม่มีพิกัดเลย = ยังไม่มีใครเปิด
+        if ($now->gte($departsAt->copy()->subMinutes(self::LEAD_MINUTES))
+            && $now->lte($departsAt->copy()->addHours(2))
+            && ! $this->hasLocationWithin($vehicleId, self::STALE_MINUTES)) {
+            return 'before';
+        }
+
+        // ระหว่างทาง: เคยส่งแล้ววันนี้แต่เงียบไปนาน = การแชร์หลุด (เครื่องรีสตาร์ต
+        // แอปถูกปิด หรือเผลอกดปิด) ไม่เตือนรอบที่ไม่เคยเปิดเลย เพราะเตือนไปแล้ว
+        if ($now->gt($departsAt->copy()->addMinutes(30))
+            && $now->lte($departsAt->copy()->addHours(self::STALLED_WINDOW_HOURS))
+            && ! $this->hasLocationWithin($vehicleId, self::STALLED_MINUTES)
+            && $this->sharedEarlierToday($vehicleId)) {
+            return 'stalled';
+        }
+
+        return null;
     }
 
-    private function hasFreshLocation(int $vehicleId): bool
+    private function hasLocationWithin(int $vehicleId, int $minutes): bool
     {
         return VehicleLocation::where('vehicle_id', $vehicleId)
-            ->where('recorded_at', '>=', now()->subMinutes(self::STALE_MINUTES))
+            ->where('recorded_at', '>=', now()->subMinutes($minutes))
             ->exists();
     }
 
-    private function alreadySent(int $staffId, int $scheduleId, Carbon $now): bool
+    /** วันนี้เคยมีพิกัดเข้ามาไหม — พิสูจน์ว่าสตาฟเปิดแชร์ไปแล้วจริง */
+    private function sharedEarlierToday(int $vehicleId): bool
+    {
+        return VehicleLocation::where('vehicle_id', $vehicleId)
+            ->where('recorded_at', '>=', now('Asia/Bangkok')->startOfDay())
+            ->exists();
+    }
+
+    private function alreadySent(int $staffId, int $scheduleId, Carbon $now, string $slot): bool
     {
         return SmartNotification::where('user_id', $staffId)
             ->where('type', 'staff_share_location')
             ->where('data->schedule_id', (string) $scheduleId)
             ->where('data->on', $now->toDateString())
+            ->where('data->slot', $slot)
             ->exists();
     }
 }

@@ -54,6 +54,8 @@ class BookingResource extends JsonResource
             'brief_ack_at' => $this->brief_ack_at,
             'pickup_region' => $this->pickup_region,
             'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function () {
+                $sameRound = (int) $this->pickupPoint->schedule_id === (int) $this->schedule_id;
+
                 return [
                     'id' => $this->pickupPoint->id,
                     'region' => $this->pickupPoint->region,
@@ -65,10 +67,11 @@ class BookingResource extends JsonResource
                     'image_url' => $this->pickupPoint->image_url,
                     'notes' => $this->pickupPoint->notes,
                     // "รถจอดตรงไหน" ของจุดนี้ — สิ่งที่ลูกค้าเปิดหาในนาทีที่ยืน
-                    // อยู่ในลานจอดที่มีรถสิบคัน
-                    'arrived_at' => $this->pickupPoint->arrived_at?->toISOString(),
-                    'arrival_note' => $this->pickupPoint->arrival_note,
-                    'arrival_photo_url' => $this->pickupPoint->arrival_photo_url,
+                    // อยู่ในลานจอดที่มีรถสิบคัน ใบจองที่เคยถูกย้ายรอบมี FK ค้างชี้
+                    // จุดของรอบเดิมได้ จุดที่ไม่ใช่ของรอบนี้จึงไม่มีสิทธิ์พูดแทน
+                    'arrived_at' => $sameRound ? $this->pickupPoint->arrived_at?->toISOString() : null,
+                    'arrival_note' => $sameRound ? $this->pickupPoint->arrival_note : null,
+                    'arrival_photo_url' => $sameRound ? $this->pickupPoint->arrival_photo_url : null,
                 ];
             }),
             // รถที่เลือกไว้ อ่านจากสำเนาบนใบจอง ไม่ใช่จากตัวเลือกปัจจุบันของรอบ

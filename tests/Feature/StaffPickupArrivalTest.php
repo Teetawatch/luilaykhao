@@ -16,6 +16,7 @@ use App\Models\VehicleLocation;
 use App\Services\TripActivityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -188,6 +189,37 @@ class StaffPickupArrivalTest extends TestCase
         Storage::disk('public')->assertMissing($path);
     }
 
+    public function test_two_staff_tapping_at_once_do_not_break_each_other(): void
+    {
+        [$schedule, $point, , , $staff] = $this->scenario();
+
+        $second = User::factory()->create();
+        $second->assignRole('staff');
+        $schedule->staff()->attach($second->id, ['assigned_by' => $staff->id]);
+
+        // ข้อความในห้องมี system_key เป็น unique ระดับ DB — คนที่กดทีหลังต้องได้ผล
+        // เหมือนกดตามปกติ ไม่ใช่ 500 กลางลานจอด
+        ChatMessage::create([
+            'schedule_id' => $schedule->id,
+            'user_id' => null,
+            'sender_role' => 'system',
+            'system_key' => "pickup_arrived_{$point->id}",
+            'body' => 'รถถึงแล้ว',
+        ]);
+
+        $this->actingAs($second, 'sanctum')
+            ->postJson("/api/v1/staff/schedules/{$schedule->id}/pickup-points/{$point->id}/arrived", [
+                'note' => 'จอดหน้าร้านกาแฟ',
+            ])
+            ->assertOk();
+
+        $this->assertSame(1, ChatMessage::where('system_key', "pickup_arrived_{$point->id}")->count());
+        $this->assertStringContainsString(
+            'จอดหน้าร้านกาแฟ',
+            ChatMessage::where('system_key', "pickup_arrived_{$point->id}")->value('body'),
+        );
+    }
+
     public function test_staff_from_another_round_cannot_touch_this_one(): void
     {
         [$schedule, $point] = $this->scenario();
@@ -249,6 +281,32 @@ class StaffPickupArrivalTest extends TestCase
         $this->assertSame(0, VehicleLocation::count());
     }
 
+    public function test_a_van_leaving_the_night_before_can_share_from_the_afternoon(): void
+    {
+        [$schedule, , , , $staff] = $this->scenario();
+
+        // รถออก 23:30 ของคืนก่อนวันทริป — departs_at เก็บเป็นเวลาไทยตรง ๆ
+        $tomorrow = now('Asia/Bangkok')->addDay();
+        $schedule->update([
+            'departure_date' => $tomorrow->toDateString(),
+            'return_date' => $tomorrow->copy()->addDay()->toDateString(),
+            'departs_at' => now('Asia/Bangkok')->format('Y-m-d').' 23:30:00',
+        ]);
+
+        // 17:00 ของวันนี้ = 6 ชั่วโมงครึ่งก่อนรถออก ยังอยู่ในช่วงผ่อนผัน 12 ชม.
+        $this->travelTo(Carbon::parse(
+            now('Asia/Bangkok')->toDateString().' 17:00:00',
+            'Asia/Bangkok',
+        ));
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/staff/schedules/{$schedule->id}/vehicle-location", [
+                'latitude' => 13.7563,
+                'longitude' => 100.5018,
+            ])
+            ->assertOk();
+    }
+
     public function test_a_round_without_a_van_cannot_share_a_vans_position(): void
     {
         [$schedule, , , , $staff] = $this->scenario();
@@ -281,6 +339,73 @@ class StaffPickupArrivalTest extends TestCase
         $this->assertSame('arrived', $state['stage']);
         $this->assertStringContainsString('ฮก 8899', $state['headline']);
         $this->assertStringContainsString('จอดตรงข้าม 7-11', $state['detail']);
+    }
+
+    public function test_the_lock_screen_card_believes_staff_when_there_is_no_gps(): void
+    {
+        [$schedule, $point, $booking, , $staff] = $this->scenario();
+
+        // ไม่มีพิกัดรถเลยสักจุด — เดิมการ์ดค้างที่ "เตรียมตัว" ทั้งที่รถจอดอยู่ตรงหน้า
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/staff/schedules/{$schedule->id}/pickup-points/{$point->id}/arrived")
+            ->assertOk();
+
+        $state = app(TripActivityService::class)
+            ->stateFor($booking->fresh()->load('schedule.vehicle', 'pickupPoint'));
+
+        $this->assertSame('arrived', $state['stage']);
+    }
+
+    public function test_a_pickup_point_left_over_from_another_round_is_ignored(): void
+    {
+        [$schedule, $point, $booking, , $staff] = $this->scenario();
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/staff/schedules/{$schedule->id}/pickup-points/{$point->id}/arrived")
+            ->assertOk();
+
+        // ใบจองถูกย้ายไปอีกรอบ แต่ pickup_point_id ยังค้างชี้จุดของรอบเดิม
+        $other = TripSchedule::create([
+            'trip_id' => $schedule->trip_id,
+            'vehicle_id' => $schedule->vehicle_id,
+            'departure_date' => $schedule->departure_date->toDateString(),
+            'return_date' => $schedule->return_date->toDateString(),
+            'total_seats' => 12,
+            'booked_seats' => 1,
+            'transport_type' => 'van',
+            'status' => 'open',
+        ]);
+        $booking->update(['schedule_id' => $other->id]);
+
+        $state = app(TripActivityService::class)
+            ->stateFor($booking->fresh()->load('schedule.vehicle', 'pickupPoint'));
+
+        // รูป/โน้ตของอีกรอบต้องไม่ข้ามมา
+        $this->assertNotSame('arrived', $state['stage']);
+    }
+
+    public function test_the_family_share_link_says_the_van_arrived_even_without_gps(): void
+    {
+        [$schedule, $point, $booking, , $staff] = $this->scenario();
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/staff/schedules/{$schedule->id}/pickup-points/{$point->id}/arrived", [
+                'note' => 'จอดตรงข้าม 7-11',
+            ])
+            ->assertOk();
+
+        // ลิงก์ให้ที่บ้านติดตาม — สร้าง token ผ่านทางที่ลูกค้าใช้จริง
+        $shareUrl = $this->actingAs($booking->user, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/tracking")
+            ->json('data.share_url');
+        $token = basename((string) $shareUrl);
+
+        $response = $this->getJson("/api/v1/track/{$token}")->assertOk();
+
+        // ยังไม่มีพิกัดรถสักจุด แต่หน้าเดิมเคยบอกว่า "รถยังไม่เริ่มส่งตำแหน่ง"
+        $this->assertStringContainsString('รถถึงจุดรับแล้ว', $response->json('data.message'));
+        $this->assertNotNull($response->json('data.pickup.arrived_at'));
+        $this->assertSame('จอดตรงข้าม 7-11', $response->json('data.pickup.arrival_note'));
     }
 
     public function test_the_customer_payload_carries_the_parking_photo(): void
