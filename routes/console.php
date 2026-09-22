@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\AbandonedBookingWinbackJob;
+use App\Jobs\AnnounceDepartedTripsJob;
 use App\Jobs\AnnounceSaleCampaignJob;
 use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ClearEndedTripDriverPinsJob;
@@ -55,6 +56,9 @@ Schedule::job(new StartScheduledFlashSalesJob)->everyMinute()->withoutOverlappin
 // ประกาศแคมเปญวันพิเศษ (9.9/10.10) ทันทีที่ถึงเวลาเริ่ม — ราคาลดเองอยู่แล้วตั้งแต่
 // วินาทีแรก งานนี้แค่บอกลูกค้าว่ามันเริ่มแล้ว
 Schedule::job(new AnnounceSaleCampaignJob)->everyMinute()->withoutOverlapping();
+// "รถออกเดินทางแล้ว" — อ่านจากพิกัดที่ไหลเข้ามา ไม่ต้องมีใครกดปุ่ม (คนขับไม่ได้
+// ใช้แอป ส่วนสตาฟกำลังเช็คอินลูกค้าอยู่ตอนรถออกพอดี)
+Schedule::job(new AnnounceDepartedTripsJob)->everyFiveMinutes()->withoutOverlapping();
 // ~90 นาทีก่อนรถออก เตือนสตาฟที่ยังไม่ได้เปิดแชร์ตำแหน่งรถ (คนขับไม่ได้ใช้แอป
 // มือถือสตาฟคือ GPS ของรถ) — รอบที่เปิดอยู่แล้วจะไม่ได้รับอะไรเลย
 Schedule::job(new RemindStaffToShareLocationJob)->everyTenMinutes()->withoutOverlapping();

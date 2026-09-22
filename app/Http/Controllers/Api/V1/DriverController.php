@@ -11,9 +11,9 @@ use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\VehicleInspection;
-use App\Services\ChatService;
 use App\Services\DriverLoginCodeService;
 use App\Services\PickupArrivalService;
+use App\Services\TripDepartureService;
 use App\Support\SeatLayoutFactory;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -1149,46 +1149,15 @@ class DriverController extends Controller
             return $this->error('คุณไม่มีสิทธิ์อัปเดตรอบเดินทางนี้', 403);
         }
 
-        $cacheKey = "trip_departed_notified:{$schedule->id}";
-        if (Cache::has($cacheKey)) {
-            return $this->success(
-                ['notified' => 0, 'already_sent' => true],
-                'แจ้งเตือนออกเดินทางถูกส่งไปแล้วก่อนหน้านี้'
-            );
-        }
-
-        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
-        $bookings = Booking::where('schedule_id', $schedule->id)
-            ->where('status', 'confirmed')
-            ->whereNotNull('user_id')
-            ->get(['id', 'booking_ref', 'user_id']);
-
-        foreach ($bookings as $booking) {
-            SmartNotification::send(
-                $booking->user_id,
-                'vehicle_departed',
-                'รถออกเดินทางแล้ว 🚐',
-                "คนขับทริป \"{$tripTitle}\" เริ่มออกเดินทางแล้ว ติดตามตำแหน่งรถแบบเรียลไทม์ได้เลย",
-                [
-                    'booking_ref' => $booking->booking_ref,
-                    'vehicle_id' => $schedule->vehicle_id,
-                    'schedule_id' => $schedule->id,
-                ],
-            );
-        }
-
-        // Drop a system notice into the trip's group chat so the departure is
-        // visible in-thread alongside the push notification.
-        app(ChatService::class)->postSystem(
-            $schedule,
-            'คนขับเริ่มออกเดินทางแล้ว 🚐 ติดตามตำแหน่งรถแบบเรียลไทม์ได้เลย',
-        );
-
-        Cache::put($cacheKey, true, now()->endOfDay());
+        // ปกติไม่มีใครเรียกทางนี้แล้ว — AnnounceDepartedTripsJob อ่านจากพิกัดเอง
+        // เก็บไว้เป็นทางลัดสำหรับกรณีที่อยากยิงเองและเพื่อไม่ให้แอปคนขับรุ่นเก่าพัง
+        $notified = app(TripDepartureService::class)->announce($schedule);
 
         return $this->success(
-            ['notified' => $bookings->count(), 'already_sent' => false],
-            'ส่งแจ้งเตือนออกเดินทางให้ผู้โดยสารแล้ว'
+            ['notified' => $notified, 'already_sent' => $notified === 0],
+            $notified > 0
+                ? 'ส่งแจ้งเตือนออกเดินทางให้ผู้โดยสารแล้ว'
+                : 'แจ้งเตือนออกเดินทางถูกส่งไปแล้วก่อนหน้านี้',
         );
     }
 
