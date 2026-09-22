@@ -8,9 +8,11 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleLocation;
 use App\Services\VehicleLocationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -106,6 +108,89 @@ class VehicleAutoShareWindowTest extends TestCase
         $schedule->update(['status' => 'cancelled']);
 
         $this->assertNull($this->mode($schedule, '07:00'));
+    }
+
+    public function test_only_one_phone_per_van_shares_at_a_time(): void
+    {
+        $schedule = $this->round(departsAt: '06:00');
+        [$first, $second] = $this->twoStaffOn($schedule);
+
+        $service = app(VehicleLocationService::class);
+        $now = Carbon::parse(now('Asia/Bangkok')->toDateString().' 07:00');
+
+        // ยังไม่มีใครส่ง — ทั้งคู่พร้อมเริ่ม
+        $this->assertSame('pickup', $service->autoShareMode($schedule, $now, $first->id));
+        $this->assertSame('pickup', $service->autoShareMode($schedule, $now, $second->id));
+
+        $this->share($schedule, $first, 13.70, 100.50)->assertOk();
+
+        // เครื่องแรกถือสิทธิ์แล้ว เครื่องที่สองต้องอยู่เฉย ๆ ไม่งั้นหมุดจะกระโดดไปมา
+        $this->assertSame('pickup', $service->autoShareMode($schedule->fresh(), $now, $first->id));
+        $this->assertNull($service->autoShareMode($schedule->fresh(), $now, $second->id));
+        $this->share($schedule, $second, 18.79, 98.98)->assertStatus(409);
+    }
+
+    public function test_a_staff_member_can_take_over_on_purpose(): void
+    {
+        $schedule = $this->round(departsAt: '06:00');
+        [$first, $second] = $this->twoStaffOn($schedule);
+
+        $this->share($schedule, $first, 13.70, 100.50)->assertOk();
+
+        // กดสวิตช์เองบนอีกเครื่อง (เช่นคนแรกฝากมือถือไว้ที่รีสอร์ต)
+        $this->share($schedule, $second, 18.79, 98.98, takeover: true)->assertOk();
+
+        $this->assertSame(
+            $second->id,
+            app(VehicleLocationService::class)->currentSharerId((int) $schedule->vehicle_id),
+        );
+    }
+
+    public function test_the_claim_expires_when_the_first_phone_goes_quiet(): void
+    {
+        $schedule = $this->round(departsAt: '06:00');
+        [$first, $second] = $this->twoStaffOn($schedule);
+
+        $this->share($schedule, $first, 13.70, 100.50)->assertOk();
+        VehicleLocation::query()->update([
+            'recorded_at' => now()->subMinutes(VehicleLocationService::CLAIM_MINUTES + 1),
+        ]);
+
+        // เครื่องแรกแบตหมด/แอปถูกปิด — เครื่องที่สองรับช่วงต่อเองได้ ไม่ต้องมีใครสั่ง
+        $this->share($schedule, $second, 18.79, 98.98)->assertOk();
+    }
+
+    /**
+     * @return array{0: User, 1: User}
+     */
+    private function twoStaffOn(TripSchedule $schedule): array
+    {
+        Role::findOrCreate('staff');
+
+        $staff = collect([User::factory()->create(), User::factory()->create()]);
+        $staff->each(fn (User $u) => $u->assignRole('staff'));
+        $schedule->staff()->attach(
+            $staff->mapWithKeys(fn (User $u) => [$u->id => ['assigned_by' => $u->id]])->all(),
+        );
+
+        return [$staff[0], $staff[1]];
+    }
+
+    private function share(
+        TripSchedule $schedule,
+        User $staff,
+        float $lat,
+        float $lng,
+        bool $takeover = false,
+    ) {
+        return $this->actingAs($staff, 'sanctum')->postJson(
+            "/api/v1/staff/schedules/{$schedule->id}/vehicle-location",
+            [
+                'latitude' => $lat,
+                'longitude' => $lng,
+                'takeover' => $takeover,
+            ],
+        );
     }
 
     private function point(TripSchedule $schedule, string $label, int $order): SchedulePickupPoint

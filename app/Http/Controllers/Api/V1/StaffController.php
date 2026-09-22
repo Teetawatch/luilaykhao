@@ -57,7 +57,7 @@ class StaffController extends Controller
                 'total_schedules' => $schedules->count(),
                 'upcoming_count' => $schedules->filter(fn ($s) => $s->departure_date?->toDateString() >= $today)->count(),
             ],
-            'schedules' => $schedules->map(function ($s) {
+            'schedules' => $schedules->map(function ($s) use ($userId) {
                 // Count individual *passengers*, not bookings — a single group
                 // booking can carry multiple travelers and the staff manifest
                 // needs the headcount, matching the admin manifest endpoint.
@@ -136,7 +136,11 @@ class StaffController extends Controller
                     // ถึงเวลาที่มือถือของสตาฟควรเป็น GPS ของรถคันนี้แล้วหรือยัง และ
                     // ควรส่งถี่แค่ไหน — เซิร์ฟเวอร์ตัดสินให้ที่เดียว แอปจะได้ไม่ต้อง
                     // คิดเรื่องเวลาไทยหรือ "รับครบหรือยัง" เอง
-                    'share_location_mode' => $this->vehicleLocations->autoShareMode($s),
+                    'share_location_mode' => $this->vehicleLocations->autoShareMode(
+                        $s,
+                        null,
+                        $userId,
+                    ),
                     'return_date' => $s->return_date?->toDateString(),
                     'status' => $s->status,
                     'transport_type' => $s->transport_type,
@@ -557,6 +561,8 @@ class StaffController extends Controller
             'heading' => ['nullable', 'numeric', 'between:0,360'],
             'accuracy' => ['nullable', 'numeric', 'min:0'],
             'recorded_at' => ['nullable', 'date'],
+            // สตาฟกดสวิตช์เองบนเครื่องนี้ = ตั้งใจจะเป็นคนส่งแทนเครื่องเดิม
+            'takeover' => ['nullable', 'boolean'],
         ]);
 
         $schedule = $this->staffSchedule($request, $scheduleId);
@@ -573,6 +579,15 @@ class StaffController extends Controller
 
         if (! $this->vehicleLocations->withinSharingWindow($schedule)) {
             return $this->error('แชร์ตำแหน่งรถได้เฉพาะช่วงวันเดินทางของรอบนี้', 422);
+        }
+
+        // รอบหนึ่งมีสตาฟหลายคน แต่รถมีคันเดียว — เครื่องที่ส่งอยู่ถือสิทธิ์ไว้
+        // จนกว่าจะเงียบไป (หรือจนกว่าจะมีคนกดสวิตช์เองเพื่อรับช่วงต่อ)
+        $sharer = $this->vehicleLocations->currentSharerId((int) $vehicle->id);
+        $takeover = (bool) ($validated['takeover'] ?? false);
+
+        if ($sharer !== null && $sharer !== $request->user()->id && ! $takeover) {
+            return $this->error('มีทีมงานอีกคนกำลังแชร์ตำแหน่งรถคันนี้อยู่', 409);
         }
 
         $location = $this->vehicleLocations->record($vehicle, $validated, $request->user()->id);

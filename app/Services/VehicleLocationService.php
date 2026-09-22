@@ -34,6 +34,17 @@ class VehicleLocationService
     public const AUTO_START_BEFORE_MINUTES = 90;
 
     /**
+     * คนที่ส่งพิกัดล่าสุดถือสิทธิ์เป็น "รถคันนี้" นานกี่นาที
+     *
+     * รอบหนึ่งมีสตาฟได้หลายคน ถ้าทุกเครื่องส่งพิกัดของรถคันเดียวกัน หมุดบนแผนที่
+     * ลูกค้าจะกระโดดไปมาระหว่างคนที่อยู่หัวรถกับคนที่ยืนอยู่ท้ายแถว (หรือคนละ
+     * จังหวัดกันเลยถ้าคนหนึ่งไม่ได้ไปกับรถ) เครื่องแรกที่ส่งจึงถือสิทธิ์ไว้ และ
+     * เครื่องอื่นอยู่เฉย ๆ — สิทธิ์หมดอายุเองถ้าเจ้าของเงียบไป เครื่องถัดไปจะ
+     * รับช่วงต่อได้เองโดยไม่ต้องมีใครสั่ง
+     */
+    public const CLAIM_MINUTES = 5;
+
+    /**
      * บันทึกพิกัดหนึ่งจุด + แคช + กระจาย event
      *
      * @param  array<string, mixed>  $data  latitude/longitude และของแถมที่มีบ้างไม่มีบ้าง
@@ -187,9 +198,18 @@ class VehicleLocationService
      * - pickup  = ยังวิ่งเก็บคนอยู่ ลูกค้าที่ยืนรอต้องการตำแหน่งถี่ ๆ
      * - onboard = รับครบทุกจุดแล้ว คนที่ยังดูอยู่คือคนที่บ้าน ส่งห่างขึ้นได้
      */
-    public function autoShareMode(TripSchedule $schedule, ?Carbon $now = null): ?string
-    {
+    public function autoShareMode(
+        TripSchedule $schedule,
+        ?Carbon $now = null,
+        ?int $forUserId = null,
+    ): ?string {
         if (! $schedule->vehicle_id || $schedule->status === 'cancelled') {
+            return null;
+        }
+
+        // มีเครื่องอื่นถือสิทธิ์อยู่ — เครื่องนี้ไม่ต้องเปิดเอง
+        $sharer = $this->currentSharerId((int) $schedule->vehicle_id);
+        if ($forUserId !== null && $sharer !== null && $sharer !== $forUserId) {
             return null;
         }
 
@@ -229,6 +249,20 @@ class VehicleLocationService
 
         return $confirmed->clone()->exists()
             && $confirmed->clone()->where('checked_in', false)->doesntExist();
+    }
+
+    /**
+     * ใครกำลังเป็น "รถคันนี้" อยู่ตอนนี้ — null เมื่อไม่มีใครส่งมาสักพักแล้ว
+     */
+    public function currentSharerId(int $vehicleId): ?int
+    {
+        $latest = VehicleLocation::where('vehicle_id', $vehicleId)
+            ->where('recorded_at', '>=', now()->subMinutes(self::CLAIM_MINUTES))
+            ->whereNotNull('user_id')
+            ->orderByDesc('recorded_at')
+            ->first(['user_id']);
+
+        return $latest ? (int) $latest->user_id : null;
     }
 
     /** อยู่ในช่วงที่รถของรอบนี้ควรมีตำแหน่งให้ติดตามไหม */
