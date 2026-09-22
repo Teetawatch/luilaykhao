@@ -214,6 +214,7 @@ class TripChatTimelineTest extends TestCase
     public function test_trip_end_and_photo_expiry_messages_post_after_the_trip(): void
     {
         $schedule = $this->makeSchedule();
+        $this->chat($schedule, 'สนุกมากครับ');
 
         $end = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-16 20:10'));
         $this->assertSame(['trip_end'], $end);
@@ -221,6 +222,86 @@ class TripChatTimelineTest extends TestCase
         // ห้องถูกลบ 3 วันหลังจบทริป — เตือนเซฟรูปก่อน 1 วัน
         $expiring = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-18 10:05'));
         $this->assertSame(['photos_expiring'], $expiring);
+    }
+
+    public function test_trip_end_message_says_where_the_photos_will_be(): void
+    {
+        $schedule = $this->makeSchedule();
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-16 20:10'));
+
+        $body = ChatMessage::where('system_key', 'trip_end')->value('body');
+        // รูปของทีมงานอยู่ที่ไอจี ไม่ใช่ในห้องแชท — บอกตั้งแต่วันจบทริป
+        $this->assertStringContainsString('@luilaykhao', $body);
+        // ชวนแชร์รูปพร้อมบอกว่าห้องอยู่ได้อีกกี่วัน
+        $this->assertStringContainsString('ห้องแชทจะปิดใน 3 วัน', $body);
+        $this->assertStringContainsString('ฟีดทริป', $body);
+    }
+
+    public function test_expiry_message_does_not_mention_photos_when_the_room_has_none(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->chat($schedule, 'ขอบคุณทีมงานครับ');
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-18 10:05'));
+
+        $body = ChatMessage::where('system_key', 'photos_expiring')->value('body');
+        // ยังไม่มีใครลงรูปในห้อง — พูดถึงรูปได้เฉพาะรูปที่ไอจี ไม่ใช่รูปที่กำลังจะหาย
+        $this->assertStringNotContainsString('จะถูกลบอัตโนมัติในเช้าวันพรุ่งนี้นะครับ\nใคร', $body);
+        $this->assertStringContainsString('ห้องแชทของทริปนี้จะถูกปิด', $body);
+        $this->assertStringContainsString('@luilaykhao', $body);
+    }
+
+    public function test_expiry_message_tells_people_to_save_photos_when_the_room_has_some(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->chat($schedule, '', 'chat/photo.jpg');
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-18 10:05'));
+
+        $body = ChatMessage::where('system_key', 'photos_expiring')->value('body');
+        $this->assertStringContainsString('บันทึกลงเครื่อง', $body);
+        $this->assertStringContainsString('@luilaykhao', $body);
+    }
+
+    public function test_expiry_message_ignores_a_deleted_photo(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->chat($schedule, '', 'chat/photo.jpg', deleted: true);
+        $this->chat($schedule, 'ขอบคุณครับ');
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-18 10:05'));
+
+        $body = ChatMessage::where('system_key', 'photos_expiring')->value('body');
+        $this->assertStringContainsString('ห้องแชทของทริปนี้จะถูกปิด', $body);
+    }
+
+    public function test_no_expiry_message_for_a_room_nobody_ever_wrote_in(): void
+    {
+        $schedule = $this->makeSchedule();
+
+        // มีแต่ข้อความระบบในห้อง — ไม่ต้องเด้ง badge บอกว่าห้องร้างกำลังจะถูกลบ
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-16 20:10'));
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-18 10:05'));
+        $this->assertSame([], $posted);
+    }
+
+    /** ข้อความของคนจริง ๆ ในห้อง (ไม่ใช่ข้อความระบบ) */
+    private function chat(
+        TripSchedule $schedule,
+        string $body,
+        ?string $imagePath = null,
+        bool $deleted = false,
+    ): ChatMessage {
+        return ChatMessage::create([
+            'schedule_id' => $schedule->id,
+            'user_id' => User::factory()->create()->id,
+            'sender_role' => 'customer',
+            'body' => $body,
+            'image_path' => $imagePath,
+            'is_deleted' => $deleted,
+        ]);
     }
 
     private function assignStaff(TripSchedule $schedule, string $nickname, ?string $phone): User
