@@ -39,63 +39,8 @@
           ระหว่างทางที่บ้านตามดูตำแหน่งรถได้ตลอด
         </p>
 
-        <!-- Modern Floating Search Bar -->
-        <div class="search-bar relative bg-white rounded-2xl flex flex-col md:flex-row items-stretch md:items-center p-2 md:p-1.5 gap-2 md:gap-1 max-w-3xl mx-auto z-20">
-          
-          <!-- Trip Selector -->
-          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
-            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-primary)]/20 transition-colors ring-1 ring-black/5 shrink-0">
-              <span class="material-symbols-rounded text-[var(--color-primary)] text-[22px] md:text-[24px]">explore</span>
-            </div>
-            <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">อยากไปเที่ยวที่ไหน?</label>
-              <select
-                v-model="selectedTripSlug"
-                @change="onTripChange"
-                class="bg-transparent border-none focus:ring-0 p-0 text-gray-900 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6"
-                :class="selectedTripSlug ? 'text-gray-900' : 'text-gray-400'"
-              >
-                <option value="">เลือกทริปที่ต้องการ</option>
-                <option v-for="t in allTrips" :key="t.id" :value="t.slug">{{ t.title }}</option>
-              </select>
-              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
-            </div>
-          </div>
-
-          <div class="hidden md:block w-px h-12 bg-gray-100 shrink-0"></div>
-
-          <!-- Schedule / Departure Date Selector -->
-          <div class="flex items-center flex-1 w-full px-4 py-3 md:py-2.5 bg-gray-50/50 md:bg-transparent hover:bg-gray-100/80 md:hover:bg-gray-50/80 rounded-[1.2rem] md:rounded-[1.5rem] transition-colors group cursor-pointer relative">
-            <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mr-3 group-hover:bg-[var(--color-accent)]/20 transition-colors ring-1 ring-black/5 shrink-0">
-              <span v-if="schedulesLoading" class="w-5 h-5 border-2 border-[var(--color-accent)]/30 border-t-[var(--color-accent)] rounded-full animate-spin"></span>
-              <span v-else class="material-symbols-rounded text-[var(--color-accent)] text-[22px] md:text-[24px]">calendar_today</span>
-            </div>
-            <div class="flex flex-col items-start min-w-0 flex-1">
-              <label class="text-[10px] md:text-[11px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">รอบวันเดินทาง</label>
-              <select
-                v-model="selectedScheduleId"
-                :disabled="!selectedTripSlug || schedulesLoading"
-                class="bg-transparent border-none focus:ring-0 p-0 font-extrabold w-full text-sm md:text-base outline-none appearance-none cursor-pointer pr-6 disabled:cursor-not-allowed"
-                :class="selectedScheduleId ? 'text-gray-900' : 'text-gray-400'"
-              >
-                <option value="">{{ !selectedTripSlug ? 'เลือกวันเดินทาง' : schedulesLoading ? 'กำลังโหลด...' : tripSchedules.length === 0 ? 'ไม่มีรอบว่าง' : 'เลือกวันเดินทาง' }}</option>
-                <option v-for="s in tripSchedules" :key="s.id" :value="s.id">
-                  {{ formatScheduleOption(s) }}
-                </option>
-              </select>
-              <span class="material-symbols-rounded text-[18px] absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
-            </div>
-          </div>
-
-          <!-- Book / Search Button -->
-          <button
-            @click="goBook"
-            class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-4 md:py-3.5 rounded-xl md:rounded-[1.2rem] font-bold transition-colors duration-300 flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer w-full md:w-auto mt-1 md:mt-0"
-          >
-            <span class="material-symbols-rounded text-[22px]">search</span>
-            <span class="text-lg md:text-base pr-0.5">ค้นหาทริป</span>
-          </button>
-        </div>
+        <!-- แถบค้นหา: เลือกทริป → เลือกรอบ (แผงของเราเอง ไม่ใช่ <select> ของเบราว์เซอร์) -->
+        <HeroSearchBar :trips="allTrips" :loading="loading" />
 
         <!-- สิ่งที่ระบบทำได้จริง — ไม่ใช่คำโฆษณาแบบ "ปลอดภัยที่สุด" -->
         <div class="hero-trust flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-7 text-white/85 text-xs md:text-sm font-medium">
@@ -819,17 +764,16 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { useWishlistStore } from '../stores/wishlist';
 import TripCard from '../components/TripCard.vue';
 import CommunityFeedStrip from '../components/CommunityFeedStrip.vue';
 import LatestArticles from '../components/LatestArticles.vue';
+import HeroSearchBar from '../components/HeroSearchBar.vue';
 import { supportHours, supportLineUrl } from '../lib/contact';
 import { licenceNo } from '../lib/licence';
 
 const wishlistStore = useWishlistStore();
-const router = useRouter();
 
 const licence = licenceNo();
 
@@ -854,72 +798,8 @@ const loading = ref(true);
 
 
 
-// Search bar state
+// ทริปทั้งหมดที่ส่งให้แถบค้นหาบนฮีโร่ (แถบนั้นดูแลรอบเดินทางของตัวเอง)
 const allTrips = ref([]);
-const selectedTripSlug = ref('');
-const tripSchedules = ref([]);
-const selectedScheduleId = ref('');
-const schedulesLoading = ref(false);
-
-function formatScheduleOption(s) {
-  const formatDateTh = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('th-TH', { 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric' 
-    });
-  };
-  
-  const depStr = formatDateTh(s.departure_date);
-  const retStr = formatDateTh(s.return_date);
-  
-  if (retStr && retStr !== depStr) {
-    return `${depStr} - ${retStr}`;
-  }
-  return depStr;
-}
-
-async function onTripChange() {
-  selectedScheduleId.value = '';
-  tripSchedules.value = [];
-  if (!selectedTripSlug.value) return;
-  schedulesLoading.value = true;
-  try {
-    const res = await api.get(`/trips/${selectedTripSlug.value}/schedules`);
-    const allSchedules = (res.data.data || []).filter(s => s.available_seats > 0);
-    
-    // Filter to unique dates (only show one per date range)
-    const uniqueSchedules = [];
-    const seenDates = new Set();
-    
-    allSchedules.forEach(s => {
-      const dateKey = `${s.departure_date}_${s.return_date}`;
-      if (!seenDates.has(dateKey)) {
-        seenDates.add(dateKey);
-        uniqueSchedules.push(s);
-      }
-    });
-    
-    tripSchedules.value = uniqueSchedules;
-  } catch (e) {
-    console.error('Failed to load schedules', e);
-  } finally {
-    schedulesLoading.value = false;
-  }
-}
-
-const goBook = () => {
-  if (selectedTripSlug.value) {
-    // Navigate to trip detail page with optional schedule query
-    router.push({
-      path: `/trips/${selectedTripSlug.value}`,
-      query: selectedScheduleId.value ? { schedule: selectedScheduleId.value } : {}
-    });
-  } else {
-    router.push('/trips');
-  }
-};
 
 const statsSection = ref(null);
 const isVisible = ref(false);
