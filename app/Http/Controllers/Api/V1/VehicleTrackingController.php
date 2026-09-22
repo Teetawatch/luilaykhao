@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Events\VehicleLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
+use App\Services\VehicleLocationService;
 use App\Support\GuestBookingPresenter;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +21,8 @@ class VehicleTrackingController extends Controller
 {
     use ApiResponse;
 
+    public function __construct(private VehicleLocationService $locations) {}
+
     /** departs_at/departure_date เก็บเป็นเวลาไทย ส่วน app tz เป็น UTC */
     public const TIMEZONE = 'Asia/Bangkok';
 
@@ -28,15 +30,6 @@ class VehicleTrackingController extends Controller
      * รอบที่รถคันนี้กำลังวิ่งอยู่ตอนนี้ — ใช้ทั้งตอน broadcast, cache และหน้า dashboard
      * เพื่อให้ทุกทางเห็น "รอบที่กำลังเดินทาง" ตรงกัน (ทริปหลายวันก็ยังนับ)
      */
-    private function activeScheduleFor(int $vehicleId): ?TripSchedule
-    {
-        return TripSchedule::with('trip')
-            ->where('vehicle_id', $vehicleId)
-            ->where('status', '!=', 'cancelled')
-            ->inProgressOn(now(self::TIMEZONE))
-            ->orderBy('departure_date')
-            ->first();
-    }
 
     /**
      * รับข้อมูล GPS จากมือถือคนขับ (single update)
@@ -58,42 +51,13 @@ class VehicleTrackingController extends Controller
         }
 
         $vehicle = Vehicle::findOrFail($request->vehicle_id);
-        $recordedAt = $request->recorded_at ?? now();
 
-        // บันทึกลง MySQL (Geo-history)
-        $location = VehicleLocation::create([
-            'vehicle_id' => $vehicle->id,
-            'user_id' => $request->user()?->id,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'speed' => $request->speed,
-            'heading' => $request->heading,
-            'accuracy' => $request->accuracy,
-            'recorded_at' => $recordedAt,
-        ]);
-
-        // เก็บตำแหน่งล่าสุดใน Redis (Current Location)
-        $this->cacheCurrentLocation($vehicle, $location);
-
-        $schedule = $this->activeScheduleFor($vehicle->id);
-
-        // Broadcast real-time event ผ่าน Laravel Reverb
-        broadcast(new VehicleLocationUpdated(
-            vehicleId: $vehicle->id,
-            latitude: (float) $request->latitude,
-            longitude: (float) $request->longitude,
-            speed: $request->speed ? (float) $request->speed : null,
-            heading: $request->heading ? (float) $request->heading : null,
-            vehicleName: $vehicle->name,
-            licensePlate: $vehicle->license_plate ?? '',
-            type: $vehicle->type,
-            recordedAt: $location->recorded_at->toIso8601String(),
-            driverName: $vehicle->driver_name,
-            driverPhone: $vehicle->driver_phone,
-            destLat: $schedule?->trip?->latitude,
-            destLng: $schedule?->trip?->longitude,
-            tripTitle: $schedule?->trip?->title,
-        ));
+        // บันทึก + แคช + กระจาย event ทางเดียวกับที่สตาฟยิงเข้ามา
+        $location = $this->locations->record(
+            $vehicle,
+            $validator->validated(),
+            $request->user()?->id,
+        );
 
         return $this->success([
             'location_id' => $location->id,
@@ -152,26 +116,7 @@ class VehicleTrackingController extends Controller
                 continue;
             }
 
-            $this->cacheCurrentLocation($vehicle, $location);
-
-            $schedule = $this->activeScheduleFor($vehicle->id);
-
-            broadcast(new VehicleLocationUpdated(
-                vehicleId: $vehicle->id,
-                latitude: (float) $location->latitude,
-                longitude: (float) $location->longitude,
-                speed: $location->speed ? (float) $location->speed : null,
-                heading: $location->heading ? (float) $location->heading : null,
-                vehicleName: $vehicle->name,
-                licensePlate: $vehicle->license_plate ?? '',
-                type: $vehicle->type,
-                recordedAt: $location->recorded_at->toIso8601String(),
-                driverName: $vehicle->driver_name,
-                driverPhone: $vehicle->driver_phone,
-                destLat: $schedule?->trip?->latitude,
-                destLng: $schedule?->trip?->longitude,
-                tripTitle: $schedule?->trip?->title,
-            ));
+            $this->locations->broadcastLatest($vehicle, $location);
         }
 
         return $this->success([
@@ -207,7 +152,7 @@ class VehicleTrackingController extends Controller
                 ->orderByDesc('recorded_at')
                 ->first();
 
-            return $this->formatVehicleLocation($schedule->vehicle, $latest, $schedule, $trackingSince);
+            return $this->locations->format($schedule->vehicle, $latest, $schedule, $trackingSince);
         })->values();
 
         return $this->success($locations, 'ตำแหน่งล่าสุดของรถที่กำลังเดินทาง');
@@ -230,35 +175,6 @@ class VehicleTrackingController extends Controller
         return $start->subHours(6);
     }
 
-    private function formatVehicleLocation(
-        Vehicle $vehicle,
-        ?VehicleLocation $latest,
-        ?TripSchedule $schedule = null,
-        ?\DateTimeInterface $trackingSince = null,
-    ): array {
-        return [
-            'vehicle_id' => $vehicle->id,
-            'vehicle_name' => $vehicle->name,
-            'license_plate' => $vehicle->license_plate,
-            'type' => $vehicle->type,
-            'driver_phone' => $vehicle->driver_phone,
-            'driver_name' => $vehicle->driver_name,
-            'latitude' => $latest?->latitude,
-            'longitude' => $latest?->longitude,
-            'speed' => $latest?->speed,
-            'heading' => $latest?->heading,
-            'recorded_at' => $latest?->recorded_at->toIso8601String(),
-            'dest_lat' => $schedule?->trip?->latitude,
-            'dest_lng' => $schedule?->trip?->longitude,
-            'trip_title' => $schedule?->trip?->title,
-            'schedule_id' => $schedule?->id,
-            'departure_date' => $schedule?->departure_date?->toDateString(),
-            'return_date' => $schedule?->return_date?->toDateString(),
-            'departs_at' => $schedule?->departs_at?->toIso8601String(),
-            'tracking_since' => $trackingSince?->format('c'),
-        ];
-    }
-
     /**
      * ดึงตำแหน่งล่าสุดของรถคันเดียว
      */
@@ -267,7 +183,7 @@ class VehicleTrackingController extends Controller
         $vehicle = Vehicle::findOrFail($vehicleId);
 
         // ลองอ่านจาก Redis
-        $cached = $this->getCachedLocation($vehicleId);
+        $cached = $this->locations->cached($vehicleId);
         if ($cached) {
             return $this->success($cached, 'ตำแหน่งล่าสุด');
         }
@@ -280,10 +196,10 @@ class VehicleTrackingController extends Controller
             return $this->error('ไม่พบข้อมูลตำแหน่ง', 404);
         }
 
-        $schedule = $this->activeScheduleFor($vehicleId);
+        $schedule = $this->locations->activeScheduleFor($vehicleId);
 
         return $this->success(
-            $this->formatVehicleLocation($vehicle, $latest, $schedule),
+            $this->locations->format($vehicle, $latest, $schedule),
             'ตำแหน่งล่าสุด',
         );
     }
@@ -322,28 +238,6 @@ class VehicleTrackingController extends Controller
     }
 
     // ─── Redis Cache Helpers ──────────────────────────────────
-
-    private function cacheCurrentLocation(Vehicle $vehicle, VehicleLocation $location): void
-    {
-        $data = $this->formatVehicleLocation($vehicle, $location, $this->activeScheduleFor($vehicle->id));
-
-        try {
-            Redis::setex("vehicle:location:{$vehicle->id}", 3600, json_encode($data));
-        } catch (\Exception $e) {
-            // Redis unavailable — continue without cache
-        }
-    }
-
-    private function getCachedLocation(int $vehicleId): ?array
-    {
-        try {
-            $data = Redis::get("vehicle:location:{$vehicleId}");
-
-            return $data ? json_decode($data, true) : null;
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
 
     // ─── Customer App Endpoints ───────────────────────────────
 
@@ -647,7 +541,7 @@ class VehicleTrackingController extends Controller
      */
     private function resolveVehicleLocation(int $vehicleId): ?array
     {
-        $cached = $this->getCachedLocation($vehicleId);
+        $cached = $this->locations->cached($vehicleId);
         if ($cached && isset($cached['latitude'], $cached['longitude'])) {
             return $cached;
         }

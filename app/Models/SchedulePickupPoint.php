@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Jobs\ResolvePickupPointCoordinates;
 use App\Support\GoogleMapsUrl;
+use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,7 +15,7 @@ class SchedulePickupPoint extends Model
     protected $fillable = [
         'schedule_id', 'region', 'region_label', 'pickup_location',
         'price', 'map_url', 'image_url', 'latitude', 'longitude', 'notes', 'pickup_time', 'sort_order',
-        'completed_at',
+        'completed_at', 'arrived_at', 'arrival_photo_path', 'arrival_note', 'arrived_by_id',
     ];
 
     protected function casts(): array
@@ -25,12 +26,25 @@ class SchedulePickupPoint extends Model
             'longitude' => 'float',
             'sort_order' => 'integer',
             'completed_at' => 'datetime',
+            'arrived_at' => 'datetime',
         ];
     }
 
     public function schedule(): BelongsTo
     {
         return $this->belongsTo(TripSchedule::class, 'schedule_id');
+    }
+
+    /** สตาฟที่กดว่ารถถึงจุดนี้แล้ว */
+    public function arrivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'arrived_by_id');
+    }
+
+    /** รูปที่สตาฟถ่ายตรงที่จอด — null เมื่อกดถึงแล้วแต่ไม่ได้ถ่ายรูป */
+    public function getArrivalPhotoUrlAttribute(): ?string
+    {
+        return MediaDisk::url($this->arrival_photo_path);
     }
 
     /**

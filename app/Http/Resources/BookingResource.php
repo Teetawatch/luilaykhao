@@ -64,6 +64,11 @@ class BookingResource extends JsonResource
                     'map_url' => $this->pickupPoint->map_url,
                     'image_url' => $this->pickupPoint->image_url,
                     'notes' => $this->pickupPoint->notes,
+                    // "รถจอดตรงไหน" ของจุดนี้ — สิ่งที่ลูกค้าเปิดหาในนาทีที่ยืน
+                    // อยู่ในลานจอดที่มีรถสิบคัน
+                    'arrived_at' => $this->pickupPoint->arrived_at?->toISOString(),
+                    'arrival_note' => $this->pickupPoint->arrival_note,
+                    'arrival_photo_url' => $this->pickupPoint->arrival_photo_url,
                 ];
             }),
             // รถที่เลือกไว้ อ่านจากสำเนาบนใบจอง ไม่ใช่จากตัวเลือกปัจจุบันของรอบ

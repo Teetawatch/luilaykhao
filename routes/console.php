@@ -19,6 +19,7 @@ use App\Jobs\PurgeExpiredSchedulePhotosJob;
 use App\Jobs\PurgeStaleCustomerIntakesJob;
 use App\Jobs\ReconcileBeamChargesJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
+use App\Jobs\RemindStaffToShareLocationJob;
 use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
 use App\Jobs\SendFinanceCloseRemindersJob;
@@ -54,6 +55,9 @@ Schedule::job(new StartScheduledFlashSalesJob)->everyMinute()->withoutOverlappin
 // ประกาศแคมเปญวันพิเศษ (9.9/10.10) ทันทีที่ถึงเวลาเริ่ม — ราคาลดเองอยู่แล้วตั้งแต่
 // วินาทีแรก งานนี้แค่บอกลูกค้าว่ามันเริ่มแล้ว
 Schedule::job(new AnnounceSaleCampaignJob)->everyMinute()->withoutOverlapping();
+// ~90 นาทีก่อนรถออก เตือนสตาฟที่ยังไม่ได้เปิดแชร์ตำแหน่งรถ (คนขับไม่ได้ใช้แอป
+// มือถือสตาฟคือ GPS ของรถ) — รอบที่เปิดอยู่แล้วจะไม่ได้รับอะไรเลย
+Schedule::job(new RemindStaffToShareLocationJob)->everyTenMinutes()->withoutOverlapping();
 // เตือนสตาฟที่ถูกมอบหมายงาน เย็นก่อนวันเดินทาง 1 วัน ให้เตรียมอุปกรณ์/ความพร้อม
 Schedule::job(new SendStaffShiftRemindersJob)->dailyAt('18:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 

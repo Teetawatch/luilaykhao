@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\VehicleInspection;
 use App\Services\ChatService;
 use App\Services\DriverLoginCodeService;
+use App\Services\PickupArrivalService;
 use App\Support\SeatLayoutFactory;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -1053,48 +1054,16 @@ class DriverController extends Controller
     /**
      * จุดรับทั้งหมดที่ผู้โดยสารของการจองนี้ยืนรออยู่จริง
      *
-     * ใช้กติกาเดียวกับ buildPickupGroups: จุดรายคนมาก่อนจุดระดับการจอง, จุดที่ชี้
-     * ข้ามรอบ (FK ค้างจากตอนย้ายรอบ) ถือว่าใช้ไม่ได้แล้วให้ตกกลับไปจุดของการจอง
-     * และการจองที่ปักหมุดเองไม่นับเข้าจุดตายตัวใด ๆ
+     * กติกาอยู่ที่ PickupArrivalService ที่เดียว เพราะฝั่งสตาฟ ("รถถึงจุดนี้แล้ว")
+     * ต้องหาคนกลุ่มเดียวกันเป๊ะ ๆ กับที่นี่ใช้ปิดจุด ถ้าสองฝั่งตีความจุดรับ
+     * รายคนต่างกัน จะมีคนถูกทิ้งไว้ที่จุดรับโดยไม่มีใครรู้
      *
      * @param  array<int, int>  $validIds  id ของจุดรับที่อยู่ในรอบนี้จริง
      * @return array<int, int>
      */
     private function effectivePickupPointIds(Booking $booking, array $validIds): array
     {
-        $hasCustomPickup = ! $booking->pickup_point_id
-            && $booking->custom_pickup_lat !== null
-            && $booking->custom_pickup_lng !== null
-            && $booking->custom_pickup_status !== 'rejected';
-
-        if ($hasCustomPickup) {
-            return [];
-        }
-
-        $bookingPointId = in_array((int) $booking->pickup_point_id, $validIds, true)
-            ? (int) $booking->pickup_point_id
-            : null;
-
-        $ids = [];
-
-        foreach ($booking->passengers as $passenger) {
-            $own = in_array((int) $passenger->pickup_point_id, $validIds, true)
-                ? (int) $passenger->pickup_point_id
-                : null;
-
-            $resolved = $own ?? $bookingPointId;
-
-            if ($resolved) {
-                $ids[$resolved] = true;
-            }
-        }
-
-        // การจองเก่าที่ไม่มีรายชื่อผู้โดยสารแยก — ใช้จุดระดับการจองแทน
-        if (empty($ids) && $bookingPointId) {
-            $ids[$bookingPointId] = true;
-        }
-
-        return array_keys($ids);
+        return app(PickupArrivalService::class)->effectivePickupPointIds($booking, $validIds);
     }
 
     /**

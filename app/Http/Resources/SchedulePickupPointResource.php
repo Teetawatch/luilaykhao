@@ -25,6 +25,11 @@ class SchedulePickupPointResource extends JsonResource
             'notes' => $this->notes,
             'pickup_time' => $this->pickup_time,
             'sort_order' => $this->sort_order,
+            // รถถึงจุดนี้แล้วหรือยัง + รูปตรงที่จอดที่สตาฟถ่ายไว้ — null ทั้งชุด
+            // จนกว่าจะถึงวันเดินทางจริง
+            'arrived_at' => $this->arrived_at?->toISOString(),
+            'arrival_note' => $this->arrival_note,
+            'arrival_photo_url' => $this->arrival_photo_url,
         ];
     }
 }

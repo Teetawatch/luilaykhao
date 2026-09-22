@@ -58,6 +58,9 @@ return [
         'trip_reminder',
         'trip_departure_soon',
         'checkin_reminder',
+        // รถถึงจุดรับแล้ว — คนที่จองผ่าน LIFF ยืนรออยู่ตรงนั้นพอดี และรูปจุดจอด
+        // มีค่ากับเขามากที่สุดในบรรดาข้อความทั้งหมด ยิงอย่างมากจุดละครั้ง
+        'pickup_arrived',
         'schedule_announcement',
         // ของขวัญ
         'gift_received',

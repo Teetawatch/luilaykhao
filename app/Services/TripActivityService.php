@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\FcmToken;
 use App\Models\LiveActivity;
 use App\Models\TripSchedule;
+use App\Models\VehicleLocation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -696,14 +697,24 @@ class TripActivityService
     {
         $place = $pickupName ? "จุดรับ $pickupName" : 'จุดรับของคุณ';
 
+        // ตอนรถถึงแล้ว คำถามเปลี่ยนจาก "อีกนานไหม" เป็น "คันไหน" — ป้ายทะเบียน
+        // เคยอยู่แค่มุมบนขวาของการ์ด iOS ตัวเล็กจาง ๆ และไม่มีเลยบนแอนดรอยด์
+        // ย้ายมาอยู่ในบรรทัดที่ทั้งสองฝั่งวาดแน่ ๆ
+        $plate = $this->plateLabel($booking);
+        $parked = $this->parkingNote($booking);
+
         return match ($stage) {
             'arrived' => [
-                'headline' => 'รถถึงจุดรับแล้ว',
-                'detail' => "รถรออยู่ที่$place แล้ว ขึ้นรถได้เลย",
+                'headline' => $plate ? "รถถึงแล้ว · {$plate}" : 'รถถึงจุดรับแล้ว',
+                'detail' => $parked
+                    ? "รออยู่ที่$place · {$parked}"
+                    : "รถรออยู่ที่$place แล้ว ขึ้นรถได้เลย",
             ],
             'arriving' => [
                 'headline' => 'รถกำลังจะถึง',
-                'detail' => "อีกประมาณ {$etaMinutes} นาทีถึง$place",
+                'detail' => $plate
+                    ? "อีกประมาณ {$etaMinutes} นาทีถึง$place · {$plate}"
+                    : "อีกประมาณ {$etaMinutes} นาทีถึง$place",
             ],
             'approaching' => [
                 'headline' => "รถถึงใน {$etaMinutes} นาที",
@@ -903,6 +914,25 @@ class TripActivityService
             && $this->nowThai()->gte($departsAt->copy()->startOfDay());
     }
 
+    /** "ทะเบียน ฮก 8899" — null เมื่อยังไม่ได้ผูกรถหรือยังไม่ได้กรอกทะเบียน */
+    private function plateLabel(Booking $booking): ?string
+    {
+        $plate = trim((string) $booking->schedule?->vehicle?->license_plate);
+
+        return $plate !== '' ? "ทะเบียน {$plate}" : null;
+    }
+
+    /**
+     * สิ่งที่สตาฟพิมพ์ไว้ตอนกดว่ารถถึงจุดนี้ ("จอดตรงข้าม 7-11") — ของแบบนี้
+     * พิกัดบอกไม่ได้ และเป็นประโยคที่มีค่าที่สุดบนหน้าจอล็อก ณ นาทีนั้น
+     */
+    private function parkingNote(Booking $booking): ?string
+    {
+        $note = trim((string) $booking->pickupPoint?->arrival_note);
+
+        return $note !== '' ? $note : null;
+    }
+
     private function vehicleLabel(TripSchedule $schedule): ?string
     {
         $vehicle = $schedule->vehicle;
@@ -919,20 +949,30 @@ class TripActivityService
      *
      * @return array<string, mixed>|null
      */
+    /**
+     * ตำแหน่งรถล่าสุด — Redis ก่อน แล้วค่อยถอยไปหาแถวจริงในฐานข้อมูล
+     *
+     * เดิมอ่านจาก Redis อย่างเดียว แปลว่าวันที่ Redis สะดุด การ์ดบนหน้าจอล็อกจะ
+     * ค้างอยู่ที่ "เตรียมตัว" ทั้งวันโดยไม่มีอะไรฟ้อง ทั้งที่พิกัดถูกบันทึกไว้ครบ
+     * ทุกจุด นาทีที่รถกำลังจะถึงคือนาทีที่ไม่ควรพึ่งแคชตัวเดียว
+     */
     private function vehicleLocation(int $vehicleId): ?array
     {
+        $data = null;
+
         try {
             $raw = Redis::get("vehicle:location:{$vehicleId}");
+            $decoded = $raw ? json_decode($raw, true) : null;
+            if (is_array($decoded) && isset($decoded['latitude'], $decoded['longitude'])) {
+                $data = $decoded;
+            }
         } catch (\Throwable $e) {
-            return null;
+            // ไม่มีแคช — ใช้ฐานข้อมูลแทน
         }
 
-        if (! $raw) {
-            return null;
-        }
+        $data ??= $this->vehicleLocationFromDatabase($vehicleId);
 
-        $data = json_decode($raw, true);
-        if (! is_array($data) || ! isset($data['latitude'], $data['longitude'])) {
+        if ($data === null) {
             return null;
         }
 
@@ -942,6 +982,27 @@ class TripActivityService
         }
 
         return $data;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function vehicleLocationFromDatabase(int $vehicleId): ?array
+    {
+        $latest = VehicleLocation::where('vehicle_id', $vehicleId)
+            ->orderByDesc('recorded_at')
+            ->first();
+
+        if (! $latest) {
+            return null;
+        }
+
+        return [
+            'latitude' => (float) $latest->latitude,
+            'longitude' => (float) $latest->longitude,
+            'speed' => $latest->speed !== null ? (float) $latest->speed : null,
+            'recorded_at' => $latest->recorded_at->toIso8601String(),
+        ];
     }
 
     private function distanceKm(float $fromLat, float $fromLng, float $toLat, float $toLng): float

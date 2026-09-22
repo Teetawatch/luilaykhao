@@ -419,6 +419,14 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/schedules/{id}/rentals/mark', [StaffController::class, 'markRental']);
         Route::post('staff/schedules/{id}/outstanding/{ref}/send-link', [StaffController::class, 'sendPaymentLink'])
             ->middleware('throttle:payment');
+        // จุดรับหน้างาน — "รถถึงแล้ว" + รูปตรงที่จอด แล้วลูกค้าที่รออยู่ได้รู้ทันที
+        Route::get('staff/schedules/{id}/pickup-points', [StaffController::class, 'pickupPoints']);
+        Route::post('staff/schedules/{id}/pickup-points/{pointId}/arrived', [StaffController::class, 'markPickupArrived']);
+        Route::delete('staff/schedules/{id}/pickup-points/{pointId}/arrived', [StaffController::class, 'clearPickupArrival']);
+        // มือถือของสตาฟที่นั่งไปกับรถคือ GPS ของรถ (คนขับไม่ได้ใช้แอป)
+        Route::post('staff/schedules/{id}/vehicle-location', [StaffController::class, 'updateVehicleLocation'])
+            ->middleware('throttle:120,1');
+
         // สมุดบัญชีหน้างาน — สตาฟจดรายรับ/รายจ่ายระหว่างทริปพร้อมถ่ายสลิป
         Route::get('staff/schedules/{id}/ledger', [StaffController::class, 'ledger']);
         Route::post('staff/schedules/{id}/ledger', [StaffController::class, 'storeLedgerEntry']);

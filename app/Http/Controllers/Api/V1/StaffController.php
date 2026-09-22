@@ -8,9 +8,11 @@ use App\Models\ScheduleExpense;
 use App\Models\StaffReview;
 use App\Models\TripSchedule;
 use App\Services\OutstandingPaymentService;
+use App\Services\PickupArrivalService;
 use App\Services\RentalHandoutService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleLedgerService;
+use App\Services\VehicleLocationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +27,8 @@ class StaffController extends Controller
         private RentalHandoutService $rentalHandoutService,
         private ScheduleLedgerService $ledgerService,
         private ScheduleFinanceService $financeService,
+        private PickupArrivalService $pickupArrivals,
+        private VehicleLocationService $vehicleLocations,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -451,6 +455,177 @@ class StaffController extends Controller
     /**
      * รอบเดินทางที่ user คนนี้ยังถูก assign อยู่ (activeStaff = ยังไม่ถูกปลด)
      */
+    /**
+     * จุดรับของรอบพร้อมสถานะ "รถถึงแล้ว" และจำนวนคนที่ยังรออยู่
+     */
+    public function pickupPoints(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = $this->staffSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        return $this->success($this->pickupPayload($schedule));
+    }
+
+    /**
+     * สตาฟกด "รถถึงจุดนี้แล้ว" พร้อมรูปตรงที่จอด
+     *
+     * รูปคือหัวใจของปุ่มนี้ ไม่ใช่ของแถม: พิกัดบอกได้แค่ว่ารถอยู่แถวนั้น รูป
+     * บอกว่าจอดข้างร้านไหน ซึ่งเป็นสิ่งที่คนยืนอยู่ในลานจอดต้องการจริง ๆ
+     */
+    public function markPickupArrived(Request $request, int $scheduleId, int $pointId): JsonResponse
+    {
+        $validated = $request->validate([
+            'photo' => ['nullable', 'image', 'max:8192'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $schedule = $this->staffSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $point = $schedule->pickupPoints->firstWhere('id', $pointId);
+
+        if (! $point) {
+            return $this->error('ไม่พบจุดรับนี้ในรอบเดินทาง', 404);
+        }
+
+        $result = $this->pickupArrivals->markArrived(
+            $schedule,
+            $point,
+            $request->user(),
+            $request->file('photo'),
+            $validated['note'] ?? null,
+        );
+
+        $schedule->unsetRelation('pickupPoints');
+
+        return $this->success(
+            $this->pickupPayload($schedule) + ['notified' => $result['notified']],
+            $result['first_time']
+                ? ($result['notified'] > 0
+                    ? "แจ้งลูกค้าที่รออยู่แล้ว {$result['notified']} คน"
+                    : 'บันทึกแล้ว — จุดนี้ไม่มีใครรออยู่')
+                : 'อัปเดตจุดจอดแล้ว',
+        );
+    }
+
+    /** กดผิดจุด — ถอนคืนทั้งรูปและข้อความในห้องแชท */
+    public function clearPickupArrival(Request $request, int $scheduleId, int $pointId): JsonResponse
+    {
+        $schedule = $this->staffSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $point = $schedule->pickupPoints->firstWhere('id', $pointId);
+
+        if (! $point) {
+            return $this->error('ไม่พบจุดรับนี้ในรอบเดินทาง', 404);
+        }
+
+        $this->pickupArrivals->clearArrival($schedule, $point);
+        $schedule->unsetRelation('pickupPoints');
+
+        return $this->success($this->pickupPayload($schedule), 'ยกเลิกการแจ้งถึงจุดนี้แล้ว');
+    }
+
+    /**
+     * มือถือของสตาฟที่นั่งไปกับรถ = ตำแหน่งของรถ
+     *
+     * ทางสาธารณะ /tracking/update มีไว้ให้กล่อง GPS ยิงเข้ามาและไม่รู้ว่าใครยิง
+     * ทางนี้รู้ว่าเป็นสตาฟของรอบนั้นจริง และผูกให้เองว่าเป็นรถคันไหน — แอปไม่ต้อง
+     * (และไม่ควร) เป็นคนบอกว่าตัวเองกำลังเป็นรถคันไหนอยู่
+     */
+    public function updateVehicleLocation(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'speed' => ['nullable', 'numeric', 'min:0'],
+            'heading' => ['nullable', 'numeric', 'between:0,360'],
+            'accuracy' => ['nullable', 'numeric', 'min:0'],
+            'recorded_at' => ['nullable', 'date'],
+        ]);
+
+        $schedule = $this->staffSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $vehicle = $schedule->vehicle;
+
+        if (! $vehicle) {
+            return $this->error('รอบนี้ยังไม่ได้ผูกรถ จึงยังแชร์ตำแหน่งรถไม่ได้', 422);
+        }
+
+        if (! $this->vehicleLocations->withinSharingWindow($schedule)) {
+            return $this->error('แชร์ตำแหน่งรถได้เฉพาะช่วงวันเดินทางของรอบนี้', 422);
+        }
+
+        $location = $this->vehicleLocations->record($vehicle, $validated, $request->user()->id);
+
+        return $this->success([
+            'vehicle_id' => $vehicle->id,
+            'license_plate' => $vehicle->license_plate,
+            'recorded_at' => $location->recorded_at->toIso8601String(),
+        ], 'อัปเดตตำแหน่งรถแล้ว');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pickupPayload(TripSchedule $schedule): array
+    {
+        $counts = $this->pickupArrivals->waitingCounts($schedule);
+
+        $points = $schedule->pickupPoints
+            ->sortBy('sort_order')
+            ->map(fn ($point) => $this->pickupArrivals->present($point) + [
+                'waiting_count' => $counts[(int) $point->id] ?? 0,
+            ])
+            ->values()
+            ->all();
+
+        $vehicle = $schedule->vehicle;
+
+        return [
+            'schedule' => [
+                'id' => $schedule->id,
+                'trip_title' => $schedule->trip?->title,
+                'departure_date' => $schedule->departure_date?->toDateString(),
+            ],
+            'vehicle' => $vehicle ? [
+                'id' => $vehicle->id,
+                'name' => $vehicle->name,
+                'license_plate' => $vehicle->license_plate,
+                'color' => $vehicle->color,
+            ] : null,
+            'can_share_location' => $vehicle !== null
+                && $this->vehicleLocations->withinSharingWindow($schedule),
+            'points' => $points,
+        ];
+    }
+
+    /** รอบที่สตาฟคนนี้รับผิดชอบ พร้อมของที่หน้าจุดรับต้องใช้ */
+    private function staffSchedule(Request $request, int $scheduleId): ?TripSchedule
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return null;
+        }
+
+        return TripSchedule::with(['trip', 'vehicle', 'pickupPoints'])
+            ->whereKey($scheduleId)
+            ->whereHas('activeStaff', fn ($q) => $q->where('users.id', $request->user()->id))
+            ->first();
+    }
+
     private function assignedSchedule(Request $request, int $scheduleId): ?TripSchedule
     {
         return TripSchedule::with('trip')

@@ -235,14 +235,19 @@ class ChatService
      * $systemKey = คีย์ของข้อความอัตโนมัติตามไทม์ไลน์ (unique ต่อห้อง) ปล่อยว่าง
      * ได้สำหรับข้อความระบบทั่วไปที่โพสต์ซ้ำได้
      */
-    public function postSystem(TripSchedule $schedule, string $body, ?string $systemKey = null): ChatMessage
-    {
+    public function postSystem(
+        TripSchedule $schedule,
+        string $body,
+        ?string $systemKey = null,
+        ?string $imagePath = null,
+    ): ChatMessage {
         $message = ChatMessage::create([
             'schedule_id' => $schedule->id,
             'user_id' => null,
             'sender_role' => 'system',
             'system_key' => $systemKey,
             'body' => $body,
+            'image_path' => $imagePath,
         ]);
 
         broadcast(new ChatMessageSent($message));
