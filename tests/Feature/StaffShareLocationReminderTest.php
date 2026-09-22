@@ -22,6 +22,21 @@ class StaffShareLocationReminderTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * ตรึงนาฬิกาไว้ตอนเช้า — เทสพวกนี้นับ "อีกกี่นาทีรถออก" จากเวลาจริงของเครื่อง
+     * ถ้ารันตอนห้าทุ่มครึ่ง "อีก 45 นาที" จะข้ามไปเป็นรอบของพรุ่งนี้ แล้วงานที่
+     * มองเฉพาะรอบของวันนี้ก็จะไม่เจออะไรเลย
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->travelTo(Carbon::parse(
+            now('Asia/Bangkok')->toDateString().' 08:00:00',
+            'Asia/Bangkok',
+        ));
+    }
+
     public function test_staff_are_reminded_shortly_before_the_van_leaves(): void
     {
         [$schedule, $staff] = $this->round(minutesFromNow: 45);

@@ -24,6 +24,20 @@ class TripDepartedAnnouncementTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * ตรึงนาฬิกาไว้ตอนสาย — รอบในเทสนี้ "ออกไปแล้ว 15 นาที" ถ้ารันตอนเที่ยงคืนครึ่ง
+     * รอบจะกลายเป็นของเมื่อวาน แล้วงานที่กวาดเฉพาะรอบของวันนี้ก็จะมองไม่เห็น
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->travelTo(Carbon::parse(
+            now('Asia/Bangkok')->toDateString().' 09:00:00',
+            'Asia/Bangkok',
+        ));
+    }
+
     public function test_a_van_that_starts_driving_tells_the_passengers_itself(): void
     {
         [$schedule] = $this->round();

@@ -15,6 +15,7 @@ use App\Jobs\NotifyStalledIntakesJob;
 use App\Jobs\PostTripChatTimelineJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PruneSosPhotosJob;
+use App\Jobs\PruneVehicleLocationsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\PurgeExpiredSchedulePhotosJob;
 use App\Jobs\PurgeStaleCustomerIntakesJob;
@@ -125,6 +126,9 @@ Schedule::job(new ClearEndedTripDriverPinsJob)->dailyAt('03:30')->timezone('Asia
 Schedule::job(new ReleaseEndedTripStaffJob)->dailyAt('03:40')->timezone('Asia/Bangkok')->withoutOverlapping();
 // ลบรูปที่แนบมากับเคส SOS ที่ปิดไปเกิน 180 วัน — ตัวเคสยังอยู่ครบ ลบเฉพาะไฟล์รูป
 Schedule::job(new PruneSosPhotosJob)->dailyAt('03:50')->timezone('Asia/Bangkok')->withoutOverlapping();
+// พิกัดรถโตเร็วที่สุดในระบบ (~300 แถว/ชม./คันตอนวิ่งเก็บคน) และไม่มีหน้าจอไหน
+// เปิดดูของเก่ากว่าไม่กี่สัปดาห์ — ตัดทิ้งทุกคืนก่อนงาน backup จะได้ไม่พาไปด้วย
+Schedule::job(new PruneVehicleLocationsJob)->dailyAt('03:40')->timezone('Asia/Bangkok')->withoutOverlapping();
 // "Almost sold out" fallback sweep — runs 24h so a round that dips to the low
 // band overnight still blasts. Low-seat/sold-out are urgency events, so the
 // service sends them immediately regardless of quiet hours.

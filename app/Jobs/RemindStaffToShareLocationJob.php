@@ -160,11 +160,21 @@ class RemindStaffToShareLocationJob implements ShouldQueue
             ->exists();
     }
 
-    /** วันนี้เคยมีพิกัดเข้ามาไหม — พิสูจน์ว่าสตาฟเปิดแชร์ไปแล้วจริง */
+    /**
+     * วันนี้เคยมีพิกัดเข้ามาไหม — พิสูจน์ว่าสตาฟเปิดแชร์ไปแล้วจริง
+     *
+     * ต้องย้ายเขตเวลาก่อนเทียบ: ส่ง Carbon เขตไทยเข้า query ตรง ๆ Laravel จะ
+     * format ตามเขตของมันเอง กลายเป็นเทียบกับเที่ยงคืน "UTC" ซึ่งคือเจ็ดโมงเช้า
+     * บ้านเรา — พิกัดของรถที่ออกตีห้าจึงไม่ถูกนับว่า "เคยแชร์วันนี้" เลยสักคัน
+     */
     private function sharedEarlierToday(int $vehicleId): bool
     {
+        $startOfDay = now('Asia/Bangkok')
+            ->startOfDay()
+            ->setTimezone(config('app.timezone', 'UTC'));
+
         return VehicleLocation::where('vehicle_id', $vehicleId)
-            ->where('recorded_at', '>=', now('Asia/Bangkok')->startOfDay())
+            ->where('recorded_at', '>=', $startOfDay)
             ->exists();
     }
 
