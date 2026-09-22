@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Models\VehicleLocation;
 use App\Services\VehicleLocationService;
 use App\Support\GuestBookingPresenter;
+use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -413,6 +414,16 @@ class VehicleTrackingController extends Controller
             'driver_name' => $vehicle?->driver_name,
             'driver_phone' => $vehicle?->driver_phone,
             'license_plate' => $vehicle?->license_plate,
+            // หน้าตาของรถ — ทะเบียนอย่างเดียวยังต้องเดินไล่ดูท้ายรถทีละคัน
+            // สีกับรูปคันจริงคือสิ่งที่คัดออกได้จากระยะสิบเมตร
+            'vehicle_name' => $vehicle?->name,
+            'vehicle_color' => $vehicle?->color,
+            'vehicle_photo' => MediaDisk::url(is_array($vehicle?->images) ? ($vehicle->images[0] ?? null) : null),
+            'driver_photo' => MediaDisk::url($vehicle?->driver_photo),
+            // สตาฟกดว่ารถถึงจุดนี้แล้ว พร้อมรูปตรงที่จอด
+            'pickup_arrived_at' => $booking->pickupPoint?->arrived_at?->toIso8601String(),
+            'pickup_arrival_note' => $booking->pickupPoint?->arrival_note,
+            'pickup_arrival_photo_url' => $booking->pickupPoint?->arrival_photo_url,
             'share_url' => $booking->shareUrl(),
             // รอบที่บินไปไม่มีรถให้ติดตามและไม่มีจุดขึ้นรถ — หน้าจอที่เคยขึ้นว่า
             // "ยังไม่มีสัญญาณรถ" ต้องรู้ว่าให้พูดถึงจุดนัดพบที่สนามบินแทน

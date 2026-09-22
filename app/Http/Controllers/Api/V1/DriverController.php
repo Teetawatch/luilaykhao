@@ -866,6 +866,11 @@ class DriverController extends Controller
                             'is_join_trip' => false,
                             'sort_order' => $point?->sort_order ?? 9999,
                             'completed_at' => $point?->completed_at?->toIso8601String(),
+                            // รถถึงจุดนี้แล้วหรือยัง — คนละเรื่องกับ "รับครบแล้ว"
+                            // หน้าจอสตาฟต้องกดสองอย่างนี้แยกกันได้
+                            'arrived_at' => $point?->arrived_at?->toIso8601String(),
+                            'arrival_note' => $point?->arrival_note,
+                            'arrival_photo_url' => $point?->arrival_photo_url,
                             'passengers' => [],
                         ],
                     };
