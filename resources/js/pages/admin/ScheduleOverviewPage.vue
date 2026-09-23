@@ -459,7 +459,14 @@
           <div class="kpi-tile">
             <span class="kpi-label">ยอดเงินรวม</span>
             <strong class="kpi-value money-value">{{ formatCurrency(getTotalAmount(selectedSchedule)) }}</strong>
-            <span class="kpi-sub">ชำระแล้ว {{ formatCurrency(detailPayments.paid) }}</span>
+            <span class="kpi-sub">ค่าทริป {{ formatCurrency(getTripOnlyAmount(selectedSchedule)) }}</span>
+          </div>
+          <div class="kpi-tile">
+            <span class="kpi-label">ค่าเช่าอุปกรณ์</span>
+            <strong class="kpi-value rental-value">{{ formatCurrency(getRentalsAmount(selectedSchedule)) }}</strong>
+            <span class="kpi-sub">
+              {{ scheduleRentalsItemCount(selectedSchedule) }} ชิ้น · กำไรเต็มจำนวน
+            </span>
           </div>
           <div class="kpi-tile">
             <span class="kpi-label">ค้างชำระ</span>
@@ -667,7 +674,7 @@
                   </tr>
                 </tfoot>
               </table>
-              <div class="pay-split">
+              <div class="pay-split two">
                 <div class="pay-chip paid">
                   <span>ชำระแล้ว</span>
                   <strong>{{ formatCurrency(detailPayments.paid) }}</strong>
@@ -680,10 +687,29 @@
                     {{ detailPayments.unpaidBookings ? `${detailPayments.unpaidBookings} การจองยังชำระไม่ครบ` : 'ไม่มียอดค้าง' }}
                   </em>
                 </div>
+              </div>
+
+              <div class="split-heading">
+                <span class="manifest-kicker">แยกที่มาของเงินที่ลูกค้าจ่าย</span>
+                <em>ทั้งสามก้อนรวมอยู่ในยอดจองแล้ว</em>
+              </div>
+              <div class="pay-split">
+                <div class="pay-chip">
+                  <span>ค่าทริป</span>
+                  <strong>{{ formatCurrency(getTripOnlyAmount(selectedSchedule)) }}</strong>
+                  <em>ค่าเดินทาง ที่พัก อาหาร ทีมงาน</em>
+                </div>
                 <div class="pay-chip">
                   <span>รายการเสริม</span>
                   <strong>{{ formatCurrency(scheduleAddonsTotal(selectedSchedule)) }}</strong>
-                  <em>{{ scheduleAddonsItemCount(selectedSchedule) }} ชิ้น · รวมอยู่ในยอดจองแล้ว</em>
+                  <em>{{ scheduleAddonsItemCount(selectedSchedule) }} ชิ้น</em>
+                </div>
+                <div class="pay-chip rental">
+                  <span>อุปกรณ์เช่า</span>
+                  <strong>{{ formatCurrency(getRentalsAmount(selectedSchedule)) }}</strong>
+                  <em>
+                    {{ scheduleRentalsItemCount(selectedSchedule) }} ชิ้น · ไม่มีต้นทุนต่อรอบ
+                  </em>
                 </div>
               </div>
             </div>
@@ -953,6 +979,24 @@
                   </div>
                 </div>
 
+                <div v-if="safeNumber(booking.rentals_total) > 0 || safeNumber(booking.addons_total) > 0" class="payment-split-strip">
+                  <span class="split-pill">
+                    ค่าทริป
+                    <strong>{{ formatCurrency(bookingTripAmount(booking)) }}</strong>
+                  </span>
+                  <span v-if="safeNumber(booking.addons_total) > 0" class="split-pill">
+                    รายการเสริม
+                    <strong>{{ formatCurrency(booking.addons_total) }}</strong>
+                  </span>
+                  <span v-if="safeNumber(booking.rentals_total) > 0" class="split-pill rental">
+                    อุปกรณ์เช่า
+                    <strong>{{ formatCurrency(booking.rentals_total) }}</strong>
+                  </span>
+                  <span v-if="booking.rentals?.length" class="split-pill-note">
+                    {{ booking.rentals.map((r) => `${r.name} × ${r.quantity}`).join(' · ') }}
+                  </span>
+                </div>
+
                 <div class="slip-row-list">
                   <div v-for="entry in booking.entries" :key="entry.key" class="slip-row">
                     <button
@@ -1003,7 +1047,7 @@
           </section>
 
           <!-- ── รายการเสริม ────────────────────────────────────── -->
-          <section v-else class="detail-panel">
+          <section v-else-if="detailTab === 'addons'" class="detail-panel">
             <div v-if="scheduleAddons(selectedSchedule).length" class="addons-summary-block">
               <div class="addons-summary-head">
                 <span class="material-symbols-rounded">add_shopping_cart</span>
@@ -1042,6 +1086,53 @@
             <div v-else class="panel-empty">
               <span class="material-symbols-rounded">remove_shopping_cart</span>
               <p>ยังไม่มีลูกค้าเลือกรายการเสริมในรอบนี้</p>
+            </div>
+          </section>
+
+          <!-- ── อุปกรณ์เช่า ─────────────────────────────────────── -->
+          <section v-else class="detail-panel">
+            <div v-if="scheduleRentals(selectedSchedule).length" class="addons-summary-block">
+              <div class="addons-summary-head rental">
+                <span class="material-symbols-rounded">backpack</span>
+                <div>
+                  <span class="manifest-kicker">อุปกรณ์ที่ลูกค้าเช่า</span>
+                  <strong>
+                    {{ scheduleRentalsItemCount(selectedSchedule) }} ชิ้น · รวม {{ formatCurrency(getRentalsAmount(selectedSchedule)) }}
+                  </strong>
+                </div>
+              </div>
+              <div class="panel-note rental-note">
+                <span class="material-symbols-rounded">savings</span>
+                ยอดนี้แยกออกจากค่าทริปแล้ว — อุปกรณ์เป็นของบริษัท ไม่มีต้นทุนต่อรอบ
+                จึงนับเป็นกำไรเต็มจำนวน
+              </div>
+              <div class="addons-summary-list">
+                <div v-for="item in scheduleRentals(selectedSchedule)" :key="item.key || item.name" class="addons-summary-item">
+                  <div class="addons-summary-row">
+                    <div class="addons-summary-info">
+                      <strong>{{ item.name }}</strong>
+                      <span class="addons-summary-meta">{{ formatCurrency(item.unit_price) }} / ชิ้น</span>
+                    </div>
+                    <span class="addons-summary-qty">× {{ item.total_quantity }}</span>
+                    <strong class="addons-summary-price">{{ formatCurrency(item.total_price) }}</strong>
+                  </div>
+                  <div v-if="item.customers?.length" class="addons-summary-customers">
+                    <span
+                      v-for="c in item.customers"
+                      :key="`${item.key || item.name}-${c.booking_ref}`"
+                      class="addons-customer-chip"
+                    >
+                      <span class="addons-customer-name">{{ c.name || '-' }}</span>
+                      <span class="addons-customer-ref">{{ c.booking_ref }}</span>
+                      <span v-if="c.quantity > 1" class="addons-customer-qty">× {{ c.quantity }}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="panel-empty">
+              <span class="material-symbols-rounded">backpack</span>
+              <p>ยังไม่มีลูกค้าเช่าอุปกรณ์ในรอบนี้</p>
             </div>
           </section>
         </div>
@@ -1477,14 +1568,23 @@ const detailPayments = computed(() => {
   return detailBookings.value.reduce((totals, booking) => {
     const total = safeNumber(booking.total_amount);
     const paid = safeNumber(booking.paid_amount);
+    const addons = safeNumber(booking.addons_total);
+    const rentals = safeNumber(booking.rentals_total);
 
     totals.total += total;
     totals.paid += paid;
     totals.outstanding += Math.max(0, total - paid);
     totals.unpaidBookings += total - paid > 0 ? 1 : 0;
+    // ค่าเช่าอุปกรณ์แยกไว้ต่างหาก — ของอยู่ในมือเราแล้ว เงินก้อนนี้จึงเป็นกำไรล้วน
+    totals.addons += addons;
+    totals.rentals += rentals;
+    totals.trip += booking.trip_amount !== undefined && booking.trip_amount !== null
+      ? safeNumber(booking.trip_amount)
+      : total - addons - rentals;
+    totals.rentalBookings += rentals > 0 ? 1 : 0;
 
     return totals;
-  }, { total: 0, paid: 0, outstanding: 0, unpaidBookings: 0 });
+  }, { total: 0, paid: 0, outstanding: 0, unpaidBookings: 0, trip: 0, addons: 0, rentals: 0, rentalBookings: 0 });
 });
 
 const manifestTypeOptions = computed(() => [
@@ -1535,6 +1635,7 @@ const detailTabs = computed(() => [
   { key: 'payments', label: 'การชำระเงิน', icon: 'receipt_long', count: detailBookings.value.length },
   { key: 'pickups', label: 'จุดรับ', icon: 'location_on', count: detailPickupPoints.value.length + customPickupPassengers.value.length },
   { key: 'addons', label: 'รายการเสริม', icon: 'add_shopping_cart', count: scheduleAddons(selectedSchedule.value).length },
+  { key: 'rentals', label: 'อุปกรณ์เช่า', icon: 'backpack', count: scheduleRentals(selectedSchedule.value).length },
 ]);
 
 function buildStats(items) {
@@ -1870,6 +1971,42 @@ function scheduleAddonsItemCount(sch) {
 
 function scheduleAddonsTotal(sch) {
   return scheduleAddons(sch).reduce((sum, addon) => sum + (Number(addon?.total_price) || 0), 0);
+}
+
+function scheduleRentals(sch) {
+  return Array.isArray(sch?.rentals_summary) ? sch.rentals_summary : [];
+}
+
+function scheduleRentalsItemCount(sch) {
+  return scheduleRentals(sch).reduce((sum, item) => sum + (Number(item?.total_quantity) || 0), 0);
+}
+
+/* ยอดค่าเช่าอุปกรณ์ของรอบ — อ่านยอดที่เซิร์ฟเวอร์รวมมาให้ก่อน แล้วค่อยถอยไป
+   บวกจากรายการ เผื่อ payload รุ่นเก่าที่ยังไม่มีฟิลด์นี้ */
+function getRentalsAmount(sch) {
+  if (sch?.rentals_total_amount !== undefined && sch?.rentals_total_amount !== null) {
+    return safeNumber(sch.rentals_total_amount);
+  }
+
+  return scheduleRentals(sch).reduce((sum, item) => sum + (Number(item?.total_price) || 0), 0);
+}
+
+/* ค่าทริปล้วนของใบจองเดียว — ใช้ยอดที่เซิร์ฟเวอร์แกะมาให้ถ้ามี */
+function bookingTripAmount(booking) {
+  if (booking?.trip_amount !== undefined && booking?.trip_amount !== null) {
+    return safeNumber(booking.trip_amount);
+  }
+
+  return safeNumber(booking?.total_amount) - safeNumber(booking?.addons_total) - safeNumber(booking?.rentals_total);
+}
+
+/* ค่าทริปล้วน = ยอดรวม − ของเสริม − ค่าเช่าอุปกรณ์ */
+function getTripOnlyAmount(sch) {
+  if (sch?.trip_total_amount !== undefined && sch?.trip_total_amount !== null) {
+    return safeNumber(sch.trip_total_amount);
+  }
+
+  return getTotalAmount(sch) - scheduleAddonsTotal(sch) - getRentalsAmount(sch);
 }
 
 function fullPassengerName(person) {
@@ -3339,7 +3476,7 @@ onUnmounted(() => {
 /* ─── KPI strip ───────────────────────────────────────────────────────── */
 .detail-kpis {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   padding: 16px 24px;
   background: #fafafa;
@@ -3625,6 +3762,87 @@ onUnmounted(() => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
+}
+
+.pay-split.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.split-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.split-heading em {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ค่าเช่าอุปกรณ์ใช้สีคนละโทนกับเงินที่ชำระ/ค้าง — เป็นการแยกที่มาของเงิน
+   ไม่ใช่สถานะการจ่าย */
+.pay-chip.rental {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.pay-chip.rental strong {
+  color: #3730a3;
+}
+
+.pay-chip.rental span,
+.pay-chip.rental em {
+  color: #4f46e5;
+}
+
+.kpi-value.rental-value {
+  color: #3730a3;
+}
+
+.payment-split-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.split-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fafafa;
+  border: 1px solid var(--color-sand-dark);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.split-pill strong {
+  color: var(--color-text-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.split-pill.rental {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4f46e5;
+}
+
+.split-pill.rental strong {
+  color: #3730a3;
+}
+
+.split-pill-note {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .pay-chip {
@@ -4390,6 +4608,24 @@ onUnmounted(() => {
 .addons-customer-qty {
   color: #14532d;
   font-weight: 900;
+}
+
+.addons-summary-head.rental {
+  background: #eef2ff;
+  border-bottom-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.addons-summary-head.rental strong {
+  color: #312e81;
+}
+
+.panel-note.rental-note {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid #eeeeee;
+  background: var(--color-white);
+  color: var(--color-text-mid);
 }
 
 .addons-summary-info {

@@ -96,6 +96,37 @@ class AdminExtendedController extends Controller
                 ->values()
                 ->all();
 
+            // ค่าเช่าอุปกรณ์แยกออกจากค่าทริปเสมอ — เงินก้อนนี้ไม่มีต้นทุนต่อรอบ
+            // (ของเรามีอยู่แล้ว) ผู้จัดจึงอ่านกำไรของรอบได้จากบรรทัดนี้ตรง ๆ
+            $rentalsTotalAmount = (float) $activeBookings->sum(fn ($booking) => (float) $booking->rentals_total);
+            $addonsTotalAmount = (float) $activeBookings->sum(fn ($booking) => (float) $booking->addons_total);
+
+            // จัดกลุ่มด้วย key ไม่ใช่ชื่อ — ชื่ออุปกรณ์ในแคตตาล็อกถูกแก้ได้ แต่ใบจอง
+            // เก่าถือ snapshot ชื่อเดิมไว้ (รายการที่ไม่มี key เลยถอยไปใช้ชื่อ)
+            $rentalsSummary = $activeBookings
+                ->flatMap(function ($booking) {
+                    return collect($booking->selected_rentals ?? [])->map(fn ($rental) => array_merge($rental, [
+                        '__booking_ref' => $booking->booking_ref,
+                        '__customer_name' => $booking->user?->name,
+                    ]));
+                })
+                ->groupBy(fn ($rental) => $rental['key'] ?? $rental['name'] ?? '-')
+                ->map(fn ($items) => [
+                    'key' => (string) ($items->first()['key'] ?? ''),
+                    'name' => (string) ($items->first()['name'] ?? '-'),
+                    'unit_price' => (float) ($items->first()['unit_price'] ?? 0),
+                    'image_url' => (string) ($items->first()['image_url'] ?? ''),
+                    'total_quantity' => (int) $items->sum(fn ($i) => (int) ($i['quantity'] ?? 0)),
+                    'total_price' => (float) $items->sum(fn ($i) => (float) ($i['total_price'] ?? 0)),
+                    'customers' => $items->map(fn ($i) => [
+                        'booking_ref' => $i['__booking_ref'],
+                        'name' => $i['__customer_name'],
+                        'quantity' => (int) ($i['quantity'] ?? 0),
+                    ])->values()->all(),
+                ])
+                ->values()
+                ->all();
+
             $passengerManifest = $activeBookings
                 ->flatMap(function ($booking) {
                     $seatLabels = $booking->seats->pluck('seat_id')->filter()->values()->all();
@@ -156,6 +187,9 @@ class AdminExtendedController extends Controller
                             'payment_method' => $booking->payment_method,
                             'total_amount' => (float) $booking->total_amount,
                             'paid_amount' => (float) $booking->paid_amount,
+                            'addons_total' => (float) $booking->addons_total,
+                            'rentals_total' => (float) $booking->rentals_total,
+                            'trip_amount' => self::tripOnlyAmount($booking),
                         ];
                     });
                 })
@@ -192,8 +226,15 @@ class AdminExtendedController extends Controller
                     : max(0, (int) $s->join_trip_seats - $joinTripPassengersCount),
                 'total_passengers' => $regularPassengersCount + $joinTripPassengersCount,
                 'total_amount' => $regularTotalAmount + $joinTripTotalAmount,
+                'addons_total_amount' => round($addonsTotalAmount, 2),
+                'rentals_total_amount' => round($rentalsTotalAmount, 2),
+                'trip_total_amount' => round(
+                    $regularTotalAmount + $joinTripTotalAmount - $addonsTotalAmount - $rentalsTotalAmount,
+                    2,
+                ),
                 'passenger_manifest' => $passengerManifest,
                 'addons_summary' => $addonsSummary,
+                'rentals_summary' => $rentalsSummary,
                 'staff' => $s->activeStaff->map(fn ($user) => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -217,6 +258,22 @@ class AdminExtendedController extends Controller
         });
 
         return $this->success($events);
+    }
+
+    /**
+     * ยอดค่าทริปล้วนของใบจอง — แกะของเสริมกับค่าเช่าอุปกรณ์ออกจากยอดรวมสุทธิ
+     *
+     * นับแบบเดียวกับ ReceiptService: ส่วนลดและค่าธรรมเนียม Flexi ถูกคิดกับ
+     * ค่าทริป ไม่ใช่กับของเช่า — ของเช่าตั้งราคาเต็มเสมอ
+     */
+    private static function tripOnlyAmount(Booking $booking): float
+    {
+        return round(
+            (float) $booking->total_amount
+                - (float) $booking->addons_total
+                - (float) $booking->rentals_total,
+            2,
+        );
     }
 
     /**
@@ -251,6 +308,15 @@ class AdminExtendedController extends Controller
                 'total_amount' => $total,
                 'paid_amount' => $paid,
                 'outstanding_amount' => max(0, round($total - $paid, 2)),
+                'addons_total' => (float) $booking->addons_total,
+                'rentals_total' => (float) $booking->rentals_total,
+                'trip_amount' => self::tripOnlyAmount($booking),
+                'rentals' => collect($booking->selected_rentals ?? [])->map(fn ($rental) => [
+                    'name' => (string) ($rental['name'] ?? '-'),
+                    'quantity' => (int) ($rental['quantity'] ?? 0),
+                    'unit_price' => (float) ($rental['unit_price'] ?? 0),
+                    'total_price' => (float) ($rental['total_price'] ?? 0),
+                ])->values()->all(),
                 'entries' => $this->bookingPaymentEntries($booking),
             ];
         });
