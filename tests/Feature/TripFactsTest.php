@@ -381,22 +381,31 @@ class TripFactsTest extends TestCase
         $this->assertStringContainsString('• เตรียมบัตรประชาชน', $body);
     }
 
-    public function test_itinerary_message_still_trims_a_runaway_detail(): void
+    /** ห้องแชทได้กำหนดการฉบับเต็ม — รายละเอียดยาวแค่ไหนก็ไม่ถูกตัด ทุกบรรทัดยังอยู่ */
+    public function test_itinerary_message_keeps_a_long_detail_in_full(): void
     {
         $schedule = $this->makeSchedule();
+
+        $detail = implode("\n", array_map(
+            fn (int $i) => "{$i}. ".str_repeat('เดินชมทะเลหมอก', 20),
+            range(1, 30),
+        ));
 
         ScheduleItineraryItem::create([
             'schedule_id' => $schedule->id,
             'item_date' => $schedule->departure_date->toDateString(),
             'title' => 'ลงพื้นที่',
-            'detail' => str_repeat('ก', 4000),
+            'detail' => $detail,
             'sort_order' => 0,
         ]);
 
         $body = app(TripFactsService::class)->itinerarySummaryText($schedule);
 
-        $this->assertStringContainsString('...', $body);
-        $this->assertLessThan(2000, mb_strlen($body));
+        $this->assertStringNotContainsString('...', $body);
+        $this->assertStringNotContainsString('ยังมีอีก', $body);
+        foreach (range(1, 30) as $i) {
+            $this->assertStringContainsString("  {$i}. ".str_repeat('เดินชมทะเลหมอก', 20), $body);
+        }
     }
 
     public function test_trip_plan_timetable_becomes_real_itinerary_points(): void

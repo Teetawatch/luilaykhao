@@ -356,25 +356,26 @@ class TripChatTimelineTest extends TestCase
         $this->assertStringContainsString('16 ส.ค. 2569', $body);
     }
 
-    public function test_itinerary_message_caps_the_list_and_points_back_to_the_room(): void
+    public function test_itinerary_message_sends_every_point_however_long(): void
     {
         Bus::fake();
         $schedule = $this->makeSchedule();
 
-        // หัวข้อยาว ๆ จนล้นงบความยาวของบับเบิล — วันเดียวล้วน จึงยอมตัดกลางวันได้
+        // เดิมตัดที่ราว 1,600 ตัวอักษรแล้วชี้ไปปุ่ม "กำหนดการ" — ตอนนี้ส่งฉบับเต็มเสมอ
         $long = str_repeat('เดินป่าชมธรรมชาติ', 8);
-        for ($i = 1; $i <= 20; $i++) {
-            $this->addItineraryItem($schedule, '2026-08-15', null, "จุดที่ {$i} {$long}");
+        foreach (['2026-08-15', '2026-08-16', '2026-08-17'] as $day => $date) {
+            for ($i = 1; $i <= 20; $i++) {
+                $this->addItineraryItem($schedule, $date, null, 'วัน'.($day + 1)." จุดที่ {$i} {$long}");
+            }
         }
 
         $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-13 09:05'));
 
         $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
-        $this->assertStringContainsString('จุดที่ 1 ', $body);
-        $this->assertStringNotContainsString('จุดที่ 20 ', $body);
-        $this->assertStringContainsString('ยังมีอีก', $body);
-        $this->assertStringContainsString('กำหนดการ', $body);
-        $this->assertLessThan(2200, mb_strlen($body));
+        $this->assertStringContainsString('วัน1 จุดที่ 1 ', $body);
+        $this->assertStringContainsString('วัน3 จุดที่ 20 ', $body);
+        $this->assertStringNotContainsString('ยังมีอีก', $body);
+        $this->assertStringContainsString('ดูย้อนหลังได้ตลอด', $body);
     }
 
     public function test_itinerary_message_shows_a_short_plan_in_full_however_many_points(): void
@@ -394,14 +395,18 @@ class TripChatTimelineTest extends TestCase
         $this->assertStringNotContainsString('ยังมีอีก', $body);
     }
 
-    public function test_itinerary_message_cuts_at_a_day_boundary_not_mid_day(): void
+    /**
+     * เพดานเดียวที่เหลือคือขนาดคอลัมน์ (TEXT ของ MySQL 65,535 ไบต์) — ชนเมื่อไหร่ตัด
+     * ที่ขอบวัน ไม่ใช่ปล่อยให้ insert พังจนข้อความไม่ขึ้นเลย
+     */
+    public function test_itinerary_message_only_stops_at_the_column_size_and_at_a_day_boundary(): void
     {
         Bus::fake();
         $schedule = $this->makeSchedule();
 
-        // วันแรกพอดีงบ วันที่สองใส่ไม่ลงแล้ว
-        $long = str_repeat('เดินป่าชมธรรมชาติ', 8);
-        for ($i = 1; $i <= 8; $i++) {
+        // ภาษาไทยตัวละ 3 ไบต์: วันแรก ~45,000 ไบต์ วันที่สองอีก ~27,000 รวมเกินเพดาน
+        $long = str_repeat('ก', 3000);
+        for ($i = 1; $i <= 5; $i++) {
             $this->addItineraryItem($schedule, '2026-08-15', null, "วันแรกจุดที่ {$i} {$long}");
         }
         foreach ([1, 2, 3] as $i) {
@@ -412,9 +417,10 @@ class TripChatTimelineTest extends TestCase
 
         $body = ChatMessage::where('system_key', 'itinerary_2d')->value('body');
 
-        // วันแรกกินงบไปหมดแล้ว วันที่สองจึงต้องไม่โผล่มาแค่บางส่วน — ไม่มาเลยทั้งวัน
+        $this->assertStringContainsString('วันแรกจุดที่ 5', $body);
         $this->assertStringNotContainsString('วันสองจุดที่ 1', $body);
         $this->assertStringContainsString('ยังมีอีก 3 รายการ', $body);
+        $this->assertLessThan(65535, strlen($body));
     }
 
     public function test_itinerary_message_falls_back_to_the_trip_plan(): void

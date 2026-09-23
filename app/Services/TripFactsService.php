@@ -9,7 +9,6 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
 
 /**
  * "ข้อมูลการเดินทางของฉัน" — คำตอบของคำถามที่ลูกค้าถามซ้ำที่สุด
@@ -36,20 +35,15 @@ class TripFactsService
     public const ITINERARY_LIMIT = 12;
 
     /**
-     * งบตัวอักษรของ "รายละเอียด" รวมทั้งข้อความ แบ่งกันไปตามจำนวนรายการที่ยกลงห้อง
-     * แทนการตัดตายตัวรายการละไม่กี่บรรทัด — กำหนดการที่แอดมินเขียนรวบไว้ก้อนเดียว
-     * (พบบ่อยในกำหนดการระดับทริป) จะได้ไม่โดนตัดจนเหลือแค่ประโยคแรก
+     * เพดานความปลอดภัยของ "ตัวกำหนดการ" ในข้อความเดียว นับเป็นไบต์ ไม่ใช่เพดานของการอ่าน
+     *
+     * กำหนดการลงห้องแชทฉบับเต็มเสมอ (ทุกวัน ทุกรายการ ทุกบรรทัดของรายละเอียด)
+     * ตัวเลขนี้มีไว้แค่กันไม่ให้ข้อความยาวเกินคอลัมน์ chat_messages.body — TEXT ของ
+     * MySQL รับได้ 65,535 ไบต์ ภาษาไทยตัวละ 3 ไบต์ ≈ สองหมื่นตัวอักษร ซึ่งกำหนดการจริง
+     * ไม่เคยไปถึง ถ้าถึงเมื่อไหร่ insert จะพังทั้งข้อความ (ปุ่มสตาฟ 500, ข้อความ D-2
+     * ไม่ขึ้นเลย) ตัดที่ขอบวันแล้วบอกว่ายังมีอีกกี่รายการยังดีกว่า
      */
-    public const ITINERARY_CHAT_DETAIL_BUDGET = 1200;
-
-    /** อย่างน้อยที่สุดที่รายละเอียดของแต่ละรายการต้องได้ แม้งบจะถูกแบ่งจนเหลือน้อย */
-    public const ITINERARY_CHAT_DETAIL_MIN = 120;
-
-    /**
-     * ความยาวรวมของ "ตัวกำหนดการ" ในบับเบิลเดียว — คุมด้วยความยาวแทนจำนวนรายการ
-     * เพราะรายการหนึ่งอาจเป็นบรรทัดเดียวหรือย่อหน้าก็ได้ นับเป็นชิ้นจึงคุมอะไรไม่ได้
-     */
-    public const ITINERARY_CHAT_BUDGET = 1600;
+    public const ITINERARY_CHAT_MAX_BYTES = 60000;
 
     /** ขึ้นต้นข้อความกำหนดการทุกฉบับ — ใช้หาข้อความกำหนดการล่าสุดในห้อง */
     public const ITINERARY_MARK = '🗺️';
@@ -153,8 +147,8 @@ class TripFactsService
             $lines[] = 'นี่คือแผนของทริปนี้ ทีมงานยังไม่ได้ลงกำหนดการเฉพาะรอบครับ';
         }
 
-        // ตัดที่ "ขอบวัน" ไม่ตัดกลางวัน — วันที่โผล่มาครึ่งเดียวแล้วหายไปทำให้ลูกค้า
-        // เข้าใจผิดว่าทริปจบตรงนั้น การบอกว่ายังมีอีกทั้งวันตรง ๆ ชัดเจนกว่า
+        // ส่งฉบับเต็ม — ลูกค้าที่อ่านจากห้องแชทไม่ควรต้องกดไปหน้าอื่นเพื่ออ่านส่วนที่เหลือ
+        // (ตัดที่ขอบวันเฉพาะเมื่อชนเพดานของคอลัมน์ ซึ่งกำหนดการจริงไปไม่ถึง)
         [$plan, $shownCount] = $this->packItineraryBlocks($this->itineraryBlocks($items));
 
         $lines = array_merge($lines, $plan);
@@ -192,9 +186,6 @@ class TripFactsService
         )));
         $datedGroups = count($dates) > 1;
 
-        $budget = self::ITINERARY_CHAT_DETAIL_BUDGET;
-        $pending = count($items);
-
         $blocks = [];
         $currentGroup = null;
 
@@ -212,12 +203,7 @@ class TripFactsService
             $time = trim((string) ($item['time'] ?? ''));
             $title = trim((string) $item['title']);
 
-            // รายการที่ยังไม่ได้ยกลงห้องหารงบที่เหลือกันไปคนละเท่า ๆ กัน รายการที่
-            // รายละเอียดสั้น (หรือไม่มีเลย) จึงเหลืองบไว้ให้รายการถัดไปโดยอัตโนมัติ
-            $allowance = max(self::ITINERARY_CHAT_DETAIL_MIN, intdiv($budget, max(1, $pending)));
-            $detail = $this->itineraryDetailLines((string) ($item['detail'] ?? ''), $allowance);
-            $budget = max(0, $budget - array_sum(array_map(mb_strlen(...), $detail)));
-            $pending--;
+            $detail = $this->itineraryDetailLines((string) ($item['detail'] ?? ''));
 
             // หัวข้อที่ซ้ำกับหัวกลุ่มเป๊ะ ๆ ("📅 วันเดินทาง" แล้วต่อด้วย "• วันเดินทาง")
             // ไม่ได้บอกอะไรเพิ่ม — ยกรายละเอียดขึ้นมาเป็นบรรทัดหลักแทน
@@ -240,8 +226,9 @@ class TripFactsService
     }
 
     /**
-     * ยกบล็อกลงข้อความเท่าที่งบไหว โดยถือ "ทั้งวัน" เป็นหน่วยที่ตัดไม่ได้ — ยอมตัด
-     * กลางวันเฉพาะเมื่อวันแรกวันเดียวก็ล้นงบแล้ว (ไม่งั้นจะไม่เหลือกำหนดการเลย)
+     * ยกบล็อกลงข้อความทั้งหมด — จะหยุดก่อนก็ต่อเมื่อชน ITINERARY_CHAT_MAX_BYTES และ
+     * ถือ "ทั้งวัน" เป็นหน่วยที่ตัดไม่ได้ วันที่โผล่มาครึ่งเดียวทำให้ลูกค้าเข้าใจว่า
+     * ทริปจบตรงนั้น ยอมตัดกลางวันเฉพาะเมื่อวันแรกวันเดียวก็ล้นเพดานแล้ว
      *
      * @param  array<int, array{heading: array<int, string>, entries: array<int, array<int, string>>}>  $blocks
      * @return array{0: array<int, string>, 1: int}
@@ -250,7 +237,7 @@ class TripFactsService
     {
         $lines = [];
         $shown = 0;
-        $budget = self::ITINERARY_CHAT_BUDGET;
+        $budget = self::ITINERARY_CHAT_MAX_BYTES;
 
         foreach ($blocks as $block) {
             $cost = $this->linesLength($block['heading']);
@@ -300,20 +287,18 @@ class TripFactsService
      */
     private function linesLength(array $lines): int
     {
-        return array_sum(array_map(mb_strlen(...), $lines));
+        // นับเป็นไบต์ เพราะสิ่งที่ถูกจำกัดคือคอลัมน์ในฐานข้อมูล (+1 ต่อบรรทัดคือ \n)
+        return array_sum(array_map(fn (string $line) => strlen($line) + 1, $lines));
     }
 
     /**
-     * รายละเอียดของรายการกำหนดการในรูปบรรทัดพร้อมโพสต์ — คงการขึ้นบรรทัดใหม่ที่
-     * แอดมินตั้งใจเขียนไว้ (กำหนดการมักเขียนเป็นเวลาบรรทัดละช่วง) การยุบทุกอย่าง
-     * ให้เหลือบรรทัดเดียวคือสิ่งที่ทำให้ข้อความยาว ๆ อ่านไม่รู้เรื่องตั้งแต่แรก
-     *
-     * เกินโควตาเมื่อไหร่ตัดที่ "ขอบบรรทัด" ไม่ตัดกลางประโยค ยกเว้นบรรทัดแรก
-     * ที่ยาวเกินโควตาอยู่แล้ว — บรรทัดนั้นยอมตัดกลาง ดีกว่าไม่ได้อ่านอะไรเลย
+     * รายละเอียดของรายการกำหนดการในรูปบรรทัดพร้อมโพสต์ — ครบทุกบรรทัด และคงการ
+     * ขึ้นบรรทัดใหม่ที่แอดมินตั้งใจเขียนไว้ (กำหนดการมักเขียนเป็นเวลาบรรทัดละช่วง)
+     * ตัดแค่บรรทัดว่างกับช่องว่างซ้ำ
      *
      * @return array<int, string>
      */
-    private function itineraryDetailLines(string $detail, int $allowance): array
+    private function itineraryDetailLines(string $detail): array
     {
         $source = [];
 
@@ -325,29 +310,7 @@ class TripFactsService
             }
         }
 
-        $lines = [];
-        $used = 0;
-
-        foreach ($source as $line) {
-            $room = $allowance - $used;
-
-            if ($room <= 0) {
-                break;
-            }
-
-            if (mb_strlen($line) > $room) {
-                if ($lines === []) {
-                    $lines[] = Str::limit($line, max($room, self::ITINERARY_CHAT_DETAIL_MIN));
-                }
-
-                break;
-            }
-
-            $lines[] = $line;
-            $used += mb_strlen($line);
-        }
-
-        return $lines;
+        return $source;
     }
 
     /**
