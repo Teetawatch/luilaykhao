@@ -75,7 +75,7 @@ class ScheduleVehicleOptionTest extends TestCase
     {
         return collect(range(1, $count))->map(fn ($n) => [
             'title' => 'นาย',
-            'name' => "ผู้เดินทาง {$n}",
+            'name' => 'ผู้เดินทาง คนที่'.['หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า', 'สิบ'][$n - 1],
             'nickname' => "คนที่ {$n}",
             'id_card' => '1234567890123',
             'phone' => '0812345678',

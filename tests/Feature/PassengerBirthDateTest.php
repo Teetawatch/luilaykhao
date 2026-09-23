@@ -82,7 +82,7 @@ class PassengerBirthDateTest extends TestCase
                 'schedule_id' => $schedule->id,
                 'passengers' => [[
                     'title' => 'นาย',
-                    'name' => 'No Birthday',
+                    'name' => 'ไม่มี วันเกิด',
                     'nickname' => 'NB',
                     'id_card' => '1234567890123',
                     'phone' => '0810000000',

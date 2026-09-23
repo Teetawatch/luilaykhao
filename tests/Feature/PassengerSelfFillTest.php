@@ -316,4 +316,20 @@ class PassengerSelfFillTest extends TestCase
         $this->post('/p/domestic-token', $this->validForm())
             ->assertRedirect(route('public.passenger-fill.done'));
     }
+
+    public function test_a_thai_friend_must_fill_their_thai_name(): void
+    {
+        $owner = User::factory()->create();
+        $passenger = $this->passenger($this->booking($owner));
+        $passenger->forceFill([
+            'self_fill_token' => 'english-name-token',
+            'self_fill_expires_at' => now()->addDays(14),
+        ])->save();
+
+        // รายชื่อไปทำประกัน ซึ่งรับเฉพาะชื่อไทยตามบัตร
+        $this->post('/p/english-name-token', $this->validForm(['name' => 'Somying Jaidee']))
+            ->assertSessionHasErrors('name');
+
+        $this->assertNotNull($passenger->fresh()->self_fill_token);
+    }
 }

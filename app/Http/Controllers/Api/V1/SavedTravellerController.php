@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\SavedTraveller;
+use App\Rules\ThaiName;
+use App\Support\Countries;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -168,10 +170,13 @@ class SavedTravellerController extends Controller
 
     private function validated(Request $request): array
     {
+        // เก็บชื่ออังกฤษไว้ในสมุด = เติมผิดให้ทุกการจองต่อจากนี้ — คนไทยต้องเป็นชื่อไทยตามบัตร
+        $isThai = strtoupper((string) ($request->input('nationality') ?: Countries::HOME)) === Countries::HOME;
+
         return $request->validate([
             'label' => ['nullable', 'string', 'max:50'],
             'title' => ['nullable', 'string', 'max:20'],
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', ...($isThai ? [new ThaiName] : [])],
             'nickname' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'email', 'max:120'],

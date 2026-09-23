@@ -47,7 +47,7 @@ class AddonQuantityTest extends TestCase
         return collect(range(1, $count))
             ->map(fn ($i) => [
                 'title' => 'นาย',
-                'name' => "ผู้เดินทาง {$i}",
+                'name' => 'ผู้เดินทาง คนที่'.['หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า', 'สิบ'][$i - 1],
                 'nickname' => "คน{$i}",
                 'id_card' => '123456789012'.$i,
                 'phone' => '0812345678',

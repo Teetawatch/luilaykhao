@@ -7,6 +7,7 @@ use App\Models\IntakeLink;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Rules\ThaiIdCard;
+use App\Rules\ThaiName;
 use App\Services\CustomerIntakeService;
 use App\Services\IntakeSeatService;
 use App\Support\TripRentalItems;
@@ -217,7 +218,8 @@ class PublicIntakeController extends Controller
         // ไม่มี (แพ้อาหาร/โรคประจำตัว) และกรุ๊ปเลือดตอบว่าไม่ทราบได้ แต่ต้องตอบ
         $validated = $request->validate([
             'title' => ['required', Rule::in(['นาย', 'นาง', 'นางสาว'])],
-            'name' => ['required', 'string', 'max:120'],
+            // ชื่อไทยตามบัตร — ฟอร์มนี้บังคับบัตรประชาชนไทยอยู่แล้ว ผู้กรอกจึงเป็นคนไทยเสมอ
+            'name' => ['required', 'string', 'max:120', new ThaiName],
             'nickname' => ['required', 'string', 'max:50'],
             'phone' => ['required', 'string', 'max:20'],
             // อีเมลบังคับกรอก — ใบเสร็จ กำหนดการ และอีเมลยืนยันการจองส่งทางนี้ทางเดียว

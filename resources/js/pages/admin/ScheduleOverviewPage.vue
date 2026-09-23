@@ -2039,6 +2039,7 @@ function exportVisibleInsurancePdf() {
 function exportInsurancePdf(scheduleItems, title) {
   const generatedAt = new Date().toLocaleString('th-TH');
   const totalPassengers = scheduleItems.reduce((total, sch) => total + schedulePassengerCount(sch), 0);
+  const nameIssues = scheduleItems.reduce((total, sch) => total + schedulePassengers(sch).filter((p) => p.name_issue).length, 0);
   const scheduleSections = scheduleItems.map((sch) => {
     const passengers = schedulePassengers(sch);
     const rows = passengers.map((person, index) => `
@@ -2047,6 +2048,7 @@ function exportInsurancePdf(scheduleItems, title) {
         <td>
           <strong>${escapeHtml(fullPassengerName(person))}</strong>
           <span>${escapeHtml(person.nickname || '')}</span>
+          ${person.name_issue ? '<span class="name-issue">⚠ ต้องขอชื่อไทยตามบัตร</span>' : ''}
         </td>
         <td>${escapeHtml(person.booking_type_label || '-')}</td>
         <td>${escapeHtml(person.booking_ref || '-')}</td>
@@ -2123,6 +2125,8 @@ function exportInsurancePdf(scheduleItems, title) {
           td strong, td span { display: block; }
           td span { color: #6b7280; margin-top: 2px; }
           tr:nth-child(even) td { background: #f9fafb; }
+          td span.name-issue { color: #b91c1c; font-weight: 700; }
+          .doc-meta span.name-issue-count { color: #b91c1c; border-color: #fca5a5; }
           .footer { color: #9ca3af; font-size: 9px; margin-top: 18px; text-align: center; }
         </style>
       </head>
@@ -2134,6 +2138,7 @@ function exportInsurancePdf(scheduleItems, title) {
             <span>จำนวนรอบ ${scheduleItems.length}</span>
             <span>ผู้เดินทางทั้งหมด ${totalPassengers} คน</span>
             <span>รวมทั้งจองปกติและจอยทริป</span>
+            ${nameIssues ? `<span class="name-issue-count">⚠ ชื่อยังไม่ใช่ภาษาไทย ${nameIssues} คน</span>` : ''}
           </div>
         </div>
         ${scheduleSections}

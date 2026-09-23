@@ -36,7 +36,11 @@
 
             <label class="field" for="name">ชื่อ-นามสกุล <span class="req">*</span></label>
             <input type="text" id="name" name="name" required autocomplete="name"
+                   @if (($passenger->nationality ?: 'TH') === 'TH') placeholder="ชื่อจริง นามสกุล ภาษาไทย" @endif
                    value="{{ old('name', $passenger->name) }}">
+            @if (($passenger->nationality ?: 'TH') === 'TH')
+                <p class="hint">กรอกเป็นภาษาไทยตามบัตรประชาชน ใช้ส่งทำประกันการเดินทาง</p>
+            @endif
 
             <div class="row">
                 <div>

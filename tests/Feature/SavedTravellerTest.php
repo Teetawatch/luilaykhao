@@ -233,4 +233,26 @@ class SavedTravellerTest extends TestCase
         $this->getJson('/api/v1/saved-travellers')->assertUnauthorized();
         $this->postJson('/api/v1/saved-travellers', $this->payload())->assertUnauthorized();
     }
+
+    public function test_a_thai_traveller_is_saved_with_their_thai_name(): void
+    {
+        $user = User::factory()->create();
+
+        // เก็บชื่ออังกฤษไว้ในสมุด = เติมชื่อผิดให้ทุกการจองต่อจากนี้
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/saved-travellers', $this->payload(['name' => 'Somsri Jaidee']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('name');
+    }
+
+    public function test_a_foreign_traveller_keeps_their_latin_name(): void
+    {
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson('/api/v1/saved-travellers', $this->payload([
+                'name' => 'John Smith',
+                'nationality' => 'US',
+                'id_card' => null,
+            ]))
+            ->assertCreated();
+    }
 }

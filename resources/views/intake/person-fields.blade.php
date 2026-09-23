@@ -26,7 +26,8 @@
 <div class="f">
     <label class="field" for="name">ชื่อ-นามสกุล <span class="req">*</span></label>
     <input type="text" id="name" name="name" required autocomplete="name"
-           placeholder="ชื่อจริง นามสกุล ตามบัตรประชาชน" value="{{ old('name') }}">
+           placeholder="ชื่อจริง นามสกุล ภาษาไทย ตามบัตรประชาชน" value="{{ old('name') }}">
+    <p class="hint">กรอกเป็นภาษาไทยตามบัตรประชาชน ทีมงานใช้ส่งทำประกันการเดินทาง</p>
 </div>
 
 <div class="grid2">

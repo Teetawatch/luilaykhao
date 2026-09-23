@@ -4,6 +4,7 @@ namespace App\Http\Requests\Booking;
 
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Rules\ThaiName;
 use App\Support\Countries;
 use App\Support\ThaiDate;
 use Carbon\Carbon;
@@ -245,6 +246,8 @@ class CreateBookingRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function ($validator) {
+            $this->validateThaiNames($validator);
+
             $scheduleId = $this->input('schedule_id');
             if (! $scheduleId) {
                 return;
@@ -315,6 +318,37 @@ class CreateBookingRequest extends FormRequest
                 }
             }
         });
+    }
+
+    /**
+     * คนสัญชาติไทยต้องกรอกชื่อ-นามสกุลภาษาไทยตามบัตรประชาชน
+     *
+     * รายชื่อชุดนี้ส่งไปทำประกันการเดินทาง ซึ่งรับเฉพาะชื่อไทย — ชาวต่างชาติ
+     * ในทริปต่างประเทศไม่มีชื่อไทยให้กรอก จึงข้าม (ชื่ออังกฤษของเขาอยู่ใน name_en)
+     */
+    private function validateThaiNames(Validator $validator): void
+    {
+        // ของขวัญ: ผู้ให้รู้แค่ชื่อเรียกของผู้รับ และชื่อนี้ถูกแทนด้วยชื่อจากโปรไฟล์
+        // ผู้รับตอนกดรับอยู่แล้ว (GiftService::claim)
+        if ($this->boolean('is_gift')) {
+            return;
+        }
+
+        foreach ($this->input('passengers', []) as $index => $passenger) {
+            if (! is_array($passenger)
+                || ($passenger['nationality'] ?? Countries::HOME) !== Countries::HOME) {
+                continue;
+            }
+
+            $name = $passenger['name'] ?? null;
+            if (! is_string($name) || blank($name)) {
+                continue; // ความจำเป็นของช่องนี้ให้ rules() ตัดสิน
+            }
+
+            if ($message = ThaiName::problem($name)) {
+                $validator->errors()->add("passengers.{$index}.name", $message);
+            }
+        }
     }
 
     /**

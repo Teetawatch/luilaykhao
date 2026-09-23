@@ -1838,4 +1838,19 @@ class CustomerIntakeTest extends TestCase
 
         return $booking;
     }
+
+    public function test_the_intake_form_insists_on_the_thai_name_from_the_id_card(): void
+    {
+        $link = $this->makeLink($this->makeSchedule());
+
+        // รายชื่อชุดนี้ไปทำประกัน ซึ่งรับเฉพาะชื่อไทยตามบัตร
+        $this->post("/r/{$link->token}", $this->personPayload(['name' => 'Somchai Jaidee']))
+            ->assertSessionHasErrors('name');
+
+        // ชื่ออย่างเดียวไม่มีนามสกุลก็ส่งประกันไม่ได้
+        $this->post("/r/{$link->token}", $this->personPayload(['name' => 'สมชาย']))
+            ->assertSessionHasErrors('name');
+
+        $this->assertSame(0, CustomerIntake::count());
+    }
 }

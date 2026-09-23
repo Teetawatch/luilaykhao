@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\BookingPassenger;
+use App\Rules\ThaiName;
+use App\Support\Countries;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,8 +44,11 @@ class PublicPassengerFillController extends Controller
         $isInternational = (bool) $passenger->booking?->schedule?->trip?->isInternational();
         $passportRequired = $isInternational ? 'required' : 'nullable';
 
+        // ชื่อไปทำประกัน ซึ่งรับเฉพาะชื่อไทยตามบัตร — ชาวต่างชาติข้าม
+        $isThai = ($passenger->nationality ?: Countries::HOME) === Countries::HOME;
+
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', ...($isThai ? [new ThaiName] : [])],
             'nickname' => ['nullable', 'string', 'max:50'],
             'phone' => ['required', 'string', 'max:20'],
             'email' => ['nullable', 'email', 'max:120'],

@@ -846,11 +846,14 @@
                   </div>
                   <div class="col-span-12 md:col-span-9">
                     <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
-                    <input v-model="p.name" type="text" required placeholder="กรอกชื่อ-นามสกุล" :autocomplete="`section-traveller${i} name`"
+                    <input v-model="p.name" type="text" required :placeholder="isThaiTraveller(p) ? 'ชื่อจริง นามสกุล ภาษาไทย' : 'กรอกชื่อ-นามสกุล'" :autocomplete="`section-traveller${i} name`"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'name') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                     <p v-if="showErr(i, 'name')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                       <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'name') }}
+                    </p>
+                    <p v-else-if="isThaiTraveller(p)" class="text-xs text-gray-400 font-medium mt-2">
+                      ภาษาไทยตามบัตรประชาชน ใช้ส่งทำประกันการเดินทาง
                     </p>
                   </div>
                 </div>
@@ -2482,6 +2485,17 @@ function isValidThaiId(value) {
   return (11 - (sum % 11)) % 10 === Number(digits[12]);
 }
 
+// ชื่อคนไทยไปทำประกัน ซึ่งรับเฉพาะชื่อไทยตามบัตร — ตรรกะเดียวกับ
+// App\Rules\ThaiName ฝั่ง backend (ข้อความต้องตรงกันด้วย)
+const THAI_NAME_NOT_THAI = 'กรุณากรอกชื่อ-นามสกุลเป็นภาษาไทยตามบัตรประชาชน (ใช้ส่งทำประกันการเดินทาง)';
+const THAI_NAME_NO_SURNAME = 'กรุณากรอกทั้งชื่อและนามสกุล เว้นวรรคระหว่างชื่อกับนามสกุล';
+function thaiNameError(value) {
+  const name = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!/^[\u0E00-\u0E7F .\-]+$/.test(name) || !/[\u0E01-\u0E2E]/.test(name)) return THAI_NAME_NOT_THAI;
+  if (!name.includes(' ')) return THAI_NAME_NO_SURNAME;
+  return '';
+}
+
 // คนไทยกรอกเบอร์/เลขบัตรแบบไทย ส่วนคนต่างชาติในทริปต่างประเทศใช้รูปแบบสากล
 // ทริปในประเทศถือว่าเป็นคนไทยทั้งหมดเสมอ — ฟอร์มไม่มีช่องสัญชาติให้เลือกด้วยซ้ำ
 function isThaiTraveller(p) {
@@ -2591,6 +2605,10 @@ function computePassengerErrors(p, i) {
   if (!p.title) errors.title = 'กรุณาเลือกคำนำหน้า';
   else if (womenOnly && !['นาง', 'นางสาว'].includes(p.title)) errors.title = 'ทริปนี้สำหรับผู้หญิงเท่านั้น';
   if (!hasText(p.name)) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
+  else if (isThaiTraveller(p)) {
+    const nameError = thaiNameError(p.name);
+    if (nameError) errors.name = nameError;
+  }
   if (!hasText(p.nickname)) errors.nickname = 'กรุณากรอกชื่อเล่น';
   // ชาวต่างชาติที่ร่วมทริปต่างประเทศยืนยันตัวด้วยพาสปอร์ตแทนบัตรประชาชนไทย
   const isThai = isThaiTraveller(p);
@@ -2665,6 +2683,9 @@ function showErr(i, field) {
   // Before the first submit attempt, only nag about format on fields the user
   // has already started typing into.
   if (liveErrorFields.includes(field) && hasText(passengers.value[i]?.[field])) return message;
+  // พิมพ์ชื่ออังกฤษเตือนทันที แต่ "ยังไม่มีนามสกุล" รอให้กดถัดไปก่อน —
+  // ไม่งั้นจะขึ้นแดงระหว่างที่ลูกค้ายังพิมพ์ชื่อต้นอยู่
+  if (field === 'name' && message === THAI_NAME_NOT_THAI && hasText(passengers.value[i]?.name)) return message;
   return '';
 }
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);

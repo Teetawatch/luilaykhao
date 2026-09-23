@@ -15,6 +15,8 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleMaintenance;
+use App\Rules\ThaiName;
+use App\Support\Countries;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -155,6 +157,10 @@ class AdminExtendedController extends Controller
                             'checked_in' => (bool) $booking->checked_in,
                             'title' => $passenger->title,
                             'name' => $passenger->name,
+                            // ใบจองเก่าก่อนมีกฎชื่อไทย — ธงให้ทีมงานเห็นก่อนส่งรายชื่อประกัน
+                            'name_issue' => ($passenger->nationality ?: Countries::HOME) === Countries::HOME
+                                ? ThaiName::problem((string) $passenger->name)
+                                : null,
                             'nickname' => $passenger->nickname,
                             'id_card' => $passenger->id_card,
                             'birth_date' => $passenger->birth_date?->format('Y-m-d'),

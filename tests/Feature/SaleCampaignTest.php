@@ -202,7 +202,7 @@ class SaleCampaignTest extends TestCase
                 'schedule_id' => $schedule->id,
                 'passengers' => [[
                     'title' => 'นาย',
-                    'name' => 'ผู้เดินทาง 1',
+                    'name' => 'ผู้เดินทาง คนที่หนึ่ง',
                     'nickname' => 'คนที่ 1',
                     'id_card' => '1234567890123',
                     'phone' => '0812345678',
@@ -212,7 +212,7 @@ class SaleCampaignTest extends TestCase
                     'emergency_phone' => '0898765432',
                 ], [
                     'title' => 'นาย',
-                    'name' => 'ผู้เดินทาง 2',
+                    'name' => 'ผู้เดินทาง คนที่สอง',
                     'nickname' => 'คนที่ 2',
                     'id_card' => '1234567890123',
                     'phone' => '0812345678',
@@ -247,7 +247,7 @@ class SaleCampaignTest extends TestCase
                 'schedule_id' => $schedule->id,
                 'passengers' => [[
                     'title' => 'นาย',
-                    'name' => 'ผู้เดินทาง 1',
+                    'name' => 'ผู้เดินทาง คนที่หนึ่ง',
                     'nickname' => 'คนที่ 1',
                     'id_card' => '1234567890123',
                     'phone' => '0812345678',
