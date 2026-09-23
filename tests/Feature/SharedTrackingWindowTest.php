@@ -49,9 +49,9 @@ class SharedTrackingWindowTest extends TestCase
     {
         // วันทริปพรุ่งนี้ แต่รถออกคืนนี้ (departs_at วันนี้) → ต้องติดตามได้แล้ววันนี้
         $booking = $this->makeBooking([
-            'departure_date' => now()->addDay()->toDateString(),
-            'departs_at' => now()->setTime(22, 30)->format('Y-m-d H:i:s'),
-            'return_date' => now()->addDay()->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->addDay()->toDateString(),
+            'departs_at' => now('Asia/Bangkok')->setTime(22, 30)->format('Y-m-d H:i:s'),
+            'return_date' => now('Asia/Bangkok')->addDay()->toDateString(),
         ]);
 
         $res = $this->getJson('/api/v1/track/'.$booking->share_token)->assertOk();
@@ -63,9 +63,9 @@ class SharedTrackingWindowTest extends TestCase
     {
         // รถออกพรุ่งนี้ → วันนี้ยังติดตามไม่ได้
         $booking = $this->makeBooking([
-            'departure_date' => now()->addDays(2)->toDateString(),
-            'departs_at' => now()->addDay()->setTime(22, 0)->format('Y-m-d H:i:s'),
-            'return_date' => now()->addDays(2)->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->addDays(2)->toDateString(),
+            'departs_at' => now('Asia/Bangkok')->addDay()->setTime(22, 0)->format('Y-m-d H:i:s'),
+            'return_date' => now('Asia/Bangkok')->addDays(2)->toDateString(),
         ]);
 
         $res = $this->getJson('/api/v1/track/'.$booking->share_token)->assertOk();
@@ -76,9 +76,9 @@ class SharedTrackingWindowTest extends TestCase
     public function test_not_trackable_after_trip_ends(): void
     {
         $booking = $this->makeBooking([
-            'departure_date' => now()->subDays(3)->toDateString(),
-            'departs_at' => now()->subDays(3)->setTime(6, 0)->format('Y-m-d H:i:s'),
-            'return_date' => now()->subDays(2)->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->subDays(3)->toDateString(),
+            'departs_at' => now('Asia/Bangkok')->subDays(3)->setTime(6, 0)->format('Y-m-d H:i:s'),
+            'return_date' => now('Asia/Bangkok')->subDays(2)->toDateString(),
         ]);
 
         $res = $this->getJson('/api/v1/track/'.$booking->share_token)->assertOk();
