@@ -67,6 +67,16 @@ const thaiDate = (iso) => {
   return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+/**
+ * บรรทัด "ขึ้นรถวันไหน" ของรอบที่รถออกคืนก่อนวันทริป — ว่างเมื่อออกวันทริป
+ *
+ * คนที่อ่านแค่วันทริปแล้วมาผิดวันเต็ม ๆ คือเหตุที่มันต้องเป็นบรรทัดของตัวเอง
+ * ประโยคมาจากเซิร์ฟเวอร์ (TripSchedule::earlyDepartureLabelThai) ไม่คิดวันเองที่นี่
+ */
+const earlyDepartureHtml = (schedule) => (schedule?.early_departure_label
+  ? `<div class="early-departure">🕗 ${esc(schedule.early_departure_label)}</div>`
+  : '');
+
 // นาที:วินาที สำหรับตัวนับถอยหลังทุกตัวในแอป
 const mmss = (seconds) => {
   const s = Math.max(0, Math.floor(seconds));
@@ -1076,6 +1086,7 @@ function scheduleList(trip, schedules) {
         </div>
         <div class="schedule-price">${schedulePriceHtml(s)}</div>
       </div>
+      ${earlyDepartureHtml(s)}
       <div class="meta">${scheduleStatusHtml(s)}${s.transport_type === 'flight' ? '<span class="tag">✈️ เดินทางโดยเครื่องบิน</span>' : ''}${weatherTag(s)}</div>
       <div class="schedule-actions"></div>
     </div>`);

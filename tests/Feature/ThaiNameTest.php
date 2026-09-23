@@ -61,6 +61,20 @@ class ThaiNameTest extends TestCase
         ])->assertCreated();
     }
 
+    /**
+     * หน้าเว็บ แอป และ LIFF พิมพ์ข้อความชุดนี้ซ้ำไว้เพื่อเตือนก่อนกดส่ง ถ้าคำไม่ตรงกัน
+     * ลูกค้าจะเห็นสองประโยคสำหรับเรื่องเดียว — ไล่เทียบทุกที่ที่ไม่มี build step
+     */
+    public function test_client_copies_of_the_messages_match_the_rule(): void
+    {
+        foreach (['resources/js/pages/BookingPage.vue', 'public/liff/booking.js'] as $file) {
+            $source = file_get_contents(base_path($file));
+
+            $this->assertStringContainsString(ThaiName::NOT_THAI, $source, $file);
+            $this->assertStringContainsString(ThaiName::NO_SURNAME, $source, $file);
+        }
+    }
+
     public function test_the_admin_manifest_flags_old_bookings_with_an_english_name(): void
     {
         // ใบจองที่เข้ามาก่อนมีกฎนี้ — ทีมงานต้องเห็นก่อนส่งรายชื่อประกัน

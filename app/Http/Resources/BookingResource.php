@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Booking;
 use App\Services\BookingDocumentService;
+use App\Services\PickupStatusService;
 use App\Services\TravelDocumentService;
 use App\Support\MediaDisk;
 use App\Support\PaymentGateway;
@@ -135,6 +136,14 @@ class BookingResource extends JsonResource
             'pickup_status' => $this->freshPickupStatus(),
             'pickup_status_at' => $this->freshPickupStatus() ? $this->pickup_status_at?->toISOString() : null,
             'pickup_status_eta_minutes' => $this->freshPickupStatus() ? $this->pickup_status_eta_minutes : null,
+            'pickup_status_label' => PickupStatusService::label(
+                $this->freshPickupStatus(),
+                $this->freshPickupStatus() ? $this->pickup_status_eta_minutes : null,
+            ),
+            // ตอนนี้ควรโชว์ปุ่ม "กำลังไป / ถึงแล้ว / อาจสาย" ไหม — หน้าต่างเวลาเป็นเวลา
+            // ไทย ให้เซิร์ฟเวอร์ตัดสิน หน้าจอไม่ต้องคิดวันเอง
+            'pickup_status_open' => $this->relationLoaded('schedule')
+                && app(PickupStatusService::class)->canReport($this->resource),
             'status' => $this->status,
             'can_review' => $this->status === 'confirmed'
                 && $this->relationLoaded('schedule')

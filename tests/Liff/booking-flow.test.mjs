@@ -200,10 +200,25 @@ const fill = (i, values) => {
   }
 };
 const person = (n) => ({
-  title: 'นาย', name: 'สมชาย ใจดี ' + n, nickname: 'ชาย', id_card: '1101700207251',
+  title: 'นาย', name: ['สมชาย ใจดี', 'สมศักดิ์ ใจงาม'][n - 1], nickname: 'ชาย', id_card: '1101700207251',
   birth_date: '1990-01-01', phone: '0812345678', blood_group: 'O',
   emergency_contact: 'แม่', emergency_phone: '0898765432',
   allergies: 'ไม่มี', health_notes: 'ไม่มี', pickup_point_id: '3',
+});
+// ชื่อคนไทยต้องเป็นภาษาไทยตามบัตร (ส่งทำประกัน) — กติกาเดียวกับ App\Rules\ThaiName
+const nameError = () => w.document.querySelector('#pax-0 [data-f="name"]').closest('.field').querySelector('.field-error')?.textContent || '';
+const nameHint = () => w.document.querySelector('#pax-0 .field-hint');
+step('ชื่อคนไทย: มีคำใบ้ใต้ช่อง', () => {
+  assert(nameHint() && !nameHint().hidden, 'ไม่มีคำใบ้ "ภาษาไทยตามบัตรประชาชน"');
+});
+step('ชื่อคนไทย: พิมพ์ชื่ออังกฤษ เตือนทันทีโดยไม่ต้องรอกดถัดไป', () => {
+  fill(0, { name: 'Somchai Jaidee' });
+  assert(nameError().includes('ภาษาไทยตามบัตรประชาชน'), 'ไม่เตือนชื่ออังกฤษ: ' + nameError());
+  assert(nameHint().hidden, 'คำใบ้ต้องหลบให้ข้อความผิดพลาด');
+});
+step('ชื่อคนไทย: ยังพิมพ์ไม่ถึงนามสกุล ยังไม่แดงใส่', () => {
+  fill(0, { name: 'สมชาย' });
+  assert(nameError() === '', 'ไม่ควรเตือนระหว่างพิมพ์: ' + nameError());
 });
 step('กรอกข้อมูลผู้เดินทาง', () => { fill(0, person(1)); fill(1, person(2)); });
 await wait(20);

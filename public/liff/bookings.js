@@ -78,6 +78,7 @@ function bookingCard(booking) {
       <span>${esc(booking.booking_ref)}</span>
       ${bookingStatusTag(booking)}
     </div>
+    ${booking.status !== 'cancelled' ? earlyDepartureHtml(schedule) : ''}
     <div class="kv" style="margin-top:8px"><span class="k">ยอดรวม</span><span class="v">${baht(booking.total_amount)}</span></div>
     ${outstanding > 0 ? `<div class="kv"><span class="k">ค้างชำระ</span><span class="v price">${baht(outstanding)}</span></div>` : ''}
   </div></div>`);
@@ -259,6 +260,7 @@ async function showBookingDetail(ref, tab) {
       <span>${thaiDate(schedule.departure_date)}</span>
       ${bookingStatusTag(booking)}
     </div>
+    ${earlyDepartureHtml(schedule)}
   </div></div>`));
 
   // สิ่งที่ต้องทำต่อ (ถ้ามี) อยู่บนสุดเสมอ — เงินค้างคือเรื่องที่ต้องเห็นก่อนอย่างอื่น
@@ -501,6 +503,13 @@ function renderBookingTrip(pane, booking) {
   const trip = schedule.trip || {};
   const pickup = booking.pickup_point;
 
+  // วันเดินทาง: "คันไหนคือคันของเรา" กับปุ่มบอกทีมงานว่าอยู่ตรงไหน มาก่อนทุกอย่าง
+  // เซิร์ฟเวอร์ตัดสินหน้าต่างเวลา (pickup_status_open) — ไม่คิดวันเวลาไทยเองที่นี่
+  if (booking.pickup_status_open) {
+    if (schedule.transport_type !== 'flight') pane.appendChild(findMyVanBlock(booking));
+    pane.appendChild(pickupStatusBlock(booking));
+  }
+
   // QR เช็คอิน — ของที่ต้องเปิดหน้างาน ควรหาเจอในสองแตะ
   if (booking.status === 'confirmed') {
     const qrBox = el(`<div class="qr-wrap"><div class="loading-inline"><div class="spinner"></div></div></div>`);
@@ -515,6 +524,20 @@ function renderBookingTrip(pane, booking) {
         qrBox.appendChild(el(`<div class="${data.checked_in ? 'tag ok' : 'muted'}">${data.checked_in ? '✓ เช็คอินแล้ว' : 'ให้ทีมงานสแกนตอนขึ้นรถ'}</div>`));
       })
       .catch(() => { qrBox.remove(); });
+  }
+
+  // ใบเดินทาง — ส่งให้ก่อนเดินทาง 2 วัน รวมทุกอย่างของรอบไว้หน้าเดียว
+  // (ปฏิทิน ประกาศ ข้อมูลที่ยังขาด ปุ่มรับทราบ) ลิงก์มีเมื่อระบบส่งไปแล้วเท่านั้น
+  if (booking.brief_url && booking.status === 'confirmed') {
+    const brief = el(`<button type="button" class="pick brief-link">
+      <div class="pick-body">
+        <div class="pick-name">📋 ใบเดินทาง</div>
+        <div class="pick-sub">${booking.brief_ack_at ? 'คุณกดรับทราบแล้ว · เปิดดูอีกครั้งได้' : 'สรุปทุกอย่างที่ต้องรู้ก่อนออกเดินทาง อ่านแล้วกดรับทราบด้วยนะครับ'}</div>
+      </div>
+      <span class="brief-go">›</span>
+    </button>`);
+    brief.onclick = () => liff.openWindow({ url: booking.brief_url, external: false });
+    pane.appendChild(brief);
   }
 
   // ประกาศมาก่อนรายละเอียดที่ลูกค้าอ่านไปแล้วตอนจอง — มันคือสิ่งที่เปลี่ยน
@@ -583,6 +606,137 @@ function renderBookingTrip(pane, booking) {
   const calendar = el(`<button class="btn secondary" style="margin-top:14px">เพิ่มลงปฏิทิน</button>`);
   calendar.onclick = () => addBookingToCalendar(booking);
   pane.appendChild(calendar);
+}
+
+/* --------- วันเดินทาง: หารถ + บอกสถานะที่จุดนัด --------- */
+
+/**
+ * การ์ด "คันไหนคือคันของเรา" — ทะเบียนตัวใหญ่ สี รูปรถ และรูปจุดจอดเมื่อสตาฟกด
+ * ว่ารถถึงแล้ว (ของชิ้นเดียวกับ FindMyVanCard ในแอป)
+ *
+ * ลานจอดตอนตีห้ามีรถตู้ขาวสิบคัน ทะเบียนที่ซ่อนอยู่ในแท็บอื่นไม่ช่วยใคร
+ * ข้อมูลรถอยู่ที่ /tracking เท่านั้น จึงโหลดแยก — ไม่มีอะไรให้โชว์ก็หายไปเงียบ ๆ
+ */
+function findMyVanBlock(booking) {
+  const wrap = el(`<div class="van-card" hidden></div>`);
+  api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/tracking')
+    .then((res) => {
+      if (!wrap.isConnected) return; // สลับแท็บไปแล้ว
+      const t = res.data || {};
+      const point = booking.pickup_point || {};
+      const arrivedAt = t.pickup_arrived_at || point.arrived_at;
+      const arrivalPhoto = t.pickup_arrival_photo_url || point.arrival_photo_url;
+      const arrivalNote = t.pickup_arrival_note || point.arrival_note;
+      const looks = [t.vehicle_name, t.vehicle_color ? 'สี' + t.vehicle_color : null].filter(Boolean).join(' · ');
+      if (!t.license_plate && !looks && !arrivedAt) return;
+
+      wrap.innerHTML = `
+        ${arrivedAt ? `<div class="van-arrived">🚐 รถถึงจุดรับแล้ว · ${esc(clockTime(arrivedAt))} น.</div>` : '<div class="van-label">รถของรอบนี้</div>'}
+        ${t.license_plate ? `<div class="van-plate">${esc(t.license_plate)}</div>` : ''}
+        ${looks ? `<div class="van-looks">${esc(looks)}</div>` : ''}
+        ${arrivalPhoto || arrivalNote ? `<div class="van-spot">
+          ${arrivalPhoto ? `<img src="${esc(arrivalPhoto)}" alt="จุดที่รถจอด">` : ''}
+          ${arrivalNote ? `<div class="pick-sub">📍 ${esc(arrivalNote)}</div>` : ''}
+        </div>` : ''}
+        ${t.vehicle_photo ? `<img class="van-photo" src="${esc(t.vehicle_photo)}" alt="รูปรถ">` : ''}
+        <div class="van-actions"></div>`;
+
+      const actions = wrap.querySelector('.van-actions');
+      if (t.share_url) {
+        const live = el(`<button class="btn secondary">ดูตำแหน่งรถสด</button>`);
+        live.onclick = () => liff.openWindow({ url: t.share_url, external: false });
+        actions.appendChild(live);
+      }
+      if (t.driver_phone) {
+        const call = el(`<button class="btn secondary">โทรหาคนขับ${t.driver_name ? ' (' + esc(t.driver_name) + ')' : ''}</button>`);
+        call.onclick = () => liff.openWindow({ url: 'tel:' + t.driver_phone, external: true });
+        actions.appendChild(call);
+      }
+      wrap.hidden = false;
+    })
+    .catch(() => { wrap.remove(); });
+  return wrap;
+}
+
+/** "07:42" ตามเวลาไทย จาก ISO timestamp */
+function clockTime(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' });
+}
+
+const PICKUP_STATUS_OPTIONS = [
+  ['on_the_way', '🚶', 'กำลังไป'],
+  ['arrived', '📍', 'ถึงแล้ว'],
+  ['late', '⏳', 'อาจสาย'],
+];
+
+/**
+ * ปุ่ม "กำลังไป / ถึงแล้ว / อาจสาย" — เช้าวันเดินทางทีมงานจะได้ไม่ต้องโทรไล่ทีละคน
+ *
+ * ไม่ใช่การเช็คอิน: กด "ถึงแล้ว" ไม่ทำให้ใครขึ้นรถ คนยืนยันยังเป็นทีมงานเสมอ
+ * ข้อความสถานะ (pickup_status_label) มาจาก PickupStatusService::label ตัวเดียวกับที่สตาฟเห็น
+ */
+function pickupStatusBlock(booking) {
+  const card = el(`<div class="card pickup-status"><div class="body"></div></div>`);
+  const body = card.querySelector('.body');
+
+  const paint = (error) => {
+    const current = booking.pickup_status;
+    body.innerHTML = `
+      <div class="pick-name">${current ? 'บอกทีมงานไว้ว่า · ' + esc(booking.pickup_status_label || '') : 'บอกทีมงานว่าคุณอยู่ตรงไหน'}</div>
+      <div class="pick-sub">${current && booking.pickup_status_at
+        ? 'เมื่อ ' + esc(clockTime(booking.pickup_status_at)) + ' น. · กดใหม่ได้ถ้าสถานการณ์เปลี่ยน'
+        : 'กดบอกได้เลย ทีมงานจะได้ไม่ต้องโทรตาม และรู้ว่าต้องรอใครอยู่'}</div>
+      ${error ? `<div class="banner error" style="margin:8px 0 0">${esc(error)}</div>` : ''}
+      <div class="chip-row status-row"></div>
+      <div class="pick-sub">สถานะนี้ไม่ใช่การเช็คอิน — ทีมงานยังเป็นคนยืนยันตอนขึ้นรถ</div>`;
+    const row = body.querySelector('.status-row');
+    PICKUP_STATUS_OPTIONS.forEach(([value, emoji, label]) => {
+      const btn = el(`<button type="button" class="chip ${current === value ? 'on' : ''}">${emoji} ${label}</button>`);
+      btn.onclick = () => (value === 'late' ? askHowLate() : send(value, null));
+      row.appendChild(btn);
+    });
+  };
+
+  const send = async (status, etaMinutes) => {
+    body.querySelectorAll('.status-row .chip').forEach((b) => { b.disabled = true; });
+    try {
+      const res = await api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/pickup-status', {
+        method: 'POST',
+        body: { status, eta_minutes: etaMinutes },
+      });
+      const data = res.data || {};
+      Object.assign(booking, {
+        pickup_status: data.pickup_status,
+        pickup_status_at: data.pickup_status_at,
+        pickup_status_eta_minutes: data.pickup_status_eta_minutes,
+        pickup_status_label: data.label,
+      });
+      paint();
+    } catch (e) {
+      paint(e.message);
+    }
+  };
+
+  // ตัวเลขคือสิ่งเดียวที่ทำให้ทีมงานตัดสินใจได้ว่าจะรอต่อหรือให้ไปขึ้นจุดถัดไป
+  const askHowLate = () => {
+    const sheet = openSheet('สายประมาณเท่าไหร่');
+    sheet.body.appendChild(el(`<p class="muted" style="margin-top:0">บอกคร่าว ๆ ได้เลย ทีมงานจะได้วางแผนรอถูก</p>`));
+    const row = el(`<div class="chip-row"></div>`);
+    [5, 10, 15, 30, 45, 60].forEach((minutes) => {
+      const chip = el(`<button type="button" class="chip">${minutes} นาที</button>`);
+      chip.onclick = () => { sheet.close(); send('late', minutes); };
+      row.appendChild(chip);
+    });
+    const unsure = el(`<button type="button" class="chip">ไม่แน่ใจ</button>`);
+    unsure.onclick = () => { sheet.close(); send('late', null); };
+    row.appendChild(unsure);
+    sheet.body.appendChild(row);
+  };
+
+  paint();
+  return card;
 }
 
 /**

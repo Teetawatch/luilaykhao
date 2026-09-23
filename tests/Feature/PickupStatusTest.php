@@ -212,6 +212,49 @@ class PickupStatusTest extends TestCase
     }
 
     /** @return array{0: TripSchedule, 1: Booking, 2: User} */
+    public function test_booking_payload_says_when_the_buttons_should_show(): void
+    {
+        [$schedule, $booking, $customer] = $this->createConfirmedBooking();
+        $booking->update([
+            'pickup_status' => 'late',
+            'pickup_status_at' => now(),
+            'pickup_status_eta_minutes' => 20,
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}")
+            ->assertOk()
+            ->assertJsonPath('data.pickup_status_open', true)
+            ->assertJsonPath('data.pickup_status_label', 'อาจสาย ~20 นาที');
+
+        // จอยทริปขับไปเอง ไม่มีจุดนัดขึ้นรถให้บอก
+        $booking->update(['is_join_trip' => true]);
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}")
+            ->assertJsonPath('data.pickup_status_open', false);
+
+        // นอกหน้าต่างเวลา (เกินหนึ่งวันก่อนเดินทาง) ปุ่มไม่ขึ้น
+        $booking->update(['is_join_trip' => false]);
+        $schedule->update([
+            'departure_date' => now('Asia/Bangkok')->addDays(5)->toDateString(),
+            'return_date' => now('Asia/Bangkok')->addDays(6)->toDateString(),
+        ]);
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}")
+            ->assertJsonPath('data.pickup_status_open', false);
+    }
+
+    public function test_checked_in_booking_hides_the_buttons(): void
+    {
+        [, $booking, $customer] = $this->createConfirmedBooking();
+        $booking->update(['checked_in' => true, 'checked_in_at' => now()]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}")
+            ->assertJsonPath('data.pickup_status_open', false)
+            ->assertJsonPath('data.pickup_status_label', null);
+    }
+
     private function createConfirmedBooking(): array
     {
         $customer = User::factory()->create();

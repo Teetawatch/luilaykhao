@@ -43,6 +43,10 @@ class TripScheduleResource extends JsonResource
             // เวลาออกเดินทางจริง (เวลาท้องถิ่นไทย ไม่แปลง timezone) — อาจอยู่ก่อน
             // departure_date เช่น รถออกคืนวันศุกร์ 23:30 สำหรับทริปวันเสาร์
             'departs_at' => $this->departs_at?->format('Y-m-d H:i:s'),
+            // รถออกคืนก่อนวันทริป — หน้าจอต้องพูดวันขึ้นรถจริงออกมาเป็นบรรทัดของ
+            // ตัวเอง ไม่งั้นคนอ่านช่วงวันทริปแล้วมาผิดวันเต็ม ๆ (null = ออกวันทริป)
+            'departs_before_trip_day' => $this->departsBeforeTripDay(),
+            'early_departure_label' => $this->earlyDepartureLabelThai(),
             'return_date' => $this->return_date?->toDateString(),
             'review_available_at' => ($this->return_date || $this->departure_date)
                 ? $this->reviewAvailableAt()->toISOString()

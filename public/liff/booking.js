@@ -939,6 +939,18 @@ function isValidThaiId(value) {
 
 const isThaiTraveller = (p) => (p.nationality || 'TH') === 'TH';
 
+// ชื่อคนไทยไปทำประกัน ซึ่งรับเฉพาะชื่อไทยตามบัตร — ตรรกะเดียวกับ App\Rules\ThaiName
+// ฝั่ง backend และ thaiNameError() บนเว็บ (ข้อความต้องตรงกันทุกตัวอักษร) ปุ่ม
+// "ใช้ข้อมูลของฉัน" ดึงชื่อบัญชี ซึ่งบัญชี LINE คือชื่อที่ตั้งไว้ในไลน์ มักเป็นอังกฤษ
+const THAI_NAME_NOT_THAI = 'กรุณากรอกชื่อ-นามสกุลเป็นภาษาไทยตามบัตรประชาชน (ใช้ส่งทำประกันการเดินทาง)';
+const THAI_NAME_NO_SURNAME = 'กรุณากรอกทั้งชื่อและนามสกุล เว้นวรรคระหว่างชื่อกับนามสกุล';
+function thaiNameError(value) {
+  const name = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!/^[\u0E00-\u0E7F .\-]+$/.test(name) || !/[\u0E01-\u0E2E]/.test(name)) return THAI_NAME_NOT_THAI;
+  if (!name.includes(' ')) return THAI_NAME_NO_SURNAME;
+  return '';
+}
+
 const todayDate = (() => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -974,6 +986,10 @@ function passengerErrors(p, i) {
   if (!p.title) errors.title = 'กรุณาเลือกคำนำหน้า';
   else if (womenOnly && !['นาง', 'นางสาว'].includes(p.title)) errors.title = 'ทริปนี้สำหรับผู้หญิงเท่านั้น';
   if (!hasText(p.name)) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
+  else if (isThai) {
+    const nameError = thaiNameError(p.name);
+    if (nameError) errors.name = nameError;
+  }
   if (!hasText(p.nickname)) errors.nickname = 'กรุณากรอกชื่อเล่น';
 
   // ชาวต่างชาติที่ร่วมทริปยืนยันตัวด้วยพาสปอร์ตแทนบัตรประชาชนไทย
@@ -1118,7 +1134,8 @@ function passengerCard(p, i) {
       <option value="">เลือก</option>
       ${titleOpts.map((t) => `<option ${p.title === t ? 'selected' : ''}>${t}</option>`).join('')}
     </select>`, show('title'))}
-    ${field('ชื่อ-นามสกุล', `<input data-f="name" value="${esc(p.name)}" placeholder="ชื่อจริง นามสกุล">`, show('name'))}
+    ${field('ชื่อ-นามสกุล', `<input data-f="name" value="${esc(p.name)}" placeholder="${isThaiTraveller(p) ? 'ชื่อจริง นามสกุล ภาษาไทย' : 'ชื่อจริง นามสกุล'}">`
+      + (isThaiTraveller(p) ? '<small class="field-hint">ภาษาไทยตามบัตรประชาชน ใช้ส่งทำประกันการเดินทาง</small>' : ''), show('name'))}
     ${field('ชื่อเล่น', `<input data-f="nickname" value="${esc(p.nickname)}" placeholder="ชื่อเล่น">`, show('nickname'))}
     ${international ? field('สัญชาติ', `<select data-f="nationality"><option value="TH">ไทย</option></select>`, null) : ''}
     ${isThaiTraveller(p) ? field('เลขบัตรประชาชน (13 หลัก)',
@@ -1242,8 +1259,13 @@ function paintCardErrors(card, i) {
     const label = input.closest('.field');
     if (!label) return;
     const show = errors[key]
-      && (bk.attempted || (LIVE_ERROR_FIELDS.includes(key) && hasText(p[key])));
+      && (bk.attempted || (LIVE_ERROR_FIELDS.includes(key) && hasText(p[key]))
+        // ชื่ออังกฤษเตือนทันที (มักมาจากปุ่มดึงข้อมูล ไม่ใช่คนพิมพ์) แต่ "ยังไม่มี
+        // นามสกุล" รอกดถัดไปก่อน ไม่งั้นแดงใส่ทุกคนระหว่างพิมพ์ชื่อต้น
+        || (key === 'name' && errors.name === THAI_NAME_NOT_THAI && hasText(p.name)));
     label.classList.toggle('has-error', !!show);
+    const hint = label.querySelector('.field-hint');
+    if (hint) hint.hidden = !!show;
     let node = label.querySelector('.field-error');
     if (show) {
       if (!node) { node = el(`<em class="field-error"></em>`); label.appendChild(node); }
@@ -1561,6 +1583,7 @@ function renderSummaryStep() {
   content.appendChild(el(`<div class="card"><div class="body">
     <div class="kv"><span class="k">ทริป</span><span class="v">${esc(bk.trip.title)}</span></div>
     <div class="kv"><span class="k">วันเดินทาง</span><span class="v">${thaiDate(bk.schedule.departure_date)}</span></div>
+    ${earlyDepartureHtml(bk.schedule)}
     ${bk.joinTrip ? '<div class="kv"><span class="k">รูปแบบ</span><span class="v">จอยทริป (ไม่ใช้ที่นั่งบนรถ)</span></div>' : ''}
     ${bk.selected.length ? `<div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(bk.selected.join(', '))}</span></div>` : ''}
     ${selectedVehicleOption() ? `<div class="kv"><span class="k">ประเภทรถ</span><span class="v">${esc(selectedVehicleOption().label)}</span></div>` : ''}

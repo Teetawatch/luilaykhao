@@ -723,11 +723,7 @@ class TripBriefService
     {
         $current = $booking->freshPickupStatus();
 
-        $show = $schedule
-            && $booking->status === 'confirmed'
-            && ! $booking->checked_in
-            && ! $booking->is_join_trip
-            && $this->pickupStatus->isWithinWindow($schedule);
+        $show = $schedule && $this->pickupStatus->canReport($booking);
 
         return [
             'show' => $show,

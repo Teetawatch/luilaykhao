@@ -73,6 +73,23 @@ class PickupStatusService
     }
 
     /**
+     * ควรโชว์ปุ่มให้ใบจองนี้ไหม — หน้าจอทุกที่ (ใบเดินทาง, LIFF) ถามที่นี่ที่เดียว
+     *
+     * ปุ่มที่กดแล้วเด้ง error กลับมาแย่กว่าปุ่มที่ไม่ขึ้นให้เห็นตั้งแต่แรก
+     * จอยทริปไม่มีจุดนัดขึ้นรถ จึงไม่มีอะไรให้บอก แม้ report() จะไม่ห้าม
+     */
+    public function canReport(Booking $booking): bool
+    {
+        $schedule = $booking->schedule;
+
+        return $schedule !== null
+            && $booking->status === 'confirmed'
+            && ! $booking->checked_in
+            && ! $booking->is_join_trip
+            && $this->isWithinWindow($schedule);
+    }
+
+    /**
      * ช่วงที่กดได้ — หนึ่งวันก่อนเดินทางถึงวันเดินทาง (เวลาไทย)
      *
      * เปิดตั้งแต่เย็นวันก่อนเพราะรอบที่รถออกเที่ยงคืนกว่า ๆ ลูกค้าออกจากบ้าน

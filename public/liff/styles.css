@@ -394,6 +394,27 @@ ul.bullets li { margin-bottom: 4px; }
 /* ---- ฟอร์มผู้เดินทาง ---- */
 .field.has-error input, .field.has-error select, .field.has-error textarea { border-color: var(--danger); }
 .field-error { display: block; margin-top: 4px; font-size: 12px; font-style: normal; color: var(--danger); }
+/* ---- วันเดินทาง: หารถ + สถานะที่จุดนัด + ใบเดินทาง ---- */
+.van-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.van-label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.van-arrived { font-size: 14px; font-weight: 700; color: var(--green-dark); background: #e3f1e9; border-radius: 10px; padding: 8px 10px; }
+.van-plate { font-size: 30px; font-weight: 800; letter-spacing: .5px; margin-top: 6px; line-height: 1.2; }
+.van-looks { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.van-spot { margin-top: 10px; }
+.van-spot img, .van-photo { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; display: block; margin-top: 8px; background: var(--bg); }
+.van-actions { display: grid; gap: 8px; margin-top: 12px; }
+.pickup-status .status-row { margin: 10px 0 8px; }
+.pickup-status .chip { flex: 1; text-align: center; }
+.brief-link { width: 100%; text-align: left; margin-bottom: 12px; font: inherit; color: inherit; }
+.brief-go { font-size: 22px; color: var(--muted); }
+
+/* รถออกคืนก่อนวันทริป — สีเหลืองอำพันแบบเดียวกับหน้าลิงก์กรอกข้อมูล */
+.early-departure {
+  margin-top: 8px; padding: 8px 10px; border-radius: 10px;
+  background: #fdf1de; color: #8a5300; font-size: 13px; font-weight: 600; line-height: 1.45;
+}
+.field-hint { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.field-hint[hidden] { display: none; }
 .doc-block { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
 .doc-block.has-error { border-color: var(--danger); }
 .doc-head { font-weight: 700; font-size: 14px; }

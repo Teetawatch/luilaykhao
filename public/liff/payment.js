@@ -680,6 +680,7 @@ function bookingHeadlines(booking) {
   return `
     <div class="kv"><span class="k">ทริป</span><span class="v">${esc(schedule.trip?.title || '-')}</span></div>
     <div class="kv"><span class="k">วันเดินทาง</span><span class="v">${thaiDate(schedule.departure_date)}</span></div>
+    ${earlyDepartureHtml(schedule)}
     ${seats.length ? `<div class="kv"><span class="k">ที่นั่ง</span><span class="v">${esc(seats.join(', '))}</span></div>` : ''}
     <div class="kv"><span class="k">เลขที่จอง</span><span class="v">${esc(booking.booking_ref)}</span></div>`;
 }
