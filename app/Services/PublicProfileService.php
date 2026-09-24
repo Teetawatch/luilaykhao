@@ -80,6 +80,8 @@ class PublicProfileService
     private function photos(User $user): array
     {
         return Review::where('user_id', $user->id)
+            // รีวิวที่ส่งแทนลูกค้าเป็นรูปของลูกค้า ไม่ใช่ของเจ้าของโปรไฟล์
+            ->whereNull('reviewer_name')
             ->where('is_approved', true)
             ->whereNotNull('images')
             ->with('trip:id,title,slug')

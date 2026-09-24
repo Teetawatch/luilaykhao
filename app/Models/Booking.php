@@ -291,6 +291,18 @@ class Booking extends Model
     }
 
     /**
+     * แอดมิน/โอเปอเรเตอร์จองให้ลูกค้าจากบัญชีตัวเอง (เช่น จองในแอปแล้วข้ามจ่ายเงิน)
+     * — ใบนี้เป็นของลูกค้า ไม่ใช่ของบัญชีที่จอง รีวิวของใบนี้จึงต้องออกเป็นชื่อ
+     * ผู้เดินทาง ไม่ใช่ชื่อแอดมิน
+     */
+    public function isBookedOnBehalfBy(?User $user): bool
+    {
+        return $user !== null
+            && $this->user_id === $user->id
+            && $user->hasAnyRole(['admin', 'operator']);
+    }
+
+    /**
      * ผู้ใช้รายนี้เข้าถึงการจองนี้ได้หรือไม่ (เจ้าของหรือสมาชิก active)
      */
     public function isAccessibleByUser(int $userId): bool

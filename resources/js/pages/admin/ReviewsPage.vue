@@ -62,7 +62,8 @@
               <div class="avatar">{{ r.user_name?.charAt(0)?.toUpperCase() }}</div>
               <div>
                 <p class="reviewer-name">{{ r.user_name }}</p>
-                <p class="reviewer-email">{{ r.user_email }}</p>
+                <p v-if="r.posted_by" class="reviewer-email">แอดมินส่งแทน · {{ r.posted_by }}</p>
+                <p v-else class="reviewer-email">{{ r.user_email }}</p>
               </div>
             </div>
             <div class="review-meta">

@@ -1010,6 +1010,7 @@ class AdminExtendedController extends Controller
         }
         if ($request->filled('search')) {
             $query->whereHas('user', fn ($q) => $q->whereLike('name', "%{$request->search}%"))
+                ->orWhereLike('reviewer_name', "%{$request->search}%")
                 ->orWhereLike('comment', "%{$request->search}%");
         }
 
@@ -1017,8 +1018,10 @@ class AdminExtendedController extends Controller
 
         return $this->paginated($reviews->through(fn ($r) => [
             'id' => $r->id,
-            'user_name' => $r->user?->name ?? '-',
+            'user_name' => $r->authorName('-'),
             'user_email' => $r->user?->email ?? '-',
+            // รีวิวที่แอดมินส่งแทนลูกค้า — บอกว่าใครกดส่ง ชื่อบนรีวิวเป็นของลูกค้า
+            'posted_by' => $r->reviewer_name ? $r->user?->name : null,
             'trip_title' => $r->trip?->title ?? '-',
             'booking_ref' => $r->booking?->booking_ref ?? '-',
             'rating' => $r->rating,

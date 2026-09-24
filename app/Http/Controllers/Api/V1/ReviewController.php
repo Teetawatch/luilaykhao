@@ -142,8 +142,8 @@ class ReviewController extends Controller
                     'rating' => $r->rating,
                     // เจ้าของรูป — แอปใช้ผูกปุ่มรายงาน/บล็อกบนกำแพงรูป
                     'user_id' => $r->user_id,
-                    'user_name' => $r->user?->name ?? 'ไม่ระบุชื่อ',
-                    'user_avatar' => $r->user?->avatar_url,
+                    'user_name' => $r->authorName(),
+                    'user_avatar' => $r->authorAvatar(),
                     'created_at' => $r->created_at?->toISOString(),
                     'trip_id' => $r->trip_id,
                     'trip_title' => $r->trip?->title,
@@ -193,6 +193,8 @@ class ReviewController extends Controller
             'images.*' => ['string'],
             'videos' => ['nullable', 'array', 'max:2'],
             'videos.*' => ['string'],
+            // ผู้เดินทางที่แอดมินรีวิวแทน — ใช้เฉพาะใบที่แอดมินจองให้ลูกค้า
+            'passenger_id' => ['nullable', 'integer'],
         ]);
 
         if ($rejected = $this->filter->check($validated['comment'] ?? null)) {
@@ -222,8 +224,25 @@ class ReviewController extends Controller
             return $this->error('สามารถรีวิวได้หลังจบทริปวันสุดท้าย เวลา 20:00 น. เป็นต้นไป', 422);
         }
 
+        // แอดมินจองให้ลูกค้าจากบัญชีตัวเอง → รีวิวออกเป็นชื่อลูกค้า (คนที่เลือก หรือ
+        // ผู้เดินทางคนแรกถ้าไม่ได้เลือก) แอปรุ่นเก่าที่ไม่ส่ง passenger_id ก็ได้ชื่อลูกค้า
+        $reviewerName = null;
+        if ($booking->isBookedOnBehalfBy($request->user())) {
+            $passengers = $booking->passengers()->orderBy('id')->get(['id', 'name']);
+            $passenger = isset($validated['passenger_id'])
+                ? $passengers->firstWhere('id', (int) $validated['passenger_id'])
+                : $passengers->first(fn ($p) => trim((string) $p->name) !== '');
+
+            if (isset($validated['passenger_id']) && ! $passenger) {
+                return $this->error('ไม่พบผู้เดินทางคนนี้ในการจอง', 422);
+            }
+
+            $reviewerName = trim((string) $passenger?->name) ?: null;
+        }
+
         $review = Review::create([
             'user_id' => $userId,
+            'reviewer_name' => $reviewerName,
             'booking_id' => $booking->id,
             'trip_id' => $booking->schedule->trip_id,
             'rating' => $validated['rating'],
@@ -311,12 +330,13 @@ class ReviewController extends Controller
     {
         return [
             'id' => $r->id,
-            'user_name' => $r->user?->name ?? 'ไม่ระบุชื่อ',
-            'user_avatar' => $r->user?->avatar_url,
+            'user_name' => $r->authorName(),
+            'user_avatar' => $r->authorAvatar(),
             'user' => [
-                'name' => $r->user?->name,
-                'avatar_url' => $r->user?->avatar_url,
-                ...($r->user?->tierBadge() ?? []),
+                'name' => $r->reviewer_name ?: $r->user?->name,
+                'avatar_url' => $r->authorAvatar(),
+                // ระดับสมาชิกเป็นของบัญชีแอดมิน ไม่ใช่ของลูกค้าที่ถูกรีวิวแทน
+                ...($r->reviewer_name ? [] : ($r->user?->tierBadge() ?? [])),
             ],
             'user_id' => $r->user_id,
             'trip_id' => $r->trip_id,

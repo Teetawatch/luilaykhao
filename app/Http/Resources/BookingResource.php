@@ -151,6 +151,16 @@ class BookingResource extends JsonResource
                 && $this->schedule->isReviewAvailable()
                 && ! ($this->relationLoaded('review') && $this->review),
             'has_reviewed' => $this->relationLoaded('review') ? (bool) $this->review : null,
+            // แอดมินจองให้ลูกค้าจากบัญชีตัวเอง — หน้ารีวิวให้เลือกว่ารีวิวในนามผู้เดินทางคนไหน
+            // (รีวิวจะขึ้นชื่อลูกค้า ไม่ใช่ชื่อแอดมิน) บัญชีลูกค้าทั่วไปไม่ได้ฟิลด์นี้
+            'review_as' => $this->when(
+                $this->relationLoaded('passengers') && $this->isBookedOnBehalfBy($request->user()),
+                fn () => $this->passengers
+                    ->filter(fn ($p) => trim((string) $p->name) !== '')
+                    ->sortBy('id')
+                    ->map(fn ($p) => ['passenger_id' => $p->id, 'name' => trim($p->name)])
+                    ->values(),
+            ),
             'can_modify' => $this->relationLoaded('schedule') && $this->schedule
                 ? $this->canBeModified()
                 : false,

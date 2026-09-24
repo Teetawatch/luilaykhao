@@ -481,8 +481,8 @@ class BookingController extends Controller
                 ->filter()
                 ->map(fn ($url) => [
                     'url' => $url,
-                    'user_name' => $r->user?->name ?? 'เพื่อนร่วมทาง',
-                    'user_avatar' => $r->user?->avatar_url,
+                    'user_name' => $r->authorName('เพื่อนร่วมทาง'),
+                    'user_avatar' => $r->authorAvatar(),
                     'rating' => $r->rating,
                     'same_round' => $sameRound($r),
                 ]))

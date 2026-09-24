@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Review extends Model
 {
     protected $fillable = [
-        'user_id', 'booking_id', 'trip_id', 'rating',
+        'user_id', 'reviewer_name', 'booking_id', 'trip_id', 'rating',
         'rating_guide', 'rating_vehicle', 'rating_food', 'rating_value', 'comment',
         'images', 'videos', 'admin_reply', 'admin_replied_by', 'admin_replied_at', 'is_approved',
     ];
@@ -26,6 +26,21 @@ class Review extends Model
             'rating_food' => 'integer',
             'rating_value' => 'integer',
         ];
+    }
+
+    /**
+     * ชื่อที่รีวิวนี้แสดงต่อสาธารณะ — รีวิวที่แอดมินส่งแทนลูกค้าเก็บชื่อลูกค้าไว้
+     * ใน reviewer_name ที่เหลือใช้ชื่อบัญชีตามเดิม
+     */
+    public function authorName(string $fallback = 'ไม่ระบุชื่อ'): string
+    {
+        return $this->reviewer_name ?: ($this->user?->name ?? $fallback);
+    }
+
+    /** รูปโปรไฟล์ของแอดมินไม่ควรไปแปะข้างชื่อลูกค้า */
+    public function authorAvatar(): ?string
+    {
+        return $this->reviewer_name ? null : $this->user?->avatar_url;
     }
 
     public function user(): BelongsTo
