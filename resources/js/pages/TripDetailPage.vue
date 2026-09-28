@@ -308,22 +308,34 @@
             <!-- Itinerary (Day by Day) -->
             <!-- Itinerary (Day by Day) -->
             <section v-if="itinerarySectors.length > 0" class="itinerary-section scroll-mt-32" id="itinerary">
-              <div class="flex items-end justify-between gap-4 mb-8">
+              <div class="flex items-end justify-between gap-4 mb-8 flex-wrap">
                 <header class="ed-head">
                   <span class="ed-kicker">กำหนดการ</span>
-                  <h3 class="ed-title">แผนการเดินทาง</h3>
+                  <h2 class="ed-title">แผนการเดินทาง</h2>
                 </header>
-                <span class="shrink-0 inline-flex items-center gap-1.5 text-[13px] font-black text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-3.5 py-1.5 rounded-full">
-                  <span class="material-symbols-rounded text-[16px]">event</span>{{ totalTripDays }} วัน
-                </span>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="inline-flex items-center gap-1.5 text-[13px] font-black text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-3.5 py-1.5 rounded-full">
+                    <span class="material-symbols-rounded text-[16px]">event</span>{{ totalTripDays }} วัน
+                  </span>
+                  <button
+                    v-if="allDayKeys.length > 1"
+                    type="button"
+                    class="inline-flex items-center gap-1 text-[13px] font-extrabold text-[var(--color-text-mid)] bg-white border border-gray-200 px-3.5 py-1.5 rounded-full hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] transition-colors"
+                    @click="toggleAllDays"
+                  >
+                    <span class="material-symbols-rounded text-[16px]">{{ allDaysOpen ? 'unfold_less' : 'unfold_more' }}</span>
+                    {{ allDaysOpen ? 'ย่อทั้งหมด' : 'เปิดทั้งหมด' }}
+                  </button>
+                </div>
               </div>
 
-              <!-- Sector Navigation (Sticky Tabs) -->
-              <div v-if="itinerarySectors.length > 1" class="sector-tabs-container sticky top-20 z-[30] bg-[var(--color-bg)]/90 backdrop-blur-md -mx-4 px-4 py-3 mb-8 md:mx-0 md:px-0 md:rounded-3xl border-b md:border border-gray-100 transition-all">
+              <!-- แถบเลือกช่วง — ติดอยู่ใต้เมนูของหน้า (navbar 64px + page-nav ~55px) -->
+              <div v-if="itinerarySectors.length > 1" class="sector-tabs-container sticky top-[7.5rem] z-[30] bg-[var(--color-sand)]/95 backdrop-blur-md -mx-4 px-4 py-3 mb-8 md:mx-0 md:px-3 md:rounded-3xl border-b md:border border-gray-100">
                 <div class="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-                  <button 
-                    v-for="(sector, sIdx) in itinerarySectors" 
+                  <button
+                    v-for="(sector, sIdx) in itinerarySectors"
                     :key="sIdx"
+                    type="button"
                     @click="scrollToSector(sIdx)"
                     class="sector-tab-btn px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all flex items-center gap-2"
                     :class="activeSector === sIdx ? 'bg-[var(--color-primary)] text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'"
@@ -335,72 +347,71 @@
               </div>
 
               <div class="sectors-container space-y-16">
-                <div 
-                  v-for="(sector, sIdx) in itinerarySectors" 
-                  :key="sIdx" 
+                <div
+                  v-for="(sector, sIdx) in itinerarySectors"
+                  :key="sIdx"
                   :id="`sector-${sIdx}`"
-                  class="itinerary-sector scroll-mt-40"
+                  class="itinerary-sector scroll-mt-48"
                 >
                   <div v-if="itinerarySectors.length > 1" class="sector-header flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-accent)] border border-[var(--color-accent)]/10">
+                    <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[var(--color-accent)] border border-[var(--color-accent)]/10">
                       <span class="material-symbols-rounded text-2xl">map</span>
                     </div>
                     <div>
-                      <p class="text-[10px] font-black text-[var(--color-accent)] uppercase tracking-widest mb-0.5">ส่วนที่ {{ sIdx + 1 }}</p>
-                      <h4 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">{{ sector.sector }}</h4>
+                      <p class="text-[11px] font-black text-[var(--color-accent)] tracking-wide mb-0.5">ส่วนที่ {{ sIdx + 1 }}</p>
+                      <h3 class="text-lg md:text-xl font-black text-[var(--color-text-dark)] leading-snug">{{ sector.sector }}</h3>
                     </div>
                   </div>
-                  
-                  <div class="timeline relative pl-[4.5rem] md:pl-24">
+
+                  <div class="timeline relative pl-14 md:pl-24">
                     <!-- Continuous rail the day nodes sit on -->
-                    <div class="absolute left-[1.75rem] md:left-9 top-4 bottom-4 w-px bg-gradient-to-b from-[var(--color-accent)]/40 via-gray-200 to-transparent"></div>
+                    <div class="absolute left-[1.375rem] md:left-9 top-4 bottom-4 w-px bg-gradient-to-b from-[var(--color-accent)]/40 via-gray-200 to-transparent"></div>
 
                     <div
                       v-for="(item, idx) in sector.items"
                       :key="idx"
-                      class="timeline-item relative pb-8 last:pb-0"
+                      class="timeline-item relative pb-6 md:pb-8 last:pb-0"
                     >
-                      <!-- Day node on the rail -->
-                      <button
-                        type="button"
+                      <!-- Day node on the rail — กดได้ด้วยเมาส์ ส่วนปุ่มจริงสำหรับคีย์บอร์ดคือหัวการ์ด -->
+                      <div
+                        aria-hidden="true"
                         @click="toggleDay(sIdx + '-' + idx)"
-                        class="timeline-node absolute -left-[4.5rem] md:-left-24 top-0 w-14 h-14 md:w-[4.5rem] md:h-[4.5rem] rounded-2xl flex flex-col items-center justify-center transition-all duration-300"
+                        class="timeline-node absolute -left-14 md:-left-24 top-1 w-11 h-11 md:w-[4.5rem] md:h-[4.5rem] rounded-xl md:rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300"
                         :class="openDays.includes(sIdx + '-' + idx)
                           ? 'bg-[var(--color-accent)] text-white'
                           : 'bg-white text-[var(--color-text-dark)] border border-gray-200 hover:border-[var(--color-accent)]/50'"
-                        :aria-expanded="openDays.includes(sIdx + '-' + idx)"
                       >
-                        <span class="text-[9px] font-black uppercase tracking-[0.15em] opacity-70">Day</span>
-                        <span class="text-xl md:text-2xl font-black leading-none">{{ item.day }}</span>
-                      </button>
+                        <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">วันที่</span>
+                        <span class="text-base md:text-2xl font-black leading-none mt-0.5 md:mt-1">{{ item.day }}</span>
+                      </div>
 
                       <!-- Day card -->
                       <div
-                        class="itinerary-day-card rounded-[1.5rem] border transition-all duration-300"
-                        :class="openDays.includes(sIdx + '-' + idx)
-                          ? 'bg-white border-[var(--color-accent)]/20'
-                          : 'bg-white border-gray-100'"
+                        class="itinerary-day-card rounded-[1.25rem] md:rounded-[1.5rem] border bg-white transition-colors duration-300"
+                        :class="openDays.includes(sIdx + '-' + idx) ? 'border-[var(--color-accent)]/20' : 'border-gray-100'"
                       >
-                        <div
+                        <button
+                          type="button"
                           @click="toggleDay(sIdx + '-' + idx)"
-                          class="p-5 md:p-6 flex items-center justify-between gap-4 cursor-pointer group"
+                          class="w-full text-left p-4 md:p-6 flex items-center justify-between gap-3 md:gap-4 group rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                          :aria-expanded="openDays.includes(sIdx + '-' + idx)"
+                          :aria-controls="`day-${sIdx}-${idx}`"
                         >
                           <div class="min-w-0">
-                            <p class="text-[11px] font-black uppercase tracking-widest text-[var(--color-accent)] mb-1">วันที่ {{ item.day }}</p>
-                            <h4 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ item.title }}</h4>
-                            <p v-if="!openDays.includes(sIdx + '-' + idx)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1">
+                            <h4 class="text-base md:text-lg font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ item.title }}</h4>
+                            <p v-if="!openDays.includes(sIdx + '-' + idx) && item.description" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1">
                               {{ item.description }}
                             </p>
                           </div>
-                          <div class="w-9 h-9 shrink-0 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
+                          <span class="w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
                             :class="{'rotate-180 bg-[var(--color-accent)]/10 !text-[var(--color-accent)]': openDays.includes(sIdx + '-' + idx)}">
                             <span class="material-symbols-rounded">expand_more</span>
-                          </div>
-                        </div>
+                          </span>
+                        </button>
 
-                        <div v-show="openDays.includes(sIdx + '-' + idx)" class="px-5 pb-6 md:px-6 md:pb-7 animate-fade-in">
-                          <div class="w-full h-px bg-gray-100 mb-5"></div>
-                          <p class="text-[var(--color-text-mid)] leading-relaxed text-base md:text-lg font-medium whitespace-pre-line">
+                        <div v-show="openDays.includes(sIdx + '-' + idx)" :id="`day-${sIdx}-${idx}`" class="px-4 pb-5 md:px-6 md:pb-7 animate-fade-in">
+                          <div class="w-full h-px bg-gray-100 mb-4 md:mb-5"></div>
+                          <p class="text-[var(--color-text-mid)] leading-[1.85] text-[16px] md:text-[17px] font-medium whitespace-pre-line">
                             {{ item.description }}
                           </p>
                         </div>
@@ -429,7 +440,7 @@
             <section v-if="trip.preparations && trip.preparations.length > 0" id="prepare" class="preparations-section scroll-mt-32">
               <header class="ed-head mb-8">
                 <span class="ed-kicker">ก่อนออกเดินทาง</span>
-                <h3 class="ed-title">สิ่งที่ต้องเตรียม</h3>
+                <h2 class="ed-title">สิ่งที่ต้องเตรียม</h2>
               </header>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -447,7 +458,7 @@
             <section v-if="highlights.length" id="highlights" class="scroll-mt-32">
               <header class="ed-head mb-8">
                 <span class="ed-kicker">ไฮไลต์</span>
-                <h3 class="ed-title">จุดเด่นของทริป</h3>
+                <h2 class="ed-title">จุดเด่นของทริป</h2>
               </header>
 
               <!-- Image-led editorial feature when a gallery photo is available -->
@@ -497,7 +508,7 @@
             <section id="included" class="scroll-mt-32">
               <header class="ed-head mb-8">
                 <span class="ed-kicker">รายละเอียดราคา</span>
-                <h3 class="ed-title">สิ่งที่รวมและไม่รวม</h3>
+                <h2 class="ed-title">สิ่งที่รวมและไม่รวม</h2>
               </header>
 
               <div class="grid grid-cols-1 md:grid-cols-2 rounded-[2rem] border border-gray-100 bg-white overflow-hidden">
@@ -538,7 +549,7 @@
             <section v-if="trip.is_international" class="bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
                 <span class="ed-kicker">ก่อนตัดสินใจ</span>
-                <h3 class="ed-title">เอกสารและข้อควรรู้</h3>
+                <h2 class="ed-title">เอกสารและข้อควรรู้</h2>
               </header>
               <p class="text-[var(--color-text-muted)] font-medium mb-8">
                 {{ trip.country_label ? `${trip.country_label} · ` : '' }}สำหรับผู้ถือพาสปอร์ตไทย
@@ -605,7 +616,7 @@
             <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
                 <span class="ed-kicker">ความยืดหยุ่น</span>
-                <h3 class="ed-title">นโยบายการยกเลิกและคืนเงิน</h3>
+                <h2 class="ed-title">นโยบายการยกเลิกและคืนเงิน</h2>
               </header>
               <p class="text-[var(--color-text-muted)] font-medium mb-8">
                 <template v-if="trip.is_international">
@@ -651,7 +662,7 @@
             <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-6">
                 <span class="ed-kicker">คำถามที่พบบ่อย</span>
-                <h3 class="ed-title">เรื่องที่คนถามบ่อยก่อนไป</h3>
+                <h2 class="ed-title">เรื่องที่คนถามบ่อยก่อนไป</h2>
               </header>
               <div class="divide-y divide-gray-100">
                 <div v-for="(faq, i) in trip.faqs" :key="i">
@@ -1113,7 +1124,7 @@
             <div>
               <header class="ed-head mb-3">
                 <span class="ed-kicker">เสียงจากผู้ร่วมทริป</span>
-                <h3 class="ed-title">รีวิวจากคนที่ไปรอบก่อน</h3>
+                <h2 class="ed-title">รีวิวจากคนที่ไปรอบก่อน</h2>
               </header>
               <div class="flex items-center gap-3">
                 <div class="flex text-[#FFB020]">
@@ -1274,7 +1285,7 @@
             <div>
               <header class="ed-head mb-2">
                 <span class="ed-kicker">ทริปใกล้เคียง</span>
-                <h3 class="ed-title">เส้นทางแนวเดียวกัน</h3>
+                <h2 class="ed-title">เส้นทางแนวเดียวกัน</h2>
               </header>
               <p class="text-[var(--color-text-muted)] font-medium">ประเภทเดียวกันหรือปลายทางอยู่ใกล้กัน</p>
             </div>
@@ -2028,6 +2039,14 @@ const toggleDay = (key) => {
   }
 };
 
+const allDayKeys = computed(() =>
+  itinerarySectors.value.flatMap((sector, sIdx) => (sector.items || []).map((_, idx) => `${sIdx}-${idx}`)),
+);
+const allDaysOpen = computed(() => allDayKeys.value.length > 0 && allDayKeys.value.every(k => openDays.value.includes(k)));
+const toggleAllDays = () => {
+  openDays.value = allDaysOpen.value ? [] : [...allDayKeys.value];
+};
+
 const scrollToSector = (idx) => {
   activeSector.value = idx;
   const el = document.getElementById(`sector-${idx}`);
@@ -2047,7 +2066,7 @@ const setupSectorObserver = () => {
         activeSector.value = idx;
       }
     });
-  }, { threshold: 0.2, rootMargin: '-100px 0px -50% 0px' });
+  }, { threshold: 0.2, rootMargin: '-190px 0px -50% 0px' }); // ใต้ navbar + page-nav + แถบเลือกช่วง
 
   itinerarySectors.value.forEach((_, idx) => {
     const el = document.getElementById(`sector-${idx}`);
@@ -2157,12 +2176,15 @@ const itinerarySectors = computed(() => {
   }];
 });
 
+/**
+ * ใช้จำนวนวันของทริปก่อน ให้ตรงกับแถบข้อมูลบนภาพปก — แอดมินแบ่งวันเดียวเป็นหลายรายการได้
+ * จำนวนรายการจึงไม่ใช่จำนวนวัน ถ้าทริปไม่ได้กรอกวันไว้ค่อยนับจากเลขวันที่ไม่ซ้ำกันในกำหนดการ
+ */
 const totalTripDays = computed(() => {
-  let count = 0;
-  itinerarySectors.value.forEach(s => {
-    count += (s.items?.length || 0);
-  });
-  return count || trip.value?.duration_days || 0;
+  if (trip.value?.duration_days) return trip.value.duration_days;
+  const days = new Set();
+  itinerarySectors.value.forEach(s => (s.items || []).forEach((item, idx) => days.add(item.day ?? idx + 1)));
+  return days.size;
 });
 
 const allPickupPoints = computed(() => {
