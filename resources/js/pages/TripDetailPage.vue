@@ -77,7 +77,7 @@
               </span>
             </div>
 
-            <h1 class="hero-title text-3xl font-black leading-[1.15] tracking-tight text-white md:text-5xl lg:text-[3.5rem]" :title="trip.title">
+            <h1 class="hero-title text-2xl font-black leading-[1.25] tracking-tight text-white md:text-[2rem] lg:text-[2.5rem]" :title="trip.title">
               {{ trip.title }}
             </h1>
 
@@ -242,7 +242,7 @@
               </div>
             </section>
 
-            <section id="overview" class="description-section scroll-mt-32 bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
+            <section id="overview" class="description-section scroll-mt-32 bg-white p-6 md:p-12 rounded-[2rem] border border-gray-100">
               <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
                 <header class="ed-head">
                   <span class="ed-kicker">ภาพรวม</span>
@@ -257,7 +257,19 @@
                   เช็ครอบที่ยังว่าง
                 </button>
               </div>
-              <p class="text-[var(--color-text-mid)] leading-loose text-lg md:text-xl whitespace-pre-line font-medium">{{ trip.description }}</p>
+              <p
+                class="text-[var(--color-text-mid)] leading-[1.85] text-[16px] md:text-[17px] whitespace-pre-line font-medium"
+                :class="{ 'line-clamp-6': descriptionLong && !descriptionExpanded }"
+              >{{ trip.description }}</p>
+              <button
+                v-if="descriptionLong"
+                type="button"
+                class="mt-3 inline-flex items-center gap-1 text-[14px] font-extrabold text-[var(--color-accent)] hover:text-[var(--color-accent-mid)]"
+                @click="descriptionExpanded = !descriptionExpanded"
+              >
+                {{ descriptionExpanded ? 'ย่อลง' : 'อ่านต่อ' }}
+                <span class="material-symbols-rounded text-[18px] transition-transform" :class="{ 'rotate-180': descriptionExpanded }">expand_more</span>
+              </button>
 
               <!-- ข้อมูลเส้นทางแบบตัวเลข — คนที่จริงจังกับการเดินป่าดูอันนี้ ไม่ได้ดูคำโฆษณา -->
               <div v-if="routeFacts.length" class="mt-10 pt-8 border-t border-gray-100">
@@ -275,17 +287,22 @@
                   </div>
                 </dl>
 
-                <!-- แถบเทียบความชันแบบเห็นภาพ เทียบกับดอยอินทนนท์ -->
-                <div v-if="inthanonPercent" class="mt-7 pt-6 border-t border-gray-100">
-                  <div class="flex items-baseline justify-between mb-2">
-                    <span class="text-[12px] font-bold text-[var(--color-text-muted)]">ความสูงสะสมเทียบดอยอินทนนท์ (2,565 ม.)</span>
-                    <span class="text-[13px] font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ inthanonPercent }}%</span>
-                  </div>
-                  <div class="h-2 rounded-full bg-gray-100 overflow-hidden">
-                    <div class="h-full rounded-full bg-[var(--color-primary)]" :style="{ width: `${Math.min(inthanonPercent, 100)}%` }"></div>
-                  </div>
+                <!-- ความสูงสะสมแปลงเป็นบันไดตึก ให้คนไม่เคยเดินป่าเห็นภาพว่าต้องไต่ขึ้นเท่าไหร่ -->
+                <div v-if="climbComparison" class="mt-7 pt-6 border-t border-gray-100 flex items-start gap-3">
+                  <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0">stairs</span>
+                  <p class="text-[14px] font-semibold leading-relaxed text-[var(--color-text-mid)]">
+                    ไต่ขึ้นรวมพอ ๆ กับเดินขึ้นบันไดตึก
+                    <span class="font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ climbComparison.floors.toLocaleString() }} ชั้น</span>
+                    <template v-if="climbComparison.baiyokeLaps">
+                      หรือขึ้นตึกใบหยก 2 ประมาณ
+                      <span class="font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ climbComparison.baiyokeLaps }} รอบ</span>
+                    </template>
+                    <span class="block text-[12px] text-[var(--color-text-muted)] mt-0.5">กระจายตลอดทั้งทริป ไม่ได้ขึ้นรวดเดียว</span>
+                  </p>
                 </div>
               </div>
+
+              <TripReadinessCard v-if="routeFacts.length" :slug="route.params.slug" class="mt-8" />
             </section>
 
             <!-- Itinerary (Day by Day) -->
@@ -1856,6 +1873,7 @@ import TripCard from '../components/TripCard.vue';
 import WeatherBadge from '../components/WeatherBadge.vue';
 import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
+import TripReadinessCard from '../components/TripReadinessCard.vue';
 import GroupPlanCreateCard from '../components/GroupPlanCreateCard.vue';
 import { useWishlistStore } from '../stores/wishlist';
 import {
@@ -2263,8 +2281,12 @@ const typeLabel = ref('');
 const typeBadgeClass = ref('');
 const diffLabel = ref('');
 
-/** ดอยอินทนนท์ ยอดสูงสุดของไทย — ใช้เป็นหมุดเทียบความชันให้คนเห็นภาพ */
-const DOI_INTHANON_M = 2565;
+/**
+ * ตัวเทียบความสูงสะสม — เดิมเทียบกับความสูงยอดอินทนนท์ แต่นั่นวัดจากระดับน้ำทะเล
+ * (ขับรถขึ้นได้ถึงยอด) คนละอย่างกับ "ไต่ขึ้นรวม" จึงเปลี่ยนมาเทียบกับบันไดตึกแทน
+ */
+const METERS_PER_FLOOR = 3;
+const BAIYOKE_2_M = 304;
 
 /**
  * ข้อมูลเส้นทางแบบตัวเลข — แสดงเฉพาะฟิลด์ที่กรอกไว้จริง
@@ -2312,10 +2334,22 @@ const routeFacts = computed(() => {
   return distance > 0 || elevation > 0 ? facts : [];
 });
 
-/** ความสูงสะสมของทริปคิดเป็นกี่ % ของดอยอินทนนท์ */
-const inthanonPercent = computed(() => {
+/** ความสูงสะสมคิดเป็นบันไดกี่ชั้น / ขึ้นใบหยก 2 กี่รอบ (รอบแสดงเมื่อถึง 1 รอบขึ้นไป) */
+const climbComparison = computed(() => {
   const elevation = Number(trip.value?.elevation_gain_m) || 0;
-  return elevation > 0 ? Math.round((elevation / DOI_INTHANON_M) * 100) : 0;
+  if (elevation <= 0) return null;
+  const laps = elevation / BAIYOKE_2_M;
+  return {
+    floors: Math.round(elevation / METERS_PER_FLOOR),
+    baiyokeLaps: laps >= 1 ? (laps >= 10 ? Math.round(laps) : Math.round(laps * 10) / 10) : null,
+  };
+});
+
+const descriptionExpanded = ref(false);
+/** คำอธิบายยาวราว 6 บรรทัดขึ้นไป — ตัดไว้แล้วให้กด "อ่านต่อ" */
+const descriptionLong = computed(() => {
+  const text = trip.value?.description || '';
+  return text.length > 360 || text.split('\n').length > 6;
 });
 
 // ─── Hero ──────────────────────────────────────────────────
@@ -3252,14 +3286,14 @@ async function fetchAlbumPhotos() {
   background-color: var(--color-accent);
 }
 .ed-title {
-  font-size: 1.75rem;
-  line-height: 1.1;
+  font-size: 1.375rem;
+  line-height: 1.25;
   font-weight: 900;
   letter-spacing: -0.02em;
   color: var(--color-text-dark);
 }
 @media (min-width: 768px) {
-  .ed-title { font-size: 2.5rem; }
+  .ed-title { font-size: 1.75rem; }
 }
 
 /* Album sub-card header chip (kept from prior pass) */
