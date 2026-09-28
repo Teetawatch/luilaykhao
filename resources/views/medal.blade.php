@@ -1,5 +1,5 @@
 @php
-    $ogImage = $card ? route('medal.og', ['token' => $token]) : asset('images/logo.png').'?v=2';
+    $ogImage = $card ? route('medal.og', ['token' => $token, 'v' => $ogVersion]) : asset('images/logo.png').'?v=2';
     $pageUrl = url('/m/'.$token);
 
     $ogTitle = $card
@@ -7,7 +7,11 @@
         : 'ไม่พบเหรียญนี้ | ลุยเลเขา';
 
     $ogDescription = $card
-        ? trim(implode('  ·  ', array_filter([$card['finisher_label'], $card['date_label'] !== '-' ? $card['date_label'] : null])))
+        ? trim(implode('  ·  ', array_filter([
+            $card['finisher_label'],
+            ($card['finish'] ?? 'gold') !== 'gold' ? 'เหรียญ'.$card['finish_label'] : null,
+            $card['date_label'] !== '-' ? $card['date_label'] : null,
+        ])))
         : 'เหรียญนี้อาจถูกถอนไปแล้ว หรือลิงก์ไม่ถูกต้อง';
 
     $stats = [];
@@ -97,6 +101,18 @@
             letter-spacing: .08em;
         }
 
+        /* ผิวที่ได้จากการมาซ้ำ — ทองไม่ต้องบอก เป็นค่าปกติ */
+        .finish {
+            margin-top: 8px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .finish--platinum { background: #E6ECF2; color: #3E4C5B; }
+        .finish--obsidian { background: #1C1916; color: #F2C66D; }
+
         .name { margin-top: 6px; font-size: 26px; font-weight: 800; line-height: 1.28; }
         .holder { margin-top: 10px; font-size: 17px; font-weight: 700; }
         .meta { margin-top: 6px; font-size: 14px; font-weight: 600; color: rgba(255,255,255,.75); }
@@ -150,6 +166,9 @@
                 @include('partials.medal-art', ['card' => $card, 'size' => 220])
 
                 <div class="finisher">{{ strtoupper($card['finisher_label']) }}</div>
+                @if (($card['finish'] ?? 'gold') !== 'gold')
+                    <div class="finish finish--{{ $card['finish'] }}">เหรียญ{{ $card['finish_label'] }}</div>
+                @endif
                 <div class="name">{{ $card['design']['name'] }}</div>
                 <div class="holder">{{ $card['holder_name'] }}</div>
                 <div class="meta">

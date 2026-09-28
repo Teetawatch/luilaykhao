@@ -13,6 +13,8 @@ use App\Models\TripTrack;
 use App\Models\User;
 use App\Support\Countries;
 use App\Support\MedalDesign;
+use App\Support\MedalFinish;
+use App\Support\MedalGeometry;
 use App\Support\MediaDisk;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
@@ -211,6 +213,8 @@ class MedalService
                 'user_id' => $userId,
                 // ลิงก์ที่เจ้าของเดิมแชร์ไปต้องไม่กลายเป็นหน้าของคนอื่น
                 'share_token' => TripMedal::newShareToken(),
+                // ทรงเป็นรสนิยมของเจ้าของเดิม เจ้าของใหม่เริ่มที่แบบของทริป
+                'shape' => null,
                 'seen_at' => null,
                 'notified_at' => null,
             ]);
@@ -408,13 +412,7 @@ class MedalService
             ->filter(fn (TripMedal $m) => $m->trip && $m->schedule && $m->user);
 
         // "ครั้งที่ 2" — คนที่ไปทริปเดิมซ้ำได้เหรียญทุกครั้ง นับตามลำดับเวลา
-        $attempts = [];
-        $chron = $medals->sortBy(fn (TripMedal $m) => [$m->earned_on->timestamp, $m->id]);
-
-        foreach ($chron as $medal) {
-            $attempts[$medal->trip_id] = ($attempts[$medal->trip_id] ?? 0) + 1;
-            $medal->setAttribute('attempt', $attempts[$medal->trip_id]);
-        }
+        $attempts = $this->numberAttempts($medals);
 
         // แทร็ก GPS ของคนนี้ทั้งหมด (หนึ่งแทร็กต่อรอบ) — ใช้วาดเส้นทาง ตัวเลขที่เดิน
         // จริง และหาว่าเหรียญไหนคือสถิติส่วนตัวสูงสุด
@@ -449,6 +447,101 @@ class MedalService
             'unseen_count' => $medals->whereNull('seen_at')->count(),
             'trips_count' => $medals->pluck('trip_id')->unique()->count(),
         ];
+    }
+
+    /**
+     * ใส่ attribute "attempt" (ครั้งที่เท่าไรของทริปนั้น) ให้ทุกเหรียญใน $medals
+     * ซึ่งต้องเป็นเหรียญ *ทั้งหมด* ของคนคนเดียว — คืนจำนวนครั้งรวมต่อทริป
+     *
+     * @param  Collection<int, TripMedal>  $medals
+     * @return array<int, int> trip_id => จำนวนครั้ง
+     */
+    private function numberAttempts(Collection $medals): array
+    {
+        $attempts = [];
+        $chron = $medals->sortBy(fn (TripMedal $m) => [$m->earned_on->timestamp, $m->id]);
+
+        foreach ($chron as $medal) {
+            $attempts[$medal->trip_id] = ($attempts[$medal->trip_id] ?? 0) + 1;
+            $medal->setAttribute('attempt', $attempts[$medal->trip_id]);
+        }
+
+        return $attempts;
+    }
+
+    /**
+     * ครั้งที่เท่าไรของทริปนั้นสำหรับเหรียญใบเดียว — ใช้ attribute ที่
+     * [numberAttempts] ใส่ไว้ถ้ามี ไม่งั้นนับจากฐานข้อมูล (ลำดับเดียวกัน)
+     */
+    public function attemptOf(TripMedal $medal): int
+    {
+        $known = $medal->getAttribute('attempt');
+
+        if ($known !== null) {
+            return (int) $known;
+        }
+
+        $on = $medal->earned_on->toDateString();
+
+        return TripMedal::query()
+            ->where('user_id', $medal->user_id)
+            ->where('trip_id', $medal->trip_id)
+            ->where(fn ($q) => $q->whereDate('earned_on', '<', $on)
+                ->orWhere(fn ($q) => $q->whereDate('earned_on', $on)->where('id', '<=', $medal->id)))
+            ->count() ?: 1;
+    }
+
+    /**
+     * ครั้งที่ของทุกเหรียญของคนหนึ่งคน (medal id => ครั้งที่) ในคิวรีเดียว
+     *
+     * @return array<int, int>
+     */
+    public function attemptsFor(int $userId): array
+    {
+        $medals = TripMedal::query()
+            ->where('user_id', $userId)
+            ->get(['id', 'trip_id', 'earned_on']);
+
+        $this->numberAttempts($medals);
+
+        return $medals
+            ->mapWithKeys(fn (TripMedal $m) => [$m->id => (int) $m->getAttribute('attempt')])
+            ->all();
+    }
+
+    /**
+     * เปลี่ยนทรงเหรียญของเจ้าของ — null = กลับไปใช้แบบของทริป
+     *
+     * ขอบหยักบนทริปที่ไม่มีภาพออกแบบเองเก็บเป็น null: หน้าตาเหมือนกันทุกประการ
+     * และถ้าวันหลังแอดมินอัปโหลดภาพเหรียญให้ทริปนี้ เหรียญจะได้ภาพใหม่ตามไปด้วย
+     *
+     * @throws \Exception เมื่อไม่ใช่เหรียญของผู้ใช้คนนี้ หรือทรงไม่รู้จัก
+     */
+    public function setShape(int $userId, int $medalId, ?string $shape): TripMedal
+    {
+        if ($shape !== null && ! MedalGeometry::isShape($shape)) {
+            throw new \Exception('ไม่รู้จักทรงเหรียญนี้');
+        }
+
+        $medal = TripMedal::query()
+            ->with('trip')
+            ->where('id', $medalId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (! $medal || ! $medal->trip) {
+            throw new \Exception('ไม่พบเหรียญนี้');
+        }
+
+        if ($shape === 'rosette' && ! MedalDesign::forTrip($medal->trip)['is_custom']) {
+            $shape = null;
+        }
+
+        if ($medal->shape !== $shape) {
+            $medal->update(['shape' => $shape]);
+        }
+
+        return $medal;
     }
 
     /**
@@ -528,6 +621,7 @@ class MedalService
     {
         $trip = $medal->trip;
         $schedule = $medal->schedule;
+        $finish = MedalFinish::forAttempt($this->attemptOf($medal));
 
         return [
             'finisher_no' => $medal->finisher_no,
@@ -537,6 +631,11 @@ class MedalService
             'date_label' => ThaiDate::range($schedule?->departure_date, $schedule?->return_date),
             'holder_name' => $this->holderName($medal->user),
             'design' => MedalDesign::forTrip($trip),
+            // ทรงที่เจ้าของเลือก — null = แบบของทริป (ภาพออกแบบเองถ้ามี ไม่งั้นขอบหยัก)
+            'shape' => MedalGeometry::isShape($medal->shape) ? $medal->shape : null,
+            // ผิวตามครั้งที่มา — ไม่บอกเลขครั้งที่ตรง ๆ ในหน้าสาธารณะ เจ้าของอาจปิดไว้บนการ์ด
+            'finish' => $finish,
+            'finish_label' => MedalFinish::label($finish),
             'trip' => [
                 'id' => $trip->id,
                 'title' => $trip->title,
@@ -578,6 +677,8 @@ class MedalService
      */
     public function shelfFor(int $userId, int $limit = 12): array
     {
+        $attempts = $this->attemptsFor($userId);
+
         return TripMedal::query()
             ->where('user_id', $userId)
             ->with(['trip', 'schedule', 'user'])
@@ -587,7 +688,7 @@ class MedalService
             ->get()
             ->filter(fn (TripMedal $m) => $m->trip && $m->user)
             ->map(fn (TripMedal $m) => [
-                ...$this->publicCard($m),
+                ...$this->publicCard($m->setAttribute('attempt', $attempts[$m->id] ?? 1)),
                 'share_url' => url('/m/'.$m->share_token),
             ])
             ->values()

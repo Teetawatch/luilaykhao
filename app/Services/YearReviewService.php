@@ -8,6 +8,8 @@ use App\Models\SmartNotification;
 use App\Models\TripMedal;
 use App\Models\User;
 use App\Support\MedalDesign;
+use App\Support\MedalFinish;
+use App\Support\MedalGeometry;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
@@ -61,6 +63,8 @@ class YearReviewService
         $longest = $rows->sortByDesc('distance_km')->first();
         $highest = $rows->filter(fn ($r) => $r['max_elevation_m'] !== null)->sortByDesc('max_elevation_m')->first();
 
+        $attempts = $rows->isEmpty() ? [] : $this->medals->attemptsFor($user->id);
+
         $byMonth = $rows->groupBy(fn ($r) => (int) $r['medal']->earned_on->format('n'));
         $topMonth = $byMonth->sortByDesc(fn ($group) => $group->count())->keys()->first();
 
@@ -109,6 +113,8 @@ class YearReviewService
                     'finisher_label' => 'Finisher #'.$r['medal']->finisher_no,
                     'earned_on' => $r['medal']->earned_on->toDateString(),
                     'design' => MedalDesign::forTrip($r['medal']->trip),
+                    'shape' => MedalGeometry::isShape($r['medal']->shape) ? $r['medal']->shape : null,
+                    'finish' => MedalFinish::forAttempt($attempts[$r['medal']->id] ?? 1),
                 ])
                 ->values()
                 ->all(),

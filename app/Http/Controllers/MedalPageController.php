@@ -33,7 +33,28 @@ class MedalPageController extends Controller
             return response()->view('medal', ['card' => null, 'token' => $token], 404);
         }
 
-        return response()->view('medal', ['card' => $card, 'token' => $token]);
+        return response()->view('medal', [
+            'card' => $card,
+            'token' => $token,
+            'ogVersion' => self::ogVersion($card),
+        ]);
+    }
+
+    /**
+     * ลายนิ้วมือของทุกอย่างที่วาดลงภาพ OG — ติดท้าย URL ของภาพ (?v=) เพราะ
+     * LINE/Facebook จำภาพตาม URL ไว้นานมาก เจ้าของเปลี่ยนทรงเหรียญแล้วแชร์ใหม่
+     * ต้องได้ภาพใหม่ ไม่ใช่ภาพทรงเก่าที่บ็อตเคยเก็บไว้
+     *
+     * @param  array<string, mixed>  $card
+     */
+    public static function ogVersion(array $card): string
+    {
+        return substr(md5(json_encode([
+            $card['design'],
+            $card['holder_name'],
+            $card['shape'] ?? null,
+            $card['finish'] ?? null,
+        ])), 0, 10);
     }
 
     public function ogImage(string $token): Response
@@ -42,11 +63,9 @@ class MedalPageController extends Controller
 
         abort_if($card === null, 404);
 
-        // หน้าตาเหรียญอยู่ในคีย์ด้วย — แอดมินเปลี่ยนภาพ/สีแล้วภาพใหม่ต้องออกทันที
-        $key = 'medal-og:'.$token.':'.md5(json_encode([
-            $card['design'],
-            $card['holder_name'],
-        ]));
+        // หน้าตาเหรียญอยู่ในคีย์ด้วย — แอดมินเปลี่ยนภาพ/สี หรือเจ้าของเปลี่ยนทรง
+        // แล้วภาพใหม่ต้องออกทันที
+        $key = 'medal-og:'.$token.':'.self::ogVersion($card);
 
         $png = Cache::remember(
             $key,

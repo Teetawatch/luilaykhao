@@ -14,8 +14,9 @@ namespace App\Support;
  *  - แอป (lib/widgets/medal_art.dart) — **คัดลอกตัวเลขชุดเดียวกันไว้ในภาษา Dart**
  *    แก้ตรงนี้แล้วต้องแก้ที่นั่นด้วย
  *
- * ชั้นจากล่างขึ้นบน: ริบบิ้น → ขอบหยักทอง → แถบทองเข้ม (มีตัวอักษรวิ่งรอบ) →
- * เส้นทองบาง → ดวงสีทริป → ช่อใบไม้ → ไอคอน + ชื่อ → แถบป้าย FINISHER
+ * ชั้นจากล่างขึ้นบน: ริบบิ้น → กรอบนอกตามทรง (ขอบหยักเป็นมาตรฐาน ดู SHAPES) →
+ * แถบเข้ม (มีตัวอักษรวิ่งรอบ) → เส้นบาง → ดวงสีทริป → ช่อใบไม้ → ไอคอน + ชื่อ →
+ * แถบป้าย FINISHER — สีของกรอบ/แถบ/ใบไม้/ป้ายมาจากผิว (MedalFinish)
  */
 class MedalGeometry
 {
@@ -73,6 +74,45 @@ class MedalGeometry
     public const LAUREL = '#F2C66D';
 
     public const BANNER = '#FBF3E1';
+
+    /**
+     * ทรงที่เจ้าของเลือกได้ตอนแชร์ (TripMedal.shape) — ขอบหยักเป็นทรงมาตรฐาน
+     *
+     * ทุกทรงใช้แกนกลางชุดเดียวกัน (เส้นทองบาง ดวงสี ตัวอักษรวิ่ง ช่อใบไม้ ป้าย)
+     * ต่างกันแค่กรอบนอกกับแถบทองเข้ม ซึ่งต้องห่างศูนย์กลางอย่างน้อย ~40.5
+     * ไม่งั้นตัวอักษรรอบขอบล้นออกนอกแถบ
+     */
+    public const SHAPES = ['rosette', 'coin', 'sunburst', 'hexagon', 'shield'];
+
+    public const SHAPE_LABELS = [
+        'rosette' => 'ขอบหยัก',
+        'coin' => 'เหรียญกลม',
+        'sunburst' => 'ดาวแฉก',
+        'hexagon' => 'หกเหลี่ยม',
+        'shield' => 'โล่',
+    ];
+
+    /** เหรียญกลม: ลายเม็ดรอบวงบนขอบทอง */
+    public const COIN_BEADS = 56;
+
+    public const COIN_BEAD_R = 42.5;
+
+    public const COIN_BEAD_SIZE = 0.6;
+
+    /** ดาวแฉก: ปลายแฉก/ร่องสลับกัน ร่องยังอยู่นอกแถบเข้ม */
+    public const STAR_POINTS = 20;
+
+    public const STAR_OUTER_R = 48;
+
+    public const STAR_INNER_R = 43.5;
+
+    /** หกเหลี่ยมยอดแหลม — รัศมีถึงมุม */
+    public const HEX_OUTER_R = 50;
+
+    public const HEX_BAND_R = 47;
+
+    /** โล่: แถบเข้มหดเข้าจากกรอบนอกเท่านี้ */
+    public const SHIELD_BAND_INSET = 3.5;
 
     /**
      * ตัวอักษรที่วิ่งรอบขอบบน — อังกฤษ+ตัวเลขเท่านั้น เพราะวางทีละตัวอักษร
@@ -186,6 +226,88 @@ class MedalGeometry
     public static function banner(): array
     {
         return [14, 82, 86, 82, 82, 87, 86, 92, 14, 92, 18, 87];
+    }
+
+    public static function isShape(?string $shape): bool
+    {
+        return $shape !== null && in_array($shape, self::SHAPES, true);
+    }
+
+    /** @return array<int, array{x: float, y: float}> ลายเม็ดของเหรียญกลม */
+    public static function coinBeads(): array
+    {
+        $points = [];
+
+        for ($i = 0; $i < self::COIN_BEADS; $i++) {
+            $a = 2 * M_PI * $i / self::COIN_BEADS;
+            $points[] = [
+                'x' => round(self::CX + self::COIN_BEAD_R * cos($a), 3),
+                'y' => round(self::CY + self::COIN_BEAD_R * sin($a), 3),
+            ];
+        }
+
+        return $points;
+    }
+
+    /** @return array<int, float> ขอบดาวแฉก (x, y สลับกัน) เริ่มที่ปลายแฉกบนสุด */
+    public static function star(): array
+    {
+        $xy = [];
+
+        for ($i = 0; $i < self::STAR_POINTS * 2; $i++) {
+            $r = $i % 2 === 0 ? self::STAR_OUTER_R : self::STAR_INNER_R;
+            $a = -M_PI / 2 + M_PI * $i / self::STAR_POINTS;
+            $xy[] = round(self::CX + $r * cos($a), 3);
+            $xy[] = round(self::CY + $r * sin($a), 3);
+        }
+
+        return $xy;
+    }
+
+    /** @return array<int, float> หกเหลี่ยมยอดแหลม รัศมีถึงมุม $radius */
+    public static function hexagon(float $radius): array
+    {
+        $xy = [];
+
+        for ($i = 0; $i < 6; $i++) {
+            $a = -M_PI / 2 + M_PI / 3 * $i;
+            $xy[] = round(self::CX + $radius * cos($a), 3);
+            $xy[] = round(self::CY + $radius * sin($a), 3);
+        }
+
+        return $xy;
+    }
+
+    /**
+     * โล่: ขอบบนโค้งขึ้นนิด ๆ ด้านข้างตรง ปลายล่างแหลม — $inset หดเข้าทุกด้าน
+     * โค้ง (quadratic Bézier) ถูกแตกเป็นจุดเพราะ GD วาดได้แต่รูปหลายเหลี่ยม
+     *
+     * @return array<int, float>
+     */
+    public static function shield(float $inset = 0, int $segments = 16): array
+    {
+        $left = 6 + $inset;
+        $right = 94 - $inset;
+        $top = 22 + $inset;
+        $shoulder = 72;
+        $curve = 106 - $inset * 0.6;
+        $tip = 117.5 - $inset * 1.3;
+
+        $xy = [];
+        $bezier = function (array $p0, array $c, array $p1, bool $skipFirst) use (&$xy, $segments): void {
+            for ($i = $skipFirst ? 1 : 0; $i <= $segments; $i++) {
+                $t = $i / $segments;
+                $u = 1 - $t;
+                $xy[] = round($u * $u * $p0[0] + 2 * $u * $t * $c[0] + $t * $t * $p1[0], 3);
+                $xy[] = round($u * $u * $p0[1] + 2 * $u * $t * $c[1] + $t * $t * $p1[1], 3);
+            }
+        };
+
+        $bezier([$left, $top], [self::CX, $top - 6], [$right, $top], false);
+        $bezier([$right, $shoulder], [$right, $curve], [self::CX, $tip], false);
+        $bezier([self::CX, $tip], [$left, $curve], [$left, $shoulder], true);
+
+        return $xy;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\MedalDesign;
+use App\Support\MedalFinish;
 use App\Support\MedalGeometry as G;
 use App\Support\ThaiGdText;
 
@@ -12,7 +13,9 @@ use App\Support\ThaiGdText;
  *
  * ซ้ายเป็นเหรียญ ขวาเป็นข้อความ พื้นหลังเป็นสีเหรียญแบบเข้ม (สีเรียบ ไม่ไล่เฉด)
  * เหรียญแม่แบบวาดด้วย GD ล้วนตามรูปทรงใน MedalGeometry (ชุดเดียวกับเว็บและแอป)
+ * ตามทรงที่เจ้าของเลือก ($card['shape']) และผิวตามครั้งที่มา ($card['finish'])
  * ไอคอนใช้ฟอนต์ MedalIcons.otf ส่วนทริปที่มีภาพเหรียญออกแบบเองใช้ภาพนั้นทั้งดวง
+ * (เว้นแต่เจ้าของเลือกทรงไว้ — ตอนนั้นวาดแม่แบบทรงนั้นแทน ตรงกับการ์ดที่แชร์)
  *
  * ใช้ฟอนต์ Noto Sans Thai ที่ผูกมากับ repo และจัดบรรทัดด้วยความสูงที่วัดจริง
  * จาก imagettfbbox เสมอ (ดู reference_gd_thai_card_layout) — ห้ามเดาพิกัด y
@@ -40,12 +43,13 @@ class MedalImageService
         [$r, $g, $b] = $this->rgb($card['design']['color'] ?? '#15803D');
         imagefill($canvas, 0, 0, imagecolorallocate($canvas, ...$this->shade([$r, $g, $b], 0.28)));
 
-        $art = $this->loadImage($card['design']['image_url'] ?? null);
+        $shape = G::isShape($card['shape'] ?? null) ? $card['shape'] : null;
+        $art = $shape === null ? $this->loadImage($card['design']['image_url'] ?? null) : null;
 
         if ($art) {
             $this->drawCustom($canvas, $art);
         } else {
-            $this->drawTemplate($canvas, [$r, $g, $b], $card);
+            $this->drawTemplate($canvas, [$r, $g, $b], $card, $shape ?? 'rosette');
         }
 
         $this->drawText($canvas, $card);
@@ -62,8 +66,9 @@ class MedalImageService
      * เหรียญแม่แบบตามรูปทรงใน MedalGeometry (ผืน 100×118 หน่วย) ขยาย 4 เท่า
      * = เหรียญกว้าง 400 px วางกลางแนวตั้งของครึ่งซ้าย
      */
-    private function drawTemplate($canvas, array $color, array $card): void
+    private function drawTemplate($canvas, array $color, array $card, string $shape): void
     {
+        $paint = MedalFinish::palette($card['finish'] ?? null);
         $k = 4.0;
         $ox = self::MEDAL_CX - G::CX * $k;
         $oy = (self::HEIGHT - G::HEIGHT * $k) / 2;
@@ -104,13 +109,39 @@ class MedalImageService
             imagefilledpolygon($canvas, $poly($reach($xy)), $white);
         }
 
-        $gold = imagecolorallocate($canvas, ...$this->rgb(G::GOLD));
-        $circle(G::CX, G::CY, G::ROSETTE_R, $gold);
-        foreach (G::scallops() as $p) {
-            $circle($p['x'], $p['y'], G::SCALLOP_R, $gold);
+        // กรอบนอก + แถบเข้มตามทรง — ส่วนเดียวที่ต่างกัน ที่เหลือวาดเหมือนกันทุกทรง
+        $frame = imagecolorallocate($canvas, ...$this->rgb($paint['frame']));
+        $deep = imagecolorallocate($canvas, ...$this->rgb($paint['band']));
+
+        switch ($shape) {
+            case 'coin':
+                $circle(G::CX, G::CY, G::ROSETTE_R, $frame);
+                $circle(G::CX, G::CY, G::BAND_R, $deep);
+                foreach (G::coinBeads() as $p) {
+                    $circle($p['x'], $p['y'], G::COIN_BEAD_SIZE, $deep);
+                }
+                break;
+            case 'sunburst':
+                imagefilledpolygon($canvas, $poly(G::star()), $frame);
+                $circle(G::CX, G::CY, G::BAND_R, $deep);
+                break;
+            case 'hexagon':
+                imagefilledpolygon($canvas, $poly(G::hexagon(G::HEX_OUTER_R)), $frame);
+                imagefilledpolygon($canvas, $poly(G::hexagon(G::HEX_BAND_R)), $deep);
+                break;
+            case 'shield':
+                imagefilledpolygon($canvas, $poly(G::shield()), $frame);
+                imagefilledpolygon($canvas, $poly(G::shield(G::SHIELD_BAND_INSET)), $deep);
+                break;
+            default:
+                $circle(G::CX, G::CY, G::ROSETTE_R, $frame);
+                foreach (G::scallops() as $p) {
+                    $circle($p['x'], $p['y'], G::SCALLOP_R, $frame);
+                }
+                $circle(G::CX, G::CY, G::BAND_R, $deep);
         }
-        $circle(G::CX, G::CY, G::BAND_R, imagecolorallocate($canvas, ...$this->rgb(G::GOLD_DEEP)));
-        $circle(G::CX, G::CY, G::RIM_R, $gold);
+
+        $circle(G::CX, G::CY, G::RIM_R, imagecolorallocate($canvas, ...$this->rgb($paint['rim'])));
         $disc = imagecolorallocate($canvas, ...$color);
         $circle(G::CX, G::CY, G::DISC_R, $disc);
 
@@ -122,10 +153,10 @@ class MedalImageService
             $y(G::CY),
             G::RING_TEXT_R * $k,
             (int) round(G::RING_TEXT_SIZE * $k * 0.75),
-            imagecolorallocate($canvas, ...$this->rgb(G::RING_TEXT)),
+            imagecolorallocate($canvas, ...$this->rgb($paint['ring'])),
         );
 
-        $leaf = imagecolorallocate($canvas, ...$this->rgb(G::LAUREL));
+        $leaf = imagecolorallocate($canvas, ...$this->rgb($paint['laurel']));
         foreach (G::laurel() as $l) {
             imagefilledpolygon($canvas, $this->ellipse(
                 $ox + $l['cx'] * $k, $oy + $l['cy'] * $k, $l['rx'] * $k, $l['ry'] * $k, deg2rad($l['deg']),
@@ -146,8 +177,8 @@ class MedalImageService
 
         $this->discName($canvas, (string) ($card['design']['name'] ?? ''), $x, $y, $k, $white);
 
-        imagefilledpolygon($canvas, $poly(G::banner()), imagecolorallocate($canvas, ...$this->rgb(G::BANNER)));
-        $ink = imagecolorallocate($canvas, ...$this->shade($color, 0.6));
+        imagefilledpolygon($canvas, $poly(G::banner()), imagecolorallocate($canvas, ...$this->rgb($paint['banner'])));
+        $ink = imagecolorallocate($canvas, ...($paint['banner_ink'] ? $this->rgb($paint['banner_ink']) : $this->shade($color, 0.6)));
         $this->centeredText($canvas, 'FINISHER', (int) round(G::BANNER_TEXT_SIZE * $k * 0.75), $x(G::CX),
             $y(G::BANNER_TEXT_Y) + (int) round($this->capHeight((int) round(G::BANNER_TEXT_SIZE * $k * 0.75)) / 2), $ink, bold: true);
     }
@@ -289,7 +320,7 @@ class MedalImageService
 
         $name = (string) ($card['design']['name'] ?? '');
         $lines = array_values(array_filter([
-            [(string) ($card['finisher_label'] ?? ''), 34, $gold, true, 18],
+            [$this->finisherLine($card), $this->fit($this->finisherLine($card), 34, $width), $gold, true, 18],
             [$name, $this->fit($name, 60, $width), $white, true, 26],
             [(string) ($card['holder_name'] ?? ''), $this->fit((string) ($card['holder_name'] ?? ''), 36, $width), $white, false, 14],
             [(string) ($card['date_label'] ?? ''), $this->fit((string) ($card['date_label'] ?? ''), 28, $width), $muted, false, 0],
@@ -309,6 +340,17 @@ class MedalImageService
 
         $brand = imagecolorallocatealpha($canvas, 255, 255, 255, 50);
         $this->text($canvas, 'ลุยเลเขา · luilaykhao.com', 22, self::TEXT_X, self::HEIGHT - 44, $brand);
+    }
+
+    /** "Finisher #27" — ต่อท้ายผิวเหรียญเมื่อไม่ใช่ทอง ("· เหรียญแพลทินัม") */
+    private function finisherLine(array $card): string
+    {
+        $label = (string) ($card['finisher_label'] ?? '');
+        $finish = $card['finish'] ?? MedalFinish::GOLD;
+
+        return $finish === MedalFinish::GOLD
+            ? $label
+            : trim($label.'  ·  เหรียญ'.MedalFinish::label($finish));
     }
 
     /** วาดหนึ่งบรรทัดโดยให้ "ขอบบน" ของตัวอักษรจริงอยู่ที่ $top คืนขอบล่างจริง */

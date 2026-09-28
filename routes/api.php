@@ -250,6 +250,7 @@ Route::prefix('v1')->group(function () {
         // ตู้เหรียญพิชิต — เหรียญประจำตัวของทริปที่เดินจบจริง
         Route::get('me/medals', [MedalController::class, 'index']);
         Route::post('me/medals/seen', [MedalController::class, 'markSeen']);
+        Route::match(['put', 'patch'], 'me/medals/{id}', [MedalController::class, 'update'])->whereNumber('id')->middleware('throttle:30,1');
         // ใครพิชิตรอบเดียวกันบ้าง + ปรบมือให้กัน (เห็นกันเฉพาะคนร่วมรอบ)
         Route::get('me/medals/{id}/round', [MedalController::class, 'round'])->whereNumber('id');
         Route::post('me/medals/{id}/kudos', [MedalController::class, 'kudos'])->whereNumber('id')->middleware('throttle:60,1');

@@ -15,7 +15,7 @@ class TripMedal extends Model
 {
     protected $fillable = [
         'user_id', 'trip_id', 'schedule_id', 'booking_id',
-        'finisher_no', 'earned_on', 'share_token', 'seen_at', 'notified_at',
+        'finisher_no', 'earned_on', 'share_token', 'shape', 'seen_at', 'notified_at',
     ];
 
     protected function casts(): array

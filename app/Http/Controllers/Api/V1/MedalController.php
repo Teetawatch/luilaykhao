@@ -9,9 +9,11 @@ use App\Services\MedalKudosService;
 use App\Services\MedalService;
 use App\Services\YearReviewService;
 use App\Support\MedalDesign;
+use App\Support\MedalGeometry;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * ตู้เหรียญพิชิตของผู้ใช้ที่ล็อกอิน — ดู App\Services\MedalService
@@ -43,6 +45,29 @@ class MedalController extends Controller
         );
 
         return $this->success(['updated' => $updated]);
+    }
+
+    /**
+     * ทรงเหรียญที่เจ้าของเลือกตอนแชร์ — ลิงก์ /m/{token} ภาพ OG และโปรไฟล์
+     * สาธารณะวาดตามนี้ shape = null กลับไปใช้แบบของทริป
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'shape' => ['present', 'nullable', 'string', Rule::in(MedalGeometry::SHAPES)],
+        ]);
+
+        try {
+            $medal = $this->medals->setShape($request->user()->id, $id, $validated['shape']);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 404);
+        }
+
+        return $this->success([
+            'id' => $medal->id,
+            'shape' => $medal->shape,
+            'share_url' => url('/m/'.$medal->share_token),
+        ], 'บันทึกทรงเหรียญแล้ว');
     }
 
     /**
