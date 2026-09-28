@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\MedalDesign;
+use App\Support\MedalGeometry as G;
 use App\Support\ThaiGdText;
 
 /**
@@ -9,8 +11,8 @@ use App\Support\ThaiGdText;
  * ลง LINE / Facebook / X
  *
  * ซ้ายเป็นเหรียญ ขวาเป็นข้อความ พื้นหลังเป็นสีเหรียญแบบเข้ม (สีเรียบ ไม่ไล่เฉด)
- * เหรียญแม่แบบวาดด้วย GD ล้วน (ริบบิ้น + ขอบทอง + ดวงสี + ภูเขา) ส่วนทริปที่มี
- * ภาพเหรียญออกแบบเอง ใช้ภาพนั้นทั้งดวง
+ * เหรียญแม่แบบวาดด้วย GD ล้วนตามรูปทรงใน MedalGeometry (ชุดเดียวกับเว็บและแอป)
+ * ไอคอนใช้ฟอนต์ MedalIcons.otf ส่วนทริปที่มีภาพเหรียญออกแบบเองใช้ภาพนั้นทั้งดวง
  *
  * ใช้ฟอนต์ Noto Sans Thai ที่ผูกมากับ repo และจัดบรรทัดด้วยความสูงที่วัดจริง
  * จาก imagettfbbox เสมอ (ดู reference_gd_thai_card_layout) — ห้ามเดาพิกัด y
@@ -23,16 +25,9 @@ class MedalImageService
 
     private const MEDAL_CX = 330;
 
-    private const MEDAL_CY = 345;
-
-    private const MEDAL_R = 200;
-
     private const TEXT_X = 620;
 
     private const TEXT_RIGHT = 1130;
-
-    /** ทองของขอบเหรียญ — ตรงกับ kMedalGold ในแอป */
-    private const GOLD = [217, 164, 65];
 
     /**
      * @param  array<string, mixed>  $card  ผลจาก MedalService::publicCard()
@@ -50,7 +45,7 @@ class MedalImageService
         if ($art) {
             $this->drawCustom($canvas, $art);
         } else {
-            $this->drawTemplate($canvas, [$r, $g, $b]);
+            $this->drawTemplate($canvas, [$r, $g, $b], $card);
         }
 
         $this->drawText($canvas, $card);
@@ -63,59 +58,201 @@ class MedalImageService
 
     // ── เหรียญ ──────────────────────────────────────────────────────────────
 
-    private function drawTemplate($canvas, array $color): void
+    /**
+     * เหรียญแม่แบบตามรูปทรงใน MedalGeometry (ผืน 100×118 หน่วย) ขยาย 4 เท่า
+     * = เหรียญกว้าง 400 px วางกลางแนวตั้งของครึ่งซ้าย
+     */
+    private function drawTemplate($canvas, array $color, array $card): void
     {
-        $cx = self::MEDAL_CX;
-        $cy = self::MEDAL_CY;
-        $r = self::MEDAL_R;
+        $k = 4.0;
+        $ox = self::MEDAL_CX - G::CX * $k;
+        $oy = (self::HEIGHT - G::HEIGHT * $k) / 2;
+        $x = fn (float $u) => (int) round($ox + $u * $k);
+        $y = fn (float $u) => (int) round($oy + $u * $k);
+        $poly = function (array $xy) use ($x, $y): array {
+            $out = [];
+            foreach (array_chunk($xy, 2) as [$px, $py]) {
+                $out[] = $x($px);
+                $out[] = $y($py);
+            }
 
-        $ribbon = imagecolorallocate($canvas, ...$this->shade($color, 0.75));
-        $stripe = imagecolorallocate($canvas, 255, 255, 255);
-        $gold = imagecolorallocate($canvas, ...self::GOLD);
-        $disc = imagecolorallocate($canvas, ...$color);
-        $ring = imagecolorallocatealpha($canvas, 255, 255, 255, 80);
+            return $out;
+        };
+        $circle = fn (float $cx, float $cy, float $r, int $c) => imagefilledellipse(
+            $canvas, $x($cx), $y($cy), (int) round($r * 2 * $k), (int) round($r * 2 * $k), $c,
+        );
+
+        // ริบบิ้นในภาพ OG ต่อขึ้นไปจนชนขอบบนของภาพ ไม่ให้ปลายลอยกลางอากาศ —
+        // ยืดตามแนวเดิมของแต่ละเส้น (จุดบน p0/p1 คู่กับจุดล่าง p3/p2)
+        $reach = function (array $xy) use ($oy, $k): array {
+            $t = ($oy / $k) / G::RIBBON_JOIN;
+            [$x0, $y0, $x1, $y1, $x2, $y2, $x3, $y3] = $xy;
+
+            return [
+                $x0 + ($x0 - $x3) * $t, $y0 + ($y0 - $y3) * $t,
+                $x1 + ($x1 - $x2) * $t, $y1 + ($y1 - $y2) * $t,
+                $x2, $y2, $x3, $y3,
+            ];
+        };
+        $ribbon = G::ribbon();
+        $band = imagecolorallocate($canvas, ...$this->shade($color, 0.75));
         $white = imagecolorallocate($canvas, 255, 255, 255);
-
-        // ริบบิ้นสองเส้นไขว้เป็นรูปตัว V จากขอบบนของภาพลงมาหาเหรียญ ปลายล่าง
-        // จมอยู่ใต้ขอบทองจึงไม่ต้องตัดให้พอดี
-        $join = $cy - $r + 30;
-        foreach ([-1, 1] as $side) {
-            imagefilledpolygon($canvas, [
-                $cx + $side * 200, 0,
-                $cx + $side * 110, 0,
-                $cx - $side * 15, $join,
-                $cx + $side * 75, $join,
-            ], $ribbon);
+        foreach ($ribbon['bands'] as $xy) {
+            imagefilledpolygon($canvas, $poly($reach($xy)), $band);
         }
-        foreach ([-1, 1] as $side) {
-            imagefilledpolygon($canvas, [
-                $cx + $side * 163, 0,
-                $cx + $side * 147, 0,
-                $cx + $side * 22, $join,
-                $cx + $side * 38, $join,
-            ], $stripe);
+        foreach ($ribbon['stripes'] as $xy) {
+            imagefilledpolygon($canvas, $poly($reach($xy)), $white);
         }
 
-        imagefilledellipse($canvas, $cx, $cy, $r * 2, $r * 2, $gold);
-        imagefilledellipse($canvas, $cx, $cy, ($r - 24) * 2, ($r - 24) * 2, $disc);
-        imagesetthickness($canvas, 4);
-        imageellipse($canvas, $cx, $cy, ($r - 40) * 2, ($r - 40) * 2, $ring);
-        imagesetthickness($canvas, 1);
+        $gold = imagecolorallocate($canvas, ...$this->rgb(G::GOLD));
+        $circle(G::CX, G::CY, G::ROSETTE_R, $gold);
+        foreach (G::scallops() as $p) {
+            $circle($p['x'], $p['y'], G::SCALLOP_R, $gold);
+        }
+        $circle(G::CX, G::CY, G::BAND_R, imagecolorallocate($canvas, ...$this->rgb(G::GOLD_DEEP)));
+        $circle(G::CX, G::CY, G::RIM_R, $gold);
+        $disc = imagecolorallocate($canvas, ...$color);
+        $circle(G::CX, G::CY, G::DISC_R, $disc);
 
-        // ภูเขาสองลูก — ตัวแทนไอคอนของเหรียญแม่แบบ (GD ไม่มีฟอนต์ไอคอน)
-        $base = $cy + 55;
-        imagefilledpolygon($canvas, [
-            $cx - 105, $base,
-            $cx - 20, $cy - 75,
-            $cx + 40, $base,
-        ], $white);
-        imagefilledpolygon($canvas, [
-            $cx - 10, $base,
-            $cx + 50, $cy - 25,
-            $cx + 110, $base,
-        ], imagecolorallocatealpha($canvas, 255, 255, 255, 40));
+        $year = ! empty($card['earned_on']) ? ((int) substr((string) $card['earned_on'], 0, 4)) + 543 : null;
+        $this->ringText(
+            $canvas,
+            G::ringText($year),
+            $x(G::CX),
+            $y(G::CY),
+            G::RING_TEXT_R * $k,
+            (int) round(G::RING_TEXT_SIZE * $k * 0.75),
+            imagecolorallocate($canvas, ...$this->rgb(G::RING_TEXT)),
+        );
 
-        $this->centeredText($canvas, 'FINISHER', 24, $cx, $base + 58, $white, bold: true);
+        $leaf = imagecolorallocate($canvas, ...$this->rgb(G::LAUREL));
+        foreach (G::laurel() as $l) {
+            imagefilledpolygon($canvas, $this->ellipse(
+                $ox + $l['cx'] * $k, $oy + $l['cy'] * $k, $l['rx'] * $k, $l['ry'] * $k, deg2rad($l['deg']),
+            ), $leaf);
+        }
+
+        // ไอคอนตัวเดียวกับในแอป — ฟอนต์ MedalIcons เรียงตาม MedalDesign::ICONS
+        $iconIndex = array_search($card['design']['icon'] ?? '', array_keys(MedalDesign::ICONS), true);
+        $glyph = mb_chr(0xE000 + ($iconIndex === false ? 1 : $iconIndex));
+        $iconPt = (int) round(G::ICON_SIZE * $k * 0.75);
+        $box = imagettfbbox($iconPt, 0, $this->iconFontPath(), $glyph);
+        imagettftext(
+            $canvas, $iconPt, 0,
+            (int) round($x(G::CX) - ($box[2] + $box[0]) / 2),
+            (int) round($y(G::ICON_Y) - ($box[7] + $box[1]) / 2),
+            $white, $this->iconFontPath(), $glyph,
+        );
+
+        $this->discName($canvas, (string) ($card['design']['name'] ?? ''), $x, $y, $k, $white);
+
+        imagefilledpolygon($canvas, $poly(G::banner()), imagecolorallocate($canvas, ...$this->rgb(G::BANNER)));
+        $ink = imagecolorallocate($canvas, ...$this->shade($color, 0.6));
+        $this->centeredText($canvas, 'FINISHER', (int) round(G::BANNER_TEXT_SIZE * $k * 0.75), $x(G::CX),
+            $y(G::BANNER_TEXT_Y) + (int) round($this->capHeight((int) round(G::BANNER_TEXT_SIZE * $k * 0.75)) / 2), $ink, bold: true);
+    }
+
+    /**
+     * ชื่อบนดวง — บรรทัดเดียวถ้าพอ ไม่งั้นแยกสองบรรทัดที่ช่องว่างใกล้กลางที่สุด
+     * (GD ตัดคำไทยเองไม่ได้ จึงแยกเฉพาะที่ช่องว่างที่คนพิมพ์ไว้)
+     */
+    private function discName($canvas, string $name, \Closure $x, \Closure $y, float $k, int $color): void
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return;
+        }
+
+        $box = G::NAME_BOX;
+        $maxWidth = (int) round($box['w'] * $k);
+        $cx = $x($box['x'] + $box['w'] / 2);
+        $midY = $y($box['y'] + $box['h'] / 2);
+        $maxPt = (int) round(G::NAME_SIZE * $k * 0.75);
+
+        $single = $this->fit($name, $maxPt, $maxWidth);
+        $lines = [$name];
+        $size = $single;
+
+        if ($single < $maxPt - 2 && str_contains($name, ' ')) {
+            $words = explode(' ', $name);
+            $best = null;
+            for ($i = 1; $i < count($words); $i++) {
+                $pair = [implode(' ', array_slice($words, 0, $i)), implode(' ', array_slice($words, $i))];
+                $width = max($this->textWidth($pair[0], $maxPt), $this->textWidth($pair[1], $maxPt));
+                if ($best === null || $width < $best[0]) {
+                    $best = [$width, $pair];
+                }
+            }
+            $lines = $best[1];
+            $size = min($this->fit($lines[0], $maxPt, $maxWidth), $this->fit($lines[1], $maxPt, $maxWidth));
+        }
+
+        $lineHeight = (int) round($size * 1.333 * 1.3);
+        $cap = $this->capHeight($size);
+        $first = $midY - (int) round((count($lines) - 1) * $lineHeight / 2) + (int) round($cap / 2);
+
+        foreach ($lines as $i => $line) {
+            $this->centeredText($canvas, $line, $size, $cx, $first + $i * $lineHeight, $color, bold: true);
+        }
+    }
+
+    /**
+     * ตัวอักษรวิ่งรอบขอบบน วางทีละตัวให้เอียงตามวง (อังกฤษ/ตัวเลขเท่านั้น)
+     */
+    private function ringText($canvas, string $text, int $cx, int $cy, float $radius, int $pt, int $color): void
+    {
+        $chars = mb_str_split($text);
+        $gap = $pt * 0.18;
+        $widths = array_map(fn (string $c) => $c === ' ' ? $pt * 0.32 : $this->textWidth($c, $pt), $chars);
+        $total = array_sum($widths) + $gap * (count($chars) - 1);
+        $cap = $this->capHeight($pt);
+        $angle = -M_PI / 2 - ($total / $radius) / 2;
+
+        foreach ($chars as $i => $char) {
+            $w = $widths[$i];
+            $a = $angle + ($w / 2) / $radius;
+
+            if ($char !== ' ') {
+                // เส้นฐานอยู่ด้านในวงครึ่งความสูงตัวอักษร ตัวอักษรจึงคร่อมเส้นรัศมีพอดี
+                $tx = -sin($a);
+                $ty = cos($a);
+                $nx = cos($a);
+                $ny = sin($a);
+                $px = $cx + $radius * $nx - $nx * ($cap / 2) - $tx * ($w / 2);
+                $py = $cy + $radius * $ny - $ny * ($cap / 2) - $ty * ($w / 2);
+                $deg = rad2deg(atan2(-$ty, $tx));
+                imagettftext($canvas, $pt, $deg, (int) round($px), (int) round($py), $color, $this->fontPath(), $char);
+            }
+
+            $angle += ($w + $gap) / $radius;
+        }
+    }
+
+    /** วงรีหมุนเป็นรูปหลายเหลี่ยม — GD วาดวงรีเอียงไม่ได้ @return array<int, int> */
+    private function ellipse(float $cx, float $cy, float $rx, float $ry, float $rotation): array
+    {
+        $points = [];
+        for ($i = 0; $i < 16; $i++) {
+            $t = 2 * M_PI * $i / 16;
+            $ex = $rx * cos($t);
+            $ey = $ry * sin($t);
+            $points[] = (int) round($cx + $ex * cos($rotation) - $ey * sin($rotation));
+            $points[] = (int) round($cy + $ex * sin($rotation) + $ey * cos($rotation));
+        }
+
+        return $points;
+    }
+
+    private function capHeight(int $pt): int
+    {
+        $box = imagettfbbox($pt, 0, $this->fontPath(), 'H');
+
+        return (int) abs($box[7] - $box[1]);
+    }
+
+    private function iconFontPath(): string
+    {
+        return resource_path('fonts/MedalIcons.otf');
     }
 
     private function drawCustom($canvas, $art): void

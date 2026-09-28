@@ -176,6 +176,8 @@ class MedalDesign
                 'type_colors' => self::TYPE_COLORS,
                 'color' => self::DEFAULT_COLOR,
             ],
+            // รูปทรงเหรียญแม่แบบ — พรีวิวในฟอร์มวาดจากตัวเลขชุดเดียวกับเว็บ/ภาพ OG
+            'geometry' => MedalGeometry::forClient(),
             'icons' => collect(self::ICONS)
                 ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                 ->values()

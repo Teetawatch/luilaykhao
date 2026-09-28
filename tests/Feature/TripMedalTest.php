@@ -13,6 +13,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\MedalService;
 use App\Support\MedalDesign;
+use App\Support\MedalGeometry;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -509,7 +510,9 @@ class TripMedalTest extends TestCase
         $this->actingAs($admin, 'sanctum')
             ->getJson('/api/v1/admin/medal-options')
             ->assertOk()
-            ->assertJsonPath('data.icons.0.value', 'hiking');
+            ->assertJsonPath('data.icons.0.value', 'hiking')
+            ->assertJsonCount(MedalGeometry::SCALLOPS, 'data.geometry.scallops')
+            ->assertJsonCount(count(MedalGeometry::laurel()), 'data.geometry.laurel');
     }
 
     public function test_default_medal_name_drops_the_trip_length(): void
@@ -519,5 +522,53 @@ class TripMedalTest extends TestCase
         $this->assertSame('ภูกระดึง', MedalDesign::nameFromTitle('ภูกระดึง (3วัน2คืน)'));
         $this->assertSame('3 วัน 2 คืน', MedalDesign::nameFromTitle('3 วัน 2 คืน'));
         $this->assertSame('ภูชี้ฟ้า', MedalDesign::nameFromTitle('ภูชี้ฟ้า'));
+    }
+
+    public function test_every_medal_icon_has_a_glyph_in_the_og_icon_font(): void
+    {
+        // MedalIcons.otf วางไอคอนเรียงตามลำดับของ MedalDesign::ICONS ที่ U+E000 เป็นต้นไป
+        // เพิ่มไอคอนใน ICONS แล้วลืมสร้างฟอนต์ใหม่ ภาพ OG จะได้ช่องว่างแทนไอคอน
+        $font = resource_path('fonts/MedalIcons.otf');
+
+        foreach (array_keys(MedalDesign::ICONS) as $i => $icon) {
+            $box = imagettfbbox(40, 0, $font, mb_chr(0xE000 + $i));
+            $this->assertGreaterThan(10, abs($box[2] - $box[0]), "ไม่มี glyph ของ {$icon}");
+        }
+    }
+
+    public function test_template_geometry_stays_inside_the_medal(): void
+    {
+        $inDisc = fn (float $x, float $y, float $pad = 0) => hypot($x - MedalGeometry::CX, $y - MedalGeometry::CY)
+            <= MedalGeometry::DISC_R - $pad;
+
+        // ช่อใบไม้ทุกใบอยู่ในดวงสี ไม่ล้นไปทับแถบตัวอักษร
+        foreach (MedalGeometry::laurel() as $leaf) {
+            $this->assertTrue($inDisc($leaf['cx'], $leaf['cy'], $leaf['rx'] * 0.5), json_encode($leaf));
+        }
+
+        // ขอบหยักไม่ล้นผืน 100×118
+        $outer = MedalGeometry::ROSETTE_R + MedalGeometry::SCALLOP_R;
+        $this->assertLessThanOrEqual(MedalGeometry::WIDTH / 2, $outer);
+        $this->assertLessThanOrEqual(MedalGeometry::HEIGHT, MedalGeometry::CY + $outer);
+
+        // ปลายล่างของริบบิ้นจมอยู่ใต้ขอบหยักเสมอ
+        foreach (MedalGeometry::ribbon()['bands'] as $band) {
+            foreach ([[$band[4], $band[5]], [$band[6], $band[7]]] as [$x, $y]) {
+                $this->assertLessThan(MedalGeometry::ROSETTE_R, hypot($x - MedalGeometry::CX, $y - MedalGeometry::CY));
+            }
+        }
+    }
+
+    public function test_public_medal_page_draws_the_template_medal_with_the_year(): void
+    {
+        $user = User::factory()->create();
+        $schedule = $this->makeSchedule($this->makeTrip(['medal_icon' => 'coffee']), '2026-09-02', '2026-09-05');
+        $this->book($user, $schedule);
+        $this->medals()->awardSchedule($schedule);
+
+        $this->get('/m/'.TripMedal::first()->share_token)
+            ->assertOk()
+            ->assertSee('LUILAYKHAO  •  FINISHER  •  2569')
+            ->assertSee('>coffee</text>', false);
     }
 }

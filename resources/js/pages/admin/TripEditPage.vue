@@ -831,21 +831,12 @@
               — เว้นว่างทุกช่องได้ ระบบเดาจากชื่อและประเภททริปให้
             </p>
 
-            <div class="medal-preview">
-              <div class="medal-art" :style="{ '--medal': medalPreview.color }">
-                <img v-if="medalPreview.image" :src="medalPreview.image" class="medal-art__custom" alt="ภาพเหรียญ" />
-                <template v-else>
-                  <div class="medal-art__ribbon"><span></span><span></span></div>
-                  <div class="medal-art__rim">
-                    <div class="medal-art__disc">
-                      <div class="medal-art__ring"></div>
-                      <span class="material-symbols-rounded medal-art__icon">{{ medalPreview.icon }}</span>
-                      <span class="medal-art__name">{{ medalPreview.name }}</span>
-                      <span class="medal-art__kicker">FINISHER</span>
-                    </div>
-                  </div>
-                </template>
-              </div>
+            <div class="medal-preview" :class="{ 'medal-preview--dark': medalPreviewDark }">
+              <MedalArt :design="medalPreview" :geometry="medalOptions.geometry" :year="currentBuddhistYear" :size="170" />
+              <button type="button" class="medal-preview-toggle" @click="medalPreviewDark = !medalPreviewDark">
+                <span class="material-symbols-rounded">{{ medalPreviewDark ? 'light_mode' : 'dark_mode' }}</span>
+                {{ medalPreviewDark ? 'พื้นสว่าง' : 'พื้นเข้ม' }}
+              </button>
             </div>
 
             <div class="form-group">
@@ -904,7 +895,7 @@
                 </button>
               </div>
               <input ref="medalImageInput" type="file" accept="image/png,image/webp" class="hidden-file-input" @change="handleMedalImageSelect" />
-              <p class="field-hint">PNG พื้นหลังโปร่ง ทรงจัตุรัส อย่างน้อย 800×800 px — ใส่แล้วจะแทนเหรียญแม่แบบทั้งดวง (ชื่อ/ไอคอน/สีด้านบนไม่ถูกใช้)</p>
+              <p class="field-hint">PNG/WebP พื้นหลังโปร่ง ทรงจัตุรัส (มีริบบิ้นได้ สูงกว่ากว้างไม่เกิน 1.3 เท่า) แนะนำ 1200×1200 px ขั้นต่ำ 600 px — ใส่แล้วจะแทนเหรียญแม่แบบทั้งดวง ชื่อ/ไอคอน/สีด้านบนไม่ถูกใช้ ดังนั้นใส่ชื่อทริปไว้ในภาพด้วย</p>
             </div>
           </div>
         </div>
@@ -1067,6 +1058,7 @@ import { useAdminStore } from '../../stores/admin';
 import { useCategoriesStore } from '../../stores/categories';
 import api from '../../lib/axios';
 import { uploadMedia } from '../../lib/mediaUpload';
+import MedalArt from '../../components/MedalArt.vue';
 import MediaLibrary from '../../components/MediaLibrary.vue';
 
 const route = useRoute();
@@ -1338,9 +1330,13 @@ const medalOptions = reactive({
   icons: [],
   colors: [],
   defaults: { type_icons: {}, icon: 'landscape', type_colors: {}, color: '#15803D' },
+  geometry: null,
 });
 const medalImageInput = ref(null);
 const medalImageUploading = ref(false);
+// ภาพเหรียญที่ออกแบบเองต้องดูดีทั้งบนพื้นเข้ม (การ์ดแชร์/หน้ารายละเอียด) และพื้นสว่าง
+const medalPreviewDark = ref(true);
+const currentBuddhistYear = new Date().getFullYear() + 543;
 
 const loadMedalOptions = async () => {
   try {
@@ -1371,10 +1367,43 @@ const medalPreview = computed(() => {
   };
 });
 
+// อ่านขนาดภาพก่อนอัปโหลด — ภาพเล็กจะแตกบนการ์ดแชร์ 1080×1920 ส่วนภาพที่ไม่ใช่
+// ทรงเหรียญ (เช่น แบนเนอร์แนวนอน) จะดูเล็กจิ๋วเมื่อถูกย่อให้พอดีกรอบเหรียญ
+const readImageSize = (file) => new Promise((resolve) => {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => { resolve({ width: img.naturalWidth, height: img.naturalHeight }); URL.revokeObjectURL(url); };
+  img.onerror = () => { resolve(null); URL.revokeObjectURL(url); };
+  img.src = url;
+});
+
+const MEDAL_MIN_PX = 600;
+
 const handleMedalImageSelect = async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
-  if (file.size > 10 * 1024 * 1024) { alert('ไฟล์มีขนาดเกิน 10MB'); return; }
+  const resetInput = () => { if (medalImageInput.value) medalImageInput.value.value = ''; };
+
+  if (!['image/png', 'image/webp'].includes(file.type)) {
+    alert('ใช้ไฟล์ PNG หรือ WebP ที่พื้นหลังโปร่งใส — JPG ไม่มีพื้นหลังโปร่ง จะเห็นเป็นกล่องสี่เหลี่ยมบนการ์ด');
+    resetInput();
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) { alert('ไฟล์มีขนาดเกิน 10MB'); resetInput(); return; }
+
+  const dims = await readImageSize(file);
+  if (!dims) { alert('เปิดภาพนี้ไม่ได้ ลองบันทึกเป็น PNG ใหม่อีกครั้ง'); resetInput(); return; }
+  if (Math.min(dims.width, dims.height) < MEDAL_MIN_PX) {
+    alert(`ภาพเล็กเกินไป (${dims.width}×${dims.height} px) — ต้องอย่างน้อย ${MEDAL_MIN_PX}×${MEDAL_MIN_PX} px เพื่อให้คมชัดบนการ์ดแชร์`);
+    resetInput();
+    return;
+  }
+  const ratio = dims.height / dims.width;
+  if (ratio < 0.8 || ratio > 1.3) {
+    alert(`สัดส่วนภาพ ${dims.width}×${dims.height} ไม่ใช่ทรงเหรียญ — ใช้ภาพจัตุรัส หรือสูงกว่ากว้างเล็กน้อยถ้ามีริบบิ้น (สูง:กว้าง ไม่เกิน 1.3)`);
+    resetInput();
+    return;
+  }
 
   medalImageUploading.value = true;
   try {
@@ -2784,83 +2813,32 @@ onMounted(() => {
   color: #6b7280;
 }
 .medal-preview {
+  position: relative;
   display: flex;
   justify-content: center;
-  padding: 18px 0 20px;
+  padding: 18px 0 34px;
   margin-bottom: 14px;
   border-radius: 14px;
   background: #f3f4f6;
 }
-.medal-art {
-  --size: 150px;
-  position: relative;
-  width: var(--size);
-  height: calc(var(--size) * 1.18);
-}
-.medal-art__custom { width: 100%; height: 100%; object-fit: contain; }
-.medal-art__ribbon { position: absolute; inset: 0 0 auto 0; height: calc(var(--size) * 0.42); }
-.medal-art__ribbon span {
+.medal-preview--dark { background: #1f2a24; }
+.medal-preview-toggle {
   position: absolute;
-  top: 0;
-  width: calc(var(--size) * 0.2);
-  height: calc(var(--size) * 0.5);
-  border-left: calc(var(--size) * 0.07) solid color-mix(in srgb, var(--medal) 78%, #000);
-  border-right: calc(var(--size) * 0.07) solid color-mix(in srgb, var(--medal) 78%, #000);
-  background: #fff;
-  box-sizing: border-box;
-  transform-origin: top center;
-}
-.medal-art__ribbon span:first-child { left: 22%; transform: rotate(-18deg); }
-.medal-art__ribbon span:last-child { right: 22%; transform: rotate(18deg); }
-.medal-art__rim {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: var(--size);
-  height: var(--size);
-  border-radius: 50%;
-  background: #D9A441;
-  padding: calc(var(--size) * 0.06);
-  box-sizing: border-box;
-}
-.medal-art__disc {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: var(--medal);
-  color: #fff;
-  display: flex;
-  flex-direction: column;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0 16%;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
 }
-.medal-art__ring {
-  position: absolute;
-  inset: calc(var(--size) * 0.04);
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, .45);
-}
-.medal-art__icon { font-size: calc(var(--size) * 0.28); line-height: 1; }
-.medal-art__name {
-  margin-top: 4px;
-  font-size: calc(var(--size) * 0.075);
-  font-weight: 800;
-  line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.medal-art__kicker {
-  margin-top: 3px;
-  font-size: calc(var(--size) * 0.05);
-  font-weight: 800;
-  letter-spacing: .12em;
-  opacity: .85;
-}
+.medal-preview-toggle .material-symbols-rounded { font-size: 14px; }
 .medal-icon-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
