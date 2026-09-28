@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Admin;
 
 use App\Rules\KnownCountry;
+use App\Support\MedalDesign;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTripRequest extends FormRequest
 {
@@ -34,6 +36,11 @@ class StoreTripRequest extends FormRequest
             'duration_days' => ['required', 'integer', 'min:1'],
             'distance_km' => ['nullable', 'numeric', 'min:0', 'max:99999'],
             'elevation_gain_m' => ['nullable', 'integer', 'min:0', 'max:99999'],
+            // เหรียญพิชิต — เว้นว่างทุกช่องได้ ระบบเดาค่าให้ (ดู MedalDesign)
+            'medal_name' => ['nullable', 'string', 'max:'.MedalDesign::NAME_MAX],
+            'medal_icon' => ['nullable', 'string', Rule::in(array_keys(MedalDesign::ICONS))],
+            'medal_color' => ['nullable', 'string', 'regex:/^#?[0-9A-Fa-f]{6}$/'],
+            'medal_image' => ['nullable', 'string', 'max:2048'],
             'max_participants' => ['required', 'integer', 'min:1'],
             'price_per_person' => ['required', 'numeric', 'min:0'],
             'departure_point' => ['nullable', 'string', 'max:255'],

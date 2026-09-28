@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Countries;
+use App\Support\MedalDesign;
 use App\Support\TripDocumentRequirements;
 use App\Support\TripRentalItems;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,6 +31,7 @@ class Trip extends Model
         'title', 'slug', 'type', 'location', 'region', 'description',
         'destination_type', 'country_code', 'timezone',
         'difficulty', 'duration_days', 'distance_km', 'elevation_gain_m', 'max_participants',
+        'medal_name', 'medal_icon', 'medal_color', 'medal_image',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items',
@@ -104,6 +106,17 @@ class Trip extends Model
     public function schedules(): HasMany
     {
         return $this->hasMany(TripSchedule::class);
+    }
+
+    public function medals(): HasMany
+    {
+        return $this->hasMany(TripMedal::class);
+    }
+
+    /** เก็บสีเหรียญในรูปเดียวเสมอ ("#15803D") ไม่ว่าฟอร์มจะส่งตัวเล็ก/ไม่มี # มา */
+    public function setMedalColorAttribute(?string $value): void
+    {
+        $this->attributes['medal_color'] = MedalDesign::normalizeColor($value);
     }
 
     /**

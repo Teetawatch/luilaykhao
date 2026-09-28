@@ -40,6 +40,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    @if ($profile && count($profile['medals'] ?? []))
+        @include('partials.medal-art-styles')
+    @endif
 
     <style>
         :root {
@@ -143,6 +146,34 @@
             letter-spacing: 0.5px;
             margin-bottom: 12px;
         }
+
+        .medals {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+            gap: 14px 8px;
+        }
+
+        .medal-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            text-decoration: none;
+            color: var(--ink);
+        }
+
+        .medal-tile__name {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .medal-tile__no { margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
 
         .badges { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -278,6 +309,21 @@
     </header>
 
     <div class="wrap">
+        @if (count($profile['medals'] ?? []))
+            <section class="section">
+                <h2 class="section-title">ตู้เหรียญพิชิต ({{ $profile['medals_total'] }})</h2>
+                <div class="medals">
+                    @foreach ($profile['medals'] as $medal)
+                        <a class="medal-tile" href="{{ $medal['share_url'] }}">
+                            @include('partials.medal-art', ['card' => $medal, 'size' => 96])
+                            <span class="medal-tile__name">{{ $medal['design']['name'] }}</span>
+                            <span class="medal-tile__no">{{ $medal['finisher_label'] }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         @if (count($profile['badges']))
             <section class="section">
                 <h2 class="section-title">ตราที่ปลดล็อกแล้ว ({{ $profile['badges_earned_count'] }}/{{ $profile['badges_total'] }})</h2>

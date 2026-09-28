@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\SaleCampaign;
 use App\Models\TripSchedule;
 use App\Support\Countries;
+use App\Support\MedalDesign;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -71,6 +72,13 @@ class TripResource extends JsonResource
             'duration_days' => $this->duration_days,
             'distance_km' => $this->distance_km !== null ? (float) $this->distance_km : null,
             'elevation_gain_m' => $this->elevation_gain_m,
+            // เหรียญพิชิต — ค่าที่แอดมินกรอกไว้ดิบ ๆ (ฟอร์มแก้ทริปอ่านกลับ) กับ
+            // หน้าตาที่ใช้จริงหลังเติมค่าเดาแล้ว (แอปวาดตัวนี้)
+            'medal_name' => $this->medal_name,
+            'medal_icon' => $this->medal_icon,
+            'medal_color' => $this->medal_color,
+            'medal_image' => $this->medal_image,
+            'medal' => MedalDesign::forTrip($this->resource),
             // เส้นทางจริงจาก GPX (ลดรูปแล้ว) — ใช้วาดกราฟความชันบนหน้าทริป
             'route_track' => $this->route_track,
             'max_participants' => $this->max_participants,

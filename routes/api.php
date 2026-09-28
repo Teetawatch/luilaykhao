@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\LiveActivityController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
+use App\Http\Controllers\Api\V1\MedalController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\MyTripAssistantController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -246,6 +247,9 @@ Route::prefix('v1')->group(function () {
         Route::get('me/passport', [PassportController::class, 'show']);
         // แผนที่พิชิต — ทริปที่เดินจบแล้ว + ความลึกรายภาค
         Route::get('me/passport/map', [PassportController::class, 'map']);
+        // ตู้เหรียญพิชิต — เหรียญประจำตัวของทริปที่เดินจบจริง
+        Route::get('me/medals', [MedalController::class, 'index']);
+        Route::post('me/medals/seen', [MedalController::class, 'markSeen']);
 
         // โปรไฟล์นักเดินทางสาธารณะ — เจ้าตัวเปิด/ปิดและตั้งคำแนะนำตัวเอง
         Route::get('me/public-profile', [PublicProfileSettingsController::class, 'show']);
@@ -805,6 +809,9 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/photos/share', [PhotoController::class, 'scheduleShareShow']);
         Route::post('schedules/{id}/photos/share', [PhotoController::class, 'scheduleShareStore']);
         Route::delete('schedules/{id}/photos/share', [PhotoController::class, 'scheduleShareDestroy']);
+
+        // ตัวเลือกหน้าตาเหรียญพิชิต (ไอคอน/สี) สำหรับฟอร์มแก้ทริป
+        Route::get('medal-options', [MedalController::class, 'designOptions']);
 
         // Upload
         Route::post('upload-image', [AdminController::class, 'uploadMedia']);

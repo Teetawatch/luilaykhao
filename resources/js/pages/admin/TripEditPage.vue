@@ -822,6 +822,93 @@
           </div>
         </div>
 
+        <!-- Medal Card — เหรียญพิชิตที่ลูกค้าได้ในแอปหลังเดินทริปนี้จบ -->
+        <div class="card sidebar-card">
+          <h3 class="sidebar-title">เหรียญพิชิต</h3>
+          <div class="sidebar-body">
+            <p class="field-hint medal-intro">
+              ลูกค้าที่เดินทริปนี้จบ (เช็คอินแล้ว) ได้เหรียญนี้ในแอป พร้อมเลข Finisher และแชร์ลงโซเชียลได้
+              — เว้นว่างทุกช่องได้ ระบบเดาจากชื่อและประเภททริปให้
+            </p>
+
+            <div class="medal-preview">
+              <div class="medal-art" :style="{ '--medal': medalPreview.color }">
+                <img v-if="medalPreview.image" :src="medalPreview.image" class="medal-art__custom" alt="ภาพเหรียญ" />
+                <template v-else>
+                  <div class="medal-art__ribbon"><span></span><span></span></div>
+                  <div class="medal-art__rim">
+                    <div class="medal-art__disc">
+                      <div class="medal-art__ring"></div>
+                      <span class="material-symbols-rounded medal-art__icon">{{ medalPreview.icon }}</span>
+                      <span class="medal-art__name">{{ medalPreview.name }}</span>
+                      <span class="medal-art__kicker">FINISHER</span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>ชื่อบนเหรียญ</label>
+              <input v-model="form.medal_name" type="text" maxlength="40" :placeholder="defaultMedalName || 'เช่น พิชิตโบลาเวน'" />
+              <p class="field-hint">เว้นว่าง = ใช้ชื่อทริปโดยตัดจำนวนวันออก</p>
+            </div>
+
+            <div class="form-group">
+              <label>ไอคอน <span v-if="!form.medal_icon" class="medal-auto">อัตโนมัติ</span></label>
+              <div class="medal-icon-grid">
+                <button
+                  v-for="opt in medalOptions.icons"
+                  :key="opt.value"
+                  type="button"
+                  class="medal-icon-btn"
+                  :class="{ active: medalPreview.icon === opt.value }"
+                  :title="opt.label"
+                  @click="form.medal_icon = form.medal_icon === opt.value ? '' : opt.value"
+                >
+                  <span class="material-symbols-rounded">{{ opt.value }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>สีเหรียญ <span v-if="!form.medal_color" class="medal-auto">อัตโนมัติ</span></label>
+              <div class="medal-swatches">
+                <button
+                  v-for="opt in medalOptions.colors"
+                  :key="opt.value"
+                  type="button"
+                  class="medal-swatch"
+                  :class="{ active: medalPreview.color === opt.value }"
+                  :style="{ background: opt.value }"
+                  :title="opt.label"
+                  @click="form.medal_color = form.medal_color === opt.value ? '' : opt.value"
+                ></button>
+                <label class="medal-swatch medal-swatch--custom" title="เลือกสีเอง">
+                  <input type="color" :value="medalPreview.color" @input="form.medal_color = $event.target.value.toUpperCase()" />
+                  <span class="material-symbols-rounded">colorize</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>ภาพเหรียญที่ออกแบบเอง (ถ้ามี)</label>
+              <div class="medal-image-actions">
+                <button type="button" class="medal-upload-btn" :disabled="medalImageUploading" @click="medalImageInput?.click()">
+                  <span class="material-symbols-rounded">{{ medalImageUploading ? 'hourglass_top' : 'upload' }}</span>
+                  {{ form.medal_image ? 'เปลี่ยนภาพ' : 'อัปโหลดภาพเหรียญ' }}
+                </button>
+                <button v-if="form.medal_image" type="button" class="medal-remove-btn" @click="form.medal_image = ''">
+                  <span class="material-symbols-rounded">close</span>
+                  ใช้เหรียญแม่แบบ
+                </button>
+              </div>
+              <input ref="medalImageInput" type="file" accept="image/png,image/webp" class="hidden-file-input" @change="handleMedalImageSelect" />
+              <p class="field-hint">PNG พื้นหลังโปร่ง ทรงจัตุรัส อย่างน้อย 800×800 px — ใส่แล้วจะแทนเหรียญแม่แบบทั้งดวง (ชื่อ/ไอคอน/สีด้านบนไม่ถูกใช้)</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Pricing Card -->
         <div class="card sidebar-card bg-green-50/30 border-green-100">
           <h3 class="sidebar-title text-green-800">ราคา</h3>
@@ -1039,6 +1126,7 @@ const form = reactive({
   title: '', type: 'trekking', location: '', region: '', description: '',
   destination_type: 'domestic', country_code: '', timezone: '',
   difficulty: 'medium', duration_days: 1, distance_km: null, elevation_gain_m: null, max_participants: 10,
+  medal_name: '', medal_icon: '', medal_color: '', medal_image: '',
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
   latitude: null, longitude: null, is_featured: false, is_women_only: false,
   gallery: [], videos: [], inclusions: [], exclusions: [],
@@ -1208,6 +1296,10 @@ const buildTripPayload = () => {
       }))
       .filter((doc) => doc.label),
     checkin_bring: String(form.checkin_bring || '').trim(),
+    medal_name: String(form.medal_name || '').trim(),
+    medal_icon: String(form.medal_icon || '').trim(),
+    medal_color: String(form.medal_color || '').trim(),
+    medal_image: String(form.medal_image || '').trim(),
     itinerary: normalizeArray(form.itinerary)
       .map((sector) => ({
         sector: String(sector?.sector || '').trim(),
@@ -1238,6 +1330,64 @@ const formatApiValidationErrors = (error) => {
       return `${label}: ${Array.isArray(messages) ? messages[0] : messages}`;
     })
     .join('\n');
+};
+
+// ── เหรียญพิชิต ─────────────────────────────────────────────────────────────
+// ตัวเลือกและค่าตั้งต้นมาจากเซิร์ฟเวอร์ (MedalDesign) — พรีวิวจึงตรงกับที่แอปวาดจริง
+const medalOptions = reactive({
+  icons: [],
+  colors: [],
+  defaults: { type_icons: {}, icon: 'landscape', type_colors: {}, color: '#15803D' },
+});
+const medalImageInput = ref(null);
+const medalImageUploading = ref(false);
+
+const loadMedalOptions = async () => {
+  try {
+    const res = await api.get('/admin/medal-options');
+    Object.assign(medalOptions, res.data.data || {});
+  } catch (e) {
+    // ไม่มีตัวเลือกก็ยังกรอกชื่อ/อัปโหลดภาพได้ พรีวิวใช้ค่าตั้งต้น
+  }
+};
+
+// ต้องตรงกับ MedalDesign::nameFromTitle — ตัด "2 วัน 1 คืน" ท้ายชื่อทริปออก
+const defaultMedalName = computed(() => {
+  const title = String(form.title || '').replace(/\s+/g, ' ').trim();
+  const trimmed = title.replace(/[\s\-–(]*\d+\s*วัน(\s*\d+\s*คืน)?\)?\s*$/u, '').trim();
+  return (trimmed || title).slice(0, 40);
+});
+
+const medalPreview = computed(() => {
+  const d = medalOptions.defaults || {};
+  const color = /^#[0-9A-Fa-f]{6}$/.test(form.medal_color || '')
+    ? form.medal_color.toUpperCase()
+    : (d.type_colors?.[form.type] || d.color || '#15803D');
+  return {
+    name: String(form.medal_name || '').trim() || defaultMedalName.value || 'ชื่อทริป',
+    icon: form.medal_icon || d.type_icons?.[form.type] || d.icon || 'landscape',
+    color,
+    image: form.medal_image || '',
+  };
+});
+
+const handleMedalImageSelect = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { alert('ไฟล์มีขนาดเกิน 10MB'); return; }
+
+  medalImageUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/upload-image', formData);
+    form.medal_image = res.data.data.url;
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดภาพเหรียญไม่สำเร็จ');
+  } finally {
+    medalImageUploading.value = false;
+    if (medalImageInput.value) medalImageInput.value.value = '';
+  }
 };
 
 // Image upload state
@@ -1846,6 +1996,10 @@ const initData = async () => {
         required: !!doc?.required,
       }));
       form.checkin_bring = trip.checkin_bring || '';
+      form.medal_name = trip.medal_name || '';
+      form.medal_icon = trip.medal_icon || '';
+      form.medal_color = trip.medal_color || '';
+      form.medal_image = trip.medal_image || '';
     } catch (e) {
       alert('ไม่พบข้อมูลทริป');
       router.push({ name: backRouteName.value });
@@ -1864,6 +2018,7 @@ onMounted(() => {
   }
   initData();
   loadCountries();
+  loadMedalOptions();
   categoriesStore.fetchAdminCategories();
 });
 </script>
@@ -2619,4 +2774,157 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── เหรียญพิชิต — หน้าตาตรงกับ partials/medal-art.blade.php และแอป ── */
+.medal-intro { margin-top: 0; margin-bottom: 12px; }
+.medal-auto {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+}
+.medal-preview {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 20px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: #f3f4f6;
+}
+.medal-art {
+  --size: 150px;
+  position: relative;
+  width: var(--size);
+  height: calc(var(--size) * 1.18);
+}
+.medal-art__custom { width: 100%; height: 100%; object-fit: contain; }
+.medal-art__ribbon { position: absolute; inset: 0 0 auto 0; height: calc(var(--size) * 0.42); }
+.medal-art__ribbon span {
+  position: absolute;
+  top: 0;
+  width: calc(var(--size) * 0.2);
+  height: calc(var(--size) * 0.5);
+  border-left: calc(var(--size) * 0.07) solid color-mix(in srgb, var(--medal) 78%, #000);
+  border-right: calc(var(--size) * 0.07) solid color-mix(in srgb, var(--medal) 78%, #000);
+  background: #fff;
+  box-sizing: border-box;
+  transform-origin: top center;
+}
+.medal-art__ribbon span:first-child { left: 22%; transform: rotate(-18deg); }
+.medal-art__ribbon span:last-child { right: 22%; transform: rotate(18deg); }
+.medal-art__rim {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: #D9A441;
+  padding: calc(var(--size) * 0.06);
+  box-sizing: border-box;
+}
+.medal-art__disc {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--medal);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 16%;
+}
+.medal-art__ring {
+  position: absolute;
+  inset: calc(var(--size) * 0.04);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .45);
+}
+.medal-art__icon { font-size: calc(var(--size) * 0.28); line-height: 1; }
+.medal-art__name {
+  margin-top: 4px;
+  font-size: calc(var(--size) * 0.075);
+  font-weight: 800;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.medal-art__kicker {
+  margin-top: 3px;
+  font-size: calc(var(--size) * 0.05);
+  font-weight: 800;
+  letter-spacing: .12em;
+  opacity: .85;
+}
+.medal-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.medal-icon-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.medal-icon-btn .material-symbols-rounded { font-size: 20px; }
+.medal-icon-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+.medal-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.medal-swatch {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  outline: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+.medal-swatch.active { outline: 2px solid #111827; }
+.medal-swatch--custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #374151;
+  overflow: hidden;
+}
+.medal-swatch--custom .material-symbols-rounded { font-size: 16px; pointer-events: none; }
+.medal-swatch--custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.medal-image-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.medal-upload-btn,
+.medal-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+}
+.medal-upload-btn .material-symbols-rounded,
+.medal-remove-btn .material-symbols-rounded { font-size: 16px; }
+.medal-upload-btn:disabled { opacity: .6; cursor: wait; }
 </style>

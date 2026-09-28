@@ -3,6 +3,7 @@
 use App\Jobs\AbandonedBookingWinbackJob;
 use App\Jobs\AnnounceDepartedTripsJob;
 use App\Jobs\AnnounceSaleCampaignJob;
+use App\Jobs\AwardTripMedalsJob;
 use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ClearEndedTripDriverPinsJob;
 use App\Jobs\ExpireFlexiOffersJob;
@@ -88,6 +89,9 @@ Schedule::job(new ExpireLoyaltyPointsJob)->dailyAt('03:30')->timezone('Asia/Bang
 Schedule::job(new SendReviewInvitesJob)->dailyAt('20:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // 15 นาทีหลังชวนรีวิว — ส่งข้อความอวยพรเดินทางกลับโดยสวัสดิภาพให้ผู้ร่วมทริปวันนี้
 Schedule::job(new SendSafeTravelsJob)->dailyAt('20:15')->timezone('Asia/Bangkok')->withoutOverlapping();
+// เหรียญพิชิต — แจกเข้าตู้ทันทีที่ทริปจบ ส่วน push รอ 10:00 เช้าวันรุ่งขึ้น (ไม่ซ้อน
+// กับชวนรีวิว/อวยพรเดินทางกลับคืนนั้น) รายชั่วโมงจึงพอสำหรับทั้งสองอย่าง
+Schedule::job(new AwardTripMedalsJob)->hourlyAt(5)->withoutOverlapping();
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 // การ์ด "วันเดินทาง" บนหน้าจอล็อก / Dynamic Island — เปิดเอง อัปเดต ETA แล้วปิดเอง

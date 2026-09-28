@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Review;
+use App\Models\TripMedal;
 use App\Models\User;
 use App\Support\MediaDisk;
 use App\Support\ThaiDate;
@@ -22,7 +23,13 @@ class PublicProfileService
     /** จำนวนทริปล่าสุดที่ไล่เรียงให้ดู. */
     private const MAX_TRIPS = 8;
 
-    public function __construct(private PassportService $passportService) {}
+    /** จำนวนเหรียญพิชิตสูงสุดที่โชว์บนชั้นวาง */
+    private const MAX_MEDALS = 12;
+
+    public function __construct(
+        private PassportService $passportService,
+        private MedalService $medalService,
+    ) {}
 
     /**
      * ข้อมูลโปรไฟล์สาธารณะจาก handle — คืน null เมื่อไม่มีคนนี้ หรือเจ้าตัวปิดไว้
@@ -70,6 +77,8 @@ class PublicProfileService
                 ->values()
                 ->all(),
             'photos' => $this->photos($user),
+            'medals' => $this->medalService->shelfFor($user->id, self::MAX_MEDALS),
+            'medals_total' => TripMedal::where('user_id', $user->id)->count(),
         ];
     }
 

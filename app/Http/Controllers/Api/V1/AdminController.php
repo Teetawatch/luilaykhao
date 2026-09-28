@@ -4289,11 +4289,15 @@ class AdminController extends Controller
         };
 
         // Collect all in-use filenames from Trips
-        $trips = Trip::select('cover_image', 'gallery')->get();
+        $trips = Trip::select('cover_image', 'gallery', 'medal_image')->get();
         $inUseFilenames = collect();
         foreach ($trips as $trip) {
             if ($trip->cover_image) {
                 $inUseFilenames->push($extractFilename($trip->cover_image));
+            }
+            // ภาพเหรียญที่ออกแบบเอง — ลบจากคลังสื่อแล้วเหรียญในตู้ของลูกค้าทุกคนจะว่าง
+            if ($trip->medal_image) {
+                $inUseFilenames->push($extractFilename($trip->medal_image));
             }
             if ($trip->gallery && is_array($trip->gallery)) {
                 foreach ($trip->gallery as $img) {

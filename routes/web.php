@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminPaymentWebController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\MedalPageController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicAccountClaimController;
 use App\Http\Controllers\PublicBirthdateController;
@@ -90,6 +91,17 @@ Route::get('/s/{token}', [TripStoryController::class, 'show'])
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:120,1')
     ->name('trip.story.show');
+
+// เหรียญพิชิตสาธารณะ — server-rendered เพื่อให้บ็อตแชร์อ่าน OG meta ได้
+// (ต้องมาก่อน SPA catch-all) ภาพ OG ลงท้าย .png จึงจดก่อนตัว {token}
+Route::get('/m/{token}/og.png', [MedalPageController::class, 'ogImage'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('medal.og');
+Route::get('/m/{token}', [MedalPageController::class, 'show'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('medal.show');
 
 // Live Share Link — standalone tracking page (must be before the SPA catch-all)
 Route::get('/track/{token}', function (string $token) {
