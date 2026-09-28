@@ -8,6 +8,7 @@ use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripMedal;
 use App\Models\TripSchedule;
+use App\Models\TripTrack;
 use App\Models\User;
 use App\Support\Countries;
 use App\Support\MedalDesign;
@@ -52,6 +53,8 @@ class MedalService
     public const RECENT_DAYS = 45;
 
     private const TIMEZONE = 'Asia/Bangkok';
+
+    public function __construct(private MedalRouteService $routes) {}
 
     // ── ใครได้เหรียญ ─────────────────────────────────────────────────────────
 
@@ -409,9 +412,24 @@ class MedalService
             $medal->setAttribute('attempt', $attempts[$medal->trip_id]);
         }
 
+        // แทร็ก GPS ของคนนี้ทั้งหมด (หนึ่งแทร็กต่อรอบ) — ใช้วาดเส้นทาง ตัวเลขที่เดิน
+        // จริง และหาว่าเหรียญไหนคือสถิติส่วนตัวสูงสุด
+        $tracks = TripTrack::where('user_id', $userId)->get();
+        $records = $this->routes->records($tracks);
+        $trackBySchedule = $tracks->keyBy('schedule_id');
+
         $list = $medals
             ->sortByDesc(fn (TripMedal $m) => [$m->earned_on->timestamp, $m->id])
-            ->map(fn (TripMedal $m) => $this->present($m, $attempts[$m->trip_id] ?? 1))
+            ->map(function (TripMedal $m) use ($attempts, $trackBySchedule, $records) {
+                $track = $trackBySchedule->get($m->schedule_id);
+
+                return $this->present(
+                    $m,
+                    $attempts[$m->trip_id] ?? 1,
+                    $track,
+                    $track && $this->routes->isUsableTrack($track) ? ($records[$track->id] ?? []) : [],
+                );
+            })
             ->values()
             ->all();
 
@@ -429,8 +447,12 @@ class MedalService
      *
      * @return array<string, mixed>
      */
-    public function present(TripMedal $medal, int $attemptsOfTrip = 1): array
-    {
+    public function present(
+        TripMedal $medal,
+        int $attemptsOfTrip = 1,
+        ?TripTrack $track = null,
+        array $records = [],
+    ): array {
         return [
             'id' => $medal->id,
             'seen' => $medal->seen_at !== null,
@@ -439,6 +461,12 @@ class MedalService
             'attempt' => (int) ($medal->getAttribute('attempt') ?? 1),
             'attempts_of_trip' => $attemptsOfTrip,
             'share_url' => url('/m/'.$medal->share_token),
+            // รูปร่างเส้นทาง (ไม่มีพิกัดจริง) — แทร็กของตัวเองก่อน ไม่มีค่อยใช้ของทริป
+            'route' => $this->routes->routeFor($track, $medal->trip),
+            // ตัวเลขที่เดินจริงจาก GPS — null เมื่อไม่ได้บันทึกในรอบนั้น
+            'personal' => $this->routes->personal($track),
+            // สถิติส่วนตัวสูงสุดที่เหรียญนี้ถือ: distance / climb / altitude
+            'records' => array_values($records),
         ];
     }
 
