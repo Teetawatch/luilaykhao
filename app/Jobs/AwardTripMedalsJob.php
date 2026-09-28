@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Models\TripMedal;
+use App\Services\ChallengeService;
 use App\Services\MedalService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -24,8 +26,9 @@ class AwardTripMedalsJob implements ShouldQueue
 
     public int $timeout = 600;
 
-    public function handle(MedalService $medals): void
+    public function handle(MedalService $medals, ?ChallengeService $challenges = null): void
     {
+        $challenges ??= app(ChallengeService::class);
         $created = 0;
         $failed = 0;
 
@@ -44,10 +47,27 @@ class AwardTripMedalsJob implements ShouldQueue
 
         $notified = $medals->notifyPending();
 
+        // เหรียญใหม่อาจทำให้ชาเลนจ์สำเร็จ — ตรวจทุกคนที่ได้เหรียญใน 24 ชม. ล่าสุด
+        // (ไม่ใช่แค่รอบนี้) รอบก่อนพังกลางทางก็ยังถูกเก็บตก sync ซ้ำได้ไม่เพิ่มซ้ำ
+        $completed = 0;
+        foreach (TripMedal::where('created_at', '>=', now()->subDay())->distinct()->pluck('user_id') as $userId) {
+            try {
+                $completed += $challenges->sync((int) $userId);
+            } catch (\Throwable $e) {
+                Log::warning('AwardTripMedalsJob: challenge sync failed', [
+                    'user_id' => $userId,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+        $challengePushes = $challenges->notifyPending();
+
         Log::info('AwardTripMedalsJob completed', [
             'created' => $created,
             'failed' => $failed,
             'notified' => $notified,
+            'challenges_completed' => $completed,
+            'challenge_pushes' => $challengePushes,
         ]);
     }
 

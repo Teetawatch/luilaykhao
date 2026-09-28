@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\TripMedal;
+use App\Services\ChallengeService;
+use App\Services\MedalKudosService;
 use App\Services\MedalService;
+use App\Services\YearReviewService;
 use App\Support\MedalDesign;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +43,51 @@ class MedalController extends Controller
         );
 
         return $this->success(['updated' => $updated]);
+    }
+
+    /**
+     * คนที่พิชิตรอบเดียวกับเหรียญ {id} ของผู้ใช้ — {id} ต้องเป็นเหรียญของตัวเอง
+     * (คือหลักฐานว่าอยู่ในรอบนั้น) คนนอกรอบจึงดูรายชื่อไม่ได้
+     */
+    public function round(Request $request, int $id, MedalKudosService $kudos): JsonResponse
+    {
+        $mine = TripMedal::where('id', $id)->where('user_id', $request->user()->id)->first();
+
+        if (! $mine) {
+            return $this->error('ไม่พบเหรียญนี้', 404);
+        }
+
+        return $this->success($kudos->board($request->user(), $mine));
+    }
+
+    /** ปรบมือ/เลิกปรบมือให้เหรียญ {id} ของเพื่อนร่วมรอบ */
+    public function kudos(Request $request, int $id, MedalKudosService $kudos): JsonResponse
+    {
+        $target = TripMedal::find($id);
+
+        if (! $target) {
+            return $this->error('ไม่พบเหรียญนี้', 404);
+        }
+
+        try {
+            return $this->success($kudos->toggle($request->user(), $target));
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 403);
+        }
+    }
+
+    public function challenges(Request $request, ChallengeService $challenges): JsonResponse
+    {
+        return $this->success($challenges->forUser($request->user()->id));
+    }
+
+    public function yearReview(Request $request, YearReviewService $reviews): JsonResponse
+    {
+        $validated = $request->validate([
+            'year' => ['nullable', 'integer', 'min:2020', 'max:2100'],
+        ]);
+
+        return $this->success($reviews->forUser($request->user(), $validated['year'] ?? null));
     }
 
     /** ตัวเลือกไอคอน/สีสำหรับฟอร์มแก้ทริปของแอดมิน */

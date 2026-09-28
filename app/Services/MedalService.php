@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\MedalKudos;
 use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripMedal;
@@ -54,7 +55,10 @@ class MedalService
 
     private const TIMEZONE = 'Asia/Bangkok';
 
-    public function __construct(private MedalRouteService $routes) {}
+    public function __construct(
+        private MedalRouteService $routes,
+        private ModerationService $moderation,
+    ) {}
 
     // ── ใครได้เหรียญ ─────────────────────────────────────────────────────────
 
@@ -417,18 +421,24 @@ class MedalService
         $tracks = TripTrack::where('user_id', $userId)->get();
         $records = $this->routes->records($tracks);
         $trackBySchedule = $tracks->keyBy('schedule_id');
+        $kudos = $this->kudosSummaries($medals->pluck('id'), $medals->first()?->user);
 
         $list = $medals
             ->sortByDesc(fn (TripMedal $m) => [$m->earned_on->timestamp, $m->id])
-            ->map(function (TripMedal $m) use ($attempts, $trackBySchedule, $records) {
+            ->map(function (TripMedal $m) use ($attempts, $trackBySchedule, $records, $kudos) {
                 $track = $trackBySchedule->get($m->schedule_id);
 
-                return $this->present(
-                    $m,
-                    $attempts[$m->trip_id] ?? 1,
-                    $track,
-                    $track && $this->routes->isUsableTrack($track) ? ($records[$track->id] ?? []) : [],
-                );
+                return [
+                    ...$this->present(
+                        $m,
+                        $attempts[$m->trip_id] ?? 1,
+                        $track,
+                        $track && $this->routes->isUsableTrack($track) ? ($records[$track->id] ?? []) : [],
+                    ),
+                    // เพื่อนร่วมรอบปรบมือให้กี่คน + ชื่อล่าสุดไม่เกินสามคน
+                    'kudos_count' => $kudos[$m->id]['count'] ?? 0,
+                    'kudos_recent' => $kudos[$m->id]['recent'] ?? [],
+                ];
             })
             ->values()
             ->all();
@@ -439,6 +449,44 @@ class MedalService
             'unseen_count' => $medals->whereNull('seen_at')->count(),
             'trips_count' => $medals->pluck('trip_id')->unique()->count(),
         ];
+    }
+
+    /**
+     * จำนวนปรบมือ + คนที่ปรบมือล่าสุด ของหลายเหรียญในครั้งเดียว — คนที่บล็อกกับ
+     * เจ้าของเหรียญไม่ถูกนับและไม่ถูกเอ่ยชื่อ
+     *
+     * @param  Collection<int, int>  $medalIds
+     * @return array<int, array{count: int, recent: array<int, string>}>
+     */
+    private function kudosSummaries(Collection $medalIds, ?User $owner): array
+    {
+        if ($medalIds->isEmpty()) {
+            return [];
+        }
+
+        $rows = MedalKudos::query()
+            ->whereIn('medal_id', $medalIds)
+            ->whereNotIn('user_id', $this->moderation->hiddenAuthorIds($owner))
+            ->with('user')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('medal_id');
+
+        $out = [];
+
+        foreach ($rows as $medalId => $kudos) {
+            $out[(int) $medalId] = [
+                'count' => $kudos->count(),
+                'recent' => $kudos
+                    ->take(3)
+                    ->map(fn (MedalKudos $k) => $this->holderName($k->user))
+                    ->values()
+                    ->all(),
+            ];
+        }
+
+        return $out;
     }
 
     /**

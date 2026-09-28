@@ -34,6 +34,7 @@ use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Jobs\SendWeatherAlertsJob;
+use App\Jobs\SendYearReviewReadyJob;
 use App\Jobs\StartScheduledFlashSalesJob;
 use App\Jobs\WarnExpiringLoyaltyPointsJob;
 use Illuminate\Foundation\Inspiring;
@@ -92,6 +93,8 @@ Schedule::job(new SendSafeTravelsJob)->dailyAt('20:15')->timezone('Asia/Bangkok'
 // เหรียญพิชิต — แจกเข้าตู้ทันทีที่ทริปจบ ส่วน push รอ 10:00 เช้าวันรุ่งขึ้น (ไม่ซ้อน
 // กับชวนรีวิว/อวยพรเดินทางกลับคืนนั้น) รายชั่วโมงจึงพอสำหรับทั้งสองอย่าง
 Schedule::job(new AwardTripMedalsJob)->hourlyAt(5)->withoutOverlapping();
+// สรุปทั้งปี — บอกทุกคนที่มีเหรียญในปีนี้ ปลายเดือนธันวาคม ทริปส่วนใหญ่ของปีจบแล้ว
+Schedule::job(new SendYearReviewReadyJob)->yearlyOn(12, 28, '10:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::command('sms:send-pending')->everyFiveMinutes();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 // การ์ด "วันเดินทาง" บนหน้าจอล็อก / Dynamic Island — เปิดเอง อัปเดต ETA แล้วปิดเอง

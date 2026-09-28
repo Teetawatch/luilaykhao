@@ -250,6 +250,12 @@ Route::prefix('v1')->group(function () {
         // ตู้เหรียญพิชิต — เหรียญประจำตัวของทริปที่เดินจบจริง
         Route::get('me/medals', [MedalController::class, 'index']);
         Route::post('me/medals/seen', [MedalController::class, 'markSeen']);
+        // ใครพิชิตรอบเดียวกันบ้าง + ปรบมือให้กัน (เห็นกันเฉพาะคนร่วมรอบ)
+        Route::get('me/medals/{id}/round', [MedalController::class, 'round'])->whereNumber('id');
+        Route::post('me/medals/{id}/kudos', [MedalController::class, 'kudos'])->whereNumber('id')->middleware('throttle:60,1');
+        // ชาเลนจ์รายเดือน/รายปี + สรุปทั้งปี
+        Route::get('me/challenges', [MedalController::class, 'challenges']);
+        Route::get('me/year-review', [MedalController::class, 'yearReview']);
 
         // โปรไฟล์นักเดินทางสาธารณะ — เจ้าตัวเปิด/ปิดและตั้งคำแนะนำตัวเอง
         Route::get('me/public-profile', [PublicProfileSettingsController::class, 'show']);
