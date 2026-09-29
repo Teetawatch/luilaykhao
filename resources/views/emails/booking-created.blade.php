@@ -139,13 +139,35 @@
     </div>
     @endif
 
+    {{--
+      ทวนเงื่อนไขจากหลักฐานที่บันทึกไว้กับใบจองนี้ ไม่ใช่พิมพ์เอง — ฉบับที่เคย
+      พิมพ์ไว้ตรงนี้บอก "แจ้งเลื่อนล่วงหน้า 45 วัน" ขณะที่เงื่อนไขจริงคือ 30
+      อีเมลในกล่องของลูกค้าเองคือหลักฐานที่เถียงยากที่สุด จึงต้องตรงทุกตัวอักษร
+
+      ใบที่ไม่ได้กดยอมรับ (แอดมินจองแทน) ต้องไม่บอกว่า "คุณได้ยอมรับไว้"
+    --}}
+    @php($terms = \App\Support\TermsAcceptanceSummary::forBooking($booking))
     <div class="alert-box alert-amber">
-      <p class="alert-title">📋 เงื่อนไขที่คุณได้ยอมรับไว้ ขออนุญาตทวนอีกครั้งนะครับ</p>
-      <p class="alert-text">
-        1.&nbsp;เมื่อยืนยันสิทธิ์แล้ว ขอสงวนสิทธิ์ในการคืนเงินมัดจำทุกกรณี<br />
-        2.&nbsp;สามารถแจ้งเลื่อนได้ 1 ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย 45 วัน<br />
-        3.&nbsp;เปลี่ยนผู้เดินทางได้ โดยแจ้งล่วงหน้าอย่างน้อย 15 วัน
-      </p>
+      @if($terms['status'] !== 'none' && ! empty($terms['lines']))
+        <p class="alert-title">📋 เงื่อนไขที่คุณได้ยอมรับไว้ ขออนุญาตทวนอีกครั้งนะครับ</p>
+        <p class="alert-text">
+          @foreach($terms['lines'] as $i => $line)
+            {{ $i + 1 }}.&nbsp;{{ $line }}<br />
+          @endforeach
+          <span class="t-muted">
+            กดยอมรับเงื่อนไขฉบับวันที่ {{ \App\Support\ThaiDate::full(\Illuminate\Support\Carbon::parse($terms['version'])) }}
+            เมื่อ {{ \App\Support\ThaiDate::shortTime(\Illuminate\Support\Carbon::parse($terms['accepted_at'])->setTimezone('Asia/Bangkok')) }} น.
+            @if(! empty($terms['channel_label'])) ผ่าน{{ $terms['channel_label'] }}@endif
+          </span>
+        </p>
+      @else
+        <p class="alert-title">📋 เงื่อนไขการจอง ขออนุญาตแจ้งไว้นะครับ</p>
+        <p class="alert-text">
+          @foreach(\App\Support\LegalPolicy::bookingTerms() as $i => $line)
+            {{ $i + 1 }}.&nbsp;{{ $line }}<br />
+          @endforeach
+        </p>
+      @endif
     </div>
 
     <div class="cta-wrap">

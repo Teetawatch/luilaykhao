@@ -2975,6 +2975,10 @@ async function createBooking() {
       // หลักฐานว่าลูกค้ากดยอมรับเงื่อนไขในกล่องด้านบนแล้ว — เซิร์ฟเวอร์ประทับ
       // เวลาและเวอร์ชันเงื่อนไขลงใบจอง ไม่ใช่ธงเพื่อความสวยงาม
       accepted_terms: true,
+      // ฉบับที่กล่องด้านบนแสดง — แท็บที่เปิดค้างข้ามการ deploy จะเห็นฉบับเก่า
+      // เซิร์ฟเวอร์ปฏิเสธแทนการประทับฉบับใหม่ที่ลูกค้าไม่เคยอ่าน
+      terms_version: termsVersion() || null,
+      consent_channel: 'web',
       passengers: passengers.value.map(p => ({
         title: p.title || null,
         name: String(p.name || '').trim(),

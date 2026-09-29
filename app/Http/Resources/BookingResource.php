@@ -9,6 +9,7 @@ use App\Services\TravelDocumentService;
 use App\Support\MediaDisk;
 use App\Support\PaymentGateway;
 use App\Support\PaymentQuote;
+use App\Support\TermsAcceptanceSummary;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -255,6 +256,16 @@ class BookingResource extends JsonResource
                     && $this->relationLoaded('documents')
                     && $this->relationLoaded('schedule'),
                 fn () => app(BookingDocumentService::class)->payload($this->resource),
+            ),
+            // หลักฐานการยอมรับเงื่อนไขตอนจอง — เฉพาะหน้ารายละเอียดที่โหลด relation
+            // มา IP/เครื่อง/ลายนิ้วมือเปิดให้ทีมงานเท่านั้น ลูกค้าเห็นแค่ข้อความ
+            // ที่ตัวเองยอมรับ ฉบับ และเวลา
+            'terms_acceptance' => $this->when(
+                $this->relationLoaded('termAcceptance'),
+                fn () => TermsAcceptanceSummary::forBooking(
+                    $this->resource,
+                    withDevice: (bool) $request->user()?->hasAnyRole(['admin', 'operator']),
+                ),
             ),
             'staff_reviews' => $this->when(
                 $this->relationLoaded('staffReviews'),

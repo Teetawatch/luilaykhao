@@ -494,6 +494,42 @@
             </div>
           </section>
 
+          <!--
+            หลักฐานการยอมรับเงื่อนไข — ของแรกที่ต้องเปิดเวลาลูกค้าขอเงินคืน
+            ซ่อนไว้จนกว่ารายละเอียดเต็มจะโหลดเสร็จ ไม่งั้นแถวจากหน้ารายการ
+            (ที่ไม่มีข้อมูลนี้) จะโชว์ว่า "ไม่มีบันทึก" ให้ตกใจแวบหนึ่ง
+          -->
+          <section v-if="detailBooking.terms_acceptance" class="detail-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">gavel</span>
+              หลักฐานการยอมรับเงื่อนไข
+            </div>
+            <template v-if="detailBooking.terms_acceptance.status !== 'none'">
+              <div class="detail-grid">
+                <InfoItem label="สถานะ" :value="termsProofStatusLabel(detailBooking.terms_acceptance)" wide />
+                <InfoItem label="ฉบับเงื่อนไข" :value="formatDate(detailBooking.terms_acceptance.version)" />
+                <InfoItem label="กดยอมรับเมื่อ" :value="formatDateTime(detailBooking.terms_acceptance.accepted_at)" />
+                <InfoItem v-if="detailBooking.terms_acceptance.channel_label" label="ช่องทาง" :value="detailBooking.terms_acceptance.channel_label" />
+                <template v-if="detailBooking.terms_acceptance.status === 'recorded'">
+                  <InfoItem label="IP" :value="detailBooking.terms_acceptance.ip_address || '-'" />
+                  <InfoItem label="บัญชีที่กดยอมรับ" :value="termsProofAcceptedBy(detailBooking.terms_acceptance)" wide />
+                  <InfoItem label="อุปกรณ์" :value="detailBooking.terms_acceptance.user_agent || '-'" wide />
+                  <InfoItem label="ลายนิ้วมือข้อความ (SHA-256)" :value="termsProofHashLabel(detailBooking.terms_acceptance)" wide />
+                </template>
+              </div>
+              <ol v-if="detailBooking.terms_acceptance.lines?.length" class="terms-proof-list">
+                <li v-for="(line, i) in detailBooking.terms_acceptance.lines" :key="i">{{ line }}</li>
+              </ol>
+              <button type="button" class="cp-map-link terms-proof-copy" @click="copyTermsProof(detailBooking)">
+                <span class="material-symbols-rounded">content_copy</span> คัดลอกหลักฐานไปส่งลูกค้า
+              </button>
+            </template>
+            <div v-else class="empty-inline">
+              ไม่มีบันทึกการยอมรับเงื่อนไข — ใบจองนี้สร้างผ่านช่องทางที่ไม่ได้ให้ลูกค้ากดยอมรับ
+              (แอดมินจองแทน หรือแอปรุ่นก่อนที่ยังไม่มีหน้าจอเงื่อนไข)
+            </div>
+          </section>
+
           <!-- จุดรับที่ลูกค้าปักหมุดเอง (ข้อมูลสำหรับจัดเส้นทางรับ) -->
           <section v-if="detailBooking.custom_pickup" class="detail-section">
             <div class="section-heading">
@@ -3424,6 +3460,47 @@ function briefStatusLabel(booking) {
   return parts.join(' · ');
 }
 
+// ── หลักฐานการยอมรับเงื่อนไข ─────────────────────────────────────
+function termsProofStatusLabel(proof) {
+  if (proof?.status === 'recorded') return 'ลูกค้ากดยอมรับเงื่อนไขแล้ว (มีข้อความ ช่องทาง และอุปกรณ์ครบ)';
+  // จองก่อน 29 ก.ย. 2569 — รู้แค่เวลาและฉบับ ข้อความดึงจากคลังเงื่อนไขทุกฉบับ
+  return 'ลูกค้ากดยอมรับเงื่อนไขแล้ว (จองก่อนระบบเก็บหลักฐานเต็ม — มีเวลาและฉบับ ข้อความจากคลังเงื่อนไข)';
+}
+
+function termsProofAcceptedBy(proof) {
+  const by = proof?.accepted_by || {};
+  return [by.name, by.email, by.phone].filter(Boolean).join(' · ') || '-';
+}
+
+function termsProofHashLabel(proof) {
+  if (!proof?.hash) return '-';
+  // intact=false แปลว่าข้อความในฐานข้อมูลไม่ตรงกับตอนบันทึก — มีคนแก้ตรง ๆ
+  return proof.intact ? `${proof.hash} (ข้อความตรงกับตอนบันทึก)` : `${proof.hash} ⚠️ ข้อความไม่ตรงกับตอนบันทึก`;
+}
+
+async function copyTermsProof(booking) {
+  const proof = booking?.terms_acceptance;
+  if (!proof || proof.status === 'none') return;
+
+  const lines = [
+    `หลักฐานการยอมรับเงื่อนไขการจอง — เลขที่จอง ${booking.booking_ref}`,
+    `เงื่อนไขฉบับวันที่ ${formatDate(proof.version)}`,
+    `กดยอมรับเมื่อ ${formatDateTime(proof.accepted_at)} น.${proof.channel_label ? ` ผ่าน${proof.channel_label}` : ''}`,
+  ];
+  if (proof.status === 'recorded' && proof.accepted_by?.name) {
+    lines.push(`บัญชีผู้จอง ${proof.accepted_by.name}`);
+  }
+  lines.push('', 'ข้อความที่แสดงและกดยอมรับ:');
+  (proof.lines || []).forEach((line, i) => lines.push(`${i + 1}. ${line}`));
+
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    toast.success('คัดลอกหลักฐานแล้ว');
+  } catch {
+    toast.error('คัดลอกไม่สำเร็จ');
+  }
+}
+
 async function copyBriefUrl(booking) {
   if (!booking?.brief_url) return;
   try {
@@ -4972,6 +5049,25 @@ async function reverifySlip(bookingRef, slipType) {
   color: var(--color-text-muted);
   font-size: 10px;
   font-family: monospace;
+}
+
+.terms-proof-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  list-style: decimal;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-mid);
+}
+
+.terms-proof-copy {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .empty-inline {

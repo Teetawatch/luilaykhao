@@ -19,6 +19,7 @@ use App\Services\BookingService;
 use App\Services\ModerationService;
 use App\Services\PickupStatusService;
 use App\Services\WeatherService;
+use App\Support\TermsConsent;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,6 +44,9 @@ class BookingController extends Controller
         $skipPayment = $request->boolean('skip_payment') && $request->user()->hasRole('admin');
 
         try {
+            // อ่านก่อนสร้างใบจอง — เวอร์ชันที่ลูกค้าเห็นไม่ตรงฉบับปัจจุบันต้องไม่ได้ใบจอง
+            $termsConsent = TermsConsent::fromRequest($request);
+
             $booking = $this->bookingService->createBooking(
                 userId: $request->user()->id,
                 scheduleId: $request->schedule_id,
@@ -68,7 +72,7 @@ class BookingController extends Controller
                 giftFromName: $request->gift_from_name,
                 giftMessage: $request->gift_message,
                 skipPayment: $skipPayment,
-                acceptedTerms: $request->boolean('accepted_terms'),
+                termsConsent: $termsConsent,
             );
 
             return $this->success(
@@ -102,6 +106,8 @@ class BookingController extends Controller
                 'passengers.pickupPoint',
                 // เอกสารแนบที่ทริปขอ — หน้ารายละเอียดคือที่ที่ลูกค้าตามมาแนบทีหลัง
                 'documents',
+                // เงื่อนไขที่ลูกค้ากดยอมรับตอนจอง — ให้ย้อนอ่านได้ว่าตกลงอะไรไว้
+                'termAcceptance',
                 'installmentPayments',
                 'splitShares',
                 // เฉพาะรีวิวของผู้ที่กำลังดู (เจ้าของหรือเพื่อนร่วมเดินทาง) เพื่อให้ can_review เป็นรายคน

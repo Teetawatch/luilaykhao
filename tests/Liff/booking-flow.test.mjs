@@ -282,6 +282,9 @@ step('จองเสร็จแล้วไม่มีแผ่นอะไ�
 step('ส่ง accepted_terms ไปกับการจอง', () => {
   const body = JSON.parse(bodies.find((b) => b.key === 'POST /bookings').body);
   assert(body.accepted_terms === true, 'ไม่ได้ส่ง accepted_terms');
+  // ฉบับที่แผ่นเงื่อนไขแสดง — ไม่ส่งแล้วเซิร์ฟเวอร์แยกไม่ออกว่าลูกค้าอ่านฉบับไหน
+  assert(body.terms_version === '2026-09-10', 'ไม่ได้ส่งเวอร์ชันเงื่อนไขที่แสดง: ' + body.terms_version);
+  assert(body.consent_channel === 'liff', 'ไม่ได้บอกว่าจองผ่าน LINE');
 });
 
 step('หน้าชำระเงิน (Beam) — QR ขึ้นเองทันที', () => {

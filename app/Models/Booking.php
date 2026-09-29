@@ -265,6 +265,15 @@ class Booking extends Model
         return $this->hasMany(BookingDocument::class);
     }
 
+    /**
+     * หลักฐานการกดยอมรับเงื่อนไขตอนจอง — มีได้ใบละหนึ่งแถว และห้ามแก้
+     * (ใบจองก่อน 2026-09-29 และใบที่ไม่ได้กดยอมรับจะไม่มี)
+     */
+    public function termAcceptance(): HasOne
+    {
+        return $this->hasOne(BookingTermAcceptance::class);
+    }
+
     public function members(): HasMany
     {
         return $this->hasMany(BookingMember::class);

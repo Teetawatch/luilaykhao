@@ -35,6 +35,44 @@ class LegalPolicy
     }
 
     /**
+     * ข้อความของเงื่อนไขฉบับที่ระบุ ตามที่ประกาศใช้จริงในวันนั้น
+     *
+     * ทุกฉบับถูกเก็บไว้ที่ resources/legal/booking-terms/{version}.json และไม่
+     * แก้ย้อนหลัง ใบจองเก่าที่มีแค่ terms_version (ก่อนมีตาราง
+     * booking_term_acceptances) จึงยังเปิดดูได้ว่าตอนนั้นลูกค้าเห็นอะไร
+     * คืน null เมื่อไม่มีฉบับนั้นในคลัง
+     *
+     * @return array<int, string>|null
+     */
+    public static function archivedBookingTerms(string $version): ?array
+    {
+        // เวอร์ชันมาจากฐานข้อมูล แต่ก็กันไว้ไม่ให้กลายเป็น path ไปไฟล์อื่น
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $version)) {
+            return null;
+        }
+
+        $path = resource_path("legal/booking-terms/{$version}.json");
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $lines = json_decode((string) file_get_contents($path), true);
+
+        return is_array($lines) ? array_values($lines) : null;
+    }
+
+    /**
+     * ลายนิ้วมือของข้อความที่ลูกค้ากดยอมรับ — แก้ตัวอักษรเดียวค่าก็เปลี่ยน
+     *
+     * @param  array<int, string>  $lines
+     */
+    public static function fingerprint(string $version, array $lines): string
+    {
+        return hash('sha256', $version."\n".implode("\n", array_values($lines)));
+    }
+
+    /**
      * ก้อนเดียวที่ไคลเอนต์ต้องใช้: เวอร์ชันเอกสาร ตัวเลขนโยบาย และประโยคที่แสดง
      *
      * @return array<string, mixed>

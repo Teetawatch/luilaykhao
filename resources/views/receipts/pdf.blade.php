@@ -149,6 +149,7 @@
                 @if(data_get($d, 'payment.method'))<br>ช่องทางชำระ: {{ data_get($d, 'payment.method') }}@endif
                 @if(data_get($d, 'payment.ref'))<br>อ้างอิงการชำระ: {{ data_get($d, 'payment.ref') }}@endif
                 @if(data_get($d, 'payment.paid_at'))<br>ชำระเมื่อ: {{ data_get($d, 'payment.paid_at') }}@endif
+                @if(data_get($d, 'terms.version'))<br>ผู้ซื้อยอมรับเงื่อนไขการจองฉบับวันที่ {{ data_get($d, 'terms.version') }} เมื่อ {{ data_get($d, 'terms.accepted_at') }} น.@endif
             </td>
             <td>
                 <table class="sum">

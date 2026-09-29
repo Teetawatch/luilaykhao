@@ -203,6 +203,11 @@ class CreateBookingRequest extends FormRequest
             // ไม่มีหน้าจอให้กด (แอดมินจองแทน, แอปรุ่นก่อน) ต้องจองได้เหมือนเดิม
             // และ "ไม่ส่งมา" แปลว่าไม่มีหลักฐาน ไม่ใช่ปฏิเสธ
             'accepted_terms' => ['nullable', 'boolean'],
+            // ฉบับที่ลูกค้าเห็นบนจอจริง — ไม่ตรงฉบับปัจจุบันจะถูกปฏิเสธ (TermsConsent)
+            'terms_version' => ['nullable', 'string', 'max:20'],
+            // จองจากที่ไหน เก็บลงหลักฐานการยอมรับเงื่อนไข — ค่าอื่นนอกรายการ
+            // บันทึกเป็น unknown แทนการตีกลับ ใบจองสำคัญกว่าป้ายช่องทาง
+            'consent_channel' => ['nullable', 'string', 'max:16'],
             'group_name' => ['nullable', 'string', 'max:255'],
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],

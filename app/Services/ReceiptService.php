@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\Receipt;
+use App\Support\TermsAcceptanceSummary;
 use App\Support\ThaiDate;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Carbon;
 
 class ReceiptService
 {
@@ -128,6 +130,7 @@ class ReceiptService
         }
 
         $firstPassenger = $booking->passengers->first();
+        $terms = TermsAcceptanceSummary::forBooking($booking);
 
         return [
             'company' => config('company'),
@@ -162,6 +165,12 @@ class ReceiptService
                     : null,
             ],
             'booking_ref' => $booking->booking_ref,
+            // อ้างอิงเงื่อนไขที่ผู้ซื้อตกลงไว้ — ใบเสร็จเป็น snapshot จึงเก็บเป็นข้อความ
+            // สำเร็จรูป ใบเสร็จเก่าที่ไม่มีคีย์นี้ก็แค่ไม่แสดงบรรทัดนี้
+            'terms' => $terms['status'] === 'none' ? null : [
+                'version' => ThaiDate::full(Carbon::parse($terms['version'])),
+                'accepted_at' => ThaiDate::shortTime(Carbon::parse($terms['accepted_at'])->setTimezone('Asia/Bangkok')),
+            ],
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Jobs\ProcessWaitlistJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\BookingTermAcceptance;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\Payment;
@@ -16,6 +17,8 @@ use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\CustomPickupPricing;
+use App\Support\LegalPolicy;
+use App\Support\TermsConsent;
 use App\Support\ThaiDate;
 use App\Support\TripRentalItems;
 use App\Traits\RemapsBookingPickup;
@@ -58,7 +61,7 @@ class BookingService
         ?string $giftMessage = null,
         ?int $vehicleOptionId = null,
         bool $skipPayment = false,
-        bool $acceptedTerms = false,
+        ?TermsConsent $termsConsent = null,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -72,7 +75,7 @@ class BookingService
         $bookedBeforeBooking = null;
         $bookedAfterBooking = null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $acceptedTerms, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -519,9 +522,15 @@ class BookingService
                 // หลักฐานว่าลูกค้ากดยอมรับเงื่อนไขฉบับใด ณ เวลาใด — ช่องทางที่
                 // ยังไม่ได้ขอความยินยอม (แอดมินจองแทน, แอปรุ่นก่อน) ปล่อยว่างไว้
                 // ตามความจริง ดีกว่าประทับเวลาให้ทั้งที่ไม่มีใครกด
-                'terms_accepted_at' => $acceptedTerms ? now() : null,
-                'terms_version' => $acceptedTerms ? config('legal.terms_version') : null,
+                'terms_accepted_at' => $termsConsent ? now() : null,
+                'terms_version' => $termsConsent?->version,
             ]);
+
+            // ตัวหลักฐานเต็ม (ข้อความทุกข้อ ช่องทาง เครื่อง) — ใน transaction
+            // เดียวกับใบจอง ใบจองที่บอกว่ายอมรับแล้วจึงไม่มีทางขาดหลักฐาน
+            if ($termsConsent) {
+                $this->recordTermsAcceptance($booking, $termsConsent);
+            }
 
             // ตัดคูปองทิ้งทันทีที่ผูกกับการจองแล้ว อยู่ใน transaction เดียวกับการ
             // สร้างการจอง คูปองใบเดียวจึงใช้ได้ครั้งเดียวแม้กดพร้อมกันสองหน้าต่าง
@@ -1314,5 +1323,34 @@ class BookingService
         ProcessWaitlistJob::dispatch($booking->schedule_id);
 
         return $refunded;
+    }
+
+    /**
+     * บันทึกหลักฐานว่าผู้จองเห็นข้อความเงื่อนไขอะไร และกดยอมรับจากที่ไหน
+     *
+     * ข้อความที่เก็บคือฉบับที่เซิร์ฟเวอร์ประกาศใช้ ซึ่ง TermsConsent ยืนยันแล้ว
+     * ว่าเป็นฉบับเดียวกับที่ไคลเอนต์แสดง (เว็บ build จาก policy.js ที่
+     * LegalPolicySyncTest คุมให้ตรงกัน, แอปและ LIFF อ่านจาก GET /legal/policy)
+     */
+    private function recordTermsAcceptance(Booking $booking, TermsConsent $consent): void
+    {
+        $user = User::find($booking->user_id);
+        $lines = LegalPolicy::bookingTerms();
+
+        BookingTermAcceptance::create([
+            'booking_id' => $booking->id,
+            'booking_ref' => $booking->booking_ref,
+            'user_id' => $user?->id,
+            'accepted_by_name' => $user?->name,
+            'accepted_by_email' => $user?->email,
+            'accepted_by_phone' => $user?->phone,
+            'terms_version' => $consent->version,
+            'terms_lines' => $lines,
+            'terms_hash' => LegalPolicy::fingerprint($consent->version, $lines),
+            'channel' => $consent->channel,
+            'ip_address' => $consent->ipAddress,
+            'user_agent' => $consent->userAgent,
+            'accepted_at' => $booking->terms_accepted_at ?? now(),
+        ]);
     }
 }

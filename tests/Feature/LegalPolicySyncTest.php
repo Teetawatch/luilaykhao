@@ -65,6 +65,7 @@ class LegalPolicySyncTest extends TestCase
             'paymentWindowMinutes' => 'payment_window_minutes',
             'operatorCancelRefundPercent' => 'operator_cancel_refund_percent',
             'rescheduleLeadDays' => 'reschedule_lead_days',
+            'forceMajeurePostponeMonths' => 'force_majeure_postpone_months',
         ];
 
         foreach ($mapping as $jsKey => $phpKey) {

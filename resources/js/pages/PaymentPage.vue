@@ -350,7 +350,7 @@
                     <span class="text-[10px] font-black text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-widest">กรุณาอ่าน</span>
                   </div>
                   <p class="text-[13px] sm:text-sm text-red-800 leading-relaxed">
-                    กรณีขอยกเลิกการเดินทาง ทางทริปขอสงวนสิทธิ์ <strong class="text-red-900 underline decoration-wavy decoration-red-400 underline-offset-4">ไม่คืนเงินมัดจำทุกกรณี</strong>
+                    กรณีขอยกเลิกการเดินทางเอง ทางทริปขอสงวนสิทธิ์ <strong class="text-red-900 underline decoration-wavy decoration-red-400 underline-offset-4">ไม่คืนเงินมัดจำ</strong>
                     เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า
                     เลื่อนวันเดินทางได้ {{ POLICY.postponeTimes }} ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย {{ POLICY.postponeNoticeDays }} วัน
                     (<router-link to="/terms" class="font-bold underline">เงื่อนไขฉบับเต็ม</router-link>)

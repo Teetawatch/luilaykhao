@@ -1726,13 +1726,13 @@ async function confirmTerms(banner, btn) {
   sheet.querySelector('.sheet-close').onclick = dismiss;
   sheet.querySelector('#termsCancel').onclick = dismiss;
   sheet.querySelector('#agree').onchange = (e) => { sheet.querySelector('#termsOk').disabled = !e.target.checked; };
-  sheet.querySelector('#termsOk').onclick = () => { sheet.remove(); submitBooking(banner, btn); };
+  sheet.querySelector('#termsOk').onclick = () => { sheet.remove(); submitBooking(banner, btn, policy.terms_version); };
   document.body.appendChild(sheet);
 }
 
 /* --------- ส่งการจอง --------- */
 
-async function submitBooking(banner, btn) {
+async function submitBooking(banner, btn, termsVersion) {
   banner.innerHTML = '';
   btn.disabled = true;
   btn.textContent = 'กำลังจอง…';
@@ -1750,6 +1750,10 @@ async function submitBooking(banner, btn) {
     // หลักฐานว่าลูกค้ากดยอมรับเงื่อนไขในแผ่นก่อนหน้านี้แล้ว — เซิร์ฟเวอร์ประทับ
     // เวลาและเวอร์ชันเงื่อนไขลงใบจอง (ไม่ส่ง = ใบจองไม่มีบันทึกการยอมรับเลย)
     accepted_terms: true,
+    // ฉบับที่แผ่นเงื่อนไขเพิ่งแสดง — เซิร์ฟเวอร์ปฏิเสธถ้าไม่ใช่ฉบับปัจจุบัน
+    // (เปิดค้างข้ามการ deploy) แทนการประทับฉบับที่ลูกค้าไม่เคยอ่าน
+    terms_version: termsVersion || null,
+    consent_channel: 'liff',
     is_group: bk.isGroup,
     group_name: bk.isGroup ? bk.groupName : null,
     group_notes: bk.isGroup ? bk.groupNotes : null,

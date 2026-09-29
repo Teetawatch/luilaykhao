@@ -1452,6 +1452,8 @@ class AdminController extends Controller
             // เอกสารแนบ — เฉพาะหน้ารายละเอียด ไม่ใส่ในหน้ารายการ เพราะแต่ละไฟล์
             // ต้อง mint ลิงก์ signed ใหม่ทุกครั้ง
             'documents',
+            // หลักฐานการยอมรับเงื่อนไข — ของที่ต้องเปิดดูเวลามีข้อพิพาท
+            'termAcceptance',
         ])
             ->where('booking_ref', $ref)
             ->firstOrFail();
