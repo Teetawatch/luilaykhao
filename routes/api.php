@@ -68,6 +68,7 @@ use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleItineraryController;
 use App\Http\Controllers\Api\V1\ScheduleRallyController;
 use App\Http\Controllers\Api\V1\SeatController;
+use App\Http\Controllers\Api\V1\ShoppingListController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
@@ -444,6 +445,14 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'updateLedgerEntry']);
         Route::delete('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'deleteLedgerEntry']);
 
+        // ใบซื้อของก่อนออกทริป — ติ๊กของที่ซื้อแล้ว + ส่งรายงานพร้อมรูปให้แอดมิน
+        Route::get('staff/schedules/{id}/shopping', [ShoppingListController::class, 'show']);
+        Route::post('staff/schedules/{id}/shopping/items', [ShoppingListController::class, 'store']);
+        Route::post('staff/schedules/{id}/shopping/items/{itemId}/bought', [ShoppingListController::class, 'mark']);
+        Route::delete('staff/schedules/{id}/shopping/items/{itemId}', [ShoppingListController::class, 'destroy']);
+        Route::post('staff/schedules/{id}/shopping/report', [ShoppingListController::class, 'submit'])
+            ->middleware('throttle:20,1');
+
         // SOS emergency alerts
         Route::post('sos', [SosController::class, 'trigger']);
         Route::get('sos/active', [SosController::class, 'active']);
@@ -691,6 +700,18 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/itinerary/reorder', [ScheduleItineraryController::class, 'reorder']);
         Route::put('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'update']);
         Route::delete('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'destroy']);
+
+        // ใบซื้อของก่อนออกทริป — รายการประจำทริป + ใบของแต่ละรอบ + รายงานจากสตาฟ
+        Route::get('shopping/rounds', [ShoppingListController::class, 'adminRounds']);
+        Route::get('trips/{id}/shopping-template', [ShoppingListController::class, 'templateShow']);
+        Route::put('trips/{id}/shopping-template', [ShoppingListController::class, 'templateUpdate']);
+        Route::get('schedules/{id}/shopping', [ShoppingListController::class, 'adminShow']);
+        Route::post('schedules/{id}/shopping/items', [ShoppingListController::class, 'adminStore']);
+        Route::put('schedules/{id}/shopping/items/{itemId}', [ShoppingListController::class, 'adminUpdate']);
+        Route::delete('schedules/{id}/shopping/items/{itemId}', [ShoppingListController::class, 'adminDestroy']);
+        Route::post('schedules/{id}/shopping/resync', [ShoppingListController::class, 'adminResync']);
+        Route::post('schedules/{id}/shopping/acknowledge', [ShoppingListController::class, 'adminAcknowledge']);
+        Route::post('schedules/{id}/shopping/reopen', [ShoppingListController::class, 'adminReopen']);
 
         // ลิงก์เก็บข้อมูลลูกค้า (ก่อนการจอง) — ลูกค้าที่ทักมาทางแชทกรอกเอง
         Route::get('intake-links', [AdminIntakeController::class, 'links']);

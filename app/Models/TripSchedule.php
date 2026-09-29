@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -118,6 +119,7 @@ class TripSchedule extends Model
             'finance_closed_at' => 'datetime',
             'finance_budget' => 'decimal:2',
             'photo_views_count' => 'integer',
+            'shopping_seeded_at' => 'datetime',
         ];
     }
 
@@ -517,6 +519,19 @@ class TripSchedule extends Model
         return $this->hasMany(ScheduleAnnouncement::class, 'schedule_id')
             ->orderByDesc('is_pinned')
             ->orderByDesc('id');
+    }
+
+    /** ใบซื้อของของรอบ — เรียงตามลำดับที่ก๊อปมาจากทริป ของที่เพิ่มทีหลังต่อท้าย */
+    public function shoppingItems(): HasMany
+    {
+        return $this->hasMany(ScheduleShoppingItem::class, 'schedule_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function shoppingReport(): HasOne
+    {
+        return $this->hasOne(ScheduleShoppingReport::class, 'schedule_id');
     }
 
     public function itineraryItems(): HasMany

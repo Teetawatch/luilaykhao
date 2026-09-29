@@ -8,11 +8,13 @@ use App\Models\Contact;
 use App\Models\Incident;
 use App\Models\InstallmentPayment;
 use App\Models\Review;
+use App\Models\ScheduleShoppingReport;
 use App\Models\SosAlert;
 use App\Models\SupportConversation;
 use App\Models\TripPost;
 use App\Services\AtRiskScheduleService;
 use App\Services\ScheduleFinanceService;
+use App\Services\ShoppingListService;
 use App\Services\SlipOcrService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +45,7 @@ class AdminActionQueueController extends Controller
             $this->incidentGroup(),
             $this->atRiskScheduleGroup(),
             $this->financeCloseGroup(),
+            $this->shoppingReportGroup(),
             $this->slipGroup(),
             $this->customPickupGroup(),
             $this->supportGroup(),
@@ -234,6 +237,28 @@ class AdminActionQueueController extends Controller
                 'title' => $p->user?->name ?? 'นักเดินทาง',
                 'detail' => "ถูกรายงาน {$p->reports_count} ครั้ง",
                 'at' => $p->created_at?->toISOString(),
+            ])->values(),
+        );
+    }
+
+    /**
+     * รายงานซื้อของที่สตาฟส่งมาแต่ยังไม่มีใครเปิดดู — กด "รับทราบ" ที่หน้า
+     * ใบซื้อของแล้วการ์ดนี้หายไปเอง
+     */
+    private function shoppingReportGroup(): array
+    {
+        $query = app(ShoppingListService::class)->unreviewedQuery();
+        $recent = (clone $query)->with(['schedule.trip', 'submittedBy'])->latest('submitted_at')->limit(5)->get();
+
+        return $this->group(
+            'shopping_reports', 'รายงานซื้อของจากสตาฟรอตรวจ', 'shopping_cart', 'low',
+            $query->count(),
+            '/admin/shopping',
+            $recent->map(fn (ScheduleShoppingReport $r) => [
+                'title' => $r->schedule?->trip?->title ?? 'ทริป',
+                'detail' => 'ส่งโดย '.($r->submittedBy?->name ?? 'สตาฟ')
+                    .($r->total_amount ? ' · ฿'.number_format($r->total_amount, 0) : ''),
+                'at' => $r->submitted_at?->toISOString(),
             ])->values(),
         );
     }

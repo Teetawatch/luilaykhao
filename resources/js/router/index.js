@@ -314,6 +314,7 @@ const routes = [
       { path: 'action-queue', name: 'admin-action-queue', component: () => import('../pages/admin/ActionQueuePage.vue') },
       { path: 'broadcasts', name: 'admin-broadcasts', component: () => import('../pages/admin/BroadcastPage.vue') },
       { path: 'rentals', name: 'admin-rentals', component: () => import('../pages/admin/RentalsPage.vue') },
+      { path: 'shopping', name: 'admin-shopping', component: () => import('../pages/admin/ShoppingPage.vue') },
       { path: 'staff-reviews', name: 'admin-staff-reviews', component: () => import('../pages/admin/StaffReviewsPage.vue') },
       { path: 'settings', name: 'admin-settings', component: () => import('../pages/admin/SettingsPage.vue') },
       { path: 'reviews', name: 'admin-reviews', component: () => import('../pages/admin/ReviewsPage.vue') },

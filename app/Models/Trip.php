@@ -108,6 +108,12 @@ class Trip extends Model
         return $this->hasMany(TripSchedule::class);
     }
 
+    /** ของที่ต้องซื้อทุกรอบ — แต่ละรอบก๊อปไปเป็นใบซื้อของของตัวเอง */
+    public function shoppingItems(): HasMany
+    {
+        return $this->hasMany(TripShoppingItem::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function medals(): HasMany
     {
         return $this->hasMany(TripMedal::class);

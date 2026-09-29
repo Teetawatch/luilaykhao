@@ -254,6 +254,7 @@ const menuGroups = ref([
       { to: '/admin/check-in', icon: 'fas fa-qrcode', label: 'เช็คอิน QR' },
       { to: '/admin/incidents', icon: 'fas fa-triangle-exclamation', label: 'แจ้งเหตุ/อุบัติเหตุ' },
       { to: '/admin/rentals', icon: 'fas fa-suitcase-rolling', label: 'อุปกรณ์เช่าที่ต้องเตรียม' },
+      { to: '/admin/shopping', icon: 'fas fa-cart-shopping', label: 'ของที่ต้องซื้อก่อนออกทริป' },
       { to: '/admin/staff-assignments', icon: 'fas fa-user-check', label: 'มอบหมายสตาฟ' },
       { to: '/admin/staff-reviews', icon: 'fas fa-award', label: 'คะแนนรีวิวทีมงาน' },
       { to: '/admin/chat', icon: 'fas fa-comments', label: 'แชทกลุ่มทริป' },
