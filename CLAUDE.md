@@ -121,7 +121,12 @@ Vehicle GPS is pushed to `/api/v1/tracking/update` (no auth, intended for device
 
 ### Live Activity ("วันเดินทาง" lock-screen card)
 
-`TripActivityService` is the single source of the card's Thai copy, stage, and ETA — the apps only draw. Stages: `countdown → preparing → enroute → approaching → arriving → arrived → onboard → itinerary` (flight rounds swap the GPS-driven middle for `meetup → boarding`). Check-in is not the end of the story: 15 min after `checked_in_at` the card switches to `itinerary`, showing the next unticked `ScheduleItineraryItem` and reached/total progress, sourced from `TripProgressService` — the same service the Trip Day screen and the family share link use. A round with no itinerary keeps the old frozen `onboard` card.
+`TripActivityService` is the single source of the card's Thai copy, stage, and ETA — the apps only draw. Stages: `countdown → preparing → enroute → approaching → arriving → arrived → onboard → (returning → dropoff_soon → dropoff | itinerary | trip_day)` (flight rounds swap the GPS-driven middle for `meetup → boarding` and have no return leg). Check-in is not the end of the story — 15 min after `checked_in_at`, `afterBoarding()` takes the first of:
+- **return leg** (`returning`/`dropoff_soon`/`dropoff`) — last trip day, checked in ≥3 h, and the van's GPS closed ≥2 km on this booking's pickup point in *two* consecutive ~20-min windows. No staff button, same reasoning as `TripDepartureService`. Sticky per booking per day in cache; long legs ask Google at most every 10 min per drop-off point. 30 min after `dropoff`, `stateFor()` returns null and the card closes.
+- **itinerary** — staff ticks (`TripProgressService`) while the latest tick is < 3 h old; otherwise the next item by planned `item_date`+`time` ("ตามแผน"). Undated items only count on single-day rounds.
+- **trip_day** — "ทริปวันที่ 2 จาก 3 · กลับ …" for rounds with nothing else to follow.
+
+A schedule announcement < 30 min old overlays `countdown/preparing/itinerary/trip_day` as stage `announcement` — silently, since the announcement has its own push. In the app, `RightNowCard` renders these server stages verbatim instead of computing a pickup ETA.
 
 `departs_at` is optional, and `effectiveDepartsAt()` fills midnight in its place. That midnight is fine for comparing dates but must never be printed or counted against — `departTimeLabel()` returns null when the time was never set, and every stage/copy decision takes that as "count in days, not hours".
 

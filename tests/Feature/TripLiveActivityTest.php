@@ -233,8 +233,10 @@ class TripLiveActivityTest extends TestCase
         $this->assertSame('ขึ้นรถเรียบร้อยแล้ว', $state['headline']);
     }
 
-    public function test_a_round_without_an_itinerary_keeps_the_old_onboard_card(): void
+    public function test_a_round_without_an_itinerary_moves_on_to_the_trip_day_card(): void
     {
+        // เคยค้าง "ขึ้นรถเรียบร้อยแล้ว" จนจบทริป — รอบส่วนใหญ่ไม่มีกำหนดการ
+        // รายละเอียดทุกทางสำรองอยู่ใน TripActivityAfterBoardingTest
         $this->booking->update([
             'checked_in' => true,
             'checked_in_at' => now()->subHours(3),
@@ -242,7 +244,8 @@ class TripLiveActivityTest extends TestCase
 
         $state = app(TripActivityService::class)->stateFor($this->booking->fresh('schedule'));
 
-        $this->assertSame('onboard', $state['stage']);
+        $this->assertSame('trip_day', $state['stage']);
+        $this->assertNull($state['eta_minutes']);
     }
 
     public function test_the_card_closes_out_the_itinerary_when_every_stop_is_ticked(): void

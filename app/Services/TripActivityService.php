@@ -5,12 +5,16 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\FcmToken;
 use App\Models\LiveActivity;
+use App\Models\ScheduleAnnouncement;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Models\VehicleLocation;
+use App\Support\ThaiDate;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 
 /**
  * "รถถึงใน 8 นาที" บนหน้าจอล็อก — ที่เดียวที่นิยามว่าตอนนี้ควรขึ้นว่าอะไร
@@ -49,8 +53,52 @@ class TripActivityService
     /** หลังเช็คอินกี่นาทีจึงเลิกโชว์ "ขึ้นรถเรียบร้อยแล้ว" แล้วเดินตามกำหนดการต่อ */
     private const ONBOARD_MINUTES = 15;
 
+    /**
+     * หมุดที่ทีมงานกดล่าสุดเก่ากว่านี้ = ทีมงานเลิกกดไปแล้ว (ชั่วโมง)
+     *
+     * หลังจากนั้นเชื่อเวลาในกำหนดการแทน ไม่งั้นการ์ดแช่ "จุดถัดไป" อันเดิมไปทั้งวัน
+     * ทั้งที่ทริปเดินผ่านไปหลายจุดแล้ว
+     */
+    private const TICK_TRUST_HOURS = 3;
+
+    /** ประกาศจากทีมงานขึ้นการ์ดนานเท่านี้หลังโพสต์ (นาที) */
+    private const ANNOUNCEMENT_MINUTES = 30;
+
+    /**
+     * ขั้นที่ประกาศแทรกได้ — ช่วงที่การ์ดไม่ได้กำลังบอกเวลารถถึงอยู่
+     *
+     * ตอนรถกำลังวิ่งมารับหรือกำลังพากลับ ตัวเลข ETA สำคัญกว่า และประกาศเองก็มี
+     * push ของมันแยกอยู่แล้ว
+     */
+    private const ANNOUNCEMENT_STAGES = ['countdown', 'preparing', 'itinerary', 'trip_day'];
+
+    /** เช็คอินแล้วอย่างน้อยเท่านี้ถึงเริ่มจับขากลับ — กันช่วงรถยังวนรับคนอื่นอยู่ (ชั่วโมง) */
+    private const RETURN_AFTER_CHECKIN_HOURS = 3;
+
+    /**
+     * รถต้องเข้าใกล้จุดส่งติดกันสองช่วง ช่วงละอย่างน้อยเท่านี้ถึงนับว่ากำลังกลับ (กม.)
+     *
+     * ช่วงเดียวไม่พอ — เช้าวันกลับรถอาจขับไปจุดชมวิวที่บังเอิญอยู่ทางเดียวกับบ้าน
+     */
+    private const RETURN_CLOSING_KM = 2.0;
+
+    /** ใกล้จุดส่งกว่านี้ = ส่งถึงแล้ว (กม.) */
+    private const DROPOFF_KM = 0.5;
+
+    /** ETA ขากลับต่ำกว่านี้ = ขั้น "ใกล้ถึงจุดส่ง" ที่ควรปลุกให้เก็บของ (นาที) */
+    private const DROPOFF_SOON_MINUTES = 15;
+
+    /** ส่งถึงแล้วโชว์ "ถึงจุดส่งแล้ว" ค้างไว้นานเท่านี้ แล้วค่อยปิดการ์ด (นาที) */
+    private const DROPOFF_LINGER_MINUTES = 30;
+
+    /** ไกลกว่านี้ถาม Google (ติดรถบนทางหลวงนับเส้นตรงไม่ได้) ใกล้กว่านี้คิดเอง (กม.) */
+    private const RETURN_GOOGLE_MIN_KM = 15;
+
+    /** ถาม Google ซ้ำทุกกี่วินาทีต่อหนึ่งจุดส่ง — ถามทุกนาทีคือเผาเงินเปล่า ๆ */
+    private const RETURN_ETA_REFRESH_SECONDS = 600;
+
     /** ขั้นที่ควรทำให้เครื่องสั่น/เด้ง ไม่ใช่แค่เปลี่ยนตัวเลขเงียบ ๆ */
-    private const ALERTING_STAGES = ['arriving', 'arrived', 'onboard', 'meetup', 'boarding'];
+    private const ALERTING_STAGES = ['arriving', 'arrived', 'onboard', 'meetup', 'boarding', 'dropoff_soon', 'dropoff'];
 
     private const TIMEZONE = 'Asia/Bangkok';
 
@@ -69,6 +117,12 @@ class TripActivityService
      * @var array<int, array<string, mixed>>
      */
     private array $progressCache = [];
+
+    /** @var array<int, ScheduleAnnouncement|null> ประกาศล่าสุดต่อรอบ จำไว้ตลอดการซิงก์รอบนั้น */
+    private array $announcementCache = [];
+
+    /** @var array<int, array{mid: array|null, old: array|null}> พิกัดย้อนหลังต่อคันรถ */
+    private array $trackCache = [];
 
     /**
      * ใบจองที่ "ควรมี Live Activity อยู่ตอนนี้" — ตั้งแต่ 18 ชม. ก่อนรถออก จนถึง
@@ -170,13 +224,24 @@ class TripActivityService
         $copy = $this->copyFor($stage, $departsAt, $departTime, $etaMinutes, $pickupName, $booking);
         $progress = $this->progress($stage, $departsAt, $etaMinutes);
 
-        if ($leg = $this->itineraryLeg($booking, $schedule, $stage)) {
-            [$stage, $copy, $progress, $etaMinutes, $distanceKm] = [
-                $leg['stage'], $leg, $leg['progress'], null, null,
-            ];
+        if ($stage === 'onboard') {
+            // ส่งถึงจุดส่งมาพักหนึ่งแล้ว — ทริปจบจริง เก็บการ์ดออกจากหน้าจอล็อก
+            // แทนที่จะแช่ "ถึงจุดส่งแล้ว" ไว้จนเที่ยงคืน
+            if ($this->returnFinished($booking)) {
+                return null;
+            }
+
+            // ETA ไปจุดรับไม่มีความหมายแล้วหลังขึ้นรถ อย่าให้ Dynamic Island โชว์เลขค้าง
+            [$etaMinutes, $distanceKm] = [null, null];
+
+            if ($leg = $this->afterBoarding($booking, $schedule, $pickupCoords, $pickupName, $location)) {
+                [$stage, $copy, $progress, $etaMinutes, $distanceKm] = [
+                    $leg['stage'], $leg, $leg['progress'], $leg['eta_minutes'] ?? null, $leg['distance_km'] ?? null,
+                ];
+            }
         }
 
-        return [
+        return $this->withAnnouncement($schedule, [
             'stage' => $stage,
             'headline' => $copy['headline'],
             'detail' => $copy['detail'],
@@ -190,7 +255,7 @@ class TripActivityService
             'schedule_id' => (int) $schedule->id,
             'vehicle_label' => $this->vehicleLabel($schedule),
             'updated_at' => now()->toIso8601String(),
-        ];
+        ]);
     }
 
     /**
@@ -230,12 +295,12 @@ class TripActivityService
         $progress = $this->flightProgress($stage, $meetingAt);
 
         // ลงเครื่องแล้วกำหนดการก็เดินต่อเหมือนกัน — ไทม์ไลน์สนามบินจบที่ขึ้นเครื่อง
-        // ไม่ใช่จบที่ทริป
-        if ($leg = $this->itineraryLeg($booking, $schedule, $stage)) {
+        // ไม่ใช่จบที่ทริป (ไม่มีรถตู้พากลับจุดส่ง ขากลับจึงไม่มีให้ตาม)
+        if ($stage === 'onboard' && ($leg = $this->afterBoarding($booking, $schedule, null, null, null))) {
             [$stage, $copy, $progress, $etaMinutes] = [$leg['stage'], $leg, $leg['progress'], null];
         }
 
-        return [
+        return $this->withAnnouncement($schedule, [
             'stage' => $stage,
             'headline' => $copy['headline'],
             'detail' => $copy['detail'],
@@ -249,7 +314,7 @@ class TripActivityService
             'schedule_id' => (int) $schedule->id,
             'vehicle_label' => $flightLabel,
             'updated_at' => now()->toIso8601String(),
-        ];
+        ]);
     }
 
     /** เจอทีมงานเมื่อไหร่ / ขึ้นเครื่องเมื่อไหร่ — เกณฑ์เวลาของรอบบิน (นาที) */
@@ -806,27 +871,24 @@ class TripActivityService
     }
 
     /**
-     * ช่วงกลางทริป — "ต่อไปทำอะไร" แทนที่จะค้างอยู่ที่ "ขึ้นรถเรียบร้อยแล้ว"
+     * หลังเช็คอิน — การ์ดต้องมีอะไรให้ดูต่อเสมอ ไม่แช่ "ขึ้นรถเรียบร้อยแล้ว" จนจบทริป
      *
-     * เดิมทีเช็คอินคือจุดจบของเรื่องเล่า: [stage] คืน `onboard` เป็นบรรทัดแรกสุด
-     * แล้วการ์ดก็แช่ข้อความเดียวไปจนจบทริปสองวัน ทั้งที่คำถามของคนบนรถเปลี่ยนไป
-     * แล้วตั้งแต่ตอนขึ้นรถ
+     * เดิมทีเช็คอินคือจุดจบของเรื่องเล่า และต่อมาก็เดินต่อได้เฉพาะรอบที่มีกำหนดการ
+     * *และ* ทีมงานกดหมุดหน้างานครบ ซึ่งในทางปฏิบัติคือส่วนน้อย ที่เหลือค้างทั้งทริป
+     * ลำดับที่ใช้ตอนนี้ (อันแรกที่มีคำตอบชนะ):
      *
-     * แหล่งความจริงคือหมุดที่ทีมงานกดยืนยันหน้างาน ([TripProgressService] — ตัว
-     * เดียวกับที่หน้าวันเดินทางและลิงก์ให้ที่บ้านติดตามใช้) ไม่ใช่นาฬิกา เพราะแผน
-     * เลื่อนได้ทุกทริป แต่หมุดที่กดแล้วคือสิ่งที่เกิดขึ้นจริง
+     *   1. ขากลับ — รถกำลังพามาส่ง บอกเวลาถึงจุดส่ง ([returnLeg])
+     *   2. กำหนดการ — หมุดที่ทีมงานกด หรือเวลาในแผนเมื่อไม่มีใครกด ([itineraryLeg])
+     *   3. วันของทริป — รอบที่ไม่มีกำหนดการก็ยังบอกได้ว่าวันที่เท่าไหร่ กลับเมื่อไหร่
      *
-     * คืน null เมื่อยังไม่ควรเปลี่ยน — ยังไม่ได้ขึ้นรถ เพิ่งขึ้นรถ หรือรอบนี้ไม่มี
-     * กำหนดการ ซึ่งแปลว่าค้างที่ขั้นเดิม ไม่ใช่ขึ้นการ์ดเปล่า
+     * คืน null เฉพาะช่วงที่เพิ่งสแกนตั๋ว ซึ่ง "ขึ้นรถเรียบร้อยแล้ว" คือคำตอบที่ถูก
      *
-     * @return array{stage: string, headline: string, detail: string, progress: float}|null
+     * @param  array{lat: float, lng: float}|null  $pickupCoords
+     * @param  array<string, mixed>|null  $location
+     * @return array<string, mixed>|null
      */
-    private function itineraryLeg(Booking $booking, TripSchedule $schedule, string $stage): ?array
+    private function afterBoarding(Booking $booking, TripSchedule $schedule, ?array $pickupCoords, ?string $pickupName, ?array $location): ?array
     {
-        if ($stage !== 'onboard') {
-            return null;
-        }
-
         // เพิ่งสแกนตั๋วเสร็จ ปล่อยให้ "ขึ้นรถเรียบร้อยแล้ว" ค้างไว้ก่อน — มันคือคำ
         // ยืนยันที่คนเพิ่งยื่นโทรศัพท์ให้ทีมงานกำลังมองหา
         $checkedInAt = $booking->checked_in_at;
@@ -834,6 +896,28 @@ class TripActivityService
             return null;
         }
 
+        return $this->returnLeg($booking, $schedule, $pickupCoords, $pickupName, $location)
+            ?? $this->itineraryLeg($schedule)
+            ?? $this->tripDayLeg($schedule, $pickupName);
+    }
+
+    /**
+     * "ต่อไปทำอะไร" ตามกำหนดการของรอบ
+     *
+     * หมุดที่ทีมงานกดยืนยันหน้างานชนะเสมอเมื่อยังสด ([TripProgressService] — ตัว
+     * เดียวกับที่หน้าวันเดินทางและลิงก์ให้ที่บ้านติดตามใช้) เพราะแผนเลื่อนได้ทุกทริป
+     * แต่หมุดที่กดแล้วคือสิ่งที่เกิดขึ้นจริง
+     *
+     * แต่ทีมงานหน้างานมีงานของตัวเอง หมุดจึงมักไม่ถูกกดเลย หรือกดไปสองสามจุดแล้ว
+     * หยุด ช่วงนั้นเดินตามเวลาในแผนแทน และบอกตรง ๆ ว่า "ตามแผน" ไม่ใช่ยืนยันแล้ว
+     *
+     * คืน null เมื่อรอบไม่มีกำหนดการ หรือแผนเดินจนสุดแล้วโดยไม่มีใครกด — ให้การ์ด
+     * วันของทริปรับช่วงต่อ
+     *
+     * @return array{stage: string, headline: string, detail: string, progress: float}|null
+     */
+    private function itineraryLeg(TripSchedule $schedule): ?array
+    {
         $progress = $this->itineraryProgress($schedule);
         if (! ($progress['has_itinerary'] ?? false)) {
             return null;
@@ -852,14 +936,543 @@ class TripActivityService
             ];
         }
 
+        $lastTick = $progress['last_update_at'] ? Carbon::parse($progress['last_update_at']) : null;
+        $ticksFresh = $reached > 0
+            && $lastTick !== null
+            && $lastTick->gt(now()->subHours(self::TICK_TRUST_HOURS));
+
+        if (! $ticksFresh) {
+            $plan = $this->planPosition($schedule, $progress['items']);
+
+            if ($plan !== null) {
+                if ($plan['next'] === null) {
+                    return null;
+                }
+
+                $position = $plan['position'];
+
+                return [
+                    'stage' => 'itinerary',
+                    'headline' => $this->itemHeadline($schedule, $plan['next']),
+                    'detail' => $reached > 0
+                        ? "ถัดไปตามแผน · ทีมงานยืนยันแล้ว {$reached} จาก {$total} จุด"
+                        : "ถัดไปตามแผนการเดินทาง · จุดที่ {$position} จาก {$total}",
+                    'progress' => round(max($reached, $position - 1) / $total, 2),
+                ];
+            }
+
+            // ไม่มีเวลาในแผนให้เดินตาม และไม่มีใครกดเลย — จุดแรกของแผนจะค้างอยู่
+            // บนจอทั้งทริป ซึ่งก็คืออาการเดิมในชื่อใหม่
+            if ($reached === 0) {
+                return null;
+            }
+        }
+
         return [
             'stage' => 'itinerary',
-            'headline' => $next['time']
-                ? $next['time'].' น. · '.$next['title']
-                : $next['title'],
+            'headline' => $this->itemHeadline($schedule, $next),
             'detail' => "ถัดไปในกำหนดการ · ผ่านมาแล้ว {$reached} จาก {$total} จุด",
-            'progress' => $total > 0 ? round($reached / $total, 2) : 0.0,
+            'progress' => round($reached / $total, 2),
         ];
+    }
+
+    /**
+     * จุดถัดไปตามเวลาในแผน — จุดแรกที่ยังมาไม่ถึงตามนาฬิกา
+     *
+     * คืน null เมื่อไม่มีจุดไหนระบุเวลาได้เลย (เดาไม่ได้ ก็อย่าเดา) และคืน
+     * `next => null` เมื่อทุกจุดเลยเวลาไปแล้ว
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array{next: array<string, mixed>|null, position: int}|null
+     */
+    private function planPosition(TripSchedule $schedule, array $items): ?array
+    {
+        $now = $this->nowThai();
+        $timeable = 0;
+        $next = null;
+        $nextAt = null;
+        $position = 0;
+
+        foreach (array_values($items) as $index => $item) {
+            $at = $this->itemMoment($schedule, $item);
+            if ($at === null) {
+                continue;
+            }
+
+            $timeable++;
+
+            if ($at->lte($now)) {
+                continue;
+            }
+
+            if ($nextAt === null || $at->lt($nextAt)) {
+                [$next, $nextAt, $position] = [$item, $at, $index + 1];
+            }
+        }
+
+        return $timeable === 0 ? null : ['next' => $next, 'position' => $position];
+    }
+
+    /**
+     * วัน+เวลาของจุดในแผน ในกรอบเดียวกับ [nowThai] — null เมื่อระบุไม่ได้
+     *
+     * จุดที่ไม่ได้ใส่วันถือว่าเป็นวันเดินทางได้เฉพาะทริปวันเดียว ทริปหลายวันเดา
+     * ไม่ได้ว่าเป็นวันไหน และการเดาผิดคือบอกว่า "จบกำหนดการแล้ว" ตั้งแต่วันแรก
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function itemMoment(TripSchedule $schedule, array $item): ?Carbon
+    {
+        $time = $this->itemTime($item);
+        $date = $this->itemDate($schedule, $item);
+
+        if ($time === null || $date === null) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse("{$date} {$time}");
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * "10:00" — ตัดวินาทีทิ้ง (คอลัมน์ time ของ MySQL/Postgres คืน "10:00:00")
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function itemTime(array $item): ?string
+    {
+        return preg_match('/^(\d{1,2}):(\d{2})/', trim((string) ($item['time'] ?? '')), $m)
+            ? sprintf('%02d:%s', (int) $m[1], $m[2])
+            : null;
+    }
+
+    /** @param  array<string, mixed>  $item */
+    private function itemDate(TripSchedule $schedule, array $item): ?string
+    {
+        $date = $item['item_date'] ?? null;
+        if ($date) {
+            return (string) $date;
+        }
+
+        return $this->isSingleDay($schedule) ? $schedule->departure_date?->toDateString() : null;
+    }
+
+    /**
+     * "10:00 น. · ถึงจุดชมวิวผาตั้ง" / "พรุ่งนี้ 05:30 น. · ดูทะเลหมอก"
+     *
+     * ทริปหลายวัน จุดถัดไปตอนสามทุ่มคือตีห้าของพรุ่งนี้ — เวลาเปล่า ๆ อ่านแล้ว
+     * เหมือนตีห้าที่ผ่านไปแล้วของวันนี้
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function itemHeadline(TripSchedule $schedule, array $item): string
+    {
+        $time = $this->itemTime($item);
+        $when = trim($this->dayPrefix($this->itemDate($schedule, $item)).($time !== null ? "{$time} น." : ''));
+        $title = trim((string) ($item['title'] ?? ''));
+
+        return $when !== '' ? "{$when} · {$title}" : $title;
+    }
+
+    private function dayPrefix(?string $date): string
+    {
+        if ($date === null) {
+            return '';
+        }
+
+        $today = $this->nowThai()->startOfDay();
+        $day = Carbon::parse($date)->startOfDay();
+
+        return match (true) {
+            $day->equalTo($today) => '',
+            $day->equalTo($today->copy()->addDay()) => 'พรุ่งนี้ ',
+            default => $day->locale('th')->isoFormat('D MMM').' ',
+        };
+    }
+
+    private function isSingleDay(TripSchedule $schedule): bool
+    {
+        return $schedule->return_date === null
+            || $schedule->departure_date === null
+            || $schedule->return_date->isSameDay($schedule->departure_date);
+    }
+
+    /**
+     * การ์ดสำรองของรอบที่ไม่มีกำหนดการให้เดินตาม — "ทริปวันที่ 1 จาก 3 · กลับ …"
+     *
+     * ข้อมูลน้อยแต่เป็นความจริงเสมอ และตอบคำถามที่คนบนดอยถามกันจริง ๆ ว่า
+     * "วันนี้วันที่เท่าไหร่ของทริป กลับวันไหน"
+     *
+     * @return array{stage: string, headline: string, detail: string, progress: float}|null
+     */
+    private function tripDayLeg(TripSchedule $schedule, ?string $pickupName): ?array
+    {
+        if (! $schedule->departure_date) {
+            return null;
+        }
+
+        $today = $this->nowThai()->startOfDay();
+        $first = Carbon::parse($schedule->departure_date->toDateString());
+        $last = Carbon::parse(($schedule->return_date ?? $schedule->departure_date)->toDateString());
+        $days = max(1, (int) $first->diffInDays($last) + 1);
+        $chat = 'มีอะไรถามทีมงานในแชทกลุ่มได้เลย';
+
+        // รถออกคืนก่อนวันทริป — ขึ้นรถแล้วแต่วันแรกยังไม่มาถึง
+        if ($today->lt($first)) {
+            $until = (int) $today->diffInDays($first);
+
+            return [
+                'stage' => 'trip_day',
+                'headline' => 'อยู่ระหว่างเดินทาง',
+                'detail' => ($until <= 1 ? 'ถึงวันแรกของทริปพรุ่งนี้' : 'ทริปเริ่ม '.ThaiDate::short($first))
+                    .' · พักผ่อนบนรถได้เลย 😴',
+                'progress' => 0.05,
+            ];
+        }
+
+        $day = min((int) $first->diffInDays($today) + 1, $days);
+        $progress = round(($day - 0.5) / $days, 2);
+
+        if ($days === 1) {
+            return [
+                'stage' => 'trip_day',
+                'headline' => 'อยู่ระหว่างทริป',
+                'detail' => $pickupName ? "ขากลับส่งที่ {$pickupName} · {$chat}" : $chat,
+                'progress' => $progress,
+            ];
+        }
+
+        if ($day >= $days) {
+            return [
+                'stage' => 'trip_day',
+                'headline' => 'วันนี้เดินทางกลับ',
+                'detail' => "ทริปวันที่ {$days} จาก {$days} · เก็บของให้ครบก่อนขึ้นรถ 🎒",
+                'progress' => $progress,
+            ];
+        }
+
+        return [
+            'stage' => 'trip_day',
+            'headline' => "ทริปวันที่ {$day} จาก {$days}",
+            'detail' => ($day === $days - 1 ? 'พรุ่งนี้เดินทางกลับ' : 'เดินทางกลับ '.ThaiDate::short($last))
+                ." · {$chat}",
+            'progress' => $progress,
+        ];
+    }
+
+    /**
+     * ขากลับ — "ถึงจุดส่งราว 18:40 น." สำหรับคนบนรถ และคนที่บ้านที่รอรับ
+     *
+     * ไม่มีปุ่มให้ใครกดว่า "เริ่มกลับแล้ว" โดยตั้งใจ (เหตุผลเดียวกับ
+     * [TripDepartureService]: นาทีนั้นสตาฟกำลังนับหัวอยู่) ใช้พิกัดรถที่ไหลเข้ามา
+     * อยู่แล้วแทน: วันสุดท้ายของทริป + เช็คอินมานานแล้ว + รถเข้าใกล้จุดส่งของใบจอง
+     * นี้ติดกันสองช่วง
+     *
+     * จับได้ครั้งเดียวแล้วจำไว้ทั้งวัน (แวะปั๊มกลางทางแล้วรถหยุด ก็ยังขากลับอยู่)
+     * และจำ "ส่งถึงแล้ว" ด้วย เพื่อให้การ์ดปิดตัวเองหลังจากนั้น
+     *
+     * @param  array{lat: float, lng: float}|null  $pickupCoords
+     * @param  array<string, mixed>|null  $location
+     * @return array<string, mixed>|null
+     */
+    private function returnLeg(Booking $booking, TripSchedule $schedule, ?array $pickupCoords, ?string $pickupName, ?array $location): ?array
+    {
+        if (! $pickupCoords || ! $schedule->vehicle_id || ! $this->isLastTripDay($schedule)) {
+            return null;
+        }
+
+        $checkedInAt = $booking->checked_in_at;
+        if (! $checkedInAt || $checkedInAt->gt(now()->subHours(self::RETURN_AFTER_CHECKIN_HOURS))) {
+            return null;
+        }
+
+        $distanceKm = $location
+            ? $this->distanceKm(
+                (float) $location['latitude'],
+                (float) $location['longitude'],
+                $pickupCoords['lat'],
+                $pickupCoords['lng'],
+            )
+            : null;
+
+        $key = $this->returnKey($booking);
+        $leg = Cache::get($key);
+
+        if (! is_array($leg)) {
+            if ($distanceKm === null || ! $this->isHeadingTo((int) $schedule->vehicle_id, $pickupCoords, $distanceKm)) {
+                return null;
+            }
+
+            $leg = ['start_km' => $distanceKm, 'closest_km' => $distanceKm, 'dropped_at' => null];
+        }
+
+        if ($leg['dropped_at'] === null && $distanceKm !== null) {
+            $leg['closest_km'] = min((float) $leg['closest_km'], $distanceKm);
+
+            // ถึงหมุดจริง หรือเคยเข้ามาใกล้มากแล้ววิ่งต่อไปส่งคนถัดไป (จอดห่างหมุด
+            // ไปนิดหน่อย ซึ่งเกิดบ่อยกว่าจอดตรงหมุดเป๊ะ)
+            $arrived = $distanceKm <= self::DROPOFF_KM;
+            $passedBy = $leg['closest_km'] <= 1.0 && $distanceKm >= $leg['closest_km'] + 1.5;
+
+            if ($arrived || $passedBy) {
+                $leg['dropped_at'] = now()->timestamp;
+            }
+        }
+
+        Cache::put($key, $leg, now()->addDay());
+
+        if ($leg['dropped_at'] !== null) {
+            return [
+                'stage' => 'dropoff',
+                'headline' => 'ถึงจุดส่งแล้ว',
+                'detail' => 'ตรวจของให้ครบก่อนลงรถ · ขอบคุณที่ร่วมทางกับเรา 🎒',
+                'progress' => 1.0,
+            ];
+        }
+
+        $place = $pickupName ? "จุดส่ง {$pickupName}" : 'จุดส่ง';
+        $startKm = max((float) $leg['start_km'], 0.1);
+
+        // รถหายจากสัญญาณกลางทาง — ยังขากลับอยู่ แต่อย่าเดาเวลาถึง
+        if ($distanceKm === null) {
+            return [
+                'stage' => 'returning',
+                'headline' => 'กำลังเดินทางกลับ',
+                'detail' => "มุ่งหน้า{$place}",
+                'progress' => round(max(0, 1 - min((float) $leg['closest_km'] / $startKm, 1)), 2),
+            ];
+        }
+
+        $eta = $this->returnEtaMinutes((int) $schedule->vehicle_id, $location, $pickupCoords, $distanceKm);
+        $progress = round(max(0, 1 - min($distanceKm / $startKm, 1)), 2);
+
+        if ($eta <= self::DROPOFF_SOON_MINUTES) {
+            return [
+                'stage' => 'dropoff_soon',
+                'headline' => "อีก {$eta} นาทีถึงจุดส่ง",
+                'detail' => ($pickupName ? "ใกล้ถึง {$pickupName} แล้ว" : 'ใกล้ถึงจุดส่งแล้ว')
+                    .' เก็บของให้พร้อม 🎒',
+                'progress' => max($progress, 0.9),
+                'eta_minutes' => $eta,
+                'distance_km' => $distanceKm,
+            ];
+        }
+
+        // ขากลับยาวเป็นชั่วโมง — บอกเป็น "เวลาถึง" ปัดทีละ 5 นาที ไม่ใช่นาทีที่
+        // ลดลงทุกนาที ซึ่งจะยิงอัปเดตทุกนาทีตลอดสามชั่วโมงโดยไม่มีอะไรเปลี่ยนจริง
+        // (และบรรทัดรองต้องนิ่ง เพราะ [shouldPush] ไม่ได้เทียบบรรทัดรอง)
+        if ($eta > 30) {
+            return [
+                'stage' => 'returning',
+                'headline' => 'ขากลับ · ถึงราว '.$this->arrivalClock($eta).' น.',
+                'detail' => "มุ่งหน้า{$place} · เวลาถึงขยับได้ตามสภาพจราจร",
+                'progress' => $progress,
+                'eta_minutes' => null,
+                'distance_km' => $distanceKm,
+            ];
+        }
+
+        return [
+            'stage' => 'returning',
+            'headline' => "ขากลับ · อีก {$eta} นาที",
+            'detail' => "มุ่งหน้า{$place}",
+            'progress' => $progress,
+            'eta_minutes' => $eta,
+            'distance_km' => $distanceKm,
+        ];
+    }
+
+    /** ส่งถึงจุดส่งมานานพอแล้วหรือยัง — ถึงแล้วการ์ดของใบจองนี้ควรปิด */
+    private function returnFinished(Booking $booking): bool
+    {
+        if (! $booking->checked_in) {
+            return false;
+        }
+
+        $leg = Cache::get($this->returnKey($booking));
+
+        return is_array($leg)
+            && ($leg['dropped_at'] ?? null) !== null
+            && now()->timestamp - (int) $leg['dropped_at'] >= self::DROPOFF_LINGER_MINUTES * 60;
+    }
+
+    private function returnKey(Booking $booking): string
+    {
+        return "trip_return_leg:{$booking->id}:".$this->nowThai()->toDateString();
+    }
+
+    private function isLastTripDay(TripSchedule $schedule): bool
+    {
+        $last = $schedule->return_date ?? $schedule->departure_date;
+
+        return $last !== null && $last->toDateString() === $this->nowThai()->toDateString();
+    }
+
+    /**
+     * รถเข้าใกล้จุดนี้ติดกันสองช่วง (~40 → ~20 นาทีก่อน → ตอนนี้) หรือเปล่า
+     *
+     * @param  array{lat: float, lng: float}  $coords
+     */
+    private function isHeadingTo(int $vehicleId, array $coords, float $distanceNowKm): bool
+    {
+        $track = $this->trackCache[$vehicleId] ??= $this->recentTrack($vehicleId);
+
+        if ($track['mid'] === null || $track['old'] === null) {
+            return false;
+        }
+
+        $mid = $this->distanceKm($track['mid']['lat'], $track['mid']['lng'], $coords['lat'], $coords['lng']);
+        $old = $this->distanceKm($track['old']['lat'], $track['old']['lng'], $coords['lat'], $coords['lng']);
+
+        return $old - $mid >= self::RETURN_CLOSING_KM
+            && $mid - $distanceNowKm >= self::RETURN_CLOSING_KM;
+    }
+
+    /**
+     * พิกัดของรถเมื่อ ~20 และ ~40 นาทีก่อน — จากแถวจริงในฐานข้อมูล
+     *
+     * @return array{mid: array{lat: float, lng: float}|null, old: array{lat: float, lng: float}|null}
+     */
+    private function recentTrack(int $vehicleId): array
+    {
+        // recorded_at เก็บด้วย now() ตามเวลาจริงของแอป ไม่ใช่ wall-clock ไทยแบบ
+        // departs_at — เทียบกับ now() ตรง ๆ ได้
+        $rows = VehicleLocation::where('vehicle_id', $vehicleId)
+            ->whereBetween('recorded_at', [now()->subMinutes(50), now()->subMinutes(12)])
+            ->orderByDesc('recorded_at')
+            ->get(['latitude', 'longitude', 'recorded_at']);
+
+        $point = fn ($row) => $row
+            ? ['lat' => (float) $row->latitude, 'lng' => (float) $row->longitude]
+            : null;
+
+        return [
+            'mid' => $point($rows->first(fn ($row) => $row->recorded_at->gte(now()->subMinutes(30)))),
+            'old' => $point($rows->first(fn ($row) => $row->recorded_at->lte(now()->subMinutes(32)))),
+        ];
+    }
+
+    /**
+     * อีกกี่นาทีถึงจุดส่ง
+     *
+     * ใกล้ ๆ คิดเองจากความเร็วรถ ไกลออกไปถาม Google (รถติดขาเข้ากรุงเทพฯ วันอาทิตย์
+     * คือสิ่งที่เส้นตรงไม่มีทางรู้) แต่ถามไม่เกินทุก 10 นาทีต่อจุดส่ง แล้วจำเป็น
+     * "เวลาถึง" ไว้ ระหว่างนั้นนับถอยหลังจากเวลาถึงที่จำไว้
+     *
+     * @param  array<string, mixed>  $location
+     * @param  array{lat: float, lng: float}  $coords
+     */
+    private function returnEtaMinutes(int $vehicleId, array $location, array $coords, float $distanceKm): int
+    {
+        $speed = isset($location['speed']) ? (float) $location['speed'] : null;
+
+        if ($distanceKm <= self::RETURN_GOOGLE_MIN_KM) {
+            // ถนนในเมืองอ้อมกว่าเส้นตรง
+            return max(1, $this->etaMinutes($distanceKm * 1.2, $speed));
+        }
+
+        // เร็วกว่า 100 กม./ชม. ตามเส้นตรงเป็นไปไม่ได้ — เวลาถึงที่จำไว้ต่ำกว่านี้
+        // แปลว่ารถติดกว่าที่ Google เคยคิด ต้องถามใหม่
+        $floor = (int) ceil($distanceKm / 100 * 60);
+        $key = sprintf('trip_return_arrival:%d:%.3f,%.3f', $vehicleId, $coords['lat'], $coords['lng']);
+
+        // ไดรเวอร์ Redis คืนตัวเลขกลับมาเป็นสตริง — is_int จะพลาดทุกครั้งแล้วถาม
+        // Google ทุกนาที
+        $arrival = Cache::get($key);
+        $minutes = is_numeric($arrival) ? (int) ceil(((int) $arrival - now()->timestamp) / 60) : null;
+
+        if ($minutes === null || $minutes < $floor) {
+            $minutes = max($floor, $this->freshReturnEta($location, $coords, $distanceKm));
+            Cache::put($key, now()->timestamp + $minutes * 60, self::RETURN_ETA_REFRESH_SECONDS);
+        }
+
+        return max($minutes, $floor, 1);
+    }
+
+    /**
+     * @param  array<string, mixed>  $location
+     * @param  array{lat: float, lng: float}  $coords
+     */
+    private function freshReturnEta(array $location, array $coords, float $distanceKm): int
+    {
+        try {
+            $eta = app(GoogleDistanceService::class)->getETA(
+                (float) $location['latitude'],
+                (float) $location['longitude'],
+                $coords['lat'],
+                $coords['lng'],
+            );
+        } catch (\Throwable $e) {
+            $eta = null;
+        }
+
+        // ค่าสำรองของ GoogleDistanceService สมมติ 40 กม./ชม. ในเมือง ซึ่งผิดมาก
+        // บนทางหลวง — ไม่ใช่คำตอบของ Google ก็คิดเองดีกว่า
+        if (is_array($eta) && ($eta['source'] ?? null) !== 'haversine') {
+            $seconds = $eta['duration_in_traffic']['value'] ?? $eta['duration']['value'] ?? null;
+            if (is_numeric($seconds) && $seconds > 0) {
+                return (int) ceil($seconds / 60);
+            }
+        }
+
+        // ถนนจริงยาวกว่าเส้นตรงราวหนึ่งในสี่ ความเร็วเฉลี่ยรวมแวะพักบนทางหลวง
+        return (int) ceil(($distanceKm * 1.25) / ($distanceKm > 40 ? 70 : 50) * 60);
+    }
+
+    /** "18:40" — เวลาไทยที่ถึง ปัดขึ้นทีละ 5 นาที */
+    private function arrivalClock(int $etaMinutes): string
+    {
+        $at = $this->nowThai()->addMinutes($etaMinutes)->second(0);
+        $pad = (5 - $at->minute % 5) % 5;
+
+        return $at->addMinutes($pad)->format('H:i');
+    }
+
+    /**
+     * ประกาศจากทีมงานที่เพิ่งโพสต์ แทรกขึ้นการ์ดชั่วคราว
+     *
+     * "รถออกช้า 30 นาที" ที่อยู่ในแอปอย่างเดียวคือประกาศที่คนบนดอยสัญญาณแย่ไม่เห็น
+     * การ์ดบนหน้าจอล็อกคือที่ที่เขามองอยู่แล้ว ไม่สั่น/ไม่เด้งเพราะประกาศมี push ของ
+     * มันเองแล้ว — แค่ทำให้ยังเห็นอยู่หลังปัดแจ้งเตือนทิ้งไป
+     *
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function withAnnouncement(TripSchedule $schedule, array $state): array
+    {
+        if (! in_array($state['stage'], self::ANNOUNCEMENT_STAGES, true)) {
+            return $state;
+        }
+
+        $announcement = $this->recentAnnouncement($schedule);
+        if (! $announcement) {
+            return $state;
+        }
+
+        $title = Str::squish((string) $announcement->title);
+        $body = Str::squish((string) $announcement->body);
+
+        return array_merge($state, [
+            'stage' => 'announcement',
+            'headline' => '📢 '.Str::limit($title !== '' ? $title : 'ประกาศจากทีมงาน', 60),
+            'detail' => $body !== '' ? Str::limit($body, 110) : 'แตะเพื่ออ่านประกาศจากทีมงาน',
+        ]);
+    }
+
+    private function recentAnnouncement(TripSchedule $schedule): ?ScheduleAnnouncement
+    {
+        if (! array_key_exists($schedule->id, $this->announcementCache)) {
+            $this->announcementCache[$schedule->id] = ScheduleAnnouncement::where('schedule_id', $schedule->id)
+                ->where('created_at', '>=', now()->subMinutes(self::ANNOUNCEMENT_MINUTES))
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        return $this->announcementCache[$schedule->id];
     }
 
     /**
