@@ -559,3 +559,4 @@ ul.bullets li { margin-bottom: 4px; }
 }
 .app-invite .pick-body { flex: 1; min-width: 0; }
 .app-invite .btn { width: auto; margin: 0; padding: 8px 14px; white-space: nowrap; }
+.pick-sub.fm-hold { color: #8a5300; font-weight: 600; }

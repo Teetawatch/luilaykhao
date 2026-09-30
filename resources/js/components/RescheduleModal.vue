@@ -82,6 +82,10 @@
                   <span class="block font-bold text-[#1a1c1c] text-sm">{{ formatDate(s.departure_date) }}</span>
                   <span v-if="s.early_departure_label" class="block text-[11px] text-[#B45309] font-semibold">{{ s.early_departure_label }}</span>
                   <span class="block text-xs text-[#505E5E]">{{ s.nightsLabel }}</span>
+                  <span v-if="s.hold" class="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-full px-2 py-0.5">
+                    <span class="material-symbols-rounded text-[13px]">lock_clock</span>
+                    กันที่ไว้ให้คุณ {{ s.hold.seat_count }} ที่ ถึง {{ s.hold.expires_label }}
+                  </span>
                 </span>
                 <span class="text-xs font-bold shrink-0" :class="s.fits ? 'text-[#006565]' : 'text-[#DC2626]'">
                   {{ s.fits ? `ว่าง ${s.seatsLeft} ที่` : 'ที่นั่งไม่พอ' }}
@@ -186,6 +190,7 @@ const isForceMajeure = computed(() => props.booking.reschedule_mode === 'force_m
 const fm = computed(() => props.booking.force_majeure || {});
 const passengerCount = computed(() => props.booking.passengers?.length || 1);
 const latestDeparture = computed(() => props.booking.reschedule_latest_departure || null);
+const holds = computed(() => props.booking.force_majeure?.holds || []);
 const deadlineLabel = computed(() => props.booking.reschedule_deadline
   ? formatDate(props.booking.reschedule_deadline) : '');
 
@@ -209,15 +214,18 @@ const options = computed(() => {
     .filter((s) => s.departure_date >= today)
     .filter((s) => !latestDeparture.value || s.departure_date <= latestDeparture.value)
     .map((s) => {
+      // ที่นั่งสาธารณะหักที่ที่กันไว้ออกแล้ว รวมที่ที่กันไว้ให้คนนี้เอง — บวกคืนให้
+      const hold = holds.value.find((h) => h.schedule_id === s.id) || null;
       const seatsLeft = props.booking.is_join_trip
         ? (s.join_trip_enabled ? (s.join_trip_available_seats ?? pax) : 0)
-        : (s.bookable_seats ?? s.available_seats ?? 0);
+        : (s.bookable_seats ?? s.available_seats ?? 0) + (hold?.seat_count || 0);
       const nights = s.return_date && s.departure_date
         ? Math.round((Date.parse(s.return_date) - Date.parse(s.departure_date)) / 86400000)
         : 0;
       return {
         ...s,
         seatsLeft,
+        hold,
         fits: seatsLeft >= pax,
         nightsLabel: nights > 0 ? `${nights + 1} วัน ${nights} คืน` : 'ไป-กลับวันเดียว',
       };

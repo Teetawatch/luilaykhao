@@ -7,9 +7,12 @@ use App\Jobs\SendBalanceDueRemindersJob;
 use App\Jobs\SendInstallmentRemindersJob;
 use App\Jobs\SendTripReminderNotificationsJob;
 use App\Mail\TripPostponedMail;
+use App\Mail\TripResumedMail;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\ChatMessage;
+use App\Models\ForceMajeureSeatHold;
 use App\Models\InstallmentPayment;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
@@ -18,9 +21,11 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\WaitlistEntry;
+use App\Services\BookingService;
 use App\Services\ForceMajeureService;
 use App\Services\MailService;
 use App\Services\SmsService;
+use App\Services\WaitlistService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -153,7 +158,9 @@ class ForceMajeurePostponementTest extends TestCase
         Mail::assertQueued(TripPostponedMail::class, 2);
         $sms = SmsLog::where('booking_id', $a->id)->where('sms_type', 'trip_postponed')->first();
         $this->assertNotNull($sms);
-        $this->assertStringContainsString('my-bookings?reschedule='.$a->booking_ref, $sms->message);
+        // ลิงก์ที่เปิดได้โดยไม่ต้องล็อกอิน (ลูกค้าบัญชีเงา)
+        $this->assertNotNull($a->fresh()->reschedule_token);
+        $this->assertStringContainsString('/reschedule/'.$a->fresh()->reschedule_token, $sms->message);
     }
 
     public function test_postponing_twice_is_refused_and_reason_is_required(): void
@@ -486,5 +493,375 @@ class ForceMajeurePostponementTest extends TestCase
 
         $this->assertSame(2, SmartNotification::where('user_id', $booking->user_id)
             ->where('type', 'trip_reminder')->where('data->days_before', 7)->count());
+    }
+
+    // ── ย้อนการเลื่อน (กดผิดรอบ) ─────────────────────────────────────────
+
+    private function revert()
+    {
+        return $this->actingAs($this->admin)
+            ->postJson("/api/v1/admin/schedules/{$this->flooded->id}/force-majeure/revert");
+    }
+
+    public function test_admin_can_revert_a_mistaken_postponement(): void
+    {
+        $upcoming = $this->schedule('2026-10-20');
+        $this->flooded = $upcoming;
+        $booking = $this->booking($upcoming);
+        $waiter = User::factory()->create();
+        WaitlistEntry::create([
+            'user_id' => $waiter->id, 'schedule_id' => $upcoming->id,
+            'seat_count' => 1, 'priority' => 0, 'status' => 'waiting',
+        ]);
+        $leftBefore = User::factory()->create();
+        WaitlistEntry::create([
+            'user_id' => $leftBefore->id, 'schedule_id' => $upcoming->id,
+            'seat_count' => 1, 'priority' => 0, 'status' => 'cancelled',
+        ]);
+        $this->postpone()->assertOk()->assertJsonPath('data.can_revert', true);
+
+        $this->revert()->assertOk()->assertJsonPath('data.force_majeure_at', null);
+
+        $upcoming->refresh();
+        $this->assertSame('open', $upcoming->status);
+        $this->assertNull($upcoming->force_majeure_at);
+        $this->assertNull($upcoming->force_majeure_prev_status);
+
+        $booking->refresh();
+        $this->assertNull($booking->force_majeure_at);
+        $this->assertNull($booking->force_majeure_until);
+        $this->assertFalse($booking->awaitsNewRound());
+        $this->assertSame('standard', $this->payload($booking)['reschedule_mode']);
+        $this->assertNull($this->payload($booking)['force_majeure']);
+
+        // คิวที่ถูกปิดเพราะการเลื่อนได้คืน ส่วนคนที่ออกเองก่อนหน้าไม่ได้คืน
+        // (รอบมีที่ว่าง คิวจึงได้รับสิทธิ์ต่อทันที)
+        $this->assertContains(WaitlistEntry::where('user_id', $waiter->id)->value('status'), ['waiting', 'offered']);
+        $this->assertSame('cancelled', WaitlistEntry::where('user_id', $leftBefore->id)->value('status'));
+        $this->assertTrue(SmartNotification::where('user_id', $waiter->id)->where('type', 'waitlist_round_reopened')->exists());
+
+        // แจ้งลูกค้าทุกช่องทางว่าเดินทางตามเดิม
+        $this->assertTrue(SmartNotification::where('user_id', $booking->user_id)->where('type', 'trip_resumed')->exists());
+        Mail::assertQueued(TripResumedMail::class, 1);
+        $this->assertTrue(SmsLog::where('booking_id', $booking->id)->where('sms_type', 'trip_resumed')->exists());
+        $this->assertTrue(ChatMessage::where('schedule_id', $upcoming->id)->where('system_key', 'like', 'force_majeure_resumed:%')->exists());
+
+        // กลับมาเปิดไม่ใช่รอบใหม่ — ห้ามประกาศ "เปิดรอบใหม่" หาทุกคน
+        $this->assertFalse(SmartNotification::where('type', 'new_schedule')->exists());
+    }
+
+    public function test_revert_is_refused_once_someone_has_moved(): void
+    {
+        $a = $this->booking($this->flooded);
+        $this->booking($this->flooded);
+        $next = $this->schedule('2026-11-08');
+        $this->postpone()->assertOk();
+
+        $this->actingAs($a->user)
+            ->postJson("/api/v1/bookings/{$a->booking_ref}/reschedule", ['target_schedule_id' => $next->id])
+            ->assertOk();
+
+        $this->actingAs($this->admin)
+            ->getJson("/api/v1/admin/schedules/{$this->flooded->id}/force-majeure")
+            ->assertJsonPath('data.can_revert', false);
+        $this->revert()->assertStatus(422);
+        $this->assertSame('cancelled', $this->flooded->fresh()->status);
+    }
+
+    public function test_revert_is_refused_for_a_round_that_was_already_cancelled(): void
+    {
+        $this->flooded->update(['status' => 'cancelled']);
+        $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+
+        $this->revert()->assertStatus(422);
+        $this->assertNotNull($this->flooded->fresh()->force_majeure_at);
+    }
+
+    public function test_postponing_again_after_a_revert_notifies_again(): void
+    {
+        $booking = $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+        Carbon::setTestNow(now()->addMinutes(5));
+        $this->revert()->assertOk();
+        Carbon::setTestNow(now()->addMinutes(5));
+        $this->postpone()->assertOk();
+
+        $this->assertSame(2, SmsLog::where('booking_id', $booking->id)->where('sms_type', 'trip_postponed')->count());
+        $this->assertSame(2, ChatMessage::where('schedule_id', $this->flooded->id)->where('system_key', 'like', 'force_majeure:%')->count());
+    }
+
+    // ── ห้องแชท ────────────────────────────────────────────────────────
+
+    public function test_postponement_is_announced_in_the_round_chat(): void
+    {
+        $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+
+        $message = ChatMessage::where('schedule_id', $this->flooded->id)
+            ->where('system_key', 'like', 'force_majeure:%')
+            ->first();
+        $this->assertNotNull($message);
+        $this->assertStringContainsString('น้ำป่าไหลหลาก', $message->body);
+        $this->assertStringContainsString('27 มีนาคม 2570', $message->body);
+        $this->assertSame('system', $message->sender_role);
+    }
+
+    // ── กันที่นั่งในรอบใหม่ ─────────────────────────────────────────────
+
+    public function test_new_round_holds_seats_for_postponed_customers_first(): void
+    {
+        $first = $this->booking($this->flooded);           // 2 คน
+        $second = $this->booking($this->flooded);          // 2 คน — ที่ไม่พอแล้ว
+        $this->postpone()->assertOk();
+
+        $round = $this->schedule('2026-11-29', ['total_seats' => 3]);
+
+        $hold = ForceMajeureSeatHold::where('schedule_id', $round->id)->get();
+        $this->assertCount(1, $hold);
+        $this->assertSame($first->id, $hold->first()->booking_id);
+        $this->assertSame(2, $hold->first()->seat_count);
+        $this->assertStringContainsString('กันที่นั่งไว้ให้ 2 ที่',
+            SmartNotification::where('user_id', $first->user_id)->where('type', 'trip_postponed_new_round')->value('body'));
+        $this->assertFalse(SmartNotification::where('user_id', $second->user_id)->where('type', 'trip_postponed_new_round')->exists());
+
+        // คนทั่วไปเห็นเหลือ 1 ที่ เจ้าของสิทธิ์เห็นที่ของตัวเองในใบจอง
+        $this->getJson('/api/v1/trips/thi-lo-su/schedules')
+            ->assertOk()
+            ->assertJsonPath('data.0.bookable_seats', 1)
+            ->assertJsonPath('data.0.held_seats', 2);
+        $this->assertSame(2, app(WaitlistService::class)->heldSeats($round->id));
+        $this->assertSame(0, app(WaitlistService::class)->heldSeats($round->id, exceptUserId: $first->user_id));
+        $this->assertSame($round->id, $this->payload($first)['force_majeure']['holds'][0]['schedule_id']);
+
+        // เจ้าของสิทธิ์ย้ายเข้าได้ แล้วการกันถูกปิด
+        $this->actingAs($first->user)
+            ->postJson("/api/v1/bookings/{$first->booking_ref}/reschedule", ['target_schedule_id' => $round->id])
+            ->assertOk();
+        $this->assertNotNull(ForceMajeureSeatHold::first()->released_at);
+        $this->assertSame(0, app(WaitlistService::class)->heldSeats($round->id));
+    }
+
+    public function test_held_seats_cannot_be_taken_by_another_postponed_customer(): void
+    {
+        $first = $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+        $round = $this->schedule('2026-11-29', ['total_seats' => 3]);
+
+        // อีกคนจากรอบอื่นที่ถูกเลื่อนทีหลัง อยากได้ 2 ที่ในรอบเดียวกัน
+        $otherFlooded = $this->schedule('2026-10-04');
+        $late = $this->booking($otherFlooded);
+        $this->actingAs($this->admin)
+            ->postJson("/api/v1/admin/schedules/{$otherFlooded->id}/force-majeure", ['reason' => 'พายุ'])
+            ->assertOk();
+
+        $this->actingAs($late->user)
+            ->postJson("/api/v1/bookings/{$late->booking_ref}/reschedule", ['target_schedule_id' => $round->id])
+            ->assertStatus(422);
+        $this->assertTrue($first->fresh()->awaitsNewRound());
+    }
+
+    public function test_holds_expire_after_48_hours(): void
+    {
+        $first = $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+        $round = $this->schedule('2026-11-29', ['total_seats' => 3]);
+        $this->assertSame(2, app(WaitlistService::class)->heldSeats($round->id));
+
+        Carbon::setTestNow(now()->addHours(48)->addMinute());
+
+        $this->assertSame(0, app(WaitlistService::class)->heldSeats($round->id));
+        $this->assertSame(1, app(ForceMajeureService::class)->releaseExpiredHolds());
+        $this->assertNotNull(ForceMajeureSeatHold::first()->released_at);
+        $this->assertSame([], $this->payload($first)['force_majeure']['holds']);
+    }
+
+    public function test_cancelling_or_admin_moving_a_booking_releases_its_holds(): void
+    {
+        $a = $this->booking($this->flooded);
+        $b = $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+        $round = $this->schedule('2026-11-29');
+        $this->assertSame(4, app(WaitlistService::class)->heldSeats($round->id));
+
+        app(BookingService::class)->cancelBooking($a->fresh(), 'คืนเงิน');
+        $this->assertSame(2, app(WaitlistService::class)->heldSeats($round->id));
+
+        $this->actingAs($this->admin)
+            ->postJson('/api/v1/admin/schedules/move-bookings', [
+                'source_schedule_id' => $this->flooded->id,
+                'target_schedule_id' => $this->schedule('2026-12-13')->id,
+            ])
+            ->assertOk();
+        $this->assertFalse($b->fresh()->awaitsNewRound());
+        $this->assertSame(0, app(WaitlistService::class)->heldSeats($round->id));
+        $this->assertSame(0, ForceMajeureSeatHold::whereNull('released_at')->count());
+    }
+
+    public function test_join_trip_bookings_are_told_but_hold_no_van_seats(): void
+    {
+        $join = $this->booking($this->flooded, ['is_join_trip' => true]);
+        $this->postpone()->assertOk();
+        $this->schedule('2026-11-29', ['join_trip_enabled' => true, 'join_trip_price' => 1500]);
+
+        $this->assertSame(0, ForceMajeureSeatHold::count());
+        $this->assertTrue(SmartNotification::where('user_id', $join->user_id)->where('type', 'trip_postponed_new_round')->exists());
+    }
+
+    // ── ลิงก์เลือกรอบแบบไม่ต้องล็อกอิน (/reschedule/{token}) ─────────────────
+
+    private function tokenFor(Booking $booking): string
+    {
+        return $booking->fresh()->ensureRescheduleToken();
+    }
+
+    public function test_shadow_customer_chooses_a_round_without_logging_in(): void
+    {
+        $shadow = User::factory()->create(['is_shadow' => true, 'password' => null]);
+        $booking = $this->booking($this->flooded, ['user_id' => $shadow->id]);
+        $round = $this->schedule('2026-11-29', ['total_seats' => 5]);
+        $this->schedule('2027-05-01'); // นอกกรอบ — ต้องไม่ขึ้น
+        $this->postpone()->assertOk();
+        $token = $this->tokenFor($booking);
+
+        $this->get("/reschedule/{$token}")
+            ->assertOk()
+            ->assertSee('เลือกรอบเดินทางใหม่')
+            ->assertSee('น้ำป่าไหลหลาก')
+            ->assertSee('27 มีนาคม 2570')
+            ->assertSee('value="'.$round->id.'"', false)
+            ->assertDontSee('1 พฤษภาคม 2570');
+
+        $this->post("/reschedule/{$token}", ['target_schedule_id' => $round->id])
+            ->assertRedirect("/reschedule/{$token}");
+
+        $booking->refresh();
+        $this->assertSame($round->id, $booking->schedule_id);
+        $this->assertNotNull($booking->force_majeure_resolved_at);
+
+        $this->get("/reschedule/{$token}")
+            ->assertOk()
+            ->assertSee('ได้รอบเดินทางใหม่แล้ว')
+            ->assertSee('29 พฤศจิกายน 2569')
+            ->assertDontSee('name="target_schedule_id"', false);
+    }
+
+    public function test_link_shows_the_held_seats_for_this_customer(): void
+    {
+        $booking = $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+        $this->schedule('2026-11-29', ['total_seats' => 2]); // ทั้งรอบกันไว้ให้คนนี้
+
+        $this->get('/reschedule/'.$this->tokenFor($booking))
+            ->assertOk()
+            ->assertSee('กันที่ไว้ให้คุณ 2 ที่')
+            ->assertSee('ว่าง 2 ที่');
+    }
+
+    public function test_link_refuses_a_round_outside_the_rules(): void
+    {
+        $booking = $this->booking($this->flooded);
+        $late = $this->schedule('2027-05-01');
+        $this->postpone()->assertOk();
+        $token = $this->tokenFor($booking);
+
+        $this->post("/reschedule/{$token}", ['target_schedule_id' => $late->id])
+            ->assertRedirect("/reschedule/{$token}")
+            ->assertSessionHasErrors('target_schedule_id');
+
+        $this->assertTrue($booking->fresh()->awaitsNewRound());
+        $this->followingRedirects()
+            ->post("/reschedule/{$token}", ['target_schedule_id' => $late->id])
+            ->assertSee('เลือกได้เฉพาะรอบที่ออกเดินทางภายใน');
+    }
+
+    public function test_unknown_token_is_not_found(): void
+    {
+        $this->get('/reschedule/doesnotexist123')->assertNotFound();
+        $this->post('/reschedule/doesnotexist123', ['target_schedule_id' => 1])->assertNotFound();
+    }
+
+    public function test_link_after_revert_says_the_trip_goes_ahead(): void
+    {
+        $upcoming = $this->schedule('2026-10-20');
+        $this->flooded = $upcoming;
+        $booking = $this->booking($upcoming);
+        $this->postpone()->assertOk();
+        $token = $this->tokenFor($booking);
+        $this->revert()->assertOk();
+
+        $this->get("/reschedule/{$token}")
+            ->assertOk()
+            ->assertSee('เดินทางตามกำหนด')
+            ->assertDontSee('name="target_schedule_id"', false);
+
+        // โพสต์ค้างจากหน้าเก่าต้องไม่ย้ายใบจอง
+        $other = $this->schedule('2026-11-08');
+        $this->post("/reschedule/{$token}", ['target_schedule_id' => $other->id]);
+        $this->assertSame($upcoming->id, $booking->fresh()->schedule_id);
+    }
+
+    public function test_link_for_an_expired_or_cancelled_booking_cannot_move_it(): void
+    {
+        $expired = $this->booking($this->flooded);
+        $cancelled = $this->booking($this->flooded);
+        $next = $this->schedule('2027-03-20');
+        $this->postpone()->assertOk();
+        $expiredToken = $this->tokenFor($expired);
+        $cancelledToken = $this->tokenFor($cancelled);
+        $cancelled->update(['status' => 'cancelled']);
+
+        $this->get("/reschedule/{$cancelledToken}")->assertOk()->assertSee('การจองนี้ถูกยกเลิกแล้ว');
+        $this->post("/reschedule/{$cancelledToken}", ['target_schedule_id' => $next->id]);
+        $this->assertSame($this->flooded->id, $cancelled->fresh()->schedule_id);
+
+        Carbon::setTestNow(Carbon::parse('2027-03-28 03:00:00', 'UTC'));
+        $this->get("/reschedule/{$expiredToken}")->assertOk()->assertSee('เลยกำหนดเลือกรอบใหม่แล้ว');
+        $this->post("/reschedule/{$expiredToken}", ['target_schedule_id' => $next->id]);
+        $this->assertSame($this->flooded->id, $expired->fresh()->schedule_id);
+    }
+
+    public function test_admin_overview_gives_a_copyable_link_for_people_still_choosing(): void
+    {
+        $booking = $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+
+        $url = $this->actingAs($this->admin)
+            ->getJson("/api/v1/admin/schedules/{$this->flooded->id}/force-majeure")
+            ->assertOk()
+            ->json('data.bookings.0.choose_url');
+
+        $this->assertSame(url('/reschedule/'.$booking->fresh()->reschedule_token), $url);
+    }
+
+    public function test_email_links_to_the_no_login_page(): void
+    {
+        $this->booking($this->flooded);
+        $this->postpone()->assertOk();
+
+        Mail::assertQueued(TripPostponedMail::class, function (TripPostponedMail $mail) {
+            return str_contains($mail->render(), '/reschedule/'.$mail->booking->fresh()->reschedule_token);
+        });
+    }
+
+    public function test_splitting_a_postponed_booking_does_not_copy_its_link(): void
+    {
+        $booking = $this->booking($this->flooded, passengers: 2);
+        $this->postpone()->assertOk();
+        $this->tokenFor($booking);
+        $next = $this->schedule('2026-11-08');
+
+        $this->actingAs($this->admin)
+            ->postJson('/api/v1/admin/schedules/move-bookings', [
+                'source_schedule_id' => $this->flooded->id,
+                'target_schedule_id' => $next->id,
+                'passenger_ids' => [$booking->passengers()->first()->id],
+            ])
+            ->assertOk();
+
+        $split = Booking::where('schedule_id', $next->id)->first();
+        $this->assertNotNull($split);
+        $this->assertNull($split->reschedule_token);
+        $this->assertNotNull($booking->fresh()->reschedule_token);
     }
 }

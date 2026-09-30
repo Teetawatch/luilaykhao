@@ -133,17 +133,53 @@ class ChatRoomEventService
     }
 
     /**
-     * โพสต์ข้อความระบบแบบกันซ้ำ + กันรอบที่ไม่ควรโพสต์ (ยกเลิก / เดินทางไปแล้ว)
+     * รอบนี้ออกเดินทางไม่ได้เพราะเหตุสุดวิสัย — ลูกค้าหลายคนเปิดห้องแชทบ่อยกว่า
+     * ศูนย์แจ้งเตือน จึงต้องเห็นคำอธิบายที่นี่ด้วย (push/LINE/SMS ส่งแยกไปแล้ว)
+     *
+     * โพสต์แม้รอบถูกยกเลิกหรือเลยวันไปแล้ว — เป็นข้อความเดียวที่ห้องนี้ต้องมี
+     * คีย์ผูกกับเวลาที่กดเลื่อน กดย้อนแล้วเลื่อนใหม่จึงประกาศได้อีกครั้ง
      */
-    private function post(TripSchedule $schedule, string $body, string $systemKey): void
+    public function roundPostponed(TripSchedule $schedule, string $untilLabel): void
+    {
+        $reason = trim((string) $schedule->force_majeure_reason);
+
+        $this->post(
+            $schedule,
+            '⛈️ รอบนี้ออกเดินทางไม่ได้'.($reason !== '' ? "เนื่องจาก{$reason}" : '')."ครับ\n"
+                ."ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม ภายใน {$untilLabel}\n"
+                .'กดปุ่ม "เลือกรอบใหม่" ที่ใบจองในแอป เว็บ หรือใน LINE ได้เลย มีคำถามทักในห้องนี้ได้ตลอดครับ',
+            'force_majeure:'.$schedule->force_majeure_at?->timestamp,
+            force: true,
+        );
+    }
+
+    /**
+     * ทีมงานย้อนการเลื่อน (กดผิดรอบ) — รอบกลับมาเดินทางตามกำหนดเดิม
+     */
+    public function roundResumed(TripSchedule $schedule, int $postponedAt): void
+    {
+        $this->post(
+            $schedule,
+            "✅ ขออภัยในความสับสนครับ รอบนี้เดินทางตามกำหนดเดิม\n"
+                .'ข้อความเรื่องเลื่อนรอบก่อนหน้านี้ส่งผิด ไม่ต้องเลือกรอบใหม่ ทุกอย่างเหมือนเดิมครับ',
+            'force_majeure_resumed:'.$postponedAt,
+            force: true,
+        );
+    }
+
+    /**
+     * โพสต์ข้อความระบบแบบกันซ้ำ + กันรอบที่ไม่ควรโพสต์ (ยกเลิก / เดินทางไปแล้ว)
+     * `force` ข้ามการกันรอบ — ใช้กับข้อความที่อธิบายการยกเลิกเอง
+     */
+    private function post(TripSchedule $schedule, string $body, string $systemKey, bool $force = false): void
     {
         try {
-            if ($schedule->status === 'cancelled') {
+            if (! $force && $schedule->status === 'cancelled') {
                 return;
             }
 
             $departsAt = $schedule->effectiveDepartsAt();
-            if ($departsAt && $departsAt->isPast()) {
+            if (! $force && $departsAt && $departsAt->isPast()) {
                 return;
             }
 

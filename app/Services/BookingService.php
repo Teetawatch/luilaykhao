@@ -913,6 +913,9 @@ class BookingService
         // Notify next users in the waitlist now that seats are freed
         ProcessWaitlistJob::dispatch($cancelled->schedule_id);
 
+        // ใบที่รอเลือกรอบใหม่ (เหตุสุดวิสัย) ถูกยกเลิก/คืนเงิน — ปล่อยที่นั่งที่กันไว้ให้
+        app(ForceMajeureService::class)->releaseHolds($cancelled);
+
         // ไม่มีคิวรอ = ที่นั่งที่คืนมากลับสู่สาธารณะ ประกาศให้คนที่พลาดรอบนี้รู้
         $this->seatNotifier->seatsFreed(
             $cancelled->schedule_id,
@@ -1159,6 +1162,11 @@ class BookingService
 
         // ปล่อยที่นั่งคืนรอบเดิม — แจ้ง waitlist
         ProcessWaitlistJob::dispatch($originalScheduleId);
+
+        // ใช้สิทธิ์เหตุสุดวิสัยแล้ว — ที่นั่งที่กันไว้ให้ในรอบอื่นคืนสู่คิว/คนทั่วไป
+        if ($forceMajeure) {
+            app(ForceMajeureService::class)->releaseHolds($rescheduled, (int) $rescheduled->schedule_id);
+        }
 
         return $rescheduled;
     }

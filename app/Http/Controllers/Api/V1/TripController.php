@@ -434,6 +434,9 @@ class TripController extends Controller
             ->where('status', 'open')
             ->where('departure_date', '>=', now()->startOfDay())
             ->with(['vehicle', 'pickupPoints', 'vehicleOptions'])
+            // ที่นั่งที่กันไว้ (คิวรอที่ได้สิทธิ์ / คนที่ถูกเลื่อนเพราะเหตุสุดวิสัย) ต้องไม่ถูก
+            // นับเป็นของว่าง — ตัวเดียวกับหน้ารายละเอียดทริป
+            ->withHeldSeats()
             ->orderBy('departure_date')
             ->get();
         $schedules->each->syncBookedSeats();

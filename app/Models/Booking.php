@@ -612,6 +612,28 @@ class Booking extends Model
     }
 
     /**
+     * โทเคนของหน้าเลือกรอบใหม่แบบไม่ต้องล็อกอิน (รอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัย)
+     * ยาวกว่าโทเคนจ่ายเงิน เพราะลิงก์นี้ย้ายใบจองได้จริงโดยไม่ต้องมีบัญชี
+     */
+    public function ensureRescheduleToken(): string
+    {
+        if (empty($this->reschedule_token)) {
+            do {
+                $token = Str::lower(Str::random(32));
+            } while (static::where('reschedule_token', $token)->exists());
+
+            $this->forceFill(['reschedule_token' => $token])->save();
+        }
+
+        return $this->reschedule_token;
+    }
+
+    public function rescheduleUrl(): string
+    {
+        return url('/reschedule/'.$this->ensureRescheduleToken());
+    }
+
+    /**
      * กำหนดเส้นตายสำหรับการแก้ไขการจอง — ก่อนวันออกเดินทางจริง 1 วัน (สิ้นสุดปลายวัน)
      * ใช้ departs_at ถ้ารอบนั้นรถออกคืนก่อนวันทริป
      */
@@ -742,5 +764,11 @@ class Booking extends Model
     public function forceMajeureSchedule(): BelongsTo
     {
         return $this->belongsTo(TripSchedule::class, 'force_majeure_schedule_id');
+    }
+
+    /** ที่นั่งในรอบใหม่ที่กันไว้ให้ใบนี้ก่อนคนทั่วไป (ดู ForceMajeureSeatHold) */
+    public function forceMajeureHolds(): HasMany
+    {
+        return $this->hasMany(ForceMajeureSeatHold::class);
     }
 }

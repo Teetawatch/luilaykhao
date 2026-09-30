@@ -1463,7 +1463,19 @@
             <p class="text-muted-sm" style="margin:8px 0 12px;">
               เหตุผล: {{ fmOverview.reason }} · เลือกรอบที่ออกได้ถึง {{ fmOverview.until }}
               · ย้ายให้ลูกค้าเองได้ที่ปุ่ม "ย้ายการจอง" (สิทธิ์จะปิดให้อัตโนมัติ)
+              · เปิดรอบใหม่ของทริปนี้เมื่อไหร่ ระบบกันที่นั่งให้คนที่ยังรอเลือก 48 ชั่วโมงแรก
             </p>
+            <div class="fm-revert">
+              <template v-if="fmOverview.can_revert">
+                <span>กดเลื่อนผิดรอบ? ย้อนกลับได้ตราบใดที่ยังไม่มีลูกค้าคนไหนเลือกรอบใหม่ — ระบบจะแจ้งลูกค้าว่าเดินทางตามเดิม</span>
+                <button type="button" class="btn-sm btn-secondary" :disabled="fmSubmitting" @click="revertForceMajeure">
+                  ยกเลิกการเลื่อน
+                </button>
+              </template>
+              <span v-else-if="fmOverview.revert_blocked_reason" class="text-muted-sm">
+                ย้อนการเลื่อนไม่ได้แล้ว: {{ fmOverview.revert_blocked_reason }}
+              </span>
+            </div>
             <p v-if="!fmOverview.bookings.length" class="text-muted-sm">รอบนี้ไม่มีการจองที่ได้รับสิทธิ์</p>
             <table v-else class="data-table">
               <thead>
@@ -1487,6 +1499,10 @@
                   <td>
                     <span class="status-badge" :class="fmStateClass(b.state)">{{ fmStateLabels[b.state] || b.state }}</span>
                     <div v-if="b.moved_to" class="text-muted-sm">→ {{ b.moved_to.label }}</div>
+                    <button v-if="b.choose_url" type="button" class="btn-sm btn-secondary fm-copy"
+                      @click="copyChooseLink(b)" title="ลิงก์เลือกรอบใหม่ — ลูกค้าเปิดได้โดยไม่ต้องล็อกอิน">
+                      คัดลอกลิงก์เลือกรอบ
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -3122,6 +3138,36 @@ const submitForceMajeure = async () => {
     fetchData();
   } catch (e) {
     toast.error(e?.response?.data?.message || 'ดำเนินการไม่สำเร็จ');
+  } finally {
+    fmSubmitting.value = false;
+  }
+};
+
+// ลูกค้าที่ทีมงานจองให้ (บัญชีเงา) ล็อกอินไม่ได้ — ส่งลิงก์นี้ทางไลน์ให้เลือกรอบเองได้เลย
+const copyChooseLink = async (b) => {
+  const text = `รอบ ${fmSchedule.value?.departure_date || ''} ของทริป ${fmSchedule.value?.trip?.title || ''} ออกเดินทางไม่ได้ครับ `
+    + `เลือกรอบใหม่ได้ฟรี ราคาเดิม ที่ลิงก์นี้ได้เลย (ไม่ต้องล็อกอิน)\n${b.choose_url}`;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`คัดลอกข้อความพร้อมลิงก์ของ ${b.booking_ref} แล้ว`);
+  } catch {
+    window.prompt('คัดลอกลิงก์นี้', b.choose_url);
+  }
+};
+
+const revertForceMajeure = async () => {
+  if (!fmSchedule.value) return;
+  if (!window.confirm(`ยกเลิกการเลื่อนรอบ ${fmSchedule.value.departure_date}?\nรอบจะกลับมาเปิดตามเดิม สิทธิ์เลือกรอบใหม่ของลูกค้าถูกถอน และระบบจะแจ้งลูกค้าทุกคนว่าเดินทางตามกำหนดเดิม`)) return;
+  fmSubmitting.value = true;
+  try {
+    const res = await api.post(`/admin/schedules/${fmSchedule.value.id}/force-majeure/revert`);
+    toast.success(res.data.message || 'ย้อนการเลื่อนแล้ว');
+    showForceMajeure.value = false;
+    fetchData();
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'ย้อนการเลื่อนไม่สำเร็จ');
+    // อาจมีลูกค้าเพิ่งเลือกรอบไประหว่างนั้น — โหลดสถานะล่าสุด
+    if (fmSchedule.value) openForceMajeure(fmSchedule.value);
   } finally {
     fmSubmitting.value = false;
   }
@@ -6506,5 +6552,25 @@ onMounted(async () => {
 .fm-num.fm-muted { color: #9ca3af; }
 .btn-fm-confirm {
   background: #d97706;
+}
+.fm-revert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #4b5563;
+}
+.fm-revert .btn-sm {
+  white-space: nowrap;
+}
+.fm-copy {
+  margin-top: 4px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 </style>

@@ -1209,12 +1209,17 @@ async function openReschedule(booking, onDone) {
       // รอบที่ผ่านไปแล้วเซิร์ฟเวอร์ตัดออกให้ตั้งแต่ต้น ที่นี่กรองเฉพาะกรอบของสิทธิ์
       .filter((s) => s.id !== booking.schedule.id && s.status === 'open'
         && (!latest || s.departure_date <= latest))
-      .map((s) => ({
-        ...s,
-        seatsLeft: booking.is_join_trip
-          ? (s.join_trip_enabled ? (s.join_trip_available_seats ?? pax) : 0)
-          : (s.bookable_seats ?? s.available_seats ?? 0),
-      }))
+      .map((s) => {
+        // ที่นั่งสาธารณะหักที่ที่กันไว้ออกแล้ว รวมที่กันไว้ให้คนนี้เอง — บวกคืนให้
+        const hold = (booking.force_majeure?.holds || []).find((h) => h.schedule_id === s.id) || null;
+        return {
+          ...s,
+          hold,
+          seatsLeft: booking.is_join_trip
+            ? (s.join_trip_enabled ? (s.join_trip_available_seats ?? pax) : 0)
+            : (s.bookable_seats ?? s.available_seats ?? 0) + (hold?.seat_count || 0),
+        };
+      })
       .filter((s) => s.seatsLeft >= pax);
   } catch (e) {
     return sheet.error(e.message);
@@ -1239,6 +1244,7 @@ async function openReschedule(booking, onDone) {
         <div class="pick-name">${thaiDate(s.departure_date)}</div>
         ${earlyDepartureHtml(s)}
         <div class="pick-sub">เหลือ ${s.seatsLeft} ที่${forceMajeure ? ' · ราคาเดิม' : ''}</div>
+        ${s.hold ? `<div class="pick-sub fm-hold">🔒 กันที่ไว้ให้คุณ ${s.hold.seat_count} ที่ ถึง ${esc(s.hold.expires_label || '')}</div>` : ''}
       </div>
       <span class="tag">เลือก</span>
     </div>`);

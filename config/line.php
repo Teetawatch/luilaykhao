@@ -40,6 +40,7 @@ return [
         'trip_postponed',
         'trip_postponed_reminder',
         'trip_postponed_new_round',
+        'trip_resumed',
         'booking_transferred',
         'booking_refunded',
         // เงิน

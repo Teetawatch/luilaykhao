@@ -22,6 +22,7 @@ use App\Jobs\PurgeExpiredSchedulePhotosJob;
 use App\Jobs\PurgeStaleCustomerIntakesJob;
 use App\Jobs\ReconcileBeamChargesJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
+use App\Jobs\ReleaseForceMajeureHoldsJob;
 use App\Jobs\RemindStaffToShareLocationJob;
 use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
@@ -109,6 +110,7 @@ Schedule::job(new PurgeStaleCustomerIntakesJob)->dailyAt('03:45')->timezone('Asi
 // กลุ่มที่กรอกค้างแล้วเงียบไป — บอกทีมงานตอนเช้าให้ไปตามในแชท ไม่ใช่ตอนตีสาม
 Schedule::job(new NotifyStalledIntakesJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
+Schedule::job(new ReleaseForceMajeureHoldsJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 // ตาข่ายรับ webhook ของ Beam ที่หายไป — ถามเกตเวย์เองว่า charge ที่ค้างอยู่จบยังไง
 // no-op ทั้งหมดเมื่อ PAYMENT_PROVIDER ยังไม่ใช่ beam

@@ -588,7 +588,22 @@ class TripSchedule extends Model
                 ->where('status', 'offered')
                 ->where('expires_at', '>', now())],
             'seat_count'
+        )->withSum(
+            // กันไว้ให้คนที่รอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัย — นับรวมเป็นที่ถูกกัน
+            ['forceMajeureHolds as force_majeure_held_seats' => fn ($q) => $q->active()],
+            'seat_count'
         );
+    }
+
+    public function forceMajeureHolds(): HasMany
+    {
+        return $this->hasMany(ForceMajeureSeatHold::class, 'schedule_id');
+    }
+
+    /** ที่นั่งที่ถูกกันไว้ทั้งหมด (คิวรอที่ได้สิทธิ์ + เหตุสุดวิสัย) — ต้องผ่าน scopeWithHeldSeats */
+    public function totalHeldSeats(): int
+    {
+        return (int) ($this->held_seats ?? 0) + (int) ($this->force_majeure_held_seats ?? 0);
     }
 
     /**
@@ -597,7 +612,7 @@ class TripSchedule extends Model
      */
     public function getBookableSeatsAttribute(): int
     {
-        return max(0, $this->available_seats - (int) ($this->held_seats ?? 0));
+        return max(0, $this->available_seats - $this->totalHeldSeats());
     }
 
     public function photos(): BelongsToMany

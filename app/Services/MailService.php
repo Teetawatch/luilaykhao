@@ -22,6 +22,7 @@ use App\Mail\PasswordResetMail;
 use App\Mail\PaymentConfirmedMail;
 use App\Mail\TripBriefMail;
 use App\Mail\TripPostponedMail;
+use App\Mail\TripResumedMail;
 use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
@@ -436,6 +437,23 @@ class MailService
             $this->sendToCustomerEmails($booking, fn () => new TripPostponedMail($booking));
         } catch (\Throwable $e) {
             Log::error('Failed to send trip postponed email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * ทีมงานย้อนการเลื่อน — รอบเดินทางตามเดิม (แก้อีเมลเลื่อนรอบที่ส่งไปก่อนหน้า)
+     */
+    public function sendTripResumedEmail(Booking $booking): void
+    {
+        $booking->load(['user', 'schedule.trip', 'passengers']);
+
+        try {
+            $this->sendToCustomerEmails($booking, fn () => new TripResumedMail($booking));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send trip resumed email', [
                 'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
             ]);

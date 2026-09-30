@@ -244,7 +244,7 @@
               </router-link>
 
               <router-link
-                v-if="b.status === 'confirmed' && !awaitsNewRound(b)"
+                v-if="b.status === 'confirmed'"
                 :to="{ name: 'trip-chat', params: { scheduleId: b.schedule.id }, query: { title: b.schedule?.trip?.title, date: b.schedule?.departure_date } }"
                 class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">chat</span>

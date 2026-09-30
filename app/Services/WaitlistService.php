@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\ProcessWaitlistJob;
 use App\Models\Booking;
+use App\Models\ForceMajeureSeatHold;
 use App\Models\LoyaltyAccount;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
@@ -112,11 +113,21 @@ class WaitlistService
      */
     public function heldSeats(int $scheduleId, ?int $exceptUserId = null): int
     {
-        return (int) WaitlistEntry::where('schedule_id', $scheduleId)
+        $offered = (int) WaitlistEntry::where('schedule_id', $scheduleId)
             ->where('status', 'offered')
             ->where('expires_at', '>', now())
             ->when($exceptUserId, fn ($q) => $q->where('user_id', '!=', $exceptUserId))
             ->sum('seat_count');
+
+        // ที่นั่งที่กันไว้ให้คนที่รอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัย (ForceMajeureSeatHold)
+        $forceMajeure = (int) ForceMajeureSeatHold::active()
+            ->where('schedule_id', $scheduleId)
+            ->when($exceptUserId, fn ($q) => $q->where(fn ($inner) => $inner
+                ->whereNull('user_id')
+                ->orWhere('user_id', '!=', $exceptUserId)))
+            ->sum('seat_count');
+
+        return $offered + $forceMajeure;
     }
 
     public function markBooked(int $userId, int $scheduleId): void

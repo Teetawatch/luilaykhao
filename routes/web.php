@@ -15,6 +15,7 @@ use App\Http\Controllers\PublicPassportController;
 use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PublicReceiptController;
+use App\Http\Controllers\PublicRescheduleController;
 use App\Http\Controllers\PublicSharePaymentController;
 use App\Http\Controllers\PublicTripBriefController;
 use App\Http\Controllers\SlipController;
@@ -292,6 +293,17 @@ Route::post('/pay/{token}', [PublicPaymentController::class, 'pay'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:payment')
     ->name('public.pay.submit');
+
+// เลือกรอบใหม่หลังรอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัย — จากลิงก์ในอีเมล/SMS/ไลน์
+// (ไม่ต้องล็อกอิน ลูกค้าที่ทีมงานจองให้ยังไม่มีบัญชีที่ใช้งานได้)
+Route::get('/reschedule/{token}', [PublicRescheduleController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.reschedule.show');
+Route::post('/reschedule/{token}', [PublicRescheduleController::class, 'choose'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.reschedule.choose');
 
 // Beam returnUrl — ปลายทางหลังลูกค้าจ่ายผ่านแอปธนาคารแล้วเด้งกลับ (ไม่ต้องล็อกอิน
 // เพราะเบราว์เซอร์บนมือถืออาจกลับมาโดยไม่มี session เดิม) หน้านี้แค่รอผลจาก webhook

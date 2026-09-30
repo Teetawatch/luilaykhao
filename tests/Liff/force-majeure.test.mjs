@@ -10,6 +10,7 @@ const FM = {
   reason: 'น้ำป่าไหลหลาก อุทยานประกาศปิด', original_departure_date: '2026-09-27',
   original_departure_label: '27 กันยายน 2569', until: '2027-03-27', until_label: '27 มีนาคม 2570',
   awaiting: true, can_choose: true, expired: false, days_left: 177, resolved_at: null,
+  holds: [{ schedule_id: 34, seat_count: 2, expires_at: '2026-10-03T03:00:00Z', expires_label: '3 ต.ค. 2569 10:00 น.' }],
 };
 
 const booking = (extra = {}) => ({
@@ -29,6 +30,8 @@ const booking = (extra = {}) => ({
 const IN_WINDOW = { id: 31, trip_id: 3, departure_date: '2026-11-08', return_date: '2026-11-10', status: 'open', bookable_seats: 6, pickup_points: [], vehicle_options: [] };
 const TOO_SMALL = { ...IN_WINDOW, id: 32, departure_date: '2026-12-06', return_date: '2026-12-08', bookable_seats: 1 };
 const TOO_LATE = { ...IN_WINDOW, id: 33, departure_date: '2027-04-03', return_date: '2027-04-05', bookable_seats: 8 };
+// รอบใหม่ที่กันที่ไว้ให้คนนี้ 2 ที่ — ตัวเลขสาธารณะเหลือ 0 แต่เขาต้องเลือกได้
+const HELD = { ...IN_WINDOW, id: 34, departure_date: '2026-12-20', return_date: '2026-12-22', bookable_seats: 0 };
 
 const routes = (b, me = { has_app: false, app_links: { ios: 'https://apps.apple.com/x', android: 'https://play.google.com/x' } }) => ({
   'POST /auth/line/liff': { data: { token: 'x' } },
@@ -42,7 +45,7 @@ const routes = (b, me = { has_app: false, app_links: { ios: 'https://apps.apple.
   [`GET /bookings/${REF}`]: { data: b },
   [`GET /bookings/${REF}/announcements`]: { data: [] },
   [`GET /bookings/${REF}/check-in-qr`]: { data: { code: 'Q3', qr_data_uri: 'data:image/svg+xml;base64,PC8+', checked_in: false } },
-  'GET /trips/thi-lo-su/schedules': { data: [IN_WINDOW, TOO_SMALL, TOO_LATE] },
+  'GET /trips/thi-lo-su/schedules': { data: [IN_WINDOW, TOO_SMALL, TOO_LATE, HELD] },
   [`POST /bookings/${REF}/reschedule`]: { data: { ...b, schedule: { ...IN_WINDOW, trip: TRIP }, force_majeure: { ...FM, awaiting: false } } },
 });
 
@@ -100,10 +103,11 @@ console.log('\n▶ เลือกรอบใหม่');
   await wait(120);
   click([...w.document.querySelectorAll('.fm-card .btn')].find((b) => b.textContent.includes('เลือกรอบใหม่')));
   await wait(100);
-  step('เห็นเฉพาะรอบในกรอบเวลาที่ที่นั่งพอ', () => {
+  step('เห็นเฉพาะรอบในกรอบเวลาที่ที่นั่งพอ (รวมรอบที่กันที่ไว้ให้)', () => {
     const picks = [...w.document.querySelectorAll('.sheet .pick')];
-    assert(picks.length === 1, 'ควรเหลือ 1 รอบ แต่ได้ ' + picks.length + ': ' + world.sheetText().slice(0, 160));
+    assert(picks.length === 2, 'ควรเหลือ 2 รอบ แต่ได้ ' + picks.length + ': ' + world.sheetText().slice(0, 160));
   });
+  step('บอกว่ากันที่ไว้ให้ถึงเมื่อไหร่', () => assert(world.sheetText().includes('กันที่ไว้ให้คุณ 2 ที่ ถึง 3 ต.ค. 2569 10:00 น.'), world.sheetText().slice(0, 300)));
   step('บอกว่าราคาเดิมและไม่กินสิทธิ์ปกติ', () => assert(world.sheetText().includes('ราคาเดิม') && world.sheetText().includes('ไม่นับรวม'), world.sheetText().slice(0, 160)));
   click([...w.document.querySelectorAll('.sheet .pick')][0]);
   await wait(40);

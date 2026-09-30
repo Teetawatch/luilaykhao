@@ -47,4 +47,23 @@ class AdminForceMajeureController extends Controller
             "ยกเลิกรอบแล้ว แจ้งลูกค้า {$result['bookings']} รายการให้เลือกรอบใหม่",
         );
     }
+
+    /**
+     * ย้อนการเลื่อน (กดผิดรอบ) — ได้เฉพาะตอนที่ยังไม่มีลูกค้าคนไหนเลือกรอบใหม่
+     */
+    public function revert(int $id): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($id);
+
+        try {
+            $result = $this->forceMajeure->revertSchedule($schedule);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            $this->forceMajeure->overview($schedule->fresh()),
+            "ย้อนการเลื่อนแล้ว รอบกลับมาตามกำหนดเดิม แจ้งลูกค้า {$result['bookings']} รายการแล้ว",
+        );
+    }
 }

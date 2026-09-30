@@ -85,7 +85,9 @@ class SmsService
         return $this->queueOrSend(
             booking: $booking,
             type: 'trip_postponed',
-            dedupeKey: 's'.($booking->force_majeure_schedule_id ?? $booking->schedule_id),
+            // ผูกกับครั้งที่เลื่อน — ย้อนแล้วเลื่อนใหม่ (หรือรอบใหม่ถูกเลื่อนซ้ำ) ต้องส่งได้อีก
+            dedupeKey: 's'.($booking->force_majeure_schedule_id ?? $booking->schedule_id)
+                .':'.$booking->force_majeure_at?->timestamp,
             message: sprintf(
                 'ทริป %s %s ต้องเลื่อนเนื่องจาก%s ยอดที่ชำระยังอยู่ครบ เลือกรอบใหม่ได้ฟรีถึง %s %s',
                 $this->tripTitle($booking),
@@ -93,6 +95,26 @@ class SmsService
                 $this->clip($booking->force_majeure_reason, 40),
                 ThaiDate::short($booking->force_majeure_until),
                 ForceMajeureService::chooseUrl($booking),
+            ),
+        );
+    }
+
+    /**
+     * ทีมงานย้อนการเลื่อน (กดผิดรอบ) — คนที่ได้ SMS ว่ารอบเลื่อนไปแล้วต้องได้ SMS แก้
+     */
+    public function sendTripResumed(Booking $booking, int $postponedAt): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'trip_resumed',
+            dedupeKey: 'fm:'.$postponedAt,
+            message: sprintf(
+                'ขออภัยครับ ทริป %s %s เดินทางตามกำหนดเดิม ข้อความเลื่อนรอบก่อนหน้าส่งผิด ไม่ต้องเลือกรอบใหม่ (%s)',
+                $this->tripTitle($booking),
+                ThaiDate::short($booking->schedule?->departure_date),
+                $booking->booking_ref,
             ),
         );
     }
@@ -449,6 +471,7 @@ class SmsService
             'trip_brief',
             'trip_postponed',
             'trip_postponed_reminder',
+            'trip_resumed',
         ];
     }
 
