@@ -265,298 +265,430 @@
 
     <!-- Form Modal -->
     <div class="modal-overlay" v-if="showForm">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h2>{{ editing ? 'แก้ไขรอบเดินทาง' : 'เพิ่มรอบใหม่' }}</h2>
-          <button class="modal-close" @click="showForm = false"><span class="material-symbols-rounded">close</span></button>
-        </div>
-        <form @submit.prevent="submitForm" class="modal-body">
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label>ทริป *</label>
-              <select v-model.number="form.trip_id" required>
-                <option value="" disabled>เลือกทริป</option>
-                <option v-for="t in tripOptions" :key="t.id" :value="t.id">{{ t.title }}</option>
-              </select>
-            </div>
-            <div class="form-group full-width">
-              <label class="daytrip-toggle">
-                <input type="checkbox" v-model="form.is_day_trip" />
-                <span class="material-symbols-rounded icon-xs">wb_sunny</span>
-                <span>เดย์ทริป — ไป-กลับวันเดียว (ไม่ต้องเลือกวันกลับ)</span>
-              </label>
-            </div>
-            <div class="form-group" :class="{ 'full-width': form.is_day_trip }">
-              <label>วันเดินทาง *</label>
-              <input v-model="form.departure_date" type="date" required />
-            </div>
-            <div class="form-group" v-if="!form.is_day_trip">
-              <label>วันกลับ *</label>
-              <input v-model="form.return_date" type="date" required />
-            </div>
-            <div class="form-group full-width">
-              <label>เวลาออกรถจริง (ไม่บังคับ)</label>
-              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                <input v-model="form.departs_time" type="time" style="max-width:140px;" />
-                <label class="daytrip-toggle" style="margin:0;" v-if="form.departs_time">
-                  <input type="checkbox" v-model="form.departs_night_before" />
-                  <span class="material-symbols-rounded icon-xs">dark_mode</span>
-                  <span>รถออกคืนก่อนวันทริป</span>
-                </label>
-                <button type="button" class="btn-sm btn-secondary" v-if="form.departs_time"
-                  @click="form.departs_time = ''; form.departs_night_before = false;">ล้าง</button>
-              </div>
-              <p class="form-toggle-hint" v-if="form.departs_time && form.departure_date" style="margin-top:6px;">
-                ลูกค้าจะเห็นว่าออกเดินทาง
-                {{ form.departs_night_before ? shiftDateStr(form.departure_date, -1) : form.departure_date }}
-                เวลา {{ form.departs_time }} น.
-              </p>
-            </div>
-            <div class="form-group">
-              <label>จำนวนที่นั่ง *</label>
-              <input v-model.number="form.total_seats" type="number" min="1" required />
-            </div>
-            <div class="form-group">
-              <label>ประเภทพาหนะ *</label>
-              <select v-model="form.transport_type" required>
-                <option value="van">รถตู้</option>
-                <option value="boat">เรือ</option>
-                <option value="bus">รถบัส</option>
-                <option value="flight">เครื่องบิน</option>
-              </select>
-              <p v-if="form.transport_type === 'flight'" class="form-toggle-hint" style="margin:8px 0 0;">
-                <span class="material-symbols-rounded hint-icon">flight</span>
-                รอบเครื่องบินจะไม่มีผังที่นั่งให้ลูกค้าเลือก — กรอกเลขที่นั่งจริงให้แต่ละคนได้ที่หน้าแก้ไขการจอง
-              </p>
-            </div>
-            <div class="form-group">
-              <label>ยานพาหนะ</label>
-              <select v-model="form.vehicle_id">
-                <option :value="null">ไม่ระบุ</option>
-                <option v-for="v in vehicleSelectOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>ราคาพิเศษ (฿)</label>
-              <input v-model.number="form.price_override" type="number" min="0" placeholder="ไม่ระบุใช้ราคาทริป" />
-            </div>
-            <div class="form-group" v-if="editing">
-              <label>สถานะ</label>
-              <select v-model="form.status">
-                <option value="open">เปิด</option>
-                <option value="closed">ปิด</option>
-                <option value="full">เต็ม</option>
-                <option value="cancelled">ยกเลิก</option>
-              </select>
-            </div>
+      <div class="modal-card sf-modal">
+        <div class="sf-header">
+          <div class="sf-header-icon">
+            <span class="material-symbols-rounded">{{ editing ? 'edit_calendar' : 'calendar_add_on' }}</span>
           </div>
+          <div class="sf-header-text">
+            <h2>{{ editing ? 'แก้ไขรอบเดินทาง' : 'เพิ่มรอบใหม่' }}</h2>
+            <p>{{ formTripTitle || 'เลือกทริป กำหนดวัน แล้วตั้งค่าที่นั่งและการชำระเงิน' }}</p>
+          </div>
+          <button type="button" class="modal-close" @click="showForm = false" aria-label="ปิด">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
 
+        <form @submit.prevent="submitForm" class="sf-form">
+          <div class="sf-body">
 
-          <!-- แผนการบิน — รอบที่บินไปไม่มีจุดขึ้นรถ จุดนัดพบที่สนามบินคือสิ่งที่มาแทน -->
-          <div class="form-toggle-section" v-if="form.transport_type === 'flight'">
-            <div class="form-toggle-header">
-              <label class="form-toggle-label">
-                <span class="material-symbols-rounded hint-icon">flight_takeoff</span>
-                <span>จุดนัดพบและเที่ยวบิน</span>
-              </label>
-            </div>
-            <p class="form-toggle-hint" style="margin:0 0 12px;">
-              รอบที่บินไปไม่มีจุดขึ้นรถ ข้อมูลชุดนี้คือสิ่งที่ลูกค้าเห็นแทน — ทั้งบนใบจอง
-              ในการ์ด "วันเดินทาง" บนหน้าจอล็อก และในอีเมลก่อนเดินทาง
-              เว้นว่างได้ถ้ายังไม่ออกตั๋ว แล้วกลับมากรอกทีหลัง
-            </p>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>จุดนัดพบ</label>
-                <input v-model="form.meeting_point" type="text"
-                  placeholder="สนามบินสุวรรณภูมิ ชั้น 4 ประตู 3 เคาน์เตอร์ D" />
-              </div>
-              <div class="form-group">
-                <label>เวลานัดพบ</label>
-                <input v-model="form.meeting_time" type="time" />
-                <p class="form-toggle-hint" style="margin:6px 0 0;" v-if="form.meeting_time">
-                  เวลาไทย — ระบบจะจับวันให้เองแม้เครื่องออกหลังเที่ยงคืน
-                </p>
-              </div>
-              <div class="form-group">
-                <label>ลิงก์แผนที่จุดนัดพบ</label>
-                <input v-model="form.meeting_map_url" type="url" placeholder="https://maps.app.goo.gl/..." />
-              </div>
-              <div class="form-group">
-                <label>น้ำหนักกระเป๋าที่รวมในทริป</label>
-                <input v-model="form.baggage_allowance" type="text" placeholder="โหลด 20 กก. + ถือขึ้นเครื่อง 7 กก." />
-              </div>
-            </div>
+            <!-- ① ทริปและวันเดินทาง -->
+            <section class="sf-section">
+              <header class="sf-section-head">
+                <span class="sf-section-icon"><span class="material-symbols-rounded">event</span></span>
+                <div>
+                  <h3>ทริปและวันเดินทาง</h3>
+                  <p>รอบนี้เป็นของทริปไหน ไปวันไหน กลับวันไหน</p>
+                </div>
+              </header>
 
-            <div class="flight-legs">
-              <div v-for="(leg, i) in form.flights" :key="i" class="flight-leg">
-                <div class="form-grid">
-                  <div class="form-group">
-                    <label>ขา</label>
-                    <select v-model="leg.direction">
-                      <option value="outbound">ขาไป</option>
-                      <option value="return">ขากลับ</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>สายการบิน</label>
-                    <input v-model="leg.airline" type="text" placeholder="Thai Airways" />
-                  </div>
-                  <div class="form-group">
-                    <label>เที่ยวบิน</label>
-                    <input v-model="leg.flight_no" type="text" placeholder="TG319" />
-                  </div>
-                  <div class="form-group">
-                    <label>ต้นทาง</label>
-                    <input v-model="leg.from" type="text" placeholder="BKK" />
-                  </div>
-                  <div class="form-group">
-                    <label>ปลายทาง</label>
-                    <input v-model="leg.to" type="text" placeholder="KTM" />
-                  </div>
-                  <div class="form-group">
-                    <label>ออก</label>
-                    <input v-model="leg.depart_at_local" type="datetime-local" />
-                  </div>
-                  <div class="form-group">
-                    <label>ถึง (เวลาท้องถิ่นปลายทาง)</label>
-                    <input v-model="leg.arrive_at_local" type="datetime-local" />
-                  </div>
-                  <div class="form-group">
-                    <label>หมายเหตุ</label>
-                    <input v-model="leg.note" type="text" placeholder="ต่อเครื่องที่ KUL 2 ชม." />
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label>ทริป <span class="sf-req">*</span></label>
+                  <select v-model.number="form.trip_id" required>
+                    <option value="" disabled>เลือกทริป</option>
+                    <option v-for="t in tripOptions" :key="t.id" :value="t.id">{{ t.title }}</option>
+                  </select>
+                </div>
+
+                <div class="form-group full-width">
+                  <label>รูปแบบทริป</label>
+                  <div class="sf-seg" role="radiogroup">
+                    <label :class="{ on: !form.is_day_trip }">
+                      <input type="radio" v-model="form.is_day_trip" :value="false" />
+                      <span class="material-symbols-rounded">bedtime</span>
+                      ค้างคืน
+                    </label>
+                    <label :class="{ on: form.is_day_trip }">
+                      <input type="radio" v-model="form.is_day_trip" :value="true" />
+                      <span class="material-symbols-rounded">wb_sunny</span>
+                      เดย์ทริป · ไป-กลับวันเดียว
+                    </label>
                   </div>
                 </div>
-                <button type="button" class="btn-ghost-sm" @click="removeFlightLeg(i)">
-                  <span class="material-symbols-rounded" style="font-size:16px;">delete</span>
-                  ลบขานี้
+
+                <div class="form-group" :class="{ 'full-width': form.is_day_trip }">
+                  <label>วันเดินทาง <span class="sf-req">*</span></label>
+                  <input v-model="form.departure_date" type="date" required />
+                </div>
+                <div class="form-group" v-if="!form.is_day_trip">
+                  <label>
+                    วันกลับ <span class="sf-req">*</span>
+                    <span v-if="formDurationLabel" class="sf-label-chip">{{ formDurationLabel }}</span>
+                  </label>
+                  <input v-model="form.return_date" type="date" :min="form.departure_date || null" required />
+                </div>
+
+                <div class="form-group full-width">
+                  <label>เวลาออกรถจริง <span class="sf-optional">ไม่บังคับ</span></label>
+                  <div class="sf-inline">
+                    <input v-model="form.departs_time" type="time" class="sf-time" />
+                    <label class="sf-check" v-if="form.departs_time">
+                      <input type="checkbox" v-model="form.departs_night_before" />
+                      <span class="material-symbols-rounded">dark_mode</span>
+                      รถออกคืนก่อนวันทริป
+                    </label>
+                    <button type="button" class="sf-link-btn" v-if="form.departs_time"
+                      @click="form.departs_time = ''; form.departs_night_before = false;">ล้างเวลา</button>
+                  </div>
+                  <p class="sf-preview" v-if="form.departs_time && form.departure_date">
+                    <span class="material-symbols-rounded">visibility</span>
+                    ลูกค้าจะเห็นว่าออกเดินทาง
+                    <strong>{{ formDateLabel(form.departs_night_before ? shiftDateStr(form.departure_date, -1) : form.departure_date) }}
+                      เวลา {{ form.departs_time }} น.</strong>
+                  </p>
+                  <p class="sf-help" v-else>เว้นว่างได้ ระบบจะนับถอยหลังเป็นวันแทนชั่วโมง</p>
+                </div>
+              </div>
+            </section>
+
+            <!-- ② ที่นั่ง พาหนะ ราคา -->
+            <section class="sf-section">
+              <header class="sf-section-head">
+                <span class="sf-section-icon"><span class="material-symbols-rounded">airline_seat_recline_normal</span></span>
+                <div>
+                  <h3>ที่นั่ง พาหนะ และราคา</h3>
+                  <p>จำนวนที่รับได้ เดินทางด้วยอะไร และราคาเฉพาะรอบนี้</p>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label>ประเภทพาหนะ <span class="sf-req">*</span></label>
+                  <div class="sf-tiles" role="radiogroup">
+                    <label v-for="t in transportTypeOptions" :key="t.value" :class="{ on: form.transport_type === t.value }">
+                      <input type="radio" v-model="form.transport_type" :value="t.value" />
+                      <span class="material-symbols-rounded">{{ t.icon }}</span>
+                      <span>{{ t.label }}</span>
+                    </label>
+                  </div>
+                  <p v-if="form.transport_type === 'flight'" class="sf-callout sf-callout--info">
+                    <span class="material-symbols-rounded">info</span>
+                    รอบเครื่องบินจะไม่มีผังที่นั่งให้ลูกค้าเลือก — กรอกเลขที่นั่งจริงให้แต่ละคนได้ที่หน้าแก้ไขการจอง
+                  </p>
+                </div>
+
+                <div class="form-group">
+                  <label>จำนวนที่นั่ง <span class="sf-req">*</span></label>
+                  <div class="sf-affix">
+                    <input v-model.number="form.total_seats" type="number" min="1" required />
+                    <span>ที่นั่ง</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>ยานพาหนะ</label>
+                  <select v-model="form.vehicle_id">
+                    <option :value="null">ยังไม่ระบุ</option>
+                    <option v-for="v in vehicleSelectOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
+                  </select>
+                </div>
+
+                <div class="form-group" :class="{ 'full-width': !editing }">
+                  <label>ราคาพิเศษรอบนี้</label>
+                  <div class="sf-affix sf-affix--pre">
+                    <span>฿</span>
+                    <input v-model.number="form.price_override" type="number" min="0" placeholder="เว้นว่าง = ใช้ราคาทริป" />
+                  </div>
+                </div>
+                <div class="form-group" v-if="editing">
+                  <label>สถานะรอบ</label>
+                  <select v-model="form.status" class="sf-status-select" :class="`is-${form.status}`">
+                    <option value="open">เปิดรับจอง</option>
+                    <option value="closed">ปิดรับจอง</option>
+                    <option value="full">เต็ม</option>
+                    <option value="cancelled">ยกเลิก</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <!-- ③ แผนการบิน — รอบที่บินไปไม่มีจุดขึ้นรถ จุดนัดพบที่สนามบินคือสิ่งที่มาแทน -->
+            <section class="sf-section" v-if="form.transport_type === 'flight'">
+              <header class="sf-section-head">
+                <span class="sf-section-icon"><span class="material-symbols-rounded">flight_takeoff</span></span>
+                <div>
+                  <h3>จุดนัดพบและเที่ยวบิน</h3>
+                  <p>
+                    ลูกค้าเห็นข้อมูลนี้แทนจุดขึ้นรถ — บนใบจอง การ์ด "วันเดินทาง" และอีเมลก่อนเดินทาง
+                    เว้นว่างได้ถ้ายังไม่ออกตั๋ว
+                  </p>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label>จุดนัดพบ</label>
+                  <input v-model="form.meeting_point" type="text"
+                    placeholder="สนามบินสุวรรณภูมิ ชั้น 4 ประตู 3 เคาน์เตอร์ D" />
+                </div>
+                <div class="form-group">
+                  <label>เวลานัดพบ</label>
+                  <input v-model="form.meeting_time" type="time" />
+                  <p class="sf-help" v-if="form.meeting_time">เวลาไทย — ระบบจับวันให้เองแม้เครื่องออกหลังเที่ยงคืน</p>
+                </div>
+                <div class="form-group">
+                  <label>น้ำหนักกระเป๋าที่รวมในทริป</label>
+                  <input v-model="form.baggage_allowance" type="text" placeholder="โหลด 20 กก. + ถือขึ้นเครื่อง 7 กก." />
+                </div>
+                <div class="form-group full-width">
+                  <label>ลิงก์แผนที่จุดนัดพบ</label>
+                  <input v-model="form.meeting_map_url" type="url" placeholder="https://maps.app.goo.gl/..." />
+                </div>
+              </div>
+
+              <div class="flight-legs">
+                <div class="sf-subhead">
+                  <span>เที่ยวบิน</span>
+                  <span class="sf-count" v-if="form.flights.length">{{ form.flights.length }} ขา</span>
+                </div>
+
+                <div v-if="!form.flights.length" class="sf-empty">
+                  <span class="material-symbols-rounded">connecting_airports</span>
+                  ยังไม่มีเที่ยวบิน — เพิ่มขาไปและขากลับเมื่อออกตั๋วแล้ว
+                </div>
+
+                <div v-for="(leg, i) in form.flights" :key="i" class="flight-leg">
+                  <div class="flight-leg-head">
+                    <span class="flight-leg-no">ขาที่ {{ i + 1 }}</span>
+                    <div class="sf-seg sf-seg--sm" role="radiogroup">
+                      <label :class="{ on: leg.direction !== 'return' }">
+                        <input type="radio" v-model="leg.direction" value="outbound" />
+                        <span class="material-symbols-rounded">flight_takeoff</span>ขาไป
+                      </label>
+                      <label :class="{ on: leg.direction === 'return' }">
+                        <input type="radio" v-model="leg.direction" value="return" />
+                        <span class="material-symbols-rounded">flight_land</span>ขากลับ
+                      </label>
+                    </div>
+                    <button type="button" class="sf-icon-btn sf-icon-btn--danger" @click="removeFlightLeg(i)"
+                      title="ลบขานี้" aria-label="ลบขานี้">
+                      <span class="material-symbols-rounded">delete</span>
+                    </button>
+                  </div>
+                  <div class="form-grid flight-leg-grid">
+                    <div class="form-group">
+                      <label>สายการบิน</label>
+                      <input v-model="leg.airline" type="text" placeholder="Thai Airways" />
+                    </div>
+                    <div class="form-group">
+                      <label>เที่ยวบิน</label>
+                      <input v-model="leg.flight_no" type="text" placeholder="TG319" />
+                    </div>
+                    <div class="form-group">
+                      <label>ต้นทาง</label>
+                      <input v-model="leg.from" type="text" placeholder="BKK" />
+                    </div>
+                    <div class="form-group">
+                      <label>ปลายทาง</label>
+                      <input v-model="leg.to" type="text" placeholder="KTM" />
+                    </div>
+                    <div class="form-group">
+                      <label>ออก</label>
+                      <input v-model="leg.depart_at_local" type="datetime-local" />
+                    </div>
+                    <div class="form-group">
+                      <label>ถึง <span class="sf-optional">เวลาท้องถิ่นปลายทาง</span></label>
+                      <input v-model="leg.arrive_at_local" type="datetime-local" />
+                    </div>
+                    <div class="form-group full-width">
+                      <label>หมายเหตุ</label>
+                      <input v-model="leg.note" type="text" placeholder="ต่อเครื่องที่ KUL 2 ชม." />
+                    </div>
+                  </div>
+                </div>
+
+                <button type="button" class="sf-add-btn" @click="addFlightLeg">
+                  <span class="material-symbols-rounded">add</span>
+                  เพิ่มขาบิน
                 </button>
               </div>
-              <button type="button" class="btn-ghost-sm" @click="addFlightLeg">
-                <span class="material-symbols-rounded" style="font-size:16px;">add</span>
-                เพิ่มขาบิน
+            </section>
+
+            <!-- ④ การชำระเงิน -->
+            <section class="sf-section">
+              <header class="sf-section-head">
+                <span class="sf-section-icon"><span class="material-symbols-rounded">payments</span></span>
+                <div>
+                  <h3>การชำระเงิน</h3>
+                  <p>ลูกค้าจ่ายเต็มได้เสมอ ส่วนนี้คือทางเลือกเพิ่มเติม</p>
+                </div>
+              </header>
+
+              <!-- Installment: อัตโนมัติจากวันเดินทาง ไม่มีอะไรให้ตั้ง -->
+              <div class="form-auto-note">
+                <span class="material-symbols-rounded" style="font-size:18px;">bolt</span>
+                <div>
+                  <strong>ผ่อนชำระเปิดอัตโนมัติ</strong>
+                  <p>ระบบแบ่งงวดให้เองจากวันที่ลูกค้าจองถึงวันเดินทาง งวดสุดท้ายปิดยอดก่อนเดินทาง 15 วัน — รอบที่ใกล้เกินไปจะซ่อนตัวเลือกให้เอง</p>
+                </div>
+              </div>
+
+              <div class="sf-option" :class="{ on: form.deposit_enabled }" style="--opt:#0d9488;--opt-bg:#f0fdfa;">
+                <label class="sf-option-head">
+                  <span class="sf-option-icon"><span class="material-symbols-rounded">savings</span></span>
+                  <span class="sf-option-text">
+                    <strong>รับมัดจำ</strong>
+                    <small>จ่ายมัดจำตอนจอง ส่วนที่เหลือชำระก่อนเดินทาง 15 วัน · ระบบส่งอีเมล/SMS เตือนให้เอง</small>
+                  </span>
+                  <input type="checkbox" class="sf-switch-input" v-model="form.deposit_enabled" />
+                  <span class="sf-switch" aria-hidden="true"></span>
+                </label>
+                <div v-if="form.deposit_enabled" class="sf-option-body">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label>คิดมัดจำเป็น</label>
+                      <div class="sf-seg" role="radiogroup">
+                        <label :class="{ on: form.deposit_type === 'amount' }">
+                          <input type="radio" v-model="form.deposit_type" value="amount" />
+                          จำนวนเงิน (฿)
+                        </label>
+                        <label :class="{ on: form.deposit_type === 'percent' }">
+                          <input type="radio" v-model="form.deposit_type" value="percent" />
+                          เปอร์เซ็นต์ (%)
+                        </label>
+                      </div>
+                    </div>
+                    <div v-if="form.deposit_type === 'amount'" class="form-group">
+                      <label>ยอดมัดจำต่อท่าน <span class="sf-req">*</span></label>
+                      <div class="sf-affix sf-affix--pre">
+                        <span>฿</span>
+                        <input v-model.number="form.deposit_amount" type="number" min="0" step="1" placeholder="เช่น 2000" required />
+                      </div>
+                    </div>
+                    <div v-else class="form-group">
+                      <label>เปอร์เซ็นต์มัดจำ <span class="sf-req">*</span></label>
+                      <div class="sf-affix">
+                        <input v-model.number="form.deposit_percent" type="number" min="1" max="99" placeholder="เช่น 30" required />
+                        <span>%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ⑤ ตัวเลือกเพิ่มเติม -->
+            <section class="sf-section">
+              <header class="sf-section-head">
+                <span class="sf-section-icon"><span class="material-symbols-rounded">tune</span></span>
+                <div>
+                  <h3>ตัวเลือกเพิ่มเติม</h3>
+                  <p>เปิดเฉพาะที่รอบนี้ต้องใช้</p>
+                </div>
+              </header>
+
+              <div class="sf-options">
+                <!-- Join Trip -->
+                <div class="sf-option" :class="{ on: form.join_trip_enabled }" style="--opt:#0f766e;--opt-bg:#f0fdfa;">
+                  <label class="sf-option-head">
+                    <span class="sf-option-icon"><span class="material-symbols-rounded">group_add</span></span>
+                    <span class="sf-option-text">
+                      <strong>จอยทริป (Join Trip)</strong>
+                      <small>ข้ามการเลือกที่นั่งและไม่มีผ่อนชำระ · โควตาแยกจากที่นั่งบนรถ</small>
+                    </span>
+                    <input type="checkbox" class="sf-switch-input" v-model="form.join_trip_enabled" />
+                    <span class="sf-switch" aria-hidden="true"></span>
+                  </label>
+                  <div v-if="form.join_trip_enabled" class="sf-option-body">
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label>ราคาจอยทริปต่อท่าน <span class="sf-req">*</span></label>
+                        <div class="sf-affix sf-affix--pre">
+                          <span>฿</span>
+                          <input v-model.number="form.join_trip_price" type="number" min="0" placeholder="ระบุราคา" required />
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label>รับจอยได้</label>
+                        <div class="sf-affix">
+                          <input v-model.number="form.join_trip_seats" type="number" min="1" max="500" placeholder="เว้นว่าง = ไม่จำกัด" />
+                          <span>คน</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Charter -->
+                <div class="sf-option" :class="{ on: form.is_charter }" style="--opt:#7c3aed;--opt-bg:#f5f3ff;">
+                  <label class="sf-option-head">
+                    <span class="sf-option-icon"><span class="material-symbols-rounded">lock</span></span>
+                    <span class="sf-option-text">
+                      <strong>รอบเหมา</strong>
+                      <small>แสดงในแอปพร้อมป้าย "รอบเหมา" แต่ลูกค้าทั่วไปกดจองไม่ได้</small>
+                    </span>
+                    <input type="checkbox" class="sf-switch-input" v-model="form.is_charter" />
+                    <span class="sf-switch" aria-hidden="true"></span>
+                  </label>
+                </div>
+
+                <!-- Flash Sale -->
+                <div class="sf-option" :class="{ on: form.flash_sale_enabled }" style="--opt:#ea580c;--opt-bg:#fff7ed;">
+                  <label class="sf-option-head">
+                    <span class="sf-option-icon"><span class="material-symbols-rounded">bolt</span></span>
+                    <span class="sf-option-text">
+                      <strong>Flash Sale</strong>
+                      <small>ราคาพิเศษช่วงใกล้ออกทริป พร้อม Push แจ้งลูกค้าเมื่อเริ่ม</small>
+                    </span>
+                    <input type="checkbox" class="sf-switch-input" v-model="form.flash_sale_enabled" />
+                    <span class="sf-switch" aria-hidden="true"></span>
+                  </label>
+                  <div v-if="form.flash_sale_enabled" class="sf-option-body">
+                    <div class="form-grid">
+                      <div class="form-group full-width">
+                        <label>ราคา Flash Sale ต่อท่าน <span class="sf-req">*</span></label>
+                        <div class="sf-affix sf-affix--pre">
+                          <span>฿</span>
+                          <input v-model.number="form.flash_sale_price" type="number" min="0" placeholder="เช่น 1990" required />
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label>เริ่ม <span class="sf-optional">ว่าง = เริ่มทันที</span></label>
+                        <input v-model="form.flash_sale_starts_at_local" type="datetime-local" />
+                      </div>
+                      <div class="form-group">
+                        <label>สิ้นสุด <span class="sf-optional">ว่าง = ไม่มีนับถอยหลัง</span></label>
+                        <input v-model="form.flash_sale_ends_at_local" type="datetime-local" />
+                      </div>
+                    </div>
+                    <p class="sf-help sf-help--block">
+                      ตั้งเวลาเริ่มล่วงหน้าได้ — ก่อนถึงเวลาราคายังปกติและยังไม่ส่ง Push ·
+                      ราคาพิเศษมีผลจนหมดเวลา ที่นั่งเต็ม หรือถึงวันออกเดินทาง
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="sf-footer">
+            <div class="sf-summary" v-if="form.departure_date">
+              <span class="material-symbols-rounded">event</span>
+              <span>
+                {{ formDateLabel(form.departure_date) }}
+                <template v-if="!form.is_day_trip && form.return_date && form.return_date !== form.departure_date">
+                  – {{ formDateLabel(form.return_date) }}
+                </template>
+                <template v-if="form.total_seats"> · {{ form.total_seats }} ที่นั่ง</template>
+              </span>
+            </div>
+            <div class="sf-footer-actions">
+              <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
+              <button type="submit" class="btn-primary" :disabled="submitting">
+                <span class="material-symbols-rounded" :class="{ 'animate-spin': submitting }">{{ submitting ? 'sync' : 'check' }}</span>
+                {{ editing ? 'บันทึกการแก้ไข' : 'สร้างรอบ' }}
               </button>
             </div>
-          </div>
-
-          <!-- Installment: อัตโนมัติจากวันเดินทาง ไม่มีอะไรให้ตั้ง -->
-          <div class="form-toggle-section">
-            <div class="form-auto-note">
-              <span class="material-symbols-rounded" style="font-size:18px;">bolt</span>
-              <div>
-                <strong>ผ่อนชำระเปิดอัตโนมัติ</strong>
-                <p>ระบบแบ่งงวดให้เองจากวันที่ลูกค้าจองถึงวันเดินทาง งวดสุดท้ายปิดยอดก่อนเดินทาง 15 วัน — รอบที่ใกล้เกินไปจะซ่อนตัวเลือกให้เอง</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Deposit Settings -->
-          <div class="form-toggle-section">
-            <div class="form-toggle-header">
-              <label class="form-toggle-label">
-                <input type="checkbox" v-model="form.deposit_enabled" class="check-deposit" />
-                <span>เปิดใช้ระบบจ่ายมัดจำ</span>
-              </label>
-            </div>
-            <p class="form-toggle-hint">
-              <span class="material-symbols-rounded hint-icon hint-deposit">info</span>
-              ลูกค้าจะจ่ายมัดจำในการจอง และต้องชำระยอดส่วนที่เหลือก่อนเดินทาง 15 วัน ระบบจะส่งอีเมล/SMS แจ้งเตือนอัตโนมัติ
-            </p>
-            <div v-if="form.deposit_enabled" class="form-grid">
-              <div class="form-group">
-                <label>รูปแบบมัดจำ</label>
-                <select v-model="form.deposit_type">
-                  <option value="amount">จำนวนเงิน (บาท)</option>
-                  <option value="percent">เปอร์เซ็นต์ (%)</option>
-                </select>
-              </div>
-              <div v-if="form.deposit_type === 'amount'" class="form-group">
-                <label>ยอดมัดจำ (฿)</label>
-                <input v-model.number="form.deposit_amount" type="number" min="0" step="1" placeholder="เช่น 2000" required />
-              </div>
-              <div v-else class="form-group">
-                <label>เปอร์เซ็นต์มัดจำ (%)</label>
-                <input v-model.number="form.deposit_percent" type="number" min="1" max="99" placeholder="เช่น 30" required />
-              </div>
-            </div>
-          </div>
-
-          <!-- Join Trip Settings -->
-          <div class="form-toggle-section">
-            <div class="form-toggle-header">
-              <label class="form-toggle-label">
-                <input type="checkbox" v-model="form.join_trip_enabled" class="check-join-trip" />
-                <span>เปิดใช้ระบบ "จอยทริป" (Join Trip)</span>
-              </label>
-            </div>
-            <div v-if="form.join_trip_enabled" class="form-grid">
-              <div class="form-group">
-                <label>ราคาจอยทริป (฿) *</label>
-                <input v-model.number="form.join_trip_price" type="number" min="0" placeholder="ระบุราคาต่อท่าน" required />
-              </div>
-              <div class="form-group">
-                <label>รับจอยได้กี่คน</label>
-                <input v-model.number="form.join_trip_seats" type="number" min="1" max="500" placeholder="เว้นว่าง = ไม่จำกัด" />
-              </div>
-              <div class="form-group form-group-hint-cell">
-                <p class="form-toggle-hint">
-                  <span class="material-symbols-rounded hint-icon hint-join-trip">info</span>
-                  ระบบจอยทริปจะข้ามการเลือกที่นั่งและไม่มีระบบผ่อนชำระ · จำนวนที่รับจอยแยกจากที่นั่งบนรถ เว้นว่างไว้คือรับไม่จำกัด
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Charter Settings -->
-          <div class="form-toggle-section">
-            <div class="form-toggle-header">
-              <label class="form-toggle-label">
-                <input type="checkbox" v-model="form.is_charter" class="check-charter" />
-                <span>กำหนดเป็น "รอบเหมา"</span>
-              </label>
-            </div>
-            <p class="form-toggle-hint">
-              <span class="material-symbols-rounded hint-icon hint-charter">info</span>
-              รอบเหมาจะแสดงในแอปลูกค้าพร้อมป้าย "รอบเหมา" แต่ลูกค้าทั่วไปจะไม่สามารถกดจองได้
-            </p>
-          </div>
-
-          <!-- Flash Sale Settings -->
-          <div class="form-toggle-section">
-            <div class="form-toggle-header">
-              <label class="form-toggle-label">
-                <input type="checkbox" v-model="form.flash_sale_enabled" class="check-flash-sale" />
-                <span>⚡ เปิด Flash Sale (ราคาพิเศษช่วงใกล้ออกทริป)</span>
-              </label>
-            </div>
-            <div v-if="form.flash_sale_enabled" class="form-grid">
-              <div class="form-group">
-                <label>ราคา Flash Sale (฿) *</label>
-                <input v-model.number="form.flash_sale_price" type="number" min="0" placeholder="เช่น 1990" required />
-              </div>
-              <div class="form-group">
-                <label>เริ่ม Flash Sale</label>
-                <input v-model="form.flash_sale_starts_at_local" type="datetime-local" />
-              </div>
-              <div class="form-group">
-                <label>สิ้นสุด Flash Sale</label>
-                <input v-model="form.flash_sale_ends_at_local" type="datetime-local" />
-              </div>
-              <div class="form-group form-group-hint-cell full-width">
-                <p class="form-toggle-hint">
-                  <span class="material-symbols-rounded hint-icon hint-flash-sale">bolt</span>
-                  ตั้ง “เริ่ม” ไว้ล่วงหน้าได้ — ก่อนถึงเวลา ราคายังปกติและยังไม่ส่ง Push · เมื่อถึงเวลา (หรือปล่อยว่าง = เริ่มทันที) ระบบจะส่ง Push แจ้งลูกค้า · ราคาพิเศษมีผลจนกว่าจะหมดเวลา ที่ว่างเต็ม หรือถึงวันออกเดินทาง · เว้นเวลาว่างได้ (ไม่มีนับถอยหลัง)
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
-            <button type="submit" class="btn-primary" :disabled="submitting">
-              <span class="material-symbols-rounded" :class="{ 'animate-spin': submitting }" v-if="submitting">sync</span>
-              {{ editing ? 'บันทึก' : 'สร้างรอบ' }}
-            </button>
           </div>
         </form>
       </div>
@@ -2402,6 +2534,32 @@ const vehicleSelectOptions = computed(() => {
   const current = editing.value?.vehicle;
   if (!current?.id || vehicleOptions.value.some((v) => v.id === current.id)) return vehicleOptions.value;
   return [...vehicleOptions.value, current].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'th'));
+});
+
+// ─── ฟอร์มรอบ: ตัวช่วยแสดงผล ──────────────────────────────
+const transportTypeOptions = [
+  { value: 'van', label: 'รถตู้', icon: 'airport_shuttle' },
+  { value: 'bus', label: 'รถบัส', icon: 'directions_bus' },
+  { value: 'boat', label: 'เรือ', icon: 'directions_boat' },
+  { value: 'flight', label: 'เครื่องบิน', icon: 'flight' },
+];
+
+const formTripTitle = computed(() => tripOptions.value.find((t) => t.id === form.trip_id)?.title || '');
+
+// "2026-10-12" → "ส. 12 ต.ค. 69" — ประกอบวันที่จากสตริงตรง ๆ ไม่ขึ้นกับ timezone ของเบราว์เซอร์
+const formDateLabel = (dateStr) => {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('th-TH', {
+    weekday: 'short', day: 'numeric', month: 'short', year: '2-digit',
+  });
+};
+
+const formDurationLabel = computed(() => {
+  if (form.is_day_trip || !form.departure_date || !form.return_date) return '';
+  const nights = Math.round((new Date(`${form.return_date}T00:00:00`) - new Date(`${form.departure_date}T00:00:00`)) / 86400000);
+  if (nights < 0) return 'วันกลับก่อนวันไป';
+  return nights === 0 ? 'ไป-กลับวันเดียว' : `${nights + 1} วัน ${nights} คืน`;
 });
 
 const openForm = (item = null) => {
@@ -6222,18 +6380,518 @@ onMounted(async () => {
   border-radius: 1px;
 }
 
-/* ── Form toggle sections ── */
-.form-toggle-section {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 18px;
-  margin-top: 18px;
+/* ── ฟอร์มเพิ่ม/แก้ไขรอบ (sf-*) ── */
+/* หัวและท้ายค้างอยู่กับที่ เลื่อนเฉพาะเนื้อหา — ปุ่มบันทึกจึงเห็นเสมอแม้ฟอร์มยาว */
+.modal-card.sf-modal {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: none;
 }
 
-.form-toggle-header {
-  margin-bottom: 12px;
+.sf-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #eeeeee;
+  flex-shrink: 0;
 }
 
-/* ฟีเจอร์ที่ระบบคิดให้เอง — บอกว่ามันทำงานอยู่ ไม่ใช่ช่องให้กรอก */
+.sf-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #ecf5ef;
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sf-header-icon .material-symbols-rounded { font-size: 22px; }
+
+.sf-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sf-header-text h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sf-header-text p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sf-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.sf-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 24px 24px;
+  background: #fafafa;
+}
+
+/* ── Section ── */
+.sf-section {
+  background: #ffffff;
+  border: 1px solid #ebebeb;
+  border-radius: 14px;
+  padding: 18px 20px 20px;
+  margin-top: 16px;
+}
+
+.sf-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.sf-section-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sf-section-icon .material-symbols-rounded { font-size: 18px; }
+
+.sf-section-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sf-section-head p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #6b7280;
+}
+
+/* ── Label extras ── */
+.sf-req { color: #dc2626; }
+
+.sf-optional {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin-left: 4px;
+}
+
+.sf-label-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ecf5ef;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sf-help {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9ca3af;
+}
+
+.sf-help--block { margin-top: 12px; color: #6b7280; }
+
+.sf-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 4px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  font-size: 12.5px;
+  color: #4b5563;
+}
+
+.sf-preview .material-symbols-rounded { font-size: 16px; color: #6b7280; }
+.sf-preview strong { color: #111827; font-weight: 700; }
+
+/* ── Segmented control (radio) ── */
+.sf-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.sf-seg label {
+  position: relative;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.sf-seg label:hover { color: #111827; }
+
+.sf-seg label.on {
+  background: #ffffff;
+  color: #111827;
+  outline: 1px solid #e5e7eb;
+}
+
+.sf-seg label .material-symbols-rounded { font-size: 18px; }
+
+.sf-seg input,
+.sf-tiles input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  pointer-events: none;
+}
+
+.sf-seg label:has(input:focus-visible),
+.sf-tiles label:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.sf-seg--sm { padding: 3px; }
+.sf-seg--sm label { padding: 5px 10px; font-size: 12px; }
+.sf-seg--sm label .material-symbols-rounded { font-size: 15px; }
+
+/* ── Transport tiles ── */
+.sf-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.sf-tiles label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.sf-tiles label:hover { border-color: #cbd5e1; }
+
+.sf-tiles label .material-symbols-rounded { font-size: 24px; color: #9ca3af; }
+
+.sf-tiles label.on {
+  border-color: var(--color-accent);
+  background: #f3faf6;
+  color: var(--color-accent);
+}
+
+.sf-tiles label.on .material-symbols-rounded { color: var(--color-accent); }
+
+/* ── Inputs with prefix/suffix ── */
+.sf-affix {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+
+.sf-affix:focus-within {
+  border-color: #2d7a4f;
+  box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
+}
+
+.sf-affix input,
+.sf-affix input:focus {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sf-affix > span {
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.sf-affix--pre > span { padding-right: 0; }
+
+/* ── Inline row (time + night-before + clear) ── */
+.sf-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.sf-inline .sf-time { width: 140px; }
+
+.sf-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #374151;
+}
+
+.sf-check input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: var(--color-accent);
+}
+
+.sf-check .material-symbols-rounded { font-size: 16px; color: #6366f1; }
+
+.sf-link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.sf-link-btn:hover { color: #dc2626; }
+
+/* ── Callout ── */
+.sf-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.sf-callout .material-symbols-rounded { font-size: 17px; flex-shrink: 0; }
+
+.sf-callout--info {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+/* ── Status select tinted by value ── */
+.form-group .sf-status-select { font-weight: 600; }
+.form-group .sf-status-select.is-open { color: #15803d; }
+.form-group .sf-status-select.is-closed { color: #4b5563; }
+.form-group .sf-status-select.is-full { color: #b45309; }
+.form-group .sf-status-select.is-cancelled { color: #b91c1c; }
+
+/* ── Option rows with switch ── */
+.sf-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sf-section .form-auto-note + .sf-option { margin-top: 12px; }
+
+.sf-option {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sf-option.on {
+  border-color: color-mix(in srgb, var(--opt) 45%, #ffffff);
+}
+
+.sf-option-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sf-option-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #f3f4f6;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sf-option-icon .material-symbols-rounded { font-size: 20px; }
+
+.sf-option.on .sf-option-icon {
+  background: var(--opt-bg);
+  color: var(--opt);
+}
+
+.sf-option-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sf-option-text strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sf-option-text small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.sf-option-body {
+  padding: 16px;
+  border-top: 1px dashed #e5e7eb;
+  background: #fcfcfc;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Switch — checkbox จริงซ่อนไว้ให้ v-model/คีย์บอร์ดยังใช้ได้ */
+.sf-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.sf-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: #d1d5db;
+  flex-shrink: 0;
+  transition: background 0.18s;
+}
+
+.sf-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.18s;
+}
+
+.sf-switch-input:checked + .sf-switch { background: var(--opt, var(--color-accent)); }
+.sf-switch-input:checked + .sf-switch::after { transform: translateX(18px); }
+.sf-switch-input:focus-visible + .sf-switch {
+  outline: 2px solid var(--opt, var(--color-accent));
+  outline-offset: 2px;
+}
+
+/* ── Footer ── */
+.sf-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid #eeeeee;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.sf-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.sf-summary .material-symbols-rounded { font-size: 18px; color: #9ca3af; }
+
+.sf-summary > span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sf-footer-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.sf-footer-actions .material-symbols-rounded { font-size: 18px; }
+
+/* ── ฟีเจอร์ที่ระบบคิดให้เอง — บอกว่ามันทำงานอยู่ ไม่ใช่ช่องให้กรอก ── */
 .form-auto-note {
   display: flex;
   gap: 10px;
@@ -6258,6 +6916,7 @@ onMounted(async () => {
   color: #115e59;
 }
 
+/* ── Batch form toggles ── */
 .form-toggle-label {
   display: flex;
   align-items: center;
@@ -6284,69 +6943,129 @@ onMounted(async () => {
 
 .check-deposit     { accent-color: #0d9488; }
 .check-join-trip   { accent-color: #0f766e; }
-.check-charter     { accent-color: #7c3aed; }
-.check-flash-sale  { accent-color: #ea580c; }
-
-.form-toggle-hint {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 11px;
-  color: #6b7280;
-  margin: 0 0 12px;
-  line-height: 1.5;
-}
-
-.hint-icon { font-size: 14px !important; flex-shrink: 0; margin-top: 1px; }
-.hint-deposit  { color: #0d9488; }
-.hint-join-trip { color: #0f766e; }
-.hint-flash-sale { color: #ea580c; }
-.hint-charter  { color: #7c3aed; }
 
 /* ── แผนการบิน (ขาบินซ้ำหลายแถว) ── */
 .flight-legs {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 12px;
-  align-items: flex-start;
+  gap: 10px;
+  margin-top: 20px;
 }
+
+.sf-subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.sf-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.sf-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.sf-empty .material-symbols-rounded { font-size: 22px; color: #9ca3af; }
 
 .flight-leg {
-  width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 14px;
-  background: #fafafa;
+  border-radius: 12px;
+  background: #fcfcfc;
+  overflow: hidden;
 }
 
-.btn-ghost-sm {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #374151;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 7px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.btn-ghost-sm:hover {
-  border-color: #d1d5db;
-  background: #f9fafb;
-}
-
-.form-group-hint-cell {
+.flight-leg-head {
   display: flex;
-  align-items: flex-end;
-  padding-bottom: 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  border-bottom: 1px solid #eeeeee;
+  background: #ffffff;
 }
 
-.form-group-hint-cell .form-toggle-hint {
-  margin: 0;
+.flight-leg-no {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  margin-right: auto;
+}
+
+.flight-leg-head .sf-seg { flex: 0 0 auto; }
+
+.flight-leg-grid { padding: 14px 16px 16px; }
+
+.sf-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sf-icon-btn .material-symbols-rounded { font-size: 18px; }
+
+.sf-icon-btn--danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.sf-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sf-add-btn:hover {
+  background: #f3faf6;
+  border-color: var(--color-accent);
+}
+
+.sf-add-btn .material-symbols-rounded { font-size: 18px; }
+
+@media (max-width: 640px) {
+  .sf-header { padding: 14px 16px; }
+  .sf-body { padding: 4px 12px 16px; }
+  .sf-section { padding: 16px 14px; border-radius: 12px; }
+  .sf-tiles { grid-template-columns: repeat(2, 1fr); }
+  .sf-seg { flex-wrap: wrap; }
+  .sf-footer { padding: 12px 16px; }
+  .sf-summary { display: none; }
+  .sf-footer-actions { width: 100%; }
+  .sf-footer-actions > button { flex: 1; justify-content: center; }
+  .flight-leg-head { flex-wrap: wrap; }
 }
 
 /* ── Batch feature toggle cards ── */
